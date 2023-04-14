@@ -1,0 +1,4 @@
+mountpoints:
+  /:
+    url: https://millr.org/
+    type: markup
