@@ -1,0 +1,37 @@
+{
+  "project": "College",
+  "plugins": [
+    {
+      "id": "library",
+      "title": "Library",
+      "environments": [ "edit" ],
+      "isPalette": true,
+      "passConfig": true,
+      "paletteRect": "top: auto; bottom: 20px; left: 20px; height: 398px; width: 360px;",
+      "url": "https://main--milo--adobecom.hlx.page/tools/library",
+      "includePaths": [ "**.docx**" ]
+    },    
+    {
+      "id": "translate",
+      "title": "Translate",
+      "environments": [ "edit" ],
+      "url": "https://milo.adobe.com/tools/translation/index.html",
+      "passReferrer": true,
+      "include_paths": [ "**.xlsx**" ]
+    },
+    {
+      "title": "Send to CaaS",
+      "id": "sendtocaas",
+      "environments": ["dev","preview", "live", "prod"],
+      "event": "send-to-caas",
+      "excludePaths": ["/tools/caas**", "*.json"]
+    },
+    {
+      "title": "Check Schema",
+      "id": "checkschema",
+      "environments": ["prod"],
+      "event": "check-schema",
+      "excludePaths": ["/tools**", "*.json"]
+    }
+  ]
+}
