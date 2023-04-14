@@ -1,4 +1,4 @@
 mountpoints:
   /:
-    url: https://franklinlunch.com/
+    url: https://jotti.me/
     type: markup
