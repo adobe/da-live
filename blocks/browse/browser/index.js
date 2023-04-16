@@ -33,7 +33,7 @@ export async function handleAction(item) {
     return;
   }
   if (item.type === 'file') {
-    window.location.href = `/edit#${folder}${name}`;
+    window.location.href = `/edit#${prefix}${name}`;
   }
 }
 
@@ -68,20 +68,21 @@ export async function expandFolder() {
 export async function handleSave() {
   const newName = newFolder.value.replaceAll(/\W+/g, '-');
   const { pathname } = breadcrumbs.value.at(-1);
-  const fullPath = `${pathname}/${newName}`;
+  const prefix = pathname === '/' ? '' : pathname;
+  const fullPath = `${origin}/content${prefix}/${newName}`;
 
   const headerOpts = { 'Content-Type': 'application/json' };
   const headers = new Headers(headerOpts);
 
-  const opts = { method: 'POST', headers, body: JSON.stringify({ pathname: fullPath })};
-  const resp = await fetch(`${origin}/folder/create`, opts);
+  const opts = { method: 'PUT', headers, body: JSON.stringify({ pathname: fullPath })};
+  const resp = await fetch(fullPath, opts);
+  if (resp.status !== 200) return;
+
   const json = await resp.json();
-  if (json.message === 'success') {
-    content.value.unshift(json.item);
-    content.value = [...content.value];
-    showFolder.value = false;
-    newFolder.value = '';
-  }
+  content.value.unshift(json);
+  content.value = [...content.value];
+  showFolder.value = false;
+  newFolder.value = '';
 }
 
 export function handleCancel() {
