@@ -1,0 +1,9 @@
+body {
+    background-color: rgb(245 245 245);
+}
+
+header.aec-shell {
+    height: 49px;
+    min-height: 49px;
+    border-bottom: 1px solid #d3d3d3;
+}

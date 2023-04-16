@@ -1,0 +1,8 @@
+.edit {
+    max-width: var(--grid-container-width);
+    margin: 80px auto;
+}
+
+.da-edit-title {
+    text-align: center;
+}

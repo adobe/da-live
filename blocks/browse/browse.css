@@ -1,0 +1,126 @@
+.browse {
+    max-width: var(--grid-container-width);
+    margin: 80px auto;
+}
+
+.browse button, .browse input {
+    font-family: var(--body-font-family);
+}
+
+.da-breadcrumb-actions {
+    display: flex;
+    gap: 24px;
+}
+
+.da-actions-container {
+    margin: 0 0 12px;
+    padding: 0;
+    display: flex;
+    list-style: none;
+}
+
+.da-actions-input {
+    border: 3px solid #FFF;
+    border-radius: 6px;
+    padding: 0 4px;
+}
+
+.da-actions-folder-container {
+    display: none;
+    gap: 12px;
+}
+
+.da-actions-folder-container.edit-folder {
+    display: flex;
+}
+
+.da-breadcrumb-list {
+    margin: 0 0 12px;
+    padding: 0;
+    display: flex;
+    list-style: none;
+    gap: 24px;
+}
+
+.da-breadcrumb-list-item,
+.da-actions-button {
+    position: relative;
+    display: block;
+    text-transform: uppercase;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 0px 10px;
+    line-height: 24px;
+    background: #EFEFEF;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.da-breadcrumb-list-item:after {
+    position: absolute;
+    right: -24px;
+    top: 0;
+    display: block;
+    content: '';
+    width: 24px;
+    height: 24px;
+    opacity: 0.5;
+    background: url('./img/Smock_ChevronRight_18_N.svg') center / cover no-repeat;
+}
+
+.da-actions-button {
+    border: none;
+    font-size: 14px;
+    background-color: #066ce7;
+    color: #FFF;
+}
+
+.da-actions-button.edit-folder {
+    display: none;
+}
+
+.da-item-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.da-item-list-item {
+    display: flex;
+    align-items: center;
+    padding: 24px 18px;
+    gap: 12px;
+    border-radius: 6px;
+    border: 3px solid transparent;
+    cursor: pointer;
+}
+
+.da-item-list-item:hover {
+    border: 3px solid #066ce7;
+}
+
+.da-item-list-item-type {
+    display: block;
+    width: 32px;
+    height: 32px;
+}
+
+.da-item-list-item:nth-child(odd) {
+    background-color: #FBFBFB;
+}
+
+.da-item-list-item-type-file {
+    background: url('./img/Smock_Document_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-type-folder {
+    background: url('./img/Smock_Folder_18_N.svg') center / cover no-repeat;
+}
+
+.da-rule {
+    margin: 12px 0;
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 2px;
+    border-color: #c7c7c7;
+}
