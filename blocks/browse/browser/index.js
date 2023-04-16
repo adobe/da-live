@@ -25,15 +25,15 @@ function makeBreadCrumb(path) {
 }
 
 export async function handleAction(item) {
-  const folder = item.pathname === '/' ? item.pathname : `${item.pathname}/`;
+  const { parent, name } = item;
+  const prefix = parent === '/' ? parent : `${parent}/`;
+  const path = `${prefix}${name}`;
   if (item.type === 'folder') {
-    const folder = item.pathname === '/' ? item.pathname : `${item.pathname}/`;
-    const fullpath = `${folder}${item.name}`;
-    window.location.hash = fullpath;
+    window.location.hash = path;
     return;
   }
-  if (item.type === 'md') {
-    window.location.href = `/edit#${folder}${item.name}`;
+  if (item.type === 'file') {
+    window.location.href = `/edit#${folder}${name}`;
   }
 }
 
