@@ -1,8 +1,148 @@
-.edit {
-    max-width: var(--grid-container-width);
-    margin: 80px auto;
+.da-title {
+    position: relative;
 }
 
-.da-edit-title {
-    text-align: center;
+.da-editor {
+    position: relative;
+    min-height: 80vh;
+    padding: 20px;
+    background: #FFF;
+}
+
+.da-editor:focus {
+    border: none;
+    outline: none;
+}
+
+.da-title:before {
+    content: 'EDIT';
+}
+
+.da-title:before,
+.da-editor:before,
+.da-meta:before {
+    top: 40px;
+    left: 120px;
+    position: absolute;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #afafaf;
+}
+
+.da-editor:before {
+    content: 'content';
+}
+
+.da-editor table,
+.da-editor td {
+    border-collapse: collapse;
+    border-color: #cfcfcf;
+    border-width: 4px;
+    border-style: solid;
+}
+
+.da-meta {
+    position: relative;
+    padding: 60px 120px;
+}
+
+.da-meta:before {
+    content: 'Page Meta';
+}
+
+.da-editor-tools {
+    position: fixed;
+    left: -6px;
+    top: 50%;
+    padding: 6px 6px 6px 12px;
+    border-radius: 4px;
+    box-shadow: 0px 0px 5px 0px #b5b5b5;
+    background: #FFF;
+    transform: translateY(-50%);
+}
+
+.da-editor-tool {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    display: block;
+    border: none;
+    margin-bottom: 6px;
+}
+
+.da-editor-tool:after {
+    position: absolute;
+    content: attr(data-label);
+    top: 50%;
+    left: 60px;
+    line-height: 32px;
+    background-color: #EFEFEF;
+    white-space: nowrap;
+    padding: 0 8px;
+    border-radius: 2px;
+    transform: translateY(-50%);
+    box-shadow: 0px 0px 2px 0px #b5b5b5;
+    visibility: hidden;
+}
+
+.da-editor-tool:hover:after {
+    animation: 1s fadeIn;
+    animation-fill-mode: forwards;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    80% {
+        opacity: 0;
+    }
+    100% {
+      visibility: visible;
+      opacity: 1;
+    }
+  }
+
+.da-editor-tools hr {
+    border: 1px solid #c9c9c9;
+    border-radius: 1px;
+}
+
+.da-editor-tool:last-child {
+    margin-bottom: 0;
+}
+
+.da-editor-tool-ul {
+    background: url('./img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-ol {
+    background: url('./img/Smock_TextNumbered_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-a {
+    background: url('./img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-hr {
+    background: url('./img/Smock_PageRule_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-block {
+    background: url('./img/Smock_Table_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-library {
+    background: url('./img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+@media (min-width: 900px) {
+    .da-title {
+        padding: 60px 120px;
+    }
+
+    .da-editor {
+        min-height: 30vh;
+        padding: 120px;
+    }
 }

@@ -3,10 +3,6 @@
     margin: 80px auto;
 }
 
-.browse button, .browse input {
-    font-family: var(--body-font-family);
-}
-
 .da-breadcrumb-actions {
     display: flex;
     gap: 24px;

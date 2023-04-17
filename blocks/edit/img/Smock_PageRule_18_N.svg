@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 0 18 18" width="18">
+  <defs>
+    <style>
+      .fill {
+        fill: #464646;
+      }
+    </style>
+  </defs>
+  <title>S PageRule 18 N</title>
+  <rect id="Canvas" fill="#ff13dc" opacity="0" width="18" height="18" /><path class="fill" d="M17.4375,2H.5625A.57351.57351,0,0,0,0,2.5835v12.833A.57351.57351,0,0,0,.5625,16h16.875A.5735.5735,0,0,0,18,15.4165V2.5835A.5735.5735,0,0,0,17.4375,2ZM17,15H1V4H17Z" />
+  <rect class="fill" height="1" rx="0.25" width="14" x="2" y="6" />
+</svg>

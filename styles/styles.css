@@ -2,8 +2,18 @@ body {
     background-color: rgb(245 245 245);
 }
 
+button, input {
+    font-family: var(--body-font-family);
+}
+
 header.aec-shell {
     height: 49px;
     min-height: 49px;
     border-bottom: 1px solid #d3d3d3;
+}
+
+@media (min-width: 900px) {
+    header ~ main {
+        margin-top: 49px;
+    }
 }
