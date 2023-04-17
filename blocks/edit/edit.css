@@ -34,20 +34,8 @@
     content: 'content';
 }
 
-.da-editor table {
-    min-width: 100%;
-}
-
 .da-editor tr {
     min-height: 50px;
-}
-
-.da-editor table,
-.da-editor td {
-    border-collapse: collapse;
-    border-color: #cfcfcf;
-    border-width: 4px;
-    border-style: solid;
 }
 
 .da-meta {
@@ -98,6 +86,36 @@
     animation: 1s fadeIn;
     animation-fill-mode: forwards;
 }
+
+/* General Editor Styles */
+
+.block {
+    border-style: solid;
+    border-color: #b7b7b7;
+    border-width: 4px 0 0 4px;
+    overflow: hidden;
+    border-radius: 3px;
+}
+
+.block > div:first-child {
+    text-align: center;
+    background-color: #d9f4f4;
+}
+
+.block > div {
+    overflow: hidden;
+    display: flex;
+}
+.block > div > div {
+    border: 4px solid #b7b7b7;
+    height: 20px;
+    margin: -4px 0 0 -4px;
+    flex: 1 1 auto;
+    min-height: 24px;
+    padding: 2px 6px;
+}
+
+/* General Editor Styles */
 
 @keyframes fadeIn {
     0% {

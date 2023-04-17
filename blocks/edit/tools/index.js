@@ -46,8 +46,8 @@ function makeLink() {
 }
 
 function makeBlock() {
-  const rows = '<tr><th colspan="2">block-name</th></tr><tr><td>contents 1</td><td>contents 2</td></tr>';
-  const dom = createTag('table', { href: 'https://www.adobe.com' }, rows);
+  const children = '<div><div>Block Name</div></div><div><div>Content 1</div><div>Content 2</div></div>';
+  const dom = createTag('div', { class: 'block' }, children);
   insert(dom);
 }
 
