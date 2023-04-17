@@ -1,11 +1,12 @@
 .da-title {
     position: relative;
+    padding: 36px 24px 36px 72px;
 }
 
 .da-editor {
     position: relative;
-    min-height: 80vh;
-    padding: 20px;
+    min-height: 30vh;
+    padding: 72px 24px 72px 72px;
     background: #FFF;
 }
 
@@ -21,8 +22,8 @@
 .da-title:before,
 .da-editor:before,
 .da-meta:before {
-    top: 40px;
-    left: 120px;
+    top: 24px;
+    left: 72px;
     position: absolute;
     text-transform: uppercase;
     font-weight: 700;
@@ -31,6 +32,14 @@
 
 .da-editor:before {
     content: 'content';
+}
+
+.da-editor table {
+    min-width: 100%;
+}
+
+.da-editor tr {
+    min-height: 50px;
 }
 
 .da-editor table,
@@ -137,12 +146,18 @@
 }
 
 @media (min-width: 900px) {
+    .da-title:before,
+    .da-editor:before,
+    .da-meta:before {
+        top: 40px;
+        left: 120px;
+    }
+
     .da-title {
         padding: 60px 120px;
     }
 
     .da-editor {
-        min-height: 30vh;
         padding: 120px;
     }
 }
