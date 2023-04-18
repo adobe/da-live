@@ -1,2 +1,4 @@
 mountpoints:
-  /: https://drive.google.com/drive/u/0/folders/1I2JAYojOpt8GCLO2D8suX85ZijaMtE1r
+  /:
+    url: https://das.chris4303.workers.dev/
+    type: markup
