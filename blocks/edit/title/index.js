@@ -1,4 +1,12 @@
-import { origin } from '../../browse/state/index.js';
+import { origin, hlxOrigin } from '../../browse/state/index.js';
+
+async function openPreview(path) {
+  const opts = { method: 'POST' };
+  const resp = await fetch(`${hlxOrigin}${path}`, opts);
+  if (!resp.ok) console.log('error');
+  const json = await resp.json();
+  window.open(path, '_blank');
+}
 
 export default async function save() {
   const { hash } = window.location;
@@ -15,5 +23,5 @@ export default async function save() {
   const opts = { method: 'PUT', headers, body: blob};
   const resp = await fetch(fullPath, opts);
   if (resp.status !== 200) return;
-  console.log('success');
+  openPreview(pathname);
 }
