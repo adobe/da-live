@@ -1,6 +1,7 @@
 import { origin } from '../browse/state/index.js';
 import getTitle from './title/view.js';
 import getToolbar from './toolbar/view.js';
+import { getTable } from './utils.js';
 
 const { getLibs } = await import('../../../scripts/utils.js');
 const { createTag } = await import(`${getLibs()}/utils/utils.js`);
@@ -11,8 +12,18 @@ async function getContent(path) {
   const html = await resp.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
-  const children = doc.body.querySelectorAll(':scope > *')
-  return children.length > 0 ? [...children] : doc.body.innerHTML;
+  const sections = doc.body.querySelectorAll('main > div');
+  sections.forEach((section) => {
+    const blocks = doc.querySelectorAll('div[class]');
+    blocks.forEach((block) => {
+      const table = getTable(block);
+      block.parentElement.replaceChild(table, block);
+    });
+  });
+
+  if (sections.length === 0) return doc.body.innerHTML;
+
+  return [...sections];
 }
 
 export default async function init(el) {
