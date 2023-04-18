@@ -6,8 +6,6 @@ export default async function save() {
 
   const fullPath = `${origin}/content${pathname}.html`;
 
-  
-
   const editor = document.querySelector('#da-editor');
   const blob = new Blob([editor.innerHTML], { type: 'text/html' });
 

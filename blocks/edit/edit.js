@@ -11,7 +11,8 @@ async function getContent(path) {
   const html = await resp.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
-  return [...doc.body.querySelectorAll(':scope > *')];
+  const children = doc.body.querySelectorAll(':scope > *')
+  return children.length > 0 ? [...children] : doc.body.innerHTML;
 }
 
 export default async function init(el) {
