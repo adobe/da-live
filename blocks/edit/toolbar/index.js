@@ -43,10 +43,17 @@ export function makeLink() {
 }
 
 export function makeBlock() {
-  const children = '<div><div>Block Name</div></div><div><div>Content 1</div><div>Content 2</div></div>';
-  const block = createTag('div', { class: 'block' }, children);
-  const br = createTag('br');
-  const dom = new DocumentFragment();
-  dom.append(block, br);
+  const content =
+  `<table cellspacing="4">
+    <tr>
+      <th colspan="2">columns</th>
+    </tr>
+    <tr>
+      <td>Lorem ipsum...</td>
+      <td>Lorem ipsum...</td>
+    </tr>
+  </table>
+  `;
+  const dom = createTag('table', null, content);
   insert(dom);
 }
