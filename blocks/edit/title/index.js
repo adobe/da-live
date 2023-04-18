@@ -16,7 +16,7 @@ export default async function save() {
 
   const editor = document.querySelector('#da-editor');
 
-  const html = `<body><main><div>${editor.innerHTML}</div></main></body>`;
+  const html = `<body><main>${editor.innerHTML}</main></body>`;
 
   const blob = new Blob([html], { type: 'text/html' });
 
