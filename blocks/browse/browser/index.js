@@ -40,7 +40,7 @@ export async function handleAction(item) {
 export async function getContent() {
   const pathname = getPathname();
   makeBreadCrumb(pathname);
-  const resp = await fetch(`${origin}/browse?pathname=${pathname}`);
+  const resp = await fetch(`${origin}/api/list?pathname=${pathname}`);
   const json = await resp.json();
   content.value = json;
 }
