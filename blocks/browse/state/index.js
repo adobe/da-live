@@ -8,6 +8,6 @@ export const hlxOrigin = 'https://admin.hlx.page/preview/auniverseaway/dac/main'
 export const breadcrumbs = signal([]);
 export const content = signal([]);
 
-export const showNew = signal('');
-export const newType = signal('');
-export const newName = signal('');
+const CREATE_DEFAULT = { show: '', name: '', type: '' };
+export const create = signal({ ...CREATE_DEFAULT });
+export function resetCreate() { create.value = { ...CREATE_DEFAULT }; }

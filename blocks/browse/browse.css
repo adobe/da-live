@@ -1,47 +1,20 @@
+@import url('actions.css');
+
 .browse {
     max-width: var(--grid-container-width);
     margin: 80px auto;
-}
-
-.da-breadcrumb-actions {
-    display: flex;
-    gap: 24px;
-}
-
-.da-actions-container {
-    margin: 0 0 12px;
-    padding: 0;
-    display: flex;
-    list-style: none;
-    position: relative;
-}
-
-.da-actions-input {
-    border: 3px solid #FFF;
-    border-radius: 6px;
-    padding: 0 4px;
-}
-
-.da-actions-input-container {
-    display: none;
-    gap: 12px;
-}
-
-.da-actions-input-container.show-input {
-    display: flex;
 }
 
 .da-breadcrumb-list {
     margin: 0 0 12px;
     padding: 0;
     display: flex;
+    flex-wrap: wrap;
     list-style: none;
-    gap: 24px;
+    gap: 12px 24px;
 }
 
-.da-breadcrumb-list-item,
-.da-actions-new-button,
-.da-actions-button {
+.da-breadcrumb-list-item {
     position: relative;
     display: block;
     text-transform: uppercase;
@@ -64,65 +37,6 @@
     height: 24px;
     opacity: 0.5;
     background: url('./img/Smock_ChevronRight_18_N.svg') center / cover no-repeat;
-}
-
-.da-actions-new-button,
-.da-actions-button {
-    border: none;
-    font-size: 14px;
-    background-color: #cee4ff;
-    color: #066ce7;
-}
-.da-actions-button {
-    text-transform: unset;
-}
-
-.da-actions-menu {
-  display: none;
-}
-
-.da-actions-menu {
-  position: absolute;
-  left: -6px;
-  top: 30px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  background: #FFF;
-  box-shadow: 0px 0px 5px 0px #b5b5b5;
-  border-radius: 4px;
-}
-
-.da-actions-menu.show-new {
-  display: block;
-}
-
-li.da-actions-menu-item button {
-  display: block;
-  width: 100px;
-  text-align: left;
-  line-height: 28px;
-  border: none;
-  padding: 0px 10px;
-  border-radius: 2px;
-  background: transparent;
-  text-transform: capitalize;
-}
-
-li.da-actions-menu-item button:hover {
-  background: #EFEFEF;
-}
-
-li.da-actions-menu-item:last-child {
-  padding-top: 0px
-}
-
-li.da-actions-menu-item {
-  padding: 6px;
-}
-
-.da-actions-new-button.show-input {
-    display: none;
 }
 
 .da-item-list {
@@ -169,4 +83,11 @@ li.da-actions-menu-item {
     border-style: solid;
     border-radius: 2px;
     border-color: #c7c7c7;
+}
+
+@media (min-width: 900px) {
+  .da-breadcrumb {
+    display: flex;
+    gap: 24px;
+  }
 }

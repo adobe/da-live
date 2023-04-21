@@ -1,19 +1,35 @@
 import { getLibs } from '../../../scripts/utils.js';
-import { content, breadcrumbs, showNew, newType, newName } from '../state/index.js';
+import { content, breadcrumbs, create, resetCreate } from '../state/index.js';
 import {
   getContent,
   handleAction,
   handleHash,
   handleCrumb,
   handleChange,
-  expandNew,
+  showCreateMenu,
   handleNewType,
   handleSave,
-  handleCancel,
 } from './index.js';
 
 const { html, useEffect } = await import(`${getLibs()}/deps/htm-preact.js`);
 
+function CreateAction() {
+  const { show, name, type } = create.value;
+
+  return html`
+    <div class="da-actions-create ${create.value.show}">
+      <button class="da-actions-new-button" onClick=${showCreateMenu}>New</button>
+      <ul class="da-actions-menu">
+        <li class=da-actions-menu-item><button data-type=folder onClick=${handleNewType}>Folder</button></li>
+        <li class=da-actions-menu-item><button data-type=document onClick=${handleNewType}>Document</button></li>
+      </ul>
+      <div class="da-actions-input-container">
+        <input onInput=${handleChange} type="text" class="da-actions-input" placeholder="Name" value=${name} />
+        <button class="da-actions-button" onClick=${handleSave}>Create ${type}</button>
+        <button class="da-actions-button da-actions-button-cancel" onClick=${resetCreate}>Cancel</button>
+      </div>
+    </div>`;
+}
 
 export default function Browser() {
   useEffect(() => {
@@ -23,7 +39,7 @@ export default function Browser() {
 
   return html`
     <hr class=da-rule/>
-    <div class=da-breadcrumb-actions>
+    <div class=da-breadcrumb>
       <ul class=da-breadcrumb-list>
         ${breadcrumbs.value.map((crumb, idx) => html`
           <li
@@ -34,18 +50,7 @@ export default function Browser() {
           </li>
         `)}
       </ul>
-      <div class=da-actions-container>
-        <button class="da-actions-new-button ${showNew}" onClick=${expandNew}>New</button>
-        <ul class="da-actions-menu ${showNew}">
-          <li class=da-actions-menu-item><button onClick=${handleNewType}>folder</button></li>
-          <li class=da-actions-menu-item><button onClick=${handleNewType}>document</button></li>
-        </ul>
-        <div class="da-actions-input-container  ${showNew}">
-          <input onInput=${handleChange} type="text" class="da-actions-input" placeholder="Name" value=${newName} />
-          <button class="da-actions-button" onClick=${handleSave}>Create ${newType}</button>
-          <button class="da-actions-button da-actions-button-cancel" onClick=${handleCancel}>Cancel</button>
-        </div>
-      </div>
+      <${CreateAction} />
     </div>
     <ul class=da-item-list>
       ${content.value.map((item, idx) => html`
