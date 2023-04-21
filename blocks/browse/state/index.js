@@ -7,5 +7,7 @@ export const hlxOrigin = 'https://admin.hlx.page/preview/auniverseaway/dac/main'
 
 export const breadcrumbs = signal([]);
 export const content = signal([]);
-export const showFolder = signal(false);
-export const newFolder = signal('');
+
+export const showNew = signal('');
+export const newType = signal('');
+export const newName = signal('');

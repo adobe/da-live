@@ -1,4 +1,4 @@
-import { origin, content, breadcrumbs, showFolder, newFolder } from '../state/index.js';
+import { origin, content, breadcrumbs, showNew, newName, newType } from '../state/index.js';
 
 function getPathname() {
   const { hash } = window.location;
@@ -54,11 +54,16 @@ export function handleCrumb(crumb) {
 }
 
 export function handleChange(e) {
-  newFolder.value = e.target.value;
+  newName.value = e.target.value;
 }
 
-export async function expandFolder() {
-  showFolder.value = true;
+export function expandNew() {
+  showNew.value = showNew.value === 'show-new' ? '' : 'show-new';
+}
+
+export async function handleNewType(e) {
+  showNew.value = 'show-input';
+  newType.value = e.target.innerText;
   setTimeout(() => {
     const input = document.querySelector('.da-actions-input');
     input.focus();
@@ -66,23 +71,30 @@ export async function expandFolder() {
 }
 
 export async function handleSave() {
-  const newName = newFolder.value.replaceAll(/\W+/g, '-');
+  const saveName = newName.value.replaceAll(/\W+/g, '-');
   const { pathname } = breadcrumbs.value.at(-1);
   const prefix = pathname === '/' ? '' : pathname;
-  const fullPath = `${origin}/content${prefix}/${newName}`;
+  const path = `${origin}/content${prefix}/${saveName}`;
+  const fullPath = newType.value === 'Folder' ? path : `${path}.html`;
 
   const headerOpts = { 'Content-Type': 'application/json' };
   const headers = new Headers(headerOpts);
 
-  const opts = { method: 'PUT', headers, body: JSON.stringify({ pathname: fullPath })};
+  const opts = { method: 'PUT', headers };
   const resp = await fetch(fullPath, opts);
   if (resp.status !== 200) return;
 
   const json = await resp.json();
+
+  if (newType.value === 'Document') {
+    window.open(`/edit#${prefix}/${saveName}`);
+  }
+
   content.value.unshift(json);
   content.value = [...content.value];
-  showFolder.value = false;
-  newFolder.value = '';
+  showNew.value = '';
+  newName.value = '';
+  newType.value = '';
 }
 
 export function handleCancel() {
