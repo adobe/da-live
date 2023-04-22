@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+
+<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+<meta charset="utf-8">
+
+<link rel="stylesheet" href="./styles.css">
+<title>wysihtml - Advanced Demo</title>
+
+<body>
+  <div class="toolbar" style="display: none;">
+    <div class="block">
+      <a data-wysihtml-command="bold" title="CTRL+B">bold</a>
+      <a data-wysihtml-command="italic" title="CTRL+I">italic</a>
+      <a data-wysihtml-command="underline" title="CTRL+U">underline</a>
+    </div>
+
+    <div class="block">
+      <a data-wysihtml-command="createLink">Link</a>
+      <a data-wysihtml-command="removeLink">Remove link</a>
+      <a data-wysihtml-command="insertImage">image</a>
+      <a data-wysihtml-command="formatBlock" data-wysihtml-command-value="p">p</a>
+      <a data-wysihtml-command="formatBlock" data-wysihtml-command-value="h1">h1</a>
+      <a data-wysihtml-command="formatBlock" data-wysihtml-command-value="h2">h2</a>
+      <a data-wysihtml-command="formatBlock" data-wysihtml-command-value="h3">h3</a>
+      <a data-wysihtml-command="formatBlock" data-wysihtml-command-value="h4">h4</a>
+      <a data-wysihtml-command="formatBlock" data-wysihtml-command-value="h5">h5</a>
+      <a data-wysihtml-command="formatBlock" data-wysihtml-command-value="h5">h6</a>
+      <a data-wysihtml-command="formatBlock" data-wysihtml-command-blank-value="true">plaintext</a>
+    </div>
+    
+    <div class="block">
+      <a data-wysihtml-command="insertUnorderedList">&bull; List</a>
+      <a data-wysihtml-command="insertOrderedList">1. List</a>
+    </div>
+
+    <div class="block">
+      <a data-wysihtml-command="undo">undo</a>
+      <a data-wysihtml-command="redo">redo</a>
+    </div>
+  
+    <div class="block">
+      <a data-wysihtml-command="createTable">Table</a>
+      <div data-wysihtml-dialog="createTable" style="display: none;">
+        Rows: <input type="text" data-wysihtml-dialog-field="rows" /><br/>
+        Cols: <input type="text" data-wysihtml-dialog-field="cols" /><br/>
+        <a data-wysihtml-dialog-action="save">OK</a>&nbsp;<a data-wysihtml-dialog-action="cancel">Cancel</a>
+      </div>
+    </div>
+
+    <div class="block" data-wysihtml-hiddentools="table" style="display: none;">
+      <a data-wysihtml-command="mergeTableCells">Merge</a>
+      <a data-wysihtml-command="addTableCells" data-wysihtml-command-value="above">row-before</a>
+      <a data-wysihtml-command="addTableCells" data-wysihtml-command-value="below">row-after</a>
+      <a data-wysihtml-command="addTableCells" data-wysihtml-command-value="before">col-before</a>
+      <a data-wysihtml-command="addTableCells" data-wysihtml-command-value="after">col-after</a>
+    
+      <a data-wysihtml-command="deleteTableCells" data-wysihtml-command-value="row">delete row</a>
+      <a data-wysihtml-command="deleteTableCells" data-wysihtml-command-value="column">delete col</a>
+    </div>
+  
+  
+    <div data-wysihtml-dialog="createLink" style="display: none;">
+      <input data-wysihtml-dialog-field="href" value="http://">
+      <a data-wysihtml-dialog-action="save">OK</a>&nbsp;<a data-wysihtml-dialog-action="cancel">Cancel</a>
+    </div>
+    <div data-wysihtml-dialog="insertImage" style="display: none;">
+      <input data-wysihtml-dialog-field="src" value="http://">
+      <a data-wysihtml-dialog-action="save">OK</a>
+      <a data-wysihtml-dialog-action="cancel">Cancel</a>
+    </div>
+  </div>
+
+  <div class="editable"></div>
+
+</body>
+
+<script src="./wysihtml.js"></script>
+<script src="./wysihtml.all-commands.js"></script>
+<script src="./wysihtml.table_editing.js"></script>
+<script src="./wysihtml.toolbar.js"></script>
+<script src="./advanced_and_extended.js"></script>
+
+
+<script>
+  const editor = document.querySelector('.editable');
+  const toolbar = document.querySelector('.toolbar');
+
+  const opts = {
+    toolbar,
+    parserRules:  wysihtmlParserRules,
+    useLineBreaks: true,
+  };
+  new wysihtml.Editor(editor);
+
+</script>

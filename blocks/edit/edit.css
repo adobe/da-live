@@ -1,19 +1,30 @@
-.da-edit-header {
-    position: relative;
-    padding: 36px 24px 36px 72px;
+.da-header-wrapper {
+  display: grid;
+  grid-template-columns: 1fr var(--grid-container-width) 1fr;
+  grid-template-areas: 'details name actions';
+  align-items: center;
 }
 
-.da-edit-header-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.da-header {
+  position: relative;
+  padding: 36px 24px 36px 72px;
+  grid-area: name;
+}
+
+.da-header-actions {
+  grid-area: actions;
+}
+
+.da-editor-wrapper {
+  background: #FFF;
 }
 
 .da-editor {
-    position: relative;
-    min-height: 30vh;
-    padding: 72px 24px 72px 72px;
-    background: #FFF;
+  max-width: var(--grid-container-width);
+  margin: 0 auto;
+  position: relative;
+  min-height: 30vh;
+  padding: 72px 0 72px 72px;
 }
 
 .da-editor:focus {
@@ -21,11 +32,11 @@
     outline: none;
 }
 
-.da-edit-header:before {
+.da-header:before {
     content: 'EDIT';
 }
 
-.da-edit-header:before,
+.da-header:before,
 .da-editor:before,
 .da-meta:before {
     top: 24px;
@@ -93,6 +104,34 @@
     animation-fill-mode: forwards;
 }
 
+.da-button-group {
+  position: relative;
+}
+
+.da-button-group.expand .da-button-pallette {
+  display: flex;
+}
+
+.da-button-pallette {
+  position: absolute;
+  left: 60px;
+  background: #FFF;
+  /* border: 1px solid; */
+  padding: 6px;
+  top: 50%;
+  display: none;
+  flex-wrap: wrap;
+  width: 144px;
+  transform: translateY(-50%);
+  box-shadow: 0px 0px 5px 0px #b5b5b5;
+  border-radius: 4px;
+  gap: 6px;
+}
+
+.da-button-pallette button {
+  margin-bottom: 0px;
+}
+
 /* General Editor Styles */
 
 table {
@@ -133,6 +172,42 @@ table th, table td {
     margin-bottom: 0;
 }
 
+.da-editor-tool-h {
+  background: url('./img/Smock_Heading_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-h1 {
+  background: url('./img/Smock_Heading1_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-h2 {
+  background: url('./img/Smock_Heading2_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-h3 {
+  background: url('./img/Smock_Heading3_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-h4 {
+  background: url('./img/Smock_Heading4_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-h5 {
+  background: url('./img/Smock_Heading5_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-h6 {
+  background: url('./img/Smock_Heading6_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-b {
+  background: url('./img/Smock_TextBold_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.da-editor-tool-i {
+  background: url('./img/Smock_TextItalic_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
 .da-editor-tool-ul {
     background: url('./img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
@@ -157,19 +232,44 @@ table th, table td {
     background: url('./img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
+.wysihtml-command-active {
+  background-color: rgb(178, 215, 178);
+}
+
+/* Editor Styles */
+.da-editor.wysihtml-editor > *:first-child {
+  margin-top: 0;
+}
+
+.da-button-pallette-link {
+  display: flex;
+  width: 320px;
+  justify-content: end;
+}
+
+.da-button-pallette.da-button-pallette-link input {
+  width: 100%;
+  background: #f5f5f5;
+  border: none;
+  padding: 0 12px;
+  line-height: 44px;
+  font-size: 16px;
+  border-bottom: 2px solid #a9a9a9;
+}
+
 @media (min-width: 900px) {
-    .da-edit-header:before,
+    .da-header:before,
     .da-editor:before,
     .da-meta:before {
         top: 40px;
-        left: 120px;
+        left: 0;
     }
 
-    .da-edit-header {
-        padding: 60px 120px;
+    .da-header {
+        padding: 60px 0;
     }
 
     .da-editor {
-        padding: 120px;
+      padding: 100px 0;
     }
 }
