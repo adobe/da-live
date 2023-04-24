@@ -32,7 +32,7 @@ function toBlockCSSClassNames(text) {
 function convertBlocks(tables) {
   tables.forEach(table => {
     const tbody = table.querySelector(':scope > tbody');
-    const rows = [...tbody.querySelectorAll(':scope > tr')];
+    const rows = tbody ? [...tbody.querySelectorAll(':scope > tr')] : [...table.querySelectorAll(':scope > tr')];
     const nameRow = rows.shift();
 
     const divs = [...rows].map((row) => {
