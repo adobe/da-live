@@ -7,34 +7,37 @@ const { getLibs } = await import('../../../scripts/utils.js');
 const { createTag, loadScript } = await import(`${getLibs()}/utils/utils.js`);
 
 async function getContent(path) {
-  const resp = await fetch(`${origin}${path}`);
-  if (resp.status !== 200) return '';
-  const html = await resp.text();
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const sections = doc.body.querySelectorAll('main > div');
-  sections.forEach((section) => {
-    const blocks = section.querySelectorAll('div[class]');
-    blocks.forEach((block) => {
-      const table = getTable(block);
-      block.parentElement.replaceChild(table, block);
+  try {
+    const resp = await fetch(`${origin}${path}`);
+    if (resp.status !== 200) return '';
+    const html = await resp.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const sections = doc.body.querySelectorAll('main > div');
+    sections.forEach((section) => {
+      const blocks = section.querySelectorAll('div[class]');
+      blocks.forEach((block) => {
+        const table = getTable(block);
+        block.parentElement.replaceChild(table, block);
+      });
     });
-  });
 
-  if (sections.length === 0) return doc.body.innerHTML;
-
-  return [...sections];
+    if (sections.length === 0) return doc.body.querySelector('main').innerHTML;
+    return [...sections];
+  } catch {
+    return '';
+  }
 }
 
 export default async function init(el) {
   const title = await getTitle();
 
+  const toolbar = await getToolbar(el);
+
   const editor = createTag('div', { class: 'da-editor' });
-  const wrapper = createTag('div', { class: 'da-editor-wrapper' }, editor);
+  const wrapper = createTag('div', { class: 'da-editor-wrapper' }, [ toolbar, editor ]);
 
   const meta = createTag('div', { class: 'da-meta' });
-
-  const toolbar = await getToolbar(el);
 
   await loadScript('/blocks/edit/deps/wysihtml/wysihtml.js');
   await loadScript('/blocks/edit/deps/wysihtml/wysihtml.all-commands.js');
@@ -52,5 +55,5 @@ export default async function init(el) {
   const dom = await getContent(window.location.hash.replace('#', ''));
   editor.append(...dom);
 
-  el.append(title, wrapper, meta, toolbar);
+  el.append(title, wrapper, meta);
 }

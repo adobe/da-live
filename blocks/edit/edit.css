@@ -16,15 +16,17 @@
 }
 
 .da-editor-wrapper {
+  position: relative;
   background: #FFF;
+  display: grid;
+  grid-template-columns: 1fr var(--grid-container-width) 1fr;
+  grid-template-areas: 'toolbar editor palettes';
 }
 
 .da-editor {
-  max-width: var(--grid-container-width);
-  margin: 0 auto;
   position: relative;
-  min-height: 30vh;
   padding: 72px 0 72px 72px;
+  grid-area: editor;
 }
 
 .da-editor:focus {
@@ -51,10 +53,6 @@
     content: 'content';
 }
 
-.da-editor tr {
-    min-height: 50px;
-}
-
 .da-meta {
     position: relative;
     padding: 60px 120px;
@@ -65,14 +63,17 @@
 }
 
 .da-editor-tools {
-    position: fixed;
-    left: -6px;
-    top: 50%;
-    padding: 6px 6px 6px 12px;
-    border-radius: 4px;
-    box-shadow: 0px 0px 5px 0px #b5b5b5;
-    background: #FFF;
-    transform: translateY(-50%);
+  position: relative;
+  left: -6px;
+  top: 20px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 4px;
+  box-shadow: 0px 0px 5px 0px #b5b5b5;
+  background: #FFF;
+  width: 62px;
+  box-sizing: border-box;
+  grid-area: toolbar;
+  z-index: 1;
 }
 
 .da-editor-tool {
@@ -103,6 +104,27 @@
     animation: 1s fadeIn;
     animation-fill-mode: forwards;
 }
+
+.da-toolbar-extras {
+  position: fixed;
+  display: flex;
+  justify-content: center;
+  bottom: 20px;
+  left: 0;
+  transform: translateX(10px);
+  right: 0;
+  gap: 6px;
+  z-index: 1;
+}
+
+.da-toolbar-extras > div {
+  display: flex;
+  padding: 6px;
+  background: #fff;
+  box-shadow: 0px 0px 5px 0px #b5b5b5;
+  border-radius: 4px;
+  gap: 6px;
+}f
 
 .da-button-group {
   position: relative;
@@ -139,13 +161,17 @@ table {
   border-spacing: 6px;
 }
 
-table th {
+table tr:first-child td {
   background: aliceblue;
+  text-align: center;
+  font-weight: 700;
 }
 
-table th, table td {
+table td {
   border: 3px dotted #d0d0d0;
   border-radius: 3px;
+  margin: 3px;
+  vertical-align: top;
 }
 
 /* General Editor Styles */
@@ -243,18 +269,33 @@ table th, table td {
 
 .da-button-pallette-link {
   display: flex;
-  width: 320px;
   justify-content: end;
 }
 
-.da-button-pallette.da-button-pallette-link input {
-  width: 100%;
-  background: #f5f5f5;
-  border: none;
-  padding: 0 12px;
+input.da-pallette-input {
   line-height: 44px;
-  font-size: 16px;
-  border-bottom: 2px solid #a9a9a9;
+  width: 400px;
+  border: none;
+  background: #efefef;
+  padding: 0 12px;
+}
+
+.da-pallette-button {
+  border: none;
+}
+
+.da-pallette-button-ok {
+  background: #ace0c2;
+}
+
+.da-pallette-button-destroy {
+  display: none;
+  border-radius: 3px;
+  background: #ffbdbd;
+}
+
+.da-pallette-button-destroy.wysihtml-command-active {
+  display: unset;
 }
 
 @media (min-width: 900px) {
