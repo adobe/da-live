@@ -40,9 +40,7 @@ function defaultContent() {
       <td>Lorem ipsum...</td>
     </tr></tbody>\
   </table>
-  <br>
   <hr>
-  <br>
   <table>
   <tbody><tr>
     <td colspan="2" class="">columns (table)</td>
@@ -50,15 +48,18 @@ function defaultContent() {
   <tr>
     <td class="">Lorem ipsum...</td>
     <td class="">Lorem ipsum...</td>
-  </tr><tr><td class="">&nbsp;Hello</td><td class="">&nbsp;Hello again</td></tr></tbody></table><br>
-  <hr><br><table>
+  </tr>
+  <tr><td class="">&nbsp;Hello</td><td class="">&nbsp;Hello again</td></tr></tbody>
+  </table>
+  <hr>
+  <table>
   <tbody><tr>
     <td colspan="2" class="">columns (contained)</td>
   </tr>
   <tr>
     <td class="">Lorem ipsum...</td>
     <td class="">Lorem ipsum...</td>
-  </tr><tr><td class="">&nbsp;another</td><td class="">&nbsp;another</td></tr></tbody></table><br>`;
+  </tr><tr><td class="">&nbsp;another</td><td class="">&nbsp;another</td></tr></tbody></table>`;
 }
 
 export default async function init(el) {
