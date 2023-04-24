@@ -19,7 +19,7 @@ function Toolbar() {
           aria-label="Add heading"
           onClick=${expand}
           class="da-editor-tool da-editor-tool-h"/>
-        <div class=da-button-pallette>
+        <div class=da-button-pallette-heading>
           <button
             onClick=${expand}
             aria-label="Add heading 1"
@@ -116,15 +116,15 @@ function Toolbar() {
         <button class="da-pallette-button da-pallette-button-destroy" data-wysihtml-command="removeLink">Remove</button>
       </div>
 
-      <div data-wysihtml-hiddentools="table" style="display: none;">
-      <a data-wysihtml-command="mergeTableCells">Merge</a>
-      <a data-wysihtml-command="addTableCells" data-wysihtml-command-value="above">row-before</a>
-      <a data-wysihtml-command="addTableCells" data-wysihtml-command-value="below">row-after</a>
-      <a data-wysihtml-command="addTableCells" data-wysihtml-command-value="before">col-before</a>
-      <a data-wysihtml-command="addTableCells" data-wysihtml-command-value="after">col-after</a>
-    
-      <a data-wysihtml-command="deleteTableCells" data-wysihtml-command-value="row">delete row</a>
-      <a data-wysihtml-command="deleteTableCells" data-wysihtml-command-value="column">delete col</a>
+      <div class="da-button-pallette-link" data-wysihtml-hiddentools="table" style="display: none;">
+        <button data-wysihtml-command="mergeTableCells">Split</button>
+        <button data-wysihtml-command="addTableCells" data-wysihtml-command-value="above">row-before</button>
+        <button data-wysihtml-command="addTableCells" data-wysihtml-command-value="below">row-after</button>
+        <button data-wysihtml-command="addTableCells" data-wysihtml-command-value="before">col-before</button>
+        <button data-wysihtml-command="addTableCells" data-wysihtml-command-value="after">col-after</button>
+      
+        <button data-wysihtml-command="deleteTableCells" data-wysihtml-command-value="row">delete row</button>
+        <button data-wysihtml-command="deleteTableCells" data-wysihtml-command-value="column">delete col</button>
       </div>
     </div>
   `;

@@ -130,15 +130,14 @@
   position: relative;
 }
 
-.da-button-group.expand .da-button-pallette {
+.da-button-group.expand .da-button-pallette-heading {
   display: flex;
 }
 
-.da-button-pallette {
+.da-button-pallette-heading {
   position: absolute;
   left: 60px;
   background: #FFF;
-  /* border: 1px solid; */
   padding: 6px;
   top: 50%;
   display: none;
@@ -150,11 +149,9 @@
   gap: 6px;
 }
 
-.da-button-pallette button {
+.da-button-pallette-heading button {
   margin-bottom: 0px;
 }
-
-/* General Editor Styles */
 
 table {
   width: 100%;
