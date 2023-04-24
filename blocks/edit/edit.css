@@ -171,6 +171,7 @@ table td {
   border-radius: 3px;
   margin: 3px;
   vertical-align: top;
+  min-width: 100px;
 }
 
 /* General Editor Styles */
