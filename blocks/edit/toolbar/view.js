@@ -87,6 +87,11 @@ function Toolbar() {
           aria-label="Add link"
           data-wysihtml-command="createLink"
           class="da-editor-tool da-editor-tool-a"/>
+        <button
+          data-label="Image"
+          aria-label="Add image"
+          data-wysihtml-command="insertImage"
+          class="da-editor-tool da-editor-tool-img"/>
       </div>
       <hr/>
       <button
@@ -106,6 +111,12 @@ function Toolbar() {
         class="da-editor-tool da-editor-tool-library"/>
     </div>
     <div class=da-toolbar-extras>
+      <div class="da-button-pallette-link" data-wysihtml-dialog="insertImage" style="display: none;">
+        <input class="da-pallette-input" data-wysihtml-dialog-field="src" value="http://"/>
+        <button class="da-pallette-button da-pallette-button-ok" data-wysihtml-dialog-action="save">OK</button>
+        <button data-wysihtml-dialog-action="cancel">Cancel</button>
+      </div>
+
       <div
         class="da-button-pallette-link"
         data-wysihtml-dialog="createLink"
@@ -117,7 +128,7 @@ function Toolbar() {
       </div>
 
       <div class="da-button-pallette-link" data-wysihtml-hiddentools="table" style="display: none;">
-        <button data-wysihtml-command="mergeTableCells">Split</button>
+        <button class="da-pallette-button da-pallette-button-split" data-wysihtml-command="mergeTableCells">Split</button>
         <button data-wysihtml-command="addTableCells" data-wysihtml-command-value="above">row-before</button>
         <button data-wysihtml-command="addTableCells" data-wysihtml-command-value="below">row-after</button>
         <button data-wysihtml-command="addTableCells" data-wysihtml-command-value="before">col-before</button>

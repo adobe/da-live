@@ -124,7 +124,7 @@
   box-shadow: 0px 0px 5px 0px #b5b5b5;
   border-radius: 4px;
   gap: 6px;
-}f
+}
 
 .da-button-group {
   position: relative;
@@ -243,6 +243,10 @@ table td {
     background: url('./img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
+.da-editor-tool-img {
+  background: url('./img/Smock_Image_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
 .da-editor-tool-hr {
     background: url('./img/Smock_PageRule_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
@@ -255,7 +259,18 @@ table td {
     background: url('./img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
+.da-button-pallette-link button {
+  line-height: 44px;
+  border: none;
+  border-radius: 3px;
+}
+
+.da-pallette-button-split {
+  display: none;
+}
+
 .wysihtml-command-active {
+  display: unset;
   background-color: rgb(178, 215, 178);
 }
 
