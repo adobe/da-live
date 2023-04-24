@@ -85,7 +85,7 @@ export default async function init(el) {
   new wysihtml.Editor(editor, opts);
 
   const dom = await getContent(window.location.hash.replace('#', ''));
-  editor.innerHTML = defaultContent();
+  editor.append(...dom);
 
   el.append(title, wrapper, meta);
 }

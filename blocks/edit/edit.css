@@ -1,5 +1,4 @@
 .da-header-wrapper {
-  display: grid;
   grid-template-columns: 1fr var(--grid-container-width) 1fr;
   grid-template-areas: 'details name actions';
   align-items: center;
@@ -19,6 +18,7 @@
   position: relative;
   background: #FFF;
   display: grid;
+  align-items: center;
   grid-template-columns: 1fr var(--grid-container-width) 1fr;
   grid-template-areas: 'toolbar editor palettes';
 }
@@ -62,10 +62,11 @@
     content: 'Page Meta';
 }
 
-.da-editor-tools {
-  position: relative;
+.da-toolbar {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
   left: -6px;
-  top: 20px;
   padding: 6px 6px 6px 12px;
   border-radius: 4px;
   box-shadow: 0px 0px 5px 0px #b5b5b5;
@@ -108,16 +109,17 @@
 .da-toolbar-extras {
   position: fixed;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   bottom: 20px;
   left: 0;
-  transform: translateX(10px);
   right: 0;
   gap: 6px;
   z-index: 1;
 }
 
 .da-toolbar-extras > div {
+  flex: 1 1 auto;
   display: flex;
   padding: 6px;
   background: #fff;
@@ -285,8 +287,8 @@ table td {
 }
 
 input.da-pallette-input {
+  flex: 1 1 auto;
   line-height: 44px;
-  width: 400px;
   border: none;
   background: #efefef;
   padding: 0 12px;
@@ -311,6 +313,10 @@ input.da-pallette-input {
 }
 
 @media (min-width: 900px) {
+  .da-header-wrapper {
+    display: grid;
+  }
+
     .da-header:before,
     .da-editor:before,
     .da-meta:before {
@@ -319,10 +325,18 @@ input.da-pallette-input {
     }
 
     .da-header {
-        padding: 60px 0;
+      padding: 60px 0;
     }
 
     .da-editor {
       padding: 100px 0;
+    }
+
+    .da-toolbar-extras > div {
+      flex: unset;
+    }
+
+    input.da-pallette-input {
+      width: 400px;
     }
 }

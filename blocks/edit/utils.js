@@ -27,7 +27,7 @@ export function getTable(block) {
     row.children.length > cols ? row.children.length : cols), 0);
   const table = document.createElement('table');
   const headerRow = document.createElement('tr');
-  headerRow.append(createTag('th', { colspan: maxCols }, name));
+  headerRow.append(createTag('td', { colspan: maxCols }, name));
   table.append(headerRow);
   rows.forEach((row) => {
     handleRow(row, maxCols, table);
