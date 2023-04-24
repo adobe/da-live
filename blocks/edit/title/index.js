@@ -66,6 +66,11 @@ export default async function save() {
   const toSend = editor.cloneNode(true);
   const tables = toSend.querySelectorAll('table');
   convertBlocks(tables);
+  const brs = toSend.querySelectorAll('br');
+  brs.forEach((br) => {
+    const p = document.createElement('p');
+    br.parentElement.replaceChild(p, br);
+  })
 
   const html = `<body><main><div>${toSend.innerHTML}</div></main></body>`;
 
