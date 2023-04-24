@@ -67,7 +67,7 @@ export default async function save() {
   const tables = toSend.querySelectorAll('table');
   convertBlocks(tables);
 
-  const html = `<body><main>${toSend.innerHTML}</main></body>`;
+  const html = `<body><main><div>${toSend.innerHTML}</div></main></body>`;
 
   const blob = new Blob([html], { type: 'text/html' });
 
