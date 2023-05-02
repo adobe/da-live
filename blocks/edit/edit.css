@@ -63,6 +63,7 @@
 }
 
 .da-editor {
+  min-height: 30vh;
   position: relative;
   padding: 72px 0 72px 72px;
   grid-area: editor;
@@ -94,7 +95,9 @@
 
 .da-meta {
     position: relative;
-    padding: 60px 120px;
+    padding: 60px 0;
+    margin: 0 auto;
+    max-width: var(--grid-container-width);
 }
 
 .da-meta:before {

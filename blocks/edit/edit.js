@@ -13,7 +13,7 @@ const WYSIHTML = [
 async function getContent(path) {
   try {
     const resp = await fetch(`${origin}${path}`);
-    if (resp.status !== 200) return '';
+    if (resp.status !== 200) return [''];
     const html = await resp.text();
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
@@ -34,7 +34,7 @@ async function getContent(path) {
       return fragment;
     });
   } catch {
-    return '';
+    return [''];
   }
 }
 
@@ -72,9 +72,7 @@ function defaultContent() {
 
 export default async function init(el) {
   const title = await getTitle();
-
   const toolbar = await getToolbar(el);
-
   const editor = createTag('div', { class: 'da-editor' });
   const wrapper = createTag('div', { class: 'da-editor-wrapper' }, [ toolbar, editor ]);
 
@@ -94,7 +92,7 @@ export default async function init(el) {
   new wysihtml.Editor(editor, opts);
 
   const dom = await getContent(window.location.hash.replace('#', ''));
-  editor.append(dom[0]);
+  editor.append(...dom);
 
   el.append(title, wrapper, meta);
 }
