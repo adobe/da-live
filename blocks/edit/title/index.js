@@ -1,17 +1,14 @@
 import { origin, hlxOrigin } from '../../browse/state/index.js';
 
-async function openPreview(path) {
+async function saveToFranklin(path, action) {
   const opts = { method: 'POST' };
-  const resp = await fetch(`${hlxOrigin}${path}`, opts);
+  const resp = await fetch(`${hlxOrigin}/${action}/auniverseaway/dac/main${path}`, opts);
   if (!resp.ok) console.log('error');
-  const json = await resp.json();
-  window.open(path, '_blank');
+  return resp.json();
 }
 
 function toBlockCSSClassNames(text) {
-  if (!text) {
-    return [];
-  }
+  if (!text) return [];
   const names = [];
   const idx = text.lastIndexOf('(');
   if (idx >= 0) {
@@ -55,22 +52,19 @@ function convertBlocks(tables) {
   });
 }
 
-export default async function save() {
-  const { hash } = window.location;
-  const pathname = hash.replace('#', '');
-
+function saveToDas(pathname) {
   const fullPath = `${origin}/content${pathname}.html`;
 
   const editor = document.querySelector('.da-editor');
 
   const toSend = editor.cloneNode(true);
-  const tables = toSend.querySelectorAll('table');
+   const tables = toSend.querySelectorAll('table');
   convertBlocks(tables);
   const brs = toSend.querySelectorAll('br');
   brs.forEach((br) => {
     const p = document.createElement('p');
     br.parentElement.replaceChild(p, br);
-  })
+  });
 
   const html = `<body><main><div>${toSend.innerHTML}</div></main></body>`;
 
@@ -80,7 +74,20 @@ export default async function save() {
   const headers = new Headers(headerOpts);
 
   const opts = { method: 'PUT', headers, body: blob};
-  const resp = await fetch(fullPath, opts);
-  if (resp.status !== 200) return;
-  openPreview(pathname);
+  return fetch(fullPath, opts);
+}
+
+export async function handleAction(action) {
+  const { hash } = window.location;
+  const pathname = hash.replace('#', '');
+  const dasSave = await saveToDas(pathname);
+  if (dasSave.status !== 200) return;
+  let json = await saveToFranklin(pathname, 'preview');
+  if (action === 'publish') json = await saveToFranklin(pathname, 'live');
+  const { url } = action === 'publish' ? json.live : json.preview;
+  window.open(url, '_blank');
+}
+
+export function open(e) {
+  e.target.closest('.da-header-actions').classList.toggle('is-open');
 }

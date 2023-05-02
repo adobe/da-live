@@ -6,6 +6,10 @@ import { getTable } from './utils.js';
 const { getLibs } = await import('../../../scripts/utils.js');
 const { createTag, loadScript } = await import(`${getLibs()}/utils/utils.js`);
 
+const WYSIHTML = [
+
+];
+
 async function getContent(path) {
   try {
     const resp = await fetch(`${origin}${path}`);
@@ -13,17 +17,22 @@ async function getContent(path) {
     const html = await resp.text();
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const sections = doc.body.querySelectorAll('main > div');
-    sections.forEach((section) => {
-      const blocks = section.querySelectorAll('div[class]');
-      blocks.forEach((block) => {
-        const table = getTable(block);
-        block.parentElement.replaceChild(table, block);
-      });
+
+    // Fix blocks
+    const blocks = doc.querySelectorAll('div[class]');
+    blocks.forEach((block) => {
+      const table = getTable(block);
+      block.parentElement.replaceChild(table, block);
     });
 
-    if (sections.length === 0) return doc.body.querySelector('main').innerHTML;
-    return [...sections];
+    // Fix sections
+    const sections = doc.body.querySelectorAll('main > div');
+    return [...sections].map((section, idx) => {
+      const fragment = new DocumentFragment();
+      if (idx > 0) fragment.append(document.createElement('hr'));
+      fragment.append(...section.querySelectorAll(':scope > *'));
+      return fragment;
+    });
   } catch {
     return '';
   }
@@ -80,12 +89,12 @@ export default async function init(el) {
   const opts = {
     toolbar,
     parserRules:  wysihtmlParserRules,
-    useLineBreaks: false
+    useLineBreaks: true,
   };
   new wysihtml.Editor(editor, opts);
 
   const dom = await getContent(window.location.hash.replace('#', ''));
-  editor.append(...dom);
+  editor.append(dom[0]);
 
   el.append(title, wrapper, meta);
 }

@@ -2,6 +2,7 @@
   grid-template-columns: 1fr var(--grid-container-width) 1fr;
   grid-template-areas: 'details name actions';
   align-items: center;
+  background-color: #FFF;
 }
 
 .da-header {
@@ -11,7 +12,45 @@
 }
 
 .da-header-actions {
-  grid-area: actions;
+  grid-area: name;
+  justify-self: end;
+  position: relative;
+  border: 12px solid transparent;
+  
+  border-radius: 100px;
+  display: flex;
+  gap: 12px;
+}
+
+.da-header-actions.is-open {
+  background: #EFEFEF;
+}
+
+.da-header-actions-publish {
+  display: none;
+  border-radius: 22px;
+}
+
+.da-header-actions.is-open
+.da-header-actions-publish {
+  display: unset;
+}
+
+.da-header-actions-send {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+}
+
+.da-header-actions-send-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: url(./img/Smock_Send_18_N.svg) center / 22px no-repeat;
 }
 
 .da-editor-wrapper {
@@ -160,7 +199,8 @@ table {
   border-spacing: 6px;
 }
 
-table tr:first-child td {
+table tr:first-child td,
+table tr:first-child th {
   background: aliceblue;
   text-align: center;
   font-weight: 700;
