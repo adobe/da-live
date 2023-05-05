@@ -1,3 +1,5 @@
+import { EditorState } from 'prosemirror-state';
+
 import { origin } from '../browse/state/index.js';
 import getTitle from './title/view.js';
 import getToolbar from './toolbar/view.js';
@@ -5,10 +7,6 @@ import { getTable } from './utils.js';
 
 const { getLibs } = await import('../../../scripts/utils.js');
 const { createTag, loadScript } = await import(`${getLibs()}/utils/utils.js`);
-
-const WYSIHTML = [
-
-];
 
 async function getContent(path) {
   try {
@@ -78,21 +76,7 @@ export default async function init(el) {
 
   const meta = createTag('div', { class: 'da-meta' });
 
-  await loadScript('/blocks/edit/deps/wysihtml/wysihtml.js');
-  await loadScript('/blocks/edit/deps/wysihtml/wysihtml.all-commands.js');
-  await loadScript('/blocks/edit/deps/wysihtml/wysihtml.table_editing.js');
-  await loadScript('/blocks/edit/deps/wysihtml/wysihtml.toolbar.js');
-  await loadScript('/blocks/edit/deps/wysihtml/advanced_and_extended.js');
-
-  const opts = {
-    toolbar,
-    parserRules:  wysihtmlParserRules,
-    useLineBreaks: true,
-  };
-  new wysihtml.Editor(editor, opts);
-
-  const dom = await getContent(window.location.hash.replace('#', ''));
-  editor.append(...dom);
+  
 
   el.append(title, wrapper, meta);
 }

@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "prosemirror-example-setup": "^1.2.1",
+    "prosemirror-model": "^1.19.0",
+    "prosemirror-schema-basic": "^1.2.1",
+    "prosemirror-state": "^1.4.2",
+    "prosemirror-view": "^1.31.1"
+  }
+}
