@@ -1,4 +1,9 @@
-import { EditorState } from 'prosemirror-state';
+import {EditorState} from "prosemirror-state"
+import {EditorView} from "prosemirror-view"
+import {Schema, DOMParser} from "prosemirror-model"
+import {schema} from "prosemirror-schema-basic"
+import {addListNodes} from "prosemirror-schema-list"
+import {exampleSetup} from "prosemirror-example-setup"
 
 import { origin } from '../browse/state/index.js';
 import getTitle from './title/view.js';
@@ -74,9 +79,20 @@ export default async function init(el) {
   const editor = createTag('div', { class: 'da-editor' });
   const wrapper = createTag('div', { class: 'da-editor-wrapper' }, [ toolbar, editor ]);
 
+  const content = createTag('div', { id: 'content'});
+
   const meta = createTag('div', { class: 'da-meta' });
+  el.append(title, wrapper, meta, content);
 
-  
+  const mySchema = new Schema({
+    nodes: addListNodes(schema.spec.nodes, 'paragraph block*', 'block'),
+    marks: schema.spec.marks
+  });
 
-  el.append(title, wrapper, meta);
+  window.view = new EditorView(editor, {
+    state: EditorState.create({
+      doc: DOMParser.fromSchema(mySchema).parse(document.querySelector("#content")),
+      plugins: exampleSetup({schema: mySchema})
+    })
+  });
 }
