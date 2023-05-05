@@ -11,7 +11,7 @@ import getToolbar from './toolbar/view.js';
 import { getTable } from './utils.js';
 
 const { getLibs } = await import('../../../scripts/utils.js');
-const { createTag, loadScript } = await import(`${getLibs()}/utils/utils.js`);
+const { createTag, loadScript, loadStyle } = await import(`${getLibs()}/utils/utils.js`);
 
 async function getContent(path) {
   try {
@@ -76,13 +76,16 @@ function defaultContent() {
 export default async function init(el) {
   const title = await getTitle();
   const toolbar = await getToolbar(el);
-  const editor = createTag('div', { class: 'da-editor' });
+  const editor = createTag('div', { class: 'da-edit' });
   const wrapper = createTag('div', { class: 'da-editor-wrapper' }, [ toolbar, editor ]);
 
   const content = createTag('div', { id: 'content'});
 
   const meta = createTag('div', { class: 'da-meta' });
   el.append(title, wrapper, meta, content);
+
+  loadStyle('/node_modules/prosemirror-view/style/prosemirror.css');
+  loadStyle('/node_modules/prosemirror-menu/style/menu.css');
 
   const mySchema = new Schema({
     nodes: addListNodes(schema.spec.nodes, 'paragraph block*', 'block'),
