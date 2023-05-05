@@ -1,9 +1,9 @@
-import {EditorState} from "prosemirror-state"
-import {EditorView} from "prosemirror-view"
-import {Schema, DOMParser} from "prosemirror-model"
-import {schema} from "prosemirror-schema-basic"
-import {addListNodes} from "prosemirror-schema-list"
-import {exampleSetup} from "prosemirror-example-setup"
+import {EditorState} from "prosemirror-state";
+import {EditorView} from "prosemirror-view";
+import {Schema, DOMParser} from "prosemirror-model";
+import {schema} from "prosemirror-schema-basic";
+import {addListNodes} from "prosemirror-schema-list";
+import {exampleSetup} from "prosemirror-example-setup";
 
 import { origin } from '../browse/state/index.js';
 import getTitle from './title/view.js';
@@ -86,16 +86,19 @@ export default async function init(el) {
 
   loadStyle('/node_modules/prosemirror-view/style/prosemirror.css');
   loadStyle('/node_modules/prosemirror-menu/style/menu.css');
+  loadStyle('/node_modules/prosemirror-example-setup/style/style.css');
+  loadStyle('/node_modules/prosemirror-gapcursor/style/gapcursor.css');
 
-  const mySchema = new Schema({
+  const schemaOpts = {
     nodes: addListNodes(schema.spec.nodes, 'paragraph block*', 'block'),
     marks: schema.spec.marks
+  };
+
+  const mySchema = new Schema(schemaOpts);
+  const state = EditorState.create({
+    doc: DOMParser.fromSchema(mySchema).parse(document.querySelector("#content")),
+    plugins: exampleSetup({ schema: mySchema }),
   });
 
-  window.view = new EditorView(editor, {
-    state: EditorState.create({
-      doc: DOMParser.fromSchema(mySchema).parse(document.querySelector("#content")),
-      plugins: exampleSetup({schema: mySchema})
-    })
-  });
+  window.view = new EditorView(editor, { state });
 }
