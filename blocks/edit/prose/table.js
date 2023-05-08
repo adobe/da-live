@@ -7,20 +7,21 @@ function getHeading(schema) {
 }
 
 function getContent(schema) {
-  return schema.nodes.table_row.create(null, Fragment.fromArray([
-    schema.nodes.table_cell.createAndFill(),
-    schema.nodes.table_cell.createAndFill(),
-  ]));
+  const cell = schema.nodes.table_cell.createAndFill();
+  return schema.nodes.table_row.create(null, Fragment.fromArray([cell, cell]));
 }
 
 export default function insertTable(state, dispatch) {
   const heading = getHeading(state.schema);
   const content = getContent(state.schema);
 
-  const tr = state.tr.replaceSelectionWith(
-    state.schema.nodes.table.create(null, Fragment.fromArray([heading, content]))
-  );
+  const node = state.schema.nodes.table.create(null, Fragment.fromArray([heading, content]))
 
-  if (dispatch) dispatch(tr);
+  if (dispatch) {
+    dispatch(
+      state.tr.replaceSelectionWith(node)
+          .scrollIntoView()
+    );
+  }
   return true;
 }

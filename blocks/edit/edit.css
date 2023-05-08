@@ -173,6 +173,10 @@
   position: relative;
 }
 
+.ProseMirror-menu-disabled {
+  opacity: 0.5;
+}
+
 .da-button-group.expand .da-button-pallette-heading {
   display: flex;
 }

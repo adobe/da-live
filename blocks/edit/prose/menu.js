@@ -2,6 +2,7 @@ import { Plugin } from "prosemirror-state";
 import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
 import insertTable from "./table.js";
 import { icons, MenuItem, Dropdown, renderGrouped, blockTypeItem, undoItem, redoItem } from 'prosemirror-menu';
+import { wrapInList } from 'prosemirror-schema-list';
 
 import {
   addColumnAfter,
@@ -36,6 +37,10 @@ function cmdItem(cmd, options) {
     }
   }
   return new MenuItem(passedOptions);
+}
+
+function wrapListItem(nodeType, options) {
+  return cmdItem(wrapInList(nodeType, options.attrs), options);
 }
 
 function markActive(state, type) {
@@ -101,13 +106,19 @@ export default new Plugin({
         }),
       ],
       [
+        wrapListItem(nodes.bullet_list, {
+          title: "Wrap in bullet list",
+          icon: icons.bulletList
+        })
+      ],
+      [
         new MenuItem({
           title: "Insert block",
-          label: "Table",
+          label: "Block",
           run: insertTable
         }),
         new Dropdown(editTable, {
-          label: 'Edit Table',
+          label: 'Edit Block',
           class: 'edit-table'
         }),
         new MenuItem({

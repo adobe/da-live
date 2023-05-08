@@ -6,9 +6,7 @@ import { schema as baseSchema } from "prosemirror-schema-basic";
 import { history } from 'prosemirror-history';
 import { addListNodes } from "prosemirror-schema-list";
 import { keymap } from 'prosemirror-keymap';
-import { exampleSetup, buildMenuItems} from "prosemirror-example-setup";
-import { MenuItem, Dropdown } from 'prosemirror-menu';
-import insertTable from "./table.js";
+import { exampleSetup, buildKeymap } from "prosemirror-example-setup";
 
 import {
   tableEditing,
@@ -27,12 +25,12 @@ async function loadStyles() {
 }
 
 function getSchema() {
-  return new Schema({
-    nodes: baseSchema.spec.nodes.append(
-      tableNodes({ tableGroup: 'block', cellContent: 'block+' }),
-    ),
-    marks: baseSchema.spec.marks,
-  });
+  const { marks, nodes: baseNodes } = baseSchema.spec;
+  
+  const withListnodes = addListNodes(baseNodes, 'paragraph block*', 'block');
+  const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
+
+  return new Schema({ nodes, marks });
 }
 
 export default function initProse(editor, content) {
@@ -42,12 +40,15 @@ export default function initProse(editor, content) {
 
   const doc = DOMParser.fromSchema(schema).parse(content);
 
+  console.log(buildKeymap(schema));
+
   let state = EditorState.create({
     doc,
     plugins: [
       menu,
       columnResizing(),
       tableEditing(),
+      keymap(buildKeymap(schema)),
       keymap(baseKeymap),
       keymap({
         Tab: goToNextCell(1),
