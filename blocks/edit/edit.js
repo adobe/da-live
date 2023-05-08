@@ -1,17 +1,11 @@
-import {EditorState} from "prosemirror-state";
-import {EditorView} from "prosemirror-view";
-import {Schema, DOMParser} from "prosemirror-model";
-import {schema} from "prosemirror-schema-basic";
-import {addListNodes} from "prosemirror-schema-list";
-import {exampleSetup} from "prosemirror-example-setup";
-
 import { origin } from '../browse/state/index.js';
+import initProse from './prose/index.js';
 import getTitle from './title/view.js';
 import getToolbar from './toolbar/view.js';
 import { getTable } from './utils.js';
 
 const { getLibs } = await import('../../../scripts/utils.js');
-const { createTag, loadScript, loadStyle } = await import(`${getLibs()}/utils/utils.js`);
+const { createTag, loadStyle } = await import(`${getLibs()}/utils/utils.js`);
 
 async function getContent(path) {
   try {
@@ -43,6 +37,7 @@ async function getContent(path) {
 
 function defaultContent() {
   return `
+  <h1>Hello</h1>
   <table>
     <tbody><tr>
       <td colspan="2">columns</td>
@@ -79,26 +74,11 @@ export default async function init(el) {
   const editor = createTag('div', { class: 'da-edit' });
   const wrapper = createTag('div', { class: 'da-editor-wrapper' }, [ toolbar, editor ]);
 
-  const content = createTag('div', { id: 'content'});
+  const con = defaultContent();
+  const content = createTag('div', { id: 'content'}, con);
 
   const meta = createTag('div', { class: 'da-meta' });
-  el.append(title, wrapper, meta, content);
+  el.append(title, wrapper, meta);
 
-  loadStyle('/node_modules/prosemirror-view/style/prosemirror.css');
-  loadStyle('/node_modules/prosemirror-menu/style/menu.css');
-  loadStyle('/node_modules/prosemirror-example-setup/style/style.css');
-  loadStyle('/node_modules/prosemirror-gapcursor/style/gapcursor.css');
-
-  const schemaOpts = {
-    nodes: addListNodes(schema.spec.nodes, 'paragraph block*', 'block'),
-    marks: schema.spec.marks
-  };
-
-  const mySchema = new Schema(schemaOpts);
-  const state = EditorState.create({
-    doc: DOMParser.fromSchema(mySchema).parse(document.querySelector("#content")),
-    plugins: exampleSetup({ schema: mySchema }),
-  });
-
-  window.view = new EditorView(editor, { state });
+  initProse(editor, content);
 }

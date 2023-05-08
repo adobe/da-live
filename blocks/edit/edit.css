@@ -196,6 +196,36 @@
   margin-bottom: 0px;
 }
 
+.ProseMirror-menubar {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  gap: 12px;
+}
+
+.ProseMirror-menu-dropdown-wrap {
+  display: relative;
+}
+
+.ProseMirror-menu-dropdown-menu {
+  padding: 6px 10px;
+  background: #FFF;
+  border: 1px solid #EFEFEF;
+  position: absolute;
+  top: 32px;
+}
+
+span.ProseMirror-menuseparator {
+  width: 2px;
+  background: #dfdfdf;
+  height: 32px;
+  border-radius: 2px;
+}
+
+.ProseMirror-focused {
+  outline: none;
+}
+
 table {
   width: 100%;
   border-spacing: 6px;
@@ -214,6 +244,32 @@ table td {
   margin: 3px;
   vertical-align: top;
   min-width: 100px;
+}
+
+td.selectedCell {
+  border: 3px dotted #60c175;
+}
+
+.da-edit hr {
+  border-radius: 1px;
+  border: 1px solid #b3b3b3;
+  position: relative;
+  overflow: visible;
+}
+
+.da-edit hr:after {
+  left: 50%;
+  position: absolute;
+  content: 'Section Break';
+  text-transform: uppercase;
+  background: rgb(255,255,255);
+  top: -14.25px;
+  /* z-index: 100000000; */
+  font-weight: 700;
+  color: #b3b3b3;
+  padding: 0 6px;
+  font-size: 12px;
+  transform: translateX(-50%);
 }
 
 /* General Editor Styles */
