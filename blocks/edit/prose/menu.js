@@ -1,7 +1,8 @@
 import { Plugin } from "prosemirror-state";
 import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
 import insertTable from "./table.js";
-import { MenuItem, Dropdown, renderGrouped, blockTypeItem, undoItem, redoItem } from 'prosemirror-menu';
+import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from 'prosemirror-menu';
+import { undo, redo } from 'prosemirror-history';
 import { wrapInList } from 'prosemirror-schema-list';
 import TextField from "./field.js";
 import openPrompt from "./prompt.js";
@@ -72,7 +73,7 @@ function linkItem(markType) {
         title: "Link",
         fields: {
           href: new TextField({
-            label: "URL",
+            label: "https://...",
             required: true
           }),
           title: new TextField({ label: "Title" })
@@ -135,25 +136,25 @@ function getTextBlocks(nodes) {
     blockTypeItem(nodes.heading, {
       title: "Change to h3",
       label: "h3",
-      attrs: { level: 2 },
+      attrs: { level: 3 },
       class: 'menu-item-h3',
     }),
     blockTypeItem(nodes.heading, {
       title: "Change to h4",
       label: "h4",
-      attrs: { level: 2 },
+      attrs: { level: 4 },
       class: 'menu-item-h4',
     }),
     blockTypeItem(nodes.heading, {
       title: "Change to h5",
       label: "h5",
-      attrs: { level: 2 },
+      attrs: { level: 5 },
       class: 'menu-item-h5',
     }),
     blockTypeItem(nodes.heading, {
       title: "Change to h6",
       label: "h6",
-      attrs: { level: 2 },
+      attrs: { level: 6 },
       class: 'menu-item-h6',
     }),
   ];
@@ -185,7 +186,8 @@ function getMenu(view) {
     [
       wrapListItem(nodes.bullet_list, {
         title: "Wrap in bullet list",
-        label: "List"
+        label: "List",
+        class: 'edit-list',
       })
     ],
     [
@@ -200,15 +202,28 @@ function getMenu(view) {
         class: 'insert-table'
       }),
       new MenuItem({
-        title: "Insert horizontal rule",
+        title: "Insert section break",
         label: "HR",
         enable(state) { return canInsert(state, nodes.horizontal_rule); },
-        run(state, dispatch) { dispatch(state.tr.replaceSelectionWith(nodes.horizontal_rule.create())); }
+        run(state, dispatch) { dispatch(state.tr.replaceSelectionWith(nodes.horizontal_rule.create())); },
+        class: 'edit-hr',
       }),
     ],
     [
-      undoItem,
-      redoItem,
+      new MenuItem({
+        title: "Undo last change",
+        label: 'Undo',
+        run: undo,
+        enable: state => undo(state),
+        class: 'edit-undo',
+      }),
+      new MenuItem({
+        title: "Redo last undone change",
+        label: 'Redo',
+        run: redo,
+        enable: state => redo(state),
+        class: 'edit-redo',
+      }),
     ]
   ];
 

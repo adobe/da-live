@@ -47,9 +47,8 @@ export default function openPrompt(options) {
   });
   let buttons = form.appendChild(document.createElement("div"));
   buttons.className = prefix + "-buttons";
-  buttons.appendChild(submitButton);
-  buttons.appendChild(document.createTextNode(" "));
   buttons.appendChild(cancelButton);
+  buttons.appendChild(submitButton);
   
   let submit = () => {
       let params = getValues(options.fields, domFields);

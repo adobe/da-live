@@ -118,6 +118,10 @@ span.ProseMirror-menuseparator {
   background: url('../img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
+.edit-list {
+  background: url('../img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
 .insert-table {
   background: url('../img/Smock_TableAdd_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
@@ -160,5 +164,17 @@ span.ProseMirror-menuseparator {
 
 .splitCell {
   background: url('../img/Smock_TableRowSplit_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-hr {
+  background: url('../img/Smock_PageRule_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-undo {
+  background: url('../img/Smock_Undo_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-redo {
+  background: url('../img/Smock_Redo_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 

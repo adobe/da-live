@@ -11,12 +11,42 @@
   right: 0;
   box-shadow: 0px 0px 5px 0px #b5b5b5;
   border-radius: 4px;
-  padding: 6px;
+  padding: 12px;
   min-width: 240px;
   background: #FFF;
+}
+
+.da-palette h5 {
+  margin: 0 0 6px;
+  color: #676767;
+  text-transform: uppercase;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .da-palette input {
   width: 100%;
   box-sizing: border-box;
+  border: none;
+  background: #EFEFEF;
+  padding: 6px;
+  margin-bottom: 6px;
+  border-radius: 2px;
+}
+
+.da-palette-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: end;
+}
+
+.da-palette-buttons button {
+  display: block;
+  border: 2px solid #1373e6;
+  background: #1373e6;
+  color: #FFF;
+  line-height: 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  padding: 0 12px;
 }
