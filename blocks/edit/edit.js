@@ -1,7 +1,6 @@
 import { origin } from '../browse/state/index.js';
 import initProse from './prose/index.js';
 import getTitle from './title/view.js';
-import getToolbar from './toolbar/view.js';
 import { getTable } from './utils.js';
 
 const { getLibs } = await import('../../../scripts/utils.js');
@@ -70,15 +69,13 @@ function defaultContent() {
 
 export default async function init(el) {
   const title = await getTitle();
-  const toolbar = await getToolbar(el);
-  const editor = createTag('div', { class: 'da-edit' });
-  const wrapper = createTag('div', { class: 'da-editor-wrapper' }, [ toolbar, editor ]);
+  const editor = createTag('div', { class: 'da-editor' });
 
   const con = defaultContent();
   const content = createTag('div', { id: 'content'}, con);
 
   const meta = createTag('div', { class: 'da-meta' });
-  el.append(title, wrapper, meta);
+  el.append(title, editor, meta);
 
   initProse(editor, content);
 }

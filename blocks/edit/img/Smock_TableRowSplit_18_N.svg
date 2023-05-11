@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 0 18 18" width="18">
+  <defs>
+    <style>
+      .fill {
+        fill: #464646;
+      }
+    </style>
+  </defs>
+  <title>S TableRowSplit 18 N</title>
+  <rect id="Canvas" fill="#ff13dc" opacity="0" width="18" height="18" /><path class="fill" d="M16.5,1H1.5a.5.5,0,0,0-.5.5v15a.5.5,0,0,0,.5.5h15a.5.5,0,0,0,.5-.5V1.5A.5.5,0,0,0,16.5,1ZM7,7h4v4H7ZM6,16H2V12H6Zm0-5H2V7H6ZM6,6H2V2H6ZM16,16H7V12h9Zm0-5H12V7h4Zm0-5H7V2h9Z" />
+</svg>

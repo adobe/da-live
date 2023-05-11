@@ -1,0 +1,26 @@
+.ProseMirror {
+  position: relative;
+  grid-area: editor;
+  padding: 48px 0;
+}
+
+.ProseMirror hr {
+  border-radius: 1px;
+  border: 1px solid #b3b3b3;
+  position: relative;
+  overflow: visible;
+}
+
+.ProseMirror hr:after {
+  left: 50%;
+  position: absolute;
+  content: 'Section Break';
+  text-transform: uppercase;
+  background: rgb(255,255,255);
+  top: -14.25px;
+  font-weight: 700;
+  color: #b3b3b3;
+  padding: 0 6px;
+  font-size: 12px;
+  transform: translateX(-50%);
+}
