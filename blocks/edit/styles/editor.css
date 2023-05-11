@@ -24,3 +24,16 @@
   font-size: 12px;
   transform: translateX(-50%);
 }
+
+.ProseMirror a img {
+  border: 2px solid;
+  border-radius: 3px;
+}
+
+.ProseMirror a img.ProseMirror-separator {
+  display: none;
+}
+
+img.ProseMirror-selectednode {
+  filter: brightness(0.5);
+}
