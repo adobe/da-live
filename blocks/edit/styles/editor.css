@@ -34,6 +34,31 @@
   display: none;
 }
 
-img.ProseMirror-selectednode {
+.ProseMirror img.ProseMirror-selectednode {
   filter: brightness(0.5);
+}
+
+.ProseMirror table {
+  width: 100%;
+  border-spacing: 6px;
+}
+
+.ProseMirror tr:first-child td,
+.ProseMirror tr:first-child th {
+  background: aliceblue;
+  text-align: center;
+  font-weight: 700;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 3px dotted #d0d0d0;
+  border-radius: 3px;
+  margin: 3px;
+  vertical-align: top;
+  min-width: 100px;
+}
+
+td.selectedCell {
+  border: 3px dotted #60c175;
 }
