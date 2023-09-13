@@ -23,7 +23,7 @@ function Title({ filename }) {
         Publish
       </button>
       <button
-        onClick=${open}
+        onClick=${() => {handleAction('preview')}}
         class="con-button blue da-header-actions-send"
         aria-label="Send">
         <span class="da-header-actions-send-icon"></span>

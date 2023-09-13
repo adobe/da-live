@@ -31,7 +31,6 @@ function convertBlocks(tables) {
     const tbody = table.querySelector(':scope > tbody');
     const rows = tbody ? [...tbody.querySelectorAll(':scope > tr')] : [...table.querySelectorAll(':scope > tr')];
     const nameRow = rows.shift();
-
     const divs = [...rows].map((row) => {
       const cols = row.querySelectorAll(':scope > td');
       const divs = [...cols].map((col) => {
@@ -48,26 +47,27 @@ function convertBlocks(tables) {
     const div = document.createElement('div');
     div.className = toBlockCSSClassNames(nameRow.textContent).join(' ');
     div.append(...divs);
-    table.parentElement.replaceChild(div, table);
+    table.parentElement.parentElement.replaceChild(div, table.parentElement);
   });
 }
 
 function saveToDas(pathname) {
   const fullPath = `${origin}/content${pathname}.html`;
 
-  const editor = document.querySelector('.da-editor');
+  const editor = document.querySelector('.da-editor > .ProseMirror').cloneNode(true);
+  editor.removeAttribute('class');
+  editor.removeAttribute('contenteditable');
+  editor.removeAttribute('translate');
 
-  const toSend = editor.cloneNode(true);
-   const tables = toSend.querySelectorAll('table');
+  const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
+  emptyImgs.forEach((img) => { img.remove(); });
+
+  const tables = editor.querySelectorAll('.tableWrapper > table');
   convertBlocks(tables);
-  const brs = toSend.querySelectorAll('br');
-  brs.forEach((br) => {
-    const p = document.createElement('p');
-    br.parentElement.replaceChild(p, br);
-  });
 
-  const html = `<body><main><div>${toSend.innerHTML}</div></main></body>`;
+  console.log(editor)
 
+  const html = `<body><main>${editor.outerHTML}</main></body>`;
   const blob = new Blob([html], { type: 'text/html' });
 
   const headerOpts = { 'Content-Type': 'text/html' };
