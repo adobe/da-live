@@ -108,9 +108,9 @@ function getTableMenu() {
     item('Insert row before', addRowBefore, 'addRowBefore'),
     item('Insert row after', addRowAfter, 'addRowAfter'),
     item('Delete row', deleteRow, 'deleteRow'),
-    item('Delete table', deleteTable, 'deleteTable'),
     item('Merge cells', mergeCells, 'mergeCells'),
     item('Split cell', splitCell, 'splitCell'),
+    item('Delete table', deleteTable, 'deleteTable'),
   ];
 }
 
