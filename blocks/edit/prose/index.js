@@ -18,10 +18,8 @@ import menu from "./menu.js";
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
-  
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-
   return new Schema({ nodes, marks });
 }
 

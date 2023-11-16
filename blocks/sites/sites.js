@@ -4,7 +4,7 @@ import './site.js';
 
 export class Sites extends LitElement {
   static properties = {
-    sites: {state: true},
+    sites: { state: true },
   };
 
   constructor() {
@@ -34,7 +34,6 @@ export class Sites extends LitElement {
 }
 
 customElements.define('das-sites', Sites);
-
 
 export default function init(el) {
   const sites = document.createElement('das-sites');

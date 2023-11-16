@@ -4,7 +4,7 @@ export default async function init(el) {
 
     const img = createTag('img', { class: 'aec-logo', src: './blocks/aec-shell/img/aec.svg#AdobeExperienceCloud'});
 
-    const logo = createTag('button', { class: 'aec-button' }, [ img, 'Adobe Experience Cloud' ]);
+    const logo = createTag('button', { class: 'aec-button' }, [ img, 'Project Dark Alley' ]);
 
     logo.addEventListener('click', () => {
         window.location.href = '/';
