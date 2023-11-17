@@ -17,13 +17,13 @@ function Title({ filename }) {
         Preview
       </button>
       <button
-      onClick=${() => {handleAction('publish')}}
+        onClick=${() => {handleAction('publish')}}
         class="con-button blue da-header-actions-publish"
         aria-label="Send">
         Publish
       </button>
       <button
-        onClick=${() => {handleAction('preview')}}
+        onClick=${open}
         class="con-button blue da-header-actions-send"
         aria-label="Send">
         <span class="da-header-actions-send-icon"></span>

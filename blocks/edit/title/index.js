@@ -65,8 +65,6 @@ function saveToDas(pathname) {
   const tables = editor.querySelectorAll('.tableWrapper > table');
   convertBlocks(tables);
 
-  console.log(editor)
-
   const html = `<body><main>${editor.outerHTML}</main></body>`;
   const blob = new Blob([html], { type: 'text/html' });
 

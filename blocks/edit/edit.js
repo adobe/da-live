@@ -2,15 +2,17 @@ import { origin } from '../browse/state/index.js';
 import initProse from './prose/index.js';
 import getTitle from './title/view.js';
 import { getTable } from './utils.js';
+import defaultContent from './mock/default-content.js';
 
 const { getLibs } = await import('../../../scripts/utils.js');
-const { createTag, loadStyle } = await import(`${getLibs()}/utils/utils.js`);
+const { createTag } = await import(`${getLibs()}/utils/utils.js`);
 
 async function getContent(path) {
   try {
     const resp = await fetch(`${origin}${path}`);
-    if (resp.status !== 200) return [''];
+    if (resp.status !== 200) return defaultContent();
     const html = await resp.text();
+    if (!html) return defaultContent();
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
@@ -30,48 +32,18 @@ async function getContent(path) {
       return fragment;
     });
   } catch {
-    return [''];
+    return defaultContent();
   }
 }
 
-function defaultContent() {
-  return `
-  <h1>Hello</h1>
-  <table>
-    <tbody><tr>
-      <td colspan="2">columns</td>
-    </tr>
-    <tr>
-      <td>Lorem ipsum...</td>
-      <td>Lorem ipsum...</td>
-    </tr></tbody>
-  </table>
-  <br>
-  <hr>
-  <br>
-  <table>
-  <tbody><tr>
-    <td colspan="2" class="">columns (table)</td>
-  </tr>
-  <tr>
-    <td class="">Lorem ipsum...</td>
-    <td class="">Lorem ipsum...</td>
-  </tr><tr><td class="">&nbsp;Hello</td><td class="">&nbsp;Hello again</td></tr></tbody></table><br>
-  <hr><br><table>
-  <tbody><tr>
-    <td colspan="2" class="">columns (contained)</td>
-  </tr>
-  <tr>
-    <td class="">Lorem ipsum...</td>
-    <td class="">Lorem ipsum...</td>
-  </tr><tr><td class="">&nbsp;another</td><td class="">&nbsp;another</td></tr></tbody></table><br>`;
-}
-
 export default async function init(el) {
+  const { hash } = window.location;
+
   const title = await getTitle();
   const editor = createTag('div', { class: 'da-editor' });
 
-  const con = defaultContent();
+  const con = hash ? await getContent(hash.replace('#', '')) : defaultContent();
+  console.log(con);
   const content = createTag('div', { id: 'content'}, con);
 
   const meta = createTag('div', { class: 'da-meta' });
