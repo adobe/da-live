@@ -16,7 +16,8 @@
 }
 
 .login img.aec-logo {
-  flex: 0 0 60px;
+  flex: 0 0 auto;
+  width: 60px;
   height: 60px;
   overflow: hidden;
 }
