@@ -3,8 +3,7 @@ import { origin, content, breadcrumbs, create, resetCreate } from '../state/inde
 function getPathname() {
   const { hash } = window.location;
   if (hash) return hash.replace('#', '');
-
-  return window.location.hash;
+  return '/';
 }
 
 function makeBreadCrumb(path) {
@@ -40,7 +39,7 @@ export async function handleAction(item) {
 export async function getContent() {
   const pathname = getPathname();
   makeBreadCrumb(pathname);
-  const resp = await fetch(`${origin}/api/list?pathname=${pathname}`);
+  const resp = await fetch(`${origin}${pathname}.1.json`);
   const json = await resp.json();
   content.value = json;
 }
@@ -78,7 +77,7 @@ export async function handleSave() {
   const saveName = create.value.name.replaceAll(/\W+/g, '-');
   const { pathname } = breadcrumbs.value.at(-1);
   const prefix = pathname === '/' ? '' : pathname;
-  const path = `${origin}/content${prefix}/${saveName}`;
+  const path = `${origin}${prefix}/${saveName}`;
   const fullPath = create.value.type === 'folder' ? path : `${path}.html`;
 
   const headerOpts = { 'Content-Type': 'application/json' };

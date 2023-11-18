@@ -24,8 +24,6 @@ function getSchema() {
 }
 
 export default function initProse(editor, content) {
-  // loadStyles();
-
   const schema = getSchema();
 
   const doc = DOMParser.fromSchema(schema).parse(content);

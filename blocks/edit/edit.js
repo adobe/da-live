@@ -16,6 +16,12 @@ async function getContent(path) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
+    // Fix BRs
+    const brs = doc.querySelectorAll('p br');
+    brs.forEach((br) => {
+      br.remove();
+    });
+
     // Fix blocks
     const blocks = doc.querySelectorAll('div[class]');
     blocks.forEach((block) => {
@@ -43,7 +49,6 @@ export default async function init(el) {
   const editor = createTag('div', { class: 'da-editor' });
 
   const con = hash ? await getContent(hash.replace('#', '')) : defaultContent();
-  console.log(con);
   const content = createTag('div', { id: 'content'}, con);
 
   const meta = createTag('div', { class: 'da-meta' });
