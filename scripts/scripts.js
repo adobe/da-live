@@ -12,6 +12,8 @@
 
 import { setLibs } from './utils.js';
 
+const LOCKED_ROUTES = ['/', '/edit'];
+
 // Add project-wide style path here.
 const STYLES = '/styles/styles.css';
 
@@ -26,6 +28,27 @@ const CONFIG = { locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } } };
   const lcpImg = document.querySelector('img');
   lcpImg?.removeAttribute('loading');
 }());
+
+function imsCheck(createTag) {
+  const { pathname } = document.location;
+  const locked = LOCKED_ROUTES.some((route) => {
+    return pathname === route;
+  });
+  if (!locked) return;
+
+  const prevSession = Object.keys(localStorage).some((key) => key.startsWith('adobeid'));
+  if (prevSession) return;
+
+  const rootEls = document.querySelectorAll('header, footer');
+  rootEls.forEach((el) => { el.remove(); });
+
+  const main = document.querySelector('main');
+  main.innerHTML = '';
+
+  const login = createTag('div', { class: 'login' });
+  const section = createTag('div', null, login);
+  main.append(section);
+}
 
 /*
  * ------------------------------------------------------------
@@ -51,7 +74,10 @@ const miloLibs = setLibs(LIBS);
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
 
-  const { loadArea, setConfig } = await import(`${miloLibs}/utils/utils.js`);
+  const { loadArea, setConfig, createTag } = await import(`${miloLibs}/utils/utils.js`);
   setConfig({ ...CONFIG, miloLibs });
+
+  imsCheck(createTag);
+
   await loadArea();
 }());

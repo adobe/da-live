@@ -11,7 +11,7 @@
 
 .da-header {
   position: relative;
-  padding: 36px 24px 36px 72px;
+  padding: 36px 24px 0 72px;
   grid-area: name;
 }
 
@@ -20,7 +20,7 @@
   justify-self: end;
   position: relative;
   border: 12px solid transparent;
-  
+  padding: 0 0 0 60px;
   border-radius: 100px;
   display: flex;
   gap: 12px;
@@ -62,7 +62,7 @@
   background: #FFF;
   display: grid;
   align-items: center;
-  grid-template-columns: 1fr var(--grid-container-width) 1fr;
+  grid-template-columns: 72px 1fr 24px;
   grid-template-areas: 'toolbar editor palettes';
 }
 
@@ -227,6 +227,10 @@ input.da-pallette-input {
     display: grid;
   }
 
+  .da-header-actions {
+    padding: unset;
+  }
+
     .da-header:before,
     .da-editor:before,
     .da-meta:before {
@@ -244,5 +248,9 @@ input.da-pallette-input {
 
     input.da-pallette-input {
       width: 400px;
+    }
+
+    .da-editor {
+      grid-template-columns: 1fr var(--grid-container-width) 1fr;
     }
 }
