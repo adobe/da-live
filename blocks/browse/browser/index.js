@@ -74,7 +74,7 @@ export async function handleNewType(e) {
 }
 
 export async function handleSave() {
-  const saveName = create.value.name.replaceAll(/\W+/g, '-');
+  const saveName = create.value.name.replaceAll(/\W+/g, '-').toLowerCase();
   const { pathname } = breadcrumbs.value.at(-1);
   const prefix = pathname === '/' ? '' : pathname;
   const path = `${origin}${prefix}/${saveName}`;
