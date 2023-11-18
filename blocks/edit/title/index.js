@@ -52,7 +52,7 @@ function convertBlocks(tables) {
 }
 
 function saveToDas(pathname) {
-  const fullPath = `${origin}/content${pathname}.html`;
+  const fullPath = `${origin}${pathname}.html`;
 
   const editor = document.querySelector('.da-editor > .ProseMirror').cloneNode(true);
   editor.removeAttribute('class');
