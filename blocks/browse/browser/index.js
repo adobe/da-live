@@ -86,7 +86,6 @@ export async function handleSave() {
   const opts = { method: 'PUT', headers };
   const resp = await fetch(fullPath, opts);
   if (resp.status !== 200) return;
-
   const json = await resp.json();
 
   if (create.value.type === 'document') {
