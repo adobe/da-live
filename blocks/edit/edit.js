@@ -49,7 +49,7 @@ export default async function init(el) {
   const editor = createTag('div', { class: 'da-editor' });
 
   const con = hash ? await getContent(hash.replace('#', '')) : defaultContent();
-  const content = createTag('div', { id: 'content'}, con);
+  const content = createTag('div', { id: 'edit'}, con);
 
   const meta = createTag('div', { class: 'da-meta' });
   el.append(title, editor, meta);

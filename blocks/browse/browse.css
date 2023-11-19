@@ -27,6 +27,10 @@
     cursor: pointer;
 }
 
+.da-breadcrumb-list-item:last-child {
+  cursor: unset;
+}
+
 .da-breadcrumb-list-item:after {
     position: absolute;
     right: -24px;
@@ -49,7 +53,7 @@
     display: flex;
     align-items: center;
     padding: 24px 18px;
-    gap: 12px;
+    gap: 24px;
     border-radius: 6px;
     border: 3px solid transparent;
     cursor: pointer;
@@ -57,6 +61,25 @@
 
 .da-item-list-item:hover {
     border: 3px solid #066ce7;
+}
+
+.da-item-list-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  outline: 2px solid #bababa;
+  appearance: none;
+  border-radius: 2px;
+}
+
+.da-item-list-item input[type="checkbox"]:checked {
+  background-color: #066ce7;
+}
+
+.da-item-list-item-title {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 12px;
+  align-items: center;
 }
 
 .da-item-list-item-type {

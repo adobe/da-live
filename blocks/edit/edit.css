@@ -83,18 +83,22 @@
 
 .da-editor .ProseMirror:before {
   left: 0;
-    content: 'content';
+  content: 'edit';
 }
 
 .da-meta {
-    position: relative;
-    padding: 60px 0;
-    margin: 0 auto;
-    max-width: var(--grid-container-width);
+  display: grid;
+  grid-template-columns: 72px 1fr 24px;
+  grid-template-areas: 'left content right';
+  position: relative;
+  padding: 20px 0;
+  margin: 0 auto;
 }
 
 .da-meta:before {
-    content: 'meta';
+  grid-area: content;
+  content: 'Inherited Meta';
+  padding-bottom: 60px;
 }
 
 .da-button-group {
@@ -151,6 +155,10 @@ table td {
   margin: 3px;
   vertical-align: top;
   min-width: 100px;
+}
+
+table td p {
+  margin: .25em 0;
 }
 
 td.selectedCell {
@@ -225,6 +233,7 @@ input.da-pallette-input {
 @media (min-width: 900px) {
   .da-header-wrapper {
     display: grid;
+    grid-template-columns: 1fr 880px 1fr;
   }
 
   .da-header-actions {
@@ -239,7 +248,7 @@ input.da-pallette-input {
     }
 
     .da-header {
-      padding: 60px 0;
+      padding: 60px 0 20px;
     }
 
     .da-toolbar-extras > div {
@@ -251,6 +260,10 @@ input.da-pallette-input {
     }
 
     .da-editor {
-      grid-template-columns: 1fr var(--grid-container-width) 1fr;
+      grid-template-columns: 1fr 880px 1fr;
+    }
+
+    .da-meta {
+      grid-template-columns: 1fr 880px 1fr;
     }
 }

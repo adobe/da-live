@@ -56,10 +56,13 @@ export default function Browser() {
       ${content.value.map((item, idx) => html`
         <li
           class=da-item-list-item
-          key=${idx}
-          onClick=${() => handleAction(item)}>
-          <span class="da-item-list-item-type da-item-list-item-type-${item.type}"/>
-        ${item.name}</li>
+          key=${idx}>
+          <input type="checkbox" style="display: none" name="select" />
+          <div class="da-item-list-item-title" onClick=${() => handleAction(item)}>
+            <span class="da-item-list-item-type da-item-list-item-type-${item.type}"/>
+            ${item.name}
+          </div>
+        </li>
       `)}
     </ul>
     <hr class=da-rule/>
