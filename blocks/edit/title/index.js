@@ -54,7 +54,7 @@ function convertBlocks(tables) {
 function saveToDas(pathname) {
   const fullPath = `${origin}${pathname}.html`;
 
-  const editor = document.querySelector('.da-editor > .ProseMirror').cloneNode(true);
+  const editor = window.view.root.querySelector('.ProseMirror').cloneNode(true);
   editor.removeAttribute('class');
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');

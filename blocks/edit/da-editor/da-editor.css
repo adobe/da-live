@@ -1,0 +1,418 @@
+.da-prose-mirror {
+  position: relative;
+  background: #FFF;
+  display: grid;
+  align-items: center;
+  grid-template-columns: 72px 1fr 24px;
+  grid-template-areas: 'toolbar editor palettes';
+}
+
+.ProseMirror {
+  position: relative;
+  grid-area: editor;
+  padding: 48px 0;
+}
+
+.ProseMirror-focused {
+  outline: none;
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+}
+
+table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+table tr:first-child td,
+table tr:first-child th {
+  background: aliceblue;
+  text-align: center;
+  font-weight: 700;
+}
+
+table td {
+  border: 3px solid #d0d0d0;
+  border-radius: 3px;
+  margin: 3px;
+  vertical-align: top;
+  min-width: 100px;
+}
+
+table td p {
+  margin: .25em 0;
+}
+
+td.selectedCell {
+  border: 3px solid #60c175;
+}
+
+.ProseMirror-menubar {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 12px;
+  padding: 6px 6px 0 6px;
+  border-radius: 4px;
+  box-shadow: 0px 0px 5px 0px #b5b5b5;
+  background: #FFF;
+  box-sizing: border-box;
+  grid-area: toolbar;
+  z-index: 1;
+}
+
+.da-editor-tool {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    display: block;
+    border: none;
+    margin-bottom: 6px;
+}
+
+.ProseMirror-menubar > .ProseMirror-menuitem {
+  display: block;
+  width: 44px;
+  height: 44px;
+  text-indent: -1000px;
+  overflow: hidden;
+  border-radius: 2px;
+  margin-bottom: 6px;
+  background-color: #EFEFEF;
+}
+
+span.ProseMirror-menuitem.edit-table[style=""] + .ProseMirror-menuitem {
+  display: none;
+}
+
+span.ProseMirror-menuseparator {
+  height: 2px;
+  display: block;
+  background: #EFEFEF;
+  margin-bottom: 6px;
+  border-radius: 1px;
+}
+
+.ProseMirror-menuitem > div {
+  width: 44px;
+  height: 44px;
+}
+
+.ProseMirror-menu-dropdown {
+  height: 44px;
+}
+
+.ProseMirror-menu-disabled {
+  opacity: 0.5;
+}
+
+.ProseMirror-menu-dropdown.edit-text {
+  background: url('../img/Smock_Text_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.ProseMirror-menu-dropdown-menu {
+  position: absolute;
+  height: auto;
+  top: 0;
+  left: 64px;
+  background: #FFF;
+  padding: 6px 6px 0 6px;
+  box-shadow: 0px 0px 5px 0px #b5b5b5;
+  border-radius: 4px;
+}
+
+.ProseMirror-menu-dropdown-item {
+  margin-bottom: 6px;
+}
+
+.ProseMirror-menu-dropdown-item > div {
+  width: 44px;
+  height: 44px;
+  border-radius: 2px;
+}
+
+.menu-item-para {
+  background: url('../img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.menu-item-h1 {
+  background: url('../img/Smock_Heading1_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.menu-item-h2 {
+  background: url('../img/Smock_Heading2_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.menu-item-h3 {
+  background: url('../img/Smock_Heading3_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.menu-item-h4 {
+  background: url('../img/Smock_Heading4_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.menu-item-h5 {
+  background: url('../img/Smock_Heading5_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.menu-item-h6 {
+  background: url('../img/Smock_Heading6_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-bold {
+  background: url('../img/Smock_TextBold_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-italic {
+  background: url('../img/Smock_TextItalic_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-link {
+  background: url('../img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-list {
+  background: url('../img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.insert-table {
+  background: url('../img/Smock_TableAdd_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.ProseMirror-menu-dropdown.edit-table {
+  background: url('../img/Smock_TableEdit_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.addColBefore {
+  background: url('../img/Smock_TableColumnAddLeft_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.addColumnAfter {
+  background: url('../img/Smock_TableColumnAddRight_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.deleteColumn {
+  background: url('../img/Smock_TableColumnRemoveCenter_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.addRowBefore {
+  background: url('../img/Smock_TableRowAddTop_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.addRowAfter {
+  background: url('../img/Smock_TableRowAddBottom_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.deleteRow {
+  background: url('../img/Smock_TableRowRemoveCenter_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.deleteTable {
+  background: url('../img/Smock_TableRemove_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.mergeCells {
+  background: url('../img/Smock_TableMergeCells_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.splitCell {
+  background: url('../img/Smock_TableRowSplit_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-hr {
+  background: url('../img/Smock_PageRule_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-undo {
+  background: url('../img/Smock_Undo_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-redo {
+  background: url('../img/Smock_Redo_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+
+/* Generic ProseMirror Styles */
+.ProseMirror hr {
+  border-radius: 1px;
+  border: 1px solid #b3b3b3;
+  position: relative;
+  overflow: visible;
+}
+
+.ProseMirror hr:after {
+  left: 50%;
+  position: absolute;
+  content: 'Section Break';
+  text-transform: uppercase;
+  background: rgb(255,255,255);
+  top: -14.25px;
+  font-weight: 700;
+  color: #b3b3b3;
+  padding: 0 6px;
+  font-size: 12px;
+  transform: translateX(-50%);
+}
+
+.ProseMirror a img {
+  border: 2px solid;
+  border-radius: 3px;
+}
+
+.ProseMirror a img.ProseMirror-separator {
+  display: none;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  filter: brightness(0.5);
+}
+
+.ProseMirror table {
+  width: 100%;
+  border-spacing: 6px;
+}
+
+.ProseMirror tr:first-child td,
+.ProseMirror tr:first-child th {
+  background: aliceblue;
+  text-align: center;
+  font-weight: 700;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 3px dotted #d0d0d0;
+  border-radius: 3px;
+  margin: 3px;
+  vertical-align: top;
+  min-width: 100px;
+}
+
+td.selectedCell {
+  border: 3px dotted #60c175;
+}
+
+/* COPY FROM PROSEMIRROR VIEW */
+.ProseMirror {
+  position: relative;
+}
+
+.ProseMirror {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  -webkit-font-variant-ligatures: none;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0; /* the above doesn't seem to work in Edge */
+}
+
+.ProseMirror pre {
+  white-space: pre-wrap;
+}
+
+.ProseMirror li {
+  position: relative;
+}
+
+.ProseMirror-hideselection *::selection { background: transparent; }
+.ProseMirror-hideselection *::-moz-selection { background: transparent; }
+.ProseMirror-hideselection { caret-color: transparent; }
+
+.ProseMirror-selectednode {
+  outline: 2px solid #8cf;
+}
+
+/* Make sure li selections wrap around markers */
+
+li.ProseMirror-selectednode {
+  outline: none;
+}
+
+li.ProseMirror-selectednode:after {
+  content: "";
+  position: absolute;
+  left: -32px;
+  right: -2px; top: -2px; bottom: -2px;
+  border: 2px solid #8cf;
+  pointer-events: none;
+}
+
+/* Protect against generic img rules */
+
+img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+/* COPY FROM TABLES */
+.ProseMirror .tableWrapper {
+  overflow-x: auto;
+}
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  overflow: hidden;
+}
+.ProseMirror td,
+.ProseMirror th {
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 20;
+  background-color: #adf;
+  pointer-events: none;
+}
+.ProseMirror.resize-cursor {
+  cursor: ew-resize;
+  cursor: col-resize;
+}
+/* Give selected cells a blue overlay */
+.ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: '';
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/* Palette */
+.da-palettes {
+  position: fixed;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  grid-area: palettes;
+}
+
+/* Palette */
+
+
+@media (min-width: 900px) {
+  .da-toolbar-extras > div {
+    flex: unset;
+  }
+
+  input.da-pallette-input {
+    width: 400px;
+  }
+
+  .da-prose-mirror {
+    grid-template-columns: 1fr 880px 1fr;
+  }
+}

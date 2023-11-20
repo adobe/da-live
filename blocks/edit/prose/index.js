@@ -14,13 +14,21 @@ import {
   goToNextCell,
   tableNodes,
   fixTables } from 'prosemirror-tables';
-import menu from "./menu.js";
+import menu from './menu.js';
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
   return new Schema({ nodes, marks });
+}
+
+function dispatchTransaction(transaction) {
+  const before = transaction.before.content.size;
+  const after = transaction.doc.content.size;
+  console.log(`size before: ${before}, size after: ${after}`);
+  const newState = view.state.apply(transaction);
+  view.updateState(newState)
 }
 
 export default function initProse(editor, content) {
@@ -47,7 +55,7 @@ export default function initProse(editor, content) {
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
-  window.view = new EditorView(editor, { state });
+  window.view = new EditorView(editor, { state, dispatchTransaction });
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');

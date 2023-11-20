@@ -2,6 +2,10 @@
 @import url('./styles/editor.css');
 @import url('./styles/palette.css');
 
+body {
+  background: #FFF !important; /* Hack until background is fixed */
+}
+
 .da-header-wrapper {
   grid-template-columns: 1fr var(--grid-container-width) 1fr;
   grid-template-areas: 'details name actions';

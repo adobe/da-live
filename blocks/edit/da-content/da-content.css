@@ -1,0 +1,37 @@
+:host {
+  background-color: #FFF;
+  display: block;
+}
+
+.da-content-tab-list {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.da-content-tab-item button {
+  border: none;
+  background: none;
+  text-transform: uppercase;
+  font-family: var(--body-font-family);
+  font-size: var(--type-body-m-size);
+  font-weight: 700;
+  color: rgb(175, 175, 175);
+  padding: 0 0 2px;
+  line-height: 1;
+}
+
+.da-content-tab-item.is-active button {
+  border-bottom: 2px solid;
+}
+
+.da-content-tab-panel {
+  display: none;
+}
+
+.da-content-tab-panel.is-active {
+  display: unset;
+}

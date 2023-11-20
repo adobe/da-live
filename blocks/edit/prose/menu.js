@@ -4,8 +4,7 @@ import insertTable from "./table.js";
 import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from 'prosemirror-menu';
 import { undo, redo } from 'prosemirror-history';
 import { wrapInList } from 'prosemirror-schema-list';
-import TextField from "./field.js";
-import openPrompt from "./prompt.js";
+import openPrompt from "../da-palette/da-palette.js";
 
 import {
   addColumnAfter,
@@ -57,10 +56,22 @@ function markActive(state, type) {
       return state.doc.rangeHasMark(from, to, type);
 }
 
-function linkItem(markType) {
+function linkItem(menu, markType) {
+  const label = 'Link';
+  const fields = {
+    href: {
+      placeholder: 'https://...',
+      label: 'URL',
+    },
+    title: {
+      placeholder: 'title',
+      label: 'Title',
+    }
+  }
+
   return new MenuItem({
     title: "Add or remove link",
-    label: 'Link',
+    label,
     class: 'edit-link',
     active(state) { return markActive(state, markType); },
     enable(state) { return !state.selection.empty; },
@@ -69,20 +80,13 @@ function linkItem(markType) {
         toggleMark(markType)(state, dispatch);
         return true;
       }
-      openPrompt({
-        title: "Link",
-        fields: {
-          href: new TextField({
-            label: "https://...",
-            required: true
-          }),
-          title: new TextField({ label: "Title" })
-        },
-        callback(attrs) {
-          toggleMark(markType, attrs)(view.state, view.dispatch);
-          view.focus();
-        }
-      });
+
+      const callback = (attrs) => {
+        toggleMark(markType, attrs)(view.state, view.dispatch);
+        view.focus();
+      }
+
+      openPrompt({ title: label, fields, callback });
     }
   });
 }
@@ -161,6 +165,8 @@ function getTextBlocks(nodes) {
 }
 
 function getMenu(view) {
+  const menu = createTag('div', { class: 'ProseMirror-menubar' });
+
   const { marks, nodes } = view.state.schema;
   const editTable = getTableMenu();
   const textBlocks = getTextBlocks(nodes);
@@ -181,7 +187,7 @@ function getMenu(view) {
         label: "I",
         class: 'edit-italic'
       }),
-      linkItem(marks.link),
+      linkItem(menu, marks.link),
     ],
     [
       wrapListItem(nodes.bullet_list, {
@@ -233,7 +239,7 @@ function getMenu(view) {
   const editTableItem = editTableMenu.closest('.ProseMirror-menuitem');
   editTableItem.classList.add('edit-table');
 
-  const menu = createTag('div', { class: 'ProseMirror-menubar' }, dom);
+  menu.append(dom);
 
   return { menu, update };
 }

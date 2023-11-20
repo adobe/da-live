@@ -1,0 +1,49 @@
+iframe {
+  display: block;
+  width: 880px;
+  margin: 40px auto;
+  border: none;
+  min-height: 3000px;
+  box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
+}
+
+.da-preview-menubar {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 12px;
+  padding: 6px 6px 0px;
+  border-radius: 4px;
+  box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
+  background: rgb(255, 255, 255);
+  box-sizing: border-box;
+  grid-area: toolbar;
+  z-index: 1;
+}
+
+.da-preview-menuitem {
+  display: block;
+  width: 44px;
+  height: 44px;
+  text-indent: -1000px;
+  overflow: hidden;
+  border-radius: 2px;
+  margin-bottom: 6px;
+  background-color: rgb(239, 239, 239);
+}
+
+.set-mobile {
+  background: url('../img/Smock_DevicePhone_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.set-tablet {
+  background: url('../img/Smock_DeviceTablet_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.set-laptop {
+  background: url('../img/Smock_DeviceLaptop_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.set-desktop {
+  background: url('../img/Smock_DeviceDesktop_18_N.svg') center / 18px no-repeat #EFEFEF;
+}

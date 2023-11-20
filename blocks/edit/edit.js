@@ -1,58 +1,39 @@
-import { origin } from '../browse/state/index.js';
-import initProse from './prose/index.js';
 import getTitle from './title/view.js';
-import { getTable } from './utils.js';
-import defaultContent from './mock/default-content.js';
+import './da-content/da-content.js';
 
 const { getLibs } = await import('../../../scripts/utils.js');
 const { createTag } = await import(`${getLibs()}/utils/utils.js`);
 
-async function getContent(path) {
-  try {
-    const resp = await fetch(`${origin}${path}`);
-    if (resp.status !== 200) return defaultContent();
-    const html = await resp.text();
-    if (!html) return defaultContent();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    // Fix BRs
-    const brs = doc.querySelectorAll('p br');
-    brs.forEach((br) => {
-      br.remove();
-    });
-
-    // Fix blocks
-    const blocks = doc.querySelectorAll('div[class]');
-    blocks.forEach((block) => {
-      const table = getTable(block);
-      block.parentElement.replaceChild(table, block);
-    });
-
-    // Fix sections
-    const sections = doc.body.querySelectorAll('main > div');
-    return [...sections].map((section, idx) => {
-      const fragment = new DocumentFragment();
-      if (idx > 0) fragment.append(document.createElement('hr'));
-      fragment.append(...section.querySelectorAll(':scope > *'));
-      return fragment;
-    });
-  } catch {
-    return defaultContent();
-  }
+function getPath() {
+  const { hash } = window.location;
+  return hash.replace('#', '');
 }
 
 export default async function init(el) {
-  const { hash } = window.location;
+  const path = getPath();
 
   const title = await getTitle();
-  const editor = createTag('div', { class: 'da-editor' });
-
-  const con = hash ? await getContent(hash.replace('#', '')) : defaultContent();
-  const content = createTag('div', { id: 'edit'}, con);
-
+  const daContent = createTag('da-content', { path });
   const meta = createTag('div', { class: 'da-meta' });
-  el.append(title, editor, meta);
 
-  initProse(editor, content);
+  el.append(title, daContent, meta);
+
+  window.addEventListener('hashchange', () => {
+    const newPath = getPath();
+    daContent.setAttribute('path', newPath);
+  });
+
+
+  // const editor = createTag('div', { class: 'da-editor' });
+  // const view = createTag('div', { class: 'da-view' });
+
+  // const editView = createTag('div', { class: 'da-edit-view' }, editor);
+
+  // const con = await getContent(hash.replace('#', ''));
+  // const content = createTag('div', { id: 'content'}, con);
+
+  // 
+  // el.append(title, editView, meta);
+
+  // initProse(editor, content);
 }

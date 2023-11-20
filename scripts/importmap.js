@@ -19,6 +19,8 @@ const IMPORT_MAP = {
     'w3c-keyname': '/deps/w3c-keyname/index.es.js',
     'orderedmap': '/deps/orderedmap/dist/index.js',
     'crelt': '/deps/crelt/index.es.js',
+    '@lit/task': '/deps/lit/task/task.js',
+    '@lit/reactive-element': '/deps/lit/reactive-element/reactive-element.js',
   },
 };
 
