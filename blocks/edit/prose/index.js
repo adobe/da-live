@@ -43,12 +43,7 @@ function pollForUpdates() {
     const clone = window.view.root.querySelector('.ProseMirror').cloneNode(true);
     const body = prose2aem(clone);
     daPreview.body = body;
-    // count += 1;
-    // // Stop syncing after an hour
-    // if (count > MAX_COUNT) {
-    //   clearInterval(updatePreview);
-    // }
-  }, 5000);
+  }, 3000);
 }
 
 export default function initProse(editor, content) {
