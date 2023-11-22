@@ -3,6 +3,7 @@
 
   function onMessage(e) {
     if (e.data.get === 'height') {
+      console.log(document.documentElement.offsetHeight);
       const height = `${document.documentElement.offsetHeight}px`;
       port2.postMessage(height);
     }
