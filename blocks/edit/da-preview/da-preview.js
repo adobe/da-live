@@ -10,10 +10,31 @@ const SIZES = {
   desktop: '1440px',
 }
 
+const MOCK_BODY = `
+<body>
+  <main>
+      <div>
+          <p>
+              <picture>
+                  <source type="image/webp" srcset="https://main--milo--adobecom.hlx.page/media_19c81388059a2e8011db74d56f43389417cd1c887.png" media="(min-width: 600px)">
+                  <source type="image/webp" srcset="https://main--milo--adobecom.hlx.page/media_19c81388059a2e8011db74d56f43389417cd1c887.png">
+                  <source type="image/png" srcset="https://main--milo--adobecom.hlx.page/media_19c81388059a2e8011db74d56f43389417cd1c887.png" media="(min-width: 600px)">
+                  <img loading="lazy" alt="" src="https://main--milo--adobecom.hlx.page/media_19c81388059a2e8011db74d56f43389417cd1c887.png" width="1369" height="685">
+              </picture>
+          </p>
+          <p>
+              This content was dynamically synced between two web components into an iframe using MessageChannel and PostMessage APIs.
+          </p>
+      </div>
+  </main>
+</body>
+`;
+
 export default class DaPreview extends LitElement {
   static properties = {
     path: {},
     width: { state: true },
+    body: { state: true },
   };
 
   constructor() {
@@ -42,6 +63,11 @@ export default class DaPreview extends LitElement {
     this.port1.postMessage({ get: 'height' });
   }
 
+  setBody() {
+    console.log('setting body');
+    this.port1.postMessage({ set: 'body', body: this.body, get: 'height' });
+  }
+
   iframeLoaded() {
     this.port1.onmessage = (e) => { this.setHeight(e.data); };
     setTimeout(() => {
@@ -68,10 +94,17 @@ export default class DaPreview extends LitElement {
 
   updated(props) {
     super.updated(props);
+
     this.iframe = this.shadowRoot.querySelector('iframe');
     if (this.iframe) {
       this.iframe.addEventListener('load', () => this.iframeLoaded());
     }
+
+    props.forEach((oldValue, propName) => {
+      if (propName === 'body') {
+        this.setBody();
+      }
+    });
   }
 }
 

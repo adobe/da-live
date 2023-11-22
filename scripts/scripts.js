@@ -78,10 +78,10 @@ function loadStyles() {
   });
 }
 
-export default async function loadPage() {
-  loadLCPImage();
-  loadStyles();
+loadLCPImage();
+loadStyles();
 
+export default async function loadPage() {
   // TODO: Franklin "markup" doesn't do colspan in blocks correctly
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });

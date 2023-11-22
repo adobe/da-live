@@ -1,16 +1,21 @@
+import loadPage from './scripts.js';
+
 (function daPreview() {
   let port2;
 
-  function onMessage(e) {
+  async function onMessage(e) {
+    if (e.data.set === 'body') {
+      document.body.outerHTML = e.data.body;
+      await loadPage();
+    }
+
     if (e.data.get === 'height') {
-      console.log(document.documentElement.offsetHeight);
       const height = `${document.documentElement.offsetHeight}px`;
       port2.postMessage(height);
     }
   }
 
   function initPort(e) {
-    console.log(e.data);
     port2 = e.ports[0];
     port2.onmessage = onMessage;
   }
