@@ -51,6 +51,15 @@ function imsCheck(createTag) {
 }
 
 /*
+ * Side effects to only run once
+ */
+
+(async function daPreview() {
+  const { searchParams } = new URL(window.location.href);
+  if (searchParams.get('dapreview') === 'on') import('./dapreview.js');
+}());
+
+/*
  * ------------------------------------------------------------
  * Edit below at your own risk
  * ------------------------------------------------------------
@@ -85,12 +94,3 @@ export default async function loadPage() {
   await loadArea();
 };
 loadPage();
-
-/*
- * Side effects to only run once
- */
-
-(async function daPreview() {
-  const { searchParams } = new URL(window.location.href);
-  if (searchParams.get('dapreview') === 'on') import('./dapreview.js');
-}());
