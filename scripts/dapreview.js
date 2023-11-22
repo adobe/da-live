@@ -3,7 +3,7 @@
 
   function onMessage(e) {
     if (e.data.get === 'height') {
-      const height = `${document.documentElement.scrollHeight}px`;
+      const height = `${document.documentElement.offsetHeight}px`;
       port2.postMessage(height);
     }
   }
@@ -13,5 +13,5 @@
     port2.onmessage = onMessage;
   }
 
-  window.addEventListener("message", initPort);
+  window.addEventListener('message', initPort);
 }());

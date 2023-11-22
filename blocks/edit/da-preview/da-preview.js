@@ -41,11 +41,9 @@ export default class DaPreview extends LitElement {
   }
 
   iframeLoaded() {
-    setTimeout(() => {
-      this.port1.onmessage = (e) => { this.setHeight(e.data); };
-      this.iframe.contentWindow.postMessage({ init: true }, '*', [this.channel.port2]);
-      this.setWidth('mobile');
-    }, 1000);
+    this.port1.onmessage = (e) => { this.setHeight(e.data); };
+    this.iframe.contentWindow.postMessage({ init: true }, '*', [this.channel.port2]);
+    setTimeout(() => { this.setWidth('mobile'); }, 1000);
   }
 
   render() {
