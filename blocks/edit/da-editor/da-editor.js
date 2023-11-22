@@ -1,8 +1,10 @@
 import { LitElement, html } from '../../../deps/lit/lit-all.min.js';
 import { origin } from '../../browse/state/index.js';
 import getContent from '../content/content.js';
-import sheet from './da-editor.css' assert { type: 'css' };
 import initProse from '../prose/index.js';
+
+import getSheet from '../../shared/sheet.js';
+const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
 
 export default class DaEditor extends LitElement {
   static properties = {

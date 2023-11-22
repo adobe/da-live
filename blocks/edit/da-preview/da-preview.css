@@ -33,21 +33,21 @@ iframe {
 }
 
 .da-preview-menuitem {
-  background: url("../img/Smock_Close_18_N.svg") center center / 20px no-repeat #EFEFEF;
+  background: url("/blocks/edit/img/Smock_Close_18_N.svg") center center / 20px no-repeat #EFEFEF;
 }
 
 .set-mobile {
-  background: url('../img/Smock_DevicePhone_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_DevicePhone_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .set-tablet {
-  background: url('../img/Smock_DeviceTablet_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_DeviceTablet_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .set-laptop {
-  background: url('../img/Smock_DeviceLaptop_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_DeviceLaptop_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .set-desktop {
-  background: url('../img/Smock_DeviceDesktop_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_DeviceDesktop_18_N.svg') center / 18px no-repeat #EFEFEF;
 }

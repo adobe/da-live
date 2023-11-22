@@ -1,5 +1,7 @@
 import { LitElement, html } from '../../../deps/lit/lit-all.min.js';
-import sheet from './da-preview.css' assert { type: 'css' };
+
+import getSheet from '../../shared/sheet.js';
+const sheet = await getSheet('/blocks/edit/da-preview/da-preview.css');
 
 const SIZES = {
   mobile: '375px',

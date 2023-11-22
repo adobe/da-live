@@ -62,6 +62,6 @@ da-preview.show-preview {
 }
 
 .da-preview-menuitem.show-preview {
-  background: url("../img/Smock_Preview_18_N.svg") center center / 20px no-repeat rgb(239, 239, 239);
+  background: url("/blocks/edit/img/Smock_Preview_18_N.svg") center center / 20px no-repeat rgb(239, 239, 239);
   background-blend-mode: hard-light;
 }

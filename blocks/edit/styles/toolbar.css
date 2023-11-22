@@ -54,7 +54,7 @@ span.ProseMirror-menuseparator {
 }
 
 .ProseMirror-menu-dropdown.edit-text {
-  background: url('../img/Smock_Text_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Text_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .ProseMirror-menu-dropdown-menu {
@@ -79,102 +79,102 @@ span.ProseMirror-menuseparator {
 }
 
 .menu-item-para {
-  background: url('../img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .menu-item-h1 {
-  background: url('../img/Smock_Heading1_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading1_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .menu-item-h2 {
-  background: url('../img/Smock_Heading2_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading2_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .menu-item-h3 {
-  background: url('../img/Smock_Heading3_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading3_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .menu-item-h4 {
-  background: url('../img/Smock_Heading4_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading4_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .menu-item-h5 {
-  background: url('../img/Smock_Heading5_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading5_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .menu-item-h6 {
-  background: url('../img/Smock_Heading6_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading6_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-bold {
-  background: url('../img/Smock_TextBold_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextBold_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-italic {
-  background: url('../img/Smock_TextItalic_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextItalic_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-link {
-  background: url('../img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-list {
-  background: url('../img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .insert-table {
-  background: url('../img/Smock_TableAdd_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableAdd_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .ProseMirror-menu-dropdown.edit-table {
-  background: url('../img/Smock_TableEdit_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableEdit_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .addColBefore {
-  background: url('../img/Smock_TableColumnAddLeft_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableColumnAddLeft_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .addColumnAfter {
-  background: url('../img/Smock_TableColumnAddRight_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableColumnAddRight_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .deleteColumn {
-  background: url('../img/Smock_TableColumnRemoveCenter_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableColumnRemoveCenter_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .addRowBefore {
-  background: url('../img/Smock_TableRowAddTop_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRowAddTop_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .addRowAfter {
-  background: url('../img/Smock_TableRowAddBottom_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRowAddBottom_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .deleteRow {
-  background: url('../img/Smock_TableRowRemoveCenter_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRowRemoveCenter_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .deleteTable {
-  background: url('../img/Smock_TableRemove_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRemove_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .mergeCells {
-  background: url('../img/Smock_TableMergeCells_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableMergeCells_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .splitCell {
-  background: url('../img/Smock_TableRowSplit_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRowSplit_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-hr {
-  background: url('../img/Smock_PageRule_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_PageRule_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-undo {
-  background: url('../img/Smock_Undo_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Undo_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-redo {
-  background: url('../img/Smock_Redo_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
