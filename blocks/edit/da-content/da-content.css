@@ -1,37 +1,67 @@
 :host {
-  background-color: #FFF;
-  display: block;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto 0 auto minmax(80px, 1fr);
+  grid-template-areas: "left editor gap preview right";
+  justify-content: center;
 }
 
-.da-content-tab-list {
-  display: flex;
-  gap: 24px;
-  list-style: none;
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 0;
+:host(.show-preview) {
+  grid-template-columns: minmax(80px, 1fr) auto 20px auto minmax(80px, 1fr);
 }
 
-.da-content-tab-item button {
-  border: none;
-  background: none;
-  text-transform: uppercase;
-  font-family: var(--body-font-family);
-  font-size: var(--type-body-m-size);
-  font-weight: 700;
-  color: rgb(175, 175, 175);
-  padding: 0 0 2px;
-  line-height: 1;
+da-editor {
+  grid-area: editor;
+  max-width: 900px;
+  z-index: 1;
 }
 
-.da-content-tab-item.is-active button {
-  border-bottom: 2px solid;
+da-preview {
+  visibility: hidden;
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  grid-area: preview;
+  justify-self: right;
 }
 
-.da-content-tab-panel {
+da-preview.show-preview {
+  visibility: unset;
+  position: relative;
+  width: unset;
+  height: unset;
+  overflow: unset;
+}
+
+.da-preview-menubar {
+  position: absolute;
+  top: 20px;
+  padding: 6px 6px 0px;
+  border-radius: 4px;
+  box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
+  background: rgb(255, 255, 255);
+  box-sizing: border-box;
+  grid-area: preview;
+  left: -6px;
+}
+
+:host(.show-preview) .da-preview-menubar {
   display: none;
 }
 
-.da-content-tab-panel.is-active {
-  display: unset;
+.da-preview-menuitem {
+  display: block;
+  width: 50px;
+  height: 44px;
+  text-indent: -1000px;
+  overflow: hidden;
+  border-radius: 2px;
+  margin-bottom: 6px;
+  background-color: rgb(239, 239, 239);
+}
+
+.da-preview-menuitem.show-preview {
+  background: url("../img/Smock_Preview_18_N.svg") center center / 20px no-repeat rgb(239, 239, 239);
+  background-blend-mode: hard-light;
 }

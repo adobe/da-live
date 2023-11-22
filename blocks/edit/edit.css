@@ -74,6 +74,12 @@ body {
     content: 'Doc';
 }
 
+
+
+
+
+
+
 .da-header:before,
 .ProseMirror:before,
 .da-meta:before {
@@ -237,7 +243,7 @@ input.da-pallette-input {
 @media (min-width: 900px) {
   .da-header-wrapper {
     display: grid;
-    grid-template-columns: 1fr 880px 1fr;
+    grid-template-columns: 1fr 900px 1fr;
   }
 
   .da-header-actions {
@@ -264,10 +270,10 @@ input.da-pallette-input {
     }
 
     .da-editor {
-      grid-template-columns: 1fr 880px 1fr;
+      grid-template-columns: 1fr 900px 1fr;
     }
 
     .da-meta {
-      grid-template-columns: 1fr 880px 1fr;
+      grid-template-columns: 1fr 900px 1fr;
     }
 }

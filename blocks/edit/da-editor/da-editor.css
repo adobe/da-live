@@ -1,20 +1,26 @@
 .da-prose-mirror {
-  position: relative;
-  background: #FFF;
+  /* position: relative;
+  
   display: grid;
   align-items: center;
   grid-template-columns: 72px 1fr 24px;
-  grid-template-areas: 'toolbar editor palettes';
+  grid-template-areas: 'toolbar editor palettes'; */
 }
 
 .ProseMirror {
+  background: #FFF;
   position: relative;
   grid-area: editor;
-  padding: 48px 0;
+  padding: 48px;
+  box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
 }
 
 .ProseMirror-focused {
   outline: none;
+}
+
+.ProseMirror > *:first-child {
+  margin-top: 0;
 }
 
 .ProseMirror img {
@@ -413,6 +419,6 @@ img.ProseMirror-separator {
   }
 
   .da-prose-mirror {
-    grid-template-columns: 1fr 880px 1fr;
+    grid-template-columns: 1fr 900px 1fr;
   }
 }

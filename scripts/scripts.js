@@ -18,16 +18,16 @@ const LOCKED_ROUTES = ['/', '/edit'];
 const STYLES = '/styles/styles.css';
 
 // Use '/libs' if your live site maps '/libs' to milo's origin.
-const LIBS = 'https://milo.adobe.com/libs';
+const LIBS = '/libs';
 
 // Add any config options.
 const CONFIG = { locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } } };
 
 // Load LCP image immediately
-(async function loadLCPImage() {
+function loadLCPImage() {
   const lcpImg = document.querySelector('img');
   lcpImg?.removeAttribute('loading');
-}());
+};
 
 function imsCheck(createTag) {
   const { pathname } = document.location;
@@ -58,7 +58,7 @@ function imsCheck(createTag) {
 
 const miloLibs = setLibs(LIBS);
 
-(function loadStyles() {
+function loadStyles() {
   const paths = [`${miloLibs}/styles/styles.css`];
   if (STYLES) { paths.push(STYLES); }
   paths.forEach((path) => {
@@ -67,9 +67,12 @@ const miloLibs = setLibs(LIBS);
     link.setAttribute('href', path);
     document.head.appendChild(link);
   });
-}());
+}
 
-(async function loadPage() {
+export default async function loadPage() {
+  loadLCPImage();
+  loadStyles();
+
   // TODO: Franklin "markup" doesn't do colspan in blocks correctly
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
@@ -80,4 +83,14 @@ const miloLibs = setLibs(LIBS);
   imsCheck(createTag);
 
   await loadArea();
+};
+loadPage();
+
+/*
+ * Side effects to only run once
+ */
+
+(async function daPreview() {
+  const { searchParams } = new URL(window.location.href);
+  if (searchParams.get('dapreview') === 'on') import('./dapreview.js');
 }());

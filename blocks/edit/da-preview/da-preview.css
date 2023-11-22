@@ -1,17 +1,17 @@
 iframe {
   display: block;
-  width: 880px;
-  margin: 40px auto;
+  width: 375px;
+  margin: 0 auto;
   border: none;
-  min-height: 3000px;
   box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
+  overflow: hidden;
 }
 
 .da-preview-menubar {
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  left: 12px;
+  right: 12px;
   padding: 6px 6px 0px;
   border-radius: 4px;
   box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
@@ -30,6 +30,10 @@ iframe {
   border-radius: 2px;
   margin-bottom: 6px;
   background-color: rgb(239, 239, 239);
+}
+
+.da-preview-menuitem {
+  background: url("../img/Smock_Close_18_N.svg") center center / 20px no-repeat #EFEFEF;
 }
 
 .set-mobile {
