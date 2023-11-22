@@ -10,6 +10,7 @@
   }
 
   function initPort(e) {
+    console.log(e.data);
     port2 = e.ports[0];
     port2.onmessage = onMessage;
   }
