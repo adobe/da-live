@@ -98,6 +98,9 @@ export default function prose2aem(editor) {
   const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
   trailingBreaks.forEach((el) => { el.remove(); });
 
+  const paras = editor.querySelectorAll(':scope > p');
+  paras.forEach((p) => { if (p.innerHTML.trim() === '') p.remove(); });
+
   convertBlocks(editor);
   editor.querySelector('.metadata')?.remove();
 
