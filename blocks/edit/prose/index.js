@@ -24,11 +24,9 @@ function getSchema() {
   return new Schema({ nodes, marks });
 }
 
+let hasChanged = 0;
 function dispatchTransaction(transaction) {
-  const before = transaction.before.content.size;
-  const after = transaction.doc.content.size;
-
-  console.log(`size before: ${before}, size after: ${after}`);
+  if (transaction.docChanged) hasChanged += 1;
   const newState = view.state.apply(transaction);
   view.updateState(newState)
 }
@@ -36,13 +34,15 @@ function dispatchTransaction(transaction) {
 function pollForUpdates() {
   const daContent = document.querySelector('da-content');
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
-
   if (!daPreview) return;
-  let count = 1;
-  const updatePreview = setInterval(async () => {
-    const clone = window.view.root.querySelector('.ProseMirror').cloneNode(true);
-    const body = prose2aem(clone);
-    daPreview.body = body;
+  setInterval(() => {
+    if (hasChanged > 0) {
+      hasChanged = 0;
+    } else {
+      const clone = window.view.root.querySelector('.ProseMirror').cloneNode(true);
+      const body = prose2aem(clone);
+      daPreview.body = body;
+    }
   }, 3000);
 }
 
