@@ -43,7 +43,7 @@ function pollForUpdates() {
       const body = prose2aem(clone);
       daPreview.body = body;
     }
-  }, 3000);
+  }, 2000);
 }
 
 export default function initProse(editor, content) {
