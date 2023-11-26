@@ -17,7 +17,7 @@ function CreateAction() {
   const { show, name, type } = create.value;
 
   return html`
-    <div class="da-actions-create ${create.value.show}">
+    <div class="da-actions-create ${show}">
       <button class="da-actions-new-button" onClick=${showCreateMenu}>New</button>
       <ul class="da-actions-menu">
         <li class=da-actions-menu-item><button data-type=folder onClick=${handleNewType}>Folder</button></li>
