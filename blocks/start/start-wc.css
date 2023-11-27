@@ -1,0 +1,183 @@
+:host {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  position: relative;
+  color: #FFF;
+  background: #000;
+}
+
+button,
+input {
+  font-family: var(--body-font-family);
+}
+
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(0,0,0,0.647671568627451) 0%, rgba(0,0,0,0.524422268907563) 100%);
+}
+
+.background {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  position: absolute;
+}
+
+.foreground {
+  position: relative;
+}
+
+ul.step-count {
+  list-style: none;
+  margin: 0 0 96px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: 200px;
+}
+
+ul.step-count li {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #FF00A0;
+  border-radius: 48px;
+  font-size: 32px;
+  font-weight: 700;
+  transition: all 0.5s ease;
+}
+
+.panels {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr;
+  grid-template-areas: 'panel';
+}
+
+form.actions {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  margin: 0 0 96px;
+}
+
+div.git-input label {
+  display: block;
+  font-size : 18px;
+  margin-bottom: 4px;
+}
+
+div.git-input input {
+  display: block;
+  height: 60px;
+  background: rgb(29, 29, 29);
+  border-radius: 5px 0 0 5px;
+  border: 1px solid rgb(112, 112, 112);
+  border-right: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 18px;
+  min-width: 350px;
+  box-sizing: border-box;
+  color: #FFF;
+}
+
+.go-button {
+  border: none;
+  height: 60px;
+  background: #0059C2;
+  color: #FFF;
+  border: 1px solid #54A3F6;
+  border-radius: 0 5px 5px 0;
+  padding: 0 18px;
+  box-sizing: border-box;
+}
+
+.go-button:hover {
+  background: #004DA3;
+}
+
+.go-button:disabled {
+  background: #434d58;
+}
+
+div.git-input input::placeholder {
+  font-style: italic;
+}
+
+div.text-container {
+  display: flex;
+  justify-content: center;
+}
+
+div.text-container p {
+  margin: 0;
+  text-align: center;
+}
+
+a {
+  color: #1379F3;
+}
+
+.pre-code-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  margin-bottom: 96px;
+}
+
+pre {
+  margin: 0;
+  display: flex;
+}
+
+code {
+  display: block;
+  background: rgb(29, 29, 29);
+  border-radius: 5px 0 0 5px;
+  border: 1px solid rgb(112, 112, 112);
+  border-right: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 18px;
+  min-width: 350px;
+  box-sizing: border-box;
+  color: #FFF;
+  min-height: 112px;
+}
+
+.pre-code-wrapper button {
+  min-height: 112px;
+}
+
+/* Step overrides */
+
+.step-1-active .step-2,
+.step-1-active .step-3,
+.step-2-active .step-3 {
+  opacity: 0.75;
+  background-color: rgb(62 0 39);
+}
+
+.step-1-panel,
+.step-2-panel,
+.step-3-panel {
+  grid-area: panel;
+  opacity: 1;
+  transition: all 1s ease;
+}
+
+.step-1-active .step-2-panel,
+.step-1-active .step-3-panel,
+.step-2-active .step-1-panel,
+.step-2-active .step-3-panel,
+.step-3-active .step-1-panel,
+.step-3-active .step-2-panel {
+  opacity: 0;
+  z-index: -1;
+}
