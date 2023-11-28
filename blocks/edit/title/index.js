@@ -60,7 +60,10 @@ function saveToDas(pathname) {
   editor.removeAttribute('translate');
 
   const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
-  emptyImgs.forEach((img) => { img.remove(); });
+  emptyImgs.forEach((el) => { el.remove(); });
+
+  const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
+  trailingBreaks.forEach((el) => { el.remove(); });
 
   const tables = editor.querySelectorAll('.tableWrapper > table');
   convertBlocks(tables);

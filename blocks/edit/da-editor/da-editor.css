@@ -400,7 +400,7 @@ img.ProseMirror-separator {
 /* Palette */
 .da-palettes {
   position: fixed;
-  right: 6px;
+  left: 80px;
   top: 50%;
   transform: translateY(-50%);
   grid-area: palettes;

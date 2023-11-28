@@ -7,6 +7,7 @@ import { history } from 'prosemirror-history';
 import { addListNodes } from "prosemirror-schema-list";
 import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from "prosemirror-example-setup";
+import prose2aem from '../../shared/prose2aem.js';
 
 import {
   tableEditing,
@@ -23,15 +24,31 @@ function getSchema() {
   return new Schema({ nodes, marks });
 }
 
+let hasChanged = 0;
 function dispatchTransaction(transaction) {
-  const before = transaction.before.content.size;
-  const after = transaction.doc.content.size;
-  console.log(`size before: ${before}, size after: ${after}`);
+  if (transaction.docChanged) hasChanged += 1;
   const newState = view.state.apply(transaction);
   view.updateState(newState)
 }
 
+function pollForUpdates() {
+  const daContent = document.querySelector('da-content');
+  const daPreview = daContent.shadowRoot.querySelector('da-preview');
+  if (!daPreview) return;
+  setInterval(() => {
+    if (hasChanged > 0) {
+      hasChanged = 0;
+    } else {
+      const clone = window.view.root.querySelector('.ProseMirror').cloneNode(true);
+      const body = prose2aem(clone);
+      daPreview.body = body;
+    }
+  }, 1000);
+}
+
 export default function initProse(editor, content) {
+  console.log(editor.parentElement);
+
   const schema = getSchema();
 
   const doc = DOMParser.fromSchema(schema).parse(content);
@@ -59,4 +76,6 @@ export default function initProse(editor, content) {
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
+
+  pollForUpdates();
 }
