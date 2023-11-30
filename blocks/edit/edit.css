@@ -1,7 +1,3 @@
-@import url('./styles/toolbar.css');
-@import url('./styles/editor.css');
-@import url('./styles/palette.css');
-
 body {
   background: #FFF !important; /* Hack until background is fixed */
 }

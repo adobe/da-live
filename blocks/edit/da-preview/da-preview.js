@@ -1,4 +1,4 @@
-import { LitElement, html } from '../../../deps/lit/lit-all.min.js';
+import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 
 import getSheet from '../../shared/sheet.js';
 const sheet = await getSheet('/blocks/edit/da-preview/da-preview.css');
@@ -9,26 +9,6 @@ const SIZES = {
   laptop: '1280px',
   desktop: '1440px',
 }
-
-const MOCK_BODY = `
-<body>
-  <main>
-      <div>
-          <p>
-              <picture>
-                  <source type="image/webp" srcset="https://main--milo--adobecom.hlx.page/media_19c81388059a2e8011db74d56f43389417cd1c887.png" media="(min-width: 600px)">
-                  <source type="image/webp" srcset="https://main--milo--adobecom.hlx.page/media_19c81388059a2e8011db74d56f43389417cd1c887.png">
-                  <source type="image/png" srcset="https://main--milo--adobecom.hlx.page/media_19c81388059a2e8011db74d56f43389417cd1c887.png" media="(min-width: 600px)">
-                  <img loading="lazy" alt="" src="https://main--milo--adobecom.hlx.page/media_19c81388059a2e8011db74d56f43389417cd1c887.png" width="1369" height="685">
-              </picture>
-          </p>
-          <p>
-              This content was dynamically synced between two web components into an iframe using MessageChannel and PostMessage APIs.
-          </p>
-      </div>
-  </main>
-</body>
-`;
 
 export default class DaPreview extends LitElement {
   static properties = {

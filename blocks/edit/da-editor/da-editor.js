@@ -1,4 +1,4 @@
-import { LitElement, html } from '../../../deps/lit/lit-all.min.js';
+import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import { origin } from '../../browse/state/index.js';
 import getContent from '../content/content.js';
 import initProse from '../prose/index.js';

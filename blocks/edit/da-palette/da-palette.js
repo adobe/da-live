@@ -1,4 +1,4 @@
-import { LitElement, html } from '../../../deps/lit/lit-all.min.js';
+import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 
 import getSheet from '../../shared/sheet.js';
 const sheet = await getSheet('/blocks/edit/da-palette/da-palette.css');

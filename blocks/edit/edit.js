@@ -1,39 +1,32 @@
 import getTitle from './title/view.js';
+import { getHashParts } from './shared/utils.js';
 import './da-content/da-content.js';
 
-const { getLibs } = await import('../../../scripts/utils.js');
-const { createTag } = await import(`${getLibs()}/utils/utils.js`);
-
 function getPath() {
-  const { hash } = window.location;
-  return hash.replace('#', '');
+  const { repo, owner, path } = getHashParts();
+  return `https://main--${repo}--${owner}.hlx.page/${path}`;
 }
 
 export default async function init(el) {
-  const path = getPath();
+  let path = getPath();
 
+  // Title
   const title = await getTitle();
-  const daContent = createTag('da-content', { path });
-  const meta = createTag('div', { class: 'da-meta' });
+
+  // Edit & Preview
+  const daContent = document.createElement('da-content');
+  daContent.path = path;
+
+  // Inheritted Meta
+  const meta = document.createElement('div');
+  meta.className = 'da-meta';
 
   el.append(title, daContent, meta);
 
-  window.addEventListener('hashchange', () => {
-    const newPath = getPath();
-    daContent.setAttribute('path', newPath);
+  window.addEventListener('hashchange', async () => {
+    const newTitle = await getTitle();
+    el.replaceChild(newTitle, title);
+
+    daContent.path = getPath();
   });
-
-
-  // const editor = createTag('div', { class: 'da-editor' });
-  // const view = createTag('div', { class: 'da-view' });
-
-  // const editView = createTag('div', { class: 'da-edit-view' }, editor);
-
-  // const con = await getContent(hash.replace('#', ''));
-  // const content = createTag('div', { id: 'content'}, con);
-
-  // 
-  // el.append(title, editView, meta);
-
-  // initProse(editor, content);
 }

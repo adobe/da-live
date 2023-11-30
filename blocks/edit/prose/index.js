@@ -24,9 +24,13 @@ function getSchema() {
   return new Schema({ nodes, marks });
 }
 
+let sendUpdates = false;
 let hasChanged = 0;
 function dispatchTransaction(transaction) {
-  if (transaction.docChanged) hasChanged += 1;
+  if (transaction.docChanged) {
+    hasChanged += 1;
+    sendUpdates = true;
+  }
   const newState = view.state.apply(transaction);
   view.updateState(newState)
 }
@@ -34,21 +38,23 @@ function dispatchTransaction(transaction) {
 function pollForUpdates() {
   const daContent = document.querySelector('da-content');
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
+  const proseEl = window.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
   setInterval(() => {
-    if (hasChanged > 0) {
-      hasChanged = 0;
-    } else {
-      const clone = window.view.root.querySelector('.ProseMirror').cloneNode(true);
+    if (sendUpdates) {
+      if (hasChanged > 0) {
+        hasChanged = 0;
+        return;
+      }
+      const clone = proseEl.cloneNode(true);
       const body = prose2aem(clone);
       daPreview.body = body;
+      sendUpdates = false;
     }
   }, 1000);
 }
 
 export default function initProse(editor, content) {
-  console.log(editor.parentElement);
-
   const schema = getSchema();
 
   const doc = DOMParser.fromSchema(schema).parse(content);

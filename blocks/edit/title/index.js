@@ -1,8 +1,11 @@
 import { origin, hlxOrigin } from '../../browse/state/index.js';
 
 async function saveToFranklin(path, action) {
-  const opts = { method: 'POST' };
-  const resp = await fetch(`${hlxOrigin}/${action}/auniverseaway/dac/main${path}`, opts);
+  const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
+  const aemPath = parts.join('/');
+
+  const url = `${hlxOrigin}/${action}/${owner}/${repo}/main/${aemPath}`
+  const resp = await fetch(url, { method: 'POST' });
   if (!resp.ok) console.log('error');
   return resp.json();
 }
@@ -52,7 +55,7 @@ function convertBlocks(tables) {
 }
 
 function saveToDas(pathname) {
-  const fullPath = `${origin}${pathname}.html`;
+  const fullPath = `${origin}/source${pathname}.html`;
 
   const editor = window.view.root.querySelector('.ProseMirror').cloneNode(true);
   editor.removeAttribute('class');
@@ -71,10 +74,10 @@ function saveToDas(pathname) {
   const html = `<body><main>${editor.outerHTML}</main></body>`;
   const blob = new Blob([html], { type: 'text/html' });
 
-  const headerOpts = { 'Content-Type': 'text/html' };
-  const headers = new Headers(headerOpts);
+  const formData = new FormData();
+  formData.append('data', blob);
 
-  const opts = { method: 'PUT', headers, body: blob};
+  const opts = { method: 'PUT', body: formData };
   return fetch(fullPath, opts);
 }
 
@@ -82,7 +85,7 @@ export async function handleAction(action) {
   const { hash } = window.location;
   const pathname = hash.replace('#', '');
   const dasSave = await saveToDas(pathname);
-  if (dasSave.status !== 200) return;
+  if (!dasSave.ok) return;
   let json = await saveToFranklin(pathname, 'preview');
   if (action === 'publish') json = await saveToFranklin(pathname, 'live');
   const { url } = action === 'publish' ? json.live : json.preview;

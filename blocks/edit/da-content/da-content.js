@@ -8,7 +8,7 @@ import '../da-preview/da-preview.js';
 
 export default class DaContent extends LitElement {
   static properties = {
-    path: { type: String },
+    path: { state: true },
   };
 
   constructor() {
