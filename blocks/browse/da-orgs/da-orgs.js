@@ -45,7 +45,7 @@ export default class DaOrgs extends LitElement {
   }
 
   onOrgClick(org) {
-    window.location.hash = `/${org.name}`;
+    window.location.hash = `/${org.Name}`;
   }
 
   render() {
