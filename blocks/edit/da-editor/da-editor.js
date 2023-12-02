@@ -1,5 +1,4 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { origin } from '../../browse/state/index.js';
 import getContent from '../content/content.js';
 import initProse from '../prose/index.js';
 
@@ -19,7 +18,7 @@ export default class DaEditor extends LitElement {
 
   async getContent(path) {
     this._contentLoaded = false;
-    this._content = await getContent(`${origin}${path}`);
+    this._content = await getContent(`${path}`);
     this._contentLoaded = true;
   }
 

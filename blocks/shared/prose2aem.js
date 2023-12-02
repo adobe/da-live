@@ -44,12 +44,10 @@ function convertBlocks(editor) {
   });
 }
 
-// <source type="image/webp" srcset="./media_1ca933d32ca97e654f88cda8ad61a232bb4087ace.png?width=750&#x26;format=webply&#x26;optimize=medium">
-// <source type="image/png" srcset="./media_1ca933d32ca97e654f88cda8ad61a232bb4087ace.png?width=2000&#x26;format=png&#x26;optimize=medium" media="(min-width: 600px)">
-
 function makePictures(editor) {
   const imgs = editor.querySelectorAll('img');
   imgs.forEach((img) => {
+    console.log(img.src);
     img.removeAttribute('contenteditable');
     img.removeAttribute('draggable');
 
@@ -66,7 +64,31 @@ function makePictures(editor) {
     srcTablet.media = '(min-width: 600px)';
 
     pic.append(srcMobile, srcTablet, clone);
-    img.parentElement.replaceChild(pic, img);
+
+    // Determine what to replace
+    const imgParent = img.parentElement;
+    const imgGrandparent = imgParent.parentElement;
+    console.log(imgParent);
+    console.log(imgGrandparent);
+    if(imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1) {
+      imgGrandparent.replaceChild(pic, imgParent);
+    } else {
+      imgParent.replaceChild(pic, img);
+    }
+  });
+}
+
+function convertParagraphs(editor) {
+  const paras = editor.querySelectorAll(':scope > p');
+  paras.forEach((p) => {
+    // Remove empty p tags
+    if (p.innerHTML.trim() === '') { p.remove(); }
+    // Convert dash p tags to rules
+    if (p.textContent.trim() === '---') {
+      console.log(p.innerHTML.trim());
+      const hr = document.createElement('hr');
+      p.parentElement.replaceChild(hr, p);
+    }
   });
 }
 
@@ -87,6 +109,10 @@ function makeSections(editor) {
   editor.append(...sections);
 }
 
+function removeMetadata(editor) {
+  editor.querySelector('.metadata')?.remove();
+}
+
 export default function prose2aem(editor) {
   editor.removeAttribute('class');
   editor.removeAttribute('contenteditable');
@@ -98,11 +124,11 @@ export default function prose2aem(editor) {
   const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
   trailingBreaks.forEach((el) => { el.remove(); });
 
-  const paras = editor.querySelectorAll(':scope > p');
-  paras.forEach((p) => { if (p.innerHTML.trim() === '') p.remove(); });
+  convertParagraphs(editor);
 
   convertBlocks(editor);
-  editor.querySelector('.metadata')?.remove();
+  
+  removeMetadata(editor)
 
   makePictures(editor);
 
@@ -115,9 +141,6 @@ export default function prose2aem(editor) {
       <footer></footer>
     </body>
   `;
-
-  // const doc = new DOMParser().parseFromString(html, 'text/html');
-  // console.log(doc.body);
 
   return html;
 }

@@ -1,13 +1,5 @@
-.da-prose-mirror {
-  /* position: relative;
-  
-  display: grid;
-  align-items: center;
-  grid-template-columns: 72px 1fr 24px;
-  grid-template-areas: 'toolbar editor palettes'; */
-}
-
 .ProseMirror {
+  min-height: 600px;
   background: #FFF;
   position: relative;
   grid-area: editor;
@@ -416,9 +408,5 @@ img.ProseMirror-separator {
 
   input.da-pallette-input {
     width: 400px;
-  }
-
-  .da-prose-mirror {
-    grid-template-columns: 1fr 900px 1fr;
   }
 }

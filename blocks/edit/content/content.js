@@ -1,8 +1,11 @@
 import defaultContent from './default-content.js';
 import { getTable } from '../utils.js';
 
+function para() {
+  return document.createElement('p');
+}
+
 export default async function getContent(path) {
-  console.log(path);
   if (!path) return defaultContent();
   try {
     const resp = await fetch(`${path}`);
@@ -21,13 +24,18 @@ export default async function getContent(path) {
     blocks.forEach((block) => {
       const table = getTable(block);
       block.parentElement.replaceChild(table, block);
+      table.insertAdjacentElement('beforebegin', para());
+      table.insertAdjacentElement('afterend', para());
     });
 
     // Fix sections
     const sections = doc.body.querySelectorAll('main > div');
     return [...sections].map((section, idx) => {
       const fragment = new DocumentFragment();
-      if (idx > 0) fragment.append(document.createElement('hr'));
+      if (idx > 0) {
+        const hr = document.createElement('hr');
+        fragment.append(para(), hr, para());
+      }
       fragment.append(...section.querySelectorAll(':scope > *'));
       return fragment;
     });

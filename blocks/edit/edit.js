@@ -1,23 +1,25 @@
 import getTitle from './title/view.js';
-import { getHashParts } from './shared/utils.js';
+import { getPathDetails } from './shared/utils.js';
 import './da-content/da-content.js';
 
-function getPath() {
-  const { repo, owner, path } = getHashParts();
-  return `https://main--${repo}--${owner}.hlx.page/${path}`;
-}
-
 export default async function init(el) {
-  let path = getPath();
+  const details = getPathDetails();
+  if (!details) {
+    el.classList.add('no-url');
+    el.innerHTML = '<h1>Please edit a page.</h1>';
+    return;
+  }
 
-  // Title
+  document.title = `Edit ${details.name} - Dark Alley`;
+
+  // Title Pane
   const title = await getTitle();
 
-  // Edit & Preview
+  // Content Pane
   const daContent = document.createElement('da-content');
-  daContent.path = path;
+  daContent.details = details;
 
-  // Inheritted Meta
+  // Inheritted Meta Pane
   const meta = document.createElement('div');
   meta.className = 'da-meta';
 
@@ -26,7 +28,6 @@ export default async function init(el) {
   window.addEventListener('hashchange', async () => {
     const newTitle = await getTitle();
     el.replaceChild(newTitle, title);
-
-    daContent.path = getPath();
+    daContent.details = getPathDetails();
   });
 }

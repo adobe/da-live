@@ -8,7 +8,16 @@ import '../da-preview/da-preview.js';
 
 export default class DaContent extends LitElement {
   static properties = {
-    path: { state: true },
+    details: {
+      attribute: false,
+      // hasChanged(newVal, oldVal) {
+      //   console.log(newVal);
+      //   console.log(oldVal);
+      //   // const hasChanged = newVal % 2 == 1;
+      //   // console.log(`${newVal}, ${oldVal}, ${hasChanged}`);
+      //   // return hasChanged;
+      // },
+    },
   };
 
   constructor() {
@@ -28,11 +37,13 @@ export default class DaContent extends LitElement {
 
   render() {
     return html`
-      <da-editor path=${this.path}></da-editor>
-      <da-preview path=${this.path}></da-preview>
-      <div class="da-preview-menubar">
-        <span class="da-preview-menuitem show-preview" @click=${this.showPreview}></span>
+      <div class="editor-wrapper">
+        <da-editor path="${this.details.sourceUrl}"></da-editor>
+        <div class="da-preview-menubar">
+          <span class="da-preview-menuitem show-preview" @click=${this.showPreview}></span>
+        </div>
       </div>
+      <da-preview path=${this.details.previewUrl}></da-preview>
     `;
   }
 }

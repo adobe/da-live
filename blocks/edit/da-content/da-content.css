@@ -1,18 +1,23 @@
 :host {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(80px, 1fr) auto 0 auto minmax(80px, 1fr);
-  grid-template-areas: "left editor gap preview right";
+  display: flex;
   justify-content: center;
+  gap: 20px;
+  padding: 0 0 0 40px;
 }
 
 :host(.show-preview) {
-  grid-template-columns: minmax(80px, 1fr) auto 20px auto minmax(80px, 1fr);
+  
+}
+
+.editor-wrapper {
+  position: relative;
+  flex: 0 1 auto;
+  width: 900px;
 }
 
 da-editor {
-  grid-area: editor;
-  max-width: 900px;
+  position: relative;
   z-index: 1;
 }
 
@@ -22,7 +27,6 @@ da-preview {
   width: 0;
   height: 0;
   overflow: hidden;
-  grid-area: preview;
   justify-self: right;
 }
 
@@ -35,6 +39,7 @@ da-preview.show-preview {
 }
 
 .da-preview-menubar {
+  display: none;
   position: absolute;
   top: 20px;
   padding: 6px 6px 0px;
@@ -42,8 +47,7 @@ da-preview.show-preview {
   box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
   background: rgb(255, 255, 255);
   box-sizing: border-box;
-  grid-area: preview;
-  left: -6px;
+  right: -56px;
 }
 
 :host(.show-preview) .da-preview-menubar {
@@ -64,4 +68,28 @@ da-preview.show-preview {
 .da-preview-menuitem.show-preview {
   background: url("/blocks/edit/img/Smock_Preview_18_N.svg") center center / 20px no-repeat rgb(239, 239, 239);
   background-blend-mode: hard-light;
+}
+
+@media (min-width: 600px) {
+  :host {
+    padding: 0 80px;
+  }
+
+  .editor-wrapper {
+    min-width: 375px;
+  }
+
+  .da-preview-menubar {
+    display: unset;
+  }
+}
+
+@media (min-width: 1200px) {
+  da-editor {
+    
+  }
+
+  :host(.show-preview) da-editor {
+
+  }
 }

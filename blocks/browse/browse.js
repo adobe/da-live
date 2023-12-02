@@ -1,7 +1,26 @@
-import { getLibs } from '../../scripts/utils.js';
-import Browser from './browser/view.js';
+import { getPathDetails } from '../edit/shared/utils.js';
+
+async function loadComponent(el, cmpName, details) {
+  await import(`./${cmpName}/${cmpName}.js`);
+  const cmp = document.createElement(`${cmpName}`);
+  if (details) cmp.details = details;
+  el.append(cmp);
+}
+
+async function setupExperience(el) {
+  el.innerHTML = '';
+  const details = getPathDetails();
+  if (!details) {
+    loadComponent(el, 'da-orgs');
+  } else {
+    loadComponent(el, 'da-browse', details);
+  }
+}
 
 export default async function init(el) {
-  const { html, render } = await import(`${getLibs()}/deps/htm-preact.js`);
-  render(html`<${Browser} />`, el);
+  await setupExperience(el);
+
+  window.addEventListener('hashchange', async () => {
+    await setupExperience(el);
+  });
 }

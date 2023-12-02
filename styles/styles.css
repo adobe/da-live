@@ -1,5 +1,5 @@
-body {
-    background-color: rgb(245 245 245);
+:root {
+  --aec-nav-height: 49px;
 }
 
 button, input {
@@ -7,13 +7,13 @@ button, input {
 }
 
 header.aec-shell {
-    height: 49px;
-    min-height: 49px;
+    height: var(--aec-nav-height);
+    min-height: var(--aec-nav-height);
     border-bottom: 1px solid #d3d3d3;
 }
 
 @media (min-width: 900px) {
     header.aec-shell + main {
-        margin-top: 49px;
+        margin-top: var(--aec-nav-height);
     }
 }

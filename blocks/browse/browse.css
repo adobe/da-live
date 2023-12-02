@@ -1,8 +1,9 @@
 @import url('actions.css');
 
 .browse {
-    max-width: var(--grid-container-width);
-    margin: 80px auto;
+    /* max-width: var(--grid-container-width);
+    margin: 80px auto; */
+    background: rgb(245 245 245);
 }
 
 .da-breadcrumb-list {

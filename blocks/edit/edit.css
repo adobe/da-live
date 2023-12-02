@@ -1,5 +1,8 @@
-body {
-  background: #FFF !important; /* Hack until background is fixed */
+.no-url {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - var(--aec-nav-height));
 }
 
 .da-header-wrapper {
