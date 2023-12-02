@@ -44,24 +44,41 @@ export default class DaOrgs extends LitElement {
     this._orgs = await resp.json();
   }
 
-  onOrgClick(org) {
-    window.location.hash = `/${org.Name}`;
+  formatDate(string) {
+    const date = new Date(string);
+    const localeDate = date.toLocaleString();
+    return localeDate.split(', ');
   }
 
   render() {
+    if (!this._orgs) return;
+
     return html`
       <h1>Organizations</h1>
       <ul class="da-orgs-list">
         ${map(this._orgs, (org) => html`
-          <li class="da-org" @click=${(e) => { this.onOrgClick(org); }}>
-            <div class="image-container">
-              <img src="${getRandomImg()}" />
-            </div>
-            <div class="details-area">
-              <h3 class="details-title">${org.Name}</h3>
-            </div>
+          <li>
+            <a class="da-org" href="#/${org.name}">
+              <div class="image-container">
+                <img src="${getRandomImg()}" />
+              </div>
+              <div class="details-area">
+                <p>Name</p>
+                <h3 class="details-title">${org.name}</h3>
+                <p>Created</p>
+                <p class="details-title">${this.formatDate(org.created)[0]}</p>
+              </div>
+            </a>
           </li>`
         )}
+        <li>
+          <a class="da-org new" href="/start">
+            <div class="new-icon">
+              <img src="/blocks/browse/da-orgs/img/Smock_AddCircle_18_N.svg" alt="Add new organization"/>
+            </div>
+            <h3 class="new-title">Add new</h3>
+          </a>
+        </li>
       </ul>
     `;
   }

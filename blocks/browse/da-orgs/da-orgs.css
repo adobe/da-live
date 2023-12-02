@@ -15,18 +15,42 @@
 }
 
 .da-org {
+  display: block;
   position: relative;
-  min-height: 200px;
+  min-height: 320px;
   border: 4px solid #B8B8B8;
   background: rgba(255, 255, 255, 0.5);
   border-radius: 6px;
   transition : border 500ms ease-out;
   background-color: #FFF;
+  text-decoration: none;
+  color: #2e2e2e;
 }
 
 .da-org:hover {
   border: 4px solid rgb(20, 122, 243);
   cursor: pointer;
+}
+
+.da-org.new {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-content: center;
+}
+
+.new-icon {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.new-icon img {
+  width: 48px;
+}
+
+.new-title {
+  margin: 12px 0 0 0;
 }
 
 .image-container {
@@ -41,8 +65,17 @@
 
 .details-area {
   padding: 20px;
+  line-height: 1;
+}
+
+.details-area p {
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .details-title {
-  margin: 0;
+  margin: 0 0 24px;
+  font-weight: 400;
 }
