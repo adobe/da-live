@@ -1,0 +1,74 @@
+:host {
+  display: block;
+  max-width: var(--grid-container-width);
+  margin: 0 auto;
+  padding: 80px 0;
+}
+
+h1 {
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  margin: 0px 0px 24px;
+}
+
+/* Item List */
+
+.da-item-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.da-item-list-item {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    gap: 24px;
+    border-radius: 6px;
+    border: 3px solid transparent;
+    cursor: pointer;
+}
+
+.da-item-list-item:hover {
+    border: 3px solid #066ce7;
+}
+
+.da-item-list-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  outline: 2px solid #bababa;
+  appearance: none;
+  border-radius: 2px;
+}
+
+.da-item-list-item input[type="checkbox"]:checked {
+  background-color: #066ce7;
+}
+
+.da-item-list-item-title {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 12px;
+  align-items: center;
+  text-decoration: none;
+  color: rgb(46, 46, 46);
+  padding: 24px 0px;
+}
+
+.da-item-list-item-type {
+  display: block;
+  width: 32px;
+  height: 32px;
+}
+
+.da-item-list-item:nth-child(odd) {
+    background-color: #FBFBFB;
+}
+
+.da-item-list-item-type-file {
+    background: url('/blocks/browse/img/Smock_Document_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-type-folder {
+    background: url('/blocks/browse/img/Smock_Folder_18_N.svg') center / cover no-repeat;
+}
