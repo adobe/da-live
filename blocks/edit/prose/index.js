@@ -8,6 +8,7 @@ import { addListNodes } from "prosemirror-schema-list";
 import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from "prosemirror-example-setup";
 import prose2aem from '../../shared/prose2aem.js';
+import { Fragment } from 'prosemirror-model';
 
 import {
   tableEditing,
@@ -79,6 +80,16 @@ export default function initProse(editor, content) {
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
   window.view = new EditorView(editor, { state, dispatchTransaction });
+
+  // This is a demo showing how we can insert nodes without any extra gaps
+  // setTimeout(() => {
+  //   console.log(schema.nodes);
+  //   const { horizontal_rule, heading } = schema.nodes;
+  //   const hr = horizontal_rule.create();
+  //   const para = heading.create(null, schema.text('columns'));
+  //   const fragment = Fragment.fromArray([hr, para]);
+  //   window.view.dispatch(window.view.state.tr.replaceSelectionWith(fragment.content[0]));
+  // }, 4000);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');

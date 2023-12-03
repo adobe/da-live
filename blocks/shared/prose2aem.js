@@ -47,7 +47,6 @@ function convertBlocks(editor) {
 function makePictures(editor) {
   const imgs = editor.querySelectorAll('img');
   imgs.forEach((img) => {
-    console.log(img.src);
     img.removeAttribute('contenteditable');
     img.removeAttribute('draggable');
 
@@ -68,8 +67,6 @@ function makePictures(editor) {
     // Determine what to replace
     const imgParent = img.parentElement;
     const imgGrandparent = imgParent.parentElement;
-    console.log(imgParent);
-    console.log(imgGrandparent);
     if(imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1) {
       imgGrandparent.replaceChild(pic, imgParent);
     } else {

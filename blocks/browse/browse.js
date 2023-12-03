@@ -20,7 +20,6 @@ async function setupExperience(el, e) {
       return;
     }
   }
-  console.log('starting over');
   if (!details) {
     loadComponent(el, 'da-orgs');
   } else {

@@ -1,5 +1,6 @@
 import { Plugin } from "prosemirror-state";
 import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
+import { DOMParser } from "prosemirror-model";
 import insertTable from "./table.js";
 import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from 'prosemirror-menu';
 import { undo, redo } from 'prosemirror-history';
@@ -211,7 +212,12 @@ function getMenu(view) {
         title: "Insert section break",
         label: "HR",
         enable(state) { return canInsert(state, nodes.horizontal_rule); },
-        run(state, dispatch) { dispatch(state.tr.replaceSelectionWith(nodes.horizontal_rule.create())); },
+        run(state, dispatch) {
+          const div = document.createElement('div');
+          div.append(document.createElement('hr'), document.createElement('p'));
+          const newNodes = DOMParser.fromSchema(state.schema).parse(div);
+          dispatch(state.tr.replaceSelectionWith(newNodes));
+        },
         class: 'edit-hr',
       }),
     ],
