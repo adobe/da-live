@@ -63,9 +63,9 @@ export default class DaOrgs extends LitElement {
                 <img src="${getRandomImg()}" />
               </div>
               <div class="details-area">
-                <p>Name</p>
-                <h3 class="details-title">${org.name}</h3>
-                <p>Created</p>
+                <p class="label">Name</p>
+                <p class="details-title">${org.name}</p>
+                <p class="label">Created</p>
                 <p class="details-title">${this.formatDate(org.created)[0]}</p>
               </div>
             </a>
