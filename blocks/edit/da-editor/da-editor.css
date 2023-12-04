@@ -396,9 +396,9 @@ img.ProseMirror-separator {
   top: 50%;
   transform: translateY(-50%);
   grid-area: palettes;
+  display: grid;
+  gap: 12px;
 }
-
-/* Palette */
 
 
 @media (min-width: 900px) {

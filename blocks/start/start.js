@@ -101,7 +101,7 @@ class DaStart extends LitElement {
   getStepOnePanel() {
     return html`
       <div class="step-1-panel">
-        <form class="actions" action="${this.origin}/source/${this.owner}/${this.repo}/really/long/name/of/stuff.jpg" @submit=${this.submitForm}>
+        <form class="actions" action="${this.origin}/source/${this.owner}/${this.repo}" @submit=${this.submitForm}>
           <div class="git-input">
             <label for="fname">AEM codebase</label>
             <input type="text" name="repo" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />
@@ -109,8 +109,9 @@ class DaStart extends LitElement {
           <button class="go-button" ?disabled=${!this.goEnabled}>Go</button>
         </form>
         <div class="text-container">
-          <p>Paste your AEM repo URL above.<br/>
-          Don't have one, yet? Fork AEM Boilerplate <a href="https://github.com/adobe/aem-boilerplate">from here</a>.</p>
+          <p>Paste your AEM repo URL above. Don't have one, yet?<br/>
+          Fork <a href="https://github.com/adobecom/da-aem-boilerplate">AEM Boilerplate</a> or  
+          <a href="https://github.com/adobecom/da-milo-college">Milo College</a>.</p>
         </div>
       </div>
     `;

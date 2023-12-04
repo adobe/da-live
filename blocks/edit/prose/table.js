@@ -1,4 +1,5 @@
 import { Fragment } from 'prosemirror-model';
+import { DOMParser } from "prosemirror-model";
 
 function getHeading(schema) {
   const { paragraph, table_row, table_cell } = schema.nodes;
@@ -11,17 +12,23 @@ function getContent(schema) {
   return schema.nodes.table_row.create(null, Fragment.fromArray([cell, cell]));
 }
 
+function getPara(schema) {
+  const fragment = document.createDocumentFragment();
+  fragment.append(document.createElement('p'));
+  return DOMParser.fromSchema(schema).parse(fragment);
+}
+
 export default function insertTable(state, dispatch) {
   const heading = getHeading(state.schema);
   const content = getContent(state.schema);
+  const para = getPara(state.schema);
 
   const node = state.schema.nodes.table.create(null, Fragment.fromArray([heading, content]))
 
   if (dispatch) {
-    dispatch(
-      state.tr.replaceSelectionWith(node)
-          .scrollIntoView()
-    );
+    const trx = state.tr.insert(state.selection.head, para);
+    trx.replaceSelectionWith(node).scrollIntoView();
+    dispatch(trx);
   }
   return true;
 }

@@ -6,6 +6,7 @@ import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from 'prosemirror-me
 import { undo, redo } from 'prosemirror-history';
 import { wrapInList } from 'prosemirror-schema-list';
 import openPrompt from "../da-palette/da-palette.js";
+import openLibrary from "../da-library/da-library.js";
 
 import {
   addColumnAfter,
@@ -88,6 +89,21 @@ function linkItem(menu, markType) {
       }
 
       openPrompt({ title: label, fields, callback });
+    }
+  });
+}
+
+function libraryItem(menu, markType) {
+  const label = 'Library';
+  return new MenuItem({
+    title: "Open library",
+    label,
+    class: 'insert-table',
+    run(state, dispatch, view) {
+      const callback = (attrs) => {
+        view.focus();
+      }
+      openLibrary({ callback });
     }
   });
 }
@@ -220,6 +236,7 @@ function getMenu(view) {
         },
         class: 'edit-hr',
       }),
+      // libraryItem(menu, marks.link),
     ],
     [
       new MenuItem({

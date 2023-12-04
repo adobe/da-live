@@ -1,6 +1,7 @@
 iframe {
   display: block;
   width: 375px;
+  min-height: 844px;
   margin: 0 auto;
   border: none;
   box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
