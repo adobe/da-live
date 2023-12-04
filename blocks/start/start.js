@@ -143,9 +143,8 @@ class DaStart extends LitElement {
           <button class="go-button" ?disabled=${!this.goEnabled}>Go</button>
         </form>
         <div class="text-container">
-          <p>Paste your AEM repo URL above. Don't have one, yet?<br/>
-          Fork <a href="https://github.com/adobecom/da-aem-boilerplate">AEM Boilerplate</a> or  
-          <a href="https://github.com/adobecom/da-milo-college">Milo College</a>.</p>
+          <p>Paste your AEM repo URL above.<br/>
+          Don't have one, yet? Fork <a href="https://github.com/adobecom/da-aem-boilerplate">AEM Boilerplate</a>.</p>
         </div>
       </div>
     `;
