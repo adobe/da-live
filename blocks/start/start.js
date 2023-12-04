@@ -31,7 +31,7 @@ class DaStart extends LitElement {
     this.repo = urlParams.get('repo');
     this.url = this.repo && this.owner ? `https://github.com/${this.owner}/${this.repo}` : '';
     this.goEnabled = this.repo && this.owner;
-    this._demoContent = true;
+    this._demoContent = false;
     this._goText = 'Make something wonderful';
   }
 
