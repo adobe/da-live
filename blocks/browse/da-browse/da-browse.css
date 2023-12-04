@@ -213,6 +213,16 @@ li.da-actions-menu-item {
   padding: 6px;
 }
 
+/* Empty list */
+.empty-list {
+  border: 1px solid rgb(234, 234, 234);
+  background-color: rgb(255, 255, 255);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
 
 
 @media (min-width: 900px) {

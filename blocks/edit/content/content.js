@@ -11,6 +11,7 @@ export default async function getContent(path) {
     const resp = await fetch(`${path}`);
     if (resp.status !== 200) return defaultContent();
     const html = await resp.text();
+    if (!html) return defaultContent();
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 

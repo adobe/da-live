@@ -1,8 +1,14 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { origin } from '../browse/state/index.js';
 
 import getSheet from '../shared/sheet.js';
 const sheet = await getSheet('/blocks/start/start-wc.css');
 
+const DEMO_URLS = [
+  'https://content.da.live/adobecom/da-milo-college/gnav',
+  'https://content.da.live/adobecom/da-milo-college/footer',
+  'https://content.da.live/adobecom/da-milo-college/demo',
+]
 
 class DaStart extends LitElement {
   static properties = {
@@ -13,18 +19,20 @@ class DaStart extends LitElement {
     url: { state: true },
     showOpen: { state: true },
     showDone: { state: true },
+    _demoContent: { state: true },
+    _goText: { state: true },
   };
 
   constructor() {
     super();
     const urlParams = new URLSearchParams(window.location.search);
-    this.origin = urlParams.get('local') ? 'http://localhost:8787' : 'https://admin.da.live';
-
     this.activeStep = 1;
     this.owner = urlParams.get('owner');
     this.repo = urlParams.get('repo');
     this.url = this.repo && this.owner ? `https://github.com/${this.owner}/${this.repo}` : '';
     this.goEnabled = this.repo && this.owner;
+    this._demoContent = true;
+    this._goText = 'Make something wonderful';
   }
 
   connectedCallback() {
@@ -59,8 +67,31 @@ class DaStart extends LitElement {
     this.activeStep = this.activeStep === 3 ? 1 : this.activeStep += 1;
   }
 
-  goToSite(e) {
-    window.open(`https://da.live/edit#/${this.owner}/${this.repo}/test`);
+  async goToSite(e) {
+    if (this._demoContent) {
+      e.target.disabled = true;
+      for (const url of DEMO_URLS) {
+        const name = url.split('/').pop();
+        this._goText = `Creating ${name}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return;
+        const html = await resp.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        const formData = new FormData();
+        formData.append('data', blob);
+        const opts = { method: 'PUT', body: formData };
+        const putResp = await fetch(`https://admin.da.live/source/${this.owner}/${this.repo}/${name}.html`, opts);
+        if (!putResp.ok) return;
+        const json = await putResp.json();
+        console.log(json);
+      }
+      this._goText = 'Done';
+    }
+    window.open(`/#/${this.owner}/${this.repo}`);
+  }
+
+  toggleDemo() {
+    this._demoContent = !this._demoContent;
   }
 
 
@@ -101,7 +132,7 @@ class DaStart extends LitElement {
   getStepOnePanel() {
     return html`
       <div class="step-1-panel">
-        <form class="actions" action="${this.origin}/source/${this.owner}/${this.repo}" @submit=${this.submitForm}>
+        <form class="actions" action="${origin}/source/${this.owner}/${this.repo}" @submit=${this.submitForm}>
           <div class="git-input">
             <label for="fname">AEM codebase</label>
             <input type="text" name="repo" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />
@@ -145,9 +176,9 @@ mountpoints:
       <div class="step-3-panel">
         <div class="demo-wrapper">
           <label for="demo-toggle">Demo content</label>
-          <input class="demo-toggle" id="demo-toggle" type="checkbox" />
+          <input class="demo-toggle" id="demo-toggle" type="checkbox" .checked="${this._demoContent}" @click="${this.toggleDemo}" />
         </div>
-        <button class="da-login-button con-button blue button-xl" @click=${this.goToSite}>Make something wonderful</button>
+        <button class="da-login-button con-button blue button-xl" @click=${this.goToSite}>${this._goText}</button>
       </div>
     `;
   }

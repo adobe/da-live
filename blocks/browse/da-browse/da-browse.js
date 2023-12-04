@@ -78,6 +78,7 @@ export default class DaBrowse extends LitElement {
 
     const item = { name: this._createName, path, isFile: isDoc, ext };
     this._listItems.unshift(item);
+    this.resetCreate();
     this.requestUpdate();
   }
 
@@ -139,19 +140,21 @@ export default class DaBrowse extends LitElement {
         </ul>
         ${this.renderNew()}
       </div>
-      <ul class="da-item-list">
-        ${map(this._listItems, (item) => html`
-          <li class="da-item-list-item">
-            <input type="checkbox" name="select" style="display: none;">
-            <a href="${item.isFile ? this.getEditPath(item.path) : `/#${item.path}`}" class="da-item-list-item-title">
-              <span class="da-item-list-item-type ${item.isFile ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' }">
-              </span>${item.name.split('.')[0]}
-            </a>
-          </li>
-        `)}
-      </ul>
-    `;
-  }
+      ${this._listItems.length > 0 ? 
+        html`
+          <ul class="da-item-list">
+            ${map(this._listItems, (item) => html`
+              <li class="da-item-list-item">
+                <input type="checkbox" name="select" style="display: none;">
+                <a href="${item.isFile ? this.getEditPath(item.path) : `/#${item.path}`}" class="da-item-list-item-title">
+                  <span class="da-item-list-item-type ${item.isFile ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' }">
+                  </span>${item.name.split('.')[0]}
+                </a>
+              </li>
+            `)}
+          </ul>` : 
+        html`<div class="empty-list"><h3>Empty</h3></div>`}`
+    }
 }
 
 customElements.define('da-browse', DaBrowse);

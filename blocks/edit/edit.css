@@ -247,6 +247,7 @@ input.da-pallette-input {
 
   .da-header-actions {
     padding: unset;
+    margin: 60px -12px 20px;
   }
 
     .da-header:before,
