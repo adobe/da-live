@@ -3,7 +3,7 @@ const { getConfig } = await import(`${getLibs()}/utils/utils.js`);
 const { signal } = await import(`${getLibs()}/deps/htm-preact.js`);
 
 export const origin = getConfig().env.name === 'local' ? 'http://localhost:8787' : 'https://admin.da.live';
-// export const origin = 'http://localhost:8787';
+export const conOrigin = 'https://content.da.live';
 export const hlxOrigin = 'https://admin.hlx.page';
 
 export const breadcrumbs = signal([]);

@@ -90,9 +90,11 @@ export default class DaBrowse extends LitElement {
   }
 
   getEditPath({ path, ext }) {
-    const pathType = ext === 'html' ? 'edit' : 'view';
-    const lastIndex = path.lastIndexOf(`.${ext}`);
-    return `/${pathType}#${path.substring(0, lastIndex)}`;
+    if (ext === 'html') {
+      const lastIndex = path.lastIndexOf(`.${ext}`);
+      return `/edit#${path.substring(0, lastIndex)}`;
+    }
+    return `/view#${path}`;
   }
 
   connectedCallback() {
