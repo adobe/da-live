@@ -80,7 +80,7 @@ export default class DaBrowse extends LitElement {
     }
 
     const item = { name: this._createName, path };
-    if (isDoc) item.ext = ext;
+    if (isDoc) item.ext = ext;  
     this._listItems.unshift(item);
     this.resetCreate();
     this.requestUpdate();
@@ -92,10 +92,10 @@ export default class DaBrowse extends LitElement {
     this._createType = '';
   }
 
-  getEditPath(path) {
-    const pathSplit = path.split('.');
+  getEditPath({ path, ext }) {
+    const pathType = ext === 'html' ? 'edit' : 'view';
     // This will fail spectacularly if there are other periods in the path
-    return `/edit#${pathSplit[0]}`;
+    return `/${pathType}#${path}`;
   }
 
   connectedCallback() {
@@ -150,8 +150,8 @@ export default class DaBrowse extends LitElement {
             ${map(this._listItems, (item) => html`
               <li class="da-item-list-item">
                 <input type="checkbox" name="select" style="display: none;">
-                <a href="${item.ext ? this.getEditPath(item.path) : `/#${item.path}`}" class="da-item-list-item-title">
-                  <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' }">
+                <a href="${item.ext ? this.getEditPath(item) : `/#${item.path}`}" class="da-item-list-item-title">
+                  <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' } ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
                   </span>${item.name}
                 </a>
               </li>

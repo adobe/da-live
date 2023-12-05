@@ -77,6 +77,14 @@ input, button {
     background: url('/blocks/browse/img/Smock_Folder_18_N.svg') center / cover no-repeat;
 }
 
+.da-item-list-item-icon-html {
+  background: url('/blocks/browse/img/Smock_FileHTML_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-icon-jpg {
+  background: url('/blocks/browse/img/Smock_Image_18_N.svg') center / cover no-repeat;
+}
+
 /* Breadcrumbs */
 .da-breadcrumb-list {
   margin: 0 0 12px;
