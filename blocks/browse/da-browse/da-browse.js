@@ -66,16 +66,14 @@ export default class DaBrowse extends LitElement {
     const isDoc = this._createType === 'document';
     let path = `${this.details.fullpath}/${this._createName}`;
     if (isDoc) {
-      path += `.html`;
+      const ext = 'html';
+      path += `.${ext}`;
       const blob = new Blob([''], { type: 'text/html' });
       await saveToDa({ blob, path, preview: isDoc });
+      const editPath = this.getEditPath({ path, ext });
+      window.open(editPath, '_blank');
     } else {
       await saveToDa({ path });
-    }
-
-    if (isDoc) {
-      const editPath = this.getEditPath(path);
-      window.open(editPath, '_blank');
     }
 
     const item = { name: this._createName, path };
