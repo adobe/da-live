@@ -94,8 +94,8 @@ export default class DaBrowse extends LitElement {
 
   getEditPath({ path, ext }) {
     const pathType = ext === 'html' ? 'edit' : 'view';
-    // This will fail spectacularly if there are other periods in the path
-    return `/${pathType}#${path.split('.')[0]}`;
+    const lastIndex = path.lastIndexOf(`.${ext}`);
+    return `/${pathType}#${path.substring(0, lastIndex)}`;
   }
 
   connectedCallback() {
