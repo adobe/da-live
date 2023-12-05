@@ -82,11 +82,8 @@ class DaStart extends LitElement {
         const opts = { method: 'PUT', body: formData };
         const putResp = await fetch(`https://admin.da.live/source/${this.owner}/${this.repo}/${name}.html`, opts);
         if (!putResp.ok) return;
-        // Give S3 time to save
-        setTimeout(async () => {
-          const aemResp = await fetch(`https://admin.hlx.page/preview/${this.owner}/${this.repo}/main/${name}`, { method: 'POST' });
-          if (!aemResp.ok) return;
-        }, 200)
+        const aemResp = await fetch(`https://admin.hlx.page/preview/${this.owner}/${this.repo}/main/${name}`, { method: 'POST' });
+        if (!aemResp.ok) return;
       }
       this._goText = 'Done';
     }
