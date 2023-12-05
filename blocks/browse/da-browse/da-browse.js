@@ -64,10 +64,9 @@ export default class DaBrowse extends LitElement {
 
   async handleSave() {
     const isDoc = this._createType === 'document';
-    if (isDoc) ext = 'html';
     let path = `${this.details.fullpath}/${this._createName}`;
     if (isDoc) {
-      path += `.${ext}`;
+      path += `.html`;
       const blob = new Blob([''], { type: 'text/html' });
       await saveToDa({ blob, path, preview: isDoc });
     } else {
