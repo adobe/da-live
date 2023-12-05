@@ -64,19 +64,23 @@ export default class DaBrowse extends LitElement {
 
   async handleSave() {
     const isDoc = this._createType === 'document';
-    const ext = isDoc ? 'html' : 'props';
+    if (isDoc) ext = 'html';
     let path = `${this.details.fullpath}/${this._createName}`;
-    if (isDoc) path += `.${ext}`;
-
-    const blob = new Blob([''], { type: 'text/html' });
-    await saveToDa({ blob, path, preview: isDoc });
+    if (isDoc) {
+      path += `.${ext}`;
+      const blob = new Blob([''], { type: 'text/html' });
+      await saveToDa({ blob, path, preview: isDoc });
+    } else {
+      await saveToDa({ path });
+    }
 
     if (isDoc) {
       const editPath = this.getEditPath(path);
       window.open(editPath, '_blank');
     }
 
-    const item = { name: this._createName, path, isFile: isDoc, ext };
+    const item = { name: this._createName, path };
+    if (isDoc) item.ext = ext;
     this._listItems.unshift(item);
     this.resetCreate();
     this.requestUpdate();
@@ -146,9 +150,9 @@ export default class DaBrowse extends LitElement {
             ${map(this._listItems, (item) => html`
               <li class="da-item-list-item">
                 <input type="checkbox" name="select" style="display: none;">
-                <a href="${item.isFile ? this.getEditPath(item.path) : `/#${item.path}`}" class="da-item-list-item-title">
-                  <span class="da-item-list-item-type ${item.isFile ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' }">
-                  </span>${item.name.split('.')[0]}
+                <a href="${item.ext ? this.getEditPath(item.path) : `/#${item.path}`}" class="da-item-list-item-title">
+                  <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' }">
+                  </span>${item.name}
                 </a>
               </li>
             `)}
