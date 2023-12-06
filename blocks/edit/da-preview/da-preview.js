@@ -29,6 +29,10 @@ export default class DaPreview extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
   }
 
+  formatPath(path) {
+    return path.endsWith('index') ? path.substring(0, path.lastIndexOf('/') + 1) : path;
+  }
+
   hidePreview() {
     this.parent.classList.remove('show-preview');
     this.classList.remove('show-preview');
@@ -68,7 +72,7 @@ export default class DaPreview extends LitElement {
         })}
         <span class="da-preview-menuitem" @click=${this.hidePreview}></span>
       </div>
-      <iframe src="${this.path}?martech=off&dapreview=on" scrolling="no">
+      <iframe src="${this.formatPath(this.path)}?martech=off&dapreview=on" scrolling="no">
     `;
   }
 

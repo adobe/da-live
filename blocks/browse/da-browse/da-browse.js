@@ -183,8 +183,12 @@ export default class DaBrowse extends LitElement {
       ${this._listItems.length > 0 ? 
         html`
           <ul class="da-item-list">
-            ${map(this._listItems, (item) => html`
+            ${map(this._listItems, (item, idx) => html`
               <li class="da-item-list-item">
+                <div class="checkbox-wrapper" style="display: none">
+                  <input type="checkbox" name="item-selected" id="item-selected-${idx}">
+                  <label class="checkbox-label" for="item-selected-${idx}"></label>
+                </div>
                 <input type="checkbox" name="select" style="display: none;">
                 <a href="${item.ext ? this.getEditPath(item) : `/#${item.path}`}" class="da-item-list-item-title">
                   <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' } ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
