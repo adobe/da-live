@@ -10,15 +10,16 @@ async function aemPreview(path, api) {
   return resp.json();
 }
 
-export default async function saveToDa({ path, blob, props, preview = false }) {
+export default async function saveToDa({ path, formData, blob, props, preview = false }) {
   const opts = { method: 'PUT' };
 
+  const form = formData || new FormData();
   if (blob || props) {
-    const formData = new FormData();
-    if (blob) formData.append('data', blob);
-    if (props) formData.append('props', JSON.stringify(props));
-    opts.body = formData;
+    if (blob) form.append('data', blob);
+    if (props) form.append('props', JSON.stringify(props));
   }
+  if ([...form.keys()].length) opts.body = form;
+
   const daResp = await fetch(`${origin}/source${path}`, opts);
   if (!daResp.ok) return;
   if (!preview) return;

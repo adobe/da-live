@@ -15,12 +15,16 @@ export default class DaBrowse extends LitElement {
     _createShow: { state: true },
     _createType: { state: true },
     _createName: { state: true },
+    _createFile: { state: true },
+    _fileLabel: { state: true },
   };
 
   constructor() {
     super();
     this._createShow = '';
     this._createName = '';
+    this._createFile = '';
+    this._fileLabel = 'Select file';
   }
 
   async getList() {
@@ -50,7 +54,7 @@ export default class DaBrowse extends LitElement {
   }
 
   handleNewType(e) {
-    this._createShow = 'input';
+    this._createShow = e.target.dataset.type === 'media' ? 'upload' : 'input';
     this._createType = e.target.dataset.type;
     setTimeout(() => {
       const input = this.shadowRoot.querySelector('.da-actions-input');
@@ -60,6 +64,10 @@ export default class DaBrowse extends LitElement {
 
   handleNameChange(e) {
     this._createName = e.target.value.replaceAll(/\W+/g, '-').toLowerCase();
+  }
+
+  handleAddFile(e) {
+    this._fileLabel = e.target.files[0].name;
   }
 
   async handleSave() {
@@ -83,10 +91,30 @@ export default class DaBrowse extends LitElement {
     this.requestUpdate();
   }
 
-  resetCreate() {
+  async handleUpload(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const split = this._fileLabel.split('.');
+    const ext = split.pop();
+    const name = split.join('.').replaceAll(/\W+/g, '-').toLowerCase();
+    const filename = `${split.join('.').replaceAll(/\W+/g, '-').toLowerCase()}.${ext}`;
+    const path = `${this.details.fullpath}/${filename}`;
+    
+    await saveToDa({ path, formData });
+
+    const item = { name, path, ext };
+    this._listItems.unshift(item);
+    this.resetCreate();
+    this.requestUpdate();
+  }
+
+  resetCreate(e) {
+    if (e) e.preventDefault();
     this._createShow = '';
     this._createName = '';
     this._createType = '';
+    this._createFile = '';
+    this._fileLabel = 'Select file';
   }
 
   getEditPath({ path, ext }) {
@@ -121,12 +149,21 @@ export default class DaBrowse extends LitElement {
           <li class=da-actions-menu-item>
             <button data-type=document @click=${this.handleNewType}>Document</button>
           </li>
+          <li class=da-actions-menu-item>
+            <button data-type=media @click=${this.handleNewType}>Media</button>
+          </li>
         </ul>
         <div class="da-actions-input-container">
           <input type="text" class="da-actions-input" placeholder="Name" @input=${this.handleNameChange} .value=${this._createName} />
           <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
           <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
         </div>
+        <form enctype="multipart/form-data" class="da-actions-file-container" @submit=${this.handleUpload}>
+          <label for="da-actions-file" class="da-actions-file-label">${this._fileLabel}</label>
+          <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} name="data" />
+          <button class="da-actions-button">Upload</button>
+          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
+        </form>
       </div>`;
   }
 
