@@ -21,7 +21,10 @@ const STYLES = '/styles/styles.css';
 const LIBS = '/libs';
 
 // Add any config options.
-const CONFIG = { locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } } };
+const CONFIG = {
+  imsClientId: 'darkalley',
+  locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } }
+};
 
 // Load LCP image immediately
 function loadLCPImage() {

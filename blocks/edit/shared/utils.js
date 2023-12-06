@@ -3,7 +3,8 @@ import { conOrigin, origin } from '../../browse/state/index.js';
 export function getPathDetails() {
   const { hash } = window.location;
   const fullpath = hash.replace('#', '');
-  if (!fullpath) return;
+  console.log(fullpath);
+  if (!fullpath || fullpath.startsWith('old_hash')) return;
 
   const pathSplit = fullpath.slice(1).toLowerCase().split('/');
 

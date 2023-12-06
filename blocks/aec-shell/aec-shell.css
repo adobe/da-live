@@ -2,20 +2,3 @@
     display: flex;
     padding: 0 20px;
 }
-
-.aec-button {
-    border: none;
-    line-height: 32px;
-    font-family: var(--body-font-family);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: none;
-    font-size: 14px;
-    padding: 4px;
-    cursor: pointer;
-}
-
-.aec-logo {
-    height: 24px;
-}

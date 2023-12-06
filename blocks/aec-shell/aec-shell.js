@@ -1,14 +1,72 @@
-export default async function init(el) {
-    const { getLibs } = await import('../../../scripts/utils.js');
-    const { createTag } = await import(`${getLibs()}/utils/utils.js`);
+import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import getSheet from '../shared/sheet.js';
+const sheet = await getSheet('/blocks/aec-shell/aec-shell-wc.css');
 
-    const img = createTag('img', { class: 'aec-logo', src: './blocks/aec-shell/img/aec.svg#AdobeExperienceCloud'});
+// Milo Imports
+const { getLibs } = await import('../../../scripts/utils.js');
+const { getConfig, loadIms } = await import(`${getLibs()}/utils/utils.js`);
 
-    const logo = createTag('button', { class: 'aec-button' }, [ img, 'Project Dark Alley' ]);
+class AECShell extends LitElement {
+  static properties = {
+    _ims: { state: true },
+    _ioAvatar: { state: true },
+  };
 
-    logo.addEventListener('click', () => {
-        window.location.href = '/';
-    });
+  constructor() {
+    super();
+    this._ims = 'unknown';
+  }
 
-    el.append(logo);
+  connectedCallback() {
+    super.connectedCallback();
+    this.shadowRoot.adoptedStyleSheets = [sheet];
+    setTimeout(() => {
+      loadIms().then(() => { this.imsReady(); });
+    }, 1000);
+  }
+
+  async imsReady() {
+    const accessToken = window.adobeIMS.getAccessToken();
+    if (!accessToken) { this._ims = 'anonymous'; return; }
+  
+    const { env } = getConfig();
+    const headers = new Headers({ Authorization: `Bearer ${accessToken.token}` });
+    const resp = await fetch(`https://${env.adobeIO}/profile`, { headers });
+  
+    if (resp.status !== 200) { this._ims = 'anonymous'; return; }
+
+    const { user } = await resp.json();
+    this._ioAvatar = user.avatar;
+    this._ims = 'signed-in';
+  }
+
+  handleSignIn() {
+    window.adobeIMS.signIn();
+  }
+
+  handleLogoClick() {
+    window.location.href = '/';
+  }
+
+  render() {
+    return html`
+      <button class="aec-button">
+        <img class="aec-logo" src="/blocks/aec-shell/img/aec.svg#AdobeExperienceCloud" />Project Dark Alley
+      </button>
+      <div class="ims ims-${this._ims}">
+        <button class="sign-in" @click=${this.handleSignIn}>Sign in</button>
+        <div class="profile">
+          <button class="profile-button">
+            <img src="${this._ioAvatar}" />
+          Profile</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+customElements.define('aec-shell', AECShell);
+
+export default function init(el) {
+  el.append(document.createElement('aec-shell'));
 }
