@@ -7,6 +7,7 @@ button, input {
 }
 
 header.aec-shell {
+    opacity: 1 !important;
     height: var(--aec-nav-height);
     min-height: var(--aec-nav-height);
     border-bottom: 1px solid #d3d3d3;

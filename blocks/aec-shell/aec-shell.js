@@ -20,19 +20,17 @@ class AECShell extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    setTimeout(() => {
-      loadIms().then(() => { this.imsReady(); });
-    }, 1000);
+    loadIms().then(() => { this.imsReady(); });
   }
 
   async imsReady() {
     const accessToken = window.adobeIMS.getAccessToken();
     if (!accessToken) { this._ims = 'anonymous'; return; }
-  
+
     const { env } = getConfig();
     const headers = new Headers({ Authorization: `Bearer ${accessToken.token}` });
     const resp = await fetch(`https://${env.adobeIO}/profile`, { headers });
-  
+
     if (resp.status !== 200) { this._ims = 'anonymous'; return; }
 
     const { user } = await resp.json();
@@ -50,15 +48,15 @@ class AECShell extends LitElement {
 
   render() {
     return html`
-      <button class="aec-button">
+      <button class="aec-button" @click=${this.handleLogoClick}>
         <img class="aec-logo" src="/blocks/aec-shell/img/aec.svg#AdobeExperienceCloud" />Project Dark Alley
       </button>
       <div class="ims ims-${this._ims}">
         <button class="sign-in" @click=${this.handleSignIn}>Sign in</button>
         <div class="profile">
-          <button class="profile-button">
+          <button class="profile-button" aria-label="Profile">
             <img src="${this._ioAvatar}" />
-          Profile</button>
+          </button>
         </div>
       </div>
     `;

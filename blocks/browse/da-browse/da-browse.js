@@ -11,16 +11,19 @@ export default class DaBrowse extends LitElement {
       attribute: false,
     },
     _listItems: { state: true },
+    _selectedItems: { state: true },
     _breadcrumbs: {},
     _createShow: { state: true },
     _createType: { state: true },
     _createName: { state: true },
     _createFile: { state: true },
     _fileLabel: { state: true },
+    _canPaste: {}
   };
 
   constructor() {
     super();
+    this._selectedItems = [];
     this._createShow = '';
     this._createName = '';
     this._createFile = '';
@@ -138,6 +141,64 @@ export default class DaBrowse extends LitElement {
     super.update(props);
   }
 
+  toggleChecked(item) {
+    item.isChecked = !item.isChecked;
+    if (item.isChecked) {
+      this._selectedItems.push(item);
+    } else {
+      this._selectedItems = this._selectedItems.reduce((acc, selItem) => {
+        if (selItem.path !== item.path) acc.push(selItem);
+        return acc;
+      }, []);
+    }
+    this.requestUpdate();
+  }
+
+  clearSelection() {
+    this._selectedItems = [];
+    this._listItems = this._listItems.map((item) => {
+      return { ...item, isChecked: false };
+    });
+  }
+
+  handleCopy() {
+    this._canPaste = true;
+  }
+
+  async handlePaste() {
+    this._selectedItems = this._selectedItems.map((item) => {
+      const prefix = item.path.split('/').slice(0, -1).join('/');
+      const destination = item.path.replace(prefix, this.details.fullpath);
+      return { ...item, destination };
+    });
+
+    for (const item of this._selectedItems) {
+      const formData = new FormData();
+      formData.append('destination', item.destination);
+      const opts = { method: 'POST', body: formData };
+      const resp = await fetch(`${origin}/copy${item.path}`, opts);
+      item.isChecked = false;
+      this._listItems.unshift(item);
+      this.requestUpdate();
+    }
+    this._canPaste = false;
+  }
+
+  async handleDelete() {
+    for (const item of this._selectedItems) {
+      const opts = { method: 'DELETE' };
+      const resp = await fetch(`${origin}/source${item.path}`, opts);
+      item.isChecked = false;
+      this._listItems = this._listItems.reduce((acc, liItem) => {
+        if (liItem.path !== item.path) acc.push(liItem);
+        return acc;
+      }, []);
+      this.requestUpdate();
+    }
+    this._selectedItems = [];
+    this._canPaste = false;
+  }
+
   renderNew() {
     return html`
       <div class="da-actions-create ${this._createShow}">
@@ -167,6 +228,66 @@ export default class DaBrowse extends LitElement {
       </div>`;
   }
 
+  actionBar() {
+    return html`
+      <div class="da-action-bar">
+        <div class="da-action-bar-left-rail">
+          <button
+            class="close-circle"
+            @click=${this.clearSelection}
+            aria-label="Unselect items">
+            <img src="/blocks/browse/da-browse/img/CrossSize200.svg" />
+          </button>
+          <span>${this._selectedItems.length} selected</span>
+        </div>
+        <div class="da-action-bar-right-rail">
+          <button
+            @click=${this.handleCopy}
+            class="copy-button ${this._canPaste ? 'hide-button' : ''}">
+            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
+            <span>Copy</span>
+          </button>
+          <button
+            @click=${this.handlePaste}
+            class="copy-button ${this._canPaste ? '' : 'hide-button'}">
+            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
+            <span>Paste</span>
+          </button>
+          <button
+            @click=${this.handleDelete}
+            class="delete-button">
+            <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" />
+            <span>Delete</span>
+          </button>
+        </div>
+      </div>`
+  }
+
+  listView() {
+    return html`
+      <ul class="da-item-list">
+        ${map(this._listItems, (item, idx) => html`
+          <li class="da-item-list-item">
+            <div class="da-item-list-item-inner">
+              <div class="checkbox-wrapper">
+                <input type="checkbox" name="item-selected" id="item-selected-${idx}" .checked="${item.isChecked}" @click="${() => { this.toggleChecked(item); }}">
+                <label class="checkbox-label" for="item-selected-${idx}"></label>
+              </div>
+              <input type="checkbox" name="select" style="display: none;">
+              <a href="${item.ext ? this.getEditPath(item) : `/#${item.path}`}" class="da-item-list-item-title">
+                <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' } ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
+                </span>${item.name}
+              </a>
+            </div>
+          </li>
+        `)}
+      </ul>`;
+  }
+
+  emptyView() {
+    return html`<div class="empty-list"><h3>Empty</h3></div>`;
+  }
+
   render() {
     return html`
       <h1>Browse</h1>
@@ -180,25 +301,10 @@ export default class DaBrowse extends LitElement {
         </ul>
         ${this.renderNew()}
       </div>
-      ${this._listItems.length > 0 ? 
-        html`
-          <ul class="da-item-list">
-            ${map(this._listItems, (item, idx) => html`
-              <li class="da-item-list-item">
-                <div class="checkbox-wrapper" style="display: none">
-                  <input type="checkbox" name="item-selected" id="item-selected-${idx}">
-                  <label class="checkbox-label" for="item-selected-${idx}"></label>
-                </div>
-                <input type="checkbox" name="select" style="display: none;">
-                <a href="${item.ext ? this.getEditPath(item) : `/#${item.path}`}" class="da-item-list-item-title">
-                  <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' } ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
-                  </span>${item.name}
-                </a>
-              </li>
-            `)}
-          </ul>` : 
-        html`<div class="empty-list"><h3>Empty</h3></div>`}`
-    }
+      ${this._listItems.length > 0 ? this.listView() : this.emptyView()}
+      ${this._selectedItems.length > 0 ? html`${this.actionBar()}` : ''}
+    `;
+  }
 }
 
 customElements.define('da-browse', DaBrowse);

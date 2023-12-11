@@ -39,7 +39,6 @@ export default class DaEditor extends LitElement {
   }
 
   updated(props) {
-    super.updated(props);
     if (!this._content) return;
     const prose = this.shadowRoot.querySelector('.da-prose-mirror');
     prose.innerHTML = '';
