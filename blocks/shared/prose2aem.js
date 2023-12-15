@@ -49,6 +49,7 @@ function makePictures(editor) {
   imgs.forEach((img) => {
     img.removeAttribute('contenteditable');
     img.removeAttribute('draggable');
+    img.removeAttribute('style');
 
     const clone = img.cloneNode(true);
     clone.setAttribute('loading', 'lazy');

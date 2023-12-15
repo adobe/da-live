@@ -1,0 +1,81 @@
+:host {
+  display: block;
+  padding: 48px 0;
+}
+
+h1 {
+  margin-top: 0;
+}
+
+.con-button {
+  font-family: var(--body-font-family);
+  border-radius: 100px;
+  border: 2px solid var(--text-color);
+  color: var(--text-color);
+  display: inline-block;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 16px;
+  padding: 5px 14px;
+  text-decoration: none;
+}
+
+.con-button.blue {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-white);
+}
+
+.da-title-inner {
+  max-width: 900px;
+  margin: 0px auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+}
+
+.da-title-name-label {
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #afafaf;
+}
+
+.da-title-actions {
+  margin-bottom: 0.67em;
+  right: -12px;
+  position: relative;
+  border: 12px solid transparent;
+  border-radius: 100px;
+  display: flex;
+  gap: 12px;
+  height: 44px;
+}
+
+.da-title-actions.is-open {
+  background: #EFEFEF;
+}
+
+.da-title-actions.is-open .da-title-action {
+  display: unset;
+}
+
+.da-title-action {
+  display: none;
+}
+
+.da-title-action-send {
+  padding: 5px 0;
+  width: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.da-title-action-send-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: url('/blocks/edit/img/Smock_Send_18_N.svg') center / 22px no-repeat;
+}

@@ -1,5 +1,92 @@
 import { origin, hlxOrigin } from '../../browse/state/index.js';
 
+function getBlockName(block) {
+  const classes = block.className.split(' ');
+  const name = classes.shift();
+  return classes.length > 0 ? `${name} (${classes.join(', ')})` : name;
+}
+
+function handleRow(row, maxCols, table) {
+  const tr = document.createElement('tr');
+  [...row.children].forEach((col) => {
+    const td = document.createElement('td');
+    if (row.children.length < maxCols) {
+      td.setAttribute('colspan', maxCols);
+    }
+    td.innerHTML = col.innerHTML;
+    tr.append(td);
+  });
+  table.append(tr);
+}
+
+export function getTable(block) {
+  const name = getBlockName(block);
+  const rows = [...block.children];
+  const maxCols = rows.reduce((cols, row) => (
+    row.children.length > cols ? row.children.length : cols), 0);
+  const table = document.createElement('table');
+  const headerRow = document.createElement('tr');
+
+  const td = document.createElement('td');
+  td.setAttribute('colspan', maxCols);
+  td.append(name);
+
+  headerRow.append(td);
+  table.append(headerRow);
+  rows.forEach((row) => { handleRow(row, maxCols, table); });
+  return table;
+}
+
+function para() {
+  return document.createElement('p');
+}
+
+export default function aem2prose(doc) {
+  // Fix BRs
+  const brs = doc.querySelectorAll('p br');
+  brs.forEach((br) => { br.remove(); });
+
+  // Fix blocks
+  const blocks = doc.querySelectorAll('div[class]');
+  blocks.forEach((block) => {
+    const table = getTable(block);
+    block.parentElement.replaceChild(table, block);
+    table.insertAdjacentElement('beforebegin', para());
+    table.insertAdjacentElement('afterend', para());
+  });
+
+  // Fix pictures
+  const imgs = doc.querySelectorAll('picture img');
+  imgs.forEach((img) => {
+    const pic = img.closest('picture');
+    pic.parentElement.replaceChild(img, pic);
+  });
+
+  // Fix three dashes
+  const paras = doc.querySelectorAll('p');
+  paras.forEach((p) => {
+    if (p.textContent.trim() === '---') {
+      const hr = document.createElement('hr');
+      p.parentElement.replaceChild(hr, p);
+    }
+  });
+
+  // Fix sections
+  const sections = doc.body.querySelectorAll('main > div');
+  return [...sections].map((section, idx) => {
+    const fragment = new DocumentFragment();
+    if (idx > 0) {
+      const hr = document.createElement('hr');
+      fragment.append(para(), hr, para());
+    }
+    fragment.append(...section.querySelectorAll(':scope > *'));
+    return fragment;
+  });
+}
+
+
+// Legacy stuff from title.js
+
 export async function saveToFranklin(path, action) {
   const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
   const aemPath = parts.join('/');
@@ -79,19 +166,4 @@ export function saveToDas(pathname) {
 
   const opts = { method: 'PUT', body: formData };
   return fetch(fullPath, opts);
-}
-
-export async function handleAction(action) {
-  const { hash } = window.location;
-  const pathname = hash.replace('#', '');
-  const dasSave = await saveToDas(pathname);
-  if (!dasSave.ok) return;
-  let json = await saveToFranklin(pathname, 'preview');
-  if (action === 'publish') json = await saveToFranklin(pathname, 'live');
-  const { url } = action === 'publish' ? json.live : json.preview;
-  window.open(url, '_blank');
-}
-
-export function open(e) {
-  e.target.closest('.da-header-actions').classList.toggle('is-open');
 }

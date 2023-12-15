@@ -233,8 +233,7 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
-
-/* Generic ProseMirror Styles */
+/* Generic ProseMirror Styles */  
 .ProseMirror hr {
   border-radius: 1px;
   border: 1px solid #b3b3b3;

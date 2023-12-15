@@ -10,13 +10,6 @@ export default class DaContent extends LitElement {
   static properties = {
     details: {
       attribute: false,
-      // hasChanged(newVal, oldVal) {
-      //   console.log(newVal);
-      //   console.log(oldVal);
-      //   // const hasChanged = newVal % 2 == 1;
-      //   // console.log(`${newVal}, ${oldVal}, ${hasChanged}`);
-      //   // return hasChanged;
-      // },
     },
   };
 

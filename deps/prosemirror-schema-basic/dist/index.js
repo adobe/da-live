@@ -87,7 +87,8 @@ const nodes = {
         attrs: {
             src: {},
             alt: { default: null },
-            title: { default: null }
+            title: { default: null },
+            style: { default: null },
         },
         group: "inline",
         draggable: true,
@@ -95,10 +96,11 @@ const nodes = {
                     return {
                         src: dom.getAttribute("src"),
                         title: dom.getAttribute("title"),
-                        alt: dom.getAttribute("alt")
+                        alt: dom.getAttribute("alt"),
+                        style: dom.getAttribute("style")
                     };
                 } }],
-        toDOM(node) { let { src, alt, title } = node.attrs; return ["img", { src, alt, title }]; }
+        toDOM(node) { let { src, alt, title, style } = node.attrs; return ["img", { src, alt, title, style }]; }
     },
     /**
     A hard line break, represented in the DOM as `<br>`.

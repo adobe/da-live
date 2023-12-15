@@ -17,6 +17,7 @@ import {
   tableNodes,
   fixTables } from 'prosemirror-tables';
 import menu from './menu.js';
+import imageDrop from './plugins/imageDrop.js';
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
@@ -64,6 +65,7 @@ export default function initProse(editor, content) {
     doc,
     plugins: [
       menu,
+      imageDrop(schema),
       columnResizing(),
       tableEditing(),
       keymap(buildKeymap(schema)),
