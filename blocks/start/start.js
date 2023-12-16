@@ -1,5 +1,5 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { origin } from '../browse/state/index.js';
+import { origin } from '../shared/constants.js';
 
 import getSheet from '../shared/sheet.js';
 const sheet = await getSheet('/blocks/start/start-wc.css');
@@ -76,6 +76,7 @@ class DaStart extends LitElement {
         const resp = await fetch(url);
         if (!resp.ok) return;
         const html = await resp.text();
+        // Do any modifications here
         const blob = new Blob([html], { type: 'text/html' });
         const formData = new FormData();
         formData.append('data', blob);

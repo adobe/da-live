@@ -1,5 +1,5 @@
 import { Plugin, TextSelection } from 'prosemirror-state';
-import { getPathDetails } from '../../shared/utils.js';
+import getPathDetails from '../../../shared/pathDetails.js';
 
 const FPO_IMG_URL = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
 const SUPPORTED_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];

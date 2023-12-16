@@ -1,5 +1,4 @@
-import getTitle from './title/view.js';
-import { getPathDetails } from './shared/utils.js';
+import getPathDetails from '../shared/pathDetails.js';
 import './da-title/da-title.js';
 import './da-content/da-content.js';
 

@@ -47,7 +47,10 @@ export default class DaTitle extends LitElement {
     return html`
       <div class="da-title-inner">
         <div class="da-title-name">
-          <p class="da-title-name-label">Doc</p>
+          <a
+            href="/#${this.details.parent}"
+            target="${this.details.parent.replaceAll('/', '-')}"
+            class="da-title-name-label">${this.details.parentName}</a>
           <h1>${this.details.name}</h1>
         </div>
         <div class="da-title-actions${this._actionsVis ? ' is-open' : ''}">

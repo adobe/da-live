@@ -1,4 +1,4 @@
-import { origin, hlxOrigin } from '../../browse/state/index.js';
+import { origin, hlxOrigin } from '../../shared/constants.js';
 
 function getBlockName(block) {
   const classes = block.className.split(' ');

@@ -1,12 +1,12 @@
-import { Plugin } from "prosemirror-state";
-import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
-import { DOMParser } from "prosemirror-model";
-import insertTable from "./table.js";
+import { Plugin } from 'prosemirror-state';
+import { toggleMark } from 'prosemirror-commands';
+import { DOMParser } from 'prosemirror-model';
+import insertTable from '../table.js';
 import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from 'prosemirror-menu';
 import { undo, redo } from 'prosemirror-history';
 import { wrapInList } from 'prosemirror-schema-list';
-import openPrompt from "../da-palette/da-palette.js";
-import openLibrary from "../da-library/da-library.js";
+import openPrompt from '../../da-palette/da-palette.js';
+import openLibrary from '../../da-library/da-library.js';
 
 import {
   addColumnAfter,
@@ -19,7 +19,7 @@ import {
   splitCell,
   deleteTable } from 'prosemirror-tables';
 
-  const { getLibs } = await import('../../../scripts/utils.js');
+  const { getLibs } = await import('../../../../scripts/utils.js');
   const { createTag } = await import(`${getLibs()}/utils/utils.js`);
 
 function canInsert(state, nodeType) {
@@ -271,7 +271,6 @@ export default new Plugin({
   view: (view) => {
     const { menu, update } = getMenu(view);
     const palettes = createTag('div', { class: 'da-palettes' });
-
     view.dom.insertAdjacentElement('beforebegin', menu);
     view.dom.insertAdjacentElement('afterend', palettes);
     update(view.state);

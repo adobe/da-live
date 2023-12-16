@@ -8,7 +8,6 @@ import { addListNodes } from "prosemirror-schema-list";
 import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from "prosemirror-example-setup";
 import prose2aem from '../../shared/prose2aem.js';
-import { Fragment } from 'prosemirror-model';
 
 import {
   tableEditing,
@@ -16,7 +15,7 @@ import {
   goToNextCell,
   tableNodes,
   fixTables } from 'prosemirror-tables';
-import menu from './menu.js';
+import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 
 function getSchema() {

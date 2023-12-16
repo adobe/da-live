@@ -3,18 +3,18 @@
 }
 
 button, input {
-    font-family: var(--body-font-family);
+  font-family: var(--body-font-family);
 }
 
 header.aec-shell {
-    opacity: 1 !important;
-    height: var(--aec-nav-height);
-    min-height: var(--aec-nav-height);
-    border-bottom: 1px solid #d3d3d3;
+  opacity: 1 !important;
+  height: var(--aec-nav-height);
+  min-height: var(--aec-nav-height);
+  border-bottom: 1px solid #d3d3d3;
 }
 
 @media (min-width: 900px) {
-    header.aec-shell + main {
-        margin-top: var(--aec-nav-height);
-    }
+  header.aec-shell + main {
+    margin-top: var(--aec-nav-height);
+  }
 }

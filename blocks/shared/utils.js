@@ -1,4 +1,4 @@
-import { origin } from '../browse/state/index.js';
+import { origin } from '../shared/constants.js';
 
 async function aemPreview(path, api) {
   const [ owner, repo, ...parts] = path.slice(1).split('/');

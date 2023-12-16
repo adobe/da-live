@@ -22,7 +22,6 @@ export default function insertTable(state, dispatch) {
   const heading = getHeading(state.schema);
   const content = getContent(state.schema);
   const para = getPara(state.schema);
-
   const node = state.schema.nodes.table.create(null, Fragment.fromArray([heading, content]))
 
   if (dispatch) {

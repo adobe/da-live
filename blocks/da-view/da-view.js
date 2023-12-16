@@ -1,5 +1,5 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { getPathDetails } from '../edit/shared/utils.js';
+import getPathDetails from '../shared/pathDetails.js';
 
 import getSheet from '../shared/sheet.js';
 const sheet = await getSheet('/blocks/da-view/da-view-wc.css');

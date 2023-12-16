@@ -1,5 +1,5 @@
 import defaultContent from './default-content.js';
-import aem2prose from '../utils/helpers.js';
+import aem2prose from './helpers.js';
 
 export default async function getContent(path) {
   if (!path) return defaultContent();

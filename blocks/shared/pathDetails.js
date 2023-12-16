@@ -1,6 +1,6 @@
-import { conOrigin, origin } from '../../browse/state/index.js';
+import { conOrigin, origin } from './constants.js';
 
-export function getPathDetails() {
+export default function getPathDetails() {
   const { hash } = window.location;
   const fullpath = hash.replace('#', '');
   if (!fullpath || fullpath.startsWith('old_hash')) return;
@@ -18,6 +18,7 @@ export function getPathDetails() {
     path,
     name: parts.slice(-1),
     parent: `/${pathSplit.slice(0, -1).join('/')}`,
+    parentName: pathSplit.at(-2),
   };
   if (parts.length > 0) details.name = parts.slice(-1);
   if (repo) {
@@ -25,6 +26,5 @@ export function getPathDetails() {
     details.contentUrl = `${conOrigin}${fullpath}`;
     details.previewUrl = `https://main--${repo}--${owner}.hlx.page/${path}`;
   }
-
-   return details;
+  return details;
 }

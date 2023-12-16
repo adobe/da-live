@@ -1,5 +1,5 @@
-import { LitElement, html, map } from '../../../deps/lit/lit-all.min.js';
-import { origin } from '../state/index.js';
+import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { origin } from '../../shared/constants.js';
 
 import getSheet from '../../shared/sheet.js';
 import saveToDa from '../../shared/utils.js';
@@ -266,7 +266,7 @@ export default class DaBrowse extends LitElement {
   listView() {
     return html`
       <ul class="da-item-list">
-        ${map(this._listItems, (item, idx) => html`
+        ${this._listItems.map((item, idx) => html`
           <li class="da-item-list-item">
             <div class="da-item-list-item-inner">
               <div class="checkbox-wrapper">
@@ -293,7 +293,7 @@ export default class DaBrowse extends LitElement {
       <h1>Browse</h1>
       <div class="da-breadcrumb">
         <ul class="da-breadcrumb-list">
-          ${map(this._breadcrumbs, (crumb, idx) => html`
+          ${this._breadcrumbs.map((crumb, idx) => html`
             <li class="da-breadcrumb-list-item">
               <a href="${crumb.path}">${crumb.name}</a>
             </li>

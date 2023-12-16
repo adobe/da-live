@@ -1,4 +1,4 @@
-import { origin } from '../browse/state/index.js';
+import { origin } from '../shared/constants.js';
 
 // Milo Imports
 const { getLibs } = await import('../../scripts/utils.js');

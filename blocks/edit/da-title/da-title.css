@@ -36,10 +36,33 @@ h1 {
 }
 
 .da-title-name-label {
-  margin: 0 0 12px;
+  display: block;
+  position: relative;
+  margin: 0 0 6px;
   text-transform: uppercase;
   font-weight: 700;
-  color: #afafaf;
+  color: #464646;
+  opacity: 0.5;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  left: -12px;
+}
+
+.da-title-name-label:hover {
+  background: #EFEFEF;
+  opacity: 1;
+}
+
+.da-title-name-label:before {
+  display: block;
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: 11px;
+  left: -24px;
+  background: url('/blocks/edit/img/left-large.svg') center/18px no-repeat;
 }
 
 .da-title-actions {

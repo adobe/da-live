@@ -1,5 +1,5 @@
 import { LitElement, html, map } from '../../../deps/lit/lit-all.min.js';
-import { origin } from '../state/index.js';
+import { origin } from '../../shared/constants.js';
 
 import getSheet from '../../shared/sheet.js';
 const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');

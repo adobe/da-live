@@ -1,4 +1,4 @@
-import { getPathDetails } from '../edit/shared/utils.js';
+import getPathDetails from '../shared/pathDetails.js';
 
 async function loadComponent(el, cmpName, details) {
   el.innerHTML = '';
