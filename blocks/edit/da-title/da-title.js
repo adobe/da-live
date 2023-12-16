@@ -21,6 +21,10 @@ export default class DaTitle extends LitElement {
   }
 
   async handleAction(action) {
+    this.toggleActions();
+    const sendBtn = this.shadowRoot.querySelector('.da-title-action-send-icon');
+    sendBtn.classList.add('is-sending');
+
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
     const dasSave = await saveToDas(pathname);
@@ -29,6 +33,7 @@ export default class DaTitle extends LitElement {
     if (action === 'publish') json = await saveToFranklin(pathname, 'live');
     const { url } = action === 'publish' ? json.live : json.preview;
     window.open(url, '_blank');
+    sendBtn.classList.remove('is-sending');
   }
 
   handlePreview() {

@@ -1,5 +1,5 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import getContent from '../content/content.js';
+import getContent from '../utils/content.js';
 import initProse from '../prose/index.js';
 
 import getSheet from '../../shared/sheet.js';
