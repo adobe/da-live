@@ -16,10 +16,12 @@ export default function getPathDetails() {
     origin,
     fullpath,
     path,
-    name: parts.slice(-1),
-    parent: `/${pathSplit.slice(0, -1).join('/')}`,
-    parentName: pathSplit.at(-2),
+    // TODO: Make this more sane.
+    name: parts.slice(-1).length ? parts.slice(-1) : (repo || owner),
+    parent: parts.slice(-1).length ? `/${pathSplit.slice(0, -1).join('/')}` : '/',
+    parentName: parts.slice(-1).length ? pathSplit.at(-2) : 'Root',
   };
+
   if (parts.length > 0) details.name = parts.slice(-1);
   if (repo) {
     details.sourceUrl = `${origin}/source${fullpath}.html`;

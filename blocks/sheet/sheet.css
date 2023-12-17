@@ -1,0 +1,10 @@
+body {
+  background: rgb(250 250 250);
+}
+
+.da-sheet-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
+  overflow: scroll;
+}

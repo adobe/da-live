@@ -22,6 +22,8 @@ const IMPORT_MAP = {
     'w3c-keyname': '/node_modules/w3c-keyname/index.es.js',
     'orderedmap': '/node_modules/orderedmap/dist/index.js',
     'crelt': '/node_modules/crelt/index.es.js',
+    'jspreadsheet-ce': 'node_modules/jspreadsheet-ce/dist/index.js',
+    'jspreadsheet-ce-css': 'node_modules/jspreadsheet-ce/dist/jspreadsheet.css',
   },
 };
 

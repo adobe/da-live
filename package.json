@@ -1,7 +1,7 @@
 {
   "type": "module",
   "dependencies": {
-    "@lit/task": "^1.0.0",
+    "jspreadsheet-ce": "^4.13.4",
     "prosemirror-example-setup": "^1.2.1",
     "prosemirror-model": "^1.19.0",
     "prosemirror-schema-basic": "^1.2.1",
