@@ -36,20 +36,25 @@ function dispatchTransaction(transaction) {
   view.updateState(newState)
 }
 
+function setPreviewBody(daPreview, proseEl) {
+  const clone = proseEl.cloneNode(true);
+  const body = prose2aem(clone);
+  daPreview.body = body;
+}
+
 function pollForUpdates() {
   const daContent = document.querySelector('da-content');
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
   const proseEl = window.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
+  setPreviewBody(daPreview, proseEl);
   setInterval(() => {
     if (sendUpdates) {
       if (hasChanged > 0) {
         hasChanged = 0;
         return;
       }
-      const clone = proseEl.cloneNode(true);
-      const body = prose2aem(clone);
-      daPreview.body = body;
+      setPreviewBody(daPreview, proseEl);
       sendUpdates = false;
     }
   }, 1000);
