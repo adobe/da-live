@@ -178,8 +178,13 @@ input[type="checkbox"] {
 }
 
 .da-item-list-item-icon-jpg,
-.da-item-list-item-icon-jpeg {
+.da-item-list-item-icon-jpeg,
+.da-item-list-item-icon-png {
   background: url('/blocks/browse/img/Smock_Image_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-icon-json {
+  background: url('/blocks/browse/img/Smock_FileData_18_N.svg') center / cover no-repeat;
 }
 
 /* Breadcrumbs */
