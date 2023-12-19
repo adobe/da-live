@@ -80,9 +80,9 @@ export default class DaBrowse extends LitElement {
       const ext = 'html';
       path += `.${ext}`;
       const blob = new Blob([''], { type: 'text/html' });
-      await saveToDa({ blob, path, preview: isDoc });
       const editPath = this.getEditPath({ path, ext });
       window.open(editPath, '_blank');
+      await saveToDa({ blob, path, preview: isDoc });
     } else {
       await saveToDa({ path });
     }
