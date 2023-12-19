@@ -125,6 +125,10 @@ export default class DaBrowse extends LitElement {
       const lastIndex = path.lastIndexOf(`.${ext}`);
       return `/edit#${path.substring(0, lastIndex)}`;
     }
+    if (ext === 'json') {
+      return `/sheet#${path}`;
+    }
+
     return `/view#${path}`;
   }
 

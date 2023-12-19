@@ -8,6 +8,7 @@ async function getData(details) {
   const resp = await fetch(details.sourceUrl);
   if (!resp.ok) return;
   const json = await resp.json();
+
   const data = json.data.reduce((acc, item, idx) => {
     if (idx === 0) {
       const keys = [];
@@ -53,6 +54,7 @@ export default async function init(el) {
 
   const daToolbar = document.createElement('da-toolbar');
   daToolbar.sheet = sheet;
+  daTitle.sheet = sheet;
 
   wrapper.insertAdjacentElement('afterbegin', daToolbar);
 

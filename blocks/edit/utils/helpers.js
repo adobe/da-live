@@ -141,9 +141,7 @@ function convertBlocks(tables) {
   });
 }
 
-export function saveToDas(pathname) {
-  const fullPath = `${origin}/source${pathname}.html`;
-
+async function saveHtml(fullPath) {
   const editor = window.view.root.querySelector('.ProseMirror').cloneNode(true);
   editor.removeAttribute('class');
   editor.removeAttribute('contenteditable');
@@ -166,4 +164,41 @@ export function saveToDas(pathname) {
 
   const opts = { method: 'PUT', body: formData };
   return fetch(fullPath, opts);
+}
+
+async function saveJson(fullPath, sheet) {
+  const jData = sheet.getData();
+  const data = jData.reduce((acc, row, idx) => {
+    // Key Row
+    if (idx === 0) return acc;
+    const rowObj = {};
+
+    row.forEach((value, idx) => {
+      if (jData[0][idx]) {
+        rowObj[jData[0][idx]] = value;
+      }
+    });
+
+    if (Object.keys(rowObj).length) acc.push(rowObj);
+    return acc;
+  }, []);
+  const json = { total: data.length, offset: 0, limit: data.length, data, ':type': 'sheet' };
+  const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+  const formData = new FormData();
+  formData.append('data', blob);
+
+  const opts = { method: 'PUT', body: formData };
+  return fetch(fullPath, opts);
+}
+
+export function saveToDas(pathname, sheet) {
+  const [ name, ext ] = pathname.split('/').pop().split('.');
+  const suffix = ext ? '' : '.html';
+
+  const fullPath = `${origin}/source${pathname}${suffix}`;
+
+  if (!ext) {
+    return saveHtml(fullPath);
+  }
+  return saveJson(fullPath, sheet);
 }

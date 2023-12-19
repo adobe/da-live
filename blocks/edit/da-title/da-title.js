@@ -27,7 +27,7 @@ export default class DaTitle extends LitElement {
 
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
-    const dasSave = await saveToDas(pathname);
+    const dasSave = await saveToDas(pathname, this.sheet);
     if (!dasSave.ok) return;
     let json = await saveToFranklin(pathname, 'preview');
     if (action === 'publish') json = await saveToFranklin(pathname, 'live');
