@@ -2,6 +2,7 @@
   "type": "module",
   "dependencies": {
     "jspreadsheet-ce": "^4.13.4",
+    "jsuites": "^5.0.29",
     "prosemirror-example-setup": "^1.2.1",
     "prosemirror-model": "^1.19.0",
     "prosemirror-schema-basic": "^1.2.1",

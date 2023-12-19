@@ -1,7 +1,7 @@
 import { conOrigin, origin } from './constants.js';
 
-export default function getPathDetails() {
-  const { hash } = window.location;
+export default function getPathDetails(loc) {
+  const { hash } = loc || window.location;
   const fullpath = hash.replace('#', '');
   if (!fullpath || fullpath.startsWith('old_hash')) return;
 
@@ -10,23 +10,41 @@ export default function getPathDetails() {
   const [owner, repo, ...parts] = pathSplit;
   const path = parts.join('/');
 
+  let name = parts.slice(-1)[0];
+  if (!name) name = repo || owner;
+  const nameSplit = name.split('.');
+  const ext = nameSplit.length > 1 ? '' : '.html';
+  const sourceUrl = `${origin}/source${fullpath}${ext}`;
+
   const details = {
     owner,
     repo,
     origin,
     fullpath,
     path,
-    // TODO: Make this more sane.
-    name: parts.slice(-1).length ? parts.slice(-1) : (repo || owner),
-    parent: parts.slice(-1).length ? `/${pathSplit.slice(0, -1).join('/')}` : '/',
-    parentName: parts.slice(-1).length ? pathSplit.at(-2) : 'Root',
+    name,
+    sourceUrl,
   };
 
-  if (parts.length > 0) details.name = parts.slice(-1);
-  if (repo) {
-    details.sourceUrl = `${origin}/source${fullpath}.html`;
+  if (name !== owner && name !== repo) {
+    details.parent = `/${pathSplit.slice(0, -1).join('/')}`;
+    details.parentName = pathSplit.at(-2);
     details.contentUrl = `${conOrigin}${fullpath}`;
     details.previewUrl = `https://main--${repo}--${owner}.hlx.page/${path}`;
+    return details;
   }
+
+  if (name === repo) {
+    details.parent = `/${owner}`;
+    details.parentName = owner;
+    details.sourceUrl = `${origin}/source${fullpath}`;
+  }
+
+  if (name === owner) {
+    details.parent = `/`;
+    details.parentName = 'Root';
+    details.sourceUrl = `${origin}/source${fullpath}`;
+  }
+
   return details;
 }

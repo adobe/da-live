@@ -6,7 +6,7 @@ const IMPORT_MAP = {
     'prosemirror-state': '/node_modules/prosemirror-state/dist/index.js',
     'prosemirror-view': '/node_modules/prosemirror-view/dist/index.js',
     'prosemirror-model': '/node_modules/prosemirror-model/dist/index.js',
-    'prosemirror-schema-basic': '/node_modules/prosemirror-schema-basic/dist/index.js',
+    // Modified from original 'prosemirror-schema-basic': '/node_modules/prosemirror-schema-basic/dist/index.js',
     'prosemirror-schema-list': '/node_modules/prosemirror-schema-list/dist/index.js',
     'prosemirror-transform': '/node_modules/prosemirror-transform/dist/index.js',
     'prosemirror-example-setup': '/node_modules/prosemirror-example-setup/dist/index.js',
@@ -22,8 +22,10 @@ const IMPORT_MAP = {
     'w3c-keyname': '/node_modules/w3c-keyname/index.es.js',
     'orderedmap': '/node_modules/orderedmap/dist/index.js',
     'crelt': '/node_modules/crelt/index.es.js',
-    'jspreadsheet-ce': 'node_modules/jspreadsheet-ce/dist/index.js',
-    'jspreadsheet-ce-css': 'node_modules/jspreadsheet-ce/dist/jspreadsheet.css',
+    'jspreadsheet-ce': '/node_modules/jspreadsheet-ce/dist/index.js',
+    'jspreadsheet-ce-css': '/node_modules/jspreadsheet-ce/dist/jspreadsheet.css',
+    'jsuites': '/node_modules/jsuites/dist/jsuites.js',
+    'jsuites-css': '/node_modules/jsuites/dist/jsuites.css',
   },
 };
 

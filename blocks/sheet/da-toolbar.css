@@ -1,0 +1,33 @@
+:host {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 12px;
+  padding: 6px 6px 0px;
+  border-radius: 4px;
+  box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
+  background: rgb(255, 255, 255);
+  box-sizing: border-box;
+  grid-area: toolbar;
+  z-index: 1;
+}
+
+button {
+  display: block;
+  width: 44px;
+  height: 44px;
+  text-indent: -1000px;
+  overflow: hidden;
+  border: none;
+  border-radius: 2px;
+  margin-bottom: 6px;
+  background-color: rgb(239, 239, 239);
+}
+
+button.undo {
+  background: url(/blocks/edit/img/Smock_Undo_18_N.svg) center center / 18px no-repeat rgb(239, 239, 239);
+}
+
+button.redo {
+  background: url(/blocks/edit/img/Smock_Redo_18_N.svg) center center / 18px no-repeat rgb(239, 239, 239);
+}

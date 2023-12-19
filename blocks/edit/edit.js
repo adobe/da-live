@@ -4,6 +4,7 @@ import './da-content/da-content.js';
 
 export default async function init(el) {
   let details = getPathDetails();
+  console.log(details);
   if (!details) {
     el.classList.add('no-url');
     el.innerHTML = '<h1>Please edit a page.</h1>';
