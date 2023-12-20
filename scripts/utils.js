@@ -14,29 +14,17 @@
  * The decision engine for where to get Milo's libs from.
  */
 export const [setLibs, getLibs] = (() => {
-    let libs;
-    return [
-      (prodLibs, location) => {
-        libs = (() => {
-          const { hostname, search } = location || window.location;
-          if (!(hostname.includes('.hlx.') || hostname.includes('local'))) return prodLibs;
-          const branch = new URLSearchParams(search).get('milolibs') || 'main';
-          if (branch === 'local') return 'http://localhost:6456/libs';
-          return branch.includes('--') ? `https://${branch}.hlx.live/libs` : `https://${branch}--milo--adobecom.hlx.live/libs`;
-        })();
-        return libs;
-      }, () => libs,
-    ];
-  })();
-  
-  /*
-   * ------------------------------------------------------------
-   * Edit above at your own risk.
-   *
-   * Note: This file should have no self-invoking functions.
-   * ------------------------------------------------------------
-   */
-  
-  export async function useMiloSample() {
-    const { createTag } = await import(`${getLibs()}/utils/utils.js`);
-  }
+  let libs;
+  return [
+    (prodLibs, location) => {
+      libs = (() => {
+        const { hostname, search } = location || window.location;
+        if (!(hostname.includes('.hlx.') || hostname.includes('local'))) return prodLibs;
+        const branch = new URLSearchParams(search).get('milolibs') || 'main';
+        if (branch === 'local') return 'http://localhost:6456/libs';
+        return branch.includes('--') ? `https://${branch}.hlx.live/libs` : `https://${branch}--milo--adobecom.hlx.live/libs`;
+      })();
+      return libs;
+    }, () => libs,
+  ];
+})();

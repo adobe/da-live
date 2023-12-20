@@ -192,13 +192,9 @@ async function saveJson(fullPath, sheet) {
 }
 
 export function saveToDas(pathname, sheet) {
-  const [ name, ext ] = pathname.split('/').pop().split('.');
-  const suffix = ext ? '' : '.html';
-
+  const suffix = sheet ? '.json' : '.html';
   const fullPath = `${origin}/source${pathname}${suffix}`;
 
-  if (!ext) {
-    return saveHtml(fullPath);
-  }
+  if (!sheet) return saveHtml(fullPath);
   return saveJson(fullPath, sheet);
 }

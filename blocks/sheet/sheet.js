@@ -6,7 +6,7 @@ import getPathDetails from '../shared/pathDetails.js';
 
 async function getData(details) {
   const resp = await fetch(details.sourceUrl);
-  if (!resp.ok) return;
+  if (!resp.ok) return null;
   const json = await resp.json();
 
   const data = json.data.reduce((acc, item, idx) => {
@@ -25,7 +25,6 @@ async function getData(details) {
 
     return acc;
   }, []);
-  console.log(data);
   return data;
 }
 
