@@ -1,50 +1,58 @@
 import { conOrigin, origin } from './constants.js';
 
 export default function getPathDetails(loc) {
-  const { hash } = loc || window.location;
+  const { pathname, hash } = loc || window.location;
   const fullpath = hash.replace('#', '');
-  if (!fullpath || fullpath.startsWith('old_hash')) return;
+  if (pathname === '/' && !hash) return null;
 
+  // IMS will redirect and there's a small window where old_hash exists
+  if (!fullpath || fullpath.startsWith('old_hash')) return null;
+
+  // Split everything up so it can be later used for AEM
   const pathSplit = fullpath.slice(1).toLowerCase().split('/');
-
   const [owner, repo, ...parts] = pathSplit;
-  const path = parts.join('/');
-
-  let name = parts.slice(-1)[0];
-  if (!name) name = repo || owner;
-  const nameSplit = name.split('.');
-  const ext = nameSplit.length > 1 ? '' : '.html';
-  const sourceUrl = `${origin}/source${fullpath}${ext}`;
 
   const details = {
     owner,
     repo,
     origin,
     fullpath,
-    path,
-    name,
-    sourceUrl,
   };
 
-  if (name !== owner && name !== repo) {
-    details.parent = `/${pathSplit.slice(0, -1).join('/')}`;
-    details.parentName = pathSplit.at(-2);
-    details.contentUrl = `${conOrigin}${fullpath}`;
-    details.previewUrl = `https://main--${repo}--${owner}.hlx.page/${path}`;
-    return details;
-  }
+  // There's actual content and the creator is not looking at owner or repo directly.
+  if (parts.length > 0) {
+    // Figure out the filename situation
+    const filename = parts.pop();
+    let [name, ext] = filename.split('.');
+    if (!ext && pathname === '/sheet') ext = 'json';
+    if (!ext && pathname === '/edit') ext = 'html';
 
-  if (name === repo) {
+    // Source path (DA Admin API) will always want the extension
+    const prefix = [...parts, name].join('/');
+    const sourcePath = `/${owner}/${repo}/${prefix}.${ext}`;
+    const sourceUrl = `${origin}/source${sourcePath}`;
+
+    // Preview path (AEM preview) does not want .html (or owner/repo), all other extensions are fine
+    const previewPath = ext === 'html' ? `/${prefix}` : `/${prefix}.${ext}`;
+    const contentPath = `/${owner}/${repo}${previewPath}`;
+
+    details.name = name;
+    details.parent = `/${pathSplit.slice(0, -1).join('/')}`;
+    details.parentName = parts.at(-1) || repo;
+    details.sourceUrl = sourceUrl;
+    details.contentUrl = `${conOrigin}${contentPath}`;
+    details.previewUrl = `https://main--${repo}--${owner}.hlx.page${previewPath}`;
+  } else if (repo) {
+    details.name = repo;
     details.parent = `/${owner}`;
     details.parentName = owner;
     details.sourceUrl = `${origin}/source${fullpath}`;
-  }
-
-  if (name === owner) {
-    details.parent = `/`;
+    details.previewUrl = `https://main--${repo}--${owner}.hlx.page`;
+  } else {
+    details.name = owner;
+    details.parent = '/';
     details.parentName = 'Root';
     details.sourceUrl = `${origin}/source${fullpath}`;
   }
-
   return details;
 }

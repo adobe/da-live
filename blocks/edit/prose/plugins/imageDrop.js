@@ -11,8 +11,8 @@ export default function imageDrop(schema) {
         drop: (view, event) => {
           event.preventDefault();
 
-          const files = event.dataTransfer.files;
-          if (files.length == 0) return;
+          const { files } = event.dataTransfer;
+          if (files.length === 0) return;
 
           ([...files]).forEach(async (file) => {
             if (!SUPPORTED_FILES.some((type) => type === file.type)) return;

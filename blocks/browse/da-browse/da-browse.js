@@ -3,13 +3,12 @@ import { origin } from '../../shared/constants.js';
 
 import getSheet from '../../shared/sheet.js';
 import saveToDa from '../../shared/utils.js';
+
 const sheet = await getSheet('/blocks/browse/da-browse/da-browse.css');
 
 export default class DaBrowse extends LitElement {
   static properties = {
-    details: {
-      attribute: false,
-    },
+    details: { attribute: false },
     _listItems: { state: true },
     _selectedItems: { state: true },
     _breadcrumbs: {},
@@ -18,7 +17,7 @@ export default class DaBrowse extends LitElement {
     _createName: { state: true },
     _createFile: { state: true },
     _fileLabel: { state: true },
-    _canPaste: {}
+    _canPaste: {},
   };
 
   constructor() {
@@ -32,24 +31,16 @@ export default class DaBrowse extends LitElement {
 
   async getList() {
     const resp = await fetch(`${origin}/list${this.details.fullpath}`);
-    if (!resp.ok) return;
+    if (!resp.ok) return null;
     return resp.json();
   }
 
   getBreadcrumbs() {
     const pathSplit = this.details.fullpath.split('/').filter((part) => part !== '');
-    return pathSplit.map((part, idx) => {
-      return {
-        name: part,
-        path: `#/${pathSplit.slice(0, idx + 1).join('/')}`,
-      }
-    });
-  }
-
-  crumbClick(idx) {
-    // const pathSplit = this.details.fullpath.split('/').filter((part) => part !== '');
-    const newCrumbs = idx > -1 ? this._breadcrumbs.slice(0, idx + 1) : [];
-    console.log(`/${newCrumbs.join('/')}`);
+    return pathSplit.map((part, idx) => ({
+      name: part,
+      path: `#/${pathSplit.slice(0, idx + 1).join('/')}`,
+    }));
   }
 
   showCreateMenu() {
@@ -74,24 +65,40 @@ export default class DaBrowse extends LitElement {
   }
 
   async handleSave() {
-    const isDoc = this._createType === 'document';
+    let ext;
+    switch (this._createType) {
+      case 'document':
+        ext = 'html';
+        break;
+      case 'sheet':
+        ext = 'json';
+        break;
+      default:
+        break;
+    }
     let path = `${this.details.fullpath}/${this._createName}`;
-    const ext = 'html';
-    if (isDoc) {
-      path += `.${ext}`;
-      const blob = new Blob([''], { type: 'text/html' });
-      await saveToDa({ blob, path, preview: isDoc });
-      const editPath = this.getEditPath({ path, ext });
-      window.open(editPath, '_blank');
+    if (ext) path += `.${ext}`;
+    const editPath = this.getEditPath({ path, ext });
+    if (ext) {
+      window.location = editPath;
     } else {
       await saveToDa({ path });
+      const item = { name: this._createName, path };
+      if (ext) item.ext = ext;
+      this._listItems.unshift(item);
     }
-
-    const item = { name: this._createName, path };
-    if (isDoc) item.ext = ext;  
-    this._listItems.unshift(item);
     this.resetCreate();
     this.requestUpdate();
+  }
+
+  getEditPath({ path, ext }) {
+    // Remove external traces of html/json when constructing the edit path
+    if (ext === 'html' || ext === 'json') {
+      const route = ext === 'html' ? 'edit' : 'sheet';
+      const lastIndex = path.lastIndexOf(`.${ext}`);
+      return `/${route}#${path.substring(0, lastIndex)}`;
+    }
+    return `/view#${path}`;
   }
 
   async handleUpload(e) {
@@ -102,7 +109,7 @@ export default class DaBrowse extends LitElement {
     const name = split.join('.').replaceAll(/\W+/g, '-').toLowerCase();
     const filename = `${split.join('.').replaceAll(/\W+/g, '-').toLowerCase()}.${ext}`;
     const path = `${this.details.fullpath}/${filename}`;
-    
+
     await saveToDa({ path, formData });
 
     const item = { name, path, ext };
@@ -118,18 +125,6 @@ export default class DaBrowse extends LitElement {
     this._createType = '';
     this._createFile = '';
     this._fileLabel = 'Select file';
-  }
-
-  getEditPath({ path, ext }) {
-    if (ext === 'html') {
-      const lastIndex = path.lastIndexOf(`.${ext}`);
-      return `/edit#${path.substring(0, lastIndex)}`;
-    }
-    if (ext === 'json') {
-      return `/sheet#${path}`;
-    }
-
-    return `/view#${path}`;
   }
 
   connectedCallback() {
@@ -160,9 +155,7 @@ export default class DaBrowse extends LitElement {
 
   clearSelection() {
     this._selectedItems = [];
-    this._listItems = this._listItems.map((item) => {
-      return { ...item, isChecked: false };
-    });
+    this._listItems = this._listItems.map((item) => ({ ...item, isChecked: false }));
   }
 
   handleCopy() {
@@ -180,7 +173,7 @@ export default class DaBrowse extends LitElement {
       const formData = new FormData();
       formData.append('destination', item.destination);
       const opts = { method: 'POST', body: formData };
-      const resp = await fetch(`${origin}/copy${item.path}`, opts);
+      await fetch(`${origin}/copy${item.path}`, opts);
       item.isChecked = false;
       this._listItems.unshift(item);
       this.requestUpdate();
@@ -191,7 +184,7 @@ export default class DaBrowse extends LitElement {
   async handleDelete() {
     for (const item of this._selectedItems) {
       const opts = { method: 'DELETE' };
-      const resp = await fetch(`${origin}/source${item.path}`, opts);
+      await fetch(`${origin}/source${item.path}`, opts);
       item.isChecked = false;
       this._listItems = this._listItems.reduce((acc, liItem) => {
         if (liItem.path !== item.path) acc.push(liItem);
@@ -213,6 +206,9 @@ export default class DaBrowse extends LitElement {
           </li>
           <li class=da-actions-menu-item>
             <button data-type=document @click=${this.handleNewType}>Document</button>
+          </li>
+          <li class=da-actions-menu-item>
+            <button data-type=sheet @click=${this.handleNewType}>Sheet</button>
           </li>
           <li class=da-actions-menu-item>
             <button data-type=media @click=${this.handleNewType}>Media</button>
@@ -264,7 +260,7 @@ export default class DaBrowse extends LitElement {
             <span>Delete</span>
           </button>
         </div>
-      </div>`
+      </div>`;
   }
 
   listView() {
@@ -279,7 +275,7 @@ export default class DaBrowse extends LitElement {
               </div>
               <input type="checkbox" name="select" style="display: none;">
               <a href="${item.ext ? this.getEditPath(item) : `/#${item.path}`}" class="da-item-list-item-title">
-                <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder' } ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
+                <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
                 </span>${item.name}
               </a>
             </div>
@@ -297,7 +293,7 @@ export default class DaBrowse extends LitElement {
       <h1>Browse</h1>
       <div class="da-breadcrumb">
         <ul class="da-breadcrumb-list">
-          ${this._breadcrumbs.map((crumb, idx) => html`
+          ${this._breadcrumbs.map((crumb) => html`
             <li class="da-breadcrumb-list-item">
               <a href="${crumb.path}">${crumb.name}</a>
             </li>

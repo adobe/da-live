@@ -179,7 +179,8 @@ input[type="checkbox"] {
 
 .da-item-list-item-icon-jpg,
 .da-item-list-item-icon-jpeg,
-.da-item-list-item-icon-png {
+.da-item-list-item-icon-png,
+.da-item-list-item-icon-svg {
   background: url('/blocks/browse/img/Smock_Image_18_N.svg') center / cover no-repeat;
 }
 
