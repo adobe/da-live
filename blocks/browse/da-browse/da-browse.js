@@ -98,7 +98,7 @@ export default class DaBrowse extends LitElement {
       const lastIndex = path.lastIndexOf(`.${ext}`);
       return `/${route}#${path.substring(0, lastIndex)}`;
     }
-    return `/view#${path}`;
+    return `/media#${path}`;
   }
 
   async handleUpload(e) {
