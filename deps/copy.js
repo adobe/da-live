@@ -26,6 +26,7 @@ const IMPORT_MAP = {
     'jspreadsheet-ce-css': '/node_modules/jspreadsheet-ce/dist/jspreadsheet.css',
     'jsuites': '/node_modules/jsuites/dist/jsuites.js',
     'jsuites-css': '/node_modules/jsuites/dist/jsuites.css',
+    'helix-importer': '/node_modules/@adobe/helix-importer-ui/js/dist/helix-importer.js'
   },
 };
 

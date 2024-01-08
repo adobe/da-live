@@ -8,6 +8,8 @@
     "url": "git+https://github.com/auniverseaway/da.git"
   },
   "dependencies": {
+    "@adobe/helix-importer-ui": "git+https://github.com/adobe/helix-importer-ui.git#main",
+    "jsdom": "23.2.0",
     "jspreadsheet-ce": "^4.13.4",
     "jsuites": "^5.0.29",
     "prosemirror-example-setup": "^1.2.1",

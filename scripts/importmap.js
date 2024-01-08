@@ -21,6 +21,7 @@ const IMPORT_MAP = {
     'crelt': '/deps/crelt/index.es.js',
     '@lit/task': '/deps/lit/task/task.js',
     '@lit/reactive-element': '/deps/lit/reactive-element/reactive-element.js',
+    '@adobe/helix-importer': '/deps/helix-importer/helix-importer.js',
   },
 };
 
