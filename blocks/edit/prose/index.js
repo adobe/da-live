@@ -8,6 +8,7 @@ import { addListNodes } from "prosemirror-schema-list";
 import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from "prosemirror-example-setup";
 import prose2aem from '../../shared/prose2aem.js';
+import openLibrary from '../da-library/da-library.js';
 
 import {
   tableEditing,
@@ -33,7 +34,7 @@ function dispatchTransaction(transaction) {
     sendUpdates = true;
   }
   const newState = view.state.apply(transaction);
-  view.updateState(newState)
+  view.updateState(newState);
 }
 
 function setPreviewBody(daPreview, proseEl) {
@@ -47,7 +48,13 @@ function pollForUpdates() {
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
   const proseEl = window.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
-  setPreviewBody(daPreview, proseEl);
+
+  // Perform an initial sync.
+  // Doing this too quickly will result in an error.
+  setTimeout(() => {
+    setPreviewBody(daPreview, proseEl);
+  }, 2000);
+
   setInterval(() => {
     if (sendUpdates) {
       if (hasChanged > 0) {
@@ -86,6 +93,8 @@ export default function initProse(editor, content) {
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
   window.view = new EditorView(editor, { state, dispatchTransaction });
+
+  // openLibrary();
 
   // This is a demo showing how we can insert nodes without any extra gaps
   // setTimeout(() => {
