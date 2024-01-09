@@ -58,7 +58,7 @@ function markActive(state, type) {
       return state.doc.rangeHasMark(from, to, type);
 }
 
-function linkItem(menu, markType) {
+function linkItem(linkMarkType) {
   const label = 'Link';
   const fields = {
     href: {
@@ -71,24 +71,31 @@ function linkItem(menu, markType) {
     }
   }
 
+  let lastPrompt = {
+    isOpen: false,
+  };
+  
   return new MenuItem({
     title: "Add or remove link",
     label,
     class: 'edit-link',
-    active(state) { return markActive(state, markType); },
+    active(state) { return markActive(state, linkMarkType); },
     enable(state) { return !state.selection.empty; },
     run(state, dispatch, view) {
-      if (markActive(state, markType)) {
-        toggleMark(markType)(state, dispatch);
+      if(lastPrompt.isOpen) {
+        return true;
+      }
+      if (markActive(state, linkMarkType)) {
+        toggleMark(linkMarkType)(state, dispatch);
         return true;
       }
 
       const callback = (attrs) => {
-        toggleMark(markType, attrs)(view.state, view.dispatch);
+        toggleMark(linkMarkType, attrs)(view.state, view.dispatch);
         view.focus();
       }
 
-      openPrompt({ title: label, fields, callback });
+      lastPrompt = openPrompt({ title: label, fields, callback });
     }
   });
 }
@@ -204,7 +211,7 @@ function getMenu(view) {
         label: "I",
         class: 'edit-italic'
       }),
-      linkItem(menu, marks.link),
+      linkItem(marks.link),
     ],
     [
       wrapListItem(nodes.bullet_list, {

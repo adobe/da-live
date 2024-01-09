@@ -78,4 +78,7 @@ export default function openPrompt({ title, fields, callback }) {
   palette.fields = fields;
   palette.callback = callback;
   palettePane.append(palette);
+  return {
+    isOpen: () => palette.isConnected,
+  };
 }
