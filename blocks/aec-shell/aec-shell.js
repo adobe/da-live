@@ -46,6 +46,10 @@ class AECShell extends LitElement {
     window.location.href = '/';
   }
 
+  handleSignOut() {
+    window.adobeIMS.signOut();
+  }
+
   render() {
     return html`
       <button class="aec-button" @click=${this.handleLogoClick}>
@@ -54,7 +58,7 @@ class AECShell extends LitElement {
       <div class="ims ims-${this._ims}">
         <button class="sign-in" @click=${this.handleSignIn}>Sign in</button>
         <div class="profile">
-          <button class="profile-button" aria-label="Profile">
+          <button class="profile-button" aria-label="Profile" @click=${this.handleSignOut}>
             <img src="${this._ioAvatar}" />
           </button>
         </div>

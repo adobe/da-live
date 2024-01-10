@@ -48,7 +48,6 @@ export default class DaPreview extends LitElement {
   }
 
   setBody() {
-    console.log('setting body');
     this.port1.postMessage({ set: 'body', body: this.body, get: 'height' });
   }
 
@@ -63,13 +62,11 @@ export default class DaPreview extends LitElement {
   render() {
     return html`
       <div class="da-preview-menubar">
-        ${Object.keys(SIZES).map((key) => {
-          return html`
+        ${Object.keys(SIZES).map((key) => html`
             <span
               class="da-preview-menuitem set-${key}"
               @click=${() => { this.setWidth(key) }}>
-            </span>`;
-        })}
+            </span>`)}
         <span class="da-preview-menuitem" @click=${this.hidePreview}></span>
       </div>
       <iframe src="${this.formatPath(this.path)}?martech=off&dapreview=on" scrolling="no">

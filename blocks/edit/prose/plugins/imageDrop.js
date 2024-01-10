@@ -34,7 +34,7 @@ export default function imageDrop(schema) {
 
             // Create a doc image to pre-download the image before showing it.
             const docImg = document.createElement('img');
-            docImg.addEventListener('load', (e) => {
+            docImg.addEventListener('load', () => {
               const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
               const ts = view.state.tr.setSelection(fpoSelection);
               const img = schema.nodes.image.create({ src: json.source.contentUrl });
