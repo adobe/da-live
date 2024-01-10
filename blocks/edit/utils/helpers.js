@@ -1,4 +1,5 @@
 import { origin, hlxOrigin } from '../../shared/constants.js';
+import { daFetch } from '../../shared/utils.js';
 
 function getBlockName(block) {
   const classes = block.className.split(' ');
@@ -163,7 +164,7 @@ async function saveHtml(fullPath) {
   formData.append('data', blob);
 
   const opts = { method: 'PUT', body: formData };
-  return fetch(fullPath, opts);
+  return daFetch(fullPath, opts);
 }
 
 async function saveJson(fullPath, sheet) {
@@ -188,7 +189,7 @@ async function saveJson(fullPath, sheet) {
   formData.append('data', blob);
 
   const opts = { method: 'PUT', body: formData };
-  return fetch(fullPath, opts);
+  return daFetch(fullPath, opts);
 }
 
 export function saveToDas(pathname, sheet) {

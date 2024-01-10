@@ -10,9 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { setLibs } from './utils.js';
-
-const LOCKED_ROUTES = ['/', '/edit'];
+import { setLibs, getLibs } from './utils.js';
 
 // Add project-wide style path here.
 const STYLES = '/styles/styles.css';
@@ -32,15 +30,12 @@ function loadLCPImage() {
   lcpImg?.removeAttribute('loading');
 };
 
-function imsCheck(createTag) {
-  const { pathname } = document.location;
-  const locked = LOCKED_ROUTES.some((route) => {
-    return pathname === route;
-  });
-  if (!locked) return;
+async function imsCheck(createTag) {
+  const { loadIms } = await import(`${getLibs()}/utils/utils.js`);
+  await loadIms();
 
-  const prevSession = Object.keys(localStorage).some((key) => key.startsWith('adobeid'));
-  if (prevSession) return;
+  const token = window.adobeIMS.getAccessToken();
+  if (token) return;
 
   const rootEls = document.querySelectorAll('header, footer');
   rootEls.forEach((el) => { el.remove(); });
@@ -92,7 +87,7 @@ export default async function loadPage() {
   const { loadArea, setConfig, createTag } = await import(`${miloLibs}/utils/utils.js`);
   setConfig({ ...CONFIG, miloLibs });
 
-  imsCheck(createTag);
+  await imsCheck(createTag);
 
   await loadArea();
 };

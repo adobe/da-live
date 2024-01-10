@@ -1,11 +1,12 @@
 import '../edit/da-title/da-title.js';
 import './da-toolbar.js';
 import initSheet from './jspreadsheet/index.js';
+import { daFetch } from '../shared/utils.js';
 
 import getPathDetails from '../shared/pathDetails.js';
 
 async function getData(details) {
-  const resp = await fetch(details.sourceUrl);
+  const resp = await daFetch(details.sourceUrl);
   if (!resp.ok) return null;
   const json = await resp.json();
 

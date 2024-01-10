@@ -1,7 +1,7 @@
 import { origin } from '../shared/constants.js';
 
 async function aemPreview(path, api) {
-  const [ owner, repo, ...parts] = path.slice(1).split('/');
+  const [owner, repo, ...parts] = path.slice(1).split('/');
   const name = parts.pop() || repo || owner;
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
@@ -10,7 +10,7 @@ async function aemPreview(path, api) {
   return resp.json();
 }
 
-export default async function saveToDa({ path, formData, blob, props, preview = false }) {
+export async function saveToDa({ path, formData, blob, props, preview = false }) {
   const opts = { method: 'PUT' };
 
   const form = formData || new FormData();
@@ -24,4 +24,19 @@ export default async function saveToDa({ path, formData, blob, props, preview = 
   if (!daResp.ok) return;
   if (!preview) return;
   return aemPreview(path, 'preview');
+}
+
+export const daFetch = async (url, opts = {}) => {
+  const accessToken = window.adobeIMS.getAccessToken();
+  opts.headers = opts.headers || {}
+  if (accessToken) {
+    // opts.credentials = "include";
+    opts.headers.Authorization = `Bearer ${accessToken.token}`;
+  }
+  const resp = await fetch(url, opts);
+  if (resp.status === 404) {
+    const main = document.body.querySelector('main');
+    main.innerHTML = 'Are you lost?';
+  }
+  return resp;
 }
