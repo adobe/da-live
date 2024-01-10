@@ -1,8 +1,12 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import { loadSitemap } from 'helix-importer-sitemap';
+import 'helix-importer'; // https://github.com/adobe/helix-importer
+
 import getSheet from '../shared/sheet.js';
 
 const styles = await getSheet('/blocks/import/import-wc.css');
+
+const proxyUrl = 'http://localhost:3001';
 
 class DaImport extends LitElement {
   static properties = {
@@ -18,6 +22,40 @@ class DaImport extends LitElement {
     super();
     this.activeStep = 1;
     this.importUrls = [];
+  }
+
+
+  buildProxyURL(url) {
+    const u = new URL(url);
+    if (!u.searchParams.get('host')) {
+      u.searchParams.append('host', u.origin);
+    }
+    return `${proxyUrl}${u.pathname}${u.search}`;
+  }
+
+  // borrowed from helix-importer BrowserUtils (not exported for now)
+  createDocumentFromString(html) {
+    try {
+      // eslint-disable-next-line no-undef
+      const parser = new DOMParser();
+      return parser.parseFromString(html, 'text/html');
+    } catch (e) {
+      throw new Error('Unable to parse HTML using default createDocumentFromString function and global DOMParser. Please provide a custom createDocumentFromString.');
+    }
+  }
+
+  async getPlainHTML(url) {
+    const resp = await fetch(url);
+
+    if (!resp.ok) {
+      return '';
+    }
+
+    const body = await resp.text();
+
+    console.log(body);
+
+    return body;
   }
 
   connectedCallback() {
@@ -82,7 +120,19 @@ class DaImport extends LitElement {
     `;
   }
 
-  getStepTwoPanel() {
+  async getStepTwoPanel() {
+
+    for (var i = 0; i < this.importUrls.length; i++) {
+      const url = this.buildProxyURL(this.importUrls[i]);
+
+      const plainHTML = await this.getPlainHTML(url);
+      const dom = this.createDocumentFromString(plainHTML);
+      
+      const md = await WebImporter.html2md(this.importUrls[i], dom, WebImporter.defaultTransformDOM);
+
+      const transformedHTML = await WebImporter.md2html(md.md);
+      console.log(transformedHTML);
+    }
 
     return html`
       <div class="step-2-panel">
