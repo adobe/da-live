@@ -27,7 +27,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
 }
 
 export const daFetch = async (url, opts = {}) => {
-  const accessToken = window.adobeIMS.getAccessToken();
+  const accessToken = window.adobeIMS?.getAccessToken();
   opts.headers = opts.headers || {}
   if (accessToken) {
     // opts.credentials = "include";

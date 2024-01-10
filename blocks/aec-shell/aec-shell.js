@@ -1,4 +1,6 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { origin } from '../shared/constants.js';
+import { daFetch } from '../shared/utils.js';
 import getSheet from '../shared/sheet.js';
 const sheet = await getSheet('/blocks/aec-shell/aec-shell-wc.css');
 
@@ -42,6 +44,11 @@ class AECShell extends LitElement {
     window.adobeIMS.signIn();
   }
 
+  async handleSignOut() {
+    await daFetch(`${origin}/auth/logout`);
+    window.adobeIMS.signOut();
+  }
+
   handleLogoClick() {
     window.location.href = '/';
   }
@@ -54,7 +61,7 @@ class AECShell extends LitElement {
       <div class="ims ims-${this._ims}">
         <button class="sign-in" @click=${this.handleSignIn}>Sign in</button>
         <div class="profile">
-          <button class="profile-button" aria-label="Profile">
+          <button class="profile-button" aria-label="Profile" @click=${this.handleSignOut}>
             <img src="${this._ioAvatar}" />
           </button>
         </div>

@@ -30,24 +30,6 @@ function loadLCPImage() {
   lcpImg?.removeAttribute('loading');
 };
 
-async function imsCheck(createTag) {
-  const { loadIms } = await import(`${getLibs()}/utils/utils.js`);
-  await loadIms();
-
-  const token = window.adobeIMS.getAccessToken();
-  if (token) return;
-
-  const rootEls = document.querySelectorAll('header, footer');
-  rootEls.forEach((el) => { el.remove(); });
-
-  const main = document.querySelector('main');
-  main.innerHTML = '';
-
-  const login = createTag('div', { class: 'login' });
-  const section = createTag('div', null, login);
-  main.append(section);
-}
-
 /*
  * Side effects to only run once
  */
@@ -86,8 +68,6 @@ export default async function loadPage() {
 
   const { loadArea, setConfig, createTag } = await import(`${miloLibs}/utils/utils.js`);
   setConfig({ ...CONFIG, miloLibs });
-
-  await imsCheck(createTag);
 
   await loadArea();
 };
