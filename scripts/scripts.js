@@ -96,4 +96,14 @@ export default async function loadPage() {
 
   await loadArea();
 };
+
+// Side-effects
+(async function daPreview() {
+  const { searchParams } = new URL(window.location.href);
+  if (searchParams.get('dapreview') === 'on') { 
+    const { default: livePreview } = await import('./dapreview.js');
+    livePreview(loadPage);
+  }
+}());
+
 loadPage();
