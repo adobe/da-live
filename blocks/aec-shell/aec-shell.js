@@ -44,8 +44,7 @@ class AECShell extends LitElement {
     window.adobeIMS.signIn();
   }
 
-  async handleSignOut() {
-    await daFetch(`${origin}/auth/logout`);
+  handleSignOut() {
     window.adobeIMS.signOut();
   }
 
