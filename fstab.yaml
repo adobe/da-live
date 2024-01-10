@@ -1,4 +1,4 @@
 mountpoints:
   /:
-    url: https://content.da.live/auniverseaway/da/
+    url: https://content.da.live/adobe/da-live/
     type: markup
