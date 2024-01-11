@@ -6,7 +6,6 @@ iframe {
   border: none;
   box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
   overflow: hidden;
-  pointer-events: none;
 }
 
 .da-preview-menubar {
