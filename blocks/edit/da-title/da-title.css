@@ -27,11 +27,17 @@ h1 {
   color: var(--color-white);
 }
 
+.con-button.gray {
+  background: var(--color-gray-500);
+  border-color: var(--color-gray-500);
+  color: var(--color-white);
+}
+
 .da-title-inner {
   max-width: 900px;
   margin: 0px auto;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: end;
 }
 
@@ -74,10 +80,37 @@ h1 {
   display: flex;
   gap: 12px;
   height: 44px;
+  justify-self: end;
+}
+
+.da-title-actions-custom {
+  display: flex;
+  flex-direction: column;
+  border: 12px solid transparent;
+  border-radius: 20px;
+  position: absolute;
+  top: -12px;
+  right: 0;
+  z-index: 2;
+  align-items: end;
+}
+
+.da-title-actions-custom .da-title-action {
+  margin-top: 10px;
+  line-height: 1.5em;
+  width: 100%;
+}
+
+.da-title-actions.is-open .da-title-actions-custom {
+  background-color: #EFEFEF;
+}
+
+.da-title-actions.is-open:has(.da-title-actions-custom) {
+  background-color: transparent;
 }
 
 .da-title-actions.is-open {
-  background: #EFEFEF;
+  background-color: #EFEFEF;
 }
 
 .da-title-actions.is-open .da-title-action {
@@ -88,7 +121,7 @@ h1 {
   display: none;
 }
 
-.da-title-action-send {
+.da-title-action-top {
   padding: 5px 0;
   width: 44px;
   height: 44px;
@@ -98,11 +131,14 @@ h1 {
   overflow: hidden;
 }
 
-.da-title-action-send-icon {
+.da-title-action-icon {
   position: relative;
   display: block;
   width: 22px;
   height: 22px;
+}
+
+.da-title-action-send-icon {
   background: url('/blocks/edit/img/Smock_Send_18_N.svg') center/22px no-repeat;
 }
 
@@ -119,4 +155,8 @@ h1 {
     left: 22px;
     bottom: 22px;
   }
+}
+
+.da-title-action-custom-icon {
+  background: url('/blocks/edit/img/Smock_Gears_18_N.svg') center/22px no-repeat;
 }
