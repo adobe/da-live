@@ -10,9 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { setLibs } from './utils.js';
-
-const LOCKED_ROUTES = ['/', '/edit'];
+import { setLibs, getLibs } from './utils.js';
 
 // Add project-wide style path here.
 const STYLES = '/styles/styles.css';
@@ -32,35 +30,10 @@ function loadLCPImage() {
   lcpImg?.removeAttribute('loading');
 };
 
-function imsCheck(createTag) {
-  const { pathname } = document.location;
-  const locked = LOCKED_ROUTES.some((route) => {
-    return pathname === route;
-  });
-  if (!locked) return;
-
-  const prevSession = Object.keys(localStorage).some((key) => key.startsWith('adobeid'));
-  if (prevSession) return;
-
-  const rootEls = document.querySelectorAll('header, footer');
-  rootEls.forEach((el) => { el.remove(); });
-
-  const main = document.querySelector('main');
-  main.innerHTML = '';
-
-  const login = createTag('div', { class: 'login' });
-  const section = createTag('div', null, login);
-  main.append(section);
+async function imsCheck(loadIms) {
+  try { await loadIms(); } catch { return; }
+  const signedIn = window.adobeIMS?.isSignedInUser();
 }
-
-/*
- * Side effects to only run once
- */
-
-(async function daPreview() {
-  const { searchParams } = new URL(window.location.href);
-  if (searchParams.get('dapreview') === 'on') import('./dapreview.js');
-}());
 
 /*
  * ------------------------------------------------------------
@@ -89,11 +62,20 @@ export default async function loadPage() {
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
 
-  const { loadArea, setConfig, createTag } = await import(`${miloLibs}/utils/utils.js`);
+  const { loadArea, setConfig, loadIms } = await import(`${miloLibs}/utils/utils.js`);
   setConfig({ ...CONFIG, miloLibs });
 
-  imsCheck(createTag);
-
+  await imsCheck(loadIms);
   await loadArea();
 };
+
+// Side-effects
+(async function daPreview() {
+  const { searchParams } = new URL(window.location.href);
+  if (searchParams.get('dapreview') === 'on') { 
+    const { default: livePreview } = await import('./dapreview.js');
+    livePreview(loadPage);
+  }
+}());
+
 loadPage();

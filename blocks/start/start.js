@@ -2,6 +2,7 @@ import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import { origin } from '../shared/constants.js';
 
 import getSheet from '../shared/sheet.js';
+import { daFetch } from '../shared/utils.js';
 const sheet = await getSheet('/blocks/start/start-wc.css');
 
 const DEMO_URLS = [
@@ -48,7 +49,7 @@ class DaStart extends LitElement {
       navigator.clipboard.write(data);
       this.showOpen = true;
     } catch {
-
+      // Do Firefox things here
     }
     e.preventDefault();
   }
@@ -68,25 +69,26 @@ class DaStart extends LitElement {
   }
 
   async goToSite(e) {
-    if (this._demoContent) {
+    if (this._demoContent || this._finishDemo) {
       e.target.disabled = true;
       for (const url of DEMO_URLS) {
         const name = url.split('/').pop();
         this._goText = `Creating ${name}`;
-        const resp = await fetch(url);
+        const resp = await daFetch(url);
         if (!resp.ok) return;
-        const html = await resp.text();
+        const htmlText = await resp.text();
         // Do any modifications here
-        const blob = new Blob([html], { type: 'text/html' });
+        const blob = new Blob([htmlText], { type: 'text/html' });
         const formData = new FormData();
         formData.append('data', blob);
         const opts = { method: 'PUT', body: formData };
-        const putResp = await fetch(`https://admin.da.live/source/${this.owner}/${this.repo}/${name}.html`, opts);
+        const putResp = await daFetch(`https://admin.da.live/source/${this.owner}/${this.repo}/${name}.html`, opts);
         if (!putResp.ok) return;
-        const aemResp = await fetch(`https://admin.hlx.page/preview/${this.owner}/${this.repo}/main/${name}`, { method: 'POST' });
+        const aemResp = await daFetch(`https://admin.hlx.page/preview/${this.owner}/${this.repo}/main/${name}`, { method: 'POST' });
         if (!aemResp.ok) return;
+        this._finishDemo = true;
       }
-      this._goText = 'Done';
+      this._goText = 'Open site';
     }
     window.open(`/#/${this.owner}/${this.repo}`);
   }
@@ -94,7 +96,6 @@ class DaStart extends LitElement {
   toggleDemo() {
     this._demoContent = !this._demoContent;
   }
-
 
   onInputChange(e) {
     if (!e.target.value.startsWith('https://github.com')) {
@@ -115,7 +116,7 @@ class DaStart extends LitElement {
         this.repo = null;
         this.goEnabled = false;
       }
-    } catch {}
+    } catch { }
   }
 
   isGoDisabled() {
@@ -125,7 +126,7 @@ class DaStart extends LitElement {
   async submitForm(e) {
     e.preventDefault();
     const opts = { method: 'PUT' }
-    const resp = await fetch(e.target.action, opts);
+    const resp = await daFetch(e.target.action, opts);
     if (!resp.ok) return;
     this.goToNextStep(e);
   }

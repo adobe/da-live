@@ -1,6 +1,4 @@
-import loadPage from './scripts.js';
-
-(function daPreview() {
+export default function daPreview(loadPage) {
   let port2;
 
   async function onMessage(e) {
@@ -27,4 +25,4 @@ import loadPage from './scripts.js';
   }
 
   window.addEventListener('message', initPort);
-}());
+};

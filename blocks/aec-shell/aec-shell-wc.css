@@ -27,7 +27,6 @@ button {
   width: 24.59px;
 }
 
-.ims-unknown .sign-in,
 .ims-unknown .profile,
 .ims-anonymous .profile {
   display: none;

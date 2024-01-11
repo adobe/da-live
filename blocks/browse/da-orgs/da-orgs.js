@@ -1,5 +1,6 @@
 import { LitElement, html, map } from '../../../deps/lit/lit-all.min.js';
 import { origin } from '../../shared/constants.js';
+import { daFetch } from '../../shared/utils.js';
 
 import getSheet from '../../shared/sheet.js';
 const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
@@ -39,7 +40,7 @@ export default class DaOrgs extends LitElement {
   }
 
   async getOrgs() {
-    const resp = await fetch(`${origin}/list`);
+    const resp = await daFetch(`${origin}/list`);
     if (!resp.ok) return;
     this._orgs = await resp.json();
   }
@@ -70,7 +71,7 @@ export default class DaOrgs extends LitElement {
               </div>
             </a>
           </li>`
-        )}
+    )}
         <li>
           <a class="da-org new" href="/start">
             <div class="new-icon">

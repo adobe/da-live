@@ -1,5 +1,4 @@
-import { Fragment } from 'prosemirror-model';
-import { DOMParser } from "prosemirror-model";
+import { Fragment, DOMParser } from 'prosemirror-model';
 
 function getHeading(schema) {
   const { paragraph, table_row, table_cell } = schema.nodes;
@@ -22,7 +21,7 @@ export default function insertTable(state, dispatch) {
   const heading = getHeading(state.schema);
   const content = getContent(state.schema);
   const para = getPara(state.schema);
-  const node = state.schema.nodes.table.create(null, Fragment.fromArray([heading, content]))
+  const node = state.schema.nodes.table.create(null, Fragment.fromArray([heading, content]));
 
   if (dispatch) {
     const trx = state.tr.insert(state.selection.head, para);

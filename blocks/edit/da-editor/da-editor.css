@@ -233,6 +233,10 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_PageRule_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
+.open-library {
+  background: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
 .edit-undo {
   background: url('/blocks/edit/img/Smock_Undo_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
@@ -410,6 +414,10 @@ img.ProseMirror-separator {
   display: grid;
   gap: 12px;
 }
+
+da-library.hide {
+  display: none;
+} 
 
 
 @media (min-width: 900px) {

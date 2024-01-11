@@ -1,7 +1,14 @@
 import { conOrigin, origin } from './constants.js';
 
+let currhash;
+let details;
+
 export default function getPathDetails(loc) {
   const { pathname, hash } = loc || window.location;
+  // Use cached details if the hash has not changed
+  if (currhash === hash && details) return details;
+  currhash = hash;
+
   const fullpath = hash.replace('#', '');
   if (pathname === '/' && !hash) return null;
 
@@ -12,7 +19,7 @@ export default function getPathDetails(loc) {
   const pathSplit = fullpath.slice(1).toLowerCase().split('/');
   const [owner, repo, ...parts] = pathSplit;
 
-  const details = {
+  details = {
     owner,
     repo,
     origin,
@@ -42,6 +49,7 @@ export default function getPathDetails(loc) {
     details.sourceUrl = sourceUrl;
     details.contentUrl = `${conOrigin}${contentPath}`;
     details.previewUrl = `https://main--${repo}--${owner}.hlx.page${previewPath}`;
+    details.previewOrigin = `https://main--${repo}--${owner}.hlx.page`;
   } else if (repo) {
     details.name = repo;
     details.parent = `/${owner}`;
