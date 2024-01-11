@@ -20,6 +20,7 @@ export default class DaEditor extends LitElement {
     this._contentLoaded = false;
     this._content = await getContent(`${path}`);
     this._contentLoaded = true;
+    this._path = path;
   }
 
   connectedCallback() {
@@ -44,7 +45,7 @@ export default class DaEditor extends LitElement {
     prose.innerHTML = '';
     const content = document.createElement('div');
     content.append(...this._content);
-    initProse(prose, content);
+    initProse(prose, content, this._path);
   }
 }
 

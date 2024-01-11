@@ -122,11 +122,20 @@ export default function prose2aem(editor) {
   const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
   trailingBreaks.forEach((el) => { el.remove(); });
 
+  const userPointers = editor.querySelectorAll('.ProseMirror-yjs-cursor');
+  userPointers.forEach((el) => el.remove());
+
+  const highlights = editor.querySelectorAll('span.ProseMirror-yjs-selection');
+  highlights.forEach((el) => {
+    console.log(el);
+    el.parentElement.replaceChild(document.createTextNode(el.innerText), el);
+  });
+
   convertParagraphs(editor);
 
   convertBlocks(editor);
-  
-  removeMetadata(editor)
+
+  removeMetadata(editor);
 
   makePictures(editor);
 

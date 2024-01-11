@@ -938,18 +938,26 @@ function removeMark(tr, from, to, mark) {
 }
 function clearIncompatible(tr, pos, parentType, match = parentType.contentMatch) {
     let node = tr.doc.nodeAt(pos);
-    let delSteps = [], cur = pos + 1;
+    let replSteps = [], cur = pos + 1;
     for (let i = 0; i < node.childCount; i++) {
         let child = node.child(i), end = cur + child.nodeSize;
         let allowed = match.matchType(child.type);
         if (!allowed) {
-            delSteps.push(new ReplaceStep(cur, end, Slice.empty));
+            replSteps.push(new ReplaceStep(cur, end, Slice.empty));
         }
         else {
             match = allowed;
             for (let j = 0; j < child.marks.length; j++)
                 if (!parentType.allowsMarkType(child.marks[j].type))
                     tr.step(new RemoveMarkStep(cur, end, child.marks[j]));
+            if (child.isText && !parentType.spec.code) {
+                let m, newline = /\r?\n|\r/g, slice;
+                while (m = newline.exec(child.text)) {
+                    if (!slice)
+                        slice = new Slice(Fragment.from(parentType.schema.text(" ", parentType.allowedMarks(child.marks))), 0, 0);
+                    replSteps.push(new ReplaceStep(cur + m.index, cur + m.index + m[0].length, slice));
+                }
+            }
         }
         cur = end;
     }
@@ -957,8 +965,8 @@ function clearIncompatible(tr, pos, parentType, match = parentType.contentMatch)
         let fill = match.fillBefore(Fragment.empty, true);
         tr.replace(cur, cur, new Slice(fill, 0, 0));
     }
-    for (let i = delSteps.length - 1; i >= 0; i--)
-        tr.step(delSteps[i]);
+    for (let i = replSteps.length - 1; i >= 0; i--)
+        tr.step(replSteps[i]);
 }
 
 function canCut(node, start, end) {
@@ -1112,9 +1120,10 @@ function canSplit(doc, pos, depth = 1, typesAfter) {
         if (node.type.spec.isolating)
             return false;
         let rest = node.content.cutByIndex(index, node.childCount);
+        let overrideChild = typesAfter && typesAfter[i + 1];
+        if (overrideChild)
+            rest = rest.replaceChild(0, overrideChild.type.create(overrideChild.attrs));
         let after = (typesAfter && typesAfter[i]) || node;
-        if (after != node)
-            rest = rest.replaceChild(0, after.type.create(after.attrs));
         if (!node.canReplace(index + 1, node.childCount) || !after.type.validContent(rest))
             return false;
     }
@@ -1592,10 +1601,10 @@ function replaceRange(tr, from, to, slice) {
     // Back up preferredDepth to cover defining textblocks directly
     // above it, possibly skipping a non-defining textblock.
     for (let d = preferredDepth - 1; d >= 0; d--) {
-        let type = leftNodes[d].type, def = definesContent(type);
-        if (def && $from.node(preferredTargetIndex).type != type)
+        let leftNode = leftNodes[d], def = definesContent(leftNode.type);
+        if (def && !leftNode.sameMarkup($from.node(Math.abs(preferredTarget) - 1)))
             preferredDepth = d;
-        else if (def || !type.isTextblock)
+        else if (def || !leftNode.type.isTextblock)
             break;
     }
     for (let j = slice.openStart; j >= 0; j--) {
@@ -1737,6 +1746,51 @@ class AttrStep extends Step {
     }
 }
 Step.jsonID("attr", AttrStep);
+/**
+Update an attribute in the doc node.
+*/
+class DocAttrStep extends Step {
+    /**
+    Construct an attribute step.
+    */
+    constructor(
+    /**
+    The attribute to set.
+    */
+    attr, 
+    // The attribute's new value.
+    value) {
+        super();
+        this.attr = attr;
+        this.value = value;
+    }
+    apply(doc) {
+        let attrs = Object.create(null);
+        for (let name in doc.attrs)
+            attrs[name] = doc.attrs[name];
+        attrs[this.attr] = this.value;
+        let updated = doc.type.create(attrs, doc.content, doc.marks);
+        return StepResult.ok(updated);
+    }
+    getMap() {
+        return StepMap.empty;
+    }
+    invert(doc) {
+        return new DocAttrStep(this.attr, doc.attrs[this.attr]);
+    }
+    map(mapping) {
+        return this;
+    }
+    toJSON() {
+        return { stepType: "docAttr", attr: this.attr, value: this.value };
+    }
+    static fromJSON(schema, json) {
+        if (typeof json.attr != "string")
+            throw new RangeError("Invalid input for DocAttrStep.fromJSON");
+        return new DocAttrStep(json.attr, json.value);
+    }
+}
+Step.jsonID("docAttr", DocAttrStep);
 
 /**
 @internal
@@ -1941,9 +1995,18 @@ class Transform {
     }
     /**
     Set a single attribute on a given node to a new value.
+    The `pos` addresses the document content. Use `setDocAttribute`
+    to set attributes on the document itself.
     */
     setNodeAttribute(pos, attr, value) {
         this.step(new AttrStep(pos, attr, value));
+        return this;
+    }
+    /**
+    Set a single attribute on the document to a new value.
+    */
+    setDocAttribute(attr, value) {
+        this.step(new DocAttrStep(attr, value));
         return this;
     }
     /**
@@ -2009,4 +2072,4 @@ class Transform {
     }
 }
 
-export { AddMarkStep, AddNodeMarkStep, AttrStep, MapResult, Mapping, RemoveMarkStep, RemoveNodeMarkStep, ReplaceAroundStep, ReplaceStep, Step, StepMap, StepResult, Transform, TransformError, canJoin, canSplit, dropPoint, findWrapping, insertPoint, joinPoint, liftTarget, replaceStep };
+export { AddMarkStep, AddNodeMarkStep, AttrStep, DocAttrStep, MapResult, Mapping, RemoveMarkStep, RemoveNodeMarkStep, ReplaceAroundStep, ReplaceStep, Step, StepMap, StepResult, Transform, TransformError, canJoin, canSplit, dropPoint, findWrapping, insertPoint, joinPoint, liftTarget, replaceStep };

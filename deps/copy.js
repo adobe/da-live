@@ -26,6 +26,11 @@ const IMPORT_MAP = {
     'jspreadsheet-ce-css': '/node_modules/jspreadsheet-ce/dist/jspreadsheet.css',
     'jsuites': '/node_modules/jsuites/dist/jsuites.js',
     'jsuites-css': '/node_modules/jsuites/dist/jsuites.css',
+    'yjs': '/node_modules/yjs/src',
+    'y-prosemirror': '/node_modules/y-prosemirror/src',
+    'lib0': '/node_modules/lib0',
+    'y-protocols':'/node_modules/y-protocols',
+    'y-websocket':'/node_modules/y-websocket/src',
   },
 };
 
@@ -41,8 +46,15 @@ Object.keys(IMPORT_MAP.imports).forEach((key) => {
   const dest = src.replace('node_modules', 'deps');
 
   ensureDirectoryExistence(dest);
-  fs.copyFile(src, dest, (err) => {
-    if (err) throw err;
-    console.log('source.txt was copied to destination.txt');
-  });
+  if (fs.lstatSync(src).isDirectory()) {
+    fs.cpSync(src, dest, { recursive: true });
+    console.log(`${src} was copied to ${dest} (recursiv)`);
+  } else {
+    fs.copyFileSync(src, dest);
+    console.log(`${src} was copied to ${dest}`);
+  }
 });
+
+let content = fs.readFileSync('deps/y-prosemirror/src/plugins/sync-plugin.js', 'utf8');
+content = content.replace('const range = this.prosemirrorView._root.createRange()', 'const range = document.createRange()');
+fs.writeFileSync('deps/y-prosemirror/src/plugins/sync-plugin.js', content, 'utf8');

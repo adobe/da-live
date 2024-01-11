@@ -1,5 +1,4 @@
 import { origin, hlxOrigin } from '../../shared/constants.js';
-import { daFetch } from '../../shared/utils.js';
 
 function getBlockName(block) {
   const classes = block.className.split(' ');
@@ -142,7 +141,7 @@ function convertBlocks(tables) {
   });
 }
 
-async function saveHtml(fullPath) {
+export function cleanHtml() {
   const editor = window.view.root.querySelector('.ProseMirror').cloneNode(true);
   editor.removeAttribute('class');
   editor.removeAttribute('contenteditable');
@@ -151,6 +150,9 @@ async function saveHtml(fullPath) {
   const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
   emptyImgs.forEach((el) => { el.remove(); });
 
+  const userPointers = editor.querySelectorAll('.ProseMirror-yjs-cursor');
+  userPointers.forEach((el) => el.remove());
+
   const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
   trailingBreaks.forEach((el) => { el.remove(); });
 
@@ -158,13 +160,18 @@ async function saveHtml(fullPath) {
   convertBlocks(tables);
 
   const html = `<body><main>${editor.outerHTML}</main></body>`;
-  const blob = new Blob([html], { type: 'text/html' });
+
+  return html;
+}
+
+async function saveHtml(fullPath) {
+  const blob = new Blob([cleanHtml()], { type: 'text/html' });
 
   const formData = new FormData();
   formData.append('data', blob);
 
   const opts = { method: 'PUT', body: formData };
-  return daFetch(fullPath, opts);
+  return fetch(fullPath, opts);
 }
 
 async function saveJson(fullPath, sheet) {
@@ -189,7 +196,7 @@ async function saveJson(fullPath, sheet) {
   formData.append('data', blob);
 
   const opts = { method: 'PUT', body: formData };
-  return daFetch(fullPath, opts);
+  return fetch(fullPath, opts);
 }
 
 export function saveToDas(pathname, sheet) {
@@ -198,4 +205,8 @@ export function saveToDas(pathname, sheet) {
 
   if (!sheet) return saveHtml(fullPath);
   return saveJson(fullPath, sheet);
+}
+
+export function parse(inital) {
+  return new DOMParser().parseFromString(inital, 'text/html');
 }

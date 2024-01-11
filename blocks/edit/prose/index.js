@@ -20,6 +20,12 @@ import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from "./plugins/linkConverter.js";
 
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
+import { ySyncPlugin, yCursorPlugin, yUndoPlugin, undo, redo, prosemirrorToYDoc, prosemirrorToYXmlFragment, yDocToProsemirrorJSON, yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
+import aem2prose, { cleanHtml, parse, saveToDas } from "../utils/helpers.js";
+
+
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
@@ -49,13 +55,7 @@ function pollForUpdates() {
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
   const proseEl = window.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
-
-  // Perform an initial sync.
-  // Doing this too quickly will result in an error.
-  setTimeout(() => {
-    setPreviewBody(daPreview, proseEl);
-  }, 2000);
-
+  setPreviewBody(daPreview, proseEl);
   setInterval(() => {
     if (sendUpdates) {
       if (hasChanged > 0) {
@@ -68,14 +68,55 @@ function pollForUpdates() {
   }, 1000);
 }
 
-export default function initProse(editor, content) {
+export default function initProse(editor, content, path) {
   const schema = getSchema();
 
-  const doc = DOMParser.fromSchema(schema).parse(content);
+  const ydoc = new Y.Doc();
+
+  const wsProvider = new WebsocketProvider(/* 'ws://localhost:64287' */ 'wss://collab.da.live', 'https://admin.da.live' + new URL(path).pathname, ydoc);
+
+  const yXmlFragment = ydoc.getXmlFragment('prosemirror');
+
+  let firstUpdate = true;
+  ydoc.on('update', (_, origin) => {
+    if (firstUpdate) {
+      firstUpdate = false;
+      const aemMap = ydoc.getMap("aem");
+      const current = aemMap.get("content");
+      const inital = aemMap.get("initial");
+      if (!current && inital) {
+        const doc = parse(inital);
+        const pdoc = aem2prose(doc);
+        const docc = document.createElement('div');
+        docc.append(...pdoc);
+        const parser = DOMParser.fromSchema(schema);
+        const fin = parser.parse(docc);
+        prosemirrorToYXmlFragment(fin, yXmlFragment);
+      }
+    }
+    if (origin && origin !== wsProvider) {
+      const proseEl = window.view.root.querySelector('.ProseMirror');
+      const clone = proseEl.cloneNode(true);
+      const aem = prose2aem(clone);
+      const aemMap = ydoc.getMap("aem");
+      aemMap.set("content", aem);
+    }
+  });
+
+  adobeIMS.getProfile().then(
+    (profile) => {
+      wsProvider.awareness.setLocalStateField('user', {color: '#008833', name: profile.displayName });
+    }
+  );
 
   let state = EditorState.create({
-    doc,
+    schema,
     plugins: [
+      ySyncPlugin(yXmlFragment, { onFirstRender: () => {
+        pollForUpdates();
+      } }),
+      yCursorPlugin(wsProvider.awareness),
+      yUndoPlugin(),
       menu,
       imageDrop(schema),
       linkConverter(schema),
@@ -83,6 +124,11 @@ export default function initProse(editor, content) {
       tableEditing(),
       keymap(buildKeymap(schema)),
       keymap(baseKeymap),
+      keymap({
+        'Mod-z': undo,
+        'Mod-y': redo,
+        'Mod-Shift-z': redo,
+      }),
       keymap({
         Tab: goToNextCell(1),
         'Shift-Tab': goToNextCell(-1),
@@ -110,6 +156,4 @@ export default function initProse(editor, content) {
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
-
-  pollForUpdates();
 }
