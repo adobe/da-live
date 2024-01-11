@@ -14,8 +14,11 @@ async function loadCSS(href) {
 }
 
 export default async function daPreview(loadPage) {
+  console.log('Loaded at', import.meta.url);
   const { origin } = import.meta.url;
-  await loadCSS(new URL('/styles/dapreview.css', origin).toString());
+  const daCSS = new URL('/styles/dapreview.css', origin).toString();
+  await loadCSS(daCSS);
+  console.log('Loaded ', daCSS);
 
   let port2;
 
