@@ -30,7 +30,7 @@ function loadLCPImage() {
   lcpImg?.removeAttribute('loading');
 };
 
-async function imsCheck() {
+async function imsCheck(loadIms) {
   try { await loadIms(); } catch { return; }
   const signedIn = window.adobeIMS?.isSignedInUser();
 }
