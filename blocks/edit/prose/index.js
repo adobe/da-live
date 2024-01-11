@@ -30,7 +30,13 @@ function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-  return new Schema({ nodes, marks });
+  const contextHighlightingMark = {
+    toDOM: (mark) => {
+      return ['span', { class: 'highlighted-context' }, 0];
+    },
+  };
+  const customMarks = marks.addToEnd('contextHighlightingMark', contextHighlightingMark);
+  return new Schema({ nodes, marks: customMarks });
 }
 
 let sendUpdates = false;

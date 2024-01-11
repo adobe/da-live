@@ -1,0 +1,3 @@
+a[href] {
+  pointer-events: none !important;
+}

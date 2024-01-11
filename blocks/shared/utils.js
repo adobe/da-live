@@ -34,7 +34,7 @@ export const daFetch = async (url, opts = {}) => {
     opts.headers.Authorization = `Bearer ${accessToken.token}`;
   }
   const resp = await fetch(url, opts);
-  if (resp.status === 404) {
+  if (resp.status === 401) {
     const main = document.body.querySelector('main');
     main.innerHTML = 'Are you lost?';
   }
