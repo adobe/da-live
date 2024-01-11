@@ -19,6 +19,14 @@ class DaPalette extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
   }
 
+  initFocused = false;
+  updated(changedProperties) {
+    if(!this.initFocused) {
+      this.initFocused = true;
+      this.focus();
+    }
+  }
+
   inputChange(e, key) {
     this.fields[key].value = e.target.value;
   }
@@ -30,15 +38,25 @@ class DaPalette extends LitElement {
           <input
             type="text"
             @input=${(e) => { this.inputChange(e, key) }}
-            placeholder=${this.fields[key].placeholder} />
+            placeholder=${this.fields[key].placeholder}
+            value=${this.fields[key].value} />
         `;
       })}
     `;
   }
 
+  updateSelection(view) {
+    this.internalClose();
+  }
+
+  internalClose() {
+    this.remove();
+    this.dispatchEvent(new Event("closed"));
+  }
+
   close(e) {
     e.preventDefault();
-    this.remove();
+    this.internalClose();
   }
 
   submit(e) {
@@ -51,12 +69,33 @@ class DaPalette extends LitElement {
     });
 
     this.callback(params);
-    this.remove();
+    this.internalClose();
+  }
+
+  focus() {
+    if(!this.shadowRoot.activeElement) {
+      this.shadowRoot.querySelector('input').focus();
+    }
+  }
+
+  isOpen() {
+    return this.isConnected;
+  }
+
+  handleKeyDown(event) {
+    switch (event.key) {
+      case 'Enter':
+        this.submit(event);
+        break;
+      case 'Escape':
+        this.close(event);
+        break;
+    }
   }
 
   render() {
     return html`
-      <form class="da-palette-form">
+      <form class="da-palette-form" @keydown=${this.handleKeyDown}>
         <h5>${this.title}</h5>
         <div class="da-palette-inputs">
           ${this.fieldInputs}
@@ -78,7 +117,5 @@ export default function openPrompt({ title, fields, callback }) {
   palette.fields = fields;
   palette.callback = callback;
   palettePane.append(palette);
-  return {
-    isOpen: () => palette.isConnected,
-  };
+  return palette;
 }

@@ -87,6 +87,10 @@ span.ProseMirror-menuitem.edit-table[style=""] + .ProseMirror-menuitem {
   display: none;
 }
 
+.ProseMirror-menuitem:has(> .edit-unlink):not(:has(.ProseMirror-menu-active)) {
+  display: none;
+}
+
 span.ProseMirror-menuseparator {
   height: 2px;
   display: block;
@@ -171,6 +175,10 @@ span.ProseMirror-menuseparator {
 
 .edit-link {
   background: url('/blocks/edit/img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-unlink {
+  background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-list {
@@ -321,6 +329,10 @@ td.selectedCell {
 
 .ProseMirror-selectednode {
   outline: 2px solid #8cf;
+}
+
+.ProseMirror .highlighted-context {
+  background-color: #eee;
 }
 
 /* Make sure li selections wrap around markers */
