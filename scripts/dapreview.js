@@ -14,8 +14,7 @@ async function loadCSS(href) {
 }
 
 export default async function daPreview(loadPage) {
-  console.log('Loaded at', import.meta.url);
-  const { origin } = import.meta.url;
+  const { origin } = new URL(import.meta.url);
   const daCSS = new URL('/styles/dapreview.css', origin).toString();
   await loadCSS(daCSS);
   console.log('Loaded ', daCSS);
