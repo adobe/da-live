@@ -2,7 +2,7 @@ import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import { origin } from '../../shared/constants.js';
 
 import getSheet from '../../shared/sheet.js';
-import saveToDa from '../../shared/utils.js';
+import { saveToDa, daFetch } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/browse/da-browse/da-browse.css');
 
@@ -30,7 +30,7 @@ export default class DaBrowse extends LitElement {
   }
 
   async getList() {
-    const resp = await fetch(`${origin}/list${this.details.fullpath}`);
+    const resp = await daFetch(`${origin}/list${this.details.fullpath}`);
     if (!resp.ok) return null;
     return resp.json();
   }
@@ -173,7 +173,7 @@ export default class DaBrowse extends LitElement {
       const formData = new FormData();
       formData.append('destination', item.destination);
       const opts = { method: 'POST', body: formData };
-      await fetch(`${origin}/copy${item.path}`, opts);
+      await daFetch(`${origin}/copy${item.path}`, opts);
       item.isChecked = false;
       this._listItems.unshift(item);
       this.requestUpdate();
@@ -184,7 +184,7 @@ export default class DaBrowse extends LitElement {
   async handleDelete() {
     for (const item of this._selectedItems) {
       const opts = { method: 'DELETE' };
-      await fetch(`${origin}/source${item.path}`, opts);
+      await daFetch(`${origin}/source${item.path}`, opts);
       item.isChecked = false;
       this._listItems = this._listItems.reduce((acc, liItem) => {
         if (liItem.path !== item.path) acc.push(liItem);

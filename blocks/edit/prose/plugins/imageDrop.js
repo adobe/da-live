@@ -1,5 +1,6 @@
 import { Plugin, TextSelection } from 'prosemirror-state';
 import getPathDetails from '../../../shared/pathDetails.js';
+import { daFetch } from '../../../shared/utils.js';
 
 const FPO_IMG_URL = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
 const SUPPORTED_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
@@ -28,7 +29,7 @@ export default function imageDrop(schema) {
             const formData = new FormData();
             formData.append('data', file);
             const opts = { method: 'PUT', body: formData };
-            const resp = await fetch(url, opts);
+            const resp = await daFetch(url, opts);
             if (!resp.ok) return;
             const json = await resp.json();
 

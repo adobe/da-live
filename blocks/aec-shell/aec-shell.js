@@ -1,4 +1,6 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { origin } from '../shared/constants.js';
+import { daFetch } from '../shared/utils.js';
 import getSheet from '../shared/sheet.js';
 const sheet = await getSheet('/blocks/aec-shell/aec-shell-wc.css');
 
@@ -40,6 +42,10 @@ class AECShell extends LitElement {
 
   handleSignIn() {
     window.adobeIMS.signIn();
+  }
+
+  handleSignOut() {
+    window.adobeIMS.signOut();
   }
 
   handleLogoClick() {
