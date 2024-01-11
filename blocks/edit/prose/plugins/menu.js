@@ -175,7 +175,7 @@ function removeLinkItem(linkMarkType) {
     active(state) { return markActive(state, linkMarkType); },
     enable(state) { return this.active(state); },
     run(state, dispatch, view) {
-      const { link, offset } = findExistingLink(state);
+      const { link, offset } = findExistingLink(state, linkMarkType);
       const { start, end } = calculateLinkPosition(state, link, offset);
       const tr = state.tr.setSelection(TextSelection.create(state.doc, start, end))
         .removeMark(start, end, linkMarkType);
