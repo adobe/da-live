@@ -30,6 +30,11 @@ function loadLCPImage() {
   lcpImg?.removeAttribute('loading');
 };
 
+async function imsCheck() {
+  try { await loadIms(); } catch { return; }
+  const signedIn = window.adobeIMS?.isSignedInUser();
+}
+
 /*
  * Side effects to only run once
  */
@@ -66,9 +71,10 @@ export default async function loadPage() {
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
 
-  const { loadArea, setConfig, createTag } = await import(`${miloLibs}/utils/utils.js`);
+  const { loadArea, setConfig, loadIms } = await import(`${miloLibs}/utils/utils.js`);
   setConfig({ ...CONFIG, miloLibs });
 
+  await imsCheck(loadIms);
   await loadArea();
 };
 loadPage();
