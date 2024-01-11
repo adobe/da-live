@@ -16,7 +16,7 @@ input {
 .gradient {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(0,0,0,0.647671568627451) 0%, rgba(0,0,0,0.524422268907563) 100%);
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.647671568627451) 0%, rgba(0, 0, 0, 0.524422268907563) 100%);
 }
 
 .background {
@@ -32,7 +32,7 @@ input {
 
 ul.step-count {
   list-style: none;
-  margin: 0 0 96px;
+  margin: 0 0 32px;
   padding: 0;
   display: flex;
   justify-content: center;
@@ -78,9 +78,10 @@ div.input-container {
   margin-bottom: 24px;
 }
 
-div.sitemap-input label, div.urllist-input label {
+div.sitemap-input label,
+div.urllist-input label {
   display: block;
-  font-size : 18px;
+  font-size: 18px;
   margin-bottom: 4px;
 }
 
@@ -92,7 +93,8 @@ div.urllist-input textarea {
   height: 120px;
 }
 
-div.sitemap-input input, div.urllist-input textarea {
+div.sitemap-input input,
+div.urllist-input textarea {
   display: block;
   background: rgb(29, 29, 29);
   border-radius: 5px 0 0 5px;
@@ -104,10 +106,6 @@ div.sitemap-input input, div.urllist-input textarea {
   min-width: 350px;
   box-sizing: border-box;
   color: #FFF;
-}
-
-.fstab-action-container {
-  display: flex;
 }
 
 .go-button:nth-child(2) {
@@ -148,7 +146,7 @@ div.git-input input::placeholder {
   font-style: italic;
 }
 
-div.text-container {
+div.text-container, div.progress-container {
   display: flex;
   justify-content: center;
 }
@@ -156,6 +154,20 @@ div.text-container {
 div.text-container p {
   margin: 0;
   text-align: center;
+}
+
+div.progress-container table thead {
+  display: block;
+}
+
+div.progress-container table tbody {
+  height: 384px;
+  overflow-y: scroll;
+  display: block;
+}
+
+div.progress-container table tbody td {
+  font-size: 14px;
 }
 
 a {
