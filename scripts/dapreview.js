@@ -1,4 +1,22 @@
-export default function daPreview(loadPage) {
+async function loadCSS(href) {
+  return new Promise((resolve, reject) => {
+    if (!document.querySelector(`head > link[href="${href}"]`)) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.onload = resolve;
+      link.onerror = reject;
+      document.head.append(link);
+    } else {
+      resolve();
+    }
+  });
+}
+
+export default async function daPreview(loadPage) {
+  const { origin } = import.meta.url;
+  await loadCSS(new URL('/styles/dapreview.css', origin).toString());
+
   let port2;
 
   async function onMessage(e) {
