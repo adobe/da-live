@@ -125,8 +125,8 @@ export default function prose2aem(editor) {
   convertParagraphs(editor);
 
   convertBlocks(editor);
-  
-  removeMetadata(editor)
+
+  removeMetadata(editor);
 
   makePictures(editor);
 
