@@ -1,14 +1,9 @@
-import { LitElement, html, map } from '../../../deps/lit/lit-all.min.js';
+import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import { origin } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
-
 import getSheet from '../../shared/sheet.js';
-const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
 
-const MOCK_ORGS = [
-  { Name: 'auniverseaway' },
-  { Name: 'adobecom' },
-];
+const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
 
 const MOCK_IMGS = [
   '/blocks/browse/da-orgs/img/adobe-dark-alley.jpg',
@@ -29,14 +24,10 @@ export default class DaOrgs extends LitElement {
     _orgs: { state: true },
   };
 
-  constructor() {
-    super();
-    this.getOrgs();
-  }
-
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    this.getOrgs();
   }
 
   async getOrgs() {
@@ -52,16 +43,16 @@ export default class DaOrgs extends LitElement {
   }
 
   render() {
-    if (!this._orgs) return;
+    if (!this._orgs) return null;
 
     return html`
       <h1>Organizations</h1>
       <ul class="da-orgs-list">
-        ${map(this._orgs, (org) => html`
+        ${this._orgs.map((org) => html`
           <li>
             <a class="da-org" href="#/${org.name}">
               <div class="image-container">
-                <img src="${getRandomImg()}" />
+                <img src="${getRandomImg()}" loading="lazy" />
               </div>
               <div class="details-area">
                 <p class="label">Name</p>
@@ -70,8 +61,7 @@ export default class DaOrgs extends LitElement {
                 <p class="details-title">${this.formatDate(org.created)[0]}</p>
               </div>
             </a>
-          </li>`
-    )}
+          </li>`)}
         <li>
           <a class="da-org new" href="/start">
             <div class="new-icon">

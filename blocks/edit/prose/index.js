@@ -1,34 +1,30 @@
-import { EditorState } from "prosemirror-state";
-import { EditorView } from "prosemirror-view";
-import { Schema, DOMParser } from "prosemirror-model";
-import { baseKeymap } from "prosemirror-commands"
-import { schema as baseSchema } from "prosemirror-schema-basic";
+import { EditorState } from 'prosemirror-state';
+import { EditorView } from 'prosemirror-view';
+import { Schema, DOMParser } from 'prosemirror-model';
+import { baseKeymap } from 'prosemirror-commands';
+import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { history } from 'prosemirror-history';
-import { addListNodes } from "prosemirror-schema-list";
+import { addListNodes } from 'prosemirror-schema-list';
 import { keymap } from 'prosemirror-keymap';
-import { buildKeymap } from "prosemirror-example-setup";
-import prose2aem from '../../shared/prose2aem.js';
-import openLibrary from '../da-library/da-library.js';
-
+import { buildKeymap } from 'prosemirror-example-setup';
 import {
   tableEditing,
   columnResizing,
   goToNextCell,
   tableNodes,
-  fixTables } from 'prosemirror-tables';
+  fixTables,
+} from 'prosemirror-tables';
+import prose2aem from '../../shared/prose2aem.js';
+
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
-import linkConverter from "./plugins/linkConverter.js";
+import linkConverter from './plugins/linkConverter.js';
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-  const contextHighlightingMark = {
-    toDOM: (mark) => {
-      return ['span', { class: 'highlighted-context' }, 0];
-    },
-  };
+  const contextHighlightingMark = { toDOM: (mark) => ['span', { class: 'highlighted-context' }, 0] };
   const customMarks = marks.addToEnd('contextHighlightingMark', contextHighlightingMark);
   return new Schema({ nodes, marks: customMarks });
 }
