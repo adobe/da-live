@@ -63,13 +63,13 @@ export default class DaPreview extends LitElement {
     return html`
       <div class="da-preview-menubar">
         ${Object.keys(SIZES).map((key) => html`
-            <span
-              class="da-preview-menuitem set-${key}"
-              @click=${() => { this.setWidth(key) }}>
-            </span>`)}
+          <span
+            class="da-preview-menuitem set-${key}"
+            @click=${() => this.setWidth(key)}>
+          </span>`)}
         <span class="da-preview-menuitem" @click=${this.hidePreview}></span>
       </div>
-      <iframe src="${this.formatPath(this.path)}?martech=off&dapreview=on" scrolling="no">
+      <iframe src="${this.formatPath(this.path)}?martech=off&dapreview=on" allow="clipboard-write *" scrolling="no">
     `;
   }
 
