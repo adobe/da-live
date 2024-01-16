@@ -137,6 +137,14 @@ span.ProseMirror-menuseparator {
   border-radius: 2px;
 }
 
+.ProseMirror-menu-dropdown-item > .separator {
+  height: 2px;
+  display: block;
+  background: #EFEFEF;
+  margin-bottom: 6px;
+  border-radius: 1px;
+}
+
 .menu-item-para {
   background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat #EFEFEF;
 }

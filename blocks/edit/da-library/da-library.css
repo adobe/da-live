@@ -138,6 +138,10 @@ button span {
   background: url('/blocks/edit/img/Smock_Image_18_N.svg') 18px center / 18px no-repeat;
 }
 
+.da-library-item-list-main button.plugins {
+  background: url('/blocks/edit/img/Smock_Plug_18_N.svg') 18px center / 18px no-repeat;
+}
+
 /* List generics */
 ul {
   margin: 0;

@@ -223,8 +223,19 @@ function getTableMenu() {
   ];
 }
 
-function getTextBlocks(nodes) {
+function getTextBlocks(marks, nodes) {
   return [
+    markItem(marks.strong, {
+      title: 'Toggle bold',
+      label: 'B',
+      class: 'edit-bold',
+    }),
+    markItem(marks.em, {
+      title: 'Toggle italic',
+      label: 'I',
+      class: 'edit-italic',
+    }),
+    item('separator', null, 'separator'),
     blockTypeItem(nodes.paragraph, {
       title: 'Change to paragraph',
       label: 'P',
@@ -274,22 +285,12 @@ function getMenu(view) {
 
   const { marks, nodes } = view.state.schema;
   const editTable = getTableMenu();
-  const textBlocks = getTextBlocks(nodes);
+  const textBlocks = getTextBlocks(marks, nodes);
 
   const textMenu = [
     new Dropdown(textBlocks, {
       label: 'Edit Text',
       class: 'edit-text',
-    }),
-    markItem(marks.strong, {
-      title: 'Toggle bold',
-      label: 'B',
-      class: 'edit-bold',
-    }),
-    markItem(marks.em, {
-      title: 'Toggle italic',
-      label: 'I',
-      class: 'edit-italic',
     }),
     linkItem(marks.link),
     removeLinkItem(marks.link),
