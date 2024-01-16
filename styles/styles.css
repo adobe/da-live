@@ -2,6 +2,10 @@
   --aec-nav-height: 49px;
 }
 
+helix-sidekick {
+  display: none !important;
+}
+
 button, input {
   font-family: var(--body-font-family);
 }
