@@ -5,7 +5,7 @@
   "license": "Apache License 2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/adobe/da-da-live.git"
+    "url": "git+https://github.com/adobe/da-live.git"
   },
   "dependencies": {
     "jspreadsheet-ce": "^4.13.4",
