@@ -36,8 +36,8 @@ function dispatchTransaction(transaction) {
     hasChanged += 1;
     sendUpdates = true;
   }
-  const newState = view.state.apply(transaction);
-  view.updateState(newState);
+  const newState = window.view.state.apply(transaction);
+  window.view.updateState(newState);
 }
 
 function setPreviewBody(daPreview, proseEl) {
@@ -67,7 +67,7 @@ function pollForUpdates() {
       setPreviewBody(daPreview, proseEl);
       sendUpdates = false;
     }
-  }, 1000);
+  }, 500);
 }
 
 export default function initProse(editor, content) {

@@ -2,6 +2,7 @@ import { DOMParser } from 'prosemirror-model';
 import { origin, conOrigin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
 
+const REPLACE_CONTENT = '<content>';
 const DA_CONFIG = '/.da/config.json';
 
 export function parseDom(dom) {
@@ -19,14 +20,25 @@ function fixAssets(json) {
   }, []);
 }
 
-export async function getItems(sources, listType) {
+function formatData(data, format) {
+  return data.reduce((acc, item) => {
+    if (item.key) {
+      const toParse = format ? format.replace(REPLACE_CONTENT, item.key) : item.key;
+      const parsed = window.view.state.schema.text(toParse);
+      acc.push({ ...item, parsed });
+    }
+    return acc;
+  }, []);
+}
+
+export async function getItems(sources, listType, format) {
   const items = [];
   for (const source of sources) {
     try {
       const resp = await fetch(source);
       const json = await resp.json();
       if (json.data) {
-        items.push(...json.data);
+        items.push(...formatData(json.data, format));
       } else if (listType === 'assets') {
         items.push(...fixAssets(json));
       } else {
@@ -66,6 +78,7 @@ export async function getLibraryList() {
       acc.push({
         name: keySplit[1],
         sources: item.value.replaceAll(' ', '').split(','),
+        format: item.format,
       });
     }
     return acc;
