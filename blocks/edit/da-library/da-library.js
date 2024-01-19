@@ -140,13 +140,13 @@ class DaLibrary extends LitElement {
       </ul>`;
   }
 
-  async renderLibrary({ name, sources }) {
+  async renderLibrary({ name, sources, format }) {
     if (name === 'blocks') {
       const blocks = await getBlocks(sources);
       return this.renderGroups(blocks);
     }
 
-    const items = await getItems(sources, name);
+    const items = await getItems(sources, name, format);
     if (items.length > 0) {
       if (name === 'assets') return this.renderAssets(items);
       return this.renderItems(items, name);
