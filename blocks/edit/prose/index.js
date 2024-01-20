@@ -1,40 +1,45 @@
-import { EditorState } from "prosemirror-state";
-import { EditorView } from "prosemirror-view";
-import { Schema, DOMParser } from "prosemirror-model";
-import { baseKeymap } from "prosemirror-commands"
-import { schema as baseSchema } from "prosemirror-schema-basic";
+// ProseMirror
+import { EditorState } from 'prosemirror-state';
+import { EditorView } from 'prosemirror-view';
+import { Schema, DOMParser } from 'prosemirror-model';
+import { baseKeymap } from 'prosemirror-commands';
+import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { history } from 'prosemirror-history';
-import { addListNodes } from "prosemirror-schema-list";
+import { addListNodes } from 'prosemirror-schema-list';
 import { keymap } from 'prosemirror-keymap';
-import { buildKeymap } from "prosemirror-example-setup";
-import prose2aem from '../../shared/prose2aem.js';
-import openLibrary from '../da-library/da-library.js';
-
+import { buildKeymap } from 'prosemirror-example-setup';
 import {
   tableEditing,
   columnResizing,
   goToNextCell,
   tableNodes,
-  fixTables } from 'prosemirror-tables';
+  fixTables,
+} from 'prosemirror-tables';
+
+// yjs
+import {
+  Y,
+  WebsocketProvider,
+  ySyncPlugin,
+  yCursorPlugin,
+  yUndoPlugin,
+  undo,
+  redo,
+  prosemirrorToYXmlFragment,
+} from 'da-y-wrapper';
+
+// DA
+import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
-import linkConverter from "./plugins/linkConverter.js";
-
-import * as Y from 'yjs';
-import { WebsocketProvider } from 'y-websocket';
-import { ySyncPlugin, yCursorPlugin, yUndoPlugin, undo, redo, prosemirrorToYDoc, prosemirrorToYXmlFragment, yDocToProsemirrorJSON, yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
-import aem2prose, { cleanHtml, parse, saveToDas } from "../utils/helpers.js";
-
+import linkConverter from './plugins/linkConverter.js';
+import { aem2prose, parse } from '../utils/helpers.js';
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-  const contextHighlightingMark = {
-    toDOM: (mark) => {
-      return ['span', { class: 'highlighted-context' }, 0];
-    },
-  };
+  const contextHighlightingMark = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
   const customMarks = marks.addToEnd('contextHighlightingMark', contextHighlightingMark);
   return new Schema({ nodes, marks: customMarks });
 }
@@ -46,8 +51,8 @@ function dispatchTransaction(transaction) {
     hasChanged += 1;
     sendUpdates = true;
   }
-  const newState = view.state.apply(transaction);
-  view.updateState(newState);
+  const newState = window.view.state.apply(transaction);
+  window.view.updateState(newState);
 }
 
 function setPreviewBody(daPreview, proseEl) {
@@ -61,7 +66,13 @@ function pollForUpdates() {
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
   const proseEl = window.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
-  setPreviewBody(daPreview, proseEl);
+
+  // Perform an initial sync.
+  // Doing this too quickly will result in an error.
+  setTimeout(() => {
+    setPreviewBody(daPreview, proseEl);
+  }, 2000);
+
   setInterval(() => {
     if (sendUpdates) {
       if (hasChanged > 0) {
@@ -71,15 +82,17 @@ function pollForUpdates() {
       setPreviewBody(daPreview, proseEl);
       sendUpdates = false;
     }
-  }, 1000);
+  }, 500);
 }
 
-export default function initProse(editor, content, path) {
+export default function initProse({ editor, path }) {
   const schema = getSchema();
 
   const ydoc = new Y.Doc();
 
-  const wsProvider = new WebsocketProvider(/* 'ws://localhost:64287' */ 'wss://collab.da.live', 'https://admin.da.live' + new URL(path).pathname, ydoc);
+  const server = 'wss://collab.da.live';
+  const roomName = `https://admin.da.live${new URL(path).pathname}`;
+  const wsProvider = new WebsocketProvider(server, roomName, ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
@@ -87,9 +100,9 @@ export default function initProse(editor, content, path) {
   ydoc.on('update', (_, origin) => {
     if (firstUpdate) {
       firstUpdate = false;
-      const aemMap = ydoc.getMap("aem");
-      const current = aemMap.get("content");
-      const inital = aemMap.get("initial");
+      const aemMap = ydoc.getMap('aem');
+      const current = aemMap.get('content');
+      const inital = aemMap.get('initial');
       if (!current && inital) {
         const doc = parse(inital);
         const pdoc = aem2prose(doc);
@@ -104,23 +117,25 @@ export default function initProse(editor, content, path) {
       const proseEl = window.view.root.querySelector('.ProseMirror');
       const clone = proseEl.cloneNode(true);
       const aem = prose2aem(clone);
-      const aemMap = ydoc.getMap("aem");
-      aemMap.set("content", aem);
+      const aemMap = ydoc.getMap('aem');
+      aemMap.set('content', aem);
     }
   });
 
-  adobeIMS.getProfile().then(
+  window.adobeIMS.getProfile().then(
     (profile) => {
-      wsProvider.awareness.setLocalStateField('user', {color: '#008833', name: profile.displayName });
-    }
+      wsProvider.awareness.setLocalStateField('user', { color: '#008833', name: profile.displayName });
+    },
   );
 
   let state = EditorState.create({
     schema,
     plugins: [
-      ySyncPlugin(yXmlFragment, { onFirstRender: () => {
-        pollForUpdates();
-      } }),
+      ySyncPlugin(yXmlFragment, {
+        onFirstRender: () => {
+          pollForUpdates();
+        },
+      }),
       yCursorPlugin(wsProvider.awareness),
       yUndoPlugin(),
       menu,

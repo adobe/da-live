@@ -1,6 +1,7 @@
 import { parseDom } from './helpers.js';
 
 const HEADING_NAMES = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
+const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 
 function decorateImages(element, path) {
   if (!element || !path) return;
@@ -61,7 +62,11 @@ function getBlockHtml(block) {
 }
 
 export async function getBlockVariants(path) {
-  const resp = await fetch(`${path}.plain.html`);
+  const { origin } = new URL(path);
+  const isAemHosted = AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
+  const postfix = isAemHosted ? '.plain.html' : '';
+
+  const resp = await fetch(`${path}${postfix}`);
   if (!resp.ok) return [];
 
   const ul = document.createElement('ul');
@@ -76,7 +81,11 @@ export async function getBlockVariants(path) {
 
   decorateImages(doc.body, path);
 
-  const blocks = doc.body.querySelectorAll(':scope > div > div');
+  // plain.html format will not have a main element
+  // content pulled directly from DA will have a main element
+  // these shouldn't collect duplicates for the different scenarios
+  const blocks = doc.querySelectorAll('body > div > div, main > div > div');
+
   return [...blocks].map((block) => {
     const prevSib = block.previousElementSibling;
     const prevName = prevSib?.nodeName;
@@ -101,9 +110,12 @@ export async function getBlocks(sources) {
   return Promise.all(sourcesData)
     .then((resData) => {
       const blockList = [];
-      resData.forEach(async (data) => {
+      resData.forEach(async (blockData) => {
+        const { data } = blockData.blocks || blockData;
         if (!data) return;
-        blockList.push(...data.blocks.data);
+        data.forEach((block) => {
+          if (block.name && block.path) blockList.push(block);
+        });
       });
       return blockList;
     });
