@@ -1,17 +1,15 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { origin } from '../../shared/constants.js';
-import { daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
-import loadAdmin from '../../shared/loadAdmin.js';
+import { loadAdmin } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
 
 const MOCK_IMGS = [
-  '/blocks/browse/da-orgs/img/adobe-dark-alley.jpg',
-  '/blocks/browse/da-orgs/img/da-two-50.jpg',
-  '/blocks/browse/da-orgs/img/da-three-50.jpg',
-  '/blocks/browse/da-orgs/img/da-four-50.jpg',
-  '/blocks/browse/da-orgs/img/da-five-50.jpg',
+  '/blocks/browse/da-orgs/img/da-one.webp',
+  '/blocks/browse/da-orgs/img/da-two.webp',
+  '/blocks/browse/da-orgs/img/da-three.webp',
+  '/blocks/browse/da-orgs/img/da-four.webp',
+  '/blocks/browse/da-orgs/img/da-five.webp',
 ];
 
 function getRandomImg() {
