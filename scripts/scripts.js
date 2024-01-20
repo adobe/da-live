@@ -38,17 +38,15 @@ function loadLCPImage() {
 
 const miloLibs = setLibs(LIBS);
 
-function loadLink(href, rel) {
-  const link = document.createElement('link');
-  link.href = href;
-  link.rel = rel;
-  document.head.appendChild(link);
-}
-
 function loadStyles() {
   const paths = [`${miloLibs}/styles/styles.css`];
   if (STYLES) { paths.push(STYLES); }
-  paths.forEach((path) => loadLink(path, 'stylesheet'));
+  paths.forEach((path) => {
+    const link = document.createElement('link');
+    link.setAttribute('rel', 'stylesheet');
+    link.setAttribute('href', path);
+    document.head.appendChild(link);
+  });
 }
 
 loadLCPImage();
