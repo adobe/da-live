@@ -52,10 +52,6 @@ class AECShell extends LitElement {
     window.location.href = '/';
   }
 
-  handleSignOut() {
-    window.adobeIMS.signOut();
-  }
-
   render() {
     return html`
       <button class="aec-button" @click=${this.handleLogoClick}>

@@ -10,7 +10,7 @@ export default function getPathDetails(loc) {
   currhash = hash;
 
   const fullpath = hash.replace('#', '');
-  if (pathname === '/' && !hash) return null;
+  if (pathname === '/' && !hash) return details;
 
   // IMS will redirect and there's a small window where old_hash exists
   if (!fullpath || fullpath.startsWith('old_hash')) return null;
