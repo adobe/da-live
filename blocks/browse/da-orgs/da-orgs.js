@@ -48,11 +48,11 @@ export default class DaOrgs extends LitElement {
     return html`
       <h1>Organizations</h1>
       <ul class="da-orgs-list">
-        ${this._orgs.map((org) => html`
+        ${this._orgs.map((org, idx) => html`
           <li>
             <a class="da-org" href="#/${org.name}">
               <div class="image-container">
-                <img src="${getRandomImg()}" loading="lazy" />
+                <img src="${getRandomImg()}" loading="${idx === 0 ? 'eager' : 'lazy'}" />
               </div>
               <div class="details-area">
                 <p class="label">Name</p>

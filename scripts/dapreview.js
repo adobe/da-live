@@ -19,8 +19,6 @@ export default async function daPreview(loadPage) {
 
   let port2;
   async function onMessage(e) {
-    console.log(e.data);
-
     if (e.data.set === 'body') {
       document.body.outerHTML = e.data.body;
       await loadPage();
@@ -32,14 +30,14 @@ export default async function daPreview(loadPage) {
       setTimeout(() => {
         const height = `${document.documentElement.offsetHeight}px`;
         port2.postMessage(height);
-      }, delay)
+      }, delay);
     }
   }
 
   function initPort(e) {
-    port2 = e.ports[0];
+    [port2] = e.ports;
     port2.onmessage = onMessage;
   }
 
   window.addEventListener('message', initPort);
-};
+}
