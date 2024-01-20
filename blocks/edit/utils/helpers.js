@@ -43,7 +43,7 @@ function para() {
   return document.createElement('p');
 }
 
-export default function aem2prose(doc) {
+export function aem2prose(doc) {
   // Fix BRs
   const brs = doc.querySelectorAll('p br');
   brs.forEach((br) => { br.remove(); });
@@ -139,4 +139,8 @@ export function saveToDa(pathname, sheet) {
 
   if (!sheet) return saveHtml(fullPath);
   return saveJson(fullPath, sheet);
+}
+
+export function parse(inital) {
+  return new DOMParser().parseFromString(inital, 'text/html');
 }

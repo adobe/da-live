@@ -2,14 +2,14 @@ import getPathDetails from '../shared/pathDetails.js';
 import './da-title/da-title.js';
 import './da-content/da-content.js';
 
-export default async function init(el) {
-  let details = getPathDetails();
+function setUI(el) {
+  el.innerHTML = '';
+  const details = getPathDetails();
   if (!details) {
     el.classList.add('no-url');
     el.innerHTML = '<h1>Please edit a page.</h1>';
     return;
   }
-
   document.title = `Edit ${details.name} - Dark Alley`;
 
   // Title Pane
@@ -25,10 +25,12 @@ export default async function init(el) {
   meta.className = 'da-meta';
 
   el.append(daTitle, daContent, meta);
+}
 
-  window.addEventListener('hashchange', async () => {
-    details = getPathDetails();
-    daTitle.details = details;
-    daContent.details = details;
+export default async function init(el) {
+  setUI(el);
+
+  window.addEventListener('hashchange', () => {
+    setUI(el);
   });
 }

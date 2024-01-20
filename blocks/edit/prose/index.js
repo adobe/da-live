@@ -1,3 +1,4 @@
+// ProseMirror
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { Schema, DOMParser } from 'prosemirror-model';
@@ -14,17 +15,31 @@ import {
   tableNodes,
   fixTables,
 } from 'prosemirror-tables';
-import prose2aem from '../../shared/prose2aem.js';
 
+// yjs
+import {
+  Y,
+  WebsocketProvider,
+  ySyncPlugin,
+  yCursorPlugin,
+  yUndoPlugin,
+  undo,
+  redo,
+  prosemirrorToYXmlFragment,
+} from 'da-y-wrapper';
+
+// DA
+import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
+import { aem2prose, parse } from '../utils/helpers.js';
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-  const contextHighlightingMark = { toDOM: (mark) => ['span', { class: 'highlighted-context' }, 0] };
+  const contextHighlightingMark = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
   const customMarks = marks.addToEnd('contextHighlightingMark', contextHighlightingMark);
   return new Schema({ nodes, marks: customMarks });
 }
@@ -70,14 +85,59 @@ function pollForUpdates() {
   }, 500);
 }
 
-export default function initProse(editor, content) {
+export default function initProse({ editor, path }) {
   const schema = getSchema();
 
-  const doc = DOMParser.fromSchema(schema).parse(content);
+  const ydoc = new Y.Doc();
+
+  const server = 'wss://collab.da.live';
+  const roomName = `https://admin.da.live${new URL(path).pathname}`;
+  const wsProvider = new WebsocketProvider(server, roomName, ydoc);
+
+  const yXmlFragment = ydoc.getXmlFragment('prosemirror');
+
+  let firstUpdate = true;
+  ydoc.on('update', (_, origin) => {
+    if (firstUpdate) {
+      firstUpdate = false;
+      const aemMap = ydoc.getMap('aem');
+      const current = aemMap.get('content');
+      const inital = aemMap.get('initial');
+      if (!current && inital) {
+        const doc = parse(inital);
+        const pdoc = aem2prose(doc);
+        const docc = document.createElement('div');
+        docc.append(...pdoc);
+        const parser = DOMParser.fromSchema(schema);
+        const fin = parser.parse(docc);
+        prosemirrorToYXmlFragment(fin, yXmlFragment);
+      }
+    }
+    if (origin && origin !== wsProvider) {
+      const proseEl = window.view.root.querySelector('.ProseMirror');
+      const clone = proseEl.cloneNode(true);
+      const aem = prose2aem(clone);
+      const aemMap = ydoc.getMap('aem');
+      aemMap.set('content', aem);
+    }
+  });
+
+  window.adobeIMS.getProfile().then(
+    (profile) => {
+      wsProvider.awareness.setLocalStateField('user', { color: '#008833', name: profile.displayName });
+    },
+  );
 
   let state = EditorState.create({
-    doc,
+    schema,
     plugins: [
+      ySyncPlugin(yXmlFragment, {
+        onFirstRender: () => {
+          pollForUpdates();
+        },
+      }),
+      yCursorPlugin(wsProvider.awareness),
+      yUndoPlugin(),
       menu,
       imageDrop(schema),
       linkConverter(schema),
@@ -85,6 +145,11 @@ export default function initProse(editor, content) {
       tableEditing(),
       keymap(buildKeymap(schema)),
       keymap(baseKeymap),
+      keymap({
+        'Mod-z': undo,
+        'Mod-y': redo,
+        'Mod-Shift-z': redo,
+      }),
       keymap({
         Tab: goToNextCell(1),
         'Shift-Tab': goToNextCell(-1),
@@ -112,6 +177,4 @@ export default function initProse(editor, content) {
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
-
-  pollForUpdates();
 }

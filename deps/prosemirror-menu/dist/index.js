@@ -12,42 +12,44 @@ function hashPath(path) {
         hash = (((hash << 5) - hash) + path.charCodeAt(i)) | 0;
     return hash;
 }
-function getIcon(icon) {
-    let node = document.createElement("div");
+function getIcon(root, icon) {
+    let doc = (root.nodeType == 9 ? root : root.ownerDocument) || document;
+    let node = doc.createElement("div");
     node.className = prefix$2;
     if (icon.path) {
         let { path, width, height } = icon;
         let name = "pm-icon-" + hashPath(path).toString(16);
-        if (!document.getElementById(name))
-            buildSVG(name, icon);
-        let svg = node.appendChild(document.createElementNS(SVG, "svg"));
+        if (!doc.getElementById(name))
+            buildSVG(root, name, icon);
+        let svg = node.appendChild(doc.createElementNS(SVG, "svg"));
         svg.style.width = (width / height) + "em";
-        let use = svg.appendChild(document.createElementNS(SVG, "use"));
-        use.setAttributeNS(XLINK, "href", /([^#]*)/.exec(document.location.toString())[1] + "#" + name);
+        let use = svg.appendChild(doc.createElementNS(SVG, "use"));
+        use.setAttributeNS(XLINK, "href", /([^#]*)/.exec(doc.location.toString())[1] + "#" + name);
     }
     else if (icon.dom) {
         node.appendChild(icon.dom.cloneNode(true));
     }
     else {
         let { text, css } = icon;
-        node.appendChild(document.createElement("span")).textContent = text || '';
+        node.appendChild(doc.createElement("span")).textContent = text || '';
         if (css)
             node.firstChild.style.cssText = css;
     }
     return node;
 }
-function buildSVG(name, data) {
-    let collection = document.getElementById(prefix$2 + "-collection");
+function buildSVG(root, name, data) {
+    let [doc, top] = root.nodeType == 9 ? [root, root.body] : [root.ownerDocument || document, root];
+    let collection = doc.getElementById(prefix$2 + "-collection");
     if (!collection) {
-        collection = document.createElementNS(SVG, "svg");
+        collection = doc.createElementNS(SVG, "svg");
         collection.id = prefix$2 + "-collection";
         collection.style.display = "none";
-        document.body.insertBefore(collection, document.body.firstChild);
+        top.insertBefore(collection, top.firstChild);
     }
-    let sym = document.createElementNS(SVG, "symbol");
+    let sym = doc.createElementNS(SVG, "symbol");
     sym.id = name;
     sym.setAttribute("viewBox", "0 0 " + data.width + " " + data.height);
-    let path = sym.appendChild(document.createElementNS(SVG, "path"));
+    let path = sym.appendChild(doc.createElementNS(SVG, "path"));
     path.setAttribute("d", data.path);
     collection.appendChild(sym);
 }
@@ -75,7 +77,7 @@ class MenuItem {
     render(view) {
         let spec = this.spec;
         let dom = spec.render ? spec.render(view)
-            : spec.icon ? getIcon(spec.icon)
+            : spec.icon ? getIcon(view.root, spec.icon)
                 : spec.label ? crel("div", null, translate(view, spec.label))
                     : null;
         if (!dom)
@@ -148,6 +150,7 @@ class Dropdown {
     */
     render(view) {
         let content = renderDropdownItems(this.content, view);
+        let win = view.dom.ownerDocument.defaultView || window;
         let label = crel("div", { class: prefix$1 + "-dropdown " + (this.options.class || ""),
             style: this.options.css }, translate(view, this.options.label || ""));
         if (this.options.title)
@@ -158,7 +161,7 @@ class Dropdown {
         let close = () => {
             if (open && open.close()) {
                 open = null;
-                window.removeEventListener("mousedown", listeningOnClose);
+                win.removeEventListener("mousedown", listeningOnClose);
             }
         };
         label.addEventListener("mousedown", e => {
@@ -169,7 +172,7 @@ class Dropdown {
             }
             else {
                 open = this.expand(wrap, content.dom);
-                window.addEventListener("mousedown", listeningOnClose = () => {
+                win.addEventListener("mousedown", listeningOnClose = () => {
                     if (!isMenuEvent(wrap))
                         close();
                 });
@@ -190,7 +193,7 @@ class Dropdown {
         let done = false;
         function close() {
             if (done)
-                return;
+                return false;
             done = true;
             dom.removeChild(menuDOM);
             return true;
@@ -242,6 +245,7 @@ class DropdownSubmenu {
     */
     render(view) {
         let items = renderDropdownItems(this.content, view);
+        let win = view.dom.ownerDocument.defaultView || window;
         let label = crel("div", { class: prefix$1 + "-submenu-label" }, translate(view, this.options.label || ""));
         let wrap = crel("div", { class: prefix$1 + "-submenu-wrap" }, label, crel("div", { class: prefix$1 + "-submenu" }, items.dom));
         let listeningOnClose = null;
@@ -250,10 +254,10 @@ class DropdownSubmenu {
             markMenuEvent(e);
             setClass(wrap, prefix$1 + "-submenu-wrap-active", false);
             if (!listeningOnClose)
-                window.addEventListener("mousedown", listeningOnClose = () => {
+                win.addEventListener("mousedown", listeningOnClose = () => {
                     if (!isMenuEvent(wrap)) {
                         wrap.classList.remove(prefix$1 + "-submenu-wrap-active");
-                        window.removeEventListener("mousedown", listeningOnClose);
+                        win.removeEventListener("mousedown", listeningOnClose);
                         listeningOnClose = null;
                     }
                 });
@@ -547,7 +551,8 @@ class MenuBarView {
             else {
                 let border = (parent.offsetWidth - parent.clientWidth) / 2;
                 this.menu.style.left = (editorRect.left + border) + "px";
-                this.menu.style.display = (editorRect.top > window.innerHeight ? "none" : "");
+                this.menu.style.display = editorRect.top > (this.editorView.dom.ownerDocument.defaultView || window).innerHeight
+                    ? "none" : "";
                 if (scrollAncestor)
                     this.menu.style.top = top + "px";
             }
@@ -583,7 +588,7 @@ function findWrappingScrollable(node) {
             return cur;
 }
 function getAllWrapping(node) {
-    let res = [window];
+    let res = [node.ownerDocument.defaultView || window];
     for (let cur = node.parentNode; cur; cur = cur.parentNode)
         res.push(cur);
     return res;

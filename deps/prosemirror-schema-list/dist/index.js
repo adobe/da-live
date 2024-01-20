@@ -117,7 +117,7 @@ function doWrapInList(tr, range, wrappers, joinBefore, listType) {
 Build a command that splits a non-empty textblock at the top level
 of a list item by also splitting that list item.
 */
-function splitListItem(itemType) {
+function splitListItem(itemType, itemAttrs) {
     return function (state, dispatch) {
         let { $from, $to, node } = state.selection;
         if ((node && node.isBlock) || $from.depth < 2 || !$from.sameParent($to))
@@ -160,7 +160,7 @@ function splitListItem(itemType) {
         }
         let nextType = $to.pos == $from.end() ? grandParent.contentMatchAt(0).defaultType : null;
         let tr = state.tr.delete($from.pos, $to.pos);
-        let types = nextType ? [null, { type: nextType }] : undefined;
+        let types = nextType ? [itemAttrs ? { type: itemType, attrs: itemAttrs } : null, { type: nextType }] : undefined;
         if (!canSplit(tr.doc, $from.pos, 2, types))
             return false;
         if (dispatch)

@@ -41,8 +41,15 @@ Object.keys(IMPORT_MAP.imports).forEach((key) => {
   const dest = src.replace('node_modules', 'deps');
 
   ensureDirectoryExistence(dest);
-  fs.copyFile(src, dest, (err) => {
-    if (err) throw err;
-    console.log('source.txt was copied to destination.txt');
-  });
+  if (fs.lstatSync(src).isDirectory()) {
+    fs.cpSync(src, dest, { recursive: true });
+    console.log(`${src} was copied to ${dest} (recursiv)`);
+  } else {
+    fs.copyFileSync(src, dest);
+    console.log(`${src} was copied to ${dest}`);
+  }
 });
+
+let content = fs.readFileSync('deps/y-prosemirror/src/plugins/sync-plugin.js', 'utf8');
+content = content.replace('const range = this.prosemirrorView._root.createRange()', 'const range = document.createRange()');
+fs.writeFileSync('deps/y-prosemirror/src/plugins/sync-plugin.js', content, 'utf8');
