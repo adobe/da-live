@@ -3,7 +3,7 @@ import getPathDetails from '../shared/pathDetails.js';
 async function loadComponent(el, cmpName, details) {
   el.innerHTML = '';
   await import(`./${cmpName}/${cmpName}.js`);
-  const cmp = document.createElement(`${cmpName}`);
+  const cmp = document.createElement(cmpName);
   if (details) cmp.details = details;
   el.append(cmp);
 }
