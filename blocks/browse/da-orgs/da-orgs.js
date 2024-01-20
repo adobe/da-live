@@ -2,6 +2,7 @@ import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import { origin } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
+import loadAdmin from '../../shared/loadAdmin.js';
 
 const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
 
@@ -31,9 +32,7 @@ export default class DaOrgs extends LitElement {
   }
 
   async getOrgs() {
-    const resp = await daFetch(`${origin}/list`);
-    if (!resp.ok) return;
-    this._orgs = await resp.json();
+    this._orgs = await loadAdmin('browse');
   }
 
   formatDate(string) {

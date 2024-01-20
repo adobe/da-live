@@ -12,6 +12,9 @@
 
 import { setLibs } from './utils.js';
 
+// The blocks that require DA admin
+const ADMIN_BLOCKS = ['browse', 'edit', 'sheet', 'start'];
+
 // Add project-wide style path here.
 const STYLES = '/styles/styles.css';
 
@@ -21,7 +24,7 @@ const LIBS = '/libs';
 // Add any config options.
 const CONFIG = {
   imsClientId: 'darkalley',
-  locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } },
+  locales: { '': { ietf: 'en', tk: 'hah7vzn.css' } },
 };
 
 // Load LCP image immediately
@@ -38,17 +41,29 @@ function loadLCPImage() {
 
 const miloLibs = setLibs(LIBS);
 
+function loadLink(href, rel) {
+  const link = document.createElement('link');
+  link.href = href;
+  link.rel = rel;
+  document.head.appendChild(link);
+}
+
 function loadStyles() {
   const paths = [`${miloLibs}/styles/styles.css`];
   if (STYLES) { paths.push(STYLES); }
-  paths.forEach((path) => {
-    const link = document.createElement('link');
-    link.setAttribute('rel', 'stylesheet');
-    link.setAttribute('href', path);
-    document.head.appendChild(link);
-  });
+  paths.forEach((path) => loadLink(path, 'stylesheet'));
 }
 
+async function preloadAdmin() {
+  const block = document.body.querySelector('div[class]');
+  const name = block.classList[0];
+  const isAdmin = ADMIN_BLOCKS.some((aBlock) => aBlock === name);
+  if (!isAdmin) return;
+  const { default: loadAdmin } = await import('../blocks/shared/loadAdmin.js');
+  loadAdmin(name);
+}
+
+preloadAdmin();
 loadLCPImage();
 loadStyles();
 
