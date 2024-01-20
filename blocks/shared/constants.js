@@ -1,3 +1,6 @@
+// The blocks that require DA admin
+export const ADMIN_BLOCKS = ['browse', 'edit', 'sheet', 'start'];
+
 export const origin = (() => {
   const adminUrls = {
     local: 'http://localhost:8787',

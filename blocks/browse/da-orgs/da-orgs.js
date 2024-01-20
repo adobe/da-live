@@ -1,6 +1,6 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { daData } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
-import { loadAdmin } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
 
@@ -30,7 +30,7 @@ export default class DaOrgs extends LitElement {
   }
 
   async getOrgs() {
-    this._orgs = await loadAdmin('browse');
+    this._orgs = await daData;
   }
 
   formatDate(string) {

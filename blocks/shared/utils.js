@@ -1,4 +1,4 @@
-import { origin } from './constants.js';
+import { origin, ADMIN_BLOCKS } from './constants.js';
 
 async function aemPreview(path, api) {
   const [owner, repo, ...parts] = path.slice(1).split('/');
@@ -26,12 +26,21 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   return aemPreview(path, 'preview');
 }
 
+let accessToken;
+function getAccessToken() {
+  accessToken = accessToken || new Promise((resolve) => {
+    accessToken = window.adobeIMS?.getAccessToken();
+    resolve(accessToken);
+  });
+  return accessToken;
+}
+
 export const daFetch = async (url, opts = {}) => {
-  const accessToken = window.adobeIMS?.getAccessToken();
-  if (accessToken) {
+  const at = await getAccessToken();
+  if (at) {
     opts.headers = {
       ...opts.headers,
-      Authorization: `Bearer ${accessToken.token}`,
+      Authorization: `Bearer ${at.token}`,
     };
   }
   const resp = await fetch(url, opts);
@@ -42,18 +51,18 @@ export const daFetch = async (url, opts = {}) => {
   return resp;
 };
 
-let adminJson;
-export function loadAdmin(name) {
-  adminJson = adminJson || new Promise((resolve) => {
+export const daData = (
+  () => new Promise((resolve) => {
+    const block = document.body.querySelector('div[class]');
+    const name = block.classList[0];
+    const isAdmin = ADMIN_BLOCKS.some((aBlock) => aBlock === name);
+    if (!isAdmin) return;
     if (name === 'browse') {
       daFetch(`${origin}/list`).then((resp) => {
         if (!resp.ok) return;
         resp.json().then((json) => {
-          adminJson = json;
-          resolve(adminJson);
+          resolve(json);
         });
       });
     }
-  });
-  return adminJson;
-}
+  }))();

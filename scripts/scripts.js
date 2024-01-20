@@ -12,9 +12,6 @@
 
 import { setLibs } from './utils.js';
 
-// The blocks that require DA admin
-const ADMIN_BLOCKS = ['browse', 'edit', 'sheet', 'start'];
-
 // Add project-wide style path here.
 const STYLES = '/styles/styles.css';
 
@@ -54,16 +51,6 @@ function loadStyles() {
   paths.forEach((path) => loadLink(path, 'stylesheet'));
 }
 
-async function preloadAdmin() {
-  const block = document.body.querySelector('div[class]');
-  const name = block.classList[0];
-  const isAdmin = ADMIN_BLOCKS.some((aBlock) => aBlock === name);
-  if (!isAdmin) return;
-  const { loadAdmin } = await import('../blocks/shared/utils.js');
-  loadAdmin(name);
-}
-
-preloadAdmin();
 loadLCPImage();
 loadStyles();
 
@@ -76,6 +63,7 @@ export default async function loadPage() {
   setConfig({ ...CONFIG, miloLibs });
 
   try { await loadIms(); } catch { /* die silently */ }
+  await import('../blocks/shared/utils.js');
   await loadArea();
 }
 
