@@ -26,17 +26,8 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   return aemPreview(path, 'preview');
 }
 
-let accessToken;
-function getAccessToken() {
-  accessToken = accessToken || new Promise((resolve) => {
-    accessToken = window.adobeIMS?.getAccessToken();
-    resolve(accessToken);
-  });
-  return accessToken;
-}
-
 export const daFetch = async (url, opts = {}) => {
-  const at = await getAccessToken();
+  const at = window.adobeIMS?.getAccessToken();
   if (at) {
     opts.headers = {
       ...opts.headers,
