@@ -1,7 +1,27 @@
-import { getLibs } from '../../scripts/utils.js';
+export const origin = (() => {
+  const adminUrls = {
+    local: 'http://localhost:8787',
+    stage: 'https://admin.stage.da.live',
+    prod: 'https://admin.da.live',
+  };
 
-const { getConfig } = await import(`${getLibs()}/utils/utils.js`);
-/* c8 ignore next 1 */
-export const origin = getConfig().env.name === 'local' ? 'http://localhost:8787' : 'https://admin.da.live';
+  let daOrigin = adminUrls.prod;
+
+  const storage = localStorage.getItem('daAdmin');
+  if (storage) daOrigin = adminUrls[storage];
+
+  const query = new URL(window.location.href).searchParams.get('da-admin');
+  if (query) {
+    if (query === 'reset') {
+      localStorage.removeItem('daAdmin');
+    } else {
+      localStorage.setItem('daAdmin', query);
+      daOrigin = adminUrls[query];
+    }
+  }
+
+  return daOrigin;
+})();
+
 export const conOrigin = 'https://content.da.live';
 export const hlxOrigin = 'https://admin.hlx.page';

@@ -1,4 +1,6 @@
 import { origin, hlxOrigin } from '../../shared/constants.js';
+import prose2aem from '../../shared/prose2aem.js';
+import { daFetch } from '../../shared/utils.js';
 
 function getBlockName(block) {
   const classes = block.className.split(' ');
@@ -41,7 +43,7 @@ function para() {
   return document.createElement('p');
 }
 
-export default function aem2prose(doc) {
+export function aem2prose(doc) {
   // Fix BRs
   const brs = doc.querySelectorAll('p br');
   brs.forEach((br) => { br.remove(); });
@@ -84,10 +86,7 @@ export default function aem2prose(doc) {
   });
 }
 
-
-// Legacy stuff from title.js
-
-export async function saveToFranklin(path, action) {
+export async function saveToAem(path, action) {
   const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
   const aemPath = parts.join('/');
 
@@ -97,81 +96,16 @@ export async function saveToFranklin(path, action) {
   return resp.json();
 }
 
-function toBlockCSSClassNames(text) {
-  if (!text) return [];
-  const names = [];
-  const idx = text.lastIndexOf('(');
-  if (idx >= 0) {
-    names.push(text.substring(0, idx));
-    names.push(...text.substring(idx + 1).split(','));
-  } else {
-    names.push(text);
-  }
-
-  return names.map((name) => name
-    .toLowerCase()
-    .replace(/[^0-9a-z]+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, ''))
-    .filter((name) => !!name);
-}
-
-function convertBlocks(tables) {
-  tables.forEach(table => {
-    const tbody = table.querySelector(':scope > tbody');
-    const rows = tbody ? [...tbody.querySelectorAll(':scope > tr')] : [...table.querySelectorAll(':scope > tr')];
-    const nameRow = rows.shift();
-    const divs = [...rows].map((row) => {
-      const cols = row.querySelectorAll(':scope > td');
-      const divs = [...cols].map((col) => {
-        const { innerHTML } = col;
-        const div = document.createElement('div');
-        div.innerHTML = innerHTML;
-        return div;
-      });
-      const div = document.createElement('div');
-      div.append(...divs);
-      return div;
-    });
-
-    const div = document.createElement('div');
-    div.className = toBlockCSSClassNames(nameRow.textContent).join(' ');
-    div.append(...divs);
-    table.parentElement.parentElement.replaceChild(div, table.parentElement);
-  });
-}
-
-export function cleanHtml() {
-  const editor = window.view.root.querySelector('.ProseMirror').cloneNode(true);
-  editor.removeAttribute('class');
-  editor.removeAttribute('contenteditable');
-  editor.removeAttribute('translate');
-
-  const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
-  emptyImgs.forEach((el) => { el.remove(); });
-
-  const userPointers = editor.querySelectorAll('.ProseMirror-yjs-cursor');
-  userPointers.forEach((el) => el.remove());
-
-  const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
-  trailingBreaks.forEach((el) => { el.remove(); });
-
-  const tables = editor.querySelectorAll('.tableWrapper > table');
-  convertBlocks(tables);
-
-  const html = `<body><main>${editor.outerHTML}</main></body>`;
-
-  return html;
-}
-
 async function saveHtml(fullPath) {
-  const blob = new Blob([cleanHtml()], { type: 'text/html' });
+  const editor = window.view.root.querySelector('.ProseMirror').cloneNode(true);
+  const html = prose2aem(editor);
+  const blob = new Blob([html], { type: 'text/html' });
 
   const formData = new FormData();
   formData.append('data', blob);
 
   const opts = { method: 'PUT', body: formData };
-  return fetch(fullPath, opts);
+  return daFetch(fullPath, opts);
 }
 
 async function saveJson(fullPath, sheet) {
@@ -196,10 +130,10 @@ async function saveJson(fullPath, sheet) {
   formData.append('data', blob);
 
   const opts = { method: 'PUT', body: formData };
-  return fetch(fullPath, opts);
+  return daFetch(fullPath, opts);
 }
 
-export function saveToDas(pathname, sheet) {
+export function saveToDa(pathname, sheet) {
   const suffix = sheet ? '.json' : '.html';
   const fullPath = `${origin}/source${pathname}${suffix}`;
 

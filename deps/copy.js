@@ -26,11 +26,6 @@ const IMPORT_MAP = {
     'jspreadsheet-ce-css': '/node_modules/jspreadsheet-ce/dist/jspreadsheet.css',
     'jsuites': '/node_modules/jsuites/dist/jsuites.js',
     'jsuites-css': '/node_modules/jsuites/dist/jsuites.css',
-    'yjs': '/node_modules/yjs/src',
-    'y-prosemirror': '/node_modules/y-prosemirror/src',
-    'lib0': '/node_modules/lib0',
-    'y-protocols':'/node_modules/y-protocols',
-    'y-websocket':'/node_modules/y-websocket/src',
   },
 };
 

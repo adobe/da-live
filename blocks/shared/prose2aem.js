@@ -83,7 +83,6 @@ function convertParagraphs(editor) {
     if (p.innerHTML.trim() === '') { p.remove(); }
     // Convert dash p tags to rules
     if (p.textContent.trim() === '---') {
-      console.log(p.innerHTML.trim());
       const hr = document.createElement('hr');
       p.parentElement.replaceChild(hr, p);
     }
@@ -92,7 +91,7 @@ function convertParagraphs(editor) {
 
 function makeSections(editor) {
   const children = editor.querySelectorAll(':scope > *');
-  
+
   const section = document.createElement('div');
   const sections = [...children].reduce((acc, child) => {
     if (child.nodeName === 'HR') {
@@ -127,7 +126,6 @@ export default function prose2aem(editor) {
 
   const highlights = editor.querySelectorAll('span.ProseMirror-yjs-selection');
   highlights.forEach((el) => {
-    console.log(el);
     el.parentElement.replaceChild(document.createTextNode(el.innerText), el);
   });
 

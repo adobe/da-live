@@ -1,7 +1,7 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { saveToDas, saveToFranklin } from '../utils/helpers.js';
-
+import { saveToDa, saveToAem } from '../utils/helpers.js';
 import getSheet from '../../shared/sheet.js';
+
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
 export default class DaTitle extends LitElement {
@@ -9,10 +9,6 @@ export default class DaTitle extends LitElement {
     details: { attribute: false },
     _actionsVis: {},
   };
-
-  constructor() {
-    super();
-  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -27,11 +23,11 @@ export default class DaTitle extends LitElement {
 
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
-    const dasSave = await saveToDas(pathname, this.sheet);
+    const dasSave = await saveToDa(pathname, this.sheet);
     if (!dasSave.ok) return;
     const aemPath = this.sheet ? `${pathname}.json` : pathname;
-    let json = await saveToFranklin(aemPath, 'preview');
-    if (action === 'publish') json = await saveToFranklin(aemPath, 'live');
+    let json = await saveToAem(aemPath, 'preview');
+    if (action === 'publish') json = await saveToAem(aemPath, 'live');
     const { url } = action === 'publish' ? json.live : json.preview;
     window.open(url, '_blank');
     sendBtn.classList.remove('is-sending');

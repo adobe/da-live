@@ -2,6 +2,7 @@
   --aec-nav-height: 49px;
 }
 
+/* Don't confuse people if sidekick pops open in the editor */
 helix-sidekick {
   display: none !important;
 }
