@@ -1,3 +1,4 @@
+import { getLibs } from '../../scripts/utils.js';
 import { origin, ADMIN_BLOCKS } from './constants.js';
 
 async function aemPreview(path, api) {
@@ -27,10 +28,12 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
 }
 
 export const daFetch = async (url, opts = {}) => {
+  const { getConfig } = await import(`${getLibs()}/utils/utils.js`);
   const at = window.adobeIMS?.getAccessToken();
   if (at) {
     opts.headers = {
       ...opts.headers,
+      'X-DA-Env': getConfig().env.name,
       Authorization: `Bearer ${at.token}`,
     };
   }
@@ -42,18 +45,16 @@ export const daFetch = async (url, opts = {}) => {
   return resp;
 };
 
-export const daData = (
-  () => new Promise((resolve) => {
-    const block = document.body.querySelector('div[class]');
-    const name = block.classList[0];
-    const isAdmin = ADMIN_BLOCKS.some((aBlock) => aBlock === name);
-    if (!isAdmin) return;
-    if (name === 'browse') {
-      daFetch(`${origin}/list`).then((resp) => {
-        if (!resp.ok) return;
-        resp.json().then((json) => {
-          resolve(json);
-        });
-      });
-    }
-  }))();
+export const daData = (() => new Promise((resolve) => {
+  const block = document.body.querySelector('div[class]');
+  const name = block.classList[0];
+  const isAdmin = ADMIN_BLOCKS.some((aBlock) => aBlock === name);
+  if (!isAdmin) resolve({});
+  if (name === 'browse') {
+    daFetch(`${origin}/list`).then(async (resp) => {
+      if (!resp.ok) resolve({});
+      const json = await resp.json();
+      resolve(json);
+    });
+  }
+}))();

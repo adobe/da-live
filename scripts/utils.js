@@ -13,7 +13,7 @@
 /**
  * The decision engine for where to get Milo's libs from.
  */
-export const [setLibs, getLibs] = (() => {
+const [setLibs, getLibs] = (() => {
   let libs;
   return [
     (prodLibs, location) => {
@@ -28,3 +28,5 @@ export const [setLibs, getLibs] = (() => {
     }, () => libs,
   ];
 })();
+
+export { setLibs, getLibs };
