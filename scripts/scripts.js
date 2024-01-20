@@ -59,7 +59,7 @@ async function preloadAdmin() {
   const name = block.classList[0];
   const isAdmin = ADMIN_BLOCKS.some((aBlock) => aBlock === name);
   if (!isAdmin) return;
-  const { default: loadAdmin } = await import('../blocks/shared/loadAdmin.js');
+  const { loadAdmin } = await import('../blocks/shared/utils.js');
   loadAdmin(name);
 }
 

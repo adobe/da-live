@@ -41,3 +41,19 @@ export const daFetch = async (url, opts = {}) => {
   }
   return resp;
 };
+
+let adminJson;
+export function loadAdmin(name) {
+  adminJson = adminJson || new Promise((resolve) => {
+    if (name === 'browse') {
+      daFetch(`${origin}/list`).then((resp) => {
+        if (!resp.ok) return;
+        resp.json().then((json) => {
+          adminJson = json;
+          resolve(adminJson);
+        });
+      });
+    }
+  });
+  return adminJson;
+}
