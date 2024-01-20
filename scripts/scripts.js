@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { setLibs, getLibs } from './utils.js';
+import { setLibs } from './utils.js';
 
 // Add project-wide style path here.
 const STYLES = '/styles/styles.css';
@@ -21,18 +21,13 @@ const LIBS = '/libs';
 // Add any config options.
 const CONFIG = {
   imsClientId: 'darkalley',
-  locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } }
+  locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } },
 };
 
 // Load LCP image immediately
 function loadLCPImage() {
   const lcpImg = document.querySelector('img');
   lcpImg?.removeAttribute('loading');
-};
-
-async function imsCheck(loadIms) {
-  try { await loadIms(); } catch { return; }
-  const signedIn = window.adobeIMS?.isSignedInUser();
 }
 
 /*
@@ -65,14 +60,14 @@ export default async function loadPage() {
   const { loadArea, setConfig, loadIms } = await import(`${miloLibs}/utils/utils.js`);
   setConfig({ ...CONFIG, miloLibs });
 
-  await imsCheck(loadIms);
+  await loadIms();
   await loadArea();
-};
+}
 
 // Side-effects
 (async function daPreview() {
   const { searchParams } = new URL(window.location.href);
-  if (searchParams.get('dapreview') === 'on') { 
+  if (searchParams.get('dapreview') === 'on') {
     const { default: livePreview } = await import('./dapreview.js');
     livePreview(loadPage);
   }
