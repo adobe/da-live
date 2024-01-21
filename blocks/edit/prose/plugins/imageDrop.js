@@ -1,4 +1,4 @@
-import { Plugin, TextSelection } from 'prosemirror-state';
+import { Plugin, TextSelection } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
 
