@@ -1,4 +1,4 @@
-import { Fragment, DOMParser } from 'prosemirror-model';
+import { Fragment, DOMParser } from 'da-y-wrapper';
 
 function getHeading(schema) {
   const { paragraph, table_row, table_cell } = schema.nodes;

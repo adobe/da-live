@@ -1,10 +1,7 @@
-import { Plugin, TextSelection } from 'prosemirror-state';
-import { toggleMark } from 'prosemirror-commands';
-import { DOMParser, NodeRange } from 'prosemirror-model';
-import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from 'prosemirror-menu';
-import { undo, redo } from 'prosemirror-history';
-import { wrapInList } from 'prosemirror-schema-list';
 import {
+  DOMParser,
+  Plugin,
+  TextSelection,
   addColumnAfter,
   addColumnBefore,
   deleteColumn,
@@ -14,7 +11,16 @@ import {
   mergeCells,
   splitCell,
   deleteTable,
-} from 'prosemirror-tables';
+  MenuItem,
+  Dropdown,
+  renderGrouped,
+  blockTypeItem,
+  toggleMark,
+  undo,
+  redo,
+  wrapInList,
+} from 'da-y-wrapper';
+
 import openPrompt from '../../da-palette/da-palette.js';
 import openLibrary from '../../da-library/da-library.js';
 

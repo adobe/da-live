@@ -1,4 +1,4 @@
-import { DOMParser } from 'prosemirror-model';
+import { DOMParser } from 'da-y-wrapper';
 import { origin, conOrigin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
 
