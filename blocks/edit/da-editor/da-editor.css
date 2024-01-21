@@ -60,7 +60,7 @@ td.selectedCell {
   background: #FFF;
   box-sizing: border-box;
   grid-area: toolbar;
-  z-index: 1;
+  z-index: 2;
 }
 
 .da-editor-tool {
