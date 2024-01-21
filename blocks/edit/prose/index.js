@@ -82,7 +82,14 @@ export default function initProse({ editor, path }) {
 
   const server = 'wss://collab.da.live';
   const roomName = `https://admin.da.live${new URL(path).pathname}`;
-  const wsProvider = new WebsocketProvider(server, roomName, ydoc);
+
+  const opts = {};
+
+  if (window.adobeIMS.isSignedInUser()) {
+    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken()?.token}` };
+  }
+
+  const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
