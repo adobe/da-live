@@ -1,7 +1,7 @@
 export const origin = (() => {
   const adminUrls = {
     local: 'http://localhost:8787',
-    stage: 'https://admin.stage.da.live',
+    stage: 'https://stage-admin.da.live',
     prod: 'https://admin.da.live',
   };
 
@@ -16,7 +16,7 @@ export const origin = (() => {
       localStorage.removeItem('daAdmin');
     } else {
       localStorage.setItem('daAdmin', query);
-      daOrigin = adminUrls[query];
+      daOrigin = adminUrls[query] || adminUrls.prod;
     }
   }
 
