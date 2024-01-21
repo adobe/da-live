@@ -1,4 +1,4 @@
-import { Plugin } from 'prosemirror-state';
+import { Plugin } from 'da-y-wrapper';
 
 function isURL(text) {
   try {

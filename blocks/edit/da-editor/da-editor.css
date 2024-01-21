@@ -5,6 +5,7 @@
   grid-area: editor;
   padding: 48px;
   box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
+  z-index: 1;
 }
 
 .ProseMirror-focused {
