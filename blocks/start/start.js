@@ -186,7 +186,7 @@ mountpoints:
 
   render() {
     return html`
-      <img src="/blocks/login/img/dark-alley.jpg" class="background"/>
+      <img src="/blocks/start/dark-alley.jpg" class="background"/>
       <div class="gradient"></div>
       <div class="foreground step-${this.activeStep}-active">
         <ul class="step-count">
