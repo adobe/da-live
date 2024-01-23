@@ -23,9 +23,11 @@ export default class DaTitle extends LitElement {
 
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
-    // Shouldn't need anymore with DA Collab. Commenting out for now.
-    // const dasSave = await saveToDa(pathname, this.sheet);
-    // if (!dasSave.ok) return;
+    // Only save to da if it is a sheet
+    if (this.sheet) {
+      const dasSave = await saveToDa(pathname, this.sheet);
+      if (!dasSave.ok) return;
+    }
     const aemPath = this.sheet ? `${pathname}.json` : pathname;
     let json = await saveToAem(aemPath, 'preview');
     if (action === 'publish') json = await saveToAem(aemPath, 'live');

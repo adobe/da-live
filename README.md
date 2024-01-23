@@ -21,6 +21,3 @@ If you have appropriate credentials, you can develop against a local `da-admin` 
 ## Additional details
 ### Recommendations
 1. We recommend running `npm install` for linting.
-
-### If you cannot run `da-admin` locally
-If you do not have access to `.dev.vars` to run `da-admin` locally, you can temporarily change `constants.js` to point to live data.
