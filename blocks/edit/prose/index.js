@@ -30,6 +30,7 @@ import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import { aem2prose, parse } from '../utils/helpers.js';
+import { origin, collabOrigin } from '../../shared/constants.js';
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
@@ -80,14 +81,21 @@ export default function initProse({ editor, path }) {
 
   const ydoc = new Y.Doc();
 
-  const server = 'wss://collab.da.live';
-  const roomName = `https://admin.da.live${new URL(path).pathname}`;
-  const wsProvider = new WebsocketProvider(server, roomName, ydoc);
+  const server = `${collabOrigin}`;
+  const roomName = `${origin}${new URL(path).pathname}`;
+
+  const opts = {};
+
+  if (window.adobeIMS.isSignedInUser()) {
+    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken()?.token}` };
+  }
+
+  const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
   let firstUpdate = true;
-  ydoc.on('update', (_, origin) => {
+  ydoc.on('update', (_, originWS) => {
     if (firstUpdate) {
       firstUpdate = false;
       const aemMap = ydoc.getMap('aem');
@@ -103,7 +111,7 @@ export default function initProse({ editor, path }) {
         prosemirrorToYXmlFragment(fin, yXmlFragment);
       }
     }
-    if (origin && origin !== wsProvider) {
+    if (originWS && originWS !== wsProvider) {
       const proseEl = window.view.root.querySelector('.ProseMirror');
       const clone = proseEl.cloneNode(true);
       const aem = prose2aem(clone);
