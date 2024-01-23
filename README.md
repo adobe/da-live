@@ -24,7 +24,9 @@ There are times when you need to develop a feature across the different services
 2. Start the local AEM CLI (see above)
 3. Visit `https://localhost:3000/?da-collab=local`
 
-**Note:** Each service will set a localStorage value and will not clear until you use `?name-of-service=reset`.
+#### Notes
+1. You can mix and match these services. You can use local da-collab with stage da-admin, etc.
+2. Each service will set a localStorage value and will not clear until you use `?name-of-service=reset`.
 
 ## Additional details
 ### Recommendations
