@@ -1,4 +1,7 @@
-export const origin = (() => {
+export const CON_ORIGIN = 'https://content.da.live';
+export const AEM_ORIGIN = 'https://admin.hlx.page';
+
+export const DA_ORIGIN = (() => {
   const adminUrls = {
     local: 'http://localhost:8787',
     stage: 'https://stage-admin.da.live',
@@ -23,9 +26,7 @@ export const origin = (() => {
   return daOrigin;
 })();
 
-export const conOrigin = 'https://content.da.live';
-export const hlxOrigin = 'https://admin.hlx.page';
-export const collabOrigin = (() => {
+export const COLLAB_ORIGIN = (() => {
   const collabUrls = {
     local: 'ws://localhost:4711',
     prod: 'wss://collab.da.live',
