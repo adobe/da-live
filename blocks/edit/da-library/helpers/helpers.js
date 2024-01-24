@@ -1,5 +1,5 @@
 import { DOMParser } from 'da-y-wrapper';
-import { origin, conOrigin } from '../../../shared/constants.js';
+import { DA_ORIGIN, CON_ORIGIN } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
 
 const REPLACE_CONTENT = '<content>';
@@ -13,8 +13,8 @@ export function parseDom(dom) {
 function fixAssets(json) {
   return json.reduce((acc, item) => {
     if (item.ext) {
-      const parsed = window.view.state.schema.nodes.image.create({ src: `${conOrigin}${item.path}` });
-      acc.push({ ...item, path: `${conOrigin}${item.path}`, parsed });
+      const parsed = window.view.state.schema.nodes.image.create({ src: `${CON_ORIGIN}${item.path}` });
+      acc.push({ ...item, path: `${CON_ORIGIN}${item.path}`, parsed });
     }
     return acc;
   }, []);
@@ -67,7 +67,7 @@ export async function getLibraryList() {
   currOwner = owner;
   currRepo = repo;
 
-  const resp = await fetch(`${origin}/source/${owner}/${repo}${DA_CONFIG}`);
+  const resp = await fetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
   if (!resp.ok) return [];
 
   const { data } = await resp.json();

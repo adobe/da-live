@@ -1,4 +1,4 @@
-import { conOrigin, origin } from './constants.js';
+import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
 
 let currhash;
 let details;
@@ -9,7 +9,7 @@ export default function getPathDetails(loc) {
   if (currhash === hash && details) return details;
   currhash = hash;
 
-  const fullpath = hash.replace('#', '');
+  const fullpath = hash.replace('#', ''); 
   if (pathname === '/' && !hash) return details;
 
   // IMS will redirect and there's a small window where old_hash exists
@@ -22,7 +22,7 @@ export default function getPathDetails(loc) {
   details = {
     owner,
     repo,
-    origin,
+    origin: DA_ORIGIN,
     fullpath,
   };
 
@@ -37,7 +37,7 @@ export default function getPathDetails(loc) {
     // Source path (DA Admin API) will always want the extension
     const prefix = [...parts, name].join('/');
     const sourcePath = `/${owner}/${repo}/${prefix}.${ext}`;
-    const sourceUrl = `${origin}/source${sourcePath}`;
+    const sourceUrl = `${DA_ORIGIN}/source${sourcePath}`;
 
     // Preview path (AEM preview) does not want .html (or owner/repo), all other extensions are fine
     const previewPath = ext === 'html' ? `/${prefix}` : `/${prefix}.${ext}`;
@@ -47,20 +47,20 @@ export default function getPathDetails(loc) {
     details.parent = `/${pathSplit.slice(0, -1).join('/')}`;
     details.parentName = parts.at(-1) || repo;
     details.sourceUrl = sourceUrl;
-    details.contentUrl = `${conOrigin}${contentPath}`;
+    details.contentUrl = `${CON_ORIGIN}${contentPath}`;
     details.previewUrl = `https://main--${repo}--${owner}.hlx.page${previewPath}`;
     details.previewOrigin = `https://main--${repo}--${owner}.hlx.page`;
   } else if (repo) {
     details.name = repo;
     details.parent = `/${owner}`;
     details.parentName = owner;
-    details.sourceUrl = `${origin}/source${fullpath}`;
+    details.sourceUrl = `${DA_ORIGIN}/source${fullpath}`;
     details.previewUrl = `https://main--${repo}--${owner}.hlx.page`;
   } else {
     details.name = owner;
     details.parent = '/';
     details.parentName = 'Root';
-    details.sourceUrl = `${origin}/source${fullpath}`;
+    details.sourceUrl = `${DA_ORIGIN}/source${fullpath}`;
   }
   return details;
 }

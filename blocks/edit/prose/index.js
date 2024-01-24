@@ -30,7 +30,7 @@ import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import { aem2prose, parse } from '../utils/helpers.js';
-import { origin, collabOrigin } from '../../shared/constants.js';
+import { DA_ORIGIN, COLLAB_ORIGIN } from '../../shared/constants.js';
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
@@ -54,7 +54,7 @@ function dispatchTransaction(transaction) {
 
 function setPreviewBody(daPreview, proseEl) {
   const clone = proseEl.cloneNode(true);
-  const body = prose2aem(clone);
+  const body = prose2aem(clone, true);
   daPreview.body = body;
 }
 
@@ -81,8 +81,8 @@ export default function initProse({ editor, path }) {
 
   const ydoc = new Y.Doc();
 
-  const server = `${collabOrigin}`;
-  const roomName = `${origin}${new URL(path).pathname}`;
+  const server = COLLAB_ORIGIN;
+  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
 
   const opts = {};
 

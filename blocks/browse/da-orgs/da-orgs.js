@@ -1,5 +1,5 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { origin } from '../../shared/constants.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -34,7 +34,7 @@ export default class DaOrgs extends LitElement {
 
   async getOrgs() {
     this._orgs = [MOCK_ORG];
-    const resp = await daFetch(`${origin}/list`);
+    const resp = await daFetch(`${DA_ORIGIN}/list`);
     if (!resp.ok) return;
     const data = await resp.json();
     this._orgs = data.map((org, idx) => {

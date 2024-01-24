@@ -1,5 +1,5 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { origin } from '../shared/constants.js';
+import { DA_ORIGIN } from '../shared/constants.js';
 
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
@@ -134,7 +134,7 @@ class DaStart extends LitElement {
   getStepOnePanel() {
     return html`
       <div class="step-1-panel">
-        <form class="actions" action="${origin}/source/${this.owner}/${this.repo}" @submit=${this.submitForm}>
+        <form class="actions" action="${DA_ORIGIN}/source/${this.owner}/${this.repo}" @submit=${this.submitForm}>
           <div class="git-input">
             <label for="fname">AEM codebase</label>
             <input type="text" name="repo" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />
