@@ -110,7 +110,7 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
-export default function prose2aem(editor) {
+export default function prose2aem(editor, live) {
   editor.removeAttribute('class');
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
@@ -133,7 +133,9 @@ export default function prose2aem(editor) {
 
   convertBlocks(editor);
 
-  removeMetadata(editor);
+  console.log(live);
+
+  if (live) removeMetadata(editor);
 
   makePictures(editor);
 

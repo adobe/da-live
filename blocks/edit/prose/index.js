@@ -54,7 +54,7 @@ function dispatchTransaction(transaction) {
 
 function setPreviewBody(daPreview, proseEl) {
   const clone = proseEl.cloneNode(true);
-  const body = prose2aem(clone);
+  const body = prose2aem(clone, true);
   daPreview.body = body;
 }
 

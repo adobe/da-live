@@ -98,7 +98,7 @@ export async function saveToAem(path, action) {
 
 async function saveHtml(fullPath) {
   const editor = window.view.root.querySelector('.ProseMirror').cloneNode(true);
-  const html = prose2aem(editor);
+  const html = prose2aem(editor, false);
   const blob = new Blob([html], { type: 'text/html' });
 
   const formData = new FormData();
