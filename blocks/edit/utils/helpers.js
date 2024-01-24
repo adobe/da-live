@@ -1,4 +1,4 @@
-import { origin, hlxOrigin } from '../../shared/constants.js';
+import { DA_ORIGIN, AEM_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
 
@@ -90,7 +90,7 @@ export async function saveToAem(path, action) {
   const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
   const aemPath = parts.join('/');
 
-  const url = `${hlxOrigin}/${action}/${owner}/${repo}/main/${aemPath}`
+  const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`
   const resp = await fetch(url, { method: 'POST' });
   if (!resp.ok) console.log('error');
   return resp.json();
@@ -135,7 +135,7 @@ async function saveJson(fullPath, sheet) {
 
 export function saveToDa(pathname, sheet) {
   const suffix = sheet ? '.json' : '.html';
-  const fullPath = `${origin}/source${pathname}${suffix}`;
+  const fullPath = `${DA_ORIGIN}/source${pathname}${suffix}`;
 
   if (!sheet) return saveHtml(fullPath);
   return saveJson(fullPath, sheet);

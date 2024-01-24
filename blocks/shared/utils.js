@@ -1,4 +1,4 @@
-import { origin } from '../shared/constants.js';
+import { DA_ORIGIN } from '../shared/constants.js';
 
 async function aemPreview(path, api) {
   const [owner, repo, ...parts] = path.slice(1).split('/');
@@ -20,7 +20,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   }
   if ([...form.keys()].length) opts.body = form;
 
-  const daResp = await fetch(`${origin}/source${path}`, opts);
+  const daResp = await fetch(`${DA_ORIGIN}/source${path}`, opts);
   if (!daResp.ok) return;
   if (!preview) return;
   return aemPreview(path, 'preview');
