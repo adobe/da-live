@@ -124,6 +124,9 @@ export default function prose2aem(editor, live) {
   const userPointers = editor.querySelectorAll('.ProseMirror-yjs-cursor');
   userPointers.forEach((el) => el.remove());
 
+  const gapCursors = editor.querySelectorAll('.ProseMirror-gapcursor');
+  gapCursors.forEach((el) => { el.remove(); });
+
   const highlights = editor.querySelectorAll('span.ProseMirror-yjs-selection');
   highlights.forEach((el) => {
     el.parentElement.replaceChild(document.createTextNode(el.innerText), el);
