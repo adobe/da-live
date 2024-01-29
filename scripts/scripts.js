@@ -28,8 +28,13 @@ const CONFIG = {
 
 // Load LCP image immediately
 function loadLCPImage() {
-  const lcpImg = document.querySelector('img');
-  lcpImg?.removeAttribute('loading');
+  if (document.body.querySelector('.browse')) {
+    const tag = '<link rel="preload" as="image" href="/blocks/browse/da-orgs/img/da-one.webp" />';
+    document.head.insertAdjacentHTML('beforeend', tag);
+  } else {
+    const lcpImg = document.querySelector('img');
+    lcpImg?.removeAttribute('loading');
+  }
 }
 
 /*

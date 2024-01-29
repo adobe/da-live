@@ -18,7 +18,7 @@ function getRandomImg() {
   return MOCK_IMGS[idx];
 }
 
-const MOCK_ORG = { name: 'adobe', created: '', img: getRandomImg() };
+const MOCK_ORG = { name: 'adobe', created: '', img: MOCK_IMGS[0] };
 
 export default class DaOrgs extends LitElement {
   static properties = {
