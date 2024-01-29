@@ -133,8 +133,6 @@ export default function prose2aem(editor, live) {
 
   convertBlocks(editor);
 
-  console.log(live);
-
   if (live) removeMetadata(editor);
 
   makePictures(editor);

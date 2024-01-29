@@ -21,7 +21,9 @@ const LIBS = '/libs';
 // Add any config options.
 const CONFIG = {
   imsClientId: 'darkalley',
-  locales: { '': { ietf: 'en', tk: 'hah7vzn.css' } },
+  locales: {
+    '': { ietf: 'en-US', tk: 'hah7vzn.css' },
+  },
 };
 
 // Load LCP image immediately
@@ -57,10 +59,10 @@ export default async function loadPage() {
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
 
-  const { loadArea, setConfig, loadIms } = await import(`${miloLibs}/utils/utils.js`);
+  const { loadArea, setConfig } = await import(`${miloLibs}/utils/utils.js`);
   setConfig({ ...CONFIG, miloLibs });
 
-  try { await loadIms(); } catch { /* die silently */ }
+  // try { await loadIms(); } catch { /* die silently */ }
   await loadArea();
 }
 

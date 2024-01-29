@@ -18,6 +18,13 @@ header.aec-shell {
   border-bottom: 1px solid #d3d3d3;
 }
 
+/* CaaS Font Woes */
+body .consonant-OneHalfCard-title,
+body .consonant-OneHalfCard-text {
+  font-family: var(--body-font-family);
+}
+
+
 @media (min-width: 900px) {
   header.aec-shell + main {
     margin-top: var(--aec-nav-height);
