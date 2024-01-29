@@ -14,6 +14,7 @@ import {
   goToNextCell,
   tableNodes,
   fixTables,
+  gapCursor,
   Y,
   WebsocketProvider,
   ySyncPlugin,
@@ -154,6 +155,7 @@ export default function initProse({ editor, path }) {
         Tab: goToNextCell(1),
         'Shift-Tab': goToNextCell(-1),
       }),
+      gapCursor(),
       history(),
     ],
   });
