@@ -1,15 +1,19 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import { DA_ORIGIN } from '../shared/constants.js';
-
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
+
 const sheet = await getSheet('/blocks/start/start-wc.css');
 
 const DEMO_URLS = [
-  'https://content.da.live/adobecom/da-milo-college/gnav',
-  'https://content.da.live/adobecom/da-milo-college/footer',
-  'https://content.da.live/adobecom/da-milo-college/demo',
-]
+  'https://admin.da.live/source/aemsites/da-block-collection/demo.html',
+  'https://admin.da.live/source/aemsites/da-block-collection/nav.html',
+  'https://admin.da.live/source/aemsites/da-block-collection/footer.html',
+  'https://admin.da.live/source/aemsites/da-block-collection/.da/config.json',
+  'https://admin.da.live/source/aemsites/da-block-collection/docs/library/blocks.json',
+  'https://admin.da.live/source/aemsites/da-block-collection/docs/library/icons.json',
+  'https://admin.da.live/source/aemsites/da-block-collection/placeholders.json',
+];
 
 class DaStart extends LitElement {
   static properties = {
@@ -39,6 +43,7 @@ class DaStart extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    this.url = 'https://github.com/aemsites/da-test';
   }
 
   goToOpen(e) {
@@ -69,28 +74,42 @@ class DaStart extends LitElement {
   }
 
   async goToSite(e) {
-    if (this._demoContent || this._finishDemo) {
+    if (this._demoContent) {
       e.target.disabled = true;
-      for (const url of DEMO_URLS) {
-        const name = url.split('/').pop();
+      DEMO_URLS.forEach(async (url) => {
+        const newUrl = url
+          .replace('aemsites', this.owner)
+          .replace('da-block-collection', this.repo);
+        const { pathname } = new URL(newUrl);
+        const [name, ext] = pathname
+          .split('/')
+          .pop()
+          .split('.');
         this._goText = `Creating ${name}`;
+        // Request the source
         const resp = await daFetch(url);
         if (!resp.ok) return;
-        const htmlText = await resp.text();
-        // Do any modifications here
-        const blob = new Blob([htmlText], { type: 'text/html' });
+        const text = await resp.text();
+        const type = ext === 'json' ? 'application/json' : 'text/html';
+        const blob = new Blob([text], { type });
         const formData = new FormData();
         formData.append('data', blob);
         const opts = { method: 'PUT', body: formData };
-        const putResp = await daFetch(`https://admin.da.live/source/${this.owner}/${this.repo}/${name}.html`, opts);
-        if (!putResp.ok) return;
-        const aemResp = await daFetch(`https://admin.hlx.page/preview/${this.owner}/${this.repo}/main/${name}`, { method: 'POST' });
-        if (!aemResp.ok) return;
-        this._finishDemo = true;
-      }
+        await daFetch(newUrl, opts);
+        setTimeout(async () => {
+          try {
+            let aemPath = pathname.replace('source', 'preview');
+            aemPath = aemPath.endsWith('.json') ? aemPath : aemPath.replace('.html', '');
+            const [api, owner, repo, ...aemParts] = aemPath.slice(1).split('/');
+            await fetch(`https://admin.hlx.page/${api}/${owner}/${repo}/main/${aemParts.join('/')}`, { method: 'POST' });
+          } catch {
+            // do mothing
+          }
+        }, 250);
+      });
       this._goText = 'Open site';
     }
-    window.open(`/#/${this.owner}/${this.repo}`);
+    window.location = `${window.location.origin}/#/${this.owner}/${this.repo}`;
   }
 
   toggleDemo() {
@@ -116,7 +135,9 @@ class DaStart extends LitElement {
         this.repo = null;
         this.goEnabled = false;
       }
-    } catch { }
+    } catch {
+      // do nothing
+    }
   }
 
   isGoDisabled() {
@@ -125,7 +146,7 @@ class DaStart extends LitElement {
 
   async submitForm(e) {
     e.preventDefault();
-    const opts = { method: 'PUT' }
+    const opts = { method: 'PUT' };
     const resp = await daFetch(e.target.action, opts);
     if (!resp.ok) return;
     this.goToNextStep(e);
@@ -142,8 +163,8 @@ class DaStart extends LitElement {
           <button class="go-button" ?disabled=${!this.goEnabled}>Go</button>
         </form>
         <div class="text-container">
-          <p>Paste your AEM repo URL above.<br/>
-          Don't have one, yet? Fork <a href="https://github.com/adobecom/da-aem-boilerplate">AEM Boilerplate</a>.</p>
+          <p>Paste your AEM repo URL above.<br/><br/>
+          Don't have one, yet? Use <a href="https://github.com/aemsites/da-block-collection">AEM Block Collection</a>.<br/>(don't forget the code bot)</p>
         </div>
       </div>
     `;
