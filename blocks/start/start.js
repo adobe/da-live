@@ -116,26 +116,16 @@ class DaStart extends LitElement {
   }
 
   onInputChange(e) {
-    if (!e.target.value.startsWith('https://github.com')) {
+    const regex = /^https:\/\/github.com\/([a-zA-Z0-9-]+)\/([a-zA-Z0-9-]+)(.git)?$/;
+
+    if (e.target.value.match(regex)) {
+      this.owner = e.target.value.match(regex)[1];
+      this.repo = e.target.value.match(regex)[2];
+      this.goEnabled = true;
+    } else {
       this.owner = null;
       this.repo = null;
       this.goEnabled = false;
-      return;
-    }
-    try {
-      const { pathname } = new URL(e.target.value);
-      const [owner, repo] = pathname.slice(1).toLowerCase().split('/');
-      if (owner && repo) {
-        this.owner = owner;
-        this.repo = repo;
-        this.goEnabled = true;
-      } else {
-        this.owner = null;
-        this.repo = null;
-        this.goEnabled = false;
-      }
-    } catch {
-      // do nothing
     }
   }
 
