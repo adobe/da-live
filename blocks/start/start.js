@@ -75,7 +75,7 @@ class DaStart extends LitElement {
   async goToSite(e) {
     if (this._demoContent) {
       e.target.disabled = true;
-      DEMO_URLS.forEach(async (url) => {
+      const finishedUrls = DEMO_URLS.map(async (url) => {
         const newUrl = url
           .replace('aemsites', this.owner)
           .replace('da-block-collection', this.repo);
@@ -87,7 +87,7 @@ class DaStart extends LitElement {
         this._goText = `Creating ${name}`;
         // Request the source
         const resp = await daFetch(url);
-        if (!resp.ok) return;
+        if (!resp.ok) return null;
         const text = await resp.text();
         const type = ext === 'json' ? 'application/json' : 'text/html';
         const blob = new Blob([text], { type });
@@ -95,17 +95,17 @@ class DaStart extends LitElement {
         formData.append('data', blob);
         const opts = { method: 'PUT', body: formData };
         await daFetch(newUrl, opts);
-        setTimeout(async () => {
-          try {
-            let aemPath = pathname.replace('source', 'preview');
-            aemPath = aemPath.endsWith('.json') ? aemPath : aemPath.replace('.html', '');
-            const [api, owner, repo, ...aemParts] = aemPath.slice(1).split('/');
-            await fetch(`https://admin.hlx.page/${api}/${owner}/${repo}/main/${aemParts.join('/')}`, { method: 'POST' });
-          } catch {
-            // do mothing
-          }
-        }, 250);
+        try {
+          let aemPath = pathname.replace('source', 'preview');
+          aemPath = aemPath.endsWith('.json') ? aemPath : aemPath.replace('.html', '');
+          const [api, owner, repo, ...aemParts] = aemPath.slice(1).split('/');
+          await fetch(`https://admin.hlx.page/${api}/${owner}/${repo}/main/${aemParts.join('/')}`, { method: 'POST' });
+        } catch {
+          // do mothing
+        }
+        return newUrl;
       });
+      await Promise.all(finishedUrls);
       this._goText = 'Open site';
     }
     window.location = `${window.location.origin}/#/${this.owner}/${this.repo}`;
