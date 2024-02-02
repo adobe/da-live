@@ -43,7 +43,6 @@ class DaStart extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this.url = 'https://github.com/aemsites/da-test';
   }
 
   goToOpen(e) {
