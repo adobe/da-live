@@ -1,8 +1,11 @@
-import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 
 import getSheet from '../../shared/sheet.js';
 import { saveToDa, daFetch } from '../../shared/utils.js';
+
+const SUPPORTED_FILES = ['text/html'];
+const BLOCKED_FILENAMES = ['.DS_Store'];
 
 const sheet = await getSheet('/blocks/browse/da-browse/da-browse.css');
 
@@ -18,6 +21,7 @@ export default class DaBrowse extends LitElement {
     _createFile: { state: true },
     _fileLabel: { state: true },
     _canPaste: {},
+    _dropArea: {},
   };
 
   constructor() {
@@ -140,6 +144,80 @@ export default class DaBrowse extends LitElement {
     super.update(props);
   }
 
+  isRootFolder() {
+    return this.details.parent === '/';
+  }
+
+  dragOverHandler(e) {
+    e.preventDefault();
+    e.target.closest('.da-item-list').classList.add('dragover');
+    this._dropArea = e.target.closest('.da-item-list');
+  }
+
+  dragLeaveHandler(e) {
+    e.target.closest('.da-item-list').classList.remove('dragover');
+    this._dropArea = null;
+  }
+
+  async handleEntry(entry, folder) {
+    if (entry.kind === 'file') {
+      const file = await entry.getFile();
+      if (file !== null) {
+        if (BLOCKED_FILENAMES.some((blocked) => file.name === blocked)) return;
+        if (!SUPPORTED_FILES.some((type) => type === file.type)) return;
+
+        console.log('File:', file);
+        console.log('Folder:', folder);
+        const formData = new FormData();
+        formData.append('data', file);
+        const split = file.name.split('.');
+        const ext = split.pop();
+        const name = split.join('.').replaceAll(/\W+/g, '-').toLowerCase();
+        const filename = `${name}.${ext}`;
+        const path = `${folder}/${filename}`;
+
+        await saveToDa({ path, formData });
+
+        if (folder === this.details.fullpath && !this._listItems.some((liItem) => liItem.path === path)) { // only update ui for current list
+          const item = { name, path, ext };
+          this._listItems.unshift(item);
+          this.requestUpdate();
+        } else if (folder.startsWith(this.details.fullpath)) {
+          const parentFolderName = folder.substring(this.details.fullpath.length + 1).split('/')[0];
+          const parentFolderPath = `${this.details.fullpath}/${parentFolderName}`;
+          if (!this._listItems.some((liItem) => liItem.path === parentFolderPath)) {
+            const item = { name: parentFolderName, path: parentFolderPath };
+            this._listItems.unshift(item);
+            this.requestUpdate();
+          }
+        }
+      }
+    } else if (entry.kind === 'directory') {
+      for await (const handle of entry.values()) {
+        await this.handleEntry(handle, `${folder}/${entry.name}`);
+      }
+    }
+  }
+
+  async dropHandler(e) {
+    console.log('File(s) dropped');
+    e.preventDefault();
+
+    const supportsFileSystemAccessAPI = 'getAsFileSystemHandle' in DataTransferItem.prototype;
+
+    if (e.dataTransfer.items) {
+      [...e.dataTransfer.items].forEach(async (item) => {
+        const entry = supportsFileSystemAccessAPI
+          ? await item.getAsFileSystemHandle()
+          : await new Promise((resolve) => item.webkitGetAsEntry(resolve));
+        await this.handleEntry(entry, this.details.fullpath);
+      });
+    }
+
+    if (this._dropArea) this._dropArea.classList.remove('dragover');
+    // e.target.closest('.da-item-list').classList.remove('dragover');
+  }
+
   toggleChecked(item) {
     item.isChecked = !item.isChecked;
     if (item.isChecked) {
@@ -155,7 +233,10 @@ export default class DaBrowse extends LitElement {
 
   clearSelection() {
     this._selectedItems = [];
-    this._listItems = this._listItems.map((item) => ({ ...item, isChecked: false }));
+    this._listItems = this._listItems.map((item) => ({
+      ...item,
+      isChecked: false,
+    }));
   }
 
   handleCopy() {
@@ -197,91 +278,153 @@ export default class DaBrowse extends LitElement {
   }
 
   renderNew() {
-    return html`
-      <div class="da-actions-create ${this._createShow}">
-        <button class="da-actions-new-button" @click=${this.showCreateMenu}>New</button>
-        <ul class="da-actions-menu">
-          <li class=da-actions-menu-item>
-            <button data-type=folder @click=${this.handleNewType}>Folder</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=document @click=${this.handleNewType}>Document</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=sheet @click=${this.handleNewType}>Sheet</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=media @click=${this.handleNewType}>Media</button>
-          </li>
-        </ul>
-        <div class="da-actions-input-container">
-          <input type="text" class="da-actions-input" placeholder="Name" @input=${this.handleNameChange} .value=${this._createName} />
-          <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
-          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
-        </div>
-        <form enctype="multipart/form-data" class="da-actions-file-container" @submit=${this.handleUpload}>
-          <label for="da-actions-file" class="da-actions-file-label">${this._fileLabel}</label>
-          <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} name="data" />
-          <button class="da-actions-button">Upload</button>
-          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
-        </form>
-      </div>`;
+    return html` <div class="da-actions-create ${this._createShow}">
+      <button class="da-actions-new-button" @click=${this.showCreateMenu}>
+        New
+      </button>
+      <ul class="da-actions-menu">
+        <li class="da-actions-menu-item">
+          <button data-type="folder" @click=${this.handleNewType}>
+            Folder
+          </button>
+        </li>
+        <li class="da-actions-menu-item">
+          <button data-type="document" @click=${this.handleNewType}>
+            Document
+          </button>
+        </li>
+        <li class="da-actions-menu-item">
+          <button data-type="sheet" @click=${this.handleNewType}>Sheet</button>
+        </li>
+        <li class="da-actions-menu-item">
+          <button data-type="media" @click=${this.handleNewType}>Media</button>
+        </li>
+      </ul>
+      <div class="da-actions-input-container">
+        <input
+          type="text"
+          class="da-actions-input"
+          placeholder="Name"
+          @input=${this.handleNameChange}
+          .value=${this._createName}
+        />
+        <button class="da-actions-button" @click=${this.handleSave}>
+          Create ${this._createType}
+        </button>
+        <button
+          class="da-actions-button da-actions-button-cancel"
+          @click=${this.resetCreate}
+        >
+          Cancel
+        </button>
+      </div>
+      <form
+        enctype="multipart/form-data"
+        class="da-actions-file-container"
+        @submit=${this.handleUpload}
+      >
+        <label for="da-actions-file" class="da-actions-file-label"
+          >${this._fileLabel}</label
+        >
+        <input
+          type="file"
+          id="da-actions-file"
+          class="da-actions-file"
+          @change=${this.handleAddFile}
+          name="data"
+        />
+        <button class="da-actions-button">Upload</button>
+        <button
+          class="da-actions-button da-actions-button-cancel"
+          @click=${this.resetCreate}
+        >
+          Cancel
+        </button>
+      </form>
+    </div>`;
   }
 
   actionBar() {
-    return html`
-      <div class="da-action-bar">
-        <div class="da-action-bar-left-rail">
-          <button
-            class="close-circle"
-            @click=${this.clearSelection}
-            aria-label="Unselect items">
-            <img src="/blocks/browse/da-browse/img/CrossSize200.svg" />
-          </button>
-          <span>${this._selectedItems.length} selected</span>
-        </div>
-        <div class="da-action-bar-right-rail">
-          <button
-            @click=${this.handleCopy}
-            class="copy-button ${this._canPaste ? 'hide-button' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
-            <span>Copy</span>
-          </button>
-          <button
-            @click=${this.handlePaste}
-            class="copy-button ${this._canPaste ? '' : 'hide-button'}">
-            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
-            <span>Paste</span>
-          </button>
-          <button
-            @click=${this.handleDelete}
-            class="delete-button">
-            <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" />
-            <span>Delete</span>
-          </button>
-        </div>
-      </div>`;
+    return html` <div class="da-action-bar">
+      <div class="da-action-bar-left-rail">
+        <button
+          class="close-circle"
+          @click=${this.clearSelection}
+          aria-label="Unselect items"
+        >
+          <img src="/blocks/browse/da-browse/img/CrossSize200.svg" />
+        </button>
+        <span>${this._selectedItems.length} selected</span>
+      </div>
+      <div class="da-action-bar-right-rail">
+        <button
+          @click=${this.handleCopy}
+          class="copy-button ${this._canPaste ? 'hide-button' : ''}"
+        >
+          <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
+          <span>Copy</span>
+        </button>
+        <button
+          @click=${this.handlePaste}
+          class="copy-button ${this._canPaste ? '' : 'hide-button'}"
+        >
+          <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
+          <span>Paste</span>
+        </button>
+        <button @click=${this.handleDelete} class="delete-button">
+          <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" />
+          <span>Delete</span>
+        </button>
+      </div>
+    </div>`;
   }
 
   listView() {
-    return html`
-      <ul class="da-item-list">
-        ${this._listItems.map((item, idx) => html`
+    return html` <ul
+      class="da-item-list"
+      @drop=${this.isRootFolder ? this.dropHandler : nothing}
+      @dragover=${this.isRootFolder ? this.dragOverHandler : nothing}
+      @dragleave=${this.isRootFolder ? this.dragLeaveHandler : nothing}
+    >
+      ${this._listItems.map(
+    (item, idx) => html`
           <li class="da-item-list-item">
             <div class="da-item-list-item-inner">
               <div class="checkbox-wrapper">
-                <input type="checkbox" name="item-selected" id="item-selected-${idx}" .checked="${item.isChecked}" @click="${() => { this.toggleChecked(item); }}">
-                <label class="checkbox-label" for="item-selected-${idx}"></label>
+                <input
+                  type="checkbox"
+                  name="item-selected"
+                  id="item-selected-${idx}"
+                  .checked="${item.isChecked}"
+                  @click="${() => {
+    this.toggleChecked(item);
+  }}"
+                />
+                <label
+                  class="checkbox-label"
+                  for="item-selected-${idx}"
+                ></label>
               </div>
-              <input type="checkbox" name="select" style="display: none;">
-              <a href="${item.ext ? this.getEditPath(item) : `/#${item.path}`}" class="da-item-list-item-title">
-                <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
-                </span>${item.name}
+              <input type="checkbox" name="select" style="display: none;" />
+              <a
+                href="${item.ext ? this.getEditPath(item) : `/#${item.path}`}"
+                class="da-item-list-item-title"
+              >
+                <span
+                  class="da-item-list-item-type ${item.ext
+    ? 'da-item-list-item-type-file'
+    : 'da-item-list-item-type-folder'} ${item.ext
+  ? `da-item-list-item-icon-${item.ext}`
+  : ''}"
+                >
+                </span
+                >${item.name}
               </a>
             </div>
           </li>
-        `)}
-      </ul>`;
+        `,
+  )}
+    </ul>`;
   }
 
   emptyView() {
@@ -293,11 +436,13 @@ export default class DaBrowse extends LitElement {
       <h1>Browse</h1>
       <div class="da-breadcrumb">
         <ul class="da-breadcrumb-list">
-          ${this._breadcrumbs.map((crumb) => html`
-            <li class="da-breadcrumb-list-item">
-              <a href="${crumb.path}">${crumb.name}</a>
-            </li>
-          `)}
+          ${this._breadcrumbs.map(
+    (crumb) => html`
+              <li class="da-breadcrumb-list-item">
+                <a href="${crumb.path}">${crumb.name}</a>
+              </li>
+            `,
+  )}
         </ul>
         ${this.renderNew()}
       </div>
