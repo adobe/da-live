@@ -35,8 +35,10 @@ export default async function daPreview(loadPage) {
   }
 
   function initPort(e) {
-    [port2] = e.ports;
-    port2.onmessage = onMessage;
+    if (e.data.init) {
+      [port2] = e.ports;
+      port2.onmessage = onMessage;
+    }
   }
 
   window.addEventListener('message', initPort);

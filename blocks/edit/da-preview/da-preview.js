@@ -29,6 +29,12 @@ export default class DaPreview extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
   }
 
+  getEnv() {
+    const { hostname } = window.location;
+    if (hostname.includes('local')) return 'local';
+    return 'on';
+  }
+
   formatPath(path) {
     return path.endsWith('index') ? path.substring(0, path.lastIndexOf('/') + 1) : path;
   }
@@ -56,7 +62,7 @@ export default class DaPreview extends LitElement {
     setTimeout(() => {
       this.iframe.contentWindow.postMessage({ init: true }, '*', [this.channel.port2]);
       this.setWidth('mobile');
-    }, 3000);
+    }, 1500);
   }
 
   render() {
@@ -69,7 +75,7 @@ export default class DaPreview extends LitElement {
           </span>`)}
         <span class="da-preview-menuitem" @click=${this.hidePreview}></span>
       </div>
-      <iframe src="${this.formatPath(this.path)}?martech=off&dapreview=on" allow="clipboard-write *" scrolling="no">
+      <iframe src="${this.formatPath(this.path)}?martech=off&dapreview=${this.getEnv()}" allow="clipboard-write *" scrolling="no">
     `;
   }
 

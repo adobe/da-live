@@ -10,7 +10,7 @@ function decorateImages(element, path) {
     element.querySelectorAll('img').forEach((img) => {
       const srcSplit = img.src.split('/');
       const mediaPath = srcSplit.pop();
-      img.src = `${url.origin}/${mediaPath}`;
+      // img.src = `${url.origin}/${mediaPath}`;
       const { width, height } = img;
       const ratio = width > 200 ? 200 / width : 1;
       img.width = width * ratio;

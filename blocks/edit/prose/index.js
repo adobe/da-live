@@ -74,7 +74,7 @@ function pollForUpdates() {
       setPreviewBody(daPreview, proseEl);
       sendUpdates = false;
     }
-  }, 1000);
+  }, 500);
 }
 
 export default function initProse({ editor, path }) {
