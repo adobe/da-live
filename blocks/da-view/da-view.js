@@ -1,17 +1,12 @@
-import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html } from '../../deps/lit/lit-core.min.js';
 import getPathDetails from '../shared/pathDetails.js';
 
 import getSheet from '../shared/sheet.js';
+
 const sheet = await getSheet('/blocks/da-view/da-view-wc.css');
 
 class DaView extends LitElement {
-  static properties = {
-    
-  };
-
-  constructor() {
-    super();
-  }
+  static properties = {};
 
   connectedCallback() {
     super.connectedCallback();

@@ -1,6 +1,7 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 
 import getSheet from '../../shared/sheet.js';
+
 const sheet = await getSheet('/blocks/edit/da-palette/da-palette.css');
 
 class DaPalette extends LitElement {
@@ -10,18 +11,16 @@ class DaPalette extends LitElement {
     callback: { state: true },
   };
 
-  constructor() {
-    super();
-  }
-
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
   }
 
   initFocused = false;
-  updated(changedProperties) {
-    if(!this.initFocused) {
+
+  // eslint-disable-next-line no-unused-vars
+  updated(_changedProperties) {
+    if (!this.initFocused) {
       this.initFocused = true;
       this.focus();
     }
@@ -33,25 +32,24 @@ class DaPalette extends LitElement {
 
   get fieldInputs() {
     return html`
-      ${Object.keys(this.fields).map((key) => {
-        return html`
+      ${Object.keys(this.fields).map((key) => html`
           <input
             type="text"
-            @input=${(e) => { this.inputChange(e, key) }}
+            @input=${(e) => { this.inputChange(e, key); }}
             placeholder=${this.fields[key].placeholder}
             value=${this.fields[key].value} />
-        `;
-      })}
+        `)}
     `;
   }
 
-  updateSelection(view) {
+  // eslint-disable-next-line no-unused-vars
+  updateSelection(_view) {
     this.internalClose();
   }
 
   internalClose() {
     this.remove();
-    this.dispatchEvent(new Event("closed"));
+    this.dispatchEvent(new Event('closed'));
   }
 
   close(e) {
@@ -73,7 +71,7 @@ class DaPalette extends LitElement {
   }
 
   focus() {
-    if(!this.shadowRoot.activeElement) {
+    if (!this.shadowRoot.activeElement) {
       this.shadowRoot.querySelector('input').focus();
     }
   }
@@ -89,6 +87,8 @@ class DaPalette extends LitElement {
         break;
       case 'Escape':
         this.close(event);
+        break;
+      default:
         break;
     }
   }

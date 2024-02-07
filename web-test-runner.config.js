@@ -1,4 +1,6 @@
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { importMapsPlugin } from '@web/dev-server-import-maps';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { defaultReporter } from '@web/test-runner';
 
 function customReporter() {

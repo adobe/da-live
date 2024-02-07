@@ -1,6 +1,7 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 
 import getSheet from '../../shared/sheet.js';
+
 const sheet = await getSheet('/blocks/edit/da-preview/da-preview.css');
 
 const SIZES = {
@@ -8,7 +9,7 @@ const SIZES = {
   tablet: '899px',
   laptop: '1280px',
   desktop: '1440px',
-}
+};
 
 export default class DaPreview extends LitElement {
   static properties = {

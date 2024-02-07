@@ -1,21 +1,13 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 
 import getSheet from '../../shared/sheet.js';
-const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
-
 import '../da-editor/da-editor.js';
 import '../da-preview/da-preview.js';
 
-export default class DaContent extends LitElement {
-  static properties = {
-    details: {
-      attribute: false,
-    },
-  };
+const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
-  constructor() {
-    super();
-  }
+export default class DaContent extends LitElement {
+  static properties = { details: { attribute: false } };
 
   connectedCallback() {
     super.connectedCallback();

@@ -16,7 +16,7 @@ input {
 .gradient {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(0,0,0,0.647671568627451) 0%, rgba(0,0,0,0.524422268907563) 100%);
+  background: radial-gradient(circle, rgba(0 0 0 64.8%) 0%, rgba(0 0 0 52.4%) 100%);
 }
 
 .background {
@@ -75,9 +75,9 @@ div.git-input label {
 div.git-input input {
   display: block;
   height: 60px;
-  background: rgb(29, 29, 29);
+  background: rgb(29 29 29);
   border-radius: 5px 0 0 5px;
-  border: 1px solid rgb(112, 112, 112);
+  border: 1px solid rgb(112 112 112);
   border-right: none;
   font-size: 18px;
   line-height: 1;
@@ -91,6 +91,16 @@ div.git-input input {
   display: flex;
 }
 
+.go-button {
+  display: block;
+  height: 60px;
+  background: #0059C2;
+  color: #FFF;
+  border: 1px solid #54A3F6;
+  padding: 0 18px;
+  box-sizing: border-box;
+}
+
 .go-button:nth-child(2) {
   margin-left: -1px;
   background: #004DA3;
@@ -100,17 +110,6 @@ div.git-input input {
   border-radius: 0 5px 5px 0;
   margin-left: -1px;
   background: #00418A;
-}
-
-.go-button {
-  display: block;
-  border: none;
-  height: 60px;
-  background: #0059C2;
-  color: #FFF;
-  border: 1px solid #54A3F6;
-  padding: 0 18px;
-  box-sizing: border-box;
 }
 
 .go-button:hover {
@@ -147,18 +146,18 @@ a {
 }
 
 #mountpoint {
-  background: rgb(29, 29, 29);
-  border-radius: 5px 0px 0px 5px;
-  border-top: 1px solid rgb(112, 112, 112);
-  border-bottom: 1px solid rgb(112, 112, 112);
-  border-left: 1px solid rgb(112, 112, 112);
+  background: rgb(29 29 29);
+  border-radius: 5px 0 0 5px;
+  border-top: 1px solid rgb(112 112 112);
+  border-bottom: 1px solid rgb(112 112 112);
+  border-left: 1px solid rgb(112 112 112);
   border-image: initial;
   border-right: none;
   font-size: 16px;
   line-height: 1.2;
   min-width: 700px;
   box-sizing: border-box;
-  color: rgb(255, 255, 255);
+  color: rgb(255 255 255);
   min-height: 120px;
   animation-fill-mode: backwards;
   display: block;
@@ -199,33 +198,33 @@ a {
   outline: none;
   border: none;
   cursor: pointer;
-  background-color: rgb(112, 112, 112);
+  background-color: rgb(112 112 112);
   transition: background-color 0.3s ease 0s;
 }
 
-.demo-toggle:before {
+.demo-toggle::before {
   content: "";
   display: block;
   position: absolute;
   z-index: 2;
   width: 36px;
   height: 36px;
-  background: rgb(255, 255, 255);
+  background: rgb(255 255 255);
   left: 5px;
   top: 5px;
   border-radius: 50%;
-  color: rgb(255, 255, 255);
-  text-shadow: rgba(0, 0, 0, 0.15) -1px -1px;
+  color: rgb(255 255 255);
+  text-shadow: rgba(0 0 0 15%) -1px -1px;
   white-space: nowrap;
-  box-shadow: rgba(0, 0, 0, 0.2) 0px 1px 2px;
+  box-shadow: rgba(0 0 0 20%) 0 1px 2px;
   transition: all 0.3s cubic-bezier(0.3, 1.5, 0.7, 1) 0s;
 }
 
 .demo-toggle:checked {
-  background-color: rgb(111, 155, 0);
+  background-color: rgb(111 155 0);
 }
 
-.demo-toggle:checked:before {
+.demo-toggle:checked::before {
   left: 47px;
 }
 

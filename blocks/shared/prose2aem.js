@@ -20,12 +20,13 @@ function toBlockCSSClassNames(text) {
 function convertBlocks(editor) {
   const tables = editor.querySelectorAll('.tableWrapper > table');
 
-  tables.forEach(table => {
+  tables.forEach((table) => {
     const tbody = table.querySelector(':scope > tbody');
     const rows = tbody ? [...tbody.querySelectorAll(':scope > tr')] : [...table.querySelectorAll(':scope > tr')];
     const nameRow = rows.shift();
     const divs = [...rows].map((row) => {
       const cols = row.querySelectorAll(':scope > td');
+      // eslint-disable-next-line no-shadow
       const divs = [...cols].map((col) => {
         const { innerHTML } = col;
         const div = document.createElement('div');
@@ -68,7 +69,7 @@ function makePictures(editor) {
     // Determine what to replace
     const imgParent = img.parentElement;
     const imgGrandparent = imgParent.parentElement;
-    if(imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1) {
+    if (imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1) {
       imgGrandparent.replaceChild(pic, imgParent);
     } else {
       imgParent.replaceChild(pic, img);
@@ -101,7 +102,7 @@ function makeSections(editor) {
       acc[acc.length - 1].append(child);
     }
     return acc;
-  },[section]);
+  }, [section]);
 
   editor.append(...sections);
 }

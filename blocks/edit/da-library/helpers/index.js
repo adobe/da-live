@@ -6,11 +6,9 @@ const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 function decorateImages(element, path) {
   if (!element || !path) return;
   try {
+    // eslint-disable-next-line no-unused-vars
     const url = new URL(path);
     element.querySelectorAll('img').forEach((img) => {
-      const srcSplit = img.src.split('/');
-      const mediaPath = srcSplit.pop();
-      // img.src = `${url.origin}/${mediaPath}`;
       const { width, height } = img;
       const ratio = width > 200 ? 200 / width : 1;
       img.width = width * ratio;

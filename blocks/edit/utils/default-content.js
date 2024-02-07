@@ -47,7 +47,7 @@ export default function defaultContent() {
       <td class="">Lorem ipsum...</td>
       <td class="">Lorem ipsum...</td>
     </tr><tr><td class="">&nbsp;another</td><td class="">&nbsp;another</td></tr></tbody></table><br>`;
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    return [doc.body];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  return [doc.body];
 }

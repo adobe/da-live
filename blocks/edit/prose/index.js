@@ -23,6 +23,7 @@ import {
   yUndo,
   yRedo,
   prosemirrorToYXmlFragment,
+// eslint-disable-next-line import/no-unresolved
 } from 'da-y-wrapper';
 
 // DA

@@ -9,7 +9,7 @@ export default function getPathDetails(loc) {
   if (currhash === hash && details) return details;
   currhash = hash;
 
-  const fullpath = hash.replace('#', ''); 
+  const fullpath = hash.replace('#', '');
   if (pathname === '/' && !hash) return details;
 
   // IMS will redirect and there's a small window where old_hash exists
@@ -30,6 +30,7 @@ export default function getPathDetails(loc) {
   if (parts.length > 0) {
     // Figure out the filename situation
     const filename = parts.pop();
+    // eslint-disable-next-line prefer-const
     let [name, ext] = filename.split('.');
     if (!ext && pathname === '/sheet') ext = 'json';
     if (!ext && pathname === '/edit') ext = 'html';

@@ -1,8 +1,11 @@
+// eslint-disable-next-line import/no-unresolved
 import { Fragment, DOMParser } from 'da-y-wrapper';
 
 function getHeading(schema) {
+  // eslint-disable-next-line camelcase
   const { paragraph, table_row, table_cell } = schema.nodes;
   const para = paragraph.create(null, schema.text('columns'));
+  // eslint-disable-next-line camelcase
   return table_row.create(null, Fragment.from(table_cell.create({ colspan: 2 }, para)));
 }
 
