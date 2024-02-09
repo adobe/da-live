@@ -1,4 +1,4 @@
-import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html } from '../../deps/lit/lit-core.min.js';
 import { DA_ORIGIN } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
@@ -119,7 +119,9 @@ class DaStart extends LitElement {
     const regex = /^https:\/\/github.com\/([a-zA-Z0-9-]+)\/([a-zA-Z0-9-]+)(.git)?$/;
 
     if (e.target.value.match(regex)) {
+      // eslint-disable-next-line prefer-destructuring
       this.owner = e.target.value.match(regex)[1];
+      // eslint-disable-next-line prefer-destructuring
       this.repo = e.target.value.match(regex)[2];
       this.goEnabled = true;
     } else {

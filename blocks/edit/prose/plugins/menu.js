@@ -19,6 +19,7 @@ import {
   undo,
   redo,
   wrapInList,
+// eslint-disable-next-line import/no-unresolved
 } from 'da-y-wrapper';
 
 import openPrompt from '../../da-palette/da-palette.js';
@@ -31,6 +32,7 @@ const { createTag } = await import(`${getLibs()}/utils/utils.js`);
 
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
+  // eslint-disable-next-line no-plusplus
   for (let d = $from.depth; d >= 0; d--) {
     const index = $from.index(d);
     if ($from.node(d).canReplaceWith(index, index, nodeType)) { return true; }
@@ -43,6 +45,7 @@ function cmdItem(cmd, options) {
     label: options.title,
     run: cmd,
   };
+  // eslint-disable-next-line guard-for-in, no-restricted-syntax
   for (const prop in options) {
     passedOptions[prop] = options[prop];
     if (!options.enable && !options.select) {
@@ -60,9 +63,8 @@ function markActive(state, type) {
   const { from, to, $from, $to, empty } = state.selection;
   if (empty) {
     return !!type.isInSet(state.storedMarks || $from.marksAcross($to) || []);
-  } else {
-    return state.doc.rangeHasMark(from, to, type);
   }
+  return state.doc.rangeHasMark(from, to, type);
 }
 
 function defaultLinkFields() {
@@ -74,30 +76,30 @@ function defaultLinkFields() {
     title: {
       placeholder: 'title',
       label: 'Title',
-    }
+    },
   };
 }
 
 function findExistingLink(state, linkMarkType) {
   const { $from, $to, empty } = state.selection;
-  if(empty) {
+  if (empty) {
     const { node, offset } = $from.parent.childAfter($from.parentOffset);
     return {
       link: node,
       offset,
     };
-  } else {
-    let result;
-    $from.parent.nodesBetween($from.parentOffset, $to.parentOffset, (node, pos, parent, index) => {
-      if (linkMarkType.isInSet(node.marks)) {
-        result = {
-          link: node,
-          offset: pos,
-        };
-      }
-    });
-    return result;
   }
+  let result;
+  // eslint-disable-next-line no-unused-vars
+  $from.parent.nodesBetween($from.parentOffset, $to.parentOffset, (node, pos, _parent, _index) => {
+    if (linkMarkType.isInSet(node.marks)) {
+      result = {
+        link: node,
+        offset: pos,
+      };
+    }
+  });
+  return result;
 }
 
 function calculateLinkPosition(state, link, offset) {
@@ -112,56 +114,65 @@ function calculateLinkPosition(state, link, offset) {
 function linkItem(linkMarkType) {
   const label = 'Link';
 
-  let lastPrompt = {
-    isOpen: () => false,
-  };
-  
+  let lastPrompt = { isOpen: () => false };
+
   return new MenuItem({
     title: 'Add or Edit link',
     label,
     class: 'edit-link',
     active(state) { return markActive(state, linkMarkType); },
-    enable(state) { return state.selection.content().content.childCount <= 1 && (!state.selection.empty || this.active(state)); },
+    enable(state) {
+      return state.selection.content().content.childCount <= 1
+        && (!state.selection.empty || this.active(state));
+    },
     run(initialState, dispatch, view) {
-      if(lastPrompt.isOpen()) {
+      if (lastPrompt.isOpen()) {
         lastPrompt.focus();
         return;
       }
 
       const fields = defaultLinkFields();
-      
-      let existingLink, existingLinkOffset;
+
+      let existingLink;
+      let existingLinkOffset;
       if (this.active(view.state)) {
-        let existingLinkMark;
-        ({ link: existingLink, offset: existingLinkOffset } = findExistingLink(view.state, linkMarkType));
-        existingLinkMark = existingLink && existingLink.marks.find((mark) => mark.type.name === linkMarkType.name)
-        if(existingLinkMark) {
+        ({
+          link: existingLink,
+          offset: existingLinkOffset,
+        } = findExistingLink(view.state, linkMarkType));
+        const existingLinkMark = existingLink
+          && existingLink.marks.find((mark) => mark.type.name === linkMarkType.name);
+
+        if (existingLinkMark) {
           fields.href.value = existingLinkMark.attrs.href;
           fields.title.value = existingLinkMark.attrs.title;
         }
       }
 
       const { $from, $to } = view.state.selection;
-      
-      let start, end;
-      if(this.active(view.state)) {
+
+      let start;
+      let end;
+      if (this.active(view.state)) {
         ({ start, end } = calculateLinkPosition(view.state, existingLink, existingLinkOffset));
       } else {
         start = $from.pos;
         end = $to.pos;
       }
 
-      dispatch(view.state.tr.addMark(start, end, view.state.schema.marks.contextHighlightingMark.create({})).setMeta('addToHistory', false));
-      
+      dispatch(view.state.tr
+        .addMark(start, end, view.state.schema.marks.contextHighlightingMark.create({}))
+        .setMeta('addToHistory', false));
+
       const callback = (attrs) => {
         const tr = view.state.tr
           .setSelection(TextSelection.create(view.state.doc, start, end));
-        if(!!fields.href.value) {
+        if (fields.href.value) {
           dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
-        } else if(this.active(view.state)) {
+        } else if (this.active(view.state)) {
           dispatch(tr.removeMark(start, end, linkMarkType));
         }
-        
+
         view.focus();
       };
 
@@ -169,7 +180,7 @@ function linkItem(linkMarkType) {
       lastPrompt.addEventListener('closed', () => {
         dispatch(view.state.tr.removeMark(start, end, view.state.schema.marks.contextHighlightingMark).setMeta('addToHistory', false));
       });
-    }
+    },
   });
 }
 
@@ -180,33 +191,37 @@ function removeLinkItem(linkMarkType) {
     class: 'edit-unlink',
     active(state) { return markActive(state, linkMarkType); },
     enable(state) { return this.active(state); },
-    run(state, dispatch, view) {
+    // eslint-disable-next-line no-unused-vars
+    run(state, dispatch, _view) {
       const { link, offset } = findExistingLink(state, linkMarkType);
       const { start, end } = calculateLinkPosition(state, link, offset);
       const tr = state.tr.setSelection(TextSelection.create(state.doc, start, end))
         .removeMark(start, end, linkMarkType);
       dispatch(tr);
-    }
+    },
   });
 }
 
-function libraryItem(menu, markType) {
+// eslint-disable-next-line no-unused-vars
+function libraryItem(_menu, _markType) {
   const label = 'Library';
   return new MenuItem({
-    title: "Open library",
+    title: 'Open library',
     label,
     class: 'insert-table',
     run(state, dispatch, view) {
-      const callback = (attrs) => {
+      // eslint-disable-next-line no-unused-vars
+      const callback = (_attrs) => {
         view.focus();
-      }
+      };
       openLibrary({ callback });
-    }
+    },
   });
 }
 
 function markItem(markType, options) {
   const passedOptions = { active(state) { return markActive(state, markType); } };
+  // eslint-disable-next-line no-restricted-syntax, guard-for-in
   for (const prop in options) { passedOptions[prop] = options[prop]; }
   return cmdItem(toggleMark(markType), passedOptions);
 }
@@ -375,12 +390,13 @@ function getMenu(view) {
 export default new Plugin({
   props: {
     handleDOMEvents: {
-      focus: (view, event) => {
+      // eslint-disable-next-line no-unused-vars
+      focus: (view, _event) => {
         view.root.querySelectorAll('da-palette').forEach((palette) => {
           palette.updateSelection();
         });
-      }
-    }
+      },
+    },
   },
   view: (view) => {
     const { menu, update } = getMenu(view);
@@ -388,6 +404,7 @@ export default new Plugin({
     view.dom.insertAdjacentElement('beforebegin', menu);
     view.dom.insertAdjacentElement('afterend', palettes);
     update(view.state);
+    // eslint-disable-next-line no-shadow
     return { update: (view) => update(view.state) };
   },
 });

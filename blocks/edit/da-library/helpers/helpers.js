@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
 import { DA_ORIGIN, CON_ORIGIN } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';

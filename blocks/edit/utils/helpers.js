@@ -90,8 +90,9 @@ export async function saveToAem(path, action) {
   const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
   const aemPath = parts.join('/');
 
-  const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`
+  const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`;
   const resp = await fetch(url, { method: 'POST' });
+  // eslint-disable-next-line no-console
   if (!resp.ok) console.log('error');
   return resp.json();
 }
@@ -115,6 +116,7 @@ async function saveJson(fullPath, sheet) {
     if (idx === 0) return acc;
     const rowObj = {};
 
+    // eslint-disable-next-line no-shadow
     row.forEach((value, idx) => {
       if (jData[0][idx]) {
         rowObj[jData[0][idx]] = value;

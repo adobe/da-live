@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-unresolved
 import { Plugin, TextSelection } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
@@ -44,8 +45,8 @@ export default function imageDrop(schema) {
             });
             docImg.src = json.source.contentUrl;
           });
-        }
-      }
-    }
+        },
+      },
+    },
   });
 }

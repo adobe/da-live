@@ -1,3 +1,4 @@
+/* stylelint-disable property-no-vendor-prefix */
 body {
   background: rgb(250 250 250);
 }
@@ -5,34 +6,9 @@ body {
 .da-sheet-wrapper {
   max-width: 900px;
   margin: 0 auto;
-  box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
+  box-shadow: rgb(181 181 181) 0 0 20px 0;
   overflow: scroll;
 }
-
-/* jspreadsheets overwrites */
-.da-sheet-wrapper .jcontextmenu {
-  border-radius: 6px;
-  box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
-}
-
-.da-sheet-wrapper .jcontextmenu > div {
-  padding: 8px 8px 8px 16px;
-  font-family: var(--body-font-family);
-  font-size: 14px;
-}
-
-.da-sheet-wrapper .jexcel_container {
-  display: block;
-  padding-right: 0;
-}
-
-.da-sheet-wrapper .jexcel_content {
-  display: block;
-  padding-right: 1px;
-  padding-bottom: 1px;
-}
-
-/* JSuites Context Menu */
 
 .jcontextmenu {
   position:fixed;
@@ -43,20 +19,22 @@ body {
   -webkit-user-select: none;
   -moz-user-select: none;
   user-select: none;
-  -webkit-box-shadow: 2px 2px 2px 0px rgba(143, 144, 145, 1);
-  -moz-box-shadow: 2px 2px 2px 0px rgba(143, 144, 145, 1);
-  box-shadow: 2px 2px 2px 0px rgba(143, 144, 145, 1);
+  -webkit-box-shadow: 2px 2px 2px 0 rgba(143 144 145 100%);
+  -moz-box-shadow: 2px 2px 2px 0 rgba(143 144 145 100%);
+  box-shadow: 2px 2px 2px 0 rgba(143 144 145 100%);
   border: 1px solid #C6C6C6;
-  padding: 0px;
+  padding: 0;
   padding-top:4px;
   padding-bottom:4px;
-  margin:0px;
+  margin:0;
   outline:none;
   display:none;
 }
 
-.jcontextmenu.jcontextmenu-focus {
-  display:inline-block;
+/* jspreadsheets overwrites */
+.da-sheet-wrapper .jcontextmenu {
+  border-radius: 6px;
+  box-shadow: rgb(181 181 181) 0 0 20px 0;
 }
 
 .jcontextmenu > div {
@@ -73,8 +51,34 @@ body {
   align-items: center;
 }
 
+.da-sheet-wrapper .jcontextmenu > div {
+  padding: 8px 8px 8px 16px;
+  font-family: var(--body-font-family);
+  font-size: 14px;
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.da-sheet-wrapper .jexcel_container {
+  display: block;
+  padding-right: 0;
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.da-sheet-wrapper .jexcel_content {
+  display: block;
+  padding-right: 1px;
+  padding-bottom: 1px;
+}
+
+/* JSuites Context Menu */
+
+.jcontextmenu.jcontextmenu-focus {
+  display:inline-block;
+}
+
 .jcontextmenu > div::before {
   content: attr(data-icon);
+  /* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
   font-family: 'Material Icons' !important;
   font-size: 15px;
   position: absolute;
@@ -83,6 +87,7 @@ body {
 }
 
 .jcontextmenu.symbols > div::before {
+  /* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
   font-family: 'Material Symbols Outlined' !important;
 }
 
@@ -143,27 +148,30 @@ body {
 @media only screen and (max-width: 420px) {
   .jcontextmenu {
       top: initial !important;
-      left: 0px !important;
-      bottom: 0px !important;
+      left: 0 !important;
+      bottom: 0 !important;
       width: 100vw;
       height: 260px;
       overflow: scroll;
       animation: slide-bottom-in 0.4s forwards;
-      padding-top: 0px;
+      padding-top: 0;
   }
+
   .jcontextmenu div {
       width: 100%;
       text-align: center;
       border-bottom: 1px solid #ccc;
       padding: 15px;
   }
+
   .jcontextmenu > div.header {
       background-color: lightgray;
       padding: 5px;
-      top: 0px;
+      top: 0;
       position: sticky;
       z-index: 2;
   }
+
   .jcontextmenu > div.header > a.title {
       text-align: left;
   }
@@ -171,16 +179,16 @@ body {
   .jcontextmenu > div.header > a.close {
       text-align: right;
   }
+
   .jcontextmenu a {
       font-size: 1.4em;
       text-transform: uppercase;
   }
+
   .jcontextmenu span {
       display: none;
   }
-  .jcontextmenu span {
-      display: none;
-  }
+
   .jcontextmenu hr {
       display: none;
   }
