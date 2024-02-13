@@ -4,8 +4,8 @@ import { DA_ORIGIN } from '../../shared/constants.js';
 import getSheet from '../../shared/sheet.js';
 import { saveToDa, daFetch } from '../../shared/utils.js';
 
-const SUPPORTED_FILES = ['text/html'];
-const BLOCKED_FILENAMES = ['.DS_Store'];
+const SUPPORTED_FILES = ['text/html', 'image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'];
+const BLOCKED_FILENAMES = ['.DS_Store', '.lock', 'Thumbs.db'];
 
 const sheet = await getSheet('/blocks/browse/da-browse/da-browse.css');
 
