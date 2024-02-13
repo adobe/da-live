@@ -116,14 +116,16 @@ async function saveJson(fullPath, sheet) {
     if (idx === 0) return acc;
     const rowObj = {};
 
-    // eslint-disable-next-line no-shadow
-    row.forEach((value, idx) => {
-      if (jData[0][idx]) {
-        rowObj[jData[0][idx]] = value;
+    row.forEach((value, rowIdx) => {
+      if (jData[0][rowIdx]) {
+        rowObj[jData[0][rowIdx]] = value;
       }
     });
 
-    if (Object.keys(rowObj).length) acc.push(rowObj);
+    // Remove fully empty valued rows
+    const filled = Object.keys(rowObj).some((key) => rowObj[key]);
+
+    if (Object.keys(rowObj).length && filled) acc.push(rowObj);
     return acc;
   }, []);
   const json = { total: data.length, offset: 0, limit: data.length, data, ':type': 'sheet' };

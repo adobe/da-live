@@ -11,8 +11,6 @@ class DaToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    // eslint-disable-next-line no-console
-    setTimeout(() => { console.log(this.sheet); }, 1000);
   }
 
   handleUndo() {
