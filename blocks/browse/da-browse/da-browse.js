@@ -200,7 +200,6 @@ export default class DaBrowse extends LitElement {
   }
 
   async dropHandler(e) {
-    console.log('File(s) dropped');
     e.preventDefault();
 
     const supportsFileSystemAccessAPI = 'getAsFileSystemHandle' in DataTransferItem.prototype;
@@ -215,7 +214,6 @@ export default class DaBrowse extends LitElement {
     }
 
     if (this._dropArea) this._dropArea.classList.remove('dragover');
-    // e.target.closest('.da-item-list').classList.remove('dragover');
   }
 
   toggleChecked(item) {
