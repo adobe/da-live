@@ -75,16 +75,16 @@ class DaStart extends LitElement {
   async goToSite(e) {
     if (this._demoContent) {
       e.target.disabled = true;
+      this._goText = 'Copying demo content';
       const finishedUrls = DEMO_URLS.map(async (url) => {
         const newUrl = url
           .replace('aemsites', this.owner)
           .replace('da-block-collection', this.repo);
         const { pathname } = new URL(newUrl);
-        const [name, ext] = pathname
+        const [ext] = pathname
           .split('/')
           .pop()
           .split('.');
-        this._goText = `Creating ${name}`;
         // Request the source
         const resp = await daFetch(url);
         if (!resp.ok) return null;
@@ -101,12 +101,13 @@ class DaStart extends LitElement {
           const [api, owner, repo, ...aemParts] = aemPath.slice(1).split('/');
           await fetch(`https://admin.hlx.page/${api}/${owner}/${repo}/main/${aemParts.join('/')}`, { method: 'POST' });
         } catch {
-          // do mothing
+          // do nothing
         }
         return newUrl;
       });
       await Promise.all(finishedUrls);
-      this._goText = 'Open site';
+      delete e.target.disabled;
+      this._goText = 'Opening site';
     }
     window.location = `${window.location.origin}/#/${this.owner}/${this.repo}`;
   }

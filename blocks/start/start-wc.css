@@ -16,7 +16,7 @@ input {
 .gradient {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(0 0 0 64.8%) 0%, rgba(0 0 0 52.4%) 100%);
+  background: radial-gradient(circle, rgb(0 0 0 / 64.8%) 0%, rgb(0 0 0 / 52.4%) 100%);
 }
 
 .background {

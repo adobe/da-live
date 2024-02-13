@@ -58,11 +58,12 @@ export default class DaPreview extends LitElement {
     this.port1.postMessage({ set: 'body', body: this.body, get: 'height' });
   }
 
-  iframeLoaded() {
-    this.port1.onmessage = (e) => { this.setHeight(e.data); };
+  iframeLoaded({ target }) {
+    this.setWidth('mobile');
+    // Delay so the initial loading of the document can complete.
     setTimeout(() => {
-      this.iframe.contentWindow.postMessage({ init: true }, '*', [this.channel.port2]);
-      this.setWidth('mobile');
+      this.port1.onmessage = (e) => { this.setHeight(e.data); };
+      target.contentWindow.postMessage({ init: true }, '*', [this.channel.port2]);
     }, 1500);
   }
 
@@ -76,22 +77,19 @@ export default class DaPreview extends LitElement {
           </span>`)}
         <span class="da-preview-menuitem" @click=${this.hidePreview}></span>
       </div>
-      <iframe src="${this.formatPath(this.path)}?martech=off&dapreview=${this.getEnv()}" allow="clipboard-write *" scrolling="no">
+      <iframe
+        src="${this.formatPath(this.path)}?martech=off&dapreview=${this.getEnv()}"
+        @load=${this.iframeLoaded}
+        allow="clipboard-write *"
+        scrolling="no">
     `;
   }
 
   updated(props) {
     super.updated(props);
-
-    this.iframe = this.shadowRoot.querySelector('iframe');
-    if (this.iframe) {
-      this.iframe.addEventListener('load', () => this.iframeLoaded());
-    }
-
+    this.iframe ??= this.shadowRoot.querySelector('iframe');
     props.forEach((oldValue, propName) => {
-      if (propName === 'body') {
-        this.setBody();
-      }
+      if (propName === 'body') this.setBody();
     });
   }
 }
