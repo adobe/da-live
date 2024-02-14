@@ -2,7 +2,7 @@ import { DA_ORIGIN } from './constants.js';
 
 let imsLoaded;
 
-export const daFetch = async (url, opts = {}) => {
+export async function initIms() {
   if (!imsLoaded) {
     const { getLibs } = await import('../../scripts/utils.js');
     const { loadIms } = await import(`${getLibs()}/utils/utils.js`);
@@ -13,7 +13,10 @@ export const daFetch = async (url, opts = {}) => {
       /* die silently */
     }
   }
+}
 
+export const daFetch = async (url, opts = {}) => {
+  await initIms();
   const accessToken = window.adobeIMS?.getAccessToken();
   opts.headers = opts.headers || {};
   if (accessToken) {

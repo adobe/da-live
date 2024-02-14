@@ -1,11 +1,12 @@
 import { LitElement, html } from '../../deps/lit/lit-core.min.js';
 import getSheet from '../shared/sheet.js';
+import { initIms } from '../shared/utils.js';
 
 const sheet = await getSheet('/blocks/aec-shell/aec-shell-wc.css');
 
 // Milo Imports
 const { getLibs } = await import('../../scripts/utils.js');
-const { getConfig, loadIms } = await import(`${getLibs()}/utils/utils.js`);
+const { getConfig } = await import(`${getLibs()}/utils/utils.js`);
 
 class AECShell extends LitElement {
   static properties = {
@@ -21,7 +22,7 @@ class AECShell extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    loadIms().then(() => { this.imsReady(); });
+    initIms().then(() => { this.imsReady(); });
   }
 
   async imsReady() {
