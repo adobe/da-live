@@ -1,12 +1,9 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import initProse from '../prose/index.js';
 import getSheet from '../../shared/sheet.js';
+import { initIms } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
-
-// Milo Imports
-const { getLibs } = await import('../../../scripts/utils.js');
-const { loadIms } = await import(`${getLibs()}/utils/utils.js`);
 
 export default class DaEditor extends LitElement {
   static properties = {
@@ -18,7 +15,7 @@ export default class DaEditor extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.shadowRoot.createRange = () => document.createRange();
-    loadIms().then(() => {
+    initIms().then(() => {
       this._imsLoaded = true;
     });
   }

@@ -88,8 +88,8 @@ export default function initProse({ editor, path }) {
 
   const opts = {};
 
-  if (window.adobeIMS.isSignedInUser()) {
-    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken()?.token}` };
+  if (window.adobeIMS?.isSignedInUser()) {
+    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
@@ -122,7 +122,7 @@ export default function initProse({ editor, path }) {
     }
   });
 
-  if (window.adobeIMS.isSignedInUser()) {
+  if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then(
       (profile) => {
         wsProvider.awareness.setLocalStateField('user', { color: '#008833', name: profile.displayName });
