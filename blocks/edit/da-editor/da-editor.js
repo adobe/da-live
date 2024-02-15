@@ -15,11 +15,9 @@ export default class DaEditor extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.shadowRoot.createRange = () => document.createRange();
-    if (!this._imsLoaded) {
-      initIms().then(() => {
-        this._imsLoaded = true;
-      });
-    }
+    initIms().then(() => {
+      this._imsLoaded = true;
+    });
   }
 
   attributeChangedCallback(name, _old, value) {
