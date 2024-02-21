@@ -9,6 +9,11 @@ function decorateImages(element, path) {
     // eslint-disable-next-line no-unused-vars
     const url = new URL(path);
     element.querySelectorAll('img').forEach((img) => {
+      if (img.getAttribute('src').startsWith('./')) {
+        const srcSplit = img.src.split('/');
+        const mediaPath = srcSplit.pop();
+        img.src = `${url.origin}/${mediaPath}`;
+      }
       const { width, height } = img;
       const ratio = width > 200 ? 200 / width : 1;
       img.width = width * ratio;
