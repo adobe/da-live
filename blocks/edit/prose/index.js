@@ -78,6 +78,88 @@ function pollForUpdates() {
   }, 500);
 }
 
+// Apply the document in AEM doc format to the editor.
+// For this it's converted to Prose and then applied to the current ydoc as an XML fragment
+function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
+  const doc = parse(aemDoc);
+  const pdoc = aem2prose(doc);
+  const docc = document.createElement('div');
+  docc.append(...pdoc);
+  const parser = DOMParser.fromSchema(schema);
+  const fin = parser.parse(docc);
+  prosemirrorToYXmlFragment(fin, yXmlFragment);
+}
+
+function handleAwarenessUpdates(wsProvider, daTitle, win) {
+  const users = new Set();
+
+  wsProvider.awareness.on('update', (delta) => {
+    delta.added.forEach((u) => users.add(u));
+    delta.updated.forEach((u) => users.add(u));
+    delta.removed.forEach((u) => users.delete(u));
+
+    // Don't show the current user
+    users.delete(wsProvider.awareness.clientID);
+
+    const awarenessStates = wsProvider.awareness.getStates();
+    const userNames = [...users].map((u) => awarenessStates.get(u)?.user?.name || 'Anonymous');
+    daTitle.collabUsers = [...userNames].sort();
+  });
+
+  wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
+  win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
+  win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
+}
+
+export function createAwarenessStatusWidget(wsProvider, win) {
+  const daTitle = win.document.querySelector('da-title');
+  handleAwarenessUpdates(wsProvider, daTitle, win);
+  return daTitle;
+}
+
+export function handleYDocUpdates({
+  daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse,
+}, win = window, fnSetAEMDocInEditor = setAEMDocInEditor) {
+  let firstUpdate = true;
+  ydoc.on('update', (_, originWS) => {
+    if (firstUpdate) {
+      firstUpdate = false;
+
+      // Do the following async to allow the ydoc to init itself with any
+      // changes coming from other editors
+      setTimeout(() => {
+        const aemMap = ydoc.getMap('aem');
+        const current = aemMap.get('content');
+        const inital = aemMap.get('initial');
+        if (!current && inital) {
+          fnSetAEMDocInEditor(inital, yXmlFragment, schema);
+        }
+      }, 1);
+    }
+
+    const serverInvKey = 'svrinv';
+    const svrUpdate = ydoc.getMap('aem').get(serverInvKey);
+    if (svrUpdate) {
+      // push update from the server: re-init document
+      delete daTitle.collabStatus;
+      delete daTitle.collabUsers;
+      ydoc.destroy();
+      wsProvider.destroy();
+      editor.innerHTML = '';
+      fnInitProse({ editor, path });
+      return;
+    }
+
+    if (originWS && originWS !== wsProvider) {
+      const proseEl = win.view.root.querySelector('.ProseMirror');
+      const clone = proseEl.cloneNode(true);
+      const aem = prose2aem(clone);
+      const aemMap = ydoc.getMap('aem');
+      aemMap.set('content', aem);
+    }
+  });
+}
+
 export default function initProse({ editor, path }) {
   const schema = getSchema();
 
@@ -93,33 +175,11 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  const daTitle = createAwarenessStatusWidget(wsProvider, window);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
-
-  let firstUpdate = true;
-  ydoc.on('update', (_, originWS) => {
-    if (firstUpdate) {
-      firstUpdate = false;
-      const aemMap = ydoc.getMap('aem');
-      const current = aemMap.get('content');
-      const inital = aemMap.get('initial');
-      if (!current && inital) {
-        const doc = parse(inital);
-        const pdoc = aem2prose(doc);
-        const docc = document.createElement('div');
-        docc.append(...pdoc);
-        const parser = DOMParser.fromSchema(schema);
-        const fin = parser.parse(docc);
-        prosemirrorToYXmlFragment(fin, yXmlFragment);
-      }
-    }
-    if (originWS && originWS !== wsProvider) {
-      const proseEl = window.view.root.querySelector('.ProseMirror');
-      const clone = proseEl.cloneNode(true);
-      const aem = prose2aem(clone);
-      const aemMap = ydoc.getMap('aem');
-      aemMap.set('content', aem);
-    }
+  handleYDocUpdates({
+    daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, initProse,
   });
 
   if (window.adobeIMS?.isSignedInUser()) {

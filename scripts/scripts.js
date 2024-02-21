@@ -21,6 +21,7 @@ const LIBS = '/libs';
 // Add any config options.
 const CONFIG = {
   imsClientId: 'darkalley',
+  imsScope: 'AdobeID,openid,gnav',
   locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } },
 };
 
