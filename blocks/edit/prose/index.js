@@ -78,6 +78,18 @@ function pollForUpdates() {
   }, 500);
 }
 
+// Apply the document in AEM doc format to the editor.
+// For this it's converted to Prose and then applied to the current ydoc as an XML fragment
+function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
+  const doc = parse(aemDoc);
+  const pdoc = aem2prose(doc);
+  const docc = document.createElement('div');
+  docc.append(...pdoc);
+  const parser = DOMParser.fromSchema(schema);
+  const fin = parser.parse(docc);
+  prosemirrorToYXmlFragment(fin, yXmlFragment);
+}
+
 export default function initProse({ editor, path }) {
   const schema = getSchema();
 
@@ -104,15 +116,32 @@ export default function initProse({ editor, path }) {
       const current = aemMap.get('content');
       const inital = aemMap.get('initial');
       if (!current && inital) {
-        const doc = parse(inital);
-        const pdoc = aem2prose(doc);
-        const docc = document.createElement('div');
-        docc.append(...pdoc);
-        const parser = DOMParser.fromSchema(schema);
-        const fin = parser.parse(docc);
-        prosemirrorToYXmlFragment(fin, yXmlFragment);
+        setAEMDocInEditor(inital, yXmlFragment, schema);
       }
     }
+
+    const serverInvKey = 'svrinv';
+    const svrUpdate = ydoc.getMap('aem').get(serverInvKey);
+    if (svrUpdate) {
+      // push update from the server
+
+      const timeout = ydoc.clientID % 2000;
+      // Wait a small amount of time that's different for each client to ensure
+      // they don't all apply it at the same time, as only one client needs to
+      // apply the server-based invalidation.
+      setTimeout(() => {
+        // Check the value on the map again, if it's gone another client has
+        // handled it already.
+        const upd = ydoc.getMap('aem').get(serverInvKey);
+        if (upd === undefined) {
+          return;
+        }
+
+        ydoc.getMap('aem').delete(serverInvKey);
+        setAEMDocInEditor(svrUpdate, yXmlFragment, schema);
+      }, timeout);
+    }
+
     if (originWS && originWS !== wsProvider) {
       const proseEl = window.view.root.querySelector('.ProseMirror');
       const clone = proseEl.cloneNode(true);
