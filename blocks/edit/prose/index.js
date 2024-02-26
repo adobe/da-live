@@ -90,6 +90,71 @@ function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
   prosemirrorToYXmlFragment(fin, yXmlFragment);
 }
 
+function handleAwarenessUpdates(wsProvider, statusDiv) {
+  const users = new Set();
+  const usersDiv = statusDiv.querySelector('div.collab-users');
+
+  wsProvider.awareness.on('update', (delta) => {
+    for (const u of delta.added) {
+      users.add(u);
+    }
+    for (const u of delta.removed) {
+      users.delete(u);
+    }
+
+    let html = '';
+    /* */ html = html.concat('<div class="collab-initial"><p>A</p></div>');
+    for (const u of Array.from(users).sort()) {
+      if (/[a-zA-Z]/.test(u)) {
+        // Contains letters so must be a user name
+        const initial = u.toString().substring(0, 1);
+        html = html.concat(`<div class="collab-initial" title="${u}"><p>${initial}</p></div>`);
+      } else {
+        html = html.concat(`<div class="collab-icon">
+          <img src="/blocks/edit/prose/img/Smock_RealTimeCustomerProfile_18_N.svg"
+              alt="Other active user" class="collab-icon" alt="${u}" title="${u}"/></div>`);
+      }
+    }
+    usersDiv.innerHTML = html;
+  });
+
+  const connectionImg = statusDiv.querySelector('img.collab-connection');
+  wsProvider.on('status', (st) => {
+    const proseEl = window.view.root.querySelector('.ProseMirror');
+    const connected = st.status === 'connected';
+    proseEl.setAttribute('contenteditable', connected);
+    proseEl.style['background-color'] = connected ? null : 'lightgrey';
+
+    switch (st.status) {
+      case 'connected':
+        connectionImg.src = '/blocks/edit/prose/img/Smock_Cloud_18_N.svg';
+        break;
+      case 'connecting':
+        connectionImg.src = '/blocks/edit/prose/img/Smock_CloudDisconnected_18_N.svg';
+        break;
+      default:
+        connectionImg.src = '/blocks/edit/prose/img/Smock_CloudError_18_N.svg';
+        break;
+    }
+    connectionImg.alt = st.status;
+    connectionImg.title = st.status;
+  });
+}
+
+function createAwarenessStatusWidget(wsProvider) {
+  const statusDiv = document.createElement('div');
+  statusDiv.classList = 'collab-awareness';
+  statusDiv.innerHTML = `<div class="collab-other-users">
+    <div><img class="collab-connection collab-icon"></div>
+    <div class="collab-users"></div>
+  </div>`;
+
+  const container = window.document.querySelector('da-title').shadowRoot.children[0];
+  container.insertBefore(statusDiv, container.children[1]);
+
+  handleAwarenessUpdates(wsProvider, statusDiv);
+}
+
 export default function initProse({ editor, path }) {
   const schema = getSchema();
 
@@ -105,6 +170,7 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  createAwarenessStatusWidget(wsProvider);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
@@ -137,8 +203,10 @@ export default function initProse({ editor, path }) {
           return;
         }
 
-        ydoc.getMap('aem').delete(serverInvKey);
-        setAEMDocInEditor(svrUpdate, yXmlFragment, schema);
+        const aemMap = ydoc.getMap('aem');
+        aemMap.delete(serverInvKey);
+        aemMap.set('content', upd);
+        setAEMDocInEditor(upd, yXmlFragment, schema);
       }, timeout);
     }
 
