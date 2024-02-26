@@ -90,7 +90,7 @@ function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
   prosemirrorToYXmlFragment(fin, yXmlFragment);
 }
 
-function handleAwarenessUpdates(wsProvider, statusDiv) {
+function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor) {
   const users = new Set();
   const usersDiv = statusDiv.querySelector('div.collab-users');
 
@@ -103,7 +103,6 @@ function handleAwarenessUpdates(wsProvider, statusDiv) {
     }
 
     let html = '';
-    /* */ html = html.concat('<div class="collab-initial"><p>A</p></div>');
     for (const u of Array.from(users).sort()) {
       if (/[a-zA-Z]/.test(u)) {
         // Contains letters so must be a user name
@@ -118,6 +117,7 @@ function handleAwarenessUpdates(wsProvider, statusDiv) {
     usersDiv.innerHTML = html;
   });
 
+  let currentlyConnected;
   const connectionImg = statusDiv.querySelector('img.collab-connection');
   wsProvider.on('status', (st) => {
     const proseEl = window.view.root.querySelector('.ProseMirror');
@@ -128,11 +128,21 @@ function handleAwarenessUpdates(wsProvider, statusDiv) {
     switch (st.status) {
       case 'connected':
         connectionImg.src = '/blocks/edit/prose/img/Smock_Cloud_18_N.svg';
+
+        if (currentlyConnected === false) {
+          /* We are re-connecting, in that case re-initialise the editor and ydoc */
+
+          destroyEditor();
+          initEditor();
+        }
+        currentlyConnected = true;
         break;
       case 'connecting':
+        currentlyConnected = false;
         connectionImg.src = '/blocks/edit/prose/img/Smock_CloudDisconnected_18_N.svg';
         break;
       default:
+        currentlyConnected = false;
         connectionImg.src = '/blocks/edit/prose/img/Smock_CloudError_18_N.svg';
         break;
     }
@@ -141,7 +151,7 @@ function handleAwarenessUpdates(wsProvider, statusDiv) {
   });
 }
 
-function createAwarenessStatusWidget(wsProvider) {
+function createAwarenessStatusWidget(wsProvider, fnInit, fnDestroy) {
   const statusDiv = document.createElement('div');
   statusDiv.classList = 'collab-awareness';
   statusDiv.innerHTML = `<div class="collab-other-users">
@@ -152,7 +162,12 @@ function createAwarenessStatusWidget(wsProvider) {
   const container = window.document.querySelector('da-title').shadowRoot.children[0];
   container.insertBefore(statusDiv, container.children[1]);
 
-  handleAwarenessUpdates(wsProvider, statusDiv);
+  const fnDestroyEditor = () => {
+    statusDiv.remove();
+    fnDestroy();
+  };
+
+  handleAwarenessUpdates(wsProvider, statusDiv, fnInit, fnDestroyEditor);
 }
 
 export default function initProse({ editor, path }) {
@@ -170,7 +185,16 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  createAwarenessStatusWidget(wsProvider);
+  const initEditor = () => {
+    editor.innerHTML = '';
+    initProse({ editor, path });
+  };
+  const destroyEditor = () => {
+    ydoc.destroy();
+    wsProvider.destroy();
+  };
+
+  createAwarenessStatusWidget(wsProvider, initEditor, destroyEditor);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
