@@ -120,3 +120,57 @@ h1 {
     bottom: 22px;
   }
 }
+
+/* -------------------------------------
+   Styles for the collab awarness widget
+   ------------------------------------- */
+
+div.collab-awareness {
+  flex: 1;
+  display: flex;
+  align-self: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+div.collab-other-users {
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+div.collab-other-users div {
+  display: flex;
+}
+
+img.collab-icon {
+  width: 19px;
+  height: 19px;
+}
+
+
+div.collab-users {
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+div.collab-initial {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.5px;
+}
+
+div.collab-initial p {
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+

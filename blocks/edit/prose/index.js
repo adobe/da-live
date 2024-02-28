@@ -90,6 +90,85 @@ function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
   prosemirrorToYXmlFragment(fin, yXmlFragment);
 }
 
+function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor) {
+  const users = new Set();
+  const usersDiv = statusDiv.querySelector('div.collab-users');
+
+  wsProvider.awareness.on('update', (delta) => {
+    const awarenessStates = wsProvider.awareness.getStates();
+
+    delta.added.forEach((u) => users.add(u));
+    delta.updated.forEach((u) => users.add(u));
+    delta.removed.forEach((u) => users.delete(u));
+
+    let html = '';
+    for (const u of Array.from(users).sort()) {
+      const name = awarenessStates.get(u)?.user?.name;
+      if (name) {
+        const initial = name.toString().substring(0, 1);
+        html = html.concat(`<div class="collab-initial" title="${name}"><p>${initial}</p></div>`);
+      } else {
+        html = html.concat(`<div class="collab-icon">
+          <img src="/blocks/edit/prose/img/Smock_RealTimeCustomerProfile_18_N.svg"
+              alt="Other active user" class="collab-icon" alt="${u}" title="${u}"/></div>`);
+      }
+    }
+    usersDiv.innerHTML = html;
+  });
+
+  let currentlyConnected;
+  const connectionImg = statusDiv.querySelector('img.collab-connection');
+  wsProvider.on('status', (st) => {
+    const proseEl = window.view.root.querySelector('.ProseMirror');
+    const connected = st.status === 'connected';
+    proseEl.setAttribute('contenteditable', connected);
+    proseEl.style['background-color'] = connected ? null : 'lightgrey';
+
+    switch (st.status) {
+      case 'connected':
+        connectionImg.src = '/blocks/edit/prose/img/Smock_Cloud_18_N.svg';
+
+        if (currentlyConnected === false) {
+          /* We are re-connecting, in that case re-initialise the editor and ydoc */
+
+          destroyEditor();
+          initEditor();
+        }
+        currentlyConnected = true;
+        break;
+      case 'connecting':
+        currentlyConnected = false;
+        connectionImg.src = '/blocks/edit/prose/img/Smock_CloudDisconnected_18_N.svg';
+        break;
+      default:
+        currentlyConnected = false;
+        connectionImg.src = '/blocks/edit/prose/img/Smock_CloudError_18_N.svg';
+        break;
+    }
+    connectionImg.alt = st.status;
+    connectionImg.title = st.status;
+  });
+}
+
+function createAwarenessStatusWidget(wsProvider, fnInit, fnDestroy) {
+  const statusDiv = document.createElement('div');
+  statusDiv.classList = 'collab-awareness';
+  statusDiv.innerHTML = `<div class="collab-other-users">
+    <div><img class="collab-connection collab-icon"></div>
+    <div class="collab-users"></div>
+  </div>`;
+
+  const container = window.document.querySelector('da-title').shadowRoot.children[0];
+  container.insertBefore(statusDiv, container.children[1]);
+
+  const fnDestroyEditor = () => {
+    statusDiv.remove();
+    fnDestroy();
+  };
+
+  handleAwarenessUpdates(wsProvider, statusDiv, fnInit, fnDestroyEditor);
+}
+
 export default function initProse({ editor, path }) {
   const schema = getSchema();
 
@@ -105,6 +184,16 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  const initEditor = () => {
+    editor.innerHTML = '';
+    initProse({ editor, path });
+  };
+  const destroyEditor = () => {
+    ydoc.destroy();
+    wsProvider.destroy();
+  };
+
+  createAwarenessStatusWidget(wsProvider, initEditor, destroyEditor);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
@@ -137,8 +226,10 @@ export default function initProse({ editor, path }) {
           return;
         }
 
-        ydoc.getMap('aem').delete(serverInvKey);
-        setAEMDocInEditor(svrUpdate, yXmlFragment, schema);
+        const aemMap = ydoc.getMap('aem');
+        aemMap.delete(serverInvKey);
+        aemMap.set('content', upd);
+        setAEMDocInEditor(upd, yXmlFragment, schema);
       }, timeout);
     }
 
