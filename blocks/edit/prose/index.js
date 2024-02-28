@@ -95,9 +95,7 @@ function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor
   const usersDiv = statusDiv.querySelector('div.collab-users');
 
   wsProvider.awareness.on('update', (delta) => {
-    const awrnz = wsProvider.awareness;
-    const states = awrnz.getStates();
-    console.log('States: ', states);
+    const awarenessStates = wsProvider.awareness.getStates();
 
     for (const u of delta.added) {
       users.add(u);
@@ -108,9 +106,9 @@ function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor
 
     let html = '';
     for (const u of Array.from(users).sort()) {
-      if (/[a-zA-Z]/.test(u)) {
-        // Contains letters so must be a user name
-        const initial = u.toString().substring(0, 1);
+      const name = awarenessStates.get(u)?.user?.name;
+      if (name) {
+        const initial = name.toString().substring(0, 1);
         html = html.concat(`<div class="collab-initial" title="${u}"><p>${initial}</p></div>`);
       } else {
         html = html.concat(`<div class="collab-icon">
