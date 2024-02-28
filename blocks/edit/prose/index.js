@@ -97,12 +97,18 @@ function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor
   wsProvider.awareness.on('update', (delta) => {
     const awarenessStates = wsProvider.awareness.getStates();
 
+    delta.added.forEach((u) => users.add(u));
+    delta.updated.forEach((u) => users.add(u));
+    delta.removed.forEach((u) => users.delete(u));
+
+    /*
     for (const u of delta.added) {
       users.add(u);
     }
     for (const u of delta.removed) {
       users.delete(u);
     }
+    */
 
     let html = '';
     for (const u of Array.from(users).sort()) {
