@@ -95,6 +95,10 @@ function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor
   const usersDiv = statusDiv.querySelector('div.collab-users');
 
   wsProvider.awareness.on('update', (delta) => {
+    const awrnz = wsProvider.awareness;
+    const states = awrnz.getStates();
+    console.log('States: ', states);
+
     for (const u of delta.added) {
       users.add(u);
     }
