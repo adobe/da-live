@@ -106,7 +106,7 @@ function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor
       const name = awarenessStates.get(u)?.user?.name;
       if (name) {
         const initial = name.toString().substring(0, 1);
-        html = html.concat(`<div class="collab-initial" title="${u}"><p>${initial}</p></div>`);
+        html = html.concat(`<div class="collab-initial" title="${name}"><p>${initial}</p></div>`);
       } else {
         html = html.concat(`<div class="collab-icon">
           <img src="/blocks/edit/prose/img/Smock_RealTimeCustomerProfile_18_N.svg"
