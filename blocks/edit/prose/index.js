@@ -101,15 +101,6 @@ function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor
     delta.updated.forEach((u) => users.add(u));
     delta.removed.forEach((u) => users.delete(u));
 
-    /*
-    for (const u of delta.added) {
-      users.add(u);
-    }
-    for (const u of delta.removed) {
-      users.delete(u);
-    }
-    */
-
     let html = '';
     for (const u of Array.from(users).sort()) {
       const name = awarenessStates.get(u)?.user?.name;
