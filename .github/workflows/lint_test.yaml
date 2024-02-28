@@ -1,4 +1,4 @@
-name: Lint
+name: Lint and Test
 on:
   push:
     branches:
@@ -29,3 +29,6 @@ jobs:
     - name: Lint the code
       run: npm run lint
 
+# Commenting out running the tests until all existing test failures have been fixed
+#    - name: Run the tests
+#      run: npm t

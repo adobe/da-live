@@ -25,7 +25,7 @@ export default {
       '**/deps/**',
     ],
   },
-  plugins: [importMapsPlugin({})],
+  plugins: [importMapsPlugin({ inject: { importMap: { imports: { 'da-y-wrapper': '/deps/da-y-wrapper/dist/index.js' } } } })],
   reporters: [
     defaultReporter({ reportTestResults: true, reportTestProgress: true }),
     customReporter(),
@@ -44,7 +44,7 @@ export default {
             }
             return oldFetch.call(window, resource, options);
           };
-          
+
           const oldXHROpen = XMLHttpRequest.prototype.open;
           XMLHttpRequest.prototype.open = async function (...args) {
             let [method, url, asyn] = args;
