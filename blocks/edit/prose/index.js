@@ -90,7 +90,25 @@ function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
   prosemirrorToYXmlFragment(fin, yXmlFragment);
 }
 
-function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor) {
+function setConnectionStatus(connectionImg, status) {
+  switch (status) {
+    case 'connected':
+    case 'online':
+      connectionImg.src = '/blocks/edit/prose/img/Smock_Cloud_18_N.svg';
+      break;
+    case 'connecting':
+    case 'offline':
+      connectionImg.src = '/blocks/edit/prose/img/Smock_CloudDisconnected_18_N.svg';
+      break;
+    default:
+      connectionImg.src = '/blocks/edit/prose/img/Smock_CloudError_18_N.svg';
+      break;
+  }
+  connectionImg.alt = status;
+  connectionImg.title = status;
+}
+
+function handleAwarenessUpdates(wsProvider, statusDiv) {
   const users = new Set();
   const usersDiv = statusDiv.querySelector('div.collab-users');
 
@@ -116,41 +134,13 @@ function handleAwarenessUpdates(wsProvider, statusDiv, initEditor, destroyEditor
     usersDiv.innerHTML = html;
   });
 
-  let currentlyConnected;
   const connectionImg = statusDiv.querySelector('img.collab-connection');
-  wsProvider.on('status', (st) => {
-    const proseEl = window.view.root.querySelector('.ProseMirror');
-    const connected = st.status === 'connected';
-    proseEl.setAttribute('contenteditable', connected);
-    proseEl.style['background-color'] = connected ? null : 'lightgrey';
-
-    switch (st.status) {
-      case 'connected':
-        connectionImg.src = '/blocks/edit/prose/img/Smock_Cloud_18_N.svg';
-
-        if (currentlyConnected === false) {
-          /* We are re-connecting, in that case re-initialise the editor and ydoc */
-
-          destroyEditor();
-          initEditor();
-        }
-        currentlyConnected = true;
-        break;
-      case 'connecting':
-        currentlyConnected = false;
-        connectionImg.src = '/blocks/edit/prose/img/Smock_CloudDisconnected_18_N.svg';
-        break;
-      default:
-        currentlyConnected = false;
-        connectionImg.src = '/blocks/edit/prose/img/Smock_CloudError_18_N.svg';
-        break;
-    }
-    connectionImg.alt = st.status;
-    connectionImg.title = st.status;
-  });
+  wsProvider.on('status', (st) => setConnectionStatus(connectionImg, st.status));
+  window.addEventListener('online', () => setConnectionStatus(connectionImg, 'online'));
+  window.addEventListener('offline', () => setConnectionStatus(connectionImg, 'offline'));
 }
 
-function createAwarenessStatusWidget(wsProvider, fnInit, fnDestroy) {
+function createAwarenessStatusWidget(wsProvider) {
   const statusDiv = document.createElement('div');
   statusDiv.classList = 'collab-awareness';
   statusDiv.innerHTML = `<div class="collab-other-users">
@@ -161,12 +151,8 @@ function createAwarenessStatusWidget(wsProvider, fnInit, fnDestroy) {
   const container = window.document.querySelector('da-title').shadowRoot.children[0];
   container.insertBefore(statusDiv, container.children[1]);
 
-  const fnDestroyEditor = () => {
-    statusDiv.remove();
-    fnDestroy();
-  };
-
-  handleAwarenessUpdates(wsProvider, statusDiv, fnInit, fnDestroyEditor);
+  handleAwarenessUpdates(wsProvider, statusDiv);
+  return statusDiv;
 }
 
 export default function initProse({ editor, path }) {
@@ -184,16 +170,7 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  const initEditor = () => {
-    editor.innerHTML = '';
-    initProse({ editor, path });
-  };
-  const destroyEditor = () => {
-    ydoc.destroy();
-    wsProvider.destroy();
-  };
-
-  createAwarenessStatusWidget(wsProvider, initEditor, destroyEditor);
+  const statusDiv = createAwarenessStatusWidget(wsProvider);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
@@ -201,36 +178,29 @@ export default function initProse({ editor, path }) {
   ydoc.on('update', (_, originWS) => {
     if (firstUpdate) {
       firstUpdate = false;
-      const aemMap = ydoc.getMap('aem');
-      const current = aemMap.get('content');
-      const inital = aemMap.get('initial');
-      if (!current && inital) {
-        setAEMDocInEditor(inital, yXmlFragment, schema);
-      }
+
+      // Do the following async to allow the ydoc to init itself with any
+      // changes coming from other editors
+      setTimeout(() => {
+        const aemMap = ydoc.getMap('aem');
+        const current = aemMap.get('content');
+        const inital = aemMap.get('initial');
+        if (!current && inital) {
+          setAEMDocInEditor(inital, yXmlFragment, schema);
+        }
+      }, 1);
     }
 
     const serverInvKey = 'svrinv';
     const svrUpdate = ydoc.getMap('aem').get(serverInvKey);
     if (svrUpdate) {
-      // push update from the server
-
-      const timeout = ydoc.clientID % 2000;
-      // Wait a small amount of time that's different for each client to ensure
-      // they don't all apply it at the same time, as only one client needs to
-      // apply the server-based invalidation.
-      setTimeout(() => {
-        // Check the value on the map again, if it's gone another client has
-        // handled it already.
-        const upd = ydoc.getMap('aem').get(serverInvKey);
-        if (upd === undefined) {
-          return;
-        }
-
-        const aemMap = ydoc.getMap('aem');
-        aemMap.delete(serverInvKey);
-        aemMap.set('content', upd);
-        setAEMDocInEditor(upd, yXmlFragment, schema);
-      }, timeout);
+      // push update from the server: re-init document
+      statusDiv.remove();
+      ydoc.destroy();
+      wsProvider.destroy();
+      editor.innerHTML = '';
+      initProse({ editor, path });
+      return;
     }
 
     if (originWS && originWS !== wsProvider) {
