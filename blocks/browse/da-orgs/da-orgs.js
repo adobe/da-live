@@ -1,10 +1,11 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
+import { getDaAdmin } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
 
+const DA_ORIGIN = getDaAdmin();
 const MOCK_IMGS = [
   '/blocks/browse/da-orgs/img/da-one.webp',
   '/blocks/browse/da-orgs/img/da-two.webp',

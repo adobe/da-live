@@ -25,9 +25,9 @@ button {
 }
 
 button.undo {
-  background: 'url(/blocks/edit/img/Smock_Undo_18_N.svg)' center center / 18px no-repeat rgb(239 239 239);
+  background: url('/blocks/edit/img/Smock_Undo_18_N.svg') center center / 18px no-repeat rgb(239 239 239);
 }
 
 button.redo {
-  background: 'url(/blocks/edit/img/Smock_Redo_18_N.svg)' center center / 18px no-repeat rgb(239 239 239);
+  background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center center / 18px no-repeat rgb(239 239 239);
 }

@@ -1,72 +1,178 @@
 import { expect } from '@esm-bundle/chai';
 import '../../milo.js';
 
-// Dynamic import because Milo need
+// Dynamic import because Milo dependency
 const { default: getPathDetails } = await import('../../../blocks/shared/pathDetails.js');
 
 describe('Path details', () => {
-  describe('Full path details', () => {
-    describe('HTML path details', () => {
-      const loc = { pathname: '/edit', hash: '#/adobe/aem-boilerplate/cool/page' };
-      const details = getPathDetails(loc);
-      expect(details.origin).to.equal('http://localhost:8787');
-      expect(details.owner).to.equal('adobe');
-      expect(details.repo).to.equal('aem-boilerplate');
-      expect(details.fullpath).to.equal('/adobe/aem-boilerplate/cool/page');
-      expect(details.sourceUrl).to.equal('http://localhost:8787/source/adobe/aem-boilerplate/cool/page.html');
-      expect(details.contentUrl).to.equal('https://content.da.live/adobe/aem-boilerplate/cool/page');
-      expect(details.previewUrl).to.equal('https://main--aem-boilerplate--adobe.hlx.page/cool/page');
+  describe('Org only', () => {
+    describe('Config', () => {
+      it('Handles folder config (/)', () => {
+        const loc = { pathname: '/config', hash: '#/adobe/' };
+        const details = getPathDetails(loc);
+        expect(details.origin).to.equal('https://admin.da.live');
+        expect(details.fullpath).to.equal('/adobe/');
+        expect(details.repo).to.equal(undefined);
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe');
+        expect(details.name).to.equal('config');
+        expect(details.parent).to.equal('/adobe');
+        expect(details.parentName).to.equal('adobe');
+      });
+
+      it('Handles JSON config (.json)', () => {
+        const loc = { pathname: '/config', hash: '#/adobe.json' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe.json');
+        expect(details.parent).to.equal('/');
+        expect(details.parentName).to.equal('Root');
+      });
+
+      it('Handles HTML config ()', () => {
+        const loc = { pathname: '/config', hash: '#/adobe' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe.html');
+      });
     });
 
-    describe('JSON path details', () => {
-      const loc = { pathname: '/sheet', hash: '#/adobe/aem-boilerplate/cool/data' };
-      const details = getPathDetails(loc);
-      expect(details.sourceUrl).to.equal('http://localhost:8787/source/adobe/aem-boilerplate/cool/data.json');
-      expect(details.contentUrl).to.equal('https://content.da.live/adobe/aem-boilerplate/cool/data.json');
+    describe('Sheet', () => {
+      it('Handles JSON sheet ()', () => {
+        const loc = { pathname: '/sheet', hash: '#/adobe' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe.json');
+      });
     });
 
-    describe('JPG path details', () => {
-      const loc = { pathname: '/view', hash: '#/adobe/aem-boilerplate/cool/pic.jpg' };
-      const details = getPathDetails(loc);
-      expect(details.sourceUrl).to.equal('http://localhost:8787/source/adobe/aem-boilerplate/cool/pic.jpg');
+    describe('Edit ()', () => {
+      it('Handles HTML edit details ()', () => {
+        const loc = { pathname: '/edit', hash: '#/adobe' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe.html');
+      });
     });
 
-    describe('Top level path details', () => {
-      const loc = { pathname: '/view', hash: '#/adobe/aem-boilerplate/pic.jpg' };
-      const details = getPathDetails(loc);
-      expect(details.parentName).to.equal('aem-boilerplate');
-      expect(details.previewUrl).to.equal('https://main--aem-boilerplate--adobe.hlx.page/pic.jpg');
+    describe('Cached result', () => {
+      it('Handles HTML edit details ()', () => {
+        const loc = { pathname: '/edit', hash: '#/adobe' };
+        const details = getPathDetails(loc);
+        const cachedLoc = { pathname: '/edit', hash: '#/adobe' };
+        const cached = getPathDetails(cachedLoc);
+        expect(cached).to.deep.equal(details);
+      });
     });
   });
 
-  describe('Repo only path details', () => {
-    describe('Path details', () => {
-      const loc = { hash: '#/adobe/aem-boilerplate' };
-      const details = getPathDetails(loc);
-      expect(details.previewUrl).to.equal('https://main--aem-boilerplate--adobe.hlx.page');
+  describe('Org and repo', () => {
+    describe('Config', () => {
+      it('Handles folder config (/)', () => {
+        const loc = { pathname: '/config', hash: '#/adobe/geometrixx/' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/');
+        expect(details.repo).to.equal('geometrixx');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx');
+        expect(details.name).to.equal('geometrixx config');
+        expect(details.parent).to.equal('/adobe/geometrixx');
+        expect(details.parentName).to.equal('geometrixx');
+      });
+
+      it('Handles JSON config (.json)', () => {
+        const loc = { pathname: '/config', hash: '#/adobe/geometrixx.json' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx.json');
+        expect(details.parent).to.equal('/adobe');
+        expect(details.parentName).to.equal('adobe');
+      });
+
+      it('Handles HTML config ()', () => {
+        const loc = { pathname: '/config', hash: '#/adobe/geometrixx' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx.html');
+      });
+    });
+
+    describe('Sheet', () => {
+      it('Handles JSON sheet ()', () => {
+        const loc = { pathname: '/sheet', hash: '#/adobe/geometrixx' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx.json');
+      });
+    });
+
+    describe('Edit ()', () => {
+      it('Handles HTML edit ()', () => {
+        const loc = { pathname: '/edit', hash: '#/adobe/geometrixx' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx.html');
+      });
     });
   });
 
-  describe('Owner only path details', () => {
-    describe('Path details', () => {
-      const loc = { hash: '#/adobe' };
-      const details = getPathDetails(loc);
-      expect(details.previewUrl).to.not.exist;
+  describe('Org, repo, and path', () => {
+    describe('Config', () => {
+      it('Handles folder config (/)', () => {
+        const loc = { pathname: '/config', hash: '#/adobe/geometrixx/testing-123/' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123/');
+        expect(details.repo).to.equal('geometrixx');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx/testing-123');
+        expect(details.name).to.equal('config');
+        expect(details.parent).to.equal('/adobe/geometrixx/testing-123');
+        expect(details.parentName).to.equal('testing-123');
+      });
+
+      it('Handles JSON config (.json)', () => {
+        const loc = { pathname: '/config', hash: '#/adobe/geometrixx/testing-123.json' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx/testing-123.json');
+        expect(details.parent).to.equal('/adobe/geometrixx');
+        expect(details.parentName).to.equal('geometrixx');
+      });
+
+      it('Handles HTML config ()', () => {
+        const loc = { pathname: '/config', hash: '#/adobe/geometrixx/testing-123' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx/testing-123.html');
+      });
+    });
+
+    describe('Sheet', () => {
+      it('Handles JSON sheet ()', () => {
+        const loc = { pathname: '/sheet', hash: '#/adobe/geometrixx/testing-123' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/testing-123.json');
+      });
+    });
+
+    describe('Edit ()', () => {
+      it('Handles HTML edit ()', () => {
+        const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/testing-123' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/testing-123.html');
+      });
     });
   });
 
-  describe('IMS callback path details', () => {
-    describe('Path details', () => {
-      const loc = { hash: '#old_hash' };
-      const details = getPathDetails(loc);
-      expect(details).to.be.null;
-    });
-  });
-
-  describe('IMS callback path details', () => {
-    describe('Path details', () => {
+  describe('Expected null results', () => {
+    it('Handles no path details', () => {
       const details = getPathDetails();
-      expect(details).to.be.null;
+      expect(details).to.equal(null);
+    });
+
+    it('Handles hash from IMS', () => {
+      const loc = { pathname: '/', hash: '#old_hash' };
+      const details = getPathDetails(loc);
+      expect(details).to.equal(null);
     });
   });
 });

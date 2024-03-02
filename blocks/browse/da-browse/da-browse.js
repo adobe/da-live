@@ -1,10 +1,15 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
+import { getDaAdmin } from '../../shared/constants.js';
+import inlinesvg from '../../shared/inlinesvg.js';
 
 import getSheet from '../../shared/sheet.js';
 import { saveToDa, daFetch } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/browse/da-browse/da-browse.css');
+
+const DA_ORIGIN = getDaAdmin();
+
+const ICONS = ['/blocks/browse/da-browse/img/Smock_Settings_18_N.svg'];
 
 export default class DaBrowse extends LitElement {
   static properties = {
@@ -130,6 +135,7 @@ export default class DaBrowse extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    inlinesvg({ parent: this.shadowRoot, paths: ICONS });
   }
 
   async update(props) {
@@ -194,6 +200,18 @@ export default class DaBrowse extends LitElement {
     }
     this._selectedItems = [];
     this._canPaste = false;
+  }
+
+  renderConfig(length, crumb, idx) {
+    if (this.details.depth <= 2 && idx + 1 === length) {
+      return html`
+        <a class="da-breadcrumb-list-item-config"
+           href="/config${crumb.path}/"
+           aria-label="Config">
+           <svg class="da-breadcrumb-list-item-icon"><use href="#spectrum-settings"/></svg>
+           </a>`;
+    }
+    return null;
   }
 
   renderNew() {
@@ -293,9 +311,12 @@ export default class DaBrowse extends LitElement {
       <h1>Browse</h1>
       <div class="da-breadcrumb">
         <ul class="da-breadcrumb-list">
-          ${this._breadcrumbs.map((crumb) => html`
+          ${this._breadcrumbs.map((crumb, idx) => html`
             <li class="da-breadcrumb-list-item">
-              <a href="${crumb.path}">${crumb.name}</a>
+              <div class=da-breadcrumb-list-item-link-wrapper>
+                <a href="${crumb.path}">${crumb.name}</a>
+                ${this.renderConfig(this._breadcrumbs.length, crumb, idx)}
+                </a>
             </li>
           `)}
         </ul>

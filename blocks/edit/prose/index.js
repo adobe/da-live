@@ -32,7 +32,9 @@ import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import { aem2prose, parse } from '../utils/helpers.js';
-import { DA_ORIGIN, COLLAB_ORIGIN } from '../../shared/constants.js';
+import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
+
+const DA_ORIGIN = getDaAdmin();
 
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;

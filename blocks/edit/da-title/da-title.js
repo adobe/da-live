@@ -1,5 +1,5 @@
 import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { saveToDa, saveToAem } from '../utils/helpers.js';
+import { saveToDa, saveToAem, saveDaConfig } from '../utils/helpers.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
@@ -23,29 +23,53 @@ export default class DaTitle extends LitElement {
 
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
-    // Only save to da if it is a sheet
-    if (this.sheet) {
+    // Only save to DA if it is a sheet or config
+    if (this.details.view === 'sheet') {
       const dasSave = await saveToDa(pathname, this.sheet);
       if (!dasSave.ok) return;
     }
-    const aemPath = this.sheet ? `${pathname}.json` : pathname;
-    let json = await saveToAem(aemPath, 'preview');
-    if (action === 'publish') json = await saveToAem(aemPath, 'live');
-    const { url } = action === 'publish' ? json.live : json.preview;
-    window.open(url, '_blank');
+    if (this.details.view === 'config') {
+      const daConfigResp = await saveDaConfig(pathname, this.sheet);
+      if (!daConfigResp.ok) return;
+    }
+    if (action === 'preview' || action === 'publish') {
+      const aemPath = this.sheet ? `${pathname}.json` : pathname;
+      let json = await saveToAem(aemPath, 'preview');
+      if (action === 'publish') json = await saveToAem(aemPath, 'live');
+      const { url } = action === 'publish' ? json.live : json.preview;
+      window.open(url, '_blank');
+    }
     sendBtn.classList.remove('is-sending');
-  }
-
-  handlePreview() {
-    this.handleAction('preview');
-  }
-
-  handlePublish() {
-    this.handleAction('publish');
   }
 
   toggleActions() {
     this._actionsVis = !this._actionsVis;
+  }
+
+  renderSave() {
+    return html`
+    <button
+      @click=${this.handleAction}
+      class="con-button blue da-title-action"
+      aria-label="Send">
+      Save
+    </button>`;
+  }
+
+  renderAemActions() {
+    return html`
+      <button
+        @click=${() => this.handleAction('preview')}
+        class="con-button blue da-title-action"
+        aria-label="Send">
+        Preview
+      </button>
+      <button
+        @click=${() => this.handleAction('publish')}
+        class="con-button blue da-title-action"
+        aria-label="Send">
+        Publish
+      </button>`;
   }
 
   render() {
@@ -59,18 +83,7 @@ export default class DaTitle extends LitElement {
           <h1>${this.details.name}</h1>
         </div>
         <div class="da-title-actions${this._actionsVis ? ' is-open' : ''}">
-          <button
-            @click=${this.handlePreview}
-            class="con-button blue da-title-action"
-            aria-label="Send">
-            Preview
-          </button>
-          <button
-            @click=${this.handlePublish}
-            class="con-button blue da-title-action"
-            aria-label="Send">
-            Publish
-          </button>
+          ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
           <button
             @click=${this.toggleActions}
             class="con-button blue da-title-action-send"

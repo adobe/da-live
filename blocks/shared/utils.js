@@ -1,5 +1,6 @@
-import { DA_ORIGIN } from './constants.js';
+import { getDaAdmin } from './constants.js';
 
+const DA_ORIGIN = getDaAdmin();
 let imsLoaded;
 
 export async function initIms() {
