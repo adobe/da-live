@@ -44,9 +44,7 @@ describe('Prose collab', () => {
       },
     };
     const tsr = { children: [cont] };
-    const titleEl = {
-      shadowRoot: tsr,
-    };
+    const titleEl = { shadowRoot: tsr };
 
     const dcu = {};
     const connImg = {};
