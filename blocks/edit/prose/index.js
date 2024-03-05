@@ -90,7 +90,7 @@ function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
   prosemirrorToYXmlFragment(fin, yXmlFragment);
 }
 
-function setConnectionStatus(connectionImg, status) {
+export function setConnectionStatus(connectionImg, status) {
   switch (status) {
     case 'connected':
     case 'online':
@@ -108,7 +108,7 @@ function setConnectionStatus(connectionImg, status) {
   connectionImg.title = status;
 }
 
-function handleAwarenessUpdates(wsProvider, statusDiv) {
+function handleAwarenessUpdates(wsProvider, statusDiv, win) {
   const users = new Set();
   const usersDiv = statusDiv.querySelector('div.collab-users');
 
@@ -136,22 +136,22 @@ function handleAwarenessUpdates(wsProvider, statusDiv) {
 
   const connectionImg = statusDiv.querySelector('img.collab-connection');
   wsProvider.on('status', (st) => setConnectionStatus(connectionImg, st.status));
-  window.addEventListener('online', () => setConnectionStatus(connectionImg, 'online'));
-  window.addEventListener('offline', () => setConnectionStatus(connectionImg, 'offline'));
+  win.addEventListener('online', () => setConnectionStatus(connectionImg, 'online'));
+  win.addEventListener('offline', () => setConnectionStatus(connectionImg, 'offline'));
 }
 
-function createAwarenessStatusWidget(wsProvider) {
-  const statusDiv = document.createElement('div');
+export function createAwarenessStatusWidget(wsProvider, win = window) {
+  const statusDiv = win.document.createElement('div');
   statusDiv.classList = 'collab-awareness';
   statusDiv.innerHTML = `<div class="collab-other-users">
     <div><img class="collab-connection collab-icon"></div>
     <div class="collab-users"></div>
   </div>`;
 
-  const container = window.document.querySelector('da-title').shadowRoot.children[0];
+  const container = win.document.querySelector('da-title').shadowRoot.children[0];
   container.insertBefore(statusDiv, container.children[1]);
 
-  handleAwarenessUpdates(wsProvider, statusDiv);
+  handleAwarenessUpdates(wsProvider, statusDiv, win);
   return statusDiv;
 }
 
