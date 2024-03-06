@@ -77,7 +77,7 @@ export default class DaTitle extends LitElement {
     target.classList.add('collab-popup');
   }
 
-  renderColabUsers() {
+  renderCollabUsers() {
     return html`${this.collabUsers.map((user) => {
       const initials = user.split(' ').map((name) => name.toString().substring(0, 1));
       return html`<div class="collab-icon collab-icon-user" data-popup-content="${user}" @click=${this.popover}>${initials.join('')}</div>`;
@@ -87,7 +87,7 @@ export default class DaTitle extends LitElement {
   renderCollab() {
     return html`
       <div class="collab-status">
-        ${this.collabUsers && this.collabUsers.length > 1 ? this.renderColabUsers() : nothing}
+        ${this.collabUsers && this.collabUsers.length > 1 ? this.renderCollabUsers() : nothing}
         <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${this.collabStatus}" @click=${this.popover}>
          <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
         </div>
