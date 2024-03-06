@@ -99,7 +99,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win) {
     delta.removed.forEach((u) => users.delete(u));
 
     const awarenessStates = wsProvider.awareness.getStates();
-    const userNames = users.values().map((u) => awarenessStates.get(u)?.user?.name || 'Anonymous');
+    const userNames = [...users].map((u) => awarenessStates.get(u)?.user?.name || 'Anonymous');
     daTitle.collabUsers = [...userNames].sort();
   });
 
