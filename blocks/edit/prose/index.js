@@ -94,14 +94,13 @@ function handleAwarenessUpdates(wsProvider, daTitle, win) {
   const users = new Set();
 
   wsProvider.awareness.on('update', (delta) => {
-    const awarenessStates = wsProvider.awareness.getStates();
-
     delta.added.forEach((u) => users.add(u));
     delta.updated.forEach((u) => users.add(u));
     delta.removed.forEach((u) => users.delete(u));
 
-    const sortedUsers = [...users].sort();
-    daTitle.collabUsers = sortedUsers.map((u) => awarenessStates.get(u)?.user?.name || 'Anonymous');
+    const awarenessStates = wsProvider.awareness.getStates();
+    const userNames = users.values().map((u) => awarenessStates.get(u)?.user?.name || 'Anonymous');
+    daTitle.collabUsers = [...userNames].sort();
   });
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
