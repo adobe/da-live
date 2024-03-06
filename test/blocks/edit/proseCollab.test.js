@@ -20,6 +20,7 @@ describe('Prose collab', () => {
     const awarenessOnCalled = [];
     const awarenessStates = new Map();
     const awareness = {
+      clientID: 123,
       getStates: () => awarenessStates,
       on: (n, f) => awarenessOnCalled.push({ n, f }),
     };
@@ -51,18 +52,25 @@ describe('Prose collab', () => {
     expect(awarenessOnCalled.length).to.equal(1);
     expect(awarenessOnCalled[0].n).to.equal('update');
 
+    // The current user
     const knownUser123 = { user: { name: 'Daffy Duck' } };
     awarenessStates.set(123, knownUser123);
+    // Another known user
     const knownUser789 = { user: { name: 'Joe Bloggs' } };
     awarenessStates.set(789, knownUser789);
-    const delta = {
+
+    const delta1 = { added: [123], removed: [], updated: [] };
+    awarenessOnCalled[0].f(delta1); // Call the callback function
+    expect(daTitle.collabUsers.length).to.equal(0);
+
+    const delta2 = {
       added: [111, 456, 789, 123],
       removed: [456],
       updated: [234],
     };
 
-    awarenessOnCalled[0].f(delta); // Call the callback function
-    expect(daTitle.collabUsers).to.deep.equal(['Anonymous', 'Anonymous', 'Daffy Duck', 'Joe Bloggs']);
+    awarenessOnCalled[0].f(delta2); // Call the callback function
+    expect(daTitle.collabUsers).to.deep.equal(['Anonymous', 'Anonymous', 'Joe Bloggs']);
   });
 
   it('Test YDoc firstUpdate callback', (done) => {

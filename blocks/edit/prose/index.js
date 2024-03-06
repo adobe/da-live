@@ -98,6 +98,9 @@ function handleAwarenessUpdates(wsProvider, daTitle, win) {
     delta.updated.forEach((u) => users.add(u));
     delta.removed.forEach((u) => users.delete(u));
 
+    // Don't show the current user
+    users.delete(wsProvider.awareness.clientID);
+
     const awarenessStates = wsProvider.awareness.getStates();
     const userNames = [...users].map((u) => awarenessStates.get(u)?.user?.name || 'Anonymous');
     daTitle.collabUsers = [...userNames].sort();

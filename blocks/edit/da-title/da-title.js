@@ -87,7 +87,7 @@ export default class DaTitle extends LitElement {
   renderCollab() {
     return html`
       <div class="collab-status">
-        ${this.collabUsers && this.collabUsers.length > 1 ? this.renderCollabUsers() : nothing}
+        ${this.collabUsers ? this.renderCollabUsers() : nothing}
         <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${this.collabStatus}" @click=${this.popover}>
          <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
         </div>
