@@ -90,27 +90,8 @@ function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
   prosemirrorToYXmlFragment(fin, yXmlFragment);
 }
 
-export function setConnectionStatus(connectionImg, status) {
-  switch (status) {
-    case 'connected':
-    case 'online':
-      connectionImg.src = '/blocks/edit/prose/img/Smock_Cloud_18_N.svg';
-      break;
-    case 'connecting':
-    case 'offline':
-      connectionImg.src = '/blocks/edit/prose/img/Smock_CloudDisconnected_18_N.svg';
-      break;
-    default:
-      connectionImg.src = '/blocks/edit/prose/img/Smock_CloudError_18_N.svg';
-      break;
-  }
-  connectionImg.alt = status;
-  connectionImg.title = status;
-}
-
-function handleAwarenessUpdates(wsProvider, statusDiv, win) {
+function handleAwarenessUpdates(wsProvider, daTitle, win) {
   const users = new Set();
-  const usersDiv = statusDiv.querySelector('div.collab-users');
 
   wsProvider.awareness.on('update', (delta) => {
     const awarenessStates = wsProvider.awareness.getStates();
@@ -119,40 +100,19 @@ function handleAwarenessUpdates(wsProvider, statusDiv, win) {
     delta.updated.forEach((u) => users.add(u));
     delta.removed.forEach((u) => users.delete(u));
 
-    let html = '';
-    for (const u of Array.from(users).sort()) {
-      const name = awarenessStates.get(u)?.user?.name;
-      if (name) {
-        const initial = name.toString().substring(0, 1);
-        html = html.concat(`<div class="collab-initial" title="${name}"><p>${initial}</p></div>`);
-      } else {
-        html = html.concat(`<div class="collab-icon">
-          <img src="/blocks/edit/prose/img/Smock_RealTimeCustomerProfile_18_N.svg"
-              alt="Other active user" class="collab-icon" alt="${u}" title="${u}"/></div>`);
-      }
-    }
-    usersDiv.innerHTML = html;
+    const sortedUsers = [...users].sort();
+    daTitle.collabUsers = sortedUsers.map((u) => awarenessStates.get(u)?.user?.name || 'Anonymous');
   });
 
-  const connectionImg = statusDiv.querySelector('img.collab-connection');
-  wsProvider.on('status', (st) => setConnectionStatus(connectionImg, st.status));
-  win.addEventListener('online', () => setConnectionStatus(connectionImg, 'online'));
-  win.addEventListener('offline', () => setConnectionStatus(connectionImg, 'offline'));
+  wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
+  win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
+  win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
 }
 
 export function createAwarenessStatusWidget(wsProvider, win = window) {
-  const statusDiv = win.document.createElement('div');
-  statusDiv.classList = 'collab-awareness';
-  statusDiv.innerHTML = `<div class="collab-other-users">
-    <div><img class="collab-connection collab-icon"></div>
-    <div class="collab-users"></div>
-  </div>`;
-
-  const container = win.document.querySelector('da-title').shadowRoot.children[0];
-  container.insertBefore(statusDiv, container.children[1]);
-
-  handleAwarenessUpdates(wsProvider, statusDiv, win);
-  return statusDiv;
+  const daTitle = win.document.querySelector('da-title');
+  handleAwarenessUpdates(wsProvider, daTitle, win);
+  return daTitle;
 }
 
 export default function initProse({ editor, path }) {
@@ -170,7 +130,7 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  const statusDiv = createAwarenessStatusWidget(wsProvider);
+  const daTitle = createAwarenessStatusWidget(wsProvider);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
@@ -195,7 +155,8 @@ export default function initProse({ editor, path }) {
     const svrUpdate = ydoc.getMap('aem').get(serverInvKey);
     if (svrUpdate) {
       // push update from the server: re-init document
-      statusDiv.remove();
+      delete daTitle.collabStatus;
+      delete daTitle.collabUsers;
       ydoc.destroy();
       wsProvider.destroy();
       editor.innerHTML = '';
