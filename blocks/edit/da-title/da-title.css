@@ -117,6 +117,8 @@ h1 {
   color: #676767;
   margin-right: -6px;
   padding: 0 12px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .collab-icon-user:hover {
