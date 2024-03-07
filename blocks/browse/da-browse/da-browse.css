@@ -69,6 +69,12 @@ input, button {
   background-color: rgb(20, 122, 243);
 }
 
+.da-item-list.dragover {
+  background-color: #f1fff0;
+  border: 1px solid rgb(0 194 68);
+  cursor: crosshair;
+}
+
 .da-item-list-item-inner {
   padding: 0 24px;
   display: flex;
