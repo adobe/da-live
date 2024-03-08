@@ -23,6 +23,7 @@ describe('Prose collab', () => {
       clientID: 123,
       getStates: () => awarenessStates,
       on: (n, f) => awarenessOnCalled.push({ n, f }),
+      getLocalState: () => awarenessStates.get(123),
     };
     const wspOnCalled = [];
     const wsp = {
@@ -53,10 +54,10 @@ describe('Prose collab', () => {
     expect(awarenessOnCalled[0].n).to.equal('update');
 
     // The current user
-    const knownUser123 = { user: { name: 'Daffy Duck' } };
+    const knownUser123 = { user: { name: 'Daffy Duck', id: 'daffy' } };
     awarenessStates.set(123, knownUser123);
     // Another known user
-    const knownUser789 = { user: { name: 'Joe Bloggs' } };
+    const knownUser789 = { user: { name: 'Joe Bloggs', id: 'bloggs' } };
     awarenessStates.set(789, knownUser789);
 
     const delta1 = { added: [123], removed: [], updated: [] };
