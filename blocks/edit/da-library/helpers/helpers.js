@@ -1,8 +1,9 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
-import { DA_ORIGIN, CON_ORIGIN } from '../../../shared/constants.js';
+import { CON_ORIGIN, getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
 
+const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
 const DA_CONFIG = '/.da/config.json';
 

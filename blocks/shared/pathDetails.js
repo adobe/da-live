@@ -1,67 +1,140 @@
-import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
+import { CON_ORIGIN, getDaAdmin } from './constants.js';
 
+const DA_ORIGIN = getDaAdmin();
+let currpath;
 let currhash;
 let details;
 
+function getSheetExt(editor, path) {
+  if (editor === 'sheet' && !path.endsWith('.json')) return `${path}.json`;
+  return path;
+}
+
+function getOrgDetails({ editor, pathParts, ext }) {
+  const fullPath = pathParts.join('/');
+
+  const parent = ext === null ? `/${fullPath}` : '/';
+  const parentName = ext === null ? pathParts[0] : 'Root';
+  const name = editor === 'config' && ext === null ? 'config' : pathParts[0];
+  const daApi = editor === 'config' ? 'config' : 'source';
+  let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
+  if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+
+  return {
+    owner: pathParts[0],
+    name,
+    parent,
+    parentName,
+    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+  };
+}
+
+function getRepoDetails({ editor, pathParts, ext }) {
+  const [org, repo] = pathParts;
+  const fullPath = pathParts.join('/');
+
+  const parent = ext === null ? `/${org}/${repo}` : `/${org}`;
+  const parentName = ext === null ? repo : org;
+  const name = editor === 'config' ? `${repo} config` : repo;
+  const daApi = editor === 'config' ? 'config' : 'source';
+  let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
+  if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+
+  return {
+    owner: org,
+    repo,
+    name,
+    parent,
+    parentName,
+    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    previewUrl: `https://main--${repo}--${org}.hlx.page`,
+    contentUrl: `${CON_ORIGIN}/${fullPath}`,
+  };
+}
+
+function getFullDetails({ editor, pathParts, ext }) {
+  const [org, repo, ...parts] = pathParts;
+  // Fullpath contains repo and org
+  let fullPath = pathParts.join('/');
+  fullPath = getSheetExt(editor, fullPath);
+
+  // Pathname is path without repo and org
+  let pathname = `/${parts.join('/')}`;
+  pathname = getSheetExt(editor, pathname);
+
+  const name = pathParts.pop();
+  const parent = `/${pathParts.join('/')}`;
+  const parentName = pathParts.pop();
+
+  const daApi = editor === 'config' ? 'config' : 'source';
+  const path = ext === 'html' && !fullPath.endsWith('html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
+
+  return {
+    owner: org,
+    repo,
+    name: ext === null ? 'config' : name,
+    parent: ext === null ? `${parent}/${name}` : parent,
+    parentName: ext === null ? name : parentName,
+    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    previewUrl: `https://main--${repo}--${org}.hlx.page${pathname}`,
+    contentUrl: `${CON_ORIGIN}/${fullPath}`,
+  };
+}
+
+function getExtension(editor, name, isFolder) {
+  const nameSplit = name.split('.');
+  if (nameSplit.length >= 2) return nameSplit.pop();
+  if (isFolder || editor === 'browse') return null;
+  if (editor === 'sheet' && nameSplit.slice(-1)[0] !== 'json') return 'json';
+  return 'html';
+}
+
+function getView(pathname) {
+  const view = pathname.replace('/', '');
+  return view === '' ? 'browse' : view;
+}
+
 export default function getPathDetails(loc) {
   const { pathname, hash } = loc || window.location;
+  if (!pathname || !hash) return null;
+
   // Use cached details if the hash has not changed
-  if (currhash === hash && details) return details;
+  if (currhash === hash && currpath === pathname && details) return details;
   currhash = hash;
 
   const fullpath = hash.replace('#', '');
-  if (pathname === '/' && !hash) return details;
+
+  // config, edit, sheet
+  const editor = getView(pathname);
 
   // IMS will redirect and there's a small window where old_hash exists
   if (!fullpath || fullpath.startsWith('old_hash')) return null;
 
-  // Split everything up so it can be later used for AEM
-  const pathSplit = fullpath.slice(1).toLowerCase().split('/');
-  const [owner, repo, ...parts] = pathSplit;
+  // Split everything up so it can be later used for both DA & AEM
+  const pathParts = fullpath.slice(1).toLowerCase().split('/');
 
-  details = {
-    owner,
-    repo,
-    origin: DA_ORIGIN,
-    fullpath,
-  };
-
-  // There's actual content and the creator is not looking at owner or repo directly.
-  if (parts.length > 0) {
-    // Figure out the filename situation
-    const filename = parts.pop();
-    // eslint-disable-next-line prefer-const
-    let [name, ext] = filename.split('.');
-    if (!ext && pathname === '/sheet') ext = 'json';
-    if (!ext && pathname === '/edit') ext = 'html';
-
-    // Source path (DA Admin API) will always want the extension
-    const prefix = [...parts, name].join('/');
-    const sourcePath = `/${owner}/${repo}/${prefix}.${ext}`;
-    const sourceUrl = `${DA_ORIGIN}/source${sourcePath}`;
-
-    // Preview path (AEM preview) does not want .html (or owner/repo), all other extensions are fine
-    const previewPath = ext === 'html' ? `/${prefix}` : `/${prefix}.${ext}`;
-    const contentPath = `/${owner}/${repo}${previewPath}`;
-
-    details.name = name;
-    details.parent = `/${pathSplit.slice(0, -1).join('/')}`;
-    details.parentName = parts.at(-1) || repo;
-    details.sourceUrl = sourceUrl;
-    details.contentUrl = `${CON_ORIGIN}${contentPath}`;
-    details.previewUrl = `https://main--${repo}--${owner}.hlx.page${previewPath}`;
-    details.previewOrigin = `https://main--${repo}--${owner}.hlx.page`;
-  } else if (repo) {
-    details.name = repo;
-    details.parent = `/${owner}`;
-    details.parentName = owner;
-    details.sourceUrl = `${DA_ORIGIN}/source${fullpath}`;
-    details.previewUrl = `https://main--${repo}--${owner}.hlx.page`;
-  } else {
-    details.name = owner;
-    details.parent = '/';
-    details.parentName = 'Root';
-    details.sourceUrl = `${DA_ORIGIN}/source${fullpath}`;
+  // Determine if folder (trailing slash split to empty string)
+  let isFolder = false;
+  if (pathParts.slice(-1)[0] === '') {
+    isFolder = true;
+    pathParts.pop();
   }
+
+  // Determine extension
+  const ext = getExtension(editor, pathParts.slice(-1)[0], isFolder);
+
+  const depth = pathParts.length;
+
+  if (depth === 1) details = getOrgDetails({ editor, pathParts, ext });
+
+  if (depth === 2) details = getRepoDetails({ editor, pathParts, ext });
+
+  if (depth >= 3) details = getFullDetails({ editor, pathParts, ext });
+
+  let path = ext === 'html' && !fullpath.endsWith('html') ? `${fullpath}.html` : fullpath;
+  if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+
+  details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
+
   return details;
 }

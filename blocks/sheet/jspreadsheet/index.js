@@ -3,7 +3,7 @@ import { getLibs } from '../../../scripts/utils.js';
 const { loadScript, loadStyle } = await import(`${getLibs()}/utils/utils.js`);
 
 export default async function init(el, suppliedData) {
-  const data = suppliedData || [[]];
+  const data = suppliedData?.length > 0 ? suppliedData : [[]];
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');
   await loadScript('/deps/jsuites/dist/jsuites.js');

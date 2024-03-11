@@ -1,6 +1,8 @@
-import { DA_ORIGIN, AEM_ORIGIN } from '../../shared/constants.js';
+import { AEM_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
+
+const DA_ORIGIN = getDaAdmin();
 
 function getBlockName(block) {
   const classes = block.className.split(' ');
@@ -109,11 +111,9 @@ async function saveHtml(fullPath) {
   return daFetch(fullPath, opts);
 }
 
-async function saveJson(fullPath, sheet) {
+async function saveJson(fullPath, sheet, dataType = 'blob') {
   const jData = sheet.getData();
-  const data = jData.reduce((acc, row, idx) => {
-    // Key Row
-    if (idx === 0) return acc;
+  const data = jData.reduce((acc, row) => {
     const rowObj = {};
 
     row.forEach((value, rowIdx) => {
@@ -122,16 +122,34 @@ async function saveJson(fullPath, sheet) {
       }
     });
 
-    // Remove fully empty valued rows
-    const filled = Object.keys(rowObj).some((key) => rowObj[key]);
-
-    if (Object.keys(rowObj).length && filled) acc.push(rowObj);
+    acc.push(rowObj);
     return acc;
   }, []);
+
+  // Remove trailing empty rows
+  let emptyRow = true;
+  while (emptyRow) {
+    const lastRow = data.slice(-1)[0];
+    const filled = Object.keys(lastRow).some((key) => lastRow[key]);
+    if (!filled) {
+      data.pop();
+    } else {
+      emptyRow = false;
+    }
+  }
+
   const json = { total: data.length, offset: 0, limit: data.length, data, ':type': 'sheet' };
-  const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+
   const formData = new FormData();
-  formData.append('data', blob);
+
+  if (dataType === 'blob') {
+    const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+    formData.append('data', blob);
+  }
+
+  if (dataType === 'config') {
+    formData.append('config', JSON.stringify(json));
+  }
 
   const opts = { method: 'PUT', body: formData };
   return daFetch(fullPath, opts);
@@ -143,6 +161,11 @@ export function saveToDa(pathname, sheet) {
 
   if (!sheet) return saveHtml(fullPath);
   return saveJson(fullPath, sheet);
+}
+
+export function saveDaConfig(pathname, sheet) {
+  const fullPath = `${DA_ORIGIN}/config${pathname}`;
+  return saveJson(fullPath, sheet, 'config');
 }
 
 export function parse(inital) {

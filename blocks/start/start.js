@@ -1,9 +1,11 @@
 import { LitElement, html } from '../../deps/lit/lit-core.min.js';
-import { DA_ORIGIN } from '../shared/constants.js';
+import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 
 const sheet = await getSheet('/blocks/start/start-wc.css');
+
+const DA_ORIGIN = getDaAdmin();
 
 const DEMO_URLS = [
   'https://admin.da.live/source/aemsites/da-block-collection/demo.html',
