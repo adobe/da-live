@@ -102,8 +102,16 @@ function handleAwarenessUpdates(wsProvider, daTitle, win) {
     users.delete(wsProvider.awareness.clientID);
 
     const awarenessStates = wsProvider.awareness.getStates();
-    const userNames = [...users].map((u) => awarenessStates.get(u)?.user?.name || 'Anonymous');
-    daTitle.collabUsers = [...userNames].sort();
+    const userMap = new Map();
+    [...users].forEach((u) => {
+      const userInfo = awarenessStates.get(u)?.user;
+      if (!userInfo?.id) {
+        userMap.set(`anonymous-${u}`, 'Anonymous');
+      } else if (userInfo.id !== wsProvider.awareness.getLocalState().user?.id) {
+        userMap.set(userInfo.id, userInfo.name);
+      }
+    });
+    daTitle.collabUsers = [...userMap.values()].sort();
   });
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
@@ -160,6 +168,26 @@ export function handleYDocUpdates({
   });
 }
 
+function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40, 60]) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i += 1) {
+    // eslint-disable-next-line no-bitwise
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  hash = Math.abs(hash);
+  const normalizeHash = (min, max) => Math.floor((hash % (max - min)) + min);
+  const h = normalizeHash(hRange[0], hRange[1]);
+  const s = normalizeHash(sRange[0], sRange[1]);
+  const l = normalizeHash(lRange[0], lRange[1]) / 100;
+  const a = (s * Math.min(l, 1 - l)) / 100;
+  const f = (n) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
 export default function initProse({ editor, path }) {
   const schema = getSchema();
 
@@ -185,7 +213,23 @@ export default function initProse({ editor, path }) {
   if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then(
       (profile) => {
-        wsProvider.awareness.setLocalStateField('user', { color: '#008833', name: profile.displayName });
+        wsProvider.awareness.setLocalStateField(
+          'user',
+          {
+            color: generateColor(profile.email || profile.userId),
+            name: profile.displayName,
+            id: profile.userId,
+          },
+        );
+      },
+    );
+  } else {
+    wsProvider.awareness.setLocalStateField(
+      'user',
+      {
+        color: generateColor(`${wsProvider.awareness.clientID}`),
+        name: 'Anonymous',
+        id: `anonymous-${wsProvider.awareness.clientID}}`,
       },
     );
   }
