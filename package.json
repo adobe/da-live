@@ -53,6 +53,7 @@
     "copy:deps": "node ./deps/copy.js",
     "test": "wtr \"./test/**/*.test.js\" --node-resolve --port=2000 --coverage",
     "test:watch": "npm test -- --watch",
+    "test:e2e": "cd e2e_test && npm run test:all",
     "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js"
   }
 }

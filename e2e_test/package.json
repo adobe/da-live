@@ -1,0 +1,16 @@
+{
+  "name": "e2e_test",
+  "version": "1.0.0",
+  "main": "editor.test.js",
+  "scripts": {
+    "test": "playwright test --project=chromium",
+    "test:all": "playwright test",
+    "test:ui": "playwright test --project=chromium --ui",
+    "test:debug": "playwright test --project=chromium --debug"
+  },
+  "keywords": ["test"],
+  "devDependencies": {
+    "@playwright/test": "^1.42.1",
+    "@types/node": "^20.11.27"
+  }
+}

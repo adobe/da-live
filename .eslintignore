@@ -1,1 +1,2 @@
 deps
+e2e_test/playwright.config.js
