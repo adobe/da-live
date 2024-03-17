@@ -1,8 +1,7 @@
 import getPathDetails from '../shared/pathDetails.js';
 import './da-title/da-title.js';
-import './da-content/da-content.js';
 
-function setUI(el) {
+async function setUI(el) {
   el.innerHTML = '';
   const details = getPathDetails();
   if (!details) {
@@ -15,16 +14,13 @@ function setUI(el) {
   // Title Pane
   const daTitle = document.createElement('da-title');
   daTitle.details = details;
+  el.append(daTitle);
 
   // Content Pane
+  await import('./da-content/da-content.js');
   const daContent = document.createElement('da-content');
   daContent.details = details;
-
-  // Inheritted Meta Pane
-  const meta = document.createElement('div');
-  meta.className = 'da-meta';
-
-  el.append(daTitle, daContent, meta);
+  el.append(daContent);
 }
 
 export default async function init(el) {

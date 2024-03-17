@@ -1,45 +1,45 @@
 import { expect } from '@esm-bundle/chai';
-import { setLibs } from '../../scripts/utils.js';
+import { setNx } from '../../scripts/utils.js';
 
 describe('Libs', () => {
   it('Default Libs', () => {
-    const libs = setLibs('/libs');
-    expect(libs).to.equal('https://main--milo--adobecom.hlx.live/libs');
+    const libs = setNx('/nx');
+    expect(libs).to.equal('https://main--nexter--da-sites.hlx.live/nx');
   });
 
-  it('Does not support milolibs query param on prod', () => {
+  it('Does not support NX query param on prod', () => {
     const location = {
       hostname: 'business.adobe.com',
-      search: '?milolibs=foo',
+      search: '?nx=foo',
     };
-    const libs = setLibs('/libs', location);
-    expect(libs).to.equal('/libs');
+    const libs = setNx('/nx', location);
+    expect(libs).to.equal('/nx');
   });
 
-  it('Supports milolibs query param', () => {
+  it('Supports NX query param', () => {
     const location = {
       hostname: 'localhost',
-      search: '?milolibs=foo',
+      search: '?nx=foo',
     };
-    const libs = setLibs('/libs', location);
-    expect(libs).to.equal('https://foo--milo--adobecom.hlx.live/libs');
+    const libs = setNx('/nx', location);
+    expect(libs).to.equal('https://foo--nexter--da-sites.hlx.live/nx');
   });
 
-  it('Supports local milolibs query param', () => {
+  it('Supports local NX query param', () => {
     const location = {
       hostname: 'localhost',
-      search: '?milolibs=local',
+      search: '?nx=local',
     };
-    const libs = setLibs('/libs', location);
-    expect(libs).to.equal('http://localhost:6456/libs');
+    const libs = setNx('/nx', location);
+    expect(libs).to.equal('http://localhost:6456/nx');
   });
 
-  it('Supports forked milolibs query param', () => {
+  it('Supports forked NX query param', () => {
     const location = {
       hostname: 'localhost',
-      search: '?milolibs=awesome--milo--forkedowner',
+      search: '?nx=awesome--nx--forkedowner',
     };
-    const libs = setLibs('/libs', location);
-    expect(libs).to.equal('https://awesome--milo--forkedowner.hlx.live/libs');
+    const libs = setNx('/nx', location);
+    expect(libs).to.equal('https://awesome--nx--forkedowner.hlx.live/nx');
   });
 });

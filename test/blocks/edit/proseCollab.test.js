@@ -2,8 +2,8 @@ import { expect } from '@esm-bundle/chai';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from edit/prose/index.js
-const { setLibs } = await import('../../../scripts/utils.js');
-setLibs('/bheuaark/', { hostname: 'localhost' });
+const { setNx } = await import('../../../scripts/utils.js');
+setNx('/bheuaark/', { hostname: 'localhost' });
 
 const pi = await import('../../../blocks/edit/prose/index.js');
 

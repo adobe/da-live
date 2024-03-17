@@ -1,5 +1,5 @@
-import { setLibs } from '../scripts/utils.js';
+import { setNx, codeBase } from '../scripts/utils.js';
 
-const miloLibs = setLibs('https://milo.adobe.com/libs');
-const { setConfig } = await import(`${miloLibs}/utils/utils.js`);
-setConfig({ miloLibs });
+const nx = setNx('https://da.live/nx');
+const { setConfig } = await import(`${nx}/scripts/nexter.js`);
+setConfig({ codeBase });

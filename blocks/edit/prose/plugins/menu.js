@@ -27,9 +27,6 @@ import openLibrary from '../../da-library/da-library.js';
 
 import insertTable from '../table.js';
 
-const { getLibs } = await import('../../../../scripts/utils.js');
-const { createTag } = await import(`${getLibs()}/utils/utils.js`);
-
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
   // eslint-disable-next-line no-plusplus
@@ -302,7 +299,8 @@ function getTextBlocks(marks, nodes) {
 }
 
 function getMenu(view) {
-  const menu = createTag('div', { class: 'ProseMirror-menubar' });
+  const menu = document.createElement('div');
+  menu.className = 'ProseMirror-menubar';
 
   const { marks, nodes } = view.state.schema;
   const editTable = getTableMenu();
@@ -400,7 +398,8 @@ export default new Plugin({
   },
   view: (view) => {
     const { menu, update } = getMenu(view);
-    const palettes = createTag('div', { class: 'da-palettes' });
+    const palettes = document.createElement('div');
+    palettes.className = 'da-palettes';
     view.dom.insertAdjacentElement('beforebegin', menu);
     view.dom.insertAdjacentElement('afterend', palettes);
     update(view.state);

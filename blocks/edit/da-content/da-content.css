@@ -3,17 +3,12 @@
   display: flex;
   justify-content: center;
   gap: 20px;
-  padding: 0 0 0 40px;
-}
-
-:host(.show-preview) {
-  
 }
 
 .editor-wrapper {
   position: relative;
   flex: 0 1 auto;
-  width: 900px;
+  width: var(--grid-container-width);
 }
 
 da-editor {
@@ -84,7 +79,17 @@ da-preview.show-preview {
   }
 }
 
+@media (min-width: 900px) {
+  .editor-wrapper {
+    min-width: 800px;
+  }
+}
+
 @media (min-width: 1200px) {
+  .editor-wrapper {
+    width: 900px;
+  }
+
   da-editor {
     
   }

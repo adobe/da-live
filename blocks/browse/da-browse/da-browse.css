@@ -28,7 +28,7 @@ input, button {
   border: 1px solid rgb(209, 209, 209);
   border-radius: 6px;
   overflow: hidden;
-  background: #FFF;
+  background: #f8f8f8;
 }
 
 .da-item-list-item {
