@@ -1,6 +1,6 @@
 :host {
   display: block;
-  padding: 48px 0;
+  padding: 48px 0 24px;
 }
 
 :host > svg {
@@ -26,15 +26,15 @@ h1 {
 }
 
 .con-button.blue {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-white);
+  background: var(--spectrum-blue-800);
+  border-color: var(--spectrum-blue-800);
+  color: #FFF;
 }
 
 .da-title-inner {
-  max-width: 900px;
-  margin: 0px auto;
-  display: flex;
+  max-width: var(--grid-container-width);
+  margin: 0 auto;
+  display: block;
   justify-content: space-between;
   align-items: end;
 }
@@ -72,6 +72,7 @@ h1 {
 .da-title-collab-actions-wrapper {
   display: flex;
   margin-bottom: 0.67em;
+  justify-content: center;
 }
 
 .collab-status {
@@ -129,7 +130,7 @@ h1 {
   height: 27px;
   margin-left: -4px;
   margin-bottom: -3px;
-  color: rgb(20 115 230 / 80%);
+  color: rgb(171 171 171 / 50%);
 }
 
 .collab-icon.collab-status-cloud.collab-popup::after {
@@ -143,7 +144,6 @@ h1 {
 }
 
 .da-title-actions {
-  right: -12px;
   position: relative;
   border: 12px solid transparent;
   border-radius: 100px;
@@ -230,8 +230,8 @@ div.collab-users {
 }
 
 div.collab-initial {
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
+  background-color: var(--spectrum-blue-800);
+  border-color: var(--spectrum-blue-800);
   border-style: solid;
   border-width: 1px;
   border-radius: 50%;
@@ -248,4 +248,24 @@ div.collab-initial p {
   font-size: 14px;
   font-weight: 700;
   margin-bottom: 15px;
+}
+
+@media (width > 600px) {
+  :host {
+    padding: 48px 0;
+  }
+
+  .da-title-inner {
+    display: flex;
+  }
+
+  .da-title-actions {
+    right: -12px;
+  }
+}
+
+@media (width > 1200px) {
+  .da-title-inner {
+    max-width: 900px;
+  }
 }

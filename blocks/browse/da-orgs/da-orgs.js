@@ -60,7 +60,7 @@ export default class DaOrgs extends LitElement {
           <li>
             <a class="da-org" href="#/${org.name}">
               <div class="image-container">
-                <img src="${org.img}" loading="${idx === 0 ? 'eager' : 'lazy'}" />
+                <img src="${org.img}" loading="${idx === 0 ? 'eager' : 'lazy'}" alt="" />
               </div>
               <div class="details-area">
                 <p class="label">Name</p>
@@ -76,7 +76,7 @@ export default class DaOrgs extends LitElement {
                 <div class="new-icon">
                   <img src="/blocks/browse/da-orgs/img/Smock_AddCircle_18_N.svg" alt="Add new organization"/>
                 </div>
-                <h3 class="new-title">Add new</h3>
+                <p class="new-title">Add new</p>
               </a>
             </li>
           ` : null}

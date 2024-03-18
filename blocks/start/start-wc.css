@@ -245,9 +245,9 @@ a {
 }
 
 .con-button.blue {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-white);
+  background: var(--spectrum-blue-800);
+  border-color: var(--spectrum-blue-800);
+  color: #FFF;
 }
 
 .con-button.button-xl {

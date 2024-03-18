@@ -113,16 +113,16 @@ async function saveHtml(fullPath) {
 
 async function saveJson(fullPath, sheet, dataType = 'blob') {
   const jData = sheet.getData();
-  const data = jData.reduce((acc, row) => {
-    const rowObj = {};
-
-    row.forEach((value, rowIdx) => {
-      if (jData[0][rowIdx]) {
-        rowObj[jData[0][rowIdx]] = value;
-      }
-    });
-
-    acc.push(rowObj);
+  const data = jData.reduce((acc, row, idx) => {
+    if (idx > 0) {
+      const rowObj = {};
+      row.forEach((value, rowIdx) => {
+        if (jData[0][rowIdx]) {
+          rowObj[jData[0][rowIdx]] = value;
+        }
+      });
+      acc.push(rowObj);
+    }
     return acc;
   }, []);
 
@@ -137,6 +137,8 @@ async function saveJson(fullPath, sheet, dataType = 'blob') {
       emptyRow = false;
     }
   }
+
+  console.log(data);
 
   const json = { total: data.length, offset: 0, limit: data.length, data, ':type': 'sheet' };
 

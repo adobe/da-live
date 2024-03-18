@@ -5,6 +5,7 @@
   grid-area: editor;
   padding: 48px;
   box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
+  border-radius: 10px;
   z-index: 1;
 }
 
@@ -460,7 +461,13 @@ table tr:first-of-type p:first-child {
 
 da-library.hide {
   display: none;
-} 
+}
+
+@media (width > 600px) {
+  .ProseMirror-menubar {
+    left: 84px;
+  }
+}
 
 
 @media (min-width: 900px) {

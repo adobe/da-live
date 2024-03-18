@@ -31,3 +31,9 @@ button.undo {
 button.redo {
   background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center center / 18px no-repeat rgb(239 239 239);
 }
+
+@media (width > 600px) {
+  :host {
+    left: 84px;
+  }
+}
