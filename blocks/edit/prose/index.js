@@ -209,7 +209,7 @@ export default function initProse({ editor, path }) {
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
   handleYDocUpdates({
-    daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, initProse,
+    daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse: initProse,
   });
 
   if (window.adobeIMS?.isSignedInUser()) {
