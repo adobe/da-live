@@ -10,31 +10,15 @@
  * governing permissions and limitations under the License.
  */
 
-import { setLibs } from './utils.js';
+import { setNx, codeBase, decorateArea } from './utils.js';
 
-// Add project-wide style path here.
+const nx = setNx('/nx');
 const STYLES = '/styles/styles.css';
-
-// Use '/libs' if your live site maps '/libs' to milo's origin.
-const LIBS = '/libs';
-
-// Add any config options.
 const CONFIG = {
+  codeBase,
   imsClientId: 'darkalley',
-  imsScope: 'AdobeID,openid,gnav',
-  locales: { '': { ietf: 'en-US', tk: 'hah7vzn.css' } },
+  decorateArea,
 };
-
-// Load LCP image immediately
-function loadLCPImage() {
-  if (document.body.querySelector('.browse')) {
-    const tag = '<link rel="preload" as="image" href="/blocks/browse/da-orgs/img/da-one.webp" />';
-    document.head.insertAdjacentHTML('beforeend', tag);
-  } else {
-    const lcpImg = document.querySelector('img');
-    lcpImg?.removeAttribute('loading');
-  }
-}
 
 /*
  * ------------------------------------------------------------
@@ -42,10 +26,8 @@ function loadLCPImage() {
  * ------------------------------------------------------------
  */
 
-const miloLibs = setLibs(LIBS);
-
 function loadStyles() {
-  const paths = [`${miloLibs}/styles/styles.css`];
+  const paths = [`${nx}/styles/nexter.css`];
   if (STYLES) { paths.push(STYLES); }
   paths.forEach((path) => {
     const link = document.createElement('link');
@@ -55,18 +37,15 @@ function loadStyles() {
   });
 }
 
-loadLCPImage();
-loadStyles();
-
 export default async function loadPage() {
-  // TODO: Franklin "markup" doesn't do colspan in blocks correctly
+  // TODO: AEM markup doesn't do colspan in blocks correctly
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
 
-  const { loadArea, setConfig } = await import(`${miloLibs}/utils/utils.js`);
-  setConfig({ ...CONFIG, miloLibs });
-
-  // try { await loadIms(); } catch { /* die silently */ }
+  const { loadArea, setConfig } = await import(`${nx}/scripts/nexter.js`);
+  const header = document.head.querySelector('[name="header"]');
+  if (header.getAttribute('content') === 'aec-shell') header.remove();
+  setConfig(CONFIG);
   await loadArea();
 }
 
@@ -79,4 +58,6 @@ export default async function loadPage() {
   }
 }());
 
+loadStyles();
+decorateArea();
 loadPage();

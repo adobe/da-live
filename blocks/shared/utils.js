@@ -1,33 +1,33 @@
 import { getDaAdmin } from './constants.js';
 
+const { getNx } = await import('../../scripts/utils.js');
+
 const DA_ORIGIN = getDaAdmin();
-let imsLoaded;
+let imsDetails;
 
 export async function initIms() {
-  if (!imsLoaded) {
-    const { getLibs } = await import('../../scripts/utils.js');
-    const { loadIms } = await import(`${getLibs()}/utils/utils.js`);
-    try {
-      await loadIms();
-      imsLoaded = true;
-    } catch {
-      /* die silently */
-    }
+  if (imsDetails) return imsDetails;
+  const { loadIms } = await import(`${getNx()}/utils/ims.js`);
+
+  try {
+    imsDetails = await loadIms();
+    return imsDetails;
+  } catch {
+    return null;
   }
 }
 
 export const daFetch = async (url, opts = {}) => {
-  await initIms();
-  const accessToken = window.adobeIMS?.getAccessToken();
   opts.headers = opts.headers || {};
-  if (accessToken) {
-    // opts.credentials = "include";
-    opts.headers.Authorization = `Bearer ${accessToken.token}`;
+  if (localStorage.getItem('nx-ims')) {
+    const { accessToken } = await initIms();
+    if (accessToken) opts.headers.Authorization = `Bearer ${accessToken.token}`;
   }
   const resp = await fetch(url, opts);
   if (resp.status === 401) {
-    const main = document.body.querySelector('main');
-    main.innerHTML = 'Are you lost?';
+    const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+    await loadIms();
+    handleSignIn();
   }
   return resp;
 };

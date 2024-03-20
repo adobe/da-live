@@ -9,22 +9,45 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
+export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
 
-/**
- * The decision engine for where to get Milo's libs from.
- */
-export const [setLibs, getLibs] = (() => {
-  let libs;
+export const [setNx, getNx] = (() => {
+  let nx;
   return [
-    (prodLibs, location) => {
-      libs = (() => {
+    (nxBase, location) => {
+      nx = (() => {
         const { hostname, search } = location || window.location;
-        if (!(hostname.includes('.hlx.') || hostname.includes('local'))) return prodLibs;
-        const branch = new URLSearchParams(search).get('milolibs') || 'main';
-        if (branch === 'local') return 'http://localhost:6456/libs';
-        return branch.includes('--') ? `https://${branch}.hlx.live/libs` : `https://${branch}--milo--adobecom.hlx.live/libs`;
+        if (!(hostname.includes('.hlx.') || hostname.includes('local'))) return nxBase;
+        const branch = new URLSearchParams(search).get('nx') || 'main';
+        if (branch === 'local') return 'http://localhost:6456/nx';
+        return branch.includes('--') ? `https://${branch}.hlx.live/nx` : `https://${branch}--nexter--da-sites.hlx.live/nx`;
       })();
-      return libs;
-    }, () => libs,
+      return nx;
+    }, () => nx,
   ];
 })();
+
+export function decorateArea(area = document) {
+  const eagerLoad = (parent, selector) => {
+    const img = parent.querySelector(selector);
+    img?.removeAttribute('loading');
+  };
+
+  (async function loadLCPImage() {
+    const hero = area.querySelector('.nx-hero, .hero');
+    if (!hero) {
+      eagerLoad(area, 'img');
+      return;
+    }
+
+    eagerLoad(hero, 'div:first-child img');
+    eagerLoad(hero, 'div:last-child > div:last-child img');
+  }());
+}
+
+(function loadOrgLCP() {
+  const { pathname, hash } = window.location;
+  if (pathname !== '/' && hash) return;
+  const tag = '<link rel="preload" as="image" href="/blocks/browse/da-orgs/img/da-one.webp" />';
+  document.head.insertAdjacentHTML('beforeend', tag);
+}());

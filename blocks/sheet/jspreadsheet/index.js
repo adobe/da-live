@@ -1,6 +1,6 @@
-import { getLibs } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 
-const { loadScript, loadStyle } = await import(`${getLibs()}/utils/utils.js`);
+const { loadScript, loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 
 export default async function init(el, suppliedData) {
   const data = suppliedData?.length > 0 ? suppliedData : [[]];

@@ -10,13 +10,14 @@ async function getData(details) {
   if (!resp.ok) return null;
   const json = await resp.json();
 
+  const header = Object.keys(json.data[0]).map((key) => key);
   const data = json.data.reduce((acc, item) => {
     const values = Object.keys(item).map((key) => item[key]);
     acc.push(values);
     return acc;
   }, []);
 
-  return data;
+  return [header, ...data];
 }
 
 export default async function init(el) {
