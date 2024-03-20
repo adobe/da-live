@@ -35,8 +35,8 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
     const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
     await page.locator('div.ProseMirror').fill(enteredText);
 
-    // Wait 1 sec
-    await page.waitForTimeout(1000);
+    // Wait 3 secs
+    await page.waitForTimeout(3000);
     await page.close();
 
     const newPage = await browser.newPage();
