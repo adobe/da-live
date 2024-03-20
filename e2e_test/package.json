@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "test": "playwright test --project=chromium",
-    "test:all": "playwright test --project=chromium --project=firefox # limit to Chromium and FF as webkit currently fails",
+    "test:all": "playwright test",
+    "test:allx": "playwright test --project=chromium --project=firefox # limit to Chromium and FF as webkit currently fails",
     "test:ui": "playwright test --project=chromium --ui",
     "test:debug": "playwright test --project=chromium --debug"
   },
