@@ -23,22 +23,31 @@ test('Get Main Page', async ({ page }) => {
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(15000);
-  const url = `https://da.live/edit#/da-sites/da-status/tests/pw-test1-${workerInfo.project.name}`;
 
-  await page.goto(url);
-  await expect(page.locator('div.ProseMirror')).toBeVisible();
+  const dateStamp = Date.now().toString(36);
+  const pageName = `pw-test1-${dateStamp}-${workerInfo.project.name}`;
+  const url = `https://da.live/edit#/da-sites/da-status/tests/${pageName}`;
 
-  const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
-  await page.locator('div.ProseMirror').fill(enteredText);
+  try {
+    await page.goto(url);
+    await expect(page.locator('div.ProseMirror')).toBeVisible();
 
-  // Wait 1 sec
-  await page.waitForTimeout(1000);
-  await page.close();
+    const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
+    await page.locator('div.ProseMirror').fill(enteredText);
 
-  const newPage = await browser.newPage();
-  await newPage.goto(url);
-  await expect(newPage.locator('div.ProseMirror')).toBeVisible();
-  await expect(newPage.locator('div.ProseMirror')).toContainText(enteredText);
+    // Wait 1 sec
+    await page.waitForTimeout(1000);
+    await page.close();
+
+    const newPage = await browser.newPage();
+    await newPage.goto(url);
+    await expect(newPage.locator('div.ProseMirror')).toBeVisible();
+    await expect(newPage.locator('div.ProseMirror')).toContainText(enteredText);
+  } finally {
+    // Always delete the document afterwards
+    const adminURL = `https://admin.da.live/source/da-sites/da-status/tests/${pageName}.html`;
+    await fetch(adminURL, { method: 'DELETE' });
+  }
 });
 
 test('Create Delete Document', async ({ browser, page }, workerInfo) => {
