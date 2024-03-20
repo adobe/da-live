@@ -13,7 +13,7 @@ const SIZES = {
 export default class DaVersions extends LitElement {
   constructor() {
     super();
-    console.log('haha');
+    this.parent = document.querySelector('da-content');
   }
 
   connectedCallback() {
@@ -26,15 +26,22 @@ export default class DaVersions extends LitElement {
     this.classList.remove('show-versions');
   }
 
+//   <div class="da-preview-menubar">
+//   ${Object.keys(SIZES).map((key) => html`
+//     <span
+//       class="da-preview-menuitem set-${key}"
+//       @click=${() => this.setWidth(key)}>
+//     </span>`)}
+//   <span class="da-preview-menuitem" @click=${this.hidePreview}></span>
+// </div>
+// <iframe
+
   render() {
     return html`
-      <div class="da-preview-menubar">
-      ${Object.keys(SIZES).map((key) => html`
-        <span
-          class="da-preview-menuitem set-${key}"
-          @click=${() => this.setWidth(key)}>
-        </span>`)}
-      <span class="da-preview-menuitem" @click=${this.hideVersions}></span>
+    <div class="da-versions-menubar">
+      <span class="da-versions-menuitem da-versions-create"></span>
+      <span class="da-versions-menuitem da-versions-restore"></span>
+      <span class="da-versions-menuitem da-versions-close" @click=${this.hideVersions}></span>
     </div>
     <div class="da-versions-panel">The versions list </div>
     `;

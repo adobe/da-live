@@ -16,7 +16,8 @@ da-editor {
   z-index: 1;
 }
 
-da-preview {
+da-preview,
+da-versions {
   visibility: hidden;
   position: absolute;
   width: 0;
@@ -25,7 +26,8 @@ da-preview {
   justify-self: right;
 }
 
-da-preview.show-preview {
+da-preview.show-preview,
+da-versions.show-versions {
   visibility: unset;
   position: relative;
   width: unset;
@@ -33,7 +35,8 @@ da-preview.show-preview {
   overflow: unset;
 }
 
-.da-preview-menubar {
+.da-preview-menubar,
+.da-versions-menubar {
   display: none;
   position: absolute;
   top: 20px;
@@ -45,13 +48,6 @@ da-preview.show-preview {
   right: -56px;
 }
 
-da-versions.show-versions {
-  visibility: unset;
-  position: relative;
-  width: unset;
-  height: unset;
-  overflow: unset;
-}
 
 :host(.show-preview) .da-preview-menubar {
   display: none;
@@ -92,7 +88,8 @@ da-versions.show-versions {
     min-width: 375px;
   }
 
-  .da-preview-menubar {
+  .da-preview-menubar,
+  .da-versions-menubar {
     display: unset;
   }
 }
