@@ -16,6 +16,14 @@ da-editor {
   z-index: 1;
 }
 
+da-version {
+  display: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  z-index: 2;
+}
+
 da-preview,
 da-versions {
   visibility: hidden;

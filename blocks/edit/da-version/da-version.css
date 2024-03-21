@@ -1,0 +1,10 @@
+.ProseMirror {
+  min-height: 600px;
+  background-color: lavender;
+  position: relative;
+  grid-area: editor;
+  padding: 48px;
+  box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
+  border-radius: 10px;
+  z-index: 1;
+}

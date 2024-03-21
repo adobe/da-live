@@ -33,6 +33,22 @@
   background-color: rgb(239, 239, 239);
 }
 
+.da-versions-panel li {
+  list-style-type: square;
+}
+
+.da-versions-panel li:focus {
+  background: rgb(239, 239, 239);
+}
+
 .da-versions-close {
   background: url("/blocks/edit/img/Smock_Close_18_N.svg") center center / 20px no-repeat #EFEFEF;
+}
+
+.da-versions-create {
+  background: url("/blocks/edit/img/Smock_DataAdd_18_N.svg") center center / 20px no-repeat #EFEFEF;
+}
+
+.da-versions-restore {
+  background: url("/blocks/edit/img/Smock_DataUpload_18_N.svg") center center / 20px no-repeat #EFEFEF;
 }
