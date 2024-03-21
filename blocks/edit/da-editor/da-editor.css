@@ -451,7 +451,7 @@ table tr:first-of-type p:first-child {
 /* Palette */
 .da-palettes {
   position: fixed;
-  left: 80px;
+  left: 150px;
   top: 50%;
   transform: translateY(-50%);
   grid-area: palettes;
