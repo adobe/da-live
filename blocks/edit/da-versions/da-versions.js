@@ -1,9 +1,11 @@
-import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html, until } from '../../../deps/lit/lit-all.min.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
 
 export default class DaVersions extends LitElement {
+  static properties = { path: {} };
+
   constructor() {
     super();
     this.parent = document.querySelector('da-content');
@@ -33,6 +35,33 @@ export default class DaVersions extends LitElement {
     pm.innerHTML = `<p>${event.target.innerText}</p>`;
   }
 
+  async renderVersions() {
+    if (!this.path) {
+      // Path not yet known, don't render
+      return html``;
+    }
+
+    // this.path is something like
+    // 'https://admin.da.live/source/bosschaert/da-aem-boilerplate/blah3.html'
+    const url = new URL(this.path);
+    const pathName = url.pathname;
+    if (!pathName.startsWith('/source/')) {
+      // Unexpected document URL
+      console.log('Unexpected document URL', this.path);
+      return html``;
+    }
+
+    const versionsURL = `http://localhost:3000/mock-versions/list${pathName.slice(7, -5)}.json`;
+    const res = await fetch(versionsURL);
+    const list = await res.json();
+
+    const versions = [];
+    for (const l of list) {
+      versions.push(html`<li tabindex="1">${new Date(l.timestamp).toLocaleDateString()}
+        <br>${l.author}</li>`);
+    }
+    return versions;
+  }
 
   render() {
     return html`
@@ -43,14 +72,7 @@ export default class DaVersions extends LitElement {
     </div>
     <div class="da-versions-panel">
     <ul @click=${this.versionSelected}>
-      <li tabindex="1">6 hours ago
-      <br>David Bosschaert
-
-      <li tabindex="1">Mar 19, 2024 17:50 PM
-      <br>Chris Millar
-
-      <li tabindex="1">Mar 19, 2024 9:53 AM
-      <br>Karl Pauls
+      ${until(this.renderVersions(), html`<li>Loading...</li>`)}
     </ul>
     </div>
     `;

@@ -25,7 +25,12 @@ export default class DaContent extends LitElement {
   showVersions(e) {
     this.classList.add('show-versions');
     e.target.parentElement.classList.add('show-versions');
-    this.shadowRoot.querySelector('da-versions').classList.add('show-versions');
+
+    const dav = this.shadowRoot.querySelector('da-versions');
+    dav.classList.add('show-versions');
+
+    // No need to request an update, setting the path is enough as its a reactive property
+    dav.path = this.details.sourceUrl;
   }
 
   render() {
@@ -39,9 +44,10 @@ export default class DaContent extends LitElement {
         </div>
       </div>
       <da-preview path=${this.details.previewUrl}></da-preview>
-      <da-versions path=${this.details.previewUrl}></da-versions>
+      <da-versions></da-versions>
     `;
   }
 }
+//      <da-versions path=${this.details.sourceUrl}></da-versions>
 
 customElements.define('da-content', DaContent);
