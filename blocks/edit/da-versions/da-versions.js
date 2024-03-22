@@ -58,7 +58,7 @@ export default class DaVersions extends LitElement {
     const versions = [];
     for (const l of list) {
       versions.push(html`<li tabindex="1">${new Date(l.timestamp).toLocaleDateString()}
-        <br>${l.author}</li>`);
+        <br>${l.authors.join(', ')}</li>`);
     }
     return versions;
   }

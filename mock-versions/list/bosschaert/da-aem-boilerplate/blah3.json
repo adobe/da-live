@@ -1,16 +1,16 @@
 [
   {
     "timestamp": 1711037508263,
-    "author": "David Bosschaert",
+    "authors": ["David Bosschaert"],
     "resource": "/mock-versions/resources/72398245211/3.html"
   },
   {
     "timestamp": 1711037400000,
-    "author": "Karl Pauls"
+    "authors": ["Karl Pauls", "David Bosschaert"]
   },
   {
     "timestamp": 1710892800000,
-    "author": "Chris Millar",
+    "authors": ["Chris Millar"],
     "resource": "/mock-versions/resources/72398245211/1.html"
   }
 ]
