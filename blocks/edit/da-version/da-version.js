@@ -13,7 +13,6 @@ export default class DaVersion extends LitElement {
     return html`
     <div class="da-version-view">
       <div contenteditable="false" translate="no" class="ProseMirror">
-        <p>Some older version</p>
       </div>
     </div>
     `;

@@ -1,4 +1,5 @@
 import { LitElement, html, ifDefined, until } from '../../../deps/lit/lit-all.min.js';
+import { aem2prose, parse } from '../utils/helpers.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
@@ -29,10 +30,31 @@ export default class DaVersions extends LitElement {
     this.classList.remove('show-versions');
   }
 
+  async loadVersion(href, pm) {
+    const sourceURL = new URL(this.path);
+    const resURL = new URL(href, sourceURL);
+
+    const aemResp = await fetch(resURL);
+    const aemDoc = await aemResp.text();
+
+    const doc = parse(aemDoc);
+    const pdoc = aem2prose(doc);
+    const docc = document.createElement('div');
+    docc.append(...pdoc);
+
+    pm.innerHTML = docc.innerHTML;
+  }
+
   versionSelected(event) {
+    const li = event.target;
+    if (!li.dataset.href) {
+      this.setDaVersionVisibility('none');
+      return;
+    }
+
     const dav = this.setDaVersionVisibility('block');
     const pm = dav.shadowRoot.querySelector('.ProseMirror');
-    pm.innerHTML = `<p>${event.target.innerText}</p>`;
+    this.loadVersion(li.dataset.href, pm);
   }
 
   async renderVersions() {
@@ -57,8 +79,13 @@ export default class DaVersions extends LitElement {
 
     const versions = [];
     for (const l of list) {
+      let verURL;
+      if (l.resource) {
+        verURL = new URL(l.resource, versionsURL);
+      }
+
       versions.push(html`
-        <li tabindex="1" data-href="${ifDefined(l.resource)}">
+        <li tabindex="1" data-href="${ifDefined(verURL)}">
           ${new Date(l.timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}
         <br/>${l.authors.join(', ')}</li>`);
     }
