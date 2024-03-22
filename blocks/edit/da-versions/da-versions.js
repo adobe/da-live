@@ -45,16 +45,90 @@ export default class DaVersions extends LitElement {
     pm.innerHTML = docc.innerHTML;
   }
 
+  triggerHiddenVersions(li) {
+    const shrink = li.classList.contains('auditlog-expanded');
+    let newClass;
+    if (shrink) {
+      newClass = 'auditlog-hidden';
+      li.classList.remove('auditlog-expanded');
+    } else {
+      newClass = 'auditlog-detail';
+      li.classList.add('auditlog-expanded');
+    }
+
+    const lis = li.parentNode.querySelectorAll('li');
+
+    let found = false;
+    for (let i = 0; i < lis.length; i += 1) {
+      if (lis[i].id === li.id) {
+        found = true;
+        continue;
+      }
+      if (found && (lis[i].id || lis[i].dataset.href)) {
+        // Found the next non-hidden ID, we are done.
+        return;
+      }
+      if (found) {
+        lis[i].classList = newClass;
+      }
+    }
+  }
+
   versionSelected(event) {
     const li = event.target;
     if (!li.dataset.href) {
       this.setDaVersionVisibility('none');
+      this.triggerHiddenVersions(li);
       return;
     }
 
     const dav = this.setDaVersionVisibility('block');
     const pm = dav.shadowRoot.querySelector('.ProseMirror');
     this.loadVersion(li.dataset.href, pm);
+  }
+
+  insertAggregate(list, start, end) {
+    const agg = {
+      timestamp: list[start].timestamp,
+      aggregatedTo: list[end - 1].timestamp,
+      aggregateID: `${start}-${end}`,
+    };
+    const authors = new Set();
+
+    for (let i = start; i < end; i += 1) {
+      list[i].authors.forEach((e) => authors.add(e));
+      list[i].detail = true;
+    }
+    agg.authors = [...authors];
+
+    list.splice(start, 0, agg);
+  }
+
+  aggregateList(list) {
+    let noResStart;
+    for (let i = 0; i < list.length; i += 1) {
+      if (!list[i].resource && noResStart === undefined) {
+        noResStart = i;
+      }
+
+      if (list[i].resource && noResStart !== undefined) {
+        if (i - noResStart > 1) {
+          // only if more than 1 element
+          this.insertAggregate(list, noResStart, i);
+          // Increase i with 1 as we added an element
+          i += 1;
+        }
+        noResStart = undefined;
+      }
+
+      if (i === list.length - 1 && noResStart !== undefined) {
+        if (i - noResStart >= 1) {
+          this.insertAggregate(list, noResStart, i + 1);
+          i += 1;
+        }
+        noResStart = undefined;
+      }
+    }
   }
 
   async renderVersions() {
@@ -77,6 +151,8 @@ export default class DaVersions extends LitElement {
     const res = await fetch(versionsURL);
     const list = await res.json();
 
+    this.aggregateList(list);
+
     const versions = [];
     for (const l of list) {
       let verURL;
@@ -84,9 +160,21 @@ export default class DaVersions extends LitElement {
         verURL = new URL(l.resource, versionsURL);
       }
 
+      let fromDate;
+      let toDate;
+      if (l.aggregatedTo) {
+        fromDate = new Date(l.aggregatedTo).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
+        toDate = ` - ${new Date(l.timestamp).toLocaleTimeString([], { timeStyle: 'short' })}`;
+      } else {
+        fromDate = new Date(l.timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
+        toDate = '';
+      }
+
       versions.push(html`
-        <li tabindex="1" data-href="${ifDefined(verURL)}">
-          ${new Date(l.timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}
+        <li tabindex="1" data-href="${ifDefined(verURL)}"
+          id=${ifDefined(l.aggregateID)}
+          class="${l.detail ? 'auditlog-hidden' : ''}">
+          ${fromDate}${toDate}
         <br/>${l.authors.join(', ')}</li>`);
     }
     return versions;

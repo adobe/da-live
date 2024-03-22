@@ -35,6 +35,16 @@
 
 .da-versions-panel li {
   list-style-type: square;
+  user-select: none;
+}
+
+.da-versions-panel li.auditlog-hidden {
+  display: none;
+}
+
+.da-versions-panel li.auditlog-detail {
+  font-size: 14px;
+  margin-left: 1rem;
 }
 
 .da-versions-panel li[data-href] {
