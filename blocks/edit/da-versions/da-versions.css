@@ -37,6 +37,10 @@
   list-style-type: square;
 }
 
+.da-versions-panel li[data-href] {
+  font-weight: 700;
+}
+
 .da-versions-panel li:focus {
   background: rgb(239, 239, 239);
 }

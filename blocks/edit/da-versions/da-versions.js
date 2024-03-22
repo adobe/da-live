@@ -1,4 +1,4 @@
-import { LitElement, html, until } from '../../../deps/lit/lit-all.min.js';
+import { LitElement, html, ifDefined, until } from '../../../deps/lit/lit-all.min.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
@@ -57,8 +57,10 @@ export default class DaVersions extends LitElement {
 
     const versions = [];
     for (const l of list) {
-      versions.push(html`<li tabindex="1">${new Date(l.timestamp).toLocaleDateString()}
-        <br>${l.authors.join(', ')}</li>`);
+      versions.push(html`
+        <li tabindex="1" data-href="${ifDefined(l.resource)}">
+          ${new Date(l.timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}
+        <br/>${l.authors.join(', ')}</li>`);
     }
     return versions;
   }
