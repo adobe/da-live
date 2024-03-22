@@ -56,22 +56,10 @@ export default class DaVersions extends LitElement {
       li.classList.add('auditlog-expanded');
     }
 
-    const lis = li.parentNode.querySelectorAll('li');
-
-    let found = false;
-    for (let i = 0; i < lis.length; i += 1) {
-      if (lis[i].id === li.id) {
-        found = true;
-        continue;
-      }
-      if (found && (lis[i].id || lis[i].dataset.href)) {
-        // Found the next non-hidden ID, we are done.
-        return;
-      }
-      if (found) {
-        lis[i].classList = newClass;
-      }
-    }
+    const lis = li.parentNode.querySelectorAll(`li[data-parent="${li.id}"`);
+    lis.forEach((l) => {
+      l.classList = newClass;
+    });
   }
 
   versionSelected(event) {
@@ -97,11 +85,17 @@ export default class DaVersions extends LitElement {
 
     for (let i = start; i < end; i += 1) {
       list[i].authors.forEach((e) => authors.add(e));
-      list[i].detail = true;
+      list[i].parent = agg.aggregateID;
     }
     agg.authors = [...authors];
 
     list.splice(start, 0, agg);
+  }
+
+  sameDays(d1, d2) {
+    const ds1 = new Date(d1).toLocaleDateString([], { dateStyle: 'short' });
+    const ds2 = new Date(d2).toLocaleDateString([], { dateStyle: 'short' });
+    return ds1 === ds2;
   }
 
   aggregateList(list) {
@@ -111,16 +105,23 @@ export default class DaVersions extends LitElement {
         noResStart = i;
       }
 
-      if (list[i].resource && noResStart !== undefined) {
+      const sameDays = this.sameDays(list[noResStart].timestamp, list[i].timestamp);
+      if (noResStart !== undefined && (list[i].resource || !sameDays)) {
         if (i - noResStart > 1) {
           // only if more than 1 element
           this.insertAggregate(list, noResStart, i);
           // Increase i with 1 as we added an element
           i += 1;
         }
-        noResStart = undefined;
+
+        if (!sameDays) {
+          noResStart = i;
+        } else {
+          noResStart = undefined;
+        }
       }
 
+      // This is if it's at the end of the list
       if (i === list.length - 1 && noResStart !== undefined) {
         if (i - noResStart >= 1) {
           this.insertAggregate(list, noResStart, i + 1);
@@ -171,11 +172,11 @@ export default class DaVersions extends LitElement {
       }
 
       versions.push(html`
-        <li tabindex="1" data-href="${ifDefined(verURL)}"
+        <li tabindex="1" data-href="${ifDefined(verURL)}" data-parent="${ifDefined(l.parent)}"
           id=${ifDefined(l.aggregateID)}
-          class="${l.detail ? 'auditlog-hidden' : ''}">
+          class="${l.parent ? 'auditlog-hidden' : ''}">
           ${fromDate}${toDate}
-        <br/>${l.authors.join(', ')}</li>`);
+        <br/>${l.authors.join(', ')} ${l.aggregatedTo ? '...' : ''}</li>`);
     }
     return versions;
   }
