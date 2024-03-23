@@ -1,19 +1,24 @@
-import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
-import { getDaAdmin } from '../../shared/constants.js';
+import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
 import inlinesvg from '../../shared/inlinesvg.js';
-
-import getSheet from '../../shared/sheet.js';
 import { saveToDa, daFetch } from '../../shared/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 
-const sheet = await getSheet('/blocks/browse/da-browse/da-browse.css');
+// Components
+import './da-search.js';
 
-const DA_ORIGIN = getDaAdmin();
+// Styles
+const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
+const style = await getStyle(import.meta.url);
 
+// Icons
 const ICONS = ['/blocks/browse/da-browse/img/Smock_Settings_18_N.svg'];
 
 export default class DaBrowse extends LitElement {
   static properties = {
     details: { attribute: false },
+    searchItems: { attribute: false },
+    _tabItems: { state: true },
     _listItems: { state: true },
     _selectedItems: { state: true },
     _breadcrumbs: {},
@@ -27,11 +32,22 @@ export default class DaBrowse extends LitElement {
 
   constructor() {
     super();
+    this.searchItems = [];
     this._selectedItems = [];
     this._createShow = '';
     this._createName = '';
     this._createFile = '';
     this._fileLabel = 'Select file';
+    this._tabItems = [
+      { id: 'browse', label: 'Browse', selected: true },
+      { id: 'search', label: 'Search', selected: false },
+    ];
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.shadowRoot.adoptedStyleSheets = [style];
+    inlinesvg({ parent: this.shadowRoot, paths: ICONS });
   }
 
   async getList() {
@@ -132,12 +148,6 @@ export default class DaBrowse extends LitElement {
     this._fileLabel = 'Select file';
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [sheet];
-    inlinesvg({ parent: this.shadowRoot, paths: ICONS });
-  }
-
   async update(props) {
     if (props.has('details')) {
       this._listItems = await this.getList();
@@ -200,6 +210,20 @@ export default class DaBrowse extends LitElement {
     }
     this._selectedItems = [];
     this._canPaste = false;
+  }
+
+  handleTab(idx) {
+    const current = this._tabItems.find((item) => item.selected);
+    if (this._tabItems[idx].id === current.id) return;
+    this._tabItems.forEach((item) => {
+      item.selected = false;
+    });
+    this._tabItems[idx].selected = true;
+    this._tabItems = [...this._tabItems];
+  }
+
+  handeSearchList(e) {
+    this.searchItems = e.detail.items;
   }
 
   renderConfig(length, crumb, idx) {
@@ -281,17 +305,19 @@ export default class DaBrowse extends LitElement {
       </div>`;
   }
 
-  listView() {
+  listView(items, allowSelect) {
     return html`
       <ul class="da-item-list">
-        ${this._listItems.map((item, idx) => html`
+        ${items.map((item, idx) => html`
           <li class="da-item-list-item">
             <div class="da-item-list-item-inner">
-              <div class="checkbox-wrapper">
-                <input type="checkbox" name="item-selected" id="item-selected-${idx}" .checked="${item.isChecked}" @click="${() => { this.toggleChecked(item); }}">
-                <label class="checkbox-label" for="item-selected-${idx}"></label>
-              </div>
-              <input type="checkbox" name="select" style="display: none;">
+              ${allowSelect ? html`
+                <div class="checkbox-wrapper">
+                  <input type="checkbox" name="item-selected" id="item-selected-${idx}" .checked="${item.isChecked}" @click="${() => { this.toggleChecked(item); }}">
+                  <label class="checkbox-label" for="item-selected-${idx}"></label>
+                </div>
+                <input type="checkbox" name="select" style="display: none;">
+              ` : nothing}
               <a href="${item.ext ? this.getEditPath(item) : `#${item.path}`}" class="da-item-list-item-title">
                 <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
                 </span>${item.name}
@@ -306,9 +332,12 @@ export default class DaBrowse extends LitElement {
     return html`<div class="empty-list"><h3>Empty</h3></div>`;
   }
 
-  render() {
+  renderSearch() {
+    return html`<da-search @updated=${this.handeSearchList} path=${this.details.fullpath} />`;
+  }
+
+  renderBreadCrumbs() {
     return html`
-      <h1>Browse</h1>
       <div class="da-breadcrumb">
         <ul class="da-breadcrumb-list">
           ${this._breadcrumbs.map((crumb, idx) => html`
@@ -320,9 +349,40 @@ export default class DaBrowse extends LitElement {
             </li>
           `)}
         </ul>
-        ${this.renderNew()}
+        ${this._tabItems[0].selected
+    ? this.renderNew()
+    : this.renderSearch()}
       </div>
-      ${this._listItems.length > 0 ? this.listView() : this.emptyView()}
+    `;
+  }
+
+  renderSearchList() {
+    return html`${this.searchItems?.length > 0 ? this.listView(this.searchItems, false) : this.emptyView()}`;
+  }
+
+  renderBrowse() {
+    return html`${this._listItems?.length > 0 ? this.listView(this._listItems, true) : this.emptyView()}`;
+  }
+
+  render() {
+    return html`
+      <div class="da-browse-tab-list">
+        <div class="da-browse-tab-header">
+          ${this._tabItems.map((tab, idx) => html`
+            <button id="da-browse-tab-button-${tab.id}" @click=${() => this.handleTab(idx)} role="tab" aria-selected="${tab.selected}" aria-controls="tabpanel-${tab.id}">
+              <h2>${tab.label}</h2>
+            </button>
+          `)}
+        </div>
+        <div class="da-browse-tab-content">
+          ${this.renderBreadCrumbs()}
+          ${this._tabItems.map((tab) => html`
+            <div class="da-browse-tab-panel${tab.selected ? ' da-browse-tab-panel-active' : ''}" role="tabpanel" id="tabpanel-${tab.id}" aria-labelledby="da-browse-tab-button-${tab.id}">
+              ${tab.id === 'browse' ? this.renderBrowse() : this.renderSearchList()}
+            </div>
+          `)}
+        </div>
+      </div>
       ${this._selectedItems.length > 0 ? html`${this.actionBar()}` : ''}
     `;
   }
