@@ -322,8 +322,8 @@ export default class DaBrowse extends LitElement {
         </ul>
         ${this.renderNew()}
       </div>
-      ${this._listItems.length > 0 ? this.listView() : this.emptyView()}
-      ${this._selectedItems.length > 0 ? html`${this.actionBar()}` : ''}
+      ${this._listItems?.length > 0 ? this.listView() : this.emptyView()}
+      ${this._selectedItems?.length > 0 ? html`${this.actionBar()}` : ''}
     `;
   }
 }

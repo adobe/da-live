@@ -26,6 +26,13 @@ const CONFIG = {
  * ------------------------------------------------------------
  */
 
+const { loadArea, setConfig } = await import(`${nx}/scripts/nexter.js`);
+setConfig(CONFIG);
+
+// TODO: Remove this once content is fixed for Nexter
+const headerMeta = document.head.querySelector('[content="aec-shell"]');
+if (headerMeta) headerMeta.remove();
+
 function loadStyles() {
   const paths = [`${nx}/styles/nexter.css`];
   if (STYLES) { paths.push(STYLES); }
@@ -42,10 +49,6 @@ export default async function loadPage() {
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
 
-  const { loadArea, setConfig } = await import(`${nx}/scripts/nexter.js`);
-  const header = document.head.querySelector('[name="header"]');
-  if (header.getAttribute('content') === 'aec-shell') header.remove();
-  setConfig(CONFIG);
   await loadArea();
 }
 
