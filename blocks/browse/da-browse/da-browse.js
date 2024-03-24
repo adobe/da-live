@@ -383,7 +383,7 @@ export default class DaBrowse extends LitElement {
           `)}
         </div>
       </div>
-      ${this._selectedItems.length > 0 ? html`${this.actionBar()}` : ''}
+      ${this._selectedItems?.length > 0 ? html`${this.actionBar()}` : ''}
     `;
   }
 }

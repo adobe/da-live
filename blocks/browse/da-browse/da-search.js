@@ -133,6 +133,18 @@ export default class DaSearch extends LitElement {
     this._time = String(replaceTime / 1000).substring(0, 4);
   }
 
+  get showText() {
+    return this.matches && this._total;
+  }
+
+  get matchText() {
+    return html`${this._action} ${this._matches} of ${this._total}`;
+  }
+
+  get timeText() {
+    return html`${this._time ? html` in ${this._time} seconds.` : nothing}`;
+  }
+
   async toggleReplace() {
     this.showReplace = !this.showReplace;
   }
@@ -143,7 +155,7 @@ export default class DaSearch extends LitElement {
         <input type="text" placeholder="Enter search" name="term"/>
         <input type="submit" value="Search" />
       </form>
-      <p>${this.matches && this._total ? html`${this._action} ${this._matches} of ${this._total} ${this._time ? html`in ${this._time} seconds.` : nothing}` : nothing}</p>
+      <p>${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>
       <div class="replace-pane">
         <form class="da-replace-form${this.showReplace ? nothing : ' hide'}" @submit=${this.handleReplace}>
           <input type="text" placeholder="Enter replace text" name="replace"/>
