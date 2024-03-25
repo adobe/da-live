@@ -56,7 +56,7 @@ export default class DaVersions extends LitElement {
       li.classList.add('auditlog-expanded');
     }
 
-    const lis = li.parentNode.querySelectorAll(`li[data-parent="${li.id}"`);
+    const lis = li.parentNode.querySelectorAll(`li[data-parent="${li.id}"]`);
     lis.forEach((l) => {
       l.classList = newClass;
     });
