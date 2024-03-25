@@ -1,0 +1,13 @@
+.da-dialog-asset {
+  width: calc(100% - 72px);
+  box-sizing: border-box;
+  height: calc(100% - 72px);
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  filter: drop-shadow(0 0 8px rgb(0 0 0 / 30%));
+}
+
+.da-dialog-asset-inner {
+  height: 100%;
+}
