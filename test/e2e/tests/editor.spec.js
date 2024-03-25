@@ -12,8 +12,12 @@
 /* eslint-disable import/no-unresolved */
 const { test, expect } = require('@playwright/test');
 
+const DA_BRANCH = process.env.GITHUB_HEAD_REF || 'main';
+const DA_HOST = `https://${DA_BRANCH}--da-live--adobe.hlx.live`;
+console.log('Using DA_URL', DA_HOST);
+
 test('Get Main Page', async ({ page }) => {
-  await page.goto('https://da.live/');
+  await page.goto(DA_HOST);
   const html = await page.content();
   expect(html).toContain('Dark Alley');
 
@@ -26,7 +30,7 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
 
   const dateStamp = Date.now().toString(36);
   const pageName = `pw-test1-${dateStamp}-${workerInfo.project.name}`;
-  const url = `https://da.live/edit#/da-sites/da-status/tests/${pageName}`;
+  const url = `${DA_HOST}/edit#/da-sites/da-status/tests/${pageName}`;
 
   try {
     await page.goto(url);
@@ -57,7 +61,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const pageName = `pw-test2-${dateStamp}-${workerInfo.project.name}`;
 
   try {
-    await page.goto('https://da.live/#/da-sites/da-status/tests');
+    await page.goto(`${DA_HOST}/#/da-sites/da-status/tests`);
     await page.locator('button.da-actions-new-button').click();
     await page.locator('button:text("Document")').click();
     await page.locator('input.da-actions-input').fill(pageName);
@@ -67,7 +71,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
     await page.locator('div.ProseMirror').fill('testcontent');
 
     const newPage = await browser.newPage();
-    await newPage.goto('https://da.live/#/da-sites/da-status/tests');
+    await newPage.goto(`${DA_HOST}/#/da-sites/da-status/tests`);
 
     // Wait 1 sec
     await newPage.waitForTimeout(4000);
