@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import '../../milo.js';
 
 // Dynamic import because Milo dependency
-const { default: getPathDetails } = await import('../../../blocks/shared/pathDetails.js');
+const { default: getPathDetails } = await import('../../../../blocks/shared/pathDetails.js');
 
 describe('Path details', () => {
   describe('Org only', () => {

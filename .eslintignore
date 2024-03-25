@@ -1,2 +1,2 @@
 deps
-e2e_test/playwright.config.js
+test/e2e/playwright.config.js
