@@ -47,7 +47,6 @@ export function decorateArea(area = document) {
 
 (function loadOrgLCP() {
   const { pathname, hash } = window.location;
-  if (pathname !== '/' && hash) return;
-  const tag = '<link rel="preload" as="image" href="/blocks/browse/da-orgs/img/da-one.webp" />';
-  document.head.insertAdjacentHTML('beforeend', tag);
+  if (pathname !== '/' || hash) return;
+  document.head.insertAdjacentHTML('beforeend', '<link rel="preload" as="image" href="/blocks/browse/da-orgs/img/da-one.webp" />');
 }());
