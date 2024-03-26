@@ -62,7 +62,7 @@ export default class DaVersions extends LitElement {
     });
   }
 
-  versionSelected(event) {
+  async versionSelected(event) {
     const li = event.target;
     if (!li.dataset.href) {
       this.setDaVersionVisibility('none');
@@ -72,7 +72,7 @@ export default class DaVersions extends LitElement {
 
     const dav = this.setDaVersionVisibility('block');
     const pm = dav.shadowRoot.querySelector('.ProseMirror');
-    this.loadVersion(li.dataset.href, pm);
+    await this.loadVersion(li.dataset.href, pm);
   }
 
   insertAggregate(list, start, end) {

@@ -1,0 +1,44 @@
+[
+  {
+    "timestamp": 1711039508263,
+    "authors": ["Joe Bloggs"]
+  },
+  {
+    "timestamp": 1711037508263,
+    "authors": ["Joe Bloggs"],
+    "resource": "/mock-versions/resources/72398245211/3.html"
+  },
+  {
+    "timestamp": 1711037510000,
+    "authors": ["Melinda Vertex", "Joe Bloggs"]
+  },
+  {
+    "timestamp": 1711037400000,
+    "authors": ["Eric Idle"]
+  },
+  {
+    "timestamp": 1711037201100,
+    "authors": ["Melinda Vertex", "Anonymous"]
+  },
+  {
+    "timestamp": 1710912809000,
+    "authors": ["Melinda Vertex"]
+  },
+  {
+    "timestamp": 1710912300000,
+    "authors": ["Melinda Vertex"]
+  },
+  {
+    "timestamp": 1710892800000,
+    "authors": ["Lucy Chlorine"],
+    "resource": "/mock-versions/resources/72398245211/1.html"
+  },
+  {
+    "timestamp": 1700892802000,
+    "authors": ["Anonymous"]
+  },
+  {
+    "timestamp": 1700891802000,
+    "authors": ["Anonymous"]
+  }
+]
