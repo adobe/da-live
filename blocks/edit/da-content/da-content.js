@@ -48,6 +48,5 @@ export default class DaContent extends LitElement {
     `;
   }
 }
-//      <da-versions path=${this.details.sourceUrl}></da-versions>
 
 customElements.define('da-content', DaContent);
