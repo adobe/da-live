@@ -327,7 +327,7 @@ export default class DaBrowse extends LitElement {
                 </div>
                 <input type="checkbox" name="select" style="display: none;">
               ` : nothing}
-              <a href="${item.ext ? this.getEditPath(item) : `#${item.path}`}" class="da-item-list-item-title">
+              <a href="${item.ext ? this.getEditPath(item) : `#${item.path}`}" class="da-item-list-item-title" target="${(item.match && '_blank') || nothing}">
                 <span class="da-item-list-item-type ${item.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${item.ext ? `da-item-list-item-icon-${item.ext}` : ''}">
                 </span>${item.name}
               </a>
