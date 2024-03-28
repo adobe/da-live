@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { getDaAdmin, COLLAB_ORIGIN } from '../../../blocks/shared/constants.js';
+import { getDaAdmin, COLLAB_ORIGIN } from '../../../../blocks/shared/constants.js';
 
 import '../../milo.js';
 
