@@ -138,37 +138,37 @@ input, button {
 
 /* CHECKBOX */
 .checkbox-wrapper {
-  position: relative; 
+  position: relative;
 }
 
 input[type="checkbox"] {
   appearance:  none;
-  position:  absolute; 
-  top:  -4px; 
-  left: -5px; 
-  height:  20px; 
-  width:  20px; 
+  position:  absolute;
+  top:  -4px;
+  left: -5px;
+  height:  20px;
+  width:  20px;
 }
 
 .checkbox-label {
-  display:  flex; 
+  display:  flex;
   position:  relative;
-  font-size:  20px; 
+  font-size:  20px;
   font-weight:  400;
-  align-items:  center; 
+  align-items:  center;
   justify-content:  flex-start;
 }
 
-.checkbox-label:before, 
+.checkbox-label:before,
 .checkbox-label:after {
-  pointer-events: none; 
+  pointer-events: none;
 }
 
 .checkbox-label:before {
-  display:  flex; 
+  display:  flex;
   content: ' ';
-  height:  18px; 
-  width:  18px; 
+  height:  18px;
+  width:  18px;
   border-radius: 2px;
   background: rgb(221, 221, 221);
 }
@@ -203,7 +203,7 @@ input[type="checkbox"] {
 }
 
 .checkbox-wrapper input[type="checkbox"]:checked + .checkbox-label:after {
-  opacity:  1; 
+  opacity:  1;
   transform: rotate(-45deg) scale(.8);
 }
 
@@ -375,7 +375,7 @@ input[type="checkbox"] {
   background: rgb(255, 255, 255);
   border: 2px solid;
   border-radius: 6px;
-  padding: 0px 8px;
+  padding: 4px 8px 0 8px;
   color: rgb(6, 108, 231);
   font-size: 0.85rem;
   line-height: 20px;
