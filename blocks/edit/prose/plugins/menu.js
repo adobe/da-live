@@ -28,6 +28,8 @@ import openLibrary from '../../da-library/da-library.js';
 import insertTable from '../table.js';
 import { getRepoId, openAssets } from '../../da-assets/da-assets.js';
 
+const repoId = await getRepoId();
+
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
   // eslint-disable-next-line no-plusplus
@@ -282,14 +284,13 @@ function getTextBlocks(marks, nodes) {
   ];
 }
 
-async function getMenu(view) {
+function getMenu(view) {
   const menu = document.createElement('div');
   menu.className = 'ProseMirror-menubar';
 
   const { marks, nodes } = view.state.schema;
   const editTable = getTableMenu();
   const textBlocks = getTextBlocks(marks, nodes);
-  const repoId = await getRepoId();
 
   const textMenu = [
     new Dropdown(textBlocks, {
@@ -387,8 +388,8 @@ export default new Plugin({
       },
     },
   },
-  view: async (view) => {
-    const { menu, update } = await getMenu(view);
+  view: (view) => {
+    const { menu, update } = getMenu(view);
     const palettes = document.createElement('div');
     palettes.className = 'da-palettes';
     view.dom.insertAdjacentElement('beforebegin', menu);
