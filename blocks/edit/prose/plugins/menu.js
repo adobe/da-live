@@ -80,6 +80,15 @@ function defaultLinkFields() {
   };
 }
 
+function defaultImageAltTextFields() {
+  return {
+    altText: {
+      placeholder: 'Image Alt Text',
+      label: 'Image Alt Text',
+    },
+  };
+}
+
 function findExistingLink(state, linkMarkType) {
   const { $from, $to, empty } = state.selection;
   if (empty) {
@@ -202,6 +211,46 @@ function removeLinkItem(linkMarkType) {
   });
 }
 
+function imgAltTextItem() {
+  let lastPrompt = { isOpen: () => false };
+  return new MenuItem({
+    title: 'Image Alt Text',
+    label: 'Image Alt Text',
+    class: 'img-alt-text',
+    active(state) {
+      return state.selection?.node?.type.name === 'image';
+    },
+    enable(state) { return this.active(state); },
+    update() { return true; },
+    run(state, dispatch, view) {
+      if (lastPrompt.isOpen()) {
+        lastPrompt.focus();
+        return;
+      }
+
+      const fields = defaultImageAltTextFields();
+
+      const existingAltText = state.selection.node.attrs.alt;
+      if (this.active(state)) {
+        console.log(state);
+        if (existingAltText) {
+          fields.altText.value = existingAltText;
+        }
+      }
+
+      const callback = () => {
+        const { pos } = state.selection.$anchor;
+        dispatch(state.tr.setNodeAttribute(pos, 'alt', fields.altText.value?.trim()));
+      };
+
+      lastPrompt = openPrompt({ altText: existingAltText, fields, callback });
+      lastPrompt.addEventListener('closed', () => {
+        console.log('closed');
+      });
+    },
+  });
+}
+
 function markItem(markType, options) {
   const passedOptions = { active(state) { return markActive(state, markType); } };
   // eslint-disable-next-line no-restricted-syntax, guard-for-in
@@ -299,6 +348,7 @@ function getMenu(view) {
     }),
     linkItem(marks.link),
     removeLinkItem(marks.link),
+    imgAltTextItem(),
   ];
 
   const listMenu = [
