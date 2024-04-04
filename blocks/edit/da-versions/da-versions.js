@@ -20,6 +20,10 @@ export default class DaVersions extends LitElement {
   setDaVersionVisibility(displayStyle) {
     const dav = this.parent.shadowRoot.querySelector('da-version');
     dav.style.display = displayStyle;
+
+    if (displayStyle === 'none') {
+      this.loadedVersion = undefined;
+    }
     return dav;
   }
 
@@ -35,6 +39,7 @@ export default class DaVersions extends LitElement {
     const resURL = new URL(href, sourceURL);
 
     const aemResp = await fetch(resURL);
+    this.loadedVersion = resURL;
     const aemDoc = await aemResp.text();
 
     const doc = parse(aemDoc);
@@ -213,11 +218,41 @@ export default class DaVersions extends LitElement {
     }
   }
 
+  async restoreVersion() {
+    if (!this.path) {
+      // eslint-disable-next-line no-console
+      console.log('Unable to restore version as path not known');
+      return;
+    }
+
+    if (this.loadedVersion) {
+      const verURL = this.loadedVersion;
+      this.hideVersions();
+
+      // eslint-disable-next-line no-console
+      console.log('Restoring from ', verURL);
+      const res = await fetch(verURL);
+      const content = await res.text();
+
+      const blob = new Blob([content], { type: 'text/html' });
+      const formData = new FormData();
+      formData.append('data', blob);
+
+      const opts = { method: 'PUT', body: formData };
+      const putresult = await fetch(this.path, opts);
+
+      if (putresult.status !== 201) {
+        // eslint-disable-next-line no-console
+        console.log('Unable to restore version', putresult.status);
+      }
+    }
+  }
+
   render() {
     return html`
     <div class="da-versions-menubar">
       <span class="da-versions-menuitem da-versions-create" @click=${this.createVersion}></span>
-      <span class="da-versions-menuitem da-versions-restore"></span>
+      <span class="da-versions-menuitem da-versions-restore" @click=${this.restoreVersion}></span>
       <span class="da-versions-menuitem da-versions-close" @click=${this.hideVersions}></span>
     </div>
     <div class="da-versions-panel">
