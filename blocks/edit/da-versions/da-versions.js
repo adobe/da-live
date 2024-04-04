@@ -101,12 +101,17 @@ export default class DaVersions extends LitElement {
   aggregateList(list) {
     let noResStart;
     for (let i = 0; i < list.length; i += 1) {
-      if (!list[i].resource && noResStart === undefined) {
+      if (!list[i].timestamp) {
+        list[i].timestamp = 1;
+      }
+
+      if (!list[i].url && noResStart === undefined) {
         noResStart = i;
       }
 
-      const sameDays = this.sameDays(list[noResStart].timestamp, list[i].timestamp);
-      if (noResStart !== undefined && (list[i].resource || !sameDays)) {
+      const sameDays = noResStart !== undefined
+        ? this.sameDays(list[noResStart].timestamp, list[i].timestamp) : undefined;
+      if (noResStart !== undefined && (list[i].url || !sameDays)) {
         if (i - noResStart > 1) {
           // only if more than 1 element
           this.insertAggregate(list, noResStart, i);
@@ -144,11 +149,12 @@ export default class DaVersions extends LitElement {
     const pathName = url.pathname;
     if (!pathName.startsWith('/source/')) {
       // Unexpected document URL
+      // eslint-disable-next-line no-console
       console.log('Unexpected document URL', this.path);
       return html``;
     }
 
-    const versionsURL = `http://localhost:3000/mock-versions/list${pathName.slice(7, -5)}.json`;
+    const versionsURL = `${url.origin}/versionlist/${pathName.slice(8)}`;
     const res = await fetch(versionsURL);
     const list = await res.json();
 
@@ -157,8 +163,8 @@ export default class DaVersions extends LitElement {
     const versions = [];
     for (const l of list) {
       let verURL;
-      if (l.resource) {
-        verURL = new URL(l.resource, versionsURL);
+      if (l.url) {
+        verURL = new URL(l.url, versionsURL);
       }
 
       let fromDate;
@@ -171,20 +177,46 @@ export default class DaVersions extends LitElement {
         toDate = '';
       }
 
+      const userList = l.users.map((u) => u.email).join(', ');
       versions.push(html`
         <li tabindex="1" data-href="${ifDefined(verURL)}" data-parent="${ifDefined(l.parent)}"
           id=${ifDefined(l.aggregateID)}
           class="${l.parent ? 'auditlog-hidden' : ''}">
           ${fromDate}${toDate}
-        <br/>${l.authors.join(', ')} ${l.aggregatedTo ? '...' : ''}</li>`);
+        <br/>${userList} ${l.aggregatedTo ? '...' : ''}</li>`);
     }
     return versions;
+  }
+
+  async createVersion() {
+    if (!this.path) {
+      // Path not yet known, don't render
+      // eslint-disable-next-line no-console
+      console.log('Unable to save version as path not known');
+      return;
+    }
+
+    const url = new URL(this.path);
+    const pathName = url.pathname;
+    if (!pathName.startsWith('/source/')) {
+      // Unexpected document URL
+      // eslint-disable-next-line no-console
+      console.log('Unexpected document URL', this.path);
+      return;
+    }
+
+    const versionURL = `${url.origin}/versionsource/${pathName.slice(8)}`;
+    const res = await fetch(versionURL, { method: 'POST' });
+    if (res.status !== 201) {
+      // eslint-disable-next-line no-console
+      console.log('Unable to create version', res.status);
+    }
   }
 
   render() {
     return html`
     <div class="da-versions-menubar">
-      <span class="da-versions-menuitem da-versions-create"></span>
+      <span class="da-versions-menuitem da-versions-create" @click=${this.createVersion}></span>
       <span class="da-versions-menuitem da-versions-restore"></span>
       <span class="da-versions-menuitem da-versions-close" @click=${this.hideVersions}></span>
     </div>
