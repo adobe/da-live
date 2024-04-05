@@ -104,12 +104,18 @@ export default class DaVersions extends LitElement {
   }
 
   aggregateList(list) {
+    // for (let i = 0; i < list.length; i += 1) {
+    //   if (!list[i].timestamp) {
+    //     list[i].timestamp = 1;
+    //   }
+    // }
+    // make sure each element has a timestamp
+    list.forEach((l) => { if (!l.timestamp) { l.timestamp = 1; } });
+    // and sort by timestamp
+    list.sort((a, b) => b.timestamp - a.timestamp);
+
     let noResStart;
     for (let i = 0; i < list.length; i += 1) {
-      if (!list[i].timestamp) {
-        list[i].timestamp = 1;
-      }
-
       if (!list[i].url && noResStart === undefined) {
         noResStart = i;
       }
@@ -216,6 +222,8 @@ export default class DaVersions extends LitElement {
       // eslint-disable-next-line no-console
       console.log('Unable to create version', res.status);
     }
+
+    this.requestUpdate();
   }
 
   async restoreVersion() {
