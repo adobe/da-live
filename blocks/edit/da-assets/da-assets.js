@@ -9,7 +9,9 @@ const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/assets/resources/assets-selectors.js';
 
 export async function getRepoId() {
-  const { repo, owner } = getPathDetails();
+  const details = getPathDetails();
+  if (!details) return null;
+  const { repo, owner } = details;
   if (!(repo || owner)) return null;
   const resp = await daFetch(`${DA_ORIGIN}/config/${owner}/${repo}`);
   if (!resp.ok) return null;
