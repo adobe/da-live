@@ -104,11 +104,6 @@ export default class DaVersions extends LitElement {
   }
 
   aggregateList(list) {
-    // for (let i = 0; i < list.length; i += 1) {
-    //   if (!list[i].timestamp) {
-    //     list[i].timestamp = 1;
-    //   }
-    // }
     // make sure each element has a timestamp
     list.forEach((l) => { if (!l.timestamp) { l.timestamp = 1; } });
     // and sort by timestamp
@@ -259,9 +254,9 @@ export default class DaVersions extends LitElement {
   render() {
     return html`
     <div class="da-versions-menubar">
-      <span class="da-versions-menuitem da-versions-create" @click=${this.createVersion}></span>
-      <span class="da-versions-menuitem da-versions-restore" @click=${this.restoreVersion}></span>
-      <span class="da-versions-menuitem da-versions-close" @click=${this.hideVersions}></span>
+      <span class="da-versions-menuitem da-versions-create" title="Create Version" @click=${this.createVersion}></span>
+      <span class="da-versions-menuitem da-versions-restore" title="Restore Version" @click=${this.restoreVersion}></span>
+      <span class="da-versions-menuitem da-versions-close" title="Close" @click=${this.hideVersions}></span>
     </div>
     <div class="da-versions-panel">
     <ul @click=${this.versionSelected}>

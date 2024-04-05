@@ -39,8 +39,8 @@ export default class DaContent extends LitElement {
         <da-editor path="${this.details.sourceUrl}"></da-editor>
         <da-version></da-version>
         <div class="da-preview-menubar">
-          <span class="da-preview-menuitem show-preview" @click=${this.showPreview}></span>
-          <span class="da-versions-menuitem show-versions" @click=${this.showVersions}></span>
+          <span class="da-preview-menuitem show-preview" title="Preview" @click=${this.showPreview}></span>
+          <span class="da-versions-menuitem show-versions" title="Versions" @click=${this.showVersions}></span>
         </div>
       </div>
       <da-preview path=${this.details.previewUrl}></da-preview>
