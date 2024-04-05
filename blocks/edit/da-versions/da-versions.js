@@ -86,13 +86,13 @@ export default class DaVersions extends LitElement {
       aggregatedTo: list[end - 1].timestamp,
       aggregateID: `${start}-${end}`,
     };
-    const authors = new Set();
+    const users = new Set();
 
     for (let i = start; i < end; i += 1) {
-      list[i].authors.forEach((e) => authors.add(e));
+      list[i].users.forEach((e) => users.add(e));
       list[i].parent = agg.aggregateID;
     }
-    agg.authors = [...authors];
+    agg.users = [...users];
 
     list.splice(start, 0, agg);
   }
