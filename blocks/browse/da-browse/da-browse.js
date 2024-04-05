@@ -238,6 +238,15 @@ export default class DaBrowse extends LitElement {
     return null;
   }
 
+  handleKeyCommands(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.handleSave();
+    } else if (event.key === 'Escape') {
+      this.resetCreate();
+    }
+  }
+
   renderNew() {
     return html`
       <div class="da-actions-create ${this._createShow}">
@@ -257,7 +266,7 @@ export default class DaBrowse extends LitElement {
           </li>
         </ul>
         <div class="da-actions-input-container">
-          <input type="text" class="da-actions-input" placeholder="Name" @input=${this.handleNameChange} .value=${this._createName} />
+          <input type="text" class="da-actions-input" placeholder="Name" @input=${this.handleNameChange} .value=${this._createName} @keydown=${this.handleKeyCommands}/>
           <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
           <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
         </div>
