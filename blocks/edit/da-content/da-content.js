@@ -27,6 +27,9 @@ export default class DaContent extends LitElement {
     e.target.parentElement.classList.add('show-versions');
 
     const dav = this.shadowRoot.querySelector('da-versions');
+    // Force an update on the versions panel to load the latest versions
+    dav.requestUpdate();
+
     dav.classList.add('show-versions');
 
     // No need to request an update, setting the path is enough as its a reactive property

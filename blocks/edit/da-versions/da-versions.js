@@ -86,13 +86,18 @@ export default class DaVersions extends LitElement {
       aggregatedTo: list[end - 1].timestamp,
       aggregateID: `${start}-${end}`,
     };
-    const users = new Set();
+    const users = [];
 
     for (let i = start; i < end; i += 1) {
-      list[i].users.forEach((e) => users.add(e));
+      list[i].users.forEach((e) => users.push(e));
       list[i].parent = agg.aggregateID;
     }
-    agg.users = [...users];
+
+    // remove duplicates
+    agg.users = users.filter((val, idx) => {
+      const v = JSON.stringify(val);
+      return idx === users.findIndex((obj) => JSON.stringify(obj) === v);
+    });
 
     list.splice(start, 0, agg);
   }
