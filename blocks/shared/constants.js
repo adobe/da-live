@@ -4,7 +4,7 @@ export const AEM_ORIGIN = 'https://admin.hlx.page';
 const DA_ADMIN_ENVS = {
   local: 'http://localhost:8787',
   stage: 'https://stage-admin.da.live',
-  prod: 'https://admin.da.live',
+  prod: 'https://da.live/api',
 };
 
 const DA_COLLAB_ENVS = {
