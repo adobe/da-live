@@ -75,7 +75,7 @@ export default class DaOrgs extends LitElement {
               </div>
             </a>
           </li>`)}
-          ${this._orgs.length > 1 ? html`
+          ${this._orgs.length > 4 ? html`
             <li>
               <a class="da-org new" href="/start">
                 <div class="new-icon">
