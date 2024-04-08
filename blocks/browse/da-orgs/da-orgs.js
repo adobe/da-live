@@ -20,10 +20,10 @@ function getRandomImg() {
 }
 
 const MOCK_ORGS = [
-  { name: 'adobe', created: '', img: MOCK_IMGS[0] },
-  { name: 'adobe-experience-league', created: '', img: MOCK_IMGS[1] },
-  { name: 'adobecom', created: '', img: MOCK_IMGS[2] },
-  { name: 'aemsites', created: '', img: MOCK_IMGS[3] },
+  { name: 'adobe', created: '2024-01-09T23:38:05.949Z', img: MOCK_IMGS[0] },
+  { name: 'adobe-experience-league', created: '2024-01-26T01:43:15.286Z', img: MOCK_IMGS[1] },
+  { name: 'adobecom', created: '2023-11-30T06:04:10.008Z', img: MOCK_IMGS[2] },
+  { name: 'aemsites', created: '2024-01-10T17:43:13.390Z', img: MOCK_IMGS[3] },
 ];
 
 export default class DaOrgs extends LitElement {
