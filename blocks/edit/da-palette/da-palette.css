@@ -43,3 +43,7 @@ button {
   font-weight: 700;
   padding: 0 12px;
 }
+
+.da-palette-buttons > button {
+  padding-bottom: 1px;
+}
