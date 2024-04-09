@@ -127,7 +127,7 @@ function linkItem(linkMarkType) {
     },
     run(initialState, dispatch, view) {
       if (lastPrompt.isOpen()) {
-        lastPrompt.focus();
+        lastPrompt.close();
         return;
       }
 
@@ -176,7 +176,7 @@ function linkItem(linkMarkType) {
         view.focus();
       };
 
-      lastPrompt = openPrompt({ title: label, fields, callback });
+      lastPrompt = openPrompt({ title: label, fields, callback, saveOnClose: true });
       lastPrompt.addEventListener('closed', () => {
         dispatch(view.state.tr.removeMark(start, end, view.state.schema.marks.contextHighlightingMark).setMeta('addToHistory', false));
       });
@@ -203,7 +203,7 @@ function removeLinkItem(linkMarkType) {
 }
 
 function imgAltTextItem() {
-  let lastPrompt = { isOpen: () => false };
+  let altTextPalette = { isOpen: () => false };
   const title = 'Image Alt Text';
   return new MenuItem({
     title,
@@ -215,8 +215,8 @@ function imgAltTextItem() {
     enable(state) { return this.active(state); },
     update() { return true; },
     run(state, dispatch) {
-      if (lastPrompt.isOpen()) {
-        lastPrompt.submit();
+      if (altTextPalette.isOpen()) {
+        altTextPalette.close();
         return;
       }
 
@@ -239,7 +239,9 @@ function imgAltTextItem() {
         dispatch(state.tr.setNodeAttribute(pos, 'alt', fields.altText.value?.trim()));
       };
 
-      lastPrompt = openPrompt({ title, altText: existingAltText, fields, callback });
+      altTextPalette = openPrompt(
+        { title, altText: existingAltText, fields, callback, saveOnClose: true },
+      );
     },
   });
 }
