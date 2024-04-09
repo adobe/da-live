@@ -80,15 +80,6 @@ function defaultLinkFields() {
   };
 }
 
-function defaultImageAltTextFields() {
-  return {
-    altText: {
-      placeholder: 'Image Alt Text',
-      label: 'Image Alt Text',
-    },
-  };
-}
-
 function findExistingLink(state, linkMarkType) {
   const { $from, $to, empty } = state.selection;
   if (empty) {
@@ -225,11 +216,16 @@ function imgAltTextItem() {
     update() { return true; },
     run(state, dispatch) {
       if (lastPrompt.isOpen()) {
-        lastPrompt.focus();
+        lastPrompt.submit();
         return;
       }
 
-      const fields = defaultImageAltTextFields();
+      const fields = {
+        altText: {
+          placeholder: title,
+          label: title,
+        },
+      };
 
       const existingAltText = state.selection.node.attrs.alt;
       if (this.active(state)) {

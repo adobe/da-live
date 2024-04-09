@@ -53,12 +53,12 @@ class DaPalette extends LitElement {
   }
 
   close(e) {
-    e.preventDefault();
+    e?.preventDefault();
     this.internalClose();
   }
 
   submit(e) {
-    e.preventDefault();
+    e?.preventDefault();
 
     const params = {};
     Object.keys(this.fields).forEach((key) => {
