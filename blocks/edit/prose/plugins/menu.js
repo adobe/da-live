@@ -213,16 +213,17 @@ function removeLinkItem(linkMarkType) {
 
 function imgAltTextItem() {
   let lastPrompt = { isOpen: () => false };
+  const title = 'Image Alt Text';
   return new MenuItem({
-    title: 'Image Alt Text',
-    label: 'Image Alt Text',
+    title,
+    label: title,
     class: 'img-alt-text',
     active(state) {
       return state.selection?.node?.type.name === 'image';
     },
     enable(state) { return this.active(state); },
     update() { return true; },
-    run(state, dispatch, view) {
+    run(state, dispatch) {
       if (lastPrompt.isOpen()) {
         lastPrompt.focus();
         return;
@@ -232,7 +233,6 @@ function imgAltTextItem() {
 
       const existingAltText = state.selection.node.attrs.alt;
       if (this.active(state)) {
-        console.log(state);
         if (existingAltText) {
           fields.altText.value = existingAltText;
         }
@@ -243,10 +243,7 @@ function imgAltTextItem() {
         dispatch(state.tr.setNodeAttribute(pos, 'alt', fields.altText.value?.trim()));
       };
 
-      lastPrompt = openPrompt({ altText: existingAltText, fields, callback });
-      lastPrompt.addEventListener('closed', () => {
-        console.log('closed');
-      });
+      lastPrompt = openPrompt({ title, altText: existingAltText, fields, callback });
     },
   });
 }
