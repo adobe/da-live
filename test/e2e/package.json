@@ -1,0 +1,15 @@
+{
+  "name": "da-live_e2e_test",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "playwright test --project=chromium",
+    "test:all": "playwright test --project=chromium --project=firefox # limit to Chromium and FF as webkit currently fails",
+    "test:ui": "playwright test --project=chromium --ui",
+    "test:debug": "playwright test --project=chromium --debug"
+  },
+  "keywords": ["test"],
+  "devDependencies": {
+    "@playwright/test": "^1.42.1",
+    "@types/node": "^20.11.27"
+  }
+}
