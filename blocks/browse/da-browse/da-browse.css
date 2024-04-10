@@ -19,6 +19,62 @@ input, button {
   font-family: var(--body-font-family);
 }
 
+/* Tab List */
+.da-browse-tab-header {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.da-browse-tab-header button {
+  position: relative;
+  display: block;
+  background: none;
+  border: none;
+  padding: 0 0 6px;
+  margin: 0;
+  box-sizing: border-box;
+  color: #8f8f8f;
+}
+
+.da-browse-tab-header button::after {
+  display: block;
+  content: '';
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  background: #131313;
+  border-radius: 3px;
+}
+
+.da-browse-tab-header h2 {
+  margin: 0;
+  text-transform: uppercase;
+  font-size: 22px;
+}
+
+.da-browse-tab-header button[aria-selected="true"] {
+  color: #131313;
+}
+
+.da-browse-tab-header button[aria-selected="true"]::after {
+  opacity: 1;
+}
+
+
+.da-browse-tab-panel {
+  display: none;
+}
+
+.da-browse-tab-panel-active {
+  display: block;
+}
+
+/* Tab List End */
+
 /* Item List */
 
 .da-item-list {
@@ -82,37 +138,37 @@ input, button {
 
 /* CHECKBOX */
 .checkbox-wrapper {
-  position: relative; 
+  position: relative;
 }
 
 input[type="checkbox"] {
   appearance:  none;
-  position:  absolute; 
-  top:  -4px; 
-  left: -5px; 
-  height:  20px; 
-  width:  20px; 
+  position:  absolute;
+  top:  -4px;
+  left: -5px;
+  height:  20px;
+  width:  20px;
 }
 
 .checkbox-label {
-  display:  flex; 
+  display:  flex;
   position:  relative;
-  font-size:  20px; 
+  font-size:  20px;
   font-weight:  400;
-  align-items:  center; 
+  align-items:  center;
   justify-content:  flex-start;
 }
 
-.checkbox-label:before, 
+.checkbox-label:before,
 .checkbox-label:after {
-  pointer-events: none; 
+  pointer-events: none;
 }
 
 .checkbox-label:before {
-  display:  flex; 
+  display:  flex;
   content: ' ';
-  height:  18px; 
-  width:  18px; 
+  height:  18px;
+  width:  18px;
   border-radius: 2px;
   background: rgb(221, 221, 221);
 }
@@ -147,7 +203,7 @@ input[type="checkbox"] {
 }
 
 .checkbox-wrapper input[type="checkbox"]:checked + .checkbox-label:after {
-  opacity:  1; 
+  opacity:  1;
   transform: rotate(-45deg) scale(.8);
 }
 
@@ -193,6 +249,10 @@ input[type="checkbox"] {
 }
 
 /* Breadcrumbs */
+.da-breadcrumb {
+  margin-bottom: 12px;
+}
+
 .da-breadcrumb-list {
   margin: 0 0 12px;
   padding: 0;
@@ -264,9 +324,18 @@ input[type="checkbox"] {
   height: 32px;
 }
 
+@media (width >= 600px) {
+  .da-breadcrumb-list {
+    margin: 0;
+  }
+
+  .da-breadcrumb:has(da-search) .da-breadcrumb-list {
+    margin-bottom: 12px;
+  }
+}
+
 /* Actions */
 .da-actions-create {
-  margin: 0 0 12px;
   padding: 0;
   display: flex;
   list-style: none;
@@ -306,7 +375,7 @@ input[type="checkbox"] {
   background: rgb(255, 255, 255);
   border: 2px solid;
   border-radius: 6px;
-  padding: 0px 8px;
+  padding: 4px 8px 0 8px;
   color: rgb(6, 108, 231);
   font-size: 0.85rem;
   line-height: 20px;
@@ -324,19 +393,21 @@ input[type="checkbox"] {
 
 .da-actions-new-button,
 .da-actions-button {
-    position: relative;
-    display: block;
-    font-size: 14px;
-    font-weight: 700;
-    padding: 0px 10px;
-    line-height: 24px;
-    background: #EFEFEF;
-    border: none;
-    font-size: 14px;
-    background-color: #cee4ff;
-    color: #066ce7;
-    border-radius: 6px;
-    cursor: pointer;
+  background-color: var(--spectrum-blue-800);
+  border-radius: 8px;
+  border: 2px solid var(--spectrum-blue-800);
+  border-color: var(--spectrum-blue-800);
+  color: #FFF;
+  display: inline-block;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 18px;
+  padding: 5px 14px;
+  text-decoration: none;
+  outline-offset: 0;
+  outline-color: var(--spectrum-blue-800);
+  transition: outline-offset .2s;
 }
 
 .da-actions-new-button {
@@ -438,7 +509,7 @@ li.da-actions-menu-item button:hover {
 /* Empty list */
 .empty-list {
   border: 1px solid rgb(234, 234, 234);
-  background-color: rgb(255, 255, 255);
+  background-color: rgb(248, 248, 248);
   border-radius: 6px;
   display: flex;
   justify-content: center;
@@ -449,7 +520,12 @@ li.da-actions-menu-item button:hover {
 
 @media (min-width: 900px) {
   .da-breadcrumb {
+    margin-bottom: 12px;
     display: flex;
     gap: 24px;
+  }
+
+  .da-breadcrumb:has(da-search) {
+    display: block;
   }
 }

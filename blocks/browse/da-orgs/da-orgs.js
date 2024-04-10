@@ -19,7 +19,12 @@ function getRandomImg() {
   return MOCK_IMGS[idx];
 }
 
-const MOCK_ORG = { name: 'adobe', created: '', img: MOCK_IMGS[0] };
+const MOCK_ORGS = [
+  { name: 'adobe', created: '2024-01-09T23:38:05.949Z', img: MOCK_IMGS[0] },
+  { name: 'adobe-experience-league', created: '2024-01-26T01:43:15.286Z', img: MOCK_IMGS[1] },
+  { name: 'adobecom', created: '2023-11-30T06:04:10.008Z', img: MOCK_IMGS[2] },
+  { name: 'aemsites', created: '2024-01-10T17:43:13.390Z', img: MOCK_IMGS[3] },
+];
 
 export default class DaOrgs extends LitElement {
   static properties = {
@@ -34,12 +39,12 @@ export default class DaOrgs extends LitElement {
   }
 
   async getOrgs() {
-    this._orgs = [MOCK_ORG];
+    this._orgs = MOCK_ORGS;
     const resp = await daFetch(`${DA_ORIGIN}/list`);
     if (!resp.ok) return;
     const data = await resp.json();
     this._orgs = data.map((org, idx) => {
-      const img = idx === 0 ? this._orgs[0].img : getRandomImg();
+      const img = this._orgs[idx]?.img || getRandomImg();
       return { ...org, img };
     });
   }
@@ -70,7 +75,7 @@ export default class DaOrgs extends LitElement {
               </div>
             </a>
           </li>`)}
-          ${this._orgs.length > 1 ? html`
+          ${this._orgs.length > 4 ? html`
             <li>
               <a class="da-org new" href="/start">
                 <div class="new-icon">

@@ -17,6 +17,7 @@ const STYLES = '/styles/styles.css';
 const CONFIG = {
   codeBase,
   imsClientId: 'darkalley',
+  imsScope: 'ab.manage,additional_info.projectedProductContext,AdobeID,gnav,openid,org.read,read_organizations,session',
   decorateArea,
 };
 
@@ -25,6 +26,13 @@ const CONFIG = {
  * Edit below at your own risk
  * ------------------------------------------------------------
  */
+
+const { loadArea, setConfig } = await import(`${nx}/scripts/nexter.js`);
+setConfig(CONFIG);
+
+// TODO: Remove this once content is fixed for Nexter
+const headerMeta = document.head.querySelector('[content="aec-shell"]');
+if (headerMeta) headerMeta.remove();
 
 function loadStyles() {
   const paths = [`${nx}/styles/nexter.css`];
@@ -42,10 +50,6 @@ export default async function loadPage() {
   const divs = document.querySelectorAll('div[class] div');
   divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
 
-  const { loadArea, setConfig } = await import(`${nx}/scripts/nexter.js`);
-  const header = document.head.querySelector('[name="header"]');
-  if (header.getAttribute('content') === 'aec-shell') header.remove();
-  setConfig(CONFIG);
   await loadArea();
 }
 

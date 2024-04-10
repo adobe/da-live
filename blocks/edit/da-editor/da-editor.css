@@ -110,6 +110,10 @@ span.ProseMirror-menuseparator {
   height: 44px;
 }
 
+.ProseMirror-menuitem:has(.open-assets.ProseMirror-menu-disabled) {
+  display: none;
+}
+
 .ProseMirror-menu-disabled {
   opacity: 0.5;
 }
@@ -245,6 +249,10 @@ span.ProseMirror-menuseparator {
 
 .open-library {
   background: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.open-assets {
+  background: url('/blocks/edit/img/Smock_Images_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .edit-undo {
@@ -451,7 +459,7 @@ table tr:first-of-type p:first-child {
 /* Palette */
 .da-palettes {
   position: fixed;
-  left: 80px;
+  left: 150px;
   top: 50%;
   transform: translateY(-50%);
   grid-area: palettes;

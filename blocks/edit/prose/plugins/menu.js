@@ -26,6 +26,9 @@ import openPrompt from '../../da-palette/da-palette.js';
 import openLibrary from '../../da-library/da-library.js';
 
 import insertTable from '../table.js';
+import { getRepoId, openAssets } from '../../da-assets/da-assets.js';
+
+const repoId = await getRepoId();
 
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
@@ -199,23 +202,6 @@ function removeLinkItem(linkMarkType) {
   });
 }
 
-// eslint-disable-next-line no-unused-vars
-function libraryItem(_menu, _markType) {
-  const label = 'Library';
-  return new MenuItem({
-    title: 'Open library',
-    label,
-    class: 'insert-table',
-    run(state, dispatch, view) {
-      // eslint-disable-next-line no-unused-vars
-      const callback = (_attrs) => {
-        view.focus();
-      };
-      openLibrary({ callback });
-    },
-  });
-}
-
 function markItem(markType, options) {
   const passedOptions = { active(state) { return markActive(state, markType); } };
   // eslint-disable-next-line no-restricted-syntax, guard-for-in
@@ -331,6 +317,13 @@ function getMenu(view) {
       run() { openLibrary(); },
       class: 'open-library',
     }),
+    new MenuItem({
+      title: 'Open assets',
+      label: 'Assets',
+      enable() { return !!repoId; },
+      async run() { openAssets(); },
+      class: 'open-assets',
+    }),
     new Dropdown(editTable, {
       label: 'Edit Block',
       class: 'edit-table',
@@ -388,8 +381,7 @@ function getMenu(view) {
 export default new Plugin({
   props: {
     handleDOMEvents: {
-      // eslint-disable-next-line no-unused-vars
-      focus: (view, _event) => {
+      focus: (view) => {
         view.root.querySelectorAll('da-palette').forEach((palette) => {
           palette.updateSelection();
         });
