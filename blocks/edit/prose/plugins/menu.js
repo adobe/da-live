@@ -19,6 +19,8 @@ import {
   undo,
   redo,
   wrapInList,
+  liftListItem,
+  sinkListItem,
 // eslint-disable-next-line import/no-unresolved
 } from 'da-y-wrapper';
 
@@ -284,6 +286,33 @@ function getTextBlocks(marks, nodes) {
   ];
 }
 
+function getListMenu(nodes) {
+  return [
+    wrapListItem(nodes.bullet_list, {
+      title: 'Wrap in bullet list',
+      label: 'List',
+      class: 'bullet-list',
+    }),
+    wrapListItem(nodes.ordered_list, {
+      title: 'Wrap in Ordered list',
+      label: 'Numbered List',
+      class: 'numbered-list',
+    }),
+    new MenuItem({
+      title: 'Indent List',
+      label: 'Indent List',
+      class: 'indent-list',
+      run: sinkListItem(nodes.list_item),
+    }),
+    new MenuItem({
+      title: 'Outdent List',
+      label: 'Outdent List',
+      class: 'outdent-list',
+      run: liftListItem(nodes.list_item),
+    }),
+  ];
+}
+
 function getMenu(view) {
   const menu = document.createElement('div');
   menu.className = 'ProseMirror-menubar';
@@ -302,10 +331,9 @@ function getMenu(view) {
   ];
 
   const listMenu = [
-    wrapListItem(nodes.bullet_list, {
-      title: 'Wrap in bullet list',
-      label: 'List',
-      class: 'edit-list',
+    new Dropdown(getListMenu(nodes), {
+      label: 'List Menu',
+      class: 'bullet-list',
     }),
   ];
 

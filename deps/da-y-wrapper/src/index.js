@@ -5,7 +5,7 @@ import { Schema, DOMParser, Fragment } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { baseKeymap, toggleMark } from 'prosemirror-commands';
 import { history, undo, redo } from 'prosemirror-history';
-import { addListNodes, wrapInList } from 'prosemirror-schema-list';
+import { addListNodes, wrapInList, splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from 'prosemirror-example-setup';
 import { gapCursor } from 'prosemirror-gapcursor';
@@ -80,6 +80,9 @@ export {
   blockTypeItem,
   toggleMark,
   wrapInList,
+  splitListItem,
+  liftListItem,
+  sinkListItem,
   undo,
   redo,
   Y,
