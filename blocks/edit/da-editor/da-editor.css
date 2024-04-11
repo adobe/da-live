@@ -110,7 +110,9 @@ span.ProseMirror-menuseparator {
   height: 44px;
 }
 
-.ProseMirror-menuitem:has(.open-assets.ProseMirror-menu-disabled) {
+.ProseMirror-menuitem:has(.open-assets.ProseMirror-menu-disabled),
+.ProseMirror-menuitem:has(.img-alt-text.ProseMirror-menu-disabled)
+{
   display: none;
 }
 
