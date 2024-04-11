@@ -195,7 +195,7 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
-.bullet-list {
+.bullet-list, .ProseMirror-menu-dropdown.list-menu {
   background: url('/blocks/edit/img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
@@ -275,7 +275,7 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
-/* Generic ProseMirror Styles */  
+/* Generic ProseMirror Styles */
 .ProseMirror hr {
   border-radius: 1px;
   border: 1px solid #b3b3b3;

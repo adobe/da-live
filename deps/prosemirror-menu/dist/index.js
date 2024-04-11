@@ -6,6 +6,8 @@ import { Plugin } from 'prosemirror-state';
 const SVG = "http://www.w3.org/2000/svg";
 const XLINK = "http://www.w3.org/1999/xlink";
 const prefix$2 = "ProseMirror-icon";
+const CLOSE_DROPDOWNS_EVENT = 'pm-close-dropdowns';
+
 function hashPath(path) {
     let hash = 0;
     for (let i = 0; i < path.length; i++)
@@ -136,12 +138,7 @@ class Dropdown {
     /**
     Create a dropdown wrapping the elements.
     */
-    constructor(content, 
-    /**
-    @internal
-    */
-    options = {}) {
-        this.options = options;
+    constructor(content, options = {}) {
         this.options = options || {};
         this.content = Array.isArray(content) ? content : [content];
     }
@@ -158,23 +155,33 @@ class Dropdown {
         let wrap = crel("div", { class: prefix$1 + "-dropdown-wrap" }, label);
         let open = null;
         let listeningOnClose = null;
+        let closeDropdownListener = null;
         let close = () => {
             if (open && open.close()) {
                 open = null;
-                win.removeEventListener("mousedown", listeningOnClose);
+                if (this.options.notSticky) {
+                  win.removeEventListener("mousedown", listeningOnClose);
+                }
+                win.removeEventListener(CLOSE_DROPDOWNS_EVENT, closeDropdownListener);
             }
         };
+
         label.addEventListener("mousedown", e => {
             e.preventDefault();
             markMenuEvent(e);
             if (open) {
                 close();
-            }
-            else {
+            } else {
+                win.dispatchEvent(new CustomEvent(CLOSE_DROPDOWNS_EVENT));
                 open = this.expand(wrap, content.dom);
-                win.addEventListener("mousedown", listeningOnClose = () => {
-                    if (!isMenuEvent(wrap))
-                        close();
+                if (this.options.notSticky) {
+                  win.addEventListener("mousedown", listeningOnClose = () => {
+                      if (!isMenuEvent(wrap))
+                          close();
+                  });
+                }
+                win.addEventListener(CLOSE_DROPDOWNS_EVENT, closeDropdownListener = () => {
+                    close();
                 });
             }
         });
@@ -232,7 +239,7 @@ class DropdownSubmenu {
     Creates a submenu for the given group of menu elements. The
     following options are recognized:
     */
-    constructor(content, 
+    constructor(content,
     /**
     @internal
     */

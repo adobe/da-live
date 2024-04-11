@@ -127,7 +127,7 @@ class DaLibrary extends LitElement {
         <li class="da-library-type-item">
           <button class="da-library-type-item-btn"
             @click=${() => this.handleItemClick(item)}>
-            <div class="da-library-type-item-detail"> 
+            <div class="da-library-type-item-detail">
               ${item.icon ? until(this.renderIcon(item.icon)) : ''}
               <span>${name}</span>
               <svg class="icon">
@@ -193,6 +193,8 @@ class DaLibrary extends LitElement {
 
 customElements.define('da-library', DaLibrary);
 
+const CLOSE_DROPDOWNS_EVENT = 'pm-close-dropdowns';
+
 export default function open() {
   const palettePane = window.view.dom.nextElementSibling;
   const existingPalette = palettePane.querySelector('da-library');
@@ -200,6 +202,14 @@ export default function open() {
     existingPalette.remove();
     return;
   }
+  // close any other dropdowns
+  window.dispatchEvent(new CustomEvent(CLOSE_DROPDOWNS_EVENT));
+
   const palette = document.createElement('da-library');
   palettePane.append(palette);
+  const closePaletteListener = () => {
+    palette.remove();
+    window.removeEventListener(CLOSE_DROPDOWNS_EVENT, closePaletteListener);
+  };
+  window.addEventListener(CLOSE_DROPDOWNS_EVENT, closePaletteListener);
 }
