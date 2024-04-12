@@ -207,6 +207,7 @@ export default function open() {
 
   const palette = document.createElement('da-library');
   palettePane.append(palette);
+
   const closePaletteListener = () => {
     palette.remove();
     window.removeEventListener(CLOSE_DROPDOWNS_EVENT, closePaletteListener);

@@ -138,7 +138,7 @@ class Dropdown {
     /**
     Create a dropdown wrapping the elements.
     */
-    constructor(content, options = {}) {
+    constructor(content, options = { sticky: true }) {
         this.options = options || {};
         this.content = Array.isArray(content) ? content : [content];
     }
@@ -159,7 +159,7 @@ class Dropdown {
         let close = () => {
             if (open && open.close()) {
                 open = null;
-                if (this.options.notSticky) {
+                if (!this.options.sticky) {
                   win.removeEventListener("mousedown", listeningOnClose);
                 }
                 win.removeEventListener(CLOSE_DROPDOWNS_EVENT, closeDropdownListener);
@@ -174,7 +174,7 @@ class Dropdown {
             } else {
                 win.dispatchEvent(new CustomEvent(CLOSE_DROPDOWNS_EVENT));
                 open = this.expand(wrap, content.dom);
-                if (this.options.notSticky) {
+                if (!this.options.sticky) {
                   win.addEventListener("mousedown", listeningOnClose = () => {
                       if (!isMenuEvent(wrap))
                           close();

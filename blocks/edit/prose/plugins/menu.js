@@ -287,28 +287,9 @@ function getTextBlocks(marks, nodes) {
 }
 
 function shouldEnableIndentOutdentIcon(state, listType) {
-  const { $from, $to } = state.selection;
-
-  // Require that no selection is made
-  if ($from !== $to) return false;
-
+  const { $from } = state.selection;
   if ($from.node($from.depth - 1)?.type === listType) return true;
-
   return false;
-}
-
-function shouldEnableListIcon(state, listType) {
-  // const { $from, $to } = state.selection;
-  // // Require that no selection is made
-  // if ($from !== $to) return false;
-
-  // if ($from.node($from.depth - 1).type.compatibleContent(listType)) {
-  //   // Don't enable if this is the top of the list
-  //   if ($from.index($from.depth - 1) === 0) return false;
-  //   return true;
-  // }
-  // return false;
-  return true;
 }
 
 function getListMenu(nodes) {
@@ -317,7 +298,6 @@ function getListMenu(nodes) {
       title: 'Wrap in bullet list',
       label: 'List',
       class: 'bullet-list',
-      enable(state) { return shouldEnableListIcon(state, nodes.bullet_list); },
       run(initialState, dispatch) {
         wrapInList(nodes.bullet_list)(initialState, dispatch);
       },
@@ -326,7 +306,6 @@ function getListMenu(nodes) {
       title: 'Wrap in Ordered list',
       label: 'Numbered List',
       class: 'numbered-list',
-      enable(state) { return shouldEnableListIcon(state, nodes.ordered_list); },
       run(state, dispatch) {
         wrapInList(nodes.ordered_list)(state, dispatch);
       },
