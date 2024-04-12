@@ -295,17 +295,17 @@ function shouldEnableIndentOutdentIcon(state, listType) {
 function getListMenu(nodes) {
   return [
     new MenuItem({
-      title: 'Wrap in bullet list',
-      label: 'List',
+      title: 'Bullet List',
+      label: 'Bullet List',
       class: 'bullet-list',
       run(initialState, dispatch) {
         wrapInList(nodes.bullet_list)(initialState, dispatch);
       },
     }),
     new MenuItem({
-      title: 'Wrap in Ordered list',
-      label: 'Numbered List',
-      class: 'numbered-list',
+      title: 'Ordered List',
+      label: 'Ordered List',
+      class: 'ordered-list',
       run(state, dispatch) {
         wrapInList(nodes.ordered_list)(state, dispatch);
       },
