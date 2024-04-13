@@ -41,6 +41,7 @@ export default class DaTitle extends LitElement {
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
     // Only save to DA if it is a sheet or config
+
     if (this.details.view === 'sheet') {
       const dasSave = await saveToDa(pathname, this.sheet);
       if (!dasSave.ok) return;

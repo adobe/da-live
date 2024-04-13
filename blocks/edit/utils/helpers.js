@@ -111,8 +111,9 @@ async function saveHtml(fullPath) {
   return daFetch(fullPath, opts);
 }
 
-async function saveJson(fullPath, sheet, dataType = 'blob') {
+function formatSheetData(sheet) {
   const jData = sheet.getData();
+
   const data = jData.reduce((acc, row, idx) => {
     if (idx > 0) {
       const rowObj = {};
@@ -137,10 +138,31 @@ async function saveJson(fullPath, sheet, dataType = 'blob') {
       emptyRow = false;
     }
   }
+  return data;
+}
 
-  console.log(data);
+async function saveJson(fullPath, sheets, dataType = 'blob') {
+  let json;
+  const formatted = sheets.reduce((acc, sheet) => {
+    const data = formatSheetData(sheet);
+    acc[sheet.name] = {
+      total: data.length,
+      limit: data.length,
+      offset: 0,
+      data,
+    };
+    return acc;
+  }, {});
 
-  const json = { total: data.length, offset: 0, limit: data.length, data, ':type': 'sheet' };
+  if (sheets.length > 1) {
+    formatted[':names'] = sheets.map((sheet) => sheet.name);
+    formatted[':version'] = 3;
+    formatted[':type'] = 'multi-sheet';
+    json = formatted;
+  } else {
+    json = formatted[sheets[0].name];
+    json[':type'] = 'sheet';
+  }
 
   const formData = new FormData();
 

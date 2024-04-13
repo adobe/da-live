@@ -9,28 +9,15 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-/* eslint-disable import/no-unresolved */
-const { test, expect } = require('@playwright/test');
-
-const DA_BRANCH = process.env.GITHUB_HEAD_REF || 'main';
-const DA_HOST = `https://${DA_BRANCH}--da-live--adobe.hlx.live`;
-console.log('Using DA_URL', DA_HOST);
-
-test('Get Main Page', async ({ page }) => {
-  await page.goto(DA_HOST);
-  const html = await page.content();
-  expect(html).toContain('Dark Alley');
-
-  await expect(page.locator('a.nx-nav-brand')).toBeVisible();
-  await expect(page.locator('a.nx-nav-brand')).toContainText('Project Dark Alley');
-});
+import { test, expect } from '@playwright/test';
+import ENV from '../utils/env.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(15000);
 
   const dateStamp = Date.now().toString(36);
   const pageName = `pw-test1-${dateStamp}-${workerInfo.project.name}`;
-  const url = `${DA_HOST}/edit#/da-sites/da-status/tests/${pageName}`;
+  const url = `${ENV}/edit#/da-sites/da-status/tests/${pageName}`;
 
   try {
     await page.goto(url);
@@ -61,7 +48,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const pageName = `pw-test2-${dateStamp}-${workerInfo.project.name}`;
 
   try {
-    await page.goto(`${DA_HOST}/#/da-sites/da-status/tests`);
+    await page.goto(`${ENV}/#/da-sites/da-status/tests`);
     await page.locator('button.da-actions-new-button').click();
     await page.locator('button:text("Document")').click();
     await page.locator('input.da-actions-input').fill(pageName);
@@ -71,7 +58,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
     await page.locator('div.ProseMirror').fill('testcontent');
 
     const newPage = await browser.newPage();
-    await newPage.goto(`${DA_HOST}/#/da-sites/da-status/tests`);
+    await newPage.goto(`${ENV}/#/da-sites/da-status/tests`);
 
     // Wait 1 sec
     await newPage.waitForTimeout(4000);
