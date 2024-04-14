@@ -21,7 +21,7 @@ class DaView extends LitElement {
         <h1>${this.details.name}</h1>
       </div>
       <div class="da-content">
-        <img src="${this.details.contentUrl}" />
+        <img src="${this.details.contentUrl}" width="900" height="600" />
       </div>
     `;
   }
