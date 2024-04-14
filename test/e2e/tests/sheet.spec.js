@@ -26,7 +26,7 @@ test('New sheet', async ({ page }, workerInfo) => {
     await page.locator('[data-x="0"][data-y="1"]').dblclick();
     await page.locator('td input').fill(enteredText);
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(3000);
     await page.close();
   } finally {
     // Always delete the document afterwards

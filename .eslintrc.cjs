@@ -43,7 +43,10 @@ module.exports = {
   overrides: [
     {
       files: ['test/**/*.js'],
-      rules: { 'no-console': 'off' },
+      rules: {
+        'no-console': 'off',
+        'import/no-unresolved': 'off',
+      },
     },
   ],
   plugins: [

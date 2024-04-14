@@ -46,6 +46,10 @@ li button {
   font-weight: 700;
 }
 
+li button[value="select"] {
+  font-weight: 400;
+}
+
 form {
   display: flex;
   gap: 4px;

@@ -7,6 +7,7 @@ const { loadScript, loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
 function resetSheets(el) {
+  el.querySelector('da-sheet-tabs')?.remove();
   if (!el.jexcel) return;
   delete el.jexcel;
   el.innerHTML = '';

@@ -76,6 +76,10 @@ class DaSheetTabs extends LitElement {
 
   handleEdit(e, idx) {
     e.preventDefault();
+    if (e.submitter.value === 'select') {
+      this.showSheet(idx);
+      return;
+    }
     if (e.submitter.value === 'edit') {
       this._edit = idx;
       return;
@@ -113,18 +117,18 @@ class DaSheetTabs extends LitElement {
               ${idx === this._edit ? html`
                 <input type="text" name="name" value="${name}" />
               ` : html`
-                <span>${name}</span>
+                <button value="select"><span>${name}</span></button>
               `}
               ${idx === this._edit ? html`
                 <div class="action-container">
-                  <button aria-label="Remove" value="remove">
-                    <svg class="icon"><use href="#spectrum-Delete"/></svg>
+                  <button aria-label="Confirm" value="confirm">
+                    <svg class="icon"><use href="#spectrum-Checkmark"/></svg>
                   </button>
                   <button aria-label="Cancel" value="cancel">
                     <svg class="icon"><use href="#spectrum-Cancel"/></svg>
                   </button>
-                  <button aria-label="Confirm" value="confirm">
-                    <svg class="icon"><use href="#spectrum-Checkmark"/></svg>
+                  <button aria-label="Remove" value="remove">
+                    <svg class="icon"><use href="#spectrum-Delete"/></svg>
                   </button>
                 </div>
               ` : html`
