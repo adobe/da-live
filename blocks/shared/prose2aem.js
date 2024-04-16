@@ -111,6 +111,15 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
+const iconRegex = /:([a-zA-Z0-9-]+?):/gm; // any alphanumeric character or - surrounded by :
+function parseIcons(editor) {
+  if (!iconRegex.test(editor.innerHTML)) return;
+  editor.innerHTML = editor.innerHTML.replace(
+    iconRegex,
+    (_, iconName) => `<span class="icon icon-${iconName}"></span>`,
+  );
+}
+
 export default function prose2aem(editor, live) {
   editor.removeAttribute('class');
   editor.removeAttribute('contenteditable');
@@ -137,7 +146,10 @@ export default function prose2aem(editor, live) {
 
   convertBlocks(editor);
 
-  if (live) removeMetadata(editor);
+  if (live) {
+    removeMetadata(editor);
+    parseIcons(editor);
+  }
 
   makePictures(editor);
 
