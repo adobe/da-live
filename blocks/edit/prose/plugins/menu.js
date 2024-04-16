@@ -57,10 +57,6 @@ function cmdItem(cmd, options) {
   return new MenuItem(passedOptions);
 }
 
-function wrapListItem(nodeType, options) {
-  return cmdItem(wrapInList(nodeType, options.attrs), options);
-}
-
 function markActive(state, type) {
   const { from, to, $from, $to, empty } = state.selection;
   if (empty) {
