@@ -1,12 +1,12 @@
 import { expect } from '@esm-bundle/chai';
 import { readFile } from '@web/test-runner-commands';
 
-import { render } from '../../../deps/lit/lit-all.min.js';
-import DaVersions from '../../../blocks/edit/da-versions/da-versions.js';
+import { render } from '../../../../deps/lit/lit-all.min.js';
+import DaVersions from '../../../../blocks/edit/da-versions/da-versions.js';
 
 const fetchMap = {
-  'http://localhost:3000/mock-versions/list/da-sites/da-status/tests/versions1.json': './versions1.json',
-  'http://localhost:3000/mock-versions/resources/72398245211/3.html': './version3.html',
+  'https://admin.da.live/versionlist/da-sites/da-status/tests/versions1.html': './versions1.json',
+  'https://admin.da.live/mock-versions/resources/72398245211/3.html': './version3.html',
 };
 
 async function mockFetch(url) {
@@ -70,30 +70,30 @@ describe('Versions panel', () => {
       expect(lis.length).to.equal(13);
       lis.forEach((l) => expect(l.getAttribute('tabindex')).to.equal('1'));
 
-      expect(sn(lis[0])).to.equal('Thursday, March 21, 2024 at 4:45 PM <br>Joe Bloggs');
-      expect(sn(lis[1])).to.equal('Thursday, March 21, 2024 at 4:11 PM <br>Joe Bloggs');
-      expect(lis[1].dataset.href).to.equal('http://localhost:3000/mock-versions/resources/72398245211/3.html');
-      expect(sn(lis[2])).to.equal('Thursday, March 21, 2024 at 4:06 PM - 4:11 PM <br>Melinda Vertex, Joe Bloggs, Eric Idle, Anonymous ...');
+      expect(sn(lis[0])).to.equal('Thursday, March 21, 2024 at 4:45 PM <br>jbloggs@acme.com');
+      expect(sn(lis[1])).to.equal('Thursday, March 21, 2024 at 4:11 PM <br>jbloggs@acme.com');
+      expect(lis[1].dataset.href).to.equal('https://admin.da.live/mock-versions/resources/72398245211/3.html');
+      expect(sn(lis[2])).to.equal('Thursday, March 21, 2024 at 4:06 PM - 4:10 PM <br>mvertex@acme.com, jbloggs@acme.com, ericidle@acme.com, anonymous ...');
       expect(lis[2].id).to.equal('2-5');
-      expect(sn(lis[3])).to.equal('Thursday, March 21, 2024 at 4:11 PM <br>Melinda Vertex, Joe Bloggs');
+      expect(sn(lis[3])).to.equal('Thursday, March 21, 2024 at 4:10 PM <br>mvertex@acme.com, jbloggs@acme.com');
       expect(lis[3].dataset.parent).to.equal('2-5');
-      expect(sn(lis[4])).to.equal('Thursday, March 21, 2024 at 4:10 PM <br>Eric Idle');
+      expect(sn(lis[4])).to.equal('Thursday, March 21, 2024 at 4:10 PM <br>ericidle@acme.com');
       expect(lis[4].dataset.parent).to.equal('2-5');
-      expect(sn(lis[5])).to.equal('Thursday, March 21, 2024 at 4:06 PM <br>Melinda Vertex, Anonymous');
+      expect(sn(lis[5])).to.equal('Thursday, March 21, 2024 at 4:06 PM <br>mvertex@acme.com, anonymous');
       expect(lis[5].dataset.parent).to.equal('2-5');
-      expect(sn(lis[6])).to.equal('Wednesday, March 20, 2024 at 5:25 AM - 5:33 AM <br>Melinda Vertex ...');
+      expect(sn(lis[6])).to.equal('Wednesday, March 20, 2024 at 5:25 AM - 5:33 AM <br>mvertex@acme.com ...');
       expect(lis[6].id).to.equal('6-8');
-      expect(sn(lis[7])).to.equal('Wednesday, March 20, 2024 at 5:33 AM <br>Melinda Vertex');
+      expect(sn(lis[7])).to.equal('Wednesday, March 20, 2024 at 5:33 AM <br>mvertex@acme.com');
       expect(lis[7].dataset.parent).to.equal('6-8');
-      expect(sn(lis[8])).to.equal('Wednesday, March 20, 2024 at 5:25 AM <br>Melinda Vertex');
+      expect(sn(lis[8])).to.equal('Wednesday, March 20, 2024 at 5:25 AM <br>mvertex@acme.com');
       expect(lis[8].dataset.parent).to.equal('6-8');
-      expect(sn(lis[9])).to.equal('Wednesday, March 20, 2024 at 12:00 AM <br>Lucy Chlorine');
-      expect(lis[9].dataset.href).to.equal('http://localhost:3000/mock-versions/resources/72398245211/1.html');
-      expect(sn(lis[10])).to.equal('Saturday, November 25, 2023 at 5:56 AM - 6:13 AM <br>Anonymous ...');
+      expect(sn(lis[9])).to.equal('Wednesday, March 20, 2024 at 12:00 AM <br>lchl@acme.com');
+      expect(lis[9].dataset.href).to.equal('https://admin.da.live/mock-versions/resources/72398245211/1.html');
+      expect(sn(lis[10])).to.equal('Saturday, November 25, 2023 at 5:56 AM - 6:13 AM <br>anonymous ...');
       expect(lis[10].id).to.equal('10-12');
-      expect(sn(lis[11])).to.equal('Saturday, November 25, 2023 at 6:13 AM <br>Anonymous');
+      expect(sn(lis[11])).to.equal('Saturday, November 25, 2023 at 6:13 AM <br>anonymous');
       expect(lis[11].dataset.parent).to.equal('10-12');
-      expect(sn(lis[12])).to.equal('Saturday, November 25, 2023 at 5:56 AM <br>Anonymous');
+      expect(sn(lis[12])).to.equal('Saturday, November 25, 2023 at 5:56 AM <br>anonymous');
       expect(lis[12].dataset.parent).to.equal('10-12');
     } finally {
       window.fetch = storedFetch;
@@ -193,7 +193,7 @@ describe('Versions panel', () => {
       // allow the async rendering to happen on the div
       await wait(100);
 
-      expect(div.innerHTML).to.contain('Melinda Vertex, Joe Bloggs, Eric Idle, Anonymous');
+      expect(div.innerHTML).to.contain('mvertex@acme.com, jbloggs@acme.com, ericidle@acme.com, anonymous');
     } finally {
       window.fetch = storedFetch;
     }
