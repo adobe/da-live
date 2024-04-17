@@ -138,8 +138,6 @@ async function saveJson(fullPath, sheet, dataType = 'blob') {
     }
   }
 
-  console.log(data);
-
   const json = { total: data.length, offset: 0, limit: data.length, data, ':type': 'sheet' };
 
   const formData = new FormData();

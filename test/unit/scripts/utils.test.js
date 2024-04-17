@@ -4,7 +4,7 @@ import { setNx } from '../../../scripts/utils.js';
 describe('Libs', () => {
   it('Default Libs', () => {
     const libs = setNx('/nx');
-    expect(libs).to.equal('https://main--nexter--da-sites.hlx.live/nx');
+    expect(libs).to.equal('https://main--nexter--da-sites.aem.live/nx');
   });
 
   it('Does not support NX query param on prod', () => {
@@ -22,7 +22,7 @@ describe('Libs', () => {
       search: '?nx=foo',
     };
     const libs = setNx('/nx', location);
-    expect(libs).to.equal('https://foo--nexter--da-sites.hlx.live/nx');
+    expect(libs).to.equal('https://foo--nexter--da-sites.aem.live/nx');
   });
 
   it('Supports local NX query param', () => {
@@ -40,6 +40,6 @@ describe('Libs', () => {
       search: '?nx=awesome--nx--forkedowner',
     };
     const libs = setNx('/nx', location);
-    expect(libs).to.equal('https://awesome--nx--forkedowner.hlx.live/nx');
+    expect(libs).to.equal('https://awesome--nx--forkedowner.aem.live/nx');
   });
 });
