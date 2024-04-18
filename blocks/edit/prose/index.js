@@ -153,6 +153,8 @@ export function handleYDocUpdates({
     const svrUpdate = ydoc.getMap('aem').get(serverInvKey);
     if (svrUpdate) {
       // push update from the server: re-init document
+      ydoc.getMap('aem').delete(serverInvKey);
+
       delete daTitle.collabStatus;
       delete daTitle.collabUsers;
       ydoc.destroy();
