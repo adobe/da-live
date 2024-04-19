@@ -129,9 +129,11 @@ export function createAwarenessStatusWidget(wsProvider, win) {
   return daTitle;
 }
 
-export function handleYDocUpdates({
-  daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse,
-}, win = window, fnSetAEMDocInEditor = setAEMDocInEditor) {
+export function handleYDocUpdates(
+  { ydoc, schema, wsProvider, yXmlFragment },
+  win = window,
+  fnSetAEMDocInEditor = setAEMDocInEditor,
+) {
   let firstUpdate = true;
   ydoc.on('update', (_, originWS) => {
     if (firstUpdate) {
@@ -203,12 +205,10 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  const daTitle = createAwarenessStatusWidget(wsProvider, window);
+  createAwarenessStatusWidget(wsProvider, window);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
-  handleYDocUpdates({
-    daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse: initProse,
-  });
+  handleYDocUpdates({ ydoc, schema, wsProvider, yXmlFragment });
 
   if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then(

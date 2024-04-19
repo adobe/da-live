@@ -117,12 +117,6 @@ describe('Prose collab', () => {
   });
 
   it('Test YDoc server update callback', () => {
-    const daTitle = {
-      collabStatus: 'yeah',
-      collabUsers: 'some',
-    };
-    const editor = {};
-
     const ydocMap = new Map();
     ydocMap.set('svrinv', 'Some svrinv text');
 
@@ -137,33 +131,21 @@ describe('Prose collab', () => {
     const wspCalls = [];
     const wsp = { destroy: () => wspCalls.push('destroy') };
 
-    const initProseCalls = [];
-    const mockInitProse = () => initProseCalls.push('init');
+    const setDocInEditCalls = [];
+    const fnSetDocInEditor = (c) => setDocInEditCalls.push(c);
 
     pi.handleYDocUpdates({
-      daTitle,
-      editor,
       ydoc,
-      path: {},
       schema: {},
       wsProvider: wsp,
       yXmlFragment: {},
-      fnInitProse: mockInitProse,
-    }, {}, () => {});
+    }, {}, fnSetDocInEditor);
     expect(ydocOnCalls.length).to.equal(1);
     expect(ydocOnCalls[0].n).to.equal('update');
-
-    expect(daTitle.collabStatus).to.equal('yeah', 'Precondition');
-    expect(daTitle.collabUsers).to.equal('some', 'Precondition');
 
     // Calls server invalidation
     ydocOnCalls[0].f();
 
-    expect(daTitle.collabStatus).to.be.undefined;
-    expect(daTitle.collabUsers).to.be.undefined;
-    expect(ydocCalls).to.deep.equal(['destroy']);
-    expect(wspCalls).to.deep.equal(['destroy']);
-    expect(initProseCalls).to.deep.equal(['init']);
-    expect(editor.innerHTML).to.equal('');
+    expect(setDocInEditCalls).to.deep.equal(['Some svrinv text']);
   });
 });
