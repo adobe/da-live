@@ -116,13 +116,14 @@ describe('Prose collab', () => {
     }, 200);
   });
 
-  it('Test YDoc server update callback', () => {
+  it('Test YDoc server update callback', (done) => {
     const ydocMap = new Map();
     ydocMap.set('svrinv', 'Some svrinv text');
 
     const ydocCalls = [];
     const ydocOnCalls = [];
     const ydoc = {
+      clientID: 0,
       getMap: (n) => (n === 'aem' ? ydocMap : null),
       destroy: () => ydocCalls.push('destroy'),
       on: (n, f) => ydocOnCalls.push({ n, f }),
@@ -145,7 +146,9 @@ describe('Prose collab', () => {
 
     // Calls server invalidation
     ydocOnCalls[0].f();
-
-    expect(setDocInEditCalls).to.deep.equal(['Some svrinv text']);
+    setTimeout(() => {
+      expect(setDocInEditCalls).to.deep.equal(['Some svrinv text']);
+      done();
+    }, 100);
   });
 });

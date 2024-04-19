@@ -157,7 +157,11 @@ export function handleYDocUpdates(
       // push update from the server: re-init document
       ydoc.getMap('aem').delete(serverInvKey);
 
-      fnSetAEMDocInEditor(svrUpdate, yXmlFragment, schema);
+      // Make sure each client waits a different amount of time to avoid setting
+      // all of them simultaneously which would cause content duplication.
+      setTimeout(() => {
+        fnSetAEMDocInEditor(svrUpdate, yXmlFragment, schema);
+      }, ydoc.clientID % 2000);
     }
 
     if (originWS && originWS !== wsProvider) {
