@@ -12,7 +12,7 @@ function getBlockName(block) {
 
 function handleRow(row, maxCols, table) {
   const tr = document.createElement('tr');
-  const cells = row.children;
+  const cells = [...row.children];
   cells.forEach((cell, idx) => {
     const td = document.createElement('td');
     if (cells.length < maxCols && idx === cells.length - 1) {
