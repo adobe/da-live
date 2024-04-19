@@ -155,13 +155,7 @@ export function handleYDocUpdates({
       // push update from the server: re-init document
       ydoc.getMap('aem').delete(serverInvKey);
 
-      delete daTitle.collabStatus;
-      delete daTitle.collabUsers;
-      ydoc.destroy();
-      wsProvider.destroy();
-      editor.innerHTML = '';
-      fnInitProse({ editor, path });
-      return;
+      fnSetAEMDocInEditor(svrUpdate, yXmlFragment, schema);
     }
 
     if (originWS && originWS !== wsProvider) {
