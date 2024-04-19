@@ -12,12 +12,13 @@ function getBlockName(block) {
 
 function handleRow(row, maxCols, table) {
   const tr = document.createElement('tr');
-  [...row.children].forEach((col) => {
+  const cells = row.children;
+  cells.forEach((cell, idx) => {
     const td = document.createElement('td');
-    if (row.children.length < maxCols) {
-      td.setAttribute('colspan', maxCols);
+    if (cells.length < maxCols && idx === cells.length - 1) {
+      td.setAttribute('colspan', maxCols - idx);
     }
-    td.innerHTML = col.innerHTML;
+    td.innerHTML = cells[idx].innerHTML;
     tr.append(td);
   });
   table.append(tr);
@@ -51,7 +52,7 @@ export function aem2prose(doc) {
   brs.forEach((br) => { br.remove(); });
 
   // Fix blocks
-  const blocks = doc.querySelectorAll('div[class]');
+  const blocks = doc.querySelectorAll('main > div > div');
   blocks.forEach((block) => {
     const table = getTable(block);
     block.parentElement.replaceChild(table, block);
