@@ -90,6 +90,15 @@ function convertParagraphs(editor) {
   });
 }
 
+function convertListItems(editor) {
+  const lis = editor.querySelectorAll('li');
+  lis.forEach((li) => {
+    const para = li.querySelector(':scope > p');
+    if (!para) return;
+    li.innerHTML = para.innerHTML;
+  });
+}
+
 function makeSections(editor) {
   const children = editor.querySelectorAll(':scope > *');
 
@@ -109,6 +118,15 @@ function makeSections(editor) {
 
 function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
+}
+
+const iconRegex = /:([a-zA-Z0-9-]+?):/gm; // any alphanumeric character or - surrounded by :
+function parseIcons(editor) {
+  if (!iconRegex.test(editor.innerHTML)) return;
+  editor.innerHTML = editor.innerHTML.replace(
+    iconRegex,
+    (_, iconName) => `<span class="icon icon-${iconName}"></span>`,
+  );
 }
 
 export default function prose2aem(editor, live) {
@@ -133,11 +151,16 @@ export default function prose2aem(editor, live) {
     el.parentElement.replaceChild(document.createTextNode(el.innerText), el);
   });
 
+  convertListItems(editor);
+
   convertParagraphs(editor);
 
   convertBlocks(editor);
 
-  if (live) removeMetadata(editor);
+  if (live) {
+    removeMetadata(editor);
+    parseIcons(editor);
+  }
 
   makePictures(editor);
 

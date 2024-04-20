@@ -19,6 +19,8 @@ import {
   undo,
   redo,
   wrapInList,
+  liftListItem,
+  sinkListItem,
 // eslint-disable-next-line import/no-unresolved
 } from 'da-y-wrapper';
 
@@ -53,10 +55,6 @@ function cmdItem(cmd, options) {
     }
   }
   return new MenuItem(passedOptions);
-}
-
-function wrapListItem(nodeType, options) {
-  return cmdItem(wrapInList(nodeType, options.attrs), options);
 }
 
 function markActive(state, type) {
@@ -328,6 +326,49 @@ function getTextBlocks(marks, nodes) {
   ];
 }
 
+function shouldEnableIndentOutdentIcon(state, listType) {
+  const { $from } = state.selection;
+  if ($from.node($from.depth - 1)?.type === listType) return true;
+  return false;
+}
+
+function getListMenu(nodes) {
+  return [
+    new MenuItem({
+      title: 'Bullet List',
+      label: 'Bullet List',
+      class: 'bullet-list',
+      run(initialState, dispatch) {
+        wrapInList(nodes.bullet_list)(initialState, dispatch);
+      },
+    }),
+    new MenuItem({
+      title: 'Ordered List',
+      label: 'Ordered List',
+      class: 'ordered-list',
+      run(state, dispatch) {
+        wrapInList(nodes.ordered_list)(state, dispatch);
+      },
+    }),
+    new MenuItem({
+      title: 'Indent List',
+      label: 'Indent List',
+      class: 'indent-list',
+      enable(state) { return shouldEnableIndentOutdentIcon(state, nodes.list_item); },
+      run(state, dispatch) {
+        sinkListItem(nodes.list_item)(state, dispatch);
+      },
+    }),
+    new MenuItem({
+      title: 'Outdent List',
+      label: 'Outdent List',
+      class: 'outdent-list',
+      enable(state) { return shouldEnableIndentOutdentIcon(state, nodes.list_item); },
+      run: liftListItem(nodes.list_item),
+    }),
+  ];
+}
+
 function getMenu(view) {
   const menu = document.createElement('div');
   menu.className = 'ProseMirror-menubar';
@@ -347,10 +388,9 @@ function getMenu(view) {
   ];
 
   const listMenu = [
-    wrapListItem(nodes.bullet_list, {
-      title: 'Wrap in bullet list',
-      label: 'List',
-      class: 'edit-list',
+    new Dropdown(getListMenu(nodes), {
+      label: 'List Menu',
+      class: 'list-menu',
     }),
   ];
 
@@ -359,7 +399,9 @@ function getMenu(view) {
       title: 'Open library',
       label: 'Library',
       enable() { return true; },
-      run() { openLibrary(); },
+      run() {
+        openLibrary();
+      },
       class: 'open-library',
     }),
     new MenuItem({

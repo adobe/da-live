@@ -197,8 +197,20 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
-.edit-list {
+.bullet-list, .ProseMirror-menu-dropdown.list-menu {
   background: url('/blocks/edit/img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.ordered-list {
+  background: url('/blocks/edit/img/Smock_TextNumbered_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.indent-list {
+  background: url('/blocks/edit/img/Smock_TextIndentIncrease_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.outdent-list {
+  background: url('/blocks/edit/img/Smock_TextIndentDecrease_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 .insert-table {
