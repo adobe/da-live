@@ -90,6 +90,15 @@ function convertParagraphs(editor) {
   });
 }
 
+function convertListItems(editor) {
+  const lis = editor.querySelectorAll('li');
+  lis.forEach((li) => {
+    const para = li.querySelector(':scope > p');
+    if (!para) return;
+    li.innerHTML = para.innerHTML;
+  });
+}
+
 function makeSections(editor) {
   const children = editor.querySelectorAll(':scope > *');
 
@@ -141,6 +150,8 @@ export default function prose2aem(editor, live) {
   highlights.forEach((el) => {
     el.parentElement.replaceChild(document.createTextNode(el.innerText), el);
   });
+
+  convertListItems(editor);
 
   convertParagraphs(editor);
 
