@@ -41,7 +41,7 @@ export async function getItems(sources, listType, format) {
       const json = await resp.json();
       if (json.data) {
         items.push(...formatData(json.data, format));
-      } else if (listType === 'assets') {
+      } else if (listType === 'media') {
         items.push(...fixAssets(json));
       } else {
         items.push(...json);
