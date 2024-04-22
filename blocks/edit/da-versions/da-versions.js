@@ -50,6 +50,7 @@ export default class DaVersions extends LitElement {
     pm.innerHTML = docc.innerHTML;
   }
 
+  /*
   triggerHiddenVersions(li) {
     const shrink = li.classList.contains('auditlog-expanded');
     let newClass;
@@ -66,12 +67,13 @@ export default class DaVersions extends LitElement {
       l.classList = newClass;
     });
   }
+  */
 
   async versionSelected(event) {
     const li = event.target;
     if (!li.dataset.href) {
       this.setDaVersionVisibility('none');
-      this.triggerHiddenVersions(li);
+      // this.triggerHiddenVersions(li);
       return;
     }
 
@@ -148,7 +150,39 @@ export default class DaVersions extends LitElement {
     }
   }
 
+  getDaySuffix(day) {
+    return (day >= 4 && day <= 20) || (day >= 24 && day <= 30)
+      ? 'th'
+      : ['st', 'nd', 'rd'][(day % 10) - 1];
+  }
+
+  renderDate(millis) {
+    const d = new Date(millis);
+
+    const currentYear = new Date().getFullYear();
+    let yearSuffix = '';
+    if (d.getFullYear() !== currentYear) {
+      yearSuffix = `, ${d.getFullYear()}`;
+    }
+    return `${d.toLocaleDateString([], { month: 'long' })} ${d.getDate()}${this.getDaySuffix(d.getDate())}${yearSuffix}`;
+  }
+
   async renderVersions() {
+    let res;
+    try {
+      res = await this.renderVersionDetails();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log('Problem fetching versions', error);
+    }
+
+    if (res) {
+      return res;
+    }
+    return html`<div>no versions found.</div.`;
+  }
+
+  async renderVersionDetails() {
     if (!this.path) {
       // Path not yet known, don't render
       return html``;
@@ -167,34 +201,62 @@ export default class DaVersions extends LitElement {
 
     const versionsURL = `${url.origin}/versionlist/${pathName.slice(8)}`;
     const res = await fetch(versionsURL);
+    if (res.status !== 200) {
+      return html``;
+    }
     const list = await res.json();
 
     this.aggregateList(list);
 
-    const versions = [];
-    for (const l of list) {
-      let verURL;
-      if (l.url) {
-        verURL = new URL(l.url, versionsURL);
-      }
+    const versions = [html`<div class="version-line"></div>`];
+    for (let i = 0; i < list.length; i += 1) {
+      const l = list[i];
 
-      let fromDate;
-      let toDate;
-      if (l.aggregatedTo) {
-        fromDate = new Date(l.aggregatedTo).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
-        toDate = ` - ${new Date(l.timestamp).toLocaleTimeString([], { timeStyle: 'short' })}`;
+      const children = [];
+      if (l.aggregateID) {
+        // while (list[i].parent === l.aggregateID) {
+        let moreChildren;
+        do {
+          i += 1;
+          const c = list[i];
+          const userList = c.users.map((u) => html`<div>${u.email}</div>`);
+          const time = new Date(c.timestamp).toLocaleTimeString([], { timeStyle: 'medium' });
+          const hiddenClass = versions.length === 1 ? '' : 'audit-entry-hidden';
+
+          children.push(html`
+            <div class="audit-entry ${hiddenClass}" data-parent="${c.parent}">
+              <div class="entry-time">${time}</div><div class="user-list">${userList}</div>
+            </div>`);
+
+          moreChildren = ((list.length > (i + 1)) && (list[i + 1].parent === l.aggregateID));
+        } while (moreChildren);
+
+        // now that the children are rendered, render the parent
+        const date = this.renderDate(l.aggregatedTo);
+        const bulletClass = versions.length === 1 ? 'bullet-audit-first' : 'bullet-audit';
+        versions.push(html`
+          <div class="version-group"><div class="bullet ${bulletClass}"></div>
+            <div class="audit-group" id=l.aggregateID}>
+              ${date}
+              ${children}
+            </div>
+          </div>`);
       } else {
-        fromDate = new Date(l.timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
-        toDate = '';
-      }
+        const verURL = l.url ? new URL(l.url, versionsURL) : undefined;
+        const bulletClass = verURL ? 'bullet-stored' : `bullet-audit${versions.length === 1 ? '-first' : ''}`;
+        const date = this.renderDate(l.timestamp);
+        const time = new Date(l.timestamp).toLocaleTimeString([], { timeStyle: 'medium' });
+        const userList = l.users.map((u) => html`<div data-href="${ifDefined(verURL)}">${u.email}</div>`);
+        const entryClass = verURL ? 'version' : `audit-entry ${versions.length === 1 ? '' : 'audit-entry-hidden'}`;
 
-      const userList = l.users.map((u) => u.email).join(', ');
-      versions.push(html`
-        <li tabindex="1" data-href="${ifDefined(verURL)}" data-parent="${ifDefined(l.parent)}"
-          id=${ifDefined(l.aggregateID)}
-          class="${l.parent ? 'auditlog-hidden' : ''}">
-          ${fromDate}${toDate}
-        <br/>${userList} ${l.aggregatedTo ? '...' : ''}</li>`);
+        versions.push(html`
+          <div class="version-group"><div class="bullet ${bulletClass}"></div><div data-href="${ifDefined(verURL)}">
+            ${date}
+            <div class="${entryClass}">
+              <div class="entry-time" data-href="${ifDefined(verURL)}">${time}</div><div class="user-list">${userList}</div>
+            </div>
+          </div></div>`);
+      }
     }
     return versions;
   }
@@ -264,9 +326,10 @@ export default class DaVersions extends LitElement {
       <span class="da-versions-menuitem da-versions-close" title="Close" @click=${this.hideVersions}></span>
     </div>
     <div class="da-versions-panel">
-    <ul @click=${this.versionSelected}>
-      ${until(this.renderVersions(), html`<li>Loading...</li>`)}
-    </ul>
+    <div class="version-group history-title"><div class="bullet bullet-history"></div><div>HISTORY</div></div>
+    <div class="versions-wrapper" @click=${this.versionSelected}>
+      ${until(this.renderVersions(), html`<div>Loading...</div>`)}
+    </div>
     </div>
     `;
   }
