@@ -71,11 +71,10 @@ class DaLibrary extends LitElement {
     const text = await resp.text();
     const doc = new DOMParser().parseFromString(text, 'text/html');
     const proseDom = aem2prose(doc);
-    const docc = document.createElement('div');
-    docc.append(...proseDom);
-    const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(docc);
-    console.log(newNodes);
-    window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes).scrollIntoView());
+    const flattedDom = document.createElement('div');
+    flattedDom.append(...proseDom);
+    const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(flattedDom);
+    window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));
   }
 
   async renderGroupDetail(path) {
