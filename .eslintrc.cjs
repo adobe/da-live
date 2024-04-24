@@ -9,6 +9,7 @@ module.exports = {
     requireConfigFile: false,
   },
   rules: {
+    'import/no-unresolved': 'off',
     'no-param-reassign': [2, { props: false }],
     'linebreak-style': ['error', 'unix'],
     'import/extensions': ['error', { js: 'always' }],
@@ -45,7 +46,6 @@ module.exports = {
       files: ['test/**/*.js'],
       rules: {
         'no-console': 'off',
-        'import/no-unresolved': 'off',
       },
     },
   ],

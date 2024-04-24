@@ -3,8 +3,9 @@ import getPathDetails from '../../shared/pathDetails.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
 
-const { loadScript, loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
+const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/assets/resources/assets-selectors.js';
 
