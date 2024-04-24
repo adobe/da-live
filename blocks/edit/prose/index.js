@@ -33,8 +33,8 @@ import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
-import { aem2prose, parse } from '../utils/helpers.js';
-import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
+import { aem2prose, parse, getProseEL, getCurrentEditorBody } from '../utils/helpers.js';
+import { COLLAB_ORIGIN, getDaAdmin, EDITOR_CHANGED_EVENT } from '../../shared/constants.js';
 
 const DA_ORIGIN = getDaAdmin();
 
@@ -58,17 +58,12 @@ function dispatchTransaction(transaction) {
   window.view.updateState(newState);
 }
 
-function setPreviewBody(daPreview, proseEl) {
-  const clone = proseEl.cloneNode(true);
-  const body = prose2aem(clone, true);
-  daPreview.body = body;
-}
-
 function pollForUpdates() {
   const daContent = document.querySelector('da-content');
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
-  const proseEl = window.view.root.querySelector('.ProseMirror');
-  if (!daPreview) return;
+  const daEditor = daContent.shadowRoot.querySelector('da-editor');
+  const proseEl = getProseEL();
+  if (!daPreview && !daEditor) return;
 
   setInterval(() => {
     if (sendUpdates) {
@@ -76,15 +71,25 @@ function pollForUpdates() {
         hasChanged = 0;
         return;
       }
-      setPreviewBody(daPreview, proseEl);
+      // TODO check if the preview should get its body also via event instead
+      daPreview && (daPreview.body = getCurrentEditorBody(proseEl));
+      daEditor.dispatchEvent(new CustomEvent(EDITOR_CHANGED_EVENT, { detail: { body: getCurrentEditorBody(proseEl) } }));
       sendUpdates = false;
     }
   }, 500);
 }
 
+function createYDoc() {
+  return new Y.Doc();
+}
+
+function getYXmlFragment(ydoc = createYDoc()) {
+  return ydoc.getXmlFragment('prosemirror');
+}
+
 // Apply the document in AEM doc format to the editor.
 // For this it's converted to Prose and then applied to the current ydoc as an XML fragment
-function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
+export function setAEMDocInEditor(aemDoc, yXmlFragment = getYXmlFragment(), schema = getSchema()) {
   const doc = parse(aemDoc);
   const pdoc = aem2prose(doc);
   const docc = document.createElement('div');
@@ -195,7 +200,7 @@ function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40,
 export default function initProse({ editor, path }) {
   const schema = getSchema();
 
-  const ydoc = new Y.Doc();
+  const ydoc = createYDoc();
 
   const server = COLLAB_ORIGIN;
   const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
@@ -209,7 +214,7 @@ export default function initProse({ editor, path }) {
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
   const daTitle = createAwarenessStatusWidget(wsProvider, window);
 
-  const yXmlFragment = ydoc.getXmlFragment('prosemirror');
+  const yXmlFragment = getYXmlFragment(ydoc);
   handleYDocUpdates({
     daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse: initProse,
   });

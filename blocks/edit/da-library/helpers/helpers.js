@@ -1,11 +1,10 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
-import { CON_ORIGIN, getDaAdmin } from '../../../shared/constants.js';
+import { CON_ORIGIN, AEM_ORIGIN, getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
 
 const DA_ORIGIN = getDaAdmin();
-const REPLACE_CONTENT = '<content>';
-const DA_CONFIG = '/.da/config.json';
+const REPLACE_CONTENT = '{{content}}';
 
 export function parseDom(dom) {
   const { schema } = window.view.state;
@@ -46,12 +45,40 @@ export async function getItems(sources, listType, format) {
       } else {
         items.push(...json);
       }
-    } catch {
-      // couldn't fetch source
+    } catch(e) {
+      console.warn('could not fetch source', source, e);
     }
   }
   return items;
 }
+
+const defaultPlugins = {
+  blocks: {
+    "id": "blocks",
+    "title": "Blocks",
+    "environments": [ "edit" ],
+    "type": "blocks",
+    "url": "./docs/library/blocks.json",
+    "includePaths": [ "/edit#/**" ]
+  },
+  icons: {
+    "id": "icons",
+    "title": "Icons",
+    "environments": [ "edit" ],
+    "type": "items",
+    "format": ":{{content}}:",
+    "url": "./docs/library/icons.json",
+    "includePaths": [ "/edit#/**" ]
+  },
+  assets: {
+    "id": "assets",
+    "title": "Assets",
+    "environments": [ "edit" ],
+    "type": "assets",
+    "url": "./assets",
+    "includePaths": [ "/edit#/**" ]
+  },
+};
 
 let currOwner;
 let currRepo;
@@ -66,25 +93,31 @@ export async function getLibraryList() {
     && libraries) {
     return libraries;
   }
+
   currOwner = owner;
   currRepo = repo;
 
-  const resp = await fetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
-  if (!resp.ok) return [];
-
-  const { data } = await resp.json();
-
-  libraries = data.reduce((acc, item) => {
-    const keySplit = item.key.split('-');
-    if (keySplit[0] === 'library') {
-      acc.push({
-        name: keySplit[1],
-        sources: item.value.replaceAll(' ', '').split(','),
-        format: item.format,
-      });
+  const response = await fetch(`${AEM_ORIGIN}/sidekick/${owner}/${repo}/main/config.json`);
+  const configJson = response.ok && await response.json();
+  libraries = configJson && configJson.plugins
+    ? configJson.plugins.map((plugin) => ({
+        ...(defaultPlugins[plugin.id] || {}),
+        ...plugin
+      }))
+      // TODO filter list by environment, include and exclude paths
+    : Object.values(defaultPlugins);
+  libraries.forEach(config => {
+    if(config.url.startsWith('./')) {
+      switch (config.type) {
+        case 'assets':
+          config.url = config.url.replace('./', `https://admin.da.live/list/${owner}/${repo}/`);
+          break;
+        default:
+          config.url = config.url.replace('./', `https://content.da.live/${owner}/${repo}/`);
+          break;
+      }
     }
-    return acc;
-  }, []);
-
+  });
   return libraries;
 }
+

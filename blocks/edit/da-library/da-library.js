@@ -1,8 +1,11 @@
 import { LitElement, html, until } from '../../../deps/lit/lit-all.min.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
+import { getItems, getLibraryList } from './helpers/helpers.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
-import { getItems, getLibraryList } from './helpers/helpers.js';
+import { EDITOR_CHANGED_EVENT } from '../../shared/constants.js';
+import { setAEMDocInEditor } from '../prose/index.js';
+import { getCurrentEditorBody } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 
@@ -23,6 +26,7 @@ class DaLibrary extends LitElement {
     super();
     this._libraryList = [];
     this._libraryDetails = {};
+    this._iFrames = {};
   }
 
   async connectedCallback() {
@@ -30,6 +34,14 @@ class DaLibrary extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._libraryList = await getLibraryList();
+
+    const daContent = document.querySelector('da-content');
+    const daEditor = daContent.shadowRoot.querySelector('da-editor');
+    daEditor.addEventListener(EDITOR_CHANGED_EVENT, (e) => {
+      Object.values(this._iFrames).forEach(iframe => iframe.channel.port1.postMessage({ body: e.detail.body }))
+    });
+
+    this.body = getCurrentEditorBody();
   }
 
   handleLibSwitch(e) {
@@ -117,9 +129,9 @@ class DaLibrary extends LitElement {
     `;
   }
 
-  renderItems(items, listName) {
+  renderItems(id, items) {
     return html`
-      <ul class="da-library-type-list da-library-type-list-${listName}">
+      <ul class="da-library-type-list da-library-type-list-${id}">
       ${items.map((item) => {
     const name = item.value || item.name || item.key;
     if (!name) return null;
@@ -140,18 +152,41 @@ class DaLibrary extends LitElement {
       </ul>`;
   }
 
-  async renderLibrary({ name, sources, format }) {
-    if (name === 'blocks') {
-      const blocks = await getBlocks(sources);
-      return this.renderGroups(blocks);
-    }
+  initIframe(id, url) {
+    const channel = new MessageChannel();
+    
+    this._iFrames[id] = { channel };
 
-    const items = await getItems(sources, name, format);
-    if (items.length > 0) {
-      if (name === 'assets') return this.renderAssets(items);
-      return this.renderItems(items, name);
+    return ({ target }) => {
+      channel.port1.onmessage = (e) => {
+        console.log('update body', e.data);
+        setAEMDocInEditor(e.data.body);
+      };
+      target.contentWindow.postMessage({ init: true, id, body: this.body }, url, [channel.port2]);
     }
-    return html`${name}`;
+  }
+
+  async renderLibrary({ id, title, type, url, format, environments, includePaths, excludePaths }) {
+    switch(type) {
+      case 'blocks':
+        const blocks = await getBlocks([url]);
+        return this.renderGroups(blocks);
+      case 'assets':
+        const assets = await getItems([url], title);
+        return this.renderAssets(assets);
+      case 'palette':
+        const urlWithId = new URL(url);
+        urlWithId.searchParams.append('da-id', id);
+        return html`<iframe 
+          class="da-library-type-palette da-library-type-palette-${id}" 
+          src="${urlWithId.toString()}"
+          allow="clipboard-write *"
+          @load=${this.initIframe(id, urlWithId)}
+          ></iframe>`;
+      default:
+        const items = await getItems([url], title, format);
+        return this.renderItems(id, items);
+      }
   }
 
   render() {
@@ -169,8 +204,8 @@ class DaLibrary extends LitElement {
             <ul class="da-library-item-list da-library-item-list-main">
               ${this._libraryList.map((library) => html`
                 <li>
-                  <button class="${library.name}" @click=${this.handleLibSwitch}>
-                    <span class="library-type-name">${library.name}</span>
+                  <button class="${library.id}" @click=${this.handleLibSwitch}>
+                    <span class="library-type-name">${library.title}</span>
                   </button>
                 </li>
               `)}
@@ -178,10 +213,10 @@ class DaLibrary extends LitElement {
           `}
         </div>
         ${this._libraryList.map((library) => html`
-          <div class="palette-pane forward" data-library-type="${library.name}">
+          <div class="palette-pane forward" data-library-type="${library.id}">
             <div class="palette-pane-header">
               <button class="palette-back" @click=${this.handleBack}>Back</button>
-              <h2>${library.name}</h2>
+              <h2>${library.title}</h2>
             </div>
             ${until(this.renderLibrary(library), html`<span>Loading...</span>`)}
           </div>

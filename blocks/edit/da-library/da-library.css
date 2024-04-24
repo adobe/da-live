@@ -404,3 +404,9 @@ ul {
   opacity: 1;
   z-index: 1;
 }
+
+.da-library-type-palette {
+  width: 100%;
+  height: calc(100% - 44px);
+  border: 0;
+}

@@ -196,3 +196,12 @@ export function saveDaConfig(pathname, sheet) {
 export function parse(inital) {
   return new DOMParser().parseFromString(inital, 'text/html');
 }
+
+export function getProseEL() {
+  return window.view.root.querySelector('.ProseMirror');
+}
+
+export function getCurrentEditorBody(proseEl = getProseEL()) {
+  const clone = proseEl.cloneNode(true);
+  return prose2aem(clone, true);
+}

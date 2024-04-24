@@ -62,7 +62,9 @@ export default class DaPreview extends LitElement {
     this.setWidth('mobile');
     // Delay so the initial loading of the document can complete.
     setTimeout(() => {
-      this.port1.onmessage = (e) => { this.setHeight(e.data); };
+      this.port1.onmessage = (e) => { 
+        this.setHeight(e.data);
+      };
       target.contentWindow.postMessage({ init: true }, '*', [this.channel.port2]);
     }, 1500);
   }
