@@ -38,6 +38,10 @@
   display: flex;
 }
 
+.da-versions-panel .audit-entry-hidden {
+  display: none;
+}
+
 .da-versions-panel .audit-group {
   max-height: 200px;
   overflow: hidden;
@@ -73,14 +77,14 @@
 }
 
 .da-versions-panel .version-line {
-    background:#cecece;
-    z-index:1;
-    width:2px;
-    height:100%;
-    position:absolute;
-    top: 5px;
-    left: 30px;
-  }
+  background:#cecece;
+  z-index:1;
+  width:2px;
+  height:100%;
+  position:absolute;
+  top: 5px;
+  left: 30px;
+}
 
 .da-versions-panel .versions-wrapper {
   position: relative;
@@ -92,26 +96,13 @@
   margin-left: 1rem;
 }
 
+/* Bullets in the version list */
 .da-versions-panel .bullet {
   width: 64px;
   height: 24px;
   background-position-x: center;
   background-repeat: no-repeat;
   z-index: 2;
-}
-
-/* This is the line that connects the bullets */
-.xda-versions-panel .bullet:before {
-  background-color: #cecece;
-  background-color: red;
-  color: green;
-  width: 2px;
-  content: '';
-  position: absolute;
-  top: 0px;
-  bottom: 0px;
-  left: -22px;
-  z-index: -1;
 }
 
 .da-versions-panel .bullet-audit-first {
@@ -127,10 +118,6 @@
   color: #8e8e8e;
 }
 
-.da-versions-panel .bullet-stored {
-  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><circle fill='rgb(123 160 47)' cx='15' cy='15' r='8'/></svg>");
-}
-
 .da-versions-panel .bullet-history {
   height: 32px;
   background-image: url("/blocks/edit/img/Smock_Calendar_18_N.svg");
@@ -138,10 +125,11 @@
   background-position-y: top;
 }
 
-.da-versions-panel .audit-entry-hidden {
-  display: none;
+.da-versions-panel .bullet-stored {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><circle fill='rgb(123 160 47)' cx='15' cy='15' r='8'/></svg>");
 }
 
+/* Toolbar buttons */
 .da-versions-close {
   background: url("/blocks/edit/img/Smock_Close_18_N.svg") center center / 20px no-repeat #EFEFEF;
 }
