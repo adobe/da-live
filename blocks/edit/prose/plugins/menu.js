@@ -125,7 +125,7 @@ function linkItem(linkMarkType) {
     },
     run(initialState, dispatch, view) {
       if (lastPrompt.isOpen()) {
-        lastPrompt.focus();
+        lastPrompt.close();
         return;
       }
 
@@ -174,7 +174,7 @@ function linkItem(linkMarkType) {
         view.focus();
       };
 
-      lastPrompt = openPrompt({ title: label, fields, callback });
+      lastPrompt = openPrompt({ title: label, fields, callback, saveOnClose: true });
       lastPrompt.addEventListener('closed', () => {
         dispatch(view.state.tr.removeMark(start, end, view.state.schema.marks.contextHighlightingMark).setMeta('addToHistory', false));
       });
@@ -196,6 +196,50 @@ function removeLinkItem(linkMarkType) {
       const tr = state.tr.setSelection(TextSelection.create(state.doc, start, end))
         .removeMark(start, end, linkMarkType);
       dispatch(tr);
+    },
+  });
+}
+
+function imgAltTextItem() {
+  let altTextPalette = { isOpen: () => false };
+  const title = 'Image Alt Text';
+  return new MenuItem({
+    title,
+    label: title,
+    class: 'img-alt-text',
+    active(state) {
+      return state.selection?.node?.type.name === 'image';
+    },
+    enable(state) { return this.active(state); },
+    update() { return true; },
+    run(state, dispatch) {
+      if (altTextPalette.isOpen()) {
+        altTextPalette.close();
+        return;
+      }
+
+      const fields = {
+        altText: {
+          placeholder: title,
+          label: title,
+        },
+      };
+
+      const existingAltText = state.selection.node.attrs.alt;
+      if (this.active(state)) {
+        if (existingAltText) {
+          fields.altText.value = existingAltText;
+        }
+      }
+
+      const callback = () => {
+        const { pos } = state.selection.$anchor;
+        dispatch(state.tr.setNodeAttribute(pos, 'alt', fields.altText.value?.trim()));
+      };
+
+      altTextPalette = openPrompt(
+        { title, altText: existingAltText, fields, callback, saveOnClose: true },
+      );
     },
   });
 }
@@ -340,6 +384,7 @@ function getMenu(view) {
     }),
     linkItem(marks.link),
     removeLinkItem(marks.link),
+    imgAltTextItem(),
   ];
 
   const listMenu = [

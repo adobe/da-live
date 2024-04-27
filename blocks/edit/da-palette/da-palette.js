@@ -9,6 +9,7 @@ class DaPalette extends LitElement {
     title: { state: true },
     fields: { state: true },
     callback: { state: true },
+    saveOnClose: { state: true },
   };
 
   connectedCallback() {
@@ -44,6 +45,10 @@ class DaPalette extends LitElement {
 
   // eslint-disable-next-line no-unused-vars
   updateSelection(_view) {
+    if (this.saveOnClose) {
+      this.submit();
+      return;
+    }
     this.internalClose();
   }
 
@@ -53,12 +58,16 @@ class DaPalette extends LitElement {
   }
 
   close(e) {
-    e.preventDefault();
+    e?.preventDefault();
+    if (this.saveOnClose) {
+      this.submit();
+      return;
+    }
     this.internalClose();
   }
 
   submit(e) {
-    e.preventDefault();
+    e?.preventDefault();
 
     const params = {};
     Object.keys(this.fields).forEach((key) => {
@@ -110,12 +119,13 @@ class DaPalette extends LitElement {
 
 customElements.define('da-palette', DaPalette);
 
-export default function openPrompt({ title, fields, callback }) {
+export default function openPrompt({ title, fields, callback, saveOnClose = false }) {
   const palettePane = window.view.dom.nextElementSibling;
   const palette = document.createElement('da-palette');
   palette.title = title;
   palette.fields = fields;
   palette.callback = callback;
+  palette.saveOnClose = saveOnClose;
   palettePane.append(palette);
   return palette;
 }
