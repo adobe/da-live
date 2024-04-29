@@ -141,3 +141,7 @@
 .da-versions-restore {
   background: url("/blocks/edit/img/Smock_DataUpload_18_N.svg") center center / 20px no-repeat #EFEFEF;
 }
+
+.da-versions-name {
+  background: url("/blocks/edit/img/Smock_Rename_18_N.svg") center center / 20px no-repeat #EFEFEF;
+}

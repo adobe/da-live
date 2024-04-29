@@ -243,6 +243,11 @@ export default class DaVersions extends LitElement {
           </div>`);
       } else {
         const verURL = l.url ? new URL(l.url, versionsURL) : undefined;
+        let displayName = '';
+        if (l.displayname) {
+          displayName = html`<div class="display-name" data-href="${ifDefined(verURL)}">${l.displayname}</div>`;
+        }
+
         const bulletClass = verURL ? 'bullet-stored' : `bullet-audit${versions.length === 1 ? '-first' : ''}`;
         const date = this.renderDate(l.timestamp);
         const time = new Date(l.timestamp).toLocaleTimeString([], { timeStyle: 'medium' });
@@ -252,8 +257,10 @@ export default class DaVersions extends LitElement {
         versions.push(html`
           <div class="version-group"><div class="bullet ${bulletClass}"></div><div data-href="${ifDefined(verURL)}">
             ${date}
+            ${displayName}
             <div class="${entryClass}">
-              <div class="entry-time" data-href="${ifDefined(verURL)}">${time}</div><div class="user-list">${userList}</div>
+              <div class="entry-time" data-href="${ifDefined(verURL)}">${time}</div>
+              <div class="user-list">${userList}</div>
             </div>
           </div></div>`);
       }
@@ -318,11 +325,45 @@ export default class DaVersions extends LitElement {
     }
   }
 
+  nameVersion() {
+    if (this.loadedVersion) {
+      const nameDialog = this.shadowRoot.querySelector('#name-dialog');
+      const input = nameDialog.querySelector('input');
+
+      nameDialog.addEventListener('close', async () => {
+        const url = this.loadedVersion;
+        await fetch(url, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: `{"displayname": "${input.value}"}`,
+        });
+        this.update();
+      });
+
+      nameDialog.showModal();
+    }
+  }
+
   render() {
+    // Note the dialog is just temporarily
     return html`
+    <dialog id="name-dialog">
+      <form method="dialog">
+        <p>
+          <label>
+            Version name:
+            <input type="text" required />
+          </label>
+        </p>
+        <div>
+          <button id="confirmBtn" value="default">Ok</button>
+        </div>
+      </form>
+    </dialog>
     <div class="da-versions-menubar">
       <span class="da-versions-menuitem da-versions-create" title="Create Version" @click=${this.createVersion}></span>
       <span class="da-versions-menuitem da-versions-restore" title="Restore Version" @click=${this.restoreVersion}></span>
+      <span class="da-versions-menuitem da-versions-name" title="Name Version" @click=${this.nameVersion}></span>
       <span class="da-versions-menuitem da-versions-close" title="Close" @click=${this.hideVersions}></span>
     </div>
     <div class="da-versions-panel">
