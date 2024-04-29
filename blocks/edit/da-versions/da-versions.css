@@ -43,19 +43,22 @@
 }
 
 .da-versions-panel .audit-group {
-  max-height: 200px;
-  overflow: hidden;
   position: relative;
 }
 
-.da-versions-panel .audit-group:before {
+.da-versions-panel .audit-group-collapse {
+  max-height: 200px;
+  overflow: hidden;
+}
+
+.da-versions-panel .audit-group-collapse:before {
   content:'';
   width:100%;
   height:100%;
   position:absolute;
   left:0;
   top:0;
-  background:linear-gradient(transparent 150px, white);
+  background:linear-gradient(transparent 100px, white);
 }
 
 .da-versions-panel .entry-time {

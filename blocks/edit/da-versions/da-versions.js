@@ -182,6 +182,20 @@ export default class DaVersions extends LitElement {
     return html`<div>no versions found.</div.`;
   }
 
+  triggerAuditLogCollapse(versionGroup) {
+    const ag = versionGroup.currentTarget.querySelector('.audit-group');
+    if (ag) {
+      ag.classList.toggle('audit-group-collapse');
+    }
+  }
+
+  triggerAuditLogHidden(versionGroup) {
+    const ag = versionGroup.currentTarget.querySelector('.audit-entry');
+    if (ag) {
+      ag.classList.toggle('audit-entry-hidden');
+    }
+  }
+
   async renderVersionDetails() {
     if (!this.path) {
       // Path not yet known, don't render
@@ -233,10 +247,19 @@ export default class DaVersions extends LitElement {
 
         // now that the children are rendered, render the parent
         const date = this.renderDate(l.aggregatedTo);
-        const bulletClass = versions.length === 1 ? 'bullet-audit-first' : 'bullet-audit';
+        let bulletClass;
+        let triggerCall;
+        if (versions.length === 1) {
+          bulletClass = 'bullet-audit-first';
+          triggerCall = this.triggerAuditLogCollapse;
+        } else {
+          bulletClass = 'bullet-audit';
+          triggerCall = this.triggerAuditLogHidden;
+        }
+
         versions.push(html`
-          <div class="version-group"><div class="bullet ${bulletClass}"></div>
-            <div class="audit-group" id=l.aggregateID}>
+          <div class="version-group" @click=${triggerCall}><div class="bullet ${bulletClass}"></div>
+            <div class="audit-group audit-group-collapse" id=l.aggregateID}>
               ${date}
               ${children}
             </div>
@@ -255,7 +278,7 @@ export default class DaVersions extends LitElement {
         const entryClass = verURL ? 'version' : `audit-entry ${versions.length === 1 ? '' : 'audit-entry-hidden'}`;
 
         versions.push(html`
-          <div class="version-group"><div class="bullet ${bulletClass}"></div><div data-href="${ifDefined(verURL)}">
+          <div class="version-group" @click=${this.triggerAuditLogHidden}><div class="bullet ${bulletClass}"></div><div data-href="${ifDefined(verURL)}">
             ${date}
             ${displayName}
             <div class="${entryClass}">
