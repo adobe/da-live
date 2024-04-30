@@ -3,6 +3,7 @@ import { aem2prose, parse } from '../utils/helpers.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
+const DEFAULT_VERSION_DISPLAY_NAME = 'Version Name';
 
 export default class DaVersions extends LitElement {
   static properties = { path: {} };
@@ -49,25 +50,6 @@ export default class DaVersions extends LitElement {
 
     pm.innerHTML = docc.innerHTML;
   }
-
-  /*
-  triggerHiddenVersions(li) {
-    const shrink = li.classList.contains('auditlog-expanded');
-    let newClass;
-    if (shrink) {
-      newClass = 'auditlog-hidden';
-      li.classList.remove('auditlog-expanded');
-    } else {
-      newClass = 'auditlog-detail';
-      li.classList.add('auditlog-expanded');
-    }
-
-    const lis = li.parentNode.querySelectorAll(`li[data-parent="${li.id}"]`);
-    lis.forEach((l) => {
-      l.classList = newClass;
-    });
-  }
-  */
 
   async versionSelected(event) {
     const li = event.target;
@@ -190,10 +172,11 @@ export default class DaVersions extends LitElement {
   }
 
   triggerAuditLogHidden(versionGroup) {
-    const ag = versionGroup.currentTarget.querySelector('.audit-entry');
-    if (ag) {
-      ag.classList.toggle('audit-entry-hidden');
-    }
+    this.triggerAuditLogCollapse(versionGroup);
+    const entries = versionGroup.currentTarget.querySelectorAll('.audit-entry');
+    entries.forEach((e) => {
+      e.classList.toggle('audit-entry-hidden');
+    });
   }
 
   async renderVersionDetails() {
@@ -291,13 +274,21 @@ export default class DaVersions extends LitElement {
     return versions;
   }
 
-  async createVersion() {
-    if (!this.path) {
-      // Path not yet known, don't render
-      // eslint-disable-next-line no-console
-      console.log('Unable to save version as path not known');
-      return;
+  normalizeVersionName(element) {
+    if (!element.parentNode) {
+      return null;
     }
+
+    element.contentEditable = false;
+    if (element.innerText === DEFAULT_VERSION_DISPLAY_NAME) {
+      element.innerText = '';
+    }
+
+    return element.innerText.trim();
+  }
+
+  async completeVersionCreation(dnElement) {
+    const displayName = this.normalizeVersionName(dnElement);
 
     const url = new URL(this.path);
     const pathName = url.pathname;
@@ -309,13 +300,106 @@ export default class DaVersions extends LitElement {
     }
 
     const versionURL = `${url.origin}/versionsource/${pathName.slice(8)}`;
-    const res = await fetch(versionURL, { method: 'POST' });
+
+    let options;
+    if (displayName) {
+      options = {
+        method: 'POST',
+        body: `{"displayname": "${displayName}"}`,
+      };
+    } else {
+      options = { method: 'POST' };
+    }
+
+    const res = await fetch(versionURL, options);
     if (res.status !== 201) {
       // eslint-disable-next-line no-console
       console.log('Unable to create version', res.status);
     }
 
     this.requestUpdate();
+  }
+
+  async completeVersionNaming(dnElement) {
+    const displayName = this.normalizeVersionName(dnElement);
+    if (!displayName) {
+      return;
+    }
+
+    const url = this.loadedVersion;
+    await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: `{"displayname": "${displayName}"}`,
+    });
+    this.update();
+  }
+
+  editDisplayName(dn, commitFunction) {
+    const cf = commitFunction.bind(this);
+
+    dn.onfocus = () => {
+      // This selects all text in the Display Name element on focus
+      setTimeout(() => {
+        let sel;
+        let range;
+        if (window.getSelection && document.createRange) {
+          range = document.createRange();
+          range.selectNodeContents(dn);
+          sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } else if (document.body.createTextRange) {
+          range = document.body.createTextRange();
+          range.moveToElementText(dn);
+          range.select();
+        }
+      }, 1);
+    };
+    dn.onkeyup = (e) => {
+      switch (e.key) {
+        case 'Escape': // Escape will cancel the version creation
+          dn.remove();
+          break;
+        case 'Enter':
+          cf(dn);
+          break;
+        default:
+          // Do nothing
+          break;
+      }
+    };
+    // Call the commitFunction a little later on blur to avoid interference
+    // with the escape key
+    dn.onblur = () => setTimeout(() => cf(dn), 200);
+    dn.focus();
+  }
+
+  async createVersion() {
+    if (!this.path) {
+      // Path not yet known, don't render
+      // eslint-disable-next-line no-console
+      console.log('Unable to save version as path not known');
+      return;
+    }
+
+    const vl = this.shadowRoot.querySelector('.version-line');
+    if (!vl) return;
+
+    const vg = document.createElement('div');
+    vg.classList.add('version-group');
+    vg.innerHTML = `<div class="bullet bullet-stored"></div><div>
+    ${this.renderDate(Date.now())}
+    <div class="display-name" id="new-display-name" contenteditable="plaintext-only">${DEFAULT_VERSION_DISPLAY_NAME}</div>
+    <div class="version">
+      <div class="entry-time">${new Date().toLocaleTimeString([], { timeStyle: 'medium' })}</div>
+    </div></div>
+    </div>
+    `;
+    vl.after(vg);
+
+    const dn = vg.querySelector('#new-display-name');
+    this.editDisplayName(dn, this.completeVersionCreation);
   }
 
   async restoreVersion() {
@@ -350,39 +434,27 @@ export default class DaVersions extends LitElement {
 
   nameVersion() {
     if (this.loadedVersion) {
-      const nameDialog = this.shadowRoot.querySelector('#name-dialog');
-      const input = nameDialog.querySelector('input');
+      let dn = this.shadowRoot.querySelector(`.display-name[data-href="${this.loadedVersion}"]`);
+      if (!dn) {
+        const div = this.shadowRoot.querySelector(`.bullet + [data-href="${this.loadedVersion}"]`);
 
-      nameDialog.addEventListener('close', async () => {
-        const url = this.loadedVersion;
-        await fetch(url, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: `{"displayname": "${input.value}"}`,
-        });
-        this.update();
-      });
+        if (!div) {
+          return;
+        }
 
-      nameDialog.showModal();
+        dn = document.createElement('div');
+        dn.classList.add('display-name');
+        dn.innerText = DEFAULT_VERSION_DISPLAY_NAME;
+        div.insertBefore(dn, div.children[0]);
+      }
+
+      dn.contentEditable = 'plaintext-only';
+      this.editDisplayName(dn, this.completeVersionNaming);
     }
   }
 
   render() {
-    // Note the dialog is just temporarily
     return html`
-    <dialog id="name-dialog">
-      <form method="dialog">
-        <p>
-          <label>
-            Version name:
-            <input type="text" required />
-          </label>
-        </p>
-        <div>
-          <button id="confirmBtn" value="default">Ok</button>
-        </div>
-      </form>
-    </dialog>
     <div class="da-versions-menubar">
       <span class="da-versions-menuitem da-versions-create" title="Create Version" @click=${this.createVersion}></span>
       <span class="da-versions-menuitem da-versions-restore" title="Restore Version" @click=${this.restoreVersion}></span>
