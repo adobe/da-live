@@ -5,6 +5,7 @@ import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import { getItems, getLibraryList } from './helpers/helpers.js';
 import { aem2prose } from '../utils/helpers.js';
+import { daFetch } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 
@@ -66,7 +67,7 @@ class DaLibrary extends LitElement {
   }
 
   async handleTemplateClick(item) {
-    const resp = await fetch(`${item.value}`);
+    const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
     const text = await resp.text();
     const doc = new DOMParser().parseFromString(text, 'text/html');
