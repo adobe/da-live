@@ -289,6 +289,9 @@ export default class DaVersions extends LitElement {
 
   async completeVersionCreation(dnElement) {
     const displayName = this.normalizeVersionName(dnElement);
+    if (!displayName) {
+      return;
+    }
 
     const url = new URL(this.path);
     const pathName = url.pathname;
@@ -360,6 +363,7 @@ export default class DaVersions extends LitElement {
       switch (e.key) {
         case 'Escape': // Escape will cancel the version creation
           dn.remove();
+          this.update();
           break;
         case 'Enter':
           cf(dn);
@@ -385,6 +389,13 @@ export default class DaVersions extends LitElement {
 
     const vl = this.shadowRoot.querySelector('.version-line');
     if (!vl) return;
+
+    const oldEntry = vl.nextElementSibling;
+    if (oldEntry) {
+      const oldBullet = oldEntry.children[0];
+      oldBullet.classList.remove('bullet-audit-first');
+      oldBullet.classList.add('bullet-audit');
+    }
 
     const vg = document.createElement('div');
     vg.classList.add('version-group');
