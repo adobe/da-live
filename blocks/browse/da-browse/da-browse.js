@@ -212,6 +212,53 @@ export default class DaBrowse extends LitElement {
     this._canPaste = false;
   }
 
+  handleRename() {
+    const item = this._selectedItems[0];
+    const listItems = this.shadowRoot.querySelectorAll('.da-item-list-item-title');
+
+    let listItem;
+    for (const li of listItems) {
+      const href = li.getAttribute('href');
+      const path = href.replace(/\/edit#|\/sheet#|\/media#|#/, '');
+      if (item.path.includes(path)) {
+        listItem = li;
+        break;
+      }
+    }
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = item.name;
+    input.className = 'da-item-list-item-title';
+    listItem.replaceWith(input);
+    input.focus();
+
+    input.addEventListener('keydown', async (e) => {
+      const resetSelection = () => {
+        input.replaceWith(listItem);
+        input.remove();
+        this.clearSelection();
+        this.requestUpdate();
+      };
+
+      if (e.key === 'Enter') {
+        const newname = item.ext ? `${input.value}.${item.ext}` : input.value;
+        const formData = new FormData();
+        formData.append('newname', newname);
+        const opts = { method: 'POST', body: formData };
+        input.insertAdjacentHTML('afterend', '<div class="da-loader-overlay"><div class="da-loader"></div></div>');
+        await daFetch(`${DA_ORIGIN}/rename${item.path}`, opts);
+        input.nextElementSibling.remove();
+        // Update the item with new name and path
+        item.path = item.path.substring(0, item.path.lastIndexOf('/') + 1) + newname;
+        item.name = input.value;
+        resetSelection();
+      } else if (e.key === 'Escape') {
+        resetSelection();
+      }
+    });
+  }
+
   handleTab(idx) {
     const current = this._tabItems.find((item) => item.selected);
     if (this._tabItems[idx].id === current.id) return;
@@ -292,6 +339,12 @@ export default class DaBrowse extends LitElement {
           <span>${this._selectedItems.length} selected</span>
         </div>
         <div class="da-action-bar-right-rail">
+          <button
+            @click=${this.handleRename}
+            class="rename-button ${this._selectedItems.length === 1 ? '' : 'hide-button'}">
+            <img src="/blocks/browse/da-browse/img/Smock_TextEdit_18_N.svg" />            
+            <span>Rename</span>
+          </button>
           <button
             @click=${this.handleCopy}
             class="copy-button ${this._canPaste ? 'hide-button' : ''}">

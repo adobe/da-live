@@ -1,3 +1,4 @@
+import { daFetch } from '../../../shared/utils.js';
 import { parseDom } from './helpers.js';
 
 const HEADING_NAMES = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
@@ -69,7 +70,7 @@ export async function getBlockVariants(path) {
   const isAemHosted = AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
   const postfix = isAemHosted ? '.plain.html' : '';
 
-  const resp = await fetch(`${path}${postfix}`);
+  const resp = await daFetch(`${path}${postfix}`);
   if (!resp.ok) return [];
 
   const ul = document.createElement('ul');
@@ -104,7 +105,7 @@ export async function getBlockVariants(path) {
 
 export async function getBlocks(sources) {
   const sourcesData = sources.map(
-    (url) => fetch(url).then((resp) => {
+    (url) => daFetch(url).then((resp) => {
       if (!resp.ok) throw new Error('Something went wrong.');
       return resp.json();
     }).catch(() => {}),
