@@ -3,9 +3,10 @@
   width: 375px;
   min-height: 844px;
   margin: 0 auto;
+  padding-left: 32px;
   border: none;
-  box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
   overflow: hidden;
+  font-weight: 700;
 }
 
 .da-versions-menubar {
@@ -33,28 +34,110 @@
   background-color: rgb(239, 239, 239);
 }
 
-.da-versions-panel li {
-  list-style-type: square;
-  user-select: none;
+.da-versions-panel .audit-entry {
+  display: flex;
 }
 
-.da-versions-panel li.auditlog-hidden {
+.da-versions-panel .audit-entry-hidden {
   display: none;
 }
 
-.da-versions-panel li.auditlog-detail {
-  font-size: 14px;
+.da-versions-panel .audit-group {
+  position: relative;
+  user-select: none;
+}
+
+.da-versions-panel .audit-group-collapse {
+  max-height: 200px;
+  overflow: hidden;
+}
+
+.da-versions-panel .audit-group-collapse:before {
+  content:'';
+  width:100%;
+  height:100%;
+  position:absolute;
+  left:0;
+  top:0;
+  background:linear-gradient(transparent 100px, white);
+}
+
+.da-versions-panel .display-name {
+  max-width: 300px;
+}
+
+.da-versions-panel .entry-time {
+  width: 64px;
+}
+
+.da-versions-panel .history-title {
+  font-size: 22px;
+  height: 2.7rem;
+}
+
+.da-versions-panel .version {
+  display: flex;
+}
+
+.da-versions-panel .version-group {
+  display: flex;
+  margin-top: 1rem;
+}
+
+.da-versions-panel .version-line {
+  background:#cecece;
+  z-index:1;
+  width:2px;
+  height:100%;
+  position:absolute;
+  top: 10px;
+  left: 30px;
+}
+
+.da-versions-panel .versions-wrapper {
+  position: relative;
+}
+
+.da-versions-panel .user-list {
+  display: flex;
+  flex-direction: column;
   margin-left: 1rem;
 }
 
-.da-versions-panel li[data-href] {
-  font-weight: 700;
+/* Bullets in the version list */
+.da-versions-panel .bullet {
+  width: 64px;
+  height: 24px;
+  background-position-x: center;
+  background-repeat: no-repeat;
+  z-index: 2;
 }
 
-.da-versions-panel li:focus {
-  background: rgb(239, 239, 239);
+.da-versions-panel .bullet-audit-first {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><circle stroke='rgb(206 206 206)' stroke-width='2' fill='white' cx='15' cy='15' r='13'/></svg>");
+  height: 32px;
 }
 
+.da-versions-panel .bullet-audit {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><circle fill='rgb(200 200 200)' cx='15' cy='13' r='6'/></svg>");
+}
+
+.da-versions-panel .bullet-audit + div {
+  color: #8e8e8e;
+}
+
+.da-versions-panel .bullet-history {
+  height: 32px;
+  background-image: url("/blocks/edit/img/Smock_Calendar_18_N.svg");
+  background-size: 32px;
+  background-position-y: top;
+}
+
+.da-versions-panel .bullet-stored {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><circle fill='rgb(123 160 47)' cx='15' cy='15' r='8'/></svg>");
+}
+
+/* Toolbar buttons */
 .da-versions-close {
   background: url("/blocks/edit/img/Smock_Close_18_N.svg") center center / 20px no-repeat #EFEFEF;
 }
@@ -65,4 +148,8 @@
 
 .da-versions-restore {
   background: url("/blocks/edit/img/Smock_DataUpload_18_N.svg") center center / 20px no-repeat #EFEFEF;
+}
+
+.da-versions-name {
+  background: url("/blocks/edit/img/Smock_Rename_18_N.svg") center center / 20px no-repeat #EFEFEF;
 }

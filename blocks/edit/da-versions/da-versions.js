@@ -3,6 +3,7 @@ import { aem2prose, parse } from '../utils/helpers.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
+const DEFAULT_VERSION_DISPLAY_NAME = 'Version Name';
 
 export default class DaVersions extends LitElement {
   static properties = { path: {} };
@@ -50,28 +51,11 @@ export default class DaVersions extends LitElement {
     pm.innerHTML = docc.innerHTML;
   }
 
-  triggerHiddenVersions(li) {
-    const shrink = li.classList.contains('auditlog-expanded');
-    let newClass;
-    if (shrink) {
-      newClass = 'auditlog-hidden';
-      li.classList.remove('auditlog-expanded');
-    } else {
-      newClass = 'auditlog-detail';
-      li.classList.add('auditlog-expanded');
-    }
-
-    const lis = li.parentNode.querySelectorAll(`li[data-parent="${li.id}"]`);
-    lis.forEach((l) => {
-      l.classList = newClass;
-    });
-  }
-
   async versionSelected(event) {
     const li = event.target;
     if (!li.dataset.href) {
       this.setDaVersionVisibility('none');
-      this.triggerHiddenVersions(li);
+      // this.triggerHiddenVersions(li);
       return;
     }
 
@@ -148,7 +132,54 @@ export default class DaVersions extends LitElement {
     }
   }
 
+  getDaySuffix(day) {
+    return (day >= 4 && day <= 20) || (day >= 24 && day <= 30)
+      ? 'th'
+      : ['st', 'nd', 'rd'][(day % 10) - 1];
+  }
+
+  renderDate(millis) {
+    const d = new Date(millis);
+
+    const currentYear = new Date().getFullYear();
+    let yearSuffix = '';
+    if (d.getFullYear() !== currentYear) {
+      yearSuffix = `, ${d.getFullYear()}`;
+    }
+    return `${d.toLocaleDateString([], { month: 'long' })} ${d.getDate()}${this.getDaySuffix(d.getDate())}${yearSuffix}`;
+  }
+
   async renderVersions() {
+    let res;
+    try {
+      res = await this.renderVersionDetails();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log('Problem fetching versions', error);
+    }
+
+    if (res) {
+      return res;
+    }
+    return html`<div>no versions found.</div.`;
+  }
+
+  triggerAuditLogCollapse(versionGroup) {
+    const ag = versionGroup.currentTarget.querySelector('.audit-group');
+    if (ag) {
+      ag.classList.toggle('audit-group-collapse');
+    }
+  }
+
+  triggerAuditLogHidden(versionGroup) {
+    this.triggerAuditLogCollapse(versionGroup);
+    const entries = versionGroup.currentTarget.querySelectorAll('.audit-entry');
+    entries.forEach((e) => {
+      e.classList.toggle('audit-entry-hidden');
+    });
+  }
+
+  async renderVersionDetails() {
     if (!this.path) {
       // Path not yet known, don't render
       return html``;
@@ -167,43 +198,98 @@ export default class DaVersions extends LitElement {
 
     const versionsURL = `${url.origin}/versionlist/${pathName.slice(8)}`;
     const res = await fetch(versionsURL);
+    if (res.status !== 200) {
+      return html``;
+    }
     const list = await res.json();
 
     this.aggregateList(list);
 
-    const versions = [];
-    for (const l of list) {
-      let verURL;
-      if (l.url) {
-        verURL = new URL(l.url, versionsURL);
-      }
+    const versions = [html`<div class="version-line"></div>`];
+    for (let i = 0; i < list.length; i += 1) {
+      const l = list[i];
 
-      let fromDate;
-      let toDate;
-      if (l.aggregatedTo) {
-        fromDate = new Date(l.aggregatedTo).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
-        toDate = ` - ${new Date(l.timestamp).toLocaleTimeString([], { timeStyle: 'short' })}`;
+      const children = [];
+      if (l.aggregateID) {
+        // while (list[i].parent === l.aggregateID) {
+        let moreChildren;
+        do {
+          i += 1;
+          const c = list[i];
+          const userList = c.users.map((u) => html`<div>${u.email}</div>`);
+          const time = new Date(c.timestamp).toLocaleTimeString([], { timeStyle: 'medium' });
+          const hiddenClass = versions.length === 1 ? '' : 'audit-entry-hidden';
+
+          children.push(html`
+            <div class="audit-entry ${hiddenClass}" data-parent="${c.parent}">
+              <div class="entry-time">${time}</div><div class="user-list">${userList}</div>
+            </div>`);
+
+          moreChildren = ((list.length > (i + 1)) && (list[i + 1].parent === l.aggregateID));
+        } while (moreChildren);
+
+        // now that the children are rendered, render the parent
+        const date = this.renderDate(l.aggregatedTo);
+        let bulletClass;
+        let triggerCall;
+        if (versions.length === 1) {
+          bulletClass = 'bullet-audit-first';
+          triggerCall = this.triggerAuditLogCollapse;
+        } else {
+          bulletClass = 'bullet-audit';
+          triggerCall = this.triggerAuditLogHidden;
+        }
+
+        versions.push(html`
+          <div class="version-group" @click=${triggerCall}><div class="bullet ${bulletClass}"></div>
+            <div class="audit-group audit-group-collapse" id=l.aggregateID}>
+              ${date}
+              ${children}
+            </div>
+          </div>`);
       } else {
-        fromDate = new Date(l.timestamp).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' });
-        toDate = '';
-      }
+        const verURL = l.url ? new URL(l.url, versionsURL) : undefined;
+        let displayName = '';
+        if (l.displayname) {
+          displayName = html`<div class="display-name" data-href="${ifDefined(verURL)}">${l.displayname}</div>`;
+        }
 
-      const userList = l.users.map((u) => u.email).join(', ');
-      versions.push(html`
-        <li tabindex="1" data-href="${ifDefined(verURL)}" data-parent="${ifDefined(l.parent)}"
-          id=${ifDefined(l.aggregateID)}
-          class="${l.parent ? 'auditlog-hidden' : ''}">
-          ${fromDate}${toDate}
-        <br/>${userList} ${l.aggregatedTo ? '...' : ''}</li>`);
+        const bulletClass = verURL ? 'bullet-stored' : `bullet-audit${versions.length === 1 ? '-first' : ''}`;
+        const date = this.renderDate(l.timestamp);
+        const time = new Date(l.timestamp).toLocaleTimeString([], { timeStyle: 'medium' });
+        const userList = l.users.map((u) => html`<div data-href="${ifDefined(verURL)}">${u.email}</div>`);
+        const entryClass = verURL ? 'version' : `audit-entry ${versions.length === 1 ? '' : 'audit-entry-hidden'}`;
+
+        versions.push(html`
+          <div class="version-group" @click=${this.triggerAuditLogHidden}><div class="bullet ${bulletClass}"></div><div data-href="${ifDefined(verURL)}">
+            ${date}
+            ${displayName}
+            <div class="${entryClass}">
+              <div class="entry-time" data-href="${ifDefined(verURL)}">${time}</div>
+              <div class="user-list">${userList}</div>
+            </div>
+          </div></div>`);
+      }
     }
     return versions;
   }
 
-  async createVersion() {
-    if (!this.path) {
-      // Path not yet known, don't render
-      // eslint-disable-next-line no-console
-      console.log('Unable to save version as path not known');
+  normalizeVersionName(element) {
+    if (!element.parentNode) {
+      return null;
+    }
+
+    element.contentEditable = false;
+    if (element.innerText === DEFAULT_VERSION_DISPLAY_NAME) {
+      element.innerText = '';
+    }
+
+    return element.innerText.trim();
+  }
+
+  async completeVersionCreation(dnElement) {
+    const displayName = this.normalizeVersionName(dnElement);
+    if (!displayName) {
       return;
     }
 
@@ -217,13 +303,114 @@ export default class DaVersions extends LitElement {
     }
 
     const versionURL = `${url.origin}/versionsource/${pathName.slice(8)}`;
-    const res = await fetch(versionURL, { method: 'POST' });
+
+    let options;
+    if (displayName) {
+      options = {
+        method: 'POST',
+        body: `{"displayname": "${displayName}"}`,
+      };
+    } else {
+      options = { method: 'POST' };
+    }
+
+    const res = await fetch(versionURL, options);
     if (res.status !== 201) {
       // eslint-disable-next-line no-console
       console.log('Unable to create version', res.status);
     }
 
     this.requestUpdate();
+  }
+
+  async completeVersionNaming(dnElement) {
+    const displayName = this.normalizeVersionName(dnElement);
+    if (!displayName) {
+      return;
+    }
+
+    const url = this.loadedVersion;
+    await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: `{"displayname": "${displayName}"}`,
+    });
+    this.update();
+  }
+
+  editDisplayName(dn, commitFunction) {
+    const cf = commitFunction.bind(this);
+
+    dn.onfocus = () => {
+      // This selects all text in the Display Name element on focus
+      setTimeout(() => {
+        let sel;
+        let range;
+        if (window.getSelection && document.createRange) {
+          range = document.createRange();
+          range.selectNodeContents(dn);
+          sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } else if (document.body.createTextRange) {
+          range = document.body.createTextRange();
+          range.moveToElementText(dn);
+          range.select();
+        }
+      }, 1);
+    };
+    dn.onkeyup = (e) => {
+      switch (e.key) {
+        case 'Escape': // Escape will cancel the version creation
+          dn.remove();
+          this.update();
+          break;
+        case 'Enter':
+          cf(dn);
+          break;
+        default:
+          // Do nothing
+          break;
+      }
+    };
+    // Call the commitFunction a little later on blur to avoid interference
+    // with the escape key
+    dn.onblur = () => setTimeout(() => cf(dn), 200);
+    dn.focus();
+  }
+
+  async createVersion() {
+    if (!this.path) {
+      // Path not yet known, don't render
+      // eslint-disable-next-line no-console
+      console.log('Unable to save version as path not known');
+      return;
+    }
+
+    const vl = this.shadowRoot.querySelector('.version-line');
+    if (!vl) return;
+
+    const oldEntry = vl.nextElementSibling;
+    if (oldEntry) {
+      const oldBullet = oldEntry.children[0];
+      oldBullet.classList.remove('bullet-audit-first');
+      oldBullet.classList.add('bullet-audit');
+    }
+
+    const vg = document.createElement('div');
+    vg.classList.add('version-group');
+    vg.innerHTML = `<div class="bullet bullet-stored"></div><div>
+    ${this.renderDate(Date.now())}
+    <div class="display-name" id="new-display-name" contenteditable="plaintext-only">${DEFAULT_VERSION_DISPLAY_NAME}</div>
+    <div class="version">
+      <div class="entry-time">${new Date().toLocaleTimeString([], { timeStyle: 'medium' })}</div>
+    </div></div>
+    </div>
+    `;
+    vl.after(vg);
+
+    const dn = vg.querySelector('#new-display-name');
+    this.editDisplayName(dn, this.completeVersionCreation);
   }
 
   async restoreVersion() {
@@ -256,17 +443,40 @@ export default class DaVersions extends LitElement {
     }
   }
 
+  nameVersion() {
+    if (this.loadedVersion) {
+      let dn = this.shadowRoot.querySelector(`.display-name[data-href="${this.loadedVersion}"]`);
+      if (!dn) {
+        const div = this.shadowRoot.querySelector(`.bullet + [data-href="${this.loadedVersion}"]`);
+
+        if (!div) {
+          return;
+        }
+
+        dn = document.createElement('div');
+        dn.classList.add('display-name');
+        dn.innerText = DEFAULT_VERSION_DISPLAY_NAME;
+        div.insertBefore(dn, div.children[0]);
+      }
+
+      dn.contentEditable = 'plaintext-only';
+      this.editDisplayName(dn, this.completeVersionNaming);
+    }
+  }
+
   render() {
     return html`
     <div class="da-versions-menubar">
       <span class="da-versions-menuitem da-versions-create" title="Create Version" @click=${this.createVersion}></span>
       <span class="da-versions-menuitem da-versions-restore" title="Restore Version" @click=${this.restoreVersion}></span>
+      <span class="da-versions-menuitem da-versions-name" title="Name Version" @click=${this.nameVersion}></span>
       <span class="da-versions-menuitem da-versions-close" title="Close" @click=${this.hideVersions}></span>
     </div>
     <div class="da-versions-panel">
-    <ul @click=${this.versionSelected}>
-      ${until(this.renderVersions(), html`<li>Loading...</li>`)}
-    </ul>
+    <div class="version-group history-title"><div class="bullet bullet-history"></div><div>HISTORY</div></div>
+    <div class="versions-wrapper" @click=${this.versionSelected}>
+      ${until(this.renderVersions(), html`<div>Loading...</div>`)}
+    </div>
     </div>
     `;
   }
