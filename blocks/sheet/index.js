@@ -2,7 +2,8 @@ import { daFetch } from '../shared/utils.js';
 import { getNx } from '../../scripts/utils.js';
 import './da-sheet-tabs.js';
 
-const { loadScript, loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
+const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
+const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
@@ -51,10 +52,13 @@ async function getData(url) {
 
   // Single sheet
   if (json.data) {
+    const data = getSheetData(json.data);
+    const columns = data[0].map(() => ({ width: '300px' }));
     const dataSheet = {
       ...SHEET_TEMPLATE,
       sheetName: 'data',
-      data: getSheetData(json.data),
+      data,
+      columns,
     };
 
     sheets.push(dataSheet);
@@ -64,7 +68,7 @@ async function getData(url) {
   if (names) {
     names.forEach((sheetName) => {
       const data = getSheetData(json[sheetName].data);
-      const columns = data[0].map(() => ({ width: '200px' }));
+      const columns = data[0].map(() => ({ width: '300px' }));
       sheets.push({
         ...SHEET_TEMPLATE,
         sheetName,

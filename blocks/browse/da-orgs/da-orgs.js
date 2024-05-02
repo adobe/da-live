@@ -1,4 +1,4 @@
-import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
 import { getDaAdmin } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
@@ -20,16 +20,14 @@ function getRandomImg() {
 }
 
 const MOCK_ORGS = [
-  { name: 'adobe', created: '2024-01-09T23:38:05.949Z', img: MOCK_IMGS[0] },
-  { name: 'adobe-experience-league', created: '2024-01-26T01:43:15.286Z', img: MOCK_IMGS[1] },
-  { name: 'adobecom', created: '2023-11-30T06:04:10.008Z', img: MOCK_IMGS[2] },
-  { name: 'aemsites', created: '2024-01-10T17:43:13.390Z', img: MOCK_IMGS[3] },
+  { name: 'aemsites', created: '2024-01-10T17:43:13.390Z', img: MOCK_IMGS[0] },
 ];
 
 export default class DaOrgs extends LitElement {
   static properties = {
     details: { attribute: false },
     _orgs: { state: true },
+    _orgsLoaded: { state: true },
   };
 
   connectedCallback() {
@@ -47,6 +45,7 @@ export default class DaOrgs extends LitElement {
       const img = this._orgs[idx]?.img || getRandomImg();
       return { ...org, img };
     });
+    this._orgsLoaded = true;
   }
 
   formatDate(string) {
@@ -75,7 +74,7 @@ export default class DaOrgs extends LitElement {
               </div>
             </a>
           </li>`)}
-          ${this._orgs.length > 4 ? html`
+          ${this._orgsLoaded ? html`
             <li>
               <a class="da-org new" href="/start">
                 <div class="new-icon">
@@ -84,7 +83,7 @@ export default class DaOrgs extends LitElement {
                 <p class="new-title">Add new</p>
               </a>
             </li>
-          ` : null}
+          ` : nothing}
       </ul>
     `;
   }
