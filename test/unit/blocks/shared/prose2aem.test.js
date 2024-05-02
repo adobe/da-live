@@ -53,4 +53,9 @@ describe('aem2prose', () => {
     const meta = document.querySelector('.metadata');
     expect(meta).to.not.exist;
   });
+
+  it('Hides deleted regional edit content', () => {
+    const deletedRegionalEdit = document.getElementById('deleted-regionaledit');
+    expect(getComputedStyle(deletedRegionalEdit).display).to.equal('none');
+  });
 });

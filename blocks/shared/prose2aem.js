@@ -129,22 +129,24 @@ function parseIcons(editor) {
   );
 }
 
+const removeEls = (els) => els.forEach((el) => el.remove());
+
 export default function prose2aem(editor, live) {
   editor.removeAttribute('class');
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
 
   const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
-  emptyImgs.forEach((el) => { el.remove(); });
+  removeEls(emptyImgs);
 
   const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
-  trailingBreaks.forEach((el) => { el.remove(); });
+  removeEls(trailingBreaks);
 
   const userPointers = editor.querySelectorAll('.ProseMirror-yjs-cursor');
-  userPointers.forEach((el) => el.remove());
+  removeEls(userPointers);
 
   const gapCursors = editor.querySelectorAll('.ProseMirror-gapcursor');
-  gapCursors.forEach((el) => { el.remove(); });
+  removeEls(gapCursors);
 
   const highlights = editor.querySelectorAll('span.ProseMirror-yjs-selection');
   highlights.forEach((el) => {
@@ -165,6 +167,16 @@ export default function prose2aem(editor, live) {
   makePictures(editor);
 
   makeSections(editor);
+
+  if (editor.querySelector('[data-da-loc="deleted"]')) {
+    // hide any deleted langstore content
+    const style = document.createElement('style');
+
+    style.textContent = `[data-da-loc="deleted"] {
+        display: none;
+      }`;
+    editor.insertBefore(style, editor.firstChild);
+  }
 
   const html = `
     <body>

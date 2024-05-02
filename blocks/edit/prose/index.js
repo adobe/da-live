@@ -1,8 +1,12 @@
+/* eslint-disable max-classes-per-file */
 import {
   EditorState,
   EditorView,
-  Schema,
   DOMParser,
+  DOMSerializer,
+  Fragment,
+  Schema,
+  Slice,
   baseSchema,
   history,
   buildKeymap,
@@ -36,10 +40,46 @@ import linkConverter from './plugins/linkConverter.js';
 import { aem2prose, parse } from '../utils/helpers.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 
+const LOC = {
+  LANGSTORE: {
+    BG: 'rgba(70, 130, 180, 0.8)',
+    COVER_BG: 'rgba(70, 130, 180, 0.4)',
+    TEXT: 'Langstore Content',
+    TEXT_COLOR: 'rgba(70, 130, 180)',
+  },
+  REGIONAL: {
+    BG: 'rgba(144, 42, 222, 0.8)',
+    COVER_BG: 'rgba(144, 42, 222, 0.4)',
+    TEXT: 'Regional Content',
+    TEXT_COLOR: 'rgba(144, 42, 222)',
+  },
+};
+
 const DA_ORIGIN = getDaAdmin();
 
-function getSchema() {
+function parseLocDOM(locTag) {
+  return [{
+    tag: locTag,
+    contentElement: (dom) => {
+      // Only parse the content of the node, not the temporary elements
+      const deleteThese = dom.querySelectorAll('[delete]');
+      deleteThese.forEach((e) => e.remove());
+      return dom;
+    },
+  }];
+}
+
+export function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
+
+  if (!baseNodes.content.includes('loc_deleted')) {
+    baseNodes.content.push('loc_deleted');
+    baseNodes.content.push({ group: 'block', content: 'block+', parseDOM: parseLocDOM('da-loc-deleted'),
+      toDOM: () => ['da-loc-deleted', { contenteditable: false }, 0] });
+    baseNodes.content.push('loc_added');
+    baseNodes.content.push({ group: 'block', content: 'block+', parseDOM: parseLocDOM('da-loc-added'), toDOM: () => (['da-loc-added', { contenteditable: false }, 0]) });
+  }
+
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
   const contextHighlightingMark = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
@@ -274,8 +314,159 @@ export default function initProse({ editor, path }) {
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
-  window.view = new EditorView(editor, { state, dispatchTransaction });
+  window.view = new EditorView(editor, {
+    state,
+    dispatchTransaction,
+    nodeViews: {
+      loc_added(node, view, getPos) {
+        return new LocAddedView(node, view, getPos);
+      },
+      loc_deleted(node, view, getPos) {
+        return new LocDeletedView(node, view, getPos);
+      },
+    },
+  });
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
+}
+
+function getCoverDiv({ isLangstore } = {}) {
+  const coverDiv = document.createElement('div');
+  coverDiv.className = `loc-color-overlay ${isLangstore ? 'loc-langstore' : 'loc-regional'}`;
+  // TODO can I remove delete?
+  coverDiv.setAttribute('delete', '');
+
+  coverDiv.style.backgroundColor = isLangstore
+    ? LOC.LANGSTORE.COVER_BG
+    : LOC.REGIONAL.COVER_BG;
+  return coverDiv;
+}
+
+function getLangOverlay({ isLangstore } = {}) {
+  const overlay = document.createElement('div');
+  overlay.className = 'loc-lang-overlay';
+  overlay.setAttribute('delete', '');
+  overlay.style.backgroundColor = isLangstore
+    ? LOC.LANGSTORE.BG
+    : LOC.REGIONAL.BG;
+
+  const dialog = document.createElement('div');
+  dialog.className = 'loc-dialog';
+  dialog.innerHTML = `
+    <span>${isLangstore ? LOC.LANGSTORE.TEXT : LOC.REGIONAL.TEXT}</span>
+    <div>
+      <span><div class="loc-keep" title="Keep">Keep</div></span>
+      <span><div class="loc-delete" title="Delete">Delete</div></span>
+    </div>`;
+  dialog.style.color = isLangstore
+    ? LOC.LANGSTORE.TEXT_COLOR
+    : LOC.REGIONAL.TEXT_COLOR;
+
+  const deleteBtn = dialog.querySelector('.loc-delete');
+  const keepBtn = dialog.querySelector('.loc-keep');
+  overlay.appendChild(dialog);
+
+  return { overlay, deleteBtn, keepBtn };
+}
+
+function keepLocContentInPlace(view, pos, node) {
+  node.content.content = node.content.content.filter((c) => c.content.content.length);
+  const newFragment = Fragment.fromArray(node.content.content);
+  const newSlice = new Slice(newFragment, 0, 0);
+  const transaction = view.state.tr.replace(pos, pos + node.nodeSize, newSlice);
+  dispatchTransaction(transaction);
+}
+
+function deleteLocContent(view, pos, node) {
+  const resolvedPos = view.state.doc.resolve(pos);
+
+  if (resolvedPos.parent.type.name === 'list_item') {
+    const parentPos = resolvedPos.before(resolvedPos.depth);
+    // Create a transaction that deletes the parent node
+    const transaction = view.state.tr.delete(parentPos, parentPos + resolvedPos.parent.nodeSize);
+    dispatchTransaction(transaction);
+  } else {
+    const transaction = view.state.tr.delete(pos, pos + node.nodeSize);
+    dispatchTransaction(transaction);
+  }
+}
+
+class LocDeletedView {
+  constructor(node, view, getPos) {
+    this.dom = document.createElement('da-loc-deleted');
+    const serializer = DOMSerializer.fromSchema(getSchema());
+    const nodeDOM = serializer.serializeFragment(node.content);
+
+    this.dom.appendChild(nodeDOM);
+    const coverDiv = getCoverDiv({ isLangstore: true });
+    this.dom.appendChild(coverDiv);
+    const { overlay, deleteBtn, keepBtn } = getLangOverlay({ isLangstore: true });
+    this.langOverlay = overlay;
+
+    deleteBtn.addEventListener('click', () => {
+      deleteLocContent(view, getPos(), node);
+    });
+
+    keepBtn.addEventListener('click', () => {
+      keepLocContentInPlace(view, getPos(), node);
+    });
+
+    coverDiv.appendChild(this.langOverlay);
+
+    coverDiv.addEventListener('mouseover', () => {
+      this.langOverlay.style.display = 'flex';
+    });
+
+    coverDiv.addEventListener('mouseout', () => {
+      this.langOverlay.style.display = 'none';
+    });
+  }
+
+  destroy() {
+    this.coverDiv?.remove();
+    this.langOverlay?.remove();
+  }
+
+  stopEvent() { return true; }
+}
+
+class LocAddedView {
+  constructor(node, view, getPos) {
+    this.dom = document.createElement('da-loc-added');
+    const serializer = DOMSerializer.fromSchema(getSchema());
+
+    const nodeDOM = serializer.serializeFragment(node.content);
+    this.dom.appendChild(nodeDOM);
+
+    const coverDiv = getCoverDiv({ isLangstore: false });
+    this.dom.appendChild(coverDiv);
+    const { overlay, deleteBtn, keepBtn } = getLangOverlay({ isLangstore: false });
+    this.langOverlay = overlay;
+
+    deleteBtn.addEventListener('click', () => {
+      deleteLocContent(view, getPos(), node);
+    });
+
+    keepBtn.addEventListener('click', () => {
+      keepLocContentInPlace(view, getPos(), node);
+    });
+
+    coverDiv.appendChild(this.langOverlay);
+
+    coverDiv.addEventListener('mouseover', () => {
+      this.langOverlay.style.display = 'flex';
+    });
+
+    coverDiv.addEventListener('mouseout', () => {
+      this.langOverlay.style.display = 'none';
+    });
+  }
+
+  destroy() {
+    this.coverDiv?.remove();
+    this.langOverlay?.remove();
+  }
+
+  stopEvent() { return true; }
 }
