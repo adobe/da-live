@@ -3,7 +3,7 @@ import { aem2prose, parse } from '../utils/helpers.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
-const DEFAULT_VERSION_DISPLAY_NAME = 'Version Name';
+const DEFAULT_VERSION_LABEL = 'Version Label';
 
 export default class DaVersions extends LitElement {
   static properties = { path: {} };
@@ -249,9 +249,9 @@ export default class DaVersions extends LitElement {
           </div>`);
       } else {
         const verURL = l.url ? new URL(l.url, versionsURL) : undefined;
-        let displayName = '';
-        if (l.displayname) {
-          displayName = html`<div class="display-name" data-href="${ifDefined(verURL)}">${l.displayname}</div>`;
+        let label = '';
+        if (l.label) {
+          label = html`<div class="label" data-href="${ifDefined(verURL)}">${l.label}</div>`;
         }
 
         const bulletClass = verURL ? 'bullet-stored' : `bullet-audit${versions.length === 1 ? '-first' : ''}`;
@@ -263,7 +263,7 @@ export default class DaVersions extends LitElement {
         versions.push(html`
           <div class="version-group" @click=${this.triggerAuditLogHidden}><div class="bullet ${bulletClass}"></div><div data-href="${ifDefined(verURL)}">
             ${date}
-            ${displayName}
+            ${label}
             <div class="${entryClass}">
               <div class="entry-time" data-href="${ifDefined(verURL)}">${time}</div>
               <div class="user-list">${userList}</div>
@@ -280,16 +280,16 @@ export default class DaVersions extends LitElement {
     }
 
     element.contentEditable = false;
-    if (element.innerText === DEFAULT_VERSION_DISPLAY_NAME) {
+    if (element.innerText === DEFAULT_VERSION_LABEL) {
       element.innerText = '';
     }
 
     return element.innerText.trim();
   }
 
-  async completeVersionCreation(dnElement) {
-    const displayName = this.normalizeVersionName(dnElement);
-    if (!displayName) {
+  async completeVersionCreation(labelElement) {
+    const label = this.normalizeVersionName(labelElement);
+    if (!label) {
       return;
     }
 
@@ -305,10 +305,10 @@ export default class DaVersions extends LitElement {
     const versionURL = `${url.origin}/versionsource/${pathName.slice(8)}`;
 
     let options;
-    if (displayName) {
+    if (label) {
       options = {
         method: 'POST',
-        body: `{"displayname": "${displayName}"}`,
+        body: `{"label": "${label}"}`,
       };
     } else {
       options = { method: 'POST' };
@@ -323,9 +323,9 @@ export default class DaVersions extends LitElement {
     this.requestUpdate();
   }
 
-  async completeVersionNaming(dnElement) {
-    const displayName = this.normalizeVersionName(dnElement);
-    if (!displayName) {
+  async completeVersionNaming(labelElement) {
+    const label = this.normalizeVersionName(labelElement);
+    if (!label) {
       return;
     }
 
@@ -333,40 +333,40 @@ export default class DaVersions extends LitElement {
     await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: `{"displayname": "${displayName}"}`,
+      body: `{"label": "${label}"}`,
     });
     this.update();
   }
 
-  editDisplayName(dn, commitFunction) {
+  editLabel(lbl, commitFunction) {
     const cf = commitFunction.bind(this);
 
-    dn.onfocus = () => {
+    lbl.onfocus = () => {
       // This selects all text in the Display Name element on focus
       setTimeout(() => {
         let sel;
         let range;
         if (window.getSelection && document.createRange) {
           range = document.createRange();
-          range.selectNodeContents(dn);
+          range.selectNodeContents(lbl);
           sel = window.getSelection();
           sel.removeAllRanges();
           sel.addRange(range);
         } else if (document.body.createTextRange) {
           range = document.body.createTextRange();
-          range.moveToElementText(dn);
+          range.moveToElementText(lbl);
           range.select();
         }
       }, 1);
     };
-    dn.onkeyup = (e) => {
+    lbl.onkeyup = (e) => {
       switch (e.key) {
         case 'Escape': // Escape will cancel the version creation
-          dn.remove();
+          lbl.remove();
           this.update();
           break;
         case 'Enter':
-          cf(dn);
+          cf(lbl);
           break;
         default:
           // Do nothing
@@ -375,8 +375,8 @@ export default class DaVersions extends LitElement {
     };
     // Call the commitFunction a little later on blur to avoid interference
     // with the escape key
-    dn.onblur = () => setTimeout(() => cf(dn), 200);
-    dn.focus();
+    lbl.onblur = () => setTimeout(() => cf(lbl), 200);
+    lbl.focus();
   }
 
   async createVersion() {
@@ -401,7 +401,7 @@ export default class DaVersions extends LitElement {
     vg.classList.add('version-group');
     vg.innerHTML = `<div class="bullet bullet-stored"></div><div>
     ${this.renderDate(Date.now())}
-    <div class="display-name" id="new-display-name" contenteditable="plaintext-only">${DEFAULT_VERSION_DISPLAY_NAME}</div>
+    <div class="label" id="new-label" contenteditable="plaintext-only">${DEFAULT_VERSION_LABEL}</div>
     <div class="version">
       <div class="entry-time">${new Date().toLocaleTimeString([], { timeStyle: 'medium' })}</div>
     </div></div>
@@ -409,8 +409,8 @@ export default class DaVersions extends LitElement {
     `;
     vl.after(vg);
 
-    const dn = vg.querySelector('#new-display-name');
-    this.editDisplayName(dn, this.completeVersionCreation);
+    const lbl = vg.querySelector('#new-label');
+    this.editLabel(lbl, this.completeVersionCreation);
   }
 
   async restoreVersion() {
@@ -445,22 +445,22 @@ export default class DaVersions extends LitElement {
 
   nameVersion() {
     if (this.loadedVersion) {
-      let dn = this.shadowRoot.querySelector(`.display-name[data-href="${this.loadedVersion}"]`);
-      if (!dn) {
+      let lbl = this.shadowRoot.querySelector(`.label[data-href="${this.loadedVersion}"]`);
+      if (!lbl) {
         const div = this.shadowRoot.querySelector(`.bullet + [data-href="${this.loadedVersion}"]`);
 
         if (!div) {
           return;
         }
 
-        dn = document.createElement('div');
-        dn.classList.add('display-name');
-        dn.innerText = DEFAULT_VERSION_DISPLAY_NAME;
-        div.insertBefore(dn, div.children[0]);
+        lbl = document.createElement('div');
+        lbl.classList.add('label');
+        lbl.innerText = DEFAULT_VERSION_LABEL;
+        div.insertBefore(lbl, div.children[0]);
       }
 
-      dn.contentEditable = 'plaintext-only';
-      this.editDisplayName(dn, this.completeVersionNaming);
+      lbl.contentEditable = 'plaintext-only';
+      this.editLabel(lbl, this.completeVersionNaming);
     }
   }
 
