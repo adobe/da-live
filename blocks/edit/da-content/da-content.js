@@ -31,9 +31,6 @@ export default class DaContent extends LitElement {
     dav.requestUpdate();
 
     dav.classList.add('show-versions');
-
-    // No need to request an update, setting the path is enough as its a reactive property
-    dav.path = this.details.sourceUrl;
   }
 
   render() {
@@ -47,7 +44,7 @@ export default class DaContent extends LitElement {
         </div>
       </div>
       <da-preview path=${this.details.previewUrl}></da-preview>
-      <da-versions></da-versions>
+      <da-versions path="${this.details.sourceUrl}"></da-versions>
     `;
   }
 }

@@ -276,7 +276,8 @@ export default class DaVersions extends LitElement {
 
   normalizeVersionName(element) {
     if (!element.parentNode) {
-      return null;
+      // Escape pressed
+      return undefined;
     }
 
     element.contentEditable = false;
@@ -289,7 +290,7 @@ export default class DaVersions extends LitElement {
 
   async completeVersionCreation(labelElement) {
     const label = this.normalizeVersionName(labelElement);
-    if (!label) {
+    if (label === undefined) {
       return;
     }
 
@@ -341,6 +342,7 @@ export default class DaVersions extends LitElement {
   editLabel(lbl, commitFunction) {
     const cf = commitFunction.bind(this);
 
+    let changeMade = false;
     lbl.onfocus = () => {
       // This selects all text in the Display Name element on focus
       setTimeout(() => {
@@ -366,7 +368,10 @@ export default class DaVersions extends LitElement {
           this.update();
           break;
         case 'Enter':
-          cf(lbl);
+          if (!changeMade) {
+            changeMade = true;
+            cf(lbl);
+          }
           break;
         default:
           // Do nothing
@@ -375,7 +380,12 @@ export default class DaVersions extends LitElement {
     };
     // Call the commitFunction a little later on blur to avoid interference
     // with the escape key
-    lbl.onblur = () => setTimeout(() => cf(lbl), 200);
+    lbl.onblur = () => setTimeout(() => {
+      if (!changeMade) { // ensure to only apply the change once
+        changeMade = true;
+        cf(lbl);
+      }
+    }, 200);
     lbl.focus();
   }
 
