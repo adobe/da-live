@@ -82,17 +82,17 @@ function pollForUpdates() {
   }, 500);
 }
 
-// Apply the document in AEM doc format to the editor.
-// For this it's converted to Prose and then applied to the current ydoc as an XML fragment
-function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
-  const doc = parse(aemDoc);
-  const pdoc = aem2prose(doc);
-  const docc = document.createElement('div');
-  docc.append(...pdoc);
-  const parser = DOMParser.fromSchema(schema);
-  const fin = parser.parse(docc);
-  prosemirrorToYXmlFragment(fin, yXmlFragment);
-}
+// // Apply the document in AEM doc format to the editor.
+// // For this it's converted to Prose and then applied to the current ydoc as an XML fragment
+// function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
+//   const doc = parse(aemDoc);
+//   const pdoc = aem2prose(doc);
+//   const docc = document.createElement('div');
+//   docc.append(...pdoc);
+//   const parser = DOMParser.fromSchema(schema);
+//   const fin = parser.parse(docc);
+//   prosemirrorToYXmlFragment(fin, yXmlFragment);
+// }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
   const users = new Set();
@@ -129,6 +129,7 @@ export function createAwarenessStatusWidget(wsProvider, win) {
   return daTitle;
 }
 
+/*
 export function handleYDocUpdates({
   daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse,
 }, win = window, fnSetAEMDocInEditor = setAEMDocInEditor) {
@@ -171,6 +172,7 @@ export function handleYDocUpdates({
     }
   });
 }
+*/
 
 function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40, 60]) {
   let hash = 0;
@@ -207,12 +209,12 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  const daTitle = createAwarenessStatusWidget(wsProvider, window);
+  /* const daTitle = */ createAwarenessStatusWidget(wsProvider, window);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
-  handleYDocUpdates({
-    daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse: initProse,
-  });
+  // handleYDocUpdates({
+  //   daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse: initProse,
+  // });
 
   if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then(
