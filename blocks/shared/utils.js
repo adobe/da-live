@@ -6,6 +6,16 @@ const ALLOWED_TOKEN = ['https://admin.hlx.page', 'https://admin.da.live'];
 
 let imsDetails;
 
+async function setUnauthorized() {
+  const { loadArea } = await import(`${getNx()}/scripts/nexter.js`);
+  const main = document.body.querySelector('main');
+  main.innerHTML = '';
+  const resp = await fetch('/fragments/404.plain.html');
+  if (!resp.ok) return;
+  main.innerHTML = await resp.text();
+  loadArea(main);
+}
+
 export async function initIms() {
   if (imsDetails) return imsDetails;
   const { loadIms } = await import(`${getNx()}/utils/ims.js`);
@@ -20,13 +30,19 @@ export async function initIms() {
 
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
+  let accessToken;
   if (localStorage.getItem('nx-ims')) {
-    const { accessToken } = await initIms();
+    ({ accessToken } = await initIms());
     const canToken = ALLOWED_TOKEN.some((origin) => url.startsWith(origin));
     if (accessToken && canToken) opts.headers.Authorization = `Bearer ${accessToken.token}`;
   }
   const resp = await fetch(url, opts);
   if (resp.status === 401) {
+    if (accessToken) {
+      setUnauthorized();
+      return { ok: false };
+    }
+
     const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
     await loadIms();
     handleSignIn();
