@@ -46,22 +46,15 @@ function loadStyles() {
 }
 
 export default async function loadPage() {
-  // TODO: AEM markup doesn't do colspan in blocks correctly
-  const divs = document.querySelectorAll('div[class] div');
-  divs.forEach((div) => { if (div.innerHTML.trim() === '') div.remove(); });
-
   await loadArea();
 }
-
-// Side-effects
-(async function daPreview() {
-  const { searchParams } = new URL(window.location.href);
-  if (searchParams.get('dapreview') === 'on') {
-    const { default: livePreview } = await import('./dapreview.js');
-    livePreview(loadPage);
-  }
-}());
 
 loadStyles();
 decorateArea();
 loadPage();
+
+// Side-effects
+(async function loadDa() {
+  if (!new URL(window.location.href).searchParams.get('dapreview')) return;
+  import('https://da.live/scripts/dapreview.js').then(({ default: daPreview }) => daPreview(loadPage));
+}());
