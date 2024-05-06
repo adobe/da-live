@@ -6,16 +6,6 @@ const ALLOWED_TOKEN = ['https://admin.hlx.page', 'https://admin.da.live'];
 
 let imsDetails;
 
-async function setUnauthorized() {
-  const { loadArea } = await import(`${getNx()}/scripts/nexter.js`);
-  const main = document.body.querySelector('main');
-  main.innerHTML = '';
-  const resp = await fetch('/fragments/404.plain.html');
-  if (!resp.ok) return;
-  main.innerHTML = await resp.text();
-  loadArea(main);
-}
-
 export async function initIms() {
   if (imsDetails) return imsDetails;
   const { loadIms } = await import(`${getNx()}/utils/ims.js`);
@@ -39,7 +29,7 @@ export const daFetch = async (url, opts = {}) => {
   const resp = await fetch(url, opts);
   if (resp.status === 401) {
     if (accessToken) {
-      setUnauthorized();
+      window.location = `${window.location.origin}/not-found`;
       return { ok: false };
     }
 
