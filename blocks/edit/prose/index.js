@@ -2,7 +2,6 @@ import {
   EditorState,
   EditorView,
   Schema,
-  DOMParser,
   baseSchema,
   history,
   buildKeymap,
@@ -24,7 +23,6 @@ import {
   yUndoPlugin,
   yUndo,
   yRedo,
-  prosemirrorToYXmlFragment,
 // eslint-disable-next-line import/no-unresolved
 } from 'da-y-wrapper';
 
@@ -33,7 +31,6 @@ import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
-import { aem2prose, parse } from '../utils/helpers.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 
 const DA_ORIGIN = getDaAdmin();
@@ -82,18 +79,6 @@ function pollForUpdates() {
   }, 500);
 }
 
-// // Apply the document in AEM doc format to the editor.
-// // For this it's converted to Prose and then applied to the current ydoc as an XML fragment
-// function setAEMDocInEditor(aemDoc, yXmlFragment, schema) {
-//   const doc = parse(aemDoc);
-//   const pdoc = aem2prose(doc);
-//   const docc = document.createElement('div');
-//   docc.append(...pdoc);
-//   const parser = DOMParser.fromSchema(schema);
-//   const fin = parser.parse(docc);
-//   prosemirrorToYXmlFragment(fin, yXmlFragment);
-// }
-
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
   const users = new Set();
 
@@ -128,51 +113,6 @@ export function createAwarenessStatusWidget(wsProvider, win) {
   handleAwarenessUpdates(wsProvider, daTitle, win);
   return daTitle;
 }
-
-/*
-export function handleYDocUpdates({
-  daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse,
-}, win = window, fnSetAEMDocInEditor = setAEMDocInEditor) {
-  let firstUpdate = true;
-  ydoc.on('update', (_, originWS) => {
-    if (firstUpdate) {
-      firstUpdate = false;
-
-      // Do the following async to allow the ydoc to init itself with any
-      // changes coming from other editors
-      setTimeout(() => {
-        const aemMap = ydoc.getMap('aem');
-        const current = aemMap.get('content');
-        const inital = aemMap.get('initial');
-        if (!current && inital) {
-          fnSetAEMDocInEditor(inital, yXmlFragment, schema);
-        }
-      }, 1);
-    }
-
-    const serverInvKey = 'svrinv';
-    const svrUpdate = ydoc.getMap('aem').get(serverInvKey);
-    if (svrUpdate) {
-      // push update from the server: re-init document
-      delete daTitle.collabStatus;
-      delete daTitle.collabUsers;
-      ydoc.destroy();
-      wsProvider.destroy();
-      editor.innerHTML = '';
-      fnInitProse({ editor, path });
-      return;
-    }
-
-    if (originWS && originWS !== wsProvider) {
-      const proseEl = win.view.root.querySelector('.ProseMirror');
-      const clone = proseEl.cloneNode(true);
-      const aem = prose2aem(clone);
-      const aemMap = ydoc.getMap('aem');
-      aemMap.set('content', aem);
-    }
-  });
-}
-*/
 
 function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40, 60]) {
   let hash = 0;
@@ -209,12 +149,9 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  /* const daTitle = */ createAwarenessStatusWidget(wsProvider, window);
+  createAwarenessStatusWidget(wsProvider, window);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
-  // handleYDocUpdates({
-  //   daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse: initProse,
-  // });
 
   if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then(
