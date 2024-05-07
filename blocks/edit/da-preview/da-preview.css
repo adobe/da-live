@@ -9,6 +9,9 @@ iframe {
 }
 
 .da-preview-menubar {
+  --editor-btn-bg-color: #EFEFEF;
+  --editor-btn-bg-color-hover: #e9e9e9;
+
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
@@ -34,21 +37,25 @@ iframe {
 }
 
 .da-preview-menuitem {
-  background: url("/blocks/edit/img/Smock_Close_18_N.svg") center center / 20px no-repeat #EFEFEF;
+  background: url("/blocks/edit/img/Smock_Close_18_N.svg") center center / 20px no-repeat var(--editor-btn-bg-color);
+}
+
+.da-preview-menuitem:hover {
+  background-color: var(--editor-btn-bg-color-hover) !important;
 }
 
 .set-mobile {
-  background: url('/blocks/edit/img/Smock_DevicePhone_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_DevicePhone_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .set-tablet {
-  background: url('/blocks/edit/img/Smock_DeviceTablet_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_DeviceTablet_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .set-laptop {
-  background: url('/blocks/edit/img/Smock_DeviceLaptop_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_DeviceLaptop_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .set-desktop {
-  background: url('/blocks/edit/img/Smock_DeviceDesktop_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_DeviceDesktop_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
