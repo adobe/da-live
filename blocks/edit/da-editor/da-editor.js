@@ -20,6 +20,18 @@ export default class DaEditor extends LitElement {
     });
   }
 
+  disconnectWebsocket() {
+    if (this.wsProvider) {
+      this.wsProvider.disconnect({ data: 'Client navigation' });
+      this.wsProvider = undefined;
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.disconnectWebsocket();
+  }
+
   attributeChangedCallback(name, _old, value) {
     super.attributeChangedCallback();
     if (name !== 'path') return;
@@ -33,9 +45,10 @@ export default class DaEditor extends LitElement {
 
   updated() {
     if (!this._imsLoaded) return;
+    this.disconnectWebsocket();
     const prose = this.shadowRoot.querySelector('.da-prose-mirror');
     prose.innerHTML = '';
-    initProse({ editor: prose, path: this._path });
+    this.wsProvider = initProse({ editor: prose, path: this._path });
   }
 }
 

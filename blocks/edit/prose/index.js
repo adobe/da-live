@@ -217,4 +217,6 @@ export default function initProse({ editor, path }) {
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
+
+  return wsProvider;
 }
