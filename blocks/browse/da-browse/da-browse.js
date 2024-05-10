@@ -27,6 +27,8 @@ export default class DaBrowse extends LitElement {
     _createName: { state: true },
     _createFile: { state: true },
     _fileLabel: { state: true },
+    _dropFiles: { state: true },
+    _dropMessage: { state: true },
     _canPaste: {},
   };
 
@@ -38,6 +40,8 @@ export default class DaBrowse extends LitElement {
     this._createName = '';
     this._createFile = '';
     this._fileLabel = 'Select file';
+    this._dropFiles = [];
+    this._dropMessage = 'Drop content here';
     this._tabItems = [
       { id: 'browse', label: 'Browse', selected: true },
       { id: 'search', label: 'Search', selected: false },
@@ -104,9 +108,12 @@ export default class DaBrowse extends LitElement {
       window.location = editPath;
     } else {
       await saveToDa({ path });
-      const item = { name: this._createName, path };
-      if (ext) item.ext = ext;
-      this._listItems.unshift(item);
+      const hasName = this._listItems.some((item) => item.name === this._createName);
+      if (!hasName) {
+        const item = { name: this._createName, path };
+        if (ext) item.ext = ext;
+        this._listItems.unshift(item);
+      }
     }
     this.resetCreate();
     this.requestUpdate();
@@ -273,6 +280,62 @@ export default class DaBrowse extends LitElement {
     this.searchItems = e.detail.items;
   }
 
+  dragenter(e) {
+    e.stopPropagation();
+    e.target.closest('.da-browse-panel').classList.add('is-dragged-over');
+    e.preventDefault();
+  }
+
+  dragleave(e) {
+    if (!e.target.classList.contains('da-drop-area')) return;
+    e.target.closest('.da-browse-panel').classList.remove('is-dragged-over');
+    e.preventDefault();
+  }
+
+  dragover(e) {
+    e.preventDefault();
+  }
+
+  setDropMessage() {
+    const { length } = this._dropFiles.filter((file) => !file.imported);
+    if (length === 0) {
+      this._dropMessage = 'Drop content here';
+      return;
+    }
+    const prefix = `Importing - ${length} `;
+    const suffix = length === 1 ? 'item' : 'items';
+    this._dropMessage = `${prefix} ${suffix}`;
+  }
+
+  async drop(e) {
+    e.preventDefault();
+    const { fullpath } = this.details;
+    const items = e.dataTransfer?.items;
+    if (!items) return;
+
+    const entries = [...items].map((item) => item.webkitGetAsEntry());
+    const makeBatches = (await import(`${getNx()}/utils/batch.js`)).default;
+    const { getFullEntryList, handleUpload } = await import('./helpers/drag-n-drop.js');
+    this._dropFiles = await getFullEntryList(entries);
+
+    this.setDropMessage();
+
+    const batches = makeBatches(this._dropFiles);
+    for (const batch of batches) {
+      await Promise.all(batch.map(async (file) => {
+        const item = await handleUpload(this._listItems, fullpath, file);
+        this.setDropMessage();
+        if (item) {
+          this._listItems.unshift(item);
+          this.requestUpdate();
+        }
+      }));
+    }
+    this._dropFiles = [];
+    this.setDropMessage();
+    e.target.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
+  }
+
   renderConfig(length, crumb, idx) {
     if (this.details.depth <= 2 && idx + 1 === length) {
       return html`
@@ -423,7 +486,11 @@ export default class DaBrowse extends LitElement {
   }
 
   renderBrowse() {
-    return html`${this._listItems?.length > 0 ? this.listView(this._listItems, true) : this.emptyView()}`;
+    return html`
+      <div class="da-browse-panel" @dragenter=${this.dragenter} @dragleave=${this.dragleave}>
+        ${this._listItems?.length > 0 ? this.listView(this._listItems, true) : this.emptyView()}
+        <div class="da-drop-area" data-message=${this._dropMessage} @dragover=${this.dragover} @drop=${this.drop}></div>
+      </div>`;
   }
 
   render() {
