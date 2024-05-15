@@ -51,6 +51,39 @@ td.selectedCell {
   border: 3px solid #60c175;
 }
 
+.da-editor-error {
+  background-color: lightcoral;
+  border-radius: 5px;
+  color: white;
+  position: absolute;
+  min-width: 560px;
+  top: -100px;
+  left: 150px;
+  right: 150px;
+  padding: 20px;
+  font-weight: 700;
+  z-index: 2;
+}
+
+.da-editor-error-hidden {
+  display: none;
+}
+
+.da-editor-error .da-editor-error-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 6px 12px;
+}
+
+.da-editor-error-stack {
+  background-color: grey;
+  border-radius: 3px;
+  padding: 3px;
+  font-size: small;
+  font-weight: 400;
+}
+
 .ProseMirror-menubar {
   position: fixed;
   top: 50%;

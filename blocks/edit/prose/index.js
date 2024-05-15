@@ -114,6 +114,50 @@ export function createAwarenessStatusWidget(wsProvider, win) {
   return daTitle;
 }
 
+function showError(daError, errmap) {
+  if (!errmap) return; // no error
+
+  const ts = errmap.get('timestamp');
+  if (!ts) return; // no error
+
+  const date = new Date(ts).toLocaleString(undefined, {});
+
+  const msgEl = daError.querySelector('.da-editor-error-message');
+  msgEl.innerText = `${date}\n${errmap.get('message')}`;
+
+  const stackEl = daError.querySelector('.da-editor-error-stack');
+  stackEl.innerText = errmap.get('stack') ?? 'no stack available';
+  daError.classList.remove('da-editor-error-hidden');
+}
+
+function removeError(ydoc, daError) {
+  daError.classList.add('da-editor-error-hidden');
+  daError.querySelector('.da-editor-error-twistie').innerText = '▸';
+  daError.querySelector('.da-editor-error-stack').classList.add('da-editor-error-hidden');
+
+  const errmap = ydoc.getMap('error');
+
+  // Clear the error by emptying the map. Do this in a ydoc transaction
+  // to avoid a partial view of the update
+  ydoc.transact(() => { errmap.forEach((_, k) => errmap.delete(k)); });
+}
+
+// Closes the error panel and also clears the error in the ydoc
+function registerCloseErrorHandler(ydoc, editor) {
+  const daError = editor.parentNode.querySelector('.da-editor-error');
+  const closeBtn = daError.querySelector('.da-editor-error-close');
+  closeBtn.onclick = () => removeError(ydoc, daError);
+}
+
+function registerErrorHandler(ydoc, editor) {
+  const dae = editor.parentNode.querySelector('.da-editor-error');
+  ydoc.on('update', () => {
+    showError(dae, ydoc.getMap('error'));
+  });
+
+  registerCloseErrorHandler(ydoc, editor);
+}
+
 function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40, 60]) {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
@@ -150,6 +194,7 @@ export default function initProse({ editor, path }) {
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
   createAwarenessStatusWidget(wsProvider, window);
+  registerErrorHandler(ydoc, editor);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
