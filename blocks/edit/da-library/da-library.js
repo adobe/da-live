@@ -1,8 +1,11 @@
+import { DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { LitElement, html, until } from '../../../deps/lit/lit-all.min.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import { getItems, getLibraryList } from './helpers/helpers.js';
+import { aem2prose } from '../utils/helpers.js';
+import { daFetch } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 
@@ -63,6 +66,18 @@ class DaLibrary extends LitElement {
     window.view.dispatch(tr.replaceSelectionWith(item.parsed).scrollIntoView());
   }
 
+  async handleTemplateClick(item) {
+    const resp = await daFetch(`${item.value}`);
+    if (!resp.ok) return;
+    const text = await resp.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const proseDom = aem2prose(doc);
+    const flattedDom = document.createElement('div');
+    flattedDom.append(...proseDom);
+    const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(flattedDom);
+    window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));
+  }
+
   async renderGroupDetail(path) {
     const items = await getBlockVariants(path);
     return html`
@@ -117,6 +132,24 @@ class DaLibrary extends LitElement {
     `;
   }
 
+  renderTemplates(items, listName) {
+    return html`
+      <ul class="da-library-type-list da-library-type-list-${listName}">
+      ${items.map((item) => html`
+        <li class="da-library-type-item">
+          <button class="da-library-type-item-btn"
+            @click=${() => this.handleTemplateClick(item)}>
+            <div class="da-library-type-item-detail">
+              <span>${item.key}</span>
+              <svg class="icon">
+                <use href="#spectrum-AddCircle"/>
+              </svg>
+            </div>
+          </button>
+        </li>`)}
+      </ul>`;
+  }
+
   renderItems(items, listName) {
     return html`
       <ul class="da-library-type-list da-library-type-list-${listName}">
@@ -148,7 +181,8 @@ class DaLibrary extends LitElement {
 
     const items = await getItems(sources, name, format);
     if (items.length > 0) {
-      if (name === 'assets') return this.renderAssets(items);
+      if (name === 'templates') return this.renderTemplates(items, name);
+      if (name === 'media') return this.renderAssets(items);
       return this.renderItems(items, name);
     }
     return html`${name}`;

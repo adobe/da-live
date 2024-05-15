@@ -6,8 +6,18 @@ body {
 .da-sheet-wrapper {
   max-width: 900px;
   margin: 0 auto;
-  box-shadow: rgb(181 181 181) 0 0 20px 0;
-  overflow: scroll;
+  position: relative;
+}
+
+button.new-sheet {
+  position: absolute;
+  right: 0;
+  height: 44px;
+  margin: 0;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-weight: 700;
+  border: 2px solid #676767;
 }
 
 .jcontextmenu {
@@ -51,10 +61,26 @@ body {
   align-items: center;
 }
 
+/* stylelint-disable-next-line selector-class-pattern */
+.jexcel_tabs > div:first-child {
+  display: none;
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.jexcel_tabs > div:last-child {
+  box-shadow: rgb(181 181 181) 0 10px 20px 0;
+  overflow: scroll;
+}
+
 .da-sheet-wrapper .jcontextmenu > div {
   padding: 8px 8px 8px 16px;
   font-family: var(--body-font-family);
   font-size: 14px;
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.jexcel_tabs .jexcel_tab_link {
+  border-radius: 8px;
 }
 
 /* stylelint-disable-next-line selector-class-pattern */

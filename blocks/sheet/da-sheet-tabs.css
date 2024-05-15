@@ -1,0 +1,89 @@
+:host {
+  display: flex;
+  gap: var(--spacing-200);
+  margin-bottom: var(--spacing-200);
+}
+
+svg {
+  display: none;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  gap: var(--spacing-200);
+}
+
+li {
+  background: rgb(220 220 220);
+  border-radius: 6px;
+  line-height: 32px;
+  padding: 0 0 0 12px;
+  overflow: hidden;
+}
+
+input {
+  border: none;
+  padding: 0 6px;
+  background: rgb(255 255 255 / 40%);
+}
+
+button,
+input[type="text"] {
+  font-family: var(--body-font-family);
+}
+
+li.active {
+  background: rgb(180 180 180);
+}
+
+li button {
+  background: none;
+  border: none;
+  padding: 7px 10px;
+  font-weight: 700;
+}
+
+li button[value="select"] {
+  font-weight: 400;
+}
+
+form {
+  display: flex;
+  gap: 4px;
+}
+
+button:hover {
+  color: #FFF;
+  background-color: var(--spectrum-blue-800);
+}
+
+.icon {
+  color: rgb(0 0 0 / 40%);
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+button:hover .icon {
+  color: #FFF;
+}
+
+.action-container {
+  display: flex;
+}
+
+.add-sheet {
+  font-weight: 700;
+  background: none;
+  border: 2px solid var(--s2-gray-800);
+  border-radius: 6px;
+  padding: 0 12px;
+}
+
+.add-sheet:hover {
+  background-color: var(--spectrum-blue-800);
+  border: 2px solid var(--spectrum-blue-800);
+}

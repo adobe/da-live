@@ -265,7 +265,6 @@ input[type="checkbox"] {
 .da-breadcrumb-list-item {
   position: relative;
   display: block;
-  text-transform: uppercase;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -508,8 +507,8 @@ li.da-actions-menu-item button:hover {
 
 /* Empty list */
 .empty-list {
-  border: 1px solid rgb(234, 234, 234);
-  background-color: rgb(248, 248, 248);
+  border: 1px solid rgb(234 234 234);
+  background-color: rgb(248 248 248);
   border-radius: 6px;
   display: flex;
   justify-content: center;
@@ -517,6 +516,38 @@ li.da-actions-menu-item button:hover {
   min-height: 400px;
 }
 
+/* Drag & Drop */
+.da-browse-panel {
+  position: relative;
+}
+
+.da-browse-panel.is-dragged-over > * {
+  position: relative;
+  opacity: 0.1;
+}
+
+.da-drop-area {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  border-radius: 6px;
+  background-color: rgb(180 255 175 / 23%);
+  border: 2px dotted rgb(0 194 68);
+  z-index: 1;
+}
+
+.da-drop-area::after {
+  font-size: 24px;
+  font-weight: 700;
+  content: attr(data-message);
+}
+
+.da-browse-panel.is-dragged-over > .da-drop-area {
+  display: flex;
+  opacity: 1;
+  position: absolute;
+  inset: 0;
+}
 
 @media (min-width: 900px) {
   .da-breadcrumb {
@@ -528,4 +559,30 @@ li.da-actions-menu-item button:hover {
   .da-breadcrumb:has(da-search) {
     display: block;
   }
+}
+
+/* Loader */
+.da-loader-overlay {
+  position: absolute;
+  background-color: rgba(228, 240, 255, 0.7);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+.da-loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid var(--spectrum-blue-800);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 2s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

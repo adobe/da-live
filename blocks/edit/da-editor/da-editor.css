@@ -110,7 +110,9 @@ span.ProseMirror-menuseparator {
   height: 44px;
 }
 
-.ProseMirror-menuitem:has(.open-assets.ProseMirror-menu-disabled) {
+.ProseMirror-menuitem:has(.open-assets.ProseMirror-menu-disabled),
+.ProseMirror-menuitem:has(.img-alt-text.ProseMirror-menu-disabled)
+{
   display: none;
 }
 
@@ -273,6 +275,10 @@ span.ProseMirror-menuseparator {
 
 .edit-redo {
   background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.img-alt-text {
+  background: url('/blocks/edit/img/Smock_ImageText_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
 /* Generic ProseMirror Styles */

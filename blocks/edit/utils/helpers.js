@@ -12,12 +12,13 @@ function getBlockName(block) {
 
 function handleRow(row, maxCols, table) {
   const tr = document.createElement('tr');
-  [...row.children].forEach((col) => {
+  const cells = [...row.children];
+  cells.forEach((cell, idx) => {
     const td = document.createElement('td');
-    if (row.children.length < maxCols) {
-      td.setAttribute('colspan', maxCols);
+    if (cells.length < maxCols && idx === cells.length - 1) {
+      td.setAttribute('colspan', maxCols - idx);
     }
-    td.innerHTML = col.innerHTML;
+    td.innerHTML = cells[idx].innerHTML;
     tr.append(td);
   });
   table.append(tr);
@@ -51,7 +52,7 @@ export function aem2prose(doc) {
   brs.forEach((br) => { br.remove(); });
 
   // Fix blocks
-  const blocks = doc.querySelectorAll('div[class]');
+  const blocks = doc.querySelectorAll('main > div > div');
   blocks.forEach((block) => {
     const table = getTable(block);
     block.parentElement.replaceChild(table, block);
@@ -111,8 +112,9 @@ async function saveHtml(fullPath) {
   return daFetch(fullPath, opts);
 }
 
-async function saveJson(fullPath, sheet, dataType = 'blob') {
+function formatSheetData(sheet) {
   const jData = sheet.getData();
+
   const data = jData.reduce((acc, row, idx) => {
     if (idx > 0) {
       const rowObj = {};
@@ -137,8 +139,31 @@ async function saveJson(fullPath, sheet, dataType = 'blob') {
       emptyRow = false;
     }
   }
+  return data;
+}
 
-  const json = { total: data.length, offset: 0, limit: data.length, data, ':type': 'sheet' };
+async function saveJson(fullPath, sheets, dataType = 'blob') {
+  let json;
+  const formatted = sheets.reduce((acc, sheet) => {
+    const data = formatSheetData(sheet);
+    acc[sheet.name] = {
+      total: data.length,
+      limit: data.length,
+      offset: 0,
+      data,
+    };
+    return acc;
+  }, {});
+
+  if (sheets.length > 1) {
+    formatted[':names'] = sheets.map((sheet) => sheet.name);
+    formatted[':version'] = 3;
+    formatted[':type'] = 'multi-sheet';
+    json = formatted;
+  } else {
+    json = formatted[sheets[0].name];
+    json[':type'] = 'sheet';
+  }
 
   const formData = new FormData();
 
