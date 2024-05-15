@@ -28,7 +28,8 @@ export default class DaContent extends LitElement {
 
   showVersions() {
     this.classList.add('show-versions');
-    this.shadowRoot.querySelector('da-versions').classList.add('show-versions');
+    this.daVersions.open = true;
+    this.daVersions.classList.add('show-versions');
   }
 
   handleReset() {
@@ -40,8 +41,13 @@ export default class DaContent extends LitElement {
   }
 
   handleCloseVersions() {
+    this.daVersions.open = false;
     this.classList.remove('show-versions');
-    this.shadowRoot.querySelector('da-versions').classList.remove('show-versions');
+    this.daVersions.classList.remove('show-versions');
+  }
+
+  get daVersions() {
+    return this.shadowRoot.querySelector('da-versions');
   }
 
   render() {

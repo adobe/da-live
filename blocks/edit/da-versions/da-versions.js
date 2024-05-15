@@ -8,7 +8,8 @@ const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
 
 export default class DaVersions extends LitElement {
   static properties = {
-    path: {},
+    open: { attribute: false },
+    path: { type: String },
     _versions: { state: true },
     _newVersion: { state: true },
   };
@@ -16,7 +17,6 @@ export default class DaVersions extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this.getVersions();
   }
 
   async getVersions() {
@@ -69,6 +69,15 @@ export default class DaVersions extends LitElement {
     this._newVersion = { date, time, isVersion: true, users: [] };
   }
 
+  handleCancel() {
+    this._newVersion = null;
+  }
+
+  update(changedProps) {
+    if (changedProps.has('open') && this.open) this.getVersions();
+    super.update();
+  }
+
   renderAudits(entry) {
     return html`
       <li class="da-version-entry is-audit" @click=${this.handleExpand}>
@@ -97,7 +106,7 @@ export default class DaVersions extends LitElement {
           <p class="da-version-date">${entry.date}</p>
           <input type="text" name="label" placeholder="Label" class="da-version-new-input" />
         </form>
-        <button class="da-version-btn da-version-btn-cancel" click=${this.handleCancel}>Save</button>
+        <button class="da-version-btn da-version-btn-cancel" @click=${this.handleCancel}>Save</button>
       </li>
     `;
   }
@@ -129,8 +138,11 @@ export default class DaVersions extends LitElement {
     `;
   }
 
+  renderVersionList() {
+    return this._versions.map((entry) => html`${entry.isVersion ? this.renderVersion(entry) : this.renderAudits(entry)}`);
+  }
+
   render() {
-    if (!this._versions) return nothing;
     return html`
       <div class="da-versions-panel">
         <p class="da-versions-title">
@@ -138,7 +150,7 @@ export default class DaVersions extends LitElement {
         </p>
         <ul class="da-version-list">
           ${this._newVersion ? this.renderNewVersion() : this.renderNow()}
-          ${this._versions.map((entry) => html`${entry.isVersion ? this.renderVersion(entry) : this.renderAudits(entry)}`)}
+          ${this._versions?.length > 0 ? this.renderVersionList() : nothing}
         </ul>
       </div>
     `;
