@@ -43,49 +43,51 @@ da-versions.show-versions {
   overflow: unset;
 }
 
-.da-preview-menubar,
-.da-versions-menubar {
+.da-editor-tabs {
   display: none;
   position: absolute;
   top: 20px;
-  padding: 6px 6px 0px;
-  border-radius: 4px;
-  box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
-  background: rgb(255, 255, 255);
-  box-sizing: border-box;
   right: -56px;
 }
 
-
-:host(.show-preview) .da-preview-menubar {
-  display: none;
+.da-editor-tabs-full {
+  padding: 6px;
+  border-radius: 4px;
+  box-shadow: rgb(181 181 181) 0 0 5px 0;
+  background: rgb(255 255 255);
+  box-sizing: border-box;
 }
 
-:host(.show-versions) .da-preview-menubar {
-  display: none;
+.da-editor-tabs-quiet {
+  padding: 6px;
 }
 
-.da-preview-menuitem,
-.da-versions-menuitem {
+.da-editor-tab {
   display: block;
   width: 50px;
   height: 44px;
   text-indent: -1000px;
   overflow: hidden;
   border-radius: 2px;
-  margin-bottom: 6px;
-  background-color: rgb(239, 239, 239);
+  border: none;
+  cursor: pointer;
 }
 
-.da-preview-menuitem.show-preview {
-  background: url("/blocks/edit/img/Smock_Preview_18_N.svg") center center / 20px no-repeat rgb(239, 239, 239);
+.da-editor-tab.show-preview {
+  background: url("/blocks/edit/img/Smock_Preview_18_N.svg") center center / 20px no-repeat rgb(239 239 239);
   background-blend-mode: hard-light;
 }
 
-.da-versions-menuitem.show-versions {
-  background: url("/blocks/edit/img/Smock_FilingCabinet_18_N.svg") center center / 20px no-repeat rgb(239, 239, 239);
+.da-editor-tab.show-versions {
+  background: url("/blocks/edit/img/Smock_Calendar_18_N.svg") center center / 20px no-repeat;
   background-blend-mode: hard-light;
 }
+
+:host(.show-preview) .da-editor-tabs,
+:host(.show-versions) .da-editor-tabs {
+  display: none;
+}
+
 
 @media (min-width: 600px) {
   :host {
@@ -96,8 +98,7 @@ da-versions.show-versions {
     min-width: 375px;
   }
 
-  .da-preview-menubar,
-  .da-versions-menubar {
+  .da-editor-tabs {
     display: unset;
   }
 }
@@ -111,16 +112,5 @@ da-versions.show-versions {
 @media (min-width: 1200px) {
   .editor-wrapper {
     width: 900px;
-  }
-
-  da-editor {
-
-  }
-
-  :host(.show-preview) da-editor {
-
-  }
-
-  :host(.show-versions) da-editor {
   }
 }

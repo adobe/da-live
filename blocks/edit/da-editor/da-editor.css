@@ -1,3 +1,62 @@
+:host {
+  display: grid;
+  grid-template-areas: 'editor';
+}
+
+.da-prose-mirror {
+  grid-area: editor;
+}
+
+.da-prose-mirror.da-version-preview {
+  position: relative;
+  z-index: 1000;
+  margin: 24px -24px -24px 24px;
+}
+
+.da-version-action-area {
+  display: flex;
+  justify-content: end;
+  gap: 12px;
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  width: 100%;
+  padding: 20px;
+  background: #EFEFEF;
+  box-sizing: border-box;
+  border-radius: 10px 10px 0 0;
+}
+
+.da-version-action-area button {
+  font-family: var(--body-font-family);
+  display: inline-block;
+  font-style: normal;
+  cursor: pointer;
+  padding: 5px 14px;
+  line-height: 18px;
+  font-size: 15px;
+  border-radius: var(--s2-radius-300);
+  outline-offset: 0;
+  transition: outline-offset .2s;
+  text-decoration: none;
+  font-weight: 700;
+  text-align: center;
+  background: none;
+  border: 2px solid #000;
+  color: #000;
+}
+
+.da-version-action-area button.accent {
+  background: var(--s2-blue-800);
+  border: 2px solid var(--s2-blue-800);
+  outline-color: var(--s2-blue-800);
+  color: #FFF;
+}
+
+.da-prose-mirror.da-version-preview .ProseMirror {
+  padding-top: 96px;
+}
+
 .ProseMirror {
   min-height: 600px;
   background: #FFF;
@@ -335,6 +394,7 @@ span.ProseMirror-menuseparator {
   margin: 3px;
   vertical-align: top;
   min-width: 100px;
+  padding: 6px;
 }
 
 td.selectedCell {
@@ -506,13 +566,12 @@ da-library.hide {
   }
 }
 
-
 /* this is a rough fix for the first cursor position when the first paragraph is empty */
 .ProseMirror > .ProseMirror-yjs-cursor:first-child {
   margin-top: 16px;
 }
 .ProseMirror p:first-child, .ProseMirror h1:first-child, .ProseMirror h2:first-child, .ProseMirror h3:first-child, .ProseMirror h4:first-child, .ProseMirror h5:first-child, .ProseMirror h6:first-child {
-  margin-top: 16px;
+  margin-top: 0;
 }
 /* This gives the remote user caret. The colors are automatically overwritten*/
 .ProseMirror-yjs-cursor {

@@ -3,48 +3,62 @@ import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
 import '../da-preview/da-preview.js';
-import '../da-version/da-version.js';
 import '../da-versions/da-versions.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
 export default class DaContent extends LitElement {
-  static properties = { details: { attribute: false } };
+  static properties = {
+    details: { attribute: false },
+    _sourceUrl: { state: true },
+    _versionUrl: { state: true },
+  };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    this._sourceUrl = this.details.sourceUrl;
+    // setTimeout(() => { this.showVersions(); }, 500);
   }
 
-  showPreview(e) {
+  showPreview() {
     this.classList.add('show-preview');
-    e.target.parentElement.classList.add('show-preview');
     this.shadowRoot.querySelector('da-preview').classList.add('show-preview');
   }
 
-  showVersions(e) {
+  showVersions() {
     this.classList.add('show-versions');
-    e.target.parentElement.classList.add('show-versions');
+    this.shadowRoot.querySelector('da-versions').classList.add('show-versions');
+  }
 
-    const dav = this.shadowRoot.querySelector('da-versions');
-    // Force an update on the versions panel to load the latest versions
-    dav.requestUpdate();
+  handleReset() {
+    this._versionUrl = null;
+  }
 
-    dav.classList.add('show-versions');
+  handlePreview(e) {
+    this._versionUrl = e.detail.url;
+  }
+
+  handleCloseVersions() {
+    this.classList.remove('show-versions');
+    this.shadowRoot.querySelector('da-versions').classList.remove('show-versions');
   }
 
   render() {
     return html`
       <div class="editor-wrapper">
-        <da-editor path="${this.details.sourceUrl}"></da-editor>
-        <da-version></da-version>
-        <div class="da-preview-menubar">
-          <span class="da-preview-menuitem show-preview" title="Preview" @click=${this.showPreview}></span>
-          <span class="da-versions-menuitem show-versions" title="Versions" @click=${this.showVersions}></span>
+        <da-editor path="${this._sourceUrl}" version="${this._versionUrl}" @versionreset=${this.handleReset}></da-editor>
+        <div class="da-editor-tabs">
+          <div class="da-editor-tabs-full">
+            <button class="da-editor-tab show-preview" title="Preview" @click=${this.showPreview}>Preview</button>
+          </div>
+          <div class="da-editor-tabs-quiet">
+            <button class="da-editor-tab quiet show-versions" title="Versions" @click=${this.showVersions}>Versions</button>
+          </div>
         </div>
       </div>
       <da-preview path=${this.details.previewUrl}></da-preview>
-      <da-versions path="${this.details.sourceUrl}"></da-versions>
+      <da-versions path=${this.details.fullpath} @preview=${this.handlePreview} @close=${this.handleCloseVersions}></da-versions>
     `;
   }
 }
