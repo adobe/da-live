@@ -18,7 +18,6 @@ export default class DaContent extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._sourceUrl = this.details.sourceUrl;
-    // setTimeout(() => { this.showVersions(); }, 500);
   }
 
   showPreview() {

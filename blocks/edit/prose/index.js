@@ -129,11 +129,9 @@ export function createAwarenessStatusWidget(wsProvider, win) {
   return daTitle;
 }
 
-export function handleYDocUpdates(
-  { ydoc, schema, wsProvider, yXmlFragment },
-  win = window,
-  fnSetAEMDocInEditor = setAEMDocInEditor,
-) {
+export function handleYDocUpdates({
+  daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse,
+}, win = window, fnSetAEMDocInEditor = setAEMDocInEditor) {
   let firstUpdate = true;
   ydoc.on('update', (_, originWS) => {
     if (firstUpdate) {
@@ -155,13 +153,13 @@ export function handleYDocUpdates(
     const svrUpdate = ydoc.getMap('aem').get(serverInvKey);
     if (svrUpdate) {
       // push update from the server: re-init document
-      ydoc.getMap('aem').delete(serverInvKey);
-
-      // Make sure each client waits a different amount of time to avoid setting
-      // all of them simultaneously which would cause content duplication.
-      setTimeout(() => {
-        fnSetAEMDocInEditor(svrUpdate, yXmlFragment, schema);
-      }, ydoc.clientID % 2000);
+      delete daTitle.collabStatus;
+      delete daTitle.collabUsers;
+      ydoc.destroy();
+      wsProvider.destroy();
+      editor.innerHTML = '';
+      fnInitProse({ editor, path });
+      return;
     }
 
     if (originWS && originWS !== wsProvider) {
@@ -209,10 +207,12 @@ export default function initProse({ editor, path }) {
   }
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  createAwarenessStatusWidget(wsProvider, window);
+  const daTitle = createAwarenessStatusWidget(wsProvider, window);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
-  handleYDocUpdates({ ydoc, schema, wsProvider, yXmlFragment });
+  handleYDocUpdates({
+    daTitle, editor, ydoc, path, schema, wsProvider, yXmlFragment, fnInitProse: initProse,
+  });
 
   if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then(

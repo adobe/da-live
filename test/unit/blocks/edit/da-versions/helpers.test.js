@@ -1,11 +1,13 @@
 import { expect } from '@esm-bundle/chai';
 import { formatDate, formatVersions } from '../../../../../blocks/edit/da-versions/helpers.js';
 
+const TIME_OPTS = { hour: 'numeric', minute: '2-digit' };
+
 describe('Versions helper', () => {
   it('Format date', () => {
     const { date: d, time: t } = formatDate(1709205071123);
     expect(d).to.equal('February 29, 2024');
-    expect(t).to.equal('11:11 AM');
+    expect(t).to.equal(new Date(1709205071123).toLocaleTimeString([], TIME_OPTS));
   });
 
   it('Format date of now', () => {
@@ -64,7 +66,7 @@ describe('Versions helper', () => {
       date: 'May 15, 2024',
       audits: [{
         date: 'May 15, 2024',
-        time: '10:55 AM',
+        time: new Date(1715766906908).toLocaleTimeString([], TIME_OPTS),
         users: [{ email: 'furb@acme.com' }, { email: 'anonymous' }],
         timestamp: 1715766906908,
         path: 'da-aem-boilerplate/blah7.html',
@@ -72,7 +74,7 @@ describe('Versions helper', () => {
       },
       {
         date: 'May 15, 2024',
-        time: '10:46 AM',
+        time: new Date(1715766405165).toLocaleTimeString([], TIME_OPTS),
         users: [{ email: 'joe@acme.com' }],
         timestamp: 1715766405165,
         path: 'da-aem-boilerplate/blah7.html',
@@ -80,7 +82,7 @@ describe('Versions helper', () => {
       }],
     }, {
       date: 'May 15, 2024',
-      time: '10:54 AM',
+      time: new Date(1715766894180).toLocaleTimeString([], TIME_OPTS),
       url: '/versionsource/joey/ghi.html',
       users: [{ email: 'joe@acme.com' }],
       timestamp: 1715766894180,
@@ -91,7 +93,7 @@ describe('Versions helper', () => {
       date: 'May 14, 2024',
       audits: [{
         date: 'May 14, 2024',
-        time: '4:51 PM',
+        time: new Date(1715701875589).toLocaleTimeString([], TIME_OPTS),
         users: [{ email: 'anonymous' }],
         timestamp: 1715701875589,
         path: 'da-aem-boilerplate/blah7.html',
@@ -99,7 +101,7 @@ describe('Versions helper', () => {
       }],
     }, {
       date: 'May 13, 2024',
-      time: '11:08 AM',
+      time: new Date(1715594902707).toLocaleTimeString([], TIME_OPTS),
       url: '/versionsource/joey/def.html',
       users: [{ email: 'anonymous' }],
       timestamp: 1715594902707,
@@ -107,7 +109,7 @@ describe('Versions helper', () => {
       isVersion: true,
     }, {
       date: 'May 13, 2024',
-      time: '11:08 AM',
+      time: new Date(1715594886177).toLocaleTimeString([], TIME_OPTS),
       url: '/versionsource/joey/abc.html',
       users: [{ email: 'anonymous' }],
       timestamp: 1715594886177,
