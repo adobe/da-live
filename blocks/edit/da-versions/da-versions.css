@@ -1,0 +1,184 @@
+.da-versions-panel {
+  display: block;
+  width: 375px;
+  margin: 0 auto;
+  padding-left: 32px;
+  border: none;
+  overflow: hidden;
+  position: relative;
+}
+
+.da-versions-panel::after {
+  position: absolute;
+  content: '';
+  bottom: 0;
+  left: 47px;
+  width: 2px;
+  height: 48px;
+  background: linear-gradient(0deg, #c8c8c800 0%, #c8c8c8 100%);
+}
+
+.da-versions-title {
+  margin: 0;
+  margin-bottom: 24px;
+}
+
+.da-versions-close-btn {
+  font-family: var(--body-font-family);
+  line-height: 32px;
+  font-weight: 700;
+  font-size: 20px;
+  text-transform: uppercase;
+  padding: 0 0 0 44px;
+  overflow: hidden;
+  display: block;
+  height: 32px;
+  border: none;
+  background: url('/blocks/edit/img/Smock_Calendar_18_N.svg') left center / 32px no-repeat;
+}
+
+.da-versions-close-btn:hover {
+  background: url('/blocks/edit/img/Smock_CloseCircle_18_N.svg') left center / 32px no-repeat;
+}
+
+.da-version-list {
+  position: relative;
+  margin: 0 0 0 11px;
+  padding: 0 0 0 34px;
+  list-style: none;
+}
+
+.da-version-list::before {
+  position: absolute;
+  content: '';
+  top: 10px;
+  bottom: 0;
+  left: 4px;
+  width: 2px;
+  background: #C8C8C8;
+}
+
+.da-version-entry {
+  position: relative;
+  margin-bottom: 48px;
+}
+
+.da-version-entry.is-audit {
+  color: #656565;
+}
+
+.da-version-btn {
+  display: block;
+  position: absolute;
+  top: 4px;
+  left: -35px;
+  width: 32px;
+  height: 32px;
+  max-width: 12px;
+  max-height: 12px;
+  border-radius: 16px;
+  border: none;
+  background: #C8C8C8;
+  transition: all .4s ease-in-out;
+  text-indent: -1000px;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.da-version-entry.is-now .da-version-btn {
+  top: -6px;
+  left: -45px;
+  max-width: 32px;
+  max-height: 32px;
+  background: #70A100 url('/blocks/edit/img/Smock_Add_18_N.svg') center / 64% no-repeat;
+}
+
+.da-version-entry.is-new .da-version-btn {
+  top: -6px;
+  left: -45px;
+  max-width: 32px;
+  max-height: 32px;
+  background: var(--spectrum-blue-800) url('/blocks/edit/img/Smock_CheckmarkWhite_18_N.svg') center / 55% no-repeat;
+}
+
+.da-version-entry.is-new .da-version-btn-cancel {
+  top: 36px;
+  left: -43px;
+  max-width: 28px;
+  max-height: 28px;
+  background: #8A8A8A url('/blocks/edit/img/Smock_CancelVer_18_N.svg') center / 18px no-repeat;
+}
+
+.da-version-entry.is-version .da-version-btn {
+  background: #70A100 url('/blocks/edit/img/Smock_Reply_18_N.svg') center / 0% no-repeat;
+}
+
+.da-version-entry.is-version.is-open .da-version-btn {
+  top: -6px;
+  left: -45px;
+  max-width: 32px;
+  max-height: 32px;
+  background-size: 55%;
+  cursor: pointer;
+}
+
+.da-version-entry.is-audit.is-open .da-version-btn {
+  top: 2px;
+  left: -37px;
+  max-width: 16px;
+  max-height: 16px;
+}
+
+.da-version-entry p {
+  margin: 0;
+}
+
+.da-version-entry .da-version-date {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.05;
+  margin-bottom: 8px;
+}
+
+.da-version-entry .da-version-label {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.da-version-audit-entries {
+  margin: 0;
+  padding: 0;
+  max-height: 0;
+  transition: max-height 0.4s ease-in-out;
+  overflow: hidden;
+}
+
+.da-version-entry.is-open .da-version-audit-entries {
+  max-height: 500px;
+}
+
+.da-version-audit-entry {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  margin-bottom: 8px;
+}
+
+.da-version-time {
+  font-weight: 700;
+}
+
+.da-version-new-input {
+  border: none;
+  border-bottom: 2px solid #C8C8C8;
+  font-family: var(--body-font-family);
+  font-size: 18px;
+  font-weight: 700;
+  padding: 6px 0;
+}
+
+.da-version-new-input::placeholder {
+  font-style: italic;
+  font-weight: 400;
+}
