@@ -33,6 +33,32 @@ export default class DaTitle extends LitElement {
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
   }
 
+  async saveVersion(pathname) {
+    const edit = this.parentNode.querySelector('da-content').shadowRoot.querySelector('da-editor');
+    if (!edit) {
+      // eslint-disable-next-line no-console
+      console.log('Not able to obtain document path');
+      return;
+    }
+    // TODO there must be a better way to obtain path
+    const url = new URL(edit._path);
+    const pathName = url.pathname;
+    if (!pathName.startsWith('/source/')) {
+      // Unexpected document URL
+      // eslint-disable-next-line no-console
+      console.log('Unexpected document URL', this.path);
+      return;
+    }
+
+    const versionURL = `${url.origin}/versionsource/${pathName.slice(8)}`;
+
+    const res = await fetch(versionURL, { method: 'POST' });
+    if (res.status !== 201) {
+      // eslint-disable-next-line no-console
+      console.log('Unable to create version', res.status);
+    }
+  }
+
   async handleAction(action) {
     this.toggleActions();
     const sendBtn = this.shadowRoot.querySelector('.da-title-action-send-icon');
@@ -56,6 +82,8 @@ export default class DaTitle extends LitElement {
       if (action === 'publish') json = await saveToAem(aemPath, 'live');
       const { url } = action === 'publish' ? json.live : json.preview;
       window.open(url, '_blank');
+
+      this.saveVersion(pathname);
     }
     sendBtn.classList.remove('is-sending');
   }
