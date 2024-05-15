@@ -101,6 +101,14 @@
   background: var(--spectrum-blue-800) url('/blocks/edit/img/Smock_CheckmarkWhite_18_N.svg') center / 55% no-repeat;
 }
 
+.da-version-entry.is-new .da-version-btn-cancel {
+  top: 36px;
+  left: -43px;
+  max-width: 28px;
+  max-height: 28px;
+  background: #8A8A8A url('/blocks/edit/img/Smock_CancelVer_18_N.svg') center / 18px no-repeat;
+}
+
 .da-version-entry.is-version .da-version-btn {
   background: #70A100 url('/blocks/edit/img/Smock_Reply_18_N.svg') center / 0% no-repeat;
 }
