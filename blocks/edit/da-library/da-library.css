@@ -126,6 +126,10 @@ button span {
   background: url('/blocks/edit/img/Smock_Table_18_N.svg') 18px center / 18px no-repeat;
 }
 
+.da-library-item-list-main button.templates {
+  background: url('/blocks/edit/img/Smock_Homepage_18_N.svg') 18px center / 18px no-repeat;
+}
+
 .da-library-item-list-main button.placeholders {
   background: url('/blocks/edit/img/placeholder-icon.svg') 18px center / 18px no-repeat;
 }
@@ -134,7 +138,7 @@ button span {
   background: url('/blocks/edit/img/Smock_CallCenter_18_N.svg') 18px center / 18px no-repeat;
 }
 
-.da-library-item-list-main button.assets {
+.da-library-item-list-main button.media {
   background: url('/blocks/edit/img/Smock_Image_18_N.svg') 18px center / 18px no-repeat;
 }
 

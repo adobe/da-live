@@ -2,6 +2,7 @@
 import { DOMParser } from 'da-y-wrapper';
 import { CON_ORIGIN, getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
+import { daFetch } from '../../../shared/utils.js';
 
 const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
@@ -37,11 +38,11 @@ export async function getItems(sources, listType, format) {
   const items = [];
   for (const source of sources) {
     try {
-      const resp = await fetch(source);
+      const resp = await daFetch(source);
       const json = await resp.json();
       if (json.data) {
         items.push(...formatData(json.data, format));
-      } else if (listType === 'assets') {
+      } else if (listType === 'media') {
         items.push(...fixAssets(json));
       } else {
         items.push(...json);
@@ -69,7 +70,7 @@ export async function getLibraryList() {
   currOwner = owner;
   currRepo = repo;
 
-  const resp = await fetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
+  const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
   if (!resp.ok) return [];
 
   const { data } = await resp.json();

@@ -1,8 +1,9 @@
-import { getDaAdmin } from './constants.js';
+import { DA_ORIGIN } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
-const DA_ORIGIN = getDaAdmin();
+const ALLOWED_TOKEN = ['https://admin.hlx.page', 'https://admin.da.live'];
+
 let imsDetails;
 
 export async function initIms() {
@@ -19,12 +20,19 @@ export async function initIms() {
 
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
+  let accessToken;
   if (localStorage.getItem('nx-ims')) {
-    const { accessToken } = await initIms();
-    if (accessToken) opts.headers.Authorization = `Bearer ${accessToken.token}`;
+    ({ accessToken } = await initIms());
+    const canToken = ALLOWED_TOKEN.some((origin) => url.startsWith(origin));
+    if (accessToken && canToken) opts.headers.Authorization = `Bearer ${accessToken.token}`;
   }
   const resp = await fetch(url, opts);
   if (resp.status === 401) {
+    if (accessToken) {
+      window.location = `${window.location.origin}/not-found`;
+      return { ok: false };
+    }
+
     const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
     await loadIms();
     handleSignIn();
