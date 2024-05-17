@@ -41,7 +41,7 @@
     "eslint-plugin-compat": "^4.0.2",
     "eslint-plugin-ecmalist": "^1.0.8",
     "eslint-plugin-import": "2.25.4",
-    "sinon": "13.0.1",
+    "sinon": "13.0.2",
     "stylelint": "14.6.0",
     "stylelint-config-prettier": "9.0.5",
     "stylelint-config-standard": "25.0.0"
