@@ -3,6 +3,7 @@ import ENV from '../utils/env.js';
 
 test('Get Main Page', async ({ page }) => {
   await page.goto(ENV);
+
   const html = await page.content();
   expect(html).toContain('Dark Alley');
 

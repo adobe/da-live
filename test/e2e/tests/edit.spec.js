@@ -11,74 +11,60 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
+import { getTestPageURL } from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(15000);
 
-  const dateStamp = Date.now().toString(36);
-  const pageName = `pw-test1-${dateStamp}-${workerInfo.project.name}`;
-  const url = `${ENV}/edit#/da-sites/da-status/tests/${pageName}`;
+  const url = getTestPageURL('edit1', workerInfo);
+  await page.goto(url);
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
 
-  try {
-    await page.goto(url);
-    await expect(page.locator('div.ProseMirror')).toBeVisible();
+  const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
+  await page.locator('div.ProseMirror').fill(enteredText);
 
-    const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
-    await page.locator('div.ProseMirror').fill(enteredText);
+  // Wait 3 secs
+  await page.waitForTimeout(3000);
+  await page.close();
 
-    // Wait 3 secs
-    await page.waitForTimeout(3000);
-    await page.close();
-
-    const newPage = await browser.newPage();
-    await newPage.goto(url);
-    await expect(newPage.locator('div.ProseMirror')).toBeVisible();
-    await expect(newPage.locator('div.ProseMirror')).toContainText(enteredText);
-  } finally {
-    // Always delete the document afterwards
-    const adminURL = `https://admin.da.live/source/da-sites/da-status/tests/${pageName}.html`;
-    await fetch(adminURL, { method: 'DELETE' });
-  }
+  const newPage = await browser.newPage();
+  await newPage.goto(url);
+  await expect(newPage.locator('div.ProseMirror')).toBeVisible();
+  await expect(newPage.locator('div.ProseMirror')).toContainText(enteredText);
 });
 
 test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(15000);
 
-  const dateStamp = Date.now().toString(36);
-  const pageName = `pw-test2-${dateStamp}-${workerInfo.project.name}`;
+  const url = getTestPageURL('edit2', workerInfo);
+  const pageName = url.split('/').pop();
 
-  try {
-    await page.goto(`${ENV}/#/da-sites/da-status/tests`);
-    await page.locator('button.da-actions-new-button').click();
-    await page.locator('button:text("Document")').click();
-    await page.locator('input.da-actions-input').fill(pageName);
+  await page.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await page.locator('button.da-actions-new-button').click();
+  await page.locator('button:text("Document")').click();
+  await page.locator('input.da-actions-input').fill(pageName);
 
-    await page.locator('button:text("Create document")').click();
-    await expect(page.locator('div.ProseMirror')).toBeVisible();
-    await page.locator('div.ProseMirror').fill('testcontent');
+  await page.locator('button:text("Create document")').click();
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.locator('div.ProseMirror').fill('testcontent');
 
-    const newPage = await browser.newPage();
-    await newPage.goto(`${ENV}/#/da-sites/da-status/tests`);
+  const newPage = await browser.newPage();
+  await newPage.goto(`${ENV}/#/da-sites/da-status/tests`);
 
-    // Wait 1 sec
-    await newPage.waitForTimeout(4000);
-    await newPage.reload();
+  // Wait 1 sec
+  await newPage.waitForTimeout(4000);
+  await newPage.reload();
 
-    await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
-    await newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
-    // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
-    await newPage.keyboard.press('Shift+Tab');
-    await newPage.keyboard.press(' ');
-    await newPage.waitForTimeout(500);
-    await expect(newPage.locator('button.delete-button')).toBeVisible();
-    await newPage.locator('button.delete-button').click();
+  await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
+  await newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
+  // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
+  await newPage.keyboard.press('Shift+Tab');
+  await newPage.keyboard.press(' ');
+  await newPage.waitForTimeout(500);
+  await expect(newPage.locator('button.delete-button')).toBeVisible();
+  await newPage.locator('button.delete-button').click();
 
-    // Wait 1 sec
-    await page.waitForTimeout(1000);
-    await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
-  } finally {
-    // Delete the document even if the test fails;
-    const adminURL = `https://admin.da.live/source/da-sites/da-status/tests/${pageName}.html`;
-    await fetch(adminURL, { method: 'DELETE' });
-  }
+  // Wait 1 sec
+  await page.waitForTimeout(1000);
+  await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
 });
