@@ -32,7 +32,7 @@
     "@babel/eslint-parser": "7.24.5",
     "@esm-bundle/chai": "4.3.4-fix.0",
     "@web/dev-server-import-maps": "^0.2.0",
-    "@web/test-runner": "^0.13.27",
+    "@web/test-runner": "^0.18.0",
     "@web/test-runner-commands": "0.9.0",
     "chai": "4.4.1",
     "eslint": "8.57.0",
