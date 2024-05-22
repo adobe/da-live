@@ -168,16 +168,6 @@ export default function prose2aem(editor, live) {
 
   makeSections(editor);
 
-  if (editor.querySelector('[data-da-loc="deleted"]')) {
-    // hide any deleted langstore content
-    const style = document.createElement('style');
-
-    style.textContent = `[data-da-loc="deleted"] {
-        display: none;
-      }`;
-    editor.insertBefore(style, editor.firstChild);
-  }
-
   const html = `
     <body>
       <header></header>
