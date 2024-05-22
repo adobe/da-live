@@ -54,7 +54,7 @@ export function aem2prose(doc) {
   // Fix blocks
   const blocks = doc.querySelectorAll('main > div > div, da-loc-deleted > div, da-loc-added > div, da-loc-deleted.da-group > div > div, da-loc-added.da-group > div > div');
   blocks.forEach((block) => {
-    if (!block.className || block.className.includes('loc-')) return;
+    if (block.className?.includes('loc-')) return;
     const table = getTable(block);
     block.parentElement.replaceChild(table, block);
     table.insertAdjacentElement('beforebegin', para());
