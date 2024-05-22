@@ -34,7 +34,7 @@
     "@web/dev-server-import-maps": "^0.0.6",
     "@web/test-runner": "^0.13.27",
     "@web/test-runner-commands": "0.6.1",
-    "chai": "4.3.6",
+    "chai": "4.4.1",
     "eslint": "8.11.0",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-plugin-chai-friendly": "^0.7.2",
