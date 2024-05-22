@@ -248,6 +248,14 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_TextItalic_18_N.svg') center / 18px no-repeat #EFEFEF;
 }
 
+.edit-sup {
+  background: url('/blocks/edit/img/Smock_TextSuperscript_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
+.edit-sub {
+  background: url('/blocks/edit/img/Smock_TextSubscript_18_N.svg') center / 18px no-repeat #EFEFEF;
+}
+
 .edit-link {
   background: url('/blocks/edit/img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
 }

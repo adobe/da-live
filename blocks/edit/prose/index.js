@@ -38,12 +38,30 @@ import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 
 const DA_ORIGIN = getDaAdmin();
 
+function addCustomMarks(marks) {
+  const sup = {
+    parseDOM: [{ tag: 'sup' }, { clearMark: (m) => m.type.name === 'sup' }],
+    toDOM() { return ['sup', 0]; },
+  };
+
+  const sub = {
+    parseDOM: [{ tag: 'sub' }, { clearMark: (m) => m.type.name === 'sub' }],
+    toDOM() { return ['sub', 0]; },
+  };
+
+  const contextHighlight = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
+
+  return marks
+    .addToEnd('sup', sup)
+    .addToEnd('sub', sub)
+    .addToEnd('contextHighlightingMark', contextHighlight);
+}
+
 function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
   const withListnodes = addListNodes(baseNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-  const contextHighlightingMark = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
-  const customMarks = marks.addToEnd('contextHighlightingMark', contextHighlightingMark);
+  const customMarks = addCustomMarks(marks);
   return new Schema({ nodes, marks: customMarks });
 }
 
