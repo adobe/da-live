@@ -30,7 +30,6 @@ test('Regional Edit Document', async ({ page }) => {
     await page.getByRole('button', { name: 'Upload' }).click();
     await page.getByRole('link', { name: 'regionaledit' }).click();
 
-
     await expect(page.locator('div.loc-color-overlay.loc-langstore')).toBeVisible();
     await expect(page.locator('div.loc-color-overlay.loc-regional')).toBeVisible();
 
@@ -40,7 +39,6 @@ test('Regional Edit Document', async ({ page }) => {
     await page.locator('div.loc-color-overlay.loc-langstore').hover();
     await page.locator('da-loc-deleted').getByText('Delete', { exact: true }).click();
     await expect(page.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
-
 
     await page.locator('div.loc-color-overlay.loc-regional').hover();
     await page.locator('da-loc-added').getByText('Keep', { exact: true }).click();
