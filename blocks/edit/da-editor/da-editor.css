@@ -616,6 +616,7 @@ da-library.hide {
 }
 
 da-loc-deleted, da-loc-added {
+  display: block;
   position: relative;
 }
 
