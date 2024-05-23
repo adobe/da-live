@@ -1,7 +1,7 @@
 // ProseMirror
 import { EditorView } from 'prosemirror-view';
 import { EditorState, Plugin, TextSelection } from 'prosemirror-state';
-import { Schema, DOMParser, Fragment } from 'prosemirror-model';
+import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { baseKeymap, toggleMark } from 'prosemirror-commands';
 import { history, undo, redo } from 'prosemirror-history';
@@ -48,9 +48,11 @@ import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from '../../prosemir
 export {
   EditorView,
   EditorState,
-  Schema,
   DOMParser,
+  DOMSerializer,
   Fragment,
+  Schema,
+  Slice,
   Plugin,
   TextSelection,
   baseSchema,

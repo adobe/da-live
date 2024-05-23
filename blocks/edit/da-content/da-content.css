@@ -6,6 +6,9 @@
 }
 
 .editor-wrapper {
+  --editor-btn-bg-color: #EFEFEF;
+  --editor-btn-bg-color-hover: #e9e9e9;
+
   position: relative;
   flex: 0 1 auto;
   width: var(--grid-container-width);
@@ -89,6 +92,10 @@ da-versions.show-versions {
 }
 
 
+.da-preview-menuitem.show-preview:hover {
+  background-color: var(--editor-btn-bg-color-hover) !important;
+}
+
 @media (min-width: 600px) {
   :host {
     padding: 0 80px;
@@ -112,5 +119,13 @@ da-versions.show-versions {
 @media (min-width: 1200px) {
   .editor-wrapper {
     width: 900px;
+  }
+
+  da-editor {
+
+  }
+
+  :host(.show-preview) da-editor {
+
   }
 }

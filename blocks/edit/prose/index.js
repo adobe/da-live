@@ -1,8 +1,9 @@
+/* eslint-disable max-classes-per-file */
 import {
   EditorState,
   EditorView,
-  Schema,
   DOMParser,
+  Schema,
   baseSchema,
   history,
   buildKeymap,
@@ -25,7 +26,6 @@ import {
   yUndo,
   yRedo,
   prosemirrorToYXmlFragment,
-// eslint-disable-next-line import/no-unresolved
 } from 'da-y-wrapper';
 
 // DA
@@ -35,12 +35,14 @@ import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import { aem2prose, parse } from '../utils/helpers.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
+import { addLocNodes, getLocClass } from './loc-utils.js';
 
 const DA_ORIGIN = getDaAdmin();
 
-function getSchema() {
+export function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
-  const withListnodes = addListNodes(baseNodes, 'block+', 'block');
+  const withLocNodes = addLocNodes(baseNodes);
+  const withListnodes = addListNodes(withLocNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
   const contextHighlightingMark = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
   const customMarks = marks.addToEnd('contextHighlightingMark', contextHighlightingMark);
@@ -274,7 +276,20 @@ export default function initProse({ editor, path }) {
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
-  window.view = new EditorView(editor, { state, dispatchTransaction });
+  window.view = new EditorView(editor, {
+    state,
+    dispatchTransaction,
+    nodeViews: {
+      loc_added(node, view, getPos) {
+        const LocAddedView = getLocClass('da-loc-added', getSchema, dispatchTransaction, { isLangstore: false });
+        return new LocAddedView(node, view, getPos);
+      },
+      loc_deleted(node, view, getPos) {
+        const LocDeletedView = getLocClass('da-loc-deleted', getSchema, dispatchTransaction, { isLangstore: true });
+        return new LocDeletedView(node, view, getPos);
+      },
+    },
+  });
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
