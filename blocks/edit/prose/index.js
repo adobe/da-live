@@ -124,6 +124,7 @@ function registerErrorHandler(ydoc) {
     if (errorMap && errorMap.size > 0) {
       // eslint-disable-next-line no-console
       console.log('Error from server', JSON.stringify(errorMap));
+      errorMap.clear();
     }
   });
 }
