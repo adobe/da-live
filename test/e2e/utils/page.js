@@ -46,10 +46,10 @@ export function getTestSheetURL(testIdentifier, workerInfo) {
  * @returns The age in ms or null if the file name does not match the pattern.
  */
 export function getTestResourceAge(fileName) {
-  const re = /pw-\w+(-t1)*-(\w+)-\w+/;
+  const re = /pw-\w+-(\w+)-\w+/;
   const res = re.exec(fileName);
   if (res) {
-    return parseInt(res[2], 36);
+    return parseInt(res[1], 36);
   }
   return null;
 }

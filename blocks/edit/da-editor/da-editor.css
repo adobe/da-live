@@ -4,6 +4,12 @@
 }
 
 .da-prose-mirror {
+  --editor-btn-bg-color: #EFEFEF;
+  --editor-btn-bg-color-hover: #e9e9e9;
+}
+
+
+.da-prose-mirror {
   grid-area: editor;
 }
 
@@ -141,7 +147,7 @@ td.selectedCell {
   overflow: hidden;
   border-radius: 2px;
   margin-bottom: 6px;
-  background-color: #EFEFEF;
+  background-color: var(--editor-btn-bg-color);
 }
 
 span.ProseMirror-menuitem.edit-table[style=""] + .ProseMirror-menuitem {
@@ -155,7 +161,7 @@ span.ProseMirror-menuitem.edit-table[style=""] + .ProseMirror-menuitem {
 span.ProseMirror-menuseparator {
   height: 2px;
   display: block;
-  background: #EFEFEF;
+  background: var(--editor-btn-bg-color);
   margin-bottom: 6px;
   border-radius: 1px;
 }
@@ -169,6 +175,12 @@ span.ProseMirror-menuseparator {
   height: 44px;
 }
 
+.ProseMirror-menu-dropdown:hover,
+.ProseMirror-menuitem > div:not(.ProseMirror-menu-dropdown-wrap, .ProseMirror-menu-disabled):hover,
+.ProseMirror-menu-dropdown-item > div:not(.ProseMirror-menu-disabled):hover {
+  background-color: var(--editor-btn-bg-color-hover) !important;
+}
+
 .ProseMirror-menuitem:has(.open-assets.ProseMirror-menu-disabled),
 .ProseMirror-menuitem:has(.img-alt-text.ProseMirror-menu-disabled)
 {
@@ -180,7 +192,7 @@ span.ProseMirror-menuseparator {
 }
 
 .ProseMirror-menu-dropdown.edit-text {
-  background: url('/blocks/edit/img/Smock_Text_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Text_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .ProseMirror-menu-dropdown-menu {
@@ -207,45 +219,45 @@ span.ProseMirror-menuseparator {
 .ProseMirror-menu-dropdown-item > .separator {
   height: 2px;
   display: block;
-  background: #EFEFEF;
+  background: var(--editor-btn-bg-color);
   margin-bottom: 6px;
   border-radius: 1px;
 }
 
 .menu-item-para {
-  background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .menu-item-h1 {
-  background: url('/blocks/edit/img/Smock_Heading1_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading1_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .menu-item-h2 {
-  background: url('/blocks/edit/img/Smock_Heading2_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading2_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .menu-item-h3 {
-  background: url('/blocks/edit/img/Smock_Heading3_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading3_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .menu-item-h4 {
-  background: url('/blocks/edit/img/Smock_Heading4_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading4_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .menu-item-h5 {
-  background: url('/blocks/edit/img/Smock_Heading5_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading5_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .menu-item-h6 {
-  background: url('/blocks/edit/img/Smock_Heading6_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Heading6_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .edit-bold {
-  background: url('/blocks/edit/img/Smock_TextBold_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextBold_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .edit-italic {
-  background: url('/blocks/edit/img/Smock_TextItalic_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextItalic_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .edit-sup {
@@ -257,95 +269,95 @@ span.ProseMirror-menuseparator {
 }
 
 .edit-link {
-  background: url('/blocks/edit/img/Smock_Link_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Link_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .edit-unlink {
-  background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .bullet-list, .ProseMirror-menu-dropdown.list-menu {
-  background: url('/blocks/edit/img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .ordered-list {
-  background: url('/blocks/edit/img/Smock_TextNumbered_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextNumbered_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .indent-list {
-  background: url('/blocks/edit/img/Smock_TextIndentIncrease_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextIndentIncrease_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .outdent-list {
-  background: url('/blocks/edit/img/Smock_TextIndentDecrease_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TextIndentDecrease_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .insert-table {
-  background: url('/blocks/edit/img/Smock_TableAdd_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableAdd_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .ProseMirror-menu-dropdown.edit-table {
-  background: url('/blocks/edit/img/Smock_TableEdit_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableEdit_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .addColBefore {
-  background: url('/blocks/edit/img/Smock_TableColumnAddLeft_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableColumnAddLeft_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .addColumnAfter {
-  background: url('/blocks/edit/img/Smock_TableColumnAddRight_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableColumnAddRight_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .deleteColumn {
-  background: url('/blocks/edit/img/Smock_TableColumnRemoveCenter_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableColumnRemoveCenter_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .addRowBefore {
-  background: url('/blocks/edit/img/Smock_TableRowAddTop_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRowAddTop_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .addRowAfter {
-  background: url('/blocks/edit/img/Smock_TableRowAddBottom_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRowAddBottom_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .deleteRow {
-  background: url('/blocks/edit/img/Smock_TableRowRemoveCenter_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRowRemoveCenter_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .deleteTable {
-  background: url('/blocks/edit/img/Smock_TableRemove_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRemove_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .mergeCells {
-  background: url('/blocks/edit/img/Smock_TableMergeCells_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableMergeCells_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .splitCell {
-  background: url('/blocks/edit/img/Smock_TableRowSplit_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_TableRowSplit_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .edit-hr {
-  background: url('/blocks/edit/img/Smock_PageRule_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_PageRule_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .open-library {
-  background: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .open-assets {
-  background: url('/blocks/edit/img/Smock_Images_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Images_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .edit-undo {
-  background: url('/blocks/edit/img/Smock_Undo_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Undo_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .edit-redo {
-  background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 .img-alt-text {
-  background: url('/blocks/edit/img/Smock_ImageText_18_N.svg') center / 18px no-repeat #EFEFEF;
+  background: url('/blocks/edit/img/Smock_ImageText_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
 /* Generic ProseMirror Styles */
@@ -592,6 +604,7 @@ da-library.hide {
   word-break: normal;
   pointer-events: none;
 }
+
 /* This renders the username above the caret */
 .ProseMirror-yjs-cursor > div {
   position: absolute;
@@ -608,4 +621,108 @@ da-library.hide {
   color: white;
   padding: 0 3px;
   white-space: nowrap;
+}
+
+da-loc-deleted, da-loc-added {
+  display: block;
+  position: relative;
+}
+
+.loc-dialog {
+  /* position: relative; */
+  /* top: 50%;
+  transform: translateY(-50%); */
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
+  background: rgb(255, 255, 255);
+  box-sizing: border-box;
+  grid-area: toolbar;
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+}
+
+.loc-dialog > span {
+  height: 40px;
+}
+
+.loc-dialog > div {
+  display: flex;
+  justify-content: space-around;
+}
+
+.loc-dialog > div > span {
+  display: block;
+  width: 44px;
+  height: 44px;
+  text-indent: -1000px;
+  overflow: hidden;
+  border-radius: 2px;
+  margin-bottom: 6px;
+  background-color: rgb(239 239 239);
+  box-shadow: rgb(181 181 181) 0 0 5px 0;
+}
+
+.loc-keep {
+  width: 44px;
+  height: 44px;
+  background: url('/blocks/edit/img/Smock_CheckmarkCircleOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.loc-keep:hover {
+  box-shadow: #008000 0 0 5px 0;
+}
+
+.loc-delete {
+  width: 44px;
+  height: 44px;
+  background: url('/blocks/edit/img/Smock_DeleteOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.loc-delete:hover {
+  box-shadow: #ff0000 0 0 5px 0;
+}
+
+.loc-color-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.loc-color-overlay.loc-langstore::after {
+  content: 'Langstore';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 5px;
+  font-size: 10px;
+  background-color: rgba(70, 130, 180, 90%);
+  color: white;
+}
+
+.loc-color-overlay.loc-regional::after {
+  content: 'Regional';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 5px;
+  font-size: 10px;
+  background-color: rgba(144, 42, 222, 90%);
+  color: white;
+}
+
+.loc-lang-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1001;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
 }
