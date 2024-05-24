@@ -38,21 +38,9 @@ export default class DaEditor extends LitElement {
     this._path = value;
   }
 
-  triggerErrorStack(el) {
-    const es = el.target.parentNode.querySelector('.da-editor-error-stack');
-    const hidden = es.classList.toggle('da-editor-error-hidden');
-    el.target.innerText = hidden ? '▸' : '▾';
-  }
-
   render() {
     if (!this._imsLoaded) return null;
-    return html`<div class="da-editor-error da-editor-error-hidden">
-      <div class="da-editor-error-close">⛌</div>
-      <div class="da-editor-error-message"></div>
-      <div class="da-editor-error-twistie" @click=${this.triggerErrorStack}>▸</div>
-      <div class="da-editor-error-stack da-editor-error-hidden"></div>
-    </div>
-    <div class="da-prose-mirror"></div>`;
+    return html`<div class="da-prose-mirror"></div>`;
   }
 
   updated() {
