@@ -84,11 +84,11 @@ export default class DaEditor extends LitElement {
 
   updated(props) {
     if (!this._imsLoaded) return;
-    this.disconnectWebsocket();
     if (!(props.has('version') || props.has('_versionDom'))) {
+      this.disconnectWebsocket();
       const prose = this.shadowRoot.querySelector('.da-prose-mirror');
       prose.innerHTML = '';
-      initProse({ editor: prose, path: this.path });
+      this.wsProvider = initProse({ editor: prose, path: this.path });
     }
   }
 }
