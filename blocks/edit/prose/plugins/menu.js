@@ -281,6 +281,16 @@ function getTextBlocks(marks, nodes) {
       label: 'I',
       class: 'edit-italic',
     }),
+    markItem(marks.sup, {
+      title: 'Toggle superscript',
+      label: 'SUP',
+      class: 'edit-sup',
+    }),
+    markItem(marks.sub, {
+      title: 'Toggle subscript',
+      label: 'SUB',
+      class: 'edit-sub',
+    }),
     item('separator', null, 'separator'),
     blockTypeItem(nodes.paragraph, {
       title: 'Change to paragraph',

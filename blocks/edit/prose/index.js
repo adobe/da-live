@@ -36,6 +36,25 @@ import { addLocNodes, getLocClass } from './loc-utils.js';
 
 const DA_ORIGIN = getDaAdmin();
 
+function addCustomMarks(marks) {
+  const sup = {
+    parseDOM: [{ tag: 'sup' }, { clearMark: (m) => m.type.name === 'sup' }],
+    toDOM() { return ['sup', 0]; },
+  };
+
+  const sub = {
+    parseDOM: [{ tag: 'sub' }, { clearMark: (m) => m.type.name === 'sub' }],
+    toDOM() { return ['sub', 0]; },
+  };
+
+  const contextHighlight = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
+
+  return marks
+    .addToEnd('sup', sup)
+    .addToEnd('sub', sub)
+    .addToEnd('contextHighlightingMark', contextHighlight);
+}
+
 // Note: until getSchema() is separated in its own module, this function needs to be kept in-sync
 // with the getSchema() function in da-collab src/collab.js
 export function getSchema() {
@@ -43,9 +62,7 @@ export function getSchema() {
   const withLocNodes = addLocNodes(baseNodes);
   const withListnodes = addListNodes(withLocNodes, 'block+', 'block');
   const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-  const contextHighlightingMark = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
-  const customMarks = marks.addToEnd('contextHighlightingMark', contextHighlightingMark);
-  return new Schema({ nodes, marks: customMarks });
+  return new Schema({ nodes, marks: addCustomMarks(marks) });
 }
 
 let sendUpdates = false;
