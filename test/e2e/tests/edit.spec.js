@@ -71,7 +71,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
 });
 
-test('Change document by switching anchors', async ({ browser, page }, workerInfo) => {
+test('Change document by switching anchors', async ({ page }, workerInfo) => {
   test.setTimeout(15000);
 
   const url = getTestPageURL('edit3', workerInfo);
