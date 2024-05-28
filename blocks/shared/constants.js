@@ -21,6 +21,7 @@ const DA_ADMIN_ENVS = {
 
 const DA_COLLAB_ENVS = {
   local: 'ws://localhost:4711',
+  stage: 'wss://stage-collab.da.live',
   prod: 'wss://collab.da.live',
 };
 
