@@ -18,12 +18,13 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
 
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
+  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(1000);
 
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
-  // Wait 3 secs
   await page.waitForTimeout(3000);
   await page.close();
 
@@ -45,14 +46,15 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.locator('input.da-actions-input').fill(pageName);
 
   await page.locator('button:text("Create document")').click();
+  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(1000);
   await page.locator('div.ProseMirror').fill('testcontent');
 
   const newPage = await browser.newPage();
   await newPage.goto(`${ENV}/#/da-sites/da-status/tests`);
 
-  // Wait 1 sec
-  await newPage.waitForTimeout(4000);
+  await newPage.waitForTimeout(3000);
   await newPage.reload();
 
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();

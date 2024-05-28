@@ -18,7 +18,9 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
 
   await page.goto(getTestPageURL('versions', workerInfo));
+  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(1000);
 
   // Enter some initial text onto the page
   await page.locator('div.ProseMirror').fill('Initial version');
@@ -60,7 +62,7 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
 
   // Select 'ver 1' and restore it
   await page.getByText('ver 1', { exact: false }).click();
-  await page.getByRole('button', { name: 'Restore' }).click();
+  await page.locator('li').filter({ hasText: 'ver 1' }).getByRole('button').click();
   await page.locator('div.da-version-action-area').getByText('Restore').click();
 
   // Ensure that the original text is still there
