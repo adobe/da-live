@@ -18,9 +18,7 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
 
   await page.goto(getTestPageURL('versions', workerInfo));
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(1000);
 
   // Enter some initial text onto the page
   await page.locator('div.ProseMirror').fill('Initial version');

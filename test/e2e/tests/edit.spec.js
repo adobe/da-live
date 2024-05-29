@@ -18,14 +18,12 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
 
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(1000);
 
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(1000);
   await page.close();
 
   const newPage = await browser.newPage();
@@ -46,10 +44,9 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.locator('input.da-actions-input').fill(pageName);
 
   await page.locator('button:text("Create document")').click();
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(1000);
   await page.locator('div.ProseMirror').fill('testcontent');
+  await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
   await newPage.goto(`${ENV}/#/da-sites/da-status/tests`);
@@ -79,9 +76,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   const urlB = `${url}B`;
 
   await page.goto(urlA);
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(1000);
 
   await page.locator('div.ProseMirror').fill('before table');
   await page.getByText('Block', { exact: true }).click();
@@ -100,9 +95,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.waitForTimeout(1000);
 
   await page.goto(urlB);
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(1000);
 
   await page.locator('div.ProseMirror').fill('page B');
   await page.waitForTimeout(1000);
