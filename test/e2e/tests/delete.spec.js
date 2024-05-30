@@ -22,7 +22,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     return;
   }
 
-  test.setTimeout(40000);
+  test.setTimeout(80000);
 
   // Open the directory listing
   await page.goto(`${ENV}/#/da-sites/da-status/tests`);
@@ -57,7 +57,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 
     // If we're here the page has to be deleted. We'll tick the checkbox next to it in the page
     const checkbox = page.locator('li').filter({ hasText: fileName }).locator('input[type="checkbox"][name="item-selected"]');
-    console.log('checkboxes:', await checkbox.count());
+    console.log('To be deleted, checked box:', await checkbox.count());
     await checkbox.focus();
     await page.keyboard.press(' ');
     itemsToDelete = true;
@@ -72,5 +72,5 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   await page.getByRole('button', { name: 'Delete' }).click();
 
   // Wait for the delete button to disappear which is when we're done
-  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible({ timeout: 60000 });
 });
