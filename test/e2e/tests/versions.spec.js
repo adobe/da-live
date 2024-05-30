@@ -60,7 +60,7 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
 
   // Select 'ver 1' and restore it
   await page.getByText('ver 1', { exact: false }).click();
-  await page.getByRole('button', { name: 'Restore' }).click();
+  await page.locator('li').filter({ hasText: 'ver 1' }).getByRole('button').click();
   await page.locator('div.da-version-action-area').getByText('Restore').click();
 
   // Ensure that the original text is still there

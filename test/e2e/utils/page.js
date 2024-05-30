@@ -11,10 +11,20 @@
  */
 import ENV from './env.js';
 
+function getQuery() {
+  const { GITHUB_HEAD_REF: branch } = process.env;
+  if (branch === 'local') {
+    return '?da-admin=local&da-collab=local';
+  }
+  return '';
+}
+
+const QUERY = getQuery();
+
 function getTestURL(type, testIdentifier, workerInfo) {
   const dateStamp = Date.now().toString(36);
   const pageName = `pw-${testIdentifier}-${dateStamp}-${workerInfo.project.name}`;
-  return `${ENV}/${type}#/da-sites/da-status/tests/${pageName}`;
+  return `${ENV}/${type}${QUERY}#/da-sites/da-status/tests/${pageName}`;
 }
 
 /**
@@ -26,6 +36,17 @@ function getTestURL(type, testIdentifier, workerInfo) {
  */
 export function getTestPageURL(testIdentifier, workerInfo) {
   return getTestURL('edit', testIdentifier, workerInfo);
+}
+
+/**
+ * Returns a URL for a single-use test folder.
+ *
+ * @param {string} testIdentifier - A identifier for the test
+ * @param {object} workerInfo - workerInfo as passed in by Playwright
+ * @returns {string} The URL for the test page.
+ */
+export function getTestFolderURL(testIdentifier, workerInfo) {
+  return getTestURL('', testIdentifier, workerInfo);
 }
 
 /**

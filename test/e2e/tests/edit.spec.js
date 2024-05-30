@@ -23,8 +23,7 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
-  // Wait 3 secs
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(1000);
   await page.close();
 
   const newPage = await browser.newPage();
@@ -47,12 +46,12 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.locator('button:text("Create document")').click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.locator('div.ProseMirror').fill('testcontent');
+  await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
   await newPage.goto(`${ENV}/#/da-sites/da-status/tests`);
 
-  // Wait 1 sec
-  await newPage.waitForTimeout(4000);
+  await newPage.waitForTimeout(3000);
   await newPage.reload();
 
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
@@ -67,4 +66,47 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   // Wait 1 sec
   await page.waitForTimeout(1000);
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
+});
+
+test('Change document by switching anchors', async ({ page }, workerInfo) => {
+  test.setTimeout(15000);
+
+  const url = getTestPageURL('edit3', workerInfo);
+  const urlA = `${url}A`;
+  const urlB = `${url}B`;
+
+  await page.goto(urlA);
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+
+  await page.locator('div.ProseMirror').fill('before table');
+  await page.getByText('Block', { exact: true }).click();
+  await page.getByText('columns').fill('mytable');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('k');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('v');
+  await page.getByText('Edit Block').click();
+  await page.getByText('Insert row after').click();
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('k 2');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('v 2');
+
+  await page.waitForTimeout(1000);
+
+  await page.goto(urlB);
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+
+  await page.locator('div.ProseMirror').fill('page B');
+  await page.waitForTimeout(1000);
+
+  await page.goto(urlA);
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toContainText('mytable');
+  await expect(page.locator('div.ProseMirror')).toContainText('k 2');
+  await expect(page.locator('div.ProseMirror')).toContainText('v 2');
+
+  await page.goto(urlB);
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });
