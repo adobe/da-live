@@ -39,6 +39,17 @@ export function getTestPageURL(testIdentifier, workerInfo) {
 }
 
 /**
+ * Returns a URL for a single-use test folder.
+ *
+ * @param {string} testIdentifier - A identifier for the test
+ * @param {object} workerInfo - workerInfo as passed in by Playwright
+ * @returns {string} The URL for the test page.
+ */
+export function getTestFolderURL(testIdentifier, workerInfo) {
+  return getTestURL('', testIdentifier, workerInfo);
+}
+
+/**
  * Returns a URL for a single-use test sheet.
  *
  * @param {string} testIdentifier - A identifier for the test
