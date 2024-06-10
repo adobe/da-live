@@ -38,6 +38,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.locator('button.da-version-btn').click();
   await page.locator('input.da-version-new-input').fill('myver');
   await page.locator('input.da-version-new-input').press('Enter');
+  await page.waitForTimeout(1000);
   await expect(page.getByText('myver', { exact: false })).toBeVisible();
 
   // Add some more text
