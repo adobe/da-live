@@ -33,7 +33,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.locator('div.ProseMirror').fill('Versioned text');
   await page.waitForTimeout(3000);
 
-  // Create a new stored version called 'ver 1'
+  // Create a new stored version called 'myver'
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.locator('button.da-version-btn').click();
   await page.locator('input.da-version-new-input').fill('myver');
@@ -88,8 +88,6 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.getByText('myver', { exact: false }).click();
   await page.locator('li').filter({ hasText: 'myver' }).getByRole('button').click();
-
-  await page.locator('li').filter({ hasText: 'ver 1' }).getByRole('button').click();
   await page.locator('div.da-version-action-area').getByText('Restore').click();
 
   // Ensure that the original text is still there
