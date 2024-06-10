@@ -56,7 +56,9 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     }
 
     // If we're here the page has to be deleted. We'll tick the checkbox next to it in the page
-    const checkbox = page.locator('li').filter({ hasText: fileName }).locator('input[type="checkbox"][name="item-selected"]');
+    const checkbox = page
+      .locator('li').filter({ hasText: fileName, exact: true })
+      .locator('input[type="checkbox"][name="item-selected"]').first();
     console.log('To be deleted, checked box:', await checkbox.count());
     await checkbox.focus();
     await page.keyboard.press(' ');
