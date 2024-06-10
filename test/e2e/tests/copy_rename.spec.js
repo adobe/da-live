@@ -63,7 +63,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.waitForURL(`**/da-sites/da-status/tests/${copyFolderName}`);
 
   await page.getByRole('button', { name: 'Paste' }).click();
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(2000);
 
   // go back to the original to rename it
   // Go to the directory view
@@ -81,7 +81,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.keyboard.press('Enter');
 
   // Open the renamed page
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(2000);
   await page.goto(`${pageURL}ren`);
 
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
