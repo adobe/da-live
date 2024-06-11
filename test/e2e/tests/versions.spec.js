@@ -26,6 +26,10 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   // Wait 3 secs to ensure its saved in da-admin
   await page.waitForTimeout(3000);
 
+  // Add some more text
+  await page.locator('div.ProseMirror').fill('Second version');
+  await page.waitForTimeout(3000);
+
   // Create a new stored version called 'ver 1'
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.locator('button.da-version-btn').click();
@@ -64,5 +68,5 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   await page.locator('div.da-version-action-area').getByText('Restore').click();
 
   // Ensure that the original text is still there
-  await expect(page.locator('div.ProseMirror')).toContainText('Initial version');
+  await expect(page.locator('div.ProseMirror')).toContainText('Second version');
 });
