@@ -344,6 +344,10 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
+.open-plugin {
+  background: url('/blocks/edit/img/Smock_More_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
 .open-assets {
   background: url('/blocks/edit/img/Smock_Images_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }

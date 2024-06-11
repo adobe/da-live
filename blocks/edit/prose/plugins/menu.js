@@ -42,6 +42,113 @@ function canInsert(state, nodeType) {
   return false;
 }
 
+function pluginEnable(state) {
+  // console.log('state', state);
+  // console.log('nodeType', nodeType);
+
+  const cur = state.selection.$cursor;
+  if (!cur) {
+    return false;
+  }
+
+  if (cur.depth < 3) {
+    // We're not in a block
+    return false;
+  }
+
+  // console.log('-------------------------');
+  // if (cur.depth > 1) {
+  //   for (let i = 0; i < cur.depth; i += 1) {
+  //     console.log('idx', i, cur.index(i));
+  //   }
+  // }
+
+  const tableNode = cur.node(1);
+  if (tableNode.type.name !== 'table') {
+    return false;
+  }
+
+  if (cur.index(2) !== 1) {
+    // we're not in the second column
+    return false;
+  }
+
+  const tableName = tableNode.firstChild.textContent;
+  if (tableName !== 'details') {
+    return false;
+  }
+
+  const rowNode = cur.node(2);
+  if (rowNode.firstChild.textContent !== 'tags') {
+    return false;
+  }
+
+  return true;
+  // console.log('Cur depth', cur.depth, 'nbef', cur.nodeBefore?.textContent, 'naft', cur.nodeAfter?.textContent);
+  // console.log('pos', cur.pos, 'poff', cur.parentOffset, 'bef', cur.before(), 'aft', cur.after());
+  // console.log('node', cur.node().textContent); // , 'idx', cur.index()); // , 'idxaft', cur.indexAfter());
+  // console.log('node', cur.node(cur.depth - 2).textContent); // , 'idx', cur.index()); // , 'idxaft', cur.indexAfter());
+
+  // console.log
+  /*
+  const fr = state.selection.from;
+  const parent = state.selection.$from.parent;
+  try {
+    const elx = state.doc.resolve(fr);
+    const elnode = elx.node();
+    const elpar = elnode.parent;
+    const $cursor = state.selection.$cursor;
+
+    const { node, index, offset } = $cursor
+      .node($cursor.depth - 1)
+      .childBefore($cursor.index($cursor.depth - 1));
+
+    if (node) {
+      console.log('Found node', node);
+    }
+
+    // for (let i = 0; i < state.doc.childCount; i += 1) {
+    //   const el = state.doc.child(i);
+    //   console.log(el);
+    //   if (el.eq(elnode)) {
+    //     console.log('*** Theyre equal!', el);
+    //   }
+    // }
+
+    // console.log(elnode);
+  } catch (e) {
+
+  }
+  */
+
+  // const x = true;
+  // return x;
+  // const { $from } = state.selection;
+  // // eslint-disable-next-line no-plusplus
+  // for (let d = $from.depth; d >= 0; d--) {
+  //   const index = $from.index(d);
+  //   if ($from.node(d).canReplaceWith(index, index, nodeType)) { return true; }
+  // }
+  // return false;
+}
+
+function openPluginDialog(state, dispatch) {
+  const pane = window.view.dom.nextElementSibling;
+
+  const html = `<dialog>
+  <p>Select your tag</p>
+    <button>red</button>
+    <button>blue</button>
+</dialog>`;
+  pane.innerHTML = html;
+  pane.querySelector('dialog').showModal();
+  pane.querySelectorAll('button').forEach((e) => e.addEventListener('click', (e) => {
+    const tag = e.srcElement.innerText;
+    pane.innerHTML = '';
+    dispatch(state.tr.insertText(tag));
+  }));
+}
+
 function cmdItem(cmd, options) {
   const passedOptions = {
     label: options.title,
@@ -462,7 +569,19 @@ function getMenu(view) {
     }),
   ];
 
-  const content = [textMenu, listMenu, blockMenu, undoMenu];
+  const pluginMenu = [
+    new MenuItem({
+      title: 'Open plugin',
+      label: 'Plugin',
+      run(state, dispatch) {
+        openPluginDialog(state, dispatch);
+      },
+      enable: (state) => pluginEnable(state),
+      class: 'open-plugin',
+    }),
+  ];
+
+  const content = [textMenu, listMenu, blockMenu, undoMenu, pluginMenu];
 
   const { dom, update } = renderGrouped(view, content);
 
