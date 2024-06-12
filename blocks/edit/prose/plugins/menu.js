@@ -30,8 +30,10 @@ import openLibrary from '../../da-library/da-library.js';
 
 import insertTable from '../table.js';
 import { getRepoId, openAssets } from '../../da-assets/da-assets.js';
+import { readCustomPlugins, getSelectValues } from './customPlugins.js';
 
 const repoId = await getRepoId();
+const customPlugins = await readCustomPlugins(window.location.href, 'plugins.json');
 
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
@@ -44,116 +46,65 @@ function canInsert(state, nodeType) {
 }
 
 function pluginEnable(state) {
-  // console.log('state', state);
-  // console.log('nodeType', nodeType);
-
   const cur = state.selection.$cursor;
   if (!cur) {
-    return false;
+    return null;
   }
 
   if (cur.depth < 3) {
     // We're not in a block
-    return false;
+    return null;
   }
-
-  // console.log('-------------------------');
-  // if (cur.depth > 1) {
-  //   for (let i = 0; i < cur.depth; i += 1) {
-  //     console.log('idx', i, cur.index(i));
-  //   }
-  // }
 
   const tableNode = cur.node(1);
   if (tableNode.type.name !== 'table') {
-    return false;
+    return null;
   }
 
   if (cur.index(2) !== 1) {
     // we're not in the second column
-    return false;
+    return null;
   }
 
-  const tableName = tableNode.firstChild.textContent;
-  if (tableName !== 'details') {
-    return false;
-  }
-
-  const rowNode = cur.node(2);
-  if (rowNode.firstChild.textContent !== 'tags') {
-    return false;
-  }
-
-  return true;
-  // console.log('Cur depth', cur.depth, 'nbef', cur.nodeBefore?.textContent, 'naft', cur.nodeAfter?.textContent);
-  // console.log('pos', cur.pos, 'poff', cur.parentOffset, 'bef', cur.before(), 'aft', cur.after());
-  // console.log('node', cur.node().textContent); // , 'idx', cur.index()); // , 'idxaft', cur.indexAfter());
-  // console.log('node', cur.node(cur.depth - 2).textContent); // , 'idx', cur.index()); // , 'idxaft', cur.indexAfter());
-
-  // console.log
-  /*
-  const fr = state.selection.from;
-  const parent = state.selection.$from.parent;
-  try {
-    const elx = state.doc.resolve(fr);
-    const elnode = elx.node();
-    const elpar = elnode.parent;
-    const $cursor = state.selection.$cursor;
-
-    const { node, index, offset } = $cursor
-      .node($cursor.depth - 1)
-      .childBefore($cursor.index($cursor.depth - 1));
-
-    if (node) {
-      console.log('Found node', node);
+  for (const pl of customPlugins) {
+    const tableName = tableNode.firstChild.textContent;
+    if (tableName.toUpperCase() === pl.Block.toUpperCase()) {
+      const rowNode = cur.node(2);
+      if (rowNode.firstChild.textContent.toUpperCase() === pl.Key.toUpperCase()) {
+        return pl;
+      }
     }
-
-    // for (let i = 0; i < state.doc.childCount; i += 1) {
-    //   const el = state.doc.child(i);
-    //   console.log(el);
-    //   if (el.eq(elnode)) {
-    //     console.log('*** Theyre equal!', el);
-    //   }
-    // }
-
-    // console.log(elnode);
-  } catch (e) {
-
   }
-  */
+  return null;
 
-  // const x = true;
-  // return x;
-  // const { $from } = state.selection;
-  // // eslint-disable-next-line no-plusplus
-  // for (let d = $from.depth; d >= 0; d--) {
-  //   const index = $from.index(d);
-  //   if ($from.node(d).canReplaceWith(index, index, nodeType)) { return true; }
+  // const tableName = tableNode.firstChild.textContent;
+  // if (tableName !== 'details') {
+  //   return false;
   // }
-  // return false;
+
+  // const rowNode = cur.node(2);
+  // if (rowNode.firstChild.textContent !== 'tags') {
+  //   return false;
+  // }
+
+  // return true;
 }
 
-function openPluginDialog(state, dispatch) {
-  const title = 'Select Tag';
-  const items = ['red', 'blue'];
+async function openPluginDialog(state, dispatch) {
+  // const plugins = await fetch(`${this.details.previewOrigin}/plugins.json`)
+  const plugin = pluginEnable(state);
+  if (!plugin) {
+    return;
+  }
+
+  const { title, items } = await getSelectValues(window.location.href, 'data/tags.json', 'Tag');
+
+  // const title = 'Select Tag';
+  // const items = ['red', 'blue'];
   const callback = (tag) => {
     dispatch(state.tr.insertText(tag));
   };
   openSelect({ title, items, callback });
-//   const pane = window.view.dom.nextElementSibling;
-
-//   const html = `<dialog>
-//   <p>Select your tag</p>
-//     <button>red</button>
-//     <button>blue</button>
-// </dialog>`;
-//   pane.innerHTML = html;
-//   pane.querySelector('dialog').showModal();
-//   pane.querySelectorAll('button').forEach((e) => e.addEventListener('click', (e) => {
-//     const tag = e.srcElement.innerText;
-//     pane.innerHTML = '';
-//     dispatch(state.tr.insertText(tag));
-//   }));
 }
 
 function cmdItem(cmd, options) {
@@ -581,7 +532,6 @@ function getMenu(view) {
       title: 'Open plugin',
       label: 'Plugin',
       run(state, dispatch) {
-        // openPrompt({ title: 'Plugin', fields: {}, callback: () => { dispatch(state.tr.insertText('plugin')); } });
         openPluginDialog(state, dispatch);
       },
       enable: (state) => pluginEnable(state),
