@@ -76,18 +76,6 @@ function pluginEnable(state) {
     }
   }
   return null;
-
-  // const tableName = tableNode.firstChild.textContent;
-  // if (tableName !== 'details') {
-  //   return false;
-  // }
-
-  // const rowNode = cur.node(2);
-  // if (rowNode.firstChild.textContent !== 'tags') {
-  //   return false;
-  // }
-
-  // return true;
 }
 
 async function openPluginDialog(state, dispatch) {
@@ -99,8 +87,6 @@ async function openPluginDialog(state, dispatch) {
 
   const { title, items } = await getSelectValues(window.location.href, 'data/tags.json', 'Tag');
 
-  // const title = 'Select Tag';
-  // const items = ['red', 'blue'];
   const callback = (tag) => {
     dispatch(state.tr.insertText(tag));
   };
