@@ -51,7 +51,7 @@ async function getData(url) {
   const names = json[':names'];
 
   // Single sheet
-  if (json.data) {
+  if (json[':type'] === 'sheet') {
     const data = getSheetData(json.data);
     const columns = data[0].map(() => ({ width: '300px' }));
     const dataSheet = {
