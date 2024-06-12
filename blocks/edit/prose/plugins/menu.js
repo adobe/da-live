@@ -24,6 +24,7 @@ import {
 // eslint-disable-next-line import/no-unresolved
 } from 'da-y-wrapper';
 
+import openSelect from '../../da-select/da-select.js';
 import openPrompt from '../../da-palette/da-palette.js';
 import openLibrary from '../../da-library/da-library.js';
 
@@ -133,20 +134,26 @@ function pluginEnable(state) {
 }
 
 function openPluginDialog(state, dispatch) {
-  const pane = window.view.dom.nextElementSibling;
-
-  const html = `<dialog>
-  <p>Select your tag</p>
-    <button>red</button>
-    <button>blue</button>
-</dialog>`;
-  pane.innerHTML = html;
-  pane.querySelector('dialog').showModal();
-  pane.querySelectorAll('button').forEach((e) => e.addEventListener('click', (e) => {
-    const tag = e.srcElement.innerText;
-    pane.innerHTML = '';
+  const title = 'Select Tag';
+  const items = ['red', 'blue'];
+  const callback = (tag) => {
     dispatch(state.tr.insertText(tag));
-  }));
+  };
+  openSelect({ title, items, callback });
+//   const pane = window.view.dom.nextElementSibling;
+
+//   const html = `<dialog>
+//   <p>Select your tag</p>
+//     <button>red</button>
+//     <button>blue</button>
+// </dialog>`;
+//   pane.innerHTML = html;
+//   pane.querySelector('dialog').showModal();
+//   pane.querySelectorAll('button').forEach((e) => e.addEventListener('click', (e) => {
+//     const tag = e.srcElement.innerText;
+//     pane.innerHTML = '';
+//     dispatch(state.tr.insertText(tag));
+//   }));
 }
 
 function cmdItem(cmd, options) {
@@ -574,6 +581,7 @@ function getMenu(view) {
       title: 'Open plugin',
       label: 'Plugin',
       run(state, dispatch) {
+        // openPrompt({ title: 'Plugin', fields: {}, callback: () => { dispatch(state.tr.insertText('plugin')); } });
         openPluginDialog(state, dispatch);
       },
       enable: (state) => pluginEnable(state),
