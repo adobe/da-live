@@ -79,13 +79,12 @@ function pluginEnable(state) {
 }
 
 async function openPluginDialog(state, dispatch) {
-  // const plugins = await fetch(`${this.details.previewOrigin}/plugins.json`)
   const plugin = pluginEnable(state);
   if (!plugin) {
     return;
   }
 
-  const { title, items } = await getSelectValues(window.location.href, 'data/tags.json', 'Tag');
+  const { title, items } = await getSelectValues(window.location.href, plugin.Data);
 
   const callback = (tag) => {
     dispatch(state.tr.insertText(tag));

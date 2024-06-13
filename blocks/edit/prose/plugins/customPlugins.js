@@ -27,12 +27,15 @@ function getField(data, key) {
   return null;
 }
 
-export async function getSelectValues(url, path, key) {
+export async function getSelectValues(url, path) {
   const resp = await daFetch(getURL(url, path));
   const pluginJSON = await resp.json();
 
   const title = getField(pluginJSON?.md?.data, 'Title') ?? 'Select';
-  const items = pluginJSON.data.data.map((e) => e[key]);
+
+  // Get the data from the correct place which depends on sheet/multi-sheet
+  const data = pluginJSON[':type'] === 'sheet' ? pluginJSON.data : pluginJSON.data.data;
+  const items = data.map((e) => Object.values(e)[0]);
 
   return { title, items };
 }
