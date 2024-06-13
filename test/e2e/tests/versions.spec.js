@@ -23,12 +23,12 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   // Enter some initial text onto the page
   await page.locator('div.ProseMirror').fill('Initial version');
 
-  // Wait 3 secs to ensure its saved in da-admin
-  await page.waitForTimeout(3000);
+  // Wait to ensure its saved in da-admin
+  await page.waitForTimeout(5000);
 
   // Add some more text
   await page.locator('div.ProseMirror').fill('Second version');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
 
   // Create a new stored version called 'ver 1'
   await page.getByRole('button', { name: 'Versions' }).click();
@@ -40,13 +40,13 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   await page.locator('button.da-versions-close-btn').click();
   await page.locator('div.ProseMirror').fill('Some modifications');
 
-  // Wait 3 secs to ensure its saved
-  await page.waitForTimeout(3000);
+  // Wait to ensure its saved
+  await page.waitForTimeout(5000);
 
   // And add some more text
   await page.locator('div.ProseMirror').fill('Some more modifications');
-  // Wait 3 secs to ensure its saved
-  await page.waitForTimeout(3000);
+  // Wait to ensure its saved
+  await page.waitForTimeout(5000);
 
   // Reload the page and check that the latest changes are there
   await page.reload();
