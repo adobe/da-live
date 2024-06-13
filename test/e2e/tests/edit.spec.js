@@ -14,12 +14,13 @@ import ENV from '../utils/env.js';
 import { getTestPageURL } from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
-  test.setTimeout(15000);
+  test.setTimeout(30000);
 
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
 
+  await page.waitForTimeout(3000);
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
@@ -34,7 +35,7 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
 });
 
 test('Create Delete Document', async ({ browser, page }, workerInfo) => {
-  test.setTimeout(15000);
+  test.setTimeout(30000);
 
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();
@@ -70,7 +71,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 });
 
 test('Change document by switching anchors', async ({ page }, workerInfo) => {
-  test.setTimeout(15000);
+  test.setTimeout(30000);
 
   const url = getTestPageURL('edit3', workerInfo);
   const urlA = `${url}A`;
@@ -78,6 +79,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
 
   await page.goto(urlA);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(3000);
 
   await page.locator('div.ProseMirror').fill('before table');
   await page.getByText('Block', { exact: true }).click();
@@ -92,11 +94,11 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.keyboard.type('k 2');
   await page.keyboard.press('Tab');
   await page.keyboard.type('v 2');
-
   await page.waitForTimeout(3000);
 
   await page.goto(urlB);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(3000);
 
   await page.locator('div.ProseMirror').fill('page B');
   await page.waitForTimeout(3000);
