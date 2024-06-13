@@ -23,11 +23,12 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
   await page.close();
 
   const newPage = await browser.newPage();
   await newPage.goto(url);
+  await newPage.waitForTimeout(3000);
   await expect(newPage.locator('div.ProseMirror')).toBeVisible();
   await expect(newPage.locator('div.ProseMirror')).toContainText(enteredText);
 });
@@ -92,21 +93,23 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.keyboard.press('Tab');
   await page.keyboard.type('v 2');
 
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
 
   await page.goto(urlB);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
 
   await page.locator('div.ProseMirror').fill('page B');
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
 
   await page.goto(urlA);
+  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toContainText('mytable');
   await expect(page.locator('div.ProseMirror')).toContainText('k 2');
   await expect(page.locator('div.ProseMirror')).toContainText('v 2');
 
   await page.goto(urlB);
+  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });

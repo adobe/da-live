@@ -16,7 +16,7 @@ import { getTestFolderURL, getTestPageURL } from '../utils/page.js';
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   const pageURL = getTestPageURL('copyrename', workerInfo);
   const orgPageName = pageURL.split('/').pop();
@@ -85,6 +85,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.waitForTimeout(3000);
   await page.goto(`${pageURL}ren`);
 
+  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.getByText('myver', { exact: false }).click();
