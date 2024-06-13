@@ -65,7 +65,6 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await expect(newPage.locator('button.delete-button')).toBeVisible();
   await newPage.locator('button.delete-button').click();
 
-  // Wait 1 sec
   await page.waitForTimeout(1000);
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
 });

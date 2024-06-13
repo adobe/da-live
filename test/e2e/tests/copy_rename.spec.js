@@ -26,7 +26,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   // Enter some initial text onto the page
   await page.locator('div.ProseMirror').fill('First text');
 
-  // Wait 3 secs to ensure its saved in da-admin
+  // Wait to ensure its saved in da-admin
   await page.waitForTimeout(5000);
 
   // Add some more text
