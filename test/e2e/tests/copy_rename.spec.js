@@ -27,23 +27,23 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.locator('div.ProseMirror').fill('First text');
 
   // Wait 3 secs to ensure its saved in da-admin
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
 
   // Add some more text
   await page.locator('div.ProseMirror').fill('Versioned text');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
 
   // Create a new stored version called 'myver'
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.locator('button.da-version-btn').click();
   await page.locator('input.da-version-new-input').fill('myver');
   await page.locator('input.da-version-new-input').press('Enter');
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
   await expect(page.getByText('myver', { exact: false })).toBeVisible();
 
   // Add some more text
   await page.locator('div.ProseMirror').fill('After versioned');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
 
   // Go back to the directory view
   await page.goto(`${ENV}/#/da-sites/da-status/tests`);
@@ -64,7 +64,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.waitForURL(`**/da-sites/da-status/tests/${copyFolderName}`);
 
   await page.getByRole('button', { name: 'Paste' }).click();
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(3000);
 
   // go back to the original to rename it
   // Go to the directory view
@@ -82,7 +82,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.keyboard.press('Enter');
 
   // Open the renamed page
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(3000);
   await page.goto(`${pageURL}ren`);
 
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
