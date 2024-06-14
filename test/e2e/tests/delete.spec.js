@@ -13,7 +13,8 @@ import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
 import { getTestResourceAge } from '../utils/page.js';
 
-const MIN_HOURS = 2; // Files are deleted after 2 hours
+// Files are deleted after 2 hours by default
+const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
 
 // This test deletes old testing pages that are older than 2 hours
 test('Delete multiple old pages', async ({ page }, workerInfo) => {
@@ -22,7 +23,10 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     return;
   }
 
-  test.setTimeout(80000);
+  console.log('Deleting test files that are older than', MIN_HOURS, 'hours');
+  // The timeout for this test is long because it may take a while to delete all the files
+  // that are left behind by previous test runs.
+  test.setTimeout(600000);
 
   // Open the directory listing
   await page.goto(`${ENV}/#/da-sites/da-status/tests`);
@@ -74,5 +78,5 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   await page.getByRole('button', { name: 'Delete' }).click();
 
   // Wait for the delete button to disappear which is when we're done
-  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible({ timeout: 60000 });
+  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible({ timeout: 600000 });
 });
