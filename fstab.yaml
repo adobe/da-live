@@ -2,3 +2,6 @@ mountpoints:
   /:
     url: https://content.da.live/adobe/da-live/
     type: markup
+
+folders:
+  /apps/custom/: /apps/custom/shell
