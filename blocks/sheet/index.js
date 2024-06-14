@@ -40,7 +40,7 @@ function getSheetData(sheetData) {
   return [header, ...data];
 }
 
-async function getData(url) {
+export async function getData(url) {
   const resp = await daFetch(url);
   if (!resp.ok) return getDefaultSheet();
 
