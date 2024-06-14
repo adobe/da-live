@@ -33,6 +33,7 @@ button {
   font-weight: 700;
   padding: 0 12px;
   margin-top: 10px;
+  user-select: none;
 }
 
 .da-select-buttons > button {

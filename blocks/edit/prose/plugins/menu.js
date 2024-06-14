@@ -78,7 +78,7 @@ function pluginEnable(state) {
   return null;
 }
 
-async function openPluginDialog(state, dispatch) {
+async function openPluginDialog(state, dispatch, view) {
   const plugin = pluginEnable(state);
   if (!plugin) {
     return;
@@ -87,7 +87,7 @@ async function openPluginDialog(state, dispatch) {
   const { title, items } = await getSelectValues(window.location.href, plugin.Data);
 
   const callback = (tag) => {
-    dispatch(state.tr.insertText(tag));
+    dispatch(view.state.tr.insertText(`${tag} `));
   };
   openSelect({ title, items, callback });
 }
@@ -517,7 +517,7 @@ function getMenu(view) {
       title: 'Open plugin',
       label: 'Plugin',
       run(state, dispatch) {
-        openPluginDialog(state, dispatch);
+        openPluginDialog(state, dispatch, view);
       },
       enable: (state) => pluginEnable(state),
       class: 'open-plugin',

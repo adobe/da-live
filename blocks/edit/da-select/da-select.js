@@ -26,10 +26,16 @@ class DaSelect extends LitElement {
     this.internalClose();
   }
 
-  getChoices() {
+  select(e, item) {
+    this.callback(item);
+    const proseEl = window.view.root.querySelector('.ProseMirror');
+    proseEl.focus();
+  }
+
+  getChoices(e) {
     return html`
       ${this.items.map((item) => html`
-        <button @click=${() => this.callback(item)}>${item}</button>
+        <button @click=${() => this.select(e, item)}>${item}</button>
       `)}
     `;
   }
