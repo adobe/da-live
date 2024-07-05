@@ -197,8 +197,9 @@ export default class DaBrowse extends LitElement {
       formData.append('destination', item.destination);
       const opts = { method: 'POST', body: formData };
       await daFetch(`${DA_ORIGIN}/copy${item.path}`, opts);
-      item.isChecked = false;
-      this._listItems.unshift(item);
+
+      const pastedItem = { ...item, path: item.destination, isChecked: false };
+      this._listItems.unshift(pastedItem);
       this.requestUpdate();
     }
     this._canPaste = false;
