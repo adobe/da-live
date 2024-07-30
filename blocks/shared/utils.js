@@ -2,7 +2,7 @@ import { DA_ORIGIN } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
-const ALLOWED_TOKEN = ['https://admin.hlx.page', 'https://admin.da.live'];
+const ALLOWED_TOKEN = ['https://admin.hlx.page', 'https://admin.da.live', 'https://stage-admin.da.live'];
 
 let imsDetails;
 
