@@ -4,4 +4,5 @@ mountpoints:
     type: markup
 
 folders:
-  /apps/custom/: /apps/custom/shell
+  /app/: /apps/custom/shell
+  /addin/: /apps/addin/shell
