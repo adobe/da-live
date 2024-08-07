@@ -58,6 +58,36 @@ let currOwner;
 let currRepo;
 let libraries;
 
+async function getDaLibraries(owner, repo) {
+  const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
+  if (!resp.ok) return [];
+
+  const { data } = await resp.json();
+
+  return data.reduce((acc, item) => {
+    const keySplit = item.key.split('-');
+    if (keySplit[0] === 'library') {
+      acc.push({
+        name: keySplit[1],
+        sources: item.value.replaceAll(' ', '').split(','),
+        format: item.format,
+      });
+    }
+    return acc;
+  }, []);
+}
+
+async function getAemPlugins(owner, repo, ref = 'main') {
+  const resp = await daFetch(`https://admin.hlx.page/sidekick/${owner}/${repo}/${ref}/config.json`);
+  if (!resp.ok) return [];
+  const json = await resp.json();
+  if (json.plugins.length === 0) return [];
+  return json.plugins.reduce((acc, plugin) => {
+    if (plugin.daLibrary) acc.push({ name: plugin.title, url: plugin.url });
+    return acc;
+  }, []);
+}
+
 export async function getLibraryList() {
   const { owner, repo } = getPathDetails();
   if (!owner || !repo) return [];
@@ -70,22 +100,11 @@ export async function getLibraryList() {
   currOwner = owner;
   currRepo = repo;
 
-  const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
-  if (!resp.ok) return [];
+  const daLibraries = getDaLibraries(owner, repo);
+  const aemPlugins = getAemPlugins(owner, repo);
 
-  const { data } = await resp.json();
-
-  libraries = data.reduce((acc, item) => {
-    const keySplit = item.key.split('-');
-    if (keySplit[0] === 'library') {
-      acc.push({
-        name: keySplit[1],
-        sources: item.value.replaceAll(' ', '').split(','),
-        format: item.format,
-      });
-    }
-    return acc;
-  }, []);
+  const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
+  libraries = [...da, ...aem];
 
   return libraries;
 }
