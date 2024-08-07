@@ -1,5 +1,5 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
-import { LitElement, html, until } from '../../../deps/lit/lit-all.min.js';
+import { LitElement, html, until, nothing } from '../../../deps/lit/lit-all.min.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
@@ -173,7 +173,22 @@ class DaLibrary extends LitElement {
       </ul>`;
   }
 
-  async renderLibrary({ name, sources, format }) {
+  renderPlugin(url) {
+    return html`
+      <div class="da-library-type-plugin">
+        <iframe
+          src="${url}"
+          allow="clipboard-write *"
+          scrolling="no"></iframe>
+      </div>`;
+  }
+
+  async renderLibrary({ name, sources, url, format }) {
+    // Only plugins have a URL
+    if (url) {
+      return this.renderPlugin(url);
+    }
+
     if (name === 'blocks') {
       const blocks = await getBlocks(sources);
       return this.renderGroups(blocks);
@@ -203,7 +218,7 @@ class DaLibrary extends LitElement {
             <ul class="da-library-item-list da-library-item-list-main">
               ${this._libraryList.map((library) => html`
                 <li>
-                  <button class="${library.name}" @click=${this.handleLibSwitch}>
+                  <button class="${library.name} ${library.url ? 'is-plugin' : ''}" @click=${this.handleLibSwitch}>
                     <span class="library-type-name">${library.name}</span>
                   </button>
                 </li>
