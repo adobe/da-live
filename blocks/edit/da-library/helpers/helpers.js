@@ -81,7 +81,7 @@ async function getAemPlugins(owner, repo, ref = 'main') {
   const resp = await daFetch(`https://admin.hlx.page/sidekick/${owner}/${repo}/${ref}/config.json`);
   if (!resp.ok) return [];
   const json = await resp.json();
-  if (json.plugins.length === 0) return [];
+  if (json?.plugins?.length === 0) return [];
   return json.plugins.reduce((acc, plugin) => {
     if (plugin.daLibrary) acc.push({ name: plugin.title, url: plugin.url });
     return acc;
