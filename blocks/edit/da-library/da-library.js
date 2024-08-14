@@ -1,5 +1,5 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
-import { LitElement, html, until, nothing } from '../../../deps/lit/lit-all.min.js';
+import { LitElement, html, until } from '../../../deps/lit/lit-all.min.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
@@ -14,6 +14,8 @@ const ICONS = [
   '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
   '/blocks/edit/img/Smock_AddCircle_18_N.svg',
 ];
+
+let accessToken;
 
 class DaLibrary extends LitElement {
   static properties = {
@@ -76,6 +78,28 @@ class DaLibrary extends LitElement {
     flattedDom.append(...proseDom);
     const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(flattedDom);
     window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));
+  }
+
+  getParts() {
+    const [org, repo, ...path] = window.location.hash.replace('#/', '').split('/');
+    return { org, repo, ref: 'main', path: `/${path.join('/')}` };
+  }
+
+  async handlePluginLoad({ target }) {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (e) => { console.log(e.data); };
+    this.getParts();
+
+    if (!accessToken) {
+      const { initIms } = await import('../../shared/utils.js');
+      ({ accessToken } = await initIms());
+    }
+
+    setTimeout(() => {
+      const message = { ready: true, project: this.getParts() };
+      if (accessToken) message.token = accessToken;
+      target.contentWindow.postMessage(message, '*', [channel.port2]);
+    }, 750);
   }
 
   async renderGroupDetail(path) {
@@ -178,6 +202,7 @@ class DaLibrary extends LitElement {
       <div class="da-library-type-plugin">
         <iframe
           src="${url}"
+          @load=${this.handlePluginLoad}
           allow="clipboard-write *"
           scrolling="no"></iframe>
       </div>`;
