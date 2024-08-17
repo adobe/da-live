@@ -81,14 +81,19 @@ class DaLibrary extends LitElement {
   }
 
   getParts() {
+    const view = 'edit';
     const [org, repo, ...path] = window.location.hash.replace('#/', '').split('/');
-    return { org, repo, ref: 'main', path: `/${path.join('/')}` };
+    return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 
   async handlePluginLoad({ target }) {
     const channel = new MessageChannel();
-    channel.port1.onmessage = (e) => { console.log(e.data); };
-    this.getParts();
+    channel.port1.onmessage = (e) => {
+      if (e.data) {
+        const para = window.view.state.schema.text(e.data);
+        window.view.dispatch(window.view.state.tr.replaceSelectionWith(para));
+      }
+    };
 
     if (!accessToken) {
       const { initIms } = await import('../../shared/utils.js');
@@ -96,7 +101,13 @@ class DaLibrary extends LitElement {
     }
 
     setTimeout(() => {
-      const message = { ready: true, project: this.getParts() };
+      const project = this.getParts();
+
+      const message = {
+        ready: true,
+        project,
+        context: project,
+      };
       if (accessToken) message.token = accessToken;
       target.contentWindow.postMessage(message, '*', [channel.port2]);
     }, 750);
