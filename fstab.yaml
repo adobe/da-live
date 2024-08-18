@@ -5,3 +5,4 @@ mountpoints:
 
 folders:
   /app/: /apps/custom/shell
+  /plugin/: /apps/plugin/shell
