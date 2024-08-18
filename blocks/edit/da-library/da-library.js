@@ -227,8 +227,7 @@ class DaLibrary extends LitElement {
         <iframe
           src="${url}"
           @load=${this.handlePluginLoad}
-          allow="clipboard-write *"
-          scrolling="no"></iframe>
+          allow="clipboard-write *"></iframe>
       </div>`;
   }
 
