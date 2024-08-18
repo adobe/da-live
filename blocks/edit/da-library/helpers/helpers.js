@@ -77,8 +77,10 @@ async function getDaLibraries(owner, repo) {
   }, []);
 }
 
-async function getAemPlugins(owner, repo, ref = 'main') {
-  const resp = await daFetch(`https://admin.hlx.page/sidekick/${owner}/${repo}/${ref}/config.json`);
+async function getAemPlugins(owner, repo) {
+  const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
+  const confUrl = ref === 'local' ? 'http://localhost:3000/tools/sidekick/config.json' : `https://admin.hlx.page/sidekick/${owner}/${repo}/${ref}/config.json`;
+  const resp = await daFetch(confUrl);
   if (!resp.ok) return [];
   const json = await resp.json();
   if (!json || !json.plugins) return [];
