@@ -120,7 +120,7 @@ class DaLibrary extends LitElement {
         project,
         context: project,
       };
-      if (accessToken) message.token = accessToken;
+      if (accessToken) message.token = accessToken.token;
       target.contentWindow.postMessage(message, '*', [channel.port2]);
     }, 750);
   }
