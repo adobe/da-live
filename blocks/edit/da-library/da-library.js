@@ -17,6 +17,16 @@ const ICONS = [
 
 let accessToken;
 
+function closeLibrary() {
+  const palletePane = window.view.dom.nextElementSibling;
+  const existingPalette = palletePane.querySelector('da-library');
+  if (existingPalette) {
+    existingPalette.remove();
+    return true;
+  }
+  return false;
+}
+
 class DaLibrary extends LitElement {
   static properties = {
     _libraryList: { state: true },
@@ -39,10 +49,9 @@ class DaLibrary extends LitElement {
 
   handleLibSwitch(e) {
     const { target } = e;
-    const type = target.classList[0];
+    const type = target.dataset.libraryName;
     target.closest('.palette-pane').classList.add('backward');
     const toShow = this.shadowRoot.querySelector(`[data-library-type="${type}"]`);
-    this._title = toShow.dataset.libraryName;
     toShow.classList.remove('forward');
   }
 
@@ -89,9 +98,12 @@ class DaLibrary extends LitElement {
   async handlePluginLoad({ target }) {
     const channel = new MessageChannel();
     channel.port1.onmessage = (e) => {
-      if (e.data) {
-        const para = window.view.state.schema.text(e.data);
+      if (e.data.action === 'sendText') {
+        const para = window.view.state.schema.text(e.data.details);
         window.view.dispatch(window.view.state.tr.replaceSelectionWith(para));
+      }
+      if (e.data.action === 'closeLibrary') {
+        closeLibrary();
       }
     };
 
@@ -108,7 +120,7 @@ class DaLibrary extends LitElement {
         project,
         context: project,
       };
-      if (accessToken) message.token = accessToken;
+      if (accessToken) message.token = accessToken.token;
       target.contentWindow.postMessage(message, '*', [channel.port2]);
     }, 750);
   }
@@ -208,6 +220,7 @@ class DaLibrary extends LitElement {
       </ul>`;
   }
 
+  // http://localhost:6456/nx/sdk/demo.html
   renderPlugin(url) {
     return html`
       <div class="da-library-type-plugin">
@@ -254,7 +267,7 @@ class DaLibrary extends LitElement {
             <ul class="da-library-item-list da-library-item-list-main">
               ${this._libraryList.map((library) => html`
                 <li>
-                  <button class="${library.name} ${library.url ? 'is-plugin' : ''}" @click=${this.handleLibSwitch}>
+                  <button data-library-name="${library.name}" class="${library.name} ${library.url ? 'is-plugin' : ''}" @click=${this.handleLibSwitch}>
                     <span class="library-type-name">${library.name}</span>
                   </button>
                 </li>
@@ -280,18 +293,16 @@ customElements.define('da-library', DaLibrary);
 
 const CLOSE_DROPDOWNS_EVENT = 'pm-close-dropdowns';
 
-export default function open() {
-  const palettePane = window.view.dom.nextElementSibling;
-  const existingPalette = palettePane.querySelector('da-library');
-  if (existingPalette) {
-    existingPalette.remove();
-    return;
-  }
+export default function toggleLibrary() {
+  const libraryWasOpen = closeLibrary();
+  if (libraryWasOpen) return;
+
   // close any other dropdowns
   window.dispatchEvent(new CustomEvent(CLOSE_DROPDOWNS_EVENT));
 
   const palette = document.createElement('da-library');
-  palettePane.append(palette);
+  const palletePane = window.view.dom.nextElementSibling;
+  palletePane.append(palette);
 
   const closePaletteListener = () => {
     palette.remove();
