@@ -554,6 +554,10 @@ table tr:first-of-type p:first-child {
   pointer-events: none;
 }
 
+.ProseMirror img[href] {
+  border: #00ee 3px solid;
+}
+
 /* Palette */
 .da-palettes {
   position: fixed;

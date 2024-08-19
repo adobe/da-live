@@ -55,13 +55,45 @@ function addCustomMarks(marks) {
     .addToEnd('contextHighlightingMark', contextHighlight);
 }
 
+function getImageNodeWithHref() {
+  // due to bug in y-prosemirror, add href to image node
+  // which will be converted to a wrapping <a> tag
+  return {
+    inline: true,
+    attrs: {
+      src: { validate: 'string' },
+      alt: { default: null, validate: 'string|null' },
+      title: { default: null, validate: 'string|null' },
+      href: { default: null, validate: 'string|null' },
+    },
+    group: 'inline',
+    draggable: true,
+    parseDOM: [{
+      tag: 'img[src]',
+      getAttrs(dom) {
+        return {
+          src: dom.getAttribute('src'),
+          title: dom.getAttribute('title'),
+          alt: dom.getAttribute('alt'),
+          href: dom.getAttribute('href'),
+        };
+      },
+    }],
+    toDOM(node) {
+      const { src, alt, title, href } = node.attrs;
+      return ['img', { src, alt, title, href }];
+    },
+  };
+}
+
 // Note: until getSchema() is separated in its own module, this function needs to be kept in-sync
 // with the getSchema() function in da-collab src/collab.js
 export function getSchema() {
   const { marks, nodes: baseNodes } = baseSchema.spec;
   const withLocNodes = addLocNodes(baseNodes);
   const withListnodes = addListNodes(withLocNodes, 'block+', 'block');
-  const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
+  const withTableNodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
+  const nodes = withTableNodes.update('image', getImageNodeWithHref());
   return new Schema({ nodes, marks: addCustomMarks(marks) });
 }
 

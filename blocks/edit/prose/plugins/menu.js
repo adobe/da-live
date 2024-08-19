@@ -109,6 +109,11 @@ function calculateLinkPosition(state, link, offset) {
   };
 }
 
+function hasImageNode(contentArr) {
+  if (!contentArr) return false;
+  return contentArr.some((node) => node.type.name === 'image');
+}
+
 function linkItem(linkMarkType) {
   const label = 'Link';
 
@@ -120,8 +125,10 @@ function linkItem(linkMarkType) {
     class: 'edit-link',
     active(state) { return markActive(state, linkMarkType); },
     enable(state) {
-      return state.selection.content().content.childCount <= 1
-        && (!state.selection.empty || this.active(state));
+      const selContent = state.selection.content();
+      return selContent.content.childCount <= 1
+        && (!state.selection.empty || this.active(state))
+        && !hasImageNode(selContent.content?.content[0]?.content?.content);
     },
     run(initialState, dispatch, view) {
       if (lastPrompt.isOpen()) {
@@ -158,17 +165,35 @@ function linkItem(linkMarkType) {
         end = $to.pos;
       }
 
+      let isImage = false;
+      view.state.doc.nodesBetween($from.pos, $to.pos, (node) => {
+        if (node.type === view.state.schema.nodes.image) {
+          isImage = true;
+          fields.href.value = node.attrs.href;
+          fields.title.value = node.attrs.title;
+        }
+      });
+
       dispatch(view.state.tr
         .addMark(start, end, view.state.schema.marks.contextHighlightingMark.create({}))
         .setMeta('addToHistory', false));
 
       const callback = (attrs) => {
-        const tr = view.state.tr
-          .setSelection(TextSelection.create(view.state.doc, start, end));
-        if (fields.href.value) {
-          dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
-        } else if (this.active(view.state)) {
-          dispatch(tr.removeMark(start, end, linkMarkType));
+        if (isImage) {
+          if (fields.href.value) {
+            dispatch(view.state.tr.setNodeAttribute(start, 'href', fields.href.value.trim()));
+          }
+          if (fields.title.value) {
+            dispatch(view.state.tr.setNodeAttribute(start, 'title', fields.title.value.trim()));
+          }
+        } else {
+          const tr = view.state.tr
+            .setSelection(TextSelection.create(view.state.doc, start, end));
+          if (fields.href.value) {
+            dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
+          } else if (this.active(view.state)) {
+            dispatch(tr.removeMark(start, end, linkMarkType));
+          }
         }
 
         view.focus();
@@ -187,15 +212,44 @@ function removeLinkItem(linkMarkType) {
     title: 'Remove link',
     label: 'Remove Link',
     class: 'edit-unlink',
-    active(state) { return markActive(state, linkMarkType); },
+    isImage: false,
+    active(state) {
+      this.isImage = false;
+      const { $from, $to } = state.selection;
+      let imgHasAttrs = false;
+      state.doc.nodesBetween($from.pos, $to.pos, (node) => {
+        if (node.type === state.schema.nodes.image) {
+          this.isImage = true;
+          if (node.attrs.href || node.attrs.title) {
+            imgHasAttrs = true;
+          } else {
+            imgHasAttrs = false;
+          }
+        }
+      });
+      if (this.isImage) {
+        if (($to.pos - $from.pos) <= 1) {
+          return imgHasAttrs;
+        }
+        // selection is more than just an image
+        return false;
+      }
+
+      return markActive(state, linkMarkType);
+    },
     enable(state) { return this.active(state); },
     // eslint-disable-next-line no-unused-vars
     run(state, dispatch, _view) {
-      const { link, offset } = findExistingLink(state, linkMarkType);
-      const { start, end } = calculateLinkPosition(state, link, offset);
-      const tr = state.tr.setSelection(TextSelection.create(state.doc, start, end))
-        .removeMark(start, end, linkMarkType);
-      dispatch(tr);
+      if (this.isImage) {
+        const { $from } = state.selection;
+        dispatch(state.tr.setNodeAttribute($from.pos, 'href', null).setNodeAttribute($from.pos, 'title', null));
+      } else {
+        const { link, offset } = findExistingLink(state, linkMarkType);
+        const { start, end } = calculateLinkPosition(state, link, offset);
+        const tr = state.tr.setSelection(TextSelection.create(state.doc, start, end))
+          .removeMark(start, end, linkMarkType);
+        dispatch(tr);
+      }
     },
   });
 }

@@ -53,4 +53,10 @@ describe('aem2prose', () => {
     const meta = document.querySelector('.metadata');
     expect(meta).to.not.exist;
   });
+
+  it('Decorates list items', () => {
+    const pictureEl = document.querySelector('a > picture');
+    const parent = pictureEl.parentElement;
+    expect(parent.href).to.equal('https://my.image.link/');
+  });
 });
