@@ -54,7 +54,7 @@ describe('aem2prose', () => {
     expect(meta).to.not.exist;
   });
 
-  it('Decorates list items', () => {
+  it('Wraps imgs with href attrs in a link tag', () => {
     const pictureEl = document.querySelector('a > picture');
     const parent = pictureEl.parentElement;
     expect(parent.href).to.equal('https://my.image.link/');
