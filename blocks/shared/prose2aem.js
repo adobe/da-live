@@ -55,7 +55,7 @@ function makePictures(editor) {
     const clone = img.cloneNode(true);
     clone.setAttribute('loading', 'lazy');
 
-    const pic = document.createElement('picture');
+    let pic = document.createElement('picture');
 
     const srcMobile = document.createElement('source');
     srcMobile.srcset = clone.src;
@@ -65,6 +65,18 @@ function makePictures(editor) {
     srcTablet.media = '(min-width: 600px)';
 
     pic.append(srcMobile, srcTablet, clone);
+
+    const hrefAttr = img.getAttribute('href');
+    if (hrefAttr) {
+      const a = document.createElement('a');
+      a.href = hrefAttr;
+      const titleAttr = img.getAttribute('title');
+      if (titleAttr) {
+        a.title = titleAttr;
+      }
+      a.append(pic);
+      pic = a;
+    }
 
     // Determine what to replace
     const imgParent = img.parentElement;
