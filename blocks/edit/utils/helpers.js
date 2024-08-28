@@ -95,7 +95,7 @@ export async function saveToAem(path, action) {
   const aemPath = parts.join('/');
 
   const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`;
-  const resp = await fetch(url, { method: 'POST' });
+  const resp = await daFetch(url, { method: 'POST' });
   // eslint-disable-next-line no-console
   if (!resp.ok) console.log('error');
   return resp.json();
