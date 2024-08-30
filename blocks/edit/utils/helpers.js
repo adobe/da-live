@@ -97,7 +97,15 @@ export async function saveToAem(path, action) {
   const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`;
   const resp = await daFetch(url, { method: 'POST' });
   // eslint-disable-next-line no-console
-  if (!resp.ok) console.log('error');
+  if (!resp.ok) {
+    return {
+      error: {
+        status: resp.status,
+        type: 'error',
+        message: 'Error during',
+      },
+    };
+  }
   return resp.json();
 }
 

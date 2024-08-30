@@ -8,7 +8,7 @@ main {
 }
 
 /* Don't confuse people if sidekick pops open in the editor */
-helix-sidekick {
+helix-sidekick, aem-sidekick {
   display: none !important;
 }
 
