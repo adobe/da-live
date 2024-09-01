@@ -147,7 +147,7 @@ export default class DaTitle extends LitElement {
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
-          ${this._status ? html`<p class="da-title-error-details">${this._status.message} ${this._status.action}. (${this._status.status})</p>` : nothing}
+          ${this._status ? html`<p class="da-title-error-details">${this._status.message} ${this._status.action}.</p>` : nothing}
           <div class="da-title-actions${this._actionsVis ? ' is-open' : ''}">
             ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
             <button
