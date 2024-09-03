@@ -402,23 +402,23 @@ span.ProseMirror-menuseparator {
 
 .ProseMirror tr:first-child td,
 .ProseMirror tr:first-child th {
-  background: aliceblue;
+  background: #e8e8e8;
   text-align: center;
   font-weight: 700;
 }
 
 .ProseMirror th,
 .ProseMirror td {
-  border: 3px dotted #d0d0d0;
-  border-radius: 3px;
-  margin: 3px;
+  border: 2px solid #B1B1B1;
   vertical-align: top;
   min-width: 100px;
-  padding: 6px;
+  padding: 6px 10px;
+  color: #464646;
 }
 
 td.selectedCell {
-  border: 3px dotted #60c175;
+  border: 2px dotted #8fa192;
+  background: #e5ffea;
 }
 
 /* COPY FROM PROSEMIRROR VIEW */
@@ -509,12 +509,17 @@ img.ProseMirror-separator {
 /* COPY FROM TABLES */
 .ProseMirror .tableWrapper {
   overflow-x: auto;
+  border: 2px solid #B1B1B1;
+  border-radius: 6px;
+  margin-bottom: 30px;
 }
+
 .ProseMirror table {
   border-collapse: collapse;
   table-layout: fixed;
   width: 100%;
   overflow: hidden;
+  border-style: hidden;
 }
 .ProseMirror td,
 .ProseMirror th {
@@ -555,7 +560,8 @@ table tr:first-of-type p:first-child {
 }
 
 .ProseMirror img[href] {
-  border: #00ee 3px solid;
+  border: #f91101 3px solid;
+  box-sizing: border-box;
 }
 
 /* Palette */
