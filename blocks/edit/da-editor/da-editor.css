@@ -6,10 +6,7 @@
 .da-prose-mirror {
   --editor-btn-bg-color: #EFEFEF;
   --editor-btn-bg-color-hover: #e9e9e9;
-}
 
-
-.da-prose-mirror {
   grid-area: editor;
 }
 
@@ -93,16 +90,8 @@ table {
   border-collapse: collapse;
 }
 
-table tr:first-child td,
-table tr:first-child th {
-  background: aliceblue;
-  text-align: center;
-  font-weight: 700;
-}
-
 table td {
   border: 3px solid #d0d0d0;
-  border-radius: 3px;
   margin: 3px;
   vertical-align: top;
   min-width: 100px;
@@ -110,10 +99,6 @@ table td {
 
 table td p {
   margin: .25em 0;
-}
-
-td.selectedCell {
-  border: 3px solid #60c175;
 }
 
 .ProseMirror-menubar {
@@ -402,9 +387,14 @@ span.ProseMirror-menuseparator {
 
 .ProseMirror tr:first-child td,
 .ProseMirror tr:first-child th {
-  background: #e8e8e8;
+  background: #f1f1f1;
   text-align: center;
   font-weight: 700;
+}
+
+.ProseMirror tr:first-child td.selectedCell,
+.ProseMirror tr:first-child th.selectedCell {
+  background: #d1e4f8;
 }
 
 .ProseMirror th,
@@ -412,13 +402,13 @@ span.ProseMirror-menuseparator {
   border: 2px solid #B1B1B1;
   vertical-align: top;
   min-width: 100px;
-  padding: 6px 10px;
+  padding: 8px;
   color: #464646;
 }
 
 td.selectedCell {
-  border: 2px dotted #8fa192;
-  background: #e5ffea;
+  background: #e9f4ff;
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 12%);
 }
 
 /* COPY FROM PROSEMIRROR VIEW */
@@ -511,7 +501,7 @@ img.ProseMirror-separator {
   overflow-x: auto;
   border: 2px solid #B1B1B1;
   border-radius: 6px;
-  margin-bottom: 30px;
+  margin: 2px 0;
 }
 
 .ProseMirror table {
@@ -542,25 +532,8 @@ img.ProseMirror-separator {
   cursor: col-resize;
 }
 
-table tr:first-of-type p:first-child {
-  margin-top: 6px;
-  margin-bottom: 6px;
-}
-
-/* Give selected cells a blue overlay */
-.ProseMirror .selectedCell:after {
-  z-index: 2;
-  position: absolute;
-  content: '';
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
 .ProseMirror img[href] {
-  border: #f91101 3px solid;
+  border: #5faaf9 4px solid;
   box-sizing: border-box;
 }
 
@@ -600,10 +573,17 @@ da-library.hide {
 .ProseMirror > .ProseMirror-yjs-cursor:first-child {
   margin-top: 16px;
 }
-.ProseMirror p:first-child, .ProseMirror h1:first-child, .ProseMirror h2:first-child, .ProseMirror h3:first-child, .ProseMirror h4:first-child, .ProseMirror h5:first-child, .ProseMirror h6:first-child {
+.ProseMirror td > *:first-child {
   margin-top: 0;
 }
-/* This gives the remote user caret. The colors are automatically overwritten*/
+.ProseMirror td > *:last-child {
+  margin-bottom: 0;
+}
+.ProseMirror td > *:has(+ .column-resize-handle) {
+  margin-bottom: 0;
+}
+
+/* This gives the remote user caret. The colors are automatically overwritten */
 .ProseMirror-yjs-cursor {
   position: relative;
   margin-left: -1px;
