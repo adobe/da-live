@@ -507,7 +507,7 @@ img.ProseMirror-separator {
 .ProseMirror table {
   border-collapse: collapse;
   table-layout: fixed;
-  width: 100%;
+  width: 100% !important;
   overflow: hidden;
   border-style: hidden;
 }
@@ -573,13 +573,16 @@ da-library.hide {
 .ProseMirror > .ProseMirror-yjs-cursor:first-child {
   margin-top: 16px;
 }
-.ProseMirror td > *:first-child {
+.ProseMirror td > *:first-child,
+.ProseMirror th > *:first-child {
   margin-top: 0;
 }
-.ProseMirror td > *:last-child {
+.ProseMirror td > *:last-child,
+.ProseMirror th > *:last-child {
   margin-bottom: 0;
 }
-.ProseMirror td > *:has(+ .column-resize-handle) {
+.ProseMirror td > *:has(+ .column-resize-handle),
+.ProseMirror th > *:has(+ .column-resize-handle) {
   margin-bottom: 0;
 }
 
