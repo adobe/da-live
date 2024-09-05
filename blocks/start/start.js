@@ -158,7 +158,7 @@ class DaStart extends LitElement {
         </form>
         <div class="text-container">
           <p>Paste your AEM repo URL above.<br/><br/>
-          Don't have one, yet? Use <a href="https://github.com/aemsites/da-block-collection">AEM Block Collection</a>.<br/>(don't forget the code bot)</p>
+          Don't have one, yet? Use <a href="https://github.com/aemsites/da-block-collection" target="_blank">AEM Block Collection</a>.<br/>(don't forget the code bot)</p>
         </div>
       </div>
     `;
