@@ -224,7 +224,7 @@ export default class DaListItem extends LitElement {
                  src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
             <div class="da-aem-icon-details">
               <p class="da-aem-icon-title">Previewed</p>
-              <p class="da-aem-icon-date">${this._live?.status !== 200 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
+              <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
             </div>
           </a>
           <a
@@ -237,7 +237,7 @@ export default class DaListItem extends LitElement {
                  src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
             <div class="da-aem-icon-details">
               <p class="da-aem-icon-title">Published</p>
-              <p class="da-aem-icon-date">${this._live?.status !== 200 ? 'Not authorized' : this.renderAemDate('_live')}</p>
+              <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
             </div>
           </a>
         </div>
