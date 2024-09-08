@@ -1,9 +1,20 @@
+button {
+  font-family: var(--body-font-family);
+}
+
 :host > svg {
   display: none;
 }
 
 .da-item-list-item-inner {
   padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.da-item-list-item-main {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -164,6 +175,75 @@ input[type="checkbox"] {
 .da-item-list-item-rename-actions svg {
   width: 18px;
   height: 18px;
+}
+
+.da-item-list-item-expand-btn {
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.da-item-list-item-expand-btn.is-visible {
+  display: flex;
+}
+
+.da-item-list-item-expand-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Details */
+.da-item-list-item-details {
+  display: none;
+  border-top: 1px solid rgb(165 199 240);
+  margin: 0 24px;
+  padding: 24px 0;
+}
+
+:host(.is-expanded) .da-item-list-item-details {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+.da-list-item-aem-details {
+  display: flex;
+  gap: 24px;
+  padding-right: 24px;
+}
+
+.da-item-list-item-aem-btn {
+  min-width: 220px;
+  text-decoration: none;
+  color: #000;
+  display: flex;
+  background: none;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.da-item-list-item-aem-icon {
+  display: block;
+  width: 33.33px;
+  height: 32px;
+  border-radius: 5px;
+  background-color: #959595;
+}
+
+.da-item-list-item-aem-icon.is-active {
+  background-color: #fa0f00;
+}
+
+.da-item-list-item-aem-btn p {
+  margin: 0 0 2px;
+  line-height: 1;
+}
+
+.da-aem-icon-title {
+  font-weight: 700;
 }
 
 @media (width >= 600px) {

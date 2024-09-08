@@ -44,12 +44,12 @@ export const daFetch = async (url, opts = {}) => {
   return resp;
 };
 
-async function aemPreview(path, api) {
+export async function aemPreview(path, api, method = 'POST') {
   const [owner, repo, ...parts] = path.slice(1).split('/');
   const name = parts.pop() || repo || owner;
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
-  const resp = await fetch(aemUrl, { method: 'POST' });
+  const resp = await fetch(aemUrl, { method });
   if (!resp.ok) return undefined;
   return resp.json();
 }

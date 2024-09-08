@@ -4,6 +4,7 @@ import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
+import getAEMStatus from './utils/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -12,6 +13,7 @@ const ICONS = [
   '/blocks/edit/img/Smock_Cancel_18_N.svg',
   '/blocks/edit/img/Smock_Checkmark_18_N.svg',
   '/blocks/edit/img/Smock_Refresh_18_N.svg',
+  '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
 ];
 
 export default class DaListItem extends LitElement {
@@ -25,6 +27,9 @@ export default class DaListItem extends LitElement {
     allowselect: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
     _isRenaming: { type: Boolean },
+    _isExpanded: { type: Boolean, state: true },
+    _preview: { state: true },
+    _live: { state: true },
   };
 
   connectedCallback() {
@@ -47,6 +52,20 @@ export default class DaListItem extends LitElement {
       input.focus();
       input.select();
     }, 250);
+  }
+
+  async updateAEMStatus() {
+    const json = await getAEMStatus(this.path);
+    this._preview = {
+      status: json.preview.status,
+      url: json.preview.url,
+      lastModified: json.preview.lastModified ? formatDate(json.preview.lastModified) : null,
+    };
+    this._live = {
+      status: json.live.status,
+      url: json.live.url,
+      lastModified: json.live.lastModified ? formatDate(json.live.lastModified) : null,
+    };
   }
 
   handleChecked() {
@@ -96,8 +115,16 @@ export default class DaListItem extends LitElement {
         this.setStatus('There was an error. Refresh and try again.', 'error');
       }
     }
+  }
 
-    // this.requestUpdate();
+  toggleExpand() {
+    this.classList.toggle('is-expanded');
+    if (this.classList.contains('is-expanded')) {
+      this.updateAEMStatus();
+    } else {
+      this._preview = null;
+      this._live = null;
+    }
   }
 
   renderDate() {
@@ -150,12 +177,62 @@ export default class DaListItem extends LitElement {
     `;
   }
 
+  renderAemDate(env) {
+    if (!this[env]) {
+      return 'Checking';
+    }
+    if (this[env].lastModified) {
+      return `${this._preview.lastModified.date} ${this._preview.lastModified.time}`;
+    }
+    return 'Never';
+  }
+
   render() {
     return html`
       <div class="da-item-list-item-inner">
-        ${this.allowselect ? this.renderCheckBox() : nothing}
-        ${this.rename ? this.renderRename() : this.renderItem()}
-      </div>`;
+        <div class="da-item-list-item-main">
+          ${this.allowselect ? this.renderCheckBox() : nothing}
+          ${this.rename ? this.renderRename() : this.renderItem()}
+        </div>
+        <button
+          aria-label="Open"
+          @click=${this.toggleExpand}
+          class="da-item-list-item-expand-btn ${this.ext ? 'is-visible' : ''}">
+          <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
+        </button>
+      </div>
+      <div class="da-item-list-item-details">
+        <div class="da-list-item-da-details">
+        </div>
+        <div class="da-list-item-aem-details">
+          <a
+            href=${this._preview?.url}
+            target="_blank"
+            aria-label="Open preview"
+            @click=${this.showPreview}
+            class="da-item-list-item-aem-btn">
+            <img class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"
+                 src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
+            <div class="da-aem-icon-details">
+              <p class="da-aem-icon-title">Previewed</p>
+              <p class="da-aem-icon-date">${this.renderAemDate('_preview')}</p>
+            </div>
+          </a>
+          <a
+            href=${this._live?.url}
+            aria-label="Open preview"
+            @click=${this.showPreview}
+            class="da-item-list-item-aem-btn">
+            <img class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"
+                 src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
+            <div class="da-aem-icon-details">
+              <p class="da-aem-icon-title">Published</p>
+              <p class="da-aem-icon-date">${this.renderAemDate('_live')}</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    `;
   }
 }
 
