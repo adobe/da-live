@@ -220,6 +220,7 @@ export default class DaListItem extends LitElement {
           </a>
           <a
             href=${this._live?.url}
+            target="_blank"
             aria-label="Open preview"
             @click=${this.showPreview}
             class="da-item-list-item-aem-btn">
