@@ -49,7 +49,7 @@ export async function aemPreview(path, api, method = 'POST') {
   const name = parts.pop() || repo || owner;
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
-  const resp = await fetch(aemUrl, { method });
+  const resp = await daFetch(aemUrl, { method });
   if (!resp.ok) return undefined;
   return resp.json();
 }
