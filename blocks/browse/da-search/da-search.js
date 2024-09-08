@@ -1,14 +1,15 @@
 import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
+import { daFetch } from '../../shared/utils.js';
 
+// Styles
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const style = await getStyle(import.meta.url);
+const STYLE = await getStyle(import.meta.url);
 
 export default class DaSearch extends LitElement {
   static properties = {
-    path: { type: String },
+    fullpath: { type: String },
     _term: { state: true },
     _total: { state: true },
     _matches: { state: true },
@@ -25,7 +26,15 @@ export default class DaSearch extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [STYLE];
+  }
+
+  update(props) {
+    if (props.has('fullpath') && props.get('fullpath') !== this.fullpath) {
+      this.setDefault();
+      this.updateList();
+    }
+    super.update(props);
   }
 
   updateList() {
@@ -47,7 +56,7 @@ export default class DaSearch extends LitElement {
     if (!resp.ok) return null;
     const text = await resp.text();
     const path = file.ext ? file.path.replace(`.${file.ext}`, '') : file.path;
-    return { ...file, name: path, match: text.includes(term) };
+    return { ...file, name: path.replace(this.fullpath, ''), match: text.includes(term) };
   }
 
   async getMatches(path, term) {
@@ -85,8 +94,10 @@ export default class DaSearch extends LitElement {
     performance.mark('start-search');
     await this.getMatches(startPath, term);
     performance.mark('end-search');
-    performance.measure('search', 'start-search', 'end-search');
-    const searchTime = performance.getEntriesByName('search')[0].duration;
+
+    const timestamp = Date.now();
+    performance.measure(`search-${timestamp}`, 'start-search', 'end-search');
+    const searchTime = performance.getEntriesByName(`search-${timestamp}`)[0].duration;
     this._time = String(searchTime / 1000).substring(0, 4);
   }
 
@@ -96,7 +107,7 @@ export default class DaSearch extends LitElement {
     const [term] = e.target.elements;
     if (!term.value) return;
     this._term = term.value;
-    this.search(this.path, term.value);
+    this.search(this.fullpath, term.value);
   }
 
   async handleReplace(e) {
@@ -128,8 +139,9 @@ export default class DaSearch extends LitElement {
     }));
     await Promise.all(replaced);
     performance.mark('end-replace');
-    performance.measure('replace', 'start-replace', 'end-replace');
-    const replaceTime = performance.getEntriesByName('replace')[0].duration;
+    const timestamp = Date.now();
+    performance.measure(`replace-${timestamp}`, 'start-replace', 'end-replace');
+    const replaceTime = performance.getEntriesByName(`replace-${timestamp}`)[0].duration;
     this._time = String(replaceTime / 1000).substring(0, 4);
   }
 

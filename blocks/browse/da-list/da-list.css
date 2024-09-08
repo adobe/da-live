@@ -1,0 +1,144 @@
+:host > svg {
+  display: none;
+}
+
+/* Item List */
+.da-item-list {
+  border: 1px solid rgb(209 209 209);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f8f8f8;
+}
+
+
+/* List Item Web Component */
+da-list-item {
+  display: block;
+  cursor: pointer;
+  position: relative;
+  margin-top: -1px;
+}
+
+da-list-item:last-child {
+  margin-bottom: -1px;
+}
+
+da-list-item::before {
+  display: block;
+  content: '';
+  height: 1px;
+  background: #E5E5E5;
+  margin: 0 18px;
+}
+
+da-list-item::after {
+  display: block;
+  content: '';
+  height: 1px;
+  background: #E5E5E5;
+  margin: 0 18px;
+}
+
+da-list-item:hover {
+  z-index: 1;
+  background: rgb(228 240 255);
+}
+
+da-list-item:hover::before {
+  margin: 0;
+  background: rgb(20 122 243);
+}
+
+da-list-item:hover::after {
+  margin: 0;
+  background: rgb(20 122 243);
+}
+
+/* Empty list */
+.empty-list {
+  border: 1px solid rgb(234 234 234);
+  background-color: rgb(248 248 248);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+/* Drag & Drop */
+.da-browse-panel {
+  position: relative;
+}
+
+.da-browse-panel.is-dragged-over > * {
+  position: relative;
+  opacity: 0.1;
+}
+
+.da-drop-area {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  border-radius: 6px;
+  background-color: rgb(180 255 175 / 23%);
+  border: 2px dotted rgb(0 194 68);
+  z-index: 1;
+}
+
+.da-drop-area::after {
+  font-size: 24px;
+  font-weight: 700;
+  content: attr(data-message);
+}
+
+.da-browse-panel.is-dragged-over > .da-drop-area {
+  display: flex;
+  opacity: 1;
+  position: absolute;
+  inset: 0;
+}
+
+[data-visible="false"] {
+  display: none;
+}
+
+.da-list-status {
+  position: absolute;
+  inset: 0;
+  background: rgb(255 255 255 / 60%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 500;
+}
+
+.da-list-status-toast {
+  width: 280px;
+  background: var(--s2-blue-800);
+  line-height: 48px;
+  border-radius: 6px;
+  filter: drop-shadow(rgb(0 0 0 / 15%) 0 1px 4px);
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+  color: #FFF;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.da-list-status-title {
+  font-weight: 700;
+  padding: 0 12px 0 40px;
+  margin: 0;
+}
+
+.da-list-status-description {
+  line-height: 1.6;
+  padding: 6px 12px;
+  margin: 0;
+  background: rgb(255 255 255 / 10%);
+}
+
+.da-list-status-type-info .da-list-status-title {
+  background: var(--s2-blue-800) url('/blocks/browse/img/Smock_InfoOutline_18_N.svg') 12px 50% no-repeat;
+}
