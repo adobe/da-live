@@ -8,7 +8,7 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/bheuaark/', { hostname: 'localhost' });
 
-const { default: DaBrowse } = await import('../../../../../blocks/browse/da-browse/da-browse.js');
+const { default: DaBrowse } = await import('../../../../../blocks/browse/da-list/da-list.js');
 
 describe('Browse', () => {
   it('Pasted item uses the target URL', async () => {
@@ -17,7 +17,7 @@ describe('Browse', () => {
     const fetchedArgs = [];
     const mockFetch = async (url, opts) => {
       fetchedArgs.push({ url, opts });
-      return { ok: true };
+      return { ok: true, json: async () => ({}) };
     };
 
     const item = {
@@ -28,7 +28,7 @@ describe('Browse', () => {
     };
     daBrowse._listItems = [];
     daBrowse._selectedItems = [item];
-    daBrowse.details = { fullpath: '/myorg/mysite/myroot/destdir' };
+    daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
 
     const orgFetch = window.fetch;
     try {
@@ -40,7 +40,6 @@ describe('Browse', () => {
       expect(daBrowse._listItems[0].ext).to.equal('html');
       expect(daBrowse._listItems[0].isChecked).to.be.false;
       expect(daBrowse._listItems[0].name).to.equal('d1');
-      expect(daBrowse._canPaste).to.be.false;
 
       expect(fetchedArgs.length).to.equal(1);
       expect(fetchedArgs[0].url).to.equal('https://admin.da.live/copy/myorg/mysite/myroot/srcdir/d1.html');

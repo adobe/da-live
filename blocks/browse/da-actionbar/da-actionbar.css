@@ -1,0 +1,61 @@
+button {
+  font-family: var(--body-font-family);
+}
+
+.da-action-bar {
+  bottom: 12px;
+  position: fixed;
+  background: #BC1C74;
+  min-height: 48px;
+  border-radius: 6px;
+  width: var(--grid-container-width);
+  z-index: 400;
+  filter: drop-shadow(rgb(0 0 0 / 15%) 0 1px 4px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px;
+  box-sizing: border-box;
+  color: #FFF;
+  font-size: 14px;
+}
+
+.da-action-bar button {
+  background: none;
+  height: 32px;
+  color: #FFF;
+  border: none;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+}
+
+.da-action-bar button:hover {
+  background-color: rgb(255 255 255 / 25%);
+}
+
+.da-action-bar button img {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.da-action-bar-left-rail {
+  margin-left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.da-action-bar-right-rail {
+  margin: 0 3px;
+  display: flex;
+  gap: 8px;
+}
+
+.da-action-bar.hide,
+.da-action-bar .hide {
+  display: none;
+}
