@@ -19,7 +19,7 @@ export default async function init(el) {
     return;
   }
 
-  document.title = `Edit sheet ${details.name} - Dark Alley`;
+  document.title = `Edit sheet ${details.name} - DA`;
 
   // Title Pane
   const daTitle = document.createElement('da-title');

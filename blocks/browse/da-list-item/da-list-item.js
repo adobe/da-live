@@ -42,6 +42,11 @@ export default class DaListItem extends LitElement {
     if (props.has('rename')) {
       if (this.rename) this.selectInput();
     }
+    if (props.has('path')) {
+      if (props.get('path') !== this.path) {
+        this.classList.remove('is-expanded');
+      }
+    }
 
     super.update(props);
   }
