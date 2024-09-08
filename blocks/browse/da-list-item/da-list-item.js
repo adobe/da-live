@@ -56,16 +56,21 @@ export default class DaListItem extends LitElement {
 
   async updateAEMStatus() {
     const json = await getAEMStatus(this.path);
-    this._preview = {
-      status: json.preview.status,
-      url: json.preview.url,
-      lastModified: json.preview.lastModified ? formatDate(json.preview.lastModified) : null,
-    };
-    this._live = {
-      status: json.live.status,
-      url: json.live.url,
-      lastModified: json.live.lastModified ? formatDate(json.live.lastModified) : null,
-    };
+    if (json) {
+      this._preview = {
+        status: json.preview.status,
+        url: json.preview.url,
+        lastModified: json.preview.lastModified ? formatDate(json.preview.lastModified) : null,
+      };
+      this._live = {
+        status: json.live.status,
+        url: json.live.url,
+        lastModified: json.live.lastModified ? formatDate(json.live.lastModified) : null,
+      };
+      return;
+    }
+    this._preview = { status: 401 };
+    this._live = { status: 401 };
   }
 
   handleChecked() {
@@ -93,6 +98,9 @@ export default class DaListItem extends LitElement {
       const oldPath = this.path;
       const newPath = `${this.path.slice(0, idx)}${newName}${this.path.slice(idx + this.name.length)}`;
 
+      this._preview = null;
+      this._live = null;
+
       const formData = new FormData();
       formData.append('destination', newPath);
       const opts = { body: formData, method: 'POST' };
@@ -111,6 +119,7 @@ export default class DaListItem extends LitElement {
         this._isRenaming = false;
         // Uncheck the item and bubble up state
         this.handleChecked();
+        this.updateAEMStatus();
       } else {
         this.setStatus('There was an error. Refresh and try again.', 'error');
       }
@@ -215,7 +224,7 @@ export default class DaListItem extends LitElement {
                  src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
             <div class="da-aem-icon-details">
               <p class="da-aem-icon-title">Previewed</p>
-              <p class="da-aem-icon-date">${this.renderAemDate('_preview')}</p>
+              <p class="da-aem-icon-date">${this._live?.status === 401 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
             </div>
           </a>
           <a
@@ -228,7 +237,7 @@ export default class DaListItem extends LitElement {
                  src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
             <div class="da-aem-icon-details">
               <p class="da-aem-icon-title">Published</p>
-              <p class="da-aem-icon-date">${this.renderAemDate('_live')}</p>
+              <p class="da-aem-icon-date">${this._live?.status === 401 ? 'Not authorized' : this.renderAemDate('_live')}</p>
             </div>
           </a>
         </div>
