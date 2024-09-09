@@ -1,4 +1,4 @@
-import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html } from 'da-lit';
 import { saveToDa } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';

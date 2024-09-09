@@ -1,5 +1,5 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
-import { LitElement, html, until } from '../../../deps/lit/lit-all.min.js';
+import { LitElement, html, until } from 'da-lit';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
