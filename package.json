@@ -11,6 +11,7 @@
     "esbuild": "^0.21.0",
     "jspreadsheet-ce": "^4.13.4",
     "jsuites": "^5.0.29",
+    "lit": "^3.2.0",
     "prosemirror-commands": "^1.5.2",
     "prosemirror-example-setup": "^1.2.1",
     "prosemirror-gapcursor": "^1.3.2",
@@ -54,6 +55,7 @@
     "test": "wtr \"./test/unit/**/*.test.js\" --node-resolve --port=2000 --coverage",
     "test:watch": "npm test -- --watch",
     "test:e2e": "cd test/e2e && npm i && npm run test:all",
+    "build:da-lit": "esbuild --format=esm --minify ./deps/lit/src/index.js --bundle --outfile=./deps/lit/dist/index.js",
     "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js"
   }
 }

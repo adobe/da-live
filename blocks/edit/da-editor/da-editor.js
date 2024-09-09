@@ -1,5 +1,5 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
-import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html, nothing } from 'da-lit';
 import initProse from '../prose/index.js';
 import getSheet from '../../shared/sheet.js';
 import { initIms, daFetch } from '../../shared/utils.js';
