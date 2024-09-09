@@ -100,6 +100,8 @@ export function getSchema() {
 let sendUpdates = false;
 let hasChanged = 0;
 function dispatchTransaction(transaction) {
+  if (!window.view) return;
+
   if (transaction.docChanged) {
     hasChanged += 1;
     sendUpdates = true;
@@ -117,6 +119,7 @@ function setPreviewBody(daPreview, proseEl) {
 function pollForUpdates() {
   const daContent = document.querySelector('da-content');
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
+  if (!window.view) return;
   const proseEl = window.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
 
