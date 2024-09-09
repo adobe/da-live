@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
 // Components

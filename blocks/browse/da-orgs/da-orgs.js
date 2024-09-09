@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
