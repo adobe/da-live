@@ -62,8 +62,10 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await newPage.keyboard.press('Shift+Tab');
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
-  await expect(newPage.locator('button.delete-button')).toBeVisible();
-  await newPage.locator('button.delete-button').click();
+
+  // There are 2 delete buttons, one on the Browse panel and another on the Search one
+  // select the visible one.
+  await newPage.locator('button.delete-button').locator('visible=true').click();
 
   await page.waitForTimeout(1000);
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();

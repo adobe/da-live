@@ -55,7 +55,8 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.locator('input.da-actions-input').fill(copyFolderName);
   await page.locator('input.da-actions-input').press('Enter');
 
-  const cpCheckbox = page.locator('li').filter({ hasText: orgPageName }).locator('input[type="checkbox"][name="item-selected"]');
+  const cpCheckbox = page.locator('div.da-item-list-item-main').filter({ hasText: orgPageName })
+    .locator('input[type="checkbox"][name="item-selected"]');
   await cpCheckbox.focus();
   await page.keyboard.press(' ');
   await page.getByRole('button', { name: 'Copy' }).click();
@@ -74,14 +75,15 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.goto(`${ENV}/#/da-sites/da-status/tests`);
   await page.reload(); // Clears any leftover selection, if any
 
-  const checkbox = page.locator('li').filter({ hasText: orgPageName }).locator('input[type="checkbox"][name="item-selected"]');
+  const checkbox = page.locator('div.da-item-list-item-main').filter({ hasText: orgPageName })
+    .locator('input[type="checkbox"][name="item-selected"]');
   await checkbox.focus();
   await page.keyboard.press(' ');
 
   // Hit the rename button
   const renPageName = `${orgPageName}ren`;
   await page.getByRole('button', { name: 'Rename' }).click();
-  await page.locator('input.da-item-list-item-title').fill(renPageName);
+  await page.locator(`input[value=${orgPageName}]`).fill(renPageName);
   await page.keyboard.press('Enter');
 
   // Open the renamed page
