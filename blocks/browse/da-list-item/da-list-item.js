@@ -1,10 +1,9 @@
 import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, aemPreview } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
-import getAEMStatus from './utils/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -60,7 +59,7 @@ export default class DaListItem extends LitElement {
   }
 
   async updateAEMStatus() {
-    const json = await getAEMStatus(this.path);
+    const json = await aemPreview(this.path, 'status', 'GET');
     if (json) {
       this._preview = {
         status: json.preview.status,
