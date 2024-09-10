@@ -31,6 +31,7 @@ import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
+import textTransform from './plugins/textXForm.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import { addLocNodes, getLocClass } from './loc-utils.js';
 
@@ -258,6 +259,7 @@ export default function initProse({ editor, path }) {
       menu,
       imageDrop(schema),
       linkConverter(schema),
+      textTransform(schema),
       columnResizing(),
       tableEditing(),
       keymap(buildKeymap(schema)),
