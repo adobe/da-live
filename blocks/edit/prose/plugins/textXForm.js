@@ -30,16 +30,14 @@ export default function textTransform(schema) {
             for (const pc of el.content) {
               if (pc.type !== 'text') {
                 newParaCont.push(pc);
-              } else {
-                if (pc.text.trim() === '---') {
-                  closeParagraph(newParaCont, newContent);
+              } else if (pc.text.trim() === '---') {
+                closeParagraph(newParaCont, newContent);
 
-                  newContent.push({ type: 'paragraph' });
-                  newContent.push({ type: 'horizontal_rule' });
-                  newContent.push({ type: 'paragraph' });
-                } else {
-                  newParaCont.push(pc);
-                }
+                newContent.push({ type: 'paragraph' });
+                newContent.push({ type: 'horizontal_rule' });
+                newContent.push({ type: 'paragraph' });
+              } else {
+                newParaCont.push(pc);
               }
             }
 

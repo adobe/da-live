@@ -1,8 +1,10 @@
 /* eslint-disable max-classes-per-file */
 import {
+  DOMParser,
   EditorState,
   EditorView,
   Schema,
+  TextSelection,
   baseSchema,
   history,
   buildKeymap,
@@ -17,6 +19,7 @@ import {
   liftListItem,
   sinkListItem,
   gapCursor,
+  InputRule,
   Y,
   WebsocketProvider,
   ySyncPlugin,
@@ -32,6 +35,7 @@ import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import textTransform from './plugins/textXForm.js';
+import enterInputRules from './plugins/enterInputRule.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import { addLocNodes, getLocClass } from './loc-utils.js';
 
@@ -202,6 +206,20 @@ function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40,
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+function getDashesInputRule() {
+  return new InputRule(
+    /^---[\n]$/,
+    (state, match, start, end) => {
+      const div = document.createElement('div');
+      div.append(document.createElement('hr'));
+      const newNodes = DOMParser.fromSchema(state.schema).parse(div);
+
+      const selection = TextSelection.create(state.doc, start, end);
+      dispatchTransaction(state.tr.setSelection(selection).replaceSelectionWith(newNodes));
+    },
+  );
+}
+
 export default function initProse({ editor, path }) {
   const schema = getSchema();
 
@@ -262,6 +280,7 @@ export default function initProse({ editor, path }) {
       textTransform(schema),
       columnResizing(),
       tableEditing(),
+      enterInputRules({ rules: [getDashesInputRule()] }),
       keymap(buildKeymap(schema)),
       keymap(baseKeymap),
       keymap({
