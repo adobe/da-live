@@ -43,6 +43,10 @@ button {
     background: url('/blocks/browse/img/Smock_Document_18_N.svg') center / cover no-repeat;
 }
 
+.da-item-list-item-type-file-version {
+  background: url('/blocks/browse/img/Smock_FileTemplate_18_N.svg') center / cover no-repeat;
+}
+
 .da-item-list-item-type-folder {
     background: url('/blocks/browse/img/Smock_Folder_18_N.svg') center / cover no-repeat;
 }
@@ -209,6 +213,29 @@ input[type="checkbox"] {
   grid-template-columns: 1fr auto;
 }
 
+.da-list-item-da-details {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-left: 42px;
+}
+
+.da-list-item-da-details-version {
+  min-width: 320px;
+}
+
+.da-list-item-da-details p {
+  font-size: 14px;
+  margin: 0;
+  line-height: 1;
+}
+
+.da-list-item-da-details p:first-child {
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
 .da-list-item-aem-details {
   display: flex;
   gap: 24px;
@@ -243,6 +270,7 @@ input[type="checkbox"] {
 }
 
 .da-aem-icon-title {
+  text-transform: uppercase;
   font-weight: 700;
 }
 

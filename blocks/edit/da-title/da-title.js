@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { saveToDa, saveToAem, saveDaConfig } from '../utils/helpers.js';
+import { saveToDa, saveToAem, saveDaConfig, saveDaVersion } from '../utils/helpers.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -73,6 +73,7 @@ export default class DaTitle extends LitElement {
       const { url } = action === 'publish' ? json.live : json.preview;
       window.open(url, '_blank');
     }
+    if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
   }
 
