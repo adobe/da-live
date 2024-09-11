@@ -34,7 +34,7 @@ import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
-import textTransform from './plugins/textXForm.js';
+import textTransform from './plugins/sectionPasteHandler.js';
 import enterInputRules from './plugins/enterInputRule.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import { addLocNodes, getLocClass } from './loc-utils.js';

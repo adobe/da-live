@@ -21,28 +21,23 @@ function handleDesktopWordSectionBreaks(html) {
       return html;
     }
 
-    // /* */
-    // const lastpara = doc.querySelector('body > p:last-child');
-    // const newdiv = doc.createElement('div');
-    // lastpara.before(newdiv);
-    // newdiv.append(lastpara);
-    // /* */
-
+    let modified = false;
     // Add a hr element after all top-level div elements
     const sections = doc.querySelectorAll('body > div');
     sections.forEach((section) => {
       if (section.nextElementSibling) {
         // only add the hr if there is something after the section
         section.after(doc.createElement('hr'));
+        modified = true;
       }
     });
 
-    // Check the last hr element. Don't add one at the end of the doc
+    if (!modified) {
+      return html;
+    }
 
     const serializer = new XMLSerializer();
-    const newHTML = serializer.serializeToString(doc);
-
-    return newHTML;
+    return serializer.serializeToString(doc);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error handling desktop Word section breaks:', error);
@@ -50,26 +45,46 @@ function handleDesktopWordSectionBreaks(html) {
   }
 }
 
+function handleWordOnlineSectionBreaks(html) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    let modified = false;
+    // The span[data-ccp-props] are the magic indicator if one of the JSON values in there is the
+    // word 'single' then we need to add a section break.
+    const sections = doc.querySelectorAll('div > p > span[data-ccp-props]');
+    sections.forEach((section) => {
+      const props = JSON.parse(section.getAttribute('data-ccp-props'));
+      Object.keys(props).forEach((key) => {
+        if (props[key] === 'single') {
+          const hr = doc.createElement('hr');
+          section.parentNode.after(hr);
+          modified = true;
+        }
+      });
+    });
+
+    if (!modified) {
+      return html;
+    }
+
+    const serializer = new XMLSerializer();
+    return serializer.serializeToString(doc);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error handling Word online section breaks:', error);
+    return html;
+  }
+}
+
 export default function textTransform(schema) {
   return new Plugin({
     props: {
-      transformPastedHTML: (html, _view) => {
-        // navigator.clipboard.read().then((items) => {
-        //   for (const item of items) {
-        //     for (const type of item.types) {
-        //       item.getType(type).then((blob) => {
-        //         blob.text().then((txt) => {
-        //           console.log('Clipboard item', txt, blob);
-        //         });
-        //       });
-        //     }
-        //   }
-        // });
-
-        // console.log('*** HTML Pasted:', html);
-        // const newHTML = html.replaceAll('Hello', '<hr/>');
+      transformPastedHTML: (html) => {
         const newHTML = handleDesktopWordSectionBreaks(html);
-        return newHTML;
+        const newHTML2 = handleWordOnlineSectionBreaks(newHTML);
+        return newHTML2;
       },
       transformPasted: (slice) => {
         const jslice = slice.toJSON();
