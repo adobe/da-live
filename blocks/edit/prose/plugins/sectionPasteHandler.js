@@ -71,13 +71,14 @@ function handleWordOnlineSectionBreaks(html) {
     const sections = doc.querySelectorAll('div > p > span[data-ccp-props]');
     sections.forEach((section) => {
       const props = JSON.parse(section.getAttribute('data-ccp-props'));
-      Object.keys(props).forEach((key) => {
+      for (const key of Object.keys(props)) {
         if (props[key] === 'single') {
           const hr = doc.createElement('hr');
           section.parentNode.after(hr);
           modified = true;
+          break;
         }
-      });
+      }
     });
 
     if (!modified) {
@@ -94,7 +95,7 @@ function handleWordOnlineSectionBreaks(html) {
 }
 
 /* When text is pasted, handle section breaks. */
-export default function textTransform(schema) {
+export default function sectionPasteHandler(schema) {
   return new Plugin({
     props: {
       /* A section break entered in Word is not kept as in the text of the document, but
