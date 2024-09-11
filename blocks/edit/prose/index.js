@@ -20,6 +20,7 @@ import {
   sinkListItem,
   gapCursor,
   InputRule,
+  inputRules,
   Y,
   WebsocketProvider,
   ySyncPlugin,
@@ -35,7 +36,6 @@ import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import textTransform from './plugins/sectionPasteHandler.js';
-import enterInputRules from './plugins/enterInputRule.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import { addLocNodes, getLocClass } from './loc-utils.js';
 
@@ -220,6 +220,22 @@ function getDashesInputRule() {
   );
 }
 
+// This function returns a modified input that triggers when the regex in the rule matches and
+// the Enter key is pressed
+function getInputRulesPlugin() {
+  const irsplugin = inputRules({ rules: [getDashesInputRule()] });
+
+  const hkd = (view, event) => {
+    if (event.key !== 'Enter') return false;
+    const { $cursor } = view.state.selection;
+    if ($cursor) return irsplugin.props.handleTextInput(view, $cursor.pos, $cursor.pos, '\n');
+    return false;
+  };
+  irsplugin.props.handleKeyDown = hkd; // Add the handleKeyDown function
+
+  return irsplugin;
+}
+
 export default function initProse({ editor, path }) {
   const schema = getSchema();
 
@@ -280,7 +296,7 @@ export default function initProse({ editor, path }) {
       textTransform(schema),
       columnResizing(),
       tableEditing(),
-      enterInputRules({ rules: [getDashesInputRule()] }),
+      getInputRulesPlugin(),
       keymap(buildKeymap(schema)),
       keymap(baseKeymap),
       keymap({
