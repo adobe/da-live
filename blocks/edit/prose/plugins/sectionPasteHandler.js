@@ -54,7 +54,7 @@ function handleDesktopWordSectionBreaks(html) {
 /**
  * Find section breaks in HTML pasted from Word online and add a horizontal rule
  * after each one.
- * In Word online section breaks are quite hard to identify, but it turns our that
+ * In Word online section breaks are quite hard to identify, but it turns out that
  * they seem to be indicated by a span element with a data-ccp-props attribute, of
  * which one of the values is 'single'. This is quite brittle but right now seems
  * to be the only way to find them. In the future Word online might provide a
@@ -98,7 +98,7 @@ function handleWordOnlineSectionBreaks(html) {
 export default function sectionPasteHandler(schema) {
   return new Plugin({
     props: {
-      /* A section break entered in Word is not kept as in the text of the document, but
+      /* A section break entered in Word is not kept in the text of the document, but
        * buried in the HTML that is pasted. This function uses highly specific ways to find
        * these section breaks and adds a <hr/> element for them.
        */
