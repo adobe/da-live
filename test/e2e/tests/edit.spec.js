@@ -108,6 +108,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toContainText('mytable');
+  await page.waitForTimeout(2000);
   await expect(page.locator('div.ProseMirror')).toContainText('k 2');
   await expect(page.locator('div.ProseMirror')).toContainText('v 2');
 
