@@ -11,6 +11,12 @@ function closeParagraph(paraContent, newContent) {
   }
 }
 
+/**
+ * Find section breaks in HTML pasted from desktop Word and add a horizontal rule
+ * after each one.
+ * In Desktop Word each section is represented as a top-level div element, right
+ * under the body element.
+ */
 function handleDesktopWordSectionBreaks(html) {
   try {
     const parser = new DOMParser();
@@ -45,6 +51,15 @@ function handleDesktopWordSectionBreaks(html) {
   }
 }
 
+/**
+ * Find section breaks in HTML pasted from Word online and add a horizontal rule
+ * after each one.
+ * In Word online section breaks are quite hard to identify, but it turns our that
+ * they seem to be indicated by a span element with a data-ccp-props attribute, of
+ * which one of the values is 'single'. This is quite brittle but right now seems
+ * to be the only way to find them. In the future Word online might provide a
+ * better way to identify section breaks.
+ */
 function handleWordOnlineSectionBreaks(html) {
   try {
     const parser = new DOMParser();
@@ -78,14 +93,23 @@ function handleWordOnlineSectionBreaks(html) {
   }
 }
 
+/* When text is pasted, handle section breaks. */
 export default function textTransform(schema) {
   return new Plugin({
     props: {
+      /* A section break entered in Word is not kept as in the text of the document, but
+       * buried in the HTML that is pasted. This function uses highly specific ways to find
+       * these section breaks and adds a <hr/> element for them.
+       */
       transformPastedHTML: (html) => {
         const newHTML = handleDesktopWordSectionBreaks(html);
         const newHTML2 = handleWordOnlineSectionBreaks(newHTML);
         return newHTML2;
       },
+
+      /* Convert 3 dashes on a line by itself (top level only) to a horizontal rule,
+       * which is then interpreted as a section break.
+       */
       transformPasted: (slice) => {
         const jslice = slice.toJSON();
         const { content } = jslice;

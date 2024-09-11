@@ -220,8 +220,8 @@ function getDashesInputRule() {
   );
 }
 
-// This function returns a modified input that triggers when the regex in the rule matches and
-// the Enter key is pressed
+// This function returns a modified inputrule plugin that triggers when the regex in the
+// rule matches and the Enter key is pressed
 function getInputRulesPlugin() {
   const irsplugin = inputRules({ rules: [getDashesInputRule()] });
 
