@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 0 18 18" width="18">
+  <defs>
+    <style>
+      .fill {
+        fill: #464646;
+      }
+    </style>
+  </defs>
+  <title>S FileTemplate 18 N</title>
+  <rect id="Canvas" fill="#ff13dc" opacity="0" width="18" height="18" /><polygon class="fill" points="10 1 10 6 15 6 10 1" />
+  <path class="fill" d="M9.5,7A.5.5,0,0,1,9,6.5V1H3.5a.5.5,0,0,0-.5.5v15a.5.5,0,0,0,.5.5h11a.5.5,0,0,0,.5-.5V7ZM7,14.5a.5.5,0,0,1-.5.5h-2a.5.5,0,0,1-.5-.5v-2a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5.5Zm0-4a.5.5,0,0,1-.5.5h-2a.5.5,0,0,1-.5-.5v-2A.5.5,0,0,1,4.5,8h2a.5.5,0,0,1,.5.5Zm0-4a.5.5,0,0,1-.5.5h-2A.5.5,0,0,1,4,6.5v-2A.5.5,0,0,1,4.5,4h2a.5.5,0,0,1,.5.5Z" />
+</svg>

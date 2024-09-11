@@ -29,6 +29,8 @@ export default class DaListItem extends LitElement {
     _isExpanded: { type: Boolean, state: true },
     _preview: { state: true },
     _live: { state: true },
+    _version: { state: true },
+    _lastModifedBy: { state: true },
   };
 
   connectedCallback() {
@@ -75,6 +77,25 @@ export default class DaListItem extends LitElement {
     }
     this._preview = { status: 401 };
     this._live = { status: 401 };
+  }
+
+  async updateDAStatus() {
+    const resp = await daFetch(`${DA_ORIGIN}/versionlist${this.path}`);
+    if (!resp.ok) return;
+    const json = await resp.json();
+    if (json.length === 0) {
+      this._lastModifedBy = 'anonymous';
+      this._version = 0;
+      return;
+    }
+
+    json.sort((a, b) => a.timestamp - b.timestamp);
+    const { length: count } = json.reduce((acc, entry) => {
+      if (entry.url?.startsWith('/versionsource')) acc.push(entry);
+      return acc;
+    }, []);
+    this._version = count;
+    this._lastModifedBy = json.pop().users.map((user) => user.email.split('@')[0]).join(', ');
   }
 
   handleChecked() {
@@ -134,9 +155,12 @@ export default class DaListItem extends LitElement {
     this.classList.toggle('is-expanded');
     if (this.classList.contains('is-expanded')) {
       this.updateAEMStatus();
+      this.updateDAStatus();
     } else {
       this._preview = null;
       this._live = null;
+      this._version = null;
+      this._lastModifedBy = null;
     }
   }
 
@@ -190,6 +214,20 @@ export default class DaListItem extends LitElement {
     `;
   }
 
+  renderDaDetails() {
+    return html`
+      <span class="da-item-list-item-type da-item-list-item-type-file-version"></span>
+      <div class="da-list-item-da-details-version">
+        <p>Version</p>
+        <p>${this._version}</p>
+      </div>
+      <div class="da-list-item-da-details-modified">
+        <p>Last Modified By</p>
+        <p>${this._lastModifedBy}</p>
+      </div>
+    `;
+  }
+
   renderAemDate(env) {
     if (!this[env]) {
       return 'Checking';
@@ -216,6 +254,7 @@ export default class DaListItem extends LitElement {
       </div>
       <div class="da-item-list-item-details">
         <div class="da-list-item-da-details">
+          ${this._lastModifedBy ? this.renderDaDetails() : nothing}
         </div>
         <div class="da-list-item-aem-details">
           <a

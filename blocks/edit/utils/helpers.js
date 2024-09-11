@@ -204,6 +204,21 @@ export function saveDaConfig(pathname, sheet) {
   return saveJson(fullPath, sheet, 'config');
 }
 
+export async function saveDaVersion(pathname, ext = 'html') {
+  const fullPath = `${DA_ORIGIN}/versionsource${pathname}.${ext}`;
+
+  const opts = {
+    method: 'POST',
+    body: JSON.stringify({ label: 'Published' }),
+  };
+
+  try {
+    await daFetch(fullPath, opts);
+  } catch {
+    console.log('Error creating auto version on publish.');
+  }
+}
+
 export function parse(inital) {
   return new DOMParser().parseFromString(inital, 'text/html');
 }
