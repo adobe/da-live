@@ -31,7 +31,7 @@ function run(view, from, to, text, rules, plugin) {
     const match = rule.match.exec(textBefore);
     const tr = match && rule.handler(state, match, from - (match[0].length - text.length), to);
     if (!tr) continue;
-    if (rule.undoable) tr.setMeta(plugin, {transform: tr, from, to, text});
+    if (rule.undoable) tr.setMeta(plugin, { transform: tr, from, to, text });
     view.dispatch(tr);
     return true;
   }
