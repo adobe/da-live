@@ -1,3 +1,19 @@
+:host {
+  display: block;
+  position: relative;
+  margin-top: -1px;
+}
+
+:host(:last-child) {
+  margin-bottom: -1px;
+}
+
+:host(:hover),
+:host(.is-expanded) {
+  z-index: 1;
+  background: rgb(228 240 255);
+}
+
 button {
   font-family: var(--body-font-family);
 }
@@ -7,24 +23,18 @@ button {
 }
 
 .da-item-list-item-inner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 24px;
   padding: 0 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.da-item-list-item-main {
-  display: flex;
-  align-items: center;
-  gap: 24px;
 }
 
 .da-item-list-item-title,
 .da-item-list-item-rename {
-  display: flex;
-  flex-wrap: wrap;
+  grid-template-columns: auto 1fr auto;
   gap: 24px;
+  justify-content: space-between;
   align-items: center;
   text-decoration: none;
   color: rgb(46 46 46);
@@ -64,6 +74,10 @@ button {
 
 .da-item-list-item-icon-json {
   background: url('/blocks/browse/img/Smock_FileData_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-date {
+  min-width: 160px;
 }
 
 .icon.rename-icon {
@@ -193,6 +207,11 @@ input[type="checkbox"] {
 
 .da-item-list-item-expand-btn.is-visible {
   display: flex;
+  transition: transform .2s ease-in-out;
+}
+
+:host(.is-expanded) .da-item-list-item-expand-btn.is-visible {
+  transform: rotate(90deg);
 }
 
 .da-item-list-item-expand-btn svg {
@@ -203,53 +222,24 @@ input[type="checkbox"] {
 /* Details */
 .da-item-list-item-details {
   display: none;
+  grid-template-columns: 32px 80px 1fr 180px 180px;
+  padding: 24px 32px 24px 42px;
+  gap: 24px;
   border-top: 1px solid rgb(165 199 240);
   margin: 0 24px;
-  padding: 24px 0;
+  font-size: 14px;
 }
 
 :host(.is-expanded) .da-item-list-item-details {
   display: grid;
-  grid-template-columns: 1fr auto;
-}
-
-.da-list-item-da-details {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  margin-left: 42px;
-}
-
-.da-list-item-da-details-version {
-  min-width: 320px;
-}
-
-.da-list-item-da-details p {
-  font-size: 14px;
-  margin: 0;
-  line-height: 1;
-}
-
-.da-list-item-da-details p:first-child {
-  text-transform: uppercase;
-  font-weight: 700;
-  margin-bottom: 2px;
-}
-
-.da-list-item-aem-details {
-  display: flex;
-  gap: 24px;
-  padding-right: 24px;
 }
 
 .da-item-list-item-aem-btn {
-  min-width: 220px;
   text-decoration: none;
   color: #000;
   display: flex;
   background: none;
   gap: 12px;
-  font-size: 14px;
 }
 
 .da-item-list-item-aem-icon {
@@ -264,20 +254,26 @@ input[type="checkbox"] {
   background-color: #fa0f00;
 }
 
-.da-item-list-item-aem-btn p {
-  margin: 0 0 2px;
+.da-item-list-item-details p {
+  margin: 0;
   line-height: 1;
 }
 
-.da-aem-icon-title {
+.da-item-list-item-details .da-list-item-details-title {
   text-transform: uppercase;
   font-weight: 700;
+  margin-bottom: 3px;
+}
+
+@keyframes spin { 
+  100% { 
+    transform:rotate(90deg); 
+  } 
 }
 
 @media (width >= 600px) {
   .da-item-list-item-title,
   .da-item-list-item-rename {
     display: grid;
-    grid-template-columns: auto 320px 1fr;
   }
 }

@@ -11,20 +11,6 @@
 }
 
 /* List Item */
-da-list-item {
-  display: block;
-  cursor: pointer;
-  position: relative;
-  margin-top: -1px;
-}
-
-
-da-list-item:hover,
-da-list-item.is-expanded {
-  z-index: 1;
-  background: rgb(228 240 255);
-}
-
 da-list-item::before {
   display: block;
   content: '';
@@ -51,10 +37,6 @@ da-list-item:hover::after,
 da-list-item.is-expanded::after {
   margin: 0;
   background: rgb(20 122 243);
-}
-
-da-list-item:last-child {
-  margin-bottom: -1px;
 }
 
 /* Empty list */

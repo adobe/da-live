@@ -95,7 +95,9 @@ export default class DaListItem extends LitElement {
       return acc;
     }, []);
     this._version = count;
-    this._lastModifedBy = json.pop().users.map((user) => user.email.split('@')[0]).join(', ');
+    this._lastModifedBy = json.pop().users.map(
+      (user) => user.email.split('@')[0],
+    ).join(', ').toLowerCase();
   }
 
   handleChecked() {
@@ -134,6 +136,7 @@ export default class DaListItem extends LitElement {
       this.path = newPath;
       this.rename = false;
       this._isRenaming = true;
+      this.date = Date.now();
 
       const showStatus = setTimeout(() => { this.setStatus('Renaming', 'Please be patient. Renaming items with many children can take time.'); }, 5000);
       const resp = await daFetch(`${DA_ORIGIN}/move${oldPath}`, opts);
@@ -190,7 +193,7 @@ export default class DaListItem extends LitElement {
 
   renderItem() {
     return html`
-      <a href="${this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`}" class="da-item-list-item-title">
+      <a href="${this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`}" class="da-item-list-item-title" target="_blank">
         ${this._isRenaming ? html`
           <span class="da-item-list-item-type">
             <svg class="icon rename-icon"><use href="#spectrum-Refresh"/></svg>
@@ -218,12 +221,12 @@ export default class DaListItem extends LitElement {
     return html`
       <span class="da-item-list-item-type da-item-list-item-type-file-version"></span>
       <div class="da-list-item-da-details-version">
-        <p>Version</p>
-        <p>${this._version}</p>
+        <p class="da-list-item-details-title">Version</p>
+        <p>${this._version ? this._version : 'Checking'}</p>
       </div>
       <div class="da-list-item-da-details-modified">
-        <p>Last Modified By</p>
-        <p>${this._lastModifedBy}</p>
+        <p class="da-list-item-details-title">Last Modified By</p>
+        <p>${this._lastModifedBy ? this._lastModifedBy : 'Checking'}</p>
       </div>
     `;
   }
@@ -241,10 +244,8 @@ export default class DaListItem extends LitElement {
   render() {
     return html`
       <div class="da-item-list-item-inner">
-        <div class="da-item-list-item-main">
-          ${this.allowselect ? this.renderCheckBox() : nothing}
-          ${this.rename ? this.renderRename() : this.renderItem()}
-        </div>
+        ${this.allowselect ? this.renderCheckBox() : nothing}
+        ${this.rename ? this.renderRename() : this.renderItem()}
         <button
           aria-label="Open"
           @click=${this.toggleExpand}
@@ -253,37 +254,33 @@ export default class DaListItem extends LitElement {
         </button>
       </div>
       <div class="da-item-list-item-details">
-        <div class="da-list-item-da-details">
-          ${this._lastModifedBy ? this.renderDaDetails() : nothing}
-        </div>
-        <div class="da-list-item-aem-details">
-          <a
-            href=${this._preview?.url}
-            target="_blank"
-            aria-label="Open preview"
-            @click=${this.showPreview}
-            class="da-item-list-item-aem-btn">
-            <img class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"
-                 src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
-            <div class="da-aem-icon-details">
-              <p class="da-aem-icon-title">Previewed</p>
-              <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
-            </div>
-          </a>
-          <a
-            href=${this._live?.url}
-            target="_blank"
-            aria-label="Open preview"
-            @click=${this.showPreview}
-            class="da-item-list-item-aem-btn">
-            <img class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"
-                 src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
-            <div class="da-aem-icon-details">
-              <p class="da-aem-icon-title">Published</p>
-              <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
-            </div>
-          </a>
-        </div>
+        ${this.renderDaDetails()}
+        <a
+          href=${this._preview?.url}
+          target="_blank"
+          aria-label="Open preview"
+          @click=${this.showPreview}
+          class="da-item-list-item-aem-btn">
+          <img class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"
+                src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
+          <div class="da-aem-icon-details">
+            <p class="da-list-item-details-title">Previewed</p>
+            <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
+          </div>
+        </a>
+        <a
+          href=${this._live?.url}
+          target="_blank"
+          aria-label="Open preview"
+          @click=${this.showPreview}
+          class="da-item-list-item-aem-btn">
+          <img class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"
+                src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
+          <div class="da-aem-icon-details">
+            <p class="da-list-item-details-title">Published</p>
+            <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
+          </div>
+        </a>
       </div>
     `;
   }

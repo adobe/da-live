@@ -1,6 +1,6 @@
 export function formatDate(timestamp) {
   const rawDate = timestamp ? new Date(timestamp) : new Date();
-  const date = rawDate.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' });
+  const date = rawDate.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
   const time = rawDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   return { date, time };
 }
