@@ -358,8 +358,8 @@ span.ProseMirror-menuseparator {
   position: absolute;
   content: 'Section Break';
   text-transform: uppercase;
-  background: rgb(255,255,255);
-  top: -14.25px;
+  background: rgb(255 255 255);
+  top: -10px;
   font-weight: 700;
   color: #b3b3b3;
   padding: 0 6px;

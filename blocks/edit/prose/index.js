@@ -237,6 +237,9 @@ function getInputRulesPlugin() {
 }
 
 export default function initProse({ editor, path }) {
+  // Destroy ProseMirror if it already exists - GH-212
+  if (window.view) delete window.view;
+
   const schema = getSchema();
 
   const ydoc = new Y.Doc();

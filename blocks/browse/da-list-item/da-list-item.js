@@ -222,7 +222,7 @@ export default class DaListItem extends LitElement {
       <span class="da-item-list-item-type da-item-list-item-type-file-version"></span>
       <div class="da-list-item-da-details-version">
         <p class="da-list-item-details-title">Version</p>
-        <p>${this._version ? this._version : 'Checking'}</p>
+        <p>${this._version || this._version === 0 ? this._version : 'Checking'}</p>
       </div>
       <div class="da-list-item-da-details-modified">
         <p class="da-list-item-details-title">Last Modified By</p>
