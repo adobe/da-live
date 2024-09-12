@@ -193,7 +193,7 @@ export default class DaListItem extends LitElement {
 
   renderItem() {
     return html`
-      <a href="${this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`}" class="da-item-list-item-title" target="_blank">
+      <a href="${this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`}" class="da-item-list-item-title" target="${this.ext ? '_blank' : nothing}">
         ${this._isRenaming ? html`
           <span class="da-item-list-item-type">
             <svg class="icon rename-icon"><use href="#spectrum-Refresh"/></svg>
