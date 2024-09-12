@@ -1,6 +1,6 @@
-# Dark Alley
+# Document Authoring
 
-Dark Alley is a research project.
+Document Authoring is a research project.
 
 ## Developing locally
 ### Run
