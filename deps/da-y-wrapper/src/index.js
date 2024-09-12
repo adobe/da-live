@@ -44,8 +44,6 @@ import {
 
 import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from '../../prosemirror-menu/dist/index.js';
 
-import { InputRule, inputRules } from 'prosemirror-inputrules';
-
 // All exported
 export {
   EditorView,
@@ -89,8 +87,6 @@ export {
   sinkListItem,
   undo,
   redo,
-  InputRule,
-  inputRules,
   Y,
   WebsocketProvider,
   ySyncPlugin,
