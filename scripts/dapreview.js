@@ -1,6 +1,8 @@
+let port2;
+
 async function loadCSS(href) {
   return new Promise((resolve, reject) => {
-    if (!document.querySelector(`head > link[href="${href}"]`)) {
+    if (!document.head.querySelector(`link[href="${href}"]`)) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = href;
@@ -13,11 +15,29 @@ async function loadCSS(href) {
   });
 }
 
+function getHeight() {
+  return document.documentElement.offsetHeight;
+}
+
+/**
+ * Watch height is provided as a catch
+ * all for slow or lazily loaded items.
+ */
+function watchHeight() {
+  let prevHeight = getHeight();
+  setInterval(() => {
+    const currHeight = getHeight();
+    if (currHeight !== prevHeight) {
+      prevHeight = currHeight;
+      port2.postMessage(`${currHeight}px`);
+    }
+  }, 3000);
+}
+
 export default async function daPreview(loadPage) {
   const { origin } = new URL(import.meta.url);
   await loadCSS(new URL('/styles/dapreview.css', origin).toString());
 
-  let port2;
   async function onMessage(e) {
     if (e.data.set === 'body') {
       document.body.outerHTML = e.data.body;
@@ -25,12 +45,7 @@ export default async function daPreview(loadPage) {
     }
 
     if (e.data.get === 'height') {
-      const delay = e.data.set === 'body' ? 2000 : 0;
-
-      setTimeout(() => {
-        const height = `${document.documentElement.offsetHeight}px`;
-        port2.postMessage(height);
-      }, delay);
+      setTimeout(() => { port2.postMessage(`${getHeight()}px`); }, 500);
     }
   }
 
@@ -38,6 +53,7 @@ export default async function daPreview(loadPage) {
     if (e.data.init) {
       [port2] = e.ports;
       port2.onmessage = onMessage;
+      watchHeight();
     }
   }
 
