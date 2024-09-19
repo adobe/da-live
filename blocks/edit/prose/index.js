@@ -117,12 +117,12 @@ function setPreviewBody(daPreview, proseEl) {
   daPreview.body = body;
 }
 
-function pollForUpdates() {
+export function pollForUpdates(doc = document, win = window) {
   if (pollerSetUp) return;
-  const daContent = document.querySelector('da-content');
+  const daContent = doc.querySelector('da-content');
   const daPreview = daContent.shadowRoot.querySelector('da-preview');
-  if (!window.view) return;
-  const proseEl = window.view.root.querySelector('.ProseMirror');
+  if (!win.view) return;
+  const proseEl = win.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
 
   setInterval(() => {
