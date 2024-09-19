@@ -298,6 +298,7 @@ export default function initProse({ editor, path }) {
       },
     },
   });
+  pollForUpdates();
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
