@@ -55,7 +55,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.locator('input.da-actions-input').fill(copyFolderName);
   await page.locator('input.da-actions-input').press('Enter');
 
-  const cpCheckbox = page.locator('div.da-item-list-item-main').filter({ hasText: orgPageName })
+  const cpCheckbox = page.locator('div.da-item-list-item-inner').filter({ hasText: orgPageName })
     .locator('input[type="checkbox"][name="item-selected"]');
   await cpCheckbox.focus();
   await page.keyboard.press(' ');
@@ -75,7 +75,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.goto(`${ENV}/#/da-sites/da-status/tests`);
   await page.reload(); // Clears any leftover selection, if any
 
-  const checkbox = page.locator('div.da-item-list-item-main').filter({ hasText: orgPageName })
+  const checkbox = page.locator('div.da-item-list-item-inner').filter({ hasText: orgPageName })
     .locator('input[type="checkbox"][name="item-selected"]');
   await checkbox.focus();
   await page.keyboard.press(' ');

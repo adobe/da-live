@@ -40,6 +40,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   // List the resources and check fot the ones that are to be deleted. These are always pages
   // created by the getTestPageURL() function in page.js
   const items = page.locator('.da-item-list-item-name');
+
   let itemsToDelete;
   for (let i = 0; i < await items.count(); i += 1) {
     const item = items.nth(i);
@@ -61,7 +62,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 
     // If we're here the page has to be deleted. We'll tick the checkbox next to it in the page
     const checkbox = page
-      .locator('div.da-item-list-item-main').filter({ hasText: fileName, exact: true })
+      .locator('div.da-item-list-item-inner').filter({ hasText: fileName, exact: true })
       .locator('input[type="checkbox"][name="item-selected"]').first();
     console.log('To be deleted, checked box:', await checkbox.count());
     await checkbox.focus();
