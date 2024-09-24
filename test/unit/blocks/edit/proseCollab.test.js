@@ -73,4 +73,28 @@ describe('Prose collab', () => {
     awarenessOnCalled[0].f(delta2); // Call the callback function
     expect(daTitle.collabUsers).to.deep.equal(['Anonymous', 'Anonymous', 'Joe Bloggs']);
   });
+
+  it('Test poll for updates', async () => {
+    const setIntervalFuncs = [];
+    const mockSetInterval = (func) => {
+      setIntervalFuncs.push(func);
+    };
+
+    const daPreview = {};
+    const daContent = { shadowRoot: { querySelector: (e) => (e === 'da-preview' ? daPreview : null) } };
+    const doc = { querySelector: (e) => (e === 'da-content' ? daContent : null) };
+    const win = { view: { root: { querySelector: (e) => (e === '.ProseMirror' ? {} : null) } } };
+
+    const savedSetInterval = window.setInterval;
+    try {
+      window.setInterval = mockSetInterval;
+
+      expect(setIntervalFuncs.length).to.equal(0, 'Precondition');
+      pi.pollForUpdates(doc, win);
+      pi.pollForUpdates(doc, win);
+      expect(setIntervalFuncs.length).to.equal(1, 'Should only have set up the preview interval once');
+    } finally {
+      window.setInterval = savedSetInterval;
+    }
+  });
 });

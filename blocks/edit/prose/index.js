@@ -97,6 +97,7 @@ export function getSchema() {
   return new Schema({ nodes, marks: addCustomMarks(marks) });
 }
 
+let pollerSetUp = false;
 let sendUpdates = false;
 let hasChanged = 0;
 function dispatchTransaction(transaction) {
@@ -116,11 +117,12 @@ function setPreviewBody(daPreview, proseEl) {
   daPreview.body = body;
 }
 
-function pollForUpdates() {
-  const daContent = document.querySelector('da-content');
-  const daPreview = daContent.shadowRoot.querySelector('da-preview');
-  if (!window.view) return;
-  const proseEl = window.view.root.querySelector('.ProseMirror');
+export function pollForUpdates(doc = document, win = window) {
+  if (pollerSetUp) return;
+  const daContent = doc.querySelector('da-content');
+  const daPreview = daContent?.shadowRoot.querySelector('da-preview');
+  if (!win.view) return;
+  const proseEl = win.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
 
   setInterval(() => {
@@ -133,6 +135,7 @@ function pollForUpdates() {
       sendUpdates = false;
     }
   }, 500);
+  pollerSetUp = true;
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
@@ -298,6 +301,9 @@ export default function initProse({ editor, path }) {
       },
     },
   });
+
+  // Call pollForUpdates() to make sure it gets called even if the callback was made earlier
+  pollForUpdates();
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
