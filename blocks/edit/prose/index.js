@@ -120,7 +120,7 @@ function setPreviewBody(daPreview, proseEl) {
 export function pollForUpdates(doc = document, win = window) {
   if (pollerSetUp) return;
   const daContent = doc.querySelector('da-content');
-  const daPreview = daContent.shadowRoot.querySelector('da-preview');
+  const daPreview = daContent?.shadowRoot.querySelector('da-preview');
   if (!win.view) return;
   const proseEl = win.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
