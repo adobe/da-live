@@ -236,7 +236,7 @@ export default class DaListItem extends LitElement {
       return 'Checking';
     }
     if (this[env].lastModified) {
-      return `${this._preview.lastModified.date} ${this._preview.lastModified.time}`;
+      return `${this[env].lastModified.date} ${this[env].lastModified.time}`;
     }
     return 'Never';
   }
