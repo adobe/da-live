@@ -1,8 +1,10 @@
 /* eslint-disable max-classes-per-file */
 import {
+  DOMParser,
   EditorState,
   EditorView,
   Schema,
+  TextSelection,
   baseSchema,
   history,
   buildKeymap,
@@ -17,6 +19,8 @@ import {
   liftListItem,
   sinkListItem,
   gapCursor,
+  InputRule,
+  inputRules,
   Y,
   WebsocketProvider,
   ySyncPlugin,
@@ -31,6 +35,7 @@ import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
+import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import { addLocNodes, getLocClass } from './loc-utils.js';
 
@@ -204,6 +209,36 @@ function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40,
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+function getDashesInputRule() {
+  return new InputRule(
+    /^---[\n]$/,
+    (state, match, start, end) => {
+      const div = document.createElement('div');
+      div.append(document.createElement('hr'));
+      const newNodes = DOMParser.fromSchema(state.schema).parse(div);
+
+      const selection = TextSelection.create(state.doc, start, end);
+      dispatchTransaction(state.tr.setSelection(selection).replaceSelectionWith(newNodes));
+    },
+  );
+}
+
+// This function returns a modified inputrule plugin that triggers when the regex in the
+// rule matches and the Enter key is pressed
+function getEnterInputRulesPlugin() {
+  const irsplugin = inputRules({ rules: [getDashesInputRule()] });
+
+  const hkd = (view, event) => {
+    if (event.key !== 'Enter') return false;
+    const { $cursor } = view.state.selection;
+    if ($cursor) return irsplugin.props.handleTextInput(view, $cursor.pos, $cursor.pos, '\n');
+    return false;
+  };
+  irsplugin.props.handleKeyDown = hkd; // Add the handleKeyDown function
+
+  return irsplugin;
+}
+
 export default function initProse({ editor, path }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
@@ -264,8 +299,10 @@ export default function initProse({ editor, path }) {
       menu,
       imageDrop(schema),
       linkConverter(schema),
+      sectionPasteHandler(schema),
       columnResizing(),
       tableEditing(),
+      getEnterInputRulesPlugin(),
       keymap(buildKeymap(schema)),
       keymap(baseKeymap),
       keymap({
