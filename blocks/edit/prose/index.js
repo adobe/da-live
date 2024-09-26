@@ -209,7 +209,7 @@ function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40,
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-function getDashesInputRule() {
+export function getDashesInputRule() {
   return new InputRule(
     /^---[\n]$/,
     (state, match, start, end) => {
@@ -225,7 +225,7 @@ function getDashesInputRule() {
 
 // This function returns a modified inputrule plugin that triggers when the regex in the
 // rule matches and the Enter key is pressed
-function getEnterInputRulesPlugin() {
+export function getEnterInputRulesPlugin() {
   const irsplugin = inputRules({ rules: [getDashesInputRule()] });
 
   const hkd = (view, event) => {

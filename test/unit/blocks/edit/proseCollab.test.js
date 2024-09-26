@@ -97,4 +97,35 @@ describe('Prose collab', () => {
       window.setInterval = savedSetInterval;
     }
   });
+
+  it('Test Enter InputRules plugin', () => {
+    const result = {};
+    const hti = (v, f, t, txt) => {
+      result.view = v;
+      result.from = f;
+      result.to = t;
+      result.text = txt;
+      return true;
+    };
+
+    const plugin = pi.getEnterInputRulesPlugin();
+    plugin.props.handleTextInput = hti;
+
+    const hkdFunc = plugin.props.handleKeyDown;
+
+    const mockView = { state: { selection: { $cursor: { pos: 12345 } } } };
+    const mockEvent = { key: 'Enter' };
+
+    expect(hkdFunc(mockView, mockEvent)).to.be.true;
+    expect(result.view).to.equal(mockView);
+    expect(result.from).to.equal(12345);
+    expect(result.to).to.equal(12345);
+    expect(result.text).to.equal('\n');
+  });
+
+  it('Test Dashes InputRule', () => {
+    const dir = pi.getDashesInputRule();
+    const { match } = dir;
+    expect(match.toString()).to.equal('/^---[\\n]$/');
+  });
 });
