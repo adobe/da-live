@@ -1,5 +1,6 @@
 {
   "project": "DA Live",
+  "host": "da.live",
   "plugins": [
     {
       "id": "da-tags",
