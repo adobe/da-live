@@ -17,38 +17,24 @@ function closeParagraph(paraContent, newContent) {
  * In Desktop Word each section is represented as a top-level div element, right
  * under the body element.
  */
-function handleDesktopWordSectionBreaks(html) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    if (doc.querySelector('meta[name="ProgId"]')?.content !== 'Word.Document') {
-      // This is not a word document
-      return html;
-    }
-
-    let modified = false;
-    // Add a hr element after all top-level div elements
-    const sections = doc.querySelectorAll('body > div');
-    sections.forEach((section) => {
-      if (section.nextElementSibling) {
-        // only add the hr if there is something after the section
-        section.after(doc.createElement('hr'));
-        modified = true;
-      }
-    });
-
-    if (!modified) {
-      return html;
-    }
-
-    const serializer = new XMLSerializer();
-    return serializer.serializeToString(doc);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Error handling desktop Word section breaks:', error);
-    return html;
+function handleDesktopWordSectionBreaks(doc) {
+  if (doc.querySelector('meta[name="ProgId"]')?.content !== 'Word.Document') {
+    // This is not a word document
+    return false;
   }
+
+  let modified = false;
+  // Add a hr element after all top-level div elements
+  const sections = doc.querySelectorAll('body > div');
+  sections.forEach((section) => {
+    if (section.nextElementSibling) {
+      // only add the hr if there is something after the section
+      section.after(doc.createElement('hr'));
+      modified = true;
+    }
+  });
+
+  return modified;
 }
 
 /**
@@ -60,38 +46,24 @@ function handleDesktopWordSectionBreaks(html) {
  * to be the only way to find them. In the future Word online might provide a
  * better way to identify section breaks.
  */
-function handleWordOnlineSectionBreaks(html) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    let modified = false;
-    // The span[data-ccp-props] are the magic indicator if one of the JSON values in there is the
-    // word 'single' then we need to add a section break.
-    const sections = doc.querySelectorAll('div > p > span[data-ccp-props]');
-    sections.forEach((section) => {
-      const props = JSON.parse(section.getAttribute('data-ccp-props'));
-      for (const key of Object.keys(props)) {
-        if (props[key] === 'single') {
-          const hr = doc.createElement('hr');
-          section.parentNode.after(hr);
-          modified = true;
-          break;
-        }
+function handleWordOnlineSectionBreaks(doc) {
+  let modified = false;
+  // The span[data-ccp-props] are the magic indicator if one of the JSON values in there is the
+  // word 'single' then we need to add a section break.
+  const sections = doc.querySelectorAll('div > p > span[data-ccp-props]');
+  sections.forEach((section) => {
+    const props = JSON.parse(section.getAttribute('data-ccp-props'));
+    for (const key of Object.keys(props)) {
+      if (props[key] === 'single') {
+        const hr = doc.createElement('hr');
+        section.parentNode.after(hr);
+        modified = true;
+        break;
       }
-    });
-
-    if (!modified) {
-      return html;
     }
+  });
 
-    const serializer = new XMLSerializer();
-    return serializer.serializeToString(doc);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Error handling Word online section breaks:', error);
-    return html;
-  }
+  return modified;
 }
 
 /* When text is pasted, handle section breaks. */
@@ -103,9 +75,24 @@ export default function sectionPasteHandler(schema) {
        * these section breaks and adds a <hr/> element for them.
        */
       transformPastedHTML: (html) => {
-        const newHTML = handleDesktopWordSectionBreaks(html);
-        const newHTML2 = handleWordOnlineSectionBreaks(newHTML);
-        return newHTML2;
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+
+          let modified = handleDesktopWordSectionBreaks(doc);
+          modified ||= handleWordOnlineSectionBreaks(doc);
+
+          if (!modified) {
+            return html;
+          }
+
+          const serializer = new XMLSerializer();
+          return serializer.serializeToString(doc);
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Error handling Word section breaks:', error);
+          return html;
+        }
       },
 
       /* Convert 3 dashes on a line by itself (top level only) to a horizontal rule,
