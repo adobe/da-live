@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { baseSchema, Slice } from 'da-y-wrapper';
 import sectionPasteHandler from '../../../../../../blocks/edit/prose/plugins/sectionPasteHandler.js';
 
 function normalizeHTML(html) {
@@ -8,7 +9,6 @@ function normalizeHTML(html) {
 describe('Section paste handler', () => {
   it('Test paste from desktop Word inserts hr elements', () => {
     const plugin = sectionPasteHandler();
-
     const wordPasteHandler = plugin.props.transformPastedHTML;
 
     const inputHTML = `
@@ -42,7 +42,6 @@ describe('Section paste handler', () => {
 
   it('Test paste from desktop Word no hr after last element', () => {
     const plugin = sectionPasteHandler();
-
     const wordPasteHandler = plugin.props.transformPastedHTML;
 
     const inputHTML = `
@@ -74,7 +73,6 @@ describe('Section paste handler', () => {
 
   it('Test desktop Word handler ignores alien content', () => {
     const plugin = sectionPasteHandler();
-
     const wordPasteHandler = plugin.props.transformPastedHTML;
 
     const inputHTML = `
@@ -95,7 +93,6 @@ describe('Section paste handler', () => {
 
   it('Test paste from desktop Word ignores non-matching content', () => {
     const plugin = sectionPasteHandler();
-
     const wordPasteHandler = plugin.props.transformPastedHTML;
 
     const inputHTML = `
@@ -114,7 +111,6 @@ describe('Section paste handler', () => {
 
   it('Test paste from online Word inserts hr elements', () => {
     const plugin = sectionPasteHandler();
-
     const wordPasteHandler = plugin.props.transformPastedHTML;
 
     // Note the 'special marker' is in the data-ccp-props attribute
@@ -146,5 +142,145 @@ describe('Section paste handler', () => {
 </html>`);
 
     expect(result).to.equal(expectedHTML);
+  });
+
+  it('Test transform pasted dashes', () => {
+    const json = {
+      content: [{
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Aaa' }],
+      }, {
+        type: 'paragraph',
+        content: [{ type: 'text', text: '---' }],
+      }, {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Bbb' }],
+      }],
+      openStart: 1,
+      openEnd: 1,
+    };
+    const slice = Slice.fromJSON(baseSchema, json);
+
+    const plugin = sectionPasteHandler(baseSchema);
+    const pasteHandler = plugin.props.transformPasted;
+
+    const newSlice = pasteHandler(slice);
+    expect(newSlice.openStart).to.equal(slice.openStart);
+    expect(newSlice.openEnd).to.equal(slice.openEnd);
+
+    const expectedJSON = {
+      content: [{
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Aaa' }],
+      }, { type: 'horizontal_rule' }, {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Bbb' }],
+      }],
+      openStart: 1,
+      openEnd: 1,
+    };
+
+    const newJSON = JSON.stringify(newSlice.content.toJSON());
+    expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
+  });
+
+  it('Test transform pasted dashes 2', async () => {
+    const json = {
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [
+            {
+              type: 'text',
+              text: 'Heading 1',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'hard_break' }],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Hi there',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: '---',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Goodbye',
+            },
+          ],
+        },
+      ],
+      openStart: 1,
+      openEnd: 1,
+    };
+
+    const slice = Slice.fromJSON(baseSchema, json);
+
+    const plugin = sectionPasteHandler(baseSchema);
+    const pasteHandler = plugin.props.transformPasted;
+
+    const newSlice = pasteHandler(slice);
+    expect(newSlice.openStart).to.equal(slice.openStart);
+    expect(newSlice.openEnd).to.equal(slice.openEnd);
+
+    const expectedJSON = {
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [
+            {
+              type: 'text',
+              text: 'Heading 1',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [{ type: 'hard_break' }],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Hi there',
+            },
+          ],
+        }, { type: 'horizontal_rule' }, {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Goodbye',
+            },
+          ],
+        },
+      ],
+      openStart: 1,
+      openEnd: 1,
+    };
+
+    const newJSON = JSON.stringify(newSlice.content.toJSON());
+    expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
   });
 });

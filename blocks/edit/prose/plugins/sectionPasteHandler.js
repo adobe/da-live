@@ -80,7 +80,9 @@ export default function sectionPasteHandler(schema) {
           const doc = parser.parseFromString(html, 'text/html');
 
           let modified = handleDesktopWordSectionBreaks(doc);
-          modified ||= handleWordOnlineSectionBreaks(doc);
+          if (!modified) {
+            modified = handleWordOnlineSectionBreaks(doc);
+          }
 
           if (!modified) {
             return html;
