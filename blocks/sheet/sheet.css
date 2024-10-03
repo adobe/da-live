@@ -4,8 +4,7 @@ body {
 }
 
 .da-sheet-wrapper {
-  max-width: 900px;
-  margin: 0 auto;
+  margin: 0 var(--spacing-600) var(--spacing-600) var(--spacing-600);
   position: relative;
 }
 
@@ -94,6 +93,16 @@ button.new-sheet {
   display: block;
   padding-right: 1px;
   padding-bottom: 1px;
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.da-sheet-wrapper .jexcel_content tbody tr:first-child td:not(:first-child) {
+  font-weight: 700;
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+.da-sheet-wrapper .jexcel_content tbody td:not(:first-child) {
+  text-align: left !important;
 }
 
 /* JSuites Context Menu */
