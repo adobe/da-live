@@ -31,6 +31,7 @@ function getDefaultSheet() {
 }
 
 function getSheetData(sheetData) {
+  if (!sheetData?.length) return [[], []];
   const header = Object.keys(sheetData[0]).map((key) => key);
   const data = sheetData.reduce((acc, item) => {
     const values = Object.keys(item).map((key) => item[key]);
