@@ -139,17 +139,11 @@ function formatSheetData(sheet) {
     return acc;
   }, []);
 
-  // Remove trailing empty rows
-  let emptyRow = true;
-  while (emptyRow) {
-    const lastRow = data.slice(-1)[0];
-    const filled = Object.keys(lastRow).some((key) => lastRow[key]);
-    if (!filled) {
-      data.pop();
-    } else {
-      emptyRow = false;
-    }
+  // Remove trailing empty rows - leave one data row if all data is empty
+  while (data.length > 1 && !Object.values(data.slice(-1)[0]).some(Boolean)) {
+    data.pop();
   }
+
   return data;
 }
 
