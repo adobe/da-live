@@ -41,6 +41,8 @@ function getSheetData(sheetData) {
   return [header, ...data];
 }
 
+const getColWidths = (colWidths) => colWidths?.map((width) => ({ width: `${width}` })) || [];
+
 export async function getData(url) {
   const resp = await daFetch(url);
   if (!resp.ok) return getDefaultSheet();
@@ -54,12 +56,11 @@ export async function getData(url) {
   // Single sheet
   if (json[':type'] === 'sheet') {
     const data = getSheetData(json.data);
-    const columns = data[0].map(() => ({ width: '300px' }));
     const dataSheet = {
       ...SHEET_TEMPLATE,
       sheetName: 'data',
       data,
-      columns,
+      columns: getColWidths(json.colWidths),
     };
 
     sheets.push(dataSheet);
@@ -69,12 +70,11 @@ export async function getData(url) {
   if (names) {
     names.forEach((sheetName) => {
       const data = getSheetData(json[sheetName].data);
-      const columns = data[0].map(() => ({ width: '300px' }));
       sheets.push({
         ...SHEET_TEMPLATE,
         sheetName,
         data,
-        columns,
+        columns: getColWidths(json[sheetName].colWidths),
       });
     });
   }
