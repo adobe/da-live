@@ -123,9 +123,7 @@ async function saveHtml(fullPath) {
   return daFetch(fullPath, opts);
 }
 
-function formatSheetData(sheet) {
-  const jData = sheet.getData();
-
+function formatSheetData(jData) {
   const data = jData.reduce((acc, row, idx) => {
     if (idx > 0) {
       const rowObj = {};
@@ -146,16 +144,32 @@ function formatSheetData(sheet) {
 
   return data;
 }
+const getColumnWidths = (sheet) => sheet?.getConfig()?.columns
+  ?.map((col) => parseInt(col?.width, 10) || 50);
+
+function getHeaderWidths(jData, sheet) {
+  const widths = getColumnWidths(sheet);
+  const headers = jData[0];
+
+  return headers.reduce((result, header, index) => {
+    if (header.length > 0) {
+      result.push(widths[index]);
+    }
+    return result;
+  }, []);
+}
 
 async function saveJson(fullPath, sheets, dataType = 'blob') {
   let json;
   const formatted = sheets.reduce((acc, sheet) => {
-    const data = formatSheetData(sheet);
+    const jData = sheet.getData();
+    const data = formatSheetData(jData);
     acc[sheet.name] = {
       total: data.length,
       limit: data.length,
       offset: 0,
       data,
+      colWidths: getHeaderWidths(jData, sheet),
     };
     return acc;
   }, {});
