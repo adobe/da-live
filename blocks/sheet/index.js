@@ -47,6 +47,16 @@ function getSheetData(sheetData) {
 const getColWidths = (colWidths, headers) => colWidths?.map((width) => ({ width: `${width}` }))
   || headers.map(() => ({ width: '300' }));
 
+function getSheet(json, sheetName) {
+  const data = getSheetData(json.data);
+  return {
+    ...SHEET_TEMPLATE,
+    sheetName,
+    data,
+    columns: getColWidths(json[':colWidths'], data[0]),
+  };
+}
+
 export async function getData(url) {
   const resp = await daFetch(url);
   if (!resp.ok) return getDefaultSheet();
@@ -55,33 +65,27 @@ export async function getData(url) {
 
   // Get base data
   const json = await resp.json();
-  const names = json[':names'];
 
   // Single sheet
   if (json[':type'] === 'sheet') {
-    const data = getSheetData(json.data);
-    const dataSheet = {
-      ...SHEET_TEMPLATE,
-      sheetName: 'data',
-      data,
-      columns: getColWidths(json.colWidths, data[0]),
-    };
-
-    sheets.push(dataSheet);
+    sheets.push(getSheet(json, json[':sheetname'] || 'data'));
   }
 
   // Multi sheet
+  const names = json[':names'];
   if (names) {
     names.forEach((sheetName) => {
-      const data = getSheetData(json[sheetName].data);
-      sheets.push({
-        ...SHEET_TEMPLATE,
-        sheetName,
-        data,
-        columns: getColWidths(json[sheetName].colWidths, data[0]),
-      });
+      sheets.push(getSheet(json[sheetName], sheetName));
     });
   }
+
+  const privateSheets = json[':private'];
+  if (privateSheets) {
+    Object.keys(privateSheets).forEach((sheetName) => {
+      sheets.push(getSheet(privateSheets[sheetName], sheetName));
+    });
+  }
+
   return sheets;
 }
 

@@ -159,29 +159,46 @@ function getHeaderWidths(jData, sheet) {
   }, []);
 }
 
-async function saveJson(fullPath, sheets, dataType = 'blob') {
-  let json;
-  const formatted = sheets.reduce((acc, sheet) => {
-    const jData = sheet.getData();
-    const data = formatSheetData(jData);
-    acc[sheet.name] = {
-      total: data.length,
-      limit: data.length,
-      offset: 0,
-      data,
-      colWidths: getHeaderWidths(jData, sheet),
-    };
-    return acc;
-  }, {});
+const getSheetProps = (sheet) => {
+  const jData = sheet.getData();
+  const data = formatSheetData(jData);
+  return {
+    total: data.length,
+    limit: data.length,
+    offset: 0,
+    data,
+    ':colWidths': getHeaderWidths(jData, sheet),
+  };
+};
 
-  if (sheets.length > 1) {
-    formatted[':names'] = sheets.map((sheet) => sheet.name);
-    formatted[':version'] = 3;
-    formatted[':type'] = 'multi-sheet';
-    json = formatted;
-  } else {
-    json = formatted[sheets[0].name];
+async function saveJson(fullPath, sheets, dataType = 'blob') {
+  const { publicSheets, privateSheets } = sheets.reduce((acc, sheet) => {
+    if (sheet.name.startsWith('private-')) {
+      acc.privateSheets[sheet.name] = getSheetProps(sheet);
+    } else {
+      acc.publicSheets[sheet.name] = getSheetProps(sheet);
+    }
+    return acc;
+  }, { publicSheets: {}, privateSheets: {} });
+
+  const publicNames = Object.keys(publicSheets);
+  const privateNames = Object.keys(privateSheets);
+
+  let json = {};
+  if (publicNames.length > 1) {
+    json = publicSheets;
+    json[':names'] = publicNames;
+    json[':version'] = 3;
+    json[':type'] = 'multi-sheet';
+  } else if (publicNames.length === 1) {
+    const sheetName = publicNames[0];
+    json = publicSheets[sheetName];
+    json[':sheetname'] = sheetName;
     json[':type'] = 'sheet';
+  }
+
+  if (privateNames.length > 0) {
+    json[':private'] = privateSheets;
   }
 
   const formData = new FormData();
