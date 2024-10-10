@@ -17,7 +17,10 @@ function resetSheets(el) {
 
 function finishSetup(el, data) {
   // Set the names of each sheet to reference later
-  el.jexcel.forEach((sheet, idx) => { sheet.name = data[idx].sheetName; });
+  el.jexcel.forEach((sheet, idx) => {
+    sheet.name = data[idx].sheetName;
+    sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
+  });
 
   // Setup tabs
   const daSheetTabs = document.createElement('da-sheet-tabs');
