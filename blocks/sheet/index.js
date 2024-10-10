@@ -65,7 +65,7 @@ export async function getData(url) {
 
   // Single sheet
   if (json[':type'] === 'sheet') {
-    sheets.push(getSheet(json, json[':sheetname']));
+    sheets.push(getSheet(json, json[':sheetname'] || 'data'));
   }
 
   // Multi sheet
