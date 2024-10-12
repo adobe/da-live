@@ -24,10 +24,14 @@ button {
 
 .da-item-list-item-inner {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 24px;
   padding: 0 24px;
+}
+
+.da-item-list-item-inner.can-select {
+  grid-template-columns: auto 1fr auto;
 }
 
 .da-item-list-item-title,
@@ -83,7 +87,21 @@ button {
 .icon.rename-icon {
   width: 18px;
   height: 18px;
+  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Refresh_18_N.svg');
   animation: spin 4s linear infinite;
+}
+
+.icon.cancel-icon {
+  width: 18px;
+  height: 18px;
+  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Cancel_18_N.svg');
+  animation: spin 4s linear infinite;
+}
+
+.icon.checkmark-icon {
+  width: 18px;
+  height: 18px;
+  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Checkmark_18_N.svg');
 }
 
 @keyframes spin { 
@@ -196,13 +214,13 @@ input[type="checkbox"] {
 }
 
 .da-item-list-item-expand-btn {
-  background: none;
   border: none;
   width: 32px;
   height: 32px;
   display: none;
   align-items: center;
   justify-content: center;
+  background: no-repeat center / 18px url('/blocks/browse/img/Smock_ChevronRight_18_N.svg');
 }
 
 .da-item-list-item-expand-btn.is-visible {
@@ -223,11 +241,15 @@ input[type="checkbox"] {
 .da-item-list-item-details {
   display: none;
   grid-template-columns: 32px 80px 1fr 180px 180px;
-  padding: 24px 32px 24px 42px;
+  padding: 24px 32px 24px 0;
   gap: 24px;
   border-top: 1px solid rgb(165 199 240);
   margin: 0 24px;
   font-size: 14px;
+}
+
+.da-item-list-item-details.can-select {
+  padding: 24px 32px 24px 42px;
 }
 
 :host(.is-expanded) .da-item-list-item-details {
@@ -243,11 +265,11 @@ input[type="checkbox"] {
 }
 
 .da-item-list-item-aem-icon {
-  display: block;
   width: 33.33px;
   height: 32px;
   border-radius: 5px;
   background-color: #959595;
+  background-image: url('/blocks/browse/img/Smock_ExperienceCloud_24_N.svg');
 }
 
 .da-item-list-item-aem-icon.is-active {

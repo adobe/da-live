@@ -3,6 +3,8 @@ import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
 
+const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
+
 // Styles
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
@@ -46,50 +48,57 @@ export default class DaSearch extends LitElement {
   setDefault() {
     this._items = [];
     this._searchTotal = 0;
+    this._searchQueue = [];
     this._total = 0;
     this._matches = 0;
     this._time = null;
   }
 
-  async searchFile(file, term) {
-    const resp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
-    if (!resp.ok) return null;
-    const text = await resp.text();
-    const path = file.ext ? file.path.replace(`.${file.ext}`, '') : file.path;
-    return { ...file, name: path.replace(this.fullpath, ''), match: text.includes(term) };
-  }
+  async getMatches(startPath, term) {
+    const searchTypes = ['.html', '.json'];
 
-  async getMatches(path, term) {
-    let folders = [path];
-    while (folders.length > 0) {
-      // eslint-disable-next-line no-loop-func
-      const searchFolders = folders.map(async (currentPath) => {
-        const resp = await daFetch(`${DA_ORIGIN}/list${currentPath}`);
-        if (!resp.ok) return [];
-        const json = await resp.json();
-        const searchFolderItems = json.map(async (item) => {
-          if (item.ext === 'html' || item.ext === 'json') {
-            this._total += 1;
-            const file = await this.searchFile(item, term);
-            if (file.match) {
-              this._matches += 1;
-              this._items = [...this._items, file];
-              this.updateList();
-            }
-          }
-          if (!item.ext) return item.path;
-          return null;
-        });
+    const searchFile = async (file, prevRetry = 0) => {
+      if (!searchTypes.some((type) => file.path.endsWith(type))) return;
 
-        const newFolders = await Promise.all(searchFolderItems);
-        return newFolders.filter(Boolean);
-      });
-      const childFolders = await Promise.all(searchFolders);
-      folders = childFolders.flat();
-    }
+      let retryCount = prevRetry;
+      if (retryCount === 0) this._total += 1;
+
+      const getFile = async () => {
+        let match;
+
+        try {
+          const resp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
+          const text = await resp.text();
+          match = text.includes(term) || file.path.split('/').pop().includes(term);
+        } catch {
+          return { error: 'fetch error' };
+        }
+
+        if (match) {
+          this._matches += 1;
+          file.name = file.path.replace(`.${file.ext}`, '').replace(this.fullpath, '');
+          this._items = [...this._items, file];
+          this.updateList();
+        }
+
+        return file;
+      };
+
+      const result = await this.timeoutWrapper(getFile);
+
+      if (result.error && retryCount <= 3) {
+        console.log(`retrying due to ${result.error}: ${file.path}`);
+        retryCount += 1;
+        await searchFile(file, retryCount);
+      }
+    };
+
+    const { results } = crawl({ path: startPath, callback: searchFile, throttle: 10 });
+    await results;
   }
 
   async search(startPath, term) {
+    this._term = term;
     this._action = 'Found';
     performance.mark('start-search');
     await this.getMatches(startPath, term);
@@ -110,6 +119,22 @@ export default class DaSearch extends LitElement {
     this.search(this.fullpath, term.value);
   }
 
+  timeoutWrapper(fn, timeout = 30000) {
+    return new Promise((resolve) => {
+      const loading = fn();
+
+      const timedout = setTimeout(() => { resolve({ error: 'timeout' }); }, timeout);
+
+      loading.then((result) => {
+        clearTimeout(timedout);
+        resolve(result);
+      }).catch(() => {
+        clearTimeout(timedout);
+        resolve({ error: 'bad result' });
+      });
+    });
+  }
+
   async handleReplace(e) {
     e.preventDefault();
     const [replace] = e.target.elements;
@@ -121,23 +146,39 @@ export default class DaSearch extends LitElement {
     this._matches = 0;
     performance.mark('start-replace');
 
-    const replaced = this._items.map((match) => new Promise((resolve) => {
-      (async () => {
-        const resp = await daFetch(`${DA_ORIGIN}/source${match.path}`);
-        if (!resp.ok) return;
-        const text = await resp.text();
+    const replaceFile = async (file, prevRetry = 0) => {
+      let retryCount = prevRetry;
+
+      const getFile = async () => {
+        const getResp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
+        const text = await getResp.text();
         const replacedText = text.replaceAll(this._term, replace.value);
         const blob = new Blob([replacedText], { type: 'text/html' });
         const formData = new FormData();
         formData.append('data', blob);
         const opts = { method: 'PUT', body: formData };
-        const daResp = await daFetch(`${DA_ORIGIN}/source${match.path}`, opts);
-        if (!daResp.ok) return;
+        const postResp = await daFetch(`${DA_ORIGIN}/source${file.path}`, opts);
+        if (!postResp.ok) return { error: 'Error saving file' };
         this._matches += 1;
-        resolve();
-      })();
-    }));
-    await Promise.all(replaced);
+        return file;
+      };
+
+      const result = await this.timeoutWrapper(getFile, 60000);
+
+      // Only retry for true failures (not timeouts)
+      if (result.error === 'bad result') {
+        if (retryCount >= 3) {
+          console.log('retry limit exceeded');
+          return;
+        }
+        retryCount += 1;
+        replaceFile(file, retryCount);
+      }
+    };
+
+    const queue = new Queue(replaceFile);
+    await Promise.all(this._items.map((match) => queue.push(match)));
+
     performance.mark('end-replace');
     const timestamp = Date.now();
     performance.measure(`replace-${timestamp}`, 'start-replace', 'end-replace');
@@ -164,7 +205,7 @@ export default class DaSearch extends LitElement {
   render() {
     return html`
       <form @submit=${this.handleSearch}>
-        <input type="text" placeholder="Enter search" name="term"/>
+        <input type="text" placeholder="Enter search" name="term" value="aaa-northeast-case-study"/>
         <input type="submit" value="Search" />
       </form>
       <p>${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>

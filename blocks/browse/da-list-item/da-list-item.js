@@ -6,14 +6,7 @@ import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
 const STYLE = await getStyle(import.meta.url);
-const ICONS = [
-  '/blocks/edit/img/Smock_Cancel_18_N.svg',
-  '/blocks/edit/img/Smock_Checkmark_18_N.svg',
-  '/blocks/edit/img/Smock_Refresh_18_N.svg',
-  '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
-];
 
 export default class DaListItem extends LitElement {
   static properties = {
@@ -36,7 +29,6 @@ export default class DaListItem extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
-    getSvg({ parent: this.shadowRoot, paths: ICONS });
   }
 
   async update(props) {
@@ -181,10 +173,10 @@ export default class DaListItem extends LitElement {
         <input type="text" value="${this.name}" name="new-name">
         <div class="da-item-list-item-rename-actions">
           <button aria-label="Confirm" value="confirm">
-            <svg class="icon"><use href="#spectrum-Checkmark"/></svg>
+            <div class="icon checkmark-icon"></div>
           </button>
           <button aria-label="Cancel" value="cancel">
-            <svg class="icon"><use href="#spectrum-Cancel"/></svg>
+            <div class="icon cancel-icon"></div>
           </button>
         </div>
       </form>
@@ -196,7 +188,7 @@ export default class DaListItem extends LitElement {
       <a href="${this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`}" class="da-item-list-item-title" target="${this.ext ? '_blank' : nothing}">
         ${this._isRenaming ? html`
           <span class="da-item-list-item-type">
-            <svg class="icon rename-icon"><use href="#spectrum-Refresh"/></svg>
+            <div class="icon rename-icon"></div>
           </span>
         ` : html`
           <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
@@ -243,17 +235,16 @@ export default class DaListItem extends LitElement {
 
   render() {
     return html`
-      <div class="da-item-list-item-inner">
+      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}">
         ${this.allowselect ? this.renderCheckBox() : nothing}
         ${this.rename ? this.renderRename() : this.renderItem()}
         <button
           aria-label="Open"
           @click=${this.toggleExpand}
           class="da-item-list-item-expand-btn ${this.ext ? 'is-visible' : ''}">
-          <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
         </button>
       </div>
-      <div class="da-item-list-item-details">
+      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}">
         ${this.renderDaDetails()}
         <a
           href=${this._preview?.url}
@@ -261,8 +252,7 @@ export default class DaListItem extends LitElement {
           aria-label="Open preview"
           @click=${this.showPreview}
           class="da-item-list-item-aem-btn">
-          <img class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"
-                src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
+          <div class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
             <p class="da-list-item-details-title">Previewed</p>
             <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
@@ -274,8 +264,7 @@ export default class DaListItem extends LitElement {
           aria-label="Open preview"
           @click=${this.showPreview}
           class="da-item-list-item-aem-btn">
-          <img class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"
-                src="/blocks/browse/img/Smock_ExperienceCloud_24_N.svg" />
+          <div class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
             <p class="da-list-item-details-title">Published</p>
             <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
