@@ -205,7 +205,7 @@ export default class DaSearch extends LitElement {
   render() {
     return html`
       <form @submit=${this.handleSearch}>
-        <input type="text" placeholder="Enter search" name="term" value="aaa-northeast-case-study"/>
+        <input type="text" placeholder="Enter search" name="term"/>
         <input type="submit" value="Search" />
       </form>
       <p>${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>
