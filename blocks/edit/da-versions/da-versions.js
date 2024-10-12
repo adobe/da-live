@@ -62,6 +62,8 @@ export default class DaVersions extends LitElement {
 
     this._newVersion = null;
     this._versions.unshift(entry);
+    // TODO: The server does not respond with version details, so get a fresh list
+    this.getVersions();
   }
 
   handleNew(e) {

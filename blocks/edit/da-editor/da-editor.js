@@ -42,6 +42,12 @@ export default class DaEditor extends LitElement {
     const proseDom = aem2prose(doc);
     const flattedDom = document.createElement('div');
     flattedDom.append(...proseDom);
+    flattedDom.querySelectorAll('table').forEach((table) => {
+      const div = document.createElement('div');
+      div.className = 'tableWrapper';
+      table.insertAdjacentElement('afterend', div);
+      div.append(table);
+    });
     this._versionDom = flattedDom;
   }
 
