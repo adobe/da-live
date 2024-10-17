@@ -240,6 +240,7 @@ export async function saveDaVersion(pathname, ext = 'html') {
   try {
     await daFetch(fullPath, opts);
   } catch {
+    // eslint-disable-next-line no-console
     console.log('Error creating auto version on publish.');
   }
 }
