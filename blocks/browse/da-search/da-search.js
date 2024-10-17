@@ -87,6 +87,7 @@ export default class DaSearch extends LitElement {
       const result = await this.timeoutWrapper(getFile);
 
       if (result.error && retryCount <= 3) {
+        // eslint-disable-next-line no-console
         console.log(`retrying due to ${result.error}: ${file.path}`);
         retryCount += 1;
         await searchFile(file, retryCount);
@@ -168,6 +169,7 @@ export default class DaSearch extends LitElement {
       // Only retry for true failures (not timeouts)
       if (result.error === 'bad result') {
         if (retryCount >= 3) {
+          // eslint-disable-next-line no-console
           console.log('retry limit exceeded');
           return;
         }

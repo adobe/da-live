@@ -35,7 +35,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
 
   // Create a new stored version called 'myver'
   await page.getByRole('button', { name: 'Versions' }).click();
-  await page.locator('button.da-version-btn').click();
+  await page.locator('button.da-version-btn', { hasText: 'Create' }).click();
   await page.locator('input.da-version-new-input').fill('myver');
   await page.locator('input.da-version-new-input').press('Enter');
   await page.waitForTimeout(3000);
@@ -66,6 +66,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
 
   await page.getByRole('button', { name: 'Paste' }).click();
   await page.waitForTimeout(3000);
+  /* TODO REMOVE once #233 is fixed */ await page.reload();
   const link = await page.getByRole('link', { name: orgPageName });
   const href = await link.getAttribute('href');
   await expect(href).toEqual(`/edit#/da-sites/da-status/tests/${copyFolderName}/${orgPageName}`);

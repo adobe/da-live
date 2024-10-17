@@ -62,12 +62,14 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await newPage.keyboard.press('Shift+Tab');
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
+  await page.close(); // Close the original page to avoid it writing the content
 
   // There are 2 delete buttons, one on the Browse panel and another on the Search one
   // select the visible one.
   await newPage.locator('button.delete-button').locator('visible=true').click();
 
-  await page.waitForTimeout(1000);
+  await newPage.waitForTimeout(1000);
+  /* TODO REMOVE once #233 is fixed */ await newPage.reload();
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
 });
 
