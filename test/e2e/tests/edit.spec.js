@@ -69,7 +69,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await newPage.locator('button.delete-button').locator('visible=true').click();
 
   await newPage.waitForTimeout(1000);
-  /* TODO REMOVE */ await newPage.reload();
+  /* TODO REMOVE once #233 is fixed */ await newPage.reload();
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
 });
 

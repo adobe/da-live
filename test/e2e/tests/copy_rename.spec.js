@@ -66,7 +66,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
 
   await page.getByRole('button', { name: 'Paste' }).click();
   await page.waitForTimeout(3000);
-  /* TODO REMOVE */ await page.reload();
+  /* TODO REMOVE once #233 is fixed */ await page.reload();
   const link = await page.getByRole('link', { name: orgPageName });
   const href = await link.getAttribute('href');
   await expect(href).toEqual(`/edit#/da-sites/da-status/tests/${copyFolderName}/${orgPageName}`);
