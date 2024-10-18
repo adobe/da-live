@@ -100,7 +100,7 @@ button.new-sheet {
   font-weight: 700;
 }
 
-/* stylelint-disable-next-line selector-class-pattern */
+/* stylelint-disable-next-line selector-class-pattern, no-descending-specificity */
 .da-sheet-wrapper .jexcel_content tbody td:not(:first-child) {
   text-align: left !important;
 }
