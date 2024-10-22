@@ -106,6 +106,7 @@ export async function handleUpload(list, fullpath, file) {
 
     return item;
   } catch (e) {
+    // eslint-disable-next-line no-console
     console.log(e);
   }
   return null;
