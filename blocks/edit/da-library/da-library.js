@@ -223,7 +223,6 @@ class DaLibrary extends LitElement {
       </ul>`;
   }
 
-  // http://localhost:6456/nx/sdk/demo.html
   renderPlugin(url) {
     return html`
       <div class="da-library-type-plugin">
@@ -269,7 +268,11 @@ class DaLibrary extends LitElement {
             <ul class="da-library-item-list da-library-item-list-main">
               ${this._libraryList.map((library) => html`
                 <li>
-                  <button data-library-name="${library.name}" class="${library.name} ${library.url ? 'is-plugin' : ''}" @click=${this.handleLibSwitch}>
+                  <button
+                    data-library-name="${library.name}"
+                    class="${library.name} ${library.url ? 'is-plugin' : ''}"
+                    style="${library.icon ? `background: url(${library.icon}) 18px center / 18px no-repeat;` : ''}"
+                    @click=${this.handleLibSwitch}>
                     <span class="library-type-name">${library.name}</span>
                   </button>
                 </li>
