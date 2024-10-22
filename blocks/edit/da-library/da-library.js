@@ -53,6 +53,9 @@ class DaLibrary extends LitElement {
     target.closest('.palette-pane').classList.add('backward');
     const toShow = this.shadowRoot.querySelector(`[data-library-type="${type}"]`);
     toShow.classList.remove('forward');
+    const pluginIframe = toShow.querySelector('iframe');
+    if (!pluginIframe) return;
+    pluginIframe.src = pluginIframe.dataset.src;
   }
 
   handleBack(e) {
@@ -225,7 +228,7 @@ class DaLibrary extends LitElement {
     return html`
       <div class="da-library-type-plugin">
         <iframe
-          src="${url}"
+          data-src="${url}"
           @load=${this.handlePluginLoad}
           allow="clipboard-write *"></iframe>
       </div>`;
