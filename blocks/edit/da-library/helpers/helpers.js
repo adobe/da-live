@@ -87,9 +87,9 @@ async function getAemPlugins(owner, repo) {
   if (!json || !json.plugins) return [];
   if (json?.plugins?.length === 0) return [];
   return json.plugins.reduce((acc, plugin) => {
-    const { environments, path, url: plugUrl } = plugin;
+    const { environments, path, url: plugUrl, daLibrary } = plugin;
     const url = path ? `${origin}${path}` : plugUrl;
-    if (environments?.some((env) => env === 'da-edit')) {
+    if (environments?.some((env) => env === 'da-edit') || daLibrary) {
       acc.push({
         name: plugin.title,
         icon: plugin.icon,
