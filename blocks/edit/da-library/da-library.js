@@ -271,7 +271,7 @@ class DaLibrary extends LitElement {
                   <button
                     data-library-name="${library.name}"
                     class="${library.name} ${library.url ? 'is-plugin' : ''}"
-                    style="${library.icon ? `background: url(${library.icon}) 18px center / 18px no-repeat;` : ''}"
+                    style="${library.icon ? `background-image: url(${library.icon})` : ''}"
                     @click=${this.handleLibSwitch}>
                     <span class="library-type-name">${library.name}</span>
                   </button>
