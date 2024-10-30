@@ -43,7 +43,7 @@ export default class DaNew extends LitElement {
   }
 
   handleNameChange(e) {
-    this._createName = e.target.value.replaceAll(/\W+/g, '-').toLowerCase();
+    this._createName = e.target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   }
 
   async handleSave() {
