@@ -21,7 +21,13 @@ h1 {
   align-items: center;
 }
 
-.da-content img {
+.da-pdf-content {
+  margin: 0 auto;
+  height: 800px;
+}
+
+.da-content img,
+.da-content video {
   object-fit: contain;
   max-width: 100%;
   height: 600px;
@@ -30,7 +36,8 @@ h1 {
 
 @media (min-width: 900px) {
   .da-title-wrapper,
-  .da-content img {
+  .da-content img,
+  .da-pdf-content {
     max-width: 900px;
   }
 }

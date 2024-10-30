@@ -14,7 +14,30 @@ class DaMedia extends LitElement {
     document.title = `View ${this.details.name} - Dark Alley`;
   }
 
+  get _mediaType() {
+    const ext = this.details.name.split('.').pop();
+    return ext;
+  }
+
   render() {
+    if (this._mediaType === 'mp4') {
+      return html`
+        <div class="da-content">
+          <video controls>
+            <source src="${this.details.contentUrl}" type="video/mp4" />
+          </video>
+        </div>
+      `;
+    }
+
+    if (this._mediaType === 'pdf') {
+      return html`
+        <div class="da-content">
+          I'm a PDF
+        </div>
+      `;
+    }
+
     return html`
       <div class="da-content">
         <img src="${this.details.contentUrl}" width="900" height="600" />
