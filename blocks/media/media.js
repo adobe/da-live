@@ -54,7 +54,7 @@ async function loadPdfMedia(url, fileName) {
       const promise = Promise.resolve(e.target.result);
       adobeDCView.previewFile({ content: { promise }, metaData: { fileName } });
     };
-    reader.readAsDataURL(blob);
+    reader.readAsArrayBuffer(blob);
   } catch (e) {
     console.log(e);
   }
