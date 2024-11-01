@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
@@ -87,6 +87,17 @@ export default class DaList extends LitElement {
     if (this.actionBar) this.actionBar.items = [];
   }
 
+  handleSelectionState() {
+    this._selectedItems = this._listItems.filter((item) => item.isChecked);
+    // If more than one item is selected, force everything to not be in a rename state
+    if (this._selectedItems.length > 1) {
+      this._listItems.forEach((item) => { item.rename = false; });
+    }
+
+    this.actionBar.items = this._selectedItems;
+    this.requestUpdate();
+  }
+
   handleItemChecked(e, item) {
     if (e.detail.checked) {
       item.isChecked = true;
@@ -94,14 +105,7 @@ export default class DaList extends LitElement {
       item.isChecked = false;
       item.rename = false;
     }
-    this._selectedItems = this._listItems.filter((lItem) => lItem.isChecked);
-    // If more than one item is selected, force everything to not be in a rename state
-    if (this._selectedItems.length > 1) {
-      this._listItems.forEach((lItem) => { lItem.rename = false; });
-    }
-
-    this.actionBar.items = this._selectedItems;
-    this.requestUpdate();
+    this.handleSelectionState();
   }
 
   handleRename() {
@@ -205,6 +209,11 @@ export default class DaList extends LitElement {
     this.handleClear();
   }
 
+  handleShare() {
+    this.setStatus('Copied', 'URLs have been copied to the clipboard.');
+    setTimeout(() => { this.setStatus(); }, 3000);
+  }
+
   dragenter(e) {
     e.stopPropagation();
     e.target.closest('.da-browse-panel').classList.add('is-dragged-over');
@@ -260,6 +269,48 @@ export default class DaList extends LitElement {
     this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
   }
 
+  handleCheckAll() {
+    const check = !this.isSelectAll;
+    this._listItems.forEach((item) => { item.isChecked = check; });
+    this.handleSelectionState();
+  }
+
+  getSortFn(first, last, prop) {
+    return (a, b) => {
+      if (prop === 'lastModified') {
+        if (!a[prop]) a[prop] = '';
+        if (!b[prop]) b[prop] = '';
+      }
+      if (a[prop] > b[prop]) return first;
+      if (a[prop] < b[prop]) return last;
+      return 0;
+    };
+  }
+
+  handleSort(type, prop) {
+    const first = type === 'new' ? -1 : 1;
+    const last = type === 'new' ? 1 : -1;
+
+    const sortFn = this.getSortFn(first, last, prop);
+    this._listItems.sort(sortFn);
+    this.requestUpdate();
+  }
+
+  handleNameSort() {
+    this._sortName = this._sortName === 'new' ? 'old' : 'new';
+    this.handleSort(this._sortName, 'name');
+  }
+
+  handleDateSort() {
+    this._sortDate = this._sortDate === 'new' ? 'old' : 'new';
+    this.handleSort(this._sortDate, 'lastModified');
+  }
+
+  get isSelectAll() {
+    const selectCount = this._listItems.filter((item) => item.isChecked).length;
+    return selectCount === this._listItems.length && this._listItems.length !== 0;
+  }
+
   get actionBar() {
     return this.shadowRoot?.querySelector('da-actionbar');
   }
@@ -281,22 +332,22 @@ export default class DaList extends LitElement {
   renderList(items) {
     return html`
       <div class="da-item-list" role="list">
-        ${items.map((item, idx) => html`
-          <da-list-item
-            role="listitem"
-            @checked=${(e) => this.handleItemChecked(e, item)}
-            @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
-            allowselect="${this.select ? true : nothing}"
-            ischecked="${item.isChecked ? true : nothing}"
-            rename="${item.rename ? true : nothing}"
-            name="${item.name}"
-            path="${item.path}"
-            date="${item.lastModified}"
-            ext="${item.ext}"
-            idx=${idx}>
-          </da-list-item>
-        `)}
-      </div>`;
+      ${repeat(items, (item) => item.path, (item, idx) => html`
+        <da-list-item
+          role="listitem"
+          @checked=${(e) => this.handleItemChecked(e, item)}
+          @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
+          allowselect="${this.select ? true : nothing}"
+          ischecked="${item.isChecked ? true : nothing}"
+          rename="${item.rename ? true : nothing}"
+          name="${item.name}"
+          path="${item.path}"
+          date="${item.lastModified}"
+          ext="${item.ext}"
+          idx=${idx}>
+        </da-list-item>`)}
+      </div>
+    `;
   }
 
   renderDropArea() {
@@ -304,8 +355,30 @@ export default class DaList extends LitElement {
       <div class="da-drop-area" data-message=${this._dropMessage} @dragover=${this.dragover} @drop=${this.drop}></div>`;
   }
 
+  renderCheckBox() {
+    return html`
+      <div class="checkbox-wrapper">
+        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}">
+        <label class="checkbox-label" for="select-all"></label>
+      </div>
+      <input type="checkbox" name="select" style="display: none;">
+    `;
+  }
+
   render() {
     return html`
+      <div class="da-browse-panel-header">
+        ${this.renderCheckBox()}
+        <div class="da-browse-sort">
+          <span></span>
+          <div class="da-browse-header-container">
+            <button class="da-browse-header-name" @click=${this.handleNameSort}>Name</button>
+          </div>
+          <div class="da-browse-header-container">
+            <button class="da-browse-header-name" @click=${this.handleDateSort}>Modified</button>
+          </div>
+        </div>
+      </div>
       <div class="da-browse-panel" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
         ${this._listItems?.length > 0 ? this.renderList(this._listItems, true) : this.renderEmpty()}
         ${this.drag ? this.renderDropArea() : nothing}
@@ -315,6 +388,7 @@ export default class DaList extends LitElement {
         @rename=${this.handleRename}
         @onpaste=${this.handlePaste}
         @ondelete=${this.handleDelete}
+        @onshare=${this.handleShare}
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
       `;
