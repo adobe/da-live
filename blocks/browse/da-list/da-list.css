@@ -135,7 +135,7 @@ da-list-item.is-expanded::after {
 }
 
 .da-list-status {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgb(255 255 255 / 60%);
   display: flex;
