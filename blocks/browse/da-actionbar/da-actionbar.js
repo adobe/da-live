@@ -80,6 +80,10 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  get _canShare() {
+    return this.items.some((item) => item.ext);
+  }
+
   render() {
     return html`
       <div class="da-action-bar">
@@ -119,7 +123,7 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleShare}
-            class="share-button">
+            class="share-button ${this._canShare ? '' : 'hide'}">
             <img src="/blocks/browse/img/Smock_Share_18_N.svg" />
             <span>Share</span>
           </button>
