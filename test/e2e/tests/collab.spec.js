@@ -23,6 +23,10 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.locator('div.ProseMirror').fill('Entered by user 1');
 
+  // Right now there should not be any collab indicators yet
+  await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="Anonymous"]')).not.toBeVisible();
+  await expect(page.locator('span.ProseMirror-yjs-cursor')).not.toBeVisible();
+
   const page2 = await browser.newPage();
   await page2.goto(pageURL);
   await expect(page2.locator('div.ProseMirror')).toBeVisible();
