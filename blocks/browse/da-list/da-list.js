@@ -288,8 +288,8 @@ export default class DaList extends LitElement {
   }
 
   handleSort(type, prop) {
-    const first = type === 'new' ? -1 : 1;
-    const last = type === 'new' ? 1 : -1;
+    const first = type === 'old' ? -1 : 1;
+    const last = type === 'old' ? 1 : -1;
 
     const sortFn = this.getSortFn(first, last, prop);
     this._listItems.sort(sortFn);
@@ -297,12 +297,14 @@ export default class DaList extends LitElement {
   }
 
   handleNameSort() {
-    this._sortName = this._sortName === 'new' ? 'old' : 'new';
+    this._sortDate = undefined;
+    this._sortName = this._sortName === 'old' ? 'new' : 'old';
     this.handleSort(this._sortName, 'name');
   }
 
   handleDateSort() {
-    this._sortDate = this._sortDate === 'new' ? 'old' : 'new';
+    this._sortName = undefined;
+    this._sortDate = this._sortDate === 'old' ? 'new' : 'old';
     this.handleSort(this._sortDate, 'lastModified');
   }
 
@@ -372,10 +374,10 @@ export default class DaList extends LitElement {
         <div class="da-browse-sort">
           <span></span>
           <div class="da-browse-header-container">
-            <button class="da-browse-header-name" @click=${this.handleNameSort}>Name</button>
+            <button class="da-browse-header-name ${this._sortName}" @click=${this.handleNameSort}>Name</button>
           </div>
           <div class="da-browse-header-container">
-            <button class="da-browse-header-name" @click=${this.handleDateSort}>Modified</button>
+            <button class="da-browse-header-name ${this._sortDate}" @click=${this.handleDateSort}>Modified</button>
           </div>
         </div>
       </div>

@@ -78,7 +78,7 @@ da-list-item.is-expanded::after {
   border: none;
   background: none;
   text-transform: uppercase;
-  line-height: 1;
+  line-height: 18px;
   color: var(--s2-gray-700);
   font-weight: 700;
   cursor: pointer;
@@ -93,6 +93,29 @@ da-list-item.is-expanded::after {
   height: 2px;
   background: var(--s2-gray-700);
   border-radius: 1.5px;
+}
+
+.da-browse-header-name::before {
+  display: none;
+  position: absolute;
+  content: '';
+  right: -20px;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  filter: invert(26%) sepia(0%) saturate(946%) hue-rotate(145deg) brightness(102%) contrast(81%);
+  background: no-repeat center / 18px url('/blocks/browse/img/Smock_ChevronRight_18_N.svg');
+  transition: transform .2s ease-in-out;
+}
+
+.da-browse-header-name.new::before {
+  display: block;
+  transform: rotate(-90deg);
+}
+
+.da-browse-header-name.old::before {
+  display: block;
+  transform: rotate(90deg);
 }
 
 /* Drag & Drop */
