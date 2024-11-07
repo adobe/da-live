@@ -351,6 +351,17 @@ function getTextBlocks(marks, nodes) {
       label: 'P',
       class: 'menu-item-para',
     }),
+    blockTypeItem(nodes.blockquote, {
+      title: 'Change to blockquote',
+      label: 'Blockquote',
+      class: 'menu-item-blockquote',
+    }),
+    blockTypeItem(nodes.code_block, {
+      title: 'Change to code block',
+      label: 'Code',
+      class: 'menu-item-codeblock',
+    }),
+    item('separator', null, 'separator'),
     blockTypeItem(nodes.heading, {
       title: 'Change to H1',
       label: 'H1',

@@ -213,6 +213,14 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
+.menu-item-blockquote {
+  background: url('/blocks/edit/img/Smock_Quote_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.menu-item-codeblock {
+  background: url('/blocks/edit/img/Smock_Code_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
 .menu-item-h1 {
   background: url('/blocks/edit/img/Smock_Heading1_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
