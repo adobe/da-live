@@ -58,12 +58,13 @@ const baseNodes = {
     },
   },
   blockquote: {
+    attrs: { ...topLevelAttrs },
     content: 'block+',
     group: 'block',
     defining: true,
-    parseDOM: [{ tag: 'blockquote' }],
-    toDOM() {
-      return ['blockquote', 0];
+    parseDOM: [{ tag: 'blockquote', getAttrs: getTopLevelParseAttrs }],
+    toDOM(node) {
+      return ['blockquote', { ...getTopLevelToDomAttrs(node) }, 0];
     },
   },
   horizontal_rule: {
@@ -94,14 +95,15 @@ const baseNodes = {
     },
   },
   code_block: {
+    attrs: { ...topLevelAttrs },
     content: 'text*',
     marks: '',
     group: 'block',
     code: true,
     defining: true,
-    parseDOM: [{ tag: 'pre', preserveWhitespace: 'full' }],
-    toDOM() {
-      return ['pre', ['code', 0]];
+    parseDOM: [{ tag: 'pre', preserveWhitespace: 'full', getAttrs: getTopLevelParseAttrs }],
+    toDOM(node) {
+      return ['pre', { ...getTopLevelToDomAttrs(node) }, ['code', 0]];
     },
   },
   text: { group: 'inline' },
