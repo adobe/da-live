@@ -3,18 +3,14 @@ import {
   DOMParser,
   EditorState,
   EditorView,
-  Schema,
   TextSelection,
-  baseSchema,
   history,
   buildKeymap,
   keymap,
-  addListNodes,
   baseKeymap,
   tableEditing,
   columnResizing,
   goToNextCell,
-  tableNodes,
   fixTables,
   liftListItem,
   sinkListItem,
@@ -37,70 +33,10 @@ import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
-import { addLocNodes, getLocClass } from './loc-utils.js';
+import { getLocClass } from './loc-utils.js';
+import { getSchema } from './schema.js';
 
 const DA_ORIGIN = getDaAdmin();
-
-function addCustomMarks(marks) {
-  const sup = {
-    parseDOM: [{ tag: 'sup' }, { clearMark: (m) => m.type.name === 'sup' }],
-    toDOM() { return ['sup', 0]; },
-  };
-
-  const sub = {
-    parseDOM: [{ tag: 'sub' }, { clearMark: (m) => m.type.name === 'sub' }],
-    toDOM() { return ['sub', 0]; },
-  };
-
-  const contextHighlight = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
-
-  return marks
-    .addToEnd('sup', sup)
-    .addToEnd('sub', sub)
-    .addToEnd('contextHighlightingMark', contextHighlight);
-}
-
-function getImageNodeWithHref() {
-  // due to bug in y-prosemirror, add href to image node
-  // which will be converted to a wrapping <a> tag
-  return {
-    inline: true,
-    attrs: {
-      src: { validate: 'string' },
-      alt: { default: null, validate: 'string|null' },
-      title: { default: null, validate: 'string|null' },
-      href: { default: null, validate: 'string|null' },
-    },
-    group: 'inline',
-    draggable: true,
-    parseDOM: [{
-      tag: 'img[src]',
-      getAttrs(dom) {
-        return {
-          src: dom.getAttribute('src'),
-          title: dom.getAttribute('title'),
-          alt: dom.getAttribute('alt'),
-          href: dom.getAttribute('href'),
-        };
-      },
-    }],
-    toDOM(node) {
-      const { src, alt, title, href } = node.attrs;
-      return ['img', { src, alt, title, href }];
-    },
-  };
-}
-
-// Note: until getSchema() is separated in its own module, this function needs to be kept in-sync
-// with the getSchema() function in da-collab src/collab.js
-export function getSchema() {
-  const { marks, nodes: baseNodes } = baseSchema.spec;
-  const withLocNodes = addLocNodes(baseNodes);
-  const withListnodes = addListNodes(withLocNodes, 'block+', 'block');
-  const withTableNodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-  const nodes = withTableNodes.update('image', getImageNodeWithHref());
-  return new Schema({ nodes, marks: addCustomMarks(marks) });
-}
 
 let pollerSetUp = false;
 let sendUpdates = false;

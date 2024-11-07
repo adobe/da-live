@@ -78,18 +78,7 @@ function deleteLocContent(view, pos, node) {
   return transaction;
 }
 
-function parseLocDOM(locTag) {
-  return [{
-    tag: locTag,
-    contentElement: (dom) => {
-      // Only parse the content of the node, not the temporary elements
-      const deleteThese = dom.querySelectorAll('[loc-temp-dom]');
-      deleteThese.forEach((e) => e.remove());
-      return dom;
-    },
-  }];
-}
-
+// eslint-disable-next-line import/prefer-default-export
 export function getLocClass(elName, getSchema, dispatchTransaction, { isLangstore } = {}) {
   return class {
     constructor(node, view, getPos) {
@@ -129,24 +118,4 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isLangstor
 
     stopEvent() { return true; }
   };
-}
-
-export function addLocNodes(baseNodes) {
-  if (!baseNodes.content.includes('loc_deleted')) {
-    baseNodes.content.push('loc_deleted');
-    baseNodes.content.push({
-      group: 'block',
-      content: 'block+',
-      parseDOM: parseLocDOM('da-loc-deleted'),
-      toDOM: () => ['da-loc-deleted', { contenteditable: false }, 0],
-    });
-    baseNodes.content.push('loc_added');
-    baseNodes.content.push({
-      group: 'block',
-      content: 'block+',
-      parseDOM: parseLocDOM('da-loc-added'),
-      toDOM: () => ['da-loc-added', { contenteditable: false }, 0],
-    });
-  }
-  return baseNodes;
 }
