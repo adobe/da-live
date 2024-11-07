@@ -30,6 +30,7 @@ export default class DaList extends LitElement {
     _dropFiles: { state: true },
     _dropMessage: { state: true },
     _status: { state: true },
+    _viewDeleted: { state: true },
   };
 
   constructor() {
@@ -49,7 +50,7 @@ export default class DaList extends LitElement {
       this._listItems = this.listItems;
     }
 
-    if (props.has('fullpath') && this.fullpath) {
+    if ((props.has('fullpath') || props.has('_viewDeleted')) && this.fullpath) {
       this._listItems = await this.getList();
     }
 
@@ -68,10 +69,53 @@ export default class DaList extends LitElement {
     this._status = { type, text, description };
   }
 
+  getDeletedStoragePath() {
+    const repoIdx = this.fullpath.indexOf('/', 1);
+    const repo = this.fullpath.substring(0, repoIdx);
+    const filePath = this.fullpath.substring(repoIdx);
+    return `${repo}/.da-deleted${filePath}/`;
+  }
+
+  async getDeletedItems() {
+    const deletedPath = this.getDeletedStoragePath();
+    const resp = await daFetch(`${DA_ORIGIN}/list${deletedPath}`);
+    if (!resp.ok) return [];
+
+    const json = await resp.json();
+
+    const deletedItems = [];
+    for (const item of json) {
+      const detailResp = await daFetch(`${DA_ORIGIN}/list${item.path}`);
+      if (detailResp.ok) {
+        const detailJson = await detailResp.json();
+        for (const detail of detailJson) {
+          deletedItems.push({
+            name: item.name.split('.')[0],
+            ext: detail.ext,
+            path: detail.path,
+            lastModified: detail.lastModified,
+            deleted: true,
+          });
+        }
+      }
+    }
+    // TODO Maybe not needed? There is already a sort function
+    // deletedItems.sort((a, b) => a.lastModified - b.lastModified);
+    // console.log('Found deleted items: ', deletedItems);
+    return deletedItems;
+  }
+
   async getList() {
     const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
     if (!resp.ok) return null;
-    return resp.json();
+    const listJson = await resp.json();
+
+    if (!this._viewDeleted) {
+      return listJson;
+    }
+
+    const deletedItems = await this.getDeletedItems();
+    return listJson.concat(deletedItems);
   }
 
   handleNewItem() {
@@ -275,6 +319,12 @@ export default class DaList extends LitElement {
     this.handleSelectionState();
   }
 
+
+  toggleViewDeleted(ctrl) {
+    this._viewDeleted = ctrl.target.checked;
+    this.requestUpdate();
+  }
+
   getSortFn(first, last, prop) {
     return (a, b) => {
       if (prop === 'lastModified') {
@@ -341,6 +391,7 @@ export default class DaList extends LitElement {
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           allowselect="${this.select ? true : nothing}"
           ischecked="${item.isChecked ? true : nothing}"
+          isdeleted="${item.deleted ? true : nothing}"
           rename="${item.rename ? true : nothing}"
           name="${item.name}"
           path="${item.path}"
@@ -380,6 +431,16 @@ export default class DaList extends LitElement {
             <button class="da-browse-header-name ${this._sortDate}" @click=${this.handleDateSort}>Modified</button>
           </div>
         </div>
+
+        <!-- Maybe update rendercheckbox for this? -->
+        <div class="checkbox-wrapper">
+          <span>🗑️</span>
+          <input type="checkbox" id="view-deleted" name="view-deleted" @click="${this.toggleViewDeleted}">
+          <label class="checkbox-label" for="view-deleted"></label>
+        </div>
+        <!-- what is this for?
+        <input type="checkbox" name="select" style="display: none;">
+        -->
       </div>
       <div class="da-browse-panel" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
         ${this._listItems?.length > 0 ? this.renderList(this._listItems, true) : this.renderEmpty()}
