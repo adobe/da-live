@@ -50,19 +50,31 @@ class DaLibrary extends LitElement {
     this._libraryList = await getLibraryList();
   }
 
+  handleModalClose() {
+    this.shadowRoot.querySelector('.da-dialog-plugin').close();
+  }
+
   async handleLibSwitch(e, library) {
     if (library.experience === 'large-modal') {
-      let dialog = document.querySelector('.da-dialog-plugin');
+      let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
       if (dialog) dialog.remove();
 
-      await loadStyle('/blocks/edit/da-library/da-modal.css');
-      dialog = html`<dialog class="da-dialog-plugin">${this.renderPlugin(library.url, true)}</dialog>`;
+      dialog = html`
+        <dialog class="da-dialog-plugin">
+          <div class="da-dialog-header">
+            <div class="da-dialog-header-title">
+              <img src="${library.icon}" />
+              <p>${library.name}</p>
+            </div>
+            <button @click=${this.handleModalClose}>Close</button>
+          </div>
+          ${this.renderPlugin(library.url, true)}
+        </dialog>
+      `;
 
-      const main = document.body.querySelector('main');
+      render(dialog, this.shadowRoot);
 
-      render(dialog, main);
-
-      main.querySelector('.da-dialog-plugin').showModal();
+      this.shadowRoot.querySelector('.da-dialog-plugin').showModal();
 
       return;
     }
