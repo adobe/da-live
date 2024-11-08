@@ -51,6 +51,7 @@ class DaLibrary extends LitElement {
 
   handleModalClose() {
     this.shadowRoot.querySelector('.da-dialog-plugin').close();
+    closeLibrary();
   }
 
   async handleLibSwitch(e, library) {
