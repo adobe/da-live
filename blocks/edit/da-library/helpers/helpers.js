@@ -93,6 +93,7 @@ async function getAemPlugins(owner, repo) {
       acc.push({
         name: plugin.title,
         icon: plugin.icon,
+        experience: plugin.experience || 'inline',
         url,
       });
     }

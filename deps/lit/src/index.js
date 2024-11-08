@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'lit';
+import { LitElement, html, nothing, render } from 'lit';
 import { until } from 'lit/directives/until.js';
 import { repeat } from 'lit/directives/repeat.js';
 
@@ -8,4 +8,5 @@ export {
     nothing,
     repeat,
     until,
+    render,
 };
