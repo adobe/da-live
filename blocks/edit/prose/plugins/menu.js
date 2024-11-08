@@ -52,9 +52,9 @@ function cmdItem(cmd, options) {
   // eslint-disable-next-line guard-for-in, no-restricted-syntax
   for (const prop in options) {
     passedOptions[prop] = options[prop];
-    if (!options.enable && !options.select) {
-      passedOptions[options.enable ? 'enable' : 'select'] = (state) => cmd(state);
-    }
+  }
+  if (!options.enable && !options.select) {
+    passedOptions.enable = (state) => cmd(state);
   }
   return new MenuItem(passedOptions);
 }
@@ -302,35 +302,37 @@ function imgAltTextItem() {
 
 function codeMarkItem(markType) {
   const title = 'Toggle inline code';
+  const cmd = toggleMark(markType);
 
   return new MenuItem({
     title,
     label: title,
     class: 'edit-code',
     active(state) {
-      return !state.selection.empty;
+      return markActive(state, markType);
     },
     enable(state) {
-      return this.active(state);
+      return cmd(state);
     },
-    run: toggleMark(markType),
+    run: cmd,
   });
 }
 
 function codeBlockItem(codeBlockNode) {
-  const command = setBlockType(codeBlockNode);
+  const cmd = setBlockType(codeBlockNode);
 
   return new MenuItem({
     title: 'Change to code block',
     label: 'Code',
     class: 'menu-item-codeblock',
     enable(state) {
-      return this.active(state);
+      return cmd(state);
     },
     active(state) {
-      return state.selection.empty;
+      const { $from } = state.selection;
+      return $from.parent.type.name === 'code_block';
     },
-    run: command,
+    run: cmd,
   });
 }
 
@@ -340,6 +342,15 @@ function blockquoteItem(codeBlockNode) {
     label: 'Blockquote',
     class: 'menu-item-blockquote',
   });
+}
+
+function headingItem(headingNode, options) {
+  options.active = (state) => {
+    const { $from } = state.selection;
+    return $from.parent.type.name === 'heading'
+      && $from.parent.attrs.level === options.attrs.level;
+  };
+  return blockTypeItem(headingNode, options);
 }
 
 function markItem(markType, options) {
@@ -398,38 +409,38 @@ function getTextBlocks(marks, nodes) {
     }),
     blockquoteItem(nodes.blockquote),
     codeBlockItem(nodes.code_block),
-    item('separator', null, 'separator'),
-    blockTypeItem(nodes.heading, {
+    // menu css splits the icons before H1
+    headingItem(nodes.heading, {
       title: 'Change to H1',
       label: 'H1',
       attrs: { level: 1 },
       class: 'menu-item-h1',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to H2',
       label: 'H2',
       attrs: { level: 2 },
       class: 'menu-item-h2',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h3',
       label: 'h3',
       attrs: { level: 3 },
       class: 'menu-item-h3',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h4',
       label: 'h4',
       attrs: { level: 4 },
       class: 'menu-item-h4',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h5',
       label: 'h5',
       attrs: { level: 5 },
       class: 'menu-item-h5',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h6',
       label: 'h6',
       attrs: { level: 6 },

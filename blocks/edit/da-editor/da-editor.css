@@ -177,6 +177,11 @@ span.ProseMirror-menuseparator {
   opacity: 0.5;
 }
 
+.ProseMirror-menu-active {
+  outline: 2px #B1B1B1 solid;
+  outline-offset: -2px;
+}
+
 .ProseMirror-menu-dropdown.edit-text {
   background: url('/blocks/edit/img/Smock_Text_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
@@ -192,7 +197,13 @@ span.ProseMirror-menuseparator {
   border-radius: 4px;
 }
 
+.ProseMirror-menu-dropdown-menu.edit-text {
+  column-count: 2;
+}
+
 .ProseMirror-menu-dropdown-item {
+  display: flex;
+  justify-content: center;
   margin-bottom: 6px;
 }
 
@@ -222,9 +233,8 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_Code_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
-.menu-item-codeblock.ProseMirror-menu-disabled,
-.edit-code.ProseMirror-menu-disabled {
-  display: none;
+.ProseMirror-menu-dropdown-item:has(.menu-item-h1) {
+  break-before: column;
 }
 
 .menu-item-h1 {
