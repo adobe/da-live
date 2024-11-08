@@ -8,9 +8,8 @@ import { getItems, getLibraryList } from './helpers/helpers.js';
 import { aem2prose } from '../utils/helpers.js';
 import { daFetch } from '../../shared/utils.js';
 
-const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
-
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
+const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
 
 const ICONS = [
   '/blocks/edit/img/Smock_ExperienceAdd_18_N.svg',
@@ -45,7 +44,7 @@ class DaLibrary extends LitElement {
 
   async connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [sheet];
+    this.shadowRoot.adoptedStyleSheets = [sheet, buttons];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._libraryList = await getLibraryList();
   }
@@ -66,7 +65,7 @@ class DaLibrary extends LitElement {
               <img src="${library.icon}" />
               <p>${library.name}</p>
             </div>
-            <button @click=${this.handleModalClose}>Close</button>
+            <button class="primary" @click=${this.handleModalClose}>Close</button>
           </div>
           ${this.renderPlugin(library.url, true)}
         </dialog>
