@@ -434,8 +434,8 @@ ul {
 /* Plugin Modal */
 .da-dialog-plugin {
   width: calc(100% - 72px);
-  box-sizing: border-box;
   height: calc(100% - 72px);
+  box-sizing: border-box;
   padding: 0;
   border: 0;
   border-radius: 16px;
@@ -473,12 +473,19 @@ ul {
 
 .da-dialog-header-title p {
   font-weight: 700;
-  font-size: 24px;
+  font-size: 18px;
   margin: 0;
 }
 
-iframe {
+.da-dialog-plugin iframe {
   width: 100%;
   height: 100%;
   border: none;
+}
+
+@media (min-width: 900px) {
+  .da-dialog-plugin {
+    width: 600px;
+    height: 600px;
+  }
 }
