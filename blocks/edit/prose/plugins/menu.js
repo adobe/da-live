@@ -15,6 +15,8 @@ import {
   Dropdown,
   renderGrouped,
   blockTypeItem,
+  wrapItem,
+  setBlockType,
   toggleMark,
   undo,
   redo,
@@ -298,6 +300,48 @@ function imgAltTextItem() {
   });
 }
 
+function codeMarkItem(markType) {
+  const title = 'Toggle inline code';
+
+  return new MenuItem({
+    title,
+    label: title,
+    class: 'edit-code',
+    active(state) {
+      return !state.selection.empty;
+    },
+    enable(state) {
+      return this.active(state);
+    },
+    run: toggleMark(markType),
+  });
+}
+
+function codeBlockItem(codeBlockNode) {
+  const command = setBlockType(codeBlockNode);
+
+  return new MenuItem({
+    title: 'Change to code block',
+    label: 'Code',
+    class: 'menu-item-codeblock',
+    enable(state) {
+      return this.active(state);
+    },
+    active(state) {
+      return state.selection.empty;
+    },
+    run: command,
+  });
+}
+
+function blockquoteItem(codeBlockNode) {
+  return wrapItem(codeBlockNode, {
+    title: 'Change to blockquote',
+    label: 'Blockquote',
+    class: 'menu-item-blockquote',
+  });
+}
+
 function markItem(markType, options) {
   const passedOptions = { active(state) { return markActive(state, markType); } };
   // eslint-disable-next-line no-restricted-syntax, guard-for-in
@@ -345,22 +389,15 @@ function getTextBlocks(marks, nodes) {
       label: 'SUB',
       class: 'edit-sub',
     }),
+    codeMarkItem(marks.code),
     item('separator', null, 'separator'),
     blockTypeItem(nodes.paragraph, {
       title: 'Change to paragraph',
       label: 'P',
       class: 'menu-item-para',
     }),
-    blockTypeItem(nodes.blockquote, {
-      title: 'Change to blockquote',
-      label: 'Blockquote',
-      class: 'menu-item-blockquote',
-    }),
-    blockTypeItem(nodes.code_block, {
-      title: 'Change to code block',
-      label: 'Code',
-      class: 'menu-item-codeblock',
-    }),
+    blockquoteItem(nodes.blockquote),
+    codeBlockItem(nodes.code_block),
     item('separator', null, 'separator'),
     blockTypeItem(nodes.heading, {
       title: 'Change to H1',

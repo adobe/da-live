@@ -1,3 +1,4 @@
+/* stylelint-disable selector-class-pattern */
 :host {
   display: grid;
   grid-template-areas: 'editor';
@@ -217,8 +218,13 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_Quote_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
-.menu-item-codeblock {
+.menu-item-codeblock, .edit-code {
   background: url('/blocks/edit/img/Smock_Code_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.menu-item-codeblock.ProseMirror-menu-disabled,
+.edit-code.ProseMirror-menu-disabled {
+  display: none;
 }
 
 .menu-item-h1 {

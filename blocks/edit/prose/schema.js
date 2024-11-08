@@ -59,7 +59,7 @@ const baseNodes = {
   },
   blockquote: {
     attrs: { ...topLevelAttrs },
-    content: 'text*',
+    content: 'block+',
     group: 'block',
     defining: true,
     parseDOM: [{ tag: 'blockquote', getAttrs: getTopLevelParseAttrs }],
