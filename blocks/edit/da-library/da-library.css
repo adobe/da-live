@@ -440,6 +440,8 @@ ul {
   border: 0;
   border-radius: 16px;
   filter: drop-shadow(0 0 8px rgb(0 0 0 / 30%));
+  display: grid;
+  grid-template-rows: auto 1fr;
 }
 
 .da-dialog-header {
@@ -457,7 +459,7 @@ ul {
 }
 
 .da-dialog-plugin .da-library-type-plugin {
-  top: 61px;
+  position: unset;
 }
 
 .da-dialog-header-title {
