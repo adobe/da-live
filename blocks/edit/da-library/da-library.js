@@ -55,7 +55,7 @@ class DaLibrary extends LitElement {
   }
 
   async handleLibSwitch(e, library) {
-    if (library.experience === 'large-modal') {
+    if (library.experience === 'dialog') {
       let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
       if (dialog) dialog.remove();
 
