@@ -697,6 +697,8 @@ da-loc-deleted, da-loc-added {
   background-color: rgba(70, 130, 180, 0.9);
   color: white;
   border-radius: 4px;
+  min-width: 50px;
+  text-align: center;
 }
 
 .loc-color-overlay.loc-regional::after {
@@ -711,6 +713,8 @@ da-loc-deleted, da-loc-added {
   background-color: rgba(144, 42, 222, 90%);
   color: white;
   border-radius: 4px;
+  min-width: 50px;
+  text-align: center;
 }
 
 .loc-lang-overlay {
