@@ -8,13 +8,13 @@ const LOC = {
   LANGSTORE: {
     BG: 'rgba(70, 130, 180, 0.8)',
     COVER_BG: 'rgba(70, 130, 180, 0.4)',
-    TEXT: 'Langstore Content',
+    TEXT: 'Upstream Content',
     TEXT_COLOR: 'rgba(70, 130, 180)',
   },
   REGIONAL: {
     BG: 'rgba(144, 42, 222, 0.8)',
     COVER_BG: 'rgba(144, 42, 222, 0.4)',
-    TEXT: 'Regional Content',
+    TEXT: 'Local Content',
     TEXT_COLOR: 'rgba(144, 42, 222)',
   },
 };

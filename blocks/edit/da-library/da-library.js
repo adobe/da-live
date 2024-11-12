@@ -1,5 +1,6 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
-import { LitElement, html, until } from 'da-lit';
+import { LitElement, html, render, until } from 'da-lit';
+import { getNx } from '../../../scripts/utils.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
@@ -8,6 +9,7 @@ import { aem2prose } from '../utils/helpers.js';
 import { daFetch } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
+const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
 
 const ICONS = [
   '/blocks/edit/img/Smock_ExperienceAdd_18_N.svg',
@@ -42,12 +44,40 @@ class DaLibrary extends LitElement {
 
   async connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [sheet];
+    this.shadowRoot.adoptedStyleSheets = [sheet, buttons];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._libraryList = await getLibraryList();
   }
 
-  handleLibSwitch(e) {
+  handleModalClose() {
+    this.shadowRoot.querySelector('.da-dialog-plugin').close();
+    closeLibrary();
+  }
+
+  async handleLibSwitch(e, library) {
+    if (library.experience === 'dialog') {
+      let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
+      if (dialog) dialog.remove();
+
+      dialog = html`
+        <dialog class="da-dialog-plugin">
+          <div class="da-dialog-header">
+            <div class="da-dialog-header-title">
+              <img src="${library.icon}" />
+              <p>${library.name}</p>
+            </div>
+            <button class="primary" @click=${this.handleModalClose}>Close</button>
+          </div>
+          ${this.renderPlugin(library.url, true)}
+        </dialog>
+      `;
+
+      render(dialog, this.shadowRoot);
+
+      this.shadowRoot.querySelector('.da-dialog-plugin').showModal();
+
+      return;
+    }
     const { target } = e;
     const type = target.dataset.libraryName;
     target.closest('.palette-pane').classList.add('backward');
@@ -223,11 +253,12 @@ class DaLibrary extends LitElement {
       </ul>`;
   }
 
-  renderPlugin(url) {
+  renderPlugin(url, preload) {
     return html`
       <div class="da-library-type-plugin">
         <iframe
-          data-src="${url}"
+          data-src="${preload ? null : url}"
+          src="${preload ? url : null}"
           @load=${this.handlePluginLoad}
           allow="clipboard-write *"></iframe>
       </div>`;
@@ -272,7 +303,7 @@ class DaLibrary extends LitElement {
                     data-library-name="${library.name}"
                     class="${library.name} ${library.url ? 'is-plugin' : ''}"
                     style="${library.icon ? `background-image: url(${library.icon})` : ''}"
-                    @click=${this.handleLibSwitch}>
+                    @click=${(e) => this.handleLibSwitch(e, library)}>
                     <span class="library-type-name">${library.name}</span>
                   </button>
                 </li>

@@ -108,7 +108,7 @@ export default function getPathDetails(loc) {
   const editor = getView(pathname);
 
   // IMS will redirect and there's a small window where old_hash exists
-  if (!fullpath || fullpath.startsWith('old_hash')) return null;
+  if (!fullpath || fullpath.startsWith('old_hash') || fullpath.startsWith('access_token')) return null;
 
   // Split everything up so it can be later used for both DA & AEM
   const pathParts = fullpath.slice(1).toLowerCase().split('/');

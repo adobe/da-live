@@ -2,10 +2,11 @@ import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
 // Styles & Icons
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
+const getStyle = (await import(`${getNx()}/public/utils/styles.js`)).default;
+const getSvg = (await import(`${getNx()}/public/utils/svg.js`)).default;
+
 const STYLE = await getStyle(import.meta.url);
-const ICONS = ['/blocks/browse/da-browse/img/Smock_Settings_18_N.svg'];
+const ICONS = await getSvg({ paths: ['/blocks/browse/da-browse/img/Smock_Settings_18_N.svg'] });
 
 export default class DaBreadcrumbs extends LitElement {
   static properties = {
@@ -17,17 +18,17 @@ export default class DaBreadcrumbs extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
-    getSvg({ parent: this.shadowRoot, paths: ICONS });
+    this.shadowRoot.append(...ICONS);
   }
 
   update(props) {
-    this._breadcrumbs = this.getBreadcrumbs();
+    this.getBreadcrumbs();
     super.update(props);
   }
 
   getBreadcrumbs() {
     const pathSplit = this.fullpath.split('/').filter((part) => part !== '');
-    return pathSplit.map((part, idx) => ({
+    this._breadcrumbs = pathSplit.map((part, idx) => ({
       name: part,
       path: `#/${pathSplit.slice(0, idx + 1).join('/')}`,
     }));
