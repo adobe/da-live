@@ -3,29 +3,14 @@ import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
 import { DA_ORIGIN, CON_ORIGIN } from '../../../shared/constants.js';
 
-const ALLOWED_TYPES = [
-  {
-    type: 'image/png',
-    ext: '.png',
-  },
-  {
-    type: 'image/jpeg',
-    ext: '.jpg',
-  },
-  {
-    type: 'image/gif',
-    ext: '.png',
-  },
-];
-
 const FPO_IMG_URL = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
 
 function makeHash(string) {
-  return string.split('').reduce(
+  return Math.abs(string.split('').reduce(
     // eslint-disable-next-line no-bitwise
     (hash, char) => char.charCodeAt(0) + (hash << 6) + (hash << 16) - hash,
     0,
-  );
+  ));
 }
 
 function replaceWordImage(path) {
