@@ -102,6 +102,7 @@ export default function sectionPasteHandler(schema) {
        */
       transformPasted: (slice) => {
         const jslice = slice.toJSON();
+        if (!jslice) return slice;
         const { content } = jslice;
         if (!content) return slice;
 

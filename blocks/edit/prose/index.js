@@ -32,6 +32,7 @@ import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
+import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
@@ -236,6 +237,7 @@ export default function initProse({ editor, path }) {
       imageDrop(schema),
       linkConverter(schema),
       sectionPasteHandler(schema),
+      base64Uploader(schema),
       columnResizing(),
       tableEditing(),
       getEnterInputRulesPlugin(),
