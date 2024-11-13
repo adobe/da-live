@@ -18,37 +18,46 @@ const ALLOWED_TYPES = [
   },
 ];
 
-function getExtension(blob) {
-  const match = ALLOWED_TYPES.find((allowed) => (allowed.type === blob.type));
-  if (match) return match.ext;
-  return null;
+const FPO_IMG_URL = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
+
+function replaceWordImage(path) {
+  const { view } = window;
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'image' && node.attrs.src === path) {
+      const newAttrs = { src: node.attrs.src.split('#')[1] };
+      view.dispatch(
+        view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, ...newAttrs }),
+      );
+    }
+  });
 }
 
 /* When text is pasted, handle section breaks. */
-export default function sectionPasteHandler() {
+export default function base64Uploader() {
   return new Plugin({
     props: {
       transformPastedHTML: (html) => {
         try {
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, 'text/html');
-
           const imgs = [...doc.querySelectorAll('[src^="data:image"]')];
           imgs.map(async (img, idx) => {
-            const url = img.src;
-            const resp = await fetch(url);
-            const blob = await resp.blob();
-            const ext = getExtension(blob);
-            if (!ext) return;
-
+            const src = img.getAttribute('src');
+            let ext = src.replace('data:image/', '').split(';base64')[0];
+            if (ext === 'jpeg') ext = 'jpg';
             const { parent, name } = getPathDetails();
             // WP = Word Paste
-            const path = `${parent}/${name}-wp-${idx + 1}${ext}`;
-            img.setAttribute('src', `${CON_ORIGIN}${path}`);
+            const path = `${parent}/${name}-wp-${idx + 1}.${ext}`;
+            img.setAttribute('src', `${FPO_IMG_URL}#${CON_ORIGIN}${path}`);
+
+            const resp = await fetch(src);
+            const blob = await resp.blob();
 
             const body = new FormData();
             body.append('data', blob);
             await daFetch(`${DA_ORIGIN}/source${path}`, { body, method: 'POST' });
+
+            replaceWordImage(`${FPO_IMG_URL}#${CON_ORIGIN}${path}`);
           });
 
           const serializer = new XMLSerializer();
