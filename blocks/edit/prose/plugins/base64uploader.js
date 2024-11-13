@@ -25,7 +25,10 @@ function replaceWordImage(path) {
   });
 }
 
-/* When text is pasted, handle section breaks. */
+/**
+ * Base 64 Uploader
+ * @returns {Plugin} the base64 uploader plugin
+ */
 export default function base64Uploader() {
   return new Plugin({
     props: {
