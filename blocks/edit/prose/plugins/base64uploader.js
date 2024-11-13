@@ -20,6 +20,14 @@ const ALLOWED_TYPES = [
 
 const FPO_IMG_URL = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
 
+function makeHash(string) {
+  return string.split('').reduce(
+    // eslint-disable-next-line no-bitwise
+    (hash, char) => char.charCodeAt(0) + (hash << 6) + (hash << 16) - hash,
+    0,
+  );
+}
+
 function replaceWordImage(path) {
   const { view } = window;
   view.state.doc.descendants((node, pos) => {
@@ -41,13 +49,13 @@ export default function base64Uploader() {
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, 'text/html');
           const imgs = [...doc.querySelectorAll('[src^="data:image"]')];
-          imgs.map(async (img, idx) => {
+          imgs.map(async (img) => {
             const src = img.getAttribute('src');
             let ext = src.replace('data:image/', '').split(';base64')[0];
             if (ext === 'jpeg') ext = 'jpg';
             const { parent, name } = getPathDetails();
             // WP = Word Paste
-            const path = `${parent}/${name}-wp-${idx + 1}.${ext}`;
+            const path = `${parent}/${name}-wp${makeHash(src)}.${ext}`;
             img.setAttribute('src', `${FPO_IMG_URL}#${CON_ORIGIN}${path}`);
 
             const resp = await fetch(src);
