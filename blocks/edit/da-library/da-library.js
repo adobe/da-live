@@ -254,13 +254,11 @@ class DaLibrary extends LitElement {
   }
 
   renderPlugin(url, preload) {
-    url.replace('https://main--da-bacom--adobecom.hlx.page', '');
-    console.log(url);
     return html`
       <div class="da-library-type-plugin">
         <iframe
-          data-src="${preload ? null : 'https://main--da-bacom--adobecom.aem.live/tools/rollout.html'}"
-          src="${preload ? 'https://main--da-bacom--adobecom.aem.live/tools/rollout.html' : null}"
+          data-src="${preload ? null : url}"
+          src="${preload ? url : null}"
           @load=${this.handlePluginLoad}
           allow="clipboard-write *"></iframe>
       </div>`;
