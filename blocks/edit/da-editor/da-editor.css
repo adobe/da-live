@@ -120,18 +120,20 @@ pre {
 
 blockquote {
   position: relative;
-  margin: 1em 1em 1em 0;
-  padding-left: 1em;
+  padding: 0 0.5rem 0 1.5rem;
+  margin: 0;
 }
 
 blockquote::before {
+  position: absolute;
   display: block;
   content: '';
   top: 0;
   bottom: 0;
-  left: 8px;
-  width: 2px;
-  background: #676767;
+  left: 0;
+  width: 4px;
+  background: #848484;
+  border-radius: 2px;
 }
 
 .ProseMirror-menubar {
