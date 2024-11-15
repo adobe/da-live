@@ -15,6 +15,8 @@ import {
   Dropdown,
   renderGrouped,
   blockTypeItem,
+  wrapItem,
+  setBlockType,
   toggleMark,
   undo,
   redo,
@@ -50,9 +52,9 @@ function cmdItem(cmd, options) {
   // eslint-disable-next-line guard-for-in, no-restricted-syntax
   for (const prop in options) {
     passedOptions[prop] = options[prop];
-    if (!options.enable && !options.select) {
-      passedOptions[options.enable ? 'enable' : 'select'] = (state) => cmd(state);
-    }
+  }
+  if (!options.enable && !options.select) {
+    passedOptions.enable = (state) => cmd(state);
   }
   return new MenuItem(passedOptions);
 }
@@ -298,6 +300,61 @@ function imgAltTextItem() {
   });
 }
 
+function codeMarkItem(markType) {
+  const title = 'Toggle inline code';
+  const cmd = toggleMark(markType);
+
+  return new MenuItem({
+    title,
+    label: title,
+    class: 'edit-code',
+    active(state) {
+      return markActive(state, markType);
+    },
+    enable(state) {
+      return cmd(state);
+    },
+    run: cmd,
+  });
+}
+
+function codeBlockItem(codeBlockNode) {
+  const cmd = setBlockType(codeBlockNode);
+
+  return new MenuItem({
+    title: 'Change to code block',
+    label: 'Code',
+    column: 2,
+    class: 'menu-item-codeblock',
+    enable(state) {
+      return cmd(state);
+    },
+    active(state) {
+      const { $from } = state.selection;
+      return $from.parent.type.name === 'code_block';
+    },
+    run: cmd,
+  });
+}
+
+function blockquoteItem(codeBlockNode) {
+  return wrapItem(codeBlockNode, {
+    title: 'Change to blockquote',
+    label: 'Blockquote',
+    column: 2,
+    class: 'menu-item-blockquote',
+  });
+}
+
+function headingItem(headingNode, options) {
+  options.active = (state) => {
+    const { $from } = state.selection;
+    return $from.parent.type.name === 'heading'
+      && $from.parent.attrs.level === options.attrs.level;
+  };
+  return blockTypeItem(headingNode, options);
+}
+
 function markItem(markType, options) {
   const passedOptions = { active(state) { return markActive(state, markType); } };
   // eslint-disable-next-line no-restricted-syntax, guard-for-in
@@ -325,6 +382,12 @@ function getTableMenu() {
 
 function getTextBlocks(marks, nodes) {
   return [
+    blockTypeItem(nodes.paragraph, {
+      title: 'Change to paragraph',
+      label: 'P',
+      column: 2,
+      class: 'menu-item-para',
+    }),
     markItem(marks.strong, {
       title: 'Toggle bold',
       label: 'B',
@@ -345,48 +408,51 @@ function getTextBlocks(marks, nodes) {
       label: 'SUB',
       class: 'edit-sub',
     }),
-    item('separator', null, 'separator'),
-    blockTypeItem(nodes.paragraph, {
-      title: 'Change to paragraph',
-      label: 'P',
-      class: 'menu-item-para',
-    }),
-    blockTypeItem(nodes.heading, {
+    codeMarkItem(marks.code),
+    headingItem(nodes.heading, {
       title: 'Change to H1',
       label: 'H1',
+      column: 2,
       attrs: { level: 1 },
       class: 'menu-item-h1',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to H2',
       label: 'H2',
+      column: 2,
       attrs: { level: 2 },
       class: 'menu-item-h2',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h3',
       label: 'h3',
+      column: 2,
       attrs: { level: 3 },
       class: 'menu-item-h3',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h4',
       label: 'h4',
+      column: 2,
       attrs: { level: 4 },
       class: 'menu-item-h4',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h5',
       label: 'h5',
+      column: 2,
       attrs: { level: 5 },
       class: 'menu-item-h5',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h6',
       label: 'h6',
+      column: 2,
       attrs: { level: 6 },
       class: 'menu-item-h6',
     }),
+    blockquoteItem(nodes.blockquote),
+    codeBlockItem(nodes.code_block),
   ];
 }
 

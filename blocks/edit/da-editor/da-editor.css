@@ -1,3 +1,4 @@
+/* stylelint-disable selector-class-pattern */
 :host {
   display: grid;
   grid-template-areas: 'editor';
@@ -101,6 +102,38 @@ table td p {
   margin: .25em 0;
 }
 
+p code {
+  background: #e4ecfa;
+  border: 1px solid #becee9;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+pre {
+  background: #e4ecfa;
+  border: 1px solid #becee9;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+blockquote {
+  position: relative;
+  margin: 1em 1em 1em 0;
+  padding-left: 1em;
+}
+
+blockquote::before {
+  display: block;
+  content: '';
+  top: 0;
+  bottom: 0;
+  left: 8px;
+  width: 2px;
+  background: #676767;
+}
+
 .ProseMirror-menubar {
   position: fixed;
   top: 50%;
@@ -176,6 +209,11 @@ span.ProseMirror-menuseparator {
   opacity: 0.5;
 }
 
+.ProseMirror-menu-active {
+  outline: 2px #B1B1B1 solid;
+  outline-offset: -2px;
+}
+
 .ProseMirror-menu-dropdown.edit-text {
   background: url('/blocks/edit/img/Smock_Text_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
@@ -191,7 +229,15 @@ span.ProseMirror-menuseparator {
   border-radius: 4px;
 }
 
+.ProseMirror-menu-dropdown-menu.edit-text {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px;
+}
+
 .ProseMirror-menu-dropdown-item {
+  display: flex;
+  justify-content: center;
   margin-bottom: 6px;
 }
 
@@ -205,12 +251,28 @@ span.ProseMirror-menuseparator {
   height: 2px;
   display: block;
   background: var(--editor-btn-bg-color);
-  margin-bottom: 6px;
   border-radius: 1px;
 }
 
 .menu-item-para {
   background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.menu-item-blockquote {
+  background: url('/blocks/edit/img/Smock_BlockQuote_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.menu-item-codeblock {
+  background: url('/blocks/edit/img/Smock_BlockCode_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+
+.edit-code {
+  background: url('/blocks/edit/img/Smock_Code_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.ProseMirror-menu-dropdown-item:has(.menu-item-h1) {
+  break-before: column;
 }
 
 .menu-item-h1 {

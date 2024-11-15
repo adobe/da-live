@@ -3,7 +3,7 @@ import { EditorView } from 'prosemirror-view';
 import { EditorState, Plugin, TextSelection } from 'prosemirror-state';
 import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
-import { baseKeymap, toggleMark } from 'prosemirror-commands';
+import { baseKeymap, setBlockType, toggleMark } from 'prosemirror-commands';
 import { history, undo, redo } from 'prosemirror-history';
 import { addListNodes, wrapInList, splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import { keymap } from 'prosemirror-keymap';
@@ -42,7 +42,7 @@ import {
   yXmlFragmentToProsemirrorJSON,
 } from 'y-prosemirror';
 
-import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from '../../prosemirror-menu/dist/index.js';
+import { MenuItem, Dropdown, renderGrouped, blockTypeItem, wrapItem } from '../../prosemirror-menu/dist/index.js';
 
 import { InputRule, inputRules } from 'prosemirror-inputrules';
 
@@ -82,6 +82,8 @@ export {
   Dropdown,
   renderGrouped,
   blockTypeItem,
+  wrapItem,
+  setBlockType,
   toggleMark,
   wrapInList,
   splitListItem,
