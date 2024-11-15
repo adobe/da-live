@@ -9,7 +9,6 @@ import { addListNodes, wrapInList, splitListItem, liftListItem, sinkListItem } f
 import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from 'prosemirror-example-setup';
 import { gapCursor } from 'prosemirror-gapcursor';
-import crel from 'crelt';
 
 import {
   tableEditing,
@@ -79,7 +78,6 @@ export {
   splitCell,
   deleteTable,
   gapCursor,
-  crel,
   MenuItem,
   Dropdown,
   renderGrouped,
