@@ -125,13 +125,14 @@ blockquote {
 }
 
 blockquote::before {
+  position: absolute;
   display: block;
   content: '';
   top: 0;
   bottom: 0;
   left: 8px;
   width: 2px;
-  background: #676767;
+  background: #828282;
 }
 
 .ProseMirror-menubar {
