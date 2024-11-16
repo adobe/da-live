@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
+import { debouncedSaveSheets } from './utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -64,8 +65,13 @@ class DaSheetTabs extends LitElement {
     }];
     // Add the new tab
     window.jspreadsheet.tabs(this.tabContainer, sheets);
-    // Set the sheet name for later use
-    this.jexcel.slice(-1)[0].name = sheets[0].sheetName;
+    const newSheet = this.jexcel.slice(-1)[0];
+    newSheet.name = sheets[0].sheetName;
+    newSheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
+    newSheet.options.onafterchanges = () => {
+      debouncedSaveSheets(this.jexcel);
+    };
+
     // Refresh the tab names
     this._names = this.getNames();
     // Only set active as jspreadsheet will set the visibility of the sheet
