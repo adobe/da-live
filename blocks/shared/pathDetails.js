@@ -75,8 +75,6 @@ function getFullDetails({ editor, pathParts, ext }) {
   // TODO: Fix this later
   const tld = repo === 'da-bacom' ? '.aem.page' : '.hlx.page';
 
-  console.log(repo, tld);
-
   return {
     owner: org,
     repo,
