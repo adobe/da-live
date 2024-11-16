@@ -32,6 +32,14 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._actionsVis = false;
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
+    if (this.details.view === 'sheet') {
+      this.collabStatus = window.navigator.onLine
+        ? 'connected'
+        : 'offline';
+
+      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
+      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
+    }
   }
 
   handleError(json, action, icon) {
