@@ -117,7 +117,6 @@ export async function getLibraryList() {
   const aemPlugins = getAemPlugins(owner, repo);
 
   const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
-  console.log(aem);
   libraries = [...da, ...aem];
 
   return libraries;
