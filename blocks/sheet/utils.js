@@ -1,6 +1,6 @@
 import { saveToDa } from '../edit/utils/helpers.js';
 
-const DEBOUNCE_TIME = 1000;
+const DEBOUNCE_TIME = 3500;
 
 function debounce(func, wait) {
   let timeout;
