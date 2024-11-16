@@ -8,7 +8,7 @@
 h1 {
   font-size: 1.4rem;
   text-transform: uppercase;
-  margin: 0px 0px 24px;
+  margin: 0 0 24px;
 }
 
 .da-orgs-list {
@@ -16,7 +16,7 @@ h1 {
   display: grid;
   gap: 24px;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  margin: 0;
+  margin: 0 0 var(--spacing-800) 0;
   padding: 0;
 }
 
@@ -24,18 +24,18 @@ h1 {
   display: block;
   position: relative;
   min-height: 320px;
-  border: 1px solid rgb(234, 234, 234);
-  background-color: rgb(255, 255, 255);
+  border: 1px solid rgb(234 234 234);
+  background-color: rgb(255 255 255);
   border-radius: 6px;
   transition: all 500ms ease-out 0s;
   text-decoration: none;
-  color: rgb(46, 46, 46);
+  color: rgb(46 46 46);
   overflow: hidden;
 }
 
 .da-org:hover {
   background-color: rgb(228 240 255);
-  border: 1px solid rgb(20, 122, 243);
+  border: 1px solid rgb(20 122 243);
   cursor: pointer;
 }
 
@@ -82,11 +82,11 @@ h1 {
 }
 
 .details-area p.label {
-  margin: 0px 0px 4px;
+  margin: 0 0 4px;
   text-transform: uppercase;
   font-weight: 700;
   color: #707070;
-  letter-spacing: .04125rem;
+  letter-spacing: .0413rem;
   font-size: .8rem;
   line-height: .8rem;
 }

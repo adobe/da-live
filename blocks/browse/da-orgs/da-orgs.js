@@ -26,6 +26,7 @@ const MOCK_ORGS = [
 export default class DaOrgs extends LitElement {
   static properties = {
     details: { attribute: false },
+    _recents: { state: true },
     _orgs: { state: true },
     _orgsLoaded: { state: true },
   };
@@ -33,7 +34,17 @@ export default class DaOrgs extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    this.getRecents();
     this.getOrgs();
+  }
+
+  getRecents() {
+    const recentOrgs = JSON.parse(localStorage.getItem('da-orgs')) || [];
+    if (recentOrgs.length === 0) return;
+    this._recents = recentOrgs.map((org) => ({
+      name: org,
+      img: getRandomImg(),
+    }));
   }
 
   async getOrgs() {
@@ -43,9 +54,16 @@ export default class DaOrgs extends LitElement {
     const data = await resp.json();
     this._orgs = data.map((org, idx) => {
       const img = this._orgs[idx]?.img || getRandomImg();
+      this.updateRecentOrg(org);
       return { ...org, img };
     });
     this._orgsLoaded = true;
+  }
+
+  updateRecentOrg(org) {
+    if (!this._recents) return;
+    const found = this._recents.find((recent) => recent.name === org.name);
+    if (found) found.created = org.created;
   }
 
   formatDate(string) {
@@ -54,13 +72,11 @@ export default class DaOrgs extends LitElement {
     return localeDate.split(', ');
   }
 
-  render() {
-    if (!this._orgs) return null;
-
+  renderOrgs(title, orgs, renderNew) {
     return html`
-      <h1>Organizations</h1>
+      <h1>${title}</h1>
       <ul class="da-orgs-list">
-        ${this._orgs.map((org, idx) => html`
+        ${orgs.map((org, idx) => html`
           <li>
             <a class="da-org" href="#/${org.name}">
               <div class="image-container">
@@ -69,12 +85,14 @@ export default class DaOrgs extends LitElement {
               <div class="details-area">
                 <p class="label">Name</p>
                 <p class="details-title">${org.name}</p>
-                <p class="label">Created</p>
-                <p class="details-title">${org.created ? this.formatDate(org.created)[0] : ''}</p>
+                ${org.created ? html`
+                  <p class="label">Created</p>
+                  <p class="details-title">${org.created ? this.formatDate(org.created)[0] : ''}</p>
+                ` : nothing}
               </div>
             </a>
           </li>`)}
-          ${this._orgsLoaded ? html`
+          ${renderNew && this._orgsLoaded ? html`
             <li>
               <a class="da-org new" href="/start">
                 <div class="new-icon">
@@ -85,6 +103,13 @@ export default class DaOrgs extends LitElement {
             </li>
           ` : nothing}
       </ul>
+    `;
+  }
+
+  render() {
+    return html`
+      ${this._recents ? this.renderOrgs('Recent', this._recents) : nothing}
+      ${this._orgs ? this.renderOrgs('All', this._orgs, true) : nothing}
     `;
   }
 }
