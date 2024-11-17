@@ -39,11 +39,17 @@ h1 {
   cursor: pointer;
 }
 
+.da-org.show-all,
 .da-org.new {
+  background-color: rgb(250 250 250);
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
   align-content: center;
+}
+
+.da-org.show-all:hover {
+  background-color: rgb(228 240 255);
 }
 
 .da-org.new:hover {

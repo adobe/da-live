@@ -21,6 +21,7 @@ function getRandomImg() {
 
 const MOCK_ORGS = [
   { name: 'aemsites', created: '2024-01-10T17:43:13.390Z', img: MOCK_IMGS[0] },
+  { name: 'da-sites', created: '2024-03-13T17:43:13.390Z', img: MOCK_IMGS[1] },
 ];
 
 export default class DaOrgs extends LitElement {
@@ -28,7 +29,7 @@ export default class DaOrgs extends LitElement {
     details: { attribute: false },
     _recents: { state: true },
     _orgs: { state: true },
-    _orgsLoaded: { state: true },
+    _full: { state: true },
   };
 
   connectedCallback() {
@@ -43,6 +44,7 @@ export default class DaOrgs extends LitElement {
     if (recentOrgs.length === 0) return;
     this._recents = recentOrgs.map((org) => ({
       name: org,
+      load: 'eager',
       img: getRandomImg(),
     }));
   }
@@ -52,18 +54,28 @@ export default class DaOrgs extends LitElement {
     const resp = await daFetch(`${DA_ORIGIN}/list`);
     if (!resp.ok) return;
     const data = await resp.json();
-    this._orgs = data.map((org, idx) => {
-      const img = this._orgs[idx]?.img || getRandomImg();
+    this._orgs.push(...data.reduce((acc, org) => {
       this.updateRecentOrg(org);
-      return { ...org, img };
-    });
-    this._orgsLoaded = true;
+      const exists = this._orgs.some((mock) => mock.name === org.name);
+      console.log(exists);
+      if (!exists) {
+        org.img = getRandomImg();
+        acc.push(org);
+      }
+      return acc;
+    }, []));
+  }
+
+  handleShowAll(e) {
+    e.preventDefault();
+    this._full = !this._full;
   }
 
   updateRecentOrg(org) {
     if (!this._recents) return;
     const found = this._recents.find((recent) => recent.name === org.name);
     if (found) found.created = org.created;
+    this.requestUpdate();
   }
 
   formatDate(string) {
@@ -72,27 +84,45 @@ export default class DaOrgs extends LitElement {
     return localeDate.split(', ');
   }
 
+  get _visibleOrgs() {
+    return this._full ? this._orgs : this._orgs.slice(0, 2);
+  }
+
+  renderOrg(org) {
+    return html`
+      <li>
+        <a class="da-org" href="#/${org.name}">
+          <div class="image-container">
+            <img src="${org.img}" loading="${org.load || 'lazy'}" alt="" />
+          </div>
+          <div class="details-area">
+            <p class="label">Name</p>
+            <p class="details-title">${org.name}</p>
+            ${org.created ? html`
+              <p class="label">Created</p>
+              <p class="details-title">${org.created ? this.formatDate(org.created)[0] : ''}</p>
+            ` : nothing}
+          </div>
+        </a>
+      </li>
+    `;
+  }
+
   renderOrgs(title, orgs, renderNew) {
     return html`
       <h1>${title}</h1>
       <ul class="da-orgs-list">
-        ${orgs.map((org, idx) => html`
-          <li>
-            <a class="da-org" href="#/${org.name}">
-              <div class="image-container">
-                <img src="${org.img}" loading="${idx === 0 ? 'eager' : 'lazy'}" alt="" />
-              </div>
-              <div class="details-area">
-                <p class="label">Name</p>
-                <p class="details-title">${org.name}</p>
-                ${org.created ? html`
-                  <p class="label">Created</p>
-                  <p class="details-title">${org.created ? this.formatDate(org.created)[0] : ''}</p>
-                ` : nothing}
-              </div>
-            </a>
-          </li>`)}
-          ${renderNew && this._orgsLoaded ? html`
+        ${orgs.map((org) => this.renderOrg(org))}
+          ${renderNew ? html`
+            ${!this._full ? html`
+              <li>
+                <a class="da-org show-all" @click=${this.handleShowAll}>
+                  <div class="new-icon">
+                    <img src="/blocks/browse/img/Smock_More_18_N.svg" alt="See all organizations"/>
+                  </div>
+                  <p class="new-title">See all</p>
+                </a>
+              </li>` : nothing}
             <li>
               <a class="da-org new" href="/start">
                 <div class="new-icon">
@@ -109,7 +139,7 @@ export default class DaOrgs extends LitElement {
   render() {
     return html`
       ${this._recents ? this.renderOrgs('Recent', this._recents) : nothing}
-      ${this._orgs ? this.renderOrgs('All', this._orgs, true) : nothing}
+      ${this._visibleOrgs ? this.renderOrgs('All', this._visibleOrgs, true) : nothing}
     `;
   }
 }
