@@ -2,15 +2,45 @@ import { DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { LitElement, html, nothing } from 'da-lit';
 import initProse from '../prose/index.js';
 import getSheet from '../../shared/sheet.js';
-import { initIms, daFetch } from '../../shared/utils.js';
+import { initIms, daFetch, saveToDa } from '../../shared/utils.js';
 import { parse, aem2prose } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
+
+const getDateStr = (timestamp) => {
+  const date = new Date(timestamp);
+  return `${date.toLocaleDateString()}-${date.toLocaleTimeString()}`;
+};
+
+const getVersionCopyName = async (_path) => {
+  let path = _path;
+  let isAvailableFilename = false;
+  let i = 1;
+
+  while (!isAvailableFilename) {
+    const resp = await daFetch(path, { method: 'HEAD' });
+    if (resp.ok) {
+      const match = path.match(/-(\d+)\.html$/);
+      if (match) {
+        i = parseInt(match[1], 10) + 1;
+      }
+      path = match
+        ? path.replace(/-(\d+)?\.html$/, `-${i}.html`)
+        : path.replace(/\.html$/, `-${i}.html`);
+      i += 1;
+    } else {
+      isAvailableFilename = true;
+    }
+  }
+  return path;
+};
 
 export default class DaEditor extends LitElement {
   static properties = {
     path: { type: String },
     version: { type: String },
+    versionLabel: { type: String },
+    versionDate: { type: String },
     _imsLoaded: { state: false },
     _versionDom: { state: true },
   };
@@ -49,6 +79,8 @@ export default class DaEditor extends LitElement {
       div.append(table);
     });
     this._versionDom = flattedDom;
+    // Save raw html for saving as copy
+    this._versionHtml = text;
   }
 
   handleCancel() {
@@ -56,6 +88,24 @@ export default class DaEditor extends LitElement {
     const event = new CustomEvent('versionreset', opts);
     this.dispatchEvent(event);
     this._versionDom = null;
+  }
+
+  async handleSaveCopy() {
+    const versionName = (this.versionLabel || getDateStr(this.versionDate)).replaceAll(' ', '-');
+    let newPath = this.path
+      .replace('.html', `-${versionName}.html`)
+      .toLowerCase();
+
+    newPath = await getVersionCopyName(newPath);
+    newPath = newPath.replace('https://admin.da.live/source', '');
+
+    saveToDa({
+      path: newPath,
+      blob: new Blob([this._versionHtml], { type: 'text/html' }),
+    });
+    // eslint-disable-next-line no-alert
+    alert(`Version saved as copy:\n${newPath.replace('https://admin.da.live/source', '')}`);
+    this.handleCancel();
   }
 
   handleRestore() {
@@ -73,6 +123,7 @@ export default class DaEditor extends LitElement {
       <div class="da-prose-mirror da-version-preview">
         <div class="da-version-action-area">
           <button @click=${this.handleCancel}>Cancel</button>
+          <button @click=${this.handleSaveCopy}>Save as Copy</button>
           <button class="accent" @click=${this.handleRestore}>Restore</button>
         </div>
         <div class="ProseMirror">${this._versionDom}</div>
