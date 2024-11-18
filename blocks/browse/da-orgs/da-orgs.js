@@ -123,12 +123,14 @@ export default class DaOrgs extends LitElement {
               ` : nothing}
             </div>
           </a>
-          <button class="da-org-back" @click=${() => this.handleRemove(org)}>
-            <div class="new-icon">
-              <img src="/blocks/browse/da-orgs/img/Smock_VisibilityOff_18_N.svg" alt="Remove from recents list"/>
-            </div>
-            <p class="new-title">Remove</p>
-          </button>
+          <div class="da-org-back">
+            <button @click=${() => this.handleRemove(org)}>
+              <div class="new-icon">
+                <img src="/blocks/browse/da-orgs/img/Smock_VisibilityOff_18_N.svg" alt="Remove from recents list"/>
+              </div>
+              <p class="new-title">Remove</p>
+            </button>
+          </div>
           ${listType === 'recents' ? html`
             <button class="da-flip-btn" @click=${(e) => { this.handleFlip(e, org); }}></button>` : nothing}
         </div>

@@ -75,8 +75,6 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  align-content: center;
   background-color: rgb(250 250 250);
   position: absolute;
   width: 100%;
@@ -87,7 +85,19 @@ h1 {
   overflow: hidden;
   transform: rotateY(180deg);
   border: 2px solid;
+  box-sizing: border-box;
   box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+}
+
+.da-org-back button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-content: center;
+  border: none;
+  background: none;
+  font-size: 16px;
 }
 
 .da-flip-btn {
