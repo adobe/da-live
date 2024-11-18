@@ -55,6 +55,7 @@ export default class DaOrgs extends LitElement {
     if (!resp.ok) return;
     const data = await resp.json();
     this._orgs.push(...data.reduce((acc, org) => {
+      console.log(org);
       this.updateRecentOrg(org);
       const exists = this._orgs.some((mock) => mock.name === org.name);
       console.log(exists);
@@ -73,8 +74,12 @@ export default class DaOrgs extends LitElement {
 
   updateRecentOrg(org) {
     if (!this._recents) return;
-    const found = this._recents.find((recent) => recent.name === org.name);
+    const found = this._recents.find((recent) => {
+      console.log(recent);
+      return recent.name === org.name;
+    });
     if (found) found.created = org.created;
+    console.log(found);
     this.requestUpdate();
   }
 
@@ -120,7 +125,7 @@ export default class DaOrgs extends LitElement {
                   <div class="new-icon">
                     <img src="/blocks/browse/img/Smock_More_18_N.svg" alt="See all organizations"/>
                   </div>
-                  <p class="new-title">See all</p>
+                  <p class="new-title">See more</p>
                 </a>
               </li>` : nothing}
             <li>
@@ -138,8 +143,11 @@ export default class DaOrgs extends LitElement {
 
   render() {
     return html`
-      ${this._recents ? this.renderOrgs('Recent', this._recents) : nothing}
-      ${this._visibleOrgs ? this.renderOrgs('All', this._visibleOrgs, true) : nothing}
+      <img src="/blocks/browse/da-orgs/img/bg-gradient-org.jpg" class="da-org-bg" />
+      <div class="da-org-container">
+        ${this._recents ? this.renderOrgs('Recent', this._recents) : nothing}
+        ${this._visibleOrgs ? this.renderOrgs('Organizations', this._visibleOrgs, true) : nothing}
+      </div>
     `;
   }
 }
