@@ -1,7 +1,7 @@
-import { daFetch } from '../shared/utils.js';
-import { getNx } from '../../scripts/utils.js';
+import { daFetch } from '../../shared/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import { debouncedSaveSheets } from './utils.js';
-import './da-sheet-tabs.js';
+import '../da-sheet-tabs.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
@@ -70,6 +70,12 @@ export async function getData(url) {
   // Get base data
   const json = await resp.json();
 
+  if (!url.includes('/versionsource')) {
+    console.log('set panes');
+    // Set AEM-formatted JSON for real-time preview
+    document.querySelector('da-sheet-panes').data = json;
+  }
+
   // Single sheet
   if (json[':type'] === 'sheet') {
     sheets.push(getSheet(json, json[':sheetname'] || 'data'));
@@ -93,8 +99,8 @@ export async function getData(url) {
   return sheets;
 }
 
-export default async function init(el) {
-  const suppliedData = await getData(el.details.sourceUrl);
+export default async function init(el, data) {
+  const suppliedData = data || await getData(el.details.sourceUrl);
 
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');

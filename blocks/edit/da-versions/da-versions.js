@@ -146,7 +146,6 @@ export default class DaVersions extends LitElement {
   }
 
   render() {
-    if (!this._versions) return nothing;
     return html`
       <div class="da-versions-panel">
         <p class="da-versions-title">

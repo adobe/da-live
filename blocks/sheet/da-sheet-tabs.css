@@ -2,6 +2,7 @@
   display: flex;
   gap: var(--spacing-200);
   margin-bottom: var(--spacing-200);
+  flex-wrap: wrap;
 }
 
 svg {
@@ -81,6 +82,7 @@ button:hover .icon {
   border: 2px solid var(--s2-gray-800);
   border-radius: 6px;
   padding: 0 12px;
+  line-height: 28px;
 }
 
 .add-sheet:hover {

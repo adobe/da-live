@@ -171,7 +171,7 @@ const getSheetProps = (sheet) => {
   };
 };
 
-async function saveJson(fullPath, sheets, dataType = 'blob') {
+export function convertSheets(sheets) {
   const { publicSheets, privateSheets } = sheets.reduce((acc, sheet) => {
     if (sheet.name.startsWith('private-')) {
       acc.privateSheets[sheet.name] = getSheetProps(sheet);
@@ -200,6 +200,11 @@ async function saveJson(fullPath, sheets, dataType = 'blob') {
   if (privateNames.length > 0) {
     json[':private'] = privateSheets;
   }
+  return json;
+}
+
+async function saveJson(fullPath, sheets, dataType = 'blob') {
+  const json = convertSheets(sheets);
 
   const formData = new FormData();
 
