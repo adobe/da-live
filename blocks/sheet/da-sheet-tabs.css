@@ -15,6 +15,7 @@ ul {
   list-style: none;
   display: flex;
   gap: var(--spacing-200);
+  flex-wrap: wrap;
 }
 
 li {

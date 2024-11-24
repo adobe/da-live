@@ -61,6 +61,7 @@
 .da-version-entry {
   position: relative;
   margin-bottom: 48px;
+  cursor: pointer;
 }
 
 .da-version-entry.is-audit {
