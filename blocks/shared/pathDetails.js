@@ -73,7 +73,7 @@ function getFullDetails({ editor, pathParts, ext }) {
   const path = ext === 'html' && !fullPath.endsWith('html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
   // TODO: Fix this later
-  const tld = repo === 'da-bacom' ? '.aem.page' : '.hlx.page';
+  const tld = repo === 'da-bacom' ? '.aem.live' : '.hlx.live';
 
   return {
     owner: org,
