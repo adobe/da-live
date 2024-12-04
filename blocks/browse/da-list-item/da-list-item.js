@@ -260,7 +260,7 @@ export default class DaListItem extends LitElement {
         <button
           aria-label="Open"
           @click=${this.toggleExpand}
-          class="da-item-list-item-expand-btn ${this.ext ? 'is-visible' : ''}">
+          class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
         </button>
       </div>
       <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}">
