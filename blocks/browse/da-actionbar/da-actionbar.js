@@ -81,7 +81,7 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canShare() {
-    return this.items.some((item) => item.ext);
+    return this.items.some((item) => item.ext && item.ext !== 'link');
   }
 
   render() {
