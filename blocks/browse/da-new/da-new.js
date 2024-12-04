@@ -63,22 +63,17 @@ export default class DaNew extends LitElement {
         break;
       case 'link':
         ext = 'link';
-        const content = JSON.stringify({ externalPath: this._externalPath });
-        const blob = new Blob([content], { type: 'application/json' });
         formData = new FormData();
-        formData.append('data', blob);
+        formData.append(
+          'data',
+          new Blob([JSON.stringify({ externalPath: this._externalPath })], { type: 'application/json' }),
+        );
         break;
       default:
         break;
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
-    if(ext === 'link') {
-      const content = JSON.stringify({ externalPath: this._externalPath });
-      const blob = new Blob([content], { type: 'application/json' });
-      const formData = new FormData();
-      formData.append('file', blob, `${this._createName}.link`);
-    }
     const editPath = getEditPath({ path, ext });
     if (ext === 'html' || ext === 'json') {
       window.location = editPath;

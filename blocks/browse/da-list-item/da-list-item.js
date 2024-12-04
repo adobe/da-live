@@ -160,10 +160,10 @@ export default class DaListItem extends LitElement {
   }
 
   async openExternalPath(externalPathPromise) {
-    const externalPath = await externalPathPromise
-    if(!externalPath) {
+    const externalPath = await externalPathPromise;
+    if (!externalPath) {
       this.setStatus('Error opening an external link. Refresh and try again.', 'error');
-      return
+      return;
     }
     window.open(externalPath, '_blank');
   }
@@ -200,8 +200,8 @@ export default class DaListItem extends LitElement {
       path = nothing;
       target = nothing;
       externalPathPromise = fetch(`https://admin.da.live/source${this.path}`)
-        .then(response => response.json())
-        .then(data => data.externalPath)
+        .then((response) => response.json())
+        .then((data) => data.externalPath);
     }
     return html`
       <a href="${path}" class="da-item-list-item-title" target="${target}" @click="${this.ext === 'link' ? () => this.openExternalPath(externalPathPromise) : nothing}">
