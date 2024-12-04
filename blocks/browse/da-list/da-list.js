@@ -124,6 +124,10 @@ export default class DaList extends LitElement {
       if (continuationToken) formData.append('continuation-token', continuationToken);
       const opts = { method: 'POST', body: formData };
       const resp = await daFetch(`${DA_ORIGIN}/copy${item.path}`, opts);
+      if (resp.status === 204) {
+        continuation = false;
+        break;
+      }
       const json = await resp.json();
       ({ continuationToken } = json);
       if (!continuationToken) continuation = false;
@@ -183,6 +187,10 @@ export default class DaList extends LitElement {
       }
 
       const resp = await daFetch(`${DA_ORIGIN}/source${item.path}`, opts);
+      if (resp.status === 204) {
+        continuation = false;
+        break;
+      }
       const json = await resp.json();
       ({ continuationToken } = json);
       if (!continuationToken) continuation = false;
