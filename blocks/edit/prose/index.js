@@ -11,6 +11,9 @@ import {
   tableEditing,
   columnResizing,
   goToNextCell,
+  selectedRect,
+  isInTable,
+  addRowAfter,
   fixTables,
   liftListItem,
   sinkListItem,
@@ -223,6 +226,25 @@ export default function initProse({ editor, path }) {
     );
   }
 
+  const handleTableTab = (direction) => {
+    const isCursorInLastTableCell = (rect) => {
+      const { left, bottom } = rect;
+      const { height, width } = rect.map;
+      return left + 1 === width && bottom === height;
+    };
+
+    const gtnc = goToNextCell(direction);
+    return (state, dispatch) => {
+      if (!isInTable(state)) return false;
+      const rect = selectedRect(state);
+      if (isCursorInLastTableCell(rect)) {
+        addRowAfter(state, dispatch);
+        return gtnc(window.view.state, dispatch);
+      }
+      return gtnc(state, dispatch);
+    };
+  };
+
   let state = EditorState.create({
     schema,
     plugins: [
@@ -249,11 +271,13 @@ export default function initProse({ editor, path }) {
         'Mod-Shift-z': yRedo,
       }),
       keymap({
-        Tab: goToNextCell(1),
-        'Shift-Tab': goToNextCell(-1),
+        Tab: handleTableTab(1),
+        'Shift-Tab': handleTableTab(-1),
       }),
-      keymap({ 'Shift-Tab': liftListItem(schema.nodes.list_item) }),
-      keymap({ Tab: sinkListItem(schema.nodes.list_item) }),
+      keymap({
+        Tab: sinkListItem(schema.nodes.list_item),
+        'Shift-Tab': liftListItem(schema.nodes.list_item),
+      }),
       gapCursor(),
       history(),
     ],

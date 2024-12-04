@@ -14,6 +14,7 @@ import {
   tableEditing,
   columnResizing,
   goToNextCell,
+  selectedRect,
   tableNodes,
   fixTables,
   addColumnAfter,
@@ -25,6 +26,7 @@ import {
   mergeCells,
   splitCell,
   deleteTable,
+  isInTable,
 } from 'prosemirror-tables';
 
 // yjs
@@ -66,6 +68,8 @@ export {
   tableEditing,
   columnResizing,
   goToNextCell,
+  isInTable,
+  selectedRect,
   tableNodes,
   fixTables,
   addColumnAfter,
