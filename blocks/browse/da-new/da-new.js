@@ -15,6 +15,7 @@ export default class DaNew extends LitElement {
     _createFile: { attribute: false },
     _createName: { attribute: false },
     _fileLabel: { attribute: false },
+    _externalPath: { attribute: false },
   };
 
   connectedCallback() {
@@ -46,8 +47,13 @@ export default class DaNew extends LitElement {
     this._createName = e.target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   }
 
+  handlePathChange(e) {
+    this._externalPath = e.target.value;
+  }
+
   async handleSave() {
     let ext;
+    let formData;
     switch (this._createType) {
       case 'document':
         ext = 'html';
@@ -55,16 +61,29 @@ export default class DaNew extends LitElement {
       case 'sheet':
         ext = 'json';
         break;
+      case 'link':
+        ext = 'link';
+        const content = JSON.stringify({ externalPath: this._externalPath });
+        const blob = new Blob([content], { type: 'application/json' });
+        formData = new FormData();
+        formData.append('data', blob);
+        break;
       default:
         break;
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
+    if(ext === 'link') {
+      const content = JSON.stringify({ externalPath: this._externalPath });
+      const blob = new Blob([content], { type: 'application/json' });
+      const formData = new FormData();
+      formData.append('file', blob, `${this._createName}.link`);
+    }
     const editPath = getEditPath({ path, ext });
-    if (ext) {
+    if (ext === 'html' || ext === 'json') {
       window.location = editPath;
     } else {
-      await saveToDa({ path });
+      await saveToDa({ path, formData });
       const item = { name: this._createName, path };
       if (ext) item.ext = ext;
       this.sendNewItem(item);
@@ -109,6 +128,7 @@ export default class DaNew extends LitElement {
     this._createType = '';
     this._createFile = '';
     this._fileLabel = 'Select file';
+    this._externalPath = '';
   }
 
   render() {
@@ -128,9 +148,13 @@ export default class DaNew extends LitElement {
           <li class=da-actions-menu-item>
             <button data-type=media @click=${this.handleNewType}>Media</button>
           </li>
+          <li class=da-actions-menu-item>
+            <button data-type=link @click=${this.handleNewType}>Link</button>
+          </li>
         </ul>
         <div class="da-actions-input-container">
           <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
+          ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="path" @input=${this.handlePathChange} .value=${this._externalPath || ''} />` : ''}
           <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
           <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
         </div>
