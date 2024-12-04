@@ -1,0 +1,86 @@
+:host {
+  display: block;
+  width: 375px;
+  margin: 0 auto;
+  padding-left: 32px;
+  border: none;
+  position: relative;
+  font-family: var(--body-font-family);
+}
+
+.da-sheet-preview {
+  box-shadow: rgb(181 181 181) 0 0 20px 0;
+  border-radius: 12px;
+  height: 500px;
+  padding: var(--spacing-200);
+  overflow: scroll;
+  box-sizing: border-box;
+}
+
+.da-preview-menubar {
+  --editor-btn-bg-color: #EFEFEF;
+  --editor-btn-bg-color-hover: #e9e9e9;
+
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 12px;
+  padding: 6px 6px 0;
+  border-radius: 4px;
+  box-shadow: rgb(181 181 181) 0 0 5px 0;
+  background: rgb(255 255 255);
+  box-sizing: border-box;
+  grid-area: toolbar;
+  z-index: 1;
+}
+
+.da-preview-menuitem {
+  border: none;
+  display: block;
+  width: 44px;
+  height: 44px;
+  text-indent: -1000px;
+  overflow: hidden;
+  border-radius: 2px;
+  margin-bottom: 6px;
+  background: url(/blocks/edit/img/Smock_Close_18_N.svg) center center / 20px no-repeat var(--editor-btn-bg-color);
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.da-sheet-tab-key {
+  background-color: #e9e9e9;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+.da-sheet-key-value {
+  margin: 12px 0;
+  display: grid;
+  grid-template-columns: [column-1] auto [column-2] 1fr;
+}
+
+.da-sheet-key-value li {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin: 0 0 2px 6px;
+  grid-column: span 2;
+  display: grid;
+  grid-template-columns: subgrid;
+  gap: 12px;
+}
+
+.da-sheet-key {
+  font-weight: 700;
+  padding: 4px 0 4px 8px;
+}
+
+.da-sheet-value {
+  padding: 4px 8px 4px 0;
+}

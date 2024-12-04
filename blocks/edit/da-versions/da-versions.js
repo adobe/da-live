@@ -44,6 +44,10 @@ export default class DaVersions extends LitElement {
       label: entry.label,
       date: entry.timestamp,
     };
+    const entryEl = e.target.closest('.da-version-entry');
+    if (!entryEl.classList.contains('is-open')) {
+      entryEl.classList.toggle('is-open');
+    }
     const opts = { detail, bubbles: true, composed: true };
     const event = new CustomEvent('preview', opts);
     this.dispatchEvent(event);
@@ -150,7 +154,6 @@ export default class DaVersions extends LitElement {
   }
 
   render() {
-    if (!this._versions) return nothing;
     return html`
       <div class="da-versions-panel">
         <p class="da-versions-title">

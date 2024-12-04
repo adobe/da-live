@@ -124,6 +124,10 @@ export default class DaList extends LitElement {
       if (continuationToken) formData.append('continuation-token', continuationToken);
       const opts = { method: 'POST', body: formData };
       const resp = await daFetch(`${DA_ORIGIN}/copy${item.path}`, opts);
+      if (resp.status === 204) {
+        continuation = false;
+        break;
+      }
       const json = await resp.json();
       ({ continuationToken } = json);
       if (!continuationToken) continuation = false;
@@ -183,6 +187,10 @@ export default class DaList extends LitElement {
       }
 
       const resp = await daFetch(`${DA_ORIGIN}/source${item.path}`, opts);
+      if (resp.status === 204) {
+        continuation = false;
+        break;
+      }
       const json = await resp.json();
       ({ continuationToken } = json);
       if (!continuationToken) continuation = false;
@@ -244,9 +252,17 @@ export default class DaList extends LitElement {
   async drop(e) {
     e.preventDefault();
     const items = e.dataTransfer?.items;
-    if (!items) return;
+    if (!items) {
+      this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
+      return;
+    }
 
-    const entries = [...items].map((item) => item.webkitGetAsEntry());
+    const entries = [...items].map((item) => item.webkitGetAsEntry()).filter((x) => x);
+    if (!entries.length) {
+      this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
+      return;
+    }
+
     const makeBatches = (await import(`${getNx()}/utils/batch.js`)).default;
     const { getFullEntryList, handleUpload } = await import('./helpers/drag-n-drop.js');
     this._dropFiles = await getFullEntryList(entries);
