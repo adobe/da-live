@@ -43,7 +43,7 @@
   overflow: hidden;
   border-radius: 2px;
   margin-bottom: 6px;
-  background: url(/blocks/edit/img/Smock_Close_18_N.svg) center center / 20px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Close_18_N.svg') center center / 20px no-repeat var(--editor-btn-bg-color);
 }
 
 ul {

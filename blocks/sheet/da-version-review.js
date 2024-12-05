@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);

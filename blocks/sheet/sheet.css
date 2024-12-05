@@ -72,9 +72,15 @@ button.new-sheet {
 }
 
 /* jspreadsheets overwrites */
+/* stylelint-disable-next-line selector-class-pattern */
 .da-sheet-wrapper .jexcel_content {
   border: 1px solid #ccc;
   border-radius: 12px;
+  display: block;
+  padding-right: 0;
+  padding-bottom: 0;
+  overflow: scroll;
+  box-shadow: rgb(181 181 181) 0 10px 20px 0;
 }
 
 .da-sheet-wrapper .jexcel {
@@ -136,15 +142,6 @@ button.new-sheet {
 .da-sheet-wrapper .jexcel_container {
   display: block;
   padding-right: 0;
-}
-
-/* stylelint-disable-next-line selector-class-pattern */
-.da-sheet-wrapper .jexcel_content {
-  display: block;
-  padding-right: 0;
-  padding-bottom: 0;
-  overflow: scroll;
-  box-shadow: rgb(181 181 181) 0 10px 20px 0;
 }
 
 /* stylelint-disable-next-line selector-class-pattern */

@@ -390,7 +390,7 @@ class DaLibrary extends LitElement {
               @click=${(e) => this.handleLibSwitch(e, library)}>
               <span class="library-type-name">${library.name}</span>
             </button>
-          </li>`
+          </li>`,
         )}
       </ul>`;
   }
@@ -426,7 +426,7 @@ class DaLibrary extends LitElement {
             </div>
             ${until(this.renderLibrary(library), html`<span>Loading...</span>`)}
           </div>
-        `
+        `,
         )}
       </div>
     `;
