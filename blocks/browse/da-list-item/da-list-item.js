@@ -189,7 +189,7 @@ export default class DaListItem extends LitElement {
     let target = this.ext ? path : nothing;
     if (this.ext === 'link') {
       path = nothing;
-      externalUrlPromise = fetch(`https://admin.da.live/source${this.path}`)
+      externalUrlPromise = daFetch(`${DA_ORIGIN}/source${this.path}`)
         .then((response) => response.json())
         .then((data) => data.externalUrl);
       target = externalUrlPromise;
