@@ -48,6 +48,7 @@ module.exports = {
       2,
       {
         ignoredNodes: ['TemplateLiteral *'],
+        SwitchCase: 1,
       },
     ],
   },

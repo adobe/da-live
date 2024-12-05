@@ -91,14 +91,14 @@ class DaPalette extends LitElement {
 
   handleKeyDown(event) {
     switch (event.key) {
-    case 'Enter':
-      this.submit(event);
-      break;
-    case 'Escape':
-      this.close(event);
-      break;
-    default:
-      break;
+      case 'Enter':
+        this.submit(event);
+        break;
+      case 'Escape':
+        this.close(event);
+        break;
+      default:
+        break;
     }
   }
 

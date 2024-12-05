@@ -55,22 +55,22 @@ export default class DaNew extends LitElement {
     let ext;
     let formData;
     switch (this._createType) {
-    case 'document':
-      ext = 'html';
-      break;
-    case 'sheet':
-      ext = 'json';
-      break;
-    case 'link':
-      ext = 'link';
-      formData = new FormData();
-      formData.append(
-        'data',
-        new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
-      );
-      break;
-    default:
-      break;
+      case 'document':
+        ext = 'html';
+        break;
+      case 'sheet':
+        ext = 'json';
+        break;
+      case 'link':
+        ext = 'link';
+        formData = new FormData();
+        formData.append(
+          'data',
+          new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
+        );
+        break;
+      default:
+        break;
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
