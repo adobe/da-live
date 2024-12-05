@@ -121,3 +121,13 @@ export async function getLibraryList() {
 
   return libraries;
 }
+
+export function andMatch(inputStr, targetStr) {
+  const terms = inputStr.split(' ');
+  return terms.every((term) => targetStr.includes(term));
+}
+
+export function delay(ms) {
+  // eslint-disable-next-line no-promise-executor-return
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
