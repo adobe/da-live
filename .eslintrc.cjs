@@ -13,12 +13,15 @@ module.exports = {
     'no-param-reassign': [2, { props: false }],
     'linebreak-style': ['error', 'unix'],
     'import/extensions': ['error', { js: 'always' }],
-    'object-curly-newline': ['error', {
-      ObjectExpression: { multiline: true, minProperties: 6 },
-      ObjectPattern: { multiline: true, minProperties: 6 },
-      ImportDeclaration: { multiline: true, minProperties: 6 },
-      ExportDeclaration: { multiline: true, minProperties: 6 },
-    }],
+    'object-curly-newline': [
+      'error',
+      {
+        ObjectExpression: { multiline: true, minProperties: 6 },
+        ObjectPattern: { multiline: true, minProperties: 6 },
+        ImportDeclaration: { multiline: true, minProperties: 6 },
+        ExportDeclaration: { multiline: true, minProperties: 6 },
+      },
+    ],
     'no-await-in-loop': 0,
     'class-methods-use-this': 0,
     'no-return-assign': ['error', 'except-parens'],
@@ -40,6 +43,13 @@ module.exports = {
         message: '`with` is disallowed in strict mode because it makes code impossible to predict and optimize.',
       },
     ],
+    indent: [
+      'error',
+      2,
+      {
+        ignoredNodes: ['TemplateLiteral *'],
+      },
+    ],
   },
   overrides: [
     {
@@ -49,7 +59,5 @@ module.exports = {
       },
     },
   ],
-  plugins: [
-    'chai-friendly',
-  ],
+  plugins: ['chai-friendly'],
 };
