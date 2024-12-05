@@ -15,7 +15,7 @@ export default class DaNew extends LitElement {
     _createFile: { attribute: false },
     _createName: { attribute: false },
     _fileLabel: { attribute: false },
-    _externalPath: { attribute: false },
+    _externalUrl: { attribute: false },
   };
 
   connectedCallback() {
@@ -47,8 +47,8 @@ export default class DaNew extends LitElement {
     this._createName = e.target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   }
 
-  handlePathChange(e) {
-    this._externalPath = e.target.value;
+  handleUrlChange(e) {
+    this._externalUrl = e.target.value;
   }
 
   async handleSave() {
@@ -66,7 +66,7 @@ export default class DaNew extends LitElement {
         formData = new FormData();
         formData.append(
           'data',
-          new Blob([JSON.stringify({ externalPath: this._externalPath })], { type: 'application/json' }),
+          new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
         );
         break;
       default:
@@ -123,7 +123,7 @@ export default class DaNew extends LitElement {
     this._createType = '';
     this._createFile = '';
     this._fileLabel = 'Select file';
-    this._externalPath = '';
+    this._externalUrl = '';
   }
 
   render() {
@@ -149,7 +149,7 @@ export default class DaNew extends LitElement {
         </ul>
         <div class="da-actions-input-container">
           <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
-          ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="path" @input=${this.handlePathChange} .value=${this._externalPath || ''} />` : ''}
+          ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="url" @input=${this.handleUrlChange} .value=${this._externalUrl || ''} />` : ''}
           <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
           <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
         </div>

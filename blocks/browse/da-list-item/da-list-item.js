@@ -159,13 +159,13 @@ export default class DaListItem extends LitElement {
     }
   }
 
-  async openExternalPath(externalPathPromise) {
-    const externalPath = await externalPathPromise;
-    if (!externalPath) {
+  async openexternalUrl(externalUrlPromise) {
+    const externalUrl = await externalUrlPromise;
+    if (!externalUrl) {
       this.setStatus('Error opening an external link. Refresh and try again.', 'error');
       return;
     }
-    window.open(externalPath, '_blank');
+    window.open(externalUrl, '_blank');
   }
 
   renderDate() {
@@ -195,16 +195,16 @@ export default class DaListItem extends LitElement {
   renderItem() {
     let path = this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`;
     let target = this.ext ? '_blank' : nothing;
-    let externalPathPromise;
+    let externalUrlPromise;
     if (this.ext === 'link') {
       path = nothing;
       target = nothing;
-      externalPathPromise = fetch(`https://admin.da.live/source${this.path}`)
+      externalUrlPromise = fetch(`https://admin.da.live/source${this.path}`)
         .then((response) => response.json())
-        .then((data) => data.externalPath);
+        .then((data) => data.externalUrl);
     }
     return html`
-      <a href="${path}" class="da-item-list-item-title" target="${target}" @click="${this.ext === 'link' ? () => this.openExternalPath(externalPathPromise) : nothing}">
+      <a href="${path}" class="da-item-list-item-title" target="${target}" @click="${this.ext === 'link' ? () => this.openexternalUrl(externalUrlPromise) : nothing}">
         ${this._isRenaming ? html`
           <span class="da-item-list-item-type">
             <div class="icon rename-icon"></div>
