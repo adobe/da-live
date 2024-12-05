@@ -214,7 +214,7 @@ export default class DaListItem extends LitElement {
         `}
         </span>
         <div class="da-item-list-item-name">${this.name}</div>
-        <div class="da-item-list-item-date">${this.renderDate()}</div>
+        <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
   }
 
