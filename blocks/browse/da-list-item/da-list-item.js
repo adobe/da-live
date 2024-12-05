@@ -186,14 +186,16 @@ export default class DaListItem extends LitElement {
   renderItem() {
     let path = this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`;
     let externalUrlPromise;
+    let target = this.ext ? path : nothing;
     if (this.ext === 'link') {
       path = nothing;
       externalUrlPromise = fetch(`https://admin.da.live/source${this.path}`)
         .then((response) => response.json())
         .then((data) => data.externalUrl);
+      target = externalUrlPromise;
     }
     return html`
-      <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title" target="${this.ext ? '_blank' : nothing}">
+      <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title" target="${until(target)}">
         ${this._isRenaming ? html`
           <span class="da-item-list-item-type">
             <div class="icon rename-icon"></div>
