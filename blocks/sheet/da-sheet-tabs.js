@@ -15,6 +15,11 @@ const ICONS = [
   '/blocks/edit/img/Smock_Checkmark_18_N.svg',
 ];
 
+const setCustomValidity = (inputEl, msg = '') => {
+  inputEl.setCustomValidity(msg);
+  inputEl.reportValidity();
+};
+
 class DaSheetTabs extends LitElement {
   static properties = {
     _names: { attribute: false },
@@ -91,6 +96,8 @@ class DaSheetTabs extends LitElement {
       return;
     }
     if (e.submitter.value === 'cancel') {
+      const inputEl = e.target.querySelector('input');
+      setCustomValidity(inputEl, '');
       this._edit = null;
       return;
     }
@@ -104,10 +111,31 @@ class DaSheetTabs extends LitElement {
       return;
     }
     if (e.submitter.value === 'confirm') {
-      const entries = Object.fromEntries(new FormData(e.target));
-      this._names[idx] = entries.name;
-      this.jexcel[idx].name = entries.name;
-      this.hiddenTabs[idx].innerHTML = entries.name;
+      const name = Object.fromEntries(new FormData(e.target))?.name;
+      const inputEl = e.target.querySelector('input');
+      const cancelEl = e.target.querySelector('button[aria-label="Cancel"]');
+
+      const sheetNames = this.getNames();
+      sheetNames.splice(idx, 1); // remove current sheet
+
+      if (sheetNames.includes(name)) {
+        setCustomValidity(inputEl, 'Sheet name already exists');
+
+        inputEl.addEventListener('input', () => {
+          setCustomValidity(inputEl, '');
+        }, { once: true });
+
+        cancelEl.addEventListener('click', () => {
+          setCustomValidity(inputEl, '');
+          this._edit = null;
+        }, { once: true });
+
+        return;
+      }
+
+      this._names[idx] = name;
+      this.jexcel[idx].name = name;
+      this.hiddenTabs[idx].innerHTML = name;
       this._edit = null;
     }
   }
