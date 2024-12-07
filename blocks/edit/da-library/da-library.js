@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { DOMParser as proseDOMParser } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, TextSelection } from 'da-y-wrapper';
 import {
   LitElement,
   html,
@@ -69,11 +69,7 @@ class DaLibrary extends LitElement {
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._libraryList = await libraryListPromise;
     window.addEventListener('keydown', this.handleKeydown);
-    this.addEventListener('blur', () => {
-      if (window.view) {
-        window.view.focus();
-      }
-    });
+    this.addEventListener('blur', () => window.view?.focus());
     this.searchInputRef.value.focus();
   }
 
@@ -147,6 +143,10 @@ class DaLibrary extends LitElement {
       e.preventDefault();
       e.target.parentElement.nextElementSibling?.querySelector('button').focus();
     }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.target.parentElement.nextElementSibling?.querySelector('button').click();
+    }
   }
 
   handleSearchKeydown(e) {
@@ -173,8 +173,17 @@ class DaLibrary extends LitElement {
 
   handleItemClick(item) {
     const { tr } = window.view.state;
-    window.view.dispatch(tr.replaceSelectionWith(item.parsed).scrollIntoView());
-  }
+    const insertPos = tr.selection.from;
+
+    const newTr = tr.replaceSelectionWith(item.parsed);
+    const finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
+
+    window.view.dispatch(
+      newTr
+        .setSelection(TextSelection.create(newTr.doc, finalPos))
+        .scrollIntoView(),
+    );
+}
 
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
@@ -472,3 +481,4 @@ export default function toggleLibrary() {
   };
   window.addEventListener(CLOSE_DROPDOWNS_EVENT, closePaletteListener);
 }
+
