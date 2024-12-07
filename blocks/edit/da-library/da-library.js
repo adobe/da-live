@@ -69,6 +69,12 @@ class DaLibrary extends LitElement {
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._libraryList = await libraryListPromise;
     window.addEventListener('keydown', this.handleKeydown);
+    this.addEventListener('blur', () => {
+      if (window.view) {
+        window.view.focus();
+      }
+    });
+    this.searchInputRef.value.focus();
   }
 
   disconnectedCallback() {
@@ -232,9 +238,10 @@ class DaLibrary extends LitElement {
   }
 
   async renderBlockDetail(path) {
-    if (!data.blockDetailItems.has(path)) {
+    // DEBUG
+    // if (!data.blockDetailItems.has(path)) {
       data.blockDetailItems.set(path, await getBlockVariants(path));
-    }
+    // }
     const items = data.blockDetailItems.get(path);
     return html`${items.map((item) => this.renderBlockItem(item))}`;
   }

@@ -37,6 +37,7 @@ import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
+import toggleLibrary from '../da-library/da-library.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
 
@@ -45,6 +46,8 @@ const DA_ORIGIN = getDaAdmin();
 let pollerSetUp = false;
 let sendUpdates = false;
 let hasChanged = 0;
+let lastCursorPosition = null;
+
 function dispatchTransaction(transaction) {
   if (!window.view) return;
 
@@ -179,6 +182,19 @@ export function getEnterInputRulesPlugin() {
   return irsplugin;
 }
 
+function storeCursorPosition(view) {
+  const { from, to } = view.state.selection;
+  lastCursorPosition = { from, to };
+}
+
+function restoreCursorPosition(view) {
+  if (lastCursorPosition) {
+    const { from, to } = lastCursorPosition;
+    const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
+    view.dispatch(tr);
+  }
+}
+
 export default function initProse({ editor, path }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
@@ -269,6 +285,7 @@ export default function initProse({ editor, path }) {
         'Mod-z': yUndo,
         'Mod-y': yRedo,
         'Mod-Shift-z': yRedo,
+        'Mod-Shift-l': toggleLibrary,
       }),
       keymap({
         Tab: handleTableTab(1),
@@ -297,6 +314,16 @@ export default function initProse({ editor, path }) {
       loc_deleted(node, view, getPos) {
         const LocDeletedView = getLocClass('da-loc-deleted', getSchema, dispatchTransaction, { isLangstore: true });
         return new LocDeletedView(node, view, getPos);
+      },
+    },
+    handleDOMEvents: {
+      blur: (view) => {
+        storeCursorPosition(view);
+        return false;
+      },
+      focus: (view) => {
+        restoreCursorPosition(view);
+        return false;
       },
     },
   });
