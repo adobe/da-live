@@ -171,19 +171,25 @@ class DaLibrary extends LitElement {
     target.closest('li').classList.toggle('is-open');
   }
 
-  handleItemClick(item) {
+  handleItemClick(item, insertParagraphAfter = false) {
     const { tr } = window.view.state;
     const insertPos = tr.selection.from;
 
-    const newTr = tr.replaceSelectionWith(item.parsed);
-    const finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
+    let newTr = tr.replaceSelectionWith(item.parsed);
+    let finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
+
+    if (insertParagraphAfter) {
+      const paragraph = window.view.state.schema.nodes.paragraph.create();
+      newTr = newTr.insert(finalPos, paragraph);
+      finalPos = finalPos + 1;
+    }
 
     window.view.dispatch(
       newTr
         .setSelection(TextSelection.create(newTr.doc, finalPos))
         .scrollIntoView(),
     );
-}
+  }
 
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
@@ -236,7 +242,7 @@ class DaLibrary extends LitElement {
   renderBlockItem(item, icon = false) {
     return html`
       <li class="da-library-type-group-detail-item" tabindex="1">
-        <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item)}>
+        <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item, true)}>
           <div>
             <span class="da-library-group-name">${item.name}</span>
             <span class="da-library-group-subtitle">${item.variants}</span>
