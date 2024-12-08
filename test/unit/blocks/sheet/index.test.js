@@ -5,7 +5,7 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/bheuaark/', { hostname: 'localhost' });
 
-const sh = await import('../../../../blocks/sheet/index.js');
+const sh = await import('../../../../blocks/sheet/utils/index.js');
 
 describe('Sheets', () => {
   it('Test single sheet getData', async () => {

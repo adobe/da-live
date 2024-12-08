@@ -70,10 +70,11 @@ export async function getData(url) {
   // Get base data
   const json = await resp.json();
 
-  if (!url.includes('/versionsource')) {
+  const sheetPanes = document.querySelector('da-sheet-panes');
+  if (sheetPanes && !url.includes('/versionsource')) {
     console.log('set panes');
     // Set AEM-formatted JSON for real-time preview
-    document.querySelector('da-sheet-panes').data = json;
+    sheetPanes.data = json;
   }
 
   // Single sheet
