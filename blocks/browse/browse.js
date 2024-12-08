@@ -13,7 +13,7 @@ function setRecentOrg(details) {
   const foundIdx = currentOrgs.indexOf(details.owner);
   if (foundIdx === 0) return;
   if (foundIdx !== -1) currentOrgs.splice(foundIdx, 1);
-  localStorage.setItem('da-orgs', JSON.stringify([details.owner, ...currentOrgs]));
+  localStorage.setItem('da-orgs', JSON.stringify([details.owner, ...currentOrgs].slice(0, 4)));
 }
 
 async function setupExperience(el, e) {
