@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html, nothing, until } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, aemPreview } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
@@ -184,8 +184,18 @@ export default class DaListItem extends LitElement {
   }
 
   renderItem() {
+    let path = this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`;
+    let externalUrlPromise;
+    let target = this.ext ? path : nothing;
+    if (this.ext === 'link') {
+      path = nothing;
+      externalUrlPromise = daFetch(`${DA_ORIGIN}/source${this.path}`)
+        .then((response) => response.json())
+        .then((data) => data.externalUrl);
+      target = externalUrlPromise;
+    }
     return html`
-      <a href="${this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`}" class="da-item-list-item-title" target="${this.ext ? '_blank' : nothing}">
+      <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title" target="${until(target)}">
         ${this._isRenaming ? html`
           <span class="da-item-list-item-type">
             <div class="icon rename-icon"></div>
@@ -195,7 +205,7 @@ export default class DaListItem extends LitElement {
         `}
         </span>
         <div class="da-item-list-item-name">${this.name}</div>
-        <div class="da-item-list-item-date">${this.renderDate()}</div>
+        <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
   }
 
@@ -241,7 +251,7 @@ export default class DaListItem extends LitElement {
         <button
           aria-label="Open"
           @click=${this.toggleExpand}
-          class="da-item-list-item-expand-btn ${this.ext ? 'is-visible' : ''}">
+          class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
         </button>
       </div>
       <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}">

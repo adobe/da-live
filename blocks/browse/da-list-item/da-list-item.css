@@ -69,6 +69,10 @@ button {
   background: url('/blocks/browse/img/Smock_FileHTML_18_N.svg') center / cover no-repeat;
 }
 
+.da-item-list-item-icon-link {
+  background: url('/blocks/browse/img/Smock_LinkOut_18_N.svg') center / cover no-repeat;
+}
+
 .da-item-list-item-icon-jpg,
 .da-item-list-item-icon-jpeg,
 .da-item-list-item-icon-png,

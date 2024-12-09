@@ -15,6 +15,7 @@ export default class DaNew extends LitElement {
     _createFile: { attribute: false },
     _createName: { attribute: false },
     _fileLabel: { attribute: false },
+    _externalUrl: { attribute: false },
   };
 
   connectedCallback() {
@@ -46,8 +47,13 @@ export default class DaNew extends LitElement {
     this._createName = e.target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   }
 
+  handleUrlChange(e) {
+    this._externalUrl = e.target.value;
+  }
+
   async handleSave() {
     let ext;
+    let formData;
     switch (this._createType) {
       case 'document':
         ext = 'html';
@@ -55,16 +61,24 @@ export default class DaNew extends LitElement {
       case 'sheet':
         ext = 'json';
         break;
+      case 'link':
+        ext = 'link';
+        formData = new FormData();
+        formData.append(
+          'data',
+          new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
+        );
+        break;
       default:
         break;
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
     const editPath = getEditPath({ path, ext });
-    if (ext) {
+    if (ext && ext !== 'link') {
       window.location = editPath;
     } else {
-      await saveToDa({ path });
+      await saveToDa({ path, formData });
       const item = { name: this._createName, path };
       if (ext) item.ext = ext;
       this.sendNewItem(item);
@@ -109,6 +123,7 @@ export default class DaNew extends LitElement {
     this._createType = '';
     this._createFile = '';
     this._fileLabel = 'Select file';
+    this._externalUrl = '';
   }
 
   render() {
@@ -128,9 +143,13 @@ export default class DaNew extends LitElement {
           <li class=da-actions-menu-item>
             <button data-type=media @click=${this.handleNewType}>Media</button>
           </li>
+          <li class=da-actions-menu-item>
+            <button data-type=link @click=${this.handleNewType}>Link</button>
+          </li>
         </ul>
         <div class="da-actions-input-container">
           <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
+          ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="url" @input=${this.handleUrlChange} .value=${this._externalUrl || ''} />` : ''}
           <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
           <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
         </div>
