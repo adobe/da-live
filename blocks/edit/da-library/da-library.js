@@ -502,4 +502,3 @@ export default function toggleLibrary() {
   };
   window.addEventListener(CLOSE_DROPDOWNS_EVENT, closePaletteListener);
 }
-
