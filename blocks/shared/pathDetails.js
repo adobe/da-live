@@ -40,8 +40,12 @@ function getRepoDetails({ editor, pathParts, ext }) {
   let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
+  console.log(repo);
+
   // TODO: Fix this later
   const tld = repo === 'da-bacom' || repo === 'da-help' ? '.aem.page' : '.hlx.page';
+
+  console.log(tld);
 
   return {
     owner: org,
@@ -73,7 +77,7 @@ function getFullDetails({ editor, pathParts, ext }) {
   const path = ext === 'html' && !fullPath.endsWith('html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
   // TODO: Fix this later
-  const tld = repo === 'da-bacom' ? '.aem.live' : '.hlx.live';
+  const tld = repo === 'da-bacom' || repo === 'da-help' ? '.aem.live' : '.hlx.live';
 
   return {
     owner: org,
