@@ -12,6 +12,8 @@ export default class DaContent extends LitElement {
     details: { attribute: false },
     _sourceUrl: { state: true },
     _versionUrl: { state: true },
+    _versionLabel: { state: true },
+    _versionDate: { state: true },
   };
 
   connectedCallback() {
@@ -37,6 +39,8 @@ export default class DaContent extends LitElement {
 
   handlePreview(e) {
     this._versionUrl = e.detail.url;
+    this._versionLabel = e.detail.label;
+    this._versionDate = e.detail.date;
   }
 
   handleCloseVersions() {
@@ -52,7 +56,7 @@ export default class DaContent extends LitElement {
   render() {
     return html`
       <div class="editor-wrapper">
-        <da-editor path="${this._sourceUrl}" version="${this._versionUrl}" @versionreset=${this.handleReset}></da-editor>
+        <da-editor path="${this._sourceUrl}" version="${this._versionUrl}" versionLabel="${this._versionLabel}" versionDate="${this._versionDate}" @versionreset=${this.handleReset}></da-editor>
         <div class="da-editor-tabs">
           <div class="da-editor-tabs-full">
             <button class="da-editor-tab show-preview" title="Preview" @click=${this.showPreview}>Preview</button>
