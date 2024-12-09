@@ -21,9 +21,11 @@ function finishSetup(el, data) {
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
     sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    sheet.options.onafterchanges = () => {
-      debouncedSaveSheets(el.jexcel);
-    };
+    if (el.details.view !== 'config') {
+      sheet.options.onafterchanges = () => {
+        debouncedSaveSheets(el.jexcel);
+      };
+    }
   });
 
   // Setup tabs
