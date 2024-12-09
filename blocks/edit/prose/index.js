@@ -27,6 +27,7 @@ import {
   yUndoPlugin,
   yUndo,
   yRedo,
+  Plugin,
 } from 'da-y-wrapper';
 
 // DA
@@ -245,6 +246,42 @@ export default function initProse({ editor, path }) {
     };
   };
 
+  function overrideTablePasteHandler() {
+    // For some reason, when using the default table paste handler, the slice has a size of 0
+    // Here we parse the HTML content directly and create a new slice from it,
+    // then pass it to the tables plugin's paste handler
+    return new Plugin({
+      props: {
+        handlePaste: (view, event) => {
+          if (!isInTable(view.state)) {
+            return false;
+          }
+
+          if (event.clipboardData) {
+            const html = event.clipboardData.getData('text/html');
+            if (!html) return false;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+
+            const newSlice = DOMParser.fromSchema(schema).parseSlice(tempDiv);
+
+            if (newSlice.content.size > 0) {
+              // Find specifically the prosemirror-tables plugin whose key is 'selectingCells'
+              const tablesPlugin = view.state.plugins.find((p) => p.key.startsWith('selectingCells'));
+              if (tablesPlugin?.spec.props.handlePaste) {
+                // Call the tables plugin's paste handler with our parsed slice
+                return tablesPlugin?.spec.props.handlePaste(view, event, newSlice);
+              }
+            }
+          }
+
+          return false;
+        },
+      },
+    });
+  }
+
   let state = EditorState.create({
     schema,
     plugins: [
@@ -261,6 +298,7 @@ export default function initProse({ editor, path }) {
       sectionPasteHandler(schema),
       base64Uploader(schema),
       columnResizing(),
+      overrideTablePasteHandler(schema),
       tableEditing(),
       getEnterInputRulesPlugin(),
       keymap(buildKeymap(schema)),
