@@ -38,6 +38,11 @@ function closeLibrary() {
   return false;
 }
 
+function scrollToSelection() {
+  const { node } = window.view.domAtPos(window.view.state.selection.anchor);
+  node?.scrollIntoView?.();
+}
+
 // Cache fetched library data
 const libraryListPromise = delay(500).then(() => getLibraryList());
 const data = {
@@ -146,6 +151,7 @@ class DaLibrary extends LitElement {
     if (e.key === 'Enter') {
       e.preventDefault();
       e.target.parentElement.nextElementSibling?.querySelector('button').click();
+      this.searchInputRef.value.select();
     }
   }
 
@@ -164,6 +170,10 @@ class DaLibrary extends LitElement {
         this.searchInputRef.value.focus();
       }
     }
+    if (e.key === 'Enter') {
+      // Allow default and then select the input
+      setTimeout(() => this.searchInputRef.value.select(), 1);
+    }
   }
 
   handleGroupOpen(e) {
@@ -175,20 +185,26 @@ class DaLibrary extends LitElement {
     const { tr } = window.view.state;
     const insertPos = tr.selection.from;
 
-    let newTr = tr.replaceSelectionWith(item.parsed);
-    let finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
+    let newTr;
 
     if (insertParagraphAfter) {
       const paragraph = window.view.state.schema.nodes.paragraph.create();
-      newTr = newTr.insert(finalPos, paragraph);
-      finalPos = finalPos + 1;
+        newTr = tr.insert(insertPos, paragraph);
     }
+
+    newTr = (newTr || tr).replaceSelectionWith(item.parsed);
+    const finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
 
     window.view.dispatch(
       newTr
         .setSelection(TextSelection.create(newTr.doc, finalPos))
         .scrollIntoView(),
     );
+
+    if (finalPos === newTr.doc.content.size - 1) {
+      // only scroll down if we're at the end of the document
+      scrollToSelection();
+    }
   }
 
   async handleTemplateClick(item) {
@@ -253,10 +269,9 @@ class DaLibrary extends LitElement {
   }
 
   async renderBlockDetail(path) {
-    // DEBUG
-    // if (!data.blockDetailItems.has(path)) {
+    if (!data.blockDetailItems.has(path)) {
       data.blockDetailItems.set(path, await getBlockVariants(path));
-    // }
+    }
     const items = data.blockDetailItems.get(path);
     return html`${items.map((item) => this.renderBlockItem(item))}`;
   }
