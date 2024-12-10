@@ -1,5 +1,5 @@
 import { daFetch } from '../../../shared/utils.js';
-import { parseDom } from './helpers.js';
+import { getMetadata, parseDom } from './helpers.js';
 
 const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 
@@ -123,7 +123,9 @@ function groupBlocks(blocks) {
       state.currentGroup = null;
     } else if (state.currentGroup) {
       state.currentGroup.blockGroup.appendChild(block.cloneNode(true));
-    } else if (block.nodeName === 'DIV' && !block.dataset.issection) {
+    } else if (block.nodeName === 'DIV'
+      && !block.dataset.issection
+      && !block.classList.contains('library-metadata')) {
       state.blocks.push(block);
     }
     return state;
@@ -141,6 +143,12 @@ function transformBlock(block) {
     : getBlockTableHtml(block);
 
   item.parsed = parseDom(dom);
+
+  if (block.nextElementSibling?.classList.contains('library-metadata')) {
+    const md = getMetadata(block.nextElementSibling);
+    item.tags = md?.searchtags?.text || '';
+  }
+
   return item;
 }
 
@@ -151,8 +159,6 @@ export async function getBlockVariants(path) {
   const doc = await fetchAndParseHtml(path, isAemHosted);
   if (!doc) return [];
 
-  // TODO: Metadata search
-  doc.body.querySelectorAll('.library-metadata').forEach((block) => block.remove());
   decorateImages(doc.body, path);
 
   const blocks = getSectionsAndBlocks(doc);
