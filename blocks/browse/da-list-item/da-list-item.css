@@ -34,6 +34,14 @@ button {
   grid-template-columns: auto 1fr auto;
 }
 
+.da-item-list-item-inner.deleted .da-item-list-item-title {
+  color: lightslategrey;
+}
+
+.da-item-list-item-inner.deleted .da-item-list-item-name::after {
+  content: ' (deleted)';
+}
+
 .da-item-list-item-title,
 .da-item-list-item-rename {
   grid-template-columns: auto 1fr auto;
@@ -108,7 +116,7 @@ button {
   background: no-repeat center / 18px url('/blocks/edit/img/Smock_Checkmark_18_N.svg');
 }
 
-@keyframes spin { 
+@keyframes spin {
   100% {
     transform:rotate(360deg);
   }
@@ -291,10 +299,10 @@ input[type="checkbox"] {
   margin-bottom: 3px;
 }
 
-@keyframes spin { 
-  100% { 
-    transform:rotate(90deg); 
-  } 
+@keyframes spin {
+  100% {
+    transform:rotate(90deg);
+  }
 }
 
 @media (width >= 600px) {

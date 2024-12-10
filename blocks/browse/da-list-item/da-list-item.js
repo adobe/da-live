@@ -18,6 +18,7 @@ export default class DaListItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
+    isDeleted: { attribute: 'isdeleted', type: Boolean },
     _isRenaming: { type: Boolean },
     _isExpanded: { type: Boolean, state: true },
     _preview: { state: true },
@@ -233,6 +234,50 @@ export default class DaListItem extends LitElement {
     `;
   }
 
+  renderDeletedDetailsPanel() {
+    return html`
+      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}">
+        ${this.renderDaDetails()}
+        <div></div>
+        <button class="da-actions-putback-button">Put Back</button>
+      </div>
+    `;
+  }
+
+  renderDaDetailsPanel() {
+    if (this.isDeleted) return this.renderDeletedDetailsPanel();
+
+    return html`
+      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}">
+      ${this.renderDaDetails()}
+      <a
+        href=${this._preview?.url}
+        target="_blank"
+        aria-label="Open preview"
+        @click=${this.showPreview}
+        class="da-item-list-item-aem-btn">
+        <div class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"></div>
+        <div class="da-aem-icon-details">
+          <p class="da-list-item-details-title">Previewed</p>
+          <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
+        </div>
+      </a>
+      <a
+        href=${this._live?.url}
+        target="_blank"
+        aria-label="Open preview"
+        @click=${this.showPreview}
+        class="da-item-list-item-aem-btn">
+        <div class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"></div>
+        <div class="da-aem-icon-details">
+          <p class="da-list-item-details-title">Published</p>
+          <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
+        </div>
+      </a>
+    </div>
+    `;
+  }
+
   renderAemDate(env) {
     if (!this[env]) {
       return 'Checking';
@@ -245,7 +290,7 @@ export default class DaListItem extends LitElement {
 
   render() {
     return html`
-      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}">
+      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''} ${this.isDeleted ? 'deleted' : ''}">
         ${this.allowselect ? this.renderCheckBox() : nothing}
         ${this.rename ? this.renderRename() : this.renderItem()}
         <button
@@ -254,33 +299,7 @@ export default class DaListItem extends LitElement {
           class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
         </button>
       </div>
-      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}">
-        ${this.renderDaDetails()}
-        <a
-          href=${this._preview?.url}
-          target="_blank"
-          aria-label="Open preview"
-          @click=${this.showPreview}
-          class="da-item-list-item-aem-btn">
-          <div class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"></div>
-          <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">Previewed</p>
-            <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
-          </div>
-        </a>
-        <a
-          href=${this._live?.url}
-          target="_blank"
-          aria-label="Open preview"
-          @click=${this.showPreview}
-          class="da-item-list-item-aem-btn">
-          <div class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"></div>
-          <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">Published</p>
-            <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
-          </div>
-        </a>
-      </div>
+      ${this.renderDaDetailsPanel()}
     `;
   }
 }

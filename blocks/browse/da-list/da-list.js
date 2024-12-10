@@ -68,10 +68,60 @@ export default class DaList extends LitElement {
     this._status = { type, text, description };
   }
 
+  getDeletedStoragePath() {
+    const repoIdx = this.fullpath.indexOf('/', 1);
+    const repo = this.fullpath.substring(0, repoIdx);
+    const filePath = this.fullpath.substring(repoIdx);
+    return `${repo}/.da-deleted${filePath}`;
+  }
+
+  async getDeletedItems() {
+    const deletedPath = this.getDeletedStoragePath();
+    const resp = await daFetch(`${DA_ORIGIN}/list${deletedPath}`);
+    if (!resp.ok) {
+      // eslint-disable-next-line no-console
+      console.log('No deleted items found for', this.baseURI);
+      return [];
+    }
+
+    const json = await resp.json();
+
+    const deletedItems = [];
+    for (const item of json) {
+      const detailResp = await daFetch(`${DA_ORIGIN}/list${item.path}`);
+      if (detailResp.ok) {
+        const detailJson = await detailResp.json();
+        for (const detailItem of detailJson) {
+          deletedItems.push({
+            name: item.name.split('.')[0],
+            ext: detailItem.ext,
+            path: detailItem.path,
+            lastModified: detailItem.lastModified,
+            deleted: true,
+          });
+        }
+      }
+    }
+    return deletedItems;
+  }
+
+  showDeletedItems() {
+    // TODO replace with a real way to select that deleted items should be displayed
+    return new URL(this.baseURI).searchParams.get('showdel') === 'true';
+  }
+
   async getList() {
     const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
     if (!resp.ok) return null;
-    return resp.json();
+    const listJson = await resp.json();
+
+    if (!this.showDeletedItems()) {
+      return listJson;
+    }
+
+    console.log('Showing Deleted items!!!');
+    const deletedItems = await this.getDeletedItems();
+    return listJson.concat(deletedItems);
   }
 
   handleNewItem() {
@@ -357,6 +407,7 @@ export default class DaList extends LitElement {
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           allowselect="${this.select ? true : nothing}"
           ischecked="${item.isChecked ? true : nothing}"
+          isdeleted="${item.deleted ? true : nothing}"
           rename="${item.rename ? true : nothing}"
           name="${item.name}"
           path="${item.path}"
