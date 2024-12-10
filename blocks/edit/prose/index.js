@@ -34,6 +34,7 @@ import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
+import loremPlugin from './plugins/loremIpsumGenerator.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
@@ -258,6 +259,7 @@ export default function initProse({ editor, path }) {
       menu,
       imageDrop(schema),
       linkConverter(schema),
+      loremPlugin(),
       sectionPasteHandler(schema),
       base64Uploader(schema),
       columnResizing(),
