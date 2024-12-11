@@ -1,9 +1,9 @@
 // ProseMirror
 import { EditorView } from 'prosemirror-view';
-import { EditorState, Plugin, TextSelection } from 'prosemirror-state';
+import { EditorState, Plugin, PluginKey, TextSelection } from 'prosemirror-state';
 import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
-import { baseKeymap, setBlockType, toggleMark } from 'prosemirror-commands';
+import { baseKeymap, setBlockType, toggleMark, wrapIn } from 'prosemirror-commands';
 import { history, undo, redo } from 'prosemirror-history';
 import { addListNodes, wrapInList, splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import { keymap } from 'prosemirror-keymap';
@@ -58,6 +58,7 @@ export {
   Schema,
   Slice,
   Plugin,
+  PluginKey,
   TextSelection,
   baseSchema,
   baseKeymap,
@@ -87,6 +88,7 @@ export {
   renderGrouped,
   blockTypeItem,
   wrapItem,
+  wrapIn,
   setBlockType,
   toggleMark,
   wrapInList,

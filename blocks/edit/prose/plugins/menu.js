@@ -337,7 +337,7 @@ function codeBlockItem(codeBlockNode) {
   });
 }
 
-function blockquoteItem(codeBlockNode) {
+export function blockquoteItem(codeBlockNode) {
   return wrapItem(codeBlockNode, {
     title: 'Change to blockquote',
     label: 'Blockquote',
@@ -499,6 +499,13 @@ function getListMenu(nodes) {
   ];
 }
 
+export function insertSectionBreak(state, dispatch) {
+  const div = document.createElement('div');
+  div.append(document.createElement('hr'), document.createElement('p'));
+  const newNodes = DOMParser.fromSchema(state.schema).parse(div);
+  dispatch(state.tr.replaceSelectionWith(newNodes));
+}
+
 function getMenu(view) {
   const menu = document.createElement('div');
   menu.className = 'ProseMirror-menubar';
@@ -555,12 +562,7 @@ function getMenu(view) {
       title: 'Insert section break',
       label: 'HR',
       enable(state) { return canInsert(state, nodes.horizontal_rule); },
-      run(state, dispatch) {
-        const div = document.createElement('div');
-        div.append(document.createElement('hr'), document.createElement('p'));
-        const newNodes = DOMParser.fromSchema(state.schema).parse(div);
-        dispatch(state.tr.replaceSelectionWith(newNodes));
-      },
+      run: insertSectionBreak,
       class: 'edit-hr',
     }),
   ];
