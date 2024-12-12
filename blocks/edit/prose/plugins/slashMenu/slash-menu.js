@@ -1,7 +1,8 @@
+/* eslint-disable max-len */
 import { LitElement, html } from 'da-lit';
-import getSheet from '../../../shared/sheet.js';
+import getSheet from '../../../../shared/sheet.js';
 
-const sheet = await getSheet('/blocks/edit/prose/plugins/slash-menu.css');
+const sheet = await getSheet('/blocks/edit/prose/plugins/slashMenu/slash-menu.css');
 
 export default class SlashMenu extends LitElement {
   static properties = {
@@ -82,6 +83,7 @@ export default class SlashMenu extends LitElement {
 
   handleItemClick(item) {
     this.dispatchEvent(new CustomEvent('item-selected', { detail: { item } }));
+    this.hide();
   }
 
   handleKeyDown(event) {
@@ -111,7 +113,8 @@ export default class SlashMenu extends LitElement {
       case 'Enter': {
         event.preventDefault();
         if (filteredItems[this.selectedIndex]) {
-          this.handleItemClick(filteredItems[this.selectedIndex]);
+          const selectedItem = filteredItems[this.selectedIndex];
+          this.handleItemClick({ ...selectedItem });
         }
         this.requestUpdate();
         break;
@@ -137,13 +140,19 @@ export default class SlashMenu extends LitElement {
   }
 
   getFilteredItems() {
-    return this.items.filter(item => item.title.toLowerCase().includes(this.inputText.toLowerCase()));
+    return this.items.filter(
+      (item) => {
+        const inputText = item.argument
+          ? this.inputText.toLowerCase().trim()
+          : this.inputText.toLowerCase();
+        return item.title.toLowerCase().includes(inputText);
+      },
+    );
   }
 
   render() {
     const filteredItems = this.getFilteredItems();
 
-    // Hide the menu if there are no matching items
     if (!filteredItems.length) {
       this.hide();
       return '';
@@ -157,7 +166,12 @@ export default class SlashMenu extends LitElement {
             @click=${() => this.handleItemClick(item)}
           >
             <span class="slash-menu-icon ${item.class || ''}"></span>
-            <span class="slash-menu-label">${item.title}</span>
+            <span class="slash-menu-label">
+              ${item.title}
+              ${item.argument && index === this.selectedIndex
+                ? html`<span class="argument">[${item.argument}]</span>`
+                : ''}
+            </span>
           </div>
         `)}
       </div>

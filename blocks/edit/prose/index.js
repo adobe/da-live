@@ -34,13 +34,12 @@ import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
-import loremPlugin from './plugins/loremIpsumGenerator.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
-import slashMenu from './plugins/slashMenu.js';
+import slashMenu from './plugins/slashMenu/slashMenu.js';
 
 const DA_ORIGIN = getDaAdmin();
 
@@ -247,9 +246,6 @@ export default function initProse({ editor, path }) {
     };
   };
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const enableSlashMenu = urlParams.has('slashmenu');
-
   const plugins = [
     ySyncPlugin(yXmlFragment, {
       onFirstRender: () => {
@@ -259,7 +255,7 @@ export default function initProse({ editor, path }) {
     yCursorPlugin(wsProvider.awareness),
     yUndoPlugin(),
     menu,
-    ...(enableSlashMenu ? [slashMenu()] : []),
+    slashMenu(),
     imageDrop(schema),
     linkConverter(schema),
     sectionPasteHandler(schema),
