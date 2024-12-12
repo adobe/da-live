@@ -69,14 +69,12 @@ class SlashMenuView {
       const deleteTo = $cursor.pos;
       const tr = state.tr.delete(deleteFrom, deleteTo);
 
-      // Create a new state after deletion
       const newState = state.apply(tr);
 
       // Split the match to get command and argument
       const [, ...args] = match[1].trim().split(/\s+/);
-      const argument = args.length > 0 ? args.join(' ') : null;
+      const argument = args.length > 0 ? args.join(' ') : undefined;
 
-      // Execute the command with any provided arguments
       dispatch(tr);
       item.command(newState, dispatch, argument);
     } else {
