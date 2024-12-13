@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { getEnterInputRulesPlugin, getDashesInputRule } from '../../../../blocks/edit/prose/plugins/keyHandlers.js';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from edit/prose/index.js
@@ -108,7 +109,7 @@ describe('Prose collab', () => {
       return true;
     };
 
-    const plugin = pi.getEnterInputRulesPlugin();
+    const plugin = getEnterInputRulesPlugin(pi.dispatchTransaction);
     plugin.props.handleTextInput = hti;
 
     const hkdFunc = plugin.props.handleKeyDown;
@@ -124,7 +125,7 @@ describe('Prose collab', () => {
   });
 
   it('Test Dashes InputRule', () => {
-    const dir = pi.getDashesInputRule();
+    const dir = getDashesInputRule(pi.dispatchTransaction);
     const { match } = dir;
     expect(match.toString()).to.equal('/^---[\\n]$/');
   });
