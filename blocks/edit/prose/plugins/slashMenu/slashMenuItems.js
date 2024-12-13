@@ -22,17 +22,17 @@ const wrapInCodeBlock = (state, dispatch) => {
 
 const items = [
   {
-    title: 'Heading-1',
+    title: 'Heading 1',
     command: (state, dispatch) => setHeading(state, dispatch, 1),
     class: 'menu-item-h1',
   },
   {
-    title: 'Heading-2',
+    title: 'Heading 2',
     command: (state, dispatch) => setHeading(state, dispatch, 2),
     class: 'menu-item-h2',
   },
   {
-    title: 'Heading-3',
+    title: 'Heading 3',
     command: (state, dispatch) => setHeading(state, dispatch, 3),
     class: 'menu-item-h3',
   },
@@ -42,27 +42,27 @@ const items = [
     class: 'menu-item-blockquote',
   },
   {
-    title: 'CodeBlock',
+    title: 'Code block',
     command: wrapInCodeBlock,
     class: 'menu-item-codeblock',
   },
   {
-    title: 'BulletList',
+    title: 'Bullet list',
     command: (state, dispatch) => wrapInList(state.schema.nodes.bullet_list)(state, dispatch),
     class: 'bullet-list',
   },
   {
-    title: 'NumberedList',
+    title: 'Numbered list',
     command: (state, dispatch) => wrapInList(state.schema.nodes.ordered_list)(state, dispatch),
     class: 'ordered-list',
   },
   {
-    title: 'Section-Break',
+    title: 'Section break',
     command: insertSectionBreak,
     class: 'edit-hr',
   },
   {
-    title: 'Lorem-Ipsum',
+    title: 'Lorem ipsum',
     command: loremIpsum,
     class: 'lorem-ipsum',
     argument: true,
