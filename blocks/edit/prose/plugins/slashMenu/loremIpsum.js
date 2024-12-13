@@ -10,16 +10,23 @@ function generateLoremIpsum(lines = 5) {
     'Fusce pellentesque enim aliquam varius tincidunt aenean vulputate.',
     'Maecenas volutpat blandit aliquam etiam erat velit scelerisque in dictum.',
   ];
-  return loremSentences.slice(0, lines).join('\n');
+
+  const result = [];
+  for (let i = 0; i < lines; i += 1) {
+    result.push(loremSentences[i % loremSentences.length]);
+  }
+  return result.join('  ');
 }
 
+const MAX_LINES = 100;
 export default function loremIpsum(state, dispatch, lines = 5) {
+  const linesInt = Math.min(parseInt(lines, 10) || 5, MAX_LINES);
   const { $cursor } = state.selection;
 
   if (!$cursor) return;
   const from = $cursor.before();
   const to = $cursor.pos;
-  const loremText = generateLoremIpsum(lines);
+  const loremText = generateLoremIpsum(linesInt);
   const tr = state.tr.replaceWith(from, to, state.schema.text(loremText));
   dispatch(tr);
 }
