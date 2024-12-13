@@ -3,8 +3,15 @@ import { Plugin, PluginKey } from 'da-y-wrapper';
 import menuItems from './slashMenuItems.js';
 import './slash-menu.js';
 
-const SLASH_COMMAND_REGEX = /^\/([^/\s]*(?:\s[^/\s]*)?)$/;
+const SLASH_COMMAND_REGEX = /^\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
 const slashMenuKey = new PluginKey('slashMenu');
+
+function extractArgument(title, command) {
+  const parts = command.toLowerCase().split(/\s+/);
+  return parts.length > 1 && title.toLowerCase().startsWith(parts.slice(0, -1).join(' '))
+    ? parts[parts.length - 1]
+    : undefined;
+}
 
 class SlashMenuView {
   constructor(view) {
@@ -30,10 +37,13 @@ class SlashMenuView {
       return;
     }
 
-    // Check if we're at the start of an empty line or if there's only a slash command
     const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
-    const match = textBefore.match(SLASH_COMMAND_REGEX);
+    if (!textBefore?.startsWith('/')) {
+      if (this.menu.visible) this.menu.hide();
+      return;
+    }
 
+    const match = textBefore.match(SLASH_COMMAND_REGEX);
     if (match) {
       const showSlashMenu = slashMenuKey?.getState(state)?.showSlashMenu;
       if (!this.menu.visible || showSlashMenu) {
@@ -47,9 +57,9 @@ class SlashMenuView {
         this.menu.show(viewportCoords);
       }
 
-      // eslint-disable-next-line prefer-destructuring
-      this.menu.command = match[1];
+      this.menu.command = match[1] || '';
     } else if (this.menu.visible) {
+      this.menu.command = '';
       this.menu.hide();
     }
   }
@@ -66,7 +76,7 @@ class SlashMenuView {
     const tr = state.tr.delete(deleteFrom, deleteTo);
     const newState = state.apply(tr);
 
-    const [, argument] = this.menu.command.split(' ', 2);
+    const argument = extractArgument(item.title, this.menu.command);
 
     dispatch(tr);
     item.command(newState, dispatch, argument);
