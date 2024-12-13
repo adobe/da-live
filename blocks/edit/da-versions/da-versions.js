@@ -39,11 +39,15 @@ export default class DaVersions extends LitElement {
 
   async handlePreview(e, entry) {
     e.stopPropagation();
+    const detail = {
+      url: `${DA_ORIGIN}${entry.url}`,
+      label: entry.label,
+      date: entry.timestamp,
+    };
     const entryEl = e.target.closest('.da-version-entry');
     if (!entryEl.classList.contains('is-open')) {
       entryEl.classList.toggle('is-open');
     }
-    const detail = { url: `${DA_ORIGIN}${entry.url}` };
     const opts = { detail, bubbles: true, composed: true };
     const event = new CustomEvent('preview', opts);
     this.dispatchEvent(event);
