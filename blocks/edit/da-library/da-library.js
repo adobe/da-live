@@ -112,8 +112,10 @@ class DaLibrary extends LitElement {
     const { target } = e;
     const type = target.dataset.libraryName;
     target.closest('.palette-pane').classList.add('backward');
+    target.closest('.palette-pane').inert = true;
     const toShow = this.shadowRoot.querySelector(`[data-library-type="${type}"]`);
     toShow.classList.remove('forward');
+    toShow.inert = false;
     const pluginIframe = toShow.querySelector('iframe');
     if (!pluginIframe) return;
     pluginIframe.src = pluginIframe.dataset.src;
@@ -122,9 +124,11 @@ class DaLibrary extends LitElement {
   handleBack(e) {
     const { target } = e;
     target.closest('.palette-pane').classList.add('forward');
+    target.closest('.palette-pane').inert = true;
     const wrapper = target.closest('.palette-wrapper');
     const previous = wrapper.querySelector('.backward');
     previous.classList.remove('backward');
+    previous.inert = false;
   }
 
   handleCloseSearch() {
@@ -419,7 +423,7 @@ class DaLibrary extends LitElement {
         </div>
         ${this._libraryList.map(
           (library) => html`
-          <div class="palette-pane forward" data-library-type="${library.name}">
+          <div class="palette-pane forward" data-library-type="${library.name}" inert>
             <div class="palette-pane-header">
               <button class="palette-back" @click=${this.handleBack}>Back</button>
               <h2>${library.name}</h2>
