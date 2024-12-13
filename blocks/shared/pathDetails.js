@@ -43,7 +43,7 @@ function getRepoDetails({ editor, pathParts, ext }) {
   console.log(repo);
 
   // TODO: Fix this later
-  const tld = repo === 'da-bacom' || repo === 'da-help' ? '.aem.page' : '.hlx.page';
+  const tld = repo === 'da-bacom' || repo === 'help' ? '.aem.page' : '.hlx.page';
 
   console.log(tld);
 
@@ -77,7 +77,7 @@ function getFullDetails({ editor, pathParts, ext }) {
   const path = ext === 'html' && !fullPath.endsWith('html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
   // TODO: Fix this later
-  const tld = repo === 'da-bacom' || repo === 'da-help' ? '.aem.live' : '.hlx.live';
+  const tld = repo === 'da-bacom' || repo === 'help' ? '.aem.live' : '.hlx.live';
 
   return {
     owner: org,
