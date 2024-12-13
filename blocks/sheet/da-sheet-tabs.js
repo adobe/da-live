@@ -73,9 +73,11 @@ class DaSheetTabs extends LitElement {
     const newSheet = this.jexcel.slice(-1)[0];
     newSheet.name = sheets[0].sheetName;
     newSheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    newSheet.options.onafterchanges = () => {
-      debouncedSaveSheets(this.jexcel);
-    };
+    if (this.tabContainer.details.view !== 'config') {
+      newSheet.options.onafterchanges = () => {
+        debouncedSaveSheets(this.jexcel);
+      };
+    }
 
     // Refresh the tab names
     this._names = this.getNames();

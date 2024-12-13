@@ -1,25 +1,18 @@
 /* eslint-disable max-classes-per-file */
 import {
-  DOMParser,
   EditorState,
   EditorView,
-  TextSelection,
   history,
   buildKeymap,
   keymap,
   baseKeymap,
   tableEditing,
   columnResizing,
-  goToNextCell,
-  selectedRect,
-  isInTable,
-  addRowAfter,
   fixTables,
   liftListItem,
   sinkListItem,
   gapCursor,
-  InputRule,
-  inputRules,
+  TextSelection,
   Y,
   WebsocketProvider,
   ySyncPlugin,
@@ -37,15 +30,19 @@ import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
+import toggleLibrary from '../da-library/da-library.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
+import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
 
 const DA_ORIGIN = getDaAdmin();
 
 let pollerSetUp = false;
 let sendUpdates = false;
 let hasChanged = 0;
+let lastCursorPosition = null;
+
 function dispatchTransaction(transaction) {
   if (!window.view) return;
 
@@ -150,34 +147,17 @@ function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40,
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-export function getDashesInputRule() {
-  return new InputRule(
-    /^---[\n]$/,
-    (state, match, start, end) => {
-      const div = document.createElement('div');
-      div.append(document.createElement('hr'));
-      const newNodes = DOMParser.fromSchema(state.schema).parse(div);
-
-      const selection = TextSelection.create(state.doc, start, end);
-      dispatchTransaction(state.tr.setSelection(selection).replaceSelectionWith(newNodes));
-    },
-  );
+function storeCursorPosition(view) {
+  const { from, to } = view.state.selection;
+  lastCursorPosition = { from, to };
 }
 
-// This function returns a modified inputrule plugin that triggers when the regex in the
-// rule matches and the Enter key is pressed
-export function getEnterInputRulesPlugin() {
-  const irsplugin = inputRules({ rules: [getDashesInputRule()] });
-
-  const hkd = (view, event) => {
-    if (event.key !== 'Enter') return false;
-    const { $cursor } = view.state.selection;
-    if ($cursor) return irsplugin.props.handleTextInput(view, $cursor.pos, $cursor.pos, '\n');
-    return false;
-  };
-  irsplugin.props.handleKeyDown = hkd; // Add the handleKeyDown function
-
-  return irsplugin;
+function restoreCursorPosition(view) {
+  if (lastCursorPosition) {
+    const { from, to } = lastCursorPosition;
+    const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
+    view.dispatch(tr);
+  }
 }
 
 export default function initProse({ editor, path }) {
@@ -227,25 +207,6 @@ export default function initProse({ editor, path }) {
     );
   }
 
-  const handleTableTab = (direction) => {
-    const isCursorInLastTableCell = (rect) => {
-      const { left, bottom } = rect;
-      const { height, width } = rect.map;
-      return left + 1 === width && bottom === height;
-    };
-
-    const gtnc = goToNextCell(direction);
-    return (state, dispatch) => {
-      if (!isInTable(state)) return false;
-      const rect = selectedRect(state);
-      if (isCursorInLastTableCell(rect)) {
-        addRowAfter(state, dispatch);
-        return gtnc(window.view.state, dispatch);
-      }
-      return gtnc(state, dispatch);
-    };
-  };
-
   const plugins = [
     ySyncPlugin(yXmlFragment, {
       onFirstRender: () => {
@@ -261,14 +222,15 @@ export default function initProse({ editor, path }) {
     sectionPasteHandler(schema),
     base64Uploader(schema),
     columnResizing(),
-    tableEditing(),
-    getEnterInputRulesPlugin(),
+    getEnterInputRulesPlugin(dispatchTransaction),
     keymap(buildKeymap(schema)),
+    keymap({ Backspace: handleTableBackspace }),
     keymap(baseKeymap),
     keymap({
       'Mod-z': yUndo,
       'Mod-y': yRedo,
       'Mod-Shift-z': yRedo,
+      'Mod-Shift-l': toggleLibrary,
     }),
     keymap({
       Tab: handleTableTab(1),
@@ -279,6 +241,7 @@ export default function initProse({ editor, path }) {
       'Shift-Tab': liftListItem(schema.nodes.list_item),
     }),
     gapCursor(),
+    tableEditing(),
     history(),
   ];
 
@@ -301,6 +264,16 @@ export default function initProse({ editor, path }) {
       loc_deleted(node, view, getPos) {
         const LocDeletedView = getLocClass('da-loc-deleted', getSchema, dispatchTransaction, { isLangstore: true });
         return new LocDeletedView(node, view, getPos);
+      },
+    },
+    handleDOMEvents: {
+      blur: (view) => {
+        storeCursorPosition(view);
+        return false;
+      },
+      focus: (view) => {
+        restoreCursorPosition(view);
+        return false;
       },
     },
   });
