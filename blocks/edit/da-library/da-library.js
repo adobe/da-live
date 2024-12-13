@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { DOMParser as proseDOMParser } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, TextSelection } from 'da-y-wrapper';
 import {
   LitElement,
   html,
@@ -38,6 +38,11 @@ function closeLibrary() {
   return false;
 }
 
+function scrollToSelection() {
+  const { node } = window.view.domAtPos(window.view.state.selection.anchor);
+  node?.scrollIntoView?.();
+}
+
 // Cache fetched library data
 const libraryListPromise = delay(500).then(() => getLibraryList());
 const data = {
@@ -69,6 +74,8 @@ class DaLibrary extends LitElement {
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._libraryList = await libraryListPromise;
     window.addEventListener('keydown', this.handleKeydown);
+    this.addEventListener('blur', () => window.view?.focus());
+    this.searchInputRef.value.focus();
   }
 
   disconnectedCallback() {
@@ -145,6 +152,11 @@ class DaLibrary extends LitElement {
       e.preventDefault();
       e.target.parentElement.nextElementSibling?.querySelector('button').focus();
     }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.target.parentElement.nextElementSibling?.querySelector('button').click();
+      this.searchInputRef.value.select();
+    }
   }
 
   handleSearchKeydown(e) {
@@ -162,6 +174,10 @@ class DaLibrary extends LitElement {
         this.searchInputRef.value.focus();
       }
     }
+    if (e.key === 'Enter') {
+      // Allow default and then select the input
+      setTimeout(() => this.searchInputRef.value.select(), 1);
+    }
   }
 
   handleGroupOpen(e) {
@@ -169,9 +185,30 @@ class DaLibrary extends LitElement {
     target.closest('li').classList.toggle('is-open');
   }
 
-  handleItemClick(item) {
+  handleItemClick(item, insertParagraphAfter = false) {
     const { tr } = window.view.state;
-    window.view.dispatch(tr.replaceSelectionWith(item.parsed).scrollIntoView());
+    const insertPos = tr.selection.from;
+
+    let newTr;
+
+    if (insertParagraphAfter) {
+      const paragraph = window.view.state.schema.nodes.paragraph.create();
+        newTr = tr.insert(insertPos, paragraph);
+    }
+
+    newTr = (newTr || tr).replaceSelectionWith(item.parsed);
+    const finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
+
+    window.view.dispatch(
+      newTr
+        .setSelection(TextSelection.create(newTr.doc, finalPos))
+        .scrollIntoView(),
+    );
+
+    if (finalPos === newTr.doc.content.size - 1) {
+      // only scroll down if we're at the end of the document
+      scrollToSelection();
+    }
   }
 
   async handleTemplateClick(item) {
@@ -225,7 +262,7 @@ class DaLibrary extends LitElement {
   renderBlockItem(item, icon = false) {
     return html`
       <li class="da-library-type-group-detail-item" tabindex="1">
-        <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item)}>
+        <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item, true)}>
           <div>
             <span class="da-library-group-name">${item.name}</span>
             <span class="da-library-group-subtitle">${item.variants}</span>
