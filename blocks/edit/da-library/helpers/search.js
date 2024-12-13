@@ -14,7 +14,7 @@ function wrapInSection(content) {
 function searchBlocks(searchStr, blocks, renderCallback) {
   const matches = [...blocks.entries()].reduce((acc, [, items]) => {
     items.forEach((item) => {
-      const blockStr = `${item.name.toLowerCase()} ${item.variants?.toLowerCase()}`;
+      const blockStr = `${item.name.toLowerCase()} ${item.variants?.toLowerCase() || ''} ${item.tags?.toLowerCase() || ''}`;
       if (andMatch(searchStr, blockStr)) {
         acc.push(item);
       }
