@@ -3,6 +3,7 @@ import { Plugin, PluginKey } from 'da-y-wrapper';
 import menuItems from './slashMenuItems.js';
 import './slash-menu.js';
 
+const SLASH_COMMAND_REGEX = /^\/([^/\s]*(?:\s[^/\s]*)?)$/;
 const slashMenuKey = new PluginKey('slashMenu');
 
 class SlashMenuView {
@@ -31,11 +32,10 @@ class SlashMenuView {
 
     // Check if we're at the start of an empty line or if there's only a slash command
     const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
-    const match = textBefore.match(/^\/([^/]*(?:\s[^/]*)?)$/);
-
-    const showSlashMenu = slashMenuKey?.getState(state)?.showSlashMenu;
+    const match = textBefore.match(SLASH_COMMAND_REGEX);
 
     if (match) {
+      const showSlashMenu = slashMenuKey?.getState(state)?.showSlashMenu;
       if (!this.menu.visible || showSlashMenu) {
         const coords = this.view.coordsAtPos($cursor.pos);
 
@@ -47,9 +47,9 @@ class SlashMenuView {
         this.menu.show(viewportCoords);
       }
 
-      const [command] = match[1].trim().split(/\s+/);
-      this.menu.inputText = command;
-    } else {
+      // eslint-disable-next-line prefer-destructuring
+      this.menu.command = match[1];
+    } else if (this.menu.visible) {
       this.menu.hide();
     }
   }
@@ -60,26 +60,16 @@ class SlashMenuView {
     const { $cursor } = state.selection;
     if (!$cursor) return;
 
-    const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
-    const match = textBefore.match(/\/([^/]*(?:\s[^/]*)?)$/);
+    // Delete the slash command and any arguments
+    const deleteFrom = $cursor.pos - (this.menu.command.length + 1);
+    const deleteTo = $cursor.pos;
+    const tr = state.tr.delete(deleteFrom, deleteTo);
+    const newState = state.apply(tr);
 
-    if (match) {
-      // Delete the slash command and any arguments
-      const deleteFrom = $cursor.pos - match[0].length;
-      const deleteTo = $cursor.pos;
-      const tr = state.tr.delete(deleteFrom, deleteTo);
+    const [, argument] = this.menu.command.split(' ', 2);
 
-      const newState = state.apply(tr);
-
-      // Split the match to get command and argument
-      const [, ...args] = match[1].trim().split(/\s+/);
-      const argument = args.length > 0 ? args.join(' ') : undefined;
-
-      dispatch(tr);
-      item.command(newState, dispatch, argument);
-    } else {
-      item.command(state, dispatch);
-    }
+    dispatch(tr);
+    item.command(newState, dispatch, argument);
 
     this.menu.hide();
   }

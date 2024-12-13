@@ -8,7 +8,7 @@ export default class SlashMenu extends LitElement {
   static properties = {
     items: { type: Array },
     selectedIndex: { type: Number, reflect: true },
-    inputText: { type: String },
+    command: { type: String },
     visible: { type: Boolean, reflect: true },
     left: { type: Number },
     top: { type: Number },
@@ -18,7 +18,7 @@ export default class SlashMenu extends LitElement {
     super();
     this.items = [];
     this.selectedIndex = 0;
-    this.inputText = '';
+    this.command = '';
     this.visible = false;
     this.left = 0;
     this.top = 0;
@@ -38,7 +38,7 @@ export default class SlashMenu extends LitElement {
 
   hide() {
     this.visible = false;
-    this.inputText = '';
+    this.command = '';
     this.selectedIndex = 0;
   }
 
@@ -143,8 +143,8 @@ export default class SlashMenu extends LitElement {
     return this.items.filter(
       (item) => {
         const inputText = item.argument
-          ? this.inputText.toLowerCase().trim()
-          : this.inputText.toLowerCase();
+          ? this.command.toLowerCase().trim().split(' ')[0]
+          : this.command.toLowerCase();
         return item.title.toLowerCase().includes(inputText);
       },
     );
@@ -168,9 +168,6 @@ export default class SlashMenu extends LitElement {
             <span class="slash-menu-icon ${item.class || ''}"></span>
             <span class="slash-menu-label">
               ${item.title}
-              ${item.argument && index === this.selectedIndex
-                ? html`<span class="argument">[${item.argument}]</span>`
-                : ''}
             </span>
           </div>
         `)}

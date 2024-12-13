@@ -65,7 +65,7 @@ const items = [
     title: 'Lorem-Ipsum',
     command: loremIpsum,
     class: 'lorem-ipsum',
-    argument: 'No. of lines',
+    argument: true,
   },
   {
     title: 'Table',
