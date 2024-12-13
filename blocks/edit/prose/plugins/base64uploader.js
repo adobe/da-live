@@ -32,37 +32,44 @@ function replaceWordImage(path) {
 export default function base64Uploader() {
   return new Plugin({
     props: {
-      transformPastedHTML: (html) => {
-        try {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
-          const imgs = [...doc.querySelectorAll('[src^="data:image"]')];
-          imgs.map(async (img) => {
-            const src = img.getAttribute('src');
-            let ext = src.replace('data:image/', '').split(';base64')[0];
-            if (ext === 'jpeg') ext = 'jpg';
-            const { parent, name } = getPathDetails();
-            // WP = Word Paste
-            const path = `${parent}/${name}-wp${makeHash(src)}.${ext}`;
-            img.setAttribute('src', `${FPO_IMG_URL}#${CON_ORIGIN}${path}`);
+      handlePaste: (view, event) => {
+        const html = event.clipboardData?.getData('text/html');
+        if (!html?.includes('data:image')) {
+          return false;
+        }
 
-            const resp = await fetch(src);
-            const blob = await resp.blob();
+        // Let the paste complete first
+        setTimeout(() => {
+          const { tr } = view.state;
 
-            const body = new FormData();
-            body.append('data', blob);
-            await daFetch(`${DA_ORIGIN}/source${path}`, { body, method: 'POST' });
+          view.state.doc.descendants(async (node, pos) => {
+            if (node.type.name === 'image' && node.attrs.src.startsWith('data:image')) {
+              const { src } = node.attrs;
+              let ext = src.replace('data:image/', '').split(';base64')[0];
+              if (ext === 'jpeg') ext = 'jpg';
 
-            replaceWordImage(`${FPO_IMG_URL}#${CON_ORIGIN}${path}`);
+              const { parent, name } = getPathDetails();
+              const path = `${parent}/${name}-wp${makeHash(src)}.${ext}`;
+              const fpoSrc = `${FPO_IMG_URL}#${CON_ORIGIN}${path}`;
+
+              tr.setNodeMarkup(pos, null, { ...node.attrs, src: fpoSrc });
+
+              const resp = await fetch(src);
+              const blob = await resp.blob();
+              const body = new FormData();
+              body.append('data', blob);
+              await daFetch(`${DA_ORIGIN}/source${path}`, { body, method: 'POST' });
+
+              replaceWordImage(fpoSrc);
+            }
           });
 
-          const serializer = new XMLSerializer();
-          return serializer.serializeToString(doc);
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Error handling Base64 images:', error);
-          return html;
-        }
+          if (tr.docChanged) {
+            view.dispatch(tr);
+          }
+        }, 0);
+
+        return false; // Let other plugins handle the paste
       },
     },
   });
