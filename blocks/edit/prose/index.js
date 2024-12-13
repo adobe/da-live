@@ -33,6 +33,7 @@ import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
+import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
 
 const DA_ORIGIN = getDaAdmin();
@@ -206,44 +207,47 @@ export default function initProse({ editor, path }) {
     );
   }
 
+  const plugins = [
+    ySyncPlugin(yXmlFragment, {
+      onFirstRender: () => {
+        pollForUpdates();
+      },
+    }),
+    yCursorPlugin(wsProvider.awareness),
+    yUndoPlugin(),
+    menu,
+    slashMenu(),
+    imageDrop(schema),
+    linkConverter(schema),
+    sectionPasteHandler(schema),
+    base64Uploader(schema),
+    columnResizing(),
+    getEnterInputRulesPlugin(dispatchTransaction),
+    keymap(buildKeymap(schema)),
+    keymap({ Backspace: handleTableBackspace }),
+    keymap(baseKeymap),
+    keymap({
+      'Mod-z': yUndo,
+      'Mod-y': yRedo,
+      'Mod-Shift-z': yRedo,
+      'Mod-Shift-l': toggleLibrary,
+    }),
+    keymap({
+      Tab: handleTableTab(1),
+      'Shift-Tab': handleTableTab(-1),
+    }),
+    keymap({
+      Tab: sinkListItem(schema.nodes.list_item),
+      'Shift-Tab': liftListItem(schema.nodes.list_item),
+    }),
+    gapCursor(),
+    tableEditing(),
+    history(),
+  ];
+
   let state = EditorState.create({
     schema,
-    plugins: [
-      ySyncPlugin(yXmlFragment, {
-        onFirstRender: () => {
-          pollForUpdates();
-        },
-      }),
-      yCursorPlugin(wsProvider.awareness),
-      yUndoPlugin(),
-      menu,
-      imageDrop(schema),
-      linkConverter(schema),
-      sectionPasteHandler(schema),
-      base64Uploader(schema),
-      columnResizing(),
-      getEnterInputRulesPlugin(dispatchTransaction),
-      keymap(buildKeymap(schema)),
-      keymap({ Backspace: handleTableBackspace }),
-      keymap(baseKeymap),
-      keymap({
-        'Mod-z': yUndo,
-        'Mod-y': yRedo,
-        'Mod-Shift-z': yRedo,
-        'Mod-Shift-l': toggleLibrary,
-      }),
-      keymap({
-        Tab: handleTableTab(1),
-        'Shift-Tab': handleTableTab(-1),
-      }),
-      keymap({
-        Tab: sinkListItem(schema.nodes.list_item),
-        'Shift-Tab': liftListItem(schema.nodes.list_item),
-      }),
-      gapCursor(),
-      tableEditing(),
-      history(),
-    ],
+    plugins,
   });
 
   const fix = fixTables(state);
