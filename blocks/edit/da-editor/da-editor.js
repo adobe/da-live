@@ -91,14 +91,7 @@ export default class DaEditor extends LitElement {
   async getPermissions() {
     const resp = await daFetch(this.path, { method: 'HEAD' });
 
-    const pragma = resp.headers.get('Pragma');
-    const idx = pragma.indexOf('X-da-actions ');
-    if (idx === -1) return [];
-
-    const idx2 = pragma.indexOf(';', idx);
-    const daActions = pragma.substring(idx + 'X-da-actions '.length, idx2);
-
-    // const daActions = resp.headers.get('X-da-actions');
+    const daActions = resp.headers.get('X-da-actions');
     if (!daActions) return [];
     const actions = daActions.split('=');
     if (actions) {
