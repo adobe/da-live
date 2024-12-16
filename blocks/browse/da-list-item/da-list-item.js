@@ -92,9 +92,13 @@ export default class DaListItem extends LitElement {
     ).join(', ').toLowerCase();
   }
 
-  handleChecked() {
+  handleChecked(e) {
     this.isChecked = !this.isChecked;
-    const opts = { detail: { checked: this.isChecked }, bubbles: true, composed: true };
+    const opts = {
+      detail: { checked: this.isChecked, shiftKey: e.shiftKey },
+      bubbles: true,
+      composed: true,
+    };
     const event = new CustomEvent('checked', opts);
     this.dispatchEvent(event);
   }
@@ -212,7 +216,7 @@ export default class DaListItem extends LitElement {
   renderCheckBox() {
     return html`
       <div class="checkbox-wrapper">
-        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${() => { this.handleChecked(); }}">
+        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${(e) => { this.handleChecked(e); }}">
         <label class="checkbox-label" for="item-selected-${this.idx}"></label>
       </div>
       <input type="checkbox" name="select" style="display: none;">
