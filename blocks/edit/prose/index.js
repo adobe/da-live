@@ -160,9 +160,11 @@ function restoreCursorPosition(view) {
   }
 }
 
-export default function initProse({ editor, path }) {
+export default function initProse({ editor, path, permissions }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
+
+  if (!permissions.includes('read')) return undefined;
 
   const schema = getSchema();
 

@@ -88,13 +88,47 @@ export default class DaEditor extends LitElement {
     `;
   }
 
-  updated(props) {
+  async getPermissions() {
+    const resp = await daFetch(this.path, { method: 'HEAD' });
+
+    const pragma = resp.headers.get('Pragma');
+    const idx = pragma.indexOf('X-da-actions ');
+    if (idx === -1) return [];
+
+    const idx2 = pragma.indexOf(';', idx);
+    const daActions = pragma.substring(idx + 'X-da-actions '.length, idx2);
+
+    // const daActions = resp.headers.get('X-da-actions');
+    if (!daActions) return [];
+    const actions = daActions.split('=');
+    if (actions) {
+      return actions[1].split(',');
+    }
+    return [];
+  }
+
+  async updated(props) {
     if (!this._imsLoaded) return;
     if (!(props.has('version') || props.has('_versionDom'))) {
       this.disconnectWebsocket();
       const prose = this.shadowRoot.querySelector('.da-prose-mirror');
       prose.innerHTML = '';
-      this.wsProvider = initProse({ editor: prose, path: this.path });
+
+      const permissions = await this.getPermissions();
+      this.wsProvider = initProse({ editor: prose, path: this.path, permissions });
+
+      const titleEl = this.ownerDocument.querySelector('da-title')?.shadowRoot?.querySelector('.da-title-inner');
+      const verBtn = this.parentElement.querySelector('button.show-versions');
+
+      titleEl.classList.remove('da-title-readonly');
+      prose.classList.remove('da-prose-mirror-readonly');
+      prose.querySelector('.ProseMirror')?.setAttribute('contenteditable', permissions.includes('write'));
+      verBtn.removeAttribute('disabled');
+      if (!permissions.includes('write')) {
+        titleEl.classList.add('da-title-readonly');
+        prose.classList.add('da-prose-mirror-readonly');
+        verBtn.setAttribute('disabled', '');
+      }
     }
   }
 }
