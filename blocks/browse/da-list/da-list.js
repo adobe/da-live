@@ -114,6 +114,12 @@ export default class DaList extends LitElement {
     this.requestUpdate();
   }
 
+  wait(milliseconds) {
+    return new Promise((r) => {
+      setTimeout(r, milliseconds);
+    });
+  }
+
   async handlePasteItem(item) {
     let continuation = true;
     let continuationToken;
@@ -127,6 +133,13 @@ export default class DaList extends LitElement {
       if (resp.status === 204) {
         continuation = false;
         break;
+      } else if (resp.status >= 400) {
+        this.setStatus('Copying', 'There was an issue copying.');
+
+        // TODO maybe there is a better way to keep the status dialog visible for a bit?
+        await this.wait(2000);
+
+        return;
       }
       const json = await resp.json();
       ({ continuationToken } = json);
