@@ -70,7 +70,7 @@ export default class DaList extends LitElement {
 
   async getList() {
     const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
-    if (!resp.ok) return null;
+    if (!resp.ok) return [];
     return resp.json();
   }
 
