@@ -111,7 +111,6 @@ export default class DaActionBar extends LitElement {
   }
 
   get currentAction() {
-    if (this._canPaste && this._isMoving) return `Moving ${this.items.length} items`;
     const itemStr = this.items.length > 1 ? 'items' : 'item';
     if (this._canPaste) {
       const folderName = this.currentPath.split('/').pop();
