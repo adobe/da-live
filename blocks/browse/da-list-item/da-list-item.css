@@ -108,7 +108,7 @@ button {
   background: no-repeat center / 18px url('/blocks/edit/img/Smock_Checkmark_18_N.svg');
 }
 
-@keyframes spin { 
+@keyframes spin {
   100% {
     transform:rotate(360deg);
   }
@@ -118,6 +118,7 @@ button {
 
 .checkbox-wrapper {
   position: relative;
+  user-select: none;
 }
 
 input[type="checkbox"] {
@@ -291,10 +292,10 @@ input[type="checkbox"] {
   margin-bottom: 3px;
 }
 
-@keyframes spin { 
-  100% { 
-    transform:rotate(90deg); 
-  } 
+@keyframes spin {
+  100% {
+    transform:rotate(90deg);
+  }
 }
 
 @media (width >= 600px) {
