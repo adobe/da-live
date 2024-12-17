@@ -182,7 +182,7 @@ export default class DaList extends LitElement {
     }));
 
     clearTimeout(showStatus);
-    if (evt.detail.move) {
+    if (evt?.detail?.move) {
       await this.handleDelete();
     }
     this.setStatus();
