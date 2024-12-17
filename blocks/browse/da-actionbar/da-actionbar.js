@@ -112,9 +112,13 @@ export default class DaActionBar extends LitElement {
 
   get currentAction() {
     if (this._canPaste && this._isMoving) return `Moving ${this.items.length} items`;
-    if (this._canPaste && !this._isMoving) return `Copying ${this.items.length} items`;
-    if (this._isDeleting) return `Deleting ${this.items.length} items`;
-    return `${this.items.length} selected`;
+    const itemStr = this.items.length > 1 ? 'items' : 'item';
+    if (this._canPaste) {
+      const folderName = this.currentPath.split('/').pop();
+      return `Paste ${this.items.length} ${itemStr} into ${folderName}`;
+    }
+    if (this._isDeleting) return `Deleting ${this.items.length} ${itemStr}`;
+    return `${this.items.length} ${itemStr} selected`;
   }
 
   render() {
@@ -145,7 +149,7 @@ export default class DaActionBar extends LitElement {
           <button
               @click=${this.handleMove}
               class="copy-button ${this._canPaste ? 'hide' : ''}">
-              <img src="/blocks/browse/da-browse/img/Smock_MoveTo_18_N.svg" />
+              <img src="/blocks/browse/da-browse/img/Smock_Cut_18_N.svg" />
               <span>Cut</span>
             </button>
           <button
