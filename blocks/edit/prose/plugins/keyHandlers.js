@@ -49,7 +49,7 @@ const isColumnSelected = (rect) => rect.top === 0 && rect.bottom === rect.map.he
 const isTableSelected = (rect) => isRowSelected(rect) && isColumnSelected(rect);
 
 export function handleTableBackspace(state, dispatch) {
-  if (!isInTable(state)) return false;
+  if (!isInTable(state) || !state.selection.$anchorCell) return false;
 
   const rect = selectedRect(state);
   if (!rect || rect.top === null) return false;
@@ -61,12 +61,10 @@ export function handleTableBackspace(state, dispatch) {
       deleteTable(state, dispatch);
       return true;
     }
-
     if (isRowSelected(rect)) {
       deleteRow(state, dispatch);
       return true;
     }
-
     if (isColumnSelected(rect)) {
       deleteColumn(state, dispatch);
       return true;
