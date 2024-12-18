@@ -40,12 +40,8 @@ function getRepoDetails({ editor, pathParts, ext }) {
   let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
-  console.log(repo);
-
   // TODO: Fix this later
   const tld = repo === 'da-bacom' || repo === 'help' ? '.aem.page' : '.hlx.page';
-
-  console.log(tld);
 
   return {
     owner: org,

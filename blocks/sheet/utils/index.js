@@ -74,7 +74,6 @@ export async function getData(url) {
 
   const sheetPanes = document.querySelector('da-sheet-panes');
   if (sheetPanes && !url.includes('/versionsource')) {
-    console.log('set panes');
     // Set AEM-formatted JSON for real-time preview
     sheetPanes.data = json;
   }
