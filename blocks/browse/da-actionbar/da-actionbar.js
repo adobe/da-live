@@ -9,11 +9,15 @@ export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
     _canPaste: { state: true },
+    _isDeleting: { state: true },
+    _isMoving: { state: true },
+    currentPath: { type: String },
   };
 
   constructor() {
     super();
     this.items = [];
+    this.currentPath = '';
   }
 
   connectedCallback() {
@@ -26,6 +30,8 @@ export default class DaActionBar extends LitElement {
       // Reset state when items go empty
       if (this.items.length === 0) {
         this._canPaste = false;
+        this._isMoving = false;
+        this._isDeleting = false;
       }
     }
 
@@ -34,6 +40,8 @@ export default class DaActionBar extends LitElement {
 
   handleClear() {
     this._canPaste = false;
+    this._isMoving = false;
+    this._isDeleting = false;
     const opts = { detail: true, bubbles: true, composed: true };
     const event = new CustomEvent('clearselection', opts);
     this.dispatchEvent(event);
@@ -49,13 +57,24 @@ export default class DaActionBar extends LitElement {
     this._canPaste = true;
   }
 
+  handleMove() {
+    this._isMoving = true;
+    this._canPaste = true;
+  }
+
   handlePaste() {
+    if (this._isMoving && !this.inNewDir()) {
+      this.handleClear();
+      return;
+    }
+    const detail = { move: this._isMoving };
     const opts = { bubbles: true, composed: true };
-    const event = new CustomEvent('onpaste', opts);
+    const event = new CustomEvent('onpaste', { ...opts, detail });
     this.dispatchEvent(event);
   }
 
   handleDelete() {
+    this._isDeleting = true;
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('ondelete', opts);
     this.dispatchEvent(event);
@@ -80,8 +99,25 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  inNewDir() {
+    // items can only be selected from the same directory
+    const itemPath = this.items?.[0]?.path;
+    const itemDir = itemPath?.split('/').slice(0, -1).join('/');
+    return itemDir !== this.currentPath;
+  }
+
   get _canShare() {
     return this.items.some((item) => item.ext && item.ext !== 'link');
+  }
+
+  get currentAction() {
+    const itemStr = this.items.length > 1 ? 'items' : 'item';
+    if (this._canPaste) {
+      const folderName = this.currentPath.split('/').pop();
+      return `Paste ${this.items.length} ${itemStr} into ${folderName}`;
+    }
+    if (this._isDeleting) return `Deleting ${this.items.length} ${itemStr}`;
+    return `${this.items.length} ${itemStr} selected`;
   }
 
   render() {
@@ -94,7 +130,7 @@ export default class DaActionBar extends LitElement {
             aria-label="Unselect items">
             <img src="/blocks/browse/da-browse/img/CrossSize200.svg" />
           </button>
-          <span>${this.items.length} selected</span>
+          <span>${this.currentAction}</span>
         </div>
         <div class="da-action-bar-right-rail">
           <button
@@ -110,6 +146,12 @@ export default class DaActionBar extends LitElement {
             <span>Copy</span>
           </button>
           <button
+              @click=${this.handleMove}
+              class="copy-button ${this._canPaste ? 'hide' : ''}">
+              <img src="/blocks/browse/da-browse/img/Smock_Cut_18_N.svg" />
+              <span>Cut</span>
+            </button>
+          <button
             @click=${this.handlePaste}
             class="copy-button ${this._canPaste ? '' : 'hide'}">
             <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
@@ -117,13 +159,13 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleDelete}
-            class="delete-button">
+            class="delete-button ${this._canPaste ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" />
             <span>Delete</span>
           </button>
           <button
             @click=${this.handleShare}
-            class="share-button ${this._canShare ? '' : 'hide'}">
+            class="share-button ${this._canShare && !this._canPaste ? '' : 'hide'}">
             <img src="/blocks/browse/img/Smock_Share_18_N.svg" />
             <span>Share</span>
           </button>

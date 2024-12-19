@@ -140,14 +140,34 @@ export default class SlashMenu extends LitElement {
   }
 
   getFilteredItems() {
-    return this.items.filter(
-      (item) => {
-        const inputText = item.argument
-          ? this.command.toLowerCase().trim().split(' ')[0]
-          : this.command.toLowerCase();
-        return item.title.toLowerCase().includes(inputText);
-      },
-    );
+    const searchText = this.command.toLowerCase().trim();
+    const inputText = searchText.split(' ')[0];
+
+    return this.items
+      .filter((item) => {
+        const itemTitle = item.title.toLowerCase();
+        return item.argument
+          ? itemTitle.includes(inputText)
+          : itemTitle.includes(searchText);
+      })
+      .sort((a, b) => {
+        const aTitle = a.title.toLowerCase();
+        const bTitle = b.title.toLowerCase();
+
+        // Calculate score:
+        // 2 points for exact match at start
+        // 1 point for containing the search text
+        // 0 otherwise
+        const getScore = (title) => {
+          if (title.startsWith(searchText)) return 2;
+          if (title.includes(searchText)) return 1;
+          return 0;
+        };
+
+        // First sort by score, then alphabetically if scores are equal
+        return getScore(bTitle) - getScore(aTitle)
+          || aTitle.localeCompare(bTitle);
+      });
   }
 
   render() {
