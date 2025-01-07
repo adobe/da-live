@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getTestResourceAge } from '../utils/page.js';
+import { getTestPageURL, getTestResourceAge } from '../utils/page.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
@@ -80,4 +80,47 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 
   // Wait for the delete button to disappear which is when we're done
   await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible({ timeout: 600000 });
+});
+
+test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
+  test.setTimeout(30000);
+
+  const url = getTestPageURL('delete', workerInfo);
+  const pageName = url.split('/').pop();
+
+  await page.goto(url);
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+
+  const enteredText = `Some content entered at ${new Date()}`;
+  await page.locator('div.ProseMirror').fill(enteredText);
+
+  // Create a second window on the same document
+  const page2 = await browser.newPage();
+  await page2.goto(url);
+  await page2.waitForTimeout(3000);
+  await expect(page2.locator('div.ProseMirror')).toContainText(enteredText);
+
+  // Close the first window
+  await page.close();
+
+  const list = await browser.newPage();
+  await list.goto(`${ENV}/#/da-sites/da-status/tests`);
+
+  await list.waitForTimeout(3000);
+  await list.reload();
+
+  // Now delete the document
+  await expect(list.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
+  await list.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
+  // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
+  await list.keyboard.press('Shift+Tab');
+  await list.keyboard.press(' ');
+  await list.waitForTimeout(500);
+  await list.locator('button.delete-button').locator('visible=true').click();
+
+  // Give the second window a chance to update itself
+  await list.waitForTimeout(3000);
+
+  // The open window should be cleared out now
+  await expect(page2.locator('div.ProseMirror')).not.toContainText(enteredText);
 });
