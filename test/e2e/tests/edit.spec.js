@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getTestPageURL } from '../utils/page.js';
+import { getQuery, getTestPageURL } from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
@@ -40,7 +40,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();
 
-  await page.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
   await page.locator('button.da-actions-new-button').click();
   await page.locator('button:text("Document")').click();
   await page.locator('input.da-actions-input').fill(pageName);
@@ -51,7 +51,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
-  await newPage.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await newPage.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
 
   await newPage.waitForTimeout(3000);
   await newPage.reload();
