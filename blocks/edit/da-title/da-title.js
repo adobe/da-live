@@ -64,7 +64,10 @@ export default class DaTitle extends LitElement {
     }
     if (this.details.view === 'config') {
       const daConfigResp = await saveDaConfig(pathname, this.sheet);
-      if (!daConfigResp.ok) return;
+      if (!daConfigResp.ok) {
+        console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
+        return;
+      }
     }
     if (action === 'preview' || action === 'publish') {
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
