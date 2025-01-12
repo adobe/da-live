@@ -25,6 +25,7 @@ export default class DaList extends LitElement {
     drag: { type: Boolean },
     listItems: { attribute: false },
     newItem: { attribute: false },
+    _permissions: { state: true },
     _listItems: { state: true },
     _selectedItems: { state: true },
     _dropFiles: { state: true },
@@ -71,6 +72,9 @@ export default class DaList extends LitElement {
   }
 
   handlePermissions(permissions) {
+    this._permissions = permissions;
+
+    // Notify parent
     const opts = { detail: permissions, bubbles: true, composed: true };
     const event = new CustomEvent('onpermissions', opts);
     this.dispatchEvent(event);
@@ -439,6 +443,7 @@ export default class DaList extends LitElement {
         ${this.drag ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar
+        .permissions=${this._permissions}
         @clearselection=${this.handleClear}
         @rename=${this.handleRename}
         @onpaste=${this.handlePaste}
