@@ -51,6 +51,7 @@ export default class DaList extends LitElement {
     }
 
     if (props.has('fullpath') && this.fullpath) {
+      this.handlePermissions(null);
       this._listItems = await this.getList();
     }
 
@@ -69,9 +70,16 @@ export default class DaList extends LitElement {
     this._status = { type, text, description };
   }
 
+  handlePermissions(permissions) {
+    const opts = { detail: permissions, bubbles: true, composed: true };
+    const event = new CustomEvent('onpermissions', opts);
+    this.dispatchEvent(event);
+  }
+
   async getList() {
     const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
     if (!resp.ok) return [];
+    if (resp.permissions) this.handlePermissions(resp.permissions);
     return resp.json();
   }
 

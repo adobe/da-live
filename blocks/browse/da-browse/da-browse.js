@@ -39,6 +39,10 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [STYLE];
   }
 
+  handlePermissions(e) {
+    if (this.newCmp) this.newCmp.permissions = e.detail;
+  }
+
   handleTabClick(idx) {
     this._tabItems = this._tabItems.map((tab, tidx) => ({ ...tab, selected: idx === tidx }));
   }
@@ -55,6 +59,10 @@ export default class DaBrowse extends LitElement {
     return this._tabItems.find((tab) => tab.selected).id;
   }
 
+  get newCmp() {
+    return this.shadowRoot.querySelector('da-new');
+  }
+
   renderNew() {
     return html`<da-new @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}"></da-new>`;
   }
@@ -68,6 +76,7 @@ export default class DaBrowse extends LitElement {
       <da-list
         class="da-list-type-${type}"
         fullpath="${fullpath}"
+        @onpermissions=${this.handlePermissions}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
         drag="${drag ? true : nothing}"></da-list>`;
