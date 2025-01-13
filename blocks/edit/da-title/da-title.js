@@ -21,6 +21,7 @@ const CLOUD_ICONS = {
 export default class DaTitle extends LitElement {
   static properties = {
     details: { attribute: false },
+    permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
     _actionsVis: {},
@@ -92,6 +93,11 @@ export default class DaTitle extends LitElement {
     this._actionsVis = !this._actionsVis;
   }
 
+  get _readOnly() {
+    if (!this.permissions) return false;
+    return !this.permissions.some((permission) => permission === 'write');
+  }
+
   renderSave() {
     return html`
     <button
@@ -149,7 +155,7 @@ export default class DaTitle extends LitElement {
 
   render() {
     return html`
-      <div class="da-title-inner">
+      <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
         <div class="da-title-name">
           <a
             href="/#${this.details.parent}"

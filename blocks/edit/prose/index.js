@@ -38,10 +38,11 @@ import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from '
 
 const DA_ORIGIN = getDaAdmin();
 
-let pollerSetUp = false;
 let sendUpdates = false;
 let hasChanged = 0;
 let lastCursorPosition = null;
+let daPreview;
+let updatePoller;
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
@@ -54,31 +55,40 @@ function dispatchTransaction(transaction) {
   window.view.updateState(newState);
 }
 
-function setPreviewBody(daPreview, proseEl) {
-  const clone = proseEl.cloneNode(true);
+function setPreviewBody() {
+  daPreview ??= document.querySelector('da-content')?.shadowRoot.querySelector('da-preview');
+  if (!daPreview) return;
+
+  const clone = window.view.docView.dom.cloneNode(true);
   const body = prose2aem(clone, true);
   daPreview.body = body;
 }
 
-export function pollForUpdates(doc = document, win = window) {
-  if (pollerSetUp) return;
-  const daContent = doc.querySelector('da-content');
-  const daPreview = daContent?.shadowRoot.querySelector('da-preview');
-  if (!win.view) return;
-  const proseEl = win.view.root.querySelector('.ProseMirror');
-  if (!daPreview) return;
+export function pollForUpdates() {
+  if (updatePoller) clearInterval(updatePoller);
 
-  setInterval(() => {
+  updatePoller = setInterval(() => {
     if (sendUpdates) {
       if (hasChanged > 0) {
         hasChanged = 0;
         return;
       }
-      setPreviewBody(daPreview, proseEl);
+      setPreviewBody();
       sendUpdates = false;
     }
   }, 500);
-  pollerSetUp = true;
+}
+
+function handleProseLoaded(editor) {
+  const daEditor = editor.getRootNode().host;
+  const opts = { bubbles: true, composed: true };
+  const event = new CustomEvent('proseloaded', opts);
+  daEditor.dispatchEvent(event);
+  // Wait for the event to dispatch and the elements to be made.
+  setTimeout(() => {
+    pollForUpdates();
+    setPreviewBody();
+  }, 500);
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
@@ -164,8 +174,6 @@ export default function initProse({ editor, path, permissions }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
 
-  if (!permissions.includes('read')) return undefined;
-
   const schema = getSchema();
 
   const ydoc = new Y.Doc();
@@ -210,11 +218,7 @@ export default function initProse({ editor, path, permissions }) {
   }
 
   const plugins = [
-    ySyncPlugin(yXmlFragment, {
-      onFirstRender: () => {
-        pollForUpdates();
-      },
-    }),
+    ySyncPlugin(yXmlFragment),
     yCursorPlugin(wsProvider.awareness),
     yUndoPlugin(),
     menu,
@@ -278,10 +282,12 @@ export default function initProse({ editor, path, permissions }) {
         return false;
       },
     },
+    editable() {
+      return permissions.some((permission) => permission === 'write');
+    },
   });
 
-  // Call pollForUpdates() to make sure it gets called even if the callback was made earlier
-  pollForUpdates();
+  handleProseLoaded(editor, permissions);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');

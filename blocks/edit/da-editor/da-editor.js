@@ -11,6 +11,7 @@ export default class DaEditor extends LitElement {
   static properties = {
     path: { type: String },
     version: { type: String },
+    permissions: { state: true },
     _imsLoaded: { state: false },
     _versionDom: { state: true },
   };
@@ -35,6 +36,7 @@ export default class DaEditor extends LitElement {
   }
 
   async fetchVersion() {
+    this._versionDom = null;
     const resp = await daFetch(this.version);
     if (!resp.ok) return;
     const text = await resp.text();
@@ -80,47 +82,25 @@ export default class DaEditor extends LitElement {
   }
 
   render() {
-    if (this.version && !this._versionDom) this.fetchVersion();
-    if (!this._imsLoaded) return null;
     return html`
       <div class="da-prose-mirror"></div>
       ${this._versionDom ? this.renderVersion() : nothing}
     `;
   }
 
-  async getPermissions() {
-    const resp = await daFetch(this.path, { method: 'HEAD' });
-
-    const daActions = resp.headers.get('X-da-actions');
-    if (!daActions) return [];
-    const actions = daActions.split('=');
-    if (actions) {
-      return actions[1].split(',');
-    }
-    return [];
-  }
-
   async updated(props) {
-    if (!this._imsLoaded) return;
-    if (!(props.has('version') || props.has('_versionDom'))) {
-      this.disconnectWebsocket();
-      const prose = this.shadowRoot.querySelector('.da-prose-mirror');
-      prose.innerHTML = '';
+    if (props.has('version') && this.version) {
+      this.fetchVersion();
+    }
 
-      const permissions = await this.getPermissions();
-      this.wsProvider = initProse({ editor: prose, path: this.path, permissions });
+    // Do not setup prosemirror until we know the permissions
+    if (props.has('permissions')) {
+      if (this.path && this.permissions) {
+        this.disconnectWebsocket();
+        const editor = this.shadowRoot.querySelector('.da-prose-mirror');
+        editor.innerHTML = '';
 
-      const titleEl = this.ownerDocument.querySelector('da-title')?.shadowRoot?.querySelector('.da-title-inner');
-      const verBtn = this.parentElement.querySelector('button.show-versions');
-
-      titleEl.classList.remove('da-title-readonly');
-      prose.classList.remove('da-prose-mirror-readonly');
-      prose.querySelector('.ProseMirror')?.setAttribute('contenteditable', permissions.includes('write'));
-      verBtn.removeAttribute('disabled');
-      if (!permissions.includes('write')) {
-        titleEl.classList.add('da-title-readonly');
-        prose.classList.add('da-prose-mirror-readonly');
-        verBtn.setAttribute('disabled', '');
+        this.wsProvider = initProse({ editor, path: this.path, permissions: this.permissions });
       }
     }
   }

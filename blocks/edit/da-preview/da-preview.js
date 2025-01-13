@@ -18,13 +18,6 @@ export default class DaPreview extends LitElement {
     body: { state: true },
   };
 
-  constructor() {
-    super();
-    this.channel = new MessageChannel();
-    this.port1 = this.channel.port1;
-    this.parent = document.querySelector('da-content');
-  }
-
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
@@ -41,7 +34,7 @@ export default class DaPreview extends LitElement {
   }
 
   hidePreview() {
-    this.parent.classList.remove('show-preview');
+    this._daContent.classList.remove('show-preview');
     this.classList.remove('show-preview');
   }
 
@@ -59,14 +52,18 @@ export default class DaPreview extends LitElement {
   }
 
   iframeLoaded({ target }) {
-    this.setWidth('mobile');
+    const channel = new MessageChannel();
+    this.port1 = channel.port1;
+    this.port2 = channel.port2;
 
-    this.port1.onmessage = (e) => { this.setHeight(e.data); };
-
-    // Delay so the initial loading of the document can complete.
     setTimeout(() => {
-      target.contentWindow.postMessage({ init: true }, '*', [this.channel.port2]);
+      this.port1.onmessage = (e) => { this.setHeight(e.data); };
+      target.contentWindow.postMessage({ init: true }, '*', [this.port2]);
     }, 1500);
+  }
+
+  get _daContent() {
+    return document.querySelector('da-content');
   }
 
   render() {
@@ -88,11 +85,9 @@ export default class DaPreview extends LitElement {
   }
 
   updated(props) {
-    super.updated(props);
     this.iframe ??= this.shadowRoot.querySelector('iframe');
-    props.forEach((oldValue, propName) => {
-      if (propName === 'body') this.setBody();
-    });
+    if (props.has('body')) this.setBody();
+    super.updated(props);
   }
 }
 
