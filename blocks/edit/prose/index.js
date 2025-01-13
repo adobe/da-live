@@ -174,9 +174,11 @@ function restoreCursorPosition(view) {
   }
 }
 
-export default function initProse({ editor, path, permissions }) {
+export default function initProse({ path, permissions }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
+  const editor = document.createElement('div');
+  editor.className = 'da-prose-mirror';
 
   const schema = getSchema();
 
@@ -260,10 +262,7 @@ export default function initProse({ editor, path, permissions }) {
     plugins.push(menu);
   }
 
-  let state = EditorState.create({
-    schema,
-    plugins,
-  });
+  let state = EditorState.create({ schema, plugins });
 
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
@@ -299,5 +298,5 @@ export default function initProse({ editor, path, permissions }) {
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return wsProvider;
+  return { proseEl: editor, wsProvider };
 }

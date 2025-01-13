@@ -1,4 +1,8 @@
 import getPathDetails from '../shared/pathDetails.js';
+import initProse from './prose/index.js';
+
+let proseEl;
+let wsProvider;
 
 async function setUI(el, utils) {
   const details = getPathDetails();
@@ -34,6 +38,12 @@ async function setUI(el, utils) {
   const { permissions } = await daFetch(details.sourceUrl, { method: 'HEAD' });
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
+
+  if (wsProvider) wsProvider.disconnect({ data: 'Client navigation' });
+
+  ({ proseEl, wsProvider } = initProse({ path: details.sourceUrl, permissions }));
+  daContent.proseEl = proseEl;
+  daContent.wsProvider = wsProvider;
 }
 
 export default async function init(el) {

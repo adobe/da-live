@@ -1,6 +1,5 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { LitElement, html, nothing } from 'da-lit';
-import initProse from '../prose/index.js';
 import getSheet from '../../shared/sheet.js';
 import { initIms, daFetch } from '../../shared/utils.js';
 import { parse, aem2prose } from '../utils/helpers.js';
@@ -11,6 +10,8 @@ export default class DaEditor extends LitElement {
   static properties = {
     path: { type: String },
     version: { type: String },
+    proseEl: { attribute: false },
+    wsProvider: { attribute: false },
     permissions: { state: true },
     _imsLoaded: { state: false },
     _versionDom: { state: true },
@@ -21,18 +22,6 @@ export default class DaEditor extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.shadowRoot.createRange = () => document.createRange();
     initIms().then(() => { this._imsLoaded = true; });
-  }
-
-  disconnectWebsocket() {
-    if (this.wsProvider) {
-      this.wsProvider.disconnect({ data: 'Client navigation' });
-      this.wsProvider = undefined;
-    }
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.disconnectWebsocket();
   }
 
   async fetchVersion() {
@@ -70,6 +59,10 @@ export default class DaEditor extends LitElement {
     this.handleCancel();
   }
 
+  get _proseEl() {
+    return this.shadowRoot.querySelector('.da-prose-mirror');
+  }
+
   renderVersion() {
     return html`
       <div class="da-prose-mirror da-version-preview">
@@ -83,7 +76,6 @@ export default class DaEditor extends LitElement {
 
   render() {
     return html`
-      <div class="da-prose-mirror"></div>
       ${this._versionDom ? this.renderVersion() : nothing}
     `;
   }
@@ -94,14 +86,9 @@ export default class DaEditor extends LitElement {
     }
 
     // Do not setup prosemirror until we know the permissions
-    if (props.has('permissions')) {
-      if (this.path && this.permissions) {
-        this.disconnectWebsocket();
-        const editor = this.shadowRoot.querySelector('.da-prose-mirror');
-        editor.innerHTML = '';
-
-        this.wsProvider = initProse({ editor, path: this.path, permissions: this.permissions });
-      }
+    if (props.has('proseEl') && this.path && this.permissions) {
+      if (this._proseEl) this._proseEl.remove();
+      this.shadowRoot.append(this.proseEl);
     }
   }
 }

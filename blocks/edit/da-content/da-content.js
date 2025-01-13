@@ -9,6 +9,8 @@ export default class DaContent extends LitElement {
   static properties = {
     details: { attribute: false },
     permissions: { attribute: false },
+    proseEl: { attribute: false },
+    wsProvider: { attribute: false },
     _editorLoaded: { state: true },
     _versionUrl: { state: true },
   };
@@ -66,6 +68,8 @@ export default class DaContent extends LitElement {
           path="${this.details.sourceUrl}"
           version="${this._versionUrl}"
           .permissions=${this.permissions}
+          .proseEl=${this.proseEl}
+          .wsProvider=${this.wsProvider}
           @proseloaded=${this.handleEditorLoaded}
           @versionreset=${this.handleReset}>
         </da-editor>
