@@ -80,15 +80,19 @@ export function pollForUpdates() {
 }
 
 function handleProseLoaded(editor) {
-  const daEditor = editor.getRootNode().host;
-  const opts = { bubbles: true, composed: true };
-  const event = new CustomEvent('proseloaded', opts);
-  daEditor.dispatchEvent(event);
-  // Wait for the event to dispatch and the elements to be made.
+  // Give the websocket time to connect and populate
   setTimeout(() => {
-    pollForUpdates();
-    setPreviewBody();
-  }, 500);
+    const daEditor = editor.getRootNode().host;
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('proseloaded', opts);
+    daEditor.dispatchEvent(event);
+
+    // Give the preview elements time to create
+    setTimeout(() => {
+      pollForUpdates();
+      setPreviewBody();
+    }, 500);
+  }, 3000);
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
