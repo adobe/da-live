@@ -91,7 +91,7 @@ function handleProseLoaded(editor) {
     setTimeout(() => {
       pollForUpdates();
       setPreviewBody();
-    }, 500);
+    }, 3000);
   }, 3000);
 }
 
@@ -191,6 +191,8 @@ export default function initProse({ editor, path, permissions }) {
     opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
   }
 
+  const canWrite = permissions.some((permission) => permission === 'write');
+
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
@@ -225,7 +227,6 @@ export default function initProse({ editor, path, permissions }) {
     ySyncPlugin(yXmlFragment),
     yCursorPlugin(wsProvider.awareness),
     yUndoPlugin(),
-    menu,
     slashMenu(),
     imageDrop(schema),
     linkConverter(schema),
@@ -254,6 +255,10 @@ export default function initProse({ editor, path, permissions }) {
     tableEditing(),
     history(),
   ];
+
+  if (canWrite) {
+    plugins.push(menu);
+  }
 
   let state = EditorState.create({
     schema,
@@ -286,9 +291,7 @@ export default function initProse({ editor, path, permissions }) {
         return false;
       },
     },
-    editable() {
-      return permissions.some((permission) => permission === 'write');
-    },
+    editable() { return canWrite; },
   });
 
   handleProseLoaded(editor, permissions);
