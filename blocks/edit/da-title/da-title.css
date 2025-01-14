@@ -46,10 +46,9 @@ h1 {
   position: absolute;
   width: 18px;
   height: 18px;
-  top: 50%;
+  top: 18px;
   left: -36px;
   background: url(/blocks/edit/img/Smock_LockClosed_18_N.svg) center center / 18px no-repeat;
-  transform: translateY(-50%);
 }
 
 .da-title-name-label {

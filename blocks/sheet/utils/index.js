@@ -6,7 +6,7 @@ import '../da-sheet-tabs.js';
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
-const SHEET_TEMPLATE = { sheetName: 'data' };
+const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
 let permissions;
 let canWrite;
@@ -39,7 +39,7 @@ function finishSetup(el, data) {
 
 function getDefaultSheet() {
   return [
-    { ...SHEET_TEMPLATE },
+    { ...SHEET_TEMPLATE, minDimensions: [20, 20] },
   ];
 }
 
@@ -71,7 +71,8 @@ const getColWidths = (colWidths, headers) => {
 
 function getSheet(json, sheetName) {
   const data = getSheetData(json.data);
-  const templ = canWrite ? { ...SHEET_TEMPLATE, minDimensions: [20, 20] } : SHEET_TEMPLATE;
+  const templ = { ...SHEET_TEMPLATE };
+  if (!canWrite) delete templ.minDimensions;
 
   return {
     ...templ,
@@ -87,14 +88,15 @@ export function getPermissions() {
 
 export async function getData(url) {
   const resp = await daFetch(url);
-  if (!resp.ok) return getDefaultSheet();
 
-  // Set permissions
+  // Set permissions even if the file is a 404
   const daTitle = document.querySelector('da-title');
   if (daTitle) daTitle.permissions = resp.permissions;
 
   permissions = resp.permissions;
   canWrite = resp.permissions.some((permission) => permission === 'write');
+
+  if (!resp.ok) return getDefaultSheet();
 
   const sheets = [];
 
