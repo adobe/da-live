@@ -89,8 +89,8 @@ function handleProseLoaded(editor) {
 
     // Give the preview elements time to create
     setTimeout(() => {
-      pollForUpdates();
       setPreviewBody();
+      pollForUpdates();
     }, 3000);
   }, 3000);
 }

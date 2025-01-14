@@ -6,7 +6,10 @@ import '../da-sheet-tabs.js';
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
-const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
+const SHEET_TEMPLATE = { sheetName: 'data' };
+
+let permissions;
+let canWrite;
 
 function resetSheets(el) {
   document.querySelector('da-sheet-tabs')?.remove();
@@ -30,6 +33,7 @@ function finishSetup(el, data) {
 
   // Setup tabs
   const daSheetTabs = document.createElement('da-sheet-tabs');
+  daSheetTabs.permissions = permissions;
   el.insertAdjacentElement('beforebegin', daSheetTabs);
 }
 
@@ -50,22 +54,47 @@ function getSheetData(sheetData) {
   return [header, ...data];
 }
 
-const getColWidths = (colWidths, headers) => colWidths?.map((width) => ({ width: `${width}` }))
-  || headers.map(() => ({ width: '300' }));
+const getColWidths = (colWidths, headers) => {
+  if (colWidths) {
+    return colWidths?.map((width) => {
+      const opts = { width: `${width}` };
+      opts.readOnly = !canWrite;
+      return opts;
+    });
+  }
+  return headers.map(() => {
+    const opts = { width: '300' };
+    opts.readOnly = !canWrite;
+    return opts;
+  });
+};
 
 function getSheet(json, sheetName) {
   const data = getSheetData(json.data);
+  const templ = canWrite ? { ...SHEET_TEMPLATE, minDimensions: [20, 20] } : SHEET_TEMPLATE;
+
   return {
-    ...SHEET_TEMPLATE,
+    ...templ,
     sheetName,
     data,
     columns: getColWidths(json[':colWidths'], data[0]),
   };
 }
 
+export function getPermissions() {
+  return permissions;
+}
+
 export async function getData(url) {
   const resp = await daFetch(url);
   if (!resp.ok) return getDefaultSheet();
+
+  // Set permissions
+  const daTitle = document.querySelector('da-title');
+  if (daTitle) daTitle.permissions = resp.permissions;
+
+  permissions = resp.permissions;
+  canWrite = resp.permissions.some((permission) => permission === 'write');
 
   const sheets = [];
 

@@ -11,6 +11,7 @@ function debounce(func, wait) {
 }
 
 export const saveSheets = async (sheets) => {
+  const daTitle = document.querySelector('da-title');
   document.querySelector('da-sheet-panes').data = convertSheets(sheets);
 
   const { hash } = window.location;
