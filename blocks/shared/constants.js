@@ -16,7 +16,7 @@ export const SUPPORTED_FILES = {
 const DA_ADMIN_ENVS = {
   local: 'http://localhost:8787',
   stage: 'https://stage-admin.da.live',
-  prod: 'https://da.live/api',
+  prod: 'https://admin.da.live',
 };
 
 const DA_ADMIN_ROOM_ENVS = {
