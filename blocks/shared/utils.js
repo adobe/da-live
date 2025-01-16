@@ -2,7 +2,7 @@ import { DA_ORIGIN } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
-const DA_ORIGINS = ['https://admin.da.live', 'https://stage-admin.da.live', 'http://localhost:8787'];
+const DA_ORIGINS = ['https://da.live', 'https://admin.da.live', 'https://stage-admin.da.live', 'http://localhost:8787'];
 const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
 const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS];
 
