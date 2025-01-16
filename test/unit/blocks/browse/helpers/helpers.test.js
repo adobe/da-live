@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { stub } from 'sinon';
-import { getFullEntryList, handleUpload } from '../../../../../blocks/browse/da-list/helpers/drag-n-drop.js';
+import { getFullEntryList, handleUpload, sanitizePath } from '../../../../../blocks/browse/da-list/helpers/drag-n-drop.js';
 
 const goodEntry = {
   isDirectory: false,
@@ -80,5 +80,12 @@ describe('Upload and format', () => {
 
     const item = await handleUpload(list, fullpath, packagedFile);
     expect(item).to.exist;
+  });
+
+  it('Returns sanitize file path', async () => {
+    const path = '/new folder/geo_metrixx.jpg';
+    const item = sanitizePath(path);
+    console.log('item', item);
+    expect(item).to.equal('/new-folder/geo-metrixx.jpg');
   });
 });
