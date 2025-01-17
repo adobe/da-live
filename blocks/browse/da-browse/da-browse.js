@@ -46,6 +46,7 @@ export default class DaBrowse extends LitElement {
       // Only re-fetch if the orgs are different
       const reFetch = props.get('details')?.owner !== this.details.owner;
       this.editor = await this.getEditor(reFetch);
+      console.log(this.editor);
     }
 
     super.update(props);
@@ -60,11 +61,17 @@ export default class DaBrowse extends LitElement {
       const { data, ':type': type } = await resp.json();
 
       const rows = type === 'multi-sheet' ? data?.data : data;
-      this.editorConf = rows.find((row) => row.key === 'editor.path')?.value;
+      this.editorConfs = rows.reduce((acc, row) => {
+        if (row.key === 'editor.path') acc.push(row.value);
+
+        return acc;
+      }, []);
     }
-    if (!this.editorConf) return DEF_EDIT;
-    const [editorSection, editorUrl] = this.editorConf.split('=');
-    return this.details.fullpath.startsWith(editorSection) ? editorUrl : DEF_EDIT;
+
+    if (this.editorConfs.length === 0) return DEF_EDIT;
+    const matchedConf = this.editorConfs.find((conf) => this.details.fullpath.startsWith(conf.split('=')[0]));
+    if (!matchedConf) return DEF_EDIT;
+    return matchedConf.split('=')[1];
   }
 
   handleTabClick(idx) {
