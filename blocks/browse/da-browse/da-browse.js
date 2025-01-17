@@ -66,7 +66,7 @@ export default class DaBrowse extends LitElement {
       }, []);
     }
 
-    if (this.editorConfs.length === 0) return DEF_EDIT;
+    if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
 
     // Filter down all matched confs
     const matchedConfs = this.editorConfs.filter(
