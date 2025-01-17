@@ -46,7 +46,6 @@ export default class DaBrowse extends LitElement {
       // Only re-fetch if the orgs are different
       const reFetch = props.get('details')?.owner !== this.details.owner;
       this.editor = await this.getEditor(reFetch);
-      console.log(this.editor);
     }
 
     super.update(props);
@@ -63,14 +62,22 @@ export default class DaBrowse extends LitElement {
       const rows = type === 'multi-sheet' ? data?.data : data;
       this.editorConfs = rows.reduce((acc, row) => {
         if (row.key === 'editor.path') acc.push(row.value);
-
         return acc;
       }, []);
     }
 
     if (this.editorConfs.length === 0) return DEF_EDIT;
-    const matchedConf = this.editorConfs.find((conf) => this.details.fullpath.startsWith(conf.split('=')[0]));
-    if (!matchedConf) return DEF_EDIT;
+
+    // Filter down all matched confs
+    const matchedConfs = this.editorConfs.filter(
+      (conf) => this.details.fullpath.startsWith(conf.split('=')[0]),
+    );
+
+    if (matchedConfs.length === 0) return DEF_EDIT;
+
+    // Sort by length in descending order (longest first)
+    const matchedConf = matchedConfs.sort((a, b) => b.length - a.length)[0];
+
     return matchedConf.split('=')[1];
   }
 
