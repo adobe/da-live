@@ -6,7 +6,7 @@ import '../../milo.js';
 describe('DA Admin', () => {
   it('Sets DA admin default', () => {
     const env = getDaAdmin();
-    expect(env).to.equal('https://admin.da.live');
+    expect(env).to.equal('https://da.live/api');
   });
 
   it('Sets DA admin stage', () => {
@@ -21,7 +21,7 @@ describe('DA Admin', () => {
 
   it('Resets DA admin', () => {
     const env = getDaAdmin({ href: 'http://localhost:3000/?da-admin=reset' });
-    expect(env).to.equal('https://admin.da.live');
+    expect(env).to.equal('https://da.live/api');
   });
 });
 

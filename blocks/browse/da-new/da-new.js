@@ -10,6 +10,7 @@ const STYLE = await getStyle(import.meta.url);
 export default class DaNew extends LitElement {
   static properties = {
     fullpath: { type: String },
+    editor: { type: String },
     _createShow: { attribute: false },
     _createType: { attribute: false },
     _createFile: { attribute: false },
@@ -74,7 +75,7 @@ export default class DaNew extends LitElement {
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
-    const editPath = getEditPath({ path, ext });
+    const editPath = getEditPath({ path, ext, editor: this.editor });
     if (ext && ext !== 'link') {
       window.location = editPath;
     } else {
