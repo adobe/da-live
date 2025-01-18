@@ -15,6 +15,7 @@ export default class DaListItem extends LitElement {
     path: { type: String },
     date: { type: Number },
     ext: { type: String },
+    editor: { type: String },
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
@@ -188,7 +189,7 @@ export default class DaListItem extends LitElement {
   }
 
   renderItem() {
-    let path = this.ext ? getEditPath({ path: this.path, ext: this.ext }) : `#${this.path}`;
+    let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
     let externalUrlPromise;
     let target = this.ext ? path : nothing;
     if (this.ext === 'link') {

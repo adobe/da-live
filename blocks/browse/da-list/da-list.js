@@ -20,6 +20,7 @@ export default class DaList extends LitElement {
   static properties = {
     listtype: { type: String },
     fullpath: { type: String },
+    editor: { type: String },
     select: { type: Boolean },
     sort: { type: Boolean },
     drag: { type: Boolean },
@@ -378,6 +379,7 @@ export default class DaList extends LitElement {
           path="${item.path}"
           date="${item.lastModified}"
           ext="${item.ext}"
+          editor="${this.editor}"
           idx=${idx}>
         </da-list-item>`)}
       </div>
