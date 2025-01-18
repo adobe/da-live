@@ -81,18 +81,25 @@ export async function getFullEntryList(entries) {
   return files.filter((file) => file);
 }
 
+export function sanitizePath(path) {
+  const pathArray = path.split('/');
+  const sanitizedArray = pathArray.map((element) => element.replaceAll(/[^a-zA-Z0-9.]/g, '-').toLowerCase());
+  return [...sanitizedArray].join('/');
+}
+
 export async function handleUpload(list, fullpath, file) {
   const { data, path } = file;
   const formData = new FormData();
   formData.append('data', data);
   const opts = { method: 'POST', body: formData };
-  const postpath = `${fullpath}${path}`;
+  const sanitizedPath = sanitizePath(path);
+  const postpath = `${fullpath}${sanitizedPath}`;
 
   try {
     await daFetch(`${DA_ORIGIN}/source${postpath}`, opts);
     file.imported = true;
 
-    const [displayName] = path.split('/').slice(1);
+    const [displayName] = sanitizedPath.split('/').slice(1);
     const [filename, ...rest] = displayName.split('.');
     const ext = rest.pop();
     const rejoined = [filename, ...rest].join('.');
