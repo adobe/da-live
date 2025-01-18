@@ -73,6 +73,7 @@ h1 {
   display: flex;
   margin-bottom: 0.67em;
   justify-content: center;
+  align-items: center;
 }
 
 .collab-status {
@@ -183,14 +184,27 @@ h1 {
 }
 
 .da-title-action-send-icon.is-sending {
-  animation: animatedBackground 1s linear infinite;
+  animation: animated-background 1s linear infinite;
 }
 
-@keyframes animatedBackground {
+.da-title-error-details {
+  background-color: var(--s2-red);
+  padding: 0 6px;
+  margin: 0 0 0 24px;
+  border-radius: 4px;
+  color: #FFF;
+}
+
+.da-title-action-send.is-error {
+  background-color: var(--s2-red);
+}
+
+@keyframes animated-background {
   from {
     left: -22px;
     bottom: -22px;
   }
+
   to {
     left: 22px;
     bottom: 22px;

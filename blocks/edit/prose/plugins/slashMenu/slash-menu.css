@@ -1,0 +1,118 @@
+:host {
+  display: none;
+  position: fixed;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  max-height: 500px;
+  overflow-y: auto;
+  z-index: 999999;
+  min-width: 150px;
+}
+
+:host([visible]) {
+  display: block;
+}
+
+.slash-menu-items {
+  padding: 4px 0;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.slash-menu-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slash-menu-item:hover,
+.slash-menu-item.selected {
+  background: #f0f0f0;
+}
+
+.slash-menu-icon {
+  width: 18px;
+  height: 18px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Reuse the same icon classes from the main menu */
+.slash-menu-icon.menu-item-para {
+  background-image: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg');
+}
+
+.slash-menu-icon.menu-item-h1 {
+  background-image: url('/blocks/edit/img/Smock_Heading1_18_N.svg');
+}
+
+.slash-menu-icon.menu-item-h2 {
+  background-image: url('/blocks/edit/img/Smock_Heading2_18_N.svg');
+}
+
+.slash-menu-icon.menu-item-h3 {
+  background-image: url('/blocks/edit/img/Smock_Heading3_18_N.svg');
+}
+
+.slash-menu-icon.menu-item-h4 {
+  background-image: url('/blocks/edit/img/Smock_Heading4_18_N.svg');
+}
+
+.slash-menu-icon.menu-item-h5 {
+  background-image: url('/blocks/edit/img/Smock_Heading5_18_N.svg');
+}
+
+.slash-menu-icon.menu-item-h6 {
+  background-image: url('/blocks/edit/img/Smock_Heading6_18_N.svg');
+}
+
+.slash-menu-icon.menu-item-blockquote {
+  background-image: url('/blocks/edit/img/Smock_BlockQuote_18_N.svg');
+}
+
+.slash-menu-icon.menu-item-codeblock {
+  background-image: url('/blocks/edit/img/Smock_BlockCode_18_N.svg');
+}
+
+.slash-menu-icon.bullet-list {
+  background-image: url('/blocks/edit/img/Smock_TextBulleted_18_N.svg');
+}
+
+.slash-menu-icon.ordered-list {
+  background-image: url('/blocks/edit/img/Smock_TextNumbered_18_N.svg');
+}
+
+.slash-menu-icon.insert-table {
+  background-image: url('/blocks/edit/img/Smock_TableAdd_18_N.svg');
+}
+
+.slash-menu-icon.edit-hr {
+  background-image: url('/blocks/edit/img/Smock_PageRule_18_N.svg');
+}
+
+.slash-menu-icon.open-library {
+  background-image: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg');
+}
+
+.slash-menu-icon.lorem-ipsum {
+  background-image: url('/blocks/edit/img/Smock_Rail_18_N.svg');
+}
+
+.slash-menu-item .argument {
+  color: #666;
+  font-style: italic;
+  margin-left: 8px;
+  font-size: 0.9em;
+}
+
+.slash-menu-item .argument.selected {
+  font-style: normal;
+  font-weight: bold;
+}

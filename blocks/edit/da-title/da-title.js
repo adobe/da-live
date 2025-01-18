@@ -1,5 +1,5 @@
-import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
-import { saveToDa, saveToAem, saveDaConfig } from '../utils/helpers.js';
+import { LitElement, html, nothing } from 'da-lit';
+import { saveToDa, saveToAem, saveDaConfig, saveDaVersion } from '../utils/helpers.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -24,6 +24,7 @@ export default class DaTitle extends LitElement {
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
     _actionsVis: {},
+    _status: { state: true },
   };
 
   connectedCallback() {
@@ -31,10 +32,25 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._actionsVis = false;
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
+    if (this.details.view === 'sheet') {
+      this.collabStatus = window.navigator.onLine
+        ? 'connected'
+        : 'offline';
+
+      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
+      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
+    }
+  }
+
+  handleError(json, action, icon) {
+    this._status = { ...json.error, action };
+    icon.classList.remove('is-sending');
+    icon.parentElement.classList.add('is-error');
   }
 
   async handleAction(action) {
     this.toggleActions();
+    this._status = null;
     const sendBtn = this.shadowRoot.querySelector('.da-title-action-send-icon');
     sendBtn.classList.add('is-sending');
 
@@ -53,10 +69,19 @@ export default class DaTitle extends LitElement {
     if (action === 'preview' || action === 'publish') {
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
       let json = await saveToAem(aemPath, 'preview');
+      if (json.error) {
+        this.handleError(json, action, sendBtn);
+        return;
+      }
       if (action === 'publish') json = await saveToAem(aemPath, 'live');
+      if (json.error) {
+        this.handleError(json, action, sendBtn);
+        return;
+      }
       const { url } = action === 'publish' ? json.live : json.preview;
       window.open(url, '_blank');
     }
+    if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
   }
 
@@ -131,6 +156,7 @@ export default class DaTitle extends LitElement {
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
+          ${this._status ? html`<p class="da-title-error-details">${this._status.message} ${this._status.action}.</p>` : nothing}
           <div class="da-title-actions${this._actionsVis ? ' is-open' : ''}">
             ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
             <button

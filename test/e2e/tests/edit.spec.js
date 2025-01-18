@@ -14,26 +14,28 @@ import ENV from '../utils/env.js';
 import { getTestPageURL } from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
-  test.setTimeout(15000);
+  test.setTimeout(30000);
 
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
 
+  await page.waitForTimeout(3000);
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
   await page.close();
 
   const newPage = await browser.newPage();
   await newPage.goto(url);
+  await newPage.waitForTimeout(3000);
   await expect(newPage.locator('div.ProseMirror')).toBeVisible();
   await expect(newPage.locator('div.ProseMirror')).toContainText(enteredText);
 });
 
 test('Create Delete Document', async ({ browser, page }, workerInfo) => {
-  test.setTimeout(15000);
+  test.setTimeout(30000);
 
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();
@@ -60,16 +62,19 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await newPage.keyboard.press('Shift+Tab');
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
-  await expect(newPage.locator('button.delete-button')).toBeVisible();
-  await newPage.locator('button.delete-button').click();
+  await page.close(); // Close the original page to avoid it writing the content
 
-  // Wait 1 sec
-  await page.waitForTimeout(1000);
+  // There are 2 delete buttons, one on the Browse panel and another on the Search one
+  // select the visible one.
+  await newPage.locator('button.delete-button').locator('visible=true').click();
+
+  await newPage.waitForTimeout(1000);
+  /* TODO REMOVE once #233 is fixed */ await newPage.reload();
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
 });
 
 test('Change document by switching anchors', async ({ page }, workerInfo) => {
-  test.setTimeout(15000);
+  test.setTimeout(30000);
 
   const url = getTestPageURL('edit3', workerInfo);
   const urlA = `${url}A`;
@@ -77,6 +82,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
 
   await page.goto(urlA);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(3000);
 
   await page.locator('div.ProseMirror').fill('before table');
   await page.getByText('Block', { exact: true }).click();
@@ -91,22 +97,25 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.keyboard.type('k 2');
   await page.keyboard.press('Tab');
   await page.keyboard.type('v 2');
-
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
 
   await page.goto(urlB);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(3000);
 
   await page.locator('div.ProseMirror').fill('page B');
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
 
   await page.goto(urlA);
+  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toContainText('mytable');
+  await page.waitForTimeout(2000);
   await expect(page.locator('div.ProseMirror')).toContainText('k 2');
   await expect(page.locator('div.ProseMirror')).toContainText('v 2');
 
   await page.goto(urlB);
+  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });

@@ -1,9 +1,9 @@
 // ProseMirror
 import { EditorView } from 'prosemirror-view';
-import { EditorState, Plugin, TextSelection } from 'prosemirror-state';
+import { EditorState, Plugin, PluginKey, TextSelection } from 'prosemirror-state';
 import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
-import { baseKeymap, toggleMark } from 'prosemirror-commands';
+import { baseKeymap, setBlockType, toggleMark, wrapIn } from 'prosemirror-commands';
 import { history, undo, redo } from 'prosemirror-history';
 import { addListNodes, wrapInList, splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import { keymap } from 'prosemirror-keymap';
@@ -14,6 +14,7 @@ import {
   tableEditing,
   columnResizing,
   goToNextCell,
+  selectedRect,
   tableNodes,
   fixTables,
   addColumnAfter,
@@ -25,6 +26,7 @@ import {
   mergeCells,
   splitCell,
   deleteTable,
+  isInTable,
 } from 'prosemirror-tables';
 
 // yjs
@@ -42,7 +44,9 @@ import {
   yXmlFragmentToProsemirrorJSON,
 } from 'y-prosemirror';
 
-import { MenuItem, Dropdown, renderGrouped, blockTypeItem } from '../../prosemirror-menu/dist/index.js';
+import { MenuItem, Dropdown, renderGrouped, blockTypeItem, wrapItem } from '../../prosemirror-menu/dist/index.js';
+
+import { InputRule, inputRules } from 'prosemirror-inputrules';
 
 // All exported
 export {
@@ -54,6 +58,7 @@ export {
   Schema,
   Slice,
   Plugin,
+  PluginKey,
   TextSelection,
   baseSchema,
   baseKeymap,
@@ -64,6 +69,8 @@ export {
   tableEditing,
   columnResizing,
   goToNextCell,
+  isInTable,
+  selectedRect,
   tableNodes,
   fixTables,
   addColumnAfter,
@@ -80,6 +87,9 @@ export {
   Dropdown,
   renderGrouped,
   blockTypeItem,
+  wrapItem,
+  wrapIn,
+  setBlockType,
   toggleMark,
   wrapInList,
   splitListItem,
@@ -87,6 +97,8 @@ export {
   sinkListItem,
   undo,
   redo,
+  InputRule,
+  inputRules,
   Y,
   WebsocketProvider,
   ySyncPlugin,

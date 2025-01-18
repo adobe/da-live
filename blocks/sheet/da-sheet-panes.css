@@ -1,0 +1,56 @@
+:host {
+  margin-top: 44px;
+  position: relative;
+}
+
+.da-sheet-panes {
+  height: 100%;
+}
+
+.da-sheet-preview {
+  display: none;
+}
+
+.da-sheet-pane-tabs {
+  display: none;
+  position: absolute;
+  top: 20px;
+  right: -56px;
+}
+
+.da-sheet-pane-tabs.is-visible {
+  display: unset;
+}
+
+.da-editor-tabs-full {
+  padding: 6px;
+  border-radius: 4px;
+  box-shadow: rgb(181 181 181) 0 0 5px 0;
+  background: rgb(255 255 255);
+  box-sizing: border-box;
+}
+
+.da-editor-tabs-quiet {
+  padding: 6px;
+}
+
+.da-editor-tab {
+  display: block;
+  width: 50px;
+  height: 44px;
+  text-indent: -1000px;
+  overflow: hidden;
+  border-radius: 2px;
+  border: none;
+  cursor: pointer;
+}
+
+.da-editor-tab.show-preview {
+  background: url('/blocks/edit/img/Smock_Preview_18_N.svg') center center / 20px no-repeat rgb(239 239 239);
+  background-blend-mode: hard-light;
+}
+
+.da-editor-tab.show-versions {
+  background: url('/blocks/edit/img/Smock_Calendar_18_N.svg') center center / 20px no-repeat;
+  background-blend-mode: hard-light;
+}

@@ -15,6 +15,8 @@ import {
   Dropdown,
   renderGrouped,
   blockTypeItem,
+  wrapItem,
+  setBlockType,
   toggleMark,
   undo,
   redo,
@@ -50,9 +52,9 @@ function cmdItem(cmd, options) {
   // eslint-disable-next-line guard-for-in, no-restricted-syntax
   for (const prop in options) {
     passedOptions[prop] = options[prop];
-    if (!options.enable && !options.select) {
-      passedOptions[options.enable ? 'enable' : 'select'] = (state) => cmd(state);
-    }
+  }
+  if (!options.enable && !options.select) {
+    passedOptions.enable = (state) => cmd(state);
   }
   return new MenuItem(passedOptions);
 }
@@ -109,6 +111,11 @@ function calculateLinkPosition(state, link, offset) {
   };
 }
 
+function hasImageNode(contentArr) {
+  if (!contentArr) return false;
+  return contentArr.some((node) => node.type.name === 'image');
+}
+
 function linkItem(linkMarkType) {
   const label = 'Link';
 
@@ -120,8 +127,10 @@ function linkItem(linkMarkType) {
     class: 'edit-link',
     active(state) { return markActive(state, linkMarkType); },
     enable(state) {
-      return state.selection.content().content.childCount <= 1
-        && (!state.selection.empty || this.active(state));
+      const selContent = state.selection.content();
+      return selContent.content.childCount <= 1
+        && (!state.selection.empty || this.active(state))
+        && !hasImageNode(selContent.content?.content[0]?.content?.content);
     },
     run(initialState, dispatch, view) {
       if (lastPrompt.isOpen()) {
@@ -158,17 +167,35 @@ function linkItem(linkMarkType) {
         end = $to.pos;
       }
 
+      let isImage = false;
+      view.state.doc.nodesBetween($from.pos, $to.pos, (node) => {
+        if (node.type === view.state.schema.nodes.image) {
+          isImage = true;
+          fields.href.value = node.attrs.href;
+          fields.title.value = node.attrs.title;
+        }
+      });
+
       dispatch(view.state.tr
         .addMark(start, end, view.state.schema.marks.contextHighlightingMark.create({}))
         .setMeta('addToHistory', false));
 
       const callback = (attrs) => {
-        const tr = view.state.tr
-          .setSelection(TextSelection.create(view.state.doc, start, end));
-        if (fields.href.value) {
-          dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
-        } else if (this.active(view.state)) {
-          dispatch(tr.removeMark(start, end, linkMarkType));
+        if (isImage) {
+          if (fields.href.value) {
+            dispatch(view.state.tr.setNodeAttribute(start, 'href', fields.href.value.trim()));
+          }
+          if (fields.title.value) {
+            dispatch(view.state.tr.setNodeAttribute(start, 'title', fields.title.value.trim()));
+          }
+        } else {
+          const tr = view.state.tr
+            .setSelection(TextSelection.create(view.state.doc, start, end));
+          if (fields.href.value) {
+            dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
+          } else if (this.active(view.state)) {
+            dispatch(tr.removeMark(start, end, linkMarkType));
+          }
         }
 
         view.focus();
@@ -187,15 +214,44 @@ function removeLinkItem(linkMarkType) {
     title: 'Remove link',
     label: 'Remove Link',
     class: 'edit-unlink',
-    active(state) { return markActive(state, linkMarkType); },
+    isImage: false,
+    active(state) {
+      this.isImage = false;
+      const { $from, $to } = state.selection;
+      let imgHasAttrs = false;
+      state.doc.nodesBetween($from.pos, $to.pos, (node) => {
+        if (node.type === state.schema.nodes.image) {
+          this.isImage = true;
+          if (node.attrs.href || node.attrs.title) {
+            imgHasAttrs = true;
+          } else {
+            imgHasAttrs = false;
+          }
+        }
+      });
+      if (this.isImage) {
+        if (($to.pos - $from.pos) <= 1) {
+          return imgHasAttrs;
+        }
+        // selection is more than just an image
+        return false;
+      }
+
+      return markActive(state, linkMarkType);
+    },
     enable(state) { return this.active(state); },
     // eslint-disable-next-line no-unused-vars
     run(state, dispatch, _view) {
-      const { link, offset } = findExistingLink(state, linkMarkType);
-      const { start, end } = calculateLinkPosition(state, link, offset);
-      const tr = state.tr.setSelection(TextSelection.create(state.doc, start, end))
-        .removeMark(start, end, linkMarkType);
-      dispatch(tr);
+      if (this.isImage) {
+        const { $from } = state.selection;
+        dispatch(state.tr.setNodeAttribute($from.pos, 'href', null).setNodeAttribute($from.pos, 'title', null));
+      } else {
+        const { link, offset } = findExistingLink(state, linkMarkType);
+        const { start, end } = calculateLinkPosition(state, link, offset);
+        const tr = state.tr.setSelection(TextSelection.create(state.doc, start, end))
+          .removeMark(start, end, linkMarkType);
+        dispatch(tr);
+      }
     },
   });
 }
@@ -244,6 +300,61 @@ function imgAltTextItem() {
   });
 }
 
+function codeMarkItem(markType) {
+  const title = 'Toggle inline code';
+  const cmd = toggleMark(markType);
+
+  return new MenuItem({
+    title,
+    label: title,
+    class: 'edit-code',
+    active(state) {
+      return markActive(state, markType);
+    },
+    enable(state) {
+      return cmd(state);
+    },
+    run: cmd,
+  });
+}
+
+function codeBlockItem(codeBlockNode) {
+  const cmd = setBlockType(codeBlockNode);
+
+  return new MenuItem({
+    title: 'Change to code block',
+    label: 'Code',
+    column: 2,
+    class: 'menu-item-codeblock',
+    enable(state) {
+      return cmd(state);
+    },
+    active(state) {
+      const { $from } = state.selection;
+      return $from.parent.type.name === 'code_block';
+    },
+    run: cmd,
+  });
+}
+
+export function blockquoteItem(codeBlockNode) {
+  return wrapItem(codeBlockNode, {
+    title: 'Change to blockquote',
+    label: 'Blockquote',
+    column: 2,
+    class: 'menu-item-blockquote',
+  });
+}
+
+function headingItem(headingNode, options) {
+  options.active = (state) => {
+    const { $from } = state.selection;
+    return $from.parent.type.name === 'heading'
+      && $from.parent.attrs.level === options.attrs.level;
+  };
+  return blockTypeItem(headingNode, options);
+}
+
 function markItem(markType, options) {
   const passedOptions = { active(state) { return markActive(state, markType); } };
   // eslint-disable-next-line no-restricted-syntax, guard-for-in
@@ -271,6 +382,12 @@ function getTableMenu() {
 
 function getTextBlocks(marks, nodes) {
   return [
+    blockTypeItem(nodes.paragraph, {
+      title: 'Change to paragraph',
+      label: 'P',
+      column: 2,
+      class: 'menu-item-para',
+    }),
     markItem(marks.strong, {
       title: 'Toggle bold',
       label: 'B',
@@ -291,48 +408,51 @@ function getTextBlocks(marks, nodes) {
       label: 'SUB',
       class: 'edit-sub',
     }),
-    item('separator', null, 'separator'),
-    blockTypeItem(nodes.paragraph, {
-      title: 'Change to paragraph',
-      label: 'P',
-      class: 'menu-item-para',
-    }),
-    blockTypeItem(nodes.heading, {
+    codeMarkItem(marks.code),
+    headingItem(nodes.heading, {
       title: 'Change to H1',
       label: 'H1',
+      column: 2,
       attrs: { level: 1 },
       class: 'menu-item-h1',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to H2',
       label: 'H2',
+      column: 2,
       attrs: { level: 2 },
       class: 'menu-item-h2',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h3',
       label: 'h3',
+      column: 2,
       attrs: { level: 3 },
       class: 'menu-item-h3',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h4',
       label: 'h4',
+      column: 2,
       attrs: { level: 4 },
       class: 'menu-item-h4',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h5',
       label: 'h5',
+      column: 2,
       attrs: { level: 5 },
       class: 'menu-item-h5',
     }),
-    blockTypeItem(nodes.heading, {
+    headingItem(nodes.heading, {
       title: 'Change to h6',
       label: 'h6',
+      column: 2,
       attrs: { level: 6 },
       class: 'menu-item-h6',
     }),
+    blockquoteItem(nodes.blockquote),
+    codeBlockItem(nodes.code_block),
   ];
 }
 
@@ -377,6 +497,13 @@ function getListMenu(nodes) {
       run: liftListItem(nodes.list_item),
     }),
   ];
+}
+
+export function insertSectionBreak(state, dispatch) {
+  const div = document.createElement('div');
+  div.append(document.createElement('hr'), document.createElement('p'));
+  const newNodes = DOMParser.fromSchema(state.schema).parse(div);
+  dispatch(state.tr.replaceSelectionWith(newNodes));
 }
 
 function getMenu(view) {
@@ -435,12 +562,7 @@ function getMenu(view) {
       title: 'Insert section break',
       label: 'HR',
       enable(state) { return canInsert(state, nodes.horizontal_rule); },
-      run(state, dispatch) {
-        const div = document.createElement('div');
-        div.append(document.createElement('hr'), document.createElement('p'));
-        const newNodes = DOMParser.fromSchema(state.schema).parse(div);
-        dispatch(state.tr.replaceSelectionWith(newNodes));
-      },
+      run: insertSectionBreak,
       class: 'edit-hr',
     }),
   ];

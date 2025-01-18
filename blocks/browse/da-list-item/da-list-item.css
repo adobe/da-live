@@ -1,0 +1,306 @@
+:host {
+  display: block;
+  position: relative;
+  margin-top: -1px;
+}
+
+:host(:last-child) {
+  margin-bottom: -1px;
+}
+
+:host(:hover),
+:host(.is-expanded) {
+  z-index: 1;
+  background: rgb(228 240 255);
+}
+
+button {
+  font-family: var(--body-font-family);
+}
+
+:host > svg {
+  display: none;
+}
+
+.da-item-list-item-inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+}
+
+.da-item-list-item-inner.can-select {
+  grid-template-columns: auto 1fr auto;
+}
+
+.da-item-list-item-title,
+.da-item-list-item-rename {
+  grid-template-columns: auto 1fr auto;
+  gap: 24px;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  color: rgb(46 46 46);
+  padding: 24px 0;
+}
+
+.da-item-list-item-type {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+}
+
+.da-item-list-item-type-file {
+    background: url('/blocks/browse/img/Smock_Document_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-type-file-version {
+  background: url('/blocks/browse/img/Smock_FileTemplate_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-type-folder {
+    background: url('/blocks/browse/img/Smock_Folder_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-icon-html {
+  background: url('/blocks/browse/img/Smock_FileHTML_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-icon-link {
+  background: url('/blocks/browse/img/Smock_LinkOut_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-icon-jpg,
+.da-item-list-item-icon-jpeg,
+.da-item-list-item-icon-png,
+.da-item-list-item-icon-svg {
+  background: url('/blocks/browse/img/Smock_Image_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-icon-json {
+  background: url('/blocks/browse/img/Smock_FileData_18_N.svg') center / cover no-repeat;
+}
+
+.da-item-list-item-date {
+  min-width: 160px;
+}
+
+.icon.rename-icon {
+  width: 18px;
+  height: 18px;
+  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Refresh_18_N.svg');
+  animation: spin 4s linear infinite;
+}
+
+.icon.cancel-icon {
+  width: 18px;
+  height: 18px;
+  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Cancel_18_N.svg');
+  animation: spin 4s linear infinite;
+}
+
+.icon.checkmark-icon {
+  width: 18px;
+  height: 18px;
+  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Checkmark_18_N.svg');
+}
+
+@keyframes spin {
+  100% {
+    transform:rotate(360deg);
+  }
+}
+
+/* Checkbox */
+
+.checkbox-wrapper {
+  position: relative;
+  user-select: none;
+}
+
+input[type="checkbox"] {
+  appearance:  none;
+  position:  absolute;
+  top:  -4px;
+  left: -5px;
+  height:  20px;
+  width:  20px;
+}
+
+.checkbox-label {
+  display:  flex;
+  position:  relative;
+  font-size:  20px;
+  font-weight:  400;
+  align-items:  center;
+  justify-content:  flex-start;
+}
+
+.checkbox-label::before,
+.checkbox-label::after {
+  pointer-events: none;
+}
+
+.checkbox-label::before {
+  display:  flex;
+  content: ' ';
+  height:  18px;
+  width:  18px;
+  border-radius: 2px;
+  background: rgb(221 221 221);
+}
+
+.checkbox-label::after {
+  position: absolute;
+  top: 3px;
+  left: 1px;
+  display: flex;
+  content: " ";
+  height: 5px;
+  width: 12px;
+  background: none;
+  border-bottom: 4px solid #FFF;
+  border-left: 4px solid #FFF;
+  transform: rotate(-45deg) scale(0);
+  transition: transform 0.1s ease 0s, opacity 0.1s ease 0s;
+  transform-origin: center center;
+}
+
+.checkbox-wrapper input[type="checkbox"]:checked + .checkbox-label::before {
+  background: #1473E6;
+}
+
+.checkbox-wrapper input[type="checkbox"]:checked + .checkbox-label::after {
+  opacity:  1;
+  transform: rotate(-45deg) scale(.8);
+}
+
+/* Rename */
+.da-item-list-item-rename input {
+  display: block;
+  font-family: var(--body-font-family);
+  font-size: 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px dotted #000;
+  padding: 0;
+  margin: 1px 0 0;
+  line-height: 24px;
+  box-sizing: border-box;
+}
+
+.da-item-list-item-rename input:focus-visible {
+  outline: none;
+  border: none;
+  border-bottom: 1px dotted rgb(20 122 243);
+}
+
+.da-item-list-item-rename-actions {
+  display: flex;
+}
+
+.da-item-list-item-rename-actions button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.da-item-list-item-rename-actions svg {
+  width: 18px;
+  height: 18px;
+}
+
+.da-item-list-item-expand-btn {
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: no-repeat center / 18px url('/blocks/browse/img/Smock_ChevronRight_18_N.svg');
+}
+
+.da-item-list-item-expand-btn.is-visible {
+  display: flex;
+  transition: transform .2s ease-in-out;
+}
+
+:host(.is-expanded) .da-item-list-item-expand-btn.is-visible {
+  transform: rotate(90deg);
+}
+
+.da-item-list-item-expand-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Details */
+.da-item-list-item-details {
+  display: none;
+  grid-template-columns: 32px 80px 1fr 180px 180px;
+  padding: 24px 32px 24px 0;
+  gap: 24px;
+  border-top: 1px solid rgb(165 199 240);
+  margin: 0 24px;
+  font-size: 14px;
+}
+
+.da-item-list-item-details.can-select {
+  padding: 24px 32px 24px 42px;
+}
+
+:host(.is-expanded) .da-item-list-item-details {
+  display: grid;
+}
+
+.da-item-list-item-aem-btn {
+  text-decoration: none;
+  color: #000;
+  display: flex;
+  background: none;
+  gap: 12px;
+}
+
+.da-item-list-item-aem-icon {
+  width: 33.33px;
+  height: 32px;
+  border-radius: 5px;
+  background-color: #959595;
+  background-image: url('/blocks/browse/img/Smock_ExperienceCloud_24_N.svg');
+}
+
+.da-item-list-item-aem-icon.is-active {
+  background-color: #fa0f00;
+}
+
+.da-item-list-item-details p {
+  margin: 0;
+  line-height: 1;
+}
+
+.da-item-list-item-details .da-list-item-details-title {
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+@keyframes spin {
+  100% {
+    transform:rotate(90deg);
+  }
+}
+
+@media (width >= 600px) {
+  .da-item-list-item-title,
+  .da-item-list-item-rename {
+    display: grid;
+  }
+}

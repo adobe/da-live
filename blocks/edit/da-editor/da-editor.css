@@ -1,3 +1,4 @@
+/* stylelint-disable selector-class-pattern */
 :host {
   display: grid;
   grid-template-areas: 'editor';
@@ -6,10 +7,7 @@
 .da-prose-mirror {
   --editor-btn-bg-color: #EFEFEF;
   --editor-btn-bg-color-hover: #e9e9e9;
-}
 
-
-.da-prose-mirror {
   grid-area: editor;
 }
 
@@ -93,16 +91,8 @@ table {
   border-collapse: collapse;
 }
 
-table tr:first-child td,
-table tr:first-child th {
-  background: aliceblue;
-  text-align: center;
-  font-weight: 700;
-}
-
 table td {
   border: 3px solid #d0d0d0;
-  border-radius: 3px;
   margin: 3px;
   vertical-align: top;
   min-width: 100px;
@@ -112,8 +102,38 @@ table td p {
   margin: .25em 0;
 }
 
-td.selectedCell {
-  border: 3px solid #60c175;
+p code {
+  background: #e4ecfa;
+  border: 1px solid #becee9;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+pre {
+  background: #e4ecfa;
+  border: 1px solid #becee9;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+blockquote {
+  position: relative;
+  padding: 0 0.5rem 0 1.5rem;
+  margin: 0;
+}
+
+blockquote::before {
+  position: absolute;
+  display: block;
+  content: '';
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: #848484;
+  border-radius: 2px;
 }
 
 .ProseMirror-menubar {
@@ -191,6 +211,11 @@ span.ProseMirror-menuseparator {
   opacity: 0.5;
 }
 
+.ProseMirror-menu-active {
+  outline: 2px #B1B1B1 solid;
+  outline-offset: -2px;
+}
+
 .ProseMirror-menu-dropdown.edit-text {
   background: url('/blocks/edit/img/Smock_Text_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
@@ -206,7 +231,15 @@ span.ProseMirror-menuseparator {
   border-radius: 4px;
 }
 
+.ProseMirror-menu-dropdown-menu.edit-text {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px;
+}
+
 .ProseMirror-menu-dropdown-item {
+  display: flex;
+  justify-content: center;
   margin-bottom: 6px;
 }
 
@@ -220,12 +253,28 @@ span.ProseMirror-menuseparator {
   height: 2px;
   display: block;
   background: var(--editor-btn-bg-color);
-  margin-bottom: 6px;
   border-radius: 1px;
 }
 
 .menu-item-para {
   background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.menu-item-blockquote {
+  background: url('/blocks/edit/img/Smock_BlockQuote_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.menu-item-codeblock {
+  background: url('/blocks/edit/img/Smock_BlockCode_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+
+.edit-code {
+  background: url('/blocks/edit/img/Smock_Code_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
+.ProseMirror-menu-dropdown-item:has(.menu-item-h1) {
+  break-before: column;
 }
 
 .menu-item-h1 {
@@ -373,8 +422,8 @@ span.ProseMirror-menuseparator {
   position: absolute;
   content: 'Section Break';
   text-transform: uppercase;
-  background: rgb(255,255,255);
-  top: -14.25px;
+  background: rgb(255 255 255);
+  top: -10px;
   font-weight: 700;
   color: #b3b3b3;
   padding: 0 6px;
@@ -402,23 +451,28 @@ span.ProseMirror-menuseparator {
 
 .ProseMirror tr:first-child td,
 .ProseMirror tr:first-child th {
-  background: aliceblue;
+  background: #f1f1f1;
   text-align: center;
   font-weight: 700;
 }
 
+.ProseMirror tr:first-child td.selectedCell,
+.ProseMirror tr:first-child th.selectedCell {
+  background: #d1e4f8;
+}
+
 .ProseMirror th,
 .ProseMirror td {
-  border: 3px dotted #d0d0d0;
-  border-radius: 3px;
-  margin: 3px;
+  border: 2px solid #B1B1B1;
   vertical-align: top;
   min-width: 100px;
-  padding: 6px;
+  padding: 8px;
+  color: #464646;
 }
 
 td.selectedCell {
-  border: 3px dotted #60c175;
+  background: #e9f4ff;
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 12%);
 }
 
 /* COPY FROM PROSEMIRROR VIEW */
@@ -509,12 +563,17 @@ img.ProseMirror-separator {
 /* COPY FROM TABLES */
 .ProseMirror .tableWrapper {
   overflow-x: auto;
+  border: 2px solid #B1B1B1;
+  border-radius: 6px;
+  margin: 2px 0;
 }
+
 .ProseMirror table {
   border-collapse: collapse;
   table-layout: fixed;
-  width: 100%;
+  width: 100% !important;
   overflow: hidden;
+  border-style: hidden;
 }
 .ProseMirror td,
 .ProseMirror th {
@@ -537,21 +596,9 @@ img.ProseMirror-separator {
   cursor: col-resize;
 }
 
-table tr:first-of-type p:first-child {
-  margin-top: 6px;
-  margin-bottom: 6px;
-}
-
-/* Give selected cells a blue overlay */
-.ProseMirror .selectedCell:after {
-  z-index: 2;
-  position: absolute;
-  content: '';
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  pointer-events: none;
+.ProseMirror img[href] {
+  border: #5faaf9 4px solid;
+  box-sizing: border-box;
 }
 
 /* Palette */
@@ -590,10 +637,20 @@ da-library.hide {
 .ProseMirror > .ProseMirror-yjs-cursor:first-child {
   margin-top: 16px;
 }
-.ProseMirror p:first-child, .ProseMirror h1:first-child, .ProseMirror h2:first-child, .ProseMirror h3:first-child, .ProseMirror h4:first-child, .ProseMirror h5:first-child, .ProseMirror h6:first-child {
+.ProseMirror td > *:first-child,
+.ProseMirror th > *:first-child {
   margin-top: 0;
 }
-/* This gives the remote user caret. The colors are automatically overwritten*/
+.ProseMirror td > *:last-child,
+.ProseMirror th > *:last-child {
+  margin-bottom: 0;
+}
+.ProseMirror td > *:has(+ .column-resize-handle),
+.ProseMirror th > *:has(+ .column-resize-handle) {
+  margin-bottom: 0;
+}
+
+/* This gives the remote user caret. The colors are automatically overwritten */
 .ProseMirror-yjs-cursor {
   position: relative;
   margin-left: -1px;
@@ -629,9 +686,6 @@ da-loc-deleted, da-loc-added {
 }
 
 .loc-dialog {
-  /* position: relative; */
-  /* top: 50%;
-  transform: translateY(-50%); */
   padding: 10px;
   border-radius: 4px;
   box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
@@ -641,10 +695,12 @@ da-loc-deleted, da-loc-added {
   z-index: 1002;
   display: flex;
   flex-direction: column;
+  width: 140px;
 }
 
 .loc-dialog > span {
   height: 40px;
+  text-align: center;
 }
 
 .loc-dialog > div {
@@ -690,28 +746,39 @@ da-loc-deleted, da-loc-added {
   left: 0;
   width: 100%;
   height: 100%;
+  border-radius: 6px;
 }
 
 .loc-color-overlay.loc-langstore::after {
-  content: 'Langstore';
+  content: 'Upstream';
   position: absolute;
-  bottom: 0;
-  right: 0;
-  padding: 5px;
+  bottom: 4px;
+  right: 4px;
+  padding: 4px 8px;
   font-size: 10px;
-  background-color: rgba(70, 130, 180, 90%);
+  font-weight: 700;
+  text-transform: uppercase;
+  background-color: rgba(70, 130, 180, 0.9);
   color: white;
+  border-radius: 4px;
+  min-width: 50px;
+  text-align: center;
 }
 
 .loc-color-overlay.loc-regional::after {
-  content: 'Regional';
+  content: 'Local';
   position: absolute;
-  bottom: 0;
-  right: 0;
-  padding: 5px;
+  bottom: 4px;
+  right: 4px;
+  padding: 4px 8px;
   font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
   background-color: rgba(144, 42, 222, 90%);
   color: white;
+  border-radius: 4px;
+  min-width: 50px;
+  text-align: center;
 }
 
 .loc-lang-overlay {

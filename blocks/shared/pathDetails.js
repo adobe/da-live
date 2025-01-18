@@ -40,6 +40,9 @@ function getRepoDetails({ editor, pathParts, ext }) {
   let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
+  // TODO: Fix this later
+  const tld = repo === 'da-bacom' || repo === 'help' ? '.aem.page' : '.hlx.page';
+
   return {
     owner: org,
     repo,
@@ -47,7 +50,7 @@ function getRepoDetails({ editor, pathParts, ext }) {
     parent,
     parentName,
     sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: `https://main--${repo}--${org}.hlx.page`,
+    previewUrl: `https://main--${repo}--${org}${tld}`,
     contentUrl: `${CON_ORIGIN}/${fullPath}`,
   };
 }
@@ -69,6 +72,9 @@ function getFullDetails({ editor, pathParts, ext }) {
   const daApi = editor === 'config' ? 'config' : 'source';
   const path = ext === 'html' && !fullPath.endsWith('html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
+  // TODO: Fix this later
+  const tld = repo === 'da-bacom' || repo === 'help' ? '.aem.live' : '.hlx.live';
+
   return {
     owner: org,
     repo,
@@ -76,7 +82,7 @@ function getFullDetails({ editor, pathParts, ext }) {
     parent: ext === null ? `${parent}/${name}` : parent,
     parentName: ext === null ? name : parentName,
     sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: `https://main--${repo}--${org}.hlx.page${pathname}`,
+    previewUrl: `https://main--${repo}--${org}${tld}${pathname}`,
     contentUrl: `${CON_ORIGIN}/${fullPath}`,
   };
 }
@@ -108,7 +114,7 @@ export default function getPathDetails(loc) {
   const editor = getView(pathname);
 
   // IMS will redirect and there's a small window where old_hash exists
-  if (!fullpath || fullpath.startsWith('old_hash')) return null;
+  if (!fullpath || fullpath.startsWith('old_hash') || fullpath.startsWith('access_token')) return null;
 
   // Split everything up so it can be later used for both DA & AEM
   const pathParts = fullpath.slice(1).toLowerCase().split('/');

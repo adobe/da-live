@@ -9,7 +9,7 @@ async function setUI(el) {
     el.innerHTML = '<h1>Please edit a page.</h1>';
     return;
   }
-  document.title = `Edit ${details.name} - Dark Alley`;
+  document.title = `Edit ${details.name} - DA`;
 
   // Title Pane
   const daTitle = document.createElement('da-title');

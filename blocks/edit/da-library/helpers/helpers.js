@@ -58,6 +58,49 @@ let currOwner;
 let currRepo;
 let libraries;
 
+async function getDaLibraries(owner, repo) {
+  const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
+  if (!resp.ok) return [];
+
+  const { data } = await resp.json();
+
+  return data.reduce((acc, item) => {
+    const keySplit = item.key.split('-');
+    if (keySplit[0] === 'library') {
+      acc.push({
+        name: keySplit[1],
+        sources: item.value.replaceAll(' ', '').split(','),
+        format: item.format,
+      });
+    }
+    return acc;
+  }, []);
+}
+
+async function getAemPlugins(owner, repo) {
+  const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
+  const origin = ref === 'local' ? 'http://localhost:3000' : `https://${ref}--${repo}--${owner}.aem.live`;
+  const confUrl = ref === 'local' ? 'http://localhost:3000/tools/sidekick/config.json' : `https://admin.hlx.page/sidekick/${owner}/${repo}/${ref}/config.json`;
+  const resp = await daFetch(confUrl);
+  if (!resp.ok) return [];
+  const json = await resp.json();
+  if (!json || !json.plugins) return [];
+  if (json?.plugins?.length === 0) return [];
+  return json.plugins.reduce((acc, plugin) => {
+    const { environments, path, url: plugUrl, daLibrary } = plugin;
+    const url = path ? `${origin}${path}` : plugUrl;
+    if (environments?.some((env) => env === 'da-edit') || daLibrary) {
+      acc.push({
+        name: plugin.title,
+        icon: plugin.icon,
+        experience: plugin.experience || 'inline',
+        url,
+      });
+    }
+    return acc;
+  }, []);
+}
+
 export async function getLibraryList() {
   const { owner, repo } = getPathDetails();
   if (!owner || !repo) return [];
@@ -70,22 +113,31 @@ export async function getLibraryList() {
   currOwner = owner;
   currRepo = repo;
 
-  const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
-  if (!resp.ok) return [];
+  const daLibraries = getDaLibraries(owner, repo);
+  const aemPlugins = getAemPlugins(owner, repo);
 
-  const { data } = await resp.json();
-
-  libraries = data.reduce((acc, item) => {
-    const keySplit = item.key.split('-');
-    if (keySplit[0] === 'library') {
-      acc.push({
-        name: keySplit[1],
-        sources: item.value.replaceAll(' ', '').split(','),
-        format: item.format,
-      });
-    }
-    return acc;
-  }, []);
+  const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
+  libraries = [...da, ...aem];
 
   return libraries;
 }
+
+export function andMatch(inputStr, targetStr) {
+  const terms = inputStr.split(' ');
+  return terms.every((term) => targetStr.includes(term));
+}
+
+export function delay(ms) {
+  // eslint-disable-next-line no-promise-executor-return
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export const getMetadata = (el) => [...el.childNodes].reduce((rdx, row) => {
+  if (row.children) {
+    const key = row.children[0].textContent.trim().toLowerCase();
+    const content = row.children[1];
+    const text = content.textContent.trim().toLowerCase();
+    if (key && content) rdx[key] = { content, text };
+  }
+  return rdx;
+}, {});

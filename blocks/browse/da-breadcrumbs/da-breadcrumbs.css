@@ -1,0 +1,99 @@
+:host > svg {
+  display: none;
+}
+
+button {
+  font-family: var(--body-font-family);
+}
+
+.da-breadcrumb {
+  margin-bottom: 12px;
+}
+
+.da-breadcrumb-list {
+  margin: 0 0 12px;
+  padding: 0 24px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  gap: 12px 24px;
+}
+
+.da-breadcrumb-list-item {
+  position: relative;
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.da-breadcrumb-list-item-link-wrapper {
+  padding: 0 10px;
+  background: #dcdcdc;
+  border-radius: 6px;
+  line-height: 32px;
+  display: flex;
+  overflow: hidden;
+}
+
+.da-breadcrumb-list-item a {
+  text-decoration: none;
+  color: rgb(44 44 44);
+}
+
+.da-breadcrumb-list-item-config {
+  overflow: hidden;
+  text-indent: -1000px;
+  width: 32px;
+  padding-right: 2px;
+  margin: 0 -10px 0 2px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: rgb(44 44 44);
+}
+
+.da-breadcrumb-list-item-config:hover {
+  background-color: #147af3;
+  color: #FFF;
+}
+
+.da-breadcrumb-list-item-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.da-breadcrumb-list-item:last-child {
+  cursor: unset;
+}
+
+.da-breadcrumb-list-item::after {
+  position: absolute;
+  right: -24px;
+  top: 0;
+  display: block;
+  content: "";
+  width: 24px;
+  opacity: 0.5;
+  background: url('/blocks/browse/img/Smock_ChevronRight_18_N.svg') center center / 24px 24px no-repeat;
+  height: 32px;
+}
+
+@media (width >= 600px) {
+  .da-breadcrumb-list {
+    margin: 0;
+  }
+
+  .da-breadcrumb:has(da-search) .da-breadcrumb-list {
+    margin-bottom: 12px;
+  }
+}
+
+@media (min-width: 900px) {
+  .da-breadcrumb {
+    margin-bottom: 12px;
+    display: flex;
+    gap: 24px;
+  }
+}

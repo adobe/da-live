@@ -95,9 +95,19 @@ export async function saveToAem(path, action) {
   const aemPath = parts.join('/');
 
   const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`;
-  const resp = await fetch(url, { method: 'POST' });
+  const resp = await daFetch(url, { method: 'POST' });
   // eslint-disable-next-line no-console
-  if (!resp.ok) console.log('error');
+  if (!resp.ok) {
+    const { status } = resp;
+    const message = [401, 403].some((s) => s === status) ? 'Not authorized to' : 'Error during';
+    return {
+      error: {
+        status,
+        type: 'error',
+        message,
+      },
+    };
+  }
   return resp.json();
 }
 
@@ -113,9 +123,7 @@ async function saveHtml(fullPath) {
   return daFetch(fullPath, opts);
 }
 
-function formatSheetData(sheet) {
-  const jData = sheet.getData();
-
+function formatSheetData(jData) {
   const data = jData.reduce((acc, row, idx) => {
     if (idx > 0) {
       const rowObj = {};
@@ -129,42 +137,74 @@ function formatSheetData(sheet) {
     return acc;
   }, []);
 
-  // Remove trailing empty rows
-  let emptyRow = true;
-  while (emptyRow) {
-    const lastRow = data.slice(-1)[0];
-    const filled = Object.keys(lastRow).some((key) => lastRow[key]);
-    if (!filled) {
-      data.pop();
-    } else {
-      emptyRow = false;
-    }
+  // Remove trailing empty rows - leave one data row if all data is empty
+  while (data.length > 1 && !Object.values(data.slice(-1)[0]).some(Boolean)) {
+    data.pop();
   }
+
   return data;
+}
+const getColumnWidths = (sheet) => sheet?.getConfig()?.columns
+  ?.map((col) => parseInt(col?.width, 10) || 50);
+
+function getHeaderWidths(jData, sheet) {
+  const widths = getColumnWidths(sheet);
+  const headers = jData[0];
+
+  return headers.reduce((result, header, index) => {
+    if (header.length > 0) {
+      result.push(widths[index]);
+    }
+    return result;
+  }, []);
+}
+
+const getSheetProps = (sheet) => {
+  const jData = sheet.getData();
+  const data = formatSheetData(jData);
+  return {
+    total: data.length,
+    limit: data.length,
+    offset: 0,
+    data,
+    ':colWidths': getHeaderWidths(jData, sheet),
+  };
+};
+
+export function convertSheets(sheets) {
+  const { publicSheets, privateSheets } = sheets.reduce((acc, sheet) => {
+    if (sheet.name.startsWith('private-')) {
+      acc.privateSheets[sheet.name] = getSheetProps(sheet);
+    } else {
+      acc.publicSheets[sheet.name] = getSheetProps(sheet);
+    }
+    return acc;
+  }, { publicSheets: {}, privateSheets: {} });
+
+  const publicNames = Object.keys(publicSheets);
+  const privateNames = Object.keys(privateSheets);
+
+  let json = {};
+  if (publicNames.length > 1) {
+    json = publicSheets;
+    json[':names'] = publicNames;
+    json[':version'] = 3;
+    json[':type'] = 'multi-sheet';
+  } else if (publicNames.length === 1) {
+    const sheetName = publicNames[0];
+    json = publicSheets[sheetName];
+    json[':sheetname'] = sheetName;
+    json[':type'] = 'sheet';
+  }
+
+  if (privateNames.length > 0) {
+    json[':private'] = privateSheets;
+  }
+  return json;
 }
 
 async function saveJson(fullPath, sheets, dataType = 'blob') {
-  let json;
-  const formatted = sheets.reduce((acc, sheet) => {
-    const data = formatSheetData(sheet);
-    acc[sheet.name] = {
-      total: data.length,
-      limit: data.length,
-      offset: 0,
-      data,
-    };
-    return acc;
-  }, {});
-
-  if (sheets.length > 1) {
-    formatted[':names'] = sheets.map((sheet) => sheet.name);
-    formatted[':version'] = 3;
-    formatted[':type'] = 'multi-sheet';
-    json = formatted;
-  } else {
-    json = formatted[sheets[0].name];
-    json[':type'] = 'sheet';
-  }
+  const json = convertSheets(sheets);
 
   const formData = new FormData();
 
@@ -192,6 +232,22 @@ export function saveToDa(pathname, sheet) {
 export function saveDaConfig(pathname, sheet) {
   const fullPath = `${DA_ORIGIN}/config${pathname}`;
   return saveJson(fullPath, sheet, 'config');
+}
+
+export async function saveDaVersion(pathname, ext = 'html') {
+  const fullPath = `${DA_ORIGIN}/versionsource${pathname}.${ext}`;
+
+  const opts = {
+    method: 'POST',
+    body: JSON.stringify({ label: 'Published' }),
+  };
+
+  try {
+    await daFetch(fullPath, opts);
+  } catch {
+    // eslint-disable-next-line no-console
+    console.log('Error creating auto version on publish.');
+  }
 }
 
 export function parse(inital) {

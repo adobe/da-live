@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { getEnterInputRulesPlugin, getDashesInputRule } from '../../../../blocks/edit/prose/plugins/keyHandlers.js';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from edit/prose/index.js
@@ -72,5 +73,60 @@ describe('Prose collab', () => {
 
     awarenessOnCalled[0].f(delta2); // Call the callback function
     expect(daTitle.collabUsers).to.deep.equal(['Anonymous', 'Anonymous', 'Joe Bloggs']);
+  });
+
+  it('Test poll for updates', async () => {
+    const setIntervalFuncs = [];
+    const mockSetInterval = (func) => {
+      setIntervalFuncs.push(func);
+    };
+
+    const daPreview = {};
+    const daContent = { shadowRoot: { querySelector: (e) => (e === 'da-preview' ? daPreview : null) } };
+    const doc = { querySelector: (e) => (e === 'da-content' ? daContent : null) };
+    const win = { view: { root: { querySelector: (e) => (e === '.ProseMirror' ? {} : null) } } };
+
+    const savedSetInterval = window.setInterval;
+    try {
+      window.setInterval = mockSetInterval;
+
+      expect(setIntervalFuncs.length).to.equal(0, 'Precondition');
+      pi.pollForUpdates(doc, win);
+      pi.pollForUpdates(doc, win);
+      expect(setIntervalFuncs.length).to.equal(1, 'Should only have set up the preview interval once');
+    } finally {
+      window.setInterval = savedSetInterval;
+    }
+  });
+
+  it('Test Enter InputRules plugin', () => {
+    const result = {};
+    const hti = (v, f, t, txt) => {
+      result.view = v;
+      result.from = f;
+      result.to = t;
+      result.text = txt;
+      return true;
+    };
+
+    const plugin = getEnterInputRulesPlugin(pi.dispatchTransaction);
+    plugin.props.handleTextInput = hti;
+
+    const hkdFunc = plugin.props.handleKeyDown;
+
+    const mockView = { state: { selection: { $cursor: { pos: 12345 } } } };
+    const mockEvent = { key: 'Enter' };
+
+    expect(hkdFunc(mockView, mockEvent)).to.be.true;
+    expect(result.view).to.equal(mockView);
+    expect(result.from).to.equal(12345);
+    expect(result.to).to.equal(12345);
+    expect(result.text).to.equal('\n');
+  });
+
+  it('Test Dashes InputRule', () => {
+    const dir = getDashesInputRule(pi.dispatchTransaction);
+    const { match } = dir;
+    expect(match.toString()).to.equal('/^---[\\n]$/');
   });
 });

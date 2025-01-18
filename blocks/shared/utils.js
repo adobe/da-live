@@ -2,7 +2,9 @@ import { DA_ORIGIN } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
-const ALLOWED_TOKEN = ['https://admin.hlx.page', 'https://admin.da.live'];
+const DA_ORIGINS = ['https://da.live', 'https://admin.da.live', 'https://stage-admin.da.live', 'http://localhost:8787'];
+const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
+const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS];
 
 let imsDetails;
 
@@ -28,24 +30,26 @@ export const daFetch = async (url, opts = {}) => {
   }
   const resp = await fetch(url, opts);
   if (resp.status === 401) {
-    if (accessToken) {
-      window.location = `${window.location.origin}/not-found`;
-      return { ok: false };
+    // Only attempt sign-in if the request is for DA.
+    if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
+      if (accessToken) {
+        window.location = `${window.location.origin}/not-found`;
+        return { ok: false };
+      }
+      const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+      await loadIms();
+      handleSignIn();
     }
-
-    const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-    await loadIms();
-    handleSignIn();
   }
   return resp;
 };
 
-async function aemPreview(path, api) {
+export async function aemPreview(path, api, method = 'POST') {
   const [owner, repo, ...parts] = path.slice(1).split('/');
   const name = parts.pop() || repo || owner;
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
-  const resp = await fetch(aemUrl, { method: 'POST' });
+  const resp = await daFetch(aemUrl, { method });
   if (!resp.ok) return undefined;
   return resp.json();
 }

@@ -92,6 +92,8 @@ class MenuItem {
             dom.classList.add(spec.class);
         if (spec.css)
             dom.style.cssText += spec.css;
+        if (spec.column)
+            dom.setAttribute('column', spec.column);
         dom.addEventListener("mousedown", e => {
             e.preventDefault();
             if (!dom.classList.contains(prefix$1 + "-disabled"))
@@ -196,7 +198,21 @@ class Dropdown {
     @internal
     */
     expand(dom, items) {
-        let menuDOM = crel("div", { class: prefix$1 + "-dropdown-menu " + (this.options.class || "") }, items);
+        const col1 = document.createElement('div');
+        col1.className = `${prefix$1}-dropdown-menu-col-1`;
+        const col2 = document.createElement('div');
+        col2.className = `${prefix$1}-dropdown-menu-col-2`;
+
+        items.forEach((item) => {
+          const col2Item = item.querySelector('[column="2"]');
+          if (col2Item) {
+            col2.append(item);
+          } else {
+            col1.append(item);
+          }
+        });
+
+        let menuDOM = crel("div", { class: prefix$1 + "-dropdown-menu " + (this.options.class || "") }, col1, col2);
         let done = false;
         function close() {
             if (done)
@@ -210,7 +226,8 @@ class Dropdown {
     }
 }
 function renderDropdownItems(items, view) {
-    let rendered = [], updates = [];
+    let rendered = [];
+    let updates = [];
     for (let i = 0; i < items.length; i++) {
         let { dom, update } = items[i].render(view);
         rendered.push(crel("div", { class: prefix$1 + "-dropdown-item" }, dom));

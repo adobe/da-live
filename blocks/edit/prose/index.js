@@ -2,21 +2,17 @@
 import {
   EditorState,
   EditorView,
-  Schema,
-  baseSchema,
   history,
   buildKeymap,
   keymap,
-  addListNodes,
   baseKeymap,
   tableEditing,
   columnResizing,
-  goToNextCell,
-  tableNodes,
   fixTables,
   liftListItem,
   sinkListItem,
   gapCursor,
+  TextSelection,
   Y,
   WebsocketProvider,
   ySyncPlugin,
@@ -31,43 +27,23 @@ import prose2aem from '../../shared/prose2aem.js';
 import menu from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
-import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
-import { addLocNodes, getLocClass } from './loc-utils.js';
+import sectionPasteHandler from './plugins/sectionPasteHandler.js';
+import base64Uploader from './plugins/base64uploader.js';
+import { COLLAB_ORIGIN, DA_ROOM_ORIGIN } from '../../shared/constants.js';
+import toggleLibrary from '../da-library/da-library.js';
+import { getLocClass } from './loc-utils.js';
+import { getSchema } from './schema.js';
+import slashMenu from './plugins/slashMenu/slashMenu.js';
+import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
 
-const DA_ORIGIN = getDaAdmin();
-
-function addCustomMarks(marks) {
-  const sup = {
-    parseDOM: [{ tag: 'sup' }, { clearMark: (m) => m.type.name === 'sup' }],
-    toDOM() { return ['sup', 0]; },
-  };
-
-  const sub = {
-    parseDOM: [{ tag: 'sub' }, { clearMark: (m) => m.type.name === 'sub' }],
-    toDOM() { return ['sub', 0]; },
-  };
-
-  const contextHighlight = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
-
-  return marks
-    .addToEnd('sup', sup)
-    .addToEnd('sub', sub)
-    .addToEnd('contextHighlightingMark', contextHighlight);
-}
-
-// Note: until getSchema() is separated in its own module, this function needs to be kept in-sync
-// with the getSchema() function in da-collab src/collab.js
-export function getSchema() {
-  const { marks, nodes: baseNodes } = baseSchema.spec;
-  const withLocNodes = addLocNodes(baseNodes);
-  const withListnodes = addListNodes(withLocNodes, 'block+', 'block');
-  const nodes = withListnodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+' }));
-  return new Schema({ nodes, marks: addCustomMarks(marks) });
-}
-
+let pollerSetUp = false;
 let sendUpdates = false;
 let hasChanged = 0;
+let lastCursorPosition = null;
+
 function dispatchTransaction(transaction) {
+  if (!window.view) return;
+
   if (transaction.docChanged) {
     hasChanged += 1;
     sendUpdates = true;
@@ -82,10 +58,12 @@ function setPreviewBody(daPreview, proseEl) {
   daPreview.body = body;
 }
 
-function pollForUpdates() {
-  const daContent = document.querySelector('da-content');
-  const daPreview = daContent.shadowRoot.querySelector('da-preview');
-  const proseEl = window.view.root.querySelector('.ProseMirror');
+export function pollForUpdates(doc = document, win = window) {
+  if (pollerSetUp) return;
+  const daContent = doc.querySelector('da-content');
+  const daPreview = daContent?.shadowRoot.querySelector('da-preview');
+  if (!win.view) return;
+  const proseEl = win.view.root.querySelector('.ProseMirror');
   if (!daPreview) return;
 
   setInterval(() => {
@@ -98,6 +76,7 @@ function pollForUpdates() {
       sendUpdates = false;
     }
   }, 500);
+  pollerSetUp = true;
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
@@ -166,13 +145,29 @@ function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40,
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+function storeCursorPosition(view) {
+  const { from, to } = view.state.selection;
+  lastCursorPosition = { from, to };
+}
+
+function restoreCursorPosition(view) {
+  if (lastCursorPosition) {
+    const { from, to } = lastCursorPosition;
+    const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
+    view.dispatch(tr);
+  }
+}
+
 export default function initProse({ editor, path }) {
+  // Destroy ProseMirror if it already exists - GH-212
+  if (window.view) delete window.view;
+
   const schema = getSchema();
 
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+  const roomName = `${DA_ROOM_ORIGIN}${new URL(path).pathname}`;
 
   const opts = {};
 
@@ -210,37 +205,47 @@ export default function initProse({ editor, path }) {
     );
   }
 
+  const plugins = [
+    ySyncPlugin(yXmlFragment, {
+      onFirstRender: () => {
+        pollForUpdates();
+      },
+    }),
+    yCursorPlugin(wsProvider.awareness),
+    yUndoPlugin(),
+    menu,
+    slashMenu(),
+    imageDrop(schema),
+    linkConverter(schema),
+    sectionPasteHandler(schema),
+    base64Uploader(schema),
+    columnResizing(),
+    getEnterInputRulesPlugin(dispatchTransaction),
+    keymap(buildKeymap(schema)),
+    keymap({ Backspace: handleTableBackspace }),
+    keymap(baseKeymap),
+    keymap({
+      'Mod-z': yUndo,
+      'Mod-y': yRedo,
+      'Mod-Shift-z': yRedo,
+      'Mod-Shift-l': toggleLibrary,
+    }),
+    keymap({
+      Tab: handleTableTab(1),
+      'Shift-Tab': handleTableTab(-1),
+    }),
+    keymap({
+      Tab: sinkListItem(schema.nodes.list_item),
+      'Shift-Tab': liftListItem(schema.nodes.list_item),
+    }),
+    gapCursor(),
+    tableEditing(),
+    history(),
+  ];
+
   let state = EditorState.create({
     schema,
-    plugins: [
-      ySyncPlugin(yXmlFragment, {
-        onFirstRender: () => {
-          pollForUpdates();
-        },
-      }),
-      yCursorPlugin(wsProvider.awareness),
-      yUndoPlugin(),
-      menu,
-      imageDrop(schema),
-      linkConverter(schema),
-      columnResizing(),
-      tableEditing(),
-      keymap(buildKeymap(schema)),
-      keymap(baseKeymap),
-      keymap({
-        'Mod-z': yUndo,
-        'Mod-y': yRedo,
-        'Mod-Shift-z': yRedo,
-      }),
-      keymap({
-        Tab: goToNextCell(1),
-        'Shift-Tab': goToNextCell(-1),
-      }),
-      keymap({ 'Shift-Tab': liftListItem(schema.nodes.list_item) }),
-      keymap({ Tab: sinkListItem(schema.nodes.list_item) }),
-      gapCursor(),
-      history(),
-    ],
+    plugins,
   });
 
   const fix = fixTables(state);
@@ -259,7 +264,20 @@ export default function initProse({ editor, path }) {
         return new LocDeletedView(node, view, getPos);
       },
     },
+    handleDOMEvents: {
+      blur: (view) => {
+        storeCursorPosition(view);
+        return false;
+      },
+      focus: (view) => {
+        restoreCursorPosition(view);
+        return false;
+      },
+    },
   });
+
+  // Call pollForUpdates() to make sure it gets called even if the callback was made earlier
+  pollForUpdates();
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');

@@ -1,6 +1,6 @@
-# Dark Alley
+# Document Authoring
 
-Dark Alley is a research project.
+Document Authoring is a research project.
 
 ## Developing locally
 ### Run
@@ -31,3 +31,18 @@ There are times when you need to develop a feature across the different services
 ## Additional details
 ### Recommendations
 1. We recommend running `npm install` for linting.
+
+### Dependencies
+DA has several libraries / dependencies that are built adhoc.
+
+```shell
+# Build Lit
+npm run build:da-lit
+
+# Build Prose / YDoc
+npm run build:da-y-wrapper
+```
+
+Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
+
+

@@ -4,9 +4,39 @@ body {
 }
 
 .da-sheet-wrapper {
-  max-width: 900px;
-  margin: 0 auto;
   position: relative;
+  z-index: 10;
+  flex: 1 1 auto;
+  width: 200px;
+}
+
+.da-version-wrapper {
+  display: flex;
+  justify-content: center;
+  max-width: var(--grid-container-width);
+  margin: 0 auto var(--spacing-600) auto;
+}
+
+da-versions,
+.da-versions-btn {
+  margin-top: 44px;
+  display: none;
+}
+
+da-versions.is-visible,
+.da-versions-btn.is-visible {
+  display: block;
+}
+
+.da-versions-btn {
+  width: 50px;
+  height: 44px;
+  text-indent: -1000px;
+  overflow: hidden;
+  border-radius: 2px;
+  border: none;
+  cursor: pointer;
+  background: url('/blocks/edit/img/Smock_Calendar_18_N.svg') center center / 20px no-repeat;
 }
 
 button.new-sheet {
@@ -42,6 +72,37 @@ button.new-sheet {
 }
 
 /* jspreadsheets overwrites */
+/* stylelint-disable-next-line selector-class-pattern */
+.da-sheet-wrapper .jexcel_content {
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  display: block;
+  padding-right: 0;
+  padding-bottom: 0;
+  overflow: scroll;
+  box-shadow: rgb(181 181 181) 0 10px 20px 0;
+}
+
+.da-sheet-wrapper .jexcel {
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  min-width: 100%;
+}
+
+.da-sheet-wrapper .jexcel > thead > tr > td {
+  border-top: 0;
+}
+
+.da-sheet-wrapper .jexcel > thead > tr > td:first-child {
+  border-left: 0;
+}
+
+.da-sheet-wrapper .jexcel > tbody > tr > td:first-child {
+  border-left: none;
+}
+
 .da-sheet-wrapper .jcontextmenu {
   border-radius: 6px;
   box-shadow: rgb(181 181 181) 0 0 20px 0;
@@ -66,12 +127,6 @@ button.new-sheet {
   display: none;
 }
 
-/* stylelint-disable-next-line selector-class-pattern */
-.jexcel_tabs > div:last-child {
-  box-shadow: rgb(181 181 181) 0 10px 20px 0;
-  overflow: scroll;
-}
-
 .da-sheet-wrapper .jcontextmenu > div {
   padding: 8px 8px 8px 16px;
   font-family: var(--body-font-family);
@@ -90,10 +145,13 @@ button.new-sheet {
 }
 
 /* stylelint-disable-next-line selector-class-pattern */
-.da-sheet-wrapper .jexcel_content {
-  display: block;
-  padding-right: 1px;
-  padding-bottom: 1px;
+.da-sheet-wrapper .jexcel_content tbody tr:first-child td:not(:first-child) {
+  font-weight: 700;
+}
+
+/* stylelint-disable-next-line selector-class-pattern, no-descending-specificity */
+.da-sheet-wrapper .jexcel_content tbody td:not(:first-child) {
+  text-align: left !important;
 }
 
 /* JSuites Context Menu */

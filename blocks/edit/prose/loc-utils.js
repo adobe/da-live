@@ -8,13 +8,13 @@ const LOC = {
   LANGSTORE: {
     BG: 'rgba(70, 130, 180, 0.8)',
     COVER_BG: 'rgba(70, 130, 180, 0.4)',
-    TEXT: 'Langstore Content',
+    TEXT: 'Upstream Content',
     TEXT_COLOR: 'rgba(70, 130, 180)',
   },
   REGIONAL: {
     BG: 'rgba(144, 42, 222, 0.8)',
     COVER_BG: 'rgba(144, 42, 222, 0.4)',
-    TEXT: 'Regional Content',
+    TEXT: 'Local Content',
     TEXT_COLOR: 'rgba(144, 42, 222)',
   },
 };
@@ -78,18 +78,7 @@ function deleteLocContent(view, pos, node) {
   return transaction;
 }
 
-function parseLocDOM(locTag) {
-  return [{
-    tag: locTag,
-    contentElement: (dom) => {
-      // Only parse the content of the node, not the temporary elements
-      const deleteThese = dom.querySelectorAll('[loc-temp-dom]');
-      deleteThese.forEach((e) => e.remove());
-      return dom;
-    },
-  }];
-}
-
+// eslint-disable-next-line import/prefer-default-export
 export function getLocClass(elName, getSchema, dispatchTransaction, { isLangstore } = {}) {
   return class {
     constructor(node, view, getPos) {
@@ -129,24 +118,4 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isLangstor
 
     stopEvent() { return true; }
   };
-}
-
-export function addLocNodes(baseNodes) {
-  if (!baseNodes.content.includes('loc_deleted')) {
-    baseNodes.content.push('loc_deleted');
-    baseNodes.content.push({
-      group: 'block',
-      content: 'block+',
-      parseDOM: parseLocDOM('da-loc-deleted'),
-      toDOM: () => ['da-loc-deleted', { contenteditable: false }, 0],
-    });
-    baseNodes.content.push('loc_added');
-    baseNodes.content.push({
-      group: 'block',
-      content: 'block+',
-      parseDOM: parseLocDOM('da-loc-added'),
-      toDOM: () => ['da-loc-added', { contenteditable: false }, 0],
-    });
-  }
-  return baseNodes;
 }

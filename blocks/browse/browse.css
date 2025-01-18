@@ -1,3 +1,7 @@
 body {
   background: rgb(245 245 245);
 }
+
+main {
+  position: relative;
+}

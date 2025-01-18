@@ -8,8 +8,17 @@ async function loadComponent(el, cmpName, details) {
   el.append(cmp);
 }
 
+function setRecentOrg(details) {
+  const currentOrgs = JSON.parse(localStorage.getItem('da-orgs')) || [];
+  const foundIdx = currentOrgs.indexOf(details.owner);
+  if (foundIdx === 0) return;
+  if (foundIdx !== -1) currentOrgs.splice(foundIdx, 1);
+  localStorage.setItem('da-orgs', JSON.stringify([details.owner, ...currentOrgs].slice(0, 4)));
+}
+
 async function setupExperience(el, e) {
   const details = getPathDetails();
+  if (details) setRecentOrg(details);
   if (e) {
     const oldHash = new URL(e.oldURL).hash;
     const newHash = new URL(e.newURL).hash;

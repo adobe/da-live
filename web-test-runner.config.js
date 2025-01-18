@@ -25,7 +25,20 @@ export default {
       '**/deps/**',
     ],
   },
-  plugins: [importMapsPlugin({ inject: { importMap: { imports: { 'da-y-wrapper': '/deps/da-y-wrapper/dist/index.js' } } } })],
+  plugins: [
+    importMapsPlugin(
+      {
+        inject: {
+          importMap: {
+            imports: {
+              'da-y-wrapper': '/deps/da-y-wrapper/dist/index.js',
+              'da-lit': '/deps/lit/dist/index.js',
+            },
+          },
+        },
+      },
+    ),
+  ],
   reporters: [
     defaultReporter({ reportTestResults: true, reportTestProgress: true }),
     customReporter(),

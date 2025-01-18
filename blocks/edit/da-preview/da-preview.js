@@ -1,4 +1,4 @@
-import { LitElement, html } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 
@@ -55,14 +55,16 @@ export default class DaPreview extends LitElement {
   }
 
   setBody() {
-    this.port1.postMessage({ set: 'body', body: this.body, get: 'height' });
+    this.port1.postMessage({ set: 'body', get: 'height', body: this.body });
   }
 
   iframeLoaded({ target }) {
     this.setWidth('mobile');
+
+    this.port1.onmessage = (e) => { this.setHeight(e.data); };
+
     // Delay so the initial loading of the document can complete.
     setTimeout(() => {
-      this.port1.onmessage = (e) => { this.setHeight(e.data); };
       target.contentWindow.postMessage({ init: true }, '*', [this.channel.port2]);
     }, 1500);
   }

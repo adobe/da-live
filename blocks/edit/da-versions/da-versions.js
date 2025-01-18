@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from '../../../deps/lit/lit-core.min.js';
+import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { formatDate, formatVersions } from './helpers.js';
@@ -39,6 +39,10 @@ export default class DaVersions extends LitElement {
 
   async handlePreview(e, entry) {
     e.stopPropagation();
+    const entryEl = e.target.closest('.da-version-entry');
+    if (!entryEl.classList.contains('is-open')) {
+      entryEl.classList.toggle('is-open');
+    }
     const detail = { url: `${DA_ORIGIN}${entry.url}` };
     const opts = { detail, bubbles: true, composed: true };
     const event = new CustomEvent('preview', opts);
@@ -62,6 +66,8 @@ export default class DaVersions extends LitElement {
 
     this._newVersion = null;
     this._versions.unshift(entry);
+    // TODO: The server does not respond with version details, so get a fresh list
+    this.getVersions();
   }
 
   handleNew(e) {
@@ -144,7 +150,6 @@ export default class DaVersions extends LitElement {
   }
 
   render() {
-    if (!this._versions) return nothing;
     return html`
       <div class="da-versions-panel">
         <p class="da-versions-title">

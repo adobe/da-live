@@ -1,5 +1,6 @@
-import { LitElement, html, nothing } from '../../deps/lit/lit-core.min.js';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
+import { debouncedSaveSheets } from './utils/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -13,6 +14,11 @@ const ICONS = [
   '/blocks/edit/img/Smock_Cancel_18_N.svg',
   '/blocks/edit/img/Smock_Checkmark_18_N.svg',
 ];
+
+const setCustomValidity = (inputEl, msg = '') => {
+  inputEl.setCustomValidity(msg);
+  inputEl.reportValidity();
+};
 
 class DaSheetTabs extends LitElement {
   static properties = {
@@ -64,8 +70,15 @@ class DaSheetTabs extends LitElement {
     }];
     // Add the new tab
     window.jspreadsheet.tabs(this.tabContainer, sheets);
-    // Set the sheet name for later use
-    this.jexcel.slice(-1)[0].name = sheets[0].sheetName;
+    const newSheet = this.jexcel.slice(-1)[0];
+    newSheet.name = sheets[0].sheetName;
+    newSheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
+    if (this.tabContainer.details.view !== 'config') {
+      newSheet.options.onafterchanges = () => {
+        debouncedSaveSheets(this.jexcel);
+      };
+    }
+
     // Refresh the tab names
     this._names = this.getNames();
     // Only set active as jspreadsheet will set the visibility of the sheet
@@ -85,6 +98,8 @@ class DaSheetTabs extends LitElement {
       return;
     }
     if (e.submitter.value === 'cancel') {
+      const inputEl = e.target.querySelector('input');
+      setCustomValidity(inputEl, '');
       this._edit = null;
       return;
     }
@@ -98,10 +113,31 @@ class DaSheetTabs extends LitElement {
       return;
     }
     if (e.submitter.value === 'confirm') {
-      const entries = Object.fromEntries(new FormData(e.target));
-      this._names[idx] = entries.name;
-      this.jexcel[idx].name = entries.name;
-      this.hiddenTabs[idx].innerHTML = entries.name;
+      const name = Object.fromEntries(new FormData(e.target))?.name;
+      const inputEl = e.target.querySelector('input');
+      const cancelEl = e.target.querySelector('button[aria-label="Cancel"]');
+
+      const sheetNames = this.getNames();
+      sheetNames.splice(idx, 1); // remove current sheet
+
+      if (sheetNames.includes(name)) {
+        setCustomValidity(inputEl, 'Sheet name already exists');
+
+        inputEl.addEventListener('input', () => {
+          setCustomValidity(inputEl, '');
+        }, { once: true });
+
+        cancelEl.addEventListener('click', () => {
+          setCustomValidity(inputEl, '');
+          this._edit = null;
+        }, { once: true });
+
+        return;
+      }
+
+      this._names[idx] = name;
+      this.jexcel[idx].name = name;
+      this.hiddenTabs[idx].innerHTML = name;
       this._edit = null;
     }
   }
