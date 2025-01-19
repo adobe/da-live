@@ -57,6 +57,12 @@
   color: #FFF;
 }
 
+.da-version-action-area button.accent:disabled {
+  background: var(--s2-gray-700);
+  border: 2px solid var(--s2-gray-700);
+  cursor: not-allowed;
+}
+
 .da-prose-mirror.da-version-preview .ProseMirror {
   padding-top: 96px;
 }

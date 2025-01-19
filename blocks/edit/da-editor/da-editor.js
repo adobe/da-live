@@ -63,12 +63,17 @@ export default class DaEditor extends LitElement {
     return this.shadowRoot.querySelector('.da-prose-mirror');
   }
 
+  get _canWrite() {
+    if (!this.permissions) return false;
+    return this.permissions.some((permission) => permission === 'write');
+  }
+
   renderVersion() {
     return html`
       <div class="da-prose-mirror da-version-preview">
         <div class="da-version-action-area">
           <button @click=${this.handleCancel}>Cancel</button>
-          <button class="accent" @click=${this.handleRestore}>Restore</button>
+          <button class="accent" @click=${this.handleRestore} ?disabled=${!this._canWrite}>Restore</button>
         </div>
         <div class="ProseMirror">${this._versionDom}</div>
       </div>`;
