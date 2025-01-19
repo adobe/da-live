@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html } from 'da-lit';
 import { saveToDa } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
@@ -10,6 +10,7 @@ const STYLE = await getStyle(import.meta.url);
 export default class DaNew extends LitElement {
   static properties = {
     fullpath: { type: String },
+    editor: { type: String },
     permissions: { attribute: false },
     _createShow: { attribute: false },
     _createType: { attribute: false },
@@ -75,7 +76,7 @@ export default class DaNew extends LitElement {
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
-    const editPath = getEditPath({ path, ext });
+    const editPath = getEditPath({ path, ext, editor: this.editor });
     if (ext && ext !== 'link') {
       window.location = editPath;
     } else {

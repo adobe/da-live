@@ -29,14 +29,12 @@ import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
-import { COLLAB_ORIGIN, getDaAdmin } from '../../shared/constants.js';
+import { COLLAB_ORIGIN, DA_ROOM_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
-
-const DA_ORIGIN = getDaAdmin();
 
 let sendUpdates = false;
 let hasChanged = 0;
@@ -185,7 +183,7 @@ export default function initProse({ path, permissions }) {
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+  const roomName = `${DA_ROOM_ORIGIN}${new URL(path).pathname}`;
 
   const opts = {};
 

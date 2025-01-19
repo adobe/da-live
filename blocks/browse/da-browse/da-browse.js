@@ -1,4 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
+import { DA_ORIGIN } from '../../shared/constants.js';
+import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 
 // Components
@@ -43,6 +45,46 @@ export default class DaBrowse extends LitElement {
     if (this.newCmp) this.newCmp.permissions = e.detail;
   }
 
+  async update(props) {
+    if (props.has('details') && this.details) {
+      // Only re-fetch if the orgs are different
+      const reFetch = props.get('details')?.owner !== this.details.owner;
+      this.editor = await this.getEditor(reFetch);
+    }
+
+    super.update(props);
+  }
+
+  async getEditor(reFetch) {
+    const DEF_EDIT = '/edit#';
+
+    if (reFetch) {
+      const resp = await daFetch(`${DA_ORIGIN}/config/${this.details.owner}/`);
+      if (!resp.ok) return DEF_EDIT;
+      const { data, ':type': type } = await resp.json();
+
+      const rows = type === 'multi-sheet' ? data?.data : data;
+      this.editorConfs = rows.reduce((acc, row) => {
+        if (row.key === 'editor.path') acc.push(row.value);
+        return acc;
+      }, []);
+    }
+
+    if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
+
+    // Filter down all matched confs
+    const matchedConfs = this.editorConfs.filter(
+      (conf) => this.details.fullpath.startsWith(conf.split('=')[0]),
+    );
+
+    if (matchedConfs.length === 0) return DEF_EDIT;
+
+    // Sort by length in descending order (longest first)
+    const matchedConf = matchedConfs.sort((a, b) => b.length - a.length)[0];
+
+    return matchedConf.split('=')[1];
+  }
+
   handleTabClick(idx) {
     this._tabItems = this._tabItems.map((tab, tidx) => ({ ...tab, selected: idx === tidx }));
   }
@@ -64,7 +106,12 @@ export default class DaBrowse extends LitElement {
   }
 
   renderNew() {
-    return html`<da-new @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}"></da-new>`;
+    return html`
+      <da-new
+        @newitem=${this.handleNewItem}
+        fullpath="${this.details.fullpath}"
+        editor="${this.editor}">
+      </da-new>`;
   }
 
   renderSearch() {
@@ -76,6 +123,7 @@ export default class DaBrowse extends LitElement {
       <da-list
         class="da-list-type-${type}"
         fullpath="${fullpath}"
+        editor="${this.editor}"
         @onpermissions=${this.handlePermissions}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
