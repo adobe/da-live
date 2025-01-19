@@ -20,6 +20,13 @@ export default class DaContent extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
   }
 
+  disconnectWebsocket() {
+    if (this.wsProvider) {
+      this.wsProvider.disconnect({ data: 'Client navigation' });
+      this.wsProvider = undefined;
+    }
+  }
+
   update(props) {
     super.update(props);
   }

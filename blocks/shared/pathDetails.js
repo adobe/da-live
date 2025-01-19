@@ -1,6 +1,5 @@
-import { CON_ORIGIN, getDaAdmin } from './constants.js';
+import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
 
-const DA_ORIGIN = getDaAdmin();
 let currpath;
 let currhash;
 let details;

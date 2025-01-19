@@ -39,7 +39,10 @@ async function setUI(el, utils) {
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
 
-  if (wsProvider) wsProvider.disconnect({ data: 'Client navigation' });
+  if (daContent.wsProvider) {
+    daContent.wsProvider.disconnect({ data: 'Client navigation' });
+    daContent.wsProvider = undefined;
+  }
 
   ({ proseEl, wsProvider } = initProse({ path: details.sourceUrl, permissions }));
   daContent.proseEl = proseEl;

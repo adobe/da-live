@@ -58,13 +58,13 @@ const getColWidths = (colWidths, headers) => {
   if (colWidths) {
     return colWidths?.map((width) => {
       const opts = { width: `${width}` };
-      opts.readOnly = !canWrite;
+      if (!canWrite) opts.readOnly = true;
       return opts;
     });
   }
   return headers.map(() => {
     const opts = { width: '300' };
-    opts.readOnly = !canWrite;
+    if (!canWrite) opts.readOnly = true;
     return opts;
   });
 };
@@ -94,7 +94,7 @@ export async function getData(url) {
   if (daTitle) daTitle.permissions = resp.permissions;
 
   permissions = resp.permissions;
-  canWrite = resp.permissions.some((permission) => permission === 'write');
+  canWrite = resp.permissions?.some((permission) => permission === 'write');
 
   if (!resp.ok) return getDefaultSheet();
 

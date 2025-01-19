@@ -41,7 +41,7 @@ export const daFetch = async (url, opts = {}) => {
       handleSignIn();
     }
   }
-  resp.permissions = resp.headers.get('x-da-actions')?.split('=').pop().split(',');
+  resp.permissions = resp.headers?.get('x-da-actions')?.split('=').pop().split(',');
   return resp;
 };
 
