@@ -40,9 +40,6 @@ function getRepoDetails({ editor, pathParts, ext }) {
   let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
-  // TODO: Fix this later
-  const tld = repo === 'da-bacom' || repo === 'help' ? '.aem.page' : '.hlx.page';
-
   return {
     owner: org,
     repo,
@@ -50,7 +47,7 @@ function getRepoDetails({ editor, pathParts, ext }) {
     parent,
     parentName,
     sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: `https://main--${repo}--${org}${tld}`,
+    previewUrl: `https://main--${repo}--${org}.aem.live`,
     contentUrl: `${CON_ORIGIN}/${fullPath}`,
   };
 }
@@ -72,9 +69,6 @@ function getFullDetails({ editor, pathParts, ext }) {
   const daApi = editor === 'config' ? 'config' : 'source';
   const path = ext === 'html' && !fullPath.endsWith('html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
-  // TODO: Fix this later
-  const tld = repo === 'da-bacom' || repo === 'help' ? '.aem.live' : '.hlx.live';
-
   return {
     owner: org,
     repo,
@@ -82,7 +76,7 @@ function getFullDetails({ editor, pathParts, ext }) {
     parent: ext === null ? `${parent}/${name}` : parent,
     parentName: ext === null ? name : parentName,
     sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: `https://main--${repo}--${org}${tld}${pathname}`,
+    previewUrl: `https://main--${repo}--${org}.aem.live${pathname}`,
     contentUrl: `${CON_ORIGIN}/${fullPath}`,
   };
 }
