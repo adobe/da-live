@@ -67,7 +67,7 @@ export async function openAssets() {
         dialog.close();
 
         // eslint-disable-next-line no-underscore-dangle
-        console.log(asset._embedded['http://ns.adobe.com/adobecloud/rel/metadata/asset']);
+        console.log(asset._embedded['http://ns.adobe.com/adobecloud/rel/metadata/asset']['dc:description']);
 
         const imgObj = { src: `https://${pubRepoId}${path}`, style: 'width: 180px' };
         const fpo = state.schema.nodes.image.create(imgObj);
