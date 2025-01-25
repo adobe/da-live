@@ -66,7 +66,12 @@ export async function openAssets() {
         const { state } = view;
         dialog.close();
 
+        // eslint-disable-next-line no-underscore-dangle
+        const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:description'];
+
         const imgObj = { src: `https://${pubRepoId}${path}`, style: 'width: 180px' };
+        if (alt) imgObj.alt = alt;
+
         const fpo = state.schema.nodes.image.create(imgObj);
         view.dispatch(state.tr.insert(state.selection.head, fpo).scrollIntoView());
       },
