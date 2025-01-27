@@ -29,7 +29,7 @@ import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
-import { COLLAB_ORIGIN, DA_ROOM_ORIGIN } from '../../shared/constants.js';
+import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
@@ -167,7 +167,7 @@ export default function initProse({ editor, path }) {
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ROOM_ORIGIN}${new URL(path).pathname}`;
+  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
 
   const opts = {};
 

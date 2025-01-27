@@ -10,10 +10,10 @@ describe('Path details', () => {
       it('Handles folder config (/)', () => {
         const loc = { pathname: '/config', hash: '#/adobe/' };
         const details = getPathDetails(loc);
-        expect(details.origin).to.equal('https://da.live/api');
+        expect(details.origin).to.equal('https://admin.da.live');
         expect(details.fullpath).to.equal('/adobe/');
         expect(details.repo).to.equal(undefined);
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe');
         expect(details.name).to.equal('config');
         expect(details.parent).to.equal('/adobe');
         expect(details.parentName).to.equal('adobe');
@@ -23,7 +23,7 @@ describe('Path details', () => {
         const loc = { pathname: '/config', hash: '#/adobe.json' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe.json');
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe.json');
         expect(details.parent).to.equal('/');
         expect(details.parentName).to.equal('Root');
       });
@@ -32,7 +32,7 @@ describe('Path details', () => {
         const loc = { pathname: '/config', hash: '#/adobe' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe.html');
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe.html');
       });
     });
 
@@ -41,7 +41,7 @@ describe('Path details', () => {
         const loc = { pathname: '/sheet', hash: '#/adobe' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe.json');
-        expect(details.sourceUrl).to.equal('https://da.live/api/source/adobe.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe.json');
       });
     });
 
@@ -50,7 +50,7 @@ describe('Path details', () => {
         const loc = { pathname: '/edit', hash: '#/adobe' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe.html');
-        expect(details.sourceUrl).to.equal('https://da.live/api/source/adobe.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe.html');
       });
     });
 
@@ -72,7 +72,7 @@ describe('Path details', () => {
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx/');
         expect(details.repo).to.equal('geometrixx');
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe/geometrixx');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx');
         expect(details.name).to.equal('geometrixx config');
         expect(details.parent).to.equal('/adobe/geometrixx');
         expect(details.parentName).to.equal('geometrixx');
@@ -82,7 +82,7 @@ describe('Path details', () => {
         const loc = { pathname: '/config', hash: '#/adobe/geometrixx.json' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx.json');
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe/geometrixx.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx.json');
         expect(details.parent).to.equal('/adobe');
         expect(details.parentName).to.equal('adobe');
       });
@@ -91,7 +91,7 @@ describe('Path details', () => {
         const loc = { pathname: '/config', hash: '#/adobe/geometrixx' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx.html');
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe/geometrixx.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx.html');
       });
     });
 
@@ -100,7 +100,7 @@ describe('Path details', () => {
         const loc = { pathname: '/sheet', hash: '#/adobe/geometrixx' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx.json');
-        expect(details.sourceUrl).to.equal('https://da.live/api/source/adobe/geometrixx.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx.json');
       });
     });
 
@@ -109,7 +109,7 @@ describe('Path details', () => {
         const loc = { pathname: '/edit', hash: '#/adobe/geometrixx' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx.html');
-        expect(details.sourceUrl).to.equal('https://da.live/api/source/adobe/geometrixx.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx.html');
       });
     });
   });
@@ -121,7 +121,7 @@ describe('Path details', () => {
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123/');
         expect(details.repo).to.equal('geometrixx');
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe/geometrixx/testing-123');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx/testing-123');
         expect(details.name).to.equal('config');
         expect(details.parent).to.equal('/adobe/geometrixx/testing-123');
         expect(details.parentName).to.equal('testing-123');
@@ -131,7 +131,7 @@ describe('Path details', () => {
         const loc = { pathname: '/config', hash: '#/adobe/geometrixx/testing-123.json' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.json');
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe/geometrixx/testing-123.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx/testing-123.json');
         expect(details.parent).to.equal('/adobe/geometrixx');
         expect(details.parentName).to.equal('geometrixx');
       });
@@ -140,7 +140,7 @@ describe('Path details', () => {
         const loc = { pathname: '/config', hash: '#/adobe/geometrixx/testing-123' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
-        expect(details.sourceUrl).to.equal('https://da.live/api/config/adobe/geometrixx/testing-123.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx/testing-123.html');
       });
     });
 
@@ -149,7 +149,7 @@ describe('Path details', () => {
         const loc = { pathname: '/sheet', hash: '#/adobe/geometrixx/testing-123' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.json');
-        expect(details.sourceUrl).to.equal('https://da.live/api/source/adobe/geometrixx/testing-123.json');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/testing-123.json');
       });
     });
 
@@ -158,7 +158,7 @@ describe('Path details', () => {
         const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/testing-123' };
         const details = getPathDetails(loc);
         expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
-        expect(details.sourceUrl).to.equal('https://da.live/api/source/adobe/geometrixx/testing-123.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/testing-123.html');
       });
     });
   });
