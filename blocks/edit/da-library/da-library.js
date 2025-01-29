@@ -236,6 +236,11 @@ class DaLibrary extends LitElement {
         const para = window.view.state.schema.text(e.data.details);
         window.view.dispatch(window.view.state.tr.replaceSelectionWith(para));
       }
+      if (e.data.action === 'sendHTML') {
+        const dom = new DOMParser().parseFromString(e.data.details, 'text/html');
+        const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
+        window.view.dispatch(window.view.state.tr.replaceSelectionWith(nodes));
+      }
       if (e.data.action === 'closeLibrary') {
         closeLibrary();
       }
