@@ -25,6 +25,7 @@ export default class DaTitle extends LitElement {
     collabUsers: { attribute: false },
     _actionsVis: {},
     _status: { state: true },
+    _fixedActions: { state: true },
   };
 
   connectedCallback() {
@@ -40,6 +41,19 @@ export default class DaTitle extends LitElement {
       window.addEventListener('online', () => { this.collabStatus = 'connected'; });
       window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
     }
+  }
+
+  firstUpdated() {
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries[0].isIntersecting) {
+        this._fixedActions = true;
+      } else {
+        this._fixedActions = false;
+      }
+    });
+
+    const element = this.shadowRoot.querySelector('h1');
+    if (element) observer.observe(element);
   }
 
   handleError(json, action, icon) {
@@ -157,7 +171,7 @@ export default class DaTitle extends LitElement {
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._status ? html`<p class="da-title-error-details">${this._status.message} ${this._status.action}.</p>` : nothing}
-          <div class="da-title-actions${this._actionsVis ? ' is-open' : ''}">
+          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis ? 'is-open' : ''}">
             ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
             <button
               @click=${this.toggleActions}
