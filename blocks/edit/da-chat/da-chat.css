@@ -1,0 +1,17 @@
+.da-chat-panel {
+  display: block;
+  width: 375px;
+  margin: 0 auto;
+  padding-left: 32px;
+  border: none;
+  overflow: hidden;
+  position: relative;
+}
+
+p {
+  display: flex;
+}
+
+p * {
+  flex: 1 1 auto;
+}

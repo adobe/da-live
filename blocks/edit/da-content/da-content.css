@@ -19,16 +19,9 @@ da-editor {
   z-index: 1;
 }
 
-da-version {
-  display: none;
-  position: absolute;
-  top: 0;
-  width: 100%;
-  z-index: 2;
-}
-
 da-preview,
-da-versions {
+da-versions,
+da-chat {
   visibility: hidden;
   position: absolute;
   width: 0;
@@ -38,7 +31,8 @@ da-versions {
 }
 
 da-preview.show-preview,
-da-versions.show-versions {
+da-versions.show-versions,
+da-chat.show-chat {
   visibility: unset;
   position: relative;
   width: unset;
@@ -81,16 +75,21 @@ da-versions.show-versions {
   background-blend-mode: hard-light;
 }
 
+.da-editor-tab.show-mystique {
+  background: url("/blocks/edit/img/Smock_AIChat_18_N.svg") center center / 20px no-repeat;
+  background-blend-mode: hard-light;
+}
+
 .da-editor-tab.show-versions {
   background: url("/blocks/edit/img/Smock_Calendar_18_N.svg") center center / 20px no-repeat;
   background-blend-mode: hard-light;
 }
 
 :host(.show-preview) .da-editor-tabs,
-:host(.show-versions) .da-editor-tabs {
+:host(.show-versions) .da-editor-tabs,
+:host(.show-chat) .da-editor-tabs {
   display: none;
 }
-
 
 .da-preview-menuitem.show-preview:hover {
   background-color: var(--editor-btn-bg-color-hover) !important;
@@ -119,13 +118,5 @@ da-versions.show-versions {
 @media (min-width: 1200px) {
   .editor-wrapper {
     width: 900px;
-  }
-
-  da-editor {
-
-  }
-
-  :host(.show-preview) da-editor {
-
   }
 }
