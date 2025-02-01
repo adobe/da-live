@@ -30,7 +30,6 @@ class DaChat extends LitElement {
   }
 
   async handleMockUpdate() {
-    console.lo
     // Update with ProseMirror
     const dom = new DOMParser().parseFromString(`<p>${this._mockText}</p>`, 'text/html');
     const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
