@@ -45,11 +45,7 @@ export default class DaTitle extends LitElement {
 
   firstUpdated() {
     const observer = new IntersectionObserver((entries) => {
-      if (!entries[0].isIntersecting) {
-        this._fixedActions = true;
-      } else {
-        this._fixedActions = false;
-      }
+      this._fixedActions = !entries[0].isIntersecting;
     });
 
     const element = this.shadowRoot.querySelector('h1');
