@@ -30,6 +30,7 @@ class DaChat extends LitElement {
   }
 
   async handleMockUpdate() {
+    console.lo
     // Update with ProseMirror
     const dom = new DOMParser().parseFromString(`<p>${this._mockText}</p>`, 'text/html');
     const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
@@ -55,12 +56,16 @@ class DaChat extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handleInput({ target }) {
+    this._mockText = target.value;
+  }
+
   render() {
     return html`
       <div class="da-chat-panel">
         <h1>Chat w/ your AI <br><s>overlord</s> bestie.</h1>
         <p>
-          <input type="text" .value=${this._mockText}></input>
+          <input type="text" .value=${this._mockText} @input=${this.handleInput}></input>
           <button @click=${this.handleMockUpdate}>Update doc</button>
         </p>
         <button @click=${this.getDoc}>Get Doc</button>
