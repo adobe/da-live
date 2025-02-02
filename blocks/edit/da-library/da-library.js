@@ -116,6 +116,15 @@ class DaLibrary extends LitElement {
 
       return;
     }
+    if (library.experience === 'window') {
+      try {
+        const { pathname } = new URL(library.url);
+        window.open(library.url, `${pathname.replaceAll('/', '-')}`);
+      } catch {
+        console.log('Could not make plugin URL');
+      }
+      return;
+    }
     const { target } = e;
     const type = target.dataset.libraryName;
     target.closest('.palette-pane').classList.add('backward');
@@ -235,6 +244,11 @@ class DaLibrary extends LitElement {
       if (e.data.action === 'sendText') {
         const para = window.view.state.schema.text(e.data.details);
         window.view.dispatch(window.view.state.tr.replaceSelectionWith(para));
+      }
+      if (e.data.action === 'sendHTML') {
+        const dom = new DOMParser().parseFromString(e.data.details, 'text/html');
+        const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
+        window.view.dispatch(window.view.state.tr.replaceSelectionWith(nodes));
       }
       if (e.data.action === 'closeLibrary') {
         closeLibrary();

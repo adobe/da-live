@@ -165,6 +165,13 @@ h1 {
   height: 44px;
 }
 
+.da-title-actions.is-fixed {
+  position: fixed;
+  right: 18px;
+  bottom: 12px;
+  z-index: 10000;
+}
+
 .da-title-actions.is-open {
   background: #EFEFEF;
 }

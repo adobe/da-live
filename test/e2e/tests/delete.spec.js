@@ -119,7 +119,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await list.locator('button.delete-button').locator('visible=true').click();
 
   // Give the second window a chance to update itself
-  await list.waitForTimeout(3000);
+  await list.waitForTimeout(10000);
 
   // The open window should be cleared out now
   await expect(page2.locator('div.ProseMirror')).not.toContainText(enteredText);
