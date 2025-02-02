@@ -116,6 +116,15 @@ class DaLibrary extends LitElement {
 
       return;
     }
+    if (library.experience === 'window') {
+      try {
+        const { pathname } = new URL(library.url);
+        window.open(library.url, `${pathname.replaceAll('/', '-')}`);
+      } catch {
+        console.log('Could not make plugin URL');
+      }
+      return;
+    }
     const { target } = e;
     const type = target.dataset.libraryName;
     target.closest('.palette-pane').classList.add('backward');
