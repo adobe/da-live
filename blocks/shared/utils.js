@@ -32,6 +32,7 @@ export const daFetch = async (url, opts = {}) => {
   if (resp.status === 401) {
     // Only attempt sign-in if the request is for DA.
     if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
+      // If the user has an access token, but are not permitted, redirect them to not found.
       if (accessToken) {
         window.location = `${window.location.origin}/not-found`;
         return { ok: false };
@@ -42,12 +43,26 @@ export const daFetch = async (url, opts = {}) => {
     }
   }
 
+  // TODO: Properly support 403 - DA Admin sometimes gives 401s and sometimes 403s.
+  if (resp.status === 403) {
+    return resp;
+  }
+
+  // If child actions header is present, use it.
+  // This is a hint as to what can be done with the children.
+  if (resp.headers?.get('x-da-child-actions')) {
+    resp.permissions = resp.headers.get('x-da-child-actions').split('=').pop().split(',');
+    return resp;
+  }
+
+  // Use the self actions hint if child actions are not present.
   if (resp.headers?.get('x-da-actions')) {
     resp.permissions = resp.headers?.get('x-da-actions')?.split('=').pop().split(',');
-    console.log(resp.permissions);
-  } else {
-    resp.permissions = ['read', 'write'];
+    return resp;
   }
+
+  // Support legacy admin.role.all
+  resp.permissions = ['read', 'write'];
   return resp;
 };
 
