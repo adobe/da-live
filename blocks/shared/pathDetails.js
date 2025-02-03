@@ -95,7 +95,7 @@ function getView(pathname) {
 
 export default function getPathDetails(loc) {
   const { pathname, hash } = loc || window.location;
-  if (!pathname || !hash) return null;
+  if (!pathname || !hash) return undefined;
 
   // Use cached details if the hash has not changed
   if (currhash === hash && currpath === pathname && details) return details;
