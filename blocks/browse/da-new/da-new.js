@@ -11,6 +11,7 @@ export default class DaNew extends LitElement {
   static properties = {
     fullpath: { type: String },
     editor: { type: String },
+    permissions: { attribute: false },
     _createShow: { attribute: false },
     _createType: { attribute: false },
     _createFile: { attribute: false },
@@ -127,10 +128,15 @@ export default class DaNew extends LitElement {
     this._externalUrl = '';
   }
 
+  get _disabled() {
+    if (!this.permissions) return true;
+    return !this.permissions.some((permission) => permission === 'write');
+  }
+
   render() {
     return html`
       <div class="da-actions-create ${this._createShow}">
-        <button class="da-actions-new-button" @click=${this.handleCreateMenu}>New</button>
+        <button class="da-actions-new-button" @click=${this.handleCreateMenu} ?disabled=${this._disabled}>New</button>
         <ul class="da-actions-menu">
           <li class=da-actions-menu-item>
             <button data-type=folder @click=${this.handleNewType}>Folder</button>

@@ -36,10 +36,11 @@ import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
 
-let pollerSetUp = false;
 let sendUpdates = false;
 let hasChanged = 0;
 let lastCursorPosition = null;
+let daPreview;
+let updatePoller;
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
@@ -52,31 +53,44 @@ function dispatchTransaction(transaction) {
   window.view.updateState(newState);
 }
 
-function setPreviewBody(daPreview, proseEl) {
-  const clone = proseEl.cloneNode(true);
+function setPreviewBody() {
+  daPreview ??= document.querySelector('da-content')?.shadowRoot.querySelector('da-preview');
+  if (!daPreview) return;
+
+  const clone = window.view.docView.dom.cloneNode(true);
   const body = prose2aem(clone, true);
   daPreview.body = body;
 }
 
-export function pollForUpdates(doc = document, win = window) {
-  if (pollerSetUp) return;
-  const daContent = doc.querySelector('da-content');
-  const daPreview = daContent?.shadowRoot.querySelector('da-preview');
-  if (!win.view) return;
-  const proseEl = win.view.root.querySelector('.ProseMirror');
-  if (!daPreview) return;
+export function pollForUpdates() {
+  if (updatePoller) clearInterval(updatePoller);
 
-  setInterval(() => {
+  updatePoller = setInterval(() => {
     if (sendUpdates) {
       if (hasChanged > 0) {
         hasChanged = 0;
         return;
       }
-      setPreviewBody(daPreview, proseEl);
+      setPreviewBody();
       sendUpdates = false;
     }
   }, 500);
-  pollerSetUp = true;
+}
+
+function handleProseLoaded(editor) {
+  // Give the websocket time to connect and populate
+  setTimeout(() => {
+    const daEditor = editor.getRootNode().host;
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('proseloaded', opts);
+    daEditor.dispatchEvent(event);
+
+    // Give the preview elements time to create
+    setTimeout(() => {
+      setPreviewBody();
+      pollForUpdates();
+    }, 3000);
+  }, 3000);
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
@@ -158,9 +172,11 @@ function restoreCursorPosition(view) {
   }
 }
 
-export default function initProse({ editor, path }) {
+export default function initProse({ path, permissions }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
+  const editor = document.createElement('div');
+  editor.className = 'da-prose-mirror';
 
   const schema = getSchema();
 
@@ -174,6 +190,8 @@ export default function initProse({ editor, path }) {
   if (window.adobeIMS?.isSignedInUser()) {
     opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
   }
+
+  const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
   createAwarenessStatusWidget(wsProvider, window);
@@ -206,14 +224,9 @@ export default function initProse({ editor, path }) {
   }
 
   const plugins = [
-    ySyncPlugin(yXmlFragment, {
-      onFirstRender: () => {
-        pollForUpdates();
-      },
-    }),
+    ySyncPlugin(yXmlFragment),
     yCursorPlugin(wsProvider.awareness),
     yUndoPlugin(),
-    menu,
     slashMenu(),
     imageDrop(schema),
     linkConverter(schema),
@@ -243,10 +256,11 @@ export default function initProse({ editor, path }) {
     history(),
   ];
 
-  let state = EditorState.create({
-    schema,
-    plugins,
-  });
+  if (canWrite) {
+    plugins.push(menu);
+  }
+
+  let state = EditorState.create({ schema, plugins });
 
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
@@ -274,13 +288,13 @@ export default function initProse({ editor, path }) {
         return false;
       },
     },
+    editable() { return canWrite; },
   });
 
-  // Call pollForUpdates() to make sure it gets called even if the callback was made earlier
-  pollForUpdates();
+  handleProseLoaded(editor, permissions);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return wsProvider;
+  return { proseEl: editor, wsProvider };
 }

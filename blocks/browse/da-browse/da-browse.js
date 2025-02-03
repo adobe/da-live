@@ -41,6 +41,10 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [STYLE];
   }
 
+  handlePermissions(e) {
+    if (this.newCmp) this.newCmp.permissions = e.detail;
+  }
+
   async update(props) {
     if (props.has('details') && this.details) {
       // Only re-fetch if the orgs are different
@@ -98,6 +102,10 @@ export default class DaBrowse extends LitElement {
     return this._tabItems.find((tab) => tab.selected).id;
   }
 
+  get newCmp() {
+    return this.shadowRoot.querySelector('da-new');
+  }
+
   renderNew() {
     return html`
       <da-new
@@ -117,6 +125,7 @@ export default class DaBrowse extends LitElement {
         class="da-list-type-${type}"
         fullpath="${fullpath}"
         editor="${this.editor}"
+        @onpermissions=${this.handlePermissions}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
         drag="${drag ? true : nothing}"></da-list>`;

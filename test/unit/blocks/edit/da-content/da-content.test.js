@@ -5,11 +5,11 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/bheuaark/', { hostname: 'localhost' });
 
-const { default: DaEditor } = await import('../../../../../blocks/edit/da-editor/da-editor.js');
+const { default: DaContent } = await import('../../../../../blocks/edit/da-content/da-content.js');
 
-describe('da-editor', () => {
+describe('da-content', () => {
   it('Test wsprovider disconnectedcallback', async () => {
-    const ed = new DaEditor();
+    const ed = new DaContent();
 
     const called = [];
     const mockWSProvider = { disconnect: () => called.push('disconnect') };

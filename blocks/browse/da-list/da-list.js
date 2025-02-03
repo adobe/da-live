@@ -26,6 +26,7 @@ export default class DaList extends LitElement {
     drag: { type: Boolean },
     listItems: { attribute: false },
     newItem: { attribute: false },
+    _permissions: { state: true },
     _listItems: { state: true },
     _selectedItems: { state: true },
     _dropFiles: { state: true },
@@ -70,9 +71,18 @@ export default class DaList extends LitElement {
     this._status = { type, text, description };
   }
 
+  handlePermissions(permissions) {
+    this._permissions = permissions;
+
+    // Notify parent
+    const opts = { detail: permissions, bubbles: true, composed: true };
+    const event = new CustomEvent('onpermissions', opts);
+    this.dispatchEvent(event);
+  }
+
   async getList() {
     const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
-    if (!resp.ok) return null;
+    if (resp.permissions) this.handlePermissions(resp.permissions);
     return resp.json();
   }
 
@@ -128,6 +138,12 @@ export default class DaList extends LitElement {
     this.requestUpdate();
   }
 
+  wait(milliseconds) {
+    return new Promise((r) => {
+      setTimeout(r, milliseconds);
+    });
+  }
+
   async handlePasteItem(item) {
     let continuation = true;
     let continuationToken;
@@ -141,6 +157,13 @@ export default class DaList extends LitElement {
       if (resp.status === 204) {
         continuation = false;
         break;
+      } else if (resp.status >= 400) {
+        this.setStatus('Copying', 'There was an issue copying.');
+
+        // TODO maybe there is a better way to keep the status dialog visible for a bit?
+        await this.wait(2000);
+
+        return;
       }
       const json = await resp.json();
       ({ continuationToken } = json);
@@ -420,6 +443,7 @@ export default class DaList extends LitElement {
         ${this.drag ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar
+        .permissions=${this._permissions}
         @clearselection=${this.handleClear}
         @rename=${this.handleRename}
         @onpaste=${this.handlePaste}

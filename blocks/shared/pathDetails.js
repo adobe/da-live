@@ -1,6 +1,5 @@
-import { CON_ORIGIN, getDaAdmin } from './constants.js';
+import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
 
-const DA_ORIGIN = getDaAdmin();
 let currpath;
 let currhash;
 let details;
@@ -96,7 +95,7 @@ function getView(pathname) {
 
 export default function getPathDetails(loc) {
   const { pathname, hash } = loc || window.location;
-  if (!pathname || !hash) return null;
+  if (!pathname || !hash) return undefined;
 
   // Use cached details if the hash has not changed
   if (currhash === hash && currpath === pathname && details) return details;

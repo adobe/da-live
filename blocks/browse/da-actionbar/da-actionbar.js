@@ -8,7 +8,8 @@ const STYLE = await getStyle(import.meta.url);
 export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
-    _canPaste: { state: true },
+    permissions: { attribute: false },
+    _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
     currentPath: { type: String },
@@ -29,7 +30,7 @@ export default class DaActionBar extends LitElement {
     if (props.has('items')) {
       // Reset state when items go empty
       if (this.items.length === 0) {
-        this._canPaste = false;
+        this._isCopying = false;
         this._isMoving = false;
         this._isDeleting = false;
       }
@@ -39,7 +40,7 @@ export default class DaActionBar extends LitElement {
   }
 
   handleClear() {
-    this._canPaste = false;
+    this._isCopying = false;
     this._isMoving = false;
     this._isDeleting = false;
     const opts = { detail: true, bubbles: true, composed: true };
@@ -54,12 +55,12 @@ export default class DaActionBar extends LitElement {
   }
 
   handleCopy() {
-    this._canPaste = true;
+    this._isCopying = true;
   }
 
   handleMove() {
+    this._isCopying = true;
     this._isMoving = true;
-    this._canPaste = true;
   }
 
   handlePaste() {
@@ -106,13 +107,19 @@ export default class DaActionBar extends LitElement {
     return itemDir !== this.currentPath;
   }
 
+  get _canWrite() {
+    if (!this.permissions) return false;
+    return this.permissions.some((permission) => permission === 'write');
+  }
+
   get _canShare() {
-    return this.items.some((item) => item.ext && item.ext !== 'link');
+    const isFile = this.items.some((item) => item.ext && item.ext !== 'link');
+    return isFile && !this._isCopying;
   }
 
   get currentAction() {
     const itemStr = this.items.length > 1 ? 'items' : 'item';
-    if (this._canPaste) {
+    if (this._isCopying && this._canWrite) {
       const folderName = this.currentPath.split('/').pop();
       return `Paste ${this.items.length} ${itemStr} into ${folderName}`;
     }
@@ -135,37 +142,37 @@ export default class DaActionBar extends LitElement {
         <div class="da-action-bar-right-rail">
           <button
             @click=${this.handleRename}
-            class="rename-button ${this.items.length === 1 ? '' : 'hide'} ${this._canPaste ? 'hide' : ''}">
+            class="rename-button ${this._canWrite ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_TextEdit_18_N.svg" />
             <span>Rename</span>
           </button>
           <button
             @click=${this.handleCopy}
-            class="copy-button ${this._canPaste ? 'hide' : ''}">
+            class="copy-button ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
             <span>Copy</span>
           </button>
           <button
-              @click=${this.handleMove}
-              class="copy-button ${this._canPaste ? 'hide' : ''}">
-              <img src="/blocks/browse/da-browse/img/Smock_Cut_18_N.svg" />
-              <span>Cut</span>
-            </button>
+            @click=${this.handleMove}
+            class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            <img src="/blocks/browse/da-browse/img/Smock_Cut_18_N.svg" />
+            <span>Cut</span>
+          </button>
           <button
             @click=${this.handlePaste}
-            class="copy-button ${this._canPaste ? '' : 'hide'}">
+            class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? '' : 'hide'}">
             <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
             <span>Paste</span>
           </button>
           <button
             @click=${this.handleDelete}
-            class="delete-button ${this._canPaste ? 'hide' : ''}">
+            class="delete-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" />
             <span>Delete</span>
           </button>
           <button
             @click=${this.handleShare}
-            class="share-button ${this._canShare && !this._canPaste ? '' : 'hide'}">
+            class="share-button ${this._canShare ? '' : 'hide'}">
             <img src="/blocks/browse/img/Smock_Share_18_N.svg" />
             <span>Share</span>
           </button>

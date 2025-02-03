@@ -21,6 +21,7 @@ const CLOUD_ICONS = {
 export default class DaTitle extends LitElement {
   static properties = {
     details: { attribute: false },
+    permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
     _actionsVis: {},
@@ -74,7 +75,10 @@ export default class DaTitle extends LitElement {
     }
     if (this.details.view === 'config') {
       const daConfigResp = await saveDaConfig(pathname, this.sheet);
-      if (!daConfigResp.ok) return;
+      if (!daConfigResp.ok) {
+        console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
+        return;
+      }
     }
     if (action === 'preview' || action === 'publish') {
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
@@ -97,6 +101,11 @@ export default class DaTitle extends LitElement {
 
   toggleActions() {
     this._actionsVis = !this._actionsVis;
+  }
+
+  get _readOnly() {
+    if (!this.permissions) return false;
+    return !this.permissions.some((permission) => permission === 'write');
   }
 
   renderSave() {
@@ -156,7 +165,7 @@ export default class DaTitle extends LitElement {
 
   render() {
     return html`
-      <div class="da-title-inner">
+      <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
         <div class="da-title-name">
           <a
             href="/#${this.details.parent}"

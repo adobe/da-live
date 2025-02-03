@@ -26,6 +26,10 @@ li {
   overflow: hidden;
 }
 
+li.is-read-only {
+  padding: 0 12px;
+}
+
 input {
   border: none;
   padding: 0 6px;
@@ -62,6 +66,10 @@ button:hover {
   background-color: var(--spectrum-blue-800);
 }
 
+li.is-read-only .da-sheet-edit-button {
+  display: none;
+}
+
 .icon {
   color: rgb(0 0 0 / 40%);
   display: block;
@@ -86,7 +94,20 @@ button:hover .icon {
   line-height: 28px;
 }
 
+.add-sheet.is-read-only {
+  color: var(--s2-gray-700);
+  background-color: transparent;
+  outline-color: var(--s2-gray-700);
+  border: 2px dotted var(--s2-gray-700);
+  cursor: not-allowed;
+}
+
 .add-sheet:hover {
   background-color: var(--spectrum-blue-800);
   border: 2px solid var(--spectrum-blue-800);
+}
+
+.add-sheet.is-read-only:hover {
+  background-color: transparent;
+  border: 2px dotted var(--s2-gray-700);
 }

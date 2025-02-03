@@ -8,6 +8,7 @@
 }
 
 h1 {
+  position: relative;
   margin-top: 0;
 }
 
@@ -37,6 +38,17 @@ h1 {
   display: block;
   justify-content: space-between;
   align-items: end;
+}
+
+.da-title-inner.is-read-only h1::before {
+  display: block;
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: 18px;
+  left: -36px;
+  background: url(/blocks/edit/img/Smock_LockClosed_18_N.svg) center center / 18px no-repeat;
 }
 
 .da-title-name-label {
