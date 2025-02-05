@@ -148,7 +148,7 @@ export default class DaOrgs extends LitElement {
   renderEmpty() {
     return html`
       <div class="da-no-org-well">
-        <img src="/blocks/browse/da-orgs/img/org-icon-color.svg" width="80" height="60"/>
+        <img src="/blocks/browse/da-orgs/img/org-icon-color.svg" width="80" height="60" alt=""/>
         <div class="da-no-org-text">
           <h3>You don’t have any recent organizations.</h3>
           <p>Go to your organization, play in the sandbox, or create a new one.</p>
