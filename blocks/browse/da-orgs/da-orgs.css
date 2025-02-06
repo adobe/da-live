@@ -22,18 +22,155 @@ button {
   margin: 0 auto;
 }
 
-h1 {
+h2 {
   font-size: 1.4rem;
   margin: 0 0 24px;
-  text-transform: capitalize;
 }
+
+/* No recents well */
+.da-no-org-well {
+  display: grid;
+  justify-items: center;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  background: #fafafa;
+  border-radius: var(--s2-radius-300);
+  min-height: 320px;
+  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+  margin: 0 0 48px;
+}
+
+.da-no-org-well img {
+  display: block;
+}
+
+.da-no-org-text {
+  margin: 18px 0 0;
+  text-align: center;
+}
+
+.da-no-org-text h3,
+.da-no-org-text p {
+  margin: 0;
+}
+
+.da-no-org-text h3 { 
+  font-size: 18px;
+}
+
+.da-no-org-well form {
+  margin: 32px 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.da-no-org-well input {
+  border: none;
+  background: transparent;
+  border-bottom: 1px solid #a2a2a2;
+  font-family: var(--body-font-family);
+  font-size: 16px;
+  padding: 0 0 4px 4px;
+  line-height: 26px;
+}
+
+.da-no-org-well input:focus-visible {
+  padding: 0 0 3px 4px;
+  border-bottom: 2px solid #808080;
+  outline: none;
+  outline-offset: 0;
+}
+
+.da-no-org-well input::placeholder {
+  font-style: italic;
+  color: #888888;
+}
+
+.da-no-org-well .da-form-btn-offset {
+  position: relative;
+}
+
+.da-no-org-well button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 22px;
+  border: none;
+  background: transparent;
+  position: absolute;
+  top: -4px;
+}
+
+.da-no-org-well button svg {
+  width: 26px;
+  height: 26px;
+}
+
+form.has-error button {
+  background: var(--s2-red);
+  color: #FFF;
+}
+
+.da-no-org-well button:hover {
+  background: var(--s2-blue-800);
+  color: #FFF;
+}
+
+/* Double Card - Sandbox / Add new */
+.da-org-sandbox-new {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-400);
+}
+
+.da-double-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  border-radius: var(--s2-radius-300);
+  color: #e6e6e6;
+  font-size: 18px;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+}
+
+.da-double-card h3 {
+  font-size: 18px;
+  margin: 10px 0 0;
+}
+
+.da-double-card picture {
+  position: absolute;
+  inset: 0;
+}
+
+.da-double-card-bg {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.da-double-card-fg {
+  position: relative;
+  text-align: center;
+}
+
+/* Recent org list */
 
 .da-orgs-list {
   list-style: none;
   display: grid;
   gap: 24px;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  margin: 0 0 var(--spacing-800) 0;
+  margin: 0 0 var(--spacing-700) 0;
   padding: 0;
 }
 

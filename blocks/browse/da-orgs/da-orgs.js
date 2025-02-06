@@ -1,11 +1,10 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getDaAdmin } from '../../shared/constants.js';
-import { daFetch } from '../../shared/utils.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
+import { initIms, daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
 
-const DA_ORIGIN = getDaAdmin();
 const MOCK_IMGS = [
   '/blocks/browse/da-orgs/img/da-one.webp',
   '/blocks/browse/da-orgs/img/da-two.webp',
@@ -19,24 +18,15 @@ function getRandomImg() {
   return MOCK_IMGS[idx];
 }
 
-const MOCK_ORGS = [
-  { name: 'aemsites', created: '2024-01-10T17:43:13.390Z', img: MOCK_IMGS[0] },
-  { name: 'da-sites', created: '2024-03-13T17:43:13.390Z', img: MOCK_IMGS[1] },
-];
-
 export default class DaOrgs extends LitElement {
   static properties = {
-    details: { attribute: false },
     _recents: { state: true },
-    _orgs: { state: true },
-    _full: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.getRecents();
-    this.getOrgs();
   }
 
   getRecents() {
@@ -46,27 +36,6 @@ export default class DaOrgs extends LitElement {
       name: org,
       img: getRandomImg(),
     }));
-  }
-
-  async getOrgs() {
-    this._orgs = MOCK_ORGS;
-    const resp = await daFetch(`${DA_ORIGIN}/list`);
-    if (!resp.ok) return;
-    const data = await resp.json();
-    this._orgs.push(...data.reduce((acc, org) => {
-      this.updateRecentOrg(org);
-      const exists = this._orgs.some((mock) => mock.name === org.name);
-      if (!exists) {
-        org.img = getRandomImg();
-        acc.push(org);
-      }
-      return acc;
-    }, []));
-  }
-
-  handleShowAll(e) {
-    e.preventDefault();
-    this._full = !this._full;
   }
 
   handleRemove(org) {
@@ -89,21 +58,31 @@ export default class DaOrgs extends LitElement {
     this.requestUpdate();
   }
 
-  updateRecentOrg(org) {
-    if (!this._recents) return;
-    const found = this._recents.find((recent) => recent.name === org.name);
-    if (found) found.created = org.created;
-    this.requestUpdate();
+  async handleGo(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const { org } = Object.fromEntries(formData);
+    if (!org) return;
+
+    // const imsDetails = await initIms();
+    // console.log(imsDetails);
+
+    // const opts = { method: 'HEAD' };
+    // const resp = await daFetch(`${DA_ORIGIN}/list/${org}`, opts);
+    // if (!resp.ok) {
+    //   // Flash red for 2s
+    //   this._goform.classList.toggle('has-error');
+    //   setTimeout(() => { this._goform.classList.toggle('has-error'); }, 2000);
+
+    //   return;
+    // }
+
+    // Just send them and let auth & redirect take care of itself.
+    window.location = `#/${org}`;
   }
 
-  formatDate(string) {
-    const date = new Date(string);
-    const localeDate = date.toLocaleString();
-    return localeDate.split(', ');
-  }
-
-  get _visibleOrgs() {
-    return this._full ? this._orgs : this._orgs.slice(0, 2);
+  get _goform() {
+    return this.shadowRoot.querySelector('form');
   }
 
   renderOrg(org, listType) {
@@ -141,7 +120,6 @@ export default class DaOrgs extends LitElement {
   renderOrgs(title, orgs) {
     const listType = title === 'organizations' ? 'orgs' : 'recents';
     return html`
-      <h1>${title}</h1>
       <ul class="da-orgs-list">
         ${orgs.map((org) => this.renderOrg(org, listType))}
         ${listType === 'orgs' ? html`
@@ -167,12 +145,56 @@ export default class DaOrgs extends LitElement {
     `;
   }
 
+  renderEmpty() {
+    return html`
+      <div class="da-no-org-well">
+        <img src="/blocks/browse/da-orgs/img/org-icon-color.svg" width="80" height="60" alt=""/>
+        <div class="da-no-org-text">
+          <h3>You don’t have any recent organizations.</h3>
+          <p>Go to your organization, play in the sandbox, or create a new one.</p>
+        <div>
+        <form @submit=${this.handleGo}>
+          <input type="text" name="org" placeholder="organization" />
+          <div class="da-form-btn-offset">
+            <button aria-label="Go to organization">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">
+                <path fill="currentColor"
+                  d="M23.09,13.67c.14-.35.14-.74,0-1.08-.07-.17-.18-.33-.31-.46l-6.62-6.62c-.55-.55-1.45-.55-2,0-.55.55-.55,1.45,0,2l4.21,4.21H4.61c-.78,0-1.41.63-1.41,1.42s.63,1.42,1.41,1.42h13.76l-4.21,4.21c-.55.55-.55,1.45,0,2,.28.28.64.41,1,.41s.72-.14,1-.41l6.62-6.62c.13-.13.23-.29.31-.46Z" />
+              </svg>
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+  }
+
   render() {
     return html`
-      <img src="/blocks/browse/da-orgs/img/bg-gradient-org.jpg" class="da-org-bg" />
+      <img src="/blocks/browse/da-orgs/img/bg-gradient-org.jpg" class="da-org-bg" alt="" />
       <div class="da-org-container">
-        ${this._recents && this._recents.length > 0 ? this.renderOrgs('recent', this._recents) : nothing}
-        ${this._visibleOrgs ? this.renderOrgs('organizations', this._visibleOrgs, true) : nothing}
+        <h2>Recents</h2>
+        ${this._recents && this._recents.length > 0 ? this.renderOrgs('recent', this._recents) : this.renderEmpty()}
+        <h2>Organizations</h2>
+        <div class="da-org-sandbox-new">
+          <a class="da-double-card da-double-card-sandbox" href="#/aemsites">
+            <picture>
+              <img class="da-double-card-bg" src="/blocks/browse/da-orgs/img/sandbox-bg.jpg" width="800" height="534" alt="" />
+            </picture>
+            <div class="da-double-card-fg">
+              <img src="/blocks/browse/da-orgs/img/sandbox-icon-gray.svg" width="80" height="60" alt=""/>
+              <h3>Sandbox</h3>
+            </div>
+          </a>
+          <a class="da-double-card da-double-card-add-new" href="/start">
+            <picture>
+              <img class="da-double-card-bg" src="/blocks/browse/da-orgs/img/new-bg.jpg" width="800" height="546" alt="" />
+            </picture>
+            <div class="da-double-card-fg">
+              <img src="/blocks/browse/da-orgs/img/add-new-icon-gray.svg" width="80" height="60" alt=""/>
+              <h3>Add new</h3>
+            </div>
+          </a>
+        </div>
       </div>
     `;
   }
