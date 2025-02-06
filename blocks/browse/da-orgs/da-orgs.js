@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { initIms, daFetch } from '../../shared/utils.js';
+// import { DA_ORIGIN } from '../../shared/constants.js';
+// import { initIms, daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/browse/da-orgs/da-orgs.css');
@@ -19,9 +19,7 @@ function getRandomImg() {
 }
 
 export default class DaOrgs extends LitElement {
-  static properties = {
-    _recents: { state: true },
-  };
+  static properties = { _recents: { state: true } };
 
   connectedCallback() {
     super.connectedCallback();
