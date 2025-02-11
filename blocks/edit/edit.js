@@ -7,8 +7,8 @@ let wsProvider;
 async function setUI(el, utils) {
   const details = getPathDetails();
   if (!details) {
-    el.classList.add('no-url');
-    el.innerHTML = '<h1>Please edit a page.</h1>';
+    // el.classList.add('no-url');
+    // el.innerHTML = '<h1>Please edit a page.</h1>';
     return;
   }
 
