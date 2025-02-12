@@ -92,6 +92,8 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: end;
+  flex-wrap: wrap;
+  max-width: 420px;
 }
 
 .collab-icon {
