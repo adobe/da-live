@@ -26,7 +26,12 @@ export const daFetch = async (url, opts = {}) => {
   if (localStorage.getItem('nx-ims')) {
     ({ accessToken } = await initIms());
     const canToken = ALLOWED_TOKEN.some((origin) => url.startsWith(origin));
-    if (accessToken && canToken) opts.headers.Authorization = `Bearer ${accessToken.token}`;
+    if (accessToken && canToken) {
+      opts.headers.Authorization = `Bearer ${accessToken.token}`;
+      if (AEM_ORIGINS.some((origin) => url.startsWith(origin))) {
+        opts.headers['x-content-source-authorization'] = `Bearer ${accessToken.token}`;
+      }
+    }
   }
   const resp = await fetch(url, opts);
   if (resp.status === 401) {
