@@ -8,6 +8,11 @@ button {
   font-family: var(--body-font-family);
 }
 
+h2 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
 .da-org-bg {
   width: 100%;
   position: absolute;
@@ -22,8 +27,10 @@ button {
   margin: 0 auto;
 }
 
-h2 {
-  font-size: 1.4rem;
+.da-org-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
   margin: 0 0 24px;
 }
 
@@ -46,7 +53,7 @@ h2 {
 }
 
 .da-no-org-text {
-  margin: 18px 0 0;
+  margin: 18px 0 32px;
   text-align: center;
 }
 
@@ -59,14 +66,15 @@ h2 {
   font-size: 18px;
 }
 
-.da-no-org-well form {
-  margin: 32px 0 0;
+form {
+  position: relative;
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 6px;
 }
 
-.da-no-org-well input {
+form input {
   border: none;
   background: transparent;
   border-bottom: 1px solid #a2a2a2;
@@ -76,23 +84,19 @@ h2 {
   line-height: 26px;
 }
 
-.da-no-org-well input:focus-visible {
+form input:focus-visible {
   padding: 0 0 3px 4px;
   border-bottom: 2px solid #808080;
   outline: none;
   outline-offset: 0;
 }
 
-.da-no-org-well input::placeholder {
+form input::placeholder {
   font-style: italic;
-  color: #888888;
+  color: #888;
 }
 
-.da-no-org-well .da-form-btn-offset {
-  position: relative;
-}
-
-.da-no-org-well button {
+form button {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -101,23 +105,227 @@ h2 {
   border-radius: 22px;
   border: none;
   background: transparent;
+}
+
+.da-no-org-well form button {
   position: absolute;
   top: -4px;
 }
 
-.da-no-org-well button svg {
+form button svg {
   width: 26px;
   height: 26px;
 }
 
-form.has-error button {
-  background: var(--s2-red);
+form button:hover {
+  background: var(--s2-blue-800);
   color: #FFF;
 }
 
-.da-no-org-well button:hover {
-  background: var(--s2-blue-800);
-  color: #FFF;
+/* Recent org list */
+.da-orgs-list {
+  list-style: none;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  margin: 0 0 var(--spacing-700) 0;
+  padding: 0;
+}
+
+.da-org-outer {
+  min-height: 320px;
+  perspective: 1000px;
+}
+
+.da-org {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: rgb(255 255 255);
+  border-radius: 12px;
+  transition: transform 0.5s ease-in-out;
+  transform-style: preserve-3d;
+  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+}
+
+.da-org .da-card-style-0 {
+  background: linear-gradient(0deg, rgb(111 0 40 / 100%) 30%, rgb(111 0 40 / 0%) 75%);
+}
+
+.da-org .da-card-style-1 {
+  background: linear-gradient(0deg, rgb(16 40 140 / 100%) 30%, rgb(16 40 140 / 0%) 75%);
+}
+
+.da-org .da-card-style-2 {
+  background: linear-gradient(0deg, rgb(55 6 160 / 100%) 30%, rgb(55 6 160 / 0%) 75%);
+}
+
+.da-org .da-card-style-3 {
+  background: linear-gradient(0deg, rgb(0 61 44 / 100%) 30%, rgb(0 61 44 / 0%) 75%);
+}
+
+.da-org .da-card-style-4 {
+  background: linear-gradient(0deg, rgb(0 57 78 / 100%) 30%, rgb(0 57 78 / 0%) 75%);
+}
+
+.da-org .da-card-style-5 {
+  background: linear-gradient(0deg, rgb(92 4 109 / 100%) 30%, rgb(92 4 109 / 0%) 75%);
+}
+
+.da-org .da-card-style-6 {
+  background: linear-gradient(0deg, rgb(105 3 68 / 100%) 30%, rgb(105 3 68 / 0%) 75%);
+}
+
+.da-org .da-card-style-7 {
+  background: linear-gradient(0deg, rgb(0 59 65 / 100%) 30%, rgb(0 59 65 / 0%) 75%);
+}
+
+.da-org-front {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  background-color: rgb(250 250 250);
+  border-radius: 12px;
+  overflow: hidden;
+  outline-offset: 0;
+  transition: outline-offset .2s;
+}
+
+.da-org-front:has(a:focus-visible) {
+  outline: 3px solid #3b63fb;
+  outline-offset: 4px;
+}
+
+.da-org-front img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transform: scale(1);
+  transition: transform .5s ease-in-out;
+}
+
+.da-org-card-action-go svg {
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin-right: -6px;
+  transition: transform .5s ease-in-out;
+}
+
+.da-org-back {
+  display: none;
+  gap: 24px;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+  background-color: rgb(250 250 250);
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  color: #464646;
+  overflow: hidden;
+  transform: rotateY(180deg);
+  border-radius: 12px;
+}
+
+.da-org-card-action {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  padding: 0;
+}
+
+.da-org.is-flipped {
+  transform: rotateY(180deg);
+
+  .da-org-back {
+    display: grid;
+  }
+
+  .da-org-card-action {
+    color: #000;
+  }
+
+  .da-org-card-action-go svg {
+    display: none;
+  }
+}
+
+.da-back-action {
+  font-weight: 700;
+  font-size: 18px;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.da-org .da-back-action img {
+  width: 72px;
+  display: block;
+  margin-bottom: -4px;
+}
+
+.da-org-front picture {
+  position: absolute;
+  inset: 0;
+}
+
+.da-org p {
+  margin: 0;
+}
+
+.da-org:hover {
+  .da-org-front img {
+    transform: scale(1.1);
+  }
+
+  .da-org-card-action-go svg {
+    transform: translateX(4px);
+  }
+}
+
+.da-org .bg-overlay {
+  display: grid;
+  grid-template-areas: 'main';
+  align-items: end;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  box-sizing: border-box;
+}
+
+.bg-overlay a {
+  display: flex;
+  align-items: end;
+  align-content: end;
+  flex-wrap: wrap;
+  gap: 12px;
+  height: 100%;
+  padding: 0 var(--spacing-400) var(--spacing-300);
+  box-sizing: border-box;
+  grid-area: main;
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--s2-heading-size-300);
+  text-decoration: none;
+}
+
+.da-org-card-action-go {
+  width: 100%;
+  display: flex;
+  justify-content: end;
+}
+
+.da-org-card-action-more {
+  margin-left: -8px;
+  position: absolute;
+  bottom: var(--spacing-300);
+  left: 24px;
 }
 
 /* Double Card - Sandbox / Add new */
@@ -163,172 +371,45 @@ form.has-error button {
   text-align: center;
 }
 
-/* Recent org list */
+/* Handle Share */
 
-.da-orgs-list {
-  list-style: none;
-  display: grid;
-  gap: 24px;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  margin: 0 0 var(--spacing-700) 0;
-  padding: 0;
-}
-
-.da-org-outer {
-  min-height: 320px;
-  perspective: 1000px;
-}
-
-.da-org.is-flipped {
-  transform: rotateY(180deg);
-}
-
-.da-org {
-  display: block;
-  position: relative;
-  background-color: rgb(255 255 255);
-  border-radius: 12px;
-  width: 100%;
-  height: 100%;
-  transition: transform 0.5s ease-in-out;
-  transform-style: preserve-3d;
-}
-
-.da-org-front {
-  text-decoration: none;
-  color: rgb(46 46 46);
-  background-color: rgb(255 255 255);
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 500ms ease-out 0s;
-  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
-}
-
-.da-org-back {
-  display: none;
+.da-list-status {
+  position: fixed;
+  inset: 0;
+  background: rgb(255 255 255 / 60%);
+  display: flex;
+  justify-content: center;
   align-items: center;
-  justify-content: center;
-  background-color: rgb(250 250 250);
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  border-radius: 12px;
-  color: #464646;
-  overflow: hidden;
-  transform: rotateY(180deg);
-  border: 2px solid;
-  box-sizing: border-box;
-  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+  z-index: 500;
 }
 
-.da-org.is-flipped .da-org-back {
-  display: flex;
-}
-
-
-.da-org-back button {
-  display: flex;
+.da-list-status-toast {
+  width: 280px;
+  background: var(--s2-blue-800);
+  line-height: 48px;
+  border-radius: 6px;
+  filter: drop-shadow(rgb(0 0 0 / 15%) 0 1px 4px);
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  align-content: center;
-  border: none;
-  background: none;
-  font-size: 16px;
-}
-
-.da-flip-btn {
-  position: absolute;
-  right: 0;
-  top: 0;
-  border: none;
-  display: block;
-  width: 48px;
-  height: 48px;
-  background: center / 24px url('/blocks/browse/da-orgs/img/flip-arrow.svg') no-repeat;
-}
-
-.is-flipped .da-flip-btn {
-  transform: rotateY(180deg);
-  background: center / 24px url('/blocks/browse/da-orgs/img/flip-arrow-dark.svg') no-repeat;
-}
-
-.da-org-front:hover {
-  background-color: rgb(228 240 255);
-  cursor: pointer;
-}
-
-.da-org.show-all,
-.da-org.new {
-  color: #464646;
-  text-decoration: none;
-  border: 2px solid rgb(250 250 250);
-  background-color: rgb(250 250 250);
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  align-content: center;
-  transition: all 500ms ease-out 0s;
-  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
   box-sizing: border-box;
+  color: #FFF;
+  font-size: 14px;
+  overflow: hidden;
 }
 
-.da-org.show-all:hover {
-  border: 2px solid rgb(20 122 243);
-  background-color: rgb(228 240 255);
-}
-
-.da-org.new:hover {
-  background-color: #f1fff0;
-  border: 2px solid rgb(0 163 57);
-}
-
-.new-icon {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.new-icon img {
-  width: 48px;
-}
-
-.new-title {
+.da-list-status-title {
   font-weight: 700;
-  margin: 12px 0 0;
+  padding: 0 12px 0 40px;
+  margin: 0;
 }
 
-.image-container {
-  height: 148px;
+.da-list-status-description {
+  line-height: 1.6;
+  padding: 6px 12px;
+  margin: 0;
+  background: rgb(255 255 255 / 10%);
 }
 
-.image-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.details-area {
-  padding: 20px;
-  line-height: 1;
-}
-
-.details-area p.label {
-  margin: 0 0 4px;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: #707070;
-  letter-spacing: .0413rem;
-  font-size: .8rem;
-  line-height: .8rem;
-}
-
-.details-title {
-  margin: 0 0 24px;
-  font-weight: 400;
+.da-list-status-type-info .da-list-status-title {
+  background: var(--s2-blue-800) url('/blocks/browse/img/Smock_InfoOutline_18_N.svg') 12px 50% no-repeat;
 }
