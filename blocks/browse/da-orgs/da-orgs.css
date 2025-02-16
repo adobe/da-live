@@ -143,9 +143,44 @@ form button:hover {
   position: relative;
   background-color: rgb(255 255 255);
   border-radius: 12px;
-  transition: transform 0.5s ease-in-out;
+  transition: all 0.2s ease-in-out;
   transform-style: preserve-3d;
   box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+}
+
+.da-org-front img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transform: scale(1);
+  transition: transform .5s ease-in-out;
+}
+
+.da-org-card-action-go svg {
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin-right: -6px;
+  transition: transform .5s ease-in-out;
+}
+
+.da-org .da-back-action img {
+  width: 72px;
+  display: block;
+  margin-bottom: -4px;
+}
+
+.da-org:hover {
+  transform: scale(1.015);
+  box-shadow: rgb(0 0 0 / 15%) 0 6px 32px, rgb(0 0 0 / 35%) 0 3px 12px;
+
+  .da-org-front img {
+    transform: scale(1.08);
+  }
+
+  .da-org-card-action-go svg {
+    transform: translateX(4px);
+  }
 }
 
 .da-org .da-card-style-0 {
@@ -196,22 +231,6 @@ form button:hover {
   outline-offset: 4px;
 }
 
-.da-org-front img {
-  height: 100%;
-  width: 100%;
-  object-fit: cover;
-  transform: scale(1);
-  transition: transform .5s ease-in-out;
-}
-
-.da-org-card-action-go svg {
-  display: block;
-  width: 32px;
-  height: 32px;
-  margin-right: -6px;
-  transition: transform .5s ease-in-out;
-}
-
 .da-org-back {
   display: none;
   gap: 24px;
@@ -239,6 +258,7 @@ form button:hover {
 }
 
 .da-org.is-flipped {
+  transition: all 0.5s ease-in-out;
   transform: rotateY(180deg);
 
   .da-org-back {
@@ -254,6 +274,10 @@ form button:hover {
   }
 }
 
+.da-org.is-flipped:hover {
+  transform: scale(1.015) rotateY(180deg);
+}
+
 .da-back-action {
   font-weight: 700;
   font-size: 18px;
@@ -263,12 +287,6 @@ form button:hover {
   padding: 0;
 }
 
-.da-org .da-back-action img {
-  width: 72px;
-  display: block;
-  margin-bottom: -4px;
-}
-
 .da-org-front picture {
   position: absolute;
   inset: 0;
@@ -276,16 +294,6 @@ form button:hover {
 
 .da-org p {
   margin: 0;
-}
-
-.da-org:hover {
-  .da-org-front img {
-    transform: scale(1.1);
-  }
-
-  .da-org-card-action-go svg {
-    transform: translateX(4px);
-  }
 }
 
 .da-org .bg-overlay {
