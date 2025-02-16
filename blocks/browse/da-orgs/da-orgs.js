@@ -163,7 +163,7 @@ export default class DaOrgs extends LitElement {
 
   render() {
     return html`
-      <img src="/blocks/browse/da-orgs/img/bg-gradient-org.jpg" class="da-org-bg" alt="" />
+      <img src="/blocks/browse/da-orgs/img/bg-gradient-org.avif" class="da-org-bg" alt="" />
       <div class="da-org-container">
         <div class="da-org-header">
           <h2>Recents</h2>
@@ -176,7 +176,7 @@ export default class DaOrgs extends LitElement {
         <div class="da-org-sandbox-new">
           <a class="da-double-card da-double-card-sandbox" href="#/aemsites">
             <picture>
-              <img class="da-double-card-bg" src="/blocks/browse/da-orgs/img/sandbox-bg.jpg" width="800" height="534" alt="" />
+              <img class="da-double-card-bg" src="/blocks/browse/da-orgs/img/bg-sandbox-card.avif" width="800" height="534" alt="" />
             </picture>
             <div class="da-double-card-fg">
               <img src="/blocks/browse/da-orgs/img/sandbox-icon-gray.svg" width="80" height="60" alt=""/>
@@ -185,7 +185,7 @@ export default class DaOrgs extends LitElement {
           </a>
           <a class="da-double-card da-double-card-add-new" href="/start">
             <picture>
-              <img class="da-double-card-bg" src="/blocks/browse/da-orgs/img/new-bg.jpg" width="800" height="546" alt="" />
+              <img class="da-double-card-bg" src="/blocks/browse/da-orgs/img/bg-new-card.avif" width="800" height="546" alt="" />
             </picture>
             <div class="da-double-card-fg">
               <img src="/blocks/browse/da-orgs/img/add-new-icon-gray.svg" width="80" height="60" alt=""/>
