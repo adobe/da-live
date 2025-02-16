@@ -70,7 +70,7 @@ export default class DaOrgs extends LitElement {
     const data = [new ClipboardItem({ [blob.type]: blob })];
     navigator.clipboard.write(data);
 
-    this.setStatus('Copied', 'A link to the organization has been copied to the clipboard.');
+    this.setStatus('Copied', 'The link was copied to the clipboard.');
     setTimeout(() => { this.setStatus(); }, 3000);
   }
 

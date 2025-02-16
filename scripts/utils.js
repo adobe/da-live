@@ -44,9 +44,3 @@ export function decorateArea(area = document) {
     eagerLoad(hero, 'div:last-child > div:last-child img');
   }());
 }
-
-(function loadOrgLCP() {
-  const { pathname, hash } = window.location;
-  if (pathname !== '/' || hash) return;
-  document.head.insertAdjacentHTML('beforeend', '<link rel="preload" as="image" href="/blocks/browse/da-orgs/img/da-one.webp" />');
-}());
