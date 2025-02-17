@@ -153,7 +153,7 @@ form button:hover {
   width: 100%;
   object-fit: cover;
   transform: scale(1);
-  transition: transform .4s ease-in-out;
+  transition: transform .25s ease-in-out;
 }
 
 .da-org-card-action-go svg {
