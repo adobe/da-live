@@ -73,7 +73,8 @@ export async function openAssets() {
         if (alt) imgObj.alt = alt;
 
         const fpo = state.schema.nodes.image.create(imgObj);
-        view.dispatch(state.tr.insert(state.selection.head, fpo).scrollIntoView());
+
+        view.dispatch(state.tr.replaceSelectionWith(fpo).scrollIntoView());
       },
     };
     window.PureJSSelectors.renderAssetSelector(inner, selectorProps);
