@@ -24,7 +24,9 @@ function fixAssets(json) {
 }
 
 function formatData(data, format) {
-  return data.reduce((acc, item) => {
+  const dataArr = data.data || data;
+
+  return dataArr.reduce((acc, item) => {
     if (item.key) {
       const toParse = format ? format.replace(REPLACE_CONTENT, item.key) : item.key;
       const parsed = window.view.state.schema.text(toParse);
