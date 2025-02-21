@@ -64,9 +64,10 @@ async function getDaLibraries(owner, repo) {
   const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
   if (!resp.ok) return [];
 
-  const { data } = await resp.json();
+  const json = await resp.json();
+  const blockData = (json[':type'] === 'multi-sheet' ? json.data?.data : json.data) || [];
 
-  return data.reduce((acc, item) => {
+  return blockData.reduce((acc, item) => {
     const keySplit = item.key.split('-');
     if (keySplit[0] === 'library') {
       acc.push({
