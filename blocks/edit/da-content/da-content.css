@@ -77,13 +77,15 @@ da-versions.show-versions {
 }
 
 .da-editor-tab.show-preview {
-  background: url("/blocks/edit/img/Smock_Preview_18_N.svg") center center / 20px no-repeat rgb(239 239 239);
-  background-blend-mode: hard-light;
+  background: url("/blocks/edit/img/S2_icon_DeviceDesktopMobile_20_N.svg") center center / 20px no-repeat rgb(239 239 239);
 }
 
 .da-editor-tab.show-versions {
-  background: url("/blocks/edit/img/Smock_Calendar_18_N.svg") center center / 20px no-repeat;
-  background-blend-mode: hard-light;
+  background: url("/blocks/edit/img/S2_icon_Calendar_20_N.svg") center center / 20px no-repeat;
+}
+
+.da-editor-tab.open-ue {
+  background: url("/blocks/edit/img/S2_icon_OpenIn_20_N.svg") center center / 20px no-repeat;
 }
 
 :host(.show-preview) .da-editor-tabs,
