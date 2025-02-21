@@ -9,23 +9,27 @@ const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/assets/resources/assets-selectors.js';
 
+async function fetchValue(path) {
+  const resp = await daFetch(`${DA_ORIGIN}/config${path}`);
+  if (!resp.ok) return null;
+
+  const json = await resp.json();
+  const { data } = json[':type'] === 'multi-sheet' ? Object.keys(json)[0] : json;
+  if (!data) return null;
+
+  const repoConf = data.find((conf) => conf.key === 'aem.repositoryId');
+  if (!repoConf) return null;
+  return repoConf.value;
+}
+
 export async function getRepoId() {
   const details = getPathDetails();
   if (!details) return null;
   const { repo, owner } = details;
   if (!(repo || owner)) return null;
-  const resp = await daFetch(`${DA_ORIGIN}/config/${owner}/${repo}`);
-  if (!resp.ok) return null;
-  let json = await resp.json();
-
-  if (json[':type'] === 'multi-sheet') {
-    // If config is a multi-sheet, the data is one level deeper
-    json = json.data;
-  }
-
-  const repoConf = json.data.find((conf) => conf.key === 'aem.repositoryId');
-  if (!repoConf) return null;
-  return repoConf.value;
+  let value = await fetchValue(`/${owner}/${repo}/`);
+  if (!value) value = await fetchValue(`/${owner}/`);
+  return value;
 }
 
 export async function openAssets() {
