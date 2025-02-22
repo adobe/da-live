@@ -45,7 +45,7 @@ function scrollToSelection() {
 }
 
 // Cache fetched library data
-const libraryListPromise = delay(500).then(() => getLibraryList());
+const libraryListPromise = delay(1500).then(() => getLibraryList());
 const data = {
   blockDetailItems: new Map(),
   blocks: null,
