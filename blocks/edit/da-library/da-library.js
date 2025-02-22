@@ -7,6 +7,7 @@ import {
   until,
   createRef,
   ref,
+  nothing,
 } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
@@ -93,6 +94,12 @@ class DaLibrary extends LitElement {
   }
 
   async handleLibSwitch(e, library) {
+    if (library.callback) {
+      library.callback();
+      closeLibrary();
+      return;
+    }
+
     if (library.experience === 'dialog') {
       let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
       if (dialog) dialog.remove();
@@ -116,6 +123,7 @@ class DaLibrary extends LitElement {
 
       return;
     }
+
     if (library.experience === 'window') {
       try {
         const { pathname } = new URL(library.url);
@@ -125,6 +133,7 @@ class DaLibrary extends LitElement {
       }
       return;
     }
+
     const { target } = e;
     const type = target.dataset.libraryName;
     target.closest('.palette-pane').classList.add('backward');
@@ -269,7 +278,7 @@ class DaLibrary extends LitElement {
         context: project,
       };
       if (accessToken) message.token = accessToken.token;
-      target.contentWindow.postMessage(message, '*', [channel.port2]);
+      if (target.contentWindow) target.contentWindow.postMessage(message, '*', [channel.port2]);
     }, 750);
   }
 
@@ -422,6 +431,10 @@ class DaLibrary extends LitElement {
       return html`No templates found.`;
     }
 
+    if (name === 'AEM Assets') {
+      return nothing;
+    }
+
     if (!data[name]) {
       data[name] = await getItems(sources, name, format);
     }
@@ -440,7 +453,7 @@ class DaLibrary extends LitElement {
           <li>
             <button
               data-library-name="${library.name}"
-              class="${library.name} ${library.url ? 'is-plugin' : ''}"
+              class="${library.class || library.name} ${library.url ? 'is-plugin' : ''}"
               style="${library.icon ? `background-image: url(${library.icon})` : ''}"
               @click=${(e) => this.handleLibSwitch(e, library)}>
               <span class="library-type-name">${library.name}</span>

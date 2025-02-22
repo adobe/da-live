@@ -1,5 +1,4 @@
 import { getNx } from '../../../scripts/utils.js';
-import getPathDetails from '../../shared/pathDetails.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
 
@@ -9,7 +8,10 @@ const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/assets/resources/assets-selectors.js';
 
+let repoId;
+
 async function fetchValue(path) {
+  if (repoId) return repoId;
   const resp = await daFetch(`${DA_ORIGIN}/config${path}`);
   if (!resp.ok) return null;
 
@@ -19,13 +21,11 @@ async function fetchValue(path) {
 
   const repoConf = data.find((conf) => conf.key === 'aem.repositoryId');
   if (!repoConf) return null;
-  return repoConf.value;
+  repoId = repoConf.value;
+  return repoId;
 }
 
-export async function getRepoId() {
-  const details = getPathDetails();
-  if (!details) return null;
-  const { repo, owner } = details;
+export async function getRepoId(owner, repo) {
   if (!(repo || owner)) return null;
   let value = await fetchValue(`/${owner}/${repo}/`);
   if (!value) value = await fetchValue(`/${owner}/`);
@@ -33,7 +33,6 @@ export async function getRepoId() {
 }
 
 export async function openAssets() {
-  const repoId = await getRepoId();
   const details = await loadIms();
   if (details.anonymous) handleSignIn();
   if (!(repoId && details.accessToken)) return;

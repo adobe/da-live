@@ -166,8 +166,9 @@ button span {
   background: url('/blocks/edit/img/Smock_CallCenter_18_N.svg') 18px center / 18px no-repeat;
 }
 
-.da-library-item-list-main button.media {
-  background: url('/blocks/edit/img/Smock_Image_18_N.svg') 18px center / 18px no-repeat;
+.da-library-item-list-main button.media,
+.da-library-item-list-main button.aem-assets {
+  background: url('/blocks/edit/img/Smock_Images_18_N.svg') 18px center / 18px no-repeat;
 }
 
 .da-library-item-list-main button.plugins,

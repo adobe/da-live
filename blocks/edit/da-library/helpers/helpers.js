@@ -3,6 +3,7 @@ import { DOMParser } from 'da-y-wrapper';
 import { CON_ORIGIN, getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
+import { getRepoId, openAssets } from '../../da-assets/da-assets.js';
 
 const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
@@ -104,6 +105,16 @@ async function getAemPlugins(owner, repo) {
   }, []);
 }
 
+async function getAssetsPlugin(owner, repo) {
+  const repoId = await getRepoId(owner, repo);
+  if (!repoId) return null;
+  return {
+    name: 'AEM Assets',
+    class: 'aem-assets',
+    callback: openAssets,
+  };
+}
+
 export async function getLibraryList() {
   const { owner, repo } = getPathDetails();
   if (!owner || !repo) return [];
@@ -117,11 +128,24 @@ export async function getLibraryList() {
   currRepo = repo;
 
   const daLibraries = getDaLibraries(owner, repo);
+  const aemAssets = getAssetsPlugin(owner, repo);
   const aemPlugins = getAemPlugins(owner, repo);
 
-  const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
-  libraries = [...da, ...aem];
+  const [da, assets, aem] = await Promise.all([daLibraries, aemAssets, aemPlugins]);
 
+  if (assets) {
+    // Attempt to push after templates
+    let pushAfter = da.findIndex((library) => library.name === 'templates');
+    // Attempt to push after blocks
+    if (pushAfter === -1) pushAfter = da.findIndex((library) => library.name === 'blocks');
+    if (pushAfter !== -1) {
+      da.splice(pushAfter + 1, 0, assets);
+    } else {
+      // Give up and push to the end of DA libraries
+      da.push(assets);
+    }
+  }
+  libraries = [...da, ...aem];
   return libraries;
 }
 
