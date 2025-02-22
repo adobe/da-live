@@ -152,7 +152,7 @@ blockquote::before {
   transform: translateY(-50%);
   left: 12px;
   padding: 6px 6px 0 6px;
-  border-radius: 4px;
+  border-radius: 28px;
   box-shadow: 0px 0px 5px 0px #b5b5b5;
   background: #FFF;
   box-sizing: border-box;
@@ -175,9 +175,17 @@ blockquote::before {
   height: 44px;
   text-indent: -1000px;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: 4px;
   margin-bottom: 6px;
   background-color: var(--editor-btn-bg-color);
+}
+
+.ProseMirror-menubar > .ProseMirror-menuitem:first-child {
+  border-radius: 22px 22px 4px 4px;
+}
+
+.ProseMirror-menubar > .ProseMirror-menuitem:last-child {
+  border-radius: 4px 4px 22px 22px;
 }
 
 span.ProseMirror-menuitem.edit-table[style=""] + .ProseMirror-menuitem {
