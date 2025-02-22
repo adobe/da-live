@@ -1,10 +1,5 @@
-/* stylelint-disable selector-class-pattern */
-:root {
-  --aec-nav-height: 49px;
-}
-
 main {
-  min-height: 86vh;
+  position: relative;
 }
 
 /* Don't confuse people if sidekick pops open in the editor */
@@ -14,24 +9,4 @@ helix-sidekick, aem-sidekick {
 
 button, input {
   font-family: var(--body-font-family);
-}
-
-header.aec-shell {
-  opacity: 1 !important;
-  height: var(--aec-nav-height);
-  min-height: var(--aec-nav-height);
-  border-bottom: 1px solid #d3d3d3;
-}
-
-/* CaaS Font Woes */
-body .consonant-OneHalfCard-title,
-body .consonant-OneHalfCard-text {
-  font-family: var(--body-font-family);
-}
-
-
-@media (min-width: 900px) {
-  header.aec-shell + main {
-    margin-top: var(--aec-nav-height);
-  }
 }
