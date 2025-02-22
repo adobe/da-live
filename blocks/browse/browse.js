@@ -1,5 +1,8 @@
 import getPathDetails from '../shared/pathDetails.js';
 
+// Preload Lit
+import('../../deps/lit/dist/index.js');
+
 async function loadComponent(el, cmpName, details) {
   el.innerHTML = '';
   await import(`./${cmpName}/${cmpName}.js`);
