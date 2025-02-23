@@ -1,5 +1,6 @@
 /* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
+import { getKeyAutocomplete } from './keyAutocomplete.js';
 import menuItems from './slashMenuItems.js';
 import './slash-menu.js';
 
@@ -22,6 +23,11 @@ class SlashMenuView {
     this.menu.addEventListener('item-selected', (e) => {
       this.selectItem(e.detail);
     });
+
+    this.menu.addEventListener('reset-slashmenu', () => {
+      // reset menu to default items
+      this.menu.items = menuItems;
+    });
   }
 
   update(view) {
@@ -33,13 +39,13 @@ class SlashMenuView {
     const { $cursor } = state.selection;
 
     if (!$cursor) {
-      this.menu.hide();
+      this.hide();
       return;
     }
 
     const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
     if (!textBefore?.startsWith('/')) {
-      if (this.menu.visible) this.menu.hide();
+      if (this.menu.visible) this.hide();
       return;
     }
 
@@ -60,7 +66,7 @@ class SlashMenuView {
       this.menu.command = match[1] || '';
     } else if (this.menu.visible) {
       this.menu.command = '';
-      this.menu.hide();
+      this.hide();
     }
   }
 
@@ -81,11 +87,15 @@ class SlashMenuView {
     dispatch(tr);
     item.command(newState, dispatch, argument);
 
-    this.menu.hide();
+    this.hide();
   }
 
   handleKeyDown(event) {
     return this.menu.handleKeyDown(event);
+  }
+
+  hide() {
+    this.menu.hide();
   }
 
   destroy() {
@@ -93,19 +103,72 @@ class SlashMenuView {
   }
 }
 
+// Get the table name if the cursor is in a table cell
+const getTableName = ($cursor) => {
+  const { depth } = $cursor;
+  let tableCellDepth = -1;
+
+  // Search up the tree for a table cell
+  for (let d = depth; d > 0; d -= 1) {
+    const node = $cursor.node(d);
+    if (node.type.name === 'table_cell') {
+      tableCellDepth = d;
+      break;
+    }
+  }
+
+  if (tableCellDepth === -1) return false; // not in a table cell
+
+  // Get the row node and cell index
+  const rowDepth = tableCellDepth - 1;
+  const tableDepth = rowDepth - 1;
+  const table = $cursor.node(tableDepth);
+  const firstRow = table.child(0);
+  const cellIndex = $cursor.index(tableCellDepth - 1);
+  const row = $cursor.node(rowDepth);
+
+  // Only proceed if we're in the second column
+  if (!(row.childCount > 1 && cellIndex === 1)) return false;
+
+  const firstRowContent = firstRow.child(0).textContent;
+  const tableNameMatch = firstRowContent.match(/^([a-zA-Z0-9_-]+)(?:\s*\([^)]*\))?$/);
+
+  const currentRowFirstColContent = row.child(0).textContent;
+
+  if (tableNameMatch) {
+    return {
+      tableName: tableNameMatch[1],
+      keyValue: currentRowFirstColContent,
+    };
+  }
+
+  return false;
+};
+
 export default function slashMenu() {
   let pluginView = null;
+
+  // Start fetching data immediately
+  getKeyAutocomplete().then((data) => {
+    if (pluginView?.view) {
+      const tr = pluginView.view.state.tr.setMeta(slashMenuKey, { autocompleteData: data });
+      pluginView.view.dispatch(tr);
+    }
+  });
 
   return new Plugin({
     key: slashMenuKey,
     state: {
       init() {
-        return { showSlashMenu: false };
+        return {
+          showSlashMenu: false,
+          autocompleteData: null,
+        };
       },
       apply(tr, value) {
         const meta = tr.getMeta(slashMenuKey);
         if (meta !== undefined) {
-          return { showSlashMenu: meta };
+          return { ...value, ...meta };
         }
         return value;
       },
@@ -113,13 +176,25 @@ export default function slashMenu() {
     props: {
       handleKeyDown(editorView, event) {
         const { state } = editorView;
+        const pluginState = slashMenuKey.getState(state);
 
         if (event.key === '/') {
           const { $cursor } = state.selection;
 
-          // Only show menu if we're at the start of an empty line
-          if ($cursor && $cursor.parentOffset === 0 && $cursor.parent.textContent === '') {
-            const tr = state.tr.setMeta(slashMenuKey, true);
+          // Check if we're at start of empty line
+          if ($cursor?.parentOffset === 0 && $cursor?.parent?.textContent === '') {
+            const { tableName, keyValue } = getTableName($cursor);
+            if (tableName) {
+              const keyData = pluginState.autocompleteData?.get(tableName);
+              if (keyData) {
+                const values = keyData.get(keyValue);
+                if (values) {
+                  pluginView.menu.items = values;
+                }
+              }
+            }
+
+            const tr = state.tr.setMeta(slashMenuKey, { showSlashMenu: true });
             editorView.dispatch(tr);
             return false;
           }

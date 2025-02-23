@@ -1,6 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, getFirstSheet } from '../../shared/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
@@ -16,7 +16,7 @@ async function fetchValue(path) {
   if (!resp.ok) return null;
 
   const json = await resp.json();
-  const { data } = json[':type'] === 'multi-sheet' ? Object.keys(json)[0] : json;
+  const data = getFirstSheet(json);
   if (!data) return null;
 
   const repoConf = data.find((conf) => conf.key === 'aem.repositoryId');
