@@ -14,7 +14,7 @@ function isColorCode(str) {
 function createColorSquare(color) {
   return html`
     <div style="display: flex; align-items: center;">
-      <div style="width: 10px; height: 10px; background: ${color}; margin-right: 5px;"></div>
+      <div style="width: 20px; height: 20px; background: ${color}; margin: -5px 5px -5px -5px;"></div>
     </div>
   `;
 }
