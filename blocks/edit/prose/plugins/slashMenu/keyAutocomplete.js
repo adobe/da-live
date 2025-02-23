@@ -18,10 +18,12 @@ export function processKeyData(data) {
     const blocks = itemBlocks.split(',').map((block) => block.trim());
 
     const values = item.values.toLowerCase().split(',').map((v) => {
-      const val = v.trim();
+      const [label, val] = v.split('=').map((vb) => vb.trim());
+
       return {
-        title: val,
-        command: (state, dispatch) => insertAutocompleteText(state, dispatch, val),
+        title: label,
+        value: val || label,
+        command: (state, dispatch) => insertAutocompleteText(state, dispatch, val || label),
         class: 'key-autocomplete',
       };
     });

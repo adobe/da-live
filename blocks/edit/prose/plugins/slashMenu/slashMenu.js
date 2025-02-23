@@ -27,6 +27,8 @@ class SlashMenuView {
     this.menu.addEventListener('reset-slashmenu', () => {
       // reset menu to default items
       this.menu.items = menuItems;
+      this.menu.left = 0;
+      this.menu.top = 0;
     });
   }
 

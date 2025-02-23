@@ -197,14 +197,14 @@ export default class SlashMenu extends LitElement {
     return html`
       <div class="slash-menu-items">
         ${filteredItems.map((item, index) => {
-          const isColor = isColorCode(item.title);
+          const isColor = isColorCode(item.value);
           return html`
             <div
               class="slash-menu-item ${index === this.selectedIndex ? 'selected' : ''}"
               @click=${() => this.handleItemClick(item)}
             >
               ${isColor
-                ? createColorSquare(item.title)
+                ? createColorSquare(item.value)
                 : html`<span class="slash-menu-icon ${item.class || ''}"></span>`}
               <span class="slash-menu-label">
                 ${item.title}
