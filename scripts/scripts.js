@@ -17,7 +17,7 @@ const STYLES = '/styles/styles.css';
 const CONFIG = {
   codeBase,
   imsClientId: 'darkalley',
-  imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,profile',
+  imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,read_members,session,aem.frontend.all,additional_info.ownerOrg,profile,additional_info.projectedProductContext,additional_info.roles',
   decorateArea,
 };
 
