@@ -4,6 +4,19 @@ import getSheet from '../../../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/prose/plugins/slashMenu/slash-menu.css');
 
+function isColorCode(str) {
+  const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+  const rgbColorRegex = /^rgba?\(\s*(\d{1,3}\s*,\s*){2}\d{1,3}(\s*,\s*(0|1|0?\.\d+))?\s*\)$/;
+
+  return hexColorRegex.test(str) || rgbColorRegex.test(str) || str?.includes('-gradient(');
+}
+
+function createColorSquare(color) {
+  return html`
+    <div style="width: 24px; height: 24px; background: ${color}; margin-left: -4px;"></div>
+  `;
+}
+
 export default class SlashMenu extends LitElement {
   static properties = {
     items: { type: Array },
@@ -37,6 +50,7 @@ export default class SlashMenu extends LitElement {
   }
 
   hide() {
+    this.dispatchEvent(new CustomEvent('reset-slashmenu'));
     this.visible = false;
     this.command = '';
     this.selectedIndex = 0;
@@ -180,17 +194,21 @@ export default class SlashMenu extends LitElement {
 
     return html`
       <div class="slash-menu-items">
-        ${filteredItems.map((item, index) => html`
-          <div
-            class="slash-menu-item ${index === this.selectedIndex ? 'selected' : ''}"
-            @click=${() => this.handleItemClick(item)}
-          >
-            <span class="slash-menu-icon ${item.class || ''}"></span>
-            <span class="slash-menu-label">
-              ${item.title}
-            </span>
-          </div>
-        `)}
+        ${filteredItems.map((item, index) => {
+          const isColor = isColorCode(item.value);
+          return html`
+            <div
+              class="slash-menu-item ${index === this.selectedIndex ? 'selected' : ''}"
+              @click=${() => this.handleItemClick(item)}
+            >
+              ${isColor
+                ? createColorSquare(item.value)
+                : html`<span class="slash-menu-icon ${item.class || ''}"></span>`}
+              <span class="slash-menu-label">
+                ${item.title}
+              </span>
+            </div>`;
+        })}
       </div>
     `;
   }

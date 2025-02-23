@@ -2,8 +2,9 @@
 import { DOMParser } from 'da-y-wrapper';
 import { CON_ORIGIN, getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch } from '../../../shared/utils.js';
+import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getRepoId, openAssets } from '../../da-assets/da-assets.js';
+import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 
 const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
@@ -66,9 +67,9 @@ async function getDaLibraries(owner, repo) {
   if (!resp.ok) return [];
 
   const json = await resp.json();
-  const blockData = (json[':type'] === 'multi-sheet' ? json.data?.data : json.data) || [];
 
-  return blockData.reduce((acc, item) => {
+  const blockData = getFirstSheet(json);
+  const daLibraries = blockData.reduce((acc, item) => {
     const keySplit = item.key.split('-');
     if (keySplit[0] === 'library') {
       acc.push({
@@ -79,6 +80,13 @@ async function getDaLibraries(owner, repo) {
     }
     return acc;
   }, []);
+
+  const blockJsonUrl = daLibraries.filter((v) => v.name === 'blocks')?.[0]?.sources?.[0];
+  if (blockJsonUrl) {
+    fetchKeyAutocompleteData(blockJsonUrl);
+  }
+
+  return daLibraries;
 }
 
 async function getAemPlugins(owner, repo) {
