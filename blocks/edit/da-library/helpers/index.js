@@ -1,4 +1,4 @@
-import { daFetch } from '../../../shared/utils.js';
+import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getMetadata, parseDom } from './helpers.js';
 
 const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
@@ -183,7 +183,7 @@ export async function getBlocks(sources) {
     const blockList = [];
     sourcesData.forEach((blockData) => {
       if (!blockData) return;
-      const { data } = blockData.blocks || blockData;
+      const data = getFirstSheet(blockData);
       if (!data) return;
       data.forEach((block) => {
         if (block.name && block.path) blockList.push(block);

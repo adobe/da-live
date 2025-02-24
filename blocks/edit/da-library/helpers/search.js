@@ -12,6 +12,7 @@ function wrapInSection(content) {
 }
 
 function searchBlocks(searchStr, blocks, renderCallback) {
+  if (!blocks) return '';
   const matches = [...blocks.entries()].reduce((acc, [, items]) => {
     items.forEach((item) => {
       const blockStr = `${item.name.toLowerCase()} ${item.variants?.toLowerCase() || ''} ${item.tags?.toLowerCase() || ''}`;
@@ -27,6 +28,7 @@ function searchBlocks(searchStr, blocks, renderCallback) {
 }
 
 function searchTemplates(searchStr, templates, renderCallback) {
+  if (!templates) return '';
   const matches = templates.filter((item) => andMatch(searchStr, item.key.toLowerCase()));
   return matches.length
     ? html`${matches.map((item) => renderCallback(item, true))}`
@@ -34,6 +36,7 @@ function searchTemplates(searchStr, templates, renderCallback) {
 }
 
 function searchPlaceholders(searchStr, placeholders, renderCallback) {
+  if (!placeholders) return '';
   const matches = placeholders.filter((item) => andMatch(
     searchStr,
     `${item.key.toLowerCase()} ${item.value.toLowerCase()}`,
@@ -44,6 +47,7 @@ function searchPlaceholders(searchStr, placeholders, renderCallback) {
 }
 
 function searchPlugins(searchStr, plugins, renderCallback) {
+  if (!plugins) return '';
   const matches = plugins.filter((item) => {
     if (!item.url) return false;
     return andMatch(searchStr, item.name.toLowerCase());
