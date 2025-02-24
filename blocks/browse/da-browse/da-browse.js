@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 
 // Components
@@ -61,9 +61,9 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const resp = await daFetch(`${DA_ORIGIN}/config/${this.details.owner}/`);
       if (!resp.ok) return DEF_EDIT;
-      const { data, ':type': type } = await resp.json();
+      const json = await resp.json();
 
-      const rows = type === 'multi-sheet' ? data?.data : data;
+      const rows = getFirstSheet(json);
       this.editorConfs = rows.reduce((acc, row) => {
         if (row.key === 'editor.path') acc.push(row.value);
         return acc;

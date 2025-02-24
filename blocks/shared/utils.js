@@ -96,3 +96,12 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   if (!preview) return undefined;
   return aemPreview(path, 'preview');
 }
+
+export const getSheetByIndex = (json, index = 0) => {
+  if (json[':type'] !== 'multi-sheet') {
+    return json.data;
+  }
+  return json[Object.keys(json)[index]]?.data;
+};
+
+export const getFirstSheet = (json) => getSheetByIndex(json, 0);
