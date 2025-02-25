@@ -395,6 +395,11 @@ function getTextBlocks(marks, nodes) {
       label: 'I',
       class: 'edit-italic',
     }),
+    markItem(marks.s, {
+      title: 'Toggle strike through',
+      label: 'Strikethrough',
+      class: 'edit-strikethrough',
+    }),
     markItem(marks.sup, {
       title: 'Toggle superscript',
       label: 'SUP',

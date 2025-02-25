@@ -223,6 +223,13 @@ const baseMarks = {
       return ['code', 0];
     },
   },
+  // Strikethrough
+  s: {
+    parseDOM: [{ tag: 's' }],
+    toDOM() {
+      return ['s', 0];
+    },
+  },
 };
 
 const baseSchema = new Schema({ nodes: baseNodes, marks: baseMarks });

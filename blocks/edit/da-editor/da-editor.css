@@ -6,7 +6,6 @@
 
 .da-prose-mirror {
   --editor-btn-bg-color: #EFEFEF;
-  --editor-btn-bg-color-hover: #e9e9e9;
 
   grid-area: editor;
 }
@@ -152,7 +151,7 @@ blockquote::before {
   transform: translateY(-50%);
   left: 12px;
   padding: 6px 6px 0 6px;
-  border-radius: 28px;
+  border-radius: 12px;
   box-shadow: 0px 0px 5px 0px #b5b5b5;
   background: #FFF;
   box-sizing: border-box;
@@ -175,17 +174,8 @@ blockquote::before {
   height: 44px;
   text-indent: -1000px;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-bottom: 6px;
-  background-color: var(--editor-btn-bg-color);
-}
-
-.ProseMirror-menubar > .ProseMirror-menuitem:first-child {
-  border-radius: 22px 22px 4px 4px;
-}
-
-.ProseMirror-menubar > .ProseMirror-menuitem:last-child {
-  border-radius: 4px 4px 22px 22px;
 }
 
 span.ProseMirror-menuitem.edit-table[style=""] + .ProseMirror-menuitem {
@@ -199,8 +189,8 @@ span.ProseMirror-menuitem.edit-table[style=""] + .ProseMirror-menuitem {
 span.ProseMirror-menuseparator {
   height: 2px;
   display: block;
-  background: var(--editor-btn-bg-color);
-  margin-bottom: 6px;
+  background: #EFEFEF;
+  margin: 0 4px 6px;
   border-radius: 1px;
 }
 
@@ -216,7 +206,7 @@ span.ProseMirror-menuseparator {
 .ProseMirror-menu-dropdown:hover,
 .ProseMirror-menuitem > div:not(.ProseMirror-menu-dropdown-wrap, .ProseMirror-menu-disabled):hover,
 .ProseMirror-menu-dropdown-item > div:not(.ProseMirror-menu-disabled):hover {
-  background-color: var(--editor-btn-bg-color-hover) !important;
+  background-color: var(--s2-blue-800) !important;
 }
 
 .ProseMirror-menuitem:has(.open-assets.ProseMirror-menu-disabled),
@@ -235,7 +225,7 @@ span.ProseMirror-menuseparator {
 }
 
 .ProseMirror-menu-dropdown.edit-text {
-  background: url('/blocks/edit/img/Smock_Text_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Text_18_N.svg') center / 18px no-repeat;
 }
 
 .ProseMirror-menu-dropdown-menu {
@@ -270,25 +260,25 @@ span.ProseMirror-menuseparator {
 .ProseMirror-menu-dropdown-item > .separator {
   height: 2px;
   display: block;
-  background: var(--editor-btn-bg-color);
+  background: #EFEFEF;
   border-radius: 1px;
 }
 
 .menu-item-para {
-  background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TextParagraph_18_N.svg') center / 18px no-repeat;
 }
 
 .menu-item-blockquote {
-  background: url('/blocks/edit/img/Smock_BlockQuote_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_BlockQuote_18_N.svg') center / 18px no-repeat;
 }
 
 .menu-item-codeblock {
-  background: url('/blocks/edit/img/Smock_BlockCode_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_BlockCode_18_N.svg') center / 18px no-repeat;
 }
 
 
 .edit-code {
-  background: url('/blocks/edit/img/Smock_Code_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Code_18_N.svg') center / 18px no-repeat;
 }
 
 .ProseMirror-menu-dropdown-item:has(.menu-item-h1) {
@@ -296,35 +286,35 @@ span.ProseMirror-menuseparator {
 }
 
 .menu-item-h1 {
-  background: url('/blocks/edit/img/Smock_Heading1_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Heading1_18_N.svg') center / 18px no-repeat;
 }
 
 .menu-item-h2 {
-  background: url('/blocks/edit/img/Smock_Heading2_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Heading2_18_N.svg') center / 18px no-repeat;
 }
 
 .menu-item-h3 {
-  background: url('/blocks/edit/img/Smock_Heading3_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Heading3_18_N.svg') center / 18px no-repeat;
 }
 
 .menu-item-h4 {
-  background: url('/blocks/edit/img/Smock_Heading4_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Heading4_18_N.svg') center / 18px no-repeat;
 }
 
 .menu-item-h5 {
-  background: url('/blocks/edit/img/Smock_Heading5_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Heading5_18_N.svg') center / 18px no-repeat;
 }
 
 .menu-item-h6 {
-  background: url('/blocks/edit/img/Smock_Heading6_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Heading6_18_N.svg') center / 18px no-repeat;
 }
 
 .edit-bold {
-  background: url('/blocks/edit/img/Smock_TextBold_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TextBold_18_N.svg') center / 18px no-repeat;
 }
 
 .edit-italic {
-  background: url('/blocks/edit/img/Smock_TextItalic_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TextItalic_18_N.svg') center / 18px no-repeat;
 }
 
 .edit-sup {
@@ -336,95 +326,95 @@ span.ProseMirror-menuseparator {
 }
 
 .edit-link {
-  background: url('/blocks/edit/img/Smock_Link_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Link_18_N.svg') center / 18px no-repeat;
 }
 
 .edit-unlink {
-  background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat;
 }
 
 .bullet-list, .ProseMirror-menu-dropdown.list-menu {
-  background: url('/blocks/edit/img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TextBulleted_18_N.svg') center / 18px no-repeat;
 }
 
 .ordered-list {
-  background: url('/blocks/edit/img/Smock_TextNumbered_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TextNumbered_18_N.svg') center / 18px no-repeat;
 }
 
 .indent-list {
-  background: url('/blocks/edit/img/Smock_TextIndentIncrease_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TextIndentIncrease_18_N.svg') center / 18px no-repeat;
 }
 
 .outdent-list {
-  background: url('/blocks/edit/img/Smock_TextIndentDecrease_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TextIndentDecrease_18_N.svg') center / 18px no-repeat;
 }
 
 .insert-table {
-  background: url('/blocks/edit/img/Smock_TableAdd_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableAdd_18_N.svg') center / 18px no-repeat;
 }
 
 .ProseMirror-menu-dropdown.edit-table {
-  background: url('/blocks/edit/img/Smock_TableEdit_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableEdit_18_N.svg') center / 18px no-repeat;
 }
 
 .addColBefore {
-  background: url('/blocks/edit/img/Smock_TableColumnAddLeft_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableColumnAddLeft_18_N.svg') center / 18px no-repeat;
 }
 
 .addColumnAfter {
-  background: url('/blocks/edit/img/Smock_TableColumnAddRight_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableColumnAddRight_18_N.svg') center / 18px no-repeat;
 }
 
 .deleteColumn {
-  background: url('/blocks/edit/img/Smock_TableColumnRemoveCenter_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableColumnRemoveCenter_18_N.svg') center / 18px no-repeat;
 }
 
 .addRowBefore {
-  background: url('/blocks/edit/img/Smock_TableRowAddTop_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableRowAddTop_18_N.svg') center / 18px no-repeat;
 }
 
 .addRowAfter {
-  background: url('/blocks/edit/img/Smock_TableRowAddBottom_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableRowAddBottom_18_N.svg') center / 18px no-repeat;
 }
 
 .deleteRow {
-  background: url('/blocks/edit/img/Smock_TableRowRemoveCenter_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableRowRemoveCenter_18_N.svg') center / 18px no-repeat;
 }
 
 .deleteTable {
-  background: url('/blocks/edit/img/Smock_TableRemove_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableRemove_18_N.svg') center / 18px no-repeat;
 }
 
 .mergeCells {
-  background: url('/blocks/edit/img/Smock_TableMergeCells_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableMergeCells_18_N.svg') center / 18px no-repeat;
 }
 
 .splitCell {
-  background: url('/blocks/edit/img/Smock_TableRowSplit_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_TableRowSplit_18_N.svg') center / 18px no-repeat;
 }
 
 .edit-hr {
-  background: url('/blocks/edit/img/Smock_PageRule_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_PageRule_18_N.svg') center / 18px no-repeat;
 }
 
 .open-library {
-  background: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg') center / 18px no-repeat;
 }
 
 .open-assets {
-  background: url('/blocks/edit/img/Smock_Images_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Images_18_N.svg') center / 18px no-repeat;
 }
 
 .edit-undo {
-  background: url('/blocks/edit/img/Smock_Undo_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Undo_18_N.svg') center / 18px no-repeat;
 }
 
 .edit-redo {
-  background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_Redo_18_N.svg') center / 18px no-repeat;
 }
 
 .img-alt-text {
-  background: url('/blocks/edit/img/Smock_ImageText_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+  background: url('/blocks/edit/img/Smock_ImageText_18_N.svg') center / 18px no-repeat;
 }
 
 /* Generic ProseMirror Styles */
