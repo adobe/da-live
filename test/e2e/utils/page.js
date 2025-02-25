@@ -21,10 +21,10 @@ export function getQuery() {
 
 const QUERY = getQuery();
 
-function getTestURL(type, testIdentifier, workerInfo) {
+function getTestURL(type, testIdentifier, workerInfo, dir = '/da-sites/da-status/tests') {
   const dateStamp = Date.now().toString(36);
   const pageName = `pw-${testIdentifier}-${dateStamp}-${workerInfo.project.name}`;
-  return `${ENV}/${type}${QUERY}#/da-sites/da-status/tests/${pageName}`;
+  return `${ENV}/${type}${QUERY}#${dir}/${pageName}`;
 }
 
 /**
@@ -34,8 +34,8 @@ function getTestURL(type, testIdentifier, workerInfo) {
  * @param {object} workerInfo - workerInfo as passed in by Playwright
  * @returns {string} The URL for the test page.
  */
-export function getTestPageURL(testIdentifier, workerInfo) {
-  return getTestURL('edit', testIdentifier, workerInfo);
+export function getTestPageURL(testIdentifier, workerInfo, dir) {
+  return getTestURL('edit', testIdentifier, workerInfo, dir);
 }
 
 /**
