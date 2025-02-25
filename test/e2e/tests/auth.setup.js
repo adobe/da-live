@@ -16,18 +16,19 @@ const authFile = path.join(__dirname, '../.playwright/.auth/user.json');
 
 // This is executed once to authenticate the user used during the tests.
 setup('Set up authentication', async ({ page }) => {
-  const url = 'https://da.live/edit#/da-testautomation/acltest/testdocs/doc1';
+  const url = 'https://da.live';
 
   await page.goto(url);
-  await page.waitForTimeout(3000);
+  await page.getByRole('button', { name: 'Sign in' }).click();
 
+  // The IMS sign in page needs a bit of time to load
+  await page.waitForTimeout(1000);
   await page.getByLabel('Email address').fill('da-test@adobetest.com');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByLabel('Password', { exact: true })
-    .fill(process.env.TEST_PASSWORD);
+  await page.getByLabel('Password', { exact: true }).fill(process.env.TEST_PASSWORD);
   await page.getByLabel('Continue').click();
   await page.getByLabel('Foundation Internal').click();
-  await expect(page.locator('div.ProseMirror')).toContainText('This is doc1');
+  await expect(page.locator('a.nx-nav-brand')).toContainText('Document Authoring');
 
   await page.context().storageState({ path: authFile });
 });
