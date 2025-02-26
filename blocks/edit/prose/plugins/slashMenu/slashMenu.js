@@ -188,6 +188,7 @@ export default function slashMenu() {
             const { tableName, keyValue } = getTableName($cursor);
             if (tableName) {
               const keyData = pluginState.autocompleteData?.get(tableName);
+              console.log(pluginState.autocompleteData)
               if (keyData) {
                 const values = keyData.get(keyValue);
                 if (values) {

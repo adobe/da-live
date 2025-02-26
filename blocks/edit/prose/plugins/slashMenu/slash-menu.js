@@ -11,6 +11,10 @@ function isColorCode(str) {
   return hexColorRegex.test(str) || rgbColorRegex.test(str) || str?.includes('-gradient(');
 }
 
+function isPng(str) {
+  return str?.startsWith('https') && str?.endsWith('.png');
+}
+
 function createColorSquare(color) {
   return html`
     <div style="width: 24px; height: 24px; background: ${color}; margin-left: -4px;"></div>
@@ -192,14 +196,14 @@ export default class SlashMenu extends LitElement {
       return '';
     }
 
-    const rules = [...sheet.rules];
+    const rules = [...sheet.cssRules];
 
     return html`
       <div class="slash-menu-items">
         ${filteredItems.map((item, index) => {
           const isColor = isColorCode(item.value);
-
-          const hasIcon = rules.find((rule) => rule.cssText.startsWith(`.slash-menu-icon.${item.class}`));
+          const hasBuiltinIcon = rules.find((rule) => rule.cssText.startsWith(`.slash-menu-icon.${item.class}`));
+          const hasCustomIcon = isPng(item.value);
 
           return html`
             <div
@@ -207,7 +211,8 @@ export default class SlashMenu extends LitElement {
               @click=${() => this.handleItemClick(item)}
             >
               ${isColor ? createColorSquare(item.value) : ''}
-              ${hasIcon ? html`<span class="slash-menu-icon ${item.class}"></span>` : ''}
+              ${hasBuiltinIcon ? html`<span class="slash-menu-icon ${item.class}"></span>` : ''}
+              ${hasCustomIcon ? html`<span class="slash-menu-icon" style='background-image: url("${item.value}")'></span>` : ''}
               <span class="slash-menu-label">
                 ${item.title}
               </span>
