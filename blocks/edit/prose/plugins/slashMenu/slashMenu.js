@@ -78,13 +78,10 @@ class SlashMenuView {
     const { tableName, keyValue } = getTableName($cursor);
     if (tableName) {
       const keyData = pluginState.autocompleteData?.get(tableName);
-      if (keyData) {
-        const values = keyData.get(keyValue);
-        if (values) {
-          this.menu.items = values;
-        } else {
-          this.menu.items = menuItems;
-        }
+      if (keyData && keyData.get(keyValue)) {
+        this.menu.items = keyData.get(keyValue);
+      } else {
+        this.menu.items = menuItems;
       }
     }
   }
