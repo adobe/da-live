@@ -4,7 +4,7 @@ import { getKeyAutocomplete } from './keyAutocomplete.js';
 import menuItems from './slashMenuItems.js';
 import './slash-menu.js';
 
-const SLASH_COMMAND_REGEX = /^\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
+const SLASH_COMMAND_REGEX = /\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
 const slashMenuKey = new PluginKey('slashMenu');
 
 function extractArgument(title, command) {
@@ -100,7 +100,8 @@ class SlashMenuView {
     }
 
     const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
-    if (!textBefore?.startsWith('/')) {
+    const { tableName } = getTableName($cursor);
+    if (!tableName && !textBefore?.startsWith('/')) {
       if (this.menu.visible) this.hide();
       return;
     }

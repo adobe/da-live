@@ -4,9 +4,7 @@ function insertAutocompleteText(state, dispatch, text) {
   const { $cursor } = state.selection;
 
   if (!$cursor) return;
-  const from = $cursor.before();
-  const to = $cursor.pos;
-  const tr = state.tr.replaceWith(from, to, state.schema.text(text));
+  const tr = state.tr.insert($cursor.pos, state.schema.text(text));
   dispatch(tr);
 }
 
