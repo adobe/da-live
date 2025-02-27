@@ -86,6 +86,15 @@ class SlashMenuView {
     }
   }
 
+  cellHasMenuItems(pluginState, $cursor) {
+    const { tableName, keyValue } = getTableName($cursor);
+    if (tableName) {
+      const keyData = pluginState.autocompleteData?.get(tableName);
+      return keyData && keyData.get(keyValue);
+    }
+    return false;
+  }
+
   update(view) {
     if (!view) return;
 
@@ -100,8 +109,7 @@ class SlashMenuView {
     }
 
     const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
-    const { tableName } = getTableName($cursor);
-    if (!tableName && !textBefore?.startsWith('/')) {
+    if (!this.cellHasMenuItems(slashMenuKey.getState(state), $cursor) && !textBefore?.startsWith('/')) {
       if (this.menu.visible) this.hide();
       return;
     }
