@@ -4,7 +4,7 @@ import { getKeyAutocomplete } from './keyAutocomplete.js';
 import menuItems from './slashMenuItems.js';
 import './slash-menu.js';
 
-const SLASH_COMMAND_REGEX = /^\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
+const SLASH_COMMAND_REGEX = /\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
 const slashMenuKey = new PluginKey('slashMenu');
 
 function extractArgument(title, command) {
@@ -12,97 +12,6 @@ function extractArgument(title, command) {
   return parts.length > 1 && title.toLowerCase().startsWith(parts.slice(0, -1).join(' '))
     ? parts[parts.length - 1]
     : undefined;
-}
-
-class SlashMenuView {
-  constructor(view) {
-    this.view = view;
-    this.menu = document.createElement('slash-menu');
-    this.menu.items = menuItems || [];
-
-    this.menu.addEventListener('item-selected', (e) => {
-      this.selectItem(e.detail);
-    });
-
-    this.menu.addEventListener('reset-slashmenu', () => {
-      // reset menu to default items
-      this.menu.items = menuItems;
-      this.menu.left = 0;
-      this.menu.top = 0;
-    });
-  }
-
-  update(view) {
-    if (!view) return;
-
-    this.view = view;
-
-    const { state } = view;
-    const { $cursor } = state.selection;
-
-    if (!$cursor) {
-      this.hide();
-      return;
-    }
-
-    const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
-    if (!textBefore?.startsWith('/')) {
-      if (this.menu.visible) this.hide();
-      return;
-    }
-
-    const match = textBefore.match(SLASH_COMMAND_REGEX);
-    if (match) {
-      const showSlashMenu = slashMenuKey?.getState(state)?.showSlashMenu;
-      if (!this.menu.visible || showSlashMenu) {
-        const coords = this.view.coordsAtPos($cursor.pos);
-
-        const viewportCoords = {
-          left: coords.left + window.pageXOffset,
-          bottom: coords.bottom + window.pageYOffset,
-        };
-
-        this.menu.show(viewportCoords);
-      }
-
-      this.menu.command = match[1] || '';
-    } else if (this.menu.visible) {
-      this.menu.command = '';
-      this.hide();
-    }
-  }
-
-  selectItem(detail) {
-    const { item } = detail;
-    const { state, dispatch } = this.view;
-    const { $cursor } = state.selection;
-    if (!$cursor) return;
-
-    // Delete the slash command and any arguments
-    const deleteFrom = $cursor.pos - (this.menu.command.length + 1);
-    const deleteTo = $cursor.pos;
-    const tr = state.tr.delete(deleteFrom, deleteTo);
-    const newState = state.apply(tr);
-
-    const argument = extractArgument(item.title, this.menu.command);
-
-    dispatch(tr);
-    item.command(newState, dispatch, argument);
-
-    this.hide();
-  }
-
-  handleKeyDown(event) {
-    return this.menu.handleKeyDown(event);
-  }
-
-  hide() {
-    this.menu.hide();
-  }
-
-  destroy() {
-    this.menu.remove();
-  }
 }
 
 // Get the table name if the cursor is in a table cell
@@ -147,6 +56,116 @@ const getTableName = ($cursor) => {
   return false;
 };
 
+class SlashMenuView {
+  constructor(view) {
+    this.view = view;
+    this.menu = document.createElement('slash-menu');
+    this.menu.items = menuItems || [];
+
+    this.menu.addEventListener('item-selected', (e) => {
+      this.selectItem(e.detail);
+    });
+
+    this.menu.addEventListener('reset-slashmenu', () => {
+      // reset menu to default items
+      this.menu.items = menuItems;
+      this.menu.left = 0;
+      this.menu.top = 0;
+    });
+  }
+
+  updateSlashMenuItems(pluginState, $cursor) {
+    const { tableName, keyValue } = getTableName($cursor);
+    if (tableName) {
+      const keyData = pluginState.autocompleteData?.get(tableName);
+      if (keyData && keyData.get(keyValue)) {
+        this.menu.items = keyData.get(keyValue);
+      } else {
+        this.menu.items = menuItems;
+      }
+    }
+  }
+
+  cellHasMenuItems(pluginState, $cursor) {
+    const { tableName, keyValue } = getTableName($cursor);
+    if (tableName) {
+      const keyData = pluginState.autocompleteData?.get(tableName);
+      return keyData && keyData.get(keyValue);
+    }
+    return false;
+  }
+
+  update(view) {
+    if (!view) return;
+
+    this.view = view;
+
+    const { state } = view;
+    const { $cursor } = state.selection;
+
+    if (!$cursor) {
+      this.hide();
+      return;
+    }
+
+    const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
+    if (!this.cellHasMenuItems(slashMenuKey.getState(state), $cursor) && !textBefore?.startsWith('/')) {
+      if (this.menu.visible) this.hide();
+      return;
+    }
+
+    const match = textBefore.match(SLASH_COMMAND_REGEX);
+    if (match) {
+      this.updateSlashMenuItems(slashMenuKey.getState(state), $cursor);
+      const coords = this.view.coordsAtPos($cursor.pos);
+
+      const viewportCoords = {
+        left: coords.left + window.pageXOffset,
+        bottom: coords.bottom + window.pageYOffset,
+      };
+
+      this.menu.show(viewportCoords);
+
+      this.menu.command = match[1] || '';
+    } else if (this.menu.visible) {
+      this.menu.command = '';
+      this.hide();
+    }
+  }
+
+  selectItem(detail) {
+    const { item } = detail;
+    const { state, dispatch } = this.view;
+    const { $cursor } = state.selection;
+    if (!$cursor) return;
+
+    // Delete the slash command and any arguments
+    const deleteFrom = $cursor.pos - (this.menu.command.length + 1);
+    const deleteTo = $cursor.pos;
+    const tr = state.tr.delete(deleteFrom, deleteTo);
+    const newState = state.apply(tr);
+
+    const argument = extractArgument(item.title, this.menu.command);
+
+    dispatch(tr);
+    item.command(newState, dispatch, argument);
+
+    this.hide();
+  }
+
+  handleKeyDown(event) {
+    return this.menu.handleKeyDown(event);
+  }
+
+  hide() {
+    this.menu.hide();
+  }
+
+  destroy() {
+    this.menu.remove();
+  }
+}
+
 export default function slashMenu() {
   let pluginView = null;
 
@@ -177,32 +196,6 @@ export default function slashMenu() {
     },
     props: {
       handleKeyDown(editorView, event) {
-        const { state } = editorView;
-        const pluginState = slashMenuKey.getState(state);
-
-        if (event.key === '/') {
-          const { $cursor } = state.selection;
-
-          // Check if we're at start of empty line
-          if ($cursor?.parentOffset === 0 && $cursor?.parent?.textContent === '') {
-            const { tableName, keyValue } = getTableName($cursor);
-            if (tableName) {
-              const keyData = pluginState.autocompleteData?.get(tableName);
-              if (keyData) {
-                const values = keyData.get(keyValue);
-                if (values) {
-                  pluginView.menu.items = values;
-                }
-              }
-            }
-
-            const tr = state.tr.setMeta(slashMenuKey, { showSlashMenu: true });
-            editorView.dispatch(tr);
-            return false;
-          }
-          return false;
-        }
-
         if (pluginView?.menu.visible) {
           if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(event.key)) {
             event.preventDefault();

@@ -4,9 +4,7 @@ function insertAutocompleteText(state, dispatch, text) {
   const { $cursor } = state.selection;
 
   if (!$cursor) return;
-  const from = $cursor.before();
-  const to = $cursor.pos;
-  const tr = state.tr.replaceWith(from, to, state.schema.text(text));
+  const tr = state.tr.insert($cursor.pos, state.schema.text(text));
   dispatch(tr);
 }
 
@@ -35,6 +33,27 @@ export function processKeyData(data) {
       blockMap.get(block).set(item.key, values);
     });
   });
+
+  // values of "all" block are available (thus copied) in all other blocks, if not explicitly set
+  const allBlocks = blockMap.get('all');
+  blockMap.forEach((block, blockName) => {
+    if (blockName === 'all') return;
+    allBlocks.forEach((values, key) => {
+      if (!block.has(key)) {
+        block.set(key, values);
+      }
+    });
+  });
+
+  // the "all" block is also returned as fallback if no values are configured for the queried block
+  const originalGet = blockMap.get.bind(blockMap);
+  blockMap.get = (blockName) => {
+    if (blockMap.has(blockName)) {
+      return originalGet(blockName);
+    }
+
+    return originalGet('all');
+  };
 
   return blockMap;
 }
