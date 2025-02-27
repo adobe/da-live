@@ -38,7 +38,7 @@ export function processKeyData(data) {
   const allBlocks = blockMap.get('all');
   blockMap.forEach((block, blockName) => {
     if (blockName === 'all') return;
-    allBlocks.forEach((values, key) => {
+    allBlocks?.forEach((values, key) => {
       if (!block.has(key)) {
         block.set(key, values);
       }
