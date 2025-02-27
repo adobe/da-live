@@ -406,6 +406,11 @@ function getTextBlocks(marks, nodes) {
       class: 'edit-sub',
     }),
     codeMarkItem(marks.code),
+    // markItem(marks.s, {
+    //   title: 'Toggle strikethrough',
+    //   label: 'S',
+    //   class: 'edit-s',
+    // }),
     headingItem(nodes.heading, {
       title: 'Change to H1',
       label: 'H1',

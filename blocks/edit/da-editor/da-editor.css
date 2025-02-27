@@ -283,6 +283,10 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_Code_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
+.edit-s {
+  background: url('/blocks/edit/img/Smock_TextStrikethrough_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
+}
+
 .ProseMirror-menu-dropdown-item:has(.menu-item-h1) {
   break-before: column;
 }
