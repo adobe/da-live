@@ -1,4 +1,4 @@
-export const CON_ORIGIN = 'https://content.da.live';
+export const CON_ORIGIN = 'https://stage-content.da.live';
 export const AEM_ORIGIN = 'https://admin.hlx.page';
 
 export const SUPPORTED_FILES = {
