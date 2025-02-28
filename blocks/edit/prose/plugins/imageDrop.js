@@ -39,7 +39,7 @@ export default function imageDrop(schema) {
             docImg.addEventListener('load', () => {
               const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
               const ts = view.state.tr.setSelection(fpoSelection);
-              const img = schema.nodes.image.create({ src: json.source.contentUrl });
+              const img = schema.nodes.image.create({ src: json.source.contentUrl.replace('content.da.live', 'stage-content.da.live') });
               const tr = ts.replaceSelectionWith(img).scrollIntoView();
               view.dispatch(tr);
             });

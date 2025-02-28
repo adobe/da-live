@@ -24,7 +24,7 @@ class DaMedia extends LitElement {
       return html`
         <div class="da-content">
           <video controls>
-            <source src="${this.details.contentUrl}" type="video/mp4" />
+            <source src="${this.details.contentUrl.replace('content.da.live', 'stage-content.da.live')}" type="video/mp4" />
           </video>
         </div>
       `;
@@ -40,7 +40,7 @@ class DaMedia extends LitElement {
 
     return html`
       <div class="da-content">
-        <img src="${this.details.contentUrl}" width="900" height="600" />
+        <img src="${this.details.contentUrl.replace('content.da.live', 'stage-content.da.live')}" width="900" height="600" />
       </div>
     `;
   }
