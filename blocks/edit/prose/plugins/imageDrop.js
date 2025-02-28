@@ -43,7 +43,7 @@ export default function imageDrop(schema) {
               const tr = ts.replaceSelectionWith(img).scrollIntoView();
               view.dispatch(tr);
             });
-            docImg.src = json.source.contentUrl;
+            docImg.src = json.source.contentUrl.replace('content.da.live', 'stage-content.da.live');
           });
         },
       },
