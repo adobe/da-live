@@ -94,8 +94,13 @@ function getView(pathname) {
 }
 
 export default function getPathDetails(loc) {
-  const { pathname, hash } = loc || window.location;
-  if (!pathname || !hash) return undefined;
+  const { pathname, hash: tmpHash } = loc || window.location;
+  if (!pathname || !tmpHash) return undefined;
+
+  // There can be non-ideal pieces in the hash (access_token)
+  const parts = tmpHash.split('#');
+  const hashPath = parts.find((part) => part.startsWith('/'));
+  const hash = `#${hashPath}`;
 
   // Use cached details if the hash has not changed
   if (currhash === hash && currpath === pathname && details) return details;
