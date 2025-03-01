@@ -8,6 +8,7 @@
     "url": "git+https://github.com/adobe/da-live.git"
   },
   "dependencies": {
+    "@open-wc/lit-helpers": "^0.7.0",
     "esbuild": "^0.21.0",
     "jspreadsheet-ce": "^4.13.4",
     "jsuites": "^5.0.29",
