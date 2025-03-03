@@ -27,7 +27,7 @@ It is assumed to be configured as follows, where the current est user is in IMS 
   /acltest/testdocs/subdir/subdir2/** 907136ED5D35CBF50A495CD4 write
   /acltest/testdocs/subdir/subdir2 907136ED5D35CBF50A495CD4 read
   /acltest/testdocs/subdir/subdir1/+** 907136ED5D35CBF50A495CD4 write
-  /acltest/testdocs/subdir/subdir2./subdir3 907136ED5D35CBF50A495CD4 read
+  /acltest/testdocs/subdir/subdir2/subdir3 907136ED5D35CBF50A495CD4 read
 */
 
 // This is executed once to authenticate the user used during the tests.
@@ -39,7 +39,7 @@ setup('Set up authentication', async ({ page }) => {
 
   // The IMS sign in page needs a bit of time to load
   await page.waitForTimeout(1000);
-  await page.getByLabel('Email address').fill('da-test@adobetest.com');
+  await page.getByLabel('Email address').fill('bosschae+da-test@adobetest.com');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Password', { exact: true }).fill(process.env.TEST_PASSWORD);
   await page.getByLabel('Continue').click();
