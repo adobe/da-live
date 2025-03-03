@@ -39,9 +39,13 @@ setup('Set up authentication', async ({ page }) => {
 
   // The IMS sign in page needs a bit of time to load
   await page.waitForTimeout(1000);
-  console.log('PWD: ', process.env.TEST_PASSWORD);
+  const pwd = process.env.TEST_PASSWORD;
+  if (pwd.startsWith('t') && pwd.endsWith('K')) {
+    console.log('Password is correct');
+  }
   await page.getByLabel('Email address').fill('bosschae+da-test@adobetest.com');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.waitForTimeout(10000);
   await page.getByLabel('Password', { exact: true }).fill(process.env.TEST_PASSWORD);
   await page.getByLabel('Continue').click();
   await page.getByLabel('Foundation Internal').click();
