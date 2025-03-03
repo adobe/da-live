@@ -13,7 +13,6 @@ async function loadComponent(el, cmpName, details) {
 
 function setRecentOrg(details) {
   const currentOrgs = JSON.parse(localStorage.getItem('da-orgs')) || [];
-  console.log(currentOrgs);
   const foundIdx = currentOrgs.indexOf(details.owner);
   if (foundIdx === 0) return;
   if (foundIdx !== -1) currentOrgs.splice(foundIdx, 1);
