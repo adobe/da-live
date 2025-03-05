@@ -45,7 +45,22 @@ function loadStyles() {
   });
 }
 
+async function loadServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    // declaring scope manually
+    try {
+      await navigator.serviceWorker.register("./sw.js", { scope: "" });
+      console.log('Service worker registered');
+    } catch (error) {
+      console.error(`Service worker registration failed: ${error}`);
+    }
+  } else {
+    console.error("Service workers are not supported.");
+  }
+}
+
 export default async function loadPage() {
+  await loadServiceWorker();
   await loadArea();
 }
 
