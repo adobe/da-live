@@ -12,7 +12,15 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SET_ACCESS_TOKEN') {
+  if (!event.data) {
+    return
+  };
+
+  if (event.data.type === 'CLAIM_CLIENTS') {
+    self.clients.claim();
+  }
+
+  if (event.data.type === 'SET_ACCESS_TOKEN') {
     accessToken = event.data.accessToken?.token;
   }
 });

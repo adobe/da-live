@@ -13,6 +13,10 @@ async function loadServiceWorker() {
       const sw = await navigator.serviceWorker.register("/sw.js", { scope: "" });
       console.log('Service worker registered', sw);
       await sw.ready;
+      if (!navigator.serviceWorker.controller)  {
+        // After hard refresh, the service worker is not active
+        sw.postMessage({ type: 'CLAIM_CLIENTS' });
+      }
       console.log('Service worker ready');
       return sw;
     } catch (error) {
