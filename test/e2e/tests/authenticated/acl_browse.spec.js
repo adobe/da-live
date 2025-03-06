@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { getTestPageURL } from '../utils/page.js';
+import { getTestPageURL } from '../../utils/page.js';
 
 test('Read-only directory', async ({ page }) => {
   const url = 'https://da.live/#/da-testautomation/acltest/testdocs/subdir';

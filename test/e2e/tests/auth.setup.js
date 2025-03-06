@@ -10,9 +10,10 @@
  * governing permissions and limitations under the License.
  */
 import { test as setup, expect } from '@playwright/test';
+import fs from 'fs';
 import path from 'path';
 
-const authFile = path.join(__dirname, '../.playwright/.auth/user.json');
+const AUTH_FILE = path.join(__dirname, '../.playwright/.auth/user.json');
 
 /*
 The ACL tests require to be logged in, which is what this setup does.
@@ -31,9 +32,17 @@ It is assumed to be configured as follows, where the current est user is in IMS 
 
 // This is executed once to authenticate the user used during the tests.
 setup('Set up authentication', async ({ page }) => {
-  // The ACL tests require authentication. After authentication the domain is _always_
-  // https://da.live, even if we started with something like somebranch--da-live--adobe.aem.live
-  // so the ACL tests all use da.live as the base URL.
+  if (fs.existsSync(AUTH_FILE)) {
+    await fs.promises.unlink(AUTH_FILE);
+    console.log('Deleted previous storage stage auth file');
+  }
+
+  if (process.env.SKIP_AUTH) {
+    await fs.promises.writeFile(AUTH_FILE, '{}');
+    console.log('Skipping authentication');
+    return;
+  }
+
   const url = 'https://da.live';
 
   await page.goto(url);
@@ -43,7 +52,9 @@ setup('Set up authentication', async ({ page }) => {
   await page.waitForTimeout(1000);
   const pwd = process.env.TEST_PASSWORD;
   if (pwd) {
-    console.log('Password found as secret');
+    console.log('Password found in environment variable TEST_PASSWORD');
+  } else {
+    throw new Error('Password for authentication needed in environment variable TEST_PASSWORD');
   }
   await page.getByLabel('Email address').fill('bosschae+da-test@adobetest.com');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -53,5 +64,5 @@ setup('Set up authentication', async ({ page }) => {
   await page.getByLabel('Foundation Internal').click();
   await expect(page.locator('a.nx-nav-brand')).toContainText('Document Authoring');
 
-  await page.context().storageState({ path: authFile });
+  await page.context().storageState({ path: AUTH_FILE });
 });
