@@ -13,7 +13,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SET_ACCESS_TOKEN') {
-    accessToken = event.data.token;
+    accessToken = event.data.accessToken;
     console.log('Access token set via message:', accessToken);
   }
 });
