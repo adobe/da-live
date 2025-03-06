@@ -53,7 +53,20 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (DA_CONTENT_ORIGINS.includes(url.origin) && ASSETS_EXTENSIONS.some((ext) => url.pathname.endsWith(ext)) && accessToken) {
-    event.request.headers.set('Authorization', `Bearer ${accessToken}`);
+    const headers = new Headers(event.request.headers);
+    if (!headers.has('authorization')) {
+      headers.set('Authorization', `Bearer ${accessToken}`);
+      const request = new Request(
+        event.request, 
+        { 
+          mode: 'cors',
+          credentials: 'omit',
+          headers,
+        },
+      );
+      event.respondWith(fetch(request));
+    }
+    return;
   }
 
   event.respondWith(fetch(event.request));
