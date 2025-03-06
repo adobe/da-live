@@ -25,10 +25,13 @@ export default class DaEditor extends LitElement {
       this._imsLoaded = true;
 
       if (navigator.serviceWorker?.controller) {
+        console.log('Sending access token to service worker');
         navigator.serviceWorker.controller.postMessage({
           type: 'SET_ACCESS_TOKEN',
           accessToken,
         });
+      } else {
+        console.log('No service worker controller found');
       }
     });
   }
