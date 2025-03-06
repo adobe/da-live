@@ -16,10 +16,6 @@ self.addEventListener('message', (event) => {
     return
   };
 
-  if (event.data.type === 'CLAIM_CLIENTS') {
-    self.clients.claim();
-  }
-
   if (event.data.type === 'SET_ACCESS_TOKEN') {
     accessToken = event.data.accessToken?.token;
   }

@@ -15,7 +15,7 @@ async function loadServiceWorker() {
       await sw.ready;
       if (!navigator.serviceWorker.controller)  {
         // After hard refresh, the service worker is not active
-        sw.postMessage({ type: 'CLAIM_CLIENTS' });
+        window.location.reload();
       }
       console.log('Service worker ready');
       return sw;
