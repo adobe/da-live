@@ -42,6 +42,7 @@ export default class DaEditor extends LitElement {
     this.shadowRoot.createRange = () => document.createRange();
     initIms().then(async ({ accessToken }) => { 
       this._imsLoaded = true;
+      console.log('IMS loaded', accessToken);
       const sw = await loadServiceWorker();
       if (sw) {
         console.log('Sending access token to service worker');
