@@ -21,7 +21,16 @@ export default class DaEditor extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.shadowRoot.createRange = () => document.createRange();
-    initIms().then(() => { this._imsLoaded = true; });
+    initIms().then(({ accessToken }) => { 
+      this._imsLoaded = true;
+
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SET_ACCESS_TOKEN',
+          accessToken,
+        });
+      }
+    });
   }
 
   async fetchVersion() {

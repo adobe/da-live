@@ -12,6 +12,13 @@ self.addEventListener('install', (event) => {
 
 let accessToken = null;
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SET_ACCESS_TOKEN') {
+    accessToken = event.data.token;
+    console.log('Access token set via message:', accessToken);
+  }
+});
+
 function extractAccessToken(text) {
   const params = new URLSearchParams(text);
   return params.get('token');
