@@ -6,6 +6,25 @@ import { parse, aem2prose } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
 
+async function loadServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    // declaring scope manually
+    try {
+      const sw = await navigator.serviceWorker.register("/sw.js", { scope: "" });
+      console.log('Service worker registered', sw);
+      await sw.ready;
+      console.log('Service worker ready');
+      return sw;
+    } catch (error) {
+      console.error(`Service worker registration failed: ${error}`);
+    }
+  } else {
+    console.error("Service workers are not supported.");
+  }
+
+  return null;
+}
+
 export default class DaEditor extends LitElement {
   static properties = {
     path: { type: String },
@@ -21,12 +40,12 @@ export default class DaEditor extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.shadowRoot.createRange = () => document.createRange();
-    initIms().then(({ accessToken }) => { 
+    initIms().then(async ({ accessToken }) => { 
       this._imsLoaded = true;
-
-      if (navigator.serviceWorker?.controller) {
+      const sw = await loadServiceWorker();
+      if (sw) {
         console.log('Sending access token to service worker');
-        navigator.serviceWorker.controller.postMessage({
+        sw.active.postMessage.postMessage({
           type: 'SET_ACCESS_TOKEN',
           accessToken,
         });
