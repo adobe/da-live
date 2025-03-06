@@ -10,10 +10,11 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { getTestPageURL } from '../../utils/page.js';
+import ENV from '../../utils/env.js';
+import { getTestPageURL, getQuery } from '../../utils/page.js';
 
 test('Read-only directory', async ({ page }) => {
-  const url = 'https://da.live/#/da-testautomation/acltest/testdocs/subdir';
+  const url = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
 
   await page.goto(url);
   const newButton = page.getByRole('button', { name: 'New' });
@@ -37,11 +38,7 @@ test('Read-only directory', async ({ page }) => {
 test('Read-write directory', async ({ browser, page }, workerInfo) => {
   const pageURL = getTestPageURL('acl-browse-edt', workerInfo, '/da-testautomation/acltest/testdocs/subdir/subdir1');
   const pageName = pageURL.split('/').pop();
-
-  // Since IMS auth always brings you back to https://da.live we use that as domain
-  // this means that this test is not exercising the current branch (if any)
-  const daPageURL = pageURL.replace(new URL(pageURL).origin, 'https://da.live');
-  const browseURL = daPageURL.replace(`/${pageName}`, '').replace('/edit#/', '/#/');
+  const browseURL = pageURL.replace(`/${pageName}`, '').replace('/edit#/', '/#/');
 
   await page.goto(browseURL);
   const newButton = page.getByRole('button', { name: 'New' });
@@ -58,7 +55,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await page.waitForTimeout(3000);
 
   const newPage = await browser.newPage();
-  await newPage.goto(daPageURL);
+  await newPage.goto(pageURL);
   // The following assertion has an extended timeout as it might cycle through the login screen
   // before the document is visible. The login screen doesn't need any input though, it will just
   // continue with the existing login
@@ -87,7 +84,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
 });
 
 test('Readonly directory with writeable document', async ({ page }) => {
-  const browseURL = 'https://da.live/#/da-testautomation/acltest/testdocs/subdir/subdir2';
+  const browseURL = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir/subdir2`;
   await page.goto(browseURL);
 
   await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc_writeable"]')).toBeVisible();
@@ -112,13 +109,13 @@ test('Readonly directory with writeable document', async ({ page }) => {
 });
 
 test('No access directory should not show anything', async ({ page }) => {
-  await page.goto('https://da.live/#/da-testautomation/acltest/testdocs/subdir');
+  await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`);
 
   // In this directory we should be able to see files
   await expect(page.getByRole('button', { name: 'Name' })).toBeVisible();
 
   // In this directory we should be able to see nothing
-  await page.goto('https://da.live/#/da-testautomation/acltest/testdocs');
+  await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs`);
   // We need to reload the page explicitly because the only thing we changed
   // was the anchor and that doesn't normally trigger a change
   await page.reload();

@@ -9,9 +9,10 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test as setup, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { test as setup, expect } from '@playwright/test';
+import ENV from '../utils/env.js';
 
 const AUTH_FILE = path.join(__dirname, '../.playwright/.auth/user.json');
 
@@ -43,7 +44,7 @@ setup('Set up authentication', async ({ page }) => {
     return;
   }
 
-  const url = 'https://da.live';
+  const url = ENV;
 
   await page.goto(url);
   await page.getByRole('button', { name: 'Sign in' }).click();

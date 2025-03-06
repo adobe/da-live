@@ -19,11 +19,7 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   // Also check that the cloud icon is visible for the collaborator
 
   const pageURL = getTestPageURL('collab', workerInfo);
-  // Since IMS auth always brings you back to https://da.live we use that as domain
-  // this means that this test is not exercising the current branch (if any)
-  const daPageURL = pageURL.replace(new URL(pageURL).origin, 'https://da.live');
-
-  await page.goto(daPageURL);
+  await page.goto(pageURL);
   await expect(page.getByLabel('Open profile menu')).toBeVisible();
   // Wait a little bit so that the collab awareness has caught up and knows that we are logged in as
   // 'DA Test User'
@@ -40,7 +36,7 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   // Open a new browser page with an empty storage state. which means its not logged in and
   // will have an anonymous user
   const page2 = await browser.newPage({ storageState: {} });
-  await page2.goto(daPageURL);
+  await page2.goto(pageURL);
 
   await expect(page2.locator('div.ProseMirror')).toBeVisible();
   await expect(page2.locator('div.ProseMirror')).toContainText('Entered by user 1');
