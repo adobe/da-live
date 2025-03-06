@@ -18,6 +18,7 @@ function extractAccessToken(text) {
 }
 
 async function handleIms(event) {
+  console.log('Handling fetch event for IMS');
   const requestClone = event.request.clone();
   const bodyClone = await requestClone.text();
 
@@ -27,7 +28,9 @@ async function handleIms(event) {
   if (respClone.status === 200) {
     const json = await respClone.json();
     if (json.valid === true && json.token?.type === 'access_token') {
+      console.log('Extracting access token from IMS response');
       accessToken = extractAccessToken(bodyClone);
+      console.log('Access token extracted', accessToken);
     }
   }
 
@@ -36,7 +39,6 @@ async function handleIms(event) {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  console.log(`Handling fetch event for`, event.request.url, event.request.headers);
 
   if (event.request.url.includes('https://ims-na1.adobelogin.com/ims/validate_token/')) {
     event.respondWith(handleIms(event));
