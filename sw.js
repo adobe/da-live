@@ -53,10 +53,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (DA_CONTENT_ORIGINS.includes(url.origin) && ASSETS_EXTENSIONS.some((ext) => url.pathname.endsWith(ext)) && accessToken) {
+    console.log('Fetching asset with access token', accessToken);
     const headers = new Headers(event.request.headers);
     headers.set('Authorization', `Bearer ${accessToken}`);
     const request = new Request(
-      event.request, 
+      event.request,
       { 
         mode: 'cors',
         credentials: 'omit',
