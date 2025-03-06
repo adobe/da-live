@@ -35,17 +35,15 @@ async function handleIms(event) {
 }
 
 self.addEventListener("fetch", (event) => {
-  console.log(`Handling fetch event for`, event.request.url, event);
+  const url = new URL(event.request.url);
+  console.log(`Handling fetch event for`, event.request.url, event.request.headers);
 
   if (event.request.url.includes('https://ims-na1.adobelogin.com/ims/validate_token/')) {
     event.respondWith(handleIms(event));
     return;
   }
 
-  if (DA_CONTENT_ORIGINS.includes(new URL(event.request.url).origin) 
-    && ASSETS_EXTENSIONS.some((ext) => pathname.endsWith(ext))
-    && accessToken
-  ) {
+  if (DA_CONTENT_ORIGINS.includes(url.origin) && ASSETS_EXTENSIONS.some((ext) => url.pathname.endsWith(ext)) && accessToken) {
     event.request.headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
