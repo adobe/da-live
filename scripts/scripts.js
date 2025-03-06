@@ -49,8 +49,10 @@ async function loadServiceWorker() {
   if ('serviceWorker' in navigator) {
     // declaring scope manually
     try {
-      await navigator.serviceWorker.register("/sw.js", { scope: "" });
-      console.log('Service worker registered');
+      const sw = await navigator.serviceWorker.register("/sw.js", { scope: "" });
+      console.log('Service worker registered', sw);
+      await sw.ready;
+      console.log('Service worker ready');
     } catch (error) {
       console.error(`Service worker registration failed: ${error}`);
     }
