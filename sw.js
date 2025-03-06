@@ -13,9 +13,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SET_ACCESS_TOKEN') {
-    console.log('Data received', event.data);
     accessToken = event.data.accessToken?.token;
-    console.log('Access token set via message:', accessToken);
   }
 });
 
@@ -54,6 +52,7 @@ self.addEventListener("fetch", (event) => {
 
   if (DA_CONTENT_ORIGINS.includes(url.origin) && ASSETS_EXTENSIONS.some((ext) => url.pathname.endsWith(ext)) && accessToken) {
     console.log('Fetching asset with access token', accessToken);
+    console.log('Intercepted Request', event.request);
     const headers = new Headers(event.request.headers);
     headers.set('Authorization', `Bearer ${accessToken}`);
     const request = new Request(
