@@ -5,12 +5,11 @@ const DA_CONTENT_ORIGINS = [
 ];
 
 const ASSETS_EXTENSIONS = [ '.jpg', '.jpeg', '.png', '.svg', '.pdf', '.gif', '.mp4', '.svg' ];
+let accessToken = null;
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
-
-let accessToken = null;
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SET_ACCESS_TOKEN') {
