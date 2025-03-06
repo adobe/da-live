@@ -45,7 +45,7 @@ export default class DaEditor extends LitElement {
       const sw = await loadServiceWorker();
       if (sw) {
         console.log('Sending access token to service worker');
-        sw.active.postMessage.postMessage({
+        sw.active.postMessage({
           type: 'SET_ACCESS_TOKEN',
           accessToken,
         });
