@@ -36,8 +36,6 @@ self.addEventListener("fetch", (event) => {
     if (!accessToken) {
       console.log('No access token found for asset', event.request.url);
     } else {
-      console.log('Fetching asset with access token', accessToken);
-      console.log('Intercepted Request', event.request);
       const headers = new Headers(event.request.headers);
       headers.set('Authorization', `Bearer ${accessToken}`);
       const request = new Request(
