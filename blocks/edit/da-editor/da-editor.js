@@ -50,7 +50,7 @@ export default class DaEditor extends LitElement {
 
           const imgUrl = new URL(e.target.src);
           if (!AUTHORIZED_IMG_ORIGINS.includes(imgUrl.origin)) return;
-          e.target.src = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
+          // e.target.src = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
 
           const blobUrl = await fetchImage(e.target.src, accessToken.token);
           if (!blobUrl) return;
