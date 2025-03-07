@@ -21,6 +21,7 @@ async function fetchImage(url, token) {
     headers: header,
   };
   const response = await fetch(url, requestOptions);
+  if (!response.ok) return null;
   const buffer = await response.arrayBuffer();
   return URL.createObjectURL(new Blob([new Uint8Array(buffer)]));
 }
@@ -50,7 +51,9 @@ export default class DaEditor extends LitElement {
           if (!AUTHORIZED_IMG_ORIGINS.includes(imgUrl.origin)) return;
           e.target.src = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
 
-          e.target.src = await fetchImage(e.target.src, accessToken.token);
+          const blobUrl = await fetchImage(e.target.src, accessToken.token);
+          if (!blobUrl) return;
+          e.target.src = blobUrl;
         }
       });
     });
