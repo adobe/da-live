@@ -56,9 +56,9 @@ export default class DaEditor extends LitElement {
           if (!blobUrl) return;
           e.target.src = blobUrl;
         }
-      });
+      }, true);
       console.log('error listener added');
-    }, true);
+    });
   }
 
   async fetchVersion() {
