@@ -57,7 +57,7 @@ setup('Set up authentication', async ({ page }) => {
   } else {
     throw new Error('Password for authentication needed in environment variable TEST_PASSWORD');
   }
-  await page.getByLabel('Email address').fill('bosschae+da-test@adobetest.com');
+  await page.getByLabel('Email address').fill('da-test@adobetest.com');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Password', { exact: true }).fill(pwd);
   console.log('Entered password');

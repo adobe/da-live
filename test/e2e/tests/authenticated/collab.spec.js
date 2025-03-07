@@ -22,7 +22,7 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await page.goto(pageURL);
   await expect(page.getByLabel('Open profile menu')).toBeVisible();
   // Wait a little bit so that the collab awareness has caught up and knows that we are logged in as
-  // 'DA Test User'
+  // 'DA Testuser'
   await page.waitForTimeout(1000);
   await page.reload();
 
@@ -30,7 +30,7 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await page.locator('div.ProseMirror').fill('Entered by user 1');
 
   // Right now there should not be any collab indicators yet
-  await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Test User"]')).not.toBeVisible();
+  await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).not.toBeVisible();
   await expect(page.locator('span.ProseMirror-yjs-cursor')).not.toBeVisible();
 
   // Open a new browser page with an empty storage state. which means its not logged in and
@@ -48,14 +48,14 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
 
   // Check the little cloud icon for collaborators
   await page.waitForTimeout(2000); // give it some time to appear
-  await expect(page2.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Test User"]')).toBeVisible();
+  await expect(page2.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
 
   // Check the cursor for collaborator
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
-  await expect(page2.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Test User');
+  await expect(page2.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
   const text2 = await page2.locator('div.ProseMirror').innerText();
   const text2Idx = text2.indexOf('From user 2Entered by user 1');
-  const cursor2Idx = text2.indexOf('DA Test User');
+  const cursor2Idx = text2.indexOf('DA Testuser');
   expect(text2Idx).toBeGreaterThanOrEqual(0);
   expect(cursor2Idx).toBeGreaterThanOrEqual(0);
   expect(cursor2Idx).toBeGreaterThan(text2Idx);
