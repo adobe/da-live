@@ -43,7 +43,7 @@ export default class DaEditor extends LitElement {
     this.shadowRoot.createRange = () => document.createRange();
     initIms().then(({ accessToken}) => { 
       this._imsLoaded = true;
-      window.addEventListener('error', async (e) => {
+      document.addEventListener('error', async (e) => {
         console.log('error triggered', e);
         if (e.target.tagName === 'IMG') {
           if (!accessToken && !accessToken.token) return;
