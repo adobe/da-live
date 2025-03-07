@@ -44,6 +44,7 @@ export default class DaEditor extends LitElement {
     initIms().then(({ accessToken}) => { 
       this._imsLoaded = true;
       window.addEventListener('error', async (e) => {
+        console.log('error triggered', e);
         if (e.target.tagName === 'IMG') {
           if (!accessToken && !accessToken.token) return;
 
@@ -56,6 +57,7 @@ export default class DaEditor extends LitElement {
           e.target.src = blobUrl;
         }
       });
+      console.log('error listener added');
     });
   }
 
