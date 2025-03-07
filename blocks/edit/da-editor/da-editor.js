@@ -58,7 +58,7 @@ export default class DaEditor extends LitElement {
         }
       });
       console.log('error listener added');
-    });
+    }, true);
   }
 
   async fetchVersion() {
