@@ -6,6 +6,25 @@ import { parse, aem2prose } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
 
+const AUTHORIZED_IMG_ORIGINS = [
+  'https://content.da.live',
+  'https://stage-content.da.live',
+  'https://admin.da.live', // TODO: Remove this  
+];
+
+async function fetchImage(url, token) {
+  const header = new Headers();
+  header.append('Authorization', `Bearer ${token}`);
+
+  const requestOptions = {
+    method: 'GET',
+    headers: header,
+  };
+  const response = await fetch(url, requestOptions);
+  const buffer = await response.arrayBuffer();
+  return URL.createObjectURL(new Blob([new Uint8Array(buffer)]));
+}
+
 export default class DaEditor extends LitElement {
   static properties = {
     path: { type: String },
@@ -21,7 +40,20 @@ export default class DaEditor extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.shadowRoot.createRange = () => document.createRange();
-    initIms().then(() => { this._imsLoaded = true; });
+    initIms().then(({ accessToken}) => { 
+      this._imsLoaded = true;
+      window.addEventListener('error', async (e) => {
+        if (e.target.tagName === 'IMG') {
+          if (!accessToken && !accessToken.token) return;
+
+          const imgUrl = new URL(e.target.src);
+          if (!AUTHORIZED_IMG_ORIGINS.includes(imgUrl.origin)) return;
+          e.target.src = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
+
+          e.target.src = await fetchImage(e.target.src, accessToken.token);
+        }
+      });
+    });
   }
 
   async fetchVersion() {
