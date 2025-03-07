@@ -20,6 +20,8 @@ jobs:
     - name: Install Playwright Browsers
       run: cd test/e2e && npx playwright install --with-deps
     - name: Run Playwright tests
+      env:
+        TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
       run: cd test/e2e && npm run test:all
     - uses: actions/upload-artifact@v4
       if: always()
