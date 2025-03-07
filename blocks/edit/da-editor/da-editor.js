@@ -46,15 +46,16 @@ export default class DaEditor extends LitElement {
       this.shadowRoot.addEventListener('error', async (e) => {
         console.log('error triggered', e);
         if (e.target.tagName === 'IMG') {
+          const element = e.target;
           if (!accessToken && !accessToken.token) return;
 
-          const imgUrl = new URL(e.target.src);
+          const imgUrl = new URL(element.src);
           if (!AUTHORIZED_IMG_ORIGINS.includes(imgUrl.origin)) return;
           // e.target.src = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
 
-          const blobUrl = await fetchImage(e.target.src, accessToken.token);
+          const blobUrl = await fetchImage(element.src, accessToken.token);
           if (!blobUrl) return;
-          e.target.src = blobUrl;
+          element.src = blobUrl;
         }
       }, true);
       console.log('error listener added');
