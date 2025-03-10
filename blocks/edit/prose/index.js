@@ -256,9 +256,7 @@ export default function initProse({ path, permissions }) {
     history(),
   ];
 
-  if (canWrite) {
-    plugins.push(menu);
-  }
+  if (canWrite) plugins.push(menu);
 
   let state = EditorState.create({ schema, plugins });
 
