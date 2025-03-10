@@ -172,7 +172,7 @@ describe('Path details', () => {
     it('Handles hash from IMS', () => {
       const loc = { pathname: '/', hash: '#old_hash' };
       const details = getPathDetails(loc);
-      expect(details).to.equal(null);
+      expect(details).to.equal(undefined);
     });
   });
 });
