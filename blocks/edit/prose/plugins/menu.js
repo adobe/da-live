@@ -255,7 +255,7 @@ function removeLinkItem(linkMarkType) {
 
 function imgAltTextItem() {
   let altTextPalette = { isOpen: () => false };
-  const title = 'Image Alt Text';
+  const title = 'Alt text';
   return new MenuItem({
     title,
     label: title,
@@ -518,6 +518,7 @@ function getMenu(view) {
 
   const textMenu = [
     new Dropdown(textBlocks, {
+      title: 'Edit text',
       label: 'Edit Text',
       class: 'edit-text',
     }),
@@ -528,7 +529,8 @@ function getMenu(view) {
 
   const listMenu = [
     new Dropdown(getListMenu(nodes), {
-      label: 'List Menu',
+      title: 'List menu',
+      label: 'List',
       class: 'list-menu',
     }),
   ];
@@ -544,7 +546,8 @@ function getMenu(view) {
       class: 'open-library',
     }),
     new Dropdown(editTable, {
-      label: 'Edit Block',
+      title: 'Edit text',
+      label: 'Edit block',
       class: 'edit-table',
     }),
     new MenuItem({
@@ -555,7 +558,7 @@ function getMenu(view) {
     }),
     new MenuItem({
       title: 'Insert section break',
-      label: 'HR',
+      label: 'Section',
       enable(state) { return canInsert(state, nodes.horizontal_rule); },
       run: insertSectionBreak,
       class: 'edit-hr',
@@ -582,10 +585,6 @@ function getMenu(view) {
   const content = [textMenu, listMenu, blockMenu, undoMenu];
 
   const { dom, update } = renderGrouped(view, content);
-
-  const editTableMenu = dom.querySelector('.ProseMirror-menu-dropdown.edit-table');
-  const editTableItem = editTableMenu.closest('.ProseMirror-menuitem');
-  editTableItem.classList.add('edit-table');
 
   menu.append(dom);
 

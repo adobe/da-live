@@ -1,5 +1,4 @@
 import { LitElement, html } from 'da-lit';
-
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-palette/da-palette.css');
