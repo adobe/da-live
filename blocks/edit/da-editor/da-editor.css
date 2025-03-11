@@ -179,7 +179,7 @@ blockquote::before {
     }
 
     + .ProseMirror + .da-palettes {
-      left: 224px;
+      left: 220px;
       transition: left 0.5s ease-in-out 0.5s;
     }
   }
@@ -244,6 +244,15 @@ span.ProseMirror-menuseparator {
   height: 44px;
   flex: 0 0 auto;
   background: url('/blocks/edit/img/S2_Icon_Link_20_N.svg') center / 20px no-repeat;
+}
+
+.edit-unlink::before {
+  display: block;
+  content: '';
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat;
 }
 
 .ProseMirror-menu-dropdown.list-menu::before {
@@ -325,6 +334,7 @@ span.ProseMirror-menuseparator {
   .ProseMirror-menu-dropdown.edit-table,
   .ProseMirror-menu-dropdown.list-menu,
   .edit-link,
+  .edit-unlink,
   .img-alt-text,
   .open-library,
   .insert-table,
@@ -332,6 +342,12 @@ span.ProseMirror-menuseparator {
   .edit-undo,
   .edit-redo {
     filter: brightness(10);
+    color: #fff;
+  }
+
+  .ProseMirror-menu-active.edit-link,
+  .ProseMirror-menu-active.edit-unlink {
+    background-color: transparent;
     color: #fff;
   }
 }
@@ -468,10 +484,6 @@ span.ProseMirror-menuseparator {
 
 .edit-sub {
   background: url('/blocks/edit/img/Smock_TextSubscript_18_N.svg') center / 18px no-repeat;
-}
-
-.edit-unlink {
-  background: url('/blocks/edit/img/Smock_Unlink_18_N.svg') center / 18px no-repeat;
 }
 
 .bullet-list {
