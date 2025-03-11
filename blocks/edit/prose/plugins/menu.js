@@ -114,7 +114,7 @@ function hasImageNode(contentArr) {
 }
 
 function linkItem(linkMarkType) {
-  const label = 'Link';
+  const label = 'Edit link';
 
   let lastPrompt = { isOpen: () => false };
 
@@ -209,7 +209,7 @@ function linkItem(linkMarkType) {
 function removeLinkItem(linkMarkType) {
   return new MenuItem({
     title: 'Remove link',
-    label: 'Remove Link',
+    label: 'Remove',
     class: 'edit-unlink',
     isImage: false,
     active(state) {
@@ -519,7 +519,7 @@ function getMenu(view) {
   const textMenu = [
     new Dropdown(textBlocks, {
       title: 'Edit text',
-      label: 'Edit Text',
+      label: 'Edit text',
       class: 'edit-text',
     }),
     linkItem(marks.link),
