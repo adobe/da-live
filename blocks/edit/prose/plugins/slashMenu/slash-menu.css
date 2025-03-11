@@ -93,6 +93,34 @@
   background-image: url('/blocks/edit/img/Smock_TableAdd_18_N.svg');
 }
 
+.slash-menu-icon.table-options {
+  background-image: url('/blocks/edit/img/Smock_TableEdit_18_N.svg');
+}
+
+.slash-menu-icon.insert-column-left {
+  background-image: url('/blocks/edit/img/Smock_TableColumnAddLeft_18_N.svg');
+}
+
+.slash-menu-icon.insert-column-right {
+  background-image: url('/blocks/edit/img/Smock_TableColumnAddRight_18_N.svg');
+}
+
+.slash-menu-icon.insert-row-before {
+  background-image: url('/blocks/edit/img/Smock_TableRowAddTop_18_N.svg');
+}
+
+.slash-menu-icon.insert-row-after {
+  background-image: url('/blocks/edit/img/Smock_TableRowAddBottom_18_N.svg');
+}
+
+.slash-menu-icon.delete-row {
+  background-image: url('/blocks/edit/img/Smock_TableRowRemoveCenter_18_N.svg');
+}
+
+.slash-menu-icon.delete-column {
+  background-image: url('/blocks/edit/img/Smock_TableColumnRemoveCenter_18_N.svg');
+}
+
 .slash-menu-icon.edit-hr {
   background-image: url('/blocks/edit/img/Smock_PageRule_18_N.svg');
 }

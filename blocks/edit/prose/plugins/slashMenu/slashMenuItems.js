@@ -1,4 +1,14 @@
-import { setBlockType, wrapIn, wrapInList } from 'da-y-wrapper';
+import {
+  setBlockType,
+  wrapIn,
+  wrapInList,
+  addColumnBefore,
+  addColumnAfter,
+  addRowAfter,
+  addRowBefore,
+  deleteColumn,
+  deleteRow,
+} from 'da-y-wrapper';
 import openLibrary from '../../../da-library/da-library.js';
 import insertTable from '../../table.js';
 import { insertSectionBreak } from '../menu.js';
@@ -60,6 +70,7 @@ const items = [
     title: 'Section break',
     command: insertSectionBreak,
     class: 'edit-hr',
+    excludeFromTable: true,
   },
   {
     title: 'Lorem ipsum',
@@ -71,6 +82,7 @@ const items = [
     title: 'Table',
     command: insertTable,
     class: 'insert-table',
+    excludeFromTable: true,
   },
   {
     title: 'Library',
@@ -78,5 +90,52 @@ const items = [
     class: 'open-library',
   },
 ];
+
+const tableItems = [
+  {
+    title: 'Add Column After',
+    command: addColumnAfter,
+    class: 'insert-column-right',
+  },
+  {
+    title: 'Add Column Before',
+    command: addColumnBefore,
+    class: 'insert-column-left',
+  },
+  {
+    title: 'Add Row After',
+    command: addRowAfter,
+    class: 'insert-row-after',
+  },
+  {
+    title: 'Add Row Before',
+    command: addRowBefore,
+    class: 'insert-row-before',
+  },
+  {
+    title: 'Delete Row',
+    command: deleteRow,
+    class: 'delete-row',
+  },
+  {
+    title: 'Delete Column',
+    command: deleteColumn,
+    class: 'delete-column',
+  },
+];
+
+export const getItems = (isTable = false) => {
+  if (isTable) {
+    return [
+      {
+        title: 'Edit Block',
+        submenu: tableItems,
+        class: 'table-options',
+      },
+      ...items.filter((item) => !item.excludeFromTable),
+    ];
+  }
+  return items;
+};
 
 export default items;

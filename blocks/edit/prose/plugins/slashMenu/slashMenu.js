@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import { getKeyAutocomplete } from './keyAutocomplete.js';
-import menuItems from './slashMenuItems.js';
+import { getItems } from './slashMenuItems.js';
 import './slash-menu.js';
 
 const SLASH_COMMAND_REGEX = /\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
@@ -38,13 +38,11 @@ const getTableName = ($cursor) => {
   const cellIndex = $cursor.index(tableCellDepth - 1);
   const row = $cursor.node(rowDepth);
 
-  // Only proceed if we're in the second column
-  if (!(row.childCount > 1 && cellIndex === 1)) return false;
-
   const firstRowContent = firstRow.child(0).textContent;
   const tableNameMatch = firstRowContent.match(/^([a-zA-Z0-9_-]+)(?:\s*\([^)]*\))?$/);
 
-  const currentRowFirstColContent = row.child(0).textContent;
+  // Only set key value if we're in the second column of a row
+  const currentRowFirstColContent = (row.childCount > 1 && cellIndex === 1) ? row.child(0).textContent : null;
 
   if (tableNameMatch) {
     return {
@@ -60,7 +58,7 @@ class SlashMenuView {
   constructor(view) {
     this.view = view;
     this.menu = document.createElement('slash-menu');
-    this.menu.items = menuItems || [];
+    this.menu.items = getItems() || [];
 
     this.menu.addEventListener('item-selected', (e) => {
       this.selectItem(e.detail);
@@ -68,7 +66,7 @@ class SlashMenuView {
 
     this.menu.addEventListener('reset-slashmenu', () => {
       // reset menu to default items
-      this.menu.items = menuItems;
+      this.menu.items = getItems();
       this.menu.left = 0;
       this.menu.top = 0;
     });
@@ -81,7 +79,7 @@ class SlashMenuView {
       if (keyData && keyData.get(keyValue)) {
         this.menu.items = keyData.get(keyValue);
       } else {
-        this.menu.items = menuItems;
+        this.menu.items = getItems(true);
       }
     }
   }
@@ -200,16 +198,7 @@ export default function slashMenu() {
           if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(event.key)) {
             event.preventDefault();
             event.stopPropagation();
-
-            if (event.key === 'Enter') {
-              const filteredItems = pluginView.menu.getFilteredItems();
-              const selectedItem = filteredItems[pluginView.menu.selectedIndex];
-              if (selectedItem) {
-                pluginView.selectItem({ item: selectedItem });
-              }
-            } else {
-              pluginView.menu.handleKeyDown(event);
-            }
+            pluginView.menu.handleKeyDown(event);
             return true;
           }
         }
