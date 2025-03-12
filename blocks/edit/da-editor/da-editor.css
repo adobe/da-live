@@ -86,8 +86,6 @@
   font-variant-ligatures: none;
   font-feature-settings: "liga" 0;
   hyphens: auto;
-  -webkit-hyphens: auto;
-  -ms-hyphens: auto;
 }
 
 .ProseMirror-focused {
