@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import { getKeyAutocomplete } from './keyAutocomplete.js';
-import { getItems } from './slashMenuItems.js';
+import {getDefaultItems, getTableItems} from './slashMenuItems.js';
 import './slash-menu.js';
 
 const SLASH_COMMAND_REGEX = /\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
@@ -58,7 +58,7 @@ class SlashMenuView {
   constructor(view) {
     this.view = view;
     this.menu = document.createElement('slash-menu');
-    this.menu.items = getItems() || [];
+    this.menu.items = getDefaultItems() || [];
 
     this.menu.addEventListener('item-selected', (e) => {
       this.selectItem(e.detail);
@@ -66,7 +66,7 @@ class SlashMenuView {
 
     this.menu.addEventListener('reset-slashmenu', () => {
       // reset menu to default items
-      this.menu.items = getItems();
+      this.menu.items = getDefaultItems();
       this.menu.left = 0;
       this.menu.top = 0;
     });
@@ -79,8 +79,10 @@ class SlashMenuView {
       if (keyData && keyData.get(keyValue)) {
         this.menu.items = keyData.get(keyValue);
       } else {
-        this.menu.items = getItems(true);
+        this.menu.items = getTableItems();
       }
+    } else {
+      this.menu.items = getDefaultItems();
     }
   }
 
@@ -114,6 +116,7 @@ class SlashMenuView {
 
     const match = textBefore.match(SLASH_COMMAND_REGEX);
     if (match) {
+      console.log('update slash menu items')
       this.updateSlashMenuItems(slashMenuKey.getState(state), $cursor);
       const coords = this.view.coordsAtPos($cursor.pos);
 

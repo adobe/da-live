@@ -47,6 +47,7 @@ export default class SlashMenu extends LitElement {
     this.visible = true;
     this.left = coords.left;
     this.top = coords.top || (coords.bottom + 5);
+    this.showSubmenu();
     this.requestUpdate();
   }
 
@@ -99,20 +100,27 @@ export default class SlashMenu extends LitElement {
     return this.shadowRoot.querySelector('.submenu slash-menu');
   }
 
+  showSubmenu() {
+    const submenuElement = this.getSubmenuElement();
+    const items = this.getSubmenuItems();
+    if (!submenuElement || !items) return;
+
+    submenuElement.items = items;
+
+    // calculate submenu position
+    const selectedItem = this.shadowRoot.querySelector('.slash-menu-item.selected');
+    const topOffset = selectedItem ? selectedItem.offsetTop : 0;
+    const width = selectedItem ? selectedItem.offsetWidth : 0;
+    submenuElement.show({ top: this.top + topOffset, left: this.left + width });
+    submenuElement.focus();
+  }
+
   updated(changedProperties) {
     if (changedProperties.has('left') || changedProperties.has('top')) {
       this.updatePosition();
     }
     if (changedProperties.has('selectedIndex')) {
-      const submenu = this.getSubmenuElement();
-      if (submenu) {
-        submenu.items = this.getSubmenuItems();
-        const selectedItem = this.shadowRoot.querySelector('.slash-menu-item.selected');
-        const topOffset = selectedItem ? selectedItem.offsetTop : 0;
-        const width = selectedItem ? selectedItem.offsetWidth : 0;
-        submenu.show({ top: this.top + topOffset, left: this.left + width });
-        submenu.focus();
-      }
+      this.showSubmenu();
     }
   }
 

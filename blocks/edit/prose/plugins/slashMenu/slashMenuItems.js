@@ -124,18 +124,15 @@ const tableItems = [
   },
 ];
 
-export const getItems = (isTable = false) => {
-  if (isTable) {
-    return [
-      {
-        title: 'Edit Block',
-        submenu: tableItems,
-        class: 'table-options',
-      },
-      ...items.filter((item) => !item.excludeFromTable),
-    ];
-  }
+export const getTableItems = () => ([
+  {
+    title: 'Edit Block',
+    submenu: tableItems,
+    class: 'table-options',
+  },
+  ...items.filter((item) => !item.excludeFromTable),
+]);
+
+export const getDefaultItems = () => {
   return items;
 };
-
-export default items;
