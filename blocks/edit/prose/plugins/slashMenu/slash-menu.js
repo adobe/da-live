@@ -257,7 +257,8 @@ export default class SlashMenu extends LitElement {
             <div
               class="slash-menu-item ${index === this.selectedIndex ? 'selected' : ''}"
               @mouseenter=${() => { this.selectedIndex = index; }}
-              @click=${() => this.handleItemClick(item)}
+              @mousedown=${(e) => { e.preventDefault(); /* prevent close before click handler */ }}
+              @click=${() => { this.handleItemClick(item); }}
             >
               ${isColor ? createColorSquare(item.value) : ''}
               ${hasIcon ? html`<span class="slash-menu-icon ${item.class}"></span>` : ''}

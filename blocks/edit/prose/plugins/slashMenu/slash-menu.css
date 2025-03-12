@@ -90,11 +90,11 @@
 }
 
 .slash-menu-icon.insert-table {
-  background-image: url('/blocks/edit/img/Smock_TableAdd_18_N.svg');
+  background-image: url('/blocks/edit/img/S2_Icon_TableAdd_20_N.svg');
 }
 
 .slash-menu-icon.table-options {
-  background-image: url('/blocks/edit/img/Smock_TableEdit_18_N.svg');
+  background-image: url('/blocks/edit/img/S2_Icon_TableEdit_20_N.svg');
 }
 
 .slash-menu-icon.insert-column-left {
@@ -130,11 +130,11 @@
 }
 
 .slash-menu-icon.edit-hr {
-  background-image: url('/blocks/edit/img/Smock_PageRule_18_N.svg');
+  background-image: url('/blocks/edit/img/S2_Icon_Separator_20_N.svg');
 }
 
 .slash-menu-icon.open-library {
-  background-image: url('/blocks/edit/img/Smock_CCLibrary_18_N.svg');
+  background-image: url('/blocks/edit/img/S2_Icon_CCLibrary_20_N.svg');
 }
 
 .slash-menu-icon.lorem-ipsum {
