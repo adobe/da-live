@@ -613,6 +613,7 @@ td.selectedCell {
   word-wrap: break-word;
   white-space: pre-wrap;
   white-space: break-spaces;
+  overflow-wrap: anywhere;
   -webkit-font-variant-ligatures: none;
   font-variant-ligatures: none;
   font-feature-settings: "liga" 0; /* the above doesn't seem to work in Edge */
