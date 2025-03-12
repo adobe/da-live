@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import { getKeyAutocomplete } from './keyAutocomplete.js';
-import {getDefaultItems, getTableItems} from './slashMenuItems.js';
+import { getDefaultItems, getTableCellItems, getTableItems } from './slashMenuItems.js';
 import './slash-menu.js';
 
 const SLASH_COMMAND_REGEX = /\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
@@ -13,6 +13,8 @@ function extractArgument(title, command) {
     ? parts[parts.length - 1]
     : undefined;
 }
+
+const hasCellAreaSelected = (state) => state.selection.content().size > 0;
 
 // Get the table name if the cursor is in a table cell
 const getTableName = ($cursor) => {
@@ -72,14 +74,26 @@ class SlashMenuView {
     });
   }
 
-  updateSlashMenuItems(pluginState, $cursor) {
+  updateSlashMenuItems(pluginState, state) {
+    const { $cursor } = state.selection;
+
+    if (hasCellAreaSelected(state)) {
+      this.menu.items = getTableCellItems(state);
+      return;
+    }
+
+    if (!$cursor) {
+      this.menu.items = getDefaultItems();
+      return;
+    }
+
     const { tableName, keyValue } = getTableName($cursor);
     if (tableName) {
       const keyData = pluginState.autocompleteData?.get(tableName);
       if (keyData && keyData.get(keyValue)) {
         this.menu.items = keyData.get(keyValue);
       } else {
-        this.menu.items = getTableItems();
+        this.menu.items = getTableItems(state);
       }
     } else {
       this.menu.items = getDefaultItems();
@@ -93,6 +107,23 @@ class SlashMenuView {
       return keyData && keyData.get(keyValue);
     }
     return false;
+  }
+
+  showMenu(command) {
+    const { state } = this.view;
+    const { $anchor } = state.selection;
+
+    this.updateSlashMenuItems(slashMenuKey.getState(state), state);
+    const coords = this.view.coordsAtPos($anchor.pos);
+
+    const viewportCoords = {
+      left: coords.left + window.pageXOffset,
+      bottom: coords.bottom + window.pageYOffset,
+    };
+
+    this.menu.show(viewportCoords);
+
+    this.menu.command = command || '';
   }
 
   update(view) {
@@ -116,18 +147,7 @@ class SlashMenuView {
 
     const match = textBefore.match(SLASH_COMMAND_REGEX);
     if (match) {
-      console.log('update slash menu items')
-      this.updateSlashMenuItems(slashMenuKey.getState(state), $cursor);
-      const coords = this.view.coordsAtPos($cursor.pos);
-
-      const viewportCoords = {
-        left: coords.left + window.pageXOffset,
-        bottom: coords.bottom + window.pageYOffset,
-      };
-
-      this.menu.show(viewportCoords);
-
-      this.menu.command = match[1] || '';
+      this.showMenu(match[1]);
     } else if (this.menu.visible) {
       this.menu.command = '';
       this.hide();
@@ -137,12 +157,12 @@ class SlashMenuView {
   selectItem(detail) {
     const { item } = detail;
     const { state, dispatch } = this.view;
-    const { $cursor } = state.selection;
-    if (!$cursor) return;
+    const { $anchor } = state.selection;
+    if (!$anchor) return;
 
     // Delete the slash command and any arguments
-    const deleteFrom = $cursor.pos - (this.menu.command.length + 1);
-    const deleteTo = $cursor.pos;
+    const deleteFrom = $anchor.pos - (this.menu.command.length + 1);
+    const deleteTo = $anchor.pos;
     const tr = state.tr.delete(deleteFrom, deleteTo);
     const newState = state.apply(tr);
 
@@ -197,6 +217,13 @@ export default function slashMenu() {
     },
     props: {
       handleKeyDown(editorView, event) {
+        // if multiple cells are selected, show menu without outputting a /
+        if (event.key === '/' && hasCellAreaSelected(editorView.state)) {
+          event.preventDefault();
+          pluginView.showMenu();
+          return true;
+        }
+
         if (pluginView?.menu.visible) {
           if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(event.key)) {
             event.preventDefault();

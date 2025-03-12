@@ -121,6 +121,14 @@
   background-image: url('/blocks/edit/img/Smock_TableColumnRemoveCenter_18_N.svg');
 }
 
+.slash-menu-icon.merge-cells {
+  background-image: url('/blocks/edit/img/Smock_TableMergeCells_18_N.svg');
+}
+
+.slash-menu-icon.split-cell {
+  background-image: url('/blocks/edit/img/Smock_TableRowSplit_18_N.svg');
+}
+
 .slash-menu-icon.edit-hr {
   background-image: url('/blocks/edit/img/Smock_PageRule_18_N.svg');
 }

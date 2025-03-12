@@ -8,6 +8,8 @@ import {
   addRowBefore,
   deleteColumn,
   deleteRow,
+  mergeCells,
+  splitCell,
 } from 'da-y-wrapper';
 import openLibrary from '../../../da-library/da-library.js';
 import insertTable from '../../table.js';
@@ -122,17 +124,31 @@ const tableItems = [
     command: deleteColumn,
     class: 'delete-column',
   },
+  {
+    title: 'Split Cell',
+    command: splitCell,
+    class: 'split-cell',
+  },
 ];
 
-export const getTableItems = () => ([
+export const getTableItems = (state) => ([
   {
     title: 'Edit Block',
-    submenu: tableItems,
+    // prevent showing unavailable options.
+    // item.command(state) does not commit the command, but returns whether it's available.
+    submenu: tableItems.filter((item) => item.command(state)),
     class: 'table-options',
   },
   ...items.filter((item) => !item.excludeFromTable),
 ]);
 
-export const getDefaultItems = () => {
-  return items;
-};
+export const getTableCellItems = (state) => ([
+  {
+    title: 'Merge Cells',
+    command: mergeCells,
+    class: 'merge-cells',
+    enabled: mergeCells(state),
+  },
+].filter((x) => x.enabled !== false));
+
+export const getDefaultItems = () => items;
