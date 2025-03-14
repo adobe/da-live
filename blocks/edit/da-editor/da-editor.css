@@ -80,6 +80,12 @@
   box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
   border-radius: 10px;
   z-index: 1;
+  overflow-wrap: anywhere;
+  white-space: break-spaces;
+  -webkit-font-variant-ligatures: none;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+  hyphens: auto;
 }
 
 .ProseMirror-focused {
@@ -605,18 +611,6 @@ td.selectedCell {
 }
 
 /* COPY FROM PROSEMIRROR VIEW */
-.ProseMirror {
-  position: relative;
-}
-
-.ProseMirror {
-  word-wrap: break-word;
-  white-space: pre-wrap;
-  white-space: break-spaces;
-  -webkit-font-variant-ligatures: none;
-  font-variant-ligatures: none;
-  font-feature-settings: "liga" 0; /* the above doesn't seem to work in Edge */
-}
 
 .ProseMirror pre {
   white-space: pre-wrap;
