@@ -109,8 +109,8 @@ export default class SlashMenu extends LitElement {
 
     // calculate submenu position
     const selectedItem = this.shadowRoot.querySelector('.slash-menu-item.selected');
-    const topOffset = selectedItem ? selectedItem.offsetTop : 0;
-    const width = selectedItem ? selectedItem.offsetWidth : 0;
+    const topOffset = selectedItem?.offsetTop ?? 0;
+    const width = selectedItem?.offsetWidth ?? 0;
     submenuElement.show({ top: this.top + topOffset, left: this.left + width });
     submenuElement.focus();
   }
