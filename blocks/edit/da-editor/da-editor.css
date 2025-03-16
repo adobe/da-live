@@ -81,11 +81,9 @@
   border-radius: 10px;
   z-index: 1;
   overflow-wrap: anywhere;
-  white-space: break-spaces;
   -webkit-font-variant-ligatures: none;
   font-variant-ligatures: none;
   font-feature-settings: "liga" 0;
-  hyphens: auto;
 }
 
 .ProseMirror-focused {
