@@ -77,13 +77,10 @@
   position: relative;
   grid-area: editor;
   padding: 48px;
-  box-shadow: rgb(181, 181, 181) 0px 0px 20px 0px;
+  box-shadow: rgb(181 181 181) 0 0 20px;
   border-radius: 10px;
   z-index: 1;
   overflow-wrap: anywhere;
-  -webkit-font-variant-ligatures: none;
-  font-variant-ligatures: none;
-  font-feature-settings: "liga" 0;
 }
 
 .ProseMirror-focused {
