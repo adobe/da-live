@@ -363,6 +363,7 @@ span.ProseMirror-menuseparator {
   div {
     filter: brightness(10);
     color: #fff;
+    background-color: unset;
   }
 }
 
@@ -380,8 +381,10 @@ span.ProseMirror-menuseparator {
   opacity: 0.5;
 }
 
-.ProseMirror-menu-active {
+.ProseMirror-menu-active,
+.ProseMirror-menu-dropdown-item > div.ProseMirror-menu-active {
   background-color: #E4F0FF;
+  border-radius: 8px;
 }
 
 .ProseMirror-menu-dropdown-menu {
