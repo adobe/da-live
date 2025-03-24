@@ -30,8 +30,8 @@
     "yjs": "^13.6.20"
   },
   "devDependencies": {
-    "@babel/core": "7.24.5",
-    "@babel/eslint-parser": "7.24.5",
+    "@babel/core": "7.26.10",
+    "@babel/eslint-parser": "7.27.0",
     "@esm-bundle/chai": "4.3.4-fix.0",
     "@web/dev-server-import-maps": "^0.2.0",
     "@web/test-runner": "^0.18.0",
