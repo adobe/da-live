@@ -334,13 +334,13 @@ class DaLibrary extends LitElement {
       <li class="da-library-asset-item">
         <button class="da-library-type-asset-btn"
           @click=${() => this.handleItemClick(item)}>
-          <img src="${item.path}" />
+          <img src="https://content.da.live${item.path}" />
           <svg class="icon"><use href="#spectrum-AddCircle"/></svg>
         </button>
       </li>`;
   }
 
-  renderAssets(items) {
+  renderMedia(items) {
     return html`
       <ul class="da-library-type-list-assets">
       ${items.map((item) => this.renderAssetItem(item))}
@@ -435,9 +435,16 @@ class DaLibrary extends LitElement {
       return nothing;
     }
 
+    if (name === 'media') {
+      const resp = await daFetch(sources[0]);
+      const json = await resp.json();
+      return this.renderMedia(json);
+    }
+
     if (!data[name]) {
       data[name] = await getItems(sources, name, format);
     }
+
     if (data[name].length) {
       return this.renderItems(data[name], name);
     }
