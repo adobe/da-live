@@ -25,7 +25,7 @@ export default function imageDrop(schema) {
             const { $from } = view.state.selection;
 
             const details = getPathDetails();
-            const url = `${details.origin}/source${details.parent}/${file.name}`;
+            const url = `${details.origin}/source${details.parent}/.${details.name}/${file.name}`;
 
             const formData = new FormData();
             formData.append('data', file);
