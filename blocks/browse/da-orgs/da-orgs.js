@@ -174,7 +174,7 @@ export default class DaOrgs extends LitElement {
           ${this._recents && this._recents.length > 0 ? this.renderGo() : nothing}
         </div>
         <div class="da-org-sandbox-new">
-          <a class="da-double-card da-double-card-sandbox" href="#/aemsites">
+          <a class="da-double-card da-double-card-sandbox" href="#/aemsites/da-block-collection">
             <picture>
               <img class="da-double-card-bg" src="/blocks/browse/da-orgs/img/bg-sandbox-card.avif" width="800" height="534" alt="" />
             </picture>

@@ -93,7 +93,7 @@ export default class DaTitle extends LitElement {
         return;
       }
       const { url } = action === 'publish' ? json.live : json.preview;
-      window.open(url, '_blank');
+      window.open(`${url}?nocache=${Date.now()}`, url);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');

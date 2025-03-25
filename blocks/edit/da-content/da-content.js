@@ -99,7 +99,7 @@ export default class DaContent extends LitElement {
             </div>
             <div class="da-editor-tabs-quiet">
               <button class="da-editor-tab quiet show-versions" title="Versions" @click=${this.showVersions}>Versions</button>
-              ${this._ueUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in Universal Editor" @click=${this.openUe}>Universal Editor</button>` : nothing}
+              ${this._ueUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
             </div>
           </div>
         ` : nothing}
