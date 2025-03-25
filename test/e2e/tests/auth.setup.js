@@ -63,7 +63,7 @@ setup('Set up authentication', async ({ page }) => {
   console.log('Entered password');
   await page.getByLabel('Continue', { exact: true }).click();
   await page.getByLabel('Foundation Internal').click();
-  await expect(page.locator('a.nx-nav-brand')).toContainText('Document Authoring');
+  await expect(page.locator('a.nx-nav-brand')).toContainText('Author');
 
   await page.context().storageState({ path: AUTH_FILE });
 });
