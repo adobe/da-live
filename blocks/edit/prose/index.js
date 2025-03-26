@@ -172,7 +172,7 @@ function restoreCursorPosition(view) {
   }
 }
 
-export default function initProse({ path, permissions }) {
+export default function initProse({ path, permissions, docguid }, resetFunc) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
   const editor = document.createElement('div');
@@ -197,7 +197,31 @@ export default function initProse({ path, permissions }) {
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
 
-  const yXmlFragment = ydoc.getXmlFragment('prosemirror');
+  const curGuid = docguid ?? `new-${crypto.randomUUID()}`;
+
+  const guidMap = ydoc.getMap('prosemirror-latestguid');
+  guidMap.set('guid', curGuid);
+  ydoc.on('update', () => {
+    const guid = guidMap.get('guid');
+    if (guid !== curGuid) {
+      console.log('Document guid changed from', curGuid, 'to', guid);
+      // if (curGuid.startsWith('new-')) {
+      //   const oldFrag = ydoc.getXmlFragment(`prosemirror-${curGuid}`);
+      //   const newFrag = ydoc.getXmlFragment(`prosemirror-${guid}`);
+
+      //   newFrag.insert(0, oldFrag.clone());
+      //   //   .map((item) => (item instanceof AbstractType ? item.clone() : item)));
+      //   console.log('Copied old data to new guid', guid);
+      // }
+      resetFunc(guid);
+    }
+    if (guidMap.get('mismatch') === guid) {
+      // eslint-disable-next-line no-console
+      console.log('You are editing a document that has since been deleted! Your changes will not be persisted.');
+    }
+  });
+
+  const yXmlFragment = ydoc.getXmlFragment(`prosemirror-${curGuid}`);
 
   if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then(
