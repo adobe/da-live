@@ -197,27 +197,26 @@ export default function initProse({ path, permissions, docguid }, resetFunc) {
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
 
-  const curGuid = docguid ?? `new-${crypto.randomUUID()}`;
+  const guidArray = ydoc.getArray('prosemirror-guids');
+  let curGuid;
+  if (docguid) {
+    curGuid = docguid;
+  } else {
+    curGuid = crypto.randomUUID();
+    guidArray.push([{ ts: Date.now(), guid: curGuid, newDoc: true }]);
+  }
 
-  const guidMap = ydoc.getMap('prosemirror-latestguid');
-  guidMap.set('guid', curGuid);
   ydoc.on('update', () => {
-    const guid = guidMap.get('guid');
-    if (guid !== curGuid) {
-      console.log('Document guid changed from', curGuid, 'to', guid);
-      // if (curGuid.startsWith('new-')) {
-      //   const oldFrag = ydoc.getXmlFragment(`prosemirror-${curGuid}`);
-      //   const newFrag = ydoc.getXmlFragment(`prosemirror-${guid}`);
-
-      //   newFrag.insert(0, oldFrag.clone());
-      //   //   .map((item) => (item instanceof AbstractType ? item.clone() : item)));
-      //   console.log('Copied old data to new guid', guid);
-      // }
-      resetFunc(guid);
+    // If the document has been replaced by a another document (it has been first deleted
+    // and then a new document has been created), reset the window to connect to the new doc.
+    const guids = [...guidArray];
+    if (guids.length === 0) {
+      return;
     }
-    if (guidMap.get('mismatch') === guid) {
-      // eslint-disable-next-line no-console
-      console.log('You are editing a document that has since been deleted! Your changes will not be persisted.');
+    guids.sort((a, b) => a.ts - b.ts);
+    const latestGuid = guids.pop();
+    if (latestGuid.guid !== curGuid) {
+      resetFunc(latestGuid.guid);
     }
   });
 
