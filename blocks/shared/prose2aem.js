@@ -132,7 +132,7 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
-const iconRegex = /:([a-zA-Z0-9-]+?):/gm; // any alphanumeric character or - surrounded by :
+const iconRegex = /\s:([a-zA-Z0-9-]+?):\s/gm; // matches icon pattern with spaces before and after
 function parseIcons(editor) {
   if (!iconRegex.test(editor.innerHTML)) return;
   editor.innerHTML = editor.innerHTML.replace(
