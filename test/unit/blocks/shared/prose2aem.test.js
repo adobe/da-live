@@ -62,6 +62,6 @@ describe('aem2prose', () => {
 
   it('Wraps icons in span tags', () => {
     const icons = document.querySelectorAll('span.icon');
-    expect(icons.length).to.equal(5);
+    expect(icons.length).to.equal(9);
   });
 });
