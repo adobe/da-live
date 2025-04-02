@@ -132,7 +132,7 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
-const iconRegex = /(?<!https?:\/\/.*):([a-zA-Z0-9-]+?):/gm; // matches icon pattern but not in URLs
+const iconRegex = /(?<!https?:\/\/[^\s]*):([a-zA-Z0-9-]+?):/gm; // matches icon pattern but not in URLs
 function parseIcons(editor) {
   if (!iconRegex.test(editor.innerHTML)) return;
   editor.innerHTML = editor.innerHTML.replace(
