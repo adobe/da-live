@@ -40,7 +40,7 @@ export default async function daPreview(loadPage) {
 
   async function onMessage(e) {
     if (e.data.set === 'body') {
-      document.body.outerHTML = e.data.body;
+      document.body.innerHTML = e.data.body;
       await loadPage();
     }
 
