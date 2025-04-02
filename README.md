@@ -44,5 +44,3 @@ npm run build:da-y-wrapper
 ```
 
 Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
-
-
