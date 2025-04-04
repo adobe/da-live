@@ -88,8 +88,13 @@ class DaLibrary extends LitElement {
     if (e.key === 'Escape') closeLibrary();
   }
 
-  handleModalClose() {
+  handleModalClose(e) {
     this.shadowRoot.querySelector('.da-dialog-plugin').close();
+    closeLibrary();
+  }
+
+  handleFullsizeModalClose(e) {
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
     closeLibrary();
   }
 
@@ -120,6 +125,30 @@ class DaLibrary extends LitElement {
       render(dialog, this.shadowRoot);
 
       this.shadowRoot.querySelector('.da-dialog-plugin').showModal();
+
+      return;
+    }
+
+    if (library.experience === 'fullsize-dialog') {
+      let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
+      if (dialog) dialog.remove();
+
+      dialog = html`
+        <dialog class="da-fs-dialog-plugin">
+          <div class="da-dialog-header">
+            <div class="da-dialog-header-title">
+              <img src="${library.icon}" />
+              <p>${library.name}</p>
+            </div>
+            <button class="primary" @click=${this.handleFullsizeModalClose}>Close</button>
+          </div>
+          ${this.renderPlugin(library.url, true)}
+        </dialog>
+      `;
+
+      render(dialog, this.shadowRoot);
+
+      this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
 
       return;
     }
