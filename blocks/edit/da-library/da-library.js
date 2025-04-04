@@ -88,8 +88,13 @@ class DaLibrary extends LitElement {
     if (e.key === 'Escape') closeLibrary();
   }
 
-  handleModalClose() {
+  handleModalClose(e) {
     this.shadowRoot.querySelector('.da-dialog-plugin').close();
+    closeLibrary();
+  }
+
+  handleFullsizeModalClose(e) {
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
     closeLibrary();
   }
 
@@ -135,7 +140,7 @@ class DaLibrary extends LitElement {
               <img src="${library.icon}" />
               <p>${library.name}</p>
             </div>
-            <button class="primary" @click=${this.handleModalClose}>Close</button>
+            <button class="primary" @click=${this.handleFullsizeModalClose}>Close</button>
           </div>
           ${this.renderPlugin(library.url, true)}
         </dialog>
