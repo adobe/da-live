@@ -94,7 +94,7 @@ export async function openAssets() {
         const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:description'];
 
         const src = aemTierType === 'author'
-          ? `${prodOrigin}${path}`
+          ? `https://${prodOrigin}${path}`
           // eslint-disable-next-line no-underscore-dangle
           : asset._links['http://ns.adobe.com/adobecloud/rel/rendition'][0].href.split('?')[0];
 
