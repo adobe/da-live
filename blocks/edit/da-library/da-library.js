@@ -124,6 +124,30 @@ class DaLibrary extends LitElement {
       return;
     }
 
+    if (library.experience === 'fullsize-dialog') {
+      let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
+      if (dialog) dialog.remove();
+
+      dialog = html`
+        <dialog class="da-fs-dialog-plugin">
+          <div class="da-dialog-header">
+            <div class="da-dialog-header-title">
+              <img src="${library.icon}" />
+              <p>${library.name}</p>
+            </div>
+            <button class="primary" @click=${this.handleModalClose}>Close</button>
+          </div>
+          ${this.renderPlugin(library.url, true)}
+        </dialog>
+      `;
+
+      render(dialog, this.shadowRoot);
+
+      this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
+
+      return;
+    }
+
     if (library.experience === 'window') {
       try {
         const { pathname } = new URL(library.url);
