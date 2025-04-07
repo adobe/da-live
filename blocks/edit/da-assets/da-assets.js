@@ -115,6 +115,7 @@ export async function openAssets() {
         }
 
         if (injectDms7Link) {
+          console.log('injectDms7Link', asset);
           const para = document.createElement('p');
           const link = document.createElement('a');
           link.href = asset['repo:dmScene7Url'] || src;
