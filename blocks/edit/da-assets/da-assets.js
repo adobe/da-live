@@ -56,7 +56,8 @@ export async function openAssets() {
 
   // Determine if images should be links
   const injectLink = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'link';
-
+  //determine if the links are dms7 links
+  const injectDms7Link = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'dms7link';
   let dialog = document.querySelector('.da-dialog-asset');
   if (!dialog) {
     await loadStyle(import.meta.url.replace('.js', '.css'));
@@ -113,7 +114,17 @@ export async function openAssets() {
           fpo = state.schema.nodes.image.create(imgObj);
         }
 
-        view.dispatch(state.tr.replaceSelectionWith(fpo).scrollIntoView());
+        if (injectDms7Link) {
+          console.log('injectDms7Link', asset);
+          const para = document.createElement('p');
+          const link = document.createElement('a');
+          link.href = asset['repo:dmScene7Url'] || src;
+          link.innerText = src;
+          para.append(link);
+          fpo = proseDOMParser.fromSchema(window.view.state.schema).parse(para);
+        } else {
+          fpo = state.schema.nodes.image.create(imgObj);
+        }
       },
     };
     window.PureJSSelectors.renderAssetSelector(inner, selectorProps);
