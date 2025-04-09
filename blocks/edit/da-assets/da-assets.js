@@ -58,6 +58,9 @@ export async function openAssets() {
   const injectLink = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'link';
   //determine if the links are dms7 links
   const injectDms7Link = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'dms7link';
+  // Get DMS7 options if configured
+  const dms7Options = injectDms7Link ? (await getConfKey(owner, repo, 'aem.assets.dm.options')) : '';
+
   let dialog = document.querySelector('.da-dialog-asset');
   if (!dialog) {
     await loadStyle(import.meta.url.replace('.js', '.css'));
@@ -107,6 +110,24 @@ export async function openAssets() {
           const para = document.createElement('p');
           const link = document.createElement('a');
           link.href = src;
+          link.innerText = src;
+          para.append(link);
+          fpo = proseDOMParser.fromSchema(window.view.state.schema).parse(para);
+        } else if (injectDms7Link) {
+          const para = document.createElement('p');
+          const link = document.createElement('a');
+          const originalUrl = asset['repo:dmScene7Url'];
+          const urlParts = originalUrl.split('/');
+          // Find the index after the domain
+          const domainIndex = urlParts.findIndex(part => part.includes('scene7.com'));
+          if (domainIndex !== -1) {
+            urlParts.splice(domainIndex + 1, 0, 'is', 'image');
+            const dms7Url = urlParts.join('/') + dms7Options;
+            link.href = dms7Url;
+          } else {
+            console.warn('Invalid Scene7 URL format:', originalUrl);
+            return;
+          }
           link.innerText = src;
           para.append(link);
           fpo = proseDOMParser.fromSchema(window.view.state.schema).parse(para);
