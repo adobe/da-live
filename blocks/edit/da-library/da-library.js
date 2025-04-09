@@ -88,12 +88,12 @@ class DaLibrary extends LitElement {
     if (e.key === 'Escape') closeLibrary();
   }
 
-  handleModalClose(e) {
+  handleModalClose() {
     this.shadowRoot.querySelector('.da-dialog-plugin').close();
     closeLibrary();
   }
 
-  handleFullsizeModalClose(e) {
+  handleFullsizeModalClose() {
     this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
     closeLibrary();
   }
