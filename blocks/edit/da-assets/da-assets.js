@@ -60,6 +60,7 @@ export async function openAssets() {
   const injectDms7Link = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'dms7link';
   // Get DMS7 options if configured
   const dms7Options = injectDms7Link ? (await getConfKey(owner, repo, 'aem.assets.dm.options')) : '';
+
   let dialog = document.querySelector('.da-dialog-asset');
   if (!dialog) {
     await loadStyle(import.meta.url.replace('.js', '.css'));
@@ -97,7 +98,7 @@ export async function openAssets() {
         const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:description'];
 
         const src = aemTierType === 'author'
-          ? `${prodOrigin}${path}`
+          ? `https://${prodOrigin}${path}`
           // eslint-disable-next-line no-underscore-dangle
           : asset._links['http://ns.adobe.com/adobecloud/rel/rendition'][0].href.split('?')[0];
 
@@ -127,6 +128,18 @@ export async function openAssets() {
             console.warn('Invalid Scene7 URL format:', originalUrl);
             return;
           }
+          link.innerText = src;
+          para.append(link);
+          fpo = proseDOMParser.fromSchema(window.view.state.schema).parse(para);
+        } else {
+          fpo = state.schema.nodes.image.create(imgObj);
+        }
+
+        if (injectDms7Link) {
+          console.log('injectDms7Link', asset);
+          const para = document.createElement('p');
+          const link = document.createElement('a');
+          link.href = asset['repo:dmScene7Url'] || src;
           link.innerText = src;
           para.append(link);
           fpo = proseDOMParser.fromSchema(window.view.state.schema).parse(para);
