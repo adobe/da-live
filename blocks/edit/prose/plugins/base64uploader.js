@@ -49,7 +49,7 @@ export default function base64Uploader() {
               if (ext === 'jpeg') ext = 'jpg';
 
               const { parent, name } = getPathDetails();
-              const path = `${parent}/${name}-wp${makeHash(src)}.${ext}`;
+              const path = `${parent}/.${name}/wp${makeHash(src)}.${ext}`;
               const fpoSrc = `${FPO_IMG_URL}#${CON_ORIGIN}${path}`;
 
               tr.setNodeMarkup(pos, null, { ...node.attrs, src: fpoSrc });
