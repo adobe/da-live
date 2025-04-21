@@ -191,7 +191,7 @@ export default class DaListItem extends LitElement {
   renderItem() {
     let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
     let externalUrlPromise;
-    let target = this.ext ? path : nothing;
+    let target = this.ext ? path.split('#')[1] : nothing;
     if (this.ext === 'link') {
       path = nothing;
       externalUrlPromise = daFetch(`${DA_ORIGIN}/source${this.path}`)
