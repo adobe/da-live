@@ -1,0 +1,10 @@
+{
+  "extends": ["config:recommended"],
+  "branchPrefix": "renovate_",
+  "branchTopic": "{{{depNameSanitized}}}-{{{newMajor}}}{{#if separateMinorPatch}}{{#if isPatch}}_{{{newMinor}}}{{/if}}{{/if}}_x{{#if isLockfileUpdate}}-lockfile{{/if}}",
+  "packageRules": [{
+      "matchDepTypes": ["devDependencies"],
+      "labels": ["ignore-psi-check"], 
+      "automerge": true
+  }]
+}
