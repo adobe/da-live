@@ -1,7 +1,7 @@
 {
   "extends": ["config:recommended"],
   "branchNameStrict": true,
-  "branchName": "r_{{{packageName}}}_{{version}}",
+  "branchName": "r_{{{packageName}}}",
   "packageRules": [{
       "matchDepTypes": ["devDependencies"],
       "labels": ["ignore-psi-check"], 
