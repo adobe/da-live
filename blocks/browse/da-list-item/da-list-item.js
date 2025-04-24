@@ -1,10 +1,9 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemPreview } from '../../shared/utils.js';
+import { daFetch, aemPreview, normalizeEmail } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
-import { normalizeEmail } from '../../shared/email.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);

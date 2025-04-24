@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { normalizeEmail, compareEmails } from '../../../blocks/shared/email.js';
+import { normalizeEmail, compareEmails } from '../../../../blocks/shared/utils.js';
 
 describe('Email utilities', () => {
   describe('normalizeEmail', () => {

@@ -35,7 +35,7 @@ import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
-import { normalizeEmail } from '../../shared/email.js';
+import { normalizeEmail } from '../../shared/utils.js';
 
 let sendUpdates = false;
 let hasChanged = 0;
