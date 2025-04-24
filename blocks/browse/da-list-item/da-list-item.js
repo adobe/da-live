@@ -4,6 +4,7 @@ import { daFetch, aemPreview } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
+import { normalizeEmail } from '../../shared/email.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
@@ -89,8 +90,8 @@ export default class DaListItem extends LitElement {
     }, []);
     this._version = count;
     this._lastModifedBy = json.pop().users.map(
-      (user) => user.email.split('@')[0],
-    ).join(', ').toLowerCase();
+      (user) => normalizeEmail(user.email).split('@')[0],
+    ).join(', ');
   }
 
   handleChecked(e) {

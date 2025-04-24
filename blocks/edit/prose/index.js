@@ -35,6 +35,7 @@ import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
+import { normalizeEmail } from '../../shared/email.js';
 
 let sendUpdates = false;
 let hasChanged = 0;
@@ -205,7 +206,7 @@ export default function initProse({ path, permissions }) {
         wsProvider.awareness.setLocalStateField(
           'user',
           {
-            color: generateColor(profile.email || profile.userId),
+            color: generateColor(normalizeEmail(profile.email) || profile.userId),
             name: profile.displayName,
             id: profile.userId,
           },
