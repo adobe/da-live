@@ -13,10 +13,6 @@ const ASSET_SELECTOR_URL =
 
 const CONFS = {};
 
-async function getMergedConf(owner, repo) {
-  return mergedConf;
-}
-
 async function fetchConf(path) {
   if (CONFS[path]) return CONFS[path];
   const resp = await daFetch(`${DA_ORIGIN}/config${path}`);
@@ -32,27 +28,40 @@ async function fetchConf(path) {
 async function fetchValue(path, key) {
   if (CONFS[path]?.[key]) return CONFS[path][key];
 
-  const [repoConf, orgConf] = await Promise.all([
-    fetchConf(`/${owner}/${repo}/`),
-    fetchConf(`/${owner}/`),
-  ]);
+  let data = null;
 
-  const data = null;
+  // Check if requested configuration is for organization level.
+  if (path.includes(`/${owner}/`)) {
+    const orgConf = await fetchConf(`/${owner}/`);
 
-  // Start with organization-level config
-  if (orgConf) {
-    data = {};
-    orgConf.forEach((item) => {
-      data[item.key] = item.value;
-    });
+    // Start with organization-level config
+    if (orgConf) {
+      data = [];
+      orgConf.forEach((item) => data.push(item));
+    }
   }
 
-  // Override with repository-level config
-  if (repoConf) {
-    if (data === null) data = {};
-    repoConf.forEach((item) => {
-      data[item.key] = item.value;
-    });
+  // Check if requested configuration is for repository level.
+  if (path.includes(`/${owner}/${repo}/`)) {
+    const repoConf = await fetchConf(`/${owner}/${repo}/`);
+
+    // Override with repository-level config if organizational config is found.
+    if (repoConf) {
+      if (data === null) data = [];
+      repoConf.forEach((item) => {
+        const itemKeys = Object.keys(item);
+        for (let i = 0; i < data.length; i++) {
+          itemKeys.forEach((itemKey) => {
+            if (itemKey in data[i]) data[i][itemKey] = item[itemKey];
+          });
+        }
+      });
+    }
+  }
+
+  // Just fetch configuration if requested path is neither organization nor repository level.
+  if (!path.includes(`/${owner}/${repo}/`) && !path.includes(`/${owner}/`)) {
+    data = await fetchConf(path);
   }
 
   if (!data) return null;
