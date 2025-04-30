@@ -30,6 +30,11 @@
     "yjs": "^13.6.20"
   },
   "devDependencies": {
+    "@adobe/exc-app": "^1.4.11",
+    "@adobe/uix-core": "^1.0.1",
+    "@adobe/uix-guest": "^1.0.1",
+    "@adobe/uix-host": "^1.0.1",
+    "@adobe/uix-host-react": "^1.0.1",
     "@babel/core": "7.24.5",
     "@babel/eslint-parser": "7.24.5",
     "@esm-bundle/chai": "4.3.4-fix.0",
@@ -58,6 +63,7 @@
     "test:watch": "npm test -- --watch",
     "test:e2e": "cd test/e2e && npm i && npm run test:all",
     "build:da-lit": "esbuild --format=esm --minify ./deps/lit/src/index.js --bundle --outfile=./deps/lit/dist/index.js",
-    "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js"
+    "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js",
+    "build:uix": "esbuild --format=esm --minify ./node_modules/@adobe/uix-host/src/index.ts --bundle --outfile=./deps/uix-host/dist/index.js && esbuild --format=esm --minify ./node_modules/@adobe/uix-host-react/src/components/ExtensibleWrapper/ExtensionManagerProvider.ts --bundle --outfile=./deps/uix-host/dist/extension-manager.js"
   }
 }

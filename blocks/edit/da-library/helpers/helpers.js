@@ -5,6 +5,10 @@ import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getConfKey, openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
+import { Host } from '../../../../../../../../../deps/uix-host/dist/index.js';
+import { createExtensionManagerExtensionsProvider } from '../../../../../../../../../deps/uix-host/dist/extension-manager.js';
+
+const { getNx } = await import('../../../../scripts/utils.js');
 
 const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
@@ -61,6 +65,7 @@ export async function getItems(sources, listType, format) {
 let currOwner;
 let currRepo;
 let libraries;
+let uixHost;
 
 async function getDaLibraries(owner, repo) {
   const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
@@ -87,6 +92,56 @@ async function getDaLibraries(owner, repo) {
   }
 
   return daLibraries;
+}
+
+async function getExtensionList() {
+  const { getConfig } = await import(`${getNx()}/scripts/nexter.js`);
+  const { env } = getConfig();
+
+  const { initIms } = await import('../../../shared/utils.js');
+  const imsInfo = (await initIms()) || {};
+
+  const extProvider = createExtensionManagerExtensionsProvider({
+    experienceShellEnvironment: env === 'stage' ? 'stage' : 'prod',
+    scope: {
+      programId: 77504,
+      envId: 175976,
+    },
+  }, {
+    apiKey: 'exc_app',
+    imsOrg: imsInfo.ownerOrg,
+    imsToken: imsInfo.accessToken.token,
+  }, {}, {
+    service: 'da',
+    name: 'ui',
+    version: '1',
+  });
+  return extProvider();
+}
+
+export async function getUixHost() {
+  if (uixHost) return uixHost;
+  uixHost = new Host({ hostName: 'Dark Alley', debug: true });
+  //await uixHost.load({ 0: 'https://localhost.corp.adobe.com:9080/', ...await getExtensionList() });
+  await uixHost.load({ 0: 'https://localhost:8080/resources/da.html'});
+  return uixHost;
+}
+
+async function getUixExtensions() {
+  const host = await getUixHost();
+  const extensions = await host.getLoadedGuests({ da: ['getBlocks'] });
+
+  const data = await Promise.all(extensions.map(async (extension) => {
+    const manifests = await extension.apis.da.getBlocks();
+
+    return manifests.map((manifest) => ({
+      ...manifest,
+      url: new URL(manifest.url, extension.url).href,
+      extensionId: extension.id,
+    }));
+  }));
+
+  return data.flat();
 }
 
 async function getAemPlugins(owner, repo) {
@@ -138,8 +193,11 @@ export async function getLibraryList() {
   const daLibraries = getDaLibraries(owner, repo);
   const aemAssets = getAssetsPlugin(owner, repo);
   const aemPlugins = getAemPlugins(owner, repo);
+  const uiExtensions = getUixExtensions();
 
-  const [da, assets, aem] = await Promise.all([daLibraries, aemAssets, aemPlugins]);
+  const [da, assets, aem, uix] = await Promise.all([
+    daLibraries, aemAssets, aemPlugins, uiExtensions,
+  ]);
 
   if (assets) {
     // Attempt to push after templates
@@ -153,7 +211,7 @@ export async function getLibraryList() {
       da.push(assets);
     }
   }
-  libraries = [...da, ...aem];
+  libraries = [...da, ...aem, ...uix];
   return libraries;
 }
 
