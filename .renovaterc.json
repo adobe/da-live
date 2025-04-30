@@ -1,0 +1,10 @@
+{
+  "extends": ["config:recommended"],
+  "branchNameStrict": true,
+  "branchName": "r_{{{packageName}}}",
+  "packageRules": [{
+      "matchDepTypes": ["devDependencies"],
+      "labels": ["ignore-psi-check"], 
+      "automerge": true
+  }]
+}
