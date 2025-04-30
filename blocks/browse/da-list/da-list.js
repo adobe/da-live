@@ -138,6 +138,20 @@ export default class DaList extends LitElement {
     this.requestUpdate();
   }
 
+  handleRenameCompleted(e) {
+    const { oldPath, path, name, date } = e.detail;
+    const index = this._listItems.findIndex((lItem) => lItem.path === oldPath);
+    if (index < 0) return;
+
+    const item = this._listItems[index];
+
+    item.path = path;
+    item.name = name;
+    item.lastModified = date;
+
+    this._listItems[index] = item;
+  }
+
   wait(milliseconds) {
     return new Promise((r) => {
       setTimeout(r, milliseconds);
@@ -395,6 +409,7 @@ export default class DaList extends LitElement {
           role="listitem"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
+          @renamecompleted=${(e) => this.handleRenameCompleted(e)}
           allowselect="${this.select ? true : nothing}"
           ischecked="${item.isChecked ? true : nothing}"
           rename="${item.rename ? true : nothing}"
