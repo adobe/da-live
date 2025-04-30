@@ -31,6 +31,15 @@ import openLibrary from '../../da-library/da-library.js';
 
 import insertTable from '../table.js';
 
+function isValidURL(text) {
+  try {
+    const url = new URL(text);
+    return Boolean(url);
+  } catch (e) {
+    return false;
+  }
+}
+
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
   // eslint-disable-next-line no-plusplus
@@ -113,6 +122,25 @@ function hasImageNode(contentArr) {
   return contentArr.some((node) => node.type.name === 'image');
 }
 
+function getFullLinkMarkRange(state, linkMarkType) {
+  const { from, to } = state.selection;
+  let linkStart = null;
+  let linkEnd = null;
+  state.doc.nodesBetween(from, to, (node, pos) => {
+    if (!node.isText) return;
+    node.marks.forEach((mark) => {
+      if (mark.type === linkMarkType) {
+        if (linkStart === null || pos < linkStart) linkStart = pos;
+        if (linkEnd === null || pos + node.text.length > linkEnd) linkEnd = pos + node.text.length;
+      }
+    });
+  });
+  if (linkStart !== null && linkEnd !== null) {
+    return { start: linkStart, end: linkEnd };
+  }
+  return null;
+}
+
 function linkItem(linkMarkType) {
   const label = 'Edit link';
 
@@ -178,29 +206,46 @@ function linkItem(linkMarkType) {
         .setMeta('addToHistory', false));
 
       const callback = (attrs) => {
-        if (isImage) {
-          if (fields.href.value) {
-            dispatch(view.state.tr.setNodeAttribute(start, 'href', fields.href.value.trim()));
-          }
-          if (fields.title.value) {
-            dispatch(view.state.tr.setNodeAttribute(start, 'title', fields.title.value.trim()));
-          }
-        } else {
-          const tr = view.state.tr
-            .setSelection(TextSelection.create(view.state.doc, start, end));
-          if (fields.href.value) {
-            dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
-          } else if (this.active(view.state)) {
-            dispatch(tr.removeMark(start, end, linkMarkType));
+        if (!isImage && attrs.href) {
+          const linkRange = getFullLinkMarkRange(view.state, linkMarkType);
+          if (linkRange) {
+            const { start: linkStart, end: linkEnd } = linkRange;
+            const linkText = view.state.doc.textBetween(linkStart, linkEnd);
+            if (
+              isValidURL(linkText)
+              && linkStart === view.state.selection.from
+              && linkEnd === view.state.selection.to
+              && linkText !== attrs.href
+            ) {
+              let tr = view.state.tr.insertText(attrs.href, linkStart, linkEnd);
+              tr = tr.addMark(linkStart, linkStart + attrs.href.length, linkMarkType.create(attrs));
+              tr = tr.setSelection(TextSelection.create(
+                tr.doc,
+                linkStart,
+                linkStart + attrs.href.length,
+              ));
+              dispatch(tr);
+              view.focus();
+              return;
+            }
           }
         }
-
+        const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, start, end));
+        if (fields.href.value) {
+          dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
+        } else if (this.active(view.state)) {
+          dispatch(tr.removeMark(start, end, linkMarkType));
+        }
         view.focus();
       };
 
       lastPrompt = openPrompt({ title: label, fields, callback, saveOnClose: true });
       lastPrompt.addEventListener('closed', () => {
-        dispatch(view.state.tr.removeMark(start, end, view.state.schema.marks.contextHighlightingMark).setMeta('addToHistory', false));
+        const { from, to } = view.state.selection;
+        dispatch(
+          view.state.tr.removeMark(from, to, view.state.schema.marks.contextHighlightingMark)
+            .setMeta('addToHistory', false),
+        );
       });
     },
   });
