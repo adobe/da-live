@@ -1,6 +1,6 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemPreview, normalizeEmail } from '../../shared/utils.js';
+import { daFetch, aemPreview } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
@@ -89,7 +89,7 @@ export default class DaListItem extends LitElement {
     }, []);
     this._version = count;
     this._lastModifedBy = json.pop().users.map(
-      (user) => normalizeEmail(user.email).split('@')[0],
+      (user) => (user.email.toLowerCase()).split('@')[0],
     ).join(', ');
   }
 
