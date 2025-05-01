@@ -89,7 +89,7 @@ export default class DaListItem extends LitElement {
     }, []);
     this._version = count;
     this._lastModifedBy = json.pop().users.map(
-      (user) => (user.email.toLowerCase()).split('@')[0],
+      (user) => (user.email).split('@')[0],
     ).join(', ');
   }
 
