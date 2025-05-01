@@ -24,7 +24,7 @@ import {
 
 // DA
 import prose2aem from '../../shared/prose2aem.js';
-import menu from './plugins/menu.js';
+import menu, { linkItem, getHeadingKeymap } from './plugins/menu.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
@@ -242,6 +242,12 @@ export default function initProse({ path, permissions }) {
       'Mod-y': yRedo,
       'Mod-Shift-z': yRedo,
       'Mod-Shift-l': toggleLibrary,
+      'Mod-k': (state, dispatch, view) => { // toggle link prompt
+        const linkMarkType = state.schema.marks.link;
+        const linkMenuItem = linkItem(linkMarkType);
+        return linkMenuItem.spec.run(state, dispatch, view);
+      },
+      ...getHeadingKeymap(schema),
     }),
     keymap({
       Tab: handleTableTab(1),

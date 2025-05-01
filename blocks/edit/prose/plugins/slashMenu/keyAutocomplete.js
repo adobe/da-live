@@ -12,8 +12,10 @@ export function processKeyData(data) {
   const blockMap = new Map();
 
   data?.forEach((item) => {
-    const itemBlocks = item.blocks.toLowerCase().trim();
-    const blocks = itemBlocks.split(',').map((block) => block.trim());
+    const itemBlocks = item.blocks?.toLowerCase().trim();
+    const blocks = itemBlocks?.split(',').map((block) => block.trim());
+
+    if (!blocks) return;
 
     const values = item.values.split('|').map((v) => {
       const [label, val] = v.split('=').map((vb) => vb.trim());
