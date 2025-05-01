@@ -89,18 +89,24 @@ export default class DaListItem extends LitElement {
     }, []);
     this._version = count;
     this._lastModifedBy = json.pop().users.map(
-      (user) => (user.email).split('@')[0],
-    ).join(', ');
+      (user) => user.email.split('@')[0],
+    ).join(', ').toLowerCase();
   }
 
   handleChecked(e) {
     this.isChecked = !this.isChecked;
     const opts = {
-      detail: { checked: this.isChecked, shiftKey: e.shiftKey },
+      detail: { checked: this.isChecked, shiftKey: e?.shiftKey ?? false },
       bubbles: true,
       composed: true,
     };
     const event = new CustomEvent('checked', opts);
+    this.dispatchEvent(event);
+  }
+
+  notifyRenamed(oldPath) {
+    const opts = { detail: { path: this.path, name: this.name, date: this.date, oldPath } };
+    const event = new CustomEvent('renamecompleted', opts);
     this.dispatchEvent(event);
   }
 
@@ -145,6 +151,7 @@ export default class DaListItem extends LitElement {
         // Uncheck the item and bubble up state
         this.handleChecked();
         this.updateAEMStatus();
+        this.notifyRenamed(oldPath);
       } else {
         this.setStatus('There was an error. Refresh and try again.', 'error');
       }
