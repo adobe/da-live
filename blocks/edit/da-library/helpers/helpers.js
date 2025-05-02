@@ -43,6 +43,11 @@ function calculateClass(title) {
   return `${lowerName}${isDaPlugin ? '' : ' is-plugin'}`;
 }
 
+function setupBlockOptions(library) {
+  const blockJsonUrl = library.filter((v) => v.name === 'blocks')?.[0]?.sources?.[0];
+  if (blockJsonUrl) fetchKeyAutocompleteData(blockJsonUrl);
+}
+
 export async function getItems(sources, listType, format) {
   const items = [];
   for (const source of sources) {
@@ -85,10 +90,7 @@ async function getDaLibraries(owner, repo) {
     return acc;
   }, []);
 
-  const blockJsonUrl = daLibraries.filter((v) => v.name === 'blocks')?.[0]?.sources?.[0];
-  if (blockJsonUrl) {
-    fetchKeyAutocompleteData(blockJsonUrl);
-  }
+  setupBlockOptions(daLibraries);
 
   return daLibraries;
 }
@@ -213,6 +215,7 @@ export async function getLibraryList() {
   const confLibrary = getConfigLibraries(owner, repo);
   const [assets, library] = await Promise.all([aemAssets, confLibrary]);
   if (library) {
+    setupBlockOptions(library);
     if (assets) mergeLibrary(library, assets);
     return library;
   }
