@@ -136,7 +136,7 @@ function getIsPluginAllowed(plugRef) {
   if (pluginRef === 'main') return true;
 
   // Allow all branches on dev
-  if (ref === 'dev') return true;
+  if (ref === 'local') return true;
 
   // Allow if pluginRef matches query param ref
   if (pluginRef === ref) return true;
@@ -154,7 +154,7 @@ function calculateSources(org, repo, sheetPath) {
     // Calculate the ref origin...
 
     // If dev, the source is localhost
-    if (ref === 'dev') return `http://localhost:3000${path}`;
+    if (ref === 'local') return `http://localhost:3000${path}`;
 
     // Fallback to the ref in search param (defaults to main)
     return `https://${ref}--${repo}--${org}.aem.live${path}`;
