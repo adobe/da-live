@@ -86,7 +86,7 @@ export async function openAssets() {
         const format = asset['aem:formatName'];
         if (!format) return;
         const { path } = asset;
-        const mimetype = asset['mimetype'] || asset['dc:format'];
+        const mimetype = asset.mimetype || asset['dc:format'];
         const { view } = window;
         const { state } = view;
         dialog.close();
