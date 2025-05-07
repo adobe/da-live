@@ -86,6 +86,7 @@ export async function openAssets() {
         const format = asset['aem:formatName'];
         if (!format) return;
         const { path } = asset;
+        const mimetype = asset.mimetype || asset['dc:format'];
         const { view } = window;
         const { state } = view;
         dialog.close();
@@ -102,7 +103,8 @@ export async function openAssets() {
         if (alt) imgObj.alt = alt;
 
         let fpo;
-        if (injectLink) {
+        // ensure assets not supported by the MediaBus are added as links
+        if (!mimetype || !mimetype.toLowerCase().startsWith('image/') || injectLink) {
           const para = document.createElement('p');
           const link = document.createElement('a');
           link.href = src;
