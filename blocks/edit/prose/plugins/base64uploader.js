@@ -37,7 +37,7 @@ export default function base64Uploader() {
             let ext = src.replace('data:image/', '').split(';base64')[0];
             if (ext === 'jpeg') ext = 'jpg';
             const { parent, name } = getPathDetails();
-            const path = `${parent}/${name}-wp${makeHash(src)}.${ext}`; // WP = Word Paste
+            const path = `${parent}/.${name}/wp${makeHash(src)}.${ext}`; // WP = Word Paste
             const fpoSrc = `${FPO_IMG_URL}#${CON_ORIGIN}${path}`;
             img.setAttribute('src', fpoSrc);
             imagePaths.push(fpoSrc);
