@@ -155,8 +155,10 @@ class DaLibrary extends LitElement {
 
     if (library.experience === 'window') {
       try {
-        const { pathname } = new URL(library.url);
-        window.open(library.url, `${pathname.replaceAll('/', '-')}`);
+        const url = library.sources?.[0] || library.url;
+        if (!url) return;
+        const { pathname } = new URL(url);
+        window.open(url, `${pathname.replaceAll('/', '-')}`);
       } catch {
         console.log('Could not make plugin URL');
       }
