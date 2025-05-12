@@ -8,7 +8,8 @@ const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
-const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/assets/resources/assets-selectors.js';
+const ASSET_SELECTOR_URL =
+  'https://experience.adobe.com/solutions/CQ-assets-selectors/assets/resources/assets-selectors.js';
 
 const CONFS = {};
 
@@ -27,7 +28,42 @@ async function fetchConf(path) {
 async function fetchValue(path, key) {
   if (CONFS[path]?.[key]) return CONFS[path][key];
 
-  const data = await fetchConf(path);
+  let data = null;
+
+  // Check if requested configuration is for organization level.
+  if (path.includes(`/${owner}/`)) {
+    const orgConf = await fetchConf(`/${owner}/`);
+
+    // Start with organization-level config
+    if (orgConf) {
+      data = [];
+      orgConf.forEach((item) => data.push(item));
+    }
+  }
+
+  // Check if requested configuration is for repository level.
+  if (path.includes(`/${owner}/${repo}/`)) {
+    const repoConf = await fetchConf(`/${owner}/${repo}/`);
+
+    // Override with repository-level config if organizational config is found.
+    if (repoConf) {
+      if (data === null) data = [];
+      repoConf.forEach((item) => {
+        const itemKeys = Object.keys(item);
+        for (let i = 0; i < data.length; i++) {
+          itemKeys.forEach((itemKey) => {
+            if (itemKey in data[i]) data[i][itemKey] = item[itemKey];
+          });
+        }
+      });
+    }
+  }
+
+  // Just fetch configuration if requested path is neither organization nor repository level.
+  if (!path.includes(`/${owner}/${repo}/`) && !path.includes(`/${owner}/`)) {
+    data = await fetchConf(path);
+  }
+
   if (!data) return null;
 
   const confKey = data.find((conf) => conf.key === key);
@@ -39,23 +75,29 @@ async function fetchValue(path, key) {
 export async function getConfKey(owner, repo, key) {
   if (!(repo || owner)) return null;
   let value = await fetchValue(`/${owner}/${repo}/`, key);
-  if (!value) value = await fetchValue(`/${owner}/`, key);
+
+  // Turned off check for organization level value update as new fetchValue does that internally.
+  // if (!value) value = await fetchValue(`/${owner}/`, key);
+
   return value;
 }
 
 export async function openAssets() {
   const details = await loadIms();
   if (details.anonymous) handleSignIn();
-  if (!(details.accessToken)) return;
+  if (!details.accessToken) return;
 
   const { owner, repo } = getPathDetails();
   const repoId = await getConfKey(owner, repo, 'aem.repositoryId');
 
   // Determine publicly available asset origin
-  const prodOrigin = await getConfKey(owner, repo, 'aem.assets.prod.origin') || `${repoId.replace('author', 'publish')}`;
+  const prodOrigin =
+    (await getConfKey(owner, repo, 'aem.assets.prod.origin')) ||
+    `${repoId.replace('author', 'publish')}`;
 
   // Determine if images should be links
-  const injectLink = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'link';
+  const injectLink =
+    (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'link';
 
   let dialog = document.querySelector('.da-dialog-asset');
   if (!dialog) {
@@ -79,7 +121,9 @@ export async function openAssets() {
       imsToken: details.accessToken.token,
       repositoryId: repoId,
       aemTierType,
-      onClose: () => { dialog.close(); },
+      onClose: () => {
+        dialog.close();
+      },
       handleSelection: (assets) => {
         const [asset] = assets;
         if (!asset) return;
@@ -92,12 +136,18 @@ export async function openAssets() {
         dialog.close();
 
         // eslint-disable-next-line no-underscore-dangle
-        const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:description'];
+        const alt =
+          asset?._embedded?.[
+            'http://ns.adobe.com/adobecloud/rel/metadata/asset'
+          ]?.['dc:description'];
 
-        const src = aemTierType === 'author'
-          ? `https://${prodOrigin}${path}`
-          // eslint-disable-next-line no-underscore-dangle
-          : asset._links['http://ns.adobe.com/adobecloud/rel/rendition'][0].href.split('?')[0];
+        const src =
+          aemTierType === 'author'
+            ? `https://${prodOrigin}${path}`
+            : // eslint-disable-next-line no-underscore-dangle
+              asset._links[
+                'http://ns.adobe.com/adobecloud/rel/rendition'
+              ][0].href.split('?')[0];
 
         const imgObj = { src, style: 'width: 180px' };
         if (alt) imgObj.alt = alt;
