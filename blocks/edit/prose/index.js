@@ -167,8 +167,13 @@ function storeCursorPosition(view) {
 function restoreCursorPosition(view) {
   if (lastCursorPosition) {
     const { from, to } = lastCursorPosition;
-    const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
-    view.dispatch(tr);
+    const docSize = view.state.doc.content.size;
+    if (from <= docSize && to <= docSize) {
+      const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
+      view.dispatch(tr);
+    } else {
+      lastCursorPosition = null;
+    }
   }
 }
 
