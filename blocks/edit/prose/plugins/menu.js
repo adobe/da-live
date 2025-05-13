@@ -72,9 +72,9 @@ function defaultLinkFields() {
       placeholder: 'https://...',
       label: 'URL',
     },
-    title: {
-      placeholder: 'title',
-      label: 'Title',
+    text: {
+      placeholder: 'Enter display text',
+      label: 'Display text',
     },
   };
 }
@@ -124,10 +124,19 @@ export function linkItem(linkMarkType) {
     class: 'edit-link',
     active(state) { return markActive(state, linkMarkType); },
     enable(state) {
+      // Check if an image node is selected
+      if (state.selection.node && state.selection.node.type.name === 'image') {
+        return true;
+      }
+      // Original logic for text links
       const selContent = state.selection.content();
-      return selContent.content.childCount <= 1
-        && (!state.selection.empty || this.active(state))
-        && !hasImageNode(selContent.content?.content[0]?.content?.content);
+      // eslint-disable-next-line max-len
+      const childCountOK = selContent.content.childCount <= 1;
+      // eslint-disable-next-line max-len
+      const imageNotInSelection = !hasImageNode(selContent.content?.content[0]?.content?.content);
+      const linkActiveOrNotEmpty = !state.selection.empty || this.active(state);
+
+      return childCountOK && linkActiveOrNotEmpty && imageNotInSelection;
     },
     run(initialState, dispatch, view) {
       if (linkPromptState.lastPrompt.isOpen()) {
@@ -136,78 +145,120 @@ export function linkItem(linkMarkType) {
       }
 
       const fields = defaultLinkFields();
+      const { $from, $to, empty } = view.state.selection;
 
-      let existingLink;
-      let existingLinkOffset;
-      if (this.active(view.state)) {
-        ({
-          link: existingLink,
-          offset: existingLinkOffset,
-        } = findExistingLink(view.state, linkMarkType));
-        const existingLinkMark = existingLink
-          && existingLink.marks.find((mark) => mark.type.name === linkMarkType.name);
+      const { node: selectionNode } = view.state.selection;
+      const isImage = !!(selectionNode && selectionNode.type === view.state.schema.nodes.image);
+      const imageNodePos = isImage ? view.state.selection.$from.pos : -1;
 
-        if (existingLinkMark) {
-          fields.href.value = existingLinkMark.attrs.href;
-          fields.title.value = existingLinkMark.attrs.title;
+      let currentRangeStart = $from.pos;
+      let currentRangeEnd = $to.pos;
+
+      const contextHighlightingMarkType = view.state.schema.marks.contextHighlightingMark;
+
+      if (!isImage) {
+        if (this.active(view.state)) {
+          const found = findExistingLink(view.state, linkMarkType);
+          if (found?.link) {
+            const linkPos = calculateLinkPosition(view.state, found.link, found.offset);
+            currentRangeStart = linkPos.start;
+            currentRangeEnd = linkPos.end;
+            fields.href.value = found.link.marks.find((m) => m.type === linkMarkType)?.attrs.href || '';
+            fields.text.value = found.link.textContent || '';
+          }
+        } else if (!empty) {
+          fields.text.value = view.state.doc.textBetween(currentRangeStart, currentRangeEnd);
+          if (fields.text.value && /^(https|http|mailto):/.test(fields.text.value.trim())) {
+            fields.href.value = fields.text.value.trim();
+          }
         }
-      }
-
-      const { $from, $to } = view.state.selection;
-
-      let start;
-      let end;
-      if (this.active(view.state)) {
-        ({ start, end } = calculateLinkPosition(view.state, existingLink, existingLinkOffset));
+        if (fields.href.value && !fields.text.value) {
+          fields.text.value = fields.href.value;
+        }
       } else {
-        start = $from.pos;
-        end = $to.pos;
+        fields.href.value = selectionNode.attrs.href || '';
+        delete fields.text;
       }
 
-      let isImage = false;
-      view.state.doc.nodesBetween($from.pos, $to.pos, (node) => {
-        if (node.type === view.state.schema.nodes.image) {
-          isImage = true;
-          fields.href.value = node.attrs.href;
-          fields.title.value = node.attrs.title;
-        }
-      });
-
+      const markToApply = contextHighlightingMarkType.create({});
       dispatch(view.state.tr
-        .addMark(start, end, view.state.schema.marks.contextHighlightingMark.create({}))
+        .addMark(currentRangeStart, currentRangeEnd, markToApply)
         .setMeta('addToHistory', false));
 
-      const callback = (attrs) => {
-        if (isImage) {
-          if (fields.href.value) {
-            dispatch(view.state.tr.setNodeAttribute(start, 'href', fields.href.value.trim()));
+      const promptFieldsConfiguration = { ...fields };
+      if (isImage) {
+        // Ensure 'text' field is not passed to prompt for images
+        delete promptFieldsConfiguration.text;
+      }
+
+      const callback = (promptAttrs) => {
+        let { tr } = view.state;
+        if (isImage && imageNodePos !== -1) {
+          const newImageHref = promptAttrs.href ? promptAttrs.href.trim() : null;
+          // Only update if href actually changed, and remove if it's cleared
+          if (newImageHref !== view.state.doc.nodeAt(imageNodePos).attrs.href) {
+            tr = tr.setNodeAttribute(imageNodePos, 'href', newImageHref);
           }
-          if (fields.title.value) {
-            dispatch(view.state.tr.setNodeAttribute(start, 'title', fields.title.value.trim()));
-          }
+          // Title attribute is removed from prompt, so no dispatch for title
         } else {
-          const tr = view.state.tr
-            .setSelection(TextSelection.create(view.state.doc, start, end));
-          if (fields.href.value) {
-            dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
-          } else if (this.active(view.state)) {
-            dispatch(tr.removeMark(start, end, linkMarkType));
+          // Text link logic
+          const newHref = promptAttrs.href ? promptAttrs.href.trim() : null;
+          const submittedText = promptAttrs.text !== undefined ? promptAttrs.text : '';
+
+          if (!newHref && this.active(view.state)) {
+            // If href is cleared and it was an active link, remove the mark
+            tr = tr.removeMark(currentRangeStart, currentRangeEnd, linkMarkType);
+          } else if (newHref) {
+            let displayText = submittedText;
+            if ((!displayText || !displayText.trim()) && newHref) {
+              displayText = newHref;
+            }
+
+            // eslint-disable-next-line max-len
+            const originalTextContent = view.state.doc.textBetween(currentRangeStart, currentRangeEnd);
+            const textChanged = displayText !== originalTextContent
+              || (currentRangeStart === currentRangeEnd && displayText);
+
+            if (textChanged) {
+              // eslint-disable-next-line max-len
+              tr = tr.replaceWith(currentRangeStart, currentRangeEnd, view.state.schema.text(displayText));
+              // Update currentRangeEnd to reflect the new text length
+              currentRangeEnd = currentRangeStart + displayText.length;
+            }
+
+            // Apply the link mark (remove old one first to handle attribute/range changes)
+            tr = tr.removeMark(currentRangeStart, currentRangeEnd, linkMarkType);
+            // Remove from new range
+            // eslint-disable-next-line max-len
+            tr = tr.addMark(currentRangeStart, currentRangeEnd, linkMarkType.create({ href: newHref }));
+            // Title attribute is not included in create()
           }
+          // Ensure selection is set to the end of the new display text WITHIN this transaction.
+          tr = tr.setSelection(TextSelection.create(tr.doc, currentRangeEnd));
         }
 
-        view.focus();
+        // Remove context highlighting from the final range of the link
+        tr = tr.removeMark(currentRangeStart, currentRangeEnd, contextHighlightingMarkType);
+
+        const hasChanges = tr.docChanged
+                           || tr.storedMarksSet
+                           || (isImage && tr.steps.length > 0);
+        if (hasChanges) {
+          dispatch(tr);
+        }
+        if (!view.hasFocus()) {
+          view.focus();
+        }
       };
 
-      linkPromptState.lastPrompt = openPrompt(
-        { title: label, fields, callback, saveOnClose: true },
-      );
-      linkPromptState.lastPrompt.addEventListener('closed', () => {
-        dispatch(view.state.tr.removeMark(
-          start,
-          end,
-          view.state.schema.marks.contextHighlightingMark,
-        ).setMeta('addToHistory', false));
-      });
+      const promptOptions = {
+        title: label,
+        fields: promptFieldsConfiguration,
+        callback,
+        saveOnClose: true,
+        useLabelsAbove: true,
+      };
+      linkPromptState.lastPrompt = openPrompt(promptOptions);
     },
   });
 }
