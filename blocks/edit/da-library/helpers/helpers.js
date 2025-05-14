@@ -122,8 +122,15 @@ async function getExtensionList() {
 export async function getUixHost() {
   if (uixHost) return uixHost;
   uixHost = new Host({ hostName: 'Dark Alley', debug: true });
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const extUrl = urlParams.get('ext');
+  if (extUrl) {
+    await uixHost.load({ 0: extUrl});
+  }
+
   //await uixHost.load({ 0: 'https://localhost.corp.adobe.com:9080/', ...await getExtensionList() });
-  await uixHost.load({ 0: 'https://localhost:8080/resources/da.html'});
+  //await uixHost.load({ 0: 'https://localhost:8080/resources/da.html'});
   return uixHost;
 }
 
