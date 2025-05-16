@@ -59,6 +59,16 @@ export default class DaTitle extends LitElement {
     icon.parentElement.classList.add('is-error');
   }
 
+  getSnapshotHref(url, action) {
+    const tldRepl = action === 'publish' ? 'aem.live' : 'aem.page';
+    const pathParts = url.pathname.slice(1).toLowerCase().split('/');
+    const snapName = pathParts.splice(0, 2)[1];
+    const origin = url.origin
+      .replace('https://', `https://${snapName}--`)
+      .replace(tldRepl, 'aem.reviews');
+    return `${origin}/${pathParts.join('/')}`;
+  }
+
   async handleAction(action) {
     this.toggleActions();
     this._status = null;
@@ -67,8 +77,8 @@ export default class DaTitle extends LitElement {
 
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
-    // Only save to DA if it is a sheet or config
 
+    // Only save to DA if it is a sheet or config
     if (this.details.view === 'sheet') {
       const dasSave = await saveToDa(pathname, this.sheet);
       if (!dasSave.ok) return;
@@ -92,8 +102,11 @@ export default class DaTitle extends LitElement {
         this.handleError(json, action, sendBtn);
         return;
       }
-      const { url } = action === 'publish' ? json.live : json.preview;
-      window.open(`${url}?nocache=${Date.now()}`, url);
+      const { url: href } = action === 'publish' ? json.live : json.preview;
+      const url = new URL(href);
+      const isSnap = url.pathname.startsWith('/.snapshots');
+      const toOpen = isSnap ? this.getSnapshotHref(url, action) : href;
+      window.open(`${toOpen}?nocache=${Date.now()}`, toOpen);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
@@ -169,7 +182,7 @@ export default class DaTitle extends LitElement {
         <div class="da-title-name">
           <a
             href="/#${this.details.parent}"
-            target="${this.details.parent.replaceAll('/', '-')}"
+            target="${this.details.parent}"
             class="da-title-name-label">${this.details.parentName}</a>
           <h1>${this.details.name}</h1>
         </div>

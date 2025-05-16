@@ -93,6 +93,11 @@ class DaLibrary extends LitElement {
     closeLibrary();
   }
 
+  handleFullsizeModalClose() {
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
+    closeLibrary();
+  }
+
   async handleLibSwitch(e, library) {
     if (library.callback) {
       library.callback();
@@ -113,7 +118,7 @@ class DaLibrary extends LitElement {
             </div>
             <button class="primary" @click=${this.handleModalClose}>Close</button>
           </div>
-          ${this.renderPlugin(library.url, true)}
+          ${this.renderPlugin(library, true)}
         </dialog>
       `;
 
@@ -124,10 +129,36 @@ class DaLibrary extends LitElement {
       return;
     }
 
+    if (library.experience === 'fullsize-dialog') {
+      let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
+      if (dialog) dialog.remove();
+
+      dialog = html`
+        <dialog class="da-fs-dialog-plugin">
+          <div class="da-dialog-header">
+            <div class="da-dialog-header-title">
+              <img src="${library.icon}" />
+              <p>${library.title || library.name}</p>
+            </div>
+            <button class="primary" @click=${this.handleFullsizeModalClose}>Close</button>
+          </div>
+          ${this.renderPlugin(library, true)}
+        </dialog>
+      `;
+
+      render(dialog, this.shadowRoot);
+
+      this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
+
+      return;
+    }
+
     if (library.experience === 'window') {
       try {
-        const { pathname } = new URL(library.url);
-        window.open(library.url, `${pathname.replaceAll('/', '-')}`);
+        const url = library.sources?.[0] || library.url;
+        if (!url) return;
+        const { pathname } = new URL(url);
+        window.open(url, `${pathname.replaceAll('/', '-')}`);
       } catch {
         console.log('Could not make plugin URL');
       }
@@ -397,7 +428,9 @@ class DaLibrary extends LitElement {
     return searchFor(this._searchStr, data, this);
   }
 
-  renderPlugin(url, preload) {
+  renderPlugin(library, preload) {
+    const url = library.sources?.[0] || library.url;
+
     return html`
       <div class="da-library-type-plugin">
         <iframe
@@ -408,11 +441,10 @@ class DaLibrary extends LitElement {
       </div>`;
   }
 
-  async renderLibrary({ name, sources, url, format }) {
-    // Only plugins have a URL
-    if (url) {
-      return this.renderPlugin(url);
-    }
+  async renderLibrary({ name, sources, url, format, class: className }) {
+    const isPlugin = className.split(' ').some((val) => val === 'is-plugin');
+
+    if (isPlugin) return this.renderPlugin({ sources, url });
 
     if (name === 'blocks') {
       if (!data.blocks) {
@@ -463,7 +495,7 @@ class DaLibrary extends LitElement {
               class="${library.class || library.name} ${library.url ? 'is-plugin' : ''}"
               style="${library.icon ? `background-image: url(${library.icon})` : ''}"
               @click=${(e) => this.handleLibSwitch(e, library)}>
-              <span class="library-type-name">${library.name}</span>
+              <span class="library-type-name">${library.title || library.name}</span>
             </button>
           </li>`,
         )}

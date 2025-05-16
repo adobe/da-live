@@ -31,6 +31,8 @@ import openLibrary from '../../da-library/da-library.js';
 
 import insertTable from '../table.js';
 
+const linkPromptState = { lastPrompt: { isOpen: () => false } };
+
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
   // eslint-disable-next-line no-plusplus
@@ -113,10 +115,8 @@ function hasImageNode(contentArr) {
   return contentArr.some((node) => node.type.name === 'image');
 }
 
-function linkItem(linkMarkType) {
+export function linkItem(linkMarkType) {
   const label = 'Edit link';
-
-  let lastPrompt = { isOpen: () => false };
 
   return new MenuItem({
     title: 'Add or Edit link',
@@ -130,8 +130,8 @@ function linkItem(linkMarkType) {
         && !hasImageNode(selContent.content?.content[0]?.content?.content);
     },
     run(initialState, dispatch, view) {
-      if (lastPrompt.isOpen()) {
-        lastPrompt.close();
+      if (linkPromptState.lastPrompt.isOpen()) {
+        linkPromptState.lastPrompt.close();
         return;
       }
 
@@ -198,9 +198,15 @@ function linkItem(linkMarkType) {
         view.focus();
       };
 
-      lastPrompt = openPrompt({ title: label, fields, callback, saveOnClose: true });
-      lastPrompt.addEventListener('closed', () => {
-        dispatch(view.state.tr.removeMark(start, end, view.state.schema.marks.contextHighlightingMark).setMeta('addToHistory', false));
+      linkPromptState.lastPrompt = openPrompt(
+        { title: label, fields, callback, saveOnClose: true },
+      );
+      linkPromptState.lastPrompt.addEventListener('closed', () => {
+        dispatch(view.state.tr.removeMark(
+          start,
+          end,
+          view.state.schema.marks.contextHighlightingMark,
+        ).setMeta('addToHistory', false));
       });
     },
   });
@@ -334,7 +340,7 @@ function codeBlockItem(codeBlockNode) {
   });
 }
 
-export function blockquoteItem(codeBlockNode) {
+function blockquoteItem(codeBlockNode) {
   return wrapItem(codeBlockNode, {
     title: 'Change to blockquote',
     label: 'Blockquote',
@@ -350,6 +356,60 @@ function headingItem(headingNode, options) {
       && $from.parent.attrs.level === options.attrs.level;
   };
   return blockTypeItem(headingNode, options);
+}
+
+function createBlockMenuItem(node, options) {
+  const {
+    type,
+    level,
+    title,
+    label,
+    column,
+    class: className,
+  } = options;
+  const attrs = type === 'heading' ? { level } : {};
+  const menuItem = type === 'heading' ? headingItem : blockTypeItem;
+
+  const menuOptions = {
+    title,
+    label,
+    attrs,
+    ...(column && { column }),
+    ...(className && { class: className }),
+  };
+
+  return menuItem(node, menuOptions);
+}
+
+export function getHeadingKeymap(schema) {
+  const headingNode = schema.nodes.heading;
+  const paragraphNode = schema.nodes.paragraph;
+
+  const keymap = {
+    'Mod-Alt-0': (state, dispatch) => {
+      const menuItem = createBlockMenuItem(paragraphNode, {
+        type: 'paragraph',
+        title: 'Change to paragraph',
+        label: 'P',
+      });
+      return menuItem.spec.run(state, dispatch);
+    },
+  };
+
+  // Add heading shortcuts H1-H6
+  [1, 2, 3, 4, 5, 6].forEach((level) => {
+    keymap[`Mod-Alt-${level}`] = (state, dispatch) => {
+      const menuItem = createBlockMenuItem(headingNode, {
+        type: 'heading',
+        level,
+        title: `Change to heading ${level}`,
+        label: `H${level}`,
+      });
+      return menuItem.spec.run(state, dispatch);
+    };
+  });
+
+  return keymap;
 }
 
 function markItem(markType, options) {
@@ -378,8 +438,18 @@ function getTableMenu() {
 }
 
 function getTextBlocks(marks, nodes) {
+  const headingItems = [1, 2, 3, 4, 5, 6].map((i) => createBlockMenuItem(nodes.heading, {
+    type: 'heading',
+    level: i,
+    title: `Change to H${i}`,
+    label: `H${i}`,
+    column: 2,
+    class: `menu-item-h${i}`,
+  }));
+
   return [
-    blockTypeItem(nodes.paragraph, {
+    createBlockMenuItem(nodes.paragraph, {
+      type: 'paragraph',
       title: 'Change to paragraph',
       label: 'P',
       column: 2,
@@ -406,53 +476,7 @@ function getTextBlocks(marks, nodes) {
       class: 'edit-sub',
     }),
     codeMarkItem(marks.code),
-    // markItem(marks.s, {
-    //   title: 'Toggle strikethrough',
-    //   label: 'S',
-    //   class: 'edit-s',
-    // }),
-    headingItem(nodes.heading, {
-      title: 'Change to H1',
-      label: 'H1',
-      column: 2,
-      attrs: { level: 1 },
-      class: 'menu-item-h1',
-    }),
-    headingItem(nodes.heading, {
-      title: 'Change to H2',
-      label: 'H2',
-      column: 2,
-      attrs: { level: 2 },
-      class: 'menu-item-h2',
-    }),
-    headingItem(nodes.heading, {
-      title: 'Change to h3',
-      label: 'h3',
-      column: 2,
-      attrs: { level: 3 },
-      class: 'menu-item-h3',
-    }),
-    headingItem(nodes.heading, {
-      title: 'Change to h4',
-      label: 'h4',
-      column: 2,
-      attrs: { level: 4 },
-      class: 'menu-item-h4',
-    }),
-    headingItem(nodes.heading, {
-      title: 'Change to h5',
-      label: 'h5',
-      column: 2,
-      attrs: { level: 5 },
-      class: 'menu-item-h5',
-    }),
-    headingItem(nodes.heading, {
-      title: 'Change to h6',
-      label: 'h6',
-      column: 2,
-      attrs: { level: 6 },
-      class: 'menu-item-h6',
-    }),
+    ...headingItems,
     blockquoteItem(nodes.blockquote),
     codeBlockItem(nodes.code_block),
   ];

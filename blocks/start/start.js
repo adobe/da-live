@@ -8,13 +8,13 @@ const sheet = await getSheet('/blocks/start/start-wc.css');
 const DA_ORIGIN = getDaAdmin();
 
 const DEMO_URLS = [
-  'https://admin.da.live/source/aemsites/da-block-collection/demo.html',
-  'https://admin.da.live/source/aemsites/da-block-collection/nav.html',
-  'https://admin.da.live/source/aemsites/da-block-collection/footer.html',
-  'https://admin.da.live/source/aemsites/da-block-collection/.da/config.json',
-  'https://admin.da.live/source/aemsites/da-block-collection/docs/library/blocks.json',
-  'https://admin.da.live/source/aemsites/da-block-collection/docs/library/icons.json',
-  'https://admin.da.live/source/aemsites/da-block-collection/placeholders.json',
+  'https://admin.da.live/source/aem-sandbox/block-collection/demo.html',
+  'https://admin.da.live/source/aem-sandbox/block-collection/nav.html',
+  'https://admin.da.live/source/aem-sandbox/block-collection/footer.html',
+  'https://admin.da.live/source/aem-sandbox/block-collection/.da/config.json',
+  'https://admin.da.live/source/aem-sandbox/block-collection/docs/library/blocks.json',
+  'https://admin.da.live/source/aem-sandbox/block-collection/docs/library/icons.json',
+  'https://admin.da.live/source/aem-sandbox/block-collection/placeholders.json',
 ];
 
 class DaStart extends LitElement {
@@ -80,8 +80,8 @@ class DaStart extends LitElement {
       this._goText = 'Copying demo content';
       const finishedUrls = DEMO_URLS.map(async (url) => {
         const newUrl = url
-          .replace('aemsites', this.owner)
-          .replace('da-block-collection', this.repo);
+          .replace('aem-sandbox', this.owner)
+          .replace('block-collection', this.repo);
         const { pathname } = new URL(newUrl);
         const [ext] = pathname
           .split('/')

@@ -3,7 +3,17 @@ function getEnv() {
   if (!branch) {
     branch = 'main';
   }
-  return branch === 'local' ? 'http://localhost:3000' : `https://${branch}--da-live--adobe.hlx.live`;
+  let { GITHUB_REPOSITORY_OWNER: owner } = process.env;
+  if (!owner) {
+    owner = 'adobe';
+  }
+  if (branch === 'local') {
+    return 'http://localhost:3000';
+  }
+  if (branch === 'main' && owner === 'adobe') {
+    return 'https://da.live';
+  }
+  return `https://${branch}--da-live--${owner}.aem.live`;
 }
 
 const ENV = (() => getEnv())();

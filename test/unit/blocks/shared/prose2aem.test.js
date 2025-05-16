@@ -59,4 +59,9 @@ describe('aem2prose', () => {
     const parent = pictureEl.parentElement;
     expect(parent.href).to.equal('https://my.image.link/');
   });
+
+  it('Wraps icons in span tags', () => {
+    const icons = document.querySelectorAll('span.icon');
+    expect(icons.length).to.equal(9);
+  });
 });
