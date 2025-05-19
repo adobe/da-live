@@ -136,10 +136,10 @@ export async function getUixHost() {
 
 async function getUixExtensions() {
   const host = await getUixHost();
-  const extensions = await host.getLoadedGuests({ da: ['getBlocks'] });
+  const extensions = await host.getLoadedGuests({ da: ['getLibraryItems'] });
 
   const data = await Promise.all(extensions.map(async (extension) => {
-    const manifests = await extension.apis.da.getBlocks();
+    const manifests = await extension.apis.da.getLibraryItems();
 
     return manifests.map((manifest) => ({
       ...manifest,
