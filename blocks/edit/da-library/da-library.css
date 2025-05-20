@@ -480,7 +480,8 @@ ul {
 }
 
 /* Plugin Modal */
-.da-dialog-plugin {
+.da-dialog-plugin, 
+.da-fs-dialog-plugin {
   width: calc(100% - 72px);
   height: calc(100% - 72px);
   box-sizing: border-box;

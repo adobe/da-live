@@ -13,18 +13,6 @@ function makeHash(string) {
   ));
 }
 
-function replaceWordImage(path) {
-  const { view } = window;
-  view.state.doc.descendants((node, pos) => {
-    if (node.type.name === 'image' && node.attrs.src === path) {
-      const newAttrs = { src: node.attrs.src.split('#')[1] };
-      view.dispatch(
-        view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, ...newAttrs }),
-      );
-    }
-  });
-}
-
 /**
  * Base 64 Uploader
  * @returns {Plugin} the base64 uploader plugin
@@ -32,44 +20,58 @@ function replaceWordImage(path) {
 export default function base64Uploader() {
   return new Plugin({
     props: {
-      handlePaste: (view, event) => {
-        const html = event.clipboardData?.getData('text/html');
-        if (!html?.includes('data:image')) {
-          return false;
-        }
+      transformPastedHTML: (html) => {
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const dataImgs = [...doc.querySelectorAll('[src^="data:image"]')];
+          if (!dataImgs.length) {
+            return html;
+          }
 
-        // Let the paste complete first
-        setTimeout(() => {
-          const { tr } = view.state;
+          const imagePaths = [];
+          const uploadPromises = [];
 
-          view.state.doc.descendants(async (node, pos) => {
-            if (node.type.name === 'image' && node.attrs.src.startsWith('data:image')) {
-              const { src } = node.attrs;
-              let ext = src.replace('data:image/', '').split(';base64')[0];
-              if (ext === 'jpeg') ext = 'jpg';
+          dataImgs.forEach((img) => {
+            const src = img.getAttribute('src');
+            let ext = src.replace('data:image/', '').split(';base64')[0];
+            if (ext === 'jpeg') ext = 'jpg';
+            const { parent, name } = getPathDetails();
+            const path = `${parent}/.${name}/wp${makeHash(src)}.${ext}`; // WP = Word Paste
+            const fpoSrc = `${FPO_IMG_URL}#${CON_ORIGIN}${path}`;
+            img.setAttribute('src', fpoSrc);
+            imagePaths.push(fpoSrc);
 
-              const { parent, name } = getPathDetails();
-              const path = `${parent}/${name}-wp${makeHash(src)}.${ext}`;
-              const fpoSrc = `${FPO_IMG_URL}#${CON_ORIGIN}${path}`;
-
-              tr.setNodeMarkup(pos, null, { ...node.attrs, src: fpoSrc });
-
+            uploadPromises.push((async () => {
               const resp = await fetch(src);
               const blob = await resp.blob();
               const body = new FormData();
               body.append('data', blob);
               await daFetch(`${DA_ORIGIN}/source${path}`, { body, method: 'POST' });
-
-              replaceWordImage(fpoSrc);
-            }
+            })());
           });
 
-          if (tr.docChanged) {
-            view.dispatch(tr);
-          }
-        }, 0);
+          Promise.all(uploadPromises).then(() => {
+            const { view } = window;
+            const { tr } = view.state;
 
-        return false; // Let other plugins handle the paste
+            view.state.doc.descendants((node, pos) => {
+              if (node.type.name === 'image' && imagePaths.includes(node.attrs.src)) {
+                const newAttrs = { src: node.attrs.src.split('#')[1] };
+                tr.setNodeMarkup(pos, null, { ...node.attrs, ...newAttrs });
+              }
+            });
+
+            view.dispatch(tr);
+          });
+
+          const serializer = new XMLSerializer();
+          return serializer.serializeToString(doc);
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Error handling Base64 images:', error);
+          return html;
+        }
       },
     },
   });

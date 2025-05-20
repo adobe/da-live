@@ -110,6 +110,7 @@ export default function getPathDetails(loc) {
   currhash = hash;
 
   const fullpath = hash.replace('#', '');
+  window.name = fullpath;
 
   // config, edit, sheet
   const editor = getView(pathname);

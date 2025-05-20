@@ -86,6 +86,7 @@ export async function openAssets() {
         const format = asset['aem:formatName'];
         if (!format) return;
         const { path } = asset;
+        const mimetype = asset.mimetype || asset['dc:format'];
         const { view } = window;
         const { state } = view;
         dialog.close();
@@ -93,16 +94,25 @@ export async function openAssets() {
         // eslint-disable-next-line no-underscore-dangle
         const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:description'];
 
-        const src = aemTierType === 'author'
-          ? `https://${prodOrigin}${path}`
-          // eslint-disable-next-line no-underscore-dangle
-          : asset._links['http://ns.adobe.com/adobecloud/rel/rendition'][0].href.split('?')[0];
+        // eslint-disable-next-line no-underscore-dangle
+        const renditionLinks = asset._links['http://ns.adobe.com/adobecloud/rel/rendition'];
+        const videoLink = renditionLinks.find((link) => link.href.endsWith('/play'))?.href;
+
+        let src;
+        if (aemTierType === 'author') {
+          src = `https://${prodOrigin}${path}`;
+        } else if (mimetype.startsWith('video/')) {
+          src = videoLink;
+        } else {
+          src = renditionLinks[0]?.href.split('?')[0];
+        }
 
         const imgObj = { src, style: 'width: 180px' };
         if (alt) imgObj.alt = alt;
 
         let fpo;
-        if (injectLink) {
+        // ensure assets not supported by the MediaBus are added as links
+        if (!mimetype || !mimetype.toLowerCase().startsWith('image/') || injectLink) {
           const para = document.createElement('p');
           const link = document.createElement('a');
           link.href = src;
