@@ -5,6 +5,10 @@ import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getConfKey, openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
+import { Host } from '../../../../../../../../../deps/uix-host/dist/index.js';
+import { createExtensionManagerExtensionsProvider } from '../../../../../../../../../deps/uix-host/dist/extension-manager.js';
+
+const { getNx } = await import('../../../../scripts/utils.js');
 
 const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
@@ -69,6 +73,7 @@ export async function getItems(sources, listType, format) {
 let currOwner;
 let currRepo;
 let libraries;
+let uixHost;
 
 async function getDaLibraries(owner, repo) {
   const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
@@ -93,6 +98,63 @@ async function getDaLibraries(owner, repo) {
   setupBlockOptions(daLibraries);
 
   return daLibraries;
+}
+
+async function getExtensionList() {
+  const { getConfig } = await import(`${getNx()}/scripts/nexter.js`);
+  const { env } = getConfig();
+
+  const { initIms } = await import('../../../shared/utils.js');
+  const imsInfo = (await initIms()) || {};
+
+  const extProvider = createExtensionManagerExtensionsProvider({
+    experienceShellEnvironment: env === 'stage' ? 'stage' : 'prod',
+    scope: {
+      programId: 77504,
+      envId: 175976,
+    },
+  }, {
+    apiKey: 'exc_app',
+    imsOrg: imsInfo.ownerOrg,
+    imsToken: imsInfo.accessToken.token,
+  }, {}, {
+    service: 'da',
+    name: 'ui',
+    version: '1',
+  });
+  return extProvider();
+}
+
+export async function getUixHost() {
+  if (uixHost) return uixHost;
+  uixHost = new Host({ hostName: 'Dark Alley', debug: true });
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const extUrl = urlParams.get('ext');
+  if (extUrl) {
+    await uixHost.load({ 0: extUrl});
+  }
+
+  //await uixHost.load({ 0: 'https://localhost.corp.adobe.com:9080/', ...await getExtensionList() });
+  //await uixHost.load({ 0: 'https://localhost:8080/resources/da.html'});
+  return uixHost;
+}
+
+async function getUixExtensions() {
+  const host = await getUixHost();
+  const extensions = await host.getLoadedGuests({ da: ['getLibraryItems'] });
+
+  const data = await Promise.all(extensions.map(async (extension) => {
+    const manifests = await extension.apis.da.getLibraryItems();
+
+    return manifests.map((manifest) => ({
+      ...manifest,
+      url: new URL(manifest.url, extension.url).href,
+      extensionId: extension.id,
+    }));
+  }));
+
+  return data.flat();
 }
 
 async function getAemPlugins(owner, repo) {
@@ -220,14 +282,15 @@ export async function getLibraryList() {
     return library;
   }
 
-  // Fallback to file-based libary
+  // Fallback to file-based library
   const daLibraries = getDaLibraries(owner, repo);
   const aemPlugins = getAemPlugins(owner, repo);
+  const uiExtensions = getUixExtensions();
 
-  const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
+  const [da, aem, uix] = await Promise.all([daLibraries, aemPlugins, uiExtensions]);
 
   if (assets) mergeLibrary(da, assets);
-  return [...da, ...aem];
+  return [...da, ...aem, ...uix];
 }
 
 export function andMatch(inputStr, targetStr) {
