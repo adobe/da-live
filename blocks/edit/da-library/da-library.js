@@ -118,11 +118,8 @@ class DaLibrary extends LitElement {
             </div>
             <button class="primary" @click=${this.handleModalClose}>Close</button>
           </div>
-<<<<<<< HEAD
-          ${library.extensionId ? this.renderUixExtension(library.extensionId, library.url) : this.renderPlugin(library.url, true)}
-=======
-          ${this.renderPlugin(library, true)}
->>>>>>> origin/main
+
+          ${library.extensionId ? this.renderUixExtension(library.extensionId, library.url) : this.renderPlugin(library, true)}
         </dialog>
       `;
 
