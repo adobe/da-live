@@ -12,6 +12,10 @@ function defaultLinkFields() {
       placeholder: 'Enter display text',
       label: 'Display text',
     },
+    title: {
+      placeholder: 'title',
+      label: 'Title',
+    },
   };
 }
 
@@ -102,7 +106,9 @@ export function linkItem(linkMarkType) {
             const linkPos = calculateLinkPosition(view.state, found.link, found.offset);
             currentRangeStart = linkPos.start;
             currentRangeEnd = linkPos.end;
-            fields.href.value = found.link.marks.find((m) => m.type === linkMarkType)?.attrs.href || '';
+            const linkMark = found.link.marks.find((m) => m.type === linkMarkType);
+            fields.href.value = linkMark?.attrs.href || '';
+            fields.title.value = linkMark?.attrs.title || '';
             fields.text.value = found.link.textContent || '';
           }
         } else if (!empty) {
@@ -116,11 +122,14 @@ export function linkItem(linkMarkType) {
         }
       } else {
         fields.href.value = selectionNode.attrs.href || '';
+        fields.title.value = selectionNode.attrs.title || '';
         delete fields.text;
       }
 
       const markToApply = contextHighlightingMarkType.create({});
-      dispatch(view.state.tr.addMark(currentRangeStart, currentRangeEnd, markToApply).setMeta('addToHistory', false));
+      dispatch(view.state.tr
+        .addMark(currentRangeStart, currentRangeEnd, markToApply)
+        .setMeta('addToHistory', false));
 
       const promptFieldsConfiguration = { ...fields };
       if (isImage) {
@@ -132,14 +141,19 @@ export function linkItem(linkMarkType) {
         let { tr } = view.state;
         if (isImage && imageNodePos !== -1) {
           const newImageHref = promptAttrs.href ? promptAttrs.href.trim() : null;
+          const newImageTitle = promptAttrs.title ? promptAttrs.title.trim() : null;
           // Only update if href actually changed, and remove if it's cleared
           if (newImageHref !== view.state.doc.nodeAt(imageNodePos).attrs.href) {
             tr = tr.setNodeAttribute(imageNodePos, 'href', newImageHref);
           }
-          // Title attribute is removed from prompt, so no dispatch for title
+          // Update title attribute
+          if (newImageTitle !== view.state.doc.nodeAt(imageNodePos).attrs.title) {
+            tr = tr.setNodeAttribute(imageNodePos, 'title', newImageTitle);
+          }
         } else {
           // Text link logic
           const newHref = promptAttrs.href ? promptAttrs.href.trim() : null;
+          const newTitle = promptAttrs.title ? promptAttrs.title.trim() : null;
           const submittedText = promptAttrs.text !== undefined ? promptAttrs.text : '';
 
           if (!newHref && this.active(view.state)) {
@@ -170,13 +184,16 @@ export function linkItem(linkMarkType) {
 
             // Apply the link mark (remove old one first to handle attribute/range changes)
             tr = tr.removeMark(currentRangeStart, currentRangeEnd, linkMarkType);
-            // Remove from new range
+            // Create link mark with both href and title attributes
+            const linkAttrs = { href: newHref };
+            if (newTitle) {
+              linkAttrs.title = newTitle;
+            }
             tr = tr.addMark(
               currentRangeStart,
               currentRangeEnd,
-              linkMarkType.create({ href: newHref }),
+              linkMarkType.create(linkAttrs),
             );
-            // Title attribute is not included in create()
           }
           // Ensure selection is set to the end of the new display text WITHIN this transaction.
           tr = tr.setSelection(TextSelection.create(tr.doc, currentRangeEnd));
