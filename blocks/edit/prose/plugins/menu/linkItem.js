@@ -29,8 +29,7 @@ function findExistingLink(state, linkMarkType) {
     };
   }
   let result;
-  // eslint-disable-next-line no-unused-vars
-  $from.parent.nodesBetween($from.parentOffset, $to.parentOffset, (node, pos, _parent, _index) => {
+  $from.parent.nodesBetween($from.parentOffset, $to.parentOffset, (node, pos) => {
     if (linkMarkType.isInSet(node.marks)) {
       result = {
         link: node,
@@ -256,8 +255,7 @@ export function removeLinkItem(linkMarkType) {
     enable(state) {
       return this.active(state);
     },
-    // eslint-disable-next-line no-unused-vars
-    run(state, dispatch, _view) {
+    run(state, dispatch) {
       if (this.isImage) {
         const { $from } = state.selection;
         dispatch(state.tr.setNodeAttribute($from.pos, 'href', null).setNodeAttribute($from.pos, 'title', null));
