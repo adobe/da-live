@@ -121,6 +121,12 @@ export default function getPathDetails(loc) {
   // Split everything up so it can be later used for both DA & AEM
   const pathParts = fullpath.slice(1).toLowerCase().split('/');
 
+  // Redirect JSON files from edit view to sheet view
+  if (editor === 'edit' && fullpath.endsWith('.json')) {
+    window.location.href = `/sheet#${fullpath.slice(0, -5)}`;
+    return null;
+  }
+
   // Determine if folder (trailing slash split to empty string)
   let isFolder = false;
   if (pathParts.slice(-1)[0] === '') {
