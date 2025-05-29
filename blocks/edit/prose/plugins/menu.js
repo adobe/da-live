@@ -465,6 +465,11 @@ function getTextBlocks(marks, nodes) {
       label: 'I',
       class: 'edit-italic',
     }),
+    markItem(marks.u, {
+      title: 'Toggle underline',
+      label: 'U',
+      class: 'edit-underline',
+    }),
     markItem(marks.s, {
       title: 'Toggle strikethrough',
       label: 'S',

@@ -482,6 +482,10 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_TextItalic_18_N.svg') center / 18px no-repeat;
 }
 
+.edit-underline {
+  background: url('/blocks/edit/img/Smock_TextUnderline_18_N.svg') center / 18px no-repeat;
+}
+
 .edit-strikethrough {
   background: url('/blocks/edit/img/Smock_TextStrikethrough_18_N.svg') center / 18px no-repeat;
 }
