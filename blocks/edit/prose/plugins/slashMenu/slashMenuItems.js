@@ -13,7 +13,7 @@ import {
 } from 'da-y-wrapper';
 import openLibrary from '../../../da-library/da-library.js';
 import insertTable from '../../table.js';
-import { insertSectionBreak } from '../menu.js';
+import { insertSectionBreak } from '../menu/menu.js';
 import loremIpsum from './loremIpsum.js';
 
 const setHeading = (state, dispatch, level) => {

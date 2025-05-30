@@ -1,7 +1,6 @@
 import {
   DOMParser,
   Plugin,
-  TextSelection,
   addColumnAfter,
   addColumnBefore,
   deleteColumn,
@@ -26,12 +25,12 @@ import {
 // eslint-disable-next-line import/no-unresolved
 } from 'da-y-wrapper';
 
-import openPrompt from '../../da-palette/da-palette.js';
-import openLibrary from '../../da-library/da-library.js';
+import openPrompt from '../../../da-palette/da-palette.js';
+import openLibrary from '../../../da-library/da-library.js';
 
-import insertTable from '../table.js';
-
-const linkPromptState = { lastPrompt: { isOpen: () => false } };
+import insertTable from '../../table.js';
+import { linkItem, removeLinkItem } from './linkItem.js';
+import { markActive } from './menuUtils.js';
 
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
@@ -56,207 +55,6 @@ function cmdItem(cmd, options) {
     passedOptions.enable = (state) => cmd(state);
   }
   return new MenuItem(passedOptions);
-}
-
-function markActive(state, type) {
-  const { from, to, $from, $to, empty } = state.selection;
-  if (empty) {
-    return !!type.isInSet(state.storedMarks || $from.marksAcross($to) || []);
-  }
-  return state.doc.rangeHasMark(from, to, type);
-}
-
-function defaultLinkFields() {
-  return {
-    href: {
-      placeholder: 'https://...',
-      label: 'URL',
-    },
-    title: {
-      placeholder: 'title',
-      label: 'Title',
-    },
-  };
-}
-
-function findExistingLink(state, linkMarkType) {
-  const { $from, $to, empty } = state.selection;
-  if (empty) {
-    const { node, offset } = $from.parent.childAfter($from.parentOffset);
-    return {
-      link: node,
-      offset,
-    };
-  }
-  let result;
-  // eslint-disable-next-line no-unused-vars
-  $from.parent.nodesBetween($from.parentOffset, $to.parentOffset, (node, pos, _parent, _index) => {
-    if (linkMarkType.isInSet(node.marks)) {
-      result = {
-        link: node,
-        offset: pos,
-      };
-    }
-  });
-  return result;
-}
-
-function calculateLinkPosition(state, link, offset) {
-  const { $from } = state.selection;
-  const start = $from.pos - ($from.parentOffset - offset);
-  return {
-    start,
-    end: start + link.nodeSize,
-  };
-}
-
-function hasImageNode(contentArr) {
-  if (!contentArr) return false;
-  return contentArr.some((node) => node.type.name === 'image');
-}
-
-export function linkItem(linkMarkType) {
-  const label = 'Edit link';
-
-  return new MenuItem({
-    title: 'Add or Edit link',
-    label,
-    class: 'edit-link',
-    active(state) { return markActive(state, linkMarkType); },
-    enable(state) {
-      const selContent = state.selection.content();
-      return selContent.content.childCount <= 1
-        && (!state.selection.empty || this.active(state))
-        && !hasImageNode(selContent.content?.content[0]?.content?.content);
-    },
-    run(initialState, dispatch, view) {
-      if (linkPromptState.lastPrompt.isOpen()) {
-        linkPromptState.lastPrompt.close();
-        return;
-      }
-
-      const fields = defaultLinkFields();
-
-      let existingLink;
-      let existingLinkOffset;
-      if (this.active(view.state)) {
-        ({
-          link: existingLink,
-          offset: existingLinkOffset,
-        } = findExistingLink(view.state, linkMarkType));
-        const existingLinkMark = existingLink
-          && existingLink.marks.find((mark) => mark.type.name === linkMarkType.name);
-
-        if (existingLinkMark) {
-          fields.href.value = existingLinkMark.attrs.href;
-          fields.title.value = existingLinkMark.attrs.title;
-        }
-      }
-
-      const { $from, $to } = view.state.selection;
-
-      let start;
-      let end;
-      if (this.active(view.state)) {
-        ({ start, end } = calculateLinkPosition(view.state, existingLink, existingLinkOffset));
-      } else {
-        start = $from.pos;
-        end = $to.pos;
-      }
-
-      let isImage = false;
-      view.state.doc.nodesBetween($from.pos, $to.pos, (node) => {
-        if (node.type === view.state.schema.nodes.image) {
-          isImage = true;
-          fields.href.value = node.attrs.href;
-          fields.title.value = node.attrs.title;
-        }
-      });
-
-      dispatch(view.state.tr
-        .addMark(start, end, view.state.schema.marks.contextHighlightingMark.create({}))
-        .setMeta('addToHistory', false));
-
-      const callback = (attrs) => {
-        if (isImage) {
-          if (fields.href.value) {
-            dispatch(view.state.tr.setNodeAttribute(start, 'href', fields.href.value.trim()));
-          }
-          if (fields.title.value) {
-            dispatch(view.state.tr.setNodeAttribute(start, 'title', fields.title.value.trim()));
-          }
-        } else {
-          const tr = view.state.tr
-            .setSelection(TextSelection.create(view.state.doc, start, end));
-          if (fields.href.value) {
-            dispatch(tr.addMark(start, end, linkMarkType.create(attrs)));
-          } else if (this.active(view.state)) {
-            dispatch(tr.removeMark(start, end, linkMarkType));
-          }
-        }
-
-        view.focus();
-      };
-
-      linkPromptState.lastPrompt = openPrompt(
-        { title: label, fields, callback, saveOnClose: true },
-      );
-      linkPromptState.lastPrompt.addEventListener('closed', () => {
-        dispatch(view.state.tr.removeMark(
-          start,
-          end,
-          view.state.schema.marks.contextHighlightingMark,
-        ).setMeta('addToHistory', false));
-      });
-    },
-  });
-}
-
-function removeLinkItem(linkMarkType) {
-  return new MenuItem({
-    title: 'Remove link',
-    label: 'Remove',
-    class: 'edit-unlink',
-    isImage: false,
-    active(state) {
-      this.isImage = false;
-      const { $from, $to } = state.selection;
-      let imgHasAttrs = false;
-      state.doc.nodesBetween($from.pos, $to.pos, (node) => {
-        if (node.type === state.schema.nodes.image) {
-          this.isImage = true;
-          if (node.attrs.href || node.attrs.title) {
-            imgHasAttrs = true;
-          } else {
-            imgHasAttrs = false;
-          }
-        }
-      });
-      if (this.isImage) {
-        if (($to.pos - $from.pos) <= 1) {
-          return imgHasAttrs;
-        }
-        // selection is more than just an image
-        return false;
-      }
-
-      return markActive(state, linkMarkType);
-    },
-    enable(state) { return this.active(state); },
-    // eslint-disable-next-line no-unused-vars
-    run(state, dispatch, _view) {
-      if (this.isImage) {
-        const { $from } = state.selection;
-        dispatch(state.tr.setNodeAttribute($from.pos, 'href', null).setNodeAttribute($from.pos, 'title', null));
-      } else {
-        const { link, offset } = findExistingLink(state, linkMarkType);
-        const { start, end } = calculateLinkPosition(state, link, offset);
-        const tr = state.tr.setSelection(TextSelection.create(state.doc, start, end))
-          .removeMark(start, end, linkMarkType);
-        dispatch(tr);
-      }
-    },
-  });
 }
 
 function imgAltTextItem() {

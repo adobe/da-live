@@ -24,7 +24,8 @@ import {
 
 // DA
 import prose2aem from '../../shared/prose2aem.js';
-import menu, { linkItem, getHeadingKeymap } from './plugins/menu.js';
+import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
+import { linkItem } from './plugins/menu/linkItem.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
@@ -167,8 +168,13 @@ function storeCursorPosition(view) {
 function restoreCursorPosition(view) {
   if (lastCursorPosition) {
     const { from, to } = lastCursorPosition;
-    const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
-    view.dispatch(tr);
+    const docSize = view.state.doc.content.size;
+    if (from <= docSize && to <= docSize) {
+      const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
+      view.dispatch(tr);
+    } else {
+      lastCursorPosition = null;
+    }
   }
 }
 
