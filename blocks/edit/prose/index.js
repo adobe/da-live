@@ -178,6 +178,19 @@ function restoreCursorPosition(view) {
   }
 }
 
+function addSyncedListener(wsProvider) {
+  let initialContentLoaded = false;
+  wsProvider.on('synced', (isSynced) => {
+    if (isSynced && !initialContentLoaded) {
+      const pm = document.querySelector('da-content')?.shadowRoot
+        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+      if (pm) pm.contentEditable = 'true';
+
+      initialContentLoaded = true;
+    }
+  });
+}
+
 export default function initProse({ path, permissions }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
@@ -200,6 +213,8 @@ export default function initProse({ path, permissions }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  addSyncedListener(wsProvider);
+
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
 

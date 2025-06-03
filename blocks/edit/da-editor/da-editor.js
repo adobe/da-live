@@ -94,6 +94,8 @@ export default class DaEditor extends LitElement {
     if (props.has('proseEl') && this.path && this.permissions) {
       if (this._proseEl) this._proseEl.remove();
       this.shadowRoot.append(this.proseEl);
+      const pm = this.shadowRoot.querySelector('.ProseMirror');
+      if (pm) pm.contentEditable = 'false';
     }
   }
 }

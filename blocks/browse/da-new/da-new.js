@@ -7,6 +7,8 @@ import getEditPath from '../shared.js';
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+const INPUT_ERROR = 'da-input-error';
+
 export default class DaNew extends LitElement {
   static properties = {
     fullpath: { type: String },
@@ -47,6 +49,9 @@ export default class DaNew extends LitElement {
 
   handleNameChange(e) {
     this._createName = e.target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    if (e.target.placeholder === 'name') {
+      e.target.classList.remove(INPUT_ERROR);
+    }
   }
 
   handleUrlChange(e) {
@@ -54,6 +59,13 @@ export default class DaNew extends LitElement {
   }
 
   async handleSave() {
+    const nameInput = this.shadowRoot.querySelector('.da-actions-input[placeholder="name"]');
+    if (!this._createName) {
+      if (nameInput) nameInput.classList.add(INPUT_ERROR);
+      return;
+    }
+    if (nameInput) nameInput.classList.remove(INPUT_ERROR);
+
     let ext;
     let formData;
     switch (this._createType) {
@@ -89,6 +101,12 @@ export default class DaNew extends LitElement {
   }
 
   async handleUpload(e) {
+    if (this._fileLabel === 'Select file') {
+      const label = this.shadowRoot.querySelector('.da-actions-file-label');
+      label.classList.add(INPUT_ERROR);
+      return false;
+    }
+
     e.preventDefault();
     const formData = new FormData(e.target);
     const split = this._fileLabel.split('.');
@@ -103,6 +121,7 @@ export default class DaNew extends LitElement {
     this.sendNewItem(item);
     this.resetCreate();
     this.requestUpdate();
+    return true;
   }
 
   handleKeyCommands(event) {
@@ -116,6 +135,8 @@ export default class DaNew extends LitElement {
 
   handleAddFile(e) {
     this._fileLabel = e.target.files[0].name;
+    const fileLabelError = e.target.parentElement.querySelector('.da-actions-file-label.da-input-error');
+    if (fileLabelError) fileLabelError.classList.remove(INPUT_ERROR);
   }
 
   resetCreate(e) {
@@ -126,6 +147,8 @@ export default class DaNew extends LitElement {
     this._createFile = '';
     this._fileLabel = 'Select file';
     this._externalUrl = '';
+    const input = this.shadowRoot.querySelector('.da-actions-input.da-input-error');
+    if (input) input.classList.remove(INPUT_ERROR);
   }
 
   get _disabled() {
