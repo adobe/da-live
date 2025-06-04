@@ -20,7 +20,7 @@ export const [setNx, getNx] = (() => {
         if (!(hostname.includes('.hlx.') || hostname.includes('.aem.') || hostname.includes('local'))) return nxBase;
         const branch = new URLSearchParams(search).get('nx') || 'main';
         if (branch === 'local') return 'http://localhost:6456/nx';
-        return branch.includes('--') ? `https://${branch}.aem.live/nx` : `https://${branch}--nexter--da-sites.aem.live/nx`;
+        return branch.includes('--') ? `https://${branch}.aem.live/nx` : `https://${branch}--da-nx--adobe.aem.live/nx`;
       })();
       return nx;
     }, () => nx,
