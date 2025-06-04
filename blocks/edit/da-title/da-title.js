@@ -106,7 +106,8 @@ export default class DaTitle extends LitElement {
       const url = new URL(href);
       const isSnap = url.pathname.startsWith('/.snapshots');
       const toOpen = isSnap ? this.getSnapshotHref(url, action) : href;
-      window.open(`${toOpen}?nocache=${Date.now()}`, toOpen);
+      const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
+      window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
