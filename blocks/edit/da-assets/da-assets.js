@@ -92,7 +92,9 @@ export async function openAssets() {
         dialog.close();
 
         // eslint-disable-next-line no-underscore-dangle
-        const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:description'];
+        const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/embedded']?.['dc:description']
+          // eslint-disable-next-line no-underscore-dangle
+          || asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/embedded']?.['dc:title'];
 
         // eslint-disable-next-line no-underscore-dangle
         const renditionLinks = asset._links['http://ns.adobe.com/adobecloud/rel/rendition'];
