@@ -71,14 +71,15 @@ export const daFetch = async (url, opts = {}) => {
   return resp;
 };
 
-export async function aemPreview(path, api, method = 'POST') {
+export async function aemAdmin(path, api, method = 'POST') {
   const [owner, repo, ...parts] = path.slice(1).split('/');
   const name = parts.pop() || repo || owner;
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
-  const resp = await daFetch(aemUrl, { method });
-  if (!resp.ok) return undefined;
-  return resp.json();
+  return daFetch(aemUrl, { method });
+  // const resp = await daFetch(aemUrl, { method });
+  // if (!resp.ok) return undefined;
+  // return resp.json();
 }
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
@@ -94,7 +95,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
   if (!daResp.ok) return undefined;
   if (!preview) return undefined;
-  return aemPreview(path, 'preview');
+  return aemAdmin(path, 'preview');
 }
 
 export const getSheetByIndex = (json, index = 0) => {

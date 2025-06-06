@@ -1,0 +1,248 @@
+.da-actionbar-modal {
+  margin: 0 16px 10px;
+  min-height: 200px;
+  min-width: 300px;
+}
+
+.da-actionbar-modal-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px #e1e1e1 solid;
+  padding: 16px 0;
+}
+
+.da-actionbar-modal-header h3 {
+  margin: 0;
+}
+
+.da-actionbar-modal-close {
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.da-actionbar-modal-content {
+  margin-top: 16px;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.da-actionbar-modal-in-progress > img {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.da-actionbar-modal-trash-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.da-actionbar-modal-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.da-actionbar-modal-checkbox > input {
+  width: 16px;
+  height: 16px;
+}
+
+.da-actionbar-modal-confirmation p {
+  margin: 0 8px;
+}
+
+.da-actionbar-modal-confirmation sl-input {
+  margin-top: 16px;
+}
+
+.da-actionbar-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 10px;
+}
+
+.da-actionbar-modal-footer .delete-button:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Ignore below */
+
+sl-dialog::part(header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+.da-actionbar-modal::part(title) {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.da-actionbar-modal::part(close-button) {
+  color: #8E8E8E;
+}
+
+.da-actionbar-modal::part(body) {
+  padding: 20px;
+  color: #333;
+  font-size: 14px;
+}
+
+.da-actionbar-modal::part(footer) {
+  padding: 16px 20px;
+  border-top: 1px solid #E0E0E0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* General unpublish checkbox style (used in full modal) */
+.da-actionbar-modal-content .unpublish-page-checkbox {
+  font-size: 14px;
+}
+
+.da-actionbar-modal-content .unpublish-page-checkbox::part(label) {
+  color: #333;
+}
+
+.da-actionbar-modal-content .confirmation-prompt {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.da-actionbar-modal-content sl-input::part(input) {
+  border-color: #BDBDBD;
+}
+
+/* Button styles */
+sl-button[variant="default"]::part(base) {
+  color: #333;
+  border-color: #BDBDBD;
+}
+
+sl-button[variant="default"]::part(base):hover {
+  background-color: #F5F5F5;
+}
+
+sl-button[variant="primary"].delete-button::part(base) {
+  background-color: #D32F2F; /* Red for delete */
+  border-color: #D32F2F;
+  color: #FFF;
+}
+
+sl-button[variant="primary"].delete-button::part(base):hover {
+  background-color: #B71C1C;
+}
+
+sl-button[variant="primary"].delete-button::part(base):disabled {
+  background-color: #E0E0E0;
+  border-color: #E0E0E0;
+  color: #9E9E9E;
+}
+
+/* Styles for the "Note" dialog */
+.da-actionbar-modal-note p {
+  margin-bottom: 10px;
+}
+
+.da-actionbar-modal-note .failed-items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.da-actionbar-modal-note .failed-items-list li {
+  padding: 4px 0;
+  font-weight: 500;
+}
+
+.da-actionbar-modal-note .failed-items-list li span {
+  display: block;
+  font-weight: normal;
+  color: #D32F2F;
+  font-size: 0.9em;
+}
+
+/* Styles for the new initial delete modal state */
+sl-dialog.da-actionbar-modal-initial-delete::part(panel) {
+  background-color: #FFF; /* Matches image background */
+  border-radius: 16px; /* Rounded as per new image */
+  padding: 8px 12px; /* Minimal padding */
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  max-width: fit-content; /* Size to content */
+  width: auto;
+}
+
+/* Hide header, title, close button, and footer for the initial minimal dialog */
+sl-dialog.da-actionbar-modal-initial-delete::part(header),
+sl-dialog.da-actionbar-modal-initial-delete::part(title),
+sl-dialog.da-actionbar-modal-initial-delete::part(close-button),
+sl-dialog.da-actionbar-modal-initial-delete::part(footer) {
+  display: none;
+}
+
+sl-dialog.da-actionbar-modal-initial-delete::part(body) {
+  padding: 0; /* Remove body padding if panel padding is sufficient */
+  display: flex; /* Center content if needed */
+  justify-content: center;
+  align-items: center;
+}
+
+.initial-delete-content {
+  /* Container for the checkbox, mainly for centering if needed */
+}
+
+/* Styling the sl-checkbox with .styled-as-button to look like the new image */
+.unpublish-page-checkbox.styled-as-button::part(base) {
+  /* Ensure base part doesn't add unwanted margins or structure */
+}
+
+.unpublish-page-checkbox.styled-as-button::part(control) {
+  display: none; /* Hide the actual checkbox square */
+}
+
+.unpublish-page-checkbox.styled-as-button::part(label) {
+  display: inline-block;
+  padding: 6px 12px;
+  background-color: #FFF; /* Match image */
+  color: #333; /* Match image text color */
+  border: 1px solid #DADCE0; /* Subtle border, similar to Material Design chips */
+  border-radius: 16px; /* Fully rounded to make it a lozenge/tag */
+  cursor: pointer;
+  font-size: 13px; /* Adjust to match image if possible */
+  line-height: 1.4;
+  user-select: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.unpublish-page-checkbox.styled-as-button:hover::part(label) {
+  background-color: #F8F9FA; /* Slight hover effect */
+  border-color: #C0CCCF; /* Corrected hex color */
+}
+
+/* Optional: Style for when the checkbox is checked, if needed for visual feedback */
+.unpublish-page-checkbox.styled-as-button[checked]::part(label) {
+  background-color: #E8F0FE; /* Example: Light blue for checked state */
+  border-color: #1A73E8;
+  color: #174EA6;
+}

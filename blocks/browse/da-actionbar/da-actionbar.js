@@ -5,6 +5,14 @@ import { getNx } from '../../../scripts/utils.js';
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+let modalComponents;
+async function loadModalComponents() {
+  if (!modalComponents) {
+    import('./da-actionbar-modal.js');
+    modalComponents = await import(`${getNx()}/public/sl/components.js`);
+  }
+}
+
 export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
@@ -33,6 +41,8 @@ export default class DaActionBar extends LitElement {
         this._isCopying = false;
         this._isMoving = false;
         this._isDeleting = false;
+      } else {
+        loadModalComponents();
       }
     }
 
@@ -76,7 +86,12 @@ export default class DaActionBar extends LitElement {
 
   handleDelete() {
     this._isDeleting = true;
-    const opts = { bubbles: true, composed: true };
+    this._modal.show = true;
+  }
+
+  deleteItems(e) {
+    const { unpublish, items } = e.detail;
+    const opts = { detail: { unpublish, items }, bubbles: true, composed: true };
     const event = new CustomEvent('ondelete', opts);
     this.dispatchEvent(event);
   }
@@ -107,6 +122,10 @@ export default class DaActionBar extends LitElement {
     return itemDir !== this.currentPath;
   }
 
+  get _modal() {
+    return this.shadowRoot.querySelector('da-actionbar-modal');
+  }
+
   get _canWrite() {
     if (!this.permissions) return false;
     return this.permissions.some((permission) => permission === 'write');
@@ -129,6 +148,11 @@ export default class DaActionBar extends LitElement {
 
   render() {
     return html`
+      <da-actionbar-modal
+        .items=${this.items}
+        @delete-items=${this.deleteItems}
+        @modal-closed=${this.handleClear}>
+      </da-actionbar-modal>
       <div class="da-action-bar">
         <div class="da-action-bar-left-rail">
           <button

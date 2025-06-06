@@ -1,7 +1,7 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, aemAdmin } from '../../shared/utils.js';
 
 import '../da-actionbar/da-actionbar.js';
 import '../da-list-item/da-list-item.js';
@@ -158,7 +158,7 @@ export default class DaList extends LitElement {
     });
   }
 
-  async handlePasteItem(item) {
+  async handlePasteItem(item, unshift = true) {
     let continuation = true;
     let continuationToken;
 
@@ -185,8 +185,10 @@ export default class DaList extends LitElement {
     }
 
     item.isChecked = false;
-    const pastedItem = { ...item, path: item.destination, isChecked: false };
-    this._listItems.unshift(pastedItem);
+    if (unshift) {
+      const pastedItem = { ...item, path: item.destination, isChecked: false };
+      this._listItems.unshift(pastedItem);
+    }
     this.requestUpdate();
   }
 
@@ -221,15 +223,21 @@ export default class DaList extends LitElement {
 
     clearTimeout(showStatus);
     if (evt?.detail?.move) {
-      await this.handleDelete();
+      await this.handleDelete(evt);
     }
     this.setStatus();
     this.handleClear();
   }
 
-  async handleDeleteItem(item) {
+  async handleDeleteItem(item, unpublish) {
     let continuation = true;
     let continuationToken;
+
+    if (unpublish && ['html', 'json'].includes(item.ext)) {
+      console.log('unpublish');
+      // TODO error handling
+      aemAdmin(item.path, 'live', 'DELETE');
+    }
 
     while (continuation) {
       const opts = { method: 'DELETE' };
@@ -258,14 +266,65 @@ export default class DaList extends LitElement {
     this.requestUpdate();
   }
 
-  async handleDelete() {
+  async copyItemToTrash(item) {
+    const splitPath = item.path.split('/');
+    splitPath.splice(2, 0, '.trash');
+
+    // Files put in the trash get the current UTC date and time appended to the name
+    const date = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
+    item.name = `${item.name}--${date}${item.ext ? `.${item.ext}` : ''}`;
+    splitPath[splitPath.length - 1] = item.name;
+
+    item.destination = splitPath.join('/');
+
+    let continuation = true;
+    let continuationToken;
+
+    while (continuation) {
+      const formData = new FormData();
+      formData.append('destination', item.destination);
+      if (continuationToken) formData.append('continuation-token', continuationToken);
+      const opts = { method: 'POST', body: formData };
+      const resp = await daFetch(`${DA_ORIGIN}/copy${item.path}`, opts);
+      if (resp.status === 204) {
+        continuation = false;
+        break;
+      } else if (resp.status >= 400) {
+        this.setStatus('Moving', 'There was an issue moving.');
+
+        // TODO maybe there is a better way to keep the status dialog visible for a bit?
+        await this.wait(2000);
+
+        return;
+      }
+      const json = await resp.json();
+      ({ continuationToken } = json);
+      if (!continuationToken) continuation = false;
+    }
+
+    // item.isChecked = false;
+    // this._listItems = this._listItems.reduce((acc, liItem) => {
+    //   if (liItem.path !== item.path) acc.push(liItem);
+    //   return acc;
+    // }, []);
+
+    // this.requestUpdate();
+  }
+
+  async handleDelete(event) {
+    const unpublish = event?.detail?.unpublish;
+
     const showStatus = setTimeout(() => {
       this.setStatus('Deleting', 'Please be patient. Deleting items with many children can take time.');
-    }, 2000);
+    }, 1);
 
     await Promise.all(this._selectedItems.map(async (item) => {
-      await this.handleDeleteItem(item);
+      if (!item.path.includes('/.trash/')) {
+        await this.copyItemToTrash(item);
+      }
+      await this.handleDeleteItem(item, unpublish);
     }));
+
     clearTimeout(showStatus);
     this.setStatus();
     this.handleClear();
@@ -462,7 +521,7 @@ export default class DaList extends LitElement {
         @clearselection=${this.handleClear}
         @rename=${this.handleRename}
         @onpaste=${this.handlePaste}
-        @ondelete=${this.handleDelete}
+        @ondelete=${(e) => this.handleDelete(e)}
         @onshare=${this.handleShare}
         currentPath="${this.fullpath}"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
