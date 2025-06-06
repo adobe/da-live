@@ -1,0 +1,115 @@
+/* .da-actionbar-modal {
+  margin: 0 16px 10px;
+  min-height: 200px;
+  min-width: 300px;
+}
+
+.da-actionbar-modal-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px #e1e1e1 solid;
+  padding: 16px 0;
+}
+
+.da-actionbar-modal-header h3 {
+  margin: 0;
+}
+
+.da-actionbar-modal-close {
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.da-actionbar-modal-content {
+  margin-top: 16px;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+} */
+
+.da-actionbar-modal-in-progress {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.da-actionbar-modal-in-progress da-progress-bar {
+  margin: 16px 0;
+}
+
+.da-actionbar-modal-in-progress > img {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.da-actionbar-modal-trash-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.da-actionbar-modal-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.da-actionbar-modal-checkbox > input {
+  width: 16px;
+  height: 16px;
+}
+
+.da-actionbar-modal-confirmation p {
+  margin: 0 8px;
+}
+
+.da-actionbar-modal-confirmation sl-input {
+  margin-top: 16px;
+}
+
+/* .da-actionbar-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 10px;
+} */
+
+.da-action-modal-footer .delete-button:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.da-actionbar-modal-note p {
+  margin-bottom: 10px;
+}
+
+.da-actionbar-modal-note .failed-items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.da-actionbar-modal-note .failed-items-list li {
+  padding: 4px 0;
+  font-weight: 500;
+}
+
+.da-actionbar-modal-note .failed-items-list li span {
+  display: block;
+  font-weight: normal;
+  color: #D32F2F;
+  font-size: 0.9em;
+}

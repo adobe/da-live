@@ -1,0 +1,38 @@
+.da-action-modal {
+  margin: 0 16px 10px;
+  min-height: 200px;
+  min-width: 300px;
+}
+
+.da-action-modal-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px #e1e1e1 solid;
+  padding: 16px 0;
+}
+
+.da-action-modal-header h3 {
+  margin: 0;
+}
+
+.da-action-modal-close {
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.da-action-modal-content {
+  margin-top: 16px;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.da-action-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 10px;
+}

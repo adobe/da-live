@@ -1,7 +1,7 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, aemAdmin } from '../../shared/utils.js';
 
 import '../da-actionbar/da-actionbar.js';
 import '../da-list-item/da-list-item.js';
@@ -32,6 +32,9 @@ export default class DaList extends LitElement {
     _dropFiles: { state: true },
     _dropMessage: { state: true },
     _status: { state: true },
+    _totalDeleteCount: { state: true },
+    _currentDeleteCount: { state: true },
+    _unpublishErrors: { state: true },
   };
 
   constructor() {
@@ -39,6 +42,7 @@ export default class DaList extends LitElement {
     this._dropFiles = [];
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
+    this._unpublishErrors = [];
   }
 
   connectedCallback() {
@@ -100,6 +104,10 @@ export default class DaList extends LitElement {
     if (this.actionBar) this.actionBar.items = [];
   }
 
+  handleClearUnpublishErrors() {
+    this._unpublishErrors = [];
+  }
+
   handleSelectionState() {
     this._selectedItems = this._listItems.filter((item) => item.isChecked);
     // If more than one item is selected, force everything to not be in a rename state
@@ -158,35 +166,63 @@ export default class DaList extends LitElement {
     });
   }
 
-  async handlePasteItem(item) {
+  async fetchWithContinuation(url, { method, formData = null, errorMessage, errorAction }) {
     let continuation = true;
     let continuationToken;
 
     while (continuation) {
-      const formData = new FormData();
-      formData.append('destination', item.destination);
-      if (continuationToken) formData.append('continuation-token', continuationToken);
-      const opts = { method: 'POST', body: formData };
-      const resp = await daFetch(`${DA_ORIGIN}/copy${item.path}`, opts);
+      const opts = { method };
+
+      if (continuationToken || formData) {
+        const data = formData || new FormData();
+        if (continuationToken) {
+          data.append('continuation-token', continuationToken);
+        }
+        opts.body = data;
+      }
+
+      const resp = await daFetch(url, opts);
+
       if (resp.status === 204) {
         continuation = false;
         break;
       } else if (resp.status >= 400) {
-        this.setStatus('Copying', 'There was an issue copying.');
-
-        // TODO maybe there is a better way to keep the status dialog visible for a bit?
-        await this.wait(2000);
-
-        return;
+        if (errorMessage && errorAction) {
+          this.setStatus(errorAction, errorMessage);
+          await this.wait(2000);
+        }
+        return false;
       }
+
       const json = await resp.json();
       ({ continuationToken } = json);
       if (!continuationToken) continuation = false;
     }
 
+    return true;
+  }
+
+  async handlePasteItem(item, unshift = true) {
+    const formData = new FormData();
+    formData.append('destination', item.destination);
+
+    const success = await this.fetchWithContinuation(
+      `${DA_ORIGIN}/copy${item.path}`,
+      {
+        method: 'POST',
+        formData,
+        errorMessage: 'There was an issue copying.',
+        errorAction: 'Copying',
+      },
+    );
+
+    if (!success) return;
+
     item.isChecked = false;
-    const pastedItem = { ...item, path: item.destination, isChecked: false };
-    this._listItems.unshift(pastedItem);
+    if (unshift) {
+      const pastedItem = { ...item, path: item.destination, isChecked: false };
+      this._listItems.unshift(pastedItem);
+    }
     this.requestUpdate();
   }
 
@@ -221,52 +257,96 @@ export default class DaList extends LitElement {
 
     clearTimeout(showStatus);
     if (evt?.detail?.move) {
-      await this.handleDelete();
+      await this.handleDelete(evt);
     }
     this.setStatus();
     this.handleClear();
   }
 
-  async handleDeleteItem(item) {
-    let continuation = true;
-    let continuationToken;
+  removeItemFromList(item) {
+    item.isChecked = false;
+    this._listItems = this._listItems.reduce((acc, liItem) => {
+      if (liItem.path !== item.path) acc.push(liItem);
+      return acc;
+    }, []);
 
-    while (continuation) {
-      const opts = { method: 'DELETE' };
+    this.requestUpdate();
+  }
 
-      if (continuationToken) {
-        const formData = new FormData();
-        formData.append('continuation-token', continuationToken);
-        opts.body = formData;
-      }
+  async deleteItem(item) {
+    const success = await this.fetchWithContinuation(
+      `${DA_ORIGIN}/source${item.path}`,
+      { method: 'DELETE' },
+    );
 
-      const resp = await daFetch(`${DA_ORIGIN}/source${item.path}`, opts);
-      if (resp.status === 204) {
-        continuation = false;
-        break;
-      }
-      const json = await resp.json();
-      ({ continuationToken } = json);
-      if (!continuationToken) continuation = false;
-    }
+    if (!success) return;
 
     item.isChecked = false;
     this._listItems = this._listItems.reduce((acc, liItem) => {
       if (liItem.path !== item.path) acc.push(liItem);
       return acc;
     }, []);
-    this.requestUpdate();
+
+    this.removeItemFromList(item);
   }
 
-  async handleDelete() {
-    const showStatus = setTimeout(() => {
-      this.setStatus('Deleting', 'Please be patient. Deleting items with many children can take time.');
-    }, 2000);
+  async moveItemToTrash(item) {
+    const splitPath = item.path.split('/');
+    if (splitPath.length > 3) {
+      splitPath.splice(3, 0, '.trash');
+    } else {
+      // root folders go into the org level .trash
+      splitPath.splice(2, 0, '.trash');
+    }
+
+    // Files put in the trash get the current UTC date and time appended to the name
+    const date = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
+    item.name = `${item.name}--${date}${item.ext ? `.${item.ext}` : ''}`;
+    splitPath[splitPath.length - 1] = item.name;
+
+    item.destination = splitPath.join('/');
+
+    const formData = new FormData();
+    formData.append('destination', item.destination);
+
+    const success = await this.fetchWithContinuation(
+      `${DA_ORIGIN}/move${item.path}`,
+      {
+        method: 'POST',
+        formData,
+        errorMessage: 'There was an issue moving.',
+        errorAction: 'Moving',
+      },
+    );
+
+    if (success) this.removeItemFromList(item);
+
+    return success;
+  }
+
+  async handleDelete(event) {
+    const unpublish = event?.detail?.unpublish;
+
+    this._totalDeleteCount = this._selectedItems.length;
+    this._currentDeleteCount = 0;
+    const unpublishErrors = [];
 
     await Promise.all(this._selectedItems.map(async (item) => {
-      await this.handleDeleteItem(item);
+      if (unpublish && ['html', 'json'].includes(item.ext)) {
+        const resp = await aemAdmin(item.path, 'live', 'DELETE');
+        if (!resp.ok) unpublishErrors.push([item.name, resp.status]);
+      }
+      const copyToTrash = !item.path.includes('/.trash/');
+      if (copyToTrash) {
+        await this.moveItemToTrash(item);
+      } else {
+        await this.deleteItem(item);
+      }
+      this._currentDeleteCount += 1;
     }));
-    clearTimeout(showStatus);
+
+    this._unpublishErrors = unpublishErrors;
+
     this.setStatus();
     this.handleClear();
   }
@@ -459,13 +539,17 @@ export default class DaList extends LitElement {
       </div>
       <da-actionbar
         .permissions=${this._permissions}
+        .totalDeleteCount=${this._totalDeleteCount}
+        .currentDeleteCount=${this._currentDeleteCount}
+        .unpublishErrors=${this._unpublishErrors}
         @clearselection=${this.handleClear}
+        @clearunpublisherrors=${this.handleClearUnpublishErrors}
         @rename=${this.handleRename}
         @onpaste=${this.handlePaste}
-        @ondelete=${this.handleDelete}
+        @ondelete=${(e) => this.handleDelete(e)}
         @onshare=${this.handleShare}
         currentPath="${this.fullpath}"
-        data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
+        data-visible="${this._selectedItems?.length > 0 || this._unpublishErrors?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
       `;
   }
