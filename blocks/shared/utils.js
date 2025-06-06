@@ -23,6 +23,7 @@ export async function initIms() {
 
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
+  opts.signal = opts.signal || AbortSignal.timeout?.(10000);
   let accessToken;
   if (localStorage.getItem('nx-ims')) {
     ({ accessToken } = await initIms());
@@ -34,56 +35,58 @@ export const daFetch = async (url, opts = {}) => {
       }
     }
   }
-  const resp = await fetch(url, opts);
-  if (resp.status === 401) {
-    // Only attempt sign-in if the request is for DA.
-    if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
-      // If the user has an access token, but are not permitted, redirect them to not found.
-      if (accessToken) {
+  try {
+    const resp = await fetch(url, opts);
+    if (resp.status === 401) {
+      // Only attempt sign-in if the request is for DA.
+      if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
+        // If the user has an access token, but are not permitted, redirect them to not found.
+        if (accessToken) {
+          // eslint-disable-next-line no-console
+          console.warn('You see the 404 page because you have no access to this page', url);
+          window.location = `${window.location.origin}/not-found`;
+          return { ok: false };
+        }
         // eslint-disable-next-line no-console
-        console.warn('You see the 404 page because you have no access to this page', url);
-        window.location = `${window.location.origin}/not-found`;
-        return { ok: false };
+        console.warn('You need to sign in because you are not authorized to access this page', url);
+        const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+        await loadIms();
+        handleSignIn();
       }
-      // eslint-disable-next-line no-console
-      console.warn('You need to sign in because you are not authorized to access this page', url);
-      const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-      await loadIms();
-      handleSignIn();
     }
-  }
 
-  // TODO: Properly support 403 - DA Admin sometimes gives 401s and sometimes 403s.
-  if (resp.status === 403) {
+    // TODO: Properly support 403 - DA Admin sometimes gives 401s and sometimes 403s.
+    if (resp.status === 403) {
+      return resp;
+    }
+
+    // If child actions header is present, use it.
+    // This is a hint as to what can be done with the children.
+    if (resp.headers?.get('x-da-child-actions')) {
+      resp.permissions = resp.headers.get('x-da-child-actions').split('=').pop().split(',');
+      return resp;
+    }
+
+    // Use the self actions hint if child actions are not present.
+    if (resp.headers?.get('x-da-actions')) {
+      resp.permissions = resp.headers?.get('x-da-actions')?.split('=').pop().split(',');
+      return resp;
+    }
+
+    // Support legacy admin.role.all
+    resp.permissions = ['read', 'write'];
     return resp;
+  } catch (e) {
+    return { ok: false, status: e.name === 'AbortError' ? 408 : 418 };
   }
-
-  // If child actions header is present, use it.
-  // This is a hint as to what can be done with the children.
-  if (resp.headers?.get('x-da-child-actions')) {
-    resp.permissions = resp.headers.get('x-da-child-actions').split('=').pop().split(',');
-    return resp;
-  }
-
-  // Use the self actions hint if child actions are not present.
-  if (resp.headers?.get('x-da-actions')) {
-    resp.permissions = resp.headers?.get('x-da-actions')?.split('=').pop().split(',');
-    return resp;
-  }
-
-  // Support legacy admin.role.all
-  resp.permissions = ['read', 'write'];
-  return resp;
 };
 
-export async function aemPreview(path, api, method = 'POST') {
+export async function aemAdmin(path, api, method = 'POST') {
   const [owner, repo, ...parts] = path.slice(1).split('/');
   const name = parts.pop() || repo || owner;
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
-  const resp = await daFetch(aemUrl, { method });
-  if (!resp.ok) return undefined;
-  return resp.json();
+  return daFetch(aemUrl, { method });
 }
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
@@ -99,7 +102,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
   if (!daResp.ok) return undefined;
   if (!preview) return undefined;
-  return aemPreview(path, 'preview');
+  return aemAdmin(path, 'preview');
 }
 
 export const getSheetByIndex = (json, index = 0) => {
