@@ -158,6 +158,10 @@ export default class DaListItem extends LitElement {
     }
   }
 
+  handleRename({ target }) {
+    target.value = target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+  }
+
   toggleExpand() {
     this.classList.toggle('is-expanded');
     if (this.classList.contains('is-expanded')) {
@@ -182,7 +186,7 @@ export default class DaListItem extends LitElement {
       <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
         <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
         </span>
-        <input type="text" value="${this.name}" name="new-name">
+        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name">
         <div class="da-item-list-item-rename-actions">
           <button aria-label="Confirm" value="confirm">
             <div class="icon checkmark-icon"></div>

@@ -229,6 +229,12 @@ const baseMarks = {
       return ['s', 0];
     },
   },
+  u: {
+    parseDOM: [{ tag: 'u' }],
+    toDOM() {
+      return ['u', 0];
+    },
+  },
 };
 
 const baseSchema = new Schema({ nodes: baseNodes, marks: baseMarks });
