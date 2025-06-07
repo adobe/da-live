@@ -94,6 +94,9 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   const enteredText = `Some content entered at ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
+  // Wait for the content to be stored in the backend
+  await page.waitForTimeout(3000);
+
   // Create a second window on the same document
   const page2 = await browser.newPage();
   await page2.goto(url);
@@ -119,8 +122,16 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await list.locator('button.delete-button').locator('visible=true').click();
 
   // Give the second window a chance to update itself
-  await list.waitForTimeout(10000);
+  await page2.waitForTimeout(3000);
 
   // The open window should be cleared out now
   await expect(page2.locator('div.ProseMirror')).not.toContainText(enteredText);
+
+  // Add some text to the second window with the stale document, it should not be saved
+  await page2.locator('div.ProseMirror').fill('Some new content');
+  await page2.waitForTimeout(5000);
+
+  list.reload();
+  // The document should still not be in the list, even though edits were made on the stale doc
+  await expect(list.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
 });

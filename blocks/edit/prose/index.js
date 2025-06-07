@@ -185,7 +185,7 @@ function addSyncedListener(wsProvider) {
   });
 }
 
-export default function initProse({ path, permissions }) {
+export default function initProse({ path, permissions, docguid }, resetFunc) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
   const editor = document.createElement('div');
@@ -212,7 +212,30 @@ export default function initProse({ path, permissions }) {
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
 
-  const yXmlFragment = ydoc.getXmlFragment('prosemirror');
+  const guidArray = ydoc.getArray('prosemirror-guids');
+  let curGuid;
+  if (docguid) {
+    curGuid = docguid;
+  } else {
+    curGuid = crypto.randomUUID();
+    guidArray.push([{ ts: Date.now(), guid: curGuid, newDoc: true }]);
+  }
+
+  ydoc.on('update', () => {
+    // If the document has been replaced by a another document (it has been first deleted
+    // and then a new document has been created), reset the window to connect to the new doc.
+    const guids = [...guidArray];
+    if (guids.length === 0) {
+      return;
+    }
+    guids.sort((a, b) => a.ts - b.ts);
+    const latestGuid = guids.pop();
+    if (latestGuid.guid !== curGuid) {
+      resetFunc(latestGuid.guid);
+    }
+  });
+
+  const yXmlFragment = ydoc.getXmlFragment(`prosemirror-${curGuid}`);
 
   if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then(
