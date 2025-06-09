@@ -220,7 +220,7 @@ export default function initProse({ path, permissions }) {
         wsProvider.awareness.setLocalStateField(
           'user',
           {
-            color: generateColor(profile.email || profile.userId),
+            color: generateColor(profile.email.toLowerCase() || profile.userId),
             name: profile.displayName,
             id: profile.userId,
           },
