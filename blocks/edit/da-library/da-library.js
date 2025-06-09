@@ -16,7 +16,7 @@ import inlinesvg from '../../shared/inlinesvg.js';
 import { aem2prose } from '../utils/helpers.js';
 import { daFetch } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { delay, getItems, getLibraryList } from './helpers/helpers.js';
+import { delay, getItems, getLibraryList, getUixHost } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -118,7 +118,8 @@ class DaLibrary extends LitElement {
             </div>
             <button class="primary" @click=${this.handleModalClose}>Close</button>
           </div>
-          ${this.renderPlugin(library, true)}
+
+          ${library.extensionId ? this.renderUixExtension(library.extensionId, library.url) : this.renderPlugin(library, true)}
         </dialog>
       `;
 
@@ -173,7 +174,7 @@ class DaLibrary extends LitElement {
     toShow.classList.remove('forward');
     toShow.inert = false;
     const pluginIframe = toShow.querySelector('iframe');
-    if (!pluginIframe) return;
+    if (!pluginIframe || library.extensionId) return;
     pluginIframe.src = pluginIframe.dataset.src;
   }
 
@@ -278,17 +279,25 @@ class DaLibrary extends LitElement {
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 
+  handleSendHTML(htmlPayload) {
+    const dom = new DOMParser().parseFromString(htmlPayload, 'text/html');
+    const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
+    window.view.dispatch(window.view.state.tr.replaceSelectionWith(nodes));
+  }
+
+  handleSendText(textPayload) {
+    const para = window.view.state.schema.text(textPayload);
+    window.view.dispatch(window.view.state.tr.replaceSelectionWith(para));
+  }
+
   async handlePluginLoad({ target }) {
     const channel = new MessageChannel();
     channel.port1.onmessage = (e) => {
       if (e.data.action === 'sendText') {
-        const para = window.view.state.schema.text(e.data.details);
-        window.view.dispatch(window.view.state.tr.replaceSelectionWith(para));
+        this.handleSendText(e.data.details);
       }
       if (e.data.action === 'sendHTML') {
-        const dom = new DOMParser().parseFromString(e.data.details, 'text/html');
-        const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
-        window.view.dispatch(window.view.state.tr.replaceSelectionWith(nodes));
+        this.handleSendHTML(e.data.details);
       }
       if (e.data.action === 'closeLibrary') {
         closeLibrary();
@@ -428,9 +437,49 @@ class DaLibrary extends LitElement {
     return searchFor(this._searchStr, data, this);
   }
 
+  renderUixExtension(extensionId, url) {
+    const timer = setInterval(async () => {
+      const { initIms } = await import('../../shared/utils.js');
+      ({ accessToken } = (await initIms()) || {});
+
+      const frameInstance = this.shadowRoot.querySelector(`#uix-ui-frame-${extensionId}`);
+      if (!frameInstance) {
+        return;
+      }
+      const host = await getUixHost();
+      host.shareContext({
+        ...this.getParts(),
+        token: accessToken.token ?? undefined,
+      });
+      const extension = host.guests.get(extensionId);
+      extension.provide({
+        da: {
+          sendHTML: (_, payload) => {
+            this.handleSendHTML(payload);
+          },
+          sendText: (_, payload) => {
+            this.handleSendText(payload);
+          },
+          closeLibrary: () => {
+            closeLibrary();
+          },
+        },
+      });
+      extension.attachUI(frameInstance);
+      clearInterval(timer);
+    }, 100);
+
+    return html`
+    <div class="da-library-type-plugin">
+      <iframe
+        id="uix-ui-frame-${extensionId}"
+        src="${url}"
+        allow="clipboard-write *"></iframe>
+    </div>`;
+  }
+
   renderPlugin(library, preload) {
     const url = library.sources?.[0] || library.url;
-
     return html`
       <div class="da-library-type-plugin">
         <iframe
@@ -441,7 +490,11 @@ class DaLibrary extends LitElement {
       </div>`;
   }
 
-  async renderLibrary({ name, sources, url, format, class: className }) {
+  async renderLibrary({ name, sources, url, format, class: className, extensionId }) {
+    // Only UIX extension have an extensionId
+    if (extensionId) {
+      return this.renderUixExtension(extensionId, url);
+    }
     const isPlugin = className.split(' ').some((val) => val === 'is-plugin');
 
     if (isPlugin) return this.renderPlugin({ sources, url });
