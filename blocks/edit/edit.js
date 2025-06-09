@@ -4,7 +4,7 @@ import initProse from './prose/index.js';
 let proseEl;
 let wsProvider;
 
-async function setUI(el, utils, guid) {
+async function setUI(el, utils) {
   const details = getPathDetails();
   if (!details) {
     // el.classList.add('no-url');
@@ -35,7 +35,7 @@ async function setUI(el, utils, guid) {
   }
 
   const { daFetch } = await utils;
-  const { permissions, headers } = await daFetch(details.sourceUrl, { method: 'HEAD' });
+  const { permissions } = await daFetch(details.sourceUrl, { method: 'HEAD' });
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
 
@@ -44,12 +44,7 @@ async function setUI(el, utils, guid) {
     daContent.wsProvider = undefined;
   }
 
-  const docguid = guid ?? headers?.get('x-da-id');
-  ({ proseEl, wsProvider } = initProse({
-    path: details.sourceUrl,
-    permissions,
-    docguid,
-  }, (updatedGuid) => setUI(el, utils, updatedGuid)));
+  ({ proseEl, wsProvider } = initProse({ path: details.sourceUrl, permissions }));
   daContent.proseEl = proseEl;
   daContent.wsProvider = wsProvider;
 }
