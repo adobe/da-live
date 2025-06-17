@@ -6,16 +6,16 @@ import {
 
 const LOC = {
   LANGSTORE: {
-    BG: 'rgba(70, 130, 180, 0.8)',
-    COVER_BG: 'rgba(70, 130, 180, 0.4)',
-    TEXT: 'Upstream Content',
-    TEXT_COLOR: 'rgba(70, 130, 180)',
+    BG: 'rgba(240, 44, 9, 0.8)',
+    COVER_BG: 'rgba(240, 44, 9, 0.4)',
+    TEXT: 'Removed Content',
+    TEXT_COLOR: 'rgb(240, 37, 1)',
   },
   REGIONAL: {
-    BG: 'rgba(144, 42, 222, 0.8)',
-    COVER_BG: 'rgba(144, 42, 222, 0.4)',
-    TEXT: 'Local Content',
-    TEXT_COLOR: 'rgba(144, 42, 222)',
+    BG: 'rgba(34, 139, 34, 0.8)',
+    COVER_BG: 'rgba(34, 139, 34, 0.4)',
+    TEXT: 'Added Content',
+    TEXT_COLOR: 'rgb(2, 130, 2)',
   },
 };
 

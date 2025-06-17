@@ -47,3 +47,19 @@ export const getDaAdmin = (() => {
 
 export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();
+export const DA_AI_ORIGIN = (() => {
+  const key = 'da-ai';
+  origin = new URL(window.location.href).searchParams.get(key)
+  if (origin) {
+    console.log('origin', origin);
+    if (origin === 'reset') {
+      localStorage.removeItem(origin);
+    } else if (new URL(origin).origin.endsWith('.adobeaem.workers.dev')) {
+      localStorage.setItem(key, origin);
+    } else {
+      console.error('DA_AI_ORIGIN is not a valid origin');
+    }
+  }
+ 
+  return localStorage.getItem(key) || null;
+})();

@@ -58,10 +58,10 @@ function makePictures(editor) {
     let pic = document.createElement('picture');
 
     const srcMobile = document.createElement('source');
-    srcMobile.srcset = clone.src;
+    srcMobile.srcset = clone.getAttribute('src');
 
     const srcTablet = document.createElement('source');
-    srcTablet.srcset = clone.src;
+    srcTablet.srcset = clone.getAttribute('src');
     srcTablet.media = '(min-width: 600px)';
 
     pic.append(srcMobile, srcTablet, clone);

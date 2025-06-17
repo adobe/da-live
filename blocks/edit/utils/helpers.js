@@ -66,6 +66,9 @@ export function aem2prose(doc) {
   imgs.forEach((img) => {
     const pic = img.closest('picture');
     pic.parentElement.replaceChild(img, pic);
+    if (img.src.startsWith('https://content.da.live/placeholder/')) {
+      img.src = '/images/generating-with-firefly.jpg';
+    }
   });
 
   // Fix three dashes

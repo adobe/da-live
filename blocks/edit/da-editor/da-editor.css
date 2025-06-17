@@ -868,7 +868,7 @@ da-loc-deleted, da-loc-added {
 }
 
 .loc-color-overlay.loc-langstore::after {
-  content: 'Upstream';
+  content: 'Removed';
   position: absolute;
   bottom: 4px;
   right: 4px;
@@ -876,7 +876,7 @@ da-loc-deleted, da-loc-added {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  background-color: rgba(70, 130, 180, 0.9);
+  background-color: rgba(240, 37, 1, 0.9);
   color: white;
   border-radius: 4px;
   min-width: 50px;
@@ -884,7 +884,7 @@ da-loc-deleted, da-loc-added {
 }
 
 .loc-color-overlay.loc-regional::after {
-  content: 'Local';
+  content: 'Added';
   position: absolute;
   bottom: 4px;
   right: 4px;
@@ -892,7 +892,7 @@ da-loc-deleted, da-loc-added {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  background-color: rgba(144, 42, 222, 90%);
+  background-color: rgba(2, 117, 2, 0.9);
   color: white;
   border-radius: 4px;
   min-width: 50px;
