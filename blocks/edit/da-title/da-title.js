@@ -86,6 +86,7 @@ export default class DaTitle extends LitElement {
     if (this.details.view === 'config') {
       const daConfigResp = await saveDaConfig(pathname, this.sheet);
       if (!daConfigResp.ok) {
+        // eslint-disable-next-line no-console
         console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
         return;
       }
