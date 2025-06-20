@@ -19,6 +19,7 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
 
   await page.goto(getTestPageURL('versions', workerInfo));
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   // Enter some initial text onto the page
   await page.locator('div.ProseMirror').fill('Initial version');

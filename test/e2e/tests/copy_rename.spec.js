@@ -22,6 +22,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   const orgPageName = pageURL.split('/').pop();
   await page.goto(pageURL);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   // Enter some initial text onto the page
   await page.locator('div.ProseMirror').fill('First text');
