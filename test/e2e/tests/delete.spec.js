@@ -90,6 +90,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
 
   await page.goto(url);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   const enteredText = `Some content entered at ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
