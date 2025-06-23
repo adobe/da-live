@@ -29,7 +29,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   test.setTimeout(600000);
 
   // Open the directory listing
-  await page.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
 
   // Wait for the page to appear
   await page.waitForTimeout(1000);
@@ -90,6 +90,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
 
   await page.goto(url);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   const enteredText = `Some content entered at ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);

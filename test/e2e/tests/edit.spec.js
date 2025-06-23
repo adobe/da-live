@@ -21,6 +21,7 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toBeVisible();
 
   await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
@@ -47,6 +48,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   await page.locator('button:text("Create document")').click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   await page.locator('div.ProseMirror').fill('testcontent');
   await page.waitForTimeout(1000);
 
@@ -83,6 +85,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.goto(urlA);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   await page.locator('div.ProseMirror').fill('before table');
   await page.getByText('Block', { exact: true }).click();
@@ -102,6 +105,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.goto(urlB);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   await page.locator('div.ProseMirror').fill('page B');
   await page.waitForTimeout(3000);
