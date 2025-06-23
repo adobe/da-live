@@ -29,7 +29,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   test.setTimeout(600000);
 
   // Open the directory listing
-  await page.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
 
   // Wait for the page to appear
   await page.waitForTimeout(1000);
