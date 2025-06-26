@@ -12,6 +12,44 @@
   height: 100%;
 }
 
+.da-dialog-asset-inner h2 {
+  font-size: var(--type-heading-m-size);
+  font-weight: normal;
+  margin: 8px 24px;
+}
+
+.da-dialog-asset-structure-select {
+  list-style: none;
+  padding: 0;
+  margin: 8px 24px;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.da-dialog-asset-structure-select input[type="radio"] {
+  display: none;
+}
+
+.da-dialog-asset-structure-select label {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  background-color: #eaeaea;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.da-dialog-asset-structure-select label:hover {
+  background-color: #eaeaea;
+}
+
+.da-dialog-asset-structure-select input[type="radio"]:checked + label {
+  border-color: #1473e6;
+}
+
 ul.da-dialog-asset-crops {
   display: grid;
   grid-template-columns: repeat(auto-fill, 300px);
@@ -22,7 +60,7 @@ ul.da-dialog-asset-crops {
 }
 
 ul.da-dialog-asset-crops li {
-  background: #EAEAEA;
+  background: #eaeaea;
   border-radius: 4px;
   width: 300px;
   padding: 9px;
@@ -36,7 +74,7 @@ ul.da-dialog-asset-crops li {
 }
 
 ul.da-dialog-asset-crops li:hover {
-  box-shadow: 0 0 0 2px #999;
+  box-shadow: 0 0 0 2px #ccc;
 }
 
 ul.da-dialog-asset-crops li.selected {
@@ -50,7 +88,7 @@ ul.da-dialog-asset-crops li p {
   background-color: #999; /* Adobe blue */
   color: white;
   font-size: var(--s2-font-size-100);
-  padding: 2px 12px;
+  padding: 4px 12px;
   border-radius: 4px;
   white-space: nowrap;
   margin: 0;
@@ -75,7 +113,20 @@ ul.da-dialog-asset-crops li img {
   background-color: #f5f5f5; /* optional light bg */
 }
 
-.da-dialog-asset-crops-toolbar button {
+.da-dialog-asset-error,
+.da-dialog-asset-buttons {
+  font-size: var(--s2-font-size-300);
+  width: 100%;
+  text-align: center;
+  margin: 50px;
+}
+
+.da-dialog-asset-buttons button {
+  margin: 4px;
+}
+
+.da-dialog-asset-crops-toolbar button,
+.da-dialog-asset-buttons button {
   font-size: 14px;
   font-weight: 600;
   padding: 8px 20px;
@@ -86,14 +137,18 @@ ul.da-dialog-asset-crops li img {
 }
 
 .da-dialog-asset-crops-toolbar .cancel,
-.da-dialog-asset-crops-toolbar .back {
+.da-dialog-asset-crops-toolbar .back,
+.da-dialog-asset-buttons .cancel,
+.da-dialog-asset-buttons .back {
   background-color: white;
   border-color: #ccc;
   color: #000;
 }
 
 .da-dialog-asset-crops-toolbar .cancel:hover,
-.da-dialog-asset-crops-toolbar .back:hover {
+.da-dialog-asset-crops-toolbar .back:hover,
+.da-dialog-asset-buttons .cancel:hover,
+.da-dialog-asset-buttons .back:hover {
   background-color: #f0f0f0;
 }
 
