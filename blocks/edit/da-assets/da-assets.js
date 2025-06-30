@@ -98,7 +98,7 @@ export async function openAssets() {
 
         // eslint-disable-next-line no-underscore-dangle
         const renditionLinks = asset._links['http://ns.adobe.com/adobecloud/rel/rendition'];
-        const videoLink = renditionLinks.find((link) => link.href.endsWith('/play'))?.href;
+        const videoLink = renditionLinks?.find((link) => link.href.endsWith('/play'))?.href;
 
         let src;
         if (aemTierType === 'author') {
