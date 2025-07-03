@@ -1,6 +1,8 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
+const MODAL_CLOSE_EVENT = 'modal-closed';
+
 // Styles
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
@@ -32,7 +34,7 @@ export default class DaActionModal extends LitElement {
 
   close() {
     this._dialog?.close();
-    this.dispatchEvent(new Event('modal-closed'));
+    this.dispatchEvent(new Event(MODAL_CLOSE_EVENT));
   }
 
   render() {

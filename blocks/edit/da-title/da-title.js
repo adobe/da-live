@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { saveToDa, saveToAem, saveDaConfig, saveDaVersion } from '../utils/helpers.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
+import { getNx } from '../../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
@@ -17,6 +18,14 @@ const CLOUD_ICONS = {
   connecting: 'spectrum-Cloud-error',
   error: 'spectrum-Cloud-error',
 };
+
+let modalComponents;
+async function loadModalComponents() {
+  if (!modalComponents) {
+    await import('./da-permissions-modal.js');
+    modalComponents = await import(`${getNx()}/public/sl/components.js`);
+  }
+}
 
 export default class DaTitle extends LitElement {
   static properties = {
@@ -35,10 +44,7 @@ export default class DaTitle extends LitElement {
     this._actionsVis = false;
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     if (this.details.view === 'sheet') {
-      this.collabStatus = window.navigator.onLine
-        ? 'connected'
-        : 'offline';
-
+      this.collabStatus = window.navigator.onLine ? 'connected' : 'offline';
       window.addEventListener('online', () => { this.collabStatus = 'connected'; });
       window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
     }
@@ -53,19 +59,25 @@ export default class DaTitle extends LitElement {
     if (element) observer.observe(element);
   }
 
-  handleError(json, action, icon) {
+  get _permissionsModal() {
+    return this.shadowRoot.querySelector('da-permissions-modal');
+  }
+
+  async handleError(json, action, icon) {
+    await loadModalComponents();
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');
     icon.parentElement.classList.add('is-error');
+    setTimeout(() => {
+      this._permissionsModal.showModal();
+    }, 100);
   }
 
   getSnapshotHref(url, action) {
     const tldRepl = action === 'publish' ? 'aem.live' : 'aem.page';
     const pathParts = url.pathname.slice(1).toLowerCase().split('/');
     const snapName = pathParts.splice(0, 2)[1];
-    const origin = url.origin
-      .replace('https://', `https://${snapName}--`)
-      .replace(tldRepl, 'aem.reviews');
+    const origin = url.origin.replace('https://', `https://${snapName}--`).replace(tldRepl, 'aem.reviews');
     return `${origin}/${pathParts.join('/')}`;
   }
 
@@ -95,12 +107,12 @@ export default class DaTitle extends LitElement {
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
       let json = await saveToAem(aemPath, 'preview');
       if (json.error) {
-        this.handleError(json, action, sendBtn);
+        await this.handleError(json, action, sendBtn);
         return;
       }
       if (action === 'publish') json = await saveToAem(aemPath, 'live');
       if (json.error) {
-        this.handleError(json, action, sendBtn);
+        await this.handleError(json, action, sendBtn);
         return;
       }
       const { url: href } = action === 'publish' ? json.live : json.preview;
@@ -157,7 +169,9 @@ export default class DaTitle extends LitElement {
     }
     // Find all open popups and close them
     const openPopups = this.shadowRoot.querySelectorAll('.collab-popup');
-    openPopups.forEach((pop) => { pop.classList.remove('collab-popup'); });
+    openPopups.forEach((pop) => {
+      pop.classList.remove('collab-popup');
+    });
     target.classList.add('collab-popup');
   }
 
@@ -180,6 +194,16 @@ export default class DaTitle extends LitElement {
 
   render() {
     return html`
+      ${
+        modalComponents && this._status?.status === 403
+          ? html`
+            <da-permissions-modal
+              .title=${`${this._status.message} ${this._status.action}`}
+              .action=${this._status.action}>
+            </da-permissions-modal>
+          `
+          : nothing
+      }
       <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
         <div class="da-title-name">
           <a
