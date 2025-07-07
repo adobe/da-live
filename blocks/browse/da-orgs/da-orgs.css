@@ -62,7 +62,7 @@ h2 {
   margin: 0;
 }
 
-.da-no-org-text h3 { 
+.da-no-org-text h3 {
   font-size: 18px;
 }
 
@@ -72,6 +72,7 @@ form {
   justify-content: center;
   align-items: center;
   gap: 6px;
+  min-width: 300px;
 }
 
 form input {
@@ -82,6 +83,11 @@ form input {
   font-size: 16px;
   padding: 0 0 4px 4px;
   line-height: 26px;
+  width: 100%;
+}
+
+.da-no-org-well form {
+  width: 100%;
 }
 
 form input:focus-visible {
@@ -308,10 +314,9 @@ form button:hover {
 
 .bg-overlay a {
   display: flex;
-  align-items: end;
-  align-content: end;
+  flex-direction: column;
+  justify-content: end;
   flex-wrap: wrap;
-  gap: 12px;
   height: 100%;
   padding: 0 var(--spacing-400) var(--spacing-300);
   box-sizing: border-box;
@@ -320,6 +325,11 @@ form button:hover {
   font-weight: 700;
   font-size: var(--s2-heading-size-300);
   text-decoration: none;
+
+  span:nth-child(2) {
+    font-size: 16px;
+    font-weight: 500;
+  }
 }
 
 .da-org-card-action-go {
