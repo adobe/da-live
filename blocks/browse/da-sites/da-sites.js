@@ -135,7 +135,13 @@ export default class DaSites extends LitElement {
   renderGo() {
     return html`
       <form @submit=${this.handleGo}>
-        <input @change="${() => { this._urlError = false; }}" type="text" name="siteUrl" placeholder="https://main--site--org.aem.page" class="${this._urlError ? 'error' : nothing}" />
+        <input 
+            @keydown="${() => { this._urlError = false; }}"
+            @change="${() => { this._urlError = false; }}" 
+            type="text" name="siteUrl" 
+            placeholder="https://main--site--org.aem.page" 
+            class="${this._urlError ? 'error' : nothing}" 
+        />
         <div class="da-form-btn-offset">
           <button aria-label="Go to site">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">
