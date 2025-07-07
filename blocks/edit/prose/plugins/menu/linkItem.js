@@ -172,10 +172,43 @@ export function linkItem(linkMarkType) {
               || (currentRangeStart === currentRangeEnd && displayText);
 
             if (textChanged) {
+              const existingMarks = [];
+
+              // Collect marks from the first character in the range
+              if (currentRangeStart < view.state.doc.content.size) {
+                const nodeAfter = view.state.doc.resolve(currentRangeStart);
+                if (nodeAfter.parent.content.content.length > 0) {
+                  const firstNode = nodeAfter.parent.content.content[0];
+                  if (firstNode?.marks) {
+                    firstNode.marks.forEach((mark) => {
+                      if (mark.type !== linkMarkType) {
+                        existingMarks.push(mark);
+                      }
+                    });
+                  }
+                }
+              }
+
+              // If no marks found from the first approach, try getting marks from the range
+              if (existingMarks.length === 0) {
+                view.state.doc.nodesBetween(currentRangeStart, currentRangeEnd, (node) => {
+                  if (node.marks) {
+                    node.marks.forEach((mark) => {
+                      const markExists = existingMarks.find((m) => m.type === mark.type);
+                      if (mark.type !== linkMarkType && !markExists) {
+                        existingMarks.push(mark);
+                      }
+                    });
+                  }
+                });
+              }
+
+              // Create new text node with preserved marks
+              const newTextNode = view.state.schema.text(displayText, existingMarks);
               tr = tr.replaceWith(
                 currentRangeStart,
                 currentRangeEnd,
-                view.state.schema.text(displayText),
+                newTextNode,
               );
               // Update currentRangeEnd to reflect the new text length
               currentRangeEnd = currentRangeStart + displayText.length;
@@ -256,15 +289,34 @@ export function removeLinkItem(linkMarkType) {
       return this.active(state);
     },
     run(state, dispatch) {
+      if (linkPromptState.lastPrompt.isOpen()) {
+        linkPromptState.lastPrompt.internalClose();
+      }
+
+      const contextHighlightingMarkType = state.schema.marks.contextHighlightingMark;
+
       if (this.isImage) {
-        const { $from } = state.selection;
-        dispatch(state.tr.setNodeAttribute($from.pos, 'href', null).setNodeAttribute($from.pos, 'title', null));
+        const { $from, $to } = state.selection;
+        let tr = state.tr.setNodeAttribute($from.pos, 'href', null).setNodeAttribute($from.pos, 'title', null);
+
+        // Remove context highlighting from image selection
+        if (contextHighlightingMarkType) {
+          tr = tr.removeMark($from.pos, $to.pos, contextHighlightingMarkType);
+        }
+
+        dispatch(tr);
       } else {
         const { link, offset } = findExistingLink(state, linkMarkType);
         const { start, end } = calculateLinkPosition(state, link, offset);
-        const tr = state.tr.setSelection(
+        let tr = state.tr.setSelection(
           TextSelection.create(state.doc, start, end),
         ).removeMark(start, end, linkMarkType);
+
+        // Remove context highlighting from link range
+        if (contextHighlightingMarkType) {
+          tr = tr.removeMark(start, end, contextHighlightingMarkType);
+        }
+
         dispatch(tr);
       }
     },
