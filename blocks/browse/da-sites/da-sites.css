@@ -13,7 +13,7 @@ h2 {
   margin: 0;
 }
 
-.da-org-bg {
+.da-site-bg {
   width: 100%;
   position: absolute;
   left: 0;
@@ -21,13 +21,13 @@ h2 {
   top: 0;
 }
 
-.da-org-container {
+.da-site-container {
   position: relative;
   max-width: var(--grid-container-width);
   margin: 0 auto;
 }
 
-.da-org-header {
+.da-site-header {
   display: flex;
   justify-content: space-between;
   align-items: start;
@@ -35,7 +35,7 @@ h2 {
 }
 
 /* No recents well */
-.da-no-org-well {
+.da-no-site-well {
   display: grid;
   justify-items: center;
   justify-content: center;
@@ -48,21 +48,21 @@ h2 {
   margin: 0 0 48px;
 }
 
-.da-no-org-well img {
+.da-no-site-well img {
   display: block;
 }
 
-.da-no-org-text {
+.da-no-site-text {
   margin: 18px 0 32px;
   text-align: center;
 }
 
-.da-no-org-text h3,
-.da-no-org-text p {
+.da-no-site-text h3,
+.da-no-site-text p {
   margin: 0;
 }
 
-.da-no-org-text h3 {
+.da-no-site-text h3 {
   font-size: 18px;
 }
 
@@ -86,7 +86,7 @@ form input {
   width: 100%;
 }
 
-.da-no-org-well form {
+.da-no-site-well form {
   width: 100%;
 }
 
@@ -113,7 +113,7 @@ form button {
   background: transparent;
 }
 
-.da-no-org-well form button {
+.da-no-site-well form button {
   position: absolute;
   top: -4px;
 }
@@ -128,8 +128,8 @@ form button:hover {
   color: #FFF;
 }
 
-/* Recent org list */
-.da-orgs-list {
+/* Recent site list */
+.da-sites-list {
   list-style: none;
   display: grid;
   gap: 24px;
@@ -138,12 +138,12 @@ form button:hover {
   padding: 0;
 }
 
-.da-org-outer {
+.da-site-outer {
   min-height: 320px;
   perspective: 1000px;
 }
 
-.da-org {
+.da-site {
   width: 100%;
   height: 100%;
   position: relative;
@@ -154,7 +154,7 @@ form button:hover {
   box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
 }
 
-.da-org-front img {
+.da-site-front img {
   height: 100%;
   width: 100%;
   object-fit: cover;
@@ -162,7 +162,7 @@ form button:hover {
   transition: transform .25s ease-in-out;
 }
 
-.da-org-card-action-go svg {
+.da-site-card-action-go svg {
   display: block;
   width: 32px;
   height: 32px;
@@ -170,58 +170,58 @@ form button:hover {
   transition: transform .5s ease-in-out;
 }
 
-.da-org .da-back-action img {
+.da-site .da-back-action img {
   width: 72px;
   display: block;
   margin-bottom: -4px;
 }
 
-.da-org:hover {
+.da-site:hover {
   transform: scale(1.015);
   box-shadow: rgb(0 0 0 / 15%) 0 6px 32px, rgb(0 0 0 / 35%) 0 3px 12px;
 
-  .da-org-front img {
+  .da-site-front img {
     transform: scale(1.08);
   }
 
-  .da-org-card-action-go svg {
+  .da-site-card-action-go svg {
     transform: translateX(4px);
   }
 }
 
-.da-org .da-card-style-0 {
+.da-site .da-card-style-0 {
   background: linear-gradient(0deg, rgb(111 0 40 / 100%) 30%, rgb(111 0 40 / 0%) 75%);
 }
 
-.da-org .da-card-style-1 {
+.da-site .da-card-style-1 {
   background: linear-gradient(0deg, rgb(16 40 140 / 100%) 30%, rgb(16 40 140 / 0%) 75%);
 }
 
-.da-org .da-card-style-2 {
+.da-site .da-card-style-2 {
   background: linear-gradient(0deg, rgb(55 6 160 / 100%) 30%, rgb(55 6 160 / 0%) 75%);
 }
 
-.da-org .da-card-style-3 {
+.da-site .da-card-style-3 {
   background: linear-gradient(0deg, rgb(0 61 44 / 100%) 30%, rgb(0 61 44 / 0%) 75%);
 }
 
-.da-org .da-card-style-4 {
+.da-site .da-card-style-4 {
   background: linear-gradient(0deg, rgb(0 57 78 / 100%) 30%, rgb(0 57 78 / 0%) 75%);
 }
 
-.da-org .da-card-style-5 {
+.da-site .da-card-style-5 {
   background: linear-gradient(0deg, rgb(92 4 109 / 100%) 30%, rgb(92 4 109 / 0%) 75%);
 }
 
-.da-org .da-card-style-6 {
+.da-site .da-card-style-6 {
   background: linear-gradient(0deg, rgb(105 3 68 / 100%) 30%, rgb(105 3 68 / 0%) 75%);
 }
 
-.da-org .da-card-style-7 {
+.da-site .da-card-style-7 {
   background: linear-gradient(0deg, rgb(0 59 65 / 100%) 30%, rgb(0 59 65 / 0%) 75%);
 }
 
-.da-org-front {
+.da-site-front {
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
@@ -232,12 +232,12 @@ form button:hover {
   transition: outline-offset .2s;
 }
 
-.da-org-front:has(a:focus-visible) {
+.da-site-front:has(a:focus-visible) {
   outline: 3px solid #3b63fb;
   outline-offset: 4px;
 }
 
-.da-org-back {
+.da-site-back {
   display: none;
   gap: 24px;
   align-items: center;
@@ -254,7 +254,7 @@ form button:hover {
   border-radius: 12px;
 }
 
-.da-org-card-action {
+.da-site-card-action {
   width: 32px;
   height: 32px;
   border: none;
@@ -263,23 +263,23 @@ form button:hover {
   padding: 0;
 }
 
-.da-org.is-flipped {
+.da-site.is-flipped {
   transform: rotateY(180deg);
 
-  .da-org-back {
+  .da-site-back {
     display: grid;
   }
 
-  .da-org-card-action {
+  .da-site-card-action {
     color: #000;
   }
 
-  .da-org-card-action-go svg {
+  .da-site-card-action-go svg {
     display: none;
   }
 }
 
-.da-org.is-flipped:hover {
+.da-site.is-flipped:hover {
   transform: scale(1.015) rotateY(180deg);
 }
 
@@ -292,16 +292,16 @@ form button:hover {
   padding: 0;
 }
 
-.da-org-front picture {
+.da-site-front picture {
   position: absolute;
   inset: 0;
 }
 
-.da-org p {
+.da-site p {
   margin: 0;
 }
 
-.da-org .bg-overlay {
+.da-site .bg-overlay {
   display: grid;
   grid-template-areas: 'main';
   align-items: end;
@@ -332,13 +332,13 @@ form button:hover {
   }
 }
 
-.da-org-card-action-go {
+.da-site-card-action-go {
   width: 100%;
   display: flex;
   justify-content: end;
 }
 
-.da-org-card-action-more {
+.da-site-card-action-more {
   margin-left: -8px;
   position: absolute;
   bottom: var(--spacing-300);
@@ -346,7 +346,7 @@ form button:hover {
 }
 
 /* Double Card - Sandbox / Add new */
-.da-org-sandbox-new {
+.da-site-sandbox-new {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-400);

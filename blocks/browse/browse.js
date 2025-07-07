@@ -34,7 +34,7 @@ async function setupExperience(el, e) {
     }
   }
   if (!details) {
-    await loadComponent(el, 'da-orgs');
+    await loadComponent(el, 'da-sites');
   } else {
     await loadComponent(el, 'da-browse', details);
   }
