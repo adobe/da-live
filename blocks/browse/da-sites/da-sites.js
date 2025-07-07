@@ -116,7 +116,7 @@ export default class DaSites extends LitElement {
   renderGo() {
     return html`
       <form @submit=${this.handleGo}>
-        <input type="text" name="siteUrl" placeholder="https://main--site--org.aem.live" />
+        <input type="text" name="siteUrl" placeholder="https://main--site--org.aem.page" />
         <div class="da-form-btn-offset">
           <button aria-label="Go to site">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">
@@ -183,7 +183,7 @@ export default class DaSites extends LitElement {
         <img src="/blocks/browse/da-sites/img/site-icon-color.svg" width="78" height="60" alt=""/>
         <div class="da-no-site-text">
           <h3>You don’t have any recent sites.</h3>
-          <p>Enter the URL for your site here to get started.</p>
+          <p>Enter the URL for your site to get started.</p>
         </div>
         ${this.renderGo()}
       </div>

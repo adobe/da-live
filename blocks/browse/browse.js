@@ -12,17 +12,19 @@ async function loadComponent(el, cmpName, details) {
 }
 
 function setRecentSite(details) {
+  if (!details.repo) return;
+  if (details.repo.startsWith('.')) return;
   const currentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
   const siteString = `${details.owner}/${details.repo}`;
   const foundIdx = currentSites.indexOf(siteString);
   if (foundIdx === 0) return;
   if (foundIdx !== -1) currentSites.splice(foundIdx, 1);
-  localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 4)));
+  localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
 }
 
 async function setupExperience(el, e) {
   const details = getPathDetails();
-  if (details && details.repo) setRecentSite(details);
+  if (details) setRecentSite(details);
   if (e) {
     const oldHash = new URL(e.oldURL).hash;
     const newHash = new URL(e.newURL).hash;
