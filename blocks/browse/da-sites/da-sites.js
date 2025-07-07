@@ -13,7 +13,13 @@ export default class DaSites extends LitElement {
   static properties = {
     _recents: { state: true },
     _status: { state: true },
+    _urlError: { state: true },
   };
+
+  constructor() {
+    super();
+    this._urlError = false;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -77,20 +83,33 @@ export default class DaSites extends LitElement {
     this.requestUpdate();
   }
 
+  parseSubdomain(siteUrl) {
+    try {
+      const url = new URL(siteUrl);
+      if (!url.hostname.match(/hlx\.live$|aem\.live$|hlx\.page$|aem\.page$/)) {
+        return null;
+      }
+      const helixString = url.hostname.split('.')[0];
+      if (!helixString) return null;
+      // eslint-disable-next-line no-unused-vars
+      const [_, repo, org] = helixString.split('--');
+      if (!repo || !org) return null;
+      return `#/${org}/${repo}`;
+    } catch (_) {
+      return null;
+    }
+  }
+
   async handleGo(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const { siteUrl } = Object.fromEntries(formData);
     if (!siteUrl) return;
-    try {
-      const url = new URL(siteUrl);
-      const helixString = url.hostname.split('.')[0];
-      // eslint-disable-next-line no-unused-vars
-      const [_, repo, org] = helixString.split('--');
-      if (!repo || !org) return;
-      window.location = `#/${org}/${repo}`;
-    } catch (_) {
-      // empty
+    const result = this.parseSubdomain(siteUrl);
+    if (result) {
+      window.location = result;
+    } else {
+      this._urlError = true;
     }
   }
 
@@ -116,7 +135,7 @@ export default class DaSites extends LitElement {
   renderGo() {
     return html`
       <form @submit=${this.handleGo}>
-        <input type="text" name="siteUrl" placeholder="https://main--site--org.aem.page" />
+        <input @change="${() => { this._urlError = false; }}" type="text" name="siteUrl" placeholder="https://main--site--org.aem.page" class="${this._urlError ? 'error' : nothing}" />
         <div class="da-form-btn-offset">
           <button aria-label="Go to site">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">
