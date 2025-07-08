@@ -153,7 +153,8 @@ export async function openAssets() {
         if (!format) return;
         const mimetype = asset.mimetype || asset['dc:format'];
         const isImage = mimetype?.toLowerCase().startsWith('image/');
-        const { reviewStatus } = asset;
+        // eslint-disable-next-line no-underscore-dangle
+        const status = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dam:assetStatus'];
         // eslint-disable-next-line no-underscore-dangle
         const activationTarget = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dam:activationTarget'];
         const { view } = window;
@@ -170,10 +171,10 @@ export async function openAssets() {
           return state.schema.nodes.image.create(imgObj);
         };
 
-        if (dmDeliveryEnabled && activationTarget !== 'delivery' && reviewStatus !== 'approved') {
+        if (dmDeliveryEnabled && activationTarget !== 'delivery' && status !== 'approved') {
           assetSelectorWrapper.style.display = 'none';
           cropSelectorWrapper.style.display = 'block';
-          cropSelectorWrapper.innerHTML = '<p class="da-dialog-asset-error">The selected Asset is not available. Please check the activation target and review status.</p><div class="da-dialog-asset-buttons"><button class="back">Back</button><button class="cancel">Cancel</button></div>';
+          cropSelectorWrapper.innerHTML = '<p class="da-dialog-asset-error">The selected asset is not available because it is not approved for delivery. Please check the status.</p><div class="da-dialog-asset-buttons"><button class="back">Back</button><button class="cancel">Cancel</button></div>';
           cropSelectorWrapper.querySelector('.cancel').addEventListener('click', () => {
             resetCropSelector();
             dialog.close();
