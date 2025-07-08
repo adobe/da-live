@@ -476,8 +476,8 @@ export default class DaList extends LitElement {
         ${this.renderCheckBox()}
         <div class="da-browse-sort">
           <button class="da-browse-filter ${this._showFilter ? 'selected' : ''}" name="toggle-filter" @click=${this.toggleFilterView}>
-            <img class="toggle-icon-light" width="22" src="/blocks/browse/da-browse/img/Filter20light.svg" />
-            <img class="toggle-icon-dark" width="22" src="/blocks/browse/da-browse/img/Filter20dark.svg" />
+            <img class="toggle-icon-light" width="22" src="/blocks/browse/da-browse/img/Filter20Light.svg" />
+            <img class="toggle-icon-dark" width="22" src="/blocks/browse/da-browse/img/Filter20Dark.svg" />
           </button>
           <div class="da-browse-header-container">
             <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter">

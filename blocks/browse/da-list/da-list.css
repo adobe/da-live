@@ -69,7 +69,6 @@ da-list-item.is-expanded::after {
 .da-browse-header-container {
   display: flex;
   justify-content: start;
-  position: relative;
 }
 
 .da-browse-filter {
@@ -145,7 +144,6 @@ da-list-item.is-expanded::after {
   position: absolute;
   content: '';
   right: -20px;
-  top: 0;
   width: 18px;
   height: 18px;
   filter: invert(26%) sepia(0%) saturate(946%) hue-rotate(145deg) brightness(102%) contrast(81%);
