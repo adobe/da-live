@@ -69,6 +69,33 @@ da-list-item.is-expanded::after {
 .da-browse-header-container {
   display: flex;
   justify-content: start;
+  position: relative;
+}
+
+.da-browse-filter {
+  cursor: pointer;
+  background: none;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2px;
+}
+
+.da-browse-filter > .toggle-icon-light {
+  display: block;
+}
+
+.da-browse-filter > .toggle-icon-dark {
+  display: none;
+}
+
+.da-browse-filter:hover > .toggle-icon-light, .da-browse-filter.selected > .toggle-icon-light {
+  display: none;
+}
+
+.da-browse-filter:hover > .toggle-icon-dark, .da-browse-filter.selected > .toggle-icon-dark {
+  display: block;
 }
 
 .da-browse-header-name {
@@ -82,6 +109,24 @@ da-list-item.is-expanded::after {
   color: var(--s2-gray-700);
   font-weight: 700;
   cursor: pointer;
+}
+
+.da-browse-header-container input {
+  display: none;
+  font-weight: 500;
+}
+
+.da-browse-header-container .hide {
+  display: none;
+}
+
+.da-browse-header-container input.show {
+  display: block;
+  border: 0;
+}
+
+.da-browse-header-container input:focus {
+  outline: none;
 }
 
 .da-browse-header-name:hover::after {
