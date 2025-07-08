@@ -469,7 +469,7 @@ export default class DaList extends LitElement {
   }
 
   render() {
-    const filteredItems = this._listItems.filter((item) => item.name.startsWith(this._filter));
+    const filteredItems = this._listItems.filter((item) => item.name.includes(this._filter));
 
     return html`
       <div class="da-browse-panel-header">

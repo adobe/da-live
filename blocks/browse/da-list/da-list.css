@@ -111,8 +111,14 @@ da-list-item.is-expanded::after {
 }
 
 .da-browse-header-container input {
+  font-family: inherit;
   display: none;
-  font-weight: 500;
+  font-size: var(--s2-font-size-200);
+}
+
+.da-browse-header-container input::placeholder {
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .da-browse-header-container .hide {
