@@ -79,6 +79,7 @@ da-list-item.is-expanded::after {
   justify-content: center;
   align-items: center;
   padding: 2px;
+  height: 18px;
 }
 
 .da-browse-filter > .toggle-icon-light {
@@ -105,20 +106,27 @@ da-list-item.is-expanded::after {
   background: none;
   text-transform: uppercase;
   line-height: 18px;
+  font-size: 14px;
   color: var(--s2-gray-700);
+  font-family: var(--body-font-family);
   font-weight: 700;
   cursor: pointer;
 }
 
 .da-browse-header-container input {
-  font-family: inherit;
+  padding: 0;
+  border: none;
   display: none;
-  font-size: var(--s2-font-size-200);
+  font-family: var(--body-font-family);
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--s2-gray-800);
 }
 
 .da-browse-header-container input::placeholder {
   font-weight: 700;
   text-transform: uppercase;
+  color: #8f8f8f;
 }
 
 .da-browse-header-container .hide {
@@ -127,7 +135,6 @@ da-list-item.is-expanded::after {
 
 .da-browse-header-container input.show {
   display: block;
-  border: 0;
 }
 
 .da-browse-header-container input:focus {
