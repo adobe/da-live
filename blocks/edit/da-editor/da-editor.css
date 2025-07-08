@@ -917,3 +917,206 @@ da-loc-deleted, da-loc-added {
   align-items: center;
   flex-direction: column;
 }
+
+/* Tabbed interface styles for loc nodes */
+.loc-tabbed-container {
+  display: block;
+  position: relative;
+  border: 3px solid #4682b4;
+  border-radius: 6px;
+  margin: 10px 0;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0 0 0 / 10%);
+}
+
+.loc-tab-nav {
+  display: flex;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+}
+
+.loc-tab-button {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  color: #666;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.loc-tab-button:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.loc-tab-button.active {
+  background: #666;
+  color: #fff;
+  font-weight: 700;
+  border-bottom-color: currentColor;
+}
+
+.loc-tab-content {
+  position: relative;
+  min-height: 100px;
+}
+
+.loc-tab-pane {
+  display: none;
+  padding: 16px;
+}
+
+.loc-tab-pane.active {
+  display: block;
+}
+
+.loc-tabbed-actions {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  background: #f9f9f9;
+  border-top: 1px solid #ddd;
+  border-radius: 0 0 6px 6px;
+}
+
+.loc-action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.loc-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.loc-action-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.loc-keep-deleted {
+  color: #06c;
+  border-color: #06c;
+}
+
+.loc-keep-deleted:hover {
+  background: #e6f3ff;
+  border-color: #06c;
+}
+
+.loc-keep-added {
+  color: #90c;
+  border-color: #90c;
+}
+
+.loc-keep-added:hover {
+  background: #f3e6ff;
+  border-color: #90c;
+}
+
+.loc-delete-both {
+  color: #cc0000;
+  border-color: #cc0000;
+}
+
+.loc-delete-both:hover {
+  background: #ffe6e6;
+  border-color: #cc0000;
+}
+
+.loc-action-btn span {
+  pointer-events: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .loc-tab-button {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+
+  .loc-action-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .loc-action-btn {
+    min-width: 120px;
+  }
+}
+
+/* HTML diff styling for loc nodes */
+.loc-tab-pane del.diffdel,
+.loc-tab-pane del.diffmod {
+  background-color: #ffebee;
+  color: #c62828;
+  text-decoration: line-through;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #ef9a9a;
+}
+
+.loc-tab-pane ins.diffins,
+.loc-tab-pane ins.diffmod {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #a5d6a7;
+}
+
+/* Special styling for modified content */
+.loc-tab-pane del.diffmod {
+  background-color: #fff3e0;
+  color: #ef6c00;
+  border-color: #ffcc02;
+}
+
+.loc-tab-pane ins.diffmod {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border-color: #90caf9;
+}
+
+/* Ensure diff content is readable */
+.loc-tab-pane[data-tab="diff"] {
+  line-height: 1.6;
+  padding: 16px;
+}
+
+.loc-tab-pane[data-tab="diff"] p,
+.loc-tab-pane[data-tab="diff"] table,
+.loc-tab-pane[data-tab="diff"] tr,
+.loc-tab-pane[data-tab="diff"] td {
+  margin: 0;
+  padding: 8px;
+}
+
+.loc-tab-pane[data-tab="diff"] table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.loc-tab-pane[data-tab="diff"] td {
+  border: 1px solid #e0e0e0;
+  vertical-align: top;
+}
