@@ -82,19 +82,23 @@ da-list-item.is-expanded::after {
   height: 18px;
 }
 
-.da-browse-filter > .toggle-icon-light {
-  display: block;
-}
-
 .da-browse-filter > .toggle-icon-dark {
   display: none;
 }
 
-.da-browse-filter:hover > .toggle-icon-light, .da-browse-filter.selected > .toggle-icon-light {
+.da-browse-filter.hidden {
   display: none;
 }
 
-.da-browse-filter:hover > .toggle-icon-dark, .da-browse-filter.selected > .toggle-icon-dark {
+.da-browse-filter:hover > .toggle-icon-light {
+  display: none;
+}
+
+.da-browse-filter:hover > .toggle-icon-dark {
+  display: block;
+}
+
+.da-browse-filter.selected > .toggle-icon-dark {
   display: block;
 }
 
