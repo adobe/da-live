@@ -147,7 +147,7 @@ class DaSheetTabs extends LitElement {
 
       this._names[idx] = name;
       this.jexcel[idx].name = name;
-      this.hiddenTabs[idx].innerHTML = name;
+      this.hiddenTabs[idx].innerText = name;
       this._edit = null;
     }
   }
