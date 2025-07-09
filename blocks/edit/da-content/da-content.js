@@ -53,6 +53,8 @@ export default class DaContent extends LitElement {
   }
 
   async loadViews() {
+    console.log('details', JSON.stringify(this.details, null, 2));
+
     // Only import the web components once
     if (this._editorLoaded) return;
 
@@ -112,8 +114,9 @@ export default class DaContent extends LitElement {
   }
 
   render() {
-    const { owner, repo } = this.details;
-    const livePreviewUrl = `https://main--${repo}--${owner}.stage-ue.da.live`;
+    const { owner, repo, previewUrl } = this.details;
+    const { pathname } = new URL(previewUrl);
+    const livePreviewUrl = `https://main--${repo}--${owner}.stage-ue.da.live${pathname}`;
 
     return html`
       <div class="editor-wrapper">
