@@ -45,7 +45,7 @@ function convertBlocks(editor) {
   });
 }
 
-function makePictures(editor) {
+function makePictures(editor, live) {
   const imgs = editor.querySelectorAll('img');
   imgs.forEach((img) => {
     img.removeAttribute('contenteditable');
@@ -53,6 +53,9 @@ function makePictures(editor) {
     img.removeAttribute('style');
 
     const clone = img.cloneNode(true);
+    if (live) {
+      clone.src = new URL(clone.src, window.location.origin).pathname;
+    }
     clone.setAttribute('loading', 'lazy');
 
     let pic = document.createElement('picture');
@@ -176,7 +179,7 @@ export default function prose2aem(editor, live) {
     parseIcons(editor);
   }
 
-  makePictures(editor);
+  makePictures(editor, live);
 
   makeSections(editor);
 
