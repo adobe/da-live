@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
+import { initIms, daFetch } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
@@ -42,6 +43,20 @@ export default class DaContent extends LitElement {
   async loadViews() {
     // Only import the web components once
     if (this._editorLoaded) return;
+
+    const { owner, repo } = this.details;
+    const { accessToken } = await initIms();
+    fetch(`https://stage-content.da.live/${owner}/${repo}/.gimme_cookie`, {
+      headers: {
+        Authorization: `Bearer ${accessToken.token}`,
+      },
+    });
+    fetch(`https://main--${repo}--${owner}.stage-ue.da.live/gimme_cookie`, {
+      headers: {
+        Authorization: `Bearer ${accessToken.token}`,
+      },
+    });
+  
     const preview = import('../da-preview/da-preview.js');
     const versions = import('../da-versions/da-versions.js');
     await Promise.all([preview, versions]);
@@ -81,6 +96,9 @@ export default class DaContent extends LitElement {
   }
 
   render() {
+    const { owner, repo } = this.details;
+    const livePreviewUrl = `https://main--${repo}--${owner}.stage-ue.da.live`;
+
     return html`
       <div class="editor-wrapper">
         <da-editor
@@ -104,7 +122,7 @@ export default class DaContent extends LitElement {
           </div>
         ` : nothing}
       </div>
-      ${this._editorLoaded ? html`<da-preview path=${this.details.previewUrl}></da-preview>` : nothing}
+      ${this._editorLoaded ? html`<da-preview path=${livePreviewUrl}></da-preview>` : nothing}
       ${this._editorLoaded ? html`<da-versions path=${this.details.fullpath} @preview=${this.handlePreview} @close=${this.handleCloseVersions}></da-versions>` : nothing}
     `;
   }
