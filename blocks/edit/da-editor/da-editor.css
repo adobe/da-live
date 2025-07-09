@@ -347,7 +347,8 @@ span.ProseMirror-menuseparator {
   }
 
   .ProseMirror-menu-active.edit-link,
-  .ProseMirror-menu-active.edit-unlink {
+  .ProseMirror-menu-active.edit-unlink,
+  .ProseMirror-menu-active.img-alt-text {
     background-color: transparent;
     color: #fff;
   }
