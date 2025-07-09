@@ -381,13 +381,9 @@ export default class DaList extends LitElement {
     this.handleSort(this._sortDate, 'lastModified');
   }
 
-  toggleFilterView(force) {
+  toggleFilterView() {
     this._filter = '';
-    if (force) {
-      this._showFilter = force;
-    } else {
-      this._showFilter = !this._showFilter;
-    }
+    this._showFilter = !this._showFilter;
     const filterInput = this.shadowRoot?.querySelector('input[name="filter"]');
     filterInput.value = '';
     if (this._showFilter) {
@@ -476,13 +472,15 @@ export default class DaList extends LitElement {
         ${this.renderCheckBox()}
         <div class="da-browse-sort">
           <!-- Toggle button is split into 2 buttons (enable/disable) to prevent bug re-toggling on blur event -->
-          <button class="da-browse-filter ${this._showFilter ? 'hidden' : ''}" name="toggle-filter" @click=${() => this.toggleFilterView(true)}>
-            <img class="toggle-icon-light" width="22" src="/blocks/browse/da-browse/img/Filter20Light.svg" />
-            <img class="toggle-icon-dark" width="22" src="/blocks/browse/da-browse/img/Filter20Dark.svg" />
-          </button>
-          <button class="da-browse-filter selected ${this._showFilter ? '' : 'hidden'}" name="toggle-filter" @click=${() => this.toggleFilterView(false)}>
-            <img class="toggle-icon-dark" width="22" src="/blocks/browse/da-browse/img/Filter20Dark.svg" />
-          </button>
+          ${!this._showFilter ? html`
+            <button class="da-browse-filter" name="toggle-filter" @click=${() => this.toggleFilterView()}>
+              <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" />
+            </button>
+          ` : html`
+            <button class="da-browse-filter selected" name="toggle-filter" @click=${() => this.toggleFilterView()}>
+              <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" />
+            </button>
+          `}
           <div class="da-browse-header-container">
             <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter">
             <button class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''}" @click=${this.handleNameSort}>Name</button>

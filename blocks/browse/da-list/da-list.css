@@ -82,24 +82,16 @@ da-list-item.is-expanded::after {
   height: 18px;
 }
 
-.da-browse-filter > .toggle-icon-dark {
-  display: none;
+.da-browse-filter img {
+  opacity: 0.4;
 }
 
-.da-browse-filter.hidden {
-  display: none;
+.da-browse-filter.selected img {
+  opacity: 1;
 }
 
-.da-browse-filter:hover > .toggle-icon-light {
-  display: none;
-}
-
-.da-browse-filter:hover > .toggle-icon-dark {
-  display: block;
-}
-
-.da-browse-filter.selected > .toggle-icon-dark {
-  display: block;
+.da-browse-filter:hover img {
+  opacity: 1;
 }
 
 .da-browse-header-name {
