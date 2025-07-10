@@ -54,7 +54,7 @@ function makePictures(editor, live) {
 
     const clone = img.cloneNode(true);
     if (live) {
-      clone.src = '/' + new URL(clone.src, window.location.origin).pathname
+      clone.src = '/' + new URL(clone.src).pathname
         .split('/')
         .slice(2) // remove org and site
         .join('/');
@@ -199,6 +199,11 @@ export default function prose2aem(editor, live) {
       <footer></footer>
     </body>
   `;
+
+  if (live) {
+    html = html.replace('https://content.da.live/', '/');
+    html = html.replace('https://stage-content.da.live/', '/');
+  }
 
   return html;
 }
