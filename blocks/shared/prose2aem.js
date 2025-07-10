@@ -57,8 +57,7 @@ function makePictures(editor, live) {
       console.log('here1');
       clone.src = new URL(clone.src, window.location.origin).pathname
         .split('/')
-        .shift() // remove org
-        .shift() // remove site
+        .slice(2) // remove org and site
         .join('/');
     }
     clone.setAttribute('loading', 'lazy');
