@@ -54,13 +54,12 @@ function makePictures(editor, live) {
 
     const clone = img.cloneNode(true);
     if (live) {
-      console.log('here0', clone.src);
       const source = new URL(clone.src);
       source.pathname = '/' + source.pathname
         .split('/')
         .slice(3) // remove org and site
         .join('/');
-      console.log('here1', clone.src);
+      clone.src = source.toString();
     }
     clone.setAttribute('loading', 'lazy');
 
