@@ -203,8 +203,8 @@ export default function prose2aem(editor, live) {
   `;
 
   if (live) {
-    html = html.replace('https://content.da.live/', '/');
-    html = html.replace('https://stage-content.da.live/', '/');
+    html = html.replaceAll('https://content.da.live/', '/');
+    html = html.replaceAll('https://stage-content.da.live/', '/');
   }
 
   return html;
