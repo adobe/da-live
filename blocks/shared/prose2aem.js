@@ -54,7 +54,11 @@ function makePictures(editor, live) {
 
     const clone = img.cloneNode(true);
     if (live) {
-      clone.src = new URL(clone.src, window.location.origin).pathname;
+      clone.src = new URL(clone.src, window.location.origin).pathname
+        .split('/')
+        .shift() // remove org
+        .shift() // remove site
+        .join('/');
     }
     clone.setAttribute('loading', 'lazy');
 
