@@ -72,44 +72,6 @@ loadHtmlDiffScript().catch((error) => {
 });
 
 /**
- * Check if the next node after the current position is a loc_added or loc_deleted node
- */
-function getAdjacentLocPair(view, pos) {
-  const { doc } = view.state;
-  const resolvedPos = doc.resolve(pos);
-  const { parent } = resolvedPos;
-  const indexInParent = resolvedPos.index();
-  const thisNode = parent.child(indexInParent);
-
-  // Only pair if this is the first in a pair (not already paired with previous)
-  // Check previous sibling: if it's a valid pair, skip pairing here
-  if (indexInParent > 0) {
-    const prevSibling = parent.child(indexInParent - 1);
-    if (
-      (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
-      && (prevSibling.type.name === 'loc_added' || prevSibling.type.name === 'loc_deleted')
-      && thisNode.type.name !== prevSibling.type.name
-    ) {
-      // This node is already the second in a pair, so skip
-      return null;
-    }
-  }
-
-  // Check next sibling for a valid pair
-  if (indexInParent < parent.childCount - 1) {
-    const nextSibling = parent.child(indexInParent + 1);
-    if (
-      (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
-      && (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
-      && thisNode.type.name !== nextSibling.type.name
-    ) {
-      return { otherNode: nextSibling, otherIndex: indexInParent + 1, isNext: true };
-    }
-  }
-  return null;
-}
-
-/**
  * Create tab navigation for the tabbed interface
  */
 function createTabNavigation(activeTab = 'deleted') {
@@ -392,17 +354,63 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       this.schema = getSchema();
 
       const pos = getPos();
-      // Removed unused isLocDeleted and isLocAdded
+      const { doc } = view.state;
+      const resolvedPos = doc.resolve(pos);
+      const { parent } = resolvedPos;
+      const indexInParent = resolvedPos.index();
+      const thisNode = parent.child(indexInParent);
 
-      // Check for adjacent pairs (either order, only render for the first in document order)
-      const pairInfo = getAdjacentLocPair(view, pos);
-      const shouldUseTabbedInterface = pairInfo && pairInfo.isNext;
-      const isPartOfPairButNotFirst = pairInfo && !pairInfo.isNext;
+      // Check if this node is the first in a valid pair (with next sibling)
+      let isFirstInPair = false;
+      let nextSibling = null;
+      if (indexInParent < parent.childCount - 1) {
+        nextSibling = parent.child(indexInParent + 1);
+        if (
+          (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
+          && (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
+          && thisNode.type.name !== nextSibling.type.name
+        ) {
+          // Also ensure previous sibling is not a valid pair with this node
+          if (
+            indexInParent === 0
+            || !(
+              (parent.child(indexInParent - 1).type.name === 'loc_added'
+                || parent.child(indexInParent - 1).type.name === 'loc_deleted')
+              && parent.child(indexInParent - 1).type.name !== thisNode.type.name
+            )
+          ) {
+            isFirstInPair = true;
+          }
+        }
+      }
 
-      if (shouldUseTabbedInterface) {
-        this.renderTabbedInterface(node, view, pos, pairInfo.otherNode);
-      } else if (isPartOfPairButNotFirst) {
-        // Skip rendering for the second node in a pair (already handled by the first)
+      // Check if this node is the second in a valid pair (with previous sibling)
+      let isSecondInPair = false;
+      if (indexInParent > 0) {
+        const prevSibling = parent.child(indexInParent - 1);
+        if (
+          (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
+          && (prevSibling.type.name === 'loc_added' || prevSibling.type.name === 'loc_deleted')
+          && thisNode.type.name !== prevSibling.type.name
+        ) {
+          // Only if previous sibling is the first in a pair
+          if (
+            indexInParent === 1
+            || !(
+              (parent.child(indexInParent - 2).type.name === 'loc_added'
+                || parent.child(indexInParent - 2).type.name === 'loc_deleted')
+              && parent.child(indexInParent - 2).type.name !== prevSibling.type.name
+            )
+          ) {
+            isSecondInPair = true;
+          }
+        }
+      }
+
+      if (isFirstInPair) {
+        this.renderTabbedInterface(thisNode, view, pos, nextSibling);
+      } else if (isSecondInPair) {
+        // Render as hidden node
         this.dom = document.createElement('span');
         this.dom.style.display = 'none';
         this.dom.style.position = 'absolute';
