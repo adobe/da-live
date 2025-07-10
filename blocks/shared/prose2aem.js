@@ -54,6 +54,7 @@ function makePictures(editor, live) {
 
     const clone = img.cloneNode(true);
     if (live) {
+      console.log('here0', clone.src);
       clone.src = '/' + new URL(clone.src).pathname
         .split('/')
         .slice(3) // remove org and site
