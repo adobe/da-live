@@ -189,7 +189,7 @@ export default function prose2aem(editor, live) {
 
   makeSections(editor);
 
-  const html = `
+  let html = `
     <body>
       <header></header>
       <main>${editor.innerHTML}</main>
