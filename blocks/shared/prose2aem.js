@@ -55,12 +55,15 @@ function makePictures(editor, live) {
     const clone = img.cloneNode(true);
     if (live) {
       const source = new URL(clone.src);
-      source.pathname = '/' + source.pathname
-        .split('/')
-        .slice(3) // remove org and site
-        .join('/');
-      clone.src = source.toString();
+      if (source.host.endsWith('.da.live')) {
+        source.pathname = '/' + source.pathname
+          .split('/')
+          .slice(3) // remove org and site
+          .join('/');
+        clone.src = source.toString();
+      }
     }
+
     clone.setAttribute('loading', 'lazy');
 
     let pic = document.createElement('picture');
