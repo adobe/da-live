@@ -56,7 +56,7 @@ function makePictures(editor, live) {
     if (live) {
       clone.src = '/' + new URL(clone.src).pathname
         .split('/')
-        .slice(2) // remove org and site
+        .slice(3) // remove org and site
         .join('/');
       console.log('here1', clone.src);
     }
