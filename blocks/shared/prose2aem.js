@@ -66,11 +66,9 @@ function makePictures(editor, live) {
     let pic = document.createElement('picture');
 
     const srcMobile = document.createElement('source');
-    console.log('here2', clone.src);
     srcMobile.srcset = clone.src;
 
     const srcTablet = document.createElement('source');
-    console.log('here2', clone.src);
     srcTablet.srcset = clone.src;
     srcTablet.media = '(min-width: 600px)';
 
