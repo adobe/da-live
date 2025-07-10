@@ -54,6 +54,7 @@ function makePictures(editor, live) {
 
     const clone = img.cloneNode(true);
     if (live) {
+      console.log('here1');
       clone.src = new URL(clone.src, window.location.origin).pathname
         .split('/')
         .shift() // remove org
@@ -65,9 +66,11 @@ function makePictures(editor, live) {
     let pic = document.createElement('picture');
 
     const srcMobile = document.createElement('source');
+    console.log('here2', clone.src);
     srcMobile.srcset = clone.src;
 
     const srcTablet = document.createElement('source');
+    console.log('here2', clone.src);
     srcTablet.srcset = clone.src;
     srcTablet.media = '(min-width: 600px)';
 
