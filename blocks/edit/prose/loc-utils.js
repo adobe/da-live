@@ -72,65 +72,40 @@ loadHtmlDiffScript().catch((error) => {
 });
 
 /**
- * Check if the next node after the current position is a loc_added node
+ * Check if the next node after the current position is a loc_added or loc_deleted node
  */
-function hasAdjacentLocAdded(view, pos) {
+function getAdjacentLocPair(view, pos) {
   const { doc } = view.state;
-
-  // Get the resolved position to access parent and siblings
   const resolvedPos = doc.resolve(pos);
   const { parent } = resolvedPos;
   const indexInParent = resolvedPos.index();
+  const thisNode = parent.child(indexInParent);
 
-  // Check if there's a next sibling
-  if (indexInParent < parent.childCount - 1) {
-    const nextSibling = parent.child(indexInParent + 1);
-    return nextSibling && nextSibling.type.name === 'loc_added';
-  }
-
-  return false;
-}
-
-/**
- * Check if the previous node before the current position is a loc_deleted node
- */
-function hasPreviousLocDeleted(view, pos) {
-  const { doc } = view.state;
-
-  // Get the resolved position to access parent and siblings
-  const resolvedPos = doc.resolve(pos);
-  const { parent } = resolvedPos;
-  const indexInParent = resolvedPos.index();
-
-  // Check if there's a previous sibling
+  // Only pair if this is the first in a pair (not already paired with previous)
+  // Check previous sibling: if it's a valid pair, skip pairing here
   if (indexInParent > 0) {
     const prevSibling = parent.child(indexInParent - 1);
-    return prevSibling && prevSibling.type.name === 'loc_deleted';
-  }
-
-  return false;
-}
-
-/**
- * Get the adjacent loc_added node content
- */
-function getAdjacentLocAddedContent(view, pos, schema) {
-  const { doc } = view.state;
-
-  // Get the resolved position to access parent and siblings
-  const resolvedPos = doc.resolve(pos);
-  const { parent } = resolvedPos;
-  const indexInParent = resolvedPos.index();
-
-  // Check if there's a next sibling
-  if (indexInParent < parent.childCount - 1) {
-    const nextSibling = parent.child(indexInParent + 1);
-    if (nextSibling && nextSibling.type.name === 'loc_added') {
-      const serializer = DOMSerializer.fromSchema(schema);
-      return serializer.serializeFragment(nextSibling.content);
+    if (
+      (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
+      && (prevSibling.type.name === 'loc_added' || prevSibling.type.name === 'loc_deleted')
+      && thisNode.type.name !== prevSibling.type.name
+    ) {
+      // This node is already the second in a pair, so skip
+      return null;
     }
   }
 
+  // Check next sibling for a valid pair
+  if (indexInParent < parent.childCount - 1) {
+    const nextSibling = parent.child(indexInParent + 1);
+    if (
+      (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
+      && (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
+      && thisNode.type.name !== nextSibling.type.name
+    ) {
+      return { otherNode: nextSibling, otherIndex: indexInParent + 1, isNext: true };
+    }
+  }
   return null;
 }
 
@@ -417,17 +392,17 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       this.schema = getSchema();
 
       const pos = getPos();
-      const isLocDeleted = node.type.name === 'loc_deleted';
-      const isLocAdded = node.type.name === 'loc_added';
+      // Removed unused isLocDeleted and isLocAdded
 
-      // Check for adjacent pairs
-      const shouldUseTabbedInterface = isLocDeleted && hasAdjacentLocAdded(view, pos);
-      const isPartOfPair = isLocAdded && hasPreviousLocDeleted(view, pos);
+      // Check for adjacent pairs (either order, only render for the first in document order)
+      const pairInfo = getAdjacentLocPair(view, pos);
+      const shouldUseTabbedInterface = pairInfo && pairInfo.isNext;
+      const isPartOfPairButNotFirst = pairInfo && !pairInfo.isNext;
 
       if (shouldUseTabbedInterface) {
-        this.renderTabbedInterface(node, view, pos);
-      } else if (isPartOfPair) {
-        // Skip rendering for loc_added that's part of a pair (already handled by loc_deleted)
+        this.renderTabbedInterface(node, view, pos, pairInfo.otherNode);
+      } else if (isPartOfPairButNotFirst) {
+        // Skip rendering for the second node in a pair (already handled by the first)
         this.dom = document.createElement('span');
         this.dom.style.display = 'none';
         this.dom.style.position = 'absolute';
@@ -439,22 +414,31 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       }
     }
 
-    renderTabbedInterface(deletedNode, view, deletedPos) {
+    renderTabbedInterface(nodeA, view, posA, nodeB) {
       this.dom = document.createElement('div');
       this.dom.className = 'loc-tabbed-container';
 
-      // Get the adjacent loc_added content
-      const addedContent = getAdjacentLocAddedContent(view, deletedPos, this.schema);
-
-      if (!addedContent) {
-        // Fallback to single node rendering if something goes wrong
-        this.renderSingleNode(deletedNode, view, deletedPos, true);
-        return;
+      // Determine which is deleted and which is added
+      let deletedNode;
+      let addedNode;
+      let deletedPos;
+      let addedPos;
+      if (nodeA.type.name === 'loc_deleted') {
+        deletedNode = nodeA;
+        addedNode = nodeB;
+        deletedPos = this.getPos();
+        addedPos = deletedPos + nodeA.nodeSize;
+      } else {
+        deletedNode = nodeB;
+        addedNode = nodeA;
+        addedPos = this.getPos();
+        deletedPos = addedPos + nodeA.nodeSize;
       }
 
       // Create deleted content
       const serializer = DOMSerializer.fromSchema(this.schema);
       const deletedContent = serializer.serializeFragment(deletedNode.content);
+      const addedContent = serializer.serializeFragment(addedNode.content);
 
       // Create tab navigation
       const tabNav = createTabNavigation('deleted');
@@ -465,8 +449,8 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       // Create actions
       const actions = createTabbedActions(
         () => this.handleKeepDeleted(deletedNode, view, deletedPos),
-        () => this.handleKeepAdded(deletedNode, view, deletedPos),
-        () => this.handleDeleteBoth(deletedNode, view, deletedPos),
+        () => this.handleKeepAdded(addedNode, view, addedPos),
+        () => this.handleDeleteBoth(deletedNode, view, deletedPos, addedNode, addedPos),
       );
 
       // Assemble the interface
@@ -513,44 +497,20 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       dispatchTransaction(transaction);
     }
 
-    handleKeepAdded(deletedNode, view, deletedPos) {
-      const { doc } = view.state;
-      const resolvedPos = doc.resolve(deletedPos);
-      const { parent } = resolvedPos;
-      const indexInParent = resolvedPos.index();
-
-      // Get the next sibling (should be loc_added)
-      if (indexInParent < parent.childCount - 1) {
-        const nextSibling = parent.child(indexInParent + 1);
-        if (nextSibling && nextSibling.type.name === 'loc_added') {
-          const addedPos = deletedPos + deletedNode.nodeSize;
-          const transaction = keepLocContentInPlace(view, addedPos, nextSibling);
-          dispatchTransaction(transaction);
-        }
-      }
+    handleKeepAdded(addedNode, view, addedPos) {
+      const transaction = keepLocContentInPlace(view, addedPos, addedNode);
+      dispatchTransaction(transaction);
     }
 
-    handleDeleteBoth(deletedNode, view, deletedPos) {
-      const { doc } = view.state;
-      const resolvedPos = doc.resolve(deletedPos);
-      const { parent } = resolvedPos;
-      const indexInParent = resolvedPos.index();
-
-      // Get the next sibling (should be loc_added)
-      if (indexInParent < parent.childCount - 1) {
-        const nextSibling = parent.child(indexInParent + 1);
-        if (nextSibling && nextSibling.type.name === 'loc_added') {
-          const addedPos = deletedPos + deletedNode.nodeSize;
-          const transaction = deleteBothLocContent(
-            view,
-            deletedPos,
-            deletedNode,
-            addedPos,
-            nextSibling,
-          );
-          dispatchTransaction(transaction);
-        }
-      }
+    handleDeleteBoth(deletedNode, view, deletedPos, addedNode, addedPos) {
+      const transaction = deleteBothLocContent(
+        view,
+        deletedPos,
+        deletedNode,
+        addedPos,
+        addedNode,
+      );
+      dispatchTransaction(transaction);
     }
 
     destroy() {
