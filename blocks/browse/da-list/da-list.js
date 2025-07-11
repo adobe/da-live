@@ -56,6 +56,8 @@ export default class DaList extends LitElement {
     }
 
     if (props.has('fullpath') && this.fullpath) {
+      this._filter = '';
+      this._showFilter = undefined;
       this._listItems = await this.getList();
     }
 
@@ -465,7 +467,9 @@ export default class DaList extends LitElement {
   }
 
   render() {
-    const filteredItems = this._listItems.filter((item) => item.name.includes(this._filter));
+    const filteredItems = this._filter
+      ? this._listItems.filter((item) => item.name.includes(this._filter))
+      : this._listItems;
 
     return html`
       <div class="da-browse-panel-header">
