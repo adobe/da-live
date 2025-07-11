@@ -161,9 +161,9 @@ export async function openAssets() {
         const { state } = view;
 
         // eslint-disable-next-line no-underscore-dangle
-        const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/embedded']?.['dc:description']
+        const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:description']
           // eslint-disable-next-line no-underscore-dangle
-          || asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/embedded']?.['dc:title'];
+          || asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:title'];
 
         const createImage = (src) => {
           const imgObj = { src, style: 'width: 180px' };
@@ -277,7 +277,7 @@ export async function openAssets() {
 
           // eslint-disable-next-line no-underscore-dangle
           const renditionLinks = asset._links['http://ns.adobe.com/adobecloud/rel/rendition'];
-          const videoLink = renditionLinks.find((link) => link.href.endsWith('/play'))?.href;
+          const videoLink = renditionLinks?.find((link) => link.href.endsWith('/play'))?.href;
 
           let src;
           if (aemTierType === 'author') {
@@ -285,7 +285,7 @@ export async function openAssets() {
           } else if (mimetype.startsWith('video/')) {
             src = videoLink;
           } else {
-            src = renditionLinks[0]?.href.split('?')[0];
+            src = renditionLinks?.[0]?.href.split('?')[0];
           }
 
           let fpo;
