@@ -95,7 +95,7 @@ export async function openAssets() {
 
   prodOrigin = prodOrigin || `${repoId.replace('author', dmDeliveryEnabled ? 'delivery' : 'publish')}`;
 
-  const getBaseDmUrl = (asset) => `https://${prodOrigin}/adobe/assets/${asset['repo:id']}`;
+  const getBaseDmUrl = (asset) => `https://${prodOrigin}${prodOrigin.includes('/') ? '' : '/adobe/assets/'}${asset['repo:id']}`;
 
   const getAssetUrl = (asset, name = asset.name) => {
     if (!dmDeliveryEnabled) {
