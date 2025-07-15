@@ -52,7 +52,7 @@ export function aem2prose(doc) {
   brs.forEach((br) => { br.remove(); });
 
   // Fix blocks
-  const blocks = doc.querySelectorAll('main > div > div, da-loc-deleted > div, da-loc-added > div, da-loc-deleted.da-group > div > div, da-loc-added.da-group > div > div');
+  const blocks = doc.querySelectorAll('main > div > div, da-diff-deleted > div, da-loc-added > div, da-diff-deleted.da-group > div > div, da-loc-added.da-group > div > div');
   blocks.forEach((block) => {
     if (block.className?.includes('loc-')) return;
     const table = getTable(block);
