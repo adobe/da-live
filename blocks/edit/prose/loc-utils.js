@@ -4,14 +4,14 @@ import {
   Slice,
 } from 'da-y-wrapper';
 
-const LOC = {
-  LANGSTORE: {
+const DIFF = {
+  UPSTREAM: {
     BG: 'rgba(70, 130, 180, 0.8)',
     COVER_BG: 'rgba(70, 130, 180, 0.4)',
     TEXT: 'Upstream Content',
     TEXT_COLOR: 'rgba(70, 130, 180)',
   },
-  REGIONAL: {
+  LOCAL: {
     BG: 'rgba(144, 42, 222, 0.8)',
     COVER_BG: 'rgba(144, 42, 222, 0.4)',
     TEXT: 'Local Content',
@@ -19,39 +19,39 @@ const LOC = {
   },
 };
 
-function getCoverDiv(isLangstore) {
+function getCoverDiv(isUpstream) {
   const coverDiv = document.createElement('div');
-  coverDiv.className = `loc-color-overlay ${isLangstore ? 'loc-langstore' : 'loc-regional'}`;
-  coverDiv.setAttribute('loc-temp-dom', '');
+  coverDiv.className = `diff-color-overlay ${isUpstream ? 'diff-upstream' : 'diff-local'}`;
+  coverDiv.setAttribute('diff-temp-dom', '');
 
-  coverDiv.style.backgroundColor = isLangstore
-    ? LOC.LANGSTORE.COVER_BG
-    : LOC.REGIONAL.COVER_BG;
+  coverDiv.style.backgroundColor = isUpstream
+    ? DIFF.UPSTREAM.COVER_BG
+    : DIFF.LOCAL.COVER_BG;
   return coverDiv;
 }
 
-function getLangOverlay(isLangstore) {
+function getLangOverlay(isUpstream) {
   const overlay = document.createElement('div');
-  overlay.className = 'loc-lang-overlay';
-  overlay.setAttribute('loc-temp-dom', '');
-  overlay.style.backgroundColor = isLangstore
-    ? LOC.LANGSTORE.BG
-    : LOC.REGIONAL.BG;
+  overlay.className = 'diff-lang-overlay';
+  overlay.setAttribute('diff-temp-dom', '');
+  overlay.style.backgroundColor = isUpstream
+    ? DIFF.UPSTREAM.BG
+    : DIFF.LOCAL.BG;
 
   const dialog = document.createElement('div');
   dialog.className = 'loc-dialog';
   dialog.innerHTML = `
-    <span>${isLangstore ? LOC.LANGSTORE.TEXT : LOC.REGIONAL.TEXT}</span>
+    <span>${isUpstream ? DIFF.UPSTREAM.TEXT : DIFF.LOCAL.TEXT}</span>
     <div>
-    <span class="loc-keep"><div title="Keep">Keep</div></span>
-    <span class="loc-delete"><div title="Delete">Delete</div></span>
+    <span class="diff-keep"><div title="Keep">Keep</div></span>
+    <span class="diff-delete"><div title="Delete">Delete</div></span>
     </div>`;
-  dialog.style.color = isLangstore
-    ? LOC.LANGSTORE.TEXT_COLOR
-    : LOC.REGIONAL.TEXT_COLOR;
+  dialog.style.color = isUpstream
+    ? DIFF.UPSTREAM.TEXT_COLOR
+    : DIFF.LOCAL.TEXT_COLOR;
 
-  const deleteBtn = dialog.querySelector('.loc-delete');
-  const keepBtn = dialog.querySelector('.loc-keep');
+  const deleteBtn = dialog.querySelector('.diff-delete');
+  const keepBtn = dialog.querySelector('.diff-keep');
   overlay.appendChild(dialog);
 
   return { overlay, deleteBtn, keepBtn };
@@ -79,17 +79,17 @@ function deleteLocContent(view, pos, node) {
 }
 
 // eslint-disable-next-line import/prefer-default-export
-export function getLocClass(elName, getSchema, dispatchTransaction, { isLangstore } = {}) {
+export function getLocClass(locType, getSchema, dispatchTransaction, { isUpstream } = {}) {
   return class {
     constructor(node, view, getPos) {
-      this.dom = document.createElement(elName);
+      this.dom = document.createElement(locType);
       const serializer = DOMSerializer.fromSchema(getSchema());
       const nodeDOM = serializer.serializeFragment(node.content);
 
       this.dom.appendChild(nodeDOM);
-      const coverDiv = getCoverDiv(isLangstore);
+      const coverDiv = getCoverDiv(isUpstream);
       this.dom.appendChild(coverDiv);
-      const { overlay, deleteBtn, keepBtn } = getLangOverlay(isLangstore);
+      const { overlay, deleteBtn, keepBtn } = getLangOverlay(isUpstream);
       this.langOverlay = overlay;
 
       deleteBtn.addEventListener('click', () => {
