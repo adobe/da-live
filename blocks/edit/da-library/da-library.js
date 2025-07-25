@@ -25,6 +25,7 @@ const ICONS = [
   '/blocks/edit/img/Smock_ExperienceAdd_18_N.svg',
   '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
   '/blocks/edit/img/Smock_AddCircle_18_N.svg',
+  '/blocks/edit/img/Smock_Preview_18_N.svg',
 ];
 
 let accessToken;
@@ -319,15 +320,18 @@ class DaLibrary extends LitElement {
     }, 750);
   }
 
-  renderBlockItem(item, icon = false) {
+  renderBlockItem(item, path, icon = false) {
     return html`
       <li class="da-library-type-group-detail-item" tabindex="1">
-        <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item, true)}>
-          <div>
+        <button class="${icon ? 'blocks' : ''}">
+          <div class="block-name">
             <span class="da-library-group-name">${item.name}</span>
             <span class="da-library-group-subtitle">${item.variants}</span>
           </div>
-          <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+          <a href=${path} target="_blank">
+            <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+          </a>
+          <svg class="icon" @click=${() => this.handleItemClick(item, true)}><use href="#spectrum-ExperienceAdd"/></svg>
         </button>
       </li>`;
   }
@@ -337,7 +341,7 @@ class DaLibrary extends LitElement {
       data.blockDetailItems.set(path, await getBlockVariants(path));
     }
     const items = data.blockDetailItems.get(path);
-    return html`${items.map((item) => this.renderBlockItem(item))}`;
+    return html`${items.map((item) => this.renderBlockItem(item, path))}`;
   }
 
   renderBlockGroup(group) {
@@ -388,11 +392,13 @@ class DaLibrary extends LitElement {
   renderTemplateItem(item, icon = false) {
     return html`
       <li class="da-library-type-item">
-        <button class="da-library-type-item-btn ${icon ? 'templates' : ''}"
-          @click=${() => this.handleTemplateClick(item)}>
+        <button class="da-library-type-item-btn ${icon ? 'templates' : ''}">
           <div class="da-library-type-item-detail">
             <span>${item.key}</span>
-            <svg class="icon">
+            <a class="template-link" href=${item.value} target="_blank">
+              <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+            </a>
+            <svg class="icon" @click=${() => this.handleTemplateClick(item)}>
               <use href="#spectrum-AddCircle"/>
             </svg>
           </div>
