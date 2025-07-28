@@ -69,7 +69,8 @@ export default class DaSearch extends LitElement {
         try {
           const resp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
           const text = await resp.text();
-          console.log(file.path, text.length, text.length < 5);
+          // Log empty files
+          if (text.length < 2) console.log(file.path);
           match = text.includes(term) || file.path.split('/').pop().includes(term);
         } catch {
           return { error: 'fetch error' };
