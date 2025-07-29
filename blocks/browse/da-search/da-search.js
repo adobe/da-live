@@ -55,7 +55,7 @@ export default class DaSearch extends LitElement {
   }
 
   async getMatches(startPath, term) {
-    const searchTypes = ['.html', '.json'];
+    const searchTypes = ['.html', '.json', '.svg'];
 
     const searchFile = async (file, prevRetry = 0) => {
       if (!searchTypes.some((type) => file.path.endsWith(type))) return;
