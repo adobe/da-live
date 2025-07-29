@@ -74,13 +74,13 @@ loadHtmlDiffScript().catch((error) => {
 /**
  * Create tab navigation for the tabbed interface
  */
-function createTabNavigation(activeTab = 'deleted') {
+function createTabNavigation(activeTab = 'added') {
   const nav = document.createElement('div');
   nav.className = 'loc-tab-nav';
 
   const tabs = [
-    { id: 'deleted', label: 'Deleted', color: LOC.UPSTREAM.TEXT_COLOR },
-    { id: 'added', label: 'Added', color: LOC.LOCAL.TEXT_COLOR },
+    { id: 'added', label: 'Local (Added)', color: LOC.LOCAL.TEXT_COLOR },
+    { id: 'deleted', label: 'Upstream (Deleted)', color: LOC.UPSTREAM.TEXT_COLOR },
     { id: 'diff', label: 'Diff', color: '#666' },
   ];
 
@@ -166,22 +166,22 @@ function createTabContent(deletedContent, addedContent) {
   const container = document.createElement('div');
   container.className = 'loc-tab-content';
 
-  // Deleted content tab
-  const deletedTab = document.createElement('div');
-  deletedTab.className = 'loc-tab-pane active';
-  deletedTab.dataset.tab = 'deleted';
-  // Clone the content since DocumentFragments can only be in one place
-  if (deletedContent) {
-    deletedTab.appendChild(deletedContent.cloneNode(true));
-  }
-
   // Added content tab
   const addedTab = document.createElement('div');
-  addedTab.className = 'loc-tab-pane';
+  addedTab.className = 'loc-tab-pane active';
   addedTab.dataset.tab = 'added';
   // Clone the content since DocumentFragments can only be in one place
   if (addedContent) {
     addedTab.appendChild(addedContent.cloneNode(true));
+  }
+
+  // Deleted content tab
+  const deletedTab = document.createElement('div');
+  deletedTab.className = 'loc-tab-pane';
+  deletedTab.dataset.tab = 'deleted';
+  // Clone the content since DocumentFragments can only be in one place
+  if (deletedContent) {
+    deletedTab.appendChild(deletedContent.cloneNode(true));
   }
 
   // Diff content tab
@@ -201,8 +201,8 @@ function createTabContent(deletedContent, addedContent) {
     diffTab.innerHTML = '<p style="text-align: center; color: #d32f2f; margin: 20px 0;">Error loading diff</p>';
   });
 
-  container.appendChild(deletedTab);
   container.appendChild(addedTab);
+  container.appendChild(deletedTab);
   container.appendChild(diffTab);
 
   return container;
@@ -211,26 +211,33 @@ function createTabContent(deletedContent, addedContent) {
 /**
  * Create action buttons for the tabbed interface
  */
-function createTabbedActions(onKeepDeleted, onKeepAdded, onDeleteBoth) {
+function createTabbedActions(onKeepDeleted, onKeepAdded, onDeleteBoth, onAcceptChanges) {
   const actionsContainer = document.createElement('div');
   actionsContainer.className = 'loc-tabbed-actions';
 
   const actionButtons = document.createElement('div');
   actionButtons.className = 'loc-action-buttons';
 
-  // Keep Deleted button
-  const keepDeletedBtn = document.createElement('button');
-  keepDeletedBtn.className = 'loc-action-btn loc-keep-deleted';
-  keepDeletedBtn.title = 'Keep Deleted Content';
-  keepDeletedBtn.innerHTML = '<span>Keep Deleted</span>';
-  keepDeletedBtn.addEventListener('click', onKeepDeleted);
+  // Accept Changes button
+  const acceptChangesBtn = document.createElement('button');
+  acceptChangesBtn.className = 'loc-action-btn loc-accept-changes';
+  acceptChangesBtn.title = 'Accept Changes';
+  acceptChangesBtn.innerHTML = '<span>Accept Changes</span>';
+  acceptChangesBtn.addEventListener('click', onAcceptChanges);
 
   // Keep Added button
-  const keepAddedBtn = document.createElement('button');
-  keepAddedBtn.className = 'loc-action-btn loc-keep-added';
-  keepAddedBtn.title = 'Keep Added Content';
-  keepAddedBtn.innerHTML = '<span>Keep Added</span>';
-  keepAddedBtn.addEventListener('click', onKeepAdded);
+  const keepLocalBtn = document.createElement('button');
+  keepLocalBtn.className = 'loc-action-btn loc-keep-added';
+  keepLocalBtn.title = 'Keep Local Content';
+  keepLocalBtn.innerHTML = '<span>Keep Local</span>';
+  keepLocalBtn.addEventListener('click', onKeepAdded);
+
+  // Keep Deleted button
+  const keepUpstreamBtn = document.createElement('button');
+  keepUpstreamBtn.className = 'loc-action-btn loc-keep-deleted';
+  keepUpstreamBtn.title = 'Keep Upstream Content';
+  keepUpstreamBtn.innerHTML = '<span>Keep Upstream</span>';
+  keepUpstreamBtn.addEventListener('click', onKeepDeleted);
 
   // Delete Both button
   const deleteBothBtn = document.createElement('button');
@@ -239,8 +246,9 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onDeleteBoth) {
   deleteBothBtn.innerHTML = '<span>Delete Both</span>';
   deleteBothBtn.addEventListener('click', onDeleteBoth);
 
-  actionButtons.appendChild(keepDeletedBtn);
-  actionButtons.appendChild(keepAddedBtn);
+  actionButtons.appendChild(acceptChangesBtn);
+  actionButtons.appendChild(keepUpstreamBtn);
+  actionButtons.appendChild(keepLocalBtn);
   actionButtons.appendChild(deleteBothBtn);
 
   actionsContainer.appendChild(actionButtons);
@@ -344,6 +352,61 @@ function deleteBothLocContent(view, deletedPos, deletedNode, addedPos, addedNode
   return transaction;
 }
 
+/**
+ * Recursively searches for the first text node and returns its text value.
+ * @param {Object} content - The ProseMirror node to search.
+ * @returns {string|undefined} The first text found, or undefined if none exists.
+ */
+function getFirstText(content) {
+  if (!content) return undefined;
+
+  if (content.type && content.type.name === 'text' && typeof content.text === 'string') {
+    return content.text;
+  }
+
+  if (content.content && content.content.content) {
+    for (let i = 0; i < content.content.content.length; i += 1) {
+      const child = content.content.content[i];
+      const found = getFirstText(child);
+      if (found !== undefined) return found;
+    }
+  }
+
+  return undefined;
+}
+
+// Track nodes that have been used in tabbed interfaces
+const usedNodes = new WeakSet();
+
+/**
+ * Check if two nodes have matching content structure
+ */
+function hasMatchingContent(nodeA, nodeB) {
+  const contentA = nodeA.content.content;
+  const contentB = nodeB.content.content;
+
+  // Must have same number of child nodes
+  if (contentA.length !== contentB.length) {
+    return false;
+  }
+
+  // Check that each child node has the same type
+  for (let i = 0; i < contentA.length; i += 1) {
+    if (contentA[i].type.name !== contentB[i].type.name) {
+      return false;
+    }
+  }
+
+  // If they are blocks, they must be the same block type
+  if (contentA[1].type.name === 'table' && contentB[1].type.name === 'table') {
+    const blockA = getFirstText(contentA[1])?.split(' ')[0];
+    const blockB = getFirstText(contentB[1])?.split(' ')[0];
+    return blockA === blockB;
+  }
+
+  return true;
+}
+
 // eslint-disable-next-line import/prefer-default-export
 export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {
   return class {
@@ -360,63 +423,43 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const indexInParent = resolvedPos.index();
       const thisNode = parent.child(indexInParent);
 
-      // Check if this node is the first in a valid pair (with next sibling)
-      let isFirstInPair = false;
-      let nextSibling = null;
-      if (indexInParent < parent.childCount - 1) {
-        nextSibling = parent.child(indexInParent + 1);
-        if (
-          (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
-          && (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
-          && thisNode.type.name !== nextSibling.type.name
-        ) {
-          // Also ensure previous sibling is not a valid pair with this node
-          if (
-            indexInParent === 0
-            || !(
-              (parent.child(indexInParent - 1).type.name === 'loc_added'
-                || parent.child(indexInParent - 1).type.name === 'loc_deleted')
-              && parent.child(indexInParent - 1).type.name !== thisNode.type.name
-            )
-          ) {
-            isFirstInPair = true;
-          }
-        }
-      }
-
-      // Check if this node is the second in a valid pair (with previous sibling)
-      let isSecondInPair = false;
-      if (indexInParent > 0) {
-        const prevSibling = parent.child(indexInParent - 1);
-        if (
-          (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
-          && (prevSibling.type.name === 'loc_added' || prevSibling.type.name === 'loc_deleted')
-          && thisNode.type.name !== prevSibling.type.name
-        ) {
-          // Only if previous sibling is the first in a pair
-          if (
-            indexInParent === 1
-            || !(
-              (parent.child(indexInParent - 2).type.name === 'loc_added'
-                || parent.child(indexInParent - 2).type.name === 'loc_deleted')
-              && parent.child(indexInParent - 2).type.name !== prevSibling.type.name
-            )
-          ) {
-            isSecondInPair = true;
-          }
-        }
-      }
-
-      if (isFirstInPair) {
-        this.renderTabbedInterface(thisNode, view, pos, nextSibling);
-      } else if (isSecondInPair) {
-        // Render as hidden node
+      // Skip if this node has already been used
+      if (usedNodes.has(thisNode)) {
         this.dom = document.createElement('span');
         this.dom.style.display = 'none';
         this.dom.style.position = 'absolute';
         this.dom.style.width = '0';
         this.dom.style.height = '0';
         this.dom.style.overflow = 'hidden';
+        return;
+      }
+
+      // Check if this node can form a pair with the next sibling
+      let canFormPair = false;
+      let nextSibling = null;
+
+      if (indexInParent < parent.childCount - 1) {
+        nextSibling = parent.child(indexInParent + 1);
+
+        // Check if nodes are complementary loc types
+        if (
+          (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
+          && (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
+          && thisNode.type.name !== nextSibling.type.name
+          && !usedNodes.has(nextSibling)
+        ) {
+          // Check if content structure matches
+          if (hasMatchingContent(thisNode, nextSibling)) {
+            canFormPair = true;
+          }
+        }
+      }
+
+      if (canFormPair) {
+        // Mark both nodes as used
+        usedNodes.add(thisNode);
+        usedNodes.add(nextSibling);
+        this.renderTabbedInterface(thisNode, view, pos, nextSibling);
       } else {
         this.renderSingleNode(node, view, pos, isUpstream);
       }
@@ -449,7 +492,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const addedContent = serializer.serializeFragment(addedNode.content);
 
       // Create tab navigation
-      const tabNav = createTabNavigation('deleted');
+      const tabNav = createTabNavigation('added');
 
       // Create tab content
       const tabContent = createTabContent(deletedContent, addedContent);
@@ -459,6 +502,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         () => this.handleKeepDeleted(deletedNode, view, deletedPos),
         () => this.handleKeepAdded(addedNode, view, addedPos),
         () => this.handleDeleteBoth(deletedNode, view, deletedPos, addedNode, addedPos),
+        () => this.handleAcceptChanges(deletedNode, view, deletedPos, addedNode, addedPos),
       );
 
       // Assemble the interface
@@ -518,6 +562,11 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         addedPos,
         addedNode,
       );
+      dispatchTransaction(transaction);
+    }
+
+    handleAcceptChanges(deletedNode, view, deletedPos, addedNode, addedPos) {
+      const transaction = acceptChanges(view, deletedPos, deletedNode, addedPos, addedNode);
       dispatchTransaction(transaction);
     }
 
