@@ -2,7 +2,6 @@
 import {
   EditorState,
   EditorView,
-  history,
   buildKeymap,
   keymap,
   baseKeymap,
@@ -287,7 +286,6 @@ export default function initProse({ path, permissions }) {
     }),
     gapCursor(),
     tableEditing(),
-    history(),
   ];
 
   if (canWrite) plugins.push(menu);

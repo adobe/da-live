@@ -931,23 +931,34 @@ da-loc-deleted, da-loc-added {
 
 .loc-tab-nav {
   display: flex;
-  background: #f5f5f5;
   border-bottom: 1px solid #ddd;
-  border-radius: 6px 6px 0 0;
-  overflow: hidden;
+  margin-bottom: 0;
+  background: transparent;
 }
 
 .loc-tab-button {
   flex: 1;
   padding: 12px 16px;
-  border: none;
-  background: #fff;
+  border: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+  border-radius: 3px 3px 0 0;
+  background: #f5f5f5;
   cursor: pointer;
   font-size: 14px;
   font-weight: 400;
   color: #666;
-  border-bottom: 3px solid transparent;
   transition: all 0.2s ease;
+  margin-bottom: -1px;
+  position: relative;
+}
+
+.loc-tab-button:not(:first-child) {
+  border-top-left-radius: 0;
+  border-left: none;
+}
+
+.loc-tab-button:not(:last-child) {
+  border-top-right-radius: 0;
 }
 
 .loc-tab-button:hover {
@@ -956,15 +967,19 @@ da-loc-deleted, da-loc-added {
 }
 
 .loc-tab-button.active {
-  background: #666;
-  color: #fff;
+  background: #fff;
+  color: #666;
   font-weight: 700;
-  border-bottom-color: currentColor;
+  border-bottom: 1px solid #fff;
+  z-index: 1;
 }
 
 .loc-tab-content {
   position: relative;
   min-height: 100px;
+  border: none;
+  border-radius: 0 0 3px 3px;
+  background: #fff;
 }
 
 .loc-tab-pane {
@@ -982,7 +997,7 @@ da-loc-deleted, da-loc-added {
   padding: 16px;
   background: #f9f9f9;
   border-top: 1px solid #ddd;
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 0 3px 3px;
 }
 
 .loc-action-buttons {
