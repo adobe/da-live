@@ -71,9 +71,6 @@ loadHtmlDiffScript().catch((error) => {
   console.warn('Failed to load htmldiff library:', error);
 });
 
-/**
- * Create tab navigation for the tabbed interface
- */
 function createTabNavigation(activeTab = 'added') {
   const nav = document.createElement('div');
   nav.className = 'loc-tab-nav';
@@ -96,9 +93,6 @@ function createTabNavigation(activeTab = 'added') {
   return nav;
 }
 
-/**
- * Convert DocumentFragment to HTML string
- */
 function fragmentToHTML(fragment) {
   if (!fragment) return '';
 
@@ -111,9 +105,6 @@ function fragmentToHTML(fragment) {
   return tempDiv.innerHTML;
 }
 
-/**
- * Generate HTML diff between deleted and added content
- */
 async function generateDiff(deletedContent, addedContent) {
   try {
     // Ensure htmldiff is loaded
@@ -159,14 +150,10 @@ async function generateDiff(deletedContent, addedContent) {
   }
 }
 
-/**
- * Create tab content container
- */
 function createTabContent(deletedContent, addedContent) {
   const container = document.createElement('div');
   container.className = 'loc-tab-content';
 
-  // Added content tab
   const addedTab = document.createElement('div');
   addedTab.className = 'loc-tab-pane active';
   addedTab.dataset.tab = 'added';
@@ -175,7 +162,6 @@ function createTabContent(deletedContent, addedContent) {
     addedTab.appendChild(addedContent.cloneNode(true));
   }
 
-  // Deleted content tab
   const deletedTab = document.createElement('div');
   deletedTab.className = 'loc-tab-pane';
   deletedTab.dataset.tab = 'deleted';
@@ -184,15 +170,12 @@ function createTabContent(deletedContent, addedContent) {
     deletedTab.appendChild(deletedContent.cloneNode(true));
   }
 
-  // Diff content tab
   const diffTab = document.createElement('div');
   diffTab.className = 'loc-tab-pane';
   diffTab.dataset.tab = 'diff';
 
-  // Initially show loading message
   diffTab.innerHTML = '<p style="text-align: center; color: #666; margin: 20px 0;">Loading diff...</p>';
 
-  // Generate the diff asynchronously using the original fragments
   generateDiff(deletedContent, addedContent).then((diffHTML) => {
     diffTab.innerHTML = diffHTML;
   }).catch((error) => {
@@ -208,57 +191,49 @@ function createTabContent(deletedContent, addedContent) {
   return container;
 }
 
-/**
- * Create action buttons for the tabbed interface
- */
-function createTabbedActions(onKeepDeleted, onKeepAdded, onDeleteBoth, onAcceptChanges) {
+function createButton(label, className, onClick) {
+  const button = document.createElement('button');
+  button.className = className;
+  button.title = label;
+  button.innerHTML = `<span>${label}</span>`;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth) {
   const actionsContainer = document.createElement('div');
   actionsContainer.className = 'loc-tabbed-actions';
 
   const actionButtons = document.createElement('div');
   actionButtons.className = 'loc-action-buttons';
 
-  // Accept Changes button
-  const acceptChangesBtn = document.createElement('button');
-  acceptChangesBtn.className = 'loc-action-btn loc-accept-changes';
-  acceptChangesBtn.title = 'Accept Changes';
-  acceptChangesBtn.innerHTML = '<span>Accept Changes</span>';
-  acceptChangesBtn.addEventListener('click', onAcceptChanges);
+  const keepLocalBtn = createButton(
+    'Keep Local',
+    'loc-action-btn loc-keep-added',
+    onKeepAdded,
+  );
 
-  // Keep Added button
-  const keepLocalBtn = document.createElement('button');
-  keepLocalBtn.className = 'loc-action-btn loc-keep-added';
-  keepLocalBtn.title = 'Keep Local Content';
-  keepLocalBtn.innerHTML = '<span>Keep Local</span>';
-  keepLocalBtn.addEventListener('click', onKeepAdded);
+  const keepUpstreamBtn = createButton(
+    'Keep Upstream',
+    'loc-action-btn loc-keep-deleted',
+    onKeepDeleted,
+  );
 
-  // Keep Deleted button
-  const keepUpstreamBtn = document.createElement('button');
-  keepUpstreamBtn.className = 'loc-action-btn loc-keep-deleted';
-  keepUpstreamBtn.title = 'Keep Upstream Content';
-  keepUpstreamBtn.innerHTML = '<span>Keep Upstream</span>';
-  keepUpstreamBtn.addEventListener('click', onKeepDeleted);
+  const keepBothBtn = createButton(
+    'Keep Both',
+    'loc-action-btn loc-keep-both',
+    onKeepBoth,
+  );
 
-  // Delete Both button
-  const deleteBothBtn = document.createElement('button');
-  deleteBothBtn.className = 'loc-action-btn loc-delete-both';
-  deleteBothBtn.title = 'Delete Both';
-  deleteBothBtn.innerHTML = '<span>Delete Both</span>';
-  deleteBothBtn.addEventListener('click', onDeleteBoth);
-
-  actionButtons.appendChild(acceptChangesBtn);
-  actionButtons.appendChild(keepUpstreamBtn);
   actionButtons.appendChild(keepLocalBtn);
-  actionButtons.appendChild(deleteBothBtn);
+  actionButtons.appendChild(keepUpstreamBtn);
+  actionButtons.appendChild(keepBothBtn);
 
   actionsContainer.appendChild(actionButtons);
 
   return actionsContainer;
 }
 
-/**
- * Add tab switching functionality
- */
 function addTabSwitching(container) {
   const tabButtons = container.querySelectorAll('.loc-tab-button');
   const tabPanes = container.querySelectorAll('.loc-tab-pane');
@@ -321,8 +296,8 @@ function getLangOverlay(upstream) {
 }
 
 function keepLocContentInPlace(view, pos, node) {
-  node.content.content = node.content.content.filter((c) => c.content.content.length);
-  const newFragment = Fragment.fromArray(node.content.content);
+  const filteredContent = node.content.content.filter((c) => c.content.content.length);
+  const newFragment = Fragment.fromArray(filteredContent);
   const newSlice = new Slice(newFragment, 0, 0);
   const transaction = view.state.tr.replace(pos, pos + node.nodeSize, newSlice);
   return transaction;
@@ -342,17 +317,6 @@ function deleteLocContent(view, pos, node) {
 }
 
 /**
- * Delete both loc_deleted and loc_added nodes
- */
-function deleteBothLocContent(view, deletedPos, deletedNode, addedPos, addedNode) {
-  // Delete in reverse order to maintain position integrity
-  const transaction = view.state.tr
-    .delete(addedPos, addedPos + addedNode.nodeSize)
-    .delete(deletedPos, deletedPos + deletedNode.nodeSize);
-  return transaction;
-}
-
-/**
  * Recursively searches for the first text node and returns its text value.
  * @param {Object} content - The ProseMirror node to search.
  * @returns {string|undefined} The first text found, or undefined if none exists.
@@ -360,11 +324,11 @@ function deleteBothLocContent(view, deletedPos, deletedNode, addedPos, addedNode
 function getFirstText(content) {
   if (!content) return undefined;
 
-  if (content.type && content.type.name === 'text' && typeof content.text === 'string') {
+  if (content.type?.name === 'text' && typeof content.text === 'string') {
     return content.text;
   }
 
-  if (content.content && content.content.content) {
+  if (content.content?.content) {
     for (let i = 0; i < content.content.content.length; i += 1) {
       const child = content.content.content[i];
       const found = getFirstText(child);
@@ -385,7 +349,6 @@ function hasMatchingContent(nodeA, nodeB) {
   const contentA = nodeA.content.content;
   const contentB = nodeB.content.content;
 
-  // Must have same number of child nodes
   if (contentA.length !== contentB.length) {
     return false;
   }
@@ -486,31 +449,24 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         deletedPos = addedPos + nodeA.nodeSize;
       }
 
-      // Create deleted content
       const serializer = DOMSerializer.fromSchema(this.schema);
       const deletedContent = serializer.serializeFragment(deletedNode.content);
       const addedContent = serializer.serializeFragment(addedNode.content);
 
-      // Create tab navigation
       const tabNav = createTabNavigation('added');
 
-      // Create tab content
       const tabContent = createTabContent(deletedContent, addedContent);
 
-      // Create actions
       const actions = createTabbedActions(
-        () => this.handleKeepDeleted(deletedNode, view, deletedPos),
-        () => this.handleKeepAdded(addedNode, view, addedPos),
-        () => this.handleDeleteBoth(deletedNode, view, deletedPos, addedNode, addedPos),
-        () => this.handleAcceptChanges(deletedNode, view, deletedPos, addedNode, addedPos),
+        () => this.handleKeepDeleted(deletedNode, view, deletedPos, addedNode, addedPos),
+        () => this.handleKeepAdded(addedNode, view, addedPos, deletedNode, deletedPos),
+        () => this.handleKeepBoth(deletedNode, view, deletedPos, addedNode, addedPos),
       );
 
-      // Assemble the interface
       this.dom.appendChild(tabNav);
       this.dom.appendChild(tabContent);
       this.dom.appendChild(actions);
 
-      // Add tab switching functionality
       addTabSwitching(this.dom);
     }
 
@@ -544,30 +500,68 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       });
     }
 
-    handleKeepDeleted(deletedNode, view, deletedPos) {
-      const transaction = keepLocContentInPlace(view, deletedPos, deletedNode);
-      dispatchTransaction(transaction);
+    handleKeepDeleted(deletedNode, view, deletedPos, addedNode, addedPos) {
+      // Keep deleted content and delete added content
+      // Extract content from deleted node without mutating the original
+      const filteredContent = deletedNode.content.content.filter((c) => c.content.content.length);
+      const newFragment = Fragment.fromArray(filteredContent);
+      const newSlice = new Slice(newFragment, 0, 0);
+
+      // Calculate the range to replace (both nodes)
+      const startPos = Math.min(deletedPos, addedPos);
+      const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
+
+      // Replace the entire range with just the deleted content
+      const tr = view.state.tr.replace(startPos, endPos, newSlice);
+      view.dispatch(tr);
     }
 
-    handleKeepAdded(addedNode, view, addedPos) {
-      const transaction = keepLocContentInPlace(view, addedPos, addedNode);
-      dispatchTransaction(transaction);
+    handleKeepAdded(addedNode, view, addedPos, deletedNode, deletedPos) {
+      // Keep added content and delete deleted content
+      // Extract content from added node without mutating the original
+      const filteredContent = addedNode.content.content.filter((c) => c.content.content.length);
+      const newFragment = Fragment.fromArray(filteredContent);
+      const newSlice = new Slice(newFragment, 0, 0);
+
+      // Calculate the range to replace (both nodes)
+      const startPos = Math.min(deletedPos, addedPos);
+      const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
+
+      // Replace the entire range with just the added content
+      const tr = view.state.tr.replace(startPos, endPos, newSlice);
+      view.dispatch(tr);
     }
 
-    handleDeleteBoth(deletedNode, view, deletedPos, addedNode, addedPos) {
-      const transaction = deleteBothLocContent(
-        view,
-        deletedPos,
-        deletedNode,
-        addedPos,
-        addedNode,
-      );
-      dispatchTransaction(transaction);
+    handleKeepBoth(deletedNode, view, deletedPos, addedNode, addedPos) {
+      // Keep both nodes by combining their content
+      // Extract content from both nodes
+      const deletedContent = deletedNode.content.content.filter((c) => c.content.content.length);
+      const addedContent = addedNode.content.content.filter((c) => c.content.content.length);
+
+      // Combine both contents
+      const combinedContent = [...deletedContent, ...addedContent];
+      const newFragment = Fragment.fromArray(combinedContent);
+      const newSlice = new Slice(newFragment, 0, 0);
+
+      // Calculate the range to replace (both nodes)
+      const startPos = Math.min(deletedPos, addedPos);
+      const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
+
+      // Replace the entire range with the combined content
+      const tr = view.state.tr.replace(startPos, endPos, newSlice);
+      view.dispatch(tr);
     }
 
-    handleAcceptChanges(deletedNode, view, deletedPos, addedNode, addedPos) {
-      const transaction = acceptChanges(view, deletedPos, deletedNode, addedPos, addedNode);
-      dispatchTransaction(transaction);
+    applyKeepOperation(tr, node, pos) {
+      // Extract and filter content without mutating the original node
+      const filteredContent = node.content.content.filter((c) => c.content.content.length);
+      if (filteredContent.length > 0) {
+        const newFragment = Fragment.fromArray(filteredContent);
+        const newSlice = new Slice(newFragment, 0, 0);
+        tr.replace(pos, pos + node.nodeSize, newSlice);
+      } else {
+        tr.delete(pos, pos + node.nodeSize);
+      }
     }
 
     destroy() {
