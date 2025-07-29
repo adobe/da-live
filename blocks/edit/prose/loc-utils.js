@@ -22,6 +22,10 @@ const LOC = {
 // Load htmldiff library
 let htmldiff = null;
 
+// Global dialog management
+let globalDialog = null;
+const activeViews = new Set();
+
 // Function to load the htmldiff script dynamically
 function loadHtmlDiffScript() {
   if (window.htmldiff) {
@@ -70,6 +74,187 @@ loadHtmlDiffScript().catch((error) => {
   // eslint-disable-next-line no-console
   console.warn('Failed to load htmldiff library:', error);
 });
+
+function getAllLocNodes(view) {
+  const { doc } = view.state;
+  const locNodes = [];
+
+  doc.descendants((node, pos) => {
+    if (node.type.name === 'loc_deleted' || node.type.name === 'loc_added') {
+      locNodes.push({ node, pos });
+    }
+  });
+
+  // Sort by position (descending) so we can process from end to beginning
+  // This prevents position shifts from affecting later operations
+  return locNodes.sort((a, b) => b.pos - a.pos);
+}
+
+function hideGlobalDialog() {
+  if (globalDialog && globalDialog.parentNode) {
+    const proseMirrorContainer = globalDialog.parentNode;
+    proseMirrorContainer.classList.remove('has-regional-edits');
+    globalDialog.classList.remove('show');
+    globalDialog.remove();
+  }
+}
+
+function handleGlobalAction(action) {
+  // Process all active views
+  activeViews.forEach((view) => {
+    const locNodes = getAllLocNodes(view);
+
+    if (locNodes.length === 0) return;
+
+    let { tr } = view.state;
+    let hasChanges = false;
+
+    for (const { node, pos } of locNodes) {
+      try {
+        if (action === 'keep-local' && node.type.name === 'loc_added') {
+          // Keep local (added) content
+          const filteredContent = node.content.content.filter((c) => c.content.content.length);
+          if (filteredContent.length > 0) {
+            const newFragment = Fragment.fromArray(filteredContent);
+            const newSlice = new Slice(newFragment, 0, 0);
+            tr = tr.replace(pos, pos + node.nodeSize, newSlice);
+            hasChanges = true;
+          } else {
+            tr = tr.delete(pos, pos + node.nodeSize);
+            hasChanges = true;
+          }
+        } else if (action === 'keep-upstream' && node.type.name === 'loc_deleted') {
+          // Keep upstream (deleted) content
+          const filteredContent = node.content.content.filter((c) => c.content.content.length);
+          if (filteredContent.length > 0) {
+            const newFragment = Fragment.fromArray(filteredContent);
+            const newSlice = new Slice(newFragment, 0, 0);
+            tr = tr.replace(pos, pos + node.nodeSize, newSlice);
+            hasChanges = true;
+          } else {
+            tr = tr.delete(pos, pos + node.nodeSize);
+            hasChanges = true;
+          }
+        } else if (action === 'keep-both') {
+          // Keep both - extract content from loc node
+          const filteredContent = node.content.content.filter((c) => c.content.content.length);
+          if (filteredContent.length > 0) {
+            const newFragment = Fragment.fromArray(filteredContent);
+            const newSlice = new Slice(newFragment, 0, 0);
+            tr = tr.replace(pos, pos + node.nodeSize, newSlice);
+            hasChanges = true;
+          } else {
+            tr = tr.delete(pos, pos + node.nodeSize);
+            hasChanges = true;
+          }
+        } else if (action === 'keep-local' && node.type.name === 'loc_deleted') {
+          // Remove upstream (deleted) content when keeping local
+          tr = tr.delete(pos, pos + node.nodeSize);
+          hasChanges = true;
+        } else if (action === 'keep-upstream' && node.type.name === 'loc_added') {
+          // Remove local (added) content when keeping upstream
+          tr = tr.delete(pos, pos + node.nodeSize);
+          hasChanges = true;
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Error processing loc node:', error);
+      }
+    }
+
+    if (hasChanges) {
+      view.dispatch(tr);
+    }
+  });
+
+  // Hide dialog after processing
+  hideGlobalDialog();
+}
+
+function createGlobalDialog() {
+  const dialog = document.createElement('div');
+  dialog.className = 'da-regional-edits-dialog';
+  dialog.innerHTML = `
+    <div class="da-regional-edits-title">All Regional Edits</div>
+    <div class="da-regional-edits-actions">
+      <button class="da-regional-edits-btn keep-local" data-action="keep-local">
+        Keep All Local
+      </button>
+      <button class="da-regional-edits-btn keep-upstream" data-action="keep-upstream">
+        Keep All Upstream
+      </button>
+      <button class="da-regional-edits-btn keep-both" data-action="keep-both">
+        Keep Both
+      </button>
+    </div>
+  `;
+
+  // Add event listeners for buttons
+  const buttons = dialog.querySelectorAll('.da-regional-edits-btn');
+  buttons.forEach((button) => {
+    button.addEventListener('click', ({ target: { dataset: { action } } }) => {
+      handleGlobalAction(action);
+    });
+  });
+
+  return dialog;
+}
+
+function findProseMirrorContainer(view) {
+  // Find the .da-prose-mirror container that wraps the ProseMirror editor
+  let element = view.dom;
+  while (element && !element.classList.contains('da-prose-mirror')) {
+    element = element.parentElement;
+  }
+  return element;
+}
+
+function showGlobalDialog(view) {
+  if (globalDialog && globalDialog.parentNode) {
+    return; // Dialog already shown
+  }
+
+  const proseMirrorContainer = findProseMirrorContainer(view);
+  if (!proseMirrorContainer) {
+    // eslint-disable-next-line no-console
+    console.warn('Could not find ProseMirror container for global dialog');
+    return;
+  }
+
+  if (!globalDialog) {
+    globalDialog = createGlobalDialog();
+  }
+
+  // Insert dialog before the ProseMirror element
+  const proseMirrorElement = proseMirrorContainer.querySelector('.ProseMirror');
+  if (proseMirrorElement) {
+    proseMirrorContainer.insertBefore(globalDialog, proseMirrorElement);
+    proseMirrorContainer.classList.add('has-regional-edits');
+    globalDialog.classList.add('show');
+  }
+}
+
+function checkForLocNodes(view) {
+  // Check if there are any loc_deleted or loc_added nodes in the document
+  const { doc } = view.state;
+  let hasLocNodes = false;
+
+  doc.descendants((node) => {
+    if (node.type.name === 'loc_deleted' || node.type.name === 'loc_added') {
+      hasLocNodes = true;
+      return false; // Stop traversing
+    }
+    return true;
+  });
+
+  if (hasLocNodes) {
+    showGlobalDialog(view);
+  } else {
+    hideGlobalDialog();
+  }
+
+  return hasLocNodes;
+}
 
 function createTabNavigation(activeTab = 'added') {
   const nav = document.createElement('div');
@@ -369,6 +554,12 @@ function hasMatchingContent(nodeA, nodeB) {
 
   return true;
 }
+
+export function addActiveView(view) {
+  activeViews.add(view);
+}
+
+export { checkForLocNodes };
 
 // eslint-disable-next-line import/prefer-default-export
 export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {

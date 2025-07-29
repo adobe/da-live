@@ -1135,3 +1135,104 @@ da-loc-deleted, da-loc-added {
   border: 1px solid #e0e0e0;
   vertical-align: top;
 }
+
+/* Global Regional Edits Dialog */
+.da-regional-edits-dialog {
+  display: none;
+  position: absolute;
+  top: -80px;
+  left: 0;
+  right: 0;
+  z-index: 1500;
+  background: #fff;
+  border: 2px solid #4682b4;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  padding: 16px 20px;
+  margin: 0 48px;
+  box-sizing: border-box;
+}
+
+.da-regional-edits-dialog.show {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.da-regional-edits-title {
+  font-family: var(--body-font-family);
+  font-size: 16px;
+  font-weight: 700;
+  color: #4682b4;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.da-regional-edits-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.da-regional-edits-btn {
+  font-family: var(--body-font-family);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 8px 16px;
+  line-height: 18px;
+  font-size: 14px;
+  border-radius: 4px;
+  outline-offset: 0;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-weight: 600;
+  text-align: center;
+  border: 2px solid transparent;
+  min-width: 120px;
+}
+
+.da-regional-edits-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+}
+
+.da-regional-edits-btn.keep-local {
+  background: #9042de;
+  color: #fff;
+  border-color: #9042de;
+}
+
+.da-regional-edits-btn.keep-local:hover {
+  background: #7d38c1;
+  border-color: #7d38c1;
+}
+
+.da-regional-edits-btn.keep-upstream {
+  background: #4682b4;
+  color: #fff;
+  border-color: #4682b4;
+}
+
+.da-regional-edits-btn.keep-upstream:hover {
+  background: #3a6d94;
+  border-color: #3a6d94;
+}
+
+.da-regional-edits-btn.keep-both {
+  background: #fff;
+  color: #333;
+  border-color: #ddd;
+}
+
+.da-regional-edits-btn.keep-both:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+/* Adjust ProseMirror padding when dialog is shown */
+.da-prose-mirror.has-regional-edits .ProseMirror {
+  padding-top: 60px;
+}

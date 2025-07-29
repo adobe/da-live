@@ -32,7 +32,7 @@ import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
-import { getLocClass } from './loc-utils.js';
+import { getLocClass, checkForLocNodes, addActiveView } from './loc-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
@@ -52,6 +52,11 @@ function dispatchTransaction(transaction) {
   }
   const newState = window.view.state.apply(transaction);
   window.view.updateState(newState);
+
+  // Check for regional edits after state update
+  if (transaction.docChanged) {
+    setTimeout(() => checkForLocNodes(window.view), 0);
+  }
 }
 
 function setPreviewBody() {
@@ -320,6 +325,12 @@ export default function initProse({ path, permissions }) {
     },
     editable() { return canWrite; },
   });
+
+  // Register view for global dialog management
+  addActiveView(window.view);
+
+  // Check for initial regional edits
+  setTimeout(() => checkForLocNodes(window.view), 100);
 
   handleProseLoaded(editor, permissions);
 
