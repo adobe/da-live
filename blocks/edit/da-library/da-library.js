@@ -265,6 +265,8 @@ class DaLibrary extends LitElement {
     if (!resp.ok) return;
     const text = await resp.text();
     const doc = new DOMParser().parseFromString(text, 'text/html');
+    // Convert to a metadata block so it can be copied
+    doc.querySelector('.template-metadata')?.classList.replace('template-metadata', 'metadata');
     const proseDom = aem2prose(doc);
     const flattedDom = document.createElement('div');
     flattedDom.append(...proseDom);
