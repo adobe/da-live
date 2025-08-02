@@ -17,7 +17,16 @@ const DA_PLUGINS = [
   'placeholders',
 ];
 
-const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
+
+function sanitiseRef(ref) {
+  return ref.toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '');
+}
+
+const ref = sanitiseRef(new URLSearchParams(window.location.search).get('ref')) || 'main';
 
 export function parseDom(dom) {
   const { schema } = window.view.state;
