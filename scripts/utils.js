@@ -12,6 +12,8 @@
 export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
 
 export function sanitiseRef(ref) {
+  if (!ref) return null;
+
   return ref.toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
