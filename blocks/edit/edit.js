@@ -14,6 +14,8 @@ async function setUI(el, utils) {
 
   document.title = `Edit ${details.name} - DA`;
 
+  console.log('test cache cleaning');
+
   // Title area
   let daTitle = document.querySelector('da-title');
   if (!daTitle) {
