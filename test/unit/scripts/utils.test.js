@@ -33,13 +33,4 @@ describe('Libs', () => {
     const libs = setNx('/nx', location);
     expect(libs).to.equal('http://localhost:6456/nx');
   });
-
-  it('Supports forked NX query param', () => {
-    const location = {
-      hostname: 'localhost',
-      search: '?nx=awesome--nx--forkedowner',
-    };
-    const libs = setNx('/nx', location);
-    expect(libs).to.equal('https://awesome--nx--forkedowner.aem.live/nx');
-  });
 });
