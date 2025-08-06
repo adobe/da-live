@@ -71,6 +71,29 @@ da-list-item.is-expanded::after {
   justify-content: start;
 }
 
+.da-browse-filter {
+  cursor: pointer;
+  background: none;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2px;
+  height: 18px;
+}
+
+.da-browse-filter img {
+  opacity: 0.4;
+}
+
+.da-browse-filter.selected img {
+  opacity: 1;
+}
+
+.da-browse-filter:hover img {
+  opacity: 1;
+}
+
 .da-browse-header-name {
   position: relative;
   margin: 0;
@@ -79,9 +102,39 @@ da-list-item.is-expanded::after {
   background: none;
   text-transform: uppercase;
   line-height: 18px;
+  font-size: 14px;
   color: var(--s2-gray-700);
+  font-family: var(--body-font-family);
   font-weight: 700;
   cursor: pointer;
+}
+
+.da-browse-header-container input {
+  padding: 0;
+  border: none;
+  display: none;
+  font-family: var(--body-font-family);
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--s2-gray-800);
+}
+
+.da-browse-header-container input::placeholder {
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #8f8f8f;
+}
+
+.da-browse-header-container .hide {
+  display: none;
+}
+
+.da-browse-header-container input.show {
+  display: block;
+}
+
+.da-browse-header-container input:focus {
+  outline: none;
 }
 
 .da-browse-header-name:hover::after {
@@ -100,7 +153,6 @@ da-list-item.is-expanded::after {
   position: absolute;
   content: '';
   right: -20px;
-  top: 0;
   width: 18px;
   height: 18px;
   filter: invert(26%) sepia(0%) saturate(946%) hue-rotate(145deg) brightness(102%) contrast(81%);

@@ -28,6 +28,8 @@ export default class DaList extends LitElement {
     newItem: { attribute: false },
     _permissions: { state: true },
     _listItems: { state: true },
+    _filter: { state: true },
+    _showFilter: { state: true },
     _selectedItems: { state: true },
     _dropFiles: { state: true },
     _dropMessage: { state: true },
@@ -43,6 +45,7 @@ export default class DaList extends LitElement {
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
     this._unpublishErrors = [];
+    this._filter = '';
   }
 
   connectedCallback() {
@@ -57,6 +60,8 @@ export default class DaList extends LitElement {
     }
 
     if (props.has('fullpath') && this.fullpath) {
+      this._filter = '';
+      this._showFilter = undefined;
       this._listItems = await this.getList();
     }
 
@@ -458,6 +463,28 @@ export default class DaList extends LitElement {
     this.handleSort(this._sortDate, 'lastModified');
   }
 
+  toggleFilterView() {
+    this._filter = '';
+    this._showFilter = !this._showFilter;
+    const filterInput = this.shadowRoot?.querySelector('input[name="filter"]');
+    filterInput.value = '';
+    if (this._showFilter) {
+      this.wait(1).then(() => { filterInput.focus(); });
+    }
+  }
+
+  handleFilterBlur(e) {
+    if (e.target.value === '') {
+      this._showFilter = false;
+    }
+  }
+
+  handleNameFilter(e) {
+    this._sortName = undefined;
+    this._sortDate = undefined;
+    this._filter = e.target.value;
+  }
+
   get isSelectAll() {
     const selectCount = this._listItems.filter((item) => item.isChecked).length;
     return selectCount === this._listItems.length && this._listItems.length !== 0;
@@ -520,13 +547,27 @@ export default class DaList extends LitElement {
   }
 
   render() {
+    const filteredItems = this._filter
+      ? this._listItems.filter((item) => item.name.includes(this._filter))
+      : this._listItems;
+
     return html`
       <div class="da-browse-panel-header">
         ${this.renderCheckBox()}
         <div class="da-browse-sort">
-          <span></span>
+          <!-- Toggle button is split into 2 buttons (enable/disable) to prevent bug re-toggling on blur event -->
+          ${!this._showFilter ? html`
+            <button class="da-browse-filter" name="toggle-filter" @click=${() => this.toggleFilterView()}>
+              <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" />
+            </button>
+          ` : html`
+            <button class="da-browse-filter selected" name="toggle-filter" @click=${() => this.toggleFilterView()}>
+              <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" />
+            </button>
+          `}
           <div class="da-browse-header-container">
-            <button class="da-browse-header-name ${this._sortName}" @click=${this.handleNameSort}>Name</button>
+            <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter">
+            <button class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''}" @click=${this.handleNameSort}>Name</button>
           </div>
           <div class="da-browse-header-container">
             <button class="da-browse-header-name ${this._sortDate}" @click=${this.handleDateSort}>Modified</button>
@@ -534,7 +575,7 @@ export default class DaList extends LitElement {
         </div>
       </div>
       <div class="da-browse-panel" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
-        ${this._listItems?.length > 0 ? this.renderList(this._listItems, true) : this.renderEmpty()}
+        ${filteredItems?.length > 0 ? this.renderList(filteredItems, true) : this.renderEmpty()}
         ${this.drag ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar

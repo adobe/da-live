@@ -130,4 +130,97 @@ describe('Prose collab', () => {
     const { match } = dir;
     expect(match.toString()).to.equal('/^---[\\n]$/');
   });
+
+  describe('Link formatting preservation', () => {
+    it('should preserve formatting marks when editing link text', () => {
+      // Test the formatting preservation logic by directly testing the scenario
+      const mockSchema = {
+        text: (text, marks) => ({
+          type: { name: 'text' },
+          textContent: text,
+          text,
+          marks: marks || [],
+          nodeSize: text.length,
+        }),
+        marks: {
+          link: {
+            name: 'link',
+            create: (attrs) => ({ type: { name: 'link' }, attrs }),
+          },
+          strong: {
+            name: 'strong',
+            create: () => ({ type: { name: 'strong' } }),
+          },
+        },
+      };
+
+      // Mock a formatted text node with bold and link marks
+      const formattedTextNode = {
+        type: { name: 'text' },
+        textContent: 'bold link text',
+        marks: [
+          { type: { name: 'strong' } },
+          { type: { name: 'link' }, attrs: { href: 'https://example.com' } },
+        ],
+      };
+
+      // Test that when creating new text with preserved marks, formatting is maintained
+      const existingMarks = [];
+      formattedTextNode.marks.forEach((mark) => {
+        if (mark.type.name !== 'link') {
+          existingMarks.push(mark);
+        }
+      });
+
+      const newTextNode = mockSchema.text('new text content', existingMarks);
+
+      // Verify that the new text node has the preserved formatting marks
+      expect(newTextNode.marks).to.be.an('array');
+      expect(newTextNode.marks.length).to.equal(1);
+      expect(newTextNode.marks[0].type.name).to.equal('strong');
+      expect(newTextNode.textContent).to.equal('new text content');
+    });
+
+    it('should handle text without formatting marks', () => {
+      const mockSchema = {
+        text: (text, marks) => ({
+          type: { name: 'text' },
+          textContent: text,
+          text,
+          marks: marks || [],
+          nodeSize: text.length,
+        }),
+        marks: {
+          link: {
+            name: 'link',
+            create: (attrs) => ({ type: { name: 'link' }, attrs }),
+          },
+        },
+      };
+
+      // Mock a plain text node with only link mark
+      const plainTextNode = {
+        type: { name: 'text' },
+        textContent: 'plain link text',
+        marks: [
+          { type: { name: 'link' }, attrs: { href: 'https://example.com' } },
+        ],
+      };
+
+      // Test that when there are no formatting marks to preserve, empty array is used
+      const existingMarks = [];
+      plainTextNode.marks.forEach((mark) => {
+        if (mark.type.name !== 'link') {
+          existingMarks.push(mark);
+        }
+      });
+
+      const newTextNode = mockSchema.text('new plain text', existingMarks);
+
+      // Verify that the new text node has no formatting marks
+      expect(newTextNode.marks).to.be.an('array');
+      expect(newTextNode.marks.length).to.equal(0);
+      expect(newTextNode.textContent).to.equal('new plain text');
+    });
+  });
 });

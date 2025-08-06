@@ -11,17 +11,20 @@ async function loadComponent(el, cmpName, details) {
   el.append(cmp);
 }
 
-function setRecentOrg(details) {
-  const currentOrgs = JSON.parse(localStorage.getItem('da-orgs')) || [];
-  const foundIdx = currentOrgs.indexOf(details.owner);
+function setRecentSite(details) {
+  if (!details.repo) return;
+  if (details.repo.startsWith('.')) return;
+  const currentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
+  const siteString = `${details.owner}/${details.repo}`;
+  const foundIdx = currentSites.indexOf(siteString);
   if (foundIdx === 0) return;
-  if (foundIdx !== -1) currentOrgs.splice(foundIdx, 1);
-  localStorage.setItem('da-orgs', JSON.stringify([details.owner, ...currentOrgs].slice(0, 4)));
+  if (foundIdx !== -1) currentSites.splice(foundIdx, 1);
+  localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
 }
 
 async function setupExperience(el, e) {
   const details = getPathDetails();
-  if (details) setRecentOrg(details);
+  if (details) setRecentSite(details);
   if (e) {
     const oldHash = new URL(e.oldURL).hash;
     const newHash = new URL(e.newURL).hash;
@@ -33,7 +36,7 @@ async function setupExperience(el, e) {
     }
   }
   if (!details) {
-    await loadComponent(el, 'da-orgs');
+    await loadComponent(el, 'da-sites');
   } else {
     await loadComponent(el, 'da-browse', details);
   }

@@ -33,7 +33,9 @@ function getDaEnv(location, key, envs) {
   } else if (query) {
     localStorage.setItem(key, query);
   }
-  return envs[localStorage.getItem(key) || 'prod'];
+  const env = envs[localStorage.getItem(key) || 'prod'];
+  // TODO: INFRA
+  return location.origin === 'https://da.page' ? env.replace('.live', '.page') : env;
 }
 
 export const getDaAdmin = (() => {

@@ -64,7 +64,7 @@ export default class DaBrowse extends LitElement {
       const json = await resp.json();
 
       const rows = getFirstSheet(json);
-      this.editorConfs = rows.reduce((acc, row) => {
+      this.editorConfs = rows?.reduce((acc, row) => {
         if (row.key === 'editor.path') acc.push(row.value);
         return acc;
       }, []);
