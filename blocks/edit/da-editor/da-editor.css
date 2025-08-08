@@ -922,143 +922,189 @@ da-loc-deleted, da-loc-added {
 .loc-tabbed-container {
   display: block;
   position: relative;
-  border: 3px solid #4682b4;
-  border-radius: 6px;
   margin: 10px 0;
   background: #fff;
   box-shadow: 0 2px 4px rgba(0 0 0 / 10%);
+  z-index: 1000; /* ensure floating UI & tooltips layer above content */
 }
 
-.loc-tab-nav {
-  display: flex;
-  border-bottom: 1px solid #ddd;
-  margin-bottom: 0;
-  background: transparent;
-}
-
-.loc-tab-button {
-  flex: 1;
-  padding: 12px 16px;
-  border: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
-  border-radius: 3px 3px 0 0;
-  background: #f5f5f5;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 400;
-  color: #666;
-  transition: all 0.2s ease;
-  margin-bottom: -1px;
-  position: relative;
-}
-
-.loc-tab-button:not(:first-child) {
-  border-top-left-radius: 0;
-  border-left: none;
-}
-
-.loc-tab-button:not(:last-child) {
-  border-top-right-radius: 0;
-}
-
-.loc-tab-button:hover {
-  background: #f0f0f0;
-  color: #333;
-}
-
-.loc-tab-button.active {
-  background: #fff;
-  color: #666;
-  font-weight: 700;
-  border-bottom: 1px solid #fff;
-  z-index: 1;
-}
+.loc-tab-nav { display: none; }
 
 .loc-tab-content {
   position: relative;
   min-height: 100px;
-  border: none;
-  border-radius: 0 0 3px 3px;
   background: #fff;
+  /* Prevent sticky actions from rendering outside the table bounds */
+  overflow: clip;
 }
 
 .loc-tab-pane {
   display: none;
-  padding: 16px;
 }
 
 .loc-tab-pane.active {
   display: block;
 }
 
+.loc-tab-pane > p:empty {
+  margin: 0;
+  height: 0;
+}
+
+/* Actions float over bottom-right of the block */
 .loc-tabbed-actions {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
-  justify-content: center;
-  padding: 16px;
-  background: #f9f9f9;
-  border-top: 1px solid #ddd;
-  border-radius: 0 0 3px 3px;
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding: 50px 12px 12px 0;
+  background: transparent;
+  border: 0;
+  z-index: 2000;
+  pointer-events: none;
 }
 
 .loc-action-buttons {
+  position: sticky;
+  top: 0;
+  bottom: 14px;
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
+  pointer-events: auto;
 }
 
-.loc-action-btn {
-  display: flex;
+/* Composite split buttons: [label | check] */
+.loc-composite-btn {
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: visible; /* allow tooltip to escape the button bounds */
+  height: 30px;
+  border: 2px solid transparent; /* reserve space to avoid layout shift */
+}
+
+.loc-composite-btn .loc-composite-switch,
+.loc-composite-btn .loc-composite-confirm {
+  border: none;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+}
+
+.loc-composite-btn .loc-composite-switch {
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+}
+
+.loc-composite-btn .loc-composite-confirm {
+  width: 40px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  min-width: 100px;
+  position: relative;
+  border-radius: 0 6px 6px 0;
 }
 
-.loc-action-btn:hover {
-  background: #f5f5f5;
-  border-color: #ccc;
+.loc-composite-btn .loc-composite-confirm::before {
+  content: '✓';
+  font-weight: 800;
+  position: relative;
+  z-index: 1; /* ensure glyph above tooltip background */
 }
 
-.loc-keep-deleted {
-  color: #06c;
-  border-color: #06c;
-}
-
-.loc-keep-deleted:hover {
-  background: #e6f3ff;
-  border-color: #06c;
-}
-
-.loc-keep-added {
-  color: #90c;
-  border-color: #90c;
-}
-
-.loc-keep-added:hover {
-  background: #f3e6ff;
-  border-color: #90c;
-}
-
-.loc-delete-both {
-  color: #cc0000;
-  border-color: #cc0000;
-}
-
-.loc-delete-both:hover {
-  background: #ffe6e6;
-  border-color: #cc0000;
-}
-
-.loc-action-btn span {
+/* Tooltip styling for confirm segment */
+.loc-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: #3c3541;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0 0 0 / 30%);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .15s ease, transform .15s ease;
   pointer-events: none;
+  z-index: 2500;
+  visibility: hidden;
+}
+
+.loc-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: calc(100% - 18px);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #3c3541;
+}
+
+.loc-composite-confirm:hover .loc-tooltip,
+.loc-composite-confirm:focus .loc-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.loc-composite-btn.is-local .loc-composite-switch {
+  color: #fff;
+  background: #7c1dcb;
+}
+
+.loc-composite-btn.is-local .loc-composite-confirm {
+  background: #4f0f82;
+}
+
+.loc-composite-btn.is-upstream .loc-composite-switch {
+  background: #3a84bf;
+}
+
+.loc-composite-btn.is-upstream .loc-composite-confirm {
+  background: #23557a;
+}
+
+.loc-composite-btn.is-diff .loc-composite-switch {
+  background: #204fcb;
+
+}
+
+.loc-composite-btn.is-diff .loc-composite-confirm {
+  background: #113282;
+}
+
+.loc-composite-btn .loc-composite-switch:hover,
+.loc-composite-btn .loc-composite-confirm:hover {
+  color: #000;
+}
+
+.loc-composite-btn.is-active {
+  border-color: #333;
+}
+
+.loc-composite-btn.is-active .loc-composite-switch,
+.loc-composite-btn.is-active .loc-composite-confirm {
+  color: #E6E6E6;
+}
+
+.loc-tabbed-color-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* Responsive adjustments */
@@ -1136,8 +1182,8 @@ da-loc-deleted, da-loc-added {
   vertical-align: top;
 }
 
-/* Global Regional Edits Dialog */
-.da-regional-edits-dialog {
+/* Global Regional Edits Overlay */
+.da-regional-edits-overlay {
   display: none;
   position: absolute;
   top: -80px;
@@ -1153,20 +1199,11 @@ da-loc-deleted, da-loc-added {
   box-sizing: border-box;
 }
 
-.da-regional-edits-dialog.show {
+.da-regional-edits-overlay.show {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-}
-
-.da-regional-edits-title {
-  font-family: var(--body-font-family);
-  font-size: 16px;
-  font-weight: 700;
-  color: #4682b4;
-  margin: 0;
-  flex-shrink: 0;
 }
 
 .da-regional-edits-actions {
