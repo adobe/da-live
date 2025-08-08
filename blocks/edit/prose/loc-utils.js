@@ -7,15 +7,19 @@ import {
 const LOC = {
   UPSTREAM: {
     BG: 'rgba(70, 130, 180, 0.8)',
-    COVER_BG: 'rgba(70, 130, 180, 0.4)',
+    COVER_BG: 'rgba(70, 130, 180, 0.2)',
     TEXT: 'Upstream Content',
     TEXT_COLOR: 'rgba(70, 130, 180)',
   },
   LOCAL: {
     BG: 'rgba(144, 42, 222, 0.8)',
-    COVER_BG: 'rgba(144, 42, 222, 0.4)',
+    COVER_BG: 'rgba(144, 42, 222, 0.2)',
     TEXT: 'Local Content',
     TEXT_COLOR: 'rgba(144, 42, 222)',
+  },
+  DIFF: {
+    COVER_BG: 'rgba(150, 150, 150, 0.1)',
+    TEXT: 'Difference',
   },
 };
 
@@ -171,20 +175,16 @@ function handleGlobalAction(action) {
   hideGlobalDialog();
 }
 
-function createGlobalDialog() {
+function createGlobalOverlay() {
   const dialog = document.createElement('div');
-  dialog.className = 'da-regional-edits-dialog';
+  dialog.className = 'da-regional-edits-overlay';
   dialog.innerHTML = `
-    <div class="da-regional-edits-title">All Regional Edits</div>
     <div class="da-regional-edits-actions">
       <button class="da-regional-edits-btn keep-local" data-action="keep-local">
         Keep All Local
       </button>
       <button class="da-regional-edits-btn keep-upstream" data-action="keep-upstream">
         Keep All Upstream
-      </button>
-      <button class="da-regional-edits-btn keep-both" data-action="keep-both">
-        Keep Both
       </button>
     </div>
   `;
@@ -222,7 +222,7 @@ function showGlobalDialog(view) {
   }
 
   if (!globalDialog) {
-    globalDialog = createGlobalDialog();
+    globalDialog = createGlobalOverlay();
   }
 
   // Insert dialog before the ProseMirror element
@@ -256,27 +256,7 @@ function checkForLocNodes(view) {
   return hasLocNodes;
 }
 
-function createTabNavigation(activeTab = 'added') {
-  const nav = document.createElement('div');
-  nav.className = 'loc-tab-nav';
-
-  const tabs = [
-    { id: 'added', label: 'Local (Added)', color: LOC.LOCAL.TEXT_COLOR },
-    { id: 'deleted', label: 'Upstream (Deleted)', color: LOC.UPSTREAM.TEXT_COLOR },
-    { id: 'diff', label: 'Diff', color: '#666' },
-  ];
-
-  tabs.forEach((tab) => {
-    const tabButton = document.createElement('button');
-    tabButton.className = `loc-tab-button ${activeTab === tab.id ? 'active' : ''}`;
-    tabButton.textContent = tab.label;
-    tabButton.dataset.tab = tab.id;
-    tabButton.style.borderBottomColor = tab.color;
-    nav.appendChild(tabButton);
-  });
-
-  return nav;
-}
+// Top tab UI removed in favor of split buttons
 
 function fragmentToHTML(fragment) {
   if (!fragment) return '';
@@ -376,70 +356,70 @@ function createTabContent(deletedContent, addedContent) {
   return container;
 }
 
-function createButton(label, className, onClick) {
-  const button = document.createElement('button');
-  button.className = className;
-  button.title = label;
-  button.innerHTML = `<span>${label}</span>`;
-  button.addEventListener('click', onClick);
-  return button;
-}
+// Old generic button utility no longer needed
 
-function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth) {
+function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
   const actionsContainer = document.createElement('div');
   actionsContainer.className = 'loc-tabbed-actions';
 
   const actionButtons = document.createElement('div');
   actionButtons.className = 'loc-action-buttons';
 
-  const keepLocalBtn = createButton(
-    'Keep Local',
-    'loc-action-btn loc-keep-added',
-    onKeepAdded,
-  );
+  const createComposite = ({ label, id, keepHandler, variantClass, tooltip }) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = `loc-composite-btn ${variantClass}`;
 
-  const keepUpstreamBtn = createButton(
-    'Keep Upstream',
-    'loc-action-btn loc-keep-deleted',
-    onKeepDeleted,
-  );
+    const switchBtn = document.createElement('button');
+    switchBtn.className = 'loc-composite-switch';
+    switchBtn.type = 'button';
+    switchBtn.textContent = label;
+    switchBtn.addEventListener('click', () => onSwitchTab(id));
 
-  const keepBothBtn = createButton(
-    'Keep Both',
-    'loc-action-btn loc-keep-both',
-    onKeepBoth,
-  );
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'loc-composite-confirm';
+    confirmBtn.type = 'button';
+    confirmBtn.setAttribute('aria-label', `Keep ${label}`);
+    confirmBtn.addEventListener('click', keepHandler);
 
-  actionButtons.appendChild(keepLocalBtn);
-  actionButtons.appendChild(keepUpstreamBtn);
-  actionButtons.appendChild(keepBothBtn);
+    // Tooltip element
+    if (tooltip) {
+      const tip = document.createElement('span');
+      tip.className = 'loc-tooltip';
+      tip.textContent = tooltip;
+      confirmBtn.appendChild(tip);
+    }
+
+    wrapper.appendChild(switchBtn);
+    wrapper.appendChild(confirmBtn);
+    return wrapper;
+  };
+
+  actionButtons.appendChild(createComposite({
+    label: 'Local',
+    id: 'added',
+    keepHandler: onKeepAdded,
+    variantClass: 'is-local',
+    tooltip: 'Accept Local',
+  }));
+
+  actionButtons.appendChild(createComposite({
+    label: 'Upstream',
+    id: 'deleted',
+    keepHandler: onKeepDeleted,
+    variantClass: 'is-upstream',
+    tooltip: 'Accept Upstream',
+  }));
+
+  actionButtons.appendChild(createComposite({
+    label: 'Difference',
+    id: 'diff',
+    keepHandler: onKeepBoth,
+    variantClass: 'is-diff',
+    tooltip: 'Accept Both',
+  }));
 
   actionsContainer.appendChild(actionButtons);
-
   return actionsContainer;
-}
-
-function addTabSwitching(container) {
-  const tabButtons = container.querySelectorAll('.loc-tab-button');
-  const tabPanes = container.querySelectorAll('.loc-tab-pane');
-
-  tabButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      const targetTab = button.dataset.tab;
-
-      // Update active tab button
-      tabButtons.forEach((btn) => btn.classList.remove('active'));
-      button.classList.add('active');
-
-      // Update active tab pane
-      tabPanes.forEach((pane) => {
-        pane.classList.remove('active');
-        if (pane.dataset.tab === targetTab) {
-          pane.classList.add('active');
-        }
-      });
-    });
-  });
 }
 
 function getCoverDiv(upstream) {
@@ -644,21 +624,57 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const deletedContent = serializer.serializeFragment(deletedNode.content);
       const addedContent = serializer.serializeFragment(addedNode.content);
 
-      const tabNav = createTabNavigation('added');
-
       const tabContent = createTabContent(deletedContent, addedContent);
+
+      // Overlay tint that reflects the currently visible variant
+      const colorOverlay = document.createElement('div');
+      colorOverlay.className = 'loc-tabbed-color-overlay';
+      colorOverlay.style.backgroundColor = LOC.LOCAL.COVER_BG; // default to Local
+
+      const setActiveTab = (targetTab) => {
+        const panes = tabContent.querySelectorAll('.loc-tab-pane');
+        panes.forEach((pane) => {
+          pane.classList.toggle('active', pane.dataset.tab === targetTab);
+        });
+
+        if (targetTab === 'added') {
+          colorOverlay.style.display = 'block';
+          colorOverlay.style.backgroundColor = LOC.LOCAL.COVER_BG;
+        } else if (targetTab === 'deleted') {
+          colorOverlay.style.display = 'block';
+          colorOverlay.style.backgroundColor = LOC.UPSTREAM.COVER_BG;
+        } else { // diff
+          colorOverlay.style.backgroundColor = LOC.DIFF.COVER_BG;
+        }
+
+        // Toggle active state on composite buttons to reflect selected view
+        if (actions) {
+          const allButtons = actions.querySelectorAll('.loc-composite-btn');
+          allButtons.forEach((btn) => btn.classList.remove('is-active'));
+
+          let activeClass = 'is-diff';
+          if (targetTab === 'added') activeClass = 'is-local';
+          else if (targetTab === 'deleted') activeClass = 'is-upstream';
+
+          const activeButton = actions.querySelector(`.loc-composite-btn.${activeClass}`);
+          if (activeButton) activeButton.classList.add('is-active');
+        }
+      };
 
       const actions = createTabbedActions(
         () => this.handleKeepDeleted(deletedNode, view, deletedPos, addedNode, addedPos),
         () => this.handleKeepAdded(addedNode, view, addedPos, deletedNode, deletedPos),
         () => this.handleKeepBoth(deletedNode, view, deletedPos, addedNode, addedPos),
+        setActiveTab,
       );
 
-      this.dom.appendChild(tabNav);
       this.dom.appendChild(tabContent);
+      tabContent.appendChild(colorOverlay);
+      // Place actions outside content for proper absolute positioning
       this.dom.appendChild(actions);
 
-      addTabSwitching(this.dom);
+      // Start in Local view
+      setActiveTab('added');
     }
 
     renderSingleNode(node, view, pos, upstream) {
