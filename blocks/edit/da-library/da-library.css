@@ -292,6 +292,12 @@ ul {
   flex: 1 1 0%;
 }
 
+.da-library-type-item-detail .template-link {
+  position: relative;
+  top: 1px;
+  color: unset;
+}
+
 .da-library-type-item-btn .icon {
   opacity: 0;
 }
@@ -388,10 +394,23 @@ ul {
   outline: none;
 }
 
+.da-library-type-group-detail-item button .block-name {
+  flex-grow: 1;
+}
+
+.da-library-type-group-detail-item button a {
+  color: unset;
+}
+
 .da-library-type-group-detail-item button .icon {
   margin-top: 2px;
   display: block;
   opacity: 0;
+  margin-left: 10px;
+}
+
+.da-library-type-group-detail-item button .icon.preview {
+  margin-top: 0;
 }
 
 .da-library-type-group-detail-item button:hover .icon,
