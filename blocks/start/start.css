@@ -1,1 +1,299 @@
-/* empty */
+:host {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  position: relative;
+  color: #FFF;
+  background: #000;
+}
+
+button,
+input {
+  font-family: var(--body-font-family);
+}
+
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgb(0 0 0 / 64.8%) 0%, rgb(0 0 0 / 52.4%) 100%);
+}
+
+.background {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  position: absolute;
+}
+
+.foreground {
+  position: relative;
+}
+
+ul.step-count {
+  list-style: none;
+  margin: 0 0 96px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: 200px;
+}
+
+ul.step-count li {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #FF00A0;
+  border-radius: 48px;
+  font-size: 32px;
+  font-weight: 700;
+  transition: all 0.5s ease;
+}
+
+.panels {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr;
+  grid-template-areas: 'panel';
+}
+
+form.actions {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  margin: 0 0 96px;
+}
+
+div.git-input label {
+  display: block;
+  font-size : 18px;
+  margin-bottom: 4px;
+}
+
+div.git-input input {
+  display: block;
+  height: 60px;
+  background: rgb(29 29 29);
+  border-radius: 5px 0 0 5px;
+  border: 1px solid rgb(112 112 112);
+  border-right: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 18px;
+  min-width: 350px;
+  box-sizing: border-box;
+  color: #FFF;
+}
+
+.fstab-action-container {
+  display: flex;
+}
+
+.go-button {
+  display: block;
+  height: 60px;
+  background: #0059C2;
+  color: #FFF;
+  border: 1px solid #54A3F6;
+  padding: 0 18px;
+  box-sizing: border-box;
+}
+
+.go-button:nth-child(2) {
+  margin-left: -1px;
+  background: #004DA3;
+}
+
+.go-button:last-child {
+  border-radius: 0 5px 5px 0;
+  margin-left: -1px;
+  background: #00418A;
+}
+
+.go-button:hover {
+  background: #004DA3;
+}
+
+.go-button:disabled {
+  background: #434d58;
+}
+
+div.git-input input::placeholder {
+  font-style: italic;
+}
+
+div.text-container {
+  display: flex;
+  justify-content: center;
+}
+
+div.text-container p {
+  margin: 0;
+  text-align: center;
+}
+
+a {
+  color: #1379F3;
+}
+
+.pre-code-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  margin-bottom: 96px;
+}
+
+#mountpoint {
+  background: rgb(29 29 29);
+  border-radius: 5px 0 0 5px;
+  border-top: 1px solid rgb(112 112 112);
+  border-bottom: 1px solid rgb(112 112 112);
+  border-left: 1px solid rgb(112 112 112);
+  border-image: initial;
+  border-right: none;
+  font-size: 16px;
+  line-height: 1.2;
+  min-width: 700px;
+  box-sizing: border-box;
+  color: rgb(255 255 255);
+  min-height: 120px;
+  animation-fill-mode: backwards;
+  display: block;
+  align-items: center;
+  padding: 20px;
+  resize: none;
+}
+
+.pre-code-wrapper button {
+  min-height: 120px;
+}
+
+/* Panel 3 */
+
+.step-3-panel {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.step-3-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+
+  p {
+    font-weight: 700;
+    min-height: 24px;
+    flex: 0 0 100%;
+    text-align: center;
+  }
+}
+
+.demo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 100%;
+  justify-content: center;
+}
+
+.demo-toggle {
+  appearance: none;
+  width: 88px;
+  height: 46px;
+  display: inline-block;
+  position: relative;
+  border-radius: 50px;
+  overflow: hidden;
+  outline: none;
+  border: none;
+  cursor: pointer;
+  background-color: rgb(112 112 112);
+  transition: background-color 0.3s ease 0s;
+}
+
+.demo-toggle::before {
+  content: "";
+  display: block;
+  position: absolute;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  background: rgb(255 255 255);
+  left: 5px;
+  top: 5px;
+  border-radius: 50%;
+  color: rgb(255 255 255);
+  text-shadow: rgba(0 0 0 15%) -1px -1px;
+  white-space: nowrap;
+  box-shadow: rgba(0 0 0 20%) 0 1px 2px;
+  transition: all 0.3s cubic-bezier(0.3, 1.5, 0.7, 1) 0s;
+}
+
+.demo-toggle:checked {
+  background-color: rgb(111 155 0);
+}
+
+.demo-toggle:checked::before {
+  left: 47px;
+}
+
+/* Button (Copy from Milo for scoping reasons */
+
+.con-button {
+  background-color: transparent;
+  border-radius: 16px;
+  border: 2px solid var(--text-color);
+  color: var(--text-color);
+  display: inline-block;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 16px;
+  padding: 5px 14px;
+  text-decoration: none;
+}
+
+.con-button.blue {
+  background: var(--spectrum-blue-800);
+  border-color: var(--spectrum-blue-800);
+  color: #FFF;
+}
+
+.con-button.button-xl {
+  border-radius: 25px;
+  font-size: 19px;
+  line-height: 24px;
+  min-height: 28px;
+  padding: 10px 24px 8px;
+}
+
+/* Step overrides */
+
+.step-1-active .step-2,
+.step-1-active .step-3,
+.step-2-active .step-3 {
+  opacity: 0.75;
+  background-color: rgb(62 0 39);
+}
+
+.step-1-panel,
+.step-2-panel,
+.step-3-panel {
+  grid-area: panel;
+  opacity: 1;
+  transition: all 1s ease;
+}
+
+.step-1-active .step-2-panel,
+.step-1-active .step-3-panel,
+.step-2-active .step-1-panel,
+.step-2-active .step-3-panel,
+.step-3-active .step-1-panel,
+.step-3-active .step-2-panel {
+  opacity: 0;
+  z-index: -1;
+}
