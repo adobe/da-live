@@ -5,6 +5,15 @@ import { getNx } from '../../../scripts/utils.js';
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+let modalComponents;
+async function loadModalComponents() {
+  if (!modalComponents) {
+    await import('../da-action-modal/da-action-modal.js');
+    await import('./da-actionbar-modal.js');
+    modalComponents = await import(`${getNx()}/public/sl/components.js`);
+  }
+}
+
 export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
@@ -13,12 +22,18 @@ export default class DaActionBar extends LitElement {
     _isDeleting: { state: true },
     _isMoving: { state: true },
     currentPath: { type: String },
+    totalDeleteCount: { type: Number },
+    currentDeleteCount: { type: Number },
+    unpublishErrors: { type: Array },
   };
 
   constructor() {
     super();
     this.items = [];
     this.currentPath = '';
+    this.totalDeleteCount = 0;
+    this.currentDeleteCount = 0;
+    this.unpublishErrors = [];
   }
 
   connectedCallback() {
@@ -33,6 +48,8 @@ export default class DaActionBar extends LitElement {
         this._isCopying = false;
         this._isMoving = false;
         this._isDeleting = false;
+      } else {
+        loadModalComponents();
       }
     }
 
@@ -43,6 +60,7 @@ export default class DaActionBar extends LitElement {
     this._isCopying = false;
     this._isMoving = false;
     this._isDeleting = false;
+    this.unpublishErrors = [];
     const opts = { detail: true, bubbles: true, composed: true };
     const event = new CustomEvent('clearselection', opts);
     this.dispatchEvent(event);
@@ -76,7 +94,14 @@ export default class DaActionBar extends LitElement {
 
   handleDelete() {
     this._isDeleting = true;
-    const opts = { bubbles: true, composed: true };
+    setTimeout(() => {
+      this._modal.showModal();
+    }, 100);
+  }
+
+  deleteItems(e) {
+    const { unpublish, items } = e.detail;
+    const opts = { detail: { unpublish, items }, bubbles: true, composed: true };
     const event = new CustomEvent('ondelete', opts);
     this.dispatchEvent(event);
   }
@@ -107,6 +132,10 @@ export default class DaActionBar extends LitElement {
     return itemDir !== this.currentPath;
   }
 
+  get _modal() {
+    return this.shadowRoot.querySelector('da-actionbar-modal');
+  }
+
   get _canWrite() {
     if (!this.permissions) return false;
     return this.permissions.some((permission) => permission === 'write');
@@ -129,6 +158,20 @@ export default class DaActionBar extends LitElement {
 
   render() {
     return html`
+      ${
+        modalComponents && (this.items.length || this.unpublishErrors.length)
+          ? html`
+            <da-actionbar-modal
+              .items=${this.items}
+              .unpublishErrors=${this.unpublishErrors}
+              .totalDeleteCount=${this.totalDeleteCount}
+              .currentDeleteCount=${this.currentDeleteCount}
+              @delete-items=${this.deleteItems}
+              @modal-closed=${this.handleClear}>
+            </da-actionbar-modal>
+            `
+          : ''
+      }
       <div class="da-action-bar">
         <div class="da-action-bar-left-rail">
           <button
