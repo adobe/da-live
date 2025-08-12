@@ -266,7 +266,6 @@ ul {
   position: relative;
   margin: 0;
   padding: 0 14px;
-  width: 100%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -275,6 +274,10 @@ ul {
   background: none;
   border: none;
   transition: background-color .2s ease-in-out;
+}
+
+.da-library-type-item-btn {
+  width: 100%;
 }
 
 .da-library-type-item-detail {
@@ -310,6 +313,11 @@ ul {
 .da-library-type-group-title:hover {
   padding: 0;
   background-color: #E4F0FF;
+  z-index: 5;
+}
+
+.da-library-type-group-title button:hover,
+.da-library-type-group-title a:hover {
   color: #167AF3;
   z-index: 5;
 }
@@ -329,16 +337,16 @@ ul {
   margin: -1px 0;
 }
 
-.da-library-type-group-title:hover .icon {
-  margin-right: 14px;
-}
-
-.da-library-type-group.is-open .da-library-type-group-title .icon {
+.da-library-type-group.is-open .da-library-type-group-title .icon:not(.preview) {
   transform: rotate(90deg);
 }
 
 .da-library-type-group-title:hover .name {
   margin-left: 18px;
+}
+
+.da-library-type-group-title:hover button {
+  margin-right: 14px;
 }
 
 .da-library-type-group.is-open::before,
@@ -364,10 +372,26 @@ ul {
 .da-library-type-group-title .name {
   margin-left: 4px;
   line-height: 44px;
+  flex-grow: 1;
+  font-family: var(--body-font-family);
+  font-weight: 400;
+  font-size: 18px;
+  color: #000;
 }
 
-.da-library-type-group-title .icon {
+.da-library-type-group-title .icon:not(.preview) {
   transition: transform .2s ease-in-out;
+}
+
+.da-library-type-group-title a {
+  color: unset;
+  padding: 0px 4px;
+}
+
+.da-library-type-group-title button {
+  border: none;
+  padding-right: 0;
+  padding-left: 4px;
 }
 
 .da-library-type-group-detail-item button {
@@ -394,23 +418,10 @@ ul {
   outline: none;
 }
 
-.da-library-type-group-detail-item button .block-name {
-  flex-grow: 1;
-}
-
-.da-library-type-group-detail-item button a {
-  color: unset;
-}
-
 .da-library-type-group-detail-item button .icon {
   margin-top: 2px;
   display: block;
   opacity: 0;
-  margin-left: 10px;
-}
-
-.da-library-type-group-detail-item button .icon.preview {
-  margin-top: 0;
 }
 
 .da-library-type-group-detail-item button:hover .icon,
