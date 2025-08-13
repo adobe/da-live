@@ -248,6 +248,8 @@ function checkForLocNodes(view) {
   });
 
   if (hasLocNodes) {
+    // Insert spacing between loc nodes/interfaces if needed
+    insertLocSpacing(view);
     showGlobalDialog(view);
   } else {
     hideGlobalDialog();
@@ -506,6 +508,56 @@ function getFirstText(content) {
 
 // Track nodes that have been used in tabbed interfaces
 const usedNodes = new WeakSet();
+
+/**
+ * Insert paragraph spacing between loc nodes/interfaces where needed
+ */
+function insertLocSpacing(view) {
+  const { doc } = view.state;
+  let { tr } = view.state;
+  let hasChanges = false;
+
+  // Find loc node pairs that need spacing - process in reverse to maintain positions
+  const insertions = [];
+
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'loc_deleted' && node.type.name !== 'loc_added') return;
+
+    const resolvedPos = doc.resolve(pos);
+    const { parent } = resolvedPos;
+    const indexInParent = resolvedPos.index();
+
+    // Determine if this is part of a tabbed interface or single
+    const nextSibling = indexInParent < parent.childCount - 1 ? parent.child(indexInParent + 1) : null;
+    const isTabbed = nextSibling &&
+                     (nextSibling.type.name === 'loc_deleted' || nextSibling.type.name === 'loc_added') &&
+                     node.type.name !== nextSibling.type.name &&
+                     hasMatchingContent(node, nextSibling);
+
+    // Find the end position of this interface (single node or tabbed pair)
+    const endPos = isTabbed ? pos + node.nodeSize + nextSibling.nodeSize : pos + node.nodeSize;
+    const endIndex = isTabbed ? indexInParent + 1 : indexInParent;
+
+    // Check if there's another loc interface immediately after
+    if (endIndex + 1 < parent.childCount) {
+      const nextNode = parent.child(endIndex + 1);
+      if (nextNode.type.name === 'loc_deleted' || nextNode.type.name === 'loc_added') {
+        insertions.push(endPos);
+      }
+    }
+  });
+
+  // Insert paragraphs at collected positions (reverse order to maintain positions)
+  insertions.reverse().forEach((pos) => {
+    const emptyParagraph = view.state.schema.nodes.paragraph.create();
+    tr = tr.insert(pos, emptyParagraph);
+    hasChanges = true;
+  });
+
+  if (hasChanges) {
+    view.dispatch(tr);
+  }
+}
 
 /**
  * Check if two nodes have matching content structure
