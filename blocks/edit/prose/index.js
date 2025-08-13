@@ -121,6 +121,8 @@ function handleAwarenessUpdates(wsProvider, daTitle, win) {
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
   win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
   win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
+  win.addEventListener('focus', () => { wsProvider.connect(); });
+  win.addEventListener('blur', () => { wsProvider.disconnect(); });
 }
 
 export function createAwarenessStatusWidget(wsProvider, win) {
