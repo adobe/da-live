@@ -596,3 +596,7 @@ ul {
   margin-bottom: 8px;
   padding-bottom: 8px;
 }
+
+.da-library-block-preview.hide {
+  display: none;
+}

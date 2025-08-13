@@ -297,6 +297,11 @@ class DaLibrary extends LitElement {
     const handleClose = () => {
       this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
       this._blockPreviewPath = '';
+      this.shadowRoot.querySelector('.da-library-block-preview').classList.add('hide');
+    }
+
+    const handleLoad = () => {
+      this.shadowRoot.querySelector('.da-library-block-preview').classList.remove('hide');
     }
 
     return html`
@@ -308,6 +313,7 @@ class DaLibrary extends LitElement {
             <iframe
               data-src="${this._blockPreviewPath}"
               src="${this._blockPreviewPath}"
+              @load=${handleLoad}
               allow="clipboard-write *"></iframe>
           </div>
         </dialog>
@@ -585,7 +591,7 @@ class DaLibrary extends LitElement {
         `,
         )}
       </div>
-      <div class="da-library-block-preview">${this._blockPreviewPath !== '' ? this.blockPreview() : nothing}</div>
+      <div class="da-library-block-preview"></div>
     `;
   }
 
