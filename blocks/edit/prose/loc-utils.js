@@ -178,24 +178,59 @@ function handleGlobalAction(action) {
 function createGlobalOverlay() {
   const dialog = document.createElement('div');
   dialog.className = 'da-regional-edits-overlay';
-  dialog.innerHTML = `
-    <div class="da-regional-edits-actions">
-      <button class="da-regional-edits-btn keep-local" data-action="keep-local">
-        Keep All Local
-      </button>
-      <button class="da-regional-edits-btn keep-upstream" data-action="keep-upstream">
-        Keep All Upstream
-      </button>
-    </div>
-  `;
 
-  // Add event listeners for buttons
-  const buttons = dialog.querySelectorAll('.da-regional-edits-btn');
-  buttons.forEach((button) => {
-    button.addEventListener('click', ({ target: { dataset: { action } } }) => {
-      handleGlobalAction(action);
-    });
-  });
+  const actionsContainer = document.createElement('div');
+  actionsContainer.className = 'da-regional-edits-actions';
+
+  // Create Keep All Local composite button
+  const localButton = document.createElement('div');
+  localButton.className = 'loc-composite-btn loc-composite-btn-base is-local';
+
+  const localLabel = document.createElement('span');
+  localLabel.className = 'loc-composite-switch loc-composite-btn-base-element';
+  localLabel.textContent = 'Keep All Local';
+
+  const localConfirm = document.createElement('button');
+  localConfirm.className = 'loc-composite-confirm loc-composite-btn-base-element';
+  localConfirm.type = 'button';
+  localConfirm.setAttribute('aria-label', 'Keep All Local');
+  localConfirm.addEventListener('click', () => handleGlobalAction('keep-local'));
+
+  // Add tooltip for local button
+  const localTooltip = document.createElement('span');
+  localTooltip.className = 'loc-tooltip';
+  localTooltip.textContent = 'Accept All Local';
+  localConfirm.appendChild(localTooltip);
+
+  localButton.appendChild(localLabel);
+  localButton.appendChild(localConfirm);
+
+  // Create Keep All Upstream composite button
+  const upstreamButton = document.createElement('div');
+  upstreamButton.className = 'loc-composite-btn loc-composite-btn-base is-upstream';
+
+  const upstreamLabel = document.createElement('span');
+  upstreamLabel.className = 'loc-composite-switch loc-composite-btn-base-element';
+  upstreamLabel.textContent = 'Keep All Upstream';
+
+  const upstreamConfirm = document.createElement('button');
+  upstreamConfirm.className = 'loc-composite-confirm loc-composite-btn-base-element';
+  upstreamConfirm.type = 'button';
+  upstreamConfirm.setAttribute('aria-label', 'Keep All Upstream');
+  upstreamConfirm.addEventListener('click', () => handleGlobalAction('keep-upstream'));
+
+  // Add tooltip for upstream button
+  const upstreamTooltip = document.createElement('span');
+  upstreamTooltip.className = 'loc-tooltip';
+  upstreamTooltip.textContent = 'Accept All Upstream';
+  upstreamConfirm.appendChild(upstreamTooltip);
+
+  upstreamButton.appendChild(upstreamLabel);
+  upstreamButton.appendChild(upstreamConfirm);
+
+  actionsContainer.appendChild(localButton);
+  actionsContainer.appendChild(upstreamButton);
+  dialog.appendChild(actionsContainer);
 
   return dialog;
 }

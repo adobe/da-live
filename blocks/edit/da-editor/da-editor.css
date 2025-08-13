@@ -992,43 +992,69 @@ da-loc-deleted, da-loc-added {
   z-index: 1; /* ensure glyph above tooltip background */
 }
 
-/* Tooltip styling for confirm segment */
+/* Enhanced tooltip styling */
 .loc-tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  background: #3c3541;
+  bottom: calc(100% + 6px);
+  right: 50%;
+  transform: translateX(50%) translateY(4px);
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
   color: #fff;
   font-size: 12px;
-  line-height: 1;
-  padding: 8px 10px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0 0 0 / 30%);
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 6px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   white-space: nowrap;
   opacity: 0;
-  transform: translateY(4px);
-  transition: opacity .15s ease, transform .15s ease;
+  transition:
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
   z-index: 2500;
   visibility: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .loc-tooltip::after {
   content: '';
   position: absolute;
   top: 100%;
-  left: calc(100% - 18px);
+  left: 50%;
+  transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid #3c3541;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #1a1a1a;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+
+.loc-tooltip::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(255, 255, 255, 0.1);
+  z-index: -1;
 }
 
 .loc-composite-confirm:hover .loc-tooltip,
 .loc-composite-confirm:focus .loc-tooltip {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(50%) translateY(0);
   visibility: visible;
 }
 
@@ -1057,7 +1083,6 @@ da-loc-deleted, da-loc-added {
 .loc-composite-btn.is-diff .loc-composite-switch { background: #204fcb; }
 .loc-composite-btn.is-diff .loc-composite-confirm { background: #113282; }
 
-.loc-composite-btn .loc-composite-switch:hover,
 .loc-composite-btn .loc-composite-confirm:hover {
   color: #000;
 }
@@ -1131,7 +1156,7 @@ da-loc-deleted, da-loc-added {
 .loc-composite-btn-3part .loc-composite-delete:hover .loc-tooltip,
 .loc-composite-btn-3part .loc-composite-delete:focus .loc-tooltip {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(50%) translateY(0);
   visibility: visible;
 }
 
@@ -1224,10 +1249,6 @@ da-loc-deleted, da-loc-added {
   position: absolute;
   right: -48px;
   z-index: 1500;
-  background: #fff;
-  border: 2px solid #4682b4;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   padding: 16px 20px;
   margin: 0 48px;
   box-sizing: border-box;
@@ -1246,62 +1267,7 @@ da-loc-deleted, da-loc-added {
   align-items: center;
 }
 
-.da-regional-edits-btn {
-  font-family: var(--body-font-family);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 8px 16px;
-  line-height: 18px;
-  font-size: 14px;
-  border-radius: 4px;
-  outline-offset: 0;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  font-weight: 600;
-  text-align: center;
-  border: 2px solid transparent;
-  min-width: 120px;
-}
-
-.da-regional-edits-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
-}
-
-.da-regional-edits-btn.keep-local {
-  background: #9042de;
-  color: #fff;
-  border-color: #9042de;
-}
-
-.da-regional-edits-btn.keep-local:hover {
-  background: #7d38c1;
-  border-color: #7d38c1;
-}
-
-.da-regional-edits-btn.keep-upstream {
-  background: #4682b4;
-  color: #fff;
-  border-color: #4682b4;
-}
-
-.da-regional-edits-btn.keep-upstream:hover {
-  background: #3a6d94;
-  border-color: #3a6d94;
-}
-
-.da-regional-edits-btn.keep-both {
-  background: #fff;
-  color: #333;
-  border-color: #ddd;
-}
-
-.da-regional-edits-btn.keep-both:hover {
-  background: #f5f5f5;
-  border-color: #ccc;
-}
+/* Old button styles removed - now using composite buttons */
 
 /* Adjust ProseMirror padding when dialog is shown */
 .da-prose-mirror.has-regional-edits .ProseMirror {
