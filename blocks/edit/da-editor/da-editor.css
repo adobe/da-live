@@ -1186,9 +1186,7 @@ da-loc-deleted, da-loc-added {
 .da-regional-edits-overlay {
   display: none;
   position: absolute;
-  top: -80px;
-  left: 0;
-  right: 0;
+  right: -48px;
   z-index: 1500;
   background: #fff;
   border: 2px solid #4682b4;
