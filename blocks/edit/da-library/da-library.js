@@ -58,6 +58,7 @@ class DaLibrary extends LitElement {
     _libraryList: { state: true },
     _libraryDetails: { state: true },
     _searchStr: { state: true },
+    _blockPreviewPath: { state: true }, 
   };
 
   constructor() {
@@ -66,6 +67,7 @@ class DaLibrary extends LitElement {
     this._libraryDetails = {};
     this._searchStr = '';
     this._searchHasFocus = false;
+    this._blockPreviewPath = '';
   }
 
   searchInputRef = createRef();
@@ -94,9 +96,8 @@ class DaLibrary extends LitElement {
     closeLibrary();
   }
 
-  handleFullsizeModalClose(close = true) {
+  handleFullsizeModalClose() {
     this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
-    if (close === false) return;
     closeLibrary();
   }
 
@@ -282,29 +283,35 @@ class DaLibrary extends LitElement {
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 
-  async handlePreviewOpen(e, path) {
+  handlePreviewOpen(e, path) {
     e.preventDefault();
-    let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
-    if (dialog) dialog.remove();
+    this._blockPreviewPath = path;
+    const dialog = this.blockPreview();
 
-    dialog = html`
+    render(dialog, this.shadowRoot.querySelector('.da-library-block-preview'));
+
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
+  }
+
+  blockPreview() {
+    const handleClose = () => {
+      this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
+      this._blockPreviewPath = '';
+    }
+
+    return html`
         <dialog class="da-fs-dialog-plugin">
           <div class="da-dialog-header">
-            <button class="primary" @click=${() => this.handleFullsizeModalClose(false)}>Close</button>
+            <button class="primary" @click=${() => handleClose()}>Close</button>
           </div>
           <div class="da-library-type-plugin">
             <iframe
-              data-src="${path}"
-              src="${path}"
-              @load=${this.handlePluginLoad}
+              data-src="${this._blockPreviewPath}"
+              src="${this._blockPreviewPath}"
               allow="clipboard-write *"></iframe>
           </div>
         </dialog>
       `;
-
-      render(dialog, this.shadowRoot);
-
-      this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
   } 
 
   async handlePluginLoad({ target }) {
@@ -578,6 +585,7 @@ class DaLibrary extends LitElement {
         `,
         )}
       </div>
+      <div class="da-library-block-preview">${this._blockPreviewPath !== '' ? this.blockPreview() : nothing}</div>
     `;
   }
 
