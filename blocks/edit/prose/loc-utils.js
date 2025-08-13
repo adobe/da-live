@@ -6,15 +6,15 @@ import {
 
 const LOC = {
   UPSTREAM: {
-    BG: 'rgba(70, 130, 180, 0.8)',
+    BG: 'rgba(70, 130, 180, 0.2)',
     COVER_BG: 'rgba(70, 130, 180, 0.2)',
-    TEXT: 'Upstream Content',
+    TEXT: 'Upstream',
     TEXT_COLOR: 'rgba(70, 130, 180)',
   },
   LOCAL: {
-    BG: 'rgba(144, 42, 222, 0.8)',
+    BG: 'rgba(144, 42, 222, 0.2)',
     COVER_BG: 'rgba(144, 42, 222, 0.2)',
-    TEXT: 'Local Content',
+    TEXT: 'Local',
     TEXT_COLOR: 'rgba(144, 42, 222)',
   },
   DIFF: {
@@ -362,23 +362,23 @@ function createTabContent(deletedContent, addedContent) {
 
 function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
   const actionsContainer = document.createElement('div');
-  actionsContainer.className = 'loc-tabbed-actions';
+  actionsContainer.className = 'loc-tabbed-actions loc-floating-overlay';
 
   const actionButtons = document.createElement('div');
-  actionButtons.className = 'loc-action-buttons';
+  actionButtons.className = 'loc-action-buttons loc-sticky-buttons';
 
   const createComposite = ({ label, id, keepHandler, variantClass, tooltip }) => {
     const wrapper = document.createElement('div');
-    wrapper.className = `loc-composite-btn ${variantClass}`;
+    wrapper.className = `loc-composite-btn loc-composite-btn-base ${variantClass}`;
 
     const switchBtn = document.createElement('button');
-    switchBtn.className = 'loc-composite-switch';
+    switchBtn.className = 'loc-composite-switch loc-composite-btn-base-element';
     switchBtn.type = 'button';
     switchBtn.textContent = label;
     switchBtn.addEventListener('click', () => onSwitchTab(id));
 
     const confirmBtn = document.createElement('button');
-    confirmBtn.className = 'loc-composite-confirm';
+    confirmBtn.className = 'loc-composite-confirm loc-composite-btn-base-element';
     confirmBtn.type = 'button';
     confirmBtn.setAttribute('aria-label', `Keep ${label}`);
     confirmBtn.addEventListener('click', keepHandler);
@@ -437,29 +437,48 @@ function getCoverDiv(upstream) {
 
 function getLangOverlay(upstream) {
   const overlay = document.createElement('div');
-  overlay.className = 'loc-lang-overlay';
+  overlay.className = 'loc-lang-overlay loc-floating-overlay';
   overlay.setAttribute('loc-temp-dom', '');
-  overlay.style.backgroundColor = upstream
-    ? LOC.UPSTREAM.BG
-    : LOC.LOCAL.BG;
 
-  const dialog = document.createElement('div');
-  dialog.className = 'loc-dialog';
-  dialog.innerHTML = `
-    <span>${upstream ? LOC.UPSTREAM.TEXT : LOC.LOCAL.TEXT}</span>
-    <div>
-    <span class="loc-keep"><div title="Keep">Keep</div></span>
-    <span class="loc-delete"><div title="Delete">Delete</div></span>
-    </div>`;
-  dialog.style.color = upstream
-    ? LOC.UPSTREAM.TEXT_COLOR
-    : LOC.LOCAL.TEXT_COLOR;
+  // Create 3-part composite button
+  const compositeBtn = document.createElement('div');
+  compositeBtn.className = `loc-composite-btn-3part loc-composite-btn-base loc-sticky-buttons ${upstream ? 'is-upstream' : 'is-local'}`;
 
-  const deleteBtn = dialog.querySelector('.loc-delete');
-  const keepBtn = dialog.querySelector('.loc-keep');
-  overlay.appendChild(dialog);
+  // Label part (no click handling)
+  const labelBtn = document.createElement('span');
+  labelBtn.className = 'loc-composite-label loc-composite-btn-base-element';
+  labelBtn.textContent = upstream ? LOC.UPSTREAM.TEXT : LOC.LOCAL.TEXT;
 
-  return { overlay, deleteBtn, keepBtn };
+  // Accept part (checkmark)
+  const acceptBtn = document.createElement('button');
+  acceptBtn.className = 'loc-composite-accept loc-composite-btn-base-element';
+  acceptBtn.type = 'button';
+  acceptBtn.setAttribute('aria-label', `Accept ${upstream ? 'Upstream' : 'Local'}`);
+
+  // Add tooltip for accept button
+  const acceptTooltip = document.createElement('span');
+  acceptTooltip.className = 'loc-tooltip';
+  acceptTooltip.textContent = `Accept ${upstream ? 'Upstream' : 'Local'}`;
+  acceptBtn.appendChild(acceptTooltip);
+
+  // Delete part (X)
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'loc-composite-delete loc-composite-btn-base-element';
+  deleteBtn.type = 'button';
+  deleteBtn.setAttribute('aria-label', `Delete ${upstream ? 'Upstream' : 'Local'}`);
+
+  // Add tooltip for delete button
+  const deleteTooltip = document.createElement('span');
+  deleteTooltip.className = 'loc-tooltip';
+  deleteTooltip.textContent = `Delete ${upstream ? 'Upstream' : 'Local'}`;
+  deleteBtn.appendChild(deleteTooltip);
+
+  compositeBtn.appendChild(labelBtn);
+  compositeBtn.appendChild(acceptBtn);
+  compositeBtn.appendChild(deleteBtn);
+  overlay.appendChild(compositeBtn);
+
+  return { overlay, deleteBtn, keepBtn: acceptBtn };
 }
 
 function keepLocContentInPlace(view, pos, node) {
@@ -749,14 +768,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       });
 
       coverDiv.appendChild(this.langOverlay);
-
-      coverDiv.addEventListener('mouseover', () => {
-        this.langOverlay.style.display = 'flex';
-      });
-
-      coverDiv.addEventListener('mouseout', () => {
-        this.langOverlay.style.display = 'none';
-      });
     }
 
     handleKeepDeleted(deletedNode, view, deletedPos, addedNode, addedPos) {
