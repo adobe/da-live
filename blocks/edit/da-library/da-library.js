@@ -382,9 +382,9 @@ class DaLibrary extends LitElement {
       <li class="da-library-type-group">
         <div class="da-library-type-group-title">
           <span class="name">${group.name}</span>
-            <button class= "preview" href=${group.path} target="_blank" @click=${() => this.handleBlockPreviewOpen(group.path)}>
-              <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
-            </button>
+          <button class= "preview" href=${group.path} target="_blank" @click=${() => this.handleBlockPreviewOpen(group.path)}>
+            <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+          </button>
           <button @click=${this.handleGroupOpen}>
             <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
           </button>
