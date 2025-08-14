@@ -382,7 +382,7 @@ class DaLibrary extends LitElement {
       <li class="da-library-type-group">
         <div class="da-library-type-group-title">
           <span class="name">${group.name}</span>
-          <button class= "preview" href=${group.path} target="_blank" @click=${() => this.handleBlockPreviewOpen(group.path)}>
+          <button class= "preview" @click=${() => this.handleBlockPreviewOpen(group.path)}>
             <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
           </button>
           <button @click=${this.handleGroupOpen}>
@@ -430,17 +430,17 @@ class DaLibrary extends LitElement {
   renderTemplateItem(item, icon = false) {
     return html`
       <li class="da-library-type-item">
-        <button class="da-library-type-item-btn template-item ${icon ? 'templates' : ''}">
+        <div class="da-library-type-item-btn template-item ${icon ? 'templates' : ''}">
           <div class="da-library-type-item-detail">
             <span>${item.key}</span>
-            <a class="template-link" href=${item.value} target="_blank">
+            <button class= "preview" @click=${() => this.handleBlockPreviewOpen(item.value)}>
               <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
-            </a>
+            </button>
             <svg class="icon" @click=${() => this.handleTemplateClick(item)}>
               <use href="#spectrum-AddCircle"/>
             </svg>
           </div>
-        </button>
+        </div>
       </li>`;
   }
 

@@ -251,6 +251,17 @@ ul {
   margin: -1px 0;
 }
 
+.da-library-type-item {
+  display: flex;
+  align-items: center;
+}
+
+.da-library-type-item .preview {
+  border: none;
+  display: flex;
+  color: #888;
+}
+
 .da-library-type-group.is-open {
   background-color: #F8F8F8;
   padding: 0;
