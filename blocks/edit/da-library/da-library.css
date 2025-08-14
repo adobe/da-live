@@ -597,6 +597,6 @@ ul {
   padding-bottom: 8px;
 }
 
-.da-library-block-preview.hide {
+.da-library-block-preview .hide {
   display: none;
 }

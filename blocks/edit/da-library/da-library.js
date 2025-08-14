@@ -283,42 +283,38 @@ class DaLibrary extends LitElement {
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 
-  handlePreviewOpen(e, path) {
+  handleBlockPreviewOpen(e, path) {
     e.preventDefault();
     this._blockPreviewPath = path;
-    const dialog = this.blockPreview();
-
-    render(dialog, this.shadowRoot.querySelector('.da-library-block-preview'));
-
-    this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
   }
 
-  blockPreview() {
-    const handleClose = () => {
+  handleBlockPreviewClose() {
+      this.shadowRoot.querySelector('.da-fs-dialog-plugin').classList.add('hide');
       this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
       this._blockPreviewPath = '';
-      this.shadowRoot.querySelector('.da-library-block-preview').classList.add('hide');
-    }
+  }
 
-    const handleLoad = () => {
-      this.shadowRoot.querySelector('.da-library-block-preview').classList.remove('hide');
-    }
+  handleBlockPreviewLoad() {
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin').classList.remove('hide');
+  }
 
+  renderBlockPreview() {
     return html`
-        <dialog class="da-fs-dialog-plugin">
+       <dialog class="da-fs-dialog-plugin hide">
           <div class="da-dialog-header">
-            <button class="primary" @click=${() => handleClose()}>Close</button>
+            <button class="primary" @click=${() => this.handleBlockPreviewClose()}>Close</button>
           </div>
           <div class="da-library-type-plugin">
             <iframe
               data-src="${this._blockPreviewPath}"
               src="${this._blockPreviewPath}"
-              @load=${handleLoad}
+              @load=${this.handleBlockPreviewLoad}
               allow="clipboard-write *"></iframe>
           </div>
         </dialog>
-      `;
-  } 
+    `;
+  }
 
   async handlePluginLoad({ target }) {
     const channel = new MessageChannel();
@@ -387,7 +383,7 @@ class DaLibrary extends LitElement {
       <li class="da-library-type-group">
         <div class="da-library-type-group-title">
           <span class="name">${group.name}</span>
-            <a href=${group.path} target="_blank" @click=${(e) => this.handlePreviewOpen(e, group.path)}>
+            <a href=${group.path} target="_blank" @click=${(e) => this.handleBlockPreviewOpen(e, group.path)}>
               <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
             </a>
           <button @click=${this.handleGroupOpen}>
@@ -591,7 +587,9 @@ class DaLibrary extends LitElement {
         `,
         )}
       </div>
-      <div class="da-library-block-preview"></div>
+      <div class="da-library-block-preview">
+        ${this._blockPreviewPath !== '' ? this.renderBlockPreview() : nothing }
+      </div>
     `;
   }
 
