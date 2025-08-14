@@ -331,6 +331,10 @@ ul {
   z-index: 5;
 }
 
+.da-library-type-group-title button.preview {
+  color: #888;
+}
+
 .da-library-type-group-title button:hover {
   color: #167AF3;
 }
@@ -400,10 +404,6 @@ ul {
   border: none;
   padding-right: 0;
   padding-left: 4px;
-}
-
-.da-library-type-group-title button.preview {
-  color: #888;
 }
 
 .da-library-type-group-detail-item button {
