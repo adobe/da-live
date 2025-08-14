@@ -444,7 +444,14 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab
   const actionButtons = document.createElement('div');
   actionButtons.className = 'loc-action-buttons loc-sticky-buttons';
 
-  const createComposite = ({ label, id, keepHandler, variantClass, tooltip }) => {
+  const createComposite = ({
+    label,
+    id,
+    keepHandler,
+    variantClass,
+    tooltip,
+    switchTooltip,
+  }) => {
     const wrapper = document.createElement('div');
     wrapper.className = `loc-composite-btn loc-composite-btn-base ${variantClass}`;
 
@@ -453,6 +460,13 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab
     switchBtn.type = 'button';
     switchBtn.textContent = label;
     switchBtn.addEventListener('click', () => onSwitchTab(id));
+
+    if (switchTooltip) {
+      const switchTip = document.createElement('span');
+      switchTip.className = 'loc-tooltip';
+      switchTip.textContent = switchTooltip;
+      switchBtn.appendChild(switchTip);
+    }
 
     const confirmBtn = document.createElement('button');
     confirmBtn.className = 'loc-composite-confirm loc-composite-btn-base-element';
@@ -478,6 +492,7 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab
     keepHandler: onKeepAdded,
     variantClass: 'is-local',
     tooltip: 'Accept Local',
+    switchTooltip: 'View Local',
   }));
 
   actionButtons.appendChild(createComposite({
@@ -486,6 +501,7 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab
     keepHandler: onKeepDeleted,
     variantClass: 'is-upstream',
     tooltip: 'Accept Upstream',
+    switchTooltip: 'View Upstream',
   }));
 
   actionButtons.appendChild(createComposite({
@@ -494,6 +510,7 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab
     keepHandler: onKeepBoth,
     variantClass: 'is-diff',
     tooltip: 'Accept Both',
+    switchTooltip: 'View Diff',
   }));
 
   actionsContainer.appendChild(actionButtons);

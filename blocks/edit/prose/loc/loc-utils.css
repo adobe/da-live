@@ -178,6 +178,7 @@ da-loc-deleted, da-loc-added {
 .loc-composite-btn .loc-composite-switch {
   border-right: none;
   border-radius: 6px 0 0 6px;
+  position: relative; /* anchor tooltip for label */
 }
 
 .loc-composite-btn .loc-composite-confirm {
@@ -357,6 +358,14 @@ da-loc-deleted, da-loc-added {
 .loc-composite-btn-3part .loc-composite-accept:focus .loc-tooltip,
 .loc-composite-btn-3part .loc-composite-delete:hover .loc-tooltip,
 .loc-composite-btn-3part .loc-composite-delete:focus .loc-tooltip {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
+  visibility: visible;
+}
+
+/* Show tooltip when hovering label if not the active tab */
+.loc-composite-btn:not(.is-active) .loc-composite-switch:hover .loc-tooltip,
+.loc-composite-btn:not(.is-active) .loc-composite-switch:focus .loc-tooltip {
   opacity: 1;
   transform: translateX(50%) translateY(0);
   visibility: visible;
