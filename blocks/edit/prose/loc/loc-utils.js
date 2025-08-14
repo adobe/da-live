@@ -27,6 +27,7 @@ const LOC = {
 
 let globalDialog = null;
 const activeViews = new Set();
+let usedNodes = new WeakSet();
 
 let locCssLoading = false;
 async function loadLocCss() {
@@ -265,7 +266,9 @@ function hasMatchingContent(nodeA, nodeB) {
     }
   }
 
-  if (contentA[1].type.name === 'table' && contentB[1].type.name === 'table') {
+  // Special handling for tables - only if both nodes actually have tables at index 1
+  if (contentA.length > 1 && contentB.length > 1
+      && contentA[1].type.name === 'table' && contentB[1].type.name === 'table') {
     const blockA = getFirstText(contentA[1])?.split(' ')[0];
     const blockB = getFirstText(contentB[1])?.split(' ')[0];
     return blockA === blockB;
@@ -274,56 +277,10 @@ function hasMatchingContent(nodeA, nodeB) {
   return true;
 }
 
-/**
- * Insert paragraph spacing between loc nodes/interfaces where needed
- */
-function insertLocSpacing(view) {
-  const { doc } = view.state;
-  let { tr } = view.state;
-  let hasChanges = false;
-
-  const insertions = [];
-
-  doc.descendants((node, pos) => {
-    if (node.type.name !== 'loc_deleted' && node.type.name !== 'loc_added') return;
-
-    const resolvedPos = doc.resolve(pos);
-    const { parent } = resolvedPos;
-    const indexInParent = resolvedPos.index();
-
-    const nextSibling = indexInParent < parent.childCount - 1
-      ? parent.child(indexInParent + 1)
-      : null;
-    const isTabbed = nextSibling
-      && (nextSibling.type.name === 'loc_deleted' || nextSibling.type.name === 'loc_added')
-      && node.type.name !== nextSibling.type.name
-      && hasMatchingContent(node, nextSibling);
-
-    const endPos = isTabbed
-      ? pos + node.nodeSize + nextSibling.nodeSize
-      : pos + node.nodeSize;
-    const endIndex = isTabbed ? indexInParent + 1 : indexInParent;
-
-    if (endIndex + 1 < parent.childCount) {
-      const nextNode = parent.child(endIndex + 1);
-      if (nextNode.type.name === 'loc_deleted' || nextNode.type.name === 'loc_added') {
-        insertions.push(endPos);
-      }
-    }
-  });
-
-  insertions.reverse().forEach((pos) => {
-    const emptyParagraph = view.state.schema.nodes.paragraph.create();
-    tr = tr.insert(pos, emptyParagraph);
-    hasChanges = true;
-  });
-
-  if (hasChanges) {
-    view.dispatch(tr);
-  }
-}
-
 function checkForLocNodes(view) {
+  // Reset usedNodes to ensure clean state for each check
+  usedNodes = new WeakSet();
+
   const { doc } = view.state;
   let hasLocNodes = false;
 
@@ -337,7 +294,6 @@ function checkForLocNodes(view) {
 
   if (hasLocNodes) {
     loadLocCss();
-    insertLocSpacing(view);
     showGlobalDialog(view);
   } else {
     hideGlobalDialog();
@@ -568,29 +524,6 @@ function getLangOverlay(upstream) {
   return { overlay, deleteBtn, keepBtn: acceptBtn };
 }
 
-function keepLocContentInPlace(view, pos, node) {
-  const filteredContent = node.content.content.filter((c) => c.content.content.length);
-  const newFragment = Fragment.fromArray(filteredContent);
-  const newSlice = new Slice(newFragment, 0, 0);
-  const transaction = view.state.tr.replace(pos, pos + node.nodeSize, newSlice);
-  return transaction;
-}
-
-function deleteLocContent(view, pos, node) {
-  const resolvedPos = view.state.doc.resolve(pos);
-
-  if (resolvedPos.parent.type.name === 'list_item') {
-    const parentPos = resolvedPos.before(resolvedPos.depth);
-    const transaction = view.state.tr.delete(parentPos, parentPos + resolvedPos.parent.nodeSize);
-    return transaction;
-  }
-
-  const transaction = view.state.tr.delete(pos, pos + node.nodeSize);
-  return transaction;
-}
-
-const usedNodes = new WeakSet();
-
 export function addActiveView(view) {
   activeViews.add(view);
 }
@@ -715,9 +648,9 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       };
 
       actions = createTabbedActions(
-        () => this.handleKeepDeleted(deletedNode, view, deletedPos, addedNode, addedPos),
-        () => this.handleKeepAdded(addedNode, view, addedPos, deletedNode, deletedPos),
-        () => this.handleKeepBoth(deletedNode, view, deletedPos, addedNode, addedPos),
+        () => this.handleKeepDeleted(),
+        () => this.handleKeepAdded(),
+        () => this.handleKeepBoth(),
         setActiveTab,
       );
 
@@ -742,56 +675,311 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       this.langOverlay = overlay;
 
       deleteBtn.addEventListener('click', () => {
-        dispatchTransaction(deleteLocContent(view, pos, node));
+        this.handleDeleteSingleNode();
       });
 
       keepBtn.addEventListener('click', () => {
-        dispatchTransaction(keepLocContentInPlace(view, pos, node));
+        this.handleKeepSingleNode();
       });
 
       coverDiv.appendChild(this.langOverlay);
     }
 
-    handleKeepDeleted(deletedNode, view, deletedPos, addedNode, addedPos) {
+    handleDeleteSingleNode() {
+      try {
+        const currentPos = this.getPos();
+        if (currentPos === null || currentPos === undefined) {
+          // eslint-disable-next-line no-console
+          console.warn('Could not get current position for single node delete');
+          return;
+        }
+
+        const { doc } = this.view.state;
+        const resolvedPos = doc.resolve(currentPos);
+        const { parent } = resolvedPos;
+        const indexInParent = resolvedPos.index();
+        const currentNode = parent.child(indexInParent);
+
+        if (!currentNode || (currentNode.type.name !== 'loc_deleted' && currentNode.type.name !== 'loc_added')) {
+          // eslint-disable-next-line no-console
+          console.warn('Current node is not a loc node');
+          return;
+        }
+
+        // Check if parent is a list item for special handling
+        if (resolvedPos.parent.type.name === 'list_item') {
+          const parentPos = resolvedPos.before(resolvedPos.depth);
+          const transaction = this.view.state.tr.delete(
+            parentPos,
+            parentPos + resolvedPos.parent.nodeSize,
+          );
+          this.view.dispatch(transaction);
+        } else {
+          const transaction = this.view.state.tr.delete(
+            currentPos,
+            currentPos + currentNode.nodeSize,
+          );
+          this.view.dispatch(transaction);
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Error deleting single loc node:', error);
+      }
+    }
+
+    handleKeepSingleNode() {
+      try {
+        const currentPos = this.getPos();
+        if (currentPos === null || currentPos === undefined) {
+          // eslint-disable-next-line no-console
+          console.warn('Could not get current position for single node keep');
+          return;
+        }
+
+        const { doc } = this.view.state;
+        const resolvedPos = doc.resolve(currentPos);
+        const { parent } = resolvedPos;
+        const indexInParent = resolvedPos.index();
+        const currentNode = parent.child(indexInParent);
+
+        if (!currentNode || (currentNode.type.name !== 'loc_deleted' && currentNode.type.name !== 'loc_added')) {
+          // eslint-disable-next-line no-console
+          console.warn('Current node is not a loc node');
+          return;
+        }
+
+        // Use the improved content filtering like the tabbed interface
+        const filteredContent = this.filterNodeContent(currentNode);
+
+        if (filteredContent.length > 0) {
+          const newFragment = Fragment.fromArray(filteredContent);
+          const newSlice = new Slice(newFragment, 1, 1); // Use proper open/close values
+          const transaction = this.view.state.tr.replace(
+            currentPos,
+            currentPos + currentNode.nodeSize,
+            newSlice,
+          );
+          this.view.dispatch(transaction);
+        } else {
+          const transaction = this.view.state.tr.delete(
+            currentPos,
+            currentPos + currentNode.nodeSize,
+          );
+          this.view.dispatch(transaction);
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Error keeping single loc node:', error);
+      }
+    }
+
+    /**
+     * Get current loc node pair at the stored position
+     * @param {Object} view - ProseMirror view
+     * @returns {Object|null} Object with current positions and nodes or null if not found
+     */
+    getCurrentLocNodePair(view) {
+      try {
+        const currentPos = this.getPos();
+        if (currentPos === null || currentPos === undefined) {
+          return null;
+        }
+
+        const { doc } = view.state;
+        const resolvedPos = doc.resolve(currentPos);
+        const { parent } = resolvedPos;
+        const indexInParent = resolvedPos.index();
+
+        // Get the node at current position
+        const currentNode = parent.child(indexInParent);
+        if (!currentNode || (currentNode.type.name !== 'loc_deleted' && currentNode.type.name !== 'loc_added')) {
+          return null;
+        }
+
+        // Check if there's a next sibling that forms a pair
+        if (indexInParent < parent.childCount - 1) {
+          const nextSibling = parent.child(indexInParent + 1);
+
+          if (
+            (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
+            && currentNode.type.name !== nextSibling.type.name
+            && hasMatchingContent(currentNode, nextSibling)
+          ) {
+            // We have a valid pair
+            if (currentNode.type.name === 'loc_deleted') {
+              return {
+                deletedPos: currentPos,
+                addedPos: currentPos + currentNode.nodeSize,
+                deletedNode: currentNode,
+                addedNode: nextSibling,
+              };
+            }
+            return {
+              addedPos: currentPos,
+              deletedPos: currentPos + currentNode.nodeSize,
+              addedNode: currentNode,
+              deletedNode: nextSibling,
+            };
+          }
+        }
+
+        return null;
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Error getting current loc node pair:', error);
+        return null;
+      }
+    }
+
+    /**
+     * Improved content filtering that handles different node types more robustly
+     * @param {Object} node - ProseMirror node
+     * @returns {Array} Filtered content array
+     */
+    filterNodeContent(node) {
+      if (!node || !node.content || !node.content.content) {
+        return [];
+      }
+
+      return node.content.content.filter((child) => {
+        // Handle text nodes
+        if (child.type.name === 'text') {
+          return child.text && child.text.trim().length > 0;
+        }
+
+        // Handle nodes with content
+        if (child.content) {
+          // Check if it has meaningful content
+          if (child.content.content && child.content.content.length > 0) {
+            return true;
+          }
+          // For nodes without nested content, check if they have any attributes or marks
+          return child.attrs || child.marks?.length > 0;
+        }
+
+        // For other node types, assume they're meaningful unless explicitly empty
+        return true;
+      });
+    }
+
+    handleKeepDeleted() {
+      // Get current positions and nodes using the stored getPos function
+      const currentPair = this.getCurrentLocNodePair(this.view);
+      if (!currentPair) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not find current loc node pair');
+        return;
+      }
+
+      const {
+        deletedPos,
+        addedPos,
+        deletedNode: currentDeletedNode,
+        addedNode: currentAddedNode,
+      } = currentPair;
+
       // Keep deleted content and delete added content
-      const filteredContent = deletedNode.content.content.filter((c) => c.content.content.length);
-      const newFragment = Fragment.fromArray(filteredContent);
-      const newSlice = new Slice(newFragment, 0, 0);
+      const filteredContent = this.filterNodeContent(currentDeletedNode);
 
       const startPos = Math.min(deletedPos, addedPos);
-      const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
+      const endPos = Math.max(
+        deletedPos + currentDeletedNode.nodeSize,
+        addedPos + currentAddedNode.nodeSize,
+      );
 
-      const tr = view.state.tr.replace(startPos, endPos, newSlice);
-      view.dispatch(tr);
+      const { tr } = this.view.state;
+      let transaction = tr;
+
+      if (filteredContent.length > 0) {
+        const newFragment = Fragment.fromArray(filteredContent);
+        const newSlice = new Slice(newFragment, 1, 1); // Use proper open/close values
+        transaction = transaction.replace(startPos, endPos, newSlice);
+      } else {
+        transaction = transaction.delete(startPos, endPos);
+      }
+
+      this.view.dispatch(transaction);
     }
 
-    handleKeepAdded(addedNode, view, addedPos, deletedNode, deletedPos) {
+    handleKeepAdded() {
+      // Get current positions and nodes using the stored getPos function
+      const currentPair = this.getCurrentLocNodePair(this.view);
+      if (!currentPair) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not find current loc node pair');
+        return;
+      }
+
+      const {
+        deletedPos,
+        addedPos,
+        addedNode: currentAddedNode,
+        deletedNode: currentDeletedNode,
+      } = currentPair;
+
       // Keep added content and delete deleted content
-      const filteredContent = addedNode.content.content.filter((c) => c.content.content.length);
-      const newFragment = Fragment.fromArray(filteredContent);
-      const newSlice = new Slice(newFragment, 0, 0);
+      const filteredContent = this.filterNodeContent(currentAddedNode);
 
       const startPos = Math.min(deletedPos, addedPos);
-      const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
+      const endPos = Math.max(
+        deletedPos + currentDeletedNode.nodeSize,
+        addedPos + currentAddedNode.nodeSize,
+      );
 
-      const tr = view.state.tr.replace(startPos, endPos, newSlice);
-      view.dispatch(tr);
+      const { tr } = this.view.state;
+      let transaction = tr;
+
+      if (filteredContent.length > 0) {
+        const newFragment = Fragment.fromArray(filteredContent);
+        const newSlice = new Slice(newFragment, 1, 1); // Use proper open/close values
+        transaction = transaction.replace(startPos, endPos, newSlice);
+      } else {
+        transaction = transaction.delete(startPos, endPos);
+      }
+
+      this.view.dispatch(transaction);
     }
 
-    handleKeepBoth(deletedNode, view, deletedPos, addedNode, addedPos) {
+    handleKeepBoth() {
+      // Get current positions and nodes using the stored getPos function
+      const currentPair = this.getCurrentLocNodePair(this.view);
+      if (!currentPair) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not find current loc node pair');
+        return;
+      }
+
+      const {
+        deletedPos,
+        addedPos,
+        deletedNode: currentDeletedNode,
+        addedNode: currentAddedNode,
+      } = currentPair;
+
       // Keep both nodes by combining their content
-      const deletedContent = deletedNode.content.content.filter((c) => c.content.content.length);
-      const addedContent = addedNode.content.content.filter((c) => c.content.content.length);
+      const deletedContent = this.filterNodeContent(currentDeletedNode);
+      const addedContent = this.filterNodeContent(currentAddedNode);
 
       const combinedContent = [...deletedContent, ...addedContent];
-      const newFragment = Fragment.fromArray(combinedContent);
-      const newSlice = new Slice(newFragment, 0, 0);
 
       const startPos = Math.min(deletedPos, addedPos);
-      const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
+      const endPos = Math.max(
+        deletedPos + currentDeletedNode.nodeSize,
+        addedPos + currentAddedNode.nodeSize,
+      );
 
-      const tr = view.state.tr.replace(startPos, endPos, newSlice);
-      view.dispatch(tr);
+      const { tr } = this.view.state;
+      let transaction = tr;
+
+      if (combinedContent.length > 0) {
+        const newFragment = Fragment.fromArray(combinedContent);
+        const newSlice = new Slice(newFragment, 1, 1); // Use proper open/close values
+        transaction = transaction.replace(startPos, endPos, newSlice);
+      } else {
+        transaction = transaction.delete(startPos, endPos);
+      }
+
+      this.view.dispatch(transaction);
     }
 
     applyKeepOperation(tr, node, pos) {
