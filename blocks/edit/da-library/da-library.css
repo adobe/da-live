@@ -302,7 +302,7 @@ ul {
 .da-library-type-item-detail .template-link {
   position: relative;
   top: 1px;
-  color: unset;
+  color: #888;
 }
 
 .da-library-type-item-btn .icon {
@@ -389,6 +389,10 @@ ul {
   border: none;
   padding-right: 0;
   padding-left: 4px;
+}
+
+.da-library-type-group-title button.preview {
+  color: #888;
 }
 
 .da-library-type-group-detail-item button {
