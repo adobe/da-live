@@ -3,6 +3,8 @@ import {
   Fragment,
   Slice,
 } from 'da-y-wrapper';
+import getSheet from '../../../shared/sheet.js';
+import { htmlDiff } from './htmldiff.js';
 
 const LOC = {
   UPSTREAM: {
@@ -23,61 +25,32 @@ const LOC = {
   },
 };
 
-// Load htmldiff library
-let htmldiff = null;
+
 
 // Global dialog management
 let globalDialog = null;
 const activeViews = new Set();
 
-// Function to load the htmldiff script dynamically
-function loadHtmlDiffScript() {
-  if (window.htmldiff) {
-    htmldiff = window.htmldiff;
-    return Promise.resolve(htmldiff);
+let locCssLoading = false;
+async function loadLocCss() {
+  if (locCssLoading) return;
+  locCssLoading = true;
+
+  try {
+    const locSheet = await getSheet('/blocks/edit/prose/loc/loc-utils.css');
+
+    const daEditor = document.querySelector('da-content')?.shadowRoot
+      ?.querySelector('da-editor');
+
+    if (daEditor?.shadowRoot) {
+      const existingSheets = daEditor.shadowRoot.adoptedStyleSheets || [];
+      daEditor.shadowRoot.adoptedStyleSheets = [...existingSheets, locSheet];
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to load LOC CSS:', error);
   }
-
-  return new Promise((resolve, reject) => {
-    // Create a module shim for CommonJS compatibility
-    const moduleShim = document.createElement('script');
-    moduleShim.textContent = `
-      window.module = { exports: {} };
-      window.exports = window.module.exports;
-    `;
-    document.head.appendChild(moduleShim);
-
-    const script = document.createElement('script');
-    script.src = '../../../deps/htmldiff/htmldiff.min.js';
-    script.onload = () => {
-      // The library exports as ES module with static execute method
-      const exportedModule = window.module.exports;
-
-      // eslint-disable-next-line dot-notation
-      if (exportedModule && exportedModule['__esModule'] && exportedModule.default) {
-        const HtmlDiffClass = exportedModule.default;
-        htmldiff = HtmlDiffClass.execute.bind(HtmlDiffClass);
-      }
-
-      window.htmldiff = htmldiff;
-
-      // Clean up the shim
-      window.module = undefined;
-      window.exports = undefined;
-
-      resolve(htmldiff);
-    };
-    script.onerror = () => {
-      reject(new Error('Failed to load htmldiff library'));
-    };
-    document.head.appendChild(script);
-  });
 }
-
-// Initialize htmldiff on module load
-loadHtmlDiffScript().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.warn('Failed to load htmldiff library:', error);
-});
 
 function getAllLocNodes(view) {
   const { doc } = view.state;
@@ -283,6 +256,9 @@ function checkForLocNodes(view) {
   });
 
   if (hasLocNodes) {
+    // Load LOC CSS if not already loaded
+    loadLocCss();
+
     // Insert spacing between loc nodes/interfaces if needed
     insertLocSpacing(view);
     showGlobalDialog(view);
@@ -307,24 +283,32 @@ function fragmentToHTML(fragment) {
   return tempDiv.innerHTML;
 }
 
-async function generateDiff(deletedContent, addedContent) {
+// Utility function to trim empty paragraphs from start and end of HTML string
+function trimEmptyParagraphs(html) {
+  if (!html || typeof html !== 'string') return html;
+
+  let trimmed = html;
+
+  // Remove empty paragraphs from the beginning
+  while (trimmed.startsWith('<p></p>')) {
+    trimmed = trimmed.substring(7); // Remove '<p></p>' (7 characters)
+  }
+
+  // Remove empty paragraphs from the end
+  while (trimmed.endsWith('<p></p>')) {
+    trimmed = trimmed.substring(0, trimmed.length - 7); // Remove '<p></p>' from end
+  }
+
+  return trimmed;
+}
+
+function generateDiff(deletedContent, addedContent) {
   try {
-    // Ensure htmldiff is loaded
-    if (!htmldiff) {
-      await loadHtmlDiffScript();
-    }
-
-    if (!htmldiff || typeof htmldiff !== 'function') {
-      // eslint-disable-next-line no-console
-      console.warn('htmldiff is not a function:', typeof htmldiff, htmldiff);
-      return '<p style="text-align: center; color: #666; margin: 20px 0;">HTML diff library not available or not functional</p>';
-    }
-
     // Convert content to HTML strings
     const deletedHTMLString = fragmentToHTML(deletedContent);
     const addedHTMLString = fragmentToHTML(addedContent);
 
-    // Extract text for comparison
+    // Check if there's any content to compare
     const tempDelDiv = document.createElement('div');
     tempDelDiv.innerHTML = deletedHTMLString;
     const deletedText = tempDelDiv.textContent || tempDelDiv.innerText || '';
@@ -337,14 +321,17 @@ async function generateDiff(deletedContent, addedContent) {
       return '<p style="text-align: center; color: #666; margin: 20px 0;">No content to compare</p>';
     }
 
-    // Generate diff using htmldiff library
-    const diffResult = htmldiff(deletedHTMLString, addedHTMLString);
+    // Generate HTML-aware diff that preserves formatting
+    const rawDiffResult = htmlDiff(deletedHTMLString, addedHTMLString);
 
-    if (diffResult && typeof diffResult === 'string' && diffResult.trim()) {
-      return diffResult;
+    // Trim empty paragraphs from start and end
+    const diffResult = trimEmptyParagraphs(rawDiffResult);
+
+    if (diffResult && diffResult.trim()) {
+      return `<div class="html-diff">${diffResult}</div>`;
     }
 
-    return '<p style="text-align: center; color: #666; margin: 20px 0;">Unable to generate diff</p>';
+    return '<p style="text-align: center; color: #666; margin: 20px 0;">No differences found</p>';
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error generating diff:', error);
@@ -376,15 +363,9 @@ function createTabContent(deletedContent, addedContent) {
   diffTab.className = 'loc-tab-pane';
   diffTab.dataset.tab = 'diff';
 
-  diffTab.innerHTML = '<p style="text-align: center; color: #666; margin: 20px 0;">Loading diff...</p>';
-
-  generateDiff(deletedContent, addedContent).then((diffHTML) => {
-    diffTab.innerHTML = diffHTML;
-  }).catch((error) => {
-    // eslint-disable-next-line no-console
-    console.error('Error loading diff:', error);
-    diffTab.innerHTML = '<p style="text-align: center; color: #d32f2f; margin: 20px 0;">Error loading diff</p>';
-  });
+  // Generate diff synchronously using our simple implementation
+  const diffHTML = generateDiff(deletedContent, addedContent);
+  diffTab.innerHTML = diffHTML;
 
   container.appendChild(addedTab);
   container.appendChild(deletedTab);
@@ -706,6 +687,9 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     renderTabbedInterface(nodeA, view, posA, nodeB) {
+      // Ensure LOC CSS is loaded
+      loadLocCss();
+
       this.dom = document.createElement('div');
       this.dom.className = 'loc-tabbed-container';
 
@@ -784,6 +768,9 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     renderSingleNode(node, view, pos, upstream) {
+      // Ensure LOC CSS is loaded
+      loadLocCss();
+
       this.dom = document.createElement(node.type.name === 'loc_deleted' ? 'da-loc-deleted' : 'da-loc-added');
       const serializer = DOMSerializer.fromSchema(this.schema);
       const nodeDOM = serializer.serializeFragment(node.content);
