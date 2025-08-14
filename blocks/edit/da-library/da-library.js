@@ -283,32 +283,32 @@ class DaLibrary extends LitElement {
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 
-  handleBlockPreviewOpen(path) {
+  handlePreviewOpen(path) {
     this._blockPreviewPath = path;
   }
 
-  handleBlockPreviewClose() {
+  handlePreviewClose() {
       this.shadowRoot.querySelector('.da-fs-dialog-plugin').classList.add('hide');
       this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
       this._blockPreviewPath = '';
   }
 
-  handleBlockPreviewLoad() {
+  handlePreviewLoad() {
     this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
     this.shadowRoot.querySelector('.da-fs-dialog-plugin').classList.remove('hide');
   }
 
-  renderBlockPreview() {
+  renderPreview() {
     return html`
        <dialog class="da-fs-dialog-plugin hide">
           <div class="da-dialog-header">
-            <button class="primary" @click=${() => this.handleBlockPreviewClose()}>Close</button>
+            <button class="primary" @click=${() => this.handlePreviewClose()}>Close</button>
           </div>
           <div class="da-library-type-plugin">
             <iframe
               data-src="${this._blockPreviewPath}"
               src="${this._blockPreviewPath}"
-              @load=${this.handleBlockPreviewLoad}
+              @load=${this.handlePreviewLoad}
               allow="clipboard-write *"></iframe>
           </div>
         </dialog>
@@ -382,7 +382,7 @@ class DaLibrary extends LitElement {
       <li class="da-library-type-group">
         <div class="da-library-type-group-title">
           <span class="name">${group.name}</span>
-          <button class= "preview" @click=${() => this.handleBlockPreviewOpen(group.path)}>
+          <button class= "preview" @click=${() => this.handlePreviewOpen(group.path)}>
             <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
           </button>
           <button @click=${this.handleGroupOpen}>
@@ -433,7 +433,7 @@ class DaLibrary extends LitElement {
         <div class="da-library-type-item-btn template-item ${icon ? 'templates' : ''}">
           <div class="da-library-type-item-detail">
             <span>${item.key}</span>
-            <button class= "preview" @click=${() => this.handleBlockPreviewOpen(item.value)}>
+            <button class= "preview" @click=${() => this.handlePreviewOpen(item.value)}>
               <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
             </button>
             <svg class="icon" @click=${() => this.handleTemplateClick(item)}>
@@ -586,8 +586,8 @@ class DaLibrary extends LitElement {
         `,
         )}
       </div>
-      <div class="da-library-block-preview">
-        ${this._blockPreviewPath !== '' ? this.renderBlockPreview() : nothing }
+      <div class="da-library-preview">
+        ${this._blockPreviewPath !== '' ? this.renderPreview() : nothing}
       </div>
     `;
   }
