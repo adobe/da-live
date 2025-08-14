@@ -25,9 +25,6 @@ const LOC = {
   },
 };
 
-
-
-// Global dialog management
 let globalDialog = null;
 const activeViews = new Set();
 
@@ -77,7 +74,6 @@ function hideGlobalDialog() {
 }
 
 function handleGlobalAction(action) {
-  // Process all active views
   activeViews.forEach((view) => {
     const locNodes = getAllLocNodes(view);
 
@@ -89,7 +85,6 @@ function handleGlobalAction(action) {
     for (const { node, pos } of locNodes) {
       try {
         if (action === 'keep-local' && node.type.name === 'loc_added') {
-          // Keep local (added) content
           const filteredContent = node.content.content.filter((c) => c.content.content.length);
           if (filteredContent.length > 0) {
             const newFragment = Fragment.fromArray(filteredContent);
@@ -101,7 +96,6 @@ function handleGlobalAction(action) {
             hasChanges = true;
           }
         } else if (action === 'keep-upstream' && node.type.name === 'loc_deleted') {
-          // Keep upstream (deleted) content
           const filteredContent = node.content.content.filter((c) => c.content.content.length);
           if (filteredContent.length > 0) {
             const newFragment = Fragment.fromArray(filteredContent);
@@ -113,7 +107,6 @@ function handleGlobalAction(action) {
             hasChanges = true;
           }
         } else if (action === 'keep-both') {
-          // Keep both - extract content from loc node
           const filteredContent = node.content.content.filter((c) => c.content.content.length);
           if (filteredContent.length > 0) {
             const newFragment = Fragment.fromArray(filteredContent);
@@ -124,12 +117,8 @@ function handleGlobalAction(action) {
             tr = tr.delete(pos, pos + node.nodeSize);
             hasChanges = true;
           }
-        } else if (action === 'keep-local' && node.type.name === 'loc_deleted') {
-          // Remove upstream (deleted) content when keeping local
-          tr = tr.delete(pos, pos + node.nodeSize);
-          hasChanges = true;
-        } else if (action === 'keep-upstream' && node.type.name === 'loc_added') {
-          // Remove local (added) content when keeping upstream
+        } else if ((action === 'keep-local' && node.type.name === 'loc_deleted')
+          || (action === 'keep-upstream' && node.type.name === 'loc_added')) {
           tr = tr.delete(pos, pos + node.nodeSize);
           hasChanges = true;
         }
@@ -144,7 +133,6 @@ function handleGlobalAction(action) {
     }
   });
 
-  // Hide dialog after processing
   hideGlobalDialog();
 }
 
@@ -155,7 +143,6 @@ function createGlobalOverlay() {
   const actionsContainer = document.createElement('div');
   actionsContainer.className = 'da-regional-edits-actions';
 
-  // Create Keep All Local composite button
   const localButton = document.createElement('div');
   localButton.className = 'loc-composite-btn loc-composite-btn-base is-local';
 
@@ -169,7 +156,6 @@ function createGlobalOverlay() {
   localConfirm.setAttribute('aria-label', 'Keep All Local');
   localConfirm.addEventListener('click', () => handleGlobalAction('keep-local'));
 
-  // Add tooltip for local button
   const localTooltip = document.createElement('span');
   localTooltip.className = 'loc-tooltip';
   localTooltip.textContent = 'Accept All Local';
@@ -178,7 +164,6 @@ function createGlobalOverlay() {
   localButton.appendChild(localLabel);
   localButton.appendChild(localConfirm);
 
-  // Create Keep All Upstream composite button
   const upstreamButton = document.createElement('div');
   upstreamButton.className = 'loc-composite-btn loc-composite-btn-base is-upstream';
 
@@ -192,7 +177,6 @@ function createGlobalOverlay() {
   upstreamConfirm.setAttribute('aria-label', 'Keep All Upstream');
   upstreamConfirm.addEventListener('click', () => handleGlobalAction('keep-upstream'));
 
-  // Add tooltip for upstream button
   const upstreamTooltip = document.createElement('span');
   upstreamTooltip.className = 'loc-tooltip';
   upstreamTooltip.textContent = 'Accept All Upstream';
@@ -233,7 +217,6 @@ function showGlobalDialog(view) {
     globalDialog = createGlobalOverlay();
   }
 
-  // Insert dialog before the ProseMirror element
   const proseMirrorElement = proseMirrorContainer.querySelector('.ProseMirror');
   if (proseMirrorElement) {
     proseMirrorContainer.insertBefore(globalDialog, proseMirrorElement);
@@ -242,24 +225,118 @@ function showGlobalDialog(view) {
   }
 }
 
+/**
+ * Recursively searches for the first text node and returns its text value.
+ * @param {Object} content - The ProseMirror node to search.
+ * @returns {string|undefined} The first text found, or undefined if none exists.
+ */
+function getFirstText(content) {
+  if (!content) return undefined;
+
+  if (content.type?.name === 'text' && typeof content.text === 'string') {
+    return content.text;
+  }
+
+  if (content.content?.content) {
+    for (let i = 0; i < content.content.content.length; i += 1) {
+      const child = content.content.content[i];
+      const found = getFirstText(child);
+      if (found !== undefined) return found;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Check if two nodes have matching content structure
+ */
+function hasMatchingContent(nodeA, nodeB) {
+  const contentA = nodeA.content.content;
+  const contentB = nodeB.content.content;
+
+  if (contentA.length !== contentB.length) {
+    return false;
+  }
+
+  for (let i = 0; i < contentA.length; i += 1) {
+    if (contentA[i].type.name !== contentB[i].type.name) {
+      return false;
+    }
+  }
+
+  if (contentA[1].type.name === 'table' && contentB[1].type.name === 'table') {
+    const blockA = getFirstText(contentA[1])?.split(' ')[0];
+    const blockB = getFirstText(contentB[1])?.split(' ')[0];
+    return blockA === blockB;
+  }
+
+  return true;
+}
+
+/**
+ * Insert paragraph spacing between loc nodes/interfaces where needed
+ */
+function insertLocSpacing(view) {
+  const { doc } = view.state;
+  let { tr } = view.state;
+  let hasChanges = false;
+
+  const insertions = [];
+
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'loc_deleted' && node.type.name !== 'loc_added') return;
+
+    const resolvedPos = doc.resolve(pos);
+    const { parent } = resolvedPos;
+    const indexInParent = resolvedPos.index();
+
+    const nextSibling = indexInParent < parent.childCount - 1
+      ? parent.child(indexInParent + 1)
+      : null;
+    const isTabbed = nextSibling
+      && (nextSibling.type.name === 'loc_deleted' || nextSibling.type.name === 'loc_added')
+      && node.type.name !== nextSibling.type.name
+      && hasMatchingContent(node, nextSibling);
+
+    const endPos = isTabbed
+      ? pos + node.nodeSize + nextSibling.nodeSize
+      : pos + node.nodeSize;
+    const endIndex = isTabbed ? indexInParent + 1 : indexInParent;
+
+    if (endIndex + 1 < parent.childCount) {
+      const nextNode = parent.child(endIndex + 1);
+      if (nextNode.type.name === 'loc_deleted' || nextNode.type.name === 'loc_added') {
+        insertions.push(endPos);
+      }
+    }
+  });
+
+  insertions.reverse().forEach((pos) => {
+    const emptyParagraph = view.state.schema.nodes.paragraph.create();
+    tr = tr.insert(pos, emptyParagraph);
+    hasChanges = true;
+  });
+
+  if (hasChanges) {
+    view.dispatch(tr);
+  }
+}
+
 function checkForLocNodes(view) {
-  // Check if there are any loc_deleted or loc_added nodes in the document
   const { doc } = view.state;
   let hasLocNodes = false;
 
   doc.descendants((node) => {
     if (node.type.name === 'loc_deleted' || node.type.name === 'loc_added') {
       hasLocNodes = true;
-      return false; // Stop traversing
+      return false;
     }
     return true;
   });
 
   if (hasLocNodes) {
-    // Load LOC CSS if not already loaded
     loadLocCss();
-
-    // Insert spacing between loc nodes/interfaces if needed
     insertLocSpacing(view);
     showGlobalDialog(view);
   } else {
@@ -269,34 +346,27 @@ function checkForLocNodes(view) {
   return hasLocNodes;
 }
 
-// Top tab UI removed in favor of split buttons
-
 function fragmentToHTML(fragment) {
   if (!fragment) return '';
 
-  // If it's already a string, return it
   if (typeof fragment === 'string') return fragment;
 
-  // Create a temporary container to get the HTML
   const tempDiv = document.createElement('div');
   tempDiv.appendChild(fragment.cloneNode(true));
   return tempDiv.innerHTML;
 }
 
-// Utility function to trim empty paragraphs from start and end of HTML string
 function trimEmptyParagraphs(html) {
   if (!html || typeof html !== 'string') return html;
 
   let trimmed = html;
 
-  // Remove empty paragraphs from the beginning
   while (trimmed.startsWith('<p></p>')) {
-    trimmed = trimmed.substring(7); // Remove '<p></p>' (7 characters)
+    trimmed = trimmed.substring(7);
   }
 
-  // Remove empty paragraphs from the end
   while (trimmed.endsWith('<p></p>')) {
-    trimmed = trimmed.substring(0, trimmed.length - 7); // Remove '<p></p>' from end
+    trimmed = trimmed.substring(0, trimmed.length - 7);
   }
 
   return trimmed;
@@ -304,11 +374,9 @@ function trimEmptyParagraphs(html) {
 
 function generateDiff(deletedContent, addedContent) {
   try {
-    // Convert content to HTML strings
     const deletedHTMLString = fragmentToHTML(deletedContent);
     const addedHTMLString = fragmentToHTML(addedContent);
 
-    // Check if there's any content to compare
     const tempDelDiv = document.createElement('div');
     tempDelDiv.innerHTML = deletedHTMLString;
     const deletedText = tempDelDiv.textContent || tempDelDiv.innerText || '';
@@ -321,10 +389,8 @@ function generateDiff(deletedContent, addedContent) {
       return '<p style="text-align: center; color: #666; margin: 20px 0;">No content to compare</p>';
     }
 
-    // Generate HTML-aware diff that preserves formatting
     const rawDiffResult = htmlDiff(deletedHTMLString, addedHTMLString);
 
-    // Trim empty paragraphs from start and end
     const diffResult = trimEmptyParagraphs(rawDiffResult);
 
     if (diffResult && diffResult.trim()) {
@@ -346,7 +412,6 @@ function createTabContent(deletedContent, addedContent) {
   const addedTab = document.createElement('div');
   addedTab.className = 'loc-tab-pane active';
   addedTab.dataset.tab = 'added';
-  // Clone the content since DocumentFragments can only be in one place
   if (addedContent) {
     addedTab.appendChild(addedContent.cloneNode(true));
   }
@@ -354,7 +419,6 @@ function createTabContent(deletedContent, addedContent) {
   const deletedTab = document.createElement('div');
   deletedTab.className = 'loc-tab-pane';
   deletedTab.dataset.tab = 'deleted';
-  // Clone the content since DocumentFragments can only be in one place
   if (deletedContent) {
     deletedTab.appendChild(deletedContent.cloneNode(true));
   }
@@ -363,7 +427,6 @@ function createTabContent(deletedContent, addedContent) {
   diffTab.className = 'loc-tab-pane';
   diffTab.dataset.tab = 'diff';
 
-  // Generate diff synchronously using our simple implementation
   const diffHTML = generateDiff(deletedContent, addedContent);
   diffTab.innerHTML = diffHTML;
 
@@ -373,8 +436,6 @@ function createTabContent(deletedContent, addedContent) {
 
   return container;
 }
-
-// Old generic button utility no longer needed
 
 function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
   const actionsContainer = document.createElement('div');
@@ -399,7 +460,6 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab
     confirmBtn.setAttribute('aria-label', `Keep ${label}`);
     confirmBtn.addEventListener('click', keepHandler);
 
-    // Tooltip element
     if (tooltip) {
       const tip = document.createElement('span');
       tip.className = 'loc-tooltip';
@@ -456,34 +516,28 @@ function getLangOverlay(upstream) {
   overlay.className = 'loc-lang-overlay loc-floating-overlay';
   overlay.setAttribute('loc-temp-dom', '');
 
-  // Create 3-part composite button
   const compositeBtn = document.createElement('div');
   compositeBtn.className = `loc-composite-btn-3part loc-composite-btn-base loc-sticky-buttons ${upstream ? 'is-upstream' : 'is-local'}`;
 
-  // Label part (no click handling)
   const labelBtn = document.createElement('span');
   labelBtn.className = 'loc-composite-label loc-composite-btn-base-element';
   labelBtn.textContent = upstream ? LOC.UPSTREAM.TEXT : LOC.LOCAL.TEXT;
 
-  // Accept part (checkmark)
   const acceptBtn = document.createElement('button');
   acceptBtn.className = 'loc-composite-accept loc-composite-btn-base-element';
   acceptBtn.type = 'button';
   acceptBtn.setAttribute('aria-label', `Accept ${upstream ? 'Upstream' : 'Local'}`);
 
-  // Add tooltip for accept button
   const acceptTooltip = document.createElement('span');
   acceptTooltip.className = 'loc-tooltip';
   acceptTooltip.textContent = `Accept ${upstream ? 'Upstream' : 'Local'}`;
   acceptBtn.appendChild(acceptTooltip);
 
-  // Delete part (X)
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'loc-composite-delete loc-composite-btn-base-element';
   deleteBtn.type = 'button';
   deleteBtn.setAttribute('aria-label', `Delete ${upstream ? 'Upstream' : 'Local'}`);
 
-  // Add tooltip for delete button
   const deleteTooltip = document.createElement('span');
   deleteTooltip.className = 'loc-tooltip';
   deleteTooltip.textContent = `Delete ${upstream ? 'Upstream' : 'Local'}`;
@@ -518,109 +572,7 @@ function deleteLocContent(view, pos, node) {
   return transaction;
 }
 
-/**
- * Recursively searches for the first text node and returns its text value.
- * @param {Object} content - The ProseMirror node to search.
- * @returns {string|undefined} The first text found, or undefined if none exists.
- */
-function getFirstText(content) {
-  if (!content) return undefined;
-
-  if (content.type?.name === 'text' && typeof content.text === 'string') {
-    return content.text;
-  }
-
-  if (content.content?.content) {
-    for (let i = 0; i < content.content.content.length; i += 1) {
-      const child = content.content.content[i];
-      const found = getFirstText(child);
-      if (found !== undefined) return found;
-    }
-  }
-
-  return undefined;
-}
-
-// Track nodes that have been used in tabbed interfaces
 const usedNodes = new WeakSet();
-
-/**
- * Insert paragraph spacing between loc nodes/interfaces where needed
- */
-function insertLocSpacing(view) {
-  const { doc } = view.state;
-  let { tr } = view.state;
-  let hasChanges = false;
-
-  // Find loc node pairs that need spacing - process in reverse to maintain positions
-  const insertions = [];
-
-  doc.descendants((node, pos) => {
-    if (node.type.name !== 'loc_deleted' && node.type.name !== 'loc_added') return;
-
-    const resolvedPos = doc.resolve(pos);
-    const { parent } = resolvedPos;
-    const indexInParent = resolvedPos.index();
-
-    // Determine if this is part of a tabbed interface or single
-    const nextSibling = indexInParent < parent.childCount - 1 ? parent.child(indexInParent + 1) : null;
-    const isTabbed = nextSibling &&
-                     (nextSibling.type.name === 'loc_deleted' || nextSibling.type.name === 'loc_added') &&
-                     node.type.name !== nextSibling.type.name &&
-                     hasMatchingContent(node, nextSibling);
-
-    // Find the end position of this interface (single node or tabbed pair)
-    const endPos = isTabbed ? pos + node.nodeSize + nextSibling.nodeSize : pos + node.nodeSize;
-    const endIndex = isTabbed ? indexInParent + 1 : indexInParent;
-
-    // Check if there's another loc interface immediately after
-    if (endIndex + 1 < parent.childCount) {
-      const nextNode = parent.child(endIndex + 1);
-      if (nextNode.type.name === 'loc_deleted' || nextNode.type.name === 'loc_added') {
-        insertions.push(endPos);
-      }
-    }
-  });
-
-  // Insert paragraphs at collected positions (reverse order to maintain positions)
-  insertions.reverse().forEach((pos) => {
-    const emptyParagraph = view.state.schema.nodes.paragraph.create();
-    tr = tr.insert(pos, emptyParagraph);
-    hasChanges = true;
-  });
-
-  if (hasChanges) {
-    view.dispatch(tr);
-  }
-}
-
-/**
- * Check if two nodes have matching content structure
- */
-function hasMatchingContent(nodeA, nodeB) {
-  const contentA = nodeA.content.content;
-  const contentB = nodeB.content.content;
-
-  if (contentA.length !== contentB.length) {
-    return false;
-  }
-
-  // Check that each child node has the same type
-  for (let i = 0; i < contentA.length; i += 1) {
-    if (contentA[i].type.name !== contentB[i].type.name) {
-      return false;
-    }
-  }
-
-  // If they are blocks, they must be the same block type
-  if (contentA[1].type.name === 'table' && contentB[1].type.name === 'table') {
-    const blockA = getFirstText(contentA[1])?.split(' ')[0];
-    const blockB = getFirstText(contentB[1])?.split(' ')[0];
-    return blockA === blockB;
-  }
-
-  return true;
-}
 
 export function addActiveView(view) {
   activeViews.add(view);
@@ -655,21 +607,18 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         return;
       }
 
-      // Check if this node can form a pair with the next sibling
       let canFormPair = false;
       let nextSibling = null;
 
       if (indexInParent < parent.childCount - 1) {
         nextSibling = parent.child(indexInParent + 1);
 
-        // Check if nodes are complementary loc types
         if (
           (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
           && (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
           && thisNode.type.name !== nextSibling.type.name
           && !usedNodes.has(nextSibling)
         ) {
-          // Check if content structure matches
           if (hasMatchingContent(thisNode, nextSibling)) {
             canFormPair = true;
           }
@@ -677,7 +626,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       }
 
       if (canFormPair) {
-        // Mark both nodes as used
         usedNodes.add(thisNode);
         usedNodes.add(nextSibling);
         this.renderTabbedInterface(thisNode, view, pos, nextSibling);
@@ -687,13 +635,11 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     renderTabbedInterface(nodeA, view, posA, nodeB) {
-      // Ensure LOC CSS is loaded
       loadLocCss();
 
       this.dom = document.createElement('div');
       this.dom.className = 'loc-tabbed-container';
 
-      // Determine which is deleted and which is added
       let deletedNode;
       let addedNode;
       let deletedPos;
@@ -716,10 +662,11 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
       const tabContent = createTabContent(deletedContent, addedContent);
 
-      // Overlay tint that reflects the currently visible variant
       const colorOverlay = document.createElement('div');
       colorOverlay.className = 'loc-tabbed-color-overlay';
-      colorOverlay.style.backgroundColor = LOC.LOCAL.COVER_BG; // default to Local
+      colorOverlay.style.backgroundColor = LOC.LOCAL.COVER_BG;
+
+      let actions;
 
       const setActiveTab = (targetTab) => {
         const panes = tabContent.querySelectorAll('.loc-tab-pane');
@@ -733,11 +680,10 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         } else if (targetTab === 'deleted') {
           colorOverlay.style.display = 'block';
           colorOverlay.style.backgroundColor = LOC.UPSTREAM.COVER_BG;
-        } else { // diff
+        } else {
           colorOverlay.style.backgroundColor = LOC.DIFF.COVER_BG;
         }
 
-        // Toggle active state on composite buttons to reflect selected view
         if (actions) {
           const allButtons = actions.querySelectorAll('.loc-composite-btn');
           allButtons.forEach((btn) => btn.classList.remove('is-active'));
@@ -751,7 +697,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         }
       };
 
-      const actions = createTabbedActions(
+      actions = createTabbedActions(
         () => this.handleKeepDeleted(deletedNode, view, deletedPos, addedNode, addedPos),
         () => this.handleKeepAdded(addedNode, view, addedPos, deletedNode, deletedPos),
         () => this.handleKeepBoth(deletedNode, view, deletedPos, addedNode, addedPos),
@@ -760,15 +706,12 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
       this.dom.appendChild(tabContent);
       tabContent.appendChild(colorOverlay);
-      // Place actions outside content for proper absolute positioning
       this.dom.appendChild(actions);
 
-      // Start in Local view
       setActiveTab('added');
     }
 
     renderSingleNode(node, view, pos, upstream) {
-      // Ensure LOC CSS is loaded
       loadLocCss();
 
       this.dom = document.createElement(node.type.name === 'loc_deleted' ? 'da-loc-deleted' : 'da-loc-added');
@@ -794,52 +737,42 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
     handleKeepDeleted(deletedNode, view, deletedPos, addedNode, addedPos) {
       // Keep deleted content and delete added content
-      // Extract content from deleted node without mutating the original
       const filteredContent = deletedNode.content.content.filter((c) => c.content.content.length);
       const newFragment = Fragment.fromArray(filteredContent);
       const newSlice = new Slice(newFragment, 0, 0);
 
-      // Calculate the range to replace (both nodes)
       const startPos = Math.min(deletedPos, addedPos);
       const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
 
-      // Replace the entire range with just the deleted content
       const tr = view.state.tr.replace(startPos, endPos, newSlice);
       view.dispatch(tr);
     }
 
     handleKeepAdded(addedNode, view, addedPos, deletedNode, deletedPos) {
       // Keep added content and delete deleted content
-      // Extract content from added node without mutating the original
       const filteredContent = addedNode.content.content.filter((c) => c.content.content.length);
       const newFragment = Fragment.fromArray(filteredContent);
       const newSlice = new Slice(newFragment, 0, 0);
 
-      // Calculate the range to replace (both nodes)
       const startPos = Math.min(deletedPos, addedPos);
       const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
 
-      // Replace the entire range with just the added content
       const tr = view.state.tr.replace(startPos, endPos, newSlice);
       view.dispatch(tr);
     }
 
     handleKeepBoth(deletedNode, view, deletedPos, addedNode, addedPos) {
       // Keep both nodes by combining their content
-      // Extract content from both nodes
       const deletedContent = deletedNode.content.content.filter((c) => c.content.content.length);
       const addedContent = addedNode.content.content.filter((c) => c.content.content.length);
 
-      // Combine both contents
       const combinedContent = [...deletedContent, ...addedContent];
       const newFragment = Fragment.fromArray(combinedContent);
       const newSlice = new Slice(newFragment, 0, 0);
 
-      // Calculate the range to replace (both nodes)
       const startPos = Math.min(deletedPos, addedPos);
       const endPos = Math.max(deletedPos + deletedNode.nodeSize, addedPos + addedNode.nodeSize);
 
-      // Replace the entire range with the combined content
       const tr = view.state.tr.replace(startPos, endPos, newSlice);
       view.dispatch(tr);
     }
