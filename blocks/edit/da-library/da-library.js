@@ -283,8 +283,7 @@ class DaLibrary extends LitElement {
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 
-  handleBlockPreviewOpen(e, path) {
-    e.preventDefault();
+  handleBlockPreviewOpen(path) {
     this._blockPreviewPath = path;
   }
 
@@ -383,9 +382,9 @@ class DaLibrary extends LitElement {
       <li class="da-library-type-group">
         <div class="da-library-type-group-title">
           <span class="name">${group.name}</span>
-            <a href=${group.path} target="_blank" @click=${(e) => this.handleBlockPreviewOpen(e, group.path)}>
+            <button class= "preview" href=${group.path} target="_blank" @click=${() => this.handleBlockPreviewOpen(group.path)}>
               <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
-            </a>
+            </button>
           <button @click=${this.handleGroupOpen}>
             <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
           </button>
@@ -431,7 +430,7 @@ class DaLibrary extends LitElement {
   renderTemplateItem(item, icon = false) {
     return html`
       <li class="da-library-type-item">
-        <button class="da-library-type-item-btn ${icon ? 'templates' : ''}">
+        <button class="da-library-type-item-btn template-item ${icon ? 'templates' : ''}">
           <div class="da-library-type-item-detail">
             <span>${item.key}</span>
             <a class="template-link" href=${item.value} target="_blank">

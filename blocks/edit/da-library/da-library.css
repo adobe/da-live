@@ -295,6 +295,10 @@ ul {
   flex: 1 1 0%;
 }
 
+.da-library-type-item-detail span:hover {
+  color: #000;
+}
+
 .da-library-type-item-detail .template-link {
   position: relative;
   top: 1px;
@@ -316,10 +320,8 @@ ul {
   z-index: 5;
 }
 
-.da-library-type-group-title button:hover,
-.da-library-type-group-title a:hover {
+.da-library-type-group-title button:hover {
   color: #167AF3;
-  z-index: 5;
 }
 
 .da-library-type-item-btn:hover,
@@ -345,7 +347,7 @@ ul {
   margin-left: 18px;
 }
 
-.da-library-type-group-title:hover button {
+.da-library-type-group-title:hover button:not(.preview) {
   margin-right: 14px;
 }
 
@@ -381,11 +383,6 @@ ul {
 
 .da-library-type-group-title .icon:not(.preview) {
   transition: transform .2s ease-in-out;
-}
-
-.da-library-type-group-title a {
-  color: unset;
-  padding: 0px 4px;
 }
 
 .da-library-type-group-title button {
@@ -585,11 +582,21 @@ ul {
 }
 
 .da-library-type-item-btn:hover,
-.da-library-type-item-btn:focus {
+.da-library-type-item-btn:focus
+{
   background-color: #E4F0FF;
   color: #167AF3;
   z-index: 5;
 }
+
+.da-library-type-item-btn.template-item:hover {
+  color: #000;
+}
+
+.da-library-type-item-btn.template-item .icon:hover {
+  color: #167AF3;
+}
+
 
 .da-library-search-section:not(:last-child) {
   border-bottom: 1px solid #D1D1D1;
