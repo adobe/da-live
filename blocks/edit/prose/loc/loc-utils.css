@@ -1,7 +1,7 @@
 /* LOC (Local/Upstream Content) Utilities Styles */
 
 /* Custom elements for LOC nodes */
-da-loc-deleted, da-loc-added {
+da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   display: block;
   position: relative;
 }
