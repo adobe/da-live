@@ -6,6 +6,18 @@ import {
 import getSheet from '../../../shared/sheet.js';
 import { htmlDiff } from './htmldiff.js';
 
+/**
+ * Creates a tooltip element with the given text
+ * @param {string} text - Tooltip text
+ * @returns {HTMLElement} Tooltip element
+ */
+function createTooltip(text) {
+  const tooltip = document.createElement('span');
+  tooltip.className = 'loc-tooltip';
+  tooltip.textContent = text;
+  return tooltip;
+}
+
 const LOC = {
   UPSTREAM: {
     BG: 'rgba(70, 130, 180, 0.2)',
@@ -27,7 +39,6 @@ const LOC = {
 
 let globalDialog = null;
 const activeViews = new Set();
-let usedNodes = new WeakSet();
 
 let locCssLoading = false;
 async function loadLocCss() {
@@ -55,7 +66,7 @@ function getAllLocNodes(view) {
   const locNodes = [];
 
   doc.descendants((node, pos) => {
-    if (node.type.name === 'loc_deleted' || node.type.name === 'loc_added') {
+    if (node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added') {
       locNodes.push({ node, pos });
     }
   });
@@ -66,7 +77,7 @@ function getAllLocNodes(view) {
 }
 
 function hideGlobalDialog() {
-  if (globalDialog && globalDialog.parentNode) {
+  if (globalDialog?.parentNode) {
     const proseMirrorContainer = globalDialog.parentNode;
     proseMirrorContainer.classList.remove('has-regional-edits');
     globalDialog.classList.remove('show');
@@ -85,41 +96,24 @@ function handleGlobalAction(action) {
 
     for (const { node, pos } of locNodes) {
       try {
-        if (action === 'keep-local' && node.type.name === 'loc_added') {
-          const filteredContent = node.content.content.filter((c) => c.content.content.length);
+        const shouldKeepNode = (action === 'keep-local' && node.type.name === 'loc_added')
+          || (action === 'keep-upstream' && node.type.name === 'loc_deleted')
+          || (action === 'keep-both');
+
+        const shouldDeleteNode = (action === 'keep-local' && node.type.name === 'loc_deleted')
+          || (action === 'keep-upstream' && node.type.name === 'loc_added');
+
+        if (shouldKeepNode) {
+          const filteredContent = node.content.content.filter((c) => c.content?.content?.length);
           if (filteredContent.length > 0) {
             const newFragment = Fragment.fromArray(filteredContent);
             const newSlice = new Slice(newFragment, 0, 0);
             tr = tr.replace(pos, pos + node.nodeSize, newSlice);
-            hasChanges = true;
           } else {
             tr = tr.delete(pos, pos + node.nodeSize);
-            hasChanges = true;
           }
-        } else if (action === 'keep-upstream' && node.type.name === 'loc_deleted') {
-          const filteredContent = node.content.content.filter((c) => c.content.content.length);
-          if (filteredContent.length > 0) {
-            const newFragment = Fragment.fromArray(filteredContent);
-            const newSlice = new Slice(newFragment, 0, 0);
-            tr = tr.replace(pos, pos + node.nodeSize, newSlice);
-            hasChanges = true;
-          } else {
-            tr = tr.delete(pos, pos + node.nodeSize);
-            hasChanges = true;
-          }
-        } else if (action === 'keep-both') {
-          const filteredContent = node.content.content.filter((c) => c.content.content.length);
-          if (filteredContent.length > 0) {
-            const newFragment = Fragment.fromArray(filteredContent);
-            const newSlice = new Slice(newFragment, 0, 0);
-            tr = tr.replace(pos, pos + node.nodeSize, newSlice);
-            hasChanges = true;
-          } else {
-            tr = tr.delete(pos, pos + node.nodeSize);
-            hasChanges = true;
-          }
-        } else if ((action === 'keep-local' && node.type.name === 'loc_deleted')
-          || (action === 'keep-upstream' && node.type.name === 'loc_added')) {
+          hasChanges = true;
+        } else if (shouldDeleteNode) {
           tr = tr.delete(pos, pos + node.nodeSize);
           hasChanges = true;
         }
@@ -157,10 +151,7 @@ function createGlobalOverlay() {
   localConfirm.setAttribute('aria-label', 'Keep All Local');
   localConfirm.addEventListener('click', () => handleGlobalAction('keep-local'));
 
-  const localTooltip = document.createElement('span');
-  localTooltip.className = 'loc-tooltip';
-  localTooltip.textContent = 'Accept All Local';
-  localConfirm.appendChild(localTooltip);
+  localConfirm.appendChild(createTooltip('Accept All Local'));
 
   localButton.appendChild(localLabel);
   localButton.appendChild(localConfirm);
@@ -178,10 +169,7 @@ function createGlobalOverlay() {
   upstreamConfirm.setAttribute('aria-label', 'Keep All Upstream');
   upstreamConfirm.addEventListener('click', () => handleGlobalAction('keep-upstream'));
 
-  const upstreamTooltip = document.createElement('span');
-  upstreamTooltip.className = 'loc-tooltip';
-  upstreamTooltip.textContent = 'Accept All Upstream';
-  upstreamConfirm.appendChild(upstreamTooltip);
+  upstreamConfirm.appendChild(createTooltip('Accept All Upstream'));
 
   upstreamButton.appendChild(upstreamLabel);
   upstreamButton.appendChild(upstreamConfirm);
@@ -203,7 +191,7 @@ function findProseMirrorContainer(view) {
 }
 
 function showGlobalDialog(view) {
-  if (globalDialog && globalDialog.parentNode) {
+  if (globalDialog?.parentNode) {
     return; // Dialog already shown
   }
 
@@ -278,16 +266,13 @@ function hasMatchingContent(nodeA, nodeB) {
 }
 
 function checkForLocNodes(view) {
-  // Reset usedNodes to ensure clean state for each check
-  usedNodes = new WeakSet();
-
   const { doc } = view.state;
   let hasLocNodes = false;
 
   doc.descendants((node) => {
-    if (node.type.name === 'loc_deleted' || node.type.name === 'loc_added') {
+    if (node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added') {
       hasLocNodes = true;
-      return false;
+      return false; // Stop traversing once we find one
     }
     return true;
   });
@@ -418,10 +403,7 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab
     switchBtn.addEventListener('click', () => onSwitchTab(id));
 
     if (switchTooltip) {
-      const switchTip = document.createElement('span');
-      switchTip.className = 'loc-tooltip';
-      switchTip.textContent = switchTooltip;
-      switchBtn.appendChild(switchTip);
+      switchBtn.appendChild(createTooltip(switchTooltip));
     }
 
     const confirmBtn = document.createElement('button');
@@ -431,10 +413,7 @@ function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab
     confirmBtn.addEventListener('click', keepHandler);
 
     if (tooltip) {
-      const tip = document.createElement('span');
-      tip.className = 'loc-tooltip';
-      tip.textContent = tooltip;
-      confirmBtn.appendChild(tip);
+      confirmBtn.appendChild(createTooltip(tooltip));
     }
 
     wrapper.appendChild(switchBtn);
@@ -501,20 +480,14 @@ function getLangOverlay(upstream) {
   acceptBtn.type = 'button';
   acceptBtn.setAttribute('aria-label', `Accept ${upstream ? 'Upstream' : 'Local'}`);
 
-  const acceptTooltip = document.createElement('span');
-  acceptTooltip.className = 'loc-tooltip';
-  acceptTooltip.textContent = `Accept ${upstream ? 'Upstream' : 'Local'}`;
-  acceptBtn.appendChild(acceptTooltip);
+  acceptBtn.appendChild(createTooltip(`Accept ${upstream ? 'Upstream' : 'Local'}`));
 
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'loc-composite-delete loc-composite-btn-base-element';
   deleteBtn.type = 'button';
   deleteBtn.setAttribute('aria-label', `Delete ${upstream ? 'Upstream' : 'Local'}`);
 
-  const deleteTooltip = document.createElement('span');
-  deleteTooltip.className = 'loc-tooltip';
-  deleteTooltip.textContent = `Delete ${upstream ? 'Upstream' : 'Local'}`;
-  deleteBtn.appendChild(deleteTooltip);
+  deleteBtn.appendChild(createTooltip(`Delete ${upstream ? 'Upstream' : 'Local'}`));
 
   compositeBtn.appendChild(labelBtn);
   compositeBtn.appendChild(acceptBtn);
@@ -546,15 +519,17 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const indexInParent = resolvedPos.index();
       const thisNode = parent.child(indexInParent);
 
-      // Skip if this node has already been used
-      if (usedNodes.has(thisNode)) {
-        this.dom = document.createElement('span');
-        this.dom.style.display = 'none';
-        this.dom.style.position = 'absolute';
-        this.dom.style.width = '0';
-        this.dom.style.height = '0';
-        this.dom.style.overflow = 'hidden';
-        return;
+      // Only process the first node of a potential pair
+      // If this is the second node, render as invisible to avoid duplication
+      if (indexInParent > 0) {
+        const prevSibling = parent.child(indexInParent - 1);
+
+        if (this.canFormLocPair(prevSibling, thisNode)) {
+          // This is the second node of a pair - render invisible
+          this.dom = document.createElement('span');
+          this.dom.style.display = 'none';
+          return;
+        }
       }
 
       let canFormPair = false;
@@ -563,21 +538,12 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       if (indexInParent < parent.childCount - 1) {
         nextSibling = parent.child(indexInParent + 1);
 
-        if (
-          (thisNode.type.name === 'loc_deleted' || thisNode.type.name === 'loc_added')
-          && (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
-          && thisNode.type.name !== nextSibling.type.name
-          && !usedNodes.has(nextSibling)
-        ) {
-          if (hasMatchingContent(thisNode, nextSibling)) {
-            canFormPair = true;
-          }
+        if (this.canFormLocPair(thisNode, nextSibling)) {
+          canFormPair = true;
         }
       }
 
       if (canFormPair) {
-        usedNodes.add(thisNode);
-        usedNodes.add(nextSibling);
         this.renderTabbedInterface(thisNode, view, pos, nextSibling);
       } else {
         this.renderSingleNode(node, view, pos, isUpstream);
@@ -589,6 +555,8 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
       this.dom = document.createElement('div');
       this.dom.className = 'loc-tabbed-container';
+      this.dom.contentEditable = 'false'; // Make non-editable
+      this.contentDOM = null; // Don't let ProseMirror manage content
 
       let deletedNode;
       let addedNode;
@@ -664,7 +632,13 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     renderSingleNode(node, view, pos, upstream) {
       loadLocCss();
 
-      this.dom = document.createElement(node.type.name === 'loc_deleted' ? 'da-loc-deleted' : 'da-loc-added');
+      // Use div instead of da-loc-* to avoid parseDOM feedback loop
+      this.dom = document.createElement('div');
+      this.dom.className = `loc-single-container ${node.type.name === 'loc_deleted' ? 'loc-deleted-view' : 'loc-added-view'}`;
+      // Add the da-loc-* class for CSS styling but avoid the tag name
+      this.dom.classList.add(node.type.name === 'loc_deleted' ? 'da-loc-deleted-style' : 'da-loc-added-style');
+      this.dom.contentEditable = 'false'; // Make non-editable
+      this.contentDOM = null; // Don't let ProseMirror manage content
       const serializer = DOMSerializer.fromSchema(this.schema);
       const nodeDOM = serializer.serializeFragment(node.content);
 
@@ -685,10 +659,78 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       coverDiv.appendChild(this.langOverlay);
     }
 
+    /**
+     * Validates if a position is valid
+     * @param {number|null|undefined} pos - Position to validate
+     * @returns {boolean} True if position is valid
+     */
+    isValidPosition(pos) {
+      return pos !== null && pos !== undefined;
+    }
+
+    /**
+     * Checks if a node is a LOC node (loc_deleted or loc_added)
+     * @param {Object} node - ProseMirror node to check
+     * @returns {boolean} True if node is a LOC node
+     */
+    isLocNode(node) {
+      return node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added';
+    }
+
+    /**
+     * Checks if two nodes can form a valid LOC pair
+     * @param {Object} nodeA - First node
+     * @param {Object} nodeB - Second node
+     * @returns {boolean} True if nodes can form a pair
+     */
+    canFormLocPair(nodeA, nodeB) {
+      return this.isLocNode(nodeA)
+        && this.isLocNode(nodeB)
+        && nodeA.type.name !== nodeB.type.name
+        && hasMatchingContent(nodeA, nodeB);
+    }
+
+    /**
+     * Creates and dispatches a transaction with filtered content
+     * @param {number} startPos - Start position
+     * @param {number} endPos - End position
+     * @param {Array} filteredContent - Filtered content array
+     */
+    dispatchContentTransaction(startPos, endPos, filteredContent) {
+      const { tr } = this.view.state;
+      let transaction = tr;
+
+      if (filteredContent.length > 0) {
+        const newFragment = Fragment.fromArray(filteredContent);
+        const newSlice = new Slice(newFragment, 1, 1);
+        transaction = transaction.replace(startPos, endPos, newSlice);
+      } else {
+        transaction = transaction.delete(startPos, endPos);
+      }
+
+      this.view.dispatch(transaction);
+    }
+
+    /**
+     * Gets the start and end positions for a LOC pair
+     * @param {Object} pair - LOC pair object with positions and nodes
+     * @returns {Object} Object with startPos and endPos
+     */
+    getPairRange(pair) {
+      const { deletedPos, addedPos, deletedNode, addedNode } = pair;
+      return {
+        startPos: Math.min(deletedPos, addedPos),
+        endPos: Math.max(
+          deletedPos + deletedNode.nodeSize,
+          addedPos + addedNode.nodeSize,
+        ),
+      };
+    }
+
     handleDeleteSingleNode() {
       try {
         const currentPos = this.getPos();
-        if (currentPos === null || currentPos === undefined) {
+        if (!this.isValidPosition(currentPos)) {
           // eslint-disable-next-line no-console
           console.warn('Could not get current position for single node delete');
           return;
@@ -700,7 +742,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         const indexInParent = resolvedPos.index();
         const currentNode = parent.child(indexInParent);
 
-        if (!currentNode || (currentNode.type.name !== 'loc_deleted' && currentNode.type.name !== 'loc_added')) {
+        if (!this.isLocNode(currentNode)) {
           // eslint-disable-next-line no-console
           console.warn('Current node is not a loc node');
           return;
@@ -730,7 +772,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     handleKeepSingleNode() {
       try {
         const currentPos = this.getPos();
-        if (currentPos === null || currentPos === undefined) {
+        if (!this.isValidPosition(currentPos)) {
           // eslint-disable-next-line no-console
           console.warn('Could not get current position for single node keep');
           return;
@@ -742,7 +784,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         const indexInParent = resolvedPos.index();
         const currentNode = parent.child(indexInParent);
 
-        if (!currentNode || (currentNode.type.name !== 'loc_deleted' && currentNode.type.name !== 'loc_added')) {
+        if (!this.isLocNode(currentNode)) {
           // eslint-disable-next-line no-console
           console.warn('Current node is not a loc node');
           return;
@@ -750,23 +792,11 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
         // Use the improved content filtering like the tabbed interface
         const filteredContent = this.filterNodeContent(currentNode);
-
-        if (filteredContent.length > 0) {
-          const newFragment = Fragment.fromArray(filteredContent);
-          const newSlice = new Slice(newFragment, 1, 1); // Use proper open/close values
-          const transaction = this.view.state.tr.replace(
-            currentPos,
-            currentPos + currentNode.nodeSize,
-            newSlice,
-          );
-          this.view.dispatch(transaction);
-        } else {
-          const transaction = this.view.state.tr.delete(
-            currentPos,
-            currentPos + currentNode.nodeSize,
-          );
-          this.view.dispatch(transaction);
-        }
+        this.dispatchContentTransaction(
+          currentPos,
+          currentPos + currentNode.nodeSize,
+          filteredContent,
+        );
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('Error keeping single loc node:', error);
@@ -781,7 +811,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     getCurrentLocNodePair(view) {
       try {
         const currentPos = this.getPos();
-        if (currentPos === null || currentPos === undefined) {
+        if (!this.isValidPosition(currentPos)) {
           return null;
         }
 
@@ -792,7 +822,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
         // Get the node at current position
         const currentNode = parent.child(indexInParent);
-        if (!currentNode || (currentNode.type.name !== 'loc_deleted' && currentNode.type.name !== 'loc_added')) {
+        if (!this.isLocNode(currentNode)) {
           return null;
         }
 
@@ -800,11 +830,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         if (indexInParent < parent.childCount - 1) {
           const nextSibling = parent.child(indexInParent + 1);
 
-          if (
-            (nextSibling.type.name === 'loc_added' || nextSibling.type.name === 'loc_deleted')
-            && currentNode.type.name !== nextSibling.type.name
-            && hasMatchingContent(currentNode, nextSibling)
-          ) {
+          if (this.canFormLocPair(currentNode, nextSibling)) {
             // We have a valid pair
             if (currentNode.type.name === 'loc_deleted') {
               return {
@@ -837,20 +863,20 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
      * @returns {Array} Filtered content array
      */
     filterNodeContent(node) {
-      if (!node || !node.content || !node.content.content) {
+      if (!node?.content?.content) {
         return [];
       }
 
       return node.content.content.filter((child) => {
         // Handle text nodes
         if (child.type.name === 'text') {
-          return child.text && child.text.trim().length > 0;
+          return child.text?.trim().length > 0;
         }
 
         // Handle nodes with content
         if (child.content) {
           // Check if it has meaningful content
-          if (child.content.content && child.content.content.length > 0) {
+          if (child.content?.content?.length > 0) {
             return true;
           }
           // For nodes without nested content, check if they have any attributes or marks
@@ -871,34 +897,13 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         return;
       }
 
-      const {
-        deletedPos,
-        addedPos,
-        deletedNode: currentDeletedNode,
-        addedNode: currentAddedNode,
-      } = currentPair;
+      const { deletedNode: currentDeletedNode } = currentPair;
 
       // Keep deleted content and delete added content
       const filteredContent = this.filterNodeContent(currentDeletedNode);
+      const { startPos, endPos } = this.getPairRange(currentPair);
 
-      const startPos = Math.min(deletedPos, addedPos);
-      const endPos = Math.max(
-        deletedPos + currentDeletedNode.nodeSize,
-        addedPos + currentAddedNode.nodeSize,
-      );
-
-      const { tr } = this.view.state;
-      let transaction = tr;
-
-      if (filteredContent.length > 0) {
-        const newFragment = Fragment.fromArray(filteredContent);
-        const newSlice = new Slice(newFragment, 1, 1); // Use proper open/close values
-        transaction = transaction.replace(startPos, endPos, newSlice);
-      } else {
-        transaction = transaction.delete(startPos, endPos);
-      }
-
-      this.view.dispatch(transaction);
+      this.dispatchContentTransaction(startPos, endPos, filteredContent);
     }
 
     handleKeepAdded() {
@@ -910,34 +915,13 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         return;
       }
 
-      const {
-        deletedPos,
-        addedPos,
-        addedNode: currentAddedNode,
-        deletedNode: currentDeletedNode,
-      } = currentPair;
+      const { addedNode: currentAddedNode } = currentPair;
 
       // Keep added content and delete deleted content
       const filteredContent = this.filterNodeContent(currentAddedNode);
+      const { startPos, endPos } = this.getPairRange(currentPair);
 
-      const startPos = Math.min(deletedPos, addedPos);
-      const endPos = Math.max(
-        deletedPos + currentDeletedNode.nodeSize,
-        addedPos + currentAddedNode.nodeSize,
-      );
-
-      const { tr } = this.view.state;
-      let transaction = tr;
-
-      if (filteredContent.length > 0) {
-        const newFragment = Fragment.fromArray(filteredContent);
-        const newSlice = new Slice(newFragment, 1, 1); // Use proper open/close values
-        transaction = transaction.replace(startPos, endPos, newSlice);
-      } else {
-        transaction = transaction.delete(startPos, endPos);
-      }
-
-      this.view.dispatch(transaction);
+      this.dispatchContentTransaction(startPos, endPos, filteredContent);
     }
 
     handleKeepBoth() {
@@ -950,8 +934,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       }
 
       const {
-        deletedPos,
-        addedPos,
         deletedNode: currentDeletedNode,
         addedNode: currentAddedNode,
       } = currentPair;
@@ -959,27 +941,10 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       // Keep both nodes by combining their content
       const deletedContent = this.filterNodeContent(currentDeletedNode);
       const addedContent = this.filterNodeContent(currentAddedNode);
-
       const combinedContent = [...deletedContent, ...addedContent];
+      const { startPos, endPos } = this.getPairRange(currentPair);
 
-      const startPos = Math.min(deletedPos, addedPos);
-      const endPos = Math.max(
-        deletedPos + currentDeletedNode.nodeSize,
-        addedPos + currentAddedNode.nodeSize,
-      );
-
-      const { tr } = this.view.state;
-      let transaction = tr;
-
-      if (combinedContent.length > 0) {
-        const newFragment = Fragment.fromArray(combinedContent);
-        const newSlice = new Slice(newFragment, 1, 1); // Use proper open/close values
-        transaction = transaction.replace(startPos, endPos, newSlice);
-      } else {
-        transaction = transaction.delete(startPos, endPos);
-      }
-
-      this.view.dispatch(transaction);
+      this.dispatchContentTransaction(startPos, endPos, combinedContent);
     }
 
     applyKeepOperation(tr, node, pos) {
@@ -999,6 +964,25 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       this.langOverlay?.remove();
     }
 
-    stopEvent() { return true; }
+    stopEvent() {
+      // Prevent ProseMirror from handling events within LOC nodes
+      // This makes LOC content truly non-editable and atomic
+      return true;
+    }
+
+    selectNode() {
+      // Highlight the entire LOC node when selected
+      this.dom.classList.add('ProseMirror-selectednode');
+    }
+
+    deselectNode() {
+      // Remove highlight when deselected
+      this.dom.classList.remove('ProseMirror-selectednode');
+    }
+
+    ignoreMutation() {
+      // Ignore all mutations within LOC nodes since we manage them entirely
+      return true;
+    }
   };
 }

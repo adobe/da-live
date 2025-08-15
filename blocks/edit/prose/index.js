@@ -50,6 +50,7 @@ function dispatchTransaction(transaction) {
     hasChanged += 1;
     sendUpdates = true;
   }
+
   const newState = window.view.state.apply(transaction);
   window.view.updateState(newState);
 
