@@ -40,10 +40,12 @@ export const daFetch = async (url, opts = {}) => {
     if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
       // If the user has an access token, but are not permitted, redirect them to not found.
       if (accessToken) {
+        // eslint-disable-next-line no-console
         console.warn('You see the 404 page because you have no access to this page', url);
         window.location = `${window.location.origin}/not-found`;
         return { ok: false };
       }
+      // eslint-disable-next-line no-console
       console.warn('You need to sign in because you are not authorized to access this page', url);
       const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
       await loadIms();
