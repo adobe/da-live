@@ -161,12 +161,16 @@ const baseNodes = {
   loc_added: {
     group: 'block',
     content: 'block+',
+    atom: true,
+    isolating: true,
     parseDOM: parseLocDOM('da-loc-added'),
     toDOM: () => ['da-loc-added', { contenteditable: false }, 0],
   },
   loc_deleted: {
     group: 'block',
     content: 'block+',
+    atom: true,
+    isolating: true,
     parseDOM: parseLocDOM('da-loc-deleted'),
     toDOM: () => ['da-loc-deleted', { contenteditable: false }, 0],
   },
