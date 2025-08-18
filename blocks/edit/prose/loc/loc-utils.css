@@ -1,68 +1,10 @@
 /* LOC (Local/Upstream Content) Utilities Styles */
-
-/* Custom elements for LOC nodes */
 da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   display: block;
   position: relative;
 }
 
-/* Legacy dialog styles (may be deprecated) */
-.loc-dialog {
-  padding: 10px;
-  border-radius: 4px;
-  box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
-  background: rgb(255, 255, 255);
-  box-sizing: border-box;
-  grid-area: toolbar;
-  z-index: 1002;
-  display: flex;
-  flex-direction: column;
-  width: 140px;
-}
 
-.loc-dialog > span {
-  height: 40px;
-  text-align: center;
-}
-
-.loc-dialog > div {
-  display: flex;
-  justify-content: space-around;
-}
-
-.loc-dialog > div > span {
-  display: block;
-  width: 44px;
-  height: 44px;
-  text-indent: -1000px;
-  overflow: hidden;
-  border-radius: 2px;
-  margin-bottom: 6px;
-  background-color: rgb(239 239 239);
-  box-shadow: rgb(181 181 181) 0 0 5px 0;
-}
-
-.loc-keep {
-  width: 44px;
-  height: 44px;
-  background: url('/blocks/edit/img/Smock_CheckmarkCircleOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
-}
-
-.loc-keep:hover {
-  box-shadow: #008000 0 0 5px 0;
-}
-
-.loc-delete {
-  width: 44px;
-  height: 44px;
-  background: url('/blocks/edit/img/Smock_DeleteOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
-}
-
-.loc-delete:hover {
-  box-shadow: #f00 0 0 5px 0;
-}
-
-/* Color overlay for LOC content */
 .loc-color-overlay {
   position: absolute;
   top: 0;
@@ -72,19 +14,17 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   border-radius: 6px;
 }
 
-/* Language overlay for single LOC nodes */
 .loc-lang-overlay {
   z-index: 1001;
 }
 
-/* Tabbed interface styles for LOC nodes */
 .loc-tabbed-container {
   display: block;
   position: relative;
   margin: 10px 0;
   background: #fff;
-  box-shadow: 0 2px 4px rgba(0 0 0 / 10%);
-  z-index: 1000; /* ensure floating UI & tooltips layer above content */
+  box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+  z-index: 1000;
 }
 
 .loc-tab-nav {
@@ -95,8 +35,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   position: relative;
   min-height: 100px;
   background: #fff;
-
-  /* Prevent sticky actions from rendering outside the table bounds */
   overflow: clip;
 }
 
@@ -113,7 +51,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   height: 0;
 }
 
-/* Shared floating overlay container styles */
 .loc-floating-overlay {
   position: absolute;
   top: 0;
@@ -128,7 +65,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   pointer-events: none;
 }
 
-/* Actions float over bottom-right of the block */
 .loc-tabbed-actions {
   right: 0;
   bottom: 0;
@@ -137,7 +73,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   z-index: 2000;
 }
 
-/* Shared sticky button container styles */
 .loc-sticky-buttons {
   position: sticky;
   top: 0;
@@ -152,13 +87,12 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   justify-content: center;
 }
 
-/* Shared base styles for all composite buttons */
 .loc-composite-btn-base {
   display: inline-flex;
   border-radius: 8px;
-  overflow: visible; /* allow tooltip to escape the button bounds */
+  overflow: visible;
   height: 30px;
-  border: 2px solid transparent; /* reserve space to avoid layout shift */
+  border: 2px solid transparent;
 }
 
 .loc-composite-btn-base-element {
@@ -169,7 +103,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   color: #fff;
 }
 
-/* Composite split buttons: [label | check] */
 .loc-composite-btn .loc-composite-switch,
 .loc-composite-btn .loc-composite-confirm {
   padding: 6px 14px;
@@ -178,7 +111,7 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
 .loc-composite-btn .loc-composite-switch {
   border-right: none;
   border-radius: 6px 0 0 6px;
-  position: relative; /* anchor tooltip for label */
+  position: relative;
 }
 
 .loc-composite-btn .loc-composite-confirm {
@@ -194,10 +127,9 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   content: '✓';
   font-weight: 800;
   position: relative;
-  z-index: 1; /* ensure glyph above tooltip background */
+  z-index: 1;
 }
 
-/* Enhanced tooltip styling */
 .loc-tooltip {
   position: absolute;
   bottom: calc(100% + 6px);
@@ -210,22 +142,15 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   line-height: 1.2;
   padding: 6px 9px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    0 2px 4px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgb(255 255 255 / 10%);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 40%), 0 2px 4px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 10%);
   white-space: nowrap;
   opacity: 0;
-  transition:
-    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
   z-index: 2500;
   visibility: hidden;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .loc-tooltip::after {
@@ -236,10 +161,9 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
+  border: 5px solid transparent;
   border-top: 5px solid #1a1a1a;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 30%));
 }
 
 .loc-tooltip::before {
@@ -250,9 +174,8 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid rgba(255, 255, 255, 0.1);
+  border: 6px solid transparent;
+  border-top: 6px solid rgb(255 255 255 / 10%);
   z-index: -1;
 }
 
@@ -263,29 +186,30 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   visibility: visible;
 }
 
-/* Shared color themes for composite buttons */
-.loc-composite-local-primary { background: #7c1dcb; }
-.loc-composite-local-secondary { background: #4f0f82; }
-.loc-composite-local-tertiary { background: #3d0c65; }
-
-.loc-composite-upstream-primary { background: #3a84bf; }
-.loc-composite-upstream-secondary { background: #23557a; }
-.loc-composite-upstream-tertiary { background: #1a4059; }
-
-.loc-composite-diff-primary { background: #204fcb; }
-.loc-composite-diff-secondary { background: #113282; }
-
 .loc-composite-btn.is-local .loc-composite-switch {
   color: #fff;
   background: #7c1dcb;
 }
-.loc-composite-btn.is-local .loc-composite-confirm { background: #4f0f82; }
 
-.loc-composite-btn.is-upstream .loc-composite-switch { background: #3a84bf; }
-.loc-composite-btn.is-upstream .loc-composite-confirm { background: #23557a; }
+.loc-composite-btn.is-local .loc-composite-confirm {
+  background: #4f0f82;
+}
 
-.loc-composite-btn.is-diff .loc-composite-switch { background: #204fcb; }
-.loc-composite-btn.is-diff .loc-composite-confirm { background: #113282; }
+.loc-composite-btn.is-upstream .loc-composite-switch {
+  background: #3a84bf;
+}
+
+.loc-composite-btn.is-upstream .loc-composite-confirm {
+  background: #23557a;
+}
+
+.loc-composite-btn.is-diff .loc-composite-switch {
+  background: #204fcb;
+}
+
+.loc-composite-btn.is-diff .loc-composite-confirm {
+  background: #113282;
+}
 
 .loc-composite-btn .loc-composite-confirm:hover {
   color: #000;
@@ -300,7 +224,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   color: #E6E6E6;
 }
 
-/* 3-part composite button for single loc overlays */
 .loc-composite-btn-3part .loc-composite-label {
   padding: 6px 14px;
   border-radius: 6px 0 0 6px;
@@ -340,30 +263,39 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   z-index: 1;
 }
 
-.loc-composite-btn-3part.is-local .loc-composite-label { background: #7c1dcb; }
-.loc-composite-btn-3part.is-local .loc-composite-accept { background: #4f0f82; }
-.loc-composite-btn-3part.is-local .loc-composite-delete { background: #3d0c65; }
+.loc-composite-btn-3part.is-local .loc-composite-label {
+  background: #7c1dcb;
+}
 
-.loc-composite-btn-3part.is-upstream .loc-composite-label { background: #3a84bf; }
-.loc-composite-btn-3part.is-upstream .loc-composite-accept { background: #23557a; }
-.loc-composite-btn-3part.is-upstream .loc-composite-delete { background: #1a4059; }
+.loc-composite-btn-3part.is-local .loc-composite-accept {
+  background: #4f0f82;
+}
+
+.loc-composite-btn-3part.is-local .loc-composite-delete {
+  background: #3d0c65;
+}
+
+.loc-composite-btn-3part.is-upstream .loc-composite-label {
+  background: #3a84bf;
+}
+
+.loc-composite-btn-3part.is-upstream .loc-composite-accept {
+  background: #23557a;
+}
+
+.loc-composite-btn-3part.is-upstream .loc-composite-delete {
+  background: #1a4059;
+}
 
 .loc-composite-btn-3part .loc-composite-accept:hover,
 .loc-composite-btn-3part .loc-composite-delete:hover {
   color: #000;
 }
 
-/* Tooltips for 3-part buttons */
 .loc-composite-btn-3part .loc-composite-accept:hover .loc-tooltip,
 .loc-composite-btn-3part .loc-composite-accept:focus .loc-tooltip,
 .loc-composite-btn-3part .loc-composite-delete:hover .loc-tooltip,
-.loc-composite-btn-3part .loc-composite-delete:focus .loc-tooltip {
-  opacity: 1;
-  transform: translateX(50%) translateY(0);
-  visibility: visible;
-}
-
-/* Show tooltip when hovering label if not the active tab */
+.loc-composite-btn-3part .loc-composite-delete:focus .loc-tooltip,
 .loc-composite-btn:not(.is-active) .loc-composite-switch:hover .loc-tooltip,
 .loc-composite-btn:not(.is-active) .loc-composite-switch:focus .loc-tooltip {
   opacity: 1;
@@ -379,7 +311,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   z-index: 2;
 }
 
-/* Responsive adjustments */
 @media (max-width: 600px) {
   .loc-tab-button {
     font-size: 12px;
@@ -396,7 +327,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   }
 }
 
-/* HTML diff styling for loc nodes */
 .loc-tab-pane del.diffdel,
 .loc-tab-pane del.diffmod {
   background-color: #ffebee;
@@ -417,7 +347,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   border: 1px solid #a5d6a7;
 }
 
-/* Special styling for modified content */
 .loc-tab-pane del.diffmod {
   background-color: #fff3e0;
   color: #ef6c00;
@@ -447,7 +376,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   vertical-align: top;
 }
 
-/* Global Regional Edits Overlay */
 .da-regional-edits-overlay {
   display: none;
   position: absolute;
@@ -471,7 +399,6 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   align-items: center;
 }
 
-/* Adjust ProseMirror padding when global dialog is shown */
 .da-prose-mirror.has-regional-edits .ProseMirror {
   padding-top: 60px;
 }
