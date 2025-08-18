@@ -32,6 +32,7 @@ import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
+import { debounce } from '../utils/helpers.js';
 import { getLocClass, checkForLocNodes, addActiveView } from './loc/loc-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
@@ -42,6 +43,8 @@ let hasChanged = 0;
 let lastCursorPosition = null;
 let daPreview;
 let updatePoller;
+
+const debouncedCheckForLocNodes = debounce(checkForLocNodes, 500);
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
@@ -54,9 +57,8 @@ function dispatchTransaction(transaction) {
   const newState = window.view.state.apply(transaction);
   window.view.updateState(newState);
 
-  // Check for regional edits after state update
   if (transaction.docChanged) {
-    setTimeout(() => checkForLocNodes(window.view), 0);
+    debouncedCheckForLocNodes(window.view);
   }
 }
 

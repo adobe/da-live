@@ -269,13 +269,15 @@ function checkForLocNodes(view) {
   const { doc } = view.state;
   let hasLocNodes = false;
 
-  doc.descendants((node) => {
+  // Since loc_deleted and loc_added nodes are only one level deep,
+  // we only need to check the immediate children of the document
+  for (let i = 0; i < doc.childCount; i += 1) {
+    const node = doc.child(i);
     if (node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added') {
       hasLocNodes = true;
-      return false; // Stop traversing once we find one
+      break;
     }
-    return true;
-  });
+  }
 
   if (hasLocNodes) {
     loadLocCss();
