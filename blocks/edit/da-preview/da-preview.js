@@ -80,7 +80,7 @@ export default class DaPreview extends LitElement {
         src="${this.formatPath(this.path)}?martech=off&dapreview=${this.getEnv()}"
         @load=${this.iframeLoaded}
         allow="clipboard-write *"
-        scrolling="no">
+        scrolling="no"></iframe>
     `;
   }
 

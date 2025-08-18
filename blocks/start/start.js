@@ -1,21 +1,12 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
+import { copyConfig, copyContent } from './index.js';
 
-const sheet = await getSheet('/blocks/start/start-wc.css');
+const sheet = await getSheet('/blocks/start/start.css');
 
 const DA_ORIGIN = getDaAdmin();
-
-const DEMO_URLS = [
-  'https://admin.da.live/source/aem-sandbox/block-collection/demo.html',
-  'https://admin.da.live/source/aem-sandbox/block-collection/nav.html',
-  'https://admin.da.live/source/aem-sandbox/block-collection/footer.html',
-  'https://admin.da.live/source/aem-sandbox/block-collection/.da/config.json',
-  'https://admin.da.live/source/aem-sandbox/block-collection/docs/library/blocks.json',
-  'https://admin.da.live/source/aem-sandbox/block-collection/docs/library/icons.json',
-  'https://admin.da.live/source/aem-sandbox/block-collection/placeholders.json',
-];
 
 class DaStart extends LitElement {
   static properties = {
@@ -28,6 +19,7 @@ class DaStart extends LitElement {
     showDone: { state: true },
     _demoContent: { state: true },
     _goText: { state: true },
+    _statusText: { state: true },
   };
 
   constructor() {
@@ -77,37 +69,21 @@ class DaStart extends LitElement {
   async goToSite(e) {
     if (this._demoContent) {
       e.target.disabled = true;
-      this._goText = 'Copying demo content';
-      const finishedUrls = DEMO_URLS.map(async (url) => {
-        const newUrl = url
-          .replace('aem-sandbox', this.owner)
-          .replace('block-collection', this.repo);
-        const { pathname } = new URL(newUrl);
-        const [ext] = pathname
-          .split('/')
-          .pop()
-          .split('.');
-        // Request the source
-        const resp = await daFetch(url);
-        if (!resp.ok) return null;
-        const text = await resp.text();
-        const type = ext === 'json' ? 'application/json' : 'text/html';
-        const blob = new Blob([text], { type });
-        const formData = new FormData();
-        formData.append('data', blob);
-        const opts = { method: 'PUT', body: formData };
-        await daFetch(newUrl, opts);
-        try {
-          let aemPath = pathname.replace('source', 'preview');
-          aemPath = aemPath.endsWith('.json') ? aemPath : aemPath.replace('.html', '');
-          const [api, owner, repo, ...aemParts] = aemPath.slice(1).split('/');
-          await fetch(`https://admin.hlx.page/${api}/${owner}/${repo}/main/${aemParts.join('/')}`, { method: 'POST' });
-        } catch {
-          // do nothing
-        }
-        return newUrl;
-      });
-      await Promise.all(finishedUrls);
+
+      this._statusText = 'Copying content';
+      const list = await copyContent(this.owner, this.repo);
+      if (list.some((file) => !file.ok)) {
+        this._statusText = 'There was an error copying demo content.';
+        return;
+      }
+
+      this._statusText = 'Copying library config';
+      const config = await copyConfig(this.owner, this.repo);
+      if (!config.ok) {
+        this._statusText = 'There was an error copying the library config.';
+        return;
+      }
+
       delete e.target.disabled;
       this._goText = 'Opening site';
     }
@@ -194,7 +170,10 @@ mountpoints:
           <label for="demo-toggle">Demo content</label>
           <input class="demo-toggle" id="demo-toggle" type="checkbox" .checked="${this._demoContent}" @click="${this.toggleDemo}" />
         </div>
-        <button class="da-login-button con-button blue button-xl" @click=${this.goToSite}>${this._goText}</button>
+        <div class="step-3-actions">
+          <button class="da-login-button con-button blue button-xl" @click=${this.goToSite}>${this._goText}</button>
+          <p>${this._statusText ? this._statusText : nothing}</p>
+        </div>
       </div>
     `;
   }
