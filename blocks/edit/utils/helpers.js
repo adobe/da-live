@@ -253,3 +253,11 @@ export async function saveDaVersion(pathname, ext = 'html') {
 export function parse(inital) {
   return new DOMParser().parseFromString(inital, 'text/html');
 }
+
+export function debounce(func, wait) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
