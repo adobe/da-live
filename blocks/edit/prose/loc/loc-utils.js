@@ -6,36 +6,91 @@ import {
 import getSheet from '../../../shared/sheet.js';
 import { htmlDiff } from './htmldiff.js';
 
-/**
- * Creates a tooltip element with the given text
- * @param {string} text - Tooltip text
- * @returns {HTMLElement} Tooltip element
- */
+// Constants
+const LOC_COLORS = {
+  UPSTREAM: 'rgba(70, 130, 180, 0.2)',
+  LOCAL: 'rgba(144, 42, 222, 0.2)',
+  DIFF: 'rgba(150, 150, 150, 0.1)',
+};
+
+const LOC_TEXT = {
+  UPSTREAM: 'Upstream',
+  LOCAL: 'Local',
+  DIFF: 'Difference',
+};
+
+// DOM Creation Utilities
+function createElement(tag, className = '', attributes = {}) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  Object.entries(attributes).forEach(([key, value]) => {
+    element.setAttribute(key, value);
+  });
+  return element;
+}
+
 function createTooltip(text) {
-  const tooltip = document.createElement('span');
-  tooltip.className = 'loc-tooltip';
+  const tooltip = createElement('span', 'loc-tooltip');
   tooltip.textContent = text;
   return tooltip;
 }
 
-const LOC = {
-  UPSTREAM: {
-    BG: 'rgba(70, 130, 180, 0.2)',
-    COVER_BG: 'rgba(70, 130, 180, 0.2)',
-    TEXT: 'Upstream',
-    TEXT_COLOR: 'rgba(70, 130, 180)',
-  },
-  LOCAL: {
-    BG: 'rgba(144, 42, 222, 0.2)',
-    COVER_BG: 'rgba(144, 42, 222, 0.2)',
-    TEXT: 'Local',
-    TEXT_COLOR: 'rgba(144, 42, 222)',
-  },
-  DIFF: {
-    COVER_BG: 'rgba(150, 150, 150, 0.1)',
-    TEXT: 'Difference',
-  },
-};
+function createButton(className, type = 'button', attributes = {}) {
+  const button = createElement('button', className, { type, ...attributes });
+  return button;
+}
+
+// Transaction Utilities
+function createContentTransaction(view, startPos, endPos, filteredContent) {
+  const { tr } = view.state;
+
+  if (filteredContent.length > 0) {
+    const newFragment = Fragment.fromArray(filteredContent);
+    const newSlice = new Slice(newFragment, 1, 1);
+    return tr.replace(startPos, endPos, newSlice);
+  }
+
+  return tr.delete(startPos, endPos);
+}
+
+function isLocNode(node) {
+  return node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added';
+}
+
+function isValidPosition(pos) {
+  return pos !== null && pos !== undefined;
+}
+
+// Content Filtering Utilities
+function filterNodeContent(node) {
+  if (!node?.content?.content) {
+    return [];
+  }
+
+  return node.content.content.filter((child) => {
+    // Handle text nodes
+    if (child.type.name === 'text') {
+      return child.text?.trim().length > 0;
+    }
+
+    // Handle nodes with content
+    if (child.content) {
+      // Check if it has meaningful content
+      if (child.content?.content?.length > 0) {
+        return true;
+      }
+      // For nodes without nested content, check if they have any attributes or marks
+      return child.attrs || child.marks?.length > 0;
+    }
+
+    // For other node types, assume they're meaningful unless explicitly empty
+    return true;
+  });
+}
+
+function simpleFilterContent(content) {
+  return content.filter((c) => c.content?.content?.length);
+}
 
 let globalDialog = null;
 const activeViews = new Set();
@@ -66,7 +121,7 @@ function getAllLocNodes(view) {
   const locNodes = [];
 
   doc.descendants((node, pos) => {
-    if (node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added') {
+    if (isLocNode(node)) {
       locNodes.push({ node, pos });
     }
   });
@@ -85,6 +140,17 @@ function hideGlobalDialog() {
   }
 }
 
+function shouldKeepNode(action, nodeType) {
+  return (action === 'keep-local' && nodeType === 'loc_added')
+    || (action === 'keep-upstream' && nodeType === 'loc_deleted')
+    || (action === 'keep-both');
+}
+
+function shouldDeleteNode(action, nodeType) {
+  return (action === 'keep-local' && nodeType === 'loc_deleted')
+    || (action === 'keep-upstream' && nodeType === 'loc_added');
+}
+
 function handleGlobalAction(action) {
   activeViews.forEach((view) => {
     const locNodes = getAllLocNodes(view);
@@ -96,15 +162,10 @@ function handleGlobalAction(action) {
 
     for (const { node, pos } of locNodes) {
       try {
-        const shouldKeepNode = (action === 'keep-local' && node.type.name === 'loc_added')
-          || (action === 'keep-upstream' && node.type.name === 'loc_deleted')
-          || (action === 'keep-both');
+        const nodeType = node.type.name;
 
-        const shouldDeleteNode = (action === 'keep-local' && node.type.name === 'loc_deleted')
-          || (action === 'keep-upstream' && node.type.name === 'loc_added');
-
-        if (shouldKeepNode) {
-          const filteredContent = node.content.content.filter((c) => c.content?.content?.length);
+        if (shouldKeepNode(action, nodeType)) {
+          const filteredContent = simpleFilterContent(node.content.content);
           if (filteredContent.length > 0) {
             const newFragment = Fragment.fromArray(filteredContent);
             const newSlice = new Slice(newFragment, 0, 0);
@@ -113,7 +174,7 @@ function handleGlobalAction(action) {
             tr = tr.delete(pos, pos + node.nodeSize);
           }
           hasChanges = true;
-        } else if (shouldDeleteNode) {
+        } else if (shouldDeleteNode(action, nodeType)) {
           tr = tr.delete(pos, pos + node.nodeSize);
           hasChanges = true;
         }
@@ -131,48 +192,27 @@ function handleGlobalAction(action) {
   hideGlobalDialog();
 }
 
+function createGlobalAction(type, text, action, tooltipText) {
+  const button = createElement('div', `loc-composite-btn loc-composite-btn-base is-${type}`);
+
+  const label = createElement('span', 'loc-composite-switch loc-composite-btn-base-element');
+  label.textContent = text;
+
+  const confirm = createButton('loc-composite-confirm loc-composite-btn-base-element', 'button', { 'aria-label': text });
+  confirm.addEventListener('click', () => handleGlobalAction(action));
+  confirm.appendChild(createTooltip(tooltipText));
+
+  button.appendChild(label);
+  button.appendChild(confirm);
+  return button;
+}
+
 function createGlobalOverlay() {
-  const dialog = document.createElement('div');
-  dialog.className = 'da-regional-edits-overlay';
+  const dialog = createElement('div', 'da-regional-edits-overlay');
+  const actionsContainer = createElement('div', 'da-regional-edits-actions');
 
-  const actionsContainer = document.createElement('div');
-  actionsContainer.className = 'da-regional-edits-actions';
-
-  const localButton = document.createElement('div');
-  localButton.className = 'loc-composite-btn loc-composite-btn-base is-local';
-
-  const localLabel = document.createElement('span');
-  localLabel.className = 'loc-composite-switch loc-composite-btn-base-element';
-  localLabel.textContent = 'Keep All Local';
-
-  const localConfirm = document.createElement('button');
-  localConfirm.className = 'loc-composite-confirm loc-composite-btn-base-element';
-  localConfirm.type = 'button';
-  localConfirm.setAttribute('aria-label', 'Keep All Local');
-  localConfirm.addEventListener('click', () => handleGlobalAction('keep-local'));
-
-  localConfirm.appendChild(createTooltip('Accept All Local'));
-
-  localButton.appendChild(localLabel);
-  localButton.appendChild(localConfirm);
-
-  const upstreamButton = document.createElement('div');
-  upstreamButton.className = 'loc-composite-btn loc-composite-btn-base is-upstream';
-
-  const upstreamLabel = document.createElement('span');
-  upstreamLabel.className = 'loc-composite-switch loc-composite-btn-base-element';
-  upstreamLabel.textContent = 'Keep All Upstream';
-
-  const upstreamConfirm = document.createElement('button');
-  upstreamConfirm.className = 'loc-composite-confirm loc-composite-btn-base-element';
-  upstreamConfirm.type = 'button';
-  upstreamConfirm.setAttribute('aria-label', 'Keep All Upstream');
-  upstreamConfirm.addEventListener('click', () => handleGlobalAction('keep-upstream'));
-
-  upstreamConfirm.appendChild(createTooltip('Accept All Upstream'));
-
-  upstreamButton.appendChild(upstreamLabel);
-  upstreamButton.appendChild(upstreamConfirm);
+  const localButton = createGlobalAction('local', 'Keep All Local', 'keep-local', 'Accept All Local');
+  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', 'keep-upstream', 'Accept All Upstream');
 
   actionsContainer.appendChild(localButton);
   actionsContainer.appendChild(upstreamButton);
@@ -273,7 +313,7 @@ function checkForLocNodes(view) {
   // we only need to check the immediate children of the document
   for (let i = 0; i < doc.childCount; i += 1) {
     const node = doc.child(i);
-    if (node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added') {
+    if (isLocNode(node)) {
       hasLocNodes = true;
       break;
     }
@@ -349,27 +389,19 @@ function generateDiff(deletedContent, addedContent) {
 }
 
 function createTabContent(deletedContent, addedContent) {
-  const container = document.createElement('div');
-  container.className = 'loc-tab-content';
+  const container = createElement('div', 'loc-tab-content');
 
-  const addedTab = document.createElement('div');
-  addedTab.className = 'loc-tab-pane active';
-  addedTab.dataset.tab = 'added';
+  const addedTab = createElement('div', 'loc-tab-pane active', { 'data-tab': 'added' });
   if (addedContent) {
     addedTab.appendChild(addedContent.cloneNode(true));
   }
 
-  const deletedTab = document.createElement('div');
-  deletedTab.className = 'loc-tab-pane';
-  deletedTab.dataset.tab = 'deleted';
+  const deletedTab = createElement('div', 'loc-tab-pane', { 'data-tab': 'deleted' });
   if (deletedContent) {
     deletedTab.appendChild(deletedContent.cloneNode(true));
   }
 
-  const diffTab = document.createElement('div');
-  diffTab.className = 'loc-tab-pane';
-  diffTab.dataset.tab = 'diff';
-
+  const diffTab = createElement('div', 'loc-tab-pane', { 'data-tab': 'diff' });
   const diffHTML = generateDiff(deletedContent, addedContent);
   diffTab.innerHTML = diffHTML;
 
@@ -380,116 +412,100 @@ function createTabContent(deletedContent, addedContent) {
   return container;
 }
 
-function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
-  const actionsContainer = document.createElement('div');
-  actionsContainer.className = 'loc-tabbed-actions loc-floating-overlay';
-
-  const actionButtons = document.createElement('div');
-  actionButtons.className = 'loc-action-buttons loc-sticky-buttons';
-
-  const createComposite = ({
+function createCompositeButton(
+  {
     label,
     id,
     keepHandler,
     variantClass,
     tooltip,
     switchTooltip,
-  }) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = `loc-composite-btn loc-composite-btn-base ${variantClass}`;
+  },
+  onSwitchTab,
+) {
+  const wrapper = createElement('div', `loc-composite-btn loc-composite-btn-base ${variantClass}`);
 
-    const switchBtn = document.createElement('button');
-    switchBtn.className = 'loc-composite-switch loc-composite-btn-base-element';
-    switchBtn.type = 'button';
-    switchBtn.textContent = label;
-    switchBtn.addEventListener('click', () => onSwitchTab(id));
+  const switchBtn = createButton('loc-composite-switch loc-composite-btn-base-element');
+  switchBtn.textContent = label;
+  switchBtn.addEventListener('click', () => onSwitchTab(id));
+  if (switchTooltip) {
+    switchBtn.appendChild(createTooltip(switchTooltip));
+  }
 
-    if (switchTooltip) {
-      switchBtn.appendChild(createTooltip(switchTooltip));
-    }
+  const confirmBtn = createButton('loc-composite-confirm loc-composite-btn-base-element', 'button', { 'aria-label': `Keep ${label}` });
+  confirmBtn.addEventListener('click', keepHandler);
+  if (tooltip) {
+    confirmBtn.appendChild(createTooltip(tooltip));
+  }
 
-    const confirmBtn = document.createElement('button');
-    confirmBtn.className = 'loc-composite-confirm loc-composite-btn-base-element';
-    confirmBtn.type = 'button';
-    confirmBtn.setAttribute('aria-label', `Keep ${label}`);
-    confirmBtn.addEventListener('click', keepHandler);
+  wrapper.appendChild(switchBtn);
+  wrapper.appendChild(confirmBtn);
+  return wrapper;
+}
 
-    if (tooltip) {
-      confirmBtn.appendChild(createTooltip(tooltip));
-    }
+function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
+  const actionsContainer = createElement('div', 'loc-tabbed-actions loc-floating-overlay');
+  const actionButtons = createElement('div', 'loc-action-buttons loc-sticky-buttons');
 
-    wrapper.appendChild(switchBtn);
-    wrapper.appendChild(confirmBtn);
-    return wrapper;
-  };
+  const buttonConfigs = [
+    {
+      label: 'Local',
+      id: 'added',
+      keepHandler: onKeepAdded,
+      variantClass: 'is-local',
+      tooltip: 'Accept Local',
+      switchTooltip: 'View Local',
+    },
+    {
+      label: 'Upstream',
+      id: 'deleted',
+      keepHandler: onKeepDeleted,
+      variantClass: 'is-upstream',
+      tooltip: 'Accept Upstream',
+      switchTooltip: 'View Upstream',
+    },
+    {
+      label: 'Difference',
+      id: 'diff',
+      keepHandler: onKeepBoth,
+      variantClass: 'is-diff',
+      tooltip: 'Accept Both',
+      switchTooltip: 'View Diff',
+    },
+  ];
 
-  actionButtons.appendChild(createComposite({
-    label: 'Local',
-    id: 'added',
-    keepHandler: onKeepAdded,
-    variantClass: 'is-local',
-    tooltip: 'Accept Local',
-    switchTooltip: 'View Local',
-  }));
-
-  actionButtons.appendChild(createComposite({
-    label: 'Upstream',
-    id: 'deleted',
-    keepHandler: onKeepDeleted,
-    variantClass: 'is-upstream',
-    tooltip: 'Accept Upstream',
-    switchTooltip: 'View Upstream',
-  }));
-
-  actionButtons.appendChild(createComposite({
-    label: 'Difference',
-    id: 'diff',
-    keepHandler: onKeepBoth,
-    variantClass: 'is-diff',
-    tooltip: 'Accept Both',
-    switchTooltip: 'View Diff',
-  }));
+  buttonConfigs.forEach((config) => {
+    actionButtons.appendChild(createCompositeButton(config, onSwitchTab));
+  });
 
   actionsContainer.appendChild(actionButtons);
   return actionsContainer;
 }
 
 function getCoverDiv(upstream) {
-  const coverDiv = document.createElement('div');
-  coverDiv.className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
-  coverDiv.setAttribute('loc-temp-dom', '');
+  const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
+  const coverDiv = createElement('div', className, { 'loc-temp-dom': '' });
 
-  coverDiv.style.backgroundColor = upstream
-    ? LOC.UPSTREAM.COVER_BG
-    : LOC.LOCAL.COVER_BG;
+  coverDiv.style.backgroundColor = upstream ? LOC_COLORS.UPSTREAM : LOC_COLORS.LOCAL;
   return coverDiv;
 }
 
 function getLangOverlay(upstream) {
-  const overlay = document.createElement('div');
-  overlay.className = 'loc-lang-overlay loc-floating-overlay';
-  overlay.setAttribute('loc-temp-dom', '');
+  const overlay = createElement('div', 'loc-lang-overlay loc-floating-overlay', { 'loc-temp-dom': '' });
 
-  const compositeBtn = document.createElement('div');
-  compositeBtn.className = `loc-composite-btn-3part loc-composite-btn-base loc-sticky-buttons ${upstream ? 'is-upstream' : 'is-local'}`;
+  const type = upstream ? 'upstream' : 'local';
+  const text = upstream ? LOC_TEXT.UPSTREAM : LOC_TEXT.LOCAL;
 
-  const labelBtn = document.createElement('span');
-  labelBtn.className = 'loc-composite-label loc-composite-btn-base-element';
-  labelBtn.textContent = upstream ? LOC.UPSTREAM.TEXT : LOC.LOCAL.TEXT;
+  const compositeBtn = createElement('div', `loc-composite-btn-3part loc-composite-btn-base loc-sticky-buttons is-${type}`);
 
-  const acceptBtn = document.createElement('button');
-  acceptBtn.className = 'loc-composite-accept loc-composite-btn-base-element';
-  acceptBtn.type = 'button';
-  acceptBtn.setAttribute('aria-label', `Accept ${upstream ? 'Upstream' : 'Local'}`);
+  const labelBtn = createElement('span', 'loc-composite-label loc-composite-btn-base-element');
+  labelBtn.textContent = text;
 
-  acceptBtn.appendChild(createTooltip(`Accept ${upstream ? 'Upstream' : 'Local'}`));
+  const acceptBtn = createButton('loc-composite-accept loc-composite-btn-base-element', 'button', { 'aria-label': `Accept ${text}` });
+  acceptBtn.appendChild(createTooltip(`Accept ${text}`));
 
-  const deleteBtn = document.createElement('button');
-  deleteBtn.className = 'loc-composite-delete loc-composite-btn-base-element';
-  deleteBtn.type = 'button';
-  deleteBtn.setAttribute('aria-label', `Delete ${upstream ? 'Upstream' : 'Local'}`);
-
-  deleteBtn.appendChild(createTooltip(`Delete ${upstream ? 'Upstream' : 'Local'}`));
+  const deleteBtn = createButton('loc-composite-delete loc-composite-btn-base-element', 'button', { 'aria-label': `Delete ${text}` });
+  deleteBtn.appendChild(createTooltip(`Delete ${text}`));
 
   compositeBtn.appendChild(labelBtn);
   compositeBtn.appendChild(acceptBtn);
@@ -555,9 +571,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     renderTabbedInterface(nodeA, view, posA, nodeB) {
       loadLocCss();
 
-      this.dom = document.createElement('div');
-      this.dom.className = 'loc-tabbed-container';
-      this.dom.contentEditable = 'false'; // Make non-editable
+      this.dom = createElement('div', 'loc-tabbed-container', { contentEditable: 'false' });
       this.contentDOM = null; // Don't let ProseMirror manage content
 
       let deletedNode;
@@ -582,9 +596,8 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
       const tabContent = createTabContent(deletedContent, addedContent);
 
-      const colorOverlay = document.createElement('div');
-      colorOverlay.className = 'loc-tabbed-color-overlay';
-      colorOverlay.style.backgroundColor = LOC.LOCAL.COVER_BG;
+      const colorOverlay = createElement('div', 'loc-tabbed-color-overlay');
+      colorOverlay.style.backgroundColor = LOC_COLORS.LOCAL;
 
       let actions;
 
@@ -596,12 +609,12 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
         if (targetTab === 'added') {
           colorOverlay.style.display = 'block';
-          colorOverlay.style.backgroundColor = LOC.LOCAL.COVER_BG;
+          colorOverlay.style.backgroundColor = LOC_COLORS.LOCAL;
         } else if (targetTab === 'deleted') {
           colorOverlay.style.display = 'block';
-          colorOverlay.style.backgroundColor = LOC.UPSTREAM.COVER_BG;
+          colorOverlay.style.backgroundColor = LOC_COLORS.UPSTREAM;
         } else {
-          colorOverlay.style.backgroundColor = LOC.DIFF.COVER_BG;
+          colorOverlay.style.backgroundColor = LOC_COLORS.DIFF;
         }
 
         if (actions) {
@@ -634,13 +647,15 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     renderSingleNode(node, view, pos, upstream) {
       loadLocCss();
 
+      const isDeleted = node.type.name === 'loc_deleted';
+      const viewClass = isDeleted ? 'loc-deleted-view' : 'loc-added-view';
+      const styleClass = isDeleted ? 'da-loc-deleted-style' : 'da-loc-added-style';
+
       // Use div instead of da-loc-* to avoid parseDOM feedback loop
-      this.dom = document.createElement('div');
-      this.dom.className = `loc-single-container ${node.type.name === 'loc_deleted' ? 'loc-deleted-view' : 'loc-added-view'}`;
-      // Add the da-loc-* class for CSS styling but avoid the tag name
-      this.dom.classList.add(node.type.name === 'loc_deleted' ? 'da-loc-deleted-style' : 'da-loc-added-style');
-      this.dom.contentEditable = 'false'; // Make non-editable
+      this.dom = createElement('div', `loc-single-container ${viewClass}`, { contentEditable: 'false' });
+      this.dom.classList.add(styleClass);
       this.contentDOM = null; // Don't let ProseMirror manage content
+
       const serializer = DOMSerializer.fromSchema(this.schema);
       const nodeDOM = serializer.serializeFragment(node.content);
 
@@ -662,32 +677,14 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     /**
-     * Validates if a position is valid
-     * @param {number|null|undefined} pos - Position to validate
-     * @returns {boolean} True if position is valid
-     */
-    isValidPosition(pos) {
-      return pos !== null && pos !== undefined;
-    }
-
-    /**
-     * Checks if a node is a LOC node (loc_deleted or loc_added)
-     * @param {Object} node - ProseMirror node to check
-     * @returns {boolean} True if node is a LOC node
-     */
-    isLocNode(node) {
-      return node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added';
-    }
-
-    /**
      * Checks if two nodes can form a valid LOC pair
      * @param {Object} nodeA - First node
      * @param {Object} nodeB - Second node
      * @returns {boolean} True if nodes can form a pair
      */
     canFormLocPair(nodeA, nodeB) {
-      return this.isLocNode(nodeA)
-        && this.isLocNode(nodeB)
+      return isLocNode(nodeA)
+        && isLocNode(nodeB)
         && nodeA.type.name !== nodeB.type.name
         && hasMatchingContent(nodeA, nodeB);
     }
@@ -699,17 +696,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
      * @param {Array} filteredContent - Filtered content array
      */
     dispatchContentTransaction(startPos, endPos, filteredContent) {
-      const { tr } = this.view.state;
-      let transaction = tr;
-
-      if (filteredContent.length > 0) {
-        const newFragment = Fragment.fromArray(filteredContent);
-        const newSlice = new Slice(newFragment, 1, 1);
-        transaction = transaction.replace(startPos, endPos, newSlice);
-      } else {
-        transaction = transaction.delete(startPos, endPos);
-      }
-
+      const transaction = createContentTransaction(this.view, startPos, endPos, filteredContent);
       this.view.dispatch(transaction);
     }
 
@@ -732,7 +719,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     handleDeleteSingleNode() {
       try {
         const currentPos = this.getPos();
-        if (!this.isValidPosition(currentPos)) {
+        if (!isValidPosition(currentPos)) {
           // eslint-disable-next-line no-console
           console.warn('Could not get current position for single node delete');
           return;
@@ -744,7 +731,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         const indexInParent = resolvedPos.index();
         const currentNode = parent.child(indexInParent);
 
-        if (!this.isLocNode(currentNode)) {
+        if (!isLocNode(currentNode)) {
           // eslint-disable-next-line no-console
           console.warn('Current node is not a loc node');
           return;
@@ -774,7 +761,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     handleKeepSingleNode() {
       try {
         const currentPos = this.getPos();
-        if (!this.isValidPosition(currentPos)) {
+        if (!isValidPosition(currentPos)) {
           // eslint-disable-next-line no-console
           console.warn('Could not get current position for single node keep');
           return;
@@ -786,14 +773,14 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         const indexInParent = resolvedPos.index();
         const currentNode = parent.child(indexInParent);
 
-        if (!this.isLocNode(currentNode)) {
+        if (!isLocNode(currentNode)) {
           // eslint-disable-next-line no-console
           console.warn('Current node is not a loc node');
           return;
         }
 
         // Use the improved content filtering like the tabbed interface
-        const filteredContent = this.filterNodeContent(currentNode);
+        const filteredContent = filterNodeContent(currentNode);
         this.dispatchContentTransaction(
           currentPos,
           currentPos + currentNode.nodeSize,
@@ -813,7 +800,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     getCurrentLocNodePair(view) {
       try {
         const currentPos = this.getPos();
-        if (!this.isValidPosition(currentPos)) {
+        if (!isValidPosition(currentPos)) {
           return null;
         }
 
@@ -824,7 +811,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
         // Get the node at current position
         const currentNode = parent.child(indexInParent);
-        if (!this.isLocNode(currentNode)) {
+        if (!isLocNode(currentNode)) {
           return null;
         }
 
@@ -859,37 +846,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       }
     }
 
-    /**
-     * Improved content filtering that handles different node types more robustly
-     * @param {Object} node - ProseMirror node
-     * @returns {Array} Filtered content array
-     */
-    filterNodeContent(node) {
-      if (!node?.content?.content) {
-        return [];
-      }
-
-      return node.content.content.filter((child) => {
-        // Handle text nodes
-        if (child.type.name === 'text') {
-          return child.text?.trim().length > 0;
-        }
-
-        // Handle nodes with content
-        if (child.content) {
-          // Check if it has meaningful content
-          if (child.content?.content?.length > 0) {
-            return true;
-          }
-          // For nodes without nested content, check if they have any attributes or marks
-          return child.attrs || child.marks?.length > 0;
-        }
-
-        // For other node types, assume they're meaningful unless explicitly empty
-        return true;
-      });
-    }
-
     handleKeepDeleted() {
       // Get current positions and nodes using the stored getPos function
       const currentPair = this.getCurrentLocNodePair(this.view);
@@ -902,7 +858,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const { deletedNode: currentDeletedNode } = currentPair;
 
       // Keep deleted content and delete added content
-      const filteredContent = this.filterNodeContent(currentDeletedNode);
+      const filteredContent = filterNodeContent(currentDeletedNode);
       const { startPos, endPos } = this.getPairRange(currentPair);
 
       this.dispatchContentTransaction(startPos, endPos, filteredContent);
@@ -920,7 +876,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const { addedNode: currentAddedNode } = currentPair;
 
       // Keep added content and delete deleted content
-      const filteredContent = this.filterNodeContent(currentAddedNode);
+      const filteredContent = filterNodeContent(currentAddedNode);
       const { startPos, endPos } = this.getPairRange(currentPair);
 
       this.dispatchContentTransaction(startPos, endPos, filteredContent);
@@ -941,8 +897,8 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       } = currentPair;
 
       // Keep both nodes by combining their content
-      const deletedContent = this.filterNodeContent(currentDeletedNode);
-      const addedContent = this.filterNodeContent(currentAddedNode);
+      const deletedContent = filterNodeContent(currentDeletedNode);
+      const addedContent = filterNodeContent(currentAddedNode);
       const combinedContent = [...deletedContent, ...addedContent];
       const { startPos, endPos } = this.getPairRange(currentPair);
 
@@ -951,7 +907,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
     applyKeepOperation(tr, node, pos) {
       // Extract and filter content without mutating the original node
-      const filteredContent = node.content.content.filter((c) => c.content.content.length);
+      const filteredContent = simpleFilterContent(node.content.content);
       if (filteredContent.length > 0) {
         const newFragment = Fragment.fromArray(filteredContent);
         const newSlice = new Slice(newFragment, 0, 0);
