@@ -228,9 +228,9 @@ a {
   top: 5px;
   border-radius: 50%;
   color: rgb(255 255 255);
-  text-shadow: rgba(0 0 0 15%) -1px -1px;
+  text-shadow: rgb(0 0 0 / 15%) -1px -1px;
   white-space: nowrap;
-  box-shadow: rgba(0 0 0 20%) 0 1px 2px;
+  box-shadow: rgb(0 0 0 / 20%) 0 1px 2px;
   transition: all 0.3s cubic-bezier(0.3, 1.5, 0.7, 1) 0s;
 }
 

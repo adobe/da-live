@@ -93,7 +93,7 @@ ul.da-dialog-asset-crops li p {
   white-space: nowrap;
   margin: 0;
   pointer-events: none;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 2px rgb(0 0 0 / 20%);
 }
 
 ul.da-dialog-asset-crops li img {
