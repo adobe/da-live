@@ -61,7 +61,7 @@ setup('Set up authentication', async ({ page }) => {
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Password', { exact: true }).fill(pwd);
   console.log('Entered password');
-  await page.getByLabel('Continue', { exact: true }).click();
+  await page.locator('button[aria-label="Continue"]').click();
   await page.getByLabel('Foundation Internal').click();
   await expect(page.locator('a.nx-nav-brand')).toContainText('Author');
 
