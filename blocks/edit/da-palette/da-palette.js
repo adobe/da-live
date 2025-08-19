@@ -1,5 +1,4 @@
 import { LitElement, html } from 'da-lit';
-
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-palette/da-palette.css');
@@ -10,7 +9,13 @@ class DaPalette extends LitElement {
     fields: { state: true },
     callback: { state: true },
     saveOnClose: { state: true },
+    useLabelsAbove: { type: Boolean },
   };
+
+  constructor() {
+    super();
+    this.useLabelsAbove = false;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -33,13 +38,29 @@ class DaPalette extends LitElement {
 
   get fieldInputs() {
     return html`
-      ${Object.keys(this.fields).map((key) => html`
+      ${Object.keys(this.fields).map((key) => {
+        const fieldId = `field-${key}`;
+        if (this.useLabelsAbove) {
+          return html`
+            <div class="da-palette-field">
+              <label for=${fieldId}>${this.fields[key].label}</label>
+              <input
+                type="text"
+                id=${fieldId}
+                @input=${(e) => { this.inputChange(e, key); }}
+                value=${this.fields[key].value ?? ''} />
+            </div>
+          `;
+        }
+        return html`
           <input
             type="text"
+            id=${fieldId}
             @input=${(e) => { this.inputChange(e, key); }}
             placeholder=${this.fields[key].placeholder}
-            value=${this.fields[key].value} />
-        `)}
+            value=${this.fields[key].value ?? ''} />
+        `;
+      })}
     `;
   }
 
@@ -119,13 +140,20 @@ class DaPalette extends LitElement {
 
 customElements.define('da-palette', DaPalette);
 
-export default function openPrompt({ title, fields, callback, saveOnClose = false }) {
+export default function openPrompt({
+  title,
+  fields,
+  callback,
+  saveOnClose = false,
+  useLabelsAbove = false,
+}) {
   const palettePane = window.view.dom.nextElementSibling;
   const palette = document.createElement('da-palette');
   palette.title = title;
   palette.fields = fields;
   palette.callback = callback;
   palette.saveOnClose = saveOnClose;
+  palette.useLabelsAbove = useLabelsAbove;
   palettePane.append(palette);
   return palette;
 }

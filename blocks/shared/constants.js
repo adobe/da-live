@@ -16,12 +16,6 @@ export const SUPPORTED_FILES = {
 const DA_ADMIN_ENVS = {
   local: 'http://localhost:8787',
   stage: 'https://stage-admin.da.live',
-  prod: 'https://da.live/api',
-};
-
-const DA_ADMIN_ROOM_ENVS = {
-  local: 'http://localhost:8787',
-  stage: 'https://stage-admin.da.live',
   prod: 'https://admin.da.live',
 };
 
@@ -39,7 +33,9 @@ function getDaEnv(location, key, envs) {
   } else if (query) {
     localStorage.setItem(key, query);
   }
-  return envs[localStorage.getItem(key) || 'prod'];
+  const env = envs[localStorage.getItem(key) || 'prod'];
+  // TODO: INFRA
+  return location.origin === 'https://da.page' ? env.replace('.live', '.page') : env;
 }
 
 export const getDaAdmin = (() => {
@@ -52,5 +48,4 @@ export const getDaAdmin = (() => {
 })();
 
 export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
-export const DA_ROOM_ORIGIN = (() => getDaEnv(window.location, 'da-admin-room', DA_ADMIN_ROOM_ENVS))();
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();

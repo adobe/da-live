@@ -1,0 +1,455 @@
+:host {
+  position: relative;
+  display: block;
+  padding: 80px 0;
+}
+
+button {
+  font-family: var(--body-font-family);
+}
+
+h2 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.da-site-bg {
+  width: 100%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+.da-site-container {
+  position: relative;
+  max-width: var(--grid-container-width);
+  margin: 0 auto;
+}
+
+.da-site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin: 0 0 24px;
+}
+
+/* No recents well */
+.da-no-site-well {
+  display: grid;
+  place-items: center;
+  place-content: center;
+  background: #fafafa;
+  border-radius: var(--s2-radius-300);
+  min-height: 320px;
+  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+  margin: 0 0 48px;
+}
+
+.da-no-site-well img {
+  display: block;
+}
+
+.da-no-site-text {
+  margin: 18px 0 32px;
+  text-align: center;
+}
+
+.da-no-site-text h3,
+.da-no-site-text p {
+  margin: 0;
+}
+
+.da-no-site-text h3 {
+  font-size: 18px;
+}
+
+form {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  min-width: 300px;
+}
+
+form input {
+  border: none;
+  background: transparent;
+  border-bottom: 1px solid #a2a2a2;
+  font-family: var(--body-font-family);
+  font-size: 16px;
+  padding: 0 0 4px 4px;
+  line-height: 26px;
+  width: 100%;
+}
+
+form input:focus-visible {
+  padding: 0 0 3px 4px;
+  border-bottom: 2px solid #808080;
+  outline: none;
+  outline-offset: 0;
+}
+
+form input.error {
+  animation: shake 0.8s both;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1px;
+  border-bottom: 2px solid #f73b26;
+  padding: 0 0 3px 4px;
+}
+
+@keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+.da-no-site-well form {
+  width: 100%;
+}
+
+form input::placeholder {
+  font-style: italic;
+  color: #888;
+}
+
+form button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 22px;
+  border: none;
+  background: transparent;
+}
+
+.da-no-site-well form button {
+  position: absolute;
+  top: -4px;
+}
+
+form button svg {
+  width: 26px;
+  height: 26px;
+}
+
+form button:hover {
+  background: var(--s2-blue-800);
+  color: #FFF;
+}
+
+/* Recent site list */
+.da-sites-list {
+  list-style: none;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  margin: 0 0 var(--spacing-700) 0;
+  padding: 0;
+}
+
+.da-site-outer {
+  min-height: 320px;
+  perspective: 1000px;
+}
+
+.da-site {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: rgb(255 255 255);
+  border-radius: 12px;
+  transition: all 0.5s ease-in-out;
+  transform-style: preserve-3d;
+  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+}
+
+.da-site-front img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transform: scale(1);
+  transition: transform .25s ease-in-out;
+}
+
+.da-site-card-action-go svg {
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin-right: -6px;
+  transition: transform .5s ease-in-out;
+}
+
+.da-site .da-back-action img {
+  width: 72px;
+  display: block;
+  margin-bottom: -4px;
+}
+
+.da-site:hover {
+  transform: scale(1.015);
+  box-shadow: rgb(0 0 0 / 15%) 0 6px 32px, rgb(0 0 0 / 35%) 0 3px 12px;
+
+  .da-site-front img {
+    transform: scale(1.08);
+  }
+
+  .da-site-card-action-go svg {
+    transform: translateX(4px);
+  }
+}
+
+.da-site .da-card-style-0 {
+  background: linear-gradient(0deg, rgb(111 0 40 / 100%) 30%, rgb(111 0 40 / 0%) 75%);
+}
+
+.da-site .da-card-style-1 {
+  background: linear-gradient(0deg, rgb(16 40 140 / 100%) 30%, rgb(16 40 140 / 0%) 75%);
+}
+
+.da-site .da-card-style-2 {
+  background: linear-gradient(0deg, rgb(55 6 160 / 100%) 30%, rgb(55 6 160 / 0%) 75%);
+}
+
+.da-site .da-card-style-3 {
+  background: linear-gradient(0deg, rgb(0 61 44 / 100%) 30%, rgb(0 61 44 / 0%) 75%);
+}
+
+.da-site .da-card-style-4 {
+  background: linear-gradient(0deg, rgb(0 57 78 / 100%) 30%, rgb(0 57 78 / 0%) 75%);
+}
+
+.da-site .da-card-style-5 {
+  background: linear-gradient(0deg, rgb(92 4 109 / 100%) 30%, rgb(92 4 109 / 0%) 75%);
+}
+
+.da-site .da-card-style-6 {
+  background: linear-gradient(0deg, rgb(105 3 68 / 100%) 30%, rgb(105 3 68 / 0%) 75%);
+}
+
+.da-site .da-card-style-7 {
+  background: linear-gradient(0deg, rgb(0 59 65 / 100%) 30%, rgb(0 59 65 / 0%) 75%);
+}
+
+.da-site-front {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  background-color: rgb(250 250 250);
+  border-radius: 12px;
+  overflow: hidden;
+  outline-offset: 0;
+  transition: outline-offset .2s;
+}
+
+.da-site-front:has(a:focus-visible) {
+  outline: 3px solid #3b63fb;
+  outline-offset: 4px;
+}
+
+.da-site-back {
+  display: none;
+  gap: 24px;
+  align-items: center;
+  place-content: center center;
+  background-color: rgb(250 250 250);
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  color: #464646;
+  overflow: hidden;
+  transform: rotateY(180deg);
+  border-radius: 12px;
+}
+
+.da-site-card-action {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  padding: 0;
+}
+
+.da-site.is-flipped {
+  transform: rotateY(180deg);
+
+  .da-site-back {
+    display: grid;
+  }
+
+  .da-site-card-action {
+    color: #000;
+  }
+
+  .da-site-card-action-go svg {
+    display: none;
+  }
+}
+
+.da-site.is-flipped:hover {
+  transform: scale(1.015) rotateY(180deg);
+}
+
+.da-back-action {
+  font-weight: 700;
+  font-size: 18px;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.da-site-front picture {
+  position: absolute;
+  inset: 0;
+}
+
+.da-site p {
+  margin: 0;
+}
+
+.da-site .bg-overlay {
+  display: grid;
+  grid-template-areas: 'main';
+  align-items: end;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  box-sizing: border-box;
+}
+
+.bg-overlay a {
+  display: flex;
+  flex-flow: column wrap;
+  justify-content: end;
+  height: 100%;
+  padding: 0 var(--spacing-400) var(--spacing-300);
+  box-sizing: border-box;
+  grid-area: main;
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--s2-heading-size-300);
+  text-decoration: none;
+
+  span:nth-child(2) {
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+.da-site-card-action-go {
+  width: 100%;
+  display: flex;
+  justify-content: end;
+}
+
+.da-site-card-action-more {
+  margin-left: -8px;
+  position: absolute;
+  bottom: var(--spacing-300);
+  left: 24px;
+}
+
+/* Double Card - Sandbox / Add new */
+.da-site-sandbox-new {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-400);
+}
+
+.da-double-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  border-radius: var(--s2-radius-300);
+  color: #e6e6e6;
+  font-size: 18px;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
+}
+
+.da-double-card h3 {
+  font-size: 18px;
+  margin: 10px 0 0;
+}
+
+.da-double-card picture {
+  position: absolute;
+  inset: 0;
+}
+
+.da-double-card-bg {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.da-double-card-fg {
+  position: relative;
+  text-align: center;
+}
+
+/* Handle Share */
+
+.da-list-status {
+  position: fixed;
+  inset: 0;
+  background: rgb(255 255 255 / 60%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 500;
+}
+
+.da-list-status-toast {
+  width: 280px;
+  background: var(--s2-blue-800);
+  line-height: 48px;
+  border-radius: 6px;
+  filter: drop-shadow(rgb(0 0 0 / 15%) 0 1px 4px);
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+  color: #FFF;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.da-list-status-title {
+  font-weight: 700;
+  padding: 0 12px 0 40px;
+  margin: 0;
+}
+
+.da-list-status-description {
+  line-height: 1.6;
+  padding: 6px 12px;
+  margin: 0;
+  background: rgb(255 255 255 / 10%);
+}
+
+.da-list-status-type-info .da-list-status-title {
+  background: var(--s2-blue-800) url('/blocks/browse/img/Smock_InfoOutline_18_N.svg') 12px 50% no-repeat;
+}

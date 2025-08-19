@@ -1,8 +1,21 @@
 /* eslint-disable max-len */
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/prose/plugins/slashMenu/slash-menu.css');
+
+function isColorCode(str) {
+  const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+  const rgbColorRegex = /^rgba?\(\s*(\d{1,3}\s*,\s*){2}\d{1,3}(\s*,\s*(0|1|0?\.\d+))?\s*\)$/;
+
+  return hexColorRegex.test(str) || rgbColorRegex.test(str) || str?.includes('-gradient(');
+}
+
+function createColorSquare(color) {
+  return html`
+    <div style="width: 24px; height: 24px; background: ${color}; margin-left: -4px;"></div>
+  `;
+}
 
 export default class SlashMenu extends LitElement {
   static properties = {
@@ -12,6 +25,7 @@ export default class SlashMenu extends LitElement {
     visible: { type: Boolean, reflect: true },
     left: { type: Number },
     top: { type: Number },
+    parent: { type: Object, attribute: false },
   };
 
   constructor() {
@@ -32,11 +46,13 @@ export default class SlashMenu extends LitElement {
   show(coords) {
     this.visible = true;
     this.left = coords.left;
-    this.top = coords.bottom + 5;
+    this.top = coords.top || (coords.bottom + 5);
+    this.showSubmenu();
     this.requestUpdate();
   }
 
   hide() {
+    this.dispatchEvent(new CustomEvent('reset-slashmenu'));
     this.visible = false;
     this.command = '';
     this.selectedIndex = 0;
@@ -75,9 +91,36 @@ export default class SlashMenu extends LitElement {
     this.style.top = `${adjustedTop}px`;
   }
 
+  getSubmenuItems() {
+    const selectedIndex = this.getFilteredItems()[this.selectedIndex];
+    return selectedIndex?.submenu;
+  }
+
+  getSubmenuElement() {
+    return this.shadowRoot.querySelector('.submenu slash-menu');
+  }
+
+  showSubmenu() {
+    const submenuElement = this.getSubmenuElement();
+    const items = this.getSubmenuItems();
+    if (!submenuElement || !items) return;
+
+    submenuElement.items = items;
+
+    // calculate submenu position
+    const selectedItem = this.shadowRoot.querySelector('.slash-menu-item.selected');
+    const topOffset = selectedItem?.offsetTop ?? 0;
+    const width = selectedItem?.offsetWidth ?? 0;
+    submenuElement.show({ top: this.top + topOffset, left: this.left + width });
+    submenuElement.focus();
+  }
+
   updated(changedProperties) {
     if (changedProperties.has('left') || changedProperties.has('top')) {
       this.updatePosition();
+    }
+    if (changedProperties.has('selectedIndex')) {
+      this.showSubmenu();
     }
   }
 
@@ -86,8 +129,39 @@ export default class SlashMenu extends LitElement {
     this.hide();
   }
 
+  next() {
+    const filteredItems = this.getFilteredItems();
+    if (this.parent && this.selectedIndex === filteredItems.length - 1) {
+      this.parent.next();
+      return;
+    }
+    const newIndex = (this.selectedIndex + 1) % filteredItems.length;
+    this.selectedIndex = newIndex;
+    this.scrollSelectedIntoView();
+    this.requestUpdate();
+  }
+
+  previous() {
+    const filteredItems = this.getFilteredItems();
+    if (this.parent && this.selectedIndex === 0) {
+      this.parent.previous();
+      return;
+    }
+    const len = filteredItems.length;
+    const newIndex = (this.selectedIndex - 1 + len) % len;
+    this.selectedIndex = newIndex;
+    this.scrollSelectedIntoView();
+    this.requestUpdate();
+  }
+
   handleKeyDown(event) {
     if (!this.visible) return;
+
+    const submenu = this.getSubmenuElement();
+    if (submenu) {
+      submenu.handleKeyDown(event);
+      return;
+    }
 
     const filteredItems = this.getFilteredItems();
     if (!filteredItems.length) return;
@@ -95,19 +169,12 @@ export default class SlashMenu extends LitElement {
     switch (event.key) {
       case 'ArrowDown': {
         event.preventDefault();
-        const newIndex = (this.selectedIndex + 1) % filteredItems.length;
-        this.selectedIndex = newIndex;
-        this.scrollSelectedIntoView();
-        this.requestUpdate();
+        this.next();
         break;
       }
       case 'ArrowUp': {
         event.preventDefault();
-        const len = filteredItems.length;
-        const newIndex = (this.selectedIndex - 1 + len) % len;
-        this.selectedIndex = newIndex;
-        this.scrollSelectedIntoView();
-        this.requestUpdate();
+        this.previous();
         break;
       }
       case 'Enter': {
@@ -178,19 +245,33 @@ export default class SlashMenu extends LitElement {
       return '';
     }
 
+    const rules = [...sheet.cssRules];
+
     return html`
       <div class="slash-menu-items">
-        ${filteredItems.map((item, index) => html`
-          <div
-            class="slash-menu-item ${index === this.selectedIndex ? 'selected' : ''}"
-            @click=${() => this.handleItemClick(item)}
-          >
-            <span class="slash-menu-icon ${item.class || ''}"></span>
-            <span class="slash-menu-label">
-              ${item.title}
-            </span>
-          </div>
-        `)}
+        ${filteredItems.map((item, index) => {
+          const isColor = isColorCode(item.value);
+          const hasIcon = rules.find((rule) => rule.cssText.startsWith(`.slash-menu-icon.${item.class}`));
+
+          return html`
+            <div
+              class="slash-menu-item ${index === this.selectedIndex ? 'selected' : ''}"
+              @mouseenter=${() => { this.selectedIndex = index; }}
+              @mousedown=${(e) => { e.preventDefault(); /* prevent close before click handler */ }}
+              @click=${() => { this.handleItemClick(item); }}
+            >
+              ${isColor ? createColorSquare(item.value) : ''}
+              ${hasIcon ? html`<span class="slash-menu-icon ${item.class}"></span>` : ''}
+              <span class="slash-menu-label">
+                ${item.title}
+              </span>
+            </div>`;
+        })}
+        ${this.getSubmenuItems() ? html`
+          <div class="submenu">
+            <slash-menu @item-selected=${(e) => this.handleItemClick(e.detail.item)} .parent=${this}>
+          </slash-menu></div>
+        ` : nothing}
       </div>
     `;
   }

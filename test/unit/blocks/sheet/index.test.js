@@ -24,7 +24,9 @@ describe('Sheets', () => {
 
     const mockFetch = async (url) => {
       if (url === 'http://example.com') {
-        return new Response(json, { status: 200 });
+        const headers = new Headers();
+        headers.append('x-da-actions', '/=read,write');
+        return new Response(json, { status: 200, headers });
       }
       return undefined;
     };
@@ -71,7 +73,9 @@ describe('Sheets', () => {
 
     const mockFetch = async (url) => {
       if (url === 'http://example.com') {
-        return new Response(json, { status: 200 });
+        const headers = new Headers();
+        headers.append('x-da-actions', '/=read,write');
+        return new Response(json, { status: 200, headers });
       }
       return undefined;
     };
@@ -127,7 +131,9 @@ describe('Sheets', () => {
 
     const mockFetch = async (url) => {
       if (url === 'http://example.com') {
-        return new Response(json, { status: 200 });
+        const headers = new Headers();
+        headers.append('x-da-actions', '/=read,write');
+        return new Response(json, { status: 200, headers });
       }
       return undefined;
     };
@@ -200,7 +206,9 @@ describe('Sheets', () => {
 
     const mockFetch = async (url) => {
       if (url === 'http://example.com') {
-        return new Response(json, { status: 200 });
+        const headers = new Headers();
+        headers.append('x-da-actions', '/=read,write');
+        return new Response(json, { status: 200, headers });
       }
       return undefined;
     };

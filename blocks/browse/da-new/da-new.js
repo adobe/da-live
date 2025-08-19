@@ -7,10 +7,13 @@ import getEditPath from '../shared.js';
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+const INPUT_ERROR = 'da-input-error';
+
 export default class DaNew extends LitElement {
   static properties = {
     fullpath: { type: String },
     editor: { type: String },
+    permissions: { attribute: false },
     _createShow: { attribute: false },
     _createType: { attribute: false },
     _createFile: { attribute: false },
@@ -46,6 +49,9 @@ export default class DaNew extends LitElement {
 
   handleNameChange(e) {
     this._createName = e.target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    if (e.target.placeholder === 'name') {
+      e.target.classList.remove(INPUT_ERROR);
+    }
   }
 
   handleUrlChange(e) {
@@ -53,6 +59,13 @@ export default class DaNew extends LitElement {
   }
 
   async handleSave() {
+    const nameInput = this.shadowRoot.querySelector('.da-actions-input[placeholder="name"]');
+    if (!this._createName) {
+      if (nameInput) nameInput.classList.add(INPUT_ERROR);
+      return;
+    }
+    if (nameInput) nameInput.classList.remove(INPUT_ERROR);
+
     let ext;
     let formData;
     switch (this._createType) {
@@ -88,6 +101,12 @@ export default class DaNew extends LitElement {
   }
 
   async handleUpload(e) {
+    if (this._fileLabel === 'Select file') {
+      const label = this.shadowRoot.querySelector('.da-actions-file-label');
+      label.classList.add(INPUT_ERROR);
+      return false;
+    }
+
     e.preventDefault();
     const formData = new FormData(e.target);
     const split = this._fileLabel.split('.');
@@ -102,6 +121,7 @@ export default class DaNew extends LitElement {
     this.sendNewItem(item);
     this.resetCreate();
     this.requestUpdate();
+    return true;
   }
 
   handleKeyCommands(event) {
@@ -115,6 +135,8 @@ export default class DaNew extends LitElement {
 
   handleAddFile(e) {
     this._fileLabel = e.target.files[0].name;
+    const fileLabelError = e.target.parentElement.querySelector('.da-actions-file-label.da-input-error');
+    if (fileLabelError) fileLabelError.classList.remove(INPUT_ERROR);
   }
 
   resetCreate(e) {
@@ -125,12 +147,19 @@ export default class DaNew extends LitElement {
     this._createFile = '';
     this._fileLabel = 'Select file';
     this._externalUrl = '';
+    const input = this.shadowRoot.querySelector('.da-actions-input.da-input-error');
+    if (input) input.classList.remove(INPUT_ERROR);
+  }
+
+  get _disabled() {
+    if (!this.permissions) return true;
+    return !this.permissions.some((permission) => permission === 'write');
   }
 
   render() {
     return html`
       <div class="da-actions-create ${this._createShow}">
-        <button class="da-actions-new-button" @click=${this.handleCreateMenu}>New</button>
+        <button class="da-actions-new-button" @click=${this.handleCreateMenu} ?disabled=${this._disabled}>New</button>
         <ul class="da-actions-menu">
           <li class=da-actions-menu-item>
             <button data-type=folder @click=${this.handleNewType}>Folder</button>

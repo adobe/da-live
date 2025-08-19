@@ -24,22 +24,24 @@ import {
 
 // DA
 import prose2aem from '../../shared/prose2aem.js';
-import menu from './plugins/menu.js';
+import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
+import { linkItem } from './plugins/menu/linkItem.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
-import { COLLAB_ORIGIN, DA_ROOM_ORIGIN } from '../../shared/constants.js';
+import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
 
-let pollerSetUp = false;
 let sendUpdates = false;
 let hasChanged = 0;
 let lastCursorPosition = null;
+let daPreview;
+let updatePoller;
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
@@ -52,31 +54,44 @@ function dispatchTransaction(transaction) {
   window.view.updateState(newState);
 }
 
-function setPreviewBody(daPreview, proseEl) {
-  const clone = proseEl.cloneNode(true);
+function setPreviewBody() {
+  daPreview ??= document.querySelector('da-content')?.shadowRoot.querySelector('da-preview');
+  if (!daPreview) return;
+
+  const clone = window.view.docView.dom.cloneNode(true);
   const body = prose2aem(clone, true);
   daPreview.body = body;
 }
 
-export function pollForUpdates(doc = document, win = window) {
-  if (pollerSetUp) return;
-  const daContent = doc.querySelector('da-content');
-  const daPreview = daContent?.shadowRoot.querySelector('da-preview');
-  if (!win.view) return;
-  const proseEl = win.view.root.querySelector('.ProseMirror');
-  if (!daPreview) return;
+export function pollForUpdates() {
+  if (updatePoller) clearInterval(updatePoller);
 
-  setInterval(() => {
+  updatePoller = setInterval(() => {
     if (sendUpdates) {
       if (hasChanged > 0) {
         hasChanged = 0;
         return;
       }
-      setPreviewBody(daPreview, proseEl);
+      setPreviewBody();
       sendUpdates = false;
     }
   }, 500);
-  pollerSetUp = true;
+}
+
+function handleProseLoaded(editor) {
+  // Give the websocket time to connect and populate
+  setTimeout(() => {
+    const daEditor = editor.getRootNode().host;
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('proseloaded', opts);
+    daEditor.dispatchEvent(event);
+
+    // Give the preview elements time to create
+    setTimeout(() => {
+      setPreviewBody();
+      pollForUpdates();
+    }, 3000);
+  }, 3000);
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
@@ -153,21 +168,41 @@ function storeCursorPosition(view) {
 function restoreCursorPosition(view) {
   if (lastCursorPosition) {
     const { from, to } = lastCursorPosition;
-    const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
-    view.dispatch(tr);
+    const docSize = view.state.doc.content.size;
+    if (from <= docSize && to <= docSize) {
+      const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
+      view.dispatch(tr);
+    } else {
+      lastCursorPosition = null;
+    }
   }
 }
 
-export default function initProse({ editor, path }) {
+function addSyncedListener(wsProvider) {
+  let initialContentLoaded = false;
+  wsProvider.on('synced', (isSynced) => {
+    if (isSynced && !initialContentLoaded) {
+      const pm = document.querySelector('da-content')?.shadowRoot
+        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+      if (pm) pm.contentEditable = 'true';
+
+      initialContentLoaded = true;
+    }
+  });
+}
+
+export default function initProse({ path, permissions }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
+  const editor = document.createElement('div');
+  editor.className = 'da-prose-mirror';
 
   const schema = getSchema();
 
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ROOM_ORIGIN}${new URL(path).pathname}`;
+  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
 
   const opts = {};
 
@@ -175,7 +210,11 @@ export default function initProse({ editor, path }) {
     opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
   }
 
+  const canWrite = permissions.some((permission) => permission === 'write');
+
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  addSyncedListener(wsProvider);
+
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
 
@@ -206,14 +245,9 @@ export default function initProse({ editor, path }) {
   }
 
   const plugins = [
-    ySyncPlugin(yXmlFragment, {
-      onFirstRender: () => {
-        pollForUpdates();
-      },
-    }),
+    ySyncPlugin(yXmlFragment),
     yCursorPlugin(wsProvider.awareness),
     yUndoPlugin(),
-    menu,
     slashMenu(),
     imageDrop(schema),
     linkConverter(schema),
@@ -229,6 +263,12 @@ export default function initProse({ editor, path }) {
       'Mod-y': yRedo,
       'Mod-Shift-z': yRedo,
       'Mod-Shift-l': toggleLibrary,
+      'Mod-k': (state, dispatch, view) => { // toggle link prompt
+        const linkMarkType = state.schema.marks.link;
+        const linkMenuItem = linkItem(linkMarkType);
+        return linkMenuItem.spec.run(state, dispatch, view);
+      },
+      ...getHeadingKeymap(schema),
     }),
     keymap({
       Tab: handleTableTab(1),
@@ -243,10 +283,9 @@ export default function initProse({ editor, path }) {
     history(),
   ];
 
-  let state = EditorState.create({
-    schema,
-    plugins,
-  });
+  if (canWrite) plugins.push(menu);
+
+  let state = EditorState.create({ schema, plugins });
 
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
@@ -274,13 +313,13 @@ export default function initProse({ editor, path }) {
         return false;
       },
     },
+    editable() { return canWrite; },
   });
 
-  // Call pollForUpdates() to make sure it gets called even if the callback was made earlier
-  pollForUpdates();
+  handleProseLoaded(editor, permissions);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return wsProvider;
+  return { proseEl: editor, wsProvider };
 }

@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getTestFolderURL, getTestPageURL } from '../utils/page.js';
+import { getQuery, getTestFolderURL, getTestPageURL } from '../utils/page.js';
 
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
@@ -22,6 +22,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   const orgPageName = pageURL.split('/').pop();
   await page.goto(pageURL);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   // Enter some initial text onto the page
   await page.locator('div.ProseMirror').fill('First text');
@@ -46,7 +47,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.waitForTimeout(5000);
 
   // Go back to the directory view
-  await page.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
 
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
@@ -73,7 +74,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
 
   // go back to the original to rename it
   // Go to the directory view
-  await page.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
   await page.reload(); // Clears any leftover selection, if any
 
   const checkbox = page.locator('div.da-item-list-item-inner').filter({ hasText: orgPageName })
@@ -102,9 +103,10 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await expect(page.locator('div.ProseMirror')).toContainText('Versioned text');
 
   // now go to the copy
-  await page.goto(`${ENV}/edit#/da-sites/da-status/tests/${copyFolderName}/${orgPageName}`);
+  await page.goto(`${ENV}/edit${getQuery()}#/da-sites/da-status/tests/${copyFolderName}/${orgPageName}`);
+  await page.reload(); // Resets the versions view, shouldn't be needed TODO
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
   await page.getByRole('button', { name: 'Versions' }).click();
   await expect(page.getByText('Now')).toBeVisible();
-  await expect(page.getByText('myver')).not.toBeVisible(); // The version shouldn't bet there on the copy
+  await expect(page.getByText('myver')).not.toBeVisible(); // The version shouldn't be there on the copy
 });

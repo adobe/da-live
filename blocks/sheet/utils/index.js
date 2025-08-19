@@ -8,6 +8,9 @@ const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
+let permissions;
+let canWrite;
+
 function resetSheets(el) {
   document.querySelector('da-sheet-tabs')?.remove();
   if (!el.jexcel) return;
@@ -30,12 +33,13 @@ function finishSetup(el, data) {
 
   // Setup tabs
   const daSheetTabs = document.createElement('da-sheet-tabs');
+  daSheetTabs.permissions = permissions;
   el.insertAdjacentElement('beforebegin', daSheetTabs);
 }
 
 function getDefaultSheet() {
   return [
-    { ...SHEET_TEMPLATE },
+    { ...SHEET_TEMPLATE, minDimensions: [20, 20] },
   ];
 }
 
@@ -50,21 +54,48 @@ function getSheetData(sheetData) {
   return [header, ...data];
 }
 
-const getColWidths = (colWidths, headers) => colWidths?.map((width) => ({ width: `${width}` }))
-  || headers.map(() => ({ width: '300' }));
+const getColWidths = (colWidths, headers) => {
+  if (colWidths) {
+    return colWidths?.map((width) => {
+      const opts = { width: `${width}` };
+      if (!canWrite) opts.readOnly = true;
+      return opts;
+    });
+  }
+  return headers.map(() => {
+    const opts = { width: '300' };
+    if (!canWrite) opts.readOnly = true;
+    return opts;
+  });
+};
 
 function getSheet(json, sheetName) {
   const data = getSheetData(json.data);
+  const templ = { ...SHEET_TEMPLATE };
+  if (!canWrite) delete templ.minDimensions;
+
   return {
-    ...SHEET_TEMPLATE,
+    ...templ,
     sheetName,
     data,
     columns: getColWidths(json[':colWidths'], data[0]),
   };
 }
 
+export function getPermissions() {
+  return permissions;
+}
+
 export async function getData(url) {
   const resp = await daFetch(url);
+
+  // Set permissions even if the file is a 404
+  const daTitle = document.querySelector('da-title');
+  if (daTitle) daTitle.permissions = resp.permissions;
+
+  permissions = resp.permissions;
+  canWrite = resp.permissions?.some((permission) => permission === 'write');
+
   if (!resp.ok) return getDefaultSheet();
 
   const sheets = [];

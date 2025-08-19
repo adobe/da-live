@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 
 // Components
@@ -41,6 +41,10 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [STYLE];
   }
 
+  handlePermissions(e) {
+    if (this.newCmp) this.newCmp.permissions = e.detail;
+  }
+
   async update(props) {
     if (props.has('details') && this.details) {
       // Only re-fetch if the orgs are different
@@ -57,10 +61,10 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const resp = await daFetch(`${DA_ORIGIN}/config/${this.details.owner}/`);
       if (!resp.ok) return DEF_EDIT;
-      const { data, ':type': type } = await resp.json();
+      const json = await resp.json();
 
-      const rows = type === 'multi-sheet' ? data?.data : data;
-      this.editorConfs = rows.reduce((acc, row) => {
+      const rows = getFirstSheet(json);
+      this.editorConfs = rows?.reduce((acc, row) => {
         if (row.key === 'editor.path') acc.push(row.value);
         return acc;
       }, []);
@@ -77,6 +81,7 @@ export default class DaBrowse extends LitElement {
 
     // Sort by length in descending order (longest first)
     const matchedConf = matchedConfs.sort((a, b) => b.length - a.length)[0];
+    console.log(matchedConf);
 
     return matchedConf.split('=')[1];
   }
@@ -95,6 +100,10 @@ export default class DaBrowse extends LitElement {
 
   get context() {
     return this._tabItems.find((tab) => tab.selected).id;
+  }
+
+  get newCmp() {
+    return this.shadowRoot.querySelector('da-new');
   }
 
   renderNew() {
@@ -116,6 +125,7 @@ export default class DaBrowse extends LitElement {
         class="da-list-type-${type}"
         fullpath="${fullpath}"
         editor="${this.editor}"
+        @onpermissions=${this.handlePermissions}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
         drag="${drag ? true : nothing}"></da-list>`;

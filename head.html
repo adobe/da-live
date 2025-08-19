@@ -1,5 +1,10 @@
+<meta
+  http-equiv="Content-Security-Policy"
+  content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+  move-to-http-header="true"
+>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<script type="importmap">
+<script nonce="aem" type="importmap">
 {
   "imports": {
     "da-lit": "/deps/lit/dist/index.js",
@@ -7,6 +12,6 @@
   }
 }
 </script>
-<script src="/scripts/scripts.js" type="module"></script>
+<script nonce="aem" src="/scripts/scripts.js" type="module"></script>
 <style>body { display: none; }</style>
 <link rel="icon" href="data:,">

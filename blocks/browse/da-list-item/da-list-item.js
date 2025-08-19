@@ -96,11 +96,17 @@ export default class DaListItem extends LitElement {
   handleChecked(e) {
     this.isChecked = !this.isChecked;
     const opts = {
-      detail: { checked: this.isChecked, shiftKey: e.shiftKey },
+      detail: { checked: this.isChecked, shiftKey: e?.shiftKey ?? false },
       bubbles: true,
       composed: true,
     };
     const event = new CustomEvent('checked', opts);
+    this.dispatchEvent(event);
+  }
+
+  notifyRenamed(oldPath) {
+    const opts = { detail: { path: this.path, name: this.name, date: this.date, oldPath } };
+    const event = new CustomEvent('renamecompleted', opts);
     this.dispatchEvent(event);
   }
 
@@ -145,10 +151,15 @@ export default class DaListItem extends LitElement {
         // Uncheck the item and bubble up state
         this.handleChecked();
         this.updateAEMStatus();
+        this.notifyRenamed(oldPath);
       } else {
         this.setStatus('There was an error. Refresh and try again.', 'error');
       }
     }
+  }
+
+  handleRename({ target }) {
+    target.value = target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
   }
 
   toggleExpand() {
@@ -175,7 +186,7 @@ export default class DaListItem extends LitElement {
       <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
         <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
         </span>
-        <input type="text" value="${this.name}" name="new-name">
+        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name">
         <div class="da-item-list-item-rename-actions">
           <button aria-label="Confirm" value="confirm">
             <div class="icon checkmark-icon"></div>
@@ -191,7 +202,7 @@ export default class DaListItem extends LitElement {
   renderItem() {
     let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
     let externalUrlPromise;
-    let target = this.ext ? path : nothing;
+    let target = this.ext ? path.split('#')[1] : nothing;
     if (this.ext === 'link') {
       path = nothing;
       externalUrlPromise = daFetch(`${DA_ORIGIN}/source${this.path}`)

@@ -1,16 +1,51 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+      move-to-http-header="true"
+    >
     <title>404</title>
     <meta name="template" content="404"/>
     <meta name="404" content="local"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <script src="/scripts/scripts.js" type="module"></script>
+    <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+    <style>body { display: none; }</style>
     <link rel="icon" href="data:,">
     </head>
   <body>
     <header></header>
-    <main><div></div></main>
+    <main>
+      <div>
+        <div class="nx-404">
+          <div>
+            <div>
+              <picture>
+                <source type="image/webp" srcset="./media_1412370e98b188540f4343de87798c7587b9f4201.jpeg?width=2000&#x26;format=webply&#x26;optimize=medium" media="(min-width: 600px)">
+                <source type="image/webp" srcset="./media_1412370e98b188540f4343de87798c7587b9f4201.jpeg?width=750&#x26;format=webply&#x26;optimize=medium">
+                <source type="image/jpeg" srcset="./media_1412370e98b188540f4343de87798c7587b9f4201.jpeg?width=2000&#x26;format=jpeg&#x26;optimize=medium" media="(min-width: 600px)">
+                <img loading="lazy" alt="" src="./media_1412370e98b188540f4343de87798c7587b9f4201.jpeg?width=750&#x26;format=jpeg&#x26;optimize=medium" width="2000" height="1333">
+              </picture>
+            </div>
+          </div>
+          <div>
+            <div>
+              <h1 id="not-found">404 Not Found</h1>
+              <h2 id="a-new-adventure-is-calling">A new adventure <br/>is calling.</h2>
+              <p>
+                <picture>
+                  <source type="image/webp" srcset="./media_1f9d87b6de1c40d8dde6fa083033c72e76178a81b.png?width=2000&#x26;format=webply&#x26;optimize=medium" media="(min-width: 600px)">
+                  <source type="image/webp" srcset="./media_1f9d87b6de1c40d8dde6fa083033c72e76178a81b.png?width=750&#x26;format=webply&#x26;optimize=medium">
+                  <source type="image/png" srcset="./media_1f9d87b6de1c40d8dde6fa083033c72e76178a81b.png?width=2000&#x26;format=png&#x26;optimize=medium" media="(min-width: 600px)">
+                  <img loading="lazy" alt="" src="./media_1f9d87b6de1c40d8dde6fa083033c72e76178a81b.png?width=750&#x26;format=png&#x26;optimize=medium" width="400" height="150">
+                </picture>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
     <footer></footer>
   </body>
 </html>

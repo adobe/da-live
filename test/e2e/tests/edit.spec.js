@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getTestPageURL } from '../utils/page.js';
+import { getQuery, getTestPageURL } from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
@@ -21,6 +21,7 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toBeVisible();
 
   await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
@@ -40,18 +41,19 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();
 
-  await page.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
   await page.locator('button.da-actions-new-button').click();
   await page.locator('button:text("Document")').click();
   await page.locator('input.da-actions-input').fill(pageName);
 
   await page.locator('button:text("Create document")').click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   await page.locator('div.ProseMirror').fill('testcontent');
   await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
-  await newPage.goto(`${ENV}/#/da-sites/da-status/tests`);
+  await newPage.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
 
   await newPage.waitForTimeout(3000);
   await newPage.reload();
@@ -83,6 +85,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.goto(urlA);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   await page.locator('div.ProseMirror').fill('before table');
   await page.getByText('Block', { exact: true }).click();
@@ -102,6 +105,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.goto(urlB);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   await page.locator('div.ProseMirror').fill('page B');
   await page.waitForTimeout(3000);

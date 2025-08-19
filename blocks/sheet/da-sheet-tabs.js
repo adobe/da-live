@@ -22,6 +22,7 @@ const setCustomValidity = (inputEl, msg = '') => {
 
 class DaSheetTabs extends LitElement {
   static properties = {
+    _permissions: { attribute: false },
     _names: { attribute: false },
     _active: { attribute: false },
     _edit: { attribute: false },
@@ -33,6 +34,11 @@ class DaSheetTabs extends LitElement {
     getSvg({ parent: this.shadowRoot, paths: ICONS });
     this._names = this.getNames();
     this.showSheet(0);
+    this.getPermissions();
+  }
+
+  getPermissions() {
+    this.permissions = document.querySelector('da-title').permissions;
   }
 
   showSheet(idx) {
@@ -61,6 +67,10 @@ class DaSheetTabs extends LitElement {
   get sheetContents() {
     const parent = this.tabContainer.querySelector(':scope > div:last-child');
     return parent.querySelectorAll('.jexcel_container');
+  }
+
+  get _canWrite() {
+    return this.permissions.some((permission) => permission === 'write');
   }
 
   handleAdd() {
@@ -143,12 +153,12 @@ class DaSheetTabs extends LitElement {
   }
 
   render() {
-    if (!this._names) return nothing;
+    if (!this._names || !this.permissions) return nothing;
 
     return html`
       <ul>
         ${this._names.map((name, idx) => html`
-          <li class="${idx === this._active ? 'active' : ''}" @click=${() => this.showSheet(idx)}>
+          <li class="${idx === this._active ? 'active' : ''} ${this._canWrite ? '' : 'is-read-only'}" @click=${() => this.showSheet(idx)}>
             <form @submit=${(e) => this.handleEdit(e, idx)}>
               ${idx === this._edit ? html`
                 <input type="text" name="name" value="${name}" />
@@ -168,14 +178,14 @@ class DaSheetTabs extends LitElement {
                   </button>
                 </div>
               ` : html`
-                <button aria-label="Edit" value="edit">
+                <button class="da-sheet-edit-button" aria-label="Edit" value="edit">
                   <svg class="icon"><use href="#spectrum-Edit"/></svg>
                 </button>
               `}
             </form>
           </li>`)}
       </ul>
-      <button class="add-sheet" @click=${this.handleAdd}>Add sheet</button>
+      <button class="add-sheet ${this._canWrite ? '' : 'is-read-only'}" @click=${this.handleAdd}>Add sheet</button>
     `;
   }
 }

@@ -51,6 +51,15 @@ button {
   transition: outline-offset .2s;
 }
 
+.da-actions-new-button:disabled {
+  color: var(--s2-gray-700);
+  background-color: transparent;
+  outline-color: var(--s2-gray-700);
+  border: 2px solid var(--s2-gray-700);
+  border-style: dotted;
+  cursor: not-allowed;
+}
+
 .da-actions-create.menu .da-actions-menu {
   display: grid;
   gap: 6px;
@@ -108,4 +117,15 @@ button {
 
 li.da-actions-menu-item button:hover {
   background: #EFEFEF;
+}
+
+.da-input-error {
+  border: 1px solid red !important;
+  background-color: #ffebee; /* Light red background */
+  outline-color: red; /* For focus states */
+}
+
+.da-input-error::placeholder {
+  color: red;
+  opacity: 0.8;
 }

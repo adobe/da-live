@@ -21,10 +21,12 @@ const CLOUD_ICONS = {
 export default class DaTitle extends LitElement {
   static properties = {
     details: { attribute: false },
+    permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
     _actionsVis: {},
     _status: { state: true },
+    _fixedActions: { state: true },
   };
 
   connectedCallback() {
@@ -42,10 +44,29 @@ export default class DaTitle extends LitElement {
     }
   }
 
+  firstUpdated() {
+    const observer = new IntersectionObserver((entries) => {
+      this._fixedActions = !entries[0].isIntersecting;
+    });
+
+    const element = this.shadowRoot.querySelector('h1');
+    if (element) observer.observe(element);
+  }
+
   handleError(json, action, icon) {
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');
     icon.parentElement.classList.add('is-error');
+  }
+
+  getSnapshotHref(url, action) {
+    const tldRepl = action === 'publish' ? 'aem.live' : 'aem.page';
+    const pathParts = url.pathname.slice(1).toLowerCase().split('/');
+    const snapName = pathParts.splice(0, 2)[1];
+    const origin = url.origin
+      .replace('https://', `https://${snapName}--`)
+      .replace(tldRepl, 'aem.reviews');
+    return `${origin}/${pathParts.join('/')}`;
   }
 
   async handleAction(action) {
@@ -56,15 +77,18 @@ export default class DaTitle extends LitElement {
 
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
-    // Only save to DA if it is a sheet or config
 
+    // Only save to DA if it is a sheet or config
     if (this.details.view === 'sheet') {
       const dasSave = await saveToDa(pathname, this.sheet);
       if (!dasSave.ok) return;
     }
     if (this.details.view === 'config') {
       const daConfigResp = await saveDaConfig(pathname, this.sheet);
-      if (!daConfigResp.ok) return;
+      if (!daConfigResp.ok) {
+        console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
+        return;
+      }
     }
     if (action === 'preview' || action === 'publish') {
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
@@ -78,8 +102,12 @@ export default class DaTitle extends LitElement {
         this.handleError(json, action, sendBtn);
         return;
       }
-      const { url } = action === 'publish' ? json.live : json.preview;
-      window.open(url, '_blank');
+      const { url: href } = action === 'publish' ? json.live : json.preview;
+      const url = new URL(href);
+      const isSnap = url.pathname.startsWith('/.snapshots');
+      const toOpen = isSnap ? this.getSnapshotHref(url, action) : href;
+      const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
+      window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
@@ -87,6 +115,11 @@ export default class DaTitle extends LitElement {
 
   toggleActions() {
     this._actionsVis = !this._actionsVis;
+  }
+
+  get _readOnly() {
+    if (!this.permissions) return false;
+    return !this.permissions.some((permission) => permission === 'write');
   }
 
   renderSave() {
@@ -146,18 +179,18 @@ export default class DaTitle extends LitElement {
 
   render() {
     return html`
-      <div class="da-title-inner">
+      <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
         <div class="da-title-name">
           <a
             href="/#${this.details.parent}"
-            target="${this.details.parent.replaceAll('/', '-')}"
+            target="${this.details.parent}"
             class="da-title-name-label">${this.details.parentName}</a>
           <h1>${this.details.name}</h1>
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._status ? html`<p class="da-title-error-details">${this._status.message} ${this._status.action}.</p>` : nothing}
-          <div class="da-title-actions${this._actionsVis ? ' is-open' : ''}">
+          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis ? 'is-open' : ''}">
             ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
             <button
               @click=${this.toggleActions}
