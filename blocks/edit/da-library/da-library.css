@@ -466,10 +466,7 @@ ul {
 /* Plugins */
 .da-library-type-plugin {
   position: absolute;
-  top: 44px;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset: 44px 0 0;
 }
 
 .da-library-type-plugin iframe {

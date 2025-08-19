@@ -37,10 +37,8 @@ h2 {
 /* No recents well */
 .da-no-site-well {
   display: grid;
-  justify-items: center;
-  justify-content: center;
-  align-items: center;
-  align-content: center;
+  place-items: center;
+  place-content: center;
   background: #fafafa;
   border-radius: var(--s2-radius-300);
   min-height: 320px;
@@ -268,8 +266,7 @@ form button:hover {
   display: none;
   gap: 24px;
   align-items: center;
-  align-content: center;
-  justify-content: center;
+  place-content: center center;
   background-color: rgb(250 250 250);
   position: absolute;
   width: 100%;
@@ -341,9 +338,8 @@ form button:hover {
 
 .bg-overlay a {
   display: flex;
-  flex-direction: column;
+  flex-flow: column wrap;
   justify-content: end;
-  flex-wrap: wrap;
   height: 100%;
   padding: 0 var(--spacing-400) var(--spacing-300);
   box-sizing: border-box;
