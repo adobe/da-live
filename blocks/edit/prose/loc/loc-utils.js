@@ -432,7 +432,7 @@ function createCompositeButton(
     switchBtn.appendChild(createTooltip(switchTooltip));
   }
 
-  const confirmBtn = createButton('loc-composite-confirm loc-composite-btn-base-element', 'button', { 'aria-label': `Keep ${label}` });
+  const confirmBtn = createButton('loc-composite-confirm loc-composite-btn-base-element', 'button', { 'aria-label': `${tooltip}` });
   confirmBtn.addEventListener('click', keepHandler);
   if (tooltip) {
     confirmBtn.appendChild(createTooltip(tooltip));
