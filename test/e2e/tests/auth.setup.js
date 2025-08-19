@@ -14,7 +14,8 @@ import path from 'path';
 import { test as setup, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
 
-const AUTH_FILE = path.join(__dirname, '../.playwright/.auth/user.json');
+const AUTH_DIR = path.join(__dirname, '../.playwright/.auth');
+const AUTH_FILE = path.join(AUTH_DIR, 'user.json');
 
 /*
 The ACL tests require to be logged in, which is what this setup does.
@@ -40,6 +41,9 @@ setup('Set up authentication', async ({ page }) => {
 
   // Skip auth when GITHUB_HEAD_REF (branch name) is longer than 8 characters
   if (process.env.SKIP_AUTH || process.env.GITHUB_HEAD_REF?.length > 8) {
+    if (!fs.existsSync(AUTH_DIR)) {
+      await fs.promises.mkdir(AUTH_DIR, { recursive: true });
+    }
     await fs.promises.writeFile(AUTH_FILE, '{}');
     console.log('Skipping authentication');
     return;
