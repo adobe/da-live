@@ -21,6 +21,11 @@ async function findPageTab(title, page, context) {
   throw new Error('Could not find the regional edit page');
 }
 
+const sendUndo = async (page) => {
+  await page.locator('.ProseMirror').press('ControlOrMeta+Z');
+  await expect(page.locator('div.loc-tabbed-actions.loc-floating-overlay')).toBeVisible();
+};
+
 test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   test.setTimeout(15000);
 
@@ -57,7 +62,7 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
   await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).toBeVisible();
 
-  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Keep Local', exact: true }).click();
+  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Accept Local', exact: true }).click();
 
   await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
   await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
@@ -65,35 +70,40 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
 
   await expect(newPage.locator('div.loc-tabbed-actions.loc-floating-overlay')).not.toBeVisible();
 
-  await page.pause();
+  await sendUndo(newPage);
 
-  // Undo the selection and bring regional edit interface back
-  await newPage.locator('.ProseMirror').press('ControlOrMeta+Z');
-  await expect(newPage.locator('div.loc-tabbed-actions.loc-floating-overlay')).toBeVisible();
-
-  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Keep Upstream', exact: true }).click();
+  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Accept Upstream', exact: true }).click();
 
   await expect(newPage.getByText('Added H1 Here', { exact: true })).not.toBeVisible();
   await expect(newPage.getByText('Deleted H1 Here', { exact: true })).toBeVisible();
   await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).not.toBeVisible();
 
-  // Undo the selection and bring regional edit interface back
-  await newPage.locator('.ProseMirror').press('ControlOrMeta+Z');
-  await expect(newPage.locator('div.loc-tabbed-actions.loc-floating-overlay')).toBeVisible();
+  await sendUndo(newPage);
 
-  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Keep Both', exact: true }).click();
+  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Accept Both', exact: true }).click();
 
   await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
   await expect(newPage.getByText('Deleted H1 Here', { exact: true })).toBeVisible();
   await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).not.toBeVisible();
 
-  // await newPage.locator('div.loc-color-overlay.loc-langstore').hover();
-  // await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
+  await sendUndo(newPage);
 
-  // await newPage.locator('div.loc-color-overlay.loc-regional').hover();
-  // await newPage.locator('da-loc-added').getByText('Keep', { exact: true }).click();
-  // await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
-  // await expect(newPage.locator('div.loc-color-overlay.loc-regional')).not.toBeVisible();
+  // Global Regional Edit Buttons
+  await newPage.locator('div.da-regional-edits-actions').getByRole('button', { name: 'Keep All Local', exact: true }).click();
+  await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
+  await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
+  await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).not.toBeVisible();
+
+  await sendUndo(newPage);
+
+  await newPage.locator('div.da-regional-edits-actions').getByRole('button', { name: 'Keep All Upstream', exact: true }).click();
+  await expect(newPage.getByText('Added H1 Here', { exact: true })).not.toBeVisible();
+  await expect(newPage.getByText('Deleted H1 Here', { exact: true })).toBeVisible();
+  await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).not.toBeVisible();
+
+  // No regional edit actions should be visible
+  await expect(newPage.locator('div.da-regional-edits-actions')).not.toBeVisible();
+  await expect(newPage.locator('div.loc-tabbed-actions.loc-floating-overlay')).not.toBeVisible();
 
   // Note that the test folder will be automatically cleaned up in subsequent runs
   // by the delete.spec.js test
