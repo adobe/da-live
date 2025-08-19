@@ -1,9 +1,12 @@
-/* LOC (Local/Upstream Content) Utilities Styles */
-da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
+/* stylelint-disable selector-class-pattern */
+
+da-loc-deleted,
+da-loc-added,
+.da-loc-deleted-style,
+.da-loc-added-style {
   display: block;
   position: relative;
 }
-
 
 .loc-color-overlay {
   position: absolute;
@@ -124,7 +127,7 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
 }
 
 .loc-composite-btn .loc-composite-confirm::before {
-  content: '✓';
+  content: "✓";
   font-weight: 800;
   position: relative;
   z-index: 1;
@@ -146,6 +149,7 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
   box-shadow: 0 4px 12px rgb(0 0 0 / 40%), 0 2px 4px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 10%);
   white-space: nowrap;
   opacity: 0;
+  /* stylelint-disable-next-line max-line-length */
   transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
   z-index: 2500;
@@ -154,7 +158,7 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
 }
 
 .loc-tooltip::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 100%;
   left: 50%;
@@ -167,7 +171,7 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
 }
 
 .loc-tooltip::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 100%;
   left: 50%;
@@ -221,7 +225,7 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
 
 .loc-composite-btn.is-active .loc-composite-switch,
 .loc-composite-btn.is-active .loc-composite-confirm {
-  color: #E6E6E6;
+  color: #e6e6e6;
 }
 
 .loc-composite-btn-3part .loc-composite-label {
@@ -241,7 +245,7 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
 }
 
 .loc-composite-btn-3part .loc-composite-accept::before {
-  content: '✓';
+  content: "✓";
   font-weight: 800;
   position: relative;
   z-index: 1;
@@ -257,7 +261,7 @@ da-loc-deleted, da-loc-added, .da-loc-deleted-style, .da-loc-added-style {
 }
 
 .loc-composite-btn-3part .loc-composite-delete::before {
-  content: '✕';
+  content: "✕";
   font-weight: 800;
   position: relative;
   z-index: 1;
