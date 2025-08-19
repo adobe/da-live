@@ -324,7 +324,13 @@ export default class DaList extends LitElement {
       },
     );
 
-    if (success) this.removeItemFromList(item);
+    if (success) {
+      this.removeItemFromList(item);
+    } else {
+      // eslint-disable-next-line no-console
+      console.log('Issue with moving, deleting item instead');
+      await this.deleteItem(item);
+    }
 
     return success;
   }
