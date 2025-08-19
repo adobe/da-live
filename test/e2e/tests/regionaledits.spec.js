@@ -30,10 +30,7 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   await page.getByRole('button', { name: 'New' }).click();
   await page.getByRole('button', { name: 'Media' }).click();
 
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.getByText('Select file').click(),
-  ]);
+  const [fileChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByText('Select file').click()]);
 
   const htmlFile = path.join(__dirname, '/mocks/regionaledit.html');
   console.log(htmlFile);
@@ -43,20 +40,60 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   await page.getByRole('link', { name: 'regionaledit', exact: true }).click();
 
   const newPage = await findPageTab('Edit regionaledit', page, context);
-  await expect(newPage.locator('div.loc-color-overlay.loc-langstore')).toBeVisible();
-  await expect(newPage.locator('div.loc-color-overlay.loc-regional')).toBeVisible();
+  await expect(newPage.locator('div.loc-tabbed-actions.loc-floating-overlay')).toBeVisible();
+  await expect(newPage.locator('div.loc-composite-btn.is-local.is-active')).toBeVisible();
 
-  await expect(newPage.getByText('Deleted H1 Here', { exact: true })).toBeVisible();
   await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
-
-  await newPage.locator('div.loc-color-overlay.loc-langstore').hover();
-  await newPage.locator('da-loc-deleted').getByText('Delete', { exact: true }).click();
   await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
 
-  await newPage.locator('div.loc-color-overlay.loc-regional').hover();
-  await newPage.locator('da-loc-added').getByText('Keep', { exact: true }).click();
+  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Upstream', exact: true }).click();
+
+  await expect(newPage.getByText('Added H1 Here', { exact: true })).not.toBeVisible();
+  await expect(newPage.getByText('Deleted H1 Here', { exact: true })).toBeVisible();
+
+  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Difference', exact: true }).click();
+
+  await expect(newPage.getByText('Added H1 Here', { exact: true })).not.toBeVisible();
+  await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
+  await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).toBeVisible();
+
+  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Keep Local', exact: true }).click();
+
   await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
-  await expect(newPage.locator('div.loc-color-overlay.loc-regional')).not.toBeVisible();
+  await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
+  await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).not.toBeVisible();
+
+  await expect(newPage.locator('div.loc-tabbed-actions.loc-floating-overlay')).not.toBeVisible();
+
+  await page.pause();
+
+  // Undo the selection and bring regional edit interface back
+  await newPage.locator('.ProseMirror').press('ControlOrMeta+Z');
+  await expect(newPage.locator('div.loc-tabbed-actions.loc-floating-overlay')).toBeVisible();
+
+  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Keep Upstream', exact: true }).click();
+
+  await expect(newPage.getByText('Added H1 Here', { exact: true })).not.toBeVisible();
+  await expect(newPage.getByText('Deleted H1 Here', { exact: true })).toBeVisible();
+  await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).not.toBeVisible();
+
+  // Undo the selection and bring regional edit interface back
+  await newPage.locator('.ProseMirror').press('ControlOrMeta+Z');
+  await expect(newPage.locator('div.loc-tabbed-actions.loc-floating-overlay')).toBeVisible();
+
+  await newPage.locator('div.loc-action-buttons').getByRole('button', { name: 'Keep Both', exact: true }).click();
+
+  await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
+  await expect(newPage.getByText('Deleted H1 Here', { exact: true })).toBeVisible();
+  await expect(newPage.getByText('DeletedAdded H1 Here', { exact: true })).not.toBeVisible();
+
+  // await newPage.locator('div.loc-color-overlay.loc-langstore').hover();
+  // await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
+
+  // await newPage.locator('div.loc-color-overlay.loc-regional').hover();
+  // await newPage.locator('da-loc-added').getByText('Keep', { exact: true }).click();
+  // await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
+  // await expect(newPage.locator('div.loc-color-overlay.loc-regional')).not.toBeVisible();
 
   // Note that the test folder will be automatically cleaned up in subsequent runs
   // by the delete.spec.js test
