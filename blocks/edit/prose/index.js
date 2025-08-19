@@ -179,16 +179,20 @@ function restoreCursorPosition(view) {
 }
 
 function addSyncedListener(wsProvider) {
-  let initialContentLoaded = false;
-  wsProvider.on('synced', (isSynced) => {
-    if (isSynced && !initialContentLoaded) {
-      const pm = document.querySelector('da-content')?.shadowRoot
-        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
-      if (pm) pm.contentEditable = 'true';
-
-      initialContentLoaded = true;
+  const handleSynced = (isSynced) => {
+    if (isSynced) {
+      const permissions = document.querySelector('da-title').permissions || [];
+      const canWrite = permissions.some((p) => p === 'write');
+      if (canWrite) {
+        const pm = document.querySelector('da-content')?.shadowRoot
+          .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+        if (pm) pm.contentEditable = 'true';
+      }
+      wsProvider.off('synced', handleSynced);
     }
-  });
+  };
+
+  wsProvider.on('synced', handleSynced);
 }
 
 export default function initProse({ path, permissions }) {
