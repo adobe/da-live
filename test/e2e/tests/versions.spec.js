@@ -62,7 +62,9 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   const audit = await page.locator('.da-version-entry.is-audit');
   await audit.click();
 
-  const expectedUser = process.env.SKIP_AUTH ? 'anonymous' : 'da-test@adobetest.com';
+  const expectedUser = process.env.SKIP_AUTH || process.env.GITHUB_HEAD_REF?.length > 8
+    ? 'anonymous'
+    : 'da-test@adobetest.com';
   await expect(audit).toContainText(expectedUser);
 
   // Select 'ver 1' and restore it

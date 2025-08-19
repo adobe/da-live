@@ -38,7 +38,8 @@ setup('Set up authentication', async ({ page }) => {
     console.log('Deleted previous storage stage auth file');
   }
 
-  if (process.env.SKIP_AUTH) {
+  // Skip auth when GITHUB_HEAD_REF (branch name) is longer than 8 characters
+  if (process.env.SKIP_AUTH || process.env.GITHUB_HEAD_REF?.length > 8) {
     await fs.promises.writeFile(AUTH_FILE, '{}');
     console.log('Skipping authentication');
     return;

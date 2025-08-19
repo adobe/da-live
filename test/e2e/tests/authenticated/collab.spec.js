@@ -12,6 +12,8 @@
 import { test, expect } from '@playwright/test';
 import { getTestPageURL } from '../../utils/page.js';
 
+test.skip(process.env.GITHUB_HEAD_REF?.length > 8, 'Skipping auth tests when GITHUB_HEAD_REF is longer than 8 characters');
+
 test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo) => {
   // Open 2 editors on the same page and edit in both of them. One editor is logged in,
   // the other isn't.

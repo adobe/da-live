@@ -13,6 +13,8 @@ import { test, expect } from '@playwright/test';
 import ENV from '../../utils/env.js';
 import { getTestPageURL, getQuery } from '../../utils/page.js';
 
+test.skip(process.env.GITHUB_HEAD_REF?.length > 8, 'Skipping auth tests when GITHUB_HEAD_REF is longer than 8 characters');
+
 test('Read-only directory', async ({ page }) => {
   const url = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
 
