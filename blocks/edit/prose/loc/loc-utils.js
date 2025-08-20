@@ -40,7 +40,6 @@ function createButton(className, type = 'button', attributes = {}) {
   return button;
 }
 
-// Transaction Utilities
 function createContentTransaction(view, startPos, endPos, filteredContent) {
   const { tr } = view.state;
 
@@ -61,29 +60,23 @@ function isValidPosition(pos) {
   return pos !== null && pos !== undefined;
 }
 
-// Content Filtering Utilities
 function filterNodeContent(node) {
   if (!node?.content?.content) {
     return [];
   }
 
   return node.content.content.filter((child) => {
-    // Handle text nodes
     if (child.type.name === 'text') {
       return child.text?.trim().length > 0;
     }
 
-    // Handle nodes with content
     if (child.content) {
-      // Check if it has meaningful content
       if (child.content?.content?.length > 0) {
         return true;
       }
-      // For nodes without nested content, check if they have any attributes or marks
       return child.attrs || child.marks?.length > 0;
     }
 
-    // For other node types, assume they're meaningful unless explicitly empty
     return true;
   });
 }
@@ -521,7 +514,6 @@ export function addActiveView(view) {
 
 export { checkForLocNodes };
 
-// eslint-disable-next-line import/prefer-default-export
 export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {
   return class {
     constructor(node, view, getPos) {
@@ -676,12 +668,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       coverDiv.appendChild(this.langOverlay);
     }
 
-    /**
-     * Checks if two nodes can form a valid LOC pair
-     * @param {Object} nodeA - First node
-     * @param {Object} nodeB - Second node
-     * @returns {boolean} True if nodes can form a pair
-     */
     canFormLocPair(nodeA, nodeB) {
       return isLocNode(nodeA)
         && isLocNode(nodeB)
@@ -689,22 +675,11 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         && hasMatchingContent(nodeA, nodeB);
     }
 
-    /**
-     * Creates and dispatches a transaction with filtered content
-     * @param {number} startPos - Start position
-     * @param {number} endPos - End position
-     * @param {Array} filteredContent - Filtered content array
-     */
     dispatchContentTransaction(startPos, endPos, filteredContent) {
       const transaction = createContentTransaction(this.view, startPos, endPos, filteredContent);
       this.view.dispatch(transaction);
     }
 
-    /**
-     * Gets the start and end positions for a LOC pair
-     * @param {Object} pair - LOC pair object with positions and nodes
-     * @returns {Object} Object with startPos and endPos
-     */
     getPairRange(pair) {
       const { deletedPos, addedPos, deletedNode, addedNode } = pair;
       return {
@@ -792,11 +767,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       }
     }
 
-    /**
-     * Get current loc node pair at the stored position
-     * @param {Object} view - ProseMirror view
-     * @returns {Object|null} Object with current positions and nodes or null if not found
-     */
     getCurrentLocNodePair(view) {
       try {
         const currentPos = this.getPos();
@@ -847,7 +817,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     handleKeepDeleted() {
-      // Get current positions and nodes using the stored getPos function
       const currentPair = this.getCurrentLocNodePair(this.view);
       if (!currentPair) {
         // eslint-disable-next-line no-console
@@ -857,7 +826,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
       const { deletedNode: currentDeletedNode } = currentPair;
 
-      // Keep deleted content and delete added content
       const filteredContent = filterNodeContent(currentDeletedNode);
       const { startPos, endPos } = this.getPairRange(currentPair);
 
@@ -865,7 +833,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     handleKeepAdded() {
-      // Get current positions and nodes using the stored getPos function
       const currentPair = this.getCurrentLocNodePair(this.view);
       if (!currentPair) {
         // eslint-disable-next-line no-console
@@ -875,7 +842,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
       const { addedNode: currentAddedNode } = currentPair;
 
-      // Keep added content and delete deleted content
       const filteredContent = filterNodeContent(currentAddedNode);
       const { startPos, endPos } = this.getPairRange(currentPair);
 
@@ -883,7 +849,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     handleKeepBoth() {
-      // Get current positions and nodes using the stored getPos function
       const currentPair = this.getCurrentLocNodePair(this.view);
       if (!currentPair) {
         // eslint-disable-next-line no-console
@@ -896,7 +861,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         addedNode: currentAddedNode,
       } = currentPair;
 
-      // Keep both nodes by combining their content
       const deletedContent = filterNodeContent(currentDeletedNode);
       const addedContent = filterNodeContent(currentAddedNode);
       const combinedContent = [...deletedContent, ...addedContent];
@@ -906,7 +870,6 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     applyKeepOperation(tr, node, pos) {
-      // Extract and filter content without mutating the original node
       const filteredContent = simpleFilterContent(node.content.content);
       if (filteredContent.length > 0) {
         const newFragment = Fragment.fromArray(filteredContent);
@@ -923,23 +886,19 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     }
 
     stopEvent() {
-      // Prevent ProseMirror from handling events within LOC nodes
-      // This makes LOC content truly non-editable and atomic
+      // Prevent ProseMirror from handling events within diff nodes
       return true;
     }
 
     selectNode() {
-      // Highlight the entire LOC node when selected
       this.dom.classList.add('ProseMirror-selectednode');
     }
 
     deselectNode() {
-      // Remove highlight when deselected
       this.dom.classList.remove('ProseMirror-selectednode');
     }
 
     ignoreMutation() {
-      // Ignore all mutations within LOC nodes since we manage them entirely
       return true;
     }
   };
