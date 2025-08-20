@@ -4,7 +4,7 @@ import {
   Slice,
 } from 'da-y-wrapper';
 import getSheet from '../../../shared/sheet.js';
-import { htmlDiff } from './htmldiff.js';
+// htmlDiff is now loaded lazily
 
 // Constants
 const LOC_COLORS = {
@@ -85,7 +85,6 @@ function simpleFilterContent(content) {
   return content.filter((c) => c.content?.content?.length);
 }
 
-let globalDialog = null;
 const activeViews = new Set();
 
 let locCssLoading = false;
@@ -109,149 +108,43 @@ async function loadLocCss() {
   }
 }
 
-function getAllLocNodes(view) {
-  const { doc } = view.state;
-  const locNodes = [];
+let globalDialogModule = null;
 
-  doc.descendants((node, pos) => {
-    if (isLocNode(node)) {
-      locNodes.push({ node, pos });
-    }
-  });
-
-  // Sort by position (descending) so we can process from end to beginning
-  // This prevents position shifts from affecting later operations
-  return locNodes.sort((a, b) => b.pos - a.pos);
-}
-
-function hideGlobalDialog() {
-  if (globalDialog?.parentNode) {
-    const proseMirrorContainer = globalDialog.parentNode;
-    proseMirrorContainer.classList.remove('has-regional-edits');
-    globalDialog.classList.remove('show');
-    globalDialog.remove();
+async function loadGlobalDialog() {
+  if (!globalDialogModule) {
+    globalDialogModule = await import('./loc-global-dialog.js');
   }
+  return globalDialogModule;
 }
 
-function shouldKeepNode(action, nodeType) {
-  return (action === 'keep-local' && nodeType === 'loc_added')
-    || (action === 'keep-upstream' && nodeType === 'loc_deleted')
-    || (action === 'keep-both');
-}
-
-function shouldDeleteNode(action, nodeType) {
-  return (action === 'keep-local' && nodeType === 'loc_deleted')
-    || (action === 'keep-upstream' && nodeType === 'loc_added');
-}
-
-function handleGlobalAction(action) {
-  activeViews.forEach((view) => {
-    const locNodes = getAllLocNodes(view);
-
-    if (locNodes.length === 0) return;
-
-    let { tr } = view.state;
-    let hasChanges = false;
-
-    for (const { node, pos } of locNodes) {
-      try {
-        const nodeType = node.type.name;
-
-        if (shouldKeepNode(action, nodeType)) {
-          const filteredContent = simpleFilterContent(node.content.content);
-          if (filteredContent.length > 0) {
-            const newFragment = Fragment.fromArray(filteredContent);
-            const newSlice = new Slice(newFragment, 0, 0);
-            tr = tr.replace(pos, pos + node.nodeSize, newSlice);
-          } else {
-            tr = tr.delete(pos, pos + node.nodeSize);
-          }
-          hasChanges = true;
-        } else if (shouldDeleteNode(action, nodeType)) {
-          tr = tr.delete(pos, pos + node.nodeSize);
-          hasChanges = true;
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('Error processing loc node:', error);
-      }
-    }
-
-    if (hasChanges) {
-      view.dispatch(tr);
-    }
-  });
-
-  hideGlobalDialog();
-}
-
-function createGlobalAction(type, text, action, tooltipText) {
-  const button = createElement('div', `loc-composite-btn loc-composite-btn-base is-${type}`);
-
-  const label = createElement('span', 'loc-composite-switch loc-composite-btn-base-element');
-  label.textContent = text;
-
-  const confirm = createButton('loc-composite-confirm loc-composite-btn-base-element', 'button', { 'aria-label': text });
-  confirm.addEventListener('click', () => handleGlobalAction(action));
-  confirm.appendChild(createTooltip(tooltipText));
-
-  button.appendChild(label);
-  button.appendChild(confirm);
-  return button;
-}
-
-function createGlobalOverlay() {
-  const dialog = createElement('div', 'da-regional-edits-overlay');
-  const actionsContainer = createElement('div', 'da-regional-edits-actions');
-
-  const localButton = createGlobalAction('local', 'Keep All Local', 'keep-local', 'Accept All Local');
-  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', 'keep-upstream', 'Accept All Upstream');
-
-  actionsContainer.appendChild(localButton);
-  actionsContainer.appendChild(upstreamButton);
-  dialog.appendChild(actionsContainer);
-
-  return dialog;
-}
-
-function findProseMirrorContainer(view) {
-  // Find the .da-prose-mirror container that wraps the ProseMirror editor
-  let element = view.dom;
-  while (element && !element.classList.contains('da-prose-mirror')) {
-    element = element.parentElement;
-  }
-  return element;
-}
-
-function showGlobalDialog(view) {
-  if (globalDialog?.parentNode) {
-    return; // Dialog already shown
-  }
-
-  const proseMirrorContainer = findProseMirrorContainer(view);
-  if (!proseMirrorContainer) {
+async function showGlobalDialog(view) {
+  try {
+    const globalDialog = await loadGlobalDialog();
+    globalDialog.showGlobalDialog(
+      view,
+      activeViews,
+      simpleFilterContent,
+      isLocNode,
+      createElement,
+      createButton,
+      createTooltip,
+    );
+  } catch (error) {
     // eslint-disable-next-line no-console
-    console.warn('Could not find ProseMirror container for global dialog');
-    return;
-  }
-
-  if (!globalDialog) {
-    globalDialog = createGlobalOverlay();
-  }
-
-  const proseMirrorElement = proseMirrorContainer.querySelector('.ProseMirror');
-  if (proseMirrorElement) {
-    proseMirrorContainer.insertBefore(globalDialog, proseMirrorElement);
-    proseMirrorContainer.classList.add('has-regional-edits');
-    globalDialog.classList.add('show');
+    console.warn('Failed to load global dialog:', error);
   }
 }
 
-/**
- * Recursively searches for the first text node and returns its text value.
- * @param {Object} content - The ProseMirror node to search.
- * @returns {string|undefined} The first text found, or undefined if none exists.
- */
+async function hideGlobalDialog() {
+  try {
+    const globalDialog = await loadGlobalDialog();
+    globalDialog.hideGlobalDialog();
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to load global dialog for hiding:', error);
+  }
+}
+
 function getFirstText(content) {
   if (!content) return undefined;
 
@@ -322,62 +215,15 @@ function checkForLocNodes(view) {
   return hasLocNodes;
 }
 
-function fragmentToHTML(fragment) {
-  if (!fragment) return '';
-
-  if (typeof fragment === 'string') return fragment;
-
-  const tempDiv = document.createElement('div');
-  tempDiv.appendChild(fragment.cloneNode(true));
-  return tempDiv.innerHTML;
-}
-
-function trimEmptyParagraphs(html) {
-  if (!html || typeof html !== 'string') return html;
-
-  let trimmed = html;
-
-  while (trimmed.startsWith('<p></p>')) {
-    trimmed = trimmed.substring(7);
-  }
-
-  while (trimmed.endsWith('<p></p>')) {
-    trimmed = trimmed.substring(0, trimmed.length - 7);
-  }
-
-  return trimmed;
-}
-
-function generateDiff(deletedContent, addedContent) {
+// Lazy load diff generation
+async function generateDiff(deletedContent, addedContent) {
   try {
-    const deletedHTMLString = fragmentToHTML(deletedContent);
-    const addedHTMLString = fragmentToHTML(addedContent);
-
-    const tempDelDiv = document.createElement('div');
-    tempDelDiv.innerHTML = deletedHTMLString;
-    const deletedText = tempDelDiv.textContent || tempDelDiv.innerText || '';
-
-    const tempAddDiv = document.createElement('div');
-    tempAddDiv.innerHTML = addedHTMLString;
-    const addedText = tempAddDiv.textContent || tempAddDiv.innerText || '';
-
-    if (!deletedText.trim() && !addedText.trim()) {
-      return '<p style="text-align: center; color: #666; margin: 20px 0;">No content to compare</p>';
-    }
-
-    const rawDiffResult = htmlDiff(deletedHTMLString, addedHTMLString);
-
-    const diffResult = trimEmptyParagraphs(rawDiffResult);
-
-    if (diffResult && diffResult.trim()) {
-      return `<div class="html-diff">${diffResult}</div>`;
-    }
-
-    return '<p style="text-align: center; color: #666; margin: 20px 0;">No differences found</p>';
+    const diffUtils = await import('./loc-diff-utils.js');
+    return diffUtils.generateDiff(deletedContent, addedContent);
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Error generating diff:', error);
-    return '<p style="text-align: center; color: #d32f2f; margin: 20px 0;">Error generating diff</p>';
+    console.warn('Failed to load diff utilities:', error);
+    return '<p style="text-align: center; color: #d32f2f; margin: 20px 0;">Error loading diff</p>';
   }
 }
 
@@ -395,8 +241,12 @@ function createTabContent(deletedContent, addedContent) {
   }
 
   const diffTab = createElement('div', 'loc-tab-pane', { 'data-tab': 'diff' });
-  const diffHTML = generateDiff(deletedContent, addedContent);
-  diffTab.innerHTML = diffHTML;
+  diffTab.innerHTML = '<p style="text-align: center; color: #666; margin: 20px 0;">Loading diff...</p>';
+
+  // Store content for lazy loading
+  diffTab.deletedContent = deletedContent;
+  diffTab.addedContent = addedContent;
+  diffTab.loaded = false;
 
   container.appendChild(addedTab);
   container.appendChild(deletedTab);
@@ -405,107 +255,63 @@ function createTabContent(deletedContent, addedContent) {
   return container;
 }
 
-function createCompositeButton(
-  {
-    label,
-    id,
-    keepHandler,
-    variantClass,
-    tooltip,
-    switchTooltip,
-  },
-  onSwitchTab,
-) {
-  const wrapper = createElement('div', `loc-composite-btn loc-composite-btn-base ${variantClass}`);
-
-  const switchBtn = createButton('loc-composite-switch loc-composite-btn-base-element');
-  switchBtn.textContent = label;
-  switchBtn.addEventListener('click', () => onSwitchTab(id));
-  if (switchTooltip) {
-    switchBtn.appendChild(createTooltip(switchTooltip));
+// Lazy load tabbed actions (only needed for complex paired LOC nodes)
+async function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
+  try {
+    const tabbedActions = await import('./loc-tabbed-actions.js');
+    return tabbedActions.createTabbedActions(
+      onKeepDeleted,
+      onKeepAdded,
+      onKeepBoth,
+      onSwitchTab,
+      createElement,
+      createButton,
+      createTooltip,
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to load tabbed actions:', error);
+    // Simple fallback
+    const container = createElement('div', 'loc-tabbed-actions loc-floating-overlay');
+    container.innerHTML = '<div style="text-align: center; padding: 10px;">Loading actions...</div>';
+    return container;
   }
+}
 
-  const confirmBtn = createButton('loc-composite-confirm loc-composite-btn-base-element', 'button', { 'aria-label': `${tooltip}` });
-  confirmBtn.addEventListener('click', keepHandler);
-  if (tooltip) {
-    confirmBtn.appendChild(createTooltip(tooltip));
+// Overlay UI creation - lazy loaded when overlays are actually needed
+let overlayUIModule = null;
+
+async function loadOverlayUI() {
+  if (!overlayUIModule) {
+    overlayUIModule = await import('./loc-overlay-ui.js');
   }
-
-  wrapper.appendChild(switchBtn);
-  wrapper.appendChild(confirmBtn);
-  return wrapper;
+  return overlayUIModule;
 }
 
-function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
-  const actionsContainer = createElement('div', 'loc-tabbed-actions loc-floating-overlay');
-  const actionButtons = createElement('div', 'loc-action-buttons loc-sticky-buttons');
+// User actions - lazy loaded when user clicks action buttons
+let userActionsModule = null;
 
-  const buttonConfigs = [
-    {
-      label: 'Local',
-      id: 'added',
-      keepHandler: onKeepAdded,
-      variantClass: 'is-local',
-      tooltip: 'Accept Local',
-      switchTooltip: 'View Local',
-    },
-    {
-      label: 'Upstream',
-      id: 'deleted',
-      keepHandler: onKeepDeleted,
-      variantClass: 'is-upstream',
-      tooltip: 'Accept Upstream',
-      switchTooltip: 'View Upstream',
-    },
-    {
-      label: 'Difference',
-      id: 'diff',
-      keepHandler: onKeepBoth,
-      variantClass: 'is-diff',
-      tooltip: 'Accept Both',
-      switchTooltip: 'View Diff',
-    },
-  ];
-
-  buttonConfigs.forEach((config) => {
-    actionButtons.appendChild(createCompositeButton(config, onSwitchTab));
-  });
-
-  actionsContainer.appendChild(actionButtons);
-  return actionsContainer;
+async function loadUserActions() {
+  if (!userActionsModule) {
+    userActionsModule = await import('./loc-user-actions.js');
+  }
+  return userActionsModule;
 }
 
-function getCoverDiv(upstream) {
-  const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
-  const coverDiv = createElement('div', className, { 'loc-temp-dom': '' });
+// getCoverDiv is now handled within overlay loading
 
-  coverDiv.style.backgroundColor = upstream ? LOC_COLORS.UPSTREAM : LOC_COLORS.LOCAL;
-  return coverDiv;
-}
-
-function getLangOverlay(upstream) {
-  const overlay = createElement('div', 'loc-lang-overlay loc-floating-overlay', { 'loc-temp-dom': '' });
-
-  const type = upstream ? 'upstream' : 'local';
-  const text = upstream ? LOC_TEXT.UPSTREAM : LOC_TEXT.LOCAL;
-
-  const compositeBtn = createElement('div', `loc-composite-btn-3part loc-composite-btn-base loc-sticky-buttons is-${type}`);
-
-  const labelBtn = createElement('span', 'loc-composite-label loc-composite-btn-base-element');
-  labelBtn.textContent = text;
-
-  const acceptBtn = createButton('loc-composite-accept loc-composite-btn-base-element', 'button', { 'aria-label': `Accept ${text}` });
-  acceptBtn.appendChild(createTooltip(`Accept ${text}`));
-
-  const deleteBtn = createButton('loc-composite-delete loc-composite-btn-base-element', 'button', { 'aria-label': `Delete ${text}` });
-  deleteBtn.appendChild(createTooltip(`Delete ${text}`));
-
-  compositeBtn.appendChild(labelBtn);
-  compositeBtn.appendChild(acceptBtn);
-  compositeBtn.appendChild(deleteBtn);
-  overlay.appendChild(compositeBtn);
-
-  return { overlay, deleteBtn, keepBtn: acceptBtn };
+async function getLangOverlay(upstream) {
+  try {
+    const overlayUI = await loadOverlayUI();
+    return overlayUI.getLangOverlay(upstream, createElement, createButton, createTooltip, LOC_TEXT);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to load lang overlay:', error);
+    // Simple fallback
+    const overlay = createElement('div', 'loc-lang-overlay loc-floating-overlay');
+    overlay.innerHTML = '<div style="padding: 5px;">Loading overlay...</div>';
+    return { overlay, deleteBtn: null, keepBtn: null };
+  }
 }
 
 export function addActiveView(view) {
@@ -605,8 +411,18 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         } else if (targetTab === 'deleted') {
           colorOverlay.style.display = 'block';
           colorOverlay.style.backgroundColor = LOC_COLORS.UPSTREAM;
-        } else {
+        } else if (targetTab === 'diff') {
           colorOverlay.style.backgroundColor = LOC_COLORS.DIFF;
+
+          const diffTab = tabContent.querySelector('[data-tab="diff"]');
+          if (diffTab && !diffTab.loaded) {
+            diffTab.loaded = true;
+            generateDiff(diffTab.deletedContent, diffTab.addedContent).then((diffHTML) => {
+              diffTab.innerHTML = diffHTML;
+            }).catch(() => {
+              diffTab.innerHTML = '<p style="text-align: center; color: #d32f2f; margin: 20px 0;">Error loading diff</p>';
+            });
+          }
         }
 
         if (actions) {
@@ -622,16 +438,24 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         }
       };
 
-      actions = createTabbedActions(
+      const actionsPlaceholder = createElement('div', 'loc-tabbed-actions loc-floating-overlay');
+      actionsPlaceholder.innerHTML = '<div style="text-align: center; padding: 10px;">Loading actions...</div>';
+
+      this.dom.appendChild(tabContent);
+      tabContent.appendChild(colorOverlay);
+      this.dom.appendChild(actionsPlaceholder);
+
+      createTabbedActions(
         () => this.handleKeepDeleted(),
         () => this.handleKeepAdded(),
         () => this.handleKeepBoth(),
         setActiveTab,
-      );
-
-      this.dom.appendChild(tabContent);
-      tabContent.appendChild(colorOverlay);
-      this.dom.appendChild(actions);
+      ).then((loadedActions) => {
+        actions = loadedActions;
+        this.dom.replaceChild(loadedActions, actionsPlaceholder);
+      }).catch(() => {
+        actionsPlaceholder.innerHTML = '<div style="text-align: center; padding: 10px; color: #d32f2f;">Error loading actions</div>';
+      });
 
       setActiveTab('added');
     }
@@ -652,20 +476,50 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const nodeDOM = serializer.serializeFragment(node.content);
 
       this.dom.appendChild(nodeDOM);
-      const coverDiv = getCoverDiv(upstream);
+
+      // Create placeholder cover div immediately
+      const coverDiv = createElement('div', 'loc-color-overlay', { 'loc-temp-dom': '' });
+      coverDiv.style.backgroundColor = upstream ? '#4682b433' : '#902ade33';
       this.dom.appendChild(coverDiv);
-      const { overlay, deleteBtn, keepBtn } = getLangOverlay(upstream);
-      this.langOverlay = overlay;
 
-      deleteBtn.addEventListener('click', () => {
-        this.handleDeleteSingleNode();
-      });
-
-      keepBtn.addEventListener('click', () => {
-        this.handleKeepSingleNode();
-      });
-
+      // Create placeholder overlay
+      const placeholderOverlay = createElement('div', 'loc-lang-overlay loc-floating-overlay');
+      placeholderOverlay.innerHTML = '<div style="padding: 5px;">Loading...</div>';
+      this.langOverlay = placeholderOverlay;
       coverDiv.appendChild(this.langOverlay);
+
+      // Load real overlays asynchronously
+      this.loadRealOverlays(upstream, coverDiv).catch(() => {
+        // Keep placeholder on error
+      });
+    }
+
+    async loadRealOverlays(upstream, coverDiv) {
+      try {
+        // Load enhanced overlay
+        const { overlay, deleteBtn, keepBtn } = await getLangOverlay(upstream);
+
+        // Set up event listeners
+        deleteBtn.addEventListener('click', () => {
+          this.handleDeleteSingleNode();
+        });
+
+        keepBtn.addEventListener('click', () => {
+          this.handleKeepSingleNode();
+        });
+
+        // Replace placeholder with enhanced overlay
+        coverDiv.removeChild(this.langOverlay);
+        this.langOverlay = overlay;
+        coverDiv.appendChild(this.langOverlay);
+
+        // Update cover div styling
+        const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
+        coverDiv.className = className;
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to load enhanced overlays:', error);
+      }
     }
 
     canFormLocPair(nodeA, nodeB) {
@@ -680,204 +534,62 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       this.view.dispatch(transaction);
     }
 
-    getPairRange(pair) {
-      const { deletedPos, addedPos, deletedNode, addedNode } = pair;
-      return {
-        startPos: Math.min(deletedPos, addedPos),
-        endPos: Math.max(
-          deletedPos + deletedNode.nodeSize,
-          addedPos + addedNode.nodeSize,
-        ),
-      };
-    }
-
-    handleDeleteSingleNode() {
+    // Generic handler to eliminate duplication in user action calls
+    async callUserAction(actionName, actionParams, errorContext) {
       try {
-        const currentPos = this.getPos();
-        if (!isValidPosition(currentPos)) {
-          // eslint-disable-next-line no-console
-          console.warn('Could not get current position for single node delete');
-          return;
-        }
-
-        const { doc } = this.view.state;
-        const resolvedPos = doc.resolve(currentPos);
-        const { parent } = resolvedPos;
-        const indexInParent = resolvedPos.index();
-        const currentNode = parent.child(indexInParent);
-
-        if (!isLocNode(currentNode)) {
-          // eslint-disable-next-line no-console
-          console.warn('Current node is not a loc node');
-          return;
-        }
-
-        // Check if parent is a list item for special handling
-        if (resolvedPos.parent.type.name === 'list_item') {
-          const parentPos = resolvedPos.before(resolvedPos.depth);
-          const transaction = this.view.state.tr.delete(
-            parentPos,
-            parentPos + resolvedPos.parent.nodeSize,
-          );
-          this.view.dispatch(transaction);
-        } else {
-          const transaction = this.view.state.tr.delete(
-            currentPos,
-            currentPos + currentNode.nodeSize,
-          );
-          this.view.dispatch(transaction);
-        }
+        const userActions = await loadUserActions();
+        userActions[actionName](...actionParams);
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.warn('Error deleting single loc node:', error);
+        console.warn(`Failed to load user actions for ${errorContext}:`, error);
       }
     }
 
-    handleKeepSingleNode() {
-      try {
-        const currentPos = this.getPos();
-        if (!isValidPosition(currentPos)) {
-          // eslint-disable-next-line no-console
-          console.warn('Could not get current position for single node keep');
-          return;
-        }
-
-        const { doc } = this.view.state;
-        const resolvedPos = doc.resolve(currentPos);
-        const { parent } = resolvedPos;
-        const indexInParent = resolvedPos.index();
-        const currentNode = parent.child(indexInParent);
-
-        if (!isLocNode(currentNode)) {
-          // eslint-disable-next-line no-console
-          console.warn('Current node is not a loc node');
-          return;
-        }
-
-        // Use the improved content filtering like the tabbed interface
-        const filteredContent = filterNodeContent(currentNode);
-        this.dispatchContentTransaction(
-          currentPos,
-          currentPos + currentNode.nodeSize,
-          filteredContent,
-        );
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('Error keeping single loc node:', error);
-      }
+    // Common parameter sets for different action types
+    get baseParams() {
+      return [
+        this.view,
+        this.getPos.bind(this),
+        isValidPosition,
+        isLocNode,
+      ];
     }
 
-    getCurrentLocNodePair(view) {
-      try {
-        const currentPos = this.getPos();
-        if (!isValidPosition(currentPos)) {
-          return null;
-        }
-
-        const { doc } = view.state;
-        const resolvedPos = doc.resolve(currentPos);
-        const { parent } = resolvedPos;
-        const indexInParent = resolvedPos.index();
-
-        // Get the node at current position
-        const currentNode = parent.child(indexInParent);
-        if (!isLocNode(currentNode)) {
-          return null;
-        }
-
-        // Check if there's a next sibling that forms a pair
-        if (indexInParent < parent.childCount - 1) {
-          const nextSibling = parent.child(indexInParent + 1);
-
-          if (this.canFormLocPair(currentNode, nextSibling)) {
-            // We have a valid pair
-            if (currentNode.type.name === 'loc_deleted') {
-              return {
-                deletedPos: currentPos,
-                addedPos: currentPos + currentNode.nodeSize,
-                deletedNode: currentNode,
-                addedNode: nextSibling,
-              };
-            }
-            return {
-              addedPos: currentPos,
-              deletedPos: currentPos + currentNode.nodeSize,
-              addedNode: currentNode,
-              deletedNode: nextSibling,
-            };
-          }
-        }
-
-        return null;
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('Error getting current loc node pair:', error);
-        return null;
-      }
+    get singleNodeParams() {
+      return [
+        ...this.baseParams,
+        filterNodeContent,
+        this.dispatchContentTransaction.bind(this),
+      ];
     }
 
-    handleKeepDeleted() {
-      const currentPair = this.getCurrentLocNodePair(this.view);
-      if (!currentPair) {
-        // eslint-disable-next-line no-console
-        console.warn('Could not find current loc node pair');
-        return;
-      }
-
-      const { deletedNode: currentDeletedNode } = currentPair;
-
-      const filteredContent = filterNodeContent(currentDeletedNode);
-      const { startPos, endPos } = this.getPairRange(currentPair);
-
-      this.dispatchContentTransaction(startPos, endPos, filteredContent);
+    get pairNodeParams() {
+      return [
+        ...this.baseParams,
+        this.canFormLocPair.bind(this),
+        filterNodeContent,
+        this.dispatchContentTransaction.bind(this),
+      ];
     }
 
-    handleKeepAdded() {
-      const currentPair = this.getCurrentLocNodePair(this.view);
-      if (!currentPair) {
-        // eslint-disable-next-line no-console
-        console.warn('Could not find current loc node pair');
-        return;
-      }
-
-      const { addedNode: currentAddedNode } = currentPair;
-
-      const filteredContent = filterNodeContent(currentAddedNode);
-      const { startPos, endPos } = this.getPairRange(currentPair);
-
-      this.dispatchContentTransaction(startPos, endPos, filteredContent);
+    async handleDeleteSingleNode() {
+      await this.callUserAction('handleDeleteSingleNode', this.baseParams, 'delete');
     }
 
-    handleKeepBoth() {
-      const currentPair = this.getCurrentLocNodePair(this.view);
-      if (!currentPair) {
-        // eslint-disable-next-line no-console
-        console.warn('Could not find current loc node pair');
-        return;
-      }
-
-      const {
-        deletedNode: currentDeletedNode,
-        addedNode: currentAddedNode,
-      } = currentPair;
-
-      const deletedContent = filterNodeContent(currentDeletedNode);
-      const addedContent = filterNodeContent(currentAddedNode);
-      const combinedContent = [...deletedContent, ...addedContent];
-      const { startPos, endPos } = this.getPairRange(currentPair);
-
-      this.dispatchContentTransaction(startPos, endPos, combinedContent);
+    async handleKeepSingleNode() {
+      await this.callUserAction('handleKeepSingleNode', this.singleNodeParams, 'keep');
     }
 
-    applyKeepOperation(tr, node, pos) {
-      const filteredContent = simpleFilterContent(node.content.content);
-      if (filteredContent.length > 0) {
-        const newFragment = Fragment.fromArray(filteredContent);
-        const newSlice = new Slice(newFragment, 0, 0);
-        tr.replace(pos, pos + node.nodeSize, newSlice);
-      } else {
-        tr.delete(pos, pos + node.nodeSize);
-      }
+    async handleKeepDeleted() {
+      await this.callUserAction('handleKeepDeleted', this.pairNodeParams, 'keep deleted');
+    }
+
+    async handleKeepAdded() {
+      await this.callUserAction('handleKeepAdded', this.pairNodeParams, 'keep added');
+    }
+
+    async handleKeepBoth() {
+      await this.callUserAction('handleKeepBoth', this.pairNodeParams, 'keep both');
     }
 
     destroy() {
