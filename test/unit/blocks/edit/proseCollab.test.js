@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { getEnterInputRulesPlugin, getDashesInputRule } from '../../../../blocks/edit/prose/plugins/keyHandlers.js';
+import { getEnterInputRulesPlugin, getDashesInputRule, getBacktickInputRule } from '../../../../blocks/edit/prose/plugins/keyHandlers.js';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from edit/prose/index.js
@@ -129,6 +129,12 @@ describe('Prose collab', () => {
     const dir = getDashesInputRule(pi.dispatchTransaction);
     const { match } = dir;
     expect(match.toString()).to.equal('/^---[\\n]$/');
+  });
+
+  it('Test backtick InputRule', () => {
+    const dir = getBacktickInputRule(pi.dispatchTransaction);
+    const { match } = dir;
+    expect(match.toString()).to.equal('/^```[\\n]$/');
   });
 
   describe('Link formatting preservation', () => {

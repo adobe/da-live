@@ -123,3 +123,20 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });
+
+test('Add code block via backticks', async ({ page }, workerInfo) => {
+  test.setTimeout(30000);
+  const url = getTestPageURL('edit4', workerInfo);
+  await page.goto(url);
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  await page.locator('div.ProseMirror').fill('Before code block');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('`');
+  await page.keyboard.press('`');
+  await page.keyboard.press('`');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(2000);
+  await expect(page.locator('code')).not.toBe(undefined);
+});
