@@ -178,11 +178,9 @@ function restoreCursorPosition(view) {
   }
 }
 
-function addSyncedListener(wsProvider) {
+function addSyncedListener(wsProvider, canWrite) {
   const handleSynced = (isSynced) => {
     if (isSynced) {
-      const permissions = document.querySelector('da-title').permissions || [];
-      const canWrite = permissions.some((p) => p === 'write');
       if (canWrite) {
         const pm = document.querySelector('da-content')?.shadowRoot
           .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
@@ -217,7 +215,7 @@ export default function initProse({ path, permissions }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  addSyncedListener(wsProvider);
+  addSyncedListener(wsProvider, canWrite);
 
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
