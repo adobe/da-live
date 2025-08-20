@@ -1,0 +1,49 @@
+name: Branch Name Length Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name length
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = context.payload.pull_request.head.ref;
+            const branchLength = branchName.length;
+
+            console.log(`Branch name: ${branchName} (length: ${branchLength})`);
+
+            if (branchLength > 8) {
+              const warningMessage = ```Warning: This PR has a branchname > 8 characters long so IMS will not work on branchname--da-live--adobe.hlx.live pages.
+
+              Due to this, ALL E2E Auth tests are skipped for this PR.```;
+
+              // Check if comment already exists
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number
+              });
+
+              const existingComment = comments.find(comment =>
+                comment.body.includes('Warning: This PR has a branchname > 8 characters long')
+              );
+
+              if (!existingComment) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  body: warningMessage
+                });
+                console.log('Warning comment added to PR');
+              } else {
+                console.log('Warning comment already exists');
+              }
+            } else {
+              console.log('Branch name length is acceptable');
+            }
