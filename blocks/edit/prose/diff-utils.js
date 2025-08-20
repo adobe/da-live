@@ -57,7 +57,7 @@ function getLangOverlay(isUpstream) {
   return { overlay, deleteBtn, keepBtn };
 }
 
-function keepLocContentInPlace(view, pos, node) {
+function keepDiffContentInPlace(view, pos, node) {
   node.content.content = node.content.content.filter((c) => c.content.content.length);
   const newFragment = Fragment.fromArray(node.content.content);
   const newSlice = new Slice(newFragment, 0, 0);
@@ -65,7 +65,7 @@ function keepLocContentInPlace(view, pos, node) {
   return transaction;
 }
 
-function deleteLocContent(view, pos, node) {
+function deleteDiffContent(view, pos, node) {
   const resolvedPos = view.state.doc.resolve(pos);
 
   if (resolvedPos.parent.type.name === 'list_item') {
@@ -79,10 +79,10 @@ function deleteLocContent(view, pos, node) {
 }
 
 // eslint-disable-next-line import/prefer-default-export
-export function getLocClass(locType, getSchema, dispatchTransaction, { isUpstream } = {}) {
+export function getDiffClass(diffType, getSchema, dispatchTransaction, { isUpstream } = {}) {
   return class {
     constructor(node, view, getPos) {
-      this.dom = document.createElement(locType);
+      this.dom = document.createElement(diffType);
       const serializer = DOMSerializer.fromSchema(getSchema());
       const nodeDOM = serializer.serializeFragment(node.content);
 
@@ -93,11 +93,11 @@ export function getLocClass(locType, getSchema, dispatchTransaction, { isUpstrea
       this.langOverlay = overlay;
 
       deleteBtn.addEventListener('click', () => {
-        dispatchTransaction(deleteLocContent(view, getPos(), node));
+        dispatchTransaction(deleteDiffContent(view, getPos(), node));
       });
 
       keepBtn.addEventListener('click', () => {
-        dispatchTransaction(keepLocContentInPlace(view, getPos(), node));
+        dispatchTransaction(keepDiffContentInPlace(view, getPos(), node));
       });
 
       coverDiv.appendChild(this.langOverlay);
