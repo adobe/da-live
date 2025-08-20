@@ -18,9 +18,9 @@ jobs:
             console.log(`Branch name: ${branchName} (length: ${branchLength})`);
 
             if (branchLength > 8) {
-              const warningMessage = ```Warning: This PR has a branchname > 8 characters long so IMS will not work on branchname--da-live--adobe.hlx.live pages.
+              const warningMessage = `Warning: This PR has a branchname > 8 characters long so IMS will not work on branchname--da-live--adobe.hlx.live pages.
 
-              Due to this, ALL E2E Auth tests are skipped for this PR.```;
+              Due to this, ALL E2E Auth tests are skipped for this PR.`;
 
               // Check if comment already exists
               const { data: comments } = await github.rest.issues.listComments({
