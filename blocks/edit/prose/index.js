@@ -26,6 +26,7 @@ import {
 import prose2aem from '../../shared/prose2aem.js';
 import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
 import { linkItem } from './plugins/menu/linkItem.js';
+import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
@@ -258,6 +259,7 @@ export default function initProse({ path, permissions }) {
     keymap(buildKeymap(schema)),
     keymap({ Backspace: handleTableBackspace }),
     keymap(baseKeymap),
+    codemark(),
     keymap({
       'Mod-z': yUndo,
       'Mod-y': yRedo,
