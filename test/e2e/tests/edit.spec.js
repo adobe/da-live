@@ -127,16 +127,19 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
 test('Add code block via backticks', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
   const url = getTestPageURL('edit4', workerInfo);
+  console.log(url);
   await page.goto(url);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   await page.locator('div.ProseMirror').fill('Before code block');
   await page.keyboard.press('Enter');
-  await page.keyboard.press('`');
-  await page.keyboard.press('`');
-  await page.keyboard.press('`');
+  await page.locator('div.ProseMirror').pressSequentially('```');
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(2000);
-  await expect(page.locator('code')).not.toBe(undefined);
+  await page.waitForTimeout(1000);
+  await page.locator('div.ProseMirror').pressSequentially('This is in a code block');
+  await page.keyboard.press('ArrowDown');
+  await page.locator('div.ProseMirror').pressSequentially('After code block');
+  await expect(page.locator('code')).toContainText('This is in a code block');
+  await expect(page.locator('code')).not.toContainText('After code code block');
 });
