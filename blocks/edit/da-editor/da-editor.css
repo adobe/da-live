@@ -804,6 +804,18 @@ da-library.hide {
   white-space: nowrap;
 }
 
+.da-initial-content-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 12px;
+}
+
 da-loc-deleted, da-loc-added {
   display: block;
   position: relative;

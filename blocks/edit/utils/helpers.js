@@ -43,7 +43,15 @@ export function getTable(block) {
 }
 
 function para() {
-  return document.createElement('p');
+  const p = document.createElement('p');
+  const br = document.createElement('br');
+  br.className = 'ProseMirror-trailingBreak';
+  p.append(br);
+  return p;
+}
+
+export function parse(inital) {
+  return new DOMParser().parseFromString(inital, 'text/html');
 }
 
 export function aem2prose(doc) {
@@ -88,6 +96,20 @@ export function aem2prose(doc) {
     fragment.append(...section.querySelectorAll(':scope > *'));
     return fragment;
   });
+}
+
+export function aemTxt2FlatProse(txt) {
+  const doc = parse(txt);
+  const proseDom = aem2prose(doc);
+  const flattedDom = document.createElement('div');
+  flattedDom.append(...proseDom);
+  flattedDom.querySelectorAll('table').forEach((table) => {
+    const div = document.createElement('div');
+    div.className = 'tableWrapper';
+    table.insertAdjacentElement('afterend', div);
+    div.append(table);
+  });
+  return flattedDom;
 }
 
 export async function saveToAem(path, action) {
@@ -248,8 +270,4 @@ export async function saveDaVersion(pathname, ext = 'html') {
     // eslint-disable-next-line no-console
     console.log('Error creating auto version on publish.');
   }
-}
-
-export function parse(inital) {
-  return new DOMParser().parseFromString(inital, 'text/html');
 }
