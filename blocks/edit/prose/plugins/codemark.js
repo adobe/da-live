@@ -1,16 +1,7 @@
-
 // Derived from: https://github.com/curvenote/editor/blob/812893edbf66e7903226ff73ea1c1f3234cd483b/packages/prosemirror-codemark/src/inputRules.ts
 
 import { Plugin, TextSelection } from 'da-y-wrapper';
 
-/**
- * Check if the text between from and to has any Marks.
- * 
- * @param {*} state 
- * @param {*} from 
- * @param {*} to 
- * @returns {boolean} 
- */
 function hasMark(markType, state, from, to) {
   if (!markType) return false;
   if (state.storedMarks && markType.isInSet(state.storedMarks)) return true;
@@ -23,7 +14,7 @@ function markText(view, match, from, to) {
   const markType = state.schema.marks.code;
   if (hasMark(markType, state, from, to)) return false;
   const tr = state.tr.delete(from, to);
-  const anchor = tr.selection.anchor;
+  const { anchor } = tr.selection;
   tr.insertText(match[1])
     .addMark(anchor, anchor + match[1].length, markType.create())
     .setSelection(TextSelection.create(tr.doc, anchor + match[1].length))
@@ -44,7 +35,7 @@ export default function codemark() {
         const $from = state.doc.resolve(from);
         const { parent } = $from;
         const before = parent.textBetween(0, $from.parentOffset);
-        let match = before.match(/`((?:[^`\w]|[\w])+)$/)
+        let match = before.match(/`((?:[^`\w]|[\w])+)$/);
         if (match) {
           return markText(view, match, from - match[0].length, to);
         }

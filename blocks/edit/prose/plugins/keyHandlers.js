@@ -31,11 +31,11 @@ export function getBacktickInputRule() {
   return new InputRule(
     /^```[\n]$/,
     (state, match, start, end) => {
-      let tr = state.tr
+      let { tr } = state;
       let selection = NodeSelection.create(state.doc, start - 1);
       if (state.doc.lastChild === selection.node) {
         tr = tr.setSelection(TextSelection.create(tr.doc, end))
-        .replaceSelectionWith(state.schema.nodes.paragraph.create());
+          .replaceSelectionWith(state.schema.nodes.paragraph.create());
 
         selection = NodeSelection.create(tr.doc, start - 1);
       }
