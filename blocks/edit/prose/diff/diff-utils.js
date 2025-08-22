@@ -4,9 +4,8 @@ import {
   Slice,
 } from 'da-y-wrapper';
 import getSheet from '../../../shared/sheet.js';
-// htmlDiff is now loaded lazily
+import { createElement } from '../../utils/helpers.js';
 
-// Constants
 const LOC_COLORS = {
   UPSTREAM: 'rgba(70, 130, 180, 0.2)',
   LOCAL: 'rgba(144, 42, 222, 0.2)',
@@ -18,27 +17,6 @@ const LOC_TEXT = {
   LOCAL: 'Local',
   DIFF: 'Difference',
 };
-
-// DOM Creation Utilities
-function createElement(tag, className = '', attributes = {}) {
-  const element = document.createElement(tag);
-  if (className) element.className = className;
-  Object.entries(attributes).forEach(([key, value]) => {
-    element.setAttribute(key, value);
-  });
-  return element;
-}
-
-function createTooltip(text) {
-  const tooltip = createElement('span', 'loc-tooltip');
-  tooltip.textContent = text;
-  return tooltip;
-}
-
-function createButton(className, type = 'button', attributes = {}) {
-  const button = createElement('button', className, { type, ...attributes });
-  return button;
-}
 
 function createContentTransaction(view, startPos, endPos, filteredContent) {
   const { tr } = view.state;
@@ -93,7 +71,7 @@ async function loadLocCss() {
   locCssLoading = true;
 
   try {
-    const locSheet = await getSheet('/blocks/edit/prose/loc/loc-utils.css');
+    const locSheet = await getSheet('/blocks/edit/prose/diff/diff-utils.css');
 
     const daEditor = document.querySelector('da-content')?.shadowRoot
       ?.querySelector('da-editor');
@@ -112,7 +90,7 @@ let globalDialogModule = null;
 
 async function loadGlobalDialog() {
   if (!globalDialogModule) {
-    globalDialogModule = await import('./loc-global-dialog.js');
+    globalDialogModule = await import('./diff-global-dialog.js');
   }
   return globalDialogModule;
 }
@@ -125,9 +103,6 @@ async function showGlobalDialog(view) {
       activeViews,
       simpleFilterContent,
       isLocNode,
-      createElement,
-      createButton,
-      createTooltip,
     );
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -218,7 +193,7 @@ function checkForLocNodes(view) {
 // Lazy load diff generation
 async function generateDiff(deletedContent, addedContent) {
   try {
-    const diffUtils = await import('./loc-diff-utils.js');
+    const diffUtils = await import('./utils.js');
     return diffUtils.generateDiff(deletedContent, addedContent);
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -228,19 +203,19 @@ async function generateDiff(deletedContent, addedContent) {
 }
 
 function createTabContent(deletedContent, addedContent) {
-  const container = createElement('div', 'loc-tab-content');
+  const container = createElement('div', 'diff-tab-content');
 
-  const addedTab = createElement('div', 'loc-tab-pane active', { 'data-tab': 'added' });
+  const addedTab = createElement('div', 'diff-tab-pane active', { 'data-tab': 'added' });
   if (addedContent) {
     addedTab.appendChild(addedContent.cloneNode(true));
   }
 
-  const deletedTab = createElement('div', 'loc-tab-pane', { 'data-tab': 'deleted' });
+  const deletedTab = createElement('div', 'diff-tab-pane', { 'data-tab': 'deleted' });
   if (deletedContent) {
     deletedTab.appendChild(deletedContent.cloneNode(true));
   }
 
-  const diffTab = createElement('div', 'loc-tab-pane', { 'data-tab': 'diff' });
+  const diffTab = createElement('div', 'diff-tab-pane', { 'data-tab': 'diff' });
   diffTab.innerHTML = '<p style="text-align: center; color: #666; margin: 20px 0;">Loading diff...</p>';
 
   // Store content for lazy loading
@@ -258,21 +233,18 @@ function createTabContent(deletedContent, addedContent) {
 // Lazy load tabbed actions (only needed for complex paired LOC nodes)
 async function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
   try {
-    const tabbedActions = await import('./loc-tabbed-actions.js');
+    const tabbedActions = await import('./diff-tabbed-actions.js');
     return tabbedActions.createTabbedActions(
       onKeepDeleted,
       onKeepAdded,
       onKeepBoth,
       onSwitchTab,
-      createElement,
-      createButton,
-      createTooltip,
     );
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load tabbed actions:', error);
     // Simple fallback
-    const container = createElement('div', 'loc-tabbed-actions loc-floating-overlay');
+    const container = createElement('div', 'diff-tabbed-actions loc-floating-overlay');
     container.innerHTML = '<div style="text-align: center; padding: 10px;">Loading actions...</div>';
     return container;
   }
@@ -283,7 +255,7 @@ let overlayUIModule = null;
 
 async function loadOverlayUI() {
   if (!overlayUIModule) {
-    overlayUIModule = await import('./loc-overlay-ui.js');
+    overlayUIModule = await import('./diff-overlay-ui.js');
   }
   return overlayUIModule;
 }
@@ -293,7 +265,7 @@ let userActionsModule = null;
 
 async function loadUserActions() {
   if (!userActionsModule) {
-    userActionsModule = await import('./loc-user-actions.js');
+    userActionsModule = await import('./diff-user-actions.js');
   }
   return userActionsModule;
 }
@@ -303,7 +275,7 @@ async function loadUserActions() {
 async function getLangOverlay(upstream) {
   try {
     const overlayUI = await loadOverlayUI();
-    return overlayUI.getLangOverlay(upstream, createElement, createButton, createTooltip, LOC_TEXT);
+    return overlayUI.getLangOverlay(upstream, LOC_TEXT);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load lang overlay:', error);
@@ -400,7 +372,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       let actions;
 
       const setActiveTab = (targetTab) => {
-        const panes = tabContent.querySelectorAll('.loc-tab-pane');
+        const panes = tabContent.querySelectorAll('.diff-tab-pane');
         panes.forEach((pane) => {
           pane.classList.toggle('active', pane.dataset.tab === targetTab);
         });
@@ -426,19 +398,19 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
         }
 
         if (actions) {
-          const allButtons = actions.querySelectorAll('.loc-composite-btn');
+          const allButtons = actions.querySelectorAll('.da-diff-btn');
           allButtons.forEach((btn) => btn.classList.remove('is-active'));
 
           let activeClass = 'is-diff';
           if (targetTab === 'added') activeClass = 'is-local';
           else if (targetTab === 'deleted') activeClass = 'is-upstream';
 
-          const activeButton = actions.querySelector(`.loc-composite-btn.${activeClass}`);
+          const activeButton = actions.querySelector(`.da-diff-btn.${activeClass}`);
           if (activeButton) activeButton.classList.add('is-active');
         }
       };
 
-      const actionsPlaceholder = createElement('div', 'loc-tabbed-actions loc-floating-overlay');
+      const actionsPlaceholder = createElement('div', 'diff-tabbed-actions loc-floating-overlay');
       actionsPlaceholder.innerHTML = '<div style="text-align: center; padding: 10px;">Loading actions...</div>';
 
       this.dom.appendChild(tabContent);
