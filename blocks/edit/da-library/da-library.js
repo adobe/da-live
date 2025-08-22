@@ -114,7 +114,7 @@ class DaLibrary extends LitElement {
           <div class="da-dialog-header">
             <div class="da-dialog-header-title">
               <img src="${library.icon}" />
-              <p>${library.name}</p>
+              <p>${library.title || library.name}</p>
             </div>
             <button class="primary" @click=${this.handleModalClose}>Close</button>
           </div>
