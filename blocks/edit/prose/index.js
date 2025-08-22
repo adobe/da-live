@@ -188,20 +188,13 @@ function addInitialContentOverlay(sourceHtml) {
 
   setTimeout(() => {
     const editor = getEditorSr()?.querySelector('.da-prose-mirror');
-    if (editor && !initialContentLoaded) {
-      const overlay = document.createElement('div');
-      overlay.className = 'da-initial-content-overlay';
+    if (!editor || initialContentLoaded) return;
 
-      const contentDiv = document.createElement('div');
-      contentDiv.className = 'ProseMirror';
-      contentDiv.style.boxShadow = 'none';
-      const flattedDom = aemTxt2FlatProse(sourceHtml);
-      contentDiv.append(...flattedDom.childNodes);
-      overlay.appendChild(contentDiv);
-
-      editor.style.position = 'relative';
-      editor.appendChild(overlay);
-    }
+    const overlay = document.createElement('div');
+    overlay.className = 'da-initial-content-overlay ProseMirror';
+    overlay.style.boxShadow = 'none';
+    overlay.append(...aemTxt2FlatProse(sourceHtml).childNodes);
+    editor.appendChild(overlay);
   }, 10);
 }
 
