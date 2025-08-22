@@ -179,43 +179,43 @@ function restoreCursorPosition(view) {
   }
 }
 
-function addSyncedListener(wsProvider, sourceHtml) {
-  let initialContentLoaded = false;
+const getEditorSr = () => document.querySelector('da-content')?.shadowRoot
+  .querySelector('da-editor')?.shadowRoot;
 
-  // Show initial content overlay immediately if we have sourceHtml
-  if (sourceHtml) {
-    setTimeout(() => {
-      const editor = document.querySelector('da-content')?.shadowRoot
-        .querySelector('da-editor')?.shadowRoot.querySelector('.da-prose-mirror');
-      if (editor && !initialContentLoaded) {
-        const overlay = document.createElement('div');
-        overlay.className = 'da-initial-content-overlay';
+let initialContentLoaded = false;
+function addInitialContentOverlay(sourceHtml) {
+  if (!sourceHtml) return;
 
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'ProseMirror';
-        const flattedDom = aemTxt2FlatProse(sourceHtml);
-        contentDiv.append(...flattedDom.childNodes);
-        overlay.appendChild(contentDiv);
+  setTimeout(() => {
+    const editor = getEditorSr()?.querySelector('.da-prose-mirror');
+    if (editor && !initialContentLoaded) {
+      const overlay = document.createElement('div');
+      overlay.className = 'da-initial-content-overlay';
 
-        editor.style.position = 'relative';
-        editor.appendChild(overlay);
-      }
-    }, 100);
-  }
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'ProseMirror';
+      contentDiv.style.boxShadow = 'none';
+      const flattedDom = aemTxt2FlatProse(sourceHtml);
+      contentDiv.append(...flattedDom.childNodes);
+      overlay.appendChild(contentDiv);
 
+      editor.style.position = 'relative';
+      editor.appendChild(overlay);
+    }
+  }, 10);
+}
+
+function addSyncedListener(wsProvider) {
   wsProvider.on('synced', (isSynced) => {
     if (isSynced && !initialContentLoaded) {
-      const editorSr = document.querySelector('da-content')?.shadowRoot
-        .querySelector('da-editor')?.shadowRoot;
+      const editorSr = getEditorSr();
       const pm = editorSr?.querySelector('.ProseMirror');
       if (pm) pm.contentEditable = 'true';
 
-      // Remove the overlay once synced
       const overlay = editorSr?.querySelector('.da-initial-content-overlay');
       if (overlay) overlay.remove();
 
       initialContentLoaded = true;
-      console.log('synced');
     }
   });
 }
@@ -242,7 +242,7 @@ export default function initProse({ path, permissions, sourceHtml }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  addSyncedListener(wsProvider, sourceHtml);
+  addSyncedListener(wsProvider);
 
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
@@ -344,6 +344,8 @@ export default function initProse({ path, permissions, sourceHtml }) {
     },
     editable() { return canWrite; },
   });
+
+  addInitialContentOverlay(sourceHtml);
 
   handleProseLoaded(editor, permissions);
 
