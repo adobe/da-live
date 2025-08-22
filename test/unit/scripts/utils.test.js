@@ -25,6 +25,15 @@ describe('Libs', () => {
     expect(libs).to.equal('https://foo--da-nx--adobe.aem.live/nx');
   });
 
+  it('Supports NX forked query param', () => {
+    const location = {
+      hostname: 'localhost',
+      search: '?nx=main--outdoors--geometrixx',
+    };
+    const libs = setNx('/nx', location);
+    expect(libs).to.equal('https://main--outdoors--geometrixx.aem.live/nx');
+  });
+
   it('Supports local NX query param', () => {
     const location = {
       hostname: 'localhost',
