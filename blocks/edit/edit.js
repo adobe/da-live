@@ -20,10 +20,8 @@ async function setUI(el, utils) {
     daTitle.details = details;
   }
 
-  // Lazily load prose after the title has been added to DOM.
   if (!prose) prose = await import('./prose/index.js');
 
-  // Content area
   let daContent = document.querySelector('da-content');
   if (!daContent) {
     daContent = document.createElement('da-content');
@@ -34,7 +32,8 @@ async function setUI(el, utils) {
   }
 
   const { daFetch } = await utils;
-  const { permissions } = await daFetch(details.sourceUrl, { method: 'HEAD' });
+  const resp = await daFetch(details.sourceUrl, { method: 'GET' });
+  const { permissions } = resp;
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
 
@@ -43,7 +42,10 @@ async function setUI(el, utils) {
     daContent.wsProvider = undefined;
   }
 
-  ({ proseEl, wsProvider } = prose.default({ path: details.sourceUrl, permissions }));
+  const sourceHtml = await resp.text();
+  // ./prose/index.js initProse
+  const proseConfig = { path: details.sourceUrl, permissions, sourceHtml };
+  ({ proseEl, wsProvider } = prose.default(proseConfig));
   daContent.proseEl = proseEl;
   daContent.wsProvider = wsProvider;
 }

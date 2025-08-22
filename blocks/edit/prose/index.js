@@ -36,6 +36,7 @@ import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
+import { aemTxt2FlatProse } from '../utils/helpers.js';
 
 let sendUpdates = false;
 let hasChanged = 0;
@@ -178,20 +179,41 @@ function restoreCursorPosition(view) {
   }
 }
 
+const getEditorSr = () => document.querySelector('da-content')?.shadowRoot
+  .querySelector('da-editor')?.shadowRoot;
+
+let initialContentLoaded = false;
+function addInitialContentOverlay(sourceHtml) {
+  if (!sourceHtml) return;
+
+  setTimeout(() => {
+    const editor = getEditorSr()?.querySelector('.da-prose-mirror');
+    if (!editor || initialContentLoaded) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'da-initial-content-overlay ProseMirror';
+    overlay.style.boxShadow = 'none';
+    overlay.append(...aemTxt2FlatProse(sourceHtml).childNodes);
+    editor.appendChild(overlay);
+  }, 10);
+}
+
 function addSyncedListener(wsProvider) {
-  let initialContentLoaded = false;
   wsProvider.on('synced', (isSynced) => {
     if (isSynced && !initialContentLoaded) {
-      const pm = document.querySelector('da-content')?.shadowRoot
-        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+      const editorSr = getEditorSr();
+      const pm = editorSr?.querySelector('.ProseMirror');
       if (pm) pm.contentEditable = 'true';
+
+      const overlay = editorSr?.querySelector('.da-initial-content-overlay');
+      if (overlay) overlay.remove();
 
       initialContentLoaded = true;
     }
   });
 }
 
-export default function initProse({ path, permissions }) {
+export default function initProse({ path, permissions, sourceHtml }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
   const editor = document.createElement('div');
@@ -315,6 +337,8 @@ export default function initProse({ path, permissions }) {
     },
     editable() { return canWrite; },
   });
+
+  addInitialContentOverlay(sourceHtml);
 
   handleProseLoaded(editor, permissions);
 
