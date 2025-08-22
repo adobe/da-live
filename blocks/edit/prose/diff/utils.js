@@ -26,6 +26,7 @@ function trimEmptyParagraphs(html) {
   return trimmed;
 }
 
+// eslint-disable-next-line import/prefer-default-export
 export function generateDiff(deletedContent, addedContent) {
   try {
     const deletedHTMLString = fragmentToHTML(deletedContent);

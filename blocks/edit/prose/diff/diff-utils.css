@@ -34,22 +34,22 @@ da-loc-added,
   display: none;
 }
 
-.loc-tab-content {
+.diff-tab-content {
   position: relative;
   min-height: 100px;
   background: #fff;
   overflow: clip;
 }
 
-.loc-tab-pane {
+.diff-tab-pane {
   display: none;
 }
 
-.loc-tab-pane.active {
+.diff-tab-pane.active {
   display: block;
 }
 
-.loc-tab-pane > p:empty {
+.diff-tab-pane > p:empty {
   margin: 0;
   height: 0;
 }
@@ -68,7 +68,7 @@ da-loc-added,
   pointer-events: none;
 }
 
-.loc-tabbed-actions {
+.diff-tabbed-actions {
   right: 0;
   bottom: 0;
   background: transparent;
@@ -83,14 +83,14 @@ da-loc-added,
   pointer-events: auto;
 }
 
-.loc-action-buttons {
+.diff-action-buttons {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
-.loc-composite-btn-base {
+.da-diff-btn-base {
   display: inline-flex;
   border-radius: 8px;
   overflow: visible;
@@ -98,7 +98,7 @@ da-loc-added,
   border: 2px solid transparent;
 }
 
-.loc-composite-btn-base-element {
+.da-diff-btn-base-element {
   border: none;
   font-size: 13px;
   font-weight: 600;
@@ -106,18 +106,18 @@ da-loc-added,
   color: #fff;
 }
 
-.loc-composite-btn .loc-composite-switch,
-.loc-composite-btn .loc-composite-confirm {
+.da-diff-btn .switch-btn,
+.da-diff-btn .confirm-btn {
   padding: 6px 14px;
 }
 
-.loc-composite-btn .loc-composite-switch {
+.da-diff-btn .switch-btn {
   border-right: none;
   border-radius: 6px 0 0 6px;
   position: relative;
 }
 
-.loc-composite-btn .loc-composite-confirm {
+.da-diff-btn .confirm-btn {
   width: 40px;
   display: inline-flex;
   align-items: center;
@@ -126,14 +126,14 @@ da-loc-added,
   border-radius: 0 6px 6px 0;
 }
 
-.loc-composite-btn .loc-composite-confirm::before {
+.da-diff-btn .confirm-btn::before {
   content: "✓";
   font-weight: 800;
   position: relative;
   z-index: 1;
 }
 
-.loc-tooltip {
+.diff-tooltip {
   position: absolute;
   bottom: calc(100% + 6px);
   right: 50%;
@@ -157,7 +157,7 @@ da-loc-added,
   backdrop-filter: blur(8px);
 }
 
-.loc-tooltip::after {
+.diff-tooltip::after {
   content: "";
   position: absolute;
   top: 100%;
@@ -170,7 +170,7 @@ da-loc-added,
   filter: drop-shadow(0 1px 1px rgb(0 0 0 / 30%));
 }
 
-.loc-tooltip::before {
+.diff-tooltip::before {
   content: "";
   position: absolute;
   top: 100%;
@@ -183,59 +183,59 @@ da-loc-added,
   z-index: -1;
 }
 
-.loc-composite-confirm:hover .loc-tooltip,
-.loc-composite-confirm:focus .loc-tooltip {
+.confirm-btn:hover .diff-tooltip,
+.confirm-btn:focus .diff-tooltip {
   opacity: 1;
   transform: translateX(50%) translateY(0);
   visibility: visible;
 }
 
-.loc-composite-btn.is-local .loc-composite-switch {
+.da-diff-btn.is-local .switch-btn {
   color: #fff;
   background: #7c1dcb;
 }
 
-.loc-composite-btn.is-local .loc-composite-confirm {
+.da-diff-btn.is-local .confirm-btn {
   background: #4f0f82;
 }
 
-.loc-composite-btn.is-upstream .loc-composite-switch {
+.da-diff-btn.is-upstream .switch-btn {
   background: #3a84bf;
 }
 
-.loc-composite-btn.is-upstream .loc-composite-confirm {
+.da-diff-btn.is-upstream .confirm-btn {
   background: #23557a;
 }
 
-.loc-composite-btn.is-diff .loc-composite-switch {
+.da-diff-btn.is-diff .switch-btn {
   background: #204fcb;
 }
 
-.loc-composite-btn.is-diff .loc-composite-confirm {
+.da-diff-btn.is-diff .confirm-btn {
   background: #113282;
 }
 
-.loc-composite-btn .loc-composite-confirm:hover {
+.da-diff-btn .confirm-btn:hover {
   color: #000;
 }
 
-.loc-composite-btn.is-active {
+.da-diff-btn.is-active {
   border-color: #333;
 }
 
-.loc-composite-btn.is-active .loc-composite-switch,
-.loc-composite-btn.is-active .loc-composite-confirm {
+.da-diff-btn.is-active .switch-btn,
+.da-diff-btn.is-active .confirm-btn {
   color: #e6e6e6;
 }
 
-.loc-composite-btn-3part .loc-composite-label {
+.da-diff-btn-3part .diff-label {
   padding: 6px 14px;
   border-radius: 6px 0 0 6px;
   cursor: default;
   pointer-events: none;
 }
 
-.loc-composite-btn-3part .loc-composite-accept {
+.da-diff-btn-3part .diff-accept {
   width: 40px;
   display: inline-flex;
   align-items: center;
@@ -244,14 +244,14 @@ da-loc-added,
   border-radius: 0;
 }
 
-.loc-composite-btn-3part .loc-composite-accept::before {
+.da-diff-btn-3part .diff-accept::before {
   content: "✓";
   font-weight: 800;
   position: relative;
   z-index: 1;
 }
 
-.loc-composite-btn-3part .loc-composite-delete {
+.da-diff-btn-3part .diff-delete {
   width: 40px;
   display: inline-flex;
   align-items: center;
@@ -260,48 +260,48 @@ da-loc-added,
   border-radius: 0 6px 6px 0;
 }
 
-.loc-composite-btn-3part .loc-composite-delete::before {
+.da-diff-btn-3part .diff-delete::before {
   content: "✕";
   font-weight: 800;
   position: relative;
   z-index: 1;
 }
 
-.loc-composite-btn-3part.is-local .loc-composite-label {
+.da-diff-btn-3part.is-local .diff-label {
   background: #7c1dcb;
 }
 
-.loc-composite-btn-3part.is-local .loc-composite-accept {
+.da-diff-btn-3part.is-local .diff-accept {
   background: #4f0f82;
 }
 
-.loc-composite-btn-3part.is-local .loc-composite-delete {
+.da-diff-btn-3part.is-local .diff-delete {
   background: #3d0c65;
 }
 
-.loc-composite-btn-3part.is-upstream .loc-composite-label {
+.da-diff-btn-3part.is-upstream .diff-label {
   background: #3a84bf;
 }
 
-.loc-composite-btn-3part.is-upstream .loc-composite-accept {
+.da-diff-btn-3part.is-upstream .diff-accept {
   background: #23557a;
 }
 
-.loc-composite-btn-3part.is-upstream .loc-composite-delete {
+.da-diff-btn-3part.is-upstream .diff-delete {
   background: #1a4059;
 }
 
-.loc-composite-btn-3part .loc-composite-accept:hover,
-.loc-composite-btn-3part .loc-composite-delete:hover {
+.da-diff-btn-3part .diff-accept:hover,
+.da-diff-btn-3part .diff-delete:hover {
   color: #000;
 }
 
-.loc-composite-btn-3part .loc-composite-accept:hover .loc-tooltip,
-.loc-composite-btn-3part .loc-composite-accept:focus .loc-tooltip,
-.loc-composite-btn-3part .loc-composite-delete:hover .loc-tooltip,
-.loc-composite-btn-3part .loc-composite-delete:focus .loc-tooltip,
-.loc-composite-btn:not(.is-active) .loc-composite-switch:hover .loc-tooltip,
-.loc-composite-btn:not(.is-active) .loc-composite-switch:focus .loc-tooltip {
+.da-diff-btn-3part .diff-accept:hover .diff-tooltip,
+.da-diff-btn-3part .diff-accept:focus .diff-tooltip,
+.da-diff-btn-3part .diff-delete:hover .diff-tooltip,
+.da-diff-btn-3part .diff-delete:focus .diff-tooltip,
+.da-diff-btn:not(.is-active) .switch-btn:hover .diff-tooltip,
+.da-diff-btn:not(.is-active) .switch-btn:focus .diff-tooltip {
   opacity: 1;
   transform: translateX(50%) translateY(0);
   visibility: visible;
@@ -321,7 +321,7 @@ da-loc-added,
     padding: 10px 12px;
   }
 
-  .loc-action-buttons {
+  .diff-action-buttons {
     flex-direction: column;
     gap: 8px;
   }
@@ -331,8 +331,8 @@ da-loc-added,
   }
 }
 
-.loc-tab-pane del.diffdel,
-.loc-tab-pane del.diffmod {
+.diff-tab-pane del.diffdel,
+.diff-tab-pane del.diffmod {
   background-color: #ffebee;
   color: #c62828;
   text-decoration: line-through;
@@ -341,8 +341,8 @@ da-loc-added,
   border: 1px solid #ef9a9a;
 }
 
-.loc-tab-pane ins.diffins,
-.loc-tab-pane ins.diffmod {
+.diff-tab-pane ins.diffins,
+.diff-tab-pane ins.diffmod {
   background-color: #e8f5e8;
   color: #2e7d32;
   text-decoration: none;
@@ -351,31 +351,31 @@ da-loc-added,
   border: 1px solid #a5d6a7;
 }
 
-.loc-tab-pane del.diffmod {
+.diff-tab-pane del.diffmod {
   background-color: #fff3e0;
   color: #ef6c00;
   border-color: #ffcc02;
 }
 
-.loc-tab-pane ins.diffmod {
+.diff-tab-pane ins.diffmod {
   background-color: #e3f2fd;
   color: #1565c0;
   border-color: #90caf9;
 }
 
-.loc-tab-pane[data-tab="diff"] p,
-.loc-tab-pane[data-tab="diff"] table,
-.loc-tab-pane[data-tab="diff"] tr,
-.loc-tab-pane[data-tab="diff"] td {
+.diff-tab-pane[data-tab="diff"] p,
+.diff-tab-pane[data-tab="diff"] table,
+.diff-tab-pane[data-tab="diff"] tr,
+.diff-tab-pane[data-tab="diff"] td {
   margin: 0;
 }
 
-.loc-tab-pane[data-tab="diff"] table {
+.diff-tab-pane[data-tab="diff"] table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.loc-tab-pane[data-tab="diff"] td {
+.diff-tab-pane[data-tab="diff"] td {
   border: 1px solid #e0e0e0;
   vertical-align: top;
 }

@@ -3,6 +3,7 @@ import {
   Fragment,
   Slice,
 } from 'da-y-wrapper';
+import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
 
 function getAllLocNodes(view, isLocNode) {
   const { doc } = view.state;
@@ -71,27 +72,27 @@ function handleGlobalAction(action, activeViews, simpleFilterContent, hideGlobal
   hideGlobalDialog();
 }
 
-function createGlobalAction(type, text, action, tooltipText, activeViews, simpleFilterContent, hideGlobalDialog, isLocNode, createElement, createButton, createTooltip) {
-  const button = createElement('div', `loc-composite-btn loc-composite-btn-base is-${type}`);
+function createGlobalAction(type, text, action, tooltipText, activeViews, simpleFilterContent, hideGlobalDialog, isLocNode) {
+  const button = createElement('div', `da-diff-btn da-diff-btn-base is-${type}`);
 
-  const label = createElement('span', 'loc-composite-switch loc-composite-btn-base-element');
+  const label = createElement('span', 'switch-btn da-diff-btn-base-element');
   label.textContent = text;
 
-  const confirm = createButton('loc-composite-confirm loc-composite-btn-base-element', 'button', { 'aria-label': text });
+  const confirm = createButton('confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': text });
   confirm.addEventListener('click', () => handleGlobalAction(action, activeViews, simpleFilterContent, hideGlobalDialog, isLocNode));
-  confirm.appendChild(createTooltip(tooltipText));
+  confirm.appendChild(createTooltip(tooltipText, 'diff-tooltip'));
 
   button.appendChild(label);
   button.appendChild(confirm);
   return button;
 }
 
-function createGlobalOverlay(activeViews, simpleFilterContent, hideGlobalDialog, isLocNode, createElement, createButton, createTooltip) {
+function createGlobalOverlay(activeViews, simpleFilterContent, hideGlobalDialog, isLocNode) {
   const dialog = createElement('div', 'da-regional-edits-overlay');
   const actionsContainer = createElement('div', 'da-regional-edits-actions');
 
-  const localButton = createGlobalAction('local', 'Keep All Local', 'keep-local', 'Accept All Local', activeViews, simpleFilterContent, hideGlobalDialog, isLocNode, createElement, createButton, createTooltip);
-  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', 'keep-upstream', 'Accept All Upstream', activeViews, simpleFilterContent, hideGlobalDialog, isLocNode, createElement, createButton, createTooltip);
+  const localButton = createGlobalAction('local', 'Keep All Local', 'keep-local', 'Accept All Local', activeViews, simpleFilterContent, hideGlobalDialog, isLocNode);
+  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', 'keep-upstream', 'Accept All Upstream', activeViews, simpleFilterContent, hideGlobalDialog, isLocNode);
 
   actionsContainer.appendChild(localButton);
   actionsContainer.appendChild(upstreamButton);
@@ -100,8 +101,8 @@ function createGlobalOverlay(activeViews, simpleFilterContent, hideGlobalDialog,
   return dialog;
 }
 
+// TODO: Directly find using querySelector
 function findProseMirrorContainer(view) {
-  // Find the .da-prose-mirror container that wraps the ProseMirror editor
   let element = view.dom;
   while (element && !element.classList.contains('da-prose-mirror')) {
     element = element.parentElement;
@@ -120,26 +121,31 @@ export function hideGlobalDialog() {
   }
 }
 
-export function showGlobalDialog(view, activeViews, simpleFilterContent, isLocNode, createElement, createButton, createTooltip) {
+export function showGlobalDialog(view, activeViews, simpleFilterContent, isLocNode) {
   if (globalDialog?.parentNode) {
     return; // Dialog already shown
   }
 
-  const proseMirrorContainer = findProseMirrorContainer(view);
-  if (!proseMirrorContainer) {
+  const pmContainer = findProseMirrorContainer(view);
+  if (!pmContainer) {
     // eslint-disable-next-line no-console
     console.warn('Could not find ProseMirror container for global dialog');
     return;
   }
 
   if (!globalDialog) {
-    globalDialog = createGlobalOverlay(activeViews, simpleFilterContent, hideGlobalDialog, isLocNode, createElement, createButton, createTooltip);
+    globalDialog = createGlobalOverlay(
+      activeViews,
+      simpleFilterContent,
+      hideGlobalDialog,
+      isLocNode,
+    );
   }
 
-  const proseMirrorElement = proseMirrorContainer.querySelector('.ProseMirror');
-  if (proseMirrorElement) {
-    proseMirrorContainer.insertBefore(globalDialog, proseMirrorElement);
-    proseMirrorContainer.classList.add('has-regional-edits');
+  const pmEl = pmContainer.querySelector('.ProseMirror');
+  if (pmEl) {
+    pmContainer.insertBefore(globalDialog, pmEl);
+    pmContainer.classList.add('has-regional-edits');
     globalDialog.classList.add('show');
   }
 }

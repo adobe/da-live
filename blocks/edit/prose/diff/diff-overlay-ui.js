@@ -1,6 +1,8 @@
+import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
+
 // Overlay UI creation - only needed when user interacts with LOC elements
 
-export function getCoverDiv(upstream, createElement, LOC_COLORS) {
+export function getCoverDiv(upstream, LOC_COLORS) {
   const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
   const coverDiv = createElement('div', className, { 'loc-temp-dom': '' });
 
@@ -8,22 +10,22 @@ export function getCoverDiv(upstream, createElement, LOC_COLORS) {
   return coverDiv;
 }
 
-export function getLangOverlay(upstream, createElement, createButton, createTooltip, LOC_TEXT) {
+export function getLangOverlay(upstream, LOC_TEXT) {
   const overlay = createElement('div', 'loc-lang-overlay loc-floating-overlay', { 'loc-temp-dom': '' });
 
   const type = upstream ? 'upstream' : 'local';
   const text = upstream ? LOC_TEXT.UPSTREAM : LOC_TEXT.LOCAL;
 
-  const compositeBtn = createElement('div', `loc-composite-btn-3part loc-composite-btn-base loc-sticky-buttons is-${type}`);
+  const compositeBtn = createElement('div', `da-diff-btn-3part da-diff-btn-base loc-sticky-buttons is-${type}`);
 
-  const labelBtn = createElement('span', 'loc-composite-label loc-composite-btn-base-element');
+  const labelBtn = createElement('span', 'diff-label da-diff-btn-base-element');
   labelBtn.textContent = text;
 
-  const acceptBtn = createButton('loc-composite-accept loc-composite-btn-base-element', 'button', { 'aria-label': `Accept ${text}` });
-  acceptBtn.appendChild(createTooltip(`Accept ${text}`));
+  const acceptBtn = createButton('diff-accept da-diff-btn-base-element', 'button', { 'aria-label': `Accept ${text}` });
+  acceptBtn.appendChild(createTooltip(`Accept ${text}`, 'diff-tooltip'));
 
-  const deleteBtn = createButton('loc-composite-delete loc-composite-btn-base-element', 'button', { 'aria-label': `Delete ${text}` });
-  deleteBtn.appendChild(createTooltip(`Delete ${text}`));
+  const deleteBtn = createButton('diff-delete da-diff-btn-base-element', 'button', { 'aria-label': `Delete ${text}` });
+  deleteBtn.appendChild(createTooltip(`Delete ${text}`, 'diff-tooltip'));
 
   compositeBtn.appendChild(labelBtn);
   compositeBtn.appendChild(acceptBtn);
