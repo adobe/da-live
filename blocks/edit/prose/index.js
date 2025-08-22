@@ -178,17 +178,19 @@ function restoreCursorPosition(view) {
   }
 }
 
-function addSyncedListener(wsProvider) {
-  let initialContentLoaded = false;
-  wsProvider.on('synced', (isSynced) => {
-    if (isSynced && !initialContentLoaded) {
-      const pm = document.querySelector('da-content')?.shadowRoot
-        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
-      if (pm) pm.contentEditable = 'true';
-
-      initialContentLoaded = true;
+function addSyncedListener(wsProvider, canWrite) {
+  const handleSynced = (isSynced) => {
+    if (isSynced) {
+      if (canWrite) {
+        const pm = document.querySelector('da-content')?.shadowRoot
+          .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+        if (pm) pm.contentEditable = 'true';
+      }
+      wsProvider.off('synced', handleSynced);
     }
-  });
+  };
+
+  wsProvider.on('synced', handleSynced);
 }
 
 export default function initProse({ path, permissions }) {
@@ -213,7 +215,7 @@ export default function initProse({ path, permissions }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  addSyncedListener(wsProvider);
+  addSyncedListener(wsProvider, canWrite);
 
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
