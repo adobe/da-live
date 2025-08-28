@@ -176,73 +176,39 @@ export default class DaList extends LitElement {
     this._listItems[index] = item;
   }
 
-  wait(milliseconds) {
-    return new Promise((r) => {
-      setTimeout(r, milliseconds);
-    });
-  }
-
-  async fetchWithContinuation(url, { method, formData = null, errorMessage, errorAction }) {
+  async handlePasteItem(item) {
     let continuation = true;
     let continuationToken;
 
     while (continuation) {
-      const opts = { method };
-
-      if (continuationToken || formData) {
-        const data = formData || new FormData();
-        if (continuationToken) {
-          data.append('continuation-token', continuationToken);
-        }
-        opts.body = data;
-      }
-
-      const resp = await daFetch(url, opts);
-
+      const formData = new FormData();
+      formData.append('destination', item.destination);
+      if (continuationToken) formData.append('continuation-token', continuationToken);
+      const opts = { method: 'POST', body: formData };
+      const resp = await daFetch(`${DA_ORIGIN}/copy${item.path}`, opts);
       if (resp.status === 204) {
         continuation = false;
         break;
       } else if (resp.status >= 400) {
-        if (errorMessage && errorAction) {
-          this.setStatus(errorAction, errorMessage);
-          await this.wait(2000);
-        }
-        return false;
-      }
+        this.setStatus('Copying', 'There was an issue copying.');
 
+        // TODO maybe there is a better way to keep the status dialog visible for a bit?
+        await this.wait(2000);
+
+        return;
+      }
       const json = await resp.json();
       ({ continuationToken } = json);
       if (!continuationToken) continuation = false;
     }
 
-    return true;
-  }
-
-  async handlePasteItem(item, unshift = true) {
-    const formData = new FormData();
-    formData.append('destination', item.destination);
-
-    const success = await this.fetchWithContinuation(
-      `${DA_ORIGIN}/copy${item.path}`,
-      {
-        method: 'POST',
-        formData,
-        errorMessage: 'There was an issue copying.',
-        errorAction: 'Copying',
-      },
-    );
-
-    if (!success) return;
-
     item.isChecked = false;
-    if (unshift) {
-      const pastedItem = { ...item, path: item.destination, isChecked: false };
-      this._listItems.unshift(pastedItem);
-    }
+    const pastedItem = { ...item, path: item.destination, isChecked: false };
+    this._listItems.unshift(pastedItem);
     this.requestUpdate();
   }
 
-  async handlePaste(e) {
+  async handlePaste(evt) {
     // Format the destination
     const pasteItems = this._selectedItems.map((item) => {
       let { name } = item;
@@ -272,81 +238,115 @@ export default class DaList extends LitElement {
     }));
 
     clearTimeout(showStatus);
-    // If this is a move (ie. cut) delete the originals
-    if (e.detail?.move) {
-      await Promise.all(this._selectedItems.map(async (item) => {
-        await this.deleteItem(item);
-      }));
+    if (evt?.detail?.move) {
+      await this.handleDelete();
     }
     this.setStatus();
     this.handleClear();
   }
 
-  removeItemFromList(item) {
+  // removeItemFromList(item) {
+  //   item.isChecked = false;
+  //   this._listItems = this._listItems.reduce((acc, liItem) => {
+  //     if (liItem.path !== item.path) acc.push(liItem);
+  //     return acc;
+  //   }, []);
+
+  //   this.requestUpdate();
+  // }
+
+  // async deleteItem(item) {
+  //   const success = await this.fetchWithContinuation(
+  //     `${DA_ORIGIN}/source${item.path}`,
+  //     { method: 'DELETE' },
+  //   );
+
+  //   if (!success) return;
+
+  //   item.isChecked = false;
+  //   this._listItems = this._listItems.reduce((acc, liItem) => {
+  //     if (liItem.path !== item.path) acc.push(liItem);
+  //     return acc;
+  //   }, []);
+
+  //   this.removeItemFromList(item);
+  // }
+
+  // async moveItemToTrash(item) {
+  //   const splitPath = item.path.split('/');
+  //   if (splitPath.length > 3) {
+  //     splitPath.splice(3, 0, '.trash');
+  //   } else {
+  //     // root folders go into the org level .trash
+  //     splitPath.splice(2, 0, '.trash');
+  //   }
+
+  //   // Files put in the trash get the current UTC date and time appended to the name
+  //   const date = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
+  //   item.name = `${item.name}--${date}${item.ext ? `.${item.ext}` : ''}`;
+  //   splitPath[splitPath.length - 1] = item.name;
+
+  //   item.destination = splitPath.join('/');
+
+  //   const formData = new FormData();
+  //   formData.append('destination', item.destination);
+
+  //   const success = await this.fetchWithContinuation(
+  //     `${DA_ORIGIN}/move${item.path}`,
+  //     {
+  //       method: 'POST',
+  //       formData,
+  //       errorMessage: 'There was an issue moving.',
+  //       errorAction: 'Moving',
+  //     },
+  //   );
+
+  //   if (success) {
+  //     this.removeItemFromList(item);
+  //   } else {
+  //     // eslint-disable-next-line no-console
+  //     console.log('Issue with moving to trash, deleting item instead');
+  //     await this.deleteItem(item);
+  //   }
+
+  //   return success;
+  // }
+
+  async handleDeleteItem(item) {
+    let continuation = true;
+    let continuationToken;
+
+    while (continuation) {
+      const opts = { method: 'DELETE' };
+
+      if (continuationToken) {
+        const formData = new FormData();
+        formData.append('continuation-token', continuationToken);
+        opts.body = formData;
+      }
+
+      const resp = await daFetch(`${DA_ORIGIN}/source${item.path}`, opts);
+      if (resp.status === 204) {
+        continuation = false;
+        break;
+      }
+      const json = await resp.json();
+      ({ continuationToken } = json);
+      if (!continuationToken) continuation = false;
+    }
+
     item.isChecked = false;
     this._listItems = this._listItems.reduce((acc, liItem) => {
       if (liItem.path !== item.path) acc.push(liItem);
       return acc;
     }, []);
-
     this.requestUpdate();
   }
 
-  async deleteItem(item) {
-    const success = await this.fetchWithContinuation(
-      `${DA_ORIGIN}/source${item.path}`,
-      { method: 'DELETE' },
-    );
-
-    if (!success) return;
-
-    item.isChecked = false;
-    this._listItems = this._listItems.reduce((acc, liItem) => {
-      if (liItem.path !== item.path) acc.push(liItem);
-      return acc;
-    }, []);
-
-    this.removeItemFromList(item);
-  }
-
-  async moveItemToTrash(item) {
-    const splitPath = item.path.split('/');
-    if (splitPath.length > 3) {
-      splitPath.splice(3, 0, '.trash');
-    } else {
-      // root folders go into the org level .trash
-      splitPath.splice(2, 0, '.trash');
-    }
-
-    // Files put in the trash get the current UTC date and time appended to the name
-    const date = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
-    item.name = `${item.name}--${date}${item.ext ? `.${item.ext}` : ''}`;
-    splitPath[splitPath.length - 1] = item.name;
-
-    item.destination = splitPath.join('/');
-
-    const formData = new FormData();
-    formData.append('destination', item.destination);
-
-    const success = await this.fetchWithContinuation(
-      `${DA_ORIGIN}/move${item.path}`,
-      {
-        method: 'POST',
-        formData,
-        errorMessage: 'There was an issue moving.',
-        errorAction: 'Moving',
-      },
-    );
-
-    if (success) {
-      this.removeItemFromList(item);
-    } else {
-      // eslint-disable-next-line no-console
-      console.log('Issue with moving to trash, deleting item instead');
-      await this.deleteItem(item);
-    }
-
-    return success;
+  async handleDeleteTwo() {
+    await Promise.all(this._selectedItems.map(async (item) => {
+      await this.handleDeleteItem(item);
+    }));
   }
 
   async handleConfirmDelete() {
@@ -357,27 +357,24 @@ export default class DaList extends LitElement {
     this._itemsRemaining = this._selectedItems.length;
     this._itemErrors = [];
 
-    const callback = async (item) => {
-      if (this._unpublish && ['html', 'json'].includes(item.ext)) {
-        const resp = await aemAdmin(item.path, 'live', 'DELETE');
-        if (!resp.ok) this._itemErrors.push({ ...item, status: resp.status });
-      }
-      const copyToTrash = !item.path.includes('/.trash/');
-      if (copyToTrash) {
-        await this.moveItemToTrash(item);
-      } else {
-        await this.deleteItem(item);
-      }
-      this._itemsRemaining -= 1;
+    this.handleDeleteTwo();
 
-      if (this._itemsRemaining === 0) {
-        this.handleClear();
-      }
-    };
+    // const callback = async (item) => {
+    //   if (this._unpublish && ['html', 'json'].includes(item.ext)) {
+    //     const resp = await aemAdmin(item.path, 'live', 'DELETE');
+    //     if (!resp.ok) this._itemErrors.push({ ...item, status: resp.status });
+    //   }
+    //   await this.deleteItem(item);
+    //   this._itemsRemaining -= 1;
 
-    const queue = new Queue(callback, 1, null, throttle);
+    //   if (this._itemsRemaining === 0) {
+    //     this.handleClear();
+    //   }
+    // };
 
-    await Promise.all(this._selectedItems.map((item) => queue.push(item)));
+    // const queue = new Queue(callback, 1, null, throttle);
+
+    // await Promise.all(this._selectedItems.map((item) => queue.push(item)));
   }
 
   async handleDelete() {
