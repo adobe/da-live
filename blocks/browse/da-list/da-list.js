@@ -5,6 +5,7 @@ import { daFetch, aemAdmin } from '../../shared/utils.js';
 
 import '../da-actionbar/da-actionbar.js';
 import '../da-list-item/da-list-item.js';
+import aem2clipboard from './helpers/utils.js';
 
 // Styles & Icons
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -34,9 +35,11 @@ export default class DaList extends LitElement {
     _dropFiles: { state: true },
     _dropMessage: { state: true },
     _status: { state: true },
-    _totalDeleteCount: { state: true },
-    _currentDeleteCount: { state: true },
-    _unpublishErrors: { state: true },
+    _itemsRemaining: { state: true },
+    _itemErrors: { state: true },
+    _showConfirm: { state: true },
+    _confirmText: { state: true },
+    _unpublish: { state: true },
   };
 
   constructor() {
@@ -45,13 +48,17 @@ export default class DaList extends LitElement {
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
     this._filter = '';
-    this._unpublishErrors = [];
   }
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
     getSvg({ parent: this.shadowRoot, paths: ICONS });
+  }
+
+  async firstUpdated() {
+    // Lazily load the dialog after first update
+    await import('../../shared/da-dialog/da-dialog.js');
   }
 
   async update(props) {
@@ -106,6 +113,10 @@ export default class DaList extends LitElement {
     this._listItems = this._listItems.map((item) => ({ ...item, isChecked: false, rename: false }));
     this._selectedItems = [];
     this._lastCheckedIndex = null;
+    this._itemsRemaining = null;
+    this._showConfirm = null;
+    this._confirmText = null;
+    this._unpublish = false;
     if (this.actionBar) this.actionBar.items = [];
   }
 
@@ -231,7 +242,7 @@ export default class DaList extends LitElement {
     this.requestUpdate();
   }
 
-  async handlePaste(evt) {
+  async handlePaste(e) {
     // Format the destination
     const pasteItems = this._selectedItems.map((item) => {
       let { name } = item;
@@ -261,8 +272,11 @@ export default class DaList extends LitElement {
     }));
 
     clearTimeout(showStatus);
-    if (evt?.detail?.move) {
-      await this.handleDelete(evt);
+    // If this is a move (ie. cut) delete the originals
+    if (e.detail?.move) {
+      await Promise.all(this._selectedItems.map(async (item) => {
+        await this.deleteItem(item);
+      }));
     }
     this.setStatus();
     this.handleClear();
@@ -328,24 +342,25 @@ export default class DaList extends LitElement {
       this.removeItemFromList(item);
     } else {
       // eslint-disable-next-line no-console
-      console.log('Issue with moving, deleting item instead');
+      console.log('Issue with moving to trash, deleting item instead');
       await this.deleteItem(item);
     }
 
     return success;
   }
 
-  async handleDelete(event) {
-    const unpublish = event?.detail?.unpublish;
+  async handleConfirmDelete() {
+    const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
 
-    this._totalDeleteCount = this._selectedItems.length;
-    this._currentDeleteCount = 0;
-    const unpublishErrors = [];
+    const throttle = this._unpublish ? 1000 : 0;
 
-    await Promise.all(this._selectedItems.map(async (item) => {
-      if (unpublish && ['html', 'json'].includes(item.ext)) {
+    this._itemsRemaining = this._selectedItems.length;
+    this._itemErrors = [];
+
+    const callback = async (item) => {
+      if (this._unpublish && ['html', 'json'].includes(item.ext)) {
         const resp = await aemAdmin(item.path, 'live', 'DELETE');
-        if (!resp.ok) unpublishErrors.push([item.name, resp.status]);
+        if (!resp.ok) this._itemErrors.push({ ...item, status: resp.status });
       }
       const copyToTrash = !item.path.includes('/.trash/');
       if (copyToTrash) {
@@ -353,13 +368,20 @@ export default class DaList extends LitElement {
       } else {
         await this.deleteItem(item);
       }
-      this._currentDeleteCount += 1;
-    }));
+      this._itemsRemaining -= 1;
 
-    this._unpublishErrors = unpublishErrors;
+      if (this._itemsRemaining === 0) {
+        this.handleClear();
+      }
+    };
 
-    this.setStatus();
-    this.handleClear();
+    const queue = new Queue(callback, 1, null, throttle);
+
+    await Promise.all(this._selectedItems.map((item) => queue.push(item)));
+  }
+
+  async handleDelete() {
+    this._showConfirm = true;
   }
 
   handleShare() {
@@ -491,6 +513,21 @@ export default class DaList extends LitElement {
     this._filter = e.target.value;
   }
 
+  handleCloseConfirm() {
+    this._showConfirm = null;
+    this._confirmText = null;
+    this._unpublish = null;
+  }
+
+  handleCloseErrors() {
+    this._itemErrors = null;
+    this.handleClear();
+  }
+
+  get _itemString() {
+    return this._selectedItems.length > 1 ? 'items' : 'item';
+  }
+
   get isSelectAll() {
     const selectCount = this._listItems.filter((item) => item.isChecked).length;
     return selectCount === this._listItems.length && this._listItems.length !== 0;
@@ -500,8 +537,82 @@ export default class DaList extends LitElement {
     return this.shadowRoot?.querySelector('da-actionbar');
   }
 
+  get _confirmContent() {
+    // Be transparent when items cannot be unpublished
+    const cannotUnpub = this._selectedItems.some((item) => !item.ext || item.ext === 'link');
+
+    if (cannotUnpub) {
+      return html`<p>Are you sure you want to delete this content? Published items will remain live.</p>`;
+    }
+
+    const checkbox = html`
+      <div class="da-modal-checkbox">
+        <input type="checkbox" name="confirm-unpublish" ?checked=${this._unpublish} @click=${() => { this._unpublish = !this._unpublish; }}>
+        <label for="confirm-unpublish" @click=${() => { this._unpublish = !this._unpublish; }}>
+          Unpublish ${this._itemString}
+        </label>
+      </div>
+    `;
+
+    if (!this._unpublish) return checkbox;
+
+    return html`
+      ${checkbox}
+      <div class="da-actionbar-modal-confirmation">
+        <p class="sl-heading-m">Are you sure you want to unpublish?</p>
+        <p>Type <strong>YES</strong> to confirm.</p>
+        <sl-input
+          type="text"
+          placeholder="YES"
+          autofocus=""
+          @input=${({ target }) => { this._confirmText = target.value; }}
+          aria-label="Type yes to confirm unpublish"
+          value=${this._confirmText}></sl-input>
+      </div>
+    `;
+  }
+
   renderEmpty() {
     return html`<div class="empty-list"><h3>Empty</h3></div>`;
+  }
+
+  renderConfirm() {
+    const currentAction = `Deleting ${this._selectedItems.length} ${this._itemString}`;
+
+    const label = this._unpublish ? 'Unpublish & delete' : 'Delete';
+
+    const action = {
+      label,
+      style: 'negative',
+      click: () => this.handleConfirmDelete(),
+      disabled: (this._unpublish && this._confirmText !== 'YES') || this._itemsRemaining,
+    };
+
+    const hasRemaining = this._itemsRemaining && this._itemsRemaining !== 0;
+
+    const message = hasRemaining && `${this._itemsRemaining} remaining`;
+
+    return html`
+      <da-dialog
+        title=${currentAction}
+        @close=${this.handleCloseConfirm}
+        .message=${message}
+        .action=${action}>
+        ${this._confirmContent}
+      </da-dialog>
+    `;
+  }
+
+  renderErrors() {
+    const click = () => { aem2clipboard(this._itemErrors); };
+
+    const action = { label: 'Copy to clipboard', style: 'accent', click };
+
+    return html`
+      <da-dialog title="Errors" @close=${this.handleCloseErrors} .action=${action}>
+        ${this._itemErrors.map((item) => html`<p><strong>${item.status}</strong><br/>${item.path.split('/').pop().split('.')[0]}</p>`)}
+      </da-dialog>
+    `;
   }
 
   renderStatus() {
@@ -586,18 +697,16 @@ export default class DaList extends LitElement {
       </div>
       <da-actionbar
         .permissions=${this._permissions}
-        .totalDeleteCount=${this._totalDeleteCount}
-        .currentDeleteCount=${this._currentDeleteCount}
-        .unpublishErrors=${this._unpublishErrors}
         @clearselection=${this.handleClear}
-        @clearunpublisherrors=${this.handleClearUnpublishErrors}
         @rename=${this.handleRename}
         @onpaste=${this.handlePaste}
-        @ondelete=${(e) => this.handleDelete(e)}
+        @ondelete=${this.handleDelete}
         @onshare=${this.handleShare}
         currentPath="${this.fullpath}"
         data-visible="${this._selectedItems?.length > 0 || this._unpublishErrors?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
+      ${this._showConfirm ? this.renderConfirm() : nothing}
+      ${this._itemErrors?.length && !this._showConfirm ? this.renderErrors() : nothing}
       `;
   }
 }

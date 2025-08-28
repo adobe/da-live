@@ -1,18 +1,10 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import aem2clipboard from '../da-list/helpers/utils.js';
 
 // Styles
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
-
-let modalComponents;
-async function loadModalComponents() {
-  if (!modalComponents) {
-    await import('../da-action-modal/da-action-modal.js');
-    await import('./da-actionbar-modal.js');
-    modalComponents = await import(`${getNx()}/public/sl/components.js`);
-  }
-}
 
 export default class DaActionBar extends LitElement {
   static properties = {
@@ -22,18 +14,12 @@ export default class DaActionBar extends LitElement {
     _isDeleting: { state: true },
     _isMoving: { state: true },
     currentPath: { type: String },
-    totalDeleteCount: { type: Number },
-    currentDeleteCount: { type: Number },
-    unpublishErrors: { type: Array },
   };
 
   constructor() {
     super();
     this.items = [];
     this.currentPath = '';
-    this.totalDeleteCount = 0;
-    this.currentDeleteCount = 0;
-    this.unpublishErrors = [];
   }
 
   connectedCallback() {
@@ -48,8 +34,6 @@ export default class DaActionBar extends LitElement {
         this._isCopying = false;
         this._isMoving = false;
         this._isDeleting = false;
-      } else {
-        loadModalComponents();
       }
     }
 
@@ -60,7 +44,6 @@ export default class DaActionBar extends LitElement {
     this._isCopying = false;
     this._isMoving = false;
     this._isDeleting = false;
-    this.unpublishErrors = [];
     const opts = { detail: true, bubbles: true, composed: true };
     const event = new CustomEvent('clearselection', opts);
     this.dispatchEvent(event);
@@ -94,32 +77,13 @@ export default class DaActionBar extends LitElement {
 
   handleDelete() {
     this._isDeleting = true;
-    setTimeout(() => {
-      this._modal.showModal();
-    }, 100);
-  }
-
-  deleteItems(e) {
-    const { unpublish, items } = e.detail;
-    const opts = { detail: { unpublish, items }, bubbles: true, composed: true };
+    const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('ondelete', opts);
     this.dispatchEvent(event);
   }
 
   handleShare() {
-    const aemUrls = this.items.reduce((acc, item) => {
-      if (item.ext) {
-        const path = item.path.replace('.html', '');
-        const [org, repo, ...pathParts] = path.substring(1).split('/');
-        const pageName = pathParts.pop();
-        pathParts.push(pageName === 'index' ? '' : pageName);
-        acc.push(`https://main--${repo}--${org}.aem.page/${pathParts.join('/')}`);
-      }
-      return acc;
-    }, []);
-    const blob = new Blob([aemUrls.join('\n')], { type: 'text/plain' });
-    const data = [new ClipboardItem({ [blob.type]: blob })];
-    navigator.clipboard.write(data);
+    aem2clipboard(this.items);
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('onshare', opts);
     this.dispatchEvent(event);
@@ -130,10 +94,6 @@ export default class DaActionBar extends LitElement {
     const itemPath = this.items?.[0]?.path;
     const itemDir = itemPath?.split('/').slice(0, -1).join('/');
     return itemDir !== this.currentPath;
-  }
-
-  get _modal() {
-    return this.shadowRoot.querySelector('da-actionbar-modal');
   }
 
   get _canWrite() {
@@ -158,20 +118,6 @@ export default class DaActionBar extends LitElement {
 
   render() {
     return html`
-      ${
-        modalComponents && (this.items.length || this.unpublishErrors.length)
-          ? html`
-            <da-actionbar-modal
-              .items=${this.items}
-              .unpublishErrors=${this.unpublishErrors}
-              .totalDeleteCount=${this.totalDeleteCount}
-              .currentDeleteCount=${this.currentDeleteCount}
-              @delete-items=${this.deleteItems}
-              @modal-closed=${this.handleClear}>
-            </da-actionbar-modal>
-            `
-          : ''
-      }
       <div class="da-action-bar">
         <div class="da-action-bar-left-rail">
           <button
