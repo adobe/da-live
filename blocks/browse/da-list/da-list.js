@@ -264,16 +264,14 @@ export default class DaList extends LitElement {
   }
 
   async handleDelete() {
-    const showStatus = setTimeout(() => {
-      this.setStatus('Deleting', 'Please be patient. Deleting items with many children can take time.');
-    }, 2000);
-
     await Promise.all(this._selectedItems.map(async (item) => {
       await this.handleDeleteItem(item);
     }));
-    clearTimeout(showStatus);
-    this.setStatus();
     this.handleClear();
+  }
+
+  async handleConfirmDelete() {
+    this._confirm = true;
   }
 
   handleShare() {
@@ -503,7 +501,7 @@ export default class DaList extends LitElement {
         @clearselection=${this.handleClear}
         @rename=${this.handleRename}
         @onpaste=${this.handlePaste}
-        @ondelete=${this.handleDelete}
+        @ondelete=${this.handleConfirmDelete}
         @onshare=${this.handleShare}
         currentPath="${this.fullpath}"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
