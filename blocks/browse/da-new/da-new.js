@@ -8,6 +8,7 @@ const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
 const INPUT_ERROR = 'da-input-error';
+const DEFAULT_FILE_LABEL = 'Select file';
 
 export default class DaNew extends LitElement {
   static properties = {
@@ -20,10 +21,11 @@ export default class DaNew extends LitElement {
     _createName: { attribute: false },
     _fileLabel: { attribute: false },
     _externalUrl: { attribute: false },
+    _isLoading: { attribute: false },
   };
 
   connectedCallback() {
-    this._fileLabel = 'Select file';
+    this._fileLabel = DEFAULT_FILE_LABEL;
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
   }
@@ -66,62 +68,77 @@ export default class DaNew extends LitElement {
     }
     if (nameInput) nameInput.classList.remove(INPUT_ERROR);
 
-    let ext;
-    let formData;
-    switch (this._createType) {
-      case 'document':
-        ext = 'html';
-        break;
-      case 'sheet':
-        ext = 'json';
-        break;
-      case 'link':
-        ext = 'link';
-        formData = new FormData();
-        formData.append(
-          'data',
-          new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
-        );
-        break;
-      default:
-        break;
+    this._isLoading = true;
+    try {
+      let ext;
+      let formData;
+      switch (this._createType) {
+        case 'document':
+          ext = 'html';
+          break;
+        case 'sheet':
+          ext = 'json';
+          break;
+        case 'link':
+          ext = 'link';
+          formData = new FormData();
+          formData.append(
+            'data',
+            new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
+          );
+          break;
+        default:
+          break;
+      }
+      let path = `${this.fullpath}/${this._createName}`;
+      if (ext) path += `.${ext}`;
+      const editPath = getEditPath({ path, ext, editor: this.editor });
+      if (ext && ext !== 'link') {
+        window.location = editPath;
+      } else {
+        await saveToDa({ path, formData });
+        const item = { name: this._createName, path };
+        if (ext) item.ext = ext;
+        this.sendNewItem(item);
+      }
+      this.resetCreate();
+    } catch (error) {
+      // TODO: Send to error tracking service?
+    } finally {
+      this._isLoading = false;
     }
-    let path = `${this.fullpath}/${this._createName}`;
-    if (ext) path += `.${ext}`;
-    const editPath = getEditPath({ path, ext, editor: this.editor });
-    if (ext && ext !== 'link') {
-      window.location = editPath;
-    } else {
-      await saveToDa({ path, formData });
-      const item = { name: this._createName, path };
-      if (ext) item.ext = ext;
-      this.sendNewItem(item);
-    }
-    this.resetCreate();
   }
 
   async handleUpload(e) {
-    if (this._fileLabel === 'Select file') {
+    if (this._fileLabel === DEFAULT_FILE_LABEL) {
       const label = this.shadowRoot.querySelector('.da-actions-file-label');
       label.classList.add(INPUT_ERROR);
       return false;
     }
 
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const split = this._fileLabel.split('.');
-    const ext = split.pop();
-    const name = split.join('.').replaceAll(/\W+/g, '-').toLowerCase();
-    const filename = `${split.join('.').replaceAll(/\W+/g, '-').toLowerCase()}.${ext}`;
-    const path = `${this.fullpath}/${filename}`;
+    this._isLoading = true;
+    try {
+      const formData = new FormData(e.target);
+      const split = this._fileLabel.split('.');
+      const ext = split.pop();
+      const name = split.join('.').replaceAll(/\W+/g, '-').toLowerCase();
+      const filename = `${split.join('.').replaceAll(/\W+/g, '-').toLowerCase()}.${ext}`;
+      const path = `${this.fullpath}/${filename}`;
 
-    await saveToDa({ path, formData });
+      await saveToDa({ path, formData });
 
-    const item = { name, path, ext };
-    this.sendNewItem(item);
-    this.resetCreate();
-    this.requestUpdate();
-    return true;
+      const item = { name, path, ext };
+      this.sendNewItem(item);
+      this.resetCreate();
+      this.requestUpdate();
+      return true;
+    } catch (error) {
+      // TODO: Send to error tracking service?
+      return false;
+    } finally {
+      this._isLoading = false;
+    }
   }
 
   handleKeyCommands(event) {
@@ -145,8 +162,9 @@ export default class DaNew extends LitElement {
     this._createName = '';
     this._createType = '';
     this._createFile = '';
-    this._fileLabel = 'Select file';
+    this._fileLabel = DEFAULT_FILE_LABEL;
     this._externalUrl = '';
+    this._isLoading = false;
     const input = this.shadowRoot.querySelector('.da-actions-input.da-input-error');
     if (input) input.classList.remove(INPUT_ERROR);
   }
@@ -154,6 +172,14 @@ export default class DaNew extends LitElement {
   get _disabled() {
     if (!this.permissions) return true;
     return !this.permissions.some((permission) => permission === 'write');
+  }
+
+  get _createButtonDisabled() {
+    return this._disabled || this._isLoading;
+  }
+
+  get _uploadButtonDisabled() {
+    return this._disabled || this._isLoading || this._fileLabel === DEFAULT_FILE_LABEL;
   }
 
   render() {
@@ -180,14 +206,14 @@ export default class DaNew extends LitElement {
         <div class="da-actions-input-container">
           <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
           ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="url" @input=${this.handleUrlChange} .value=${this._externalUrl || ''} />` : ''}
-          <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
-          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
+          <button class="da-actions-button" @click=${this.handleSave} ?disabled=${this._createButtonDisabled}>Create ${this._createType}</button>
+          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate} ?disabled=${this._isLoading}>Cancel</button>
         </div>
         <form enctype="multipart/form-data" class="da-actions-file-container" @submit=${this.handleUpload}>
           <label for="da-actions-file" class="da-actions-file-label">${this._fileLabel}</label>
           <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} name="data" />
-          <button class="da-actions-button">Upload</button>
-          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
+          <button class="da-actions-button" ?disabled=${this._uploadButtonDisabled}>Upload</button>
+          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate} ?disabled=${this._isLoading}>Cancel</button>
         </form>
       </div>`;
   }
