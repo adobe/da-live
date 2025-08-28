@@ -25,6 +25,7 @@ const ICONS = [
   '/blocks/edit/img/Smock_ExperienceAdd_18_N.svg',
   '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
   '/blocks/edit/img/Smock_AddCircle_18_N.svg',
+  '/blocks/edit/img/Smock_InfoOutline_18_N.svg',
 ];
 
 let accessToken;
@@ -329,7 +330,15 @@ class DaLibrary extends LitElement {
             <span class="da-library-group-name">${item.name}</span>
             <span class="da-library-group-subtitle">${item.variants}</span>
           </div>
-          <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+          <div class="da-library-icons">
+            ${item.tags && item.tags.trim() ? html`
+              <div class="info-icon-container">
+                <svg class="icon info-icon"><use href="#spectrum-InfoOutline"/></svg>
+                <div class="info-tooltip">${item.tags}</div>
+              </div>
+            ` : ''}
+            <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+          </div>
         </button>
       </li>`;
   }
