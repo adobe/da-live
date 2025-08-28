@@ -51,7 +51,8 @@ button {
   transition: outline-offset .2s;
 }
 
-.da-actions-new-button:disabled {
+.da-actions-new-button:disabled,
+.da-actions-button:disabled {
   color: var(--s2-gray-700);
   background-color: transparent;
   outline-color: var(--s2-gray-700);
