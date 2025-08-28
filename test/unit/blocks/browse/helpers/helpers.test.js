@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { stub } from 'sinon';
-import { getFullEntryList, handleUpload, sanitizePath } from '../../../../../blocks/browse/da-list/helpers/drag-n-drop.js';
+import { getFullEntryList, handleUpload, sanitizePath } from '../../../../../blocks/browse/da-list/helpers/utils.js';
 
 const goodEntry = {
   isDirectory: false,

@@ -39,6 +39,27 @@ export default class DaBrowse extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
+    document.addEventListener('keydown', this.handleShortcuts.bind(this));
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.handleShortcuts.bind(this));
+  }
+
+  handleShortcuts(e) {
+    // Check for Command / Control + Option + T
+    if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
+      e.preventDefault();
+      const { fullpath } = this.details;
+      const [, org, site, first, ...rest] = fullpath.split('/');
+      if (!org || !site) return;
+
+      const orgSite = `/${org}/${site}`;
+      const path = first === '.trash' ? `/${rest.join('/')}` : `/.trash/${first}/${rest.join('/')}`;
+
+      window.location.hash = `${orgSite}${path}`;
+    }
   }
 
   handlePermissions(e) {
@@ -81,7 +102,6 @@ export default class DaBrowse extends LitElement {
 
     // Sort by length in descending order (longest first)
     const matchedConf = matchedConfs.sort((a, b) => b.length - a.length)[0];
-    console.log(matchedConf);
 
     return matchedConf.split('=')[1];
   }
