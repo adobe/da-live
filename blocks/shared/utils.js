@@ -83,7 +83,11 @@ export async function aemAdmin(path, api, method = 'POST') {
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
   const resp = await daFetch(aemUrl, { method });
   if (!resp.ok) return undefined;
-  return resp.json();
+  try {
+    return resp.json();
+  } catch {
+    return undefined;
+  }
 }
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
