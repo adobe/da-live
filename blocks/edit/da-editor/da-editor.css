@@ -804,7 +804,7 @@ da-library.hide {
   white-space: nowrap;
 }
 
-da-loc-deleted, da-loc-added {
+da-diff-deleted, da-diff-added {
   display: block;
   position: relative;
 }
@@ -844,27 +844,27 @@ da-loc-deleted, da-loc-added {
   box-shadow: rgb(181 181 181) 0 0 5px 0;
 }
 
-.loc-keep {
+.diff-keep {
   width: 44px;
   height: 44px;
   background: url('/blocks/edit/img/Smock_CheckmarkCircleOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
-.loc-keep:hover {
+.diff-keep:hover {
   box-shadow: #008000 0 0 5px 0;
 }
 
-.loc-delete {
+.diff-delete {
   width: 44px;
   height: 44px;
   background: url('/blocks/edit/img/Smock_DeleteOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
-.loc-delete:hover {
+.diff-delete:hover {
   box-shadow: #f00 0 0 5px 0;
 }
 
-.loc-color-overlay {
+.diff-color-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -873,7 +873,7 @@ da-loc-deleted, da-loc-added {
   border-radius: 6px;
 }
 
-.loc-color-overlay.loc-langstore::after {
+.diff-color-overlay.diff-upstream::after {
   content: 'Upstream';
   position: absolute;
   bottom: 4px;
@@ -889,7 +889,7 @@ da-loc-deleted, da-loc-added {
   text-align: center;
 }
 
-.loc-color-overlay.loc-regional::after {
+.diff-color-overlay.diff-local::after {
   content: 'Local';
   position: absolute;
   bottom: 4px;
@@ -905,7 +905,7 @@ da-loc-deleted, da-loc-added {
   text-align: center;
 }
 
-.loc-lang-overlay {
+.diff-lang-overlay {
   position: absolute;
   top: 0;
   left: 0;
