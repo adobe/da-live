@@ -1,6 +1,7 @@
 import {
   DOMParser,
   TextSelection,
+  NodeSelection,
   goToNextCell,
   selectedRect,
   isInTable,
@@ -26,10 +27,32 @@ export function getDashesInputRule(dispatchTransaction) {
   );
 }
 
-// This function returns a modified inputrule plugin that triggers when the regex in the
+export function getBacktickInputRule() {
+  return new InputRule(
+    /^```[\n]$/,
+    (state, match, start, end) => {
+      let { tr } = state;
+      let selection = NodeSelection.create(state.doc, start - 1);
+      if (state.doc.lastChild === selection.node) {
+        tr = tr.setSelection(TextSelection.create(tr.doc, end))
+          .replaceSelectionWith(state.schema.nodes.paragraph.create());
+
+        selection = NodeSelection.create(tr.doc, start - 1);
+      }
+      const newNodes = state.schema.nodes.code_block.create();
+      tr.setSelection(selection).replaceSelectionWith(newNodes);
+      tr.setSelection(TextSelection.create(tr.doc, start));
+      return tr;
+    },
+  );
+}
+
+// This function returns a modified inputrule plugin that trig  gers when the regex in the
 // rule matches and the Enter key is pressed
 export function getEnterInputRulesPlugin(dispatchTransaction) {
-  const irsplugin = inputRules({ rules: [getDashesInputRule(dispatchTransaction)] });
+  const irsplugin = inputRules(
+    { rules: [getDashesInputRule(dispatchTransaction), getBacktickInputRule(dispatchTransaction)] },
+  );
 
   const hkd = (view, event) => {
     if (event.key !== 'Enter') return false;
