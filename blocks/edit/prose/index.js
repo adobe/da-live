@@ -85,13 +85,16 @@ function handleProseLoaded(editor) {
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('proseloaded', opts);
     daEditor.dispatchEvent(event);
-
-    // Give the preview elements time to create
-    setTimeout(() => {
-      setPreviewBody();
-      pollForUpdates();
-    }, 3000);
   }, 3000);
+}
+
+function startPreviewing() {
+  setPreviewBody();
+  pollForUpdates();
+}
+
+function stopPreviewing() {
+  if (updatePoller) clearInterval(updatePoller);
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
@@ -323,5 +326,5 @@ export default function initProse({ path, permissions }) {
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return { proseEl: editor, wsProvider };
+  return { proseEl: editor, wsProvider, startPreviewing, stopPreviewing };
 }
