@@ -82,6 +82,7 @@ export async function aemAdmin(path, api, method = 'POST') {
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
   const resp = await daFetch(aemUrl, { method });
+  if (method === 'DELETE' && resp.status === 204) return {};
   if (!resp.ok) return undefined;
   try {
     return resp.json();
