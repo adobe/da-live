@@ -410,6 +410,64 @@ ul {
   font-size: 13px;
 }
 
+.da-library-group-tags {
+  display: block;
+  font-size: 11px;
+  color: #6E6E6E;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.da-library-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-icon-container {
+  position: relative;
+  display: inline-block;
+}
+
+.da-library-icons .info-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.da-library-type-group-detail-item button:hover .info-icon,
+.da-library-type-group-detail-item button:focus .info-icon {
+  opacity: 1;
+}
+
+.da-library-icons .info-tooltip {
+  position: fixed;
+  background: #2C2C2C;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  min-width: 200px;
+  max-width: 400px;
+  width: max-content;
+  word-wrap: break-word;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  pointer-events: none;
+  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin-top: 5px;
+}
+
+.da-library-icons .info-icon-container:hover .info-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
 .da-library-type-list-assets {
   display: grid;
   grid-template-columns: 1fr 1fr;
