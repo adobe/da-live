@@ -52,13 +52,16 @@ export default class DaBrowse extends LitElement {
     if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
       e.preventDefault();
       const { fullpath } = this.details;
-      const [, org, site, first, ...rest] = fullpath.split('/');
-      if (!org || !site) return;
+      const [, ...split] = fullpath.split('/');
+      if (split.length < 2) return;
 
-      const orgSite = `/${org}/${site}`;
-      const path = first === '.trash' ? `/${rest.join('/')}` : `/.trash/${first}/${rest.join('/')}`;
+      if (split[2] === '.trash') {
+        split.splice(2, 1);
+      } else {
+        split.splice(2, 0, '.trash');
+      }
 
-      window.location.hash = `${orgSite}${path}`;
+      window.location.hash = `/${split.join('/')}`;
     }
   }
 
