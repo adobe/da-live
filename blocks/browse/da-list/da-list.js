@@ -134,7 +134,8 @@ export default class DaList extends LitElement {
 
   handleConfirmClose() {
     this._confirm = null;
-    this._confirmPublish = null;
+    this._confirmText = null;
+    this._unpublish = null;
   }
 
   handleSelectionState() {
@@ -327,7 +328,7 @@ export default class DaList extends LitElement {
       }
       this._itemsRemaining -= 1;
 
-      // Done in the loop to prevent flickering
+      // Done in the loop to prevent CTA flickering
       if (this._itemsRemaining === 0) {
         this.handleClear();
       }
@@ -483,9 +484,10 @@ export default class DaList extends LitElement {
   get _confirmContent() {
     const noUnpub = this._selectedItems.some((item) => !item.ext || item.ext === 'link' || item.path.includes('/.trash/'));
     const inTrash = this._selectedItems.some((item) => item.path.includes('/.trash/'));
+    const linkOnly = this._selectedItems.length === 1 && this._selectedItems[0].ext === 'link';
 
     if (noUnpub) {
-      return html`<p>Are you sure you want to delete this content?${!inTrash ? ' Published items will remain live.' : ''}</p>`;
+      return html`<p>Are you sure you want to delete this content?${inTrash || linkOnly ? '' : ' Published items will remain live.'}</p>`;
     }
 
     const checkbox = html`

@@ -8,12 +8,8 @@ await import(`${nx}/public/sl/components.js`);
 
 // Styles
 const { default: getStyle } = await import(`${nx}/utils/styles.js`);
-const { default: getSvg } = await import(`${nx}/utils/svg.js`);
 const SL = await getStyle(`${nx}/public/sl/styles.css`);
 const STYLE = await getStyle(import.meta.url);
-
-// Icons
-const ICONS = [`${nx}/img/icons/S2IconClose20N-icon.svg`];
 
 export default class DaDialog extends LitElement {
   static properties = {
@@ -26,8 +22,8 @@ export default class DaDialog extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [SL, STYLE];
-    getSvg({ parent: this.shadowRoot, paths: ICONS });
-    this.showModal();
+    // Trigger animation and show modal by default
+    setTimeout(() => { this.showModal(); }, 0);
   }
 
   updated() {
@@ -79,7 +75,7 @@ export default class DaDialog extends LitElement {
               class="da-dialog-close-btn"
               @click=${this.close}
               aria-label="Close dialog">
-              <svg class="icon"><use href="#S2IconClose20N-icon"/></svg>
+              <svg class="icon"><use href="/blocks/browse/img/S2IconClose20N-icon.svg#S2IconClose20N-icon"></use></svg>
             </button>
           </div>
           <hr/>

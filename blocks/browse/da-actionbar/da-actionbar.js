@@ -75,7 +75,6 @@ export default class DaActionBar extends LitElement {
   }
 
   handleDelete() {
-    this._isDeleting = true;
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('ondelete', opts);
     this.dispatchEvent(event);
@@ -112,7 +111,6 @@ export default class DaActionBar extends LitElement {
       const folderName = this.currentPath.split('/').pop();
       return `Paste ${this.items.length} ${itemStr} into ${folderName}`;
     }
-    if (this._isDeleting) return `Deleting ${this.items.length} ${itemStr}`;
     return `${this.items.length} ${itemStr} selected`;
   }
 
