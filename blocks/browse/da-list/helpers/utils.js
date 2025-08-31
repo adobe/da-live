@@ -118,3 +118,23 @@ export async function handleUpload(list, fullpath, file) {
   }
   return null;
 }
+
+export function items2Clipboard(items) {
+  const aemUrls = items.reduce((acc, item) => {
+    if (item.ext) {
+      const path = item.path.replace('.html', '');
+      const [org, repo, ...pathParts] = path.substring(1).split('/');
+      const pageName = pathParts.pop();
+      pathParts.push(pageName === 'index' ? '' : pageName);
+
+      const url = `https://main--${repo}--${org}.aem.page/${pathParts.join('/')}`;
+      const toPush = item.message ? `${url} - ${item.message}` : url;
+
+      acc.push(toPush);
+    }
+    return acc;
+  }, []);
+  const blob = new Blob([aemUrls.join('\n')], { type: 'text/plain' });
+  const data = [new ClipboardItem({ [blob.type]: blob })];
+  navigator.clipboard.write(data);
+}
