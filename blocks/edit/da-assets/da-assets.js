@@ -282,7 +282,7 @@ export async function openAssets() {
 
           let src;
           if (aemTierType === 'author') {
-            src = `${getAssetUrl(asset)}${dmDeliveryEnabled && isVideo ? '/play' : ''}`;
+            src = `${dmDeliveryEnabled && isVideo ? `${getBaseDmUrl(asset)}/play` : getAssetUrl(asset)}`;
           } else if (isVideo) {
             src = videoLink;
           } else {
