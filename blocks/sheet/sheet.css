@@ -59,9 +59,9 @@ button.new-sheet {
   -webkit-user-select: none;
   -moz-user-select: none;
   user-select: none;
-  -webkit-box-shadow: 2px 2px 2px 0 rgba(143 144 145 100%);
-  -moz-box-shadow: 2px 2px 2px 0 rgba(143 144 145 100%);
-  box-shadow: 2px 2px 2px 0 rgba(143 144 145 100%);
+  -webkit-box-shadow: 2px 2px 2px 0 rgb(143 144 145 / 100%);
+  -moz-box-shadow: 2px 2px 2px 0 rgb(143 144 145 / 100%);
+  box-shadow: 2px 2px 2px 0 rgb(143 144 145 / 100%);
   border: 1px solid #C6C6C6;
   padding: 0;
   padding-top:4px;
@@ -118,7 +118,6 @@ button.new-sheet {
   font-size: 11px;
   font-family:sans-serif;
   text-align: left;
-  -webkit-box-align: center;
   align-items: center;
 }
 

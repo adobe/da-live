@@ -1,16 +1,12 @@
 import getPathDetails from '../shared/pathDetails.js';
-import initProse from './prose/index.js';
 
+let prose;
 let proseEl;
 let wsProvider;
 
 async function setUI(el, utils) {
   const details = getPathDetails();
-  if (!details) {
-    // el.classList.add('no-url');
-    // el.innerHTML = '<h1>Please edit a page.</h1>';
-    return;
-  }
+  if (!details) return;
 
   document.title = `Edit ${details.name} - DA`;
 
@@ -23,6 +19,9 @@ async function setUI(el, utils) {
   } else {
     daTitle.details = details;
   }
+
+  // Lazily load prose after the title has been added to DOM.
+  if (!prose) prose = await import('./prose/index.js');
 
   // Content area
   let daContent = document.querySelector('da-content');
@@ -44,7 +43,7 @@ async function setUI(el, utils) {
     daContent.wsProvider = undefined;
   }
 
-  ({ proseEl, wsProvider } = initProse({ path: details.sourceUrl, permissions }));
+  ({ proseEl, wsProvider } = prose.default({ path: details.sourceUrl, permissions }));
   daContent.proseEl = proseEl;
   daContent.wsProvider = wsProvider;
 }

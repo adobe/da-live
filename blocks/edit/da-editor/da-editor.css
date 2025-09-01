@@ -628,7 +628,7 @@ td.selectedCell {
 }
 
 .ProseMirror-hideselection *::selection { background: transparent; }
-.ProseMirror-hideselection *::-moz-selection { background: transparent; }
+.ProseMirror-hideselection *::selection { background: transparent; }
 .ProseMirror-hideselection { caret-color: transparent; }
 
 .ProseMirror-selectednode {
@@ -645,11 +645,10 @@ li.ProseMirror-selectednode {
   outline: none;
 }
 
-li.ProseMirror-selectednode:after {
+li.ProseMirror-selectednode::after {
   content: "";
   position: absolute;
-  left: -32px;
-  right: -2px; top: -2px; bottom: -2px;
+  inset: -2px -2px -2px -32px;
   border: 2px solid #8cf;
   pointer-events: none;
 }
@@ -661,7 +660,7 @@ li.ProseMirror-selectednode:after {
   position: absolute;
 }
 
-.ProseMirror-gapcursor:after {
+.ProseMirror-gapcursor::after {
   content: "";
   display: block;
   position: absolute;
@@ -705,12 +704,14 @@ img.ProseMirror-separator {
   overflow: hidden;
   border-style: hidden;
 }
+
 .ProseMirror td,
 .ProseMirror th {
   vertical-align: top;
   box-sizing: border-box;
   position: relative;
 }
+
 .ProseMirror .column-resize-handle {
   position: absolute;
   right: -2px;
@@ -721,6 +722,7 @@ img.ProseMirror-separator {
   background-color: #adf;
   pointer-events: none;
 }
+
 .ProseMirror.resize-cursor {
   cursor: ew-resize;
   cursor: col-resize;
@@ -756,14 +758,17 @@ da-library.hide {
 .ProseMirror > .ProseMirror-yjs-cursor:first-child {
   margin-top: 16px;
 }
+
 .ProseMirror td > *:first-child,
 .ProseMirror th > *:first-child {
   margin-top: 0;
 }
+
 .ProseMirror td > *:last-child,
 .ProseMirror th > *:last-child {
   margin-bottom: 0;
 }
+
 .ProseMirror td > *:has(+ .column-resize-handle),
 .ProseMirror th > *:has(+ .column-resize-handle) {
   margin-bottom: 0;
@@ -787,7 +792,7 @@ da-library.hide {
   top: -1.05em;
   left: -1px;
   font-size: 13px;
-  background-color: rgb(250, 129, 0);
+  background-color: rgb(250 129 0);
   font-family: var(--body-font-family);
   border-radius: 2px;
   font-style: normal;
@@ -807,8 +812,8 @@ da-loc-deleted, da-loc-added {
 .loc-dialog {
   padding: 10px;
   border-radius: 4px;
-  box-shadow: rgb(181, 181, 181) 0px 0px 5px 0px;
-  background: rgb(255, 255, 255);
+  box-shadow: rgb(181 181 181) 0 0 5px 0;
+  background: rgb(255 255 255);
   box-sizing: border-box;
   grid-area: toolbar;
   z-index: 1002;
@@ -856,7 +861,7 @@ da-loc-deleted, da-loc-added {
 }
 
 .loc-delete:hover {
-  box-shadow: #ff0000 0 0 5px 0;
+  box-shadow: #f00 0 0 5px 0;
 }
 
 .loc-color-overlay {
@@ -877,7 +882,7 @@ da-loc-deleted, da-loc-added {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  background-color: rgba(70, 130, 180, 0.9);
+  background-color: rgb(70 130 180 / 90%);
   color: white;
   border-radius: 4px;
   min-width: 50px;
@@ -893,7 +898,7 @@ da-loc-deleted, da-loc-added {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  background-color: rgba(144, 42, 222, 90%);
+  background-color: rgb(144 42 222 / 90%);
   color: white;
   border-radius: 4px;
   min-width: 50px;

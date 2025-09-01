@@ -26,10 +26,10 @@ export const daFetch = async (url, opts = {}) => {
   let accessToken;
   if (localStorage.getItem('nx-ims')) {
     ({ accessToken } = await initIms());
-    const canToken = ALLOWED_TOKEN.some((origin) => url.startsWith(origin));
+    const canToken = ALLOWED_TOKEN.some((origin) => new URL(url).origin === origin);
     if (accessToken && canToken) {
       opts.headers.Authorization = `Bearer ${accessToken.token}`;
-      if (AEM_ORIGINS.some((origin) => url.startsWith(origin))) {
+      if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
         opts.headers['x-content-source-authorization'] = `Bearer ${accessToken.token}`;
       }
     }
@@ -40,9 +40,13 @@ export const daFetch = async (url, opts = {}) => {
     if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
       // If the user has an access token, but are not permitted, redirect them to not found.
       if (accessToken) {
+        // eslint-disable-next-line no-console
+        console.warn('You see the 404 page because you have no access to this page', url);
         window.location = `${window.location.origin}/not-found`;
         return { ok: false };
       }
+      // eslint-disable-next-line no-console
+      console.warn('You need to sign in because you are not authorized to access this page', url);
       const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
       await loadIms();
       handleSignIn();
@@ -72,14 +76,19 @@ export const daFetch = async (url, opts = {}) => {
   return resp;
 };
 
-export async function aemPreview(path, api, method = 'POST') {
+export async function aemAdmin(path, api, method = 'POST') {
   const [owner, repo, ...parts] = path.slice(1).split('/');
   const name = parts.pop() || repo || owner;
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
   const resp = await daFetch(aemUrl, { method });
+  if (method === 'DELETE' && resp.status === 204) return {};
   if (!resp.ok) return undefined;
-  return resp.json();
+  try {
+    return resp.json();
+  } catch {
+    return undefined;
+  }
 }
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
@@ -95,7 +104,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
   if (!daResp.ok) return undefined;
   if (!preview) return undefined;
-  return aemPreview(path, 'preview');
+  return aemAdmin(path, 'preview');
 }
 
 export const getSheetByIndex = (json, index = 0) => {
