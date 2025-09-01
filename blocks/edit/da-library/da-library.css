@@ -442,16 +442,18 @@ ul {
 }
 
 .da-library-icons .info-tooltip {
-  position: fixed;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -45px;
   background: #2C2C2C;
   color: white;
-  padding: 8px 12px;
+  padding: 8px;
   border-radius: 4px;
   font-size: 12px;
   line-height: 1.4;
   white-space: normal;
-  min-width: 200px;
-  max-width: 400px;
+  min-width: 120px;
+  max-width: 220px;
   width: max-content;
   word-wrap: break-word;
   opacity: 0;
@@ -460,7 +462,7 @@ ul {
   pointer-events: none;
   z-index: 10000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  margin-top: 5px;
+  margin-bottom: 8px;
 }
 
 .da-library-icons .info-icon-container:hover .info-tooltip {
