@@ -51,8 +51,20 @@ export function aem2prose(doc) {
   const brs = doc.querySelectorAll('p br');
   brs.forEach((br) => { br.remove(); });
 
+  // Els with da-diff-added property get wrapped in the da-diff-added element
+  const diffAddedEls = doc.querySelectorAll('[da-diff-added]');
+  diffAddedEls.forEach((el) => {
+    const div = document.createElement('da-diff-added');
+    div.setAttribute('da-diff-added', '');
+    if (el.classList.contains('block-group-start')) {
+      div.className = 'da-group';
+    }
+    el.parentElement.insertBefore(div, el);
+    div.appendChild(el);
+  });
+
   // Fix blocks
-  const blocks = doc.querySelectorAll('main > div > div, da-loc-deleted > div, da-loc-added > div, da-loc-deleted.da-group > div > div, da-loc-added.da-group > div > div');
+  const blocks = doc.querySelectorAll('main > div > div, da-diff-deleted > div, da-diff-added > div, da-diff-deleted.da-group > div > div, da-diff-added.da-group > div > div');
   blocks.forEach((block) => {
     if (block.className?.includes('loc-')) return;
     const table = getTable(block);
