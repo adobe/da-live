@@ -307,12 +307,12 @@ export default class DaList extends LitElement {
     this._itemsRemaining = this._selectedItems.length;
 
     const callback = async (item) => {
-      // If already in trash, it is a true delete.
-      const inTrash = item.path.includes('/.trash/');
-      const type = inTrash ? 'delete' : 'move';
-      if (!inTrash) {
-        const [, org, site, ...rest] = item.path.split('/');
-        // Remove the OG filename
+      const [, org, site, ...rest] = item.path.split('/');
+
+      // If already in trash or not in a site, its a direct delete
+      const directDelete = item.path.includes('/.trash/') || rest.length === 0;
+      const type = directDelete ? 'delete' : 'move';
+      if (!directDelete) {
         rest.pop();
 
         const date = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
