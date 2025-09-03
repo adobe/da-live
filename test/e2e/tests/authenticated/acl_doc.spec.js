@@ -19,13 +19,11 @@ test('Read-only document directly configured', async ({ page }, workerInfo) => {
   await page.goto(url);
   const editor = page.locator('div.ProseMirror');
   await expect(editor).toHaveText('This is doc_readonly');
-  // TODO: uncomment when https://github.com/adobe/da-live/issues/473 is fixed
-  // await expect(editor, 'Should be readonly').toHaveAttribute('contenteditable', 'false');
+  await expect(editor, 'Should be readonly').toHaveAttribute('contenteditable', 'false');
 
   await editor.pressSequentially('Hello');
-  // TODO: uncomment when https://github.com/adobe/da-live/issues/473 is fixed
-  // await expect(editor, 'The text should not have been updated since its a readonly doc')
-  // .toHaveText('This is doc_readonly');
+  await expect(editor, 'The text should not have been updated since its a readonly doc')
+    .toHaveText('This is doc_readonly');
 
   // This last part of this test that obtains the ':before' part of the h1
   // apparently only works on Chromium, so skip it for other browsers
@@ -45,13 +43,11 @@ test('Read-only document indirectly configured', async ({ page }, workerInfo) =>
   await page.goto(url);
   const editor = page.locator('div.ProseMirror');
   await expect(editor).toHaveText('This is doc_onlyread');
-  // TODO: uncomment when https://github.com/adobe/da-live/issues/473 is fixed
-  // await expect(editor, 'Should be readonly').toHaveAttribute('contenteditable', 'false');
+  await expect(editor, 'Should be readonly').toHaveAttribute('contenteditable', 'false');
 
   await editor.pressSequentially('Hello');
-  // TODO: uncomment when https://github.com/adobe/da-live/issues/473 is fixed
-  // await expect(editor, 'The text should not have been updated since its a readonly doc')
-  // .toHaveText('This is doc_onlyread');
+  await expect(editor, 'The text should not have been updated since its a readonly doc')
+    .toHaveText('This is doc_onlyread');
 
   // This last part of this test that obtains the ':before' part of the h1
   // apparently only works on Chromium, so skip it for other browsers

@@ -86,13 +86,16 @@ function handleProseLoaded(editor) {
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('proseloaded', opts);
     daEditor.dispatchEvent(event);
-
-    // Give the preview elements time to create
-    setTimeout(() => {
-      setPreviewBody();
-      pollForUpdates();
-    }, 3000);
   }, 3000);
+}
+
+function startPreviewing() {
+  setPreviewBody();
+  pollForUpdates();
+}
+
+function stopPreviewing() {
+  if (updatePoller) clearInterval(updatePoller);
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
@@ -179,17 +182,19 @@ function restoreCursorPosition(view) {
   }
 }
 
-function addSyncedListener(wsProvider) {
-  let initialContentLoaded = false;
-  wsProvider.on('synced', (isSynced) => {
-    if (isSynced && !initialContentLoaded) {
-      const pm = document.querySelector('da-content')?.shadowRoot
-        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
-      if (pm) pm.contentEditable = 'true';
-
-      initialContentLoaded = true;
+function addSyncedListener(wsProvider, canWrite) {
+  const handleSynced = (isSynced) => {
+    if (isSynced) {
+      if (canWrite) {
+        const pm = document.querySelector('da-content')?.shadowRoot
+          .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+        if (pm) pm.contentEditable = 'true';
+      }
+      wsProvider.off('synced', handleSynced);
     }
-  });
+  };
+
+  wsProvider.on('synced', handleSynced);
 }
 
 export default function initProse({ path, permissions }) {
@@ -214,7 +219,7 @@ export default function initProse({ path, permissions }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-  addSyncedListener(wsProvider);
+  addSyncedListener(wsProvider, canWrite);
 
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
@@ -323,5 +328,5 @@ export default function initProse({ path, permissions }) {
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return { proseEl: editor, wsProvider };
+  return { proseEl: editor, wsProvider, startPreviewing, stopPreviewing };
 }

@@ -3,6 +3,8 @@ import getPathDetails from '../shared/pathDetails.js';
 let prose;
 let proseEl;
 let wsProvider;
+let startPreviewing;
+let stopPreviewing;
 
 async function setUI(el, utils) {
   const details = getPathDetails();
@@ -43,9 +45,17 @@ async function setUI(el, utils) {
     daContent.wsProvider = undefined;
   }
 
-  ({ proseEl, wsProvider } = prose.default({ path: details.sourceUrl, permissions }));
+  ({
+    proseEl,
+    wsProvider,
+    startPreviewing,
+    stopPreviewing,
+  } = prose.default({ path: details.sourceUrl, permissions }));
+
   daContent.proseEl = proseEl;
   daContent.wsProvider = wsProvider;
+  daContent.startPreviewing = startPreviewing;
+  daContent.stopPreviewing = stopPreviewing;
 }
 
 export default async function init(el) {
