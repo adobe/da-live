@@ -1,5 +1,7 @@
 function getEnv() {
+  return 'https://localhost';
   let { GITHUB_HEAD_REF: branch } = process.env;
+  console.log('branch', branch);
   if (!branch) {
     branch = 'main';
   }
