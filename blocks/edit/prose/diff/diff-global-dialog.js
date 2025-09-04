@@ -5,6 +5,28 @@ import {
 } from 'da-y-wrapper';
 import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
 
+const KEEP = 'keep';
+const DELETE = 'delete';
+const IGNORE = 'ignore';
+const KEEP_BOTH = 'keep-both';
+const KEEP_LOCAL = 'keep-local';
+const KEEP_UPSTREAM = 'keep-upstream';
+
+const NODE = {
+  DELETED: 'loc_deleted',
+  ADDED: 'loc_added',
+};
+
+let globalDialog = null;
+function hideGlobalDialog() {
+  if (globalDialog?.parentNode) {
+    const proseMirrorContainer = globalDialog.parentNode;
+    proseMirrorContainer.classList.remove('has-regional-edits');
+    globalDialog.classList.remove('show');
+    globalDialog.remove();
+  }
+}
+
 function getAllLocNodes(view, isLocNode) {
   const { doc } = view.state;
   const locNodes = [];
@@ -20,66 +42,84 @@ function getAllLocNodes(view, isLocNode) {
   return locNodes.sort((a, b) => b.pos - a.pos);
 }
 
-function shouldKeepNode(action, nodeType) {
-  return (action === 'keep-local' && nodeType === 'loc_added')
-    || (action === 'keep-upstream' && nodeType === 'loc_deleted')
-    || (action === 'keep-both');
+function getNodeAction(action, nodeType) {
+  if (action === KEEP_BOTH) return KEEP;
+  if (action === KEEP_LOCAL && nodeType === NODE.ADDED) return KEEP;
+  if (action === KEEP_UPSTREAM && nodeType === NODE.DELETED) return KEEP;
+  if (action === KEEP_LOCAL && nodeType === NODE.DELETED) return DELETE;
+  if (action === KEEP_UPSTREAM && nodeType === NODE.ADDED) return DELETE;
+  return IGNORE;
 }
 
-function shouldDeleteNode(action, nodeType) {
-  return (action === 'keep-local' && nodeType === 'loc_deleted')
-    || (action === 'keep-upstream' && nodeType === 'loc_added');
+function processLocNode(tr, node, pos, action, simpleFilterContent) {
+  const nodeType = node.type.name;
+  const nodeAction = getNodeAction(action, nodeType);
+
+  if (nodeAction === KEEP) {
+    const filteredContent = simpleFilterContent(node.content.content);
+    if (filteredContent.length > 0) {
+      const newFragment = Fragment.fromArray(filteredContent);
+      const newSlice = new Slice(newFragment, 0, 0);
+      return tr.replace(pos, pos + node.nodeSize, newSlice);
+    }
+    return tr.delete(pos, pos + node.nodeSize);
+  }
+
+  if (nodeAction === DELETE) {
+    return tr.delete(pos, pos + node.nodeSize);
+  }
+
+  return tr;
 }
 
-function handleGlobalAction(action, activeViews, simpleFilterContent, hideGlobalDialog, isLocNode) {
-  activeViews.forEach((view) => {
-    const locNodes = getAllLocNodes(view, isLocNode);
+function processViewNodes(view, action, simpleFilterContent, isLocNode) {
+  const locNodes = getAllLocNodes(view, isLocNode);
+  if (locNodes.length === 0) return false;
 
-    if (locNodes.length === 0) return;
+  let { tr } = view.state;
+  let hasChanges = false;
 
-    let { tr } = view.state;
-    let hasChanges = false;
-
-    for (const { node, pos } of locNodes) {
-      try {
-        const nodeType = node.type.name;
-
-        if (shouldKeepNode(action, nodeType)) {
-          const filteredContent = simpleFilterContent(node.content.content);
-          if (filteredContent.length > 0) {
-            const newFragment = Fragment.fromArray(filteredContent);
-            const newSlice = new Slice(newFragment, 0, 0);
-            tr = tr.replace(pos, pos + node.nodeSize, newSlice);
-          } else {
-            tr = tr.delete(pos, pos + node.nodeSize);
-          }
-          hasChanges = true;
-        } else if (shouldDeleteNode(action, nodeType)) {
-          tr = tr.delete(pos, pos + node.nodeSize);
-          hasChanges = true;
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.warn('Error processing loc node:', error);
+  for (const { node, pos } of locNodes) {
+    try {
+      const newTr = processLocNode(tr, node, pos, action, simpleFilterContent);
+      if (newTr !== tr) {
+        tr = newTr;
+        hasChanges = true;
       }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('Error processing loc node:', error);
     }
+  }
 
-    if (hasChanges) {
-      view.dispatch(tr);
-    }
-  });
+  if (hasChanges) {
+    view.dispatch(tr);
+  }
 
+  return hasChanges;
+}
+
+function handleGlobalAction(action, activeViews, simpleFilterContent, isLocNode) {
+  activeViews.forEach((view) => processViewNodes(view, action, simpleFilterContent, isLocNode));
   hideGlobalDialog();
 }
 
-function createGlobalAction(type, text, action, tooltipText, activeViews, simpleFilterContent, hideGlobalDialog, isLocNode) {
+function createGlobalAction(
+  type,
+  text,
+  action,
+  tooltipText,
+  activeViews,
+  simpleFilterContent,
+  isLocNode,
+) {
   const button = createElement('div', `da-diff-btn da-diff-btn-base is-${type}`);
 
   const label = createElement('span', 'switch-btn da-diff-btn-base-element');
   label.textContent = text;
 
   const confirm = createButton('confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': text });
-  confirm.addEventListener('click', () => handleGlobalAction(action, activeViews, simpleFilterContent, hideGlobalDialog, isLocNode));
+  confirm.addEventListener('click', () => handleGlobalAction(action, activeViews, simpleFilterContent, isLocNode));
   confirm.appendChild(createTooltip(tooltipText, 'diff-tooltip'));
 
   button.appendChild(label);
@@ -87,12 +127,12 @@ function createGlobalAction(type, text, action, tooltipText, activeViews, simple
   return button;
 }
 
-function createGlobalOverlay(activeViews, simpleFilterContent, hideGlobalDialog, isLocNode) {
+function createGlobalOverlay(activeViews, simpleFilterContent, isLocNode) {
   const dialog = createElement('div', 'da-regional-edits-overlay');
   const actionsContainer = createElement('div', 'da-regional-edits-actions');
 
-  const localButton = createGlobalAction('local', 'Keep All Local', 'keep-local', 'Accept All Local', activeViews, simpleFilterContent, hideGlobalDialog, isLocNode);
-  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', 'keep-upstream', 'Accept All Upstream', activeViews, simpleFilterContent, hideGlobalDialog, isLocNode);
+  const localButton = createGlobalAction('local', 'Keep All Local', KEEP_LOCAL, 'Accept All Local', activeViews, simpleFilterContent, isLocNode);
+  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', KEEP_UPSTREAM, 'Accept All Upstream', activeViews, simpleFilterContent, isLocNode);
 
   actionsContainer.appendChild(localButton);
   actionsContainer.appendChild(upstreamButton);
@@ -101,30 +141,13 @@ function createGlobalOverlay(activeViews, simpleFilterContent, hideGlobalDialog,
   return dialog;
 }
 
-// TODO: Directly find using querySelector
 function findProseMirrorContainer(view) {
-  let element = view.dom;
-  while (element && !element.classList.contains('da-prose-mirror')) {
-    element = element.parentElement;
-  }
-  return element;
+  return view.dom.closest('.da-prose-mirror');
 }
 
-let globalDialog = null;
-
-export function hideGlobalDialog() {
-  if (globalDialog?.parentNode) {
-    const proseMirrorContainer = globalDialog.parentNode;
-    proseMirrorContainer.classList.remove('has-regional-edits');
-    globalDialog.classList.remove('show');
-    globalDialog.remove();
-  }
-}
-
+// eslint-disable-next-line import/prefer-default-export
 export function showGlobalDialog(view, activeViews, simpleFilterContent, isLocNode) {
-  if (globalDialog?.parentNode) {
-    return; // Dialog already shown
-  }
+  if (globalDialog?.parentNode) return; // Dialog already shown
 
   const pmContainer = findProseMirrorContainer(view);
   if (!pmContainer) {
@@ -133,19 +156,14 @@ export function showGlobalDialog(view, activeViews, simpleFilterContent, isLocNo
     return;
   }
 
+  const pmEl = pmContainer.querySelector('.ProseMirror');
+  if (!pmEl) return;
+
   if (!globalDialog) {
-    globalDialog = createGlobalOverlay(
-      activeViews,
-      simpleFilterContent,
-      hideGlobalDialog,
-      isLocNode,
-    );
+    globalDialog = createGlobalOverlay(activeViews, simpleFilterContent, isLocNode);
   }
 
-  const pmEl = pmContainer.querySelector('.ProseMirror');
-  if (pmEl) {
-    pmContainer.insertBefore(globalDialog, pmEl);
-    pmContainer.classList.add('has-regional-edits');
-    globalDialog.classList.add('show');
-  }
+  pmContainer.insertBefore(globalDialog, pmEl);
+  pmContainer.classList.add('has-regional-edits');
+  globalDialog.classList.add('show');
 }

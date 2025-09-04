@@ -18,6 +18,22 @@ const LOC_TEXT = {
   DIFF: 'Difference',
 };
 
+let overlayUIModule = null;
+async function loadOverlayUI() {
+  if (!overlayUIModule) {
+    overlayUIModule = await import('./diff-overlay-ui.js');
+  }
+  return overlayUIModule;
+}
+
+let userActionsModule = null;
+async function loadActions() {
+  if (!userActionsModule) {
+    userActionsModule = await import('./diff-actions.js');
+  }
+  return userActionsModule;
+}
+
 function createContentTransaction(view, startPos, endPos, filteredContent) {
   const { tr } = view.state;
 
@@ -230,11 +246,10 @@ function createTabContent(deletedContent, addedContent) {
   return container;
 }
 
-// Lazy load tabbed actions (only needed for complex paired LOC nodes)
 async function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
   try {
-    const tabbedActions = await import('./diff-tabbed-actions.js');
-    return tabbedActions.createTabbedActions(
+    const actions = await loadActions();
+    return actions.createTabbedActions(
       onKeepDeleted,
       onKeepAdded,
       onKeepBoth,
@@ -243,34 +258,11 @@ async function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwi
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load tabbed actions:', error);
-    // Simple fallback
     const container = createElement('div', 'diff-tabbed-actions loc-floating-overlay');
     container.innerHTML = '<div style="text-align: center; padding: 10px;">Loading actions...</div>';
     return container;
   }
 }
-
-// Overlay UI creation - lazy loaded when overlays are actually needed
-let overlayUIModule = null;
-
-async function loadOverlayUI() {
-  if (!overlayUIModule) {
-    overlayUIModule = await import('./diff-overlay-ui.js');
-  }
-  return overlayUIModule;
-}
-
-// User actions - lazy loaded when user clicks action buttons
-let userActionsModule = null;
-
-async function loadUserActions() {
-  if (!userActionsModule) {
-    userActionsModule = await import('./diff-user-actions.js');
-  }
-  return userActionsModule;
-}
-
-// getCoverDiv is now handled within overlay loading
 
 async function getLangOverlay(upstream) {
   try {
@@ -279,7 +271,6 @@ async function getLangOverlay(upstream) {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load lang overlay:', error);
-    // Simple fallback
     const overlay = createElement('div', 'loc-lang-overlay loc-floating-overlay');
     overlay.innerHTML = '<div style="padding: 5px;">Loading overlay...</div>';
     return { overlay, deleteBtn: null, keepBtn: null };
@@ -509,7 +500,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     // Generic handler to eliminate duplication in user action calls
     async callUserAction(actionName, actionParams, errorContext) {
       try {
-        const userActions = await loadUserActions();
+        const userActions = await loadActions();
         userActions[actionName](...actionParams);
       } catch (error) {
         // eslint-disable-next-line no-console
