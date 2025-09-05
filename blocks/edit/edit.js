@@ -6,7 +6,7 @@ let wsProvider;
 let startPreviewing;
 let stopPreviewing;
 
-async function setUI(el, utils) {
+async function setUI(el, utils, guid) {
   const details = getPathDetails();
   if (!details) return;
 
@@ -36,7 +36,7 @@ async function setUI(el, utils) {
   }
 
   const { daFetch } = await utils;
-  const { permissions } = await daFetch(details.sourceUrl, { method: 'HEAD' });
+  const { permissions, headers } = await daFetch(details.sourceUrl, { method: 'HEAD' });
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
 
@@ -45,12 +45,17 @@ async function setUI(el, utils) {
     daContent.wsProvider = undefined;
   }
 
+  const docGUID = guid ?? headers?.get('x-da-id');
   ({
     proseEl,
     wsProvider,
     startPreviewing,
     stopPreviewing,
-  } = prose.default({ path: details.sourceUrl, permissions }));
+  } = prose.default({
+    path: details.sourceUrl,
+    permissions,
+    docGUID,
+  }, (updatedGuid) => setUI(el, utils, updatedGuid)));
 
   daContent.proseEl = proseEl;
   daContent.wsProvider = wsProvider;
