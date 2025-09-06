@@ -18,8 +18,6 @@ jobs:
       - name: Use email bot
         uses: adobecom/da-email-bot@main
         env:
-          SG_TO_EMAIL: ${{ secrets.SG_TO_EMAIL }}
-          SG_FROM_EMAIL: ${{ secrets.SG_FROM_EMAIL }}
-          SG_FROM_NAME: ${{ secrets.SG_FROM_NAME }}
-          SG_KEY: ${{ secrets.SG_KEY }}
-          SG_TEMPLATE: 'd-24723d9fc5964674a61426db17553c58'
+          IMS_CLIENT_ID: ${{ secrets.IMS_CLIENT_ID }}
+          IMS_CLIENT_SECRET: ${{ secrets.IMS_CLIENT_SECRET }}
+          AEM_API_KEY: ${{ secrets.AEM_API_KEY }}
