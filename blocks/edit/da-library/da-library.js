@@ -261,6 +261,11 @@ class DaLibrary extends LitElement {
     }
   }
 
+  handleToolTip(e) {
+    e.stopPropagation();
+    e.target.closest('button').classList.toggle('show-tooltip');
+  }
+
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
@@ -323,22 +328,21 @@ class DaLibrary extends LitElement {
   }
 
   renderBlockItem(item, icon = false) {
+    const hasDesc = item.description?.trim();
     return html`
       <li class="da-library-type-group-detail-item" tabindex="1">
         <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item, true)}>
-          <div>
-            <span class="da-library-group-name">${item.name}</span>
-            <span class="da-library-group-subtitle">${item.variants}</span>
+          <div class="da-library-item-button-title">
+            <div>
+              <span class="da-library-group-name">${item.name}</span>
+              <span class="da-library-group-subtitle">${item.variants}</span>
+            </div>
+            <div class="da-library-icons">
+              ${hasDesc ? html`<svg class="icon" @click=${this.handleToolTip}><use href="#spectrum-InfoOutline"/></svg>` : nothing}
+              <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+            </div>
           </div>
-          <div class="da-library-icons">
-            ${item.description && item.description.trim() ? html`
-              <div class="info-icon-container">
-                <svg class="icon info-icon"><use href="#spectrum-InfoOutline"/></svg>
-                <div class="info-tooltip">${item.description}</div>
-              </div>
-            ` : ''}
-            <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
-          </div>
+          ${hasDesc ? html`<div class="da-library-item-button-tooltip">${item.description}</div>` : nothing}
         </button>
       </li>`;
   }
