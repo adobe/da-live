@@ -16,7 +16,7 @@ import inlinesvg from '../../shared/inlinesvg.js';
 import { aem2prose } from '../utils/helpers.js';
 import { daFetch } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { delay, getItems, getLibraryList } from './helpers/helpers.js';
+import { delay, getItems, getLibraryList, getPreviewUrl } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -58,7 +58,7 @@ class DaLibrary extends LitElement {
     _libraryList: { state: true },
     _libraryDetails: { state: true },
     _searchStr: { state: true },
-    _blockPreviewPath: { state: true }, 
+    _blockPreviewPath: { state: true },
   };
 
   constructor() {
@@ -283,8 +283,9 @@ class DaLibrary extends LitElement {
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 
-  handlePreviewOpen(path) {
-    this._blockPreviewPath = path;
+  async handlePreviewOpen(path) {
+    const previewPath = await getPreviewUrl(path);
+    this._blockPreviewPath = previewPath || path;
   }
 
   handlePreviewClose() {
