@@ -16,6 +16,9 @@ export function getQuery() {
   if (branch === 'local') {
     return '?da-admin=local&da-collab=local';
   }
+  if (branch === 'localstg') {
+    return '?da-admin=stage&da-collab=stage';
+  }
   return '';
 }
 
