@@ -98,13 +98,15 @@ export async function saveToAem(path, action) {
   const resp = await daFetch(url, { method: 'POST' });
   // eslint-disable-next-line no-console
   if (!resp.ok) {
-    const { status } = resp;
+    const { status, headers } = resp;
     const message = [401, 403].some((s) => s === status) ? 'Not authorized to' : 'Error during';
+    const xerror = headers.get('x-error');
     return {
       error: {
         status,
         type: 'error',
         message,
+        xerror,
       },
     };
   }
