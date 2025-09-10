@@ -55,17 +55,6 @@ export default class DaTitle extends LitElement {
 
   handleError(json, action, icon) {
     this._status = { ...json.error, action };
-
-    if (this._status.xerror) {
-      // eslint-disable-next-line no-console
-      console.error('x-error', this._status.xerror);
-
-      // x-error handling
-      if (this._status.xerror.includes('exceeds allowed limit')) {
-        this._status.details = this._status.xerror.split(':').pop().trim();
-      }
-    }
-
     icon.classList.remove('is-sending');
     icon.parentElement.classList.add('is-error');
   }
@@ -105,12 +94,12 @@ export default class DaTitle extends LitElement {
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
       let json = await saveToAem(aemPath, 'preview');
       if (json.error) {
-        this.handleError(json, action, sendBtn);
+        this.handleError(json, 'preview', sendBtn);
         return;
       }
       if (action === 'publish') json = await saveToAem(aemPath, 'live');
       if (json.error) {
-        this.handleError(json, action, sendBtn);
+        this.handleError(json, 'publish', sendBtn);
         return;
       }
       const { url: href } = action === 'publish' ? json.live : json.preview;
@@ -200,7 +189,12 @@ export default class DaTitle extends LitElement {
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
-          ${this._status ? html`<p class="da-title-error-details">${this._status.message} ${this._status.action}.${this._status.details ? html`<br>${this._status.details}` : ''}</p>` : nothing}
+          ${this._status ? html`
+            <div class="da-title-error">
+              <p><strong>${this._status.message} ${this._status.action}.</strong></p>
+              <p>${this._status.details}</p>
+            </div>
+          ` : nothing}
           <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis ? 'is-open' : ''}">
             ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
             <button

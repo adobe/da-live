@@ -90,6 +90,31 @@ export function aem2prose(doc) {
   });
 }
 
+/* eslint-disable max-len */
+/**
+ * [admin] Unable to preview '.../hello.md': source contains large image: error fetching resource at http.../hello: Image 1 exceeds allowed limit of 10.00MB
+ * [admin] Unable to preview '.../ut-sugar-house-20110318-tm-geo.pdf': PDF is larger than 10MB: 24.0MB
+ * [admin] Unable to preview '.../milo-preflight.mp4': MP4 is longer than 2 minutes: 2m 44s
+ * [admin] Unable to preview '.../h264-1080-best.mp4': MP4 has a higher bitrate than 300 KB/s: 494 kilobytes
+ * [admin] not authenticated
+ * [admin] not authorized
+ */
+/* eslint-enable max-len */
+function parseAemError(xError) {
+  if (xError.includes('PDF')) {
+    const [seg1, seg2] = xError.split(': ').slice(-2);
+    return `${seg1}: ${seg2}`;
+  }
+  if (xError.includes('MP4')) {
+    const [seg1] = xError.split(': ').slice(-2);
+    return seg1;
+  }
+  if (xError.includes('Image')) {
+    return xError.split(': ').pop().replace('.00', '');
+  }
+  return xError.replace('[admin] ', '');
+}
+
 export async function saveToAem(path, action) {
   const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
   const aemPath = parts.join('/');
@@ -106,7 +131,7 @@ export async function saveToAem(path, action) {
         status,
         type: 'error',
         message,
-        xerror,
+        details: parseAemError(xerror),
       },
     };
   }
