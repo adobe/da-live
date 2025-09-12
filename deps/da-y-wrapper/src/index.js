@@ -60,7 +60,6 @@ export {
   Plugin,
   PluginKey,
   TextSelection,
-  NodeSelection,
   baseSchema,
   baseKeymap,
   addListNodes,
