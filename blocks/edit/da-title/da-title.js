@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { saveToDa, saveToAem, saveDaConfig, saveDaVersion } from '../utils/helpers.js';
+import { requestRole, saveToDa, saveToAem, saveDaConfig, saveDaVersion } from '../utils/helpers.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -27,6 +27,7 @@ export default class DaTitle extends LitElement {
     _actionsVis: {},
     _status: { state: true },
     _fixedActions: { state: true },
+    _dialog: { state: true },
   };
 
   connectedCallback() {
@@ -113,6 +114,32 @@ export default class DaTitle extends LitElement {
     sendBtn.classList.remove('is-sending');
   }
 
+  async handleRoleRequest() {
+    this._dialog = undefined;
+    await import('../../shared/da-dialog/da-dialog.js');
+
+    const { owner: org, repo: site } = this.details;
+
+    const title = 'Role request';
+
+    const action = {
+      style: 'accent',
+      label: 'OK',
+      click: async () => { this._dialog = undefined; },
+      disabled: true,
+    };
+
+    let content = html`<p>Requesting ${this._status.action} permissions...</p>`;
+    this._dialog = { title, content, action };
+
+    const { message } = await requestRole(org, site, this._status.action);
+
+    content = html`<p>${message[0]}</p><p>${message[1]}</p>`;
+
+    const closeAction = { ...action, disabled: false };
+    this._dialog = { title, content, action: closeAction };
+  }
+
   toggleActions() {
     this._actionsVis = !this._actionsVis;
   }
@@ -160,6 +187,18 @@ export default class DaTitle extends LitElement {
     target.classList.add('collab-popup');
   }
 
+  renderDialog() {
+    return html`
+      <da-dialog
+        title=${this._dialog.title}
+        .message=${this._dialog.message}
+        .action=${this._dialog.action}
+        @close=${this._dialog.close}>
+        ${this._dialog.content}
+      </da-dialog>
+    `;
+  }
+
   renderCollabUsers() {
     return html`${this.collabUsers.map((user) => {
       const initials = user.split(' ').map((name) => name.toString().substring(0, 1));
@@ -177,6 +216,15 @@ export default class DaTitle extends LitElement {
       </div>`;
   }
 
+  renderError() {
+    return html`
+      <div class="da-title-error">
+        <p><strong>${this._status.message}</strong></p>
+        ${this._status.details ? html`<p>${this._status.details}</p>` : nothing}
+        ${this._status.status === 403 ? html`<button @click=${this.handleRoleRequest}>Request access</button>` : nothing}
+      </div>`;
+  }
+
   render() {
     return html`
       <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
@@ -189,12 +237,7 @@ export default class DaTitle extends LitElement {
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
-          ${this._status ? html`
-            <div class="da-title-error">
-              <p><strong>${this._status.message} ${this._status.action}.</strong></p>
-              <p>${this._status.details}</p>
-            </div>
-          ` : nothing}
+          ${this._status ? this.renderError() : nothing}
           <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis ? 'is-open' : ''}">
             ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
             <button
@@ -206,6 +249,7 @@ export default class DaTitle extends LitElement {
           </div>
         </div>
       </div>
+      ${this._dialog ? this.renderDialog() : nothing}
     `;
   }
 }
