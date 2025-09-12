@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Adobe. All rights reserved.
+ * Copyright 2025 Adobe. All rights reserved.
  * This file is licensed to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
  * of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -49,6 +49,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   // Go back to the directory view
   await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
 
+  // Copy the document
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
   await page.getByRole('button', { name: 'New' }).click();
@@ -65,6 +66,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.getByRole('link', { name: copyFolderName }).click();
   await page.waitForURL(`**/da-sites/da-status/tests/${copyFolderName}`);
 
+  // Paste it in the new folder
   await page.getByRole('button', { name: 'Paste' }).click();
   await page.waitForTimeout(3000);
   /* TODO REMOVE once #233 is fixed */ await page.reload();
@@ -72,7 +74,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   const href = await link.getAttribute('href');
   await expect(href).toEqual(`/edit#/da-sites/da-status/tests/${copyFolderName}/${orgPageName}`);
 
-  // go back to the original to rename it
+  // Go back to the original to rename it
   // Go to the directory view
   await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
   await page.reload(); // Clears any leftover selection, if any
@@ -92,8 +94,18 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.waitForTimeout(3000);
   await page.goto(`${pageURL}ren`);
 
+  // Ensure it has the latest text
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
+
+  // Make some edits, ensure that they work
+  await page.locator('div.ProseMirror').fill('Now its renamed');
+  await page.waitForTimeout(3000);
+  await page.reload();
+  await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toContainText('Now its renamed');
+
+  // Restore a previous version
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.getByText('myver', { exact: false }).click();
   await page.locator('li').filter({ hasText: 'myver' }).getByRole('button').click();
@@ -102,6 +114,13 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   // Ensure that the original text is still there
   await expect(page.locator('div.ProseMirror')).toContainText('Versioned text');
 
+  // Make some further edits
+  await page.locator('div.ProseMirror').fill('Renamed again');
+  await page.waitForTimeout(3000);
+  await page.reload();
+  await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toContainText('Renamed again');
+
   // now go to the copy
   await page.goto(`${ENV}/edit${getQuery()}#/da-sites/da-status/tests/${copyFolderName}/${orgPageName}`);
   await page.reload(); // Resets the versions view, shouldn't be needed TODO
@@ -109,4 +128,11 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.getByRole('button', { name: 'Versions' }).click();
   await expect(page.getByText('Now')).toBeVisible();
   await expect(page.getByText('myver')).not.toBeVisible(); // The version shouldn't be there on the copy
+
+  // Make some edits on the copy
+  await page.locator('div.ProseMirror').fill('Renamed copy');
+  await page.waitForTimeout(3000);
+  await page.reload();
+  await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toContainText('Renamed copy');
 });

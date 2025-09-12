@@ -196,6 +196,12 @@ function addSyncedListener(wsProvider, canWrite) {
   wsProvider.on('synced', handleSynced);
 }
 
+function getNewestGuid(guidArray) {
+  const guids = [...guidArray];
+  guids.sort((a, b) => a.ts - b.ts);
+  return guids.pop();
+}
+
 export default function initProse({ path, permissions, docGUID }, resetFunc) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) delete window.view;
@@ -227,6 +233,10 @@ export default function initProse({ path, permissions, docGUID }, resetFunc) {
   let curGuid;
   if (docGUID) {
     curGuid = docGUID;
+
+    if (getNewestGuid(guidArray) !== curGuid) {
+      guidArray.push([{ ts: Date.now(), guid: curGuid }]);
+    }
   } else {
     curGuid = crypto.randomUUID();
     guidArray.push([{ ts: Date.now(), guid: curGuid, newDoc: true }]);
@@ -239,8 +249,7 @@ export default function initProse({ path, permissions, docGUID }, resetFunc) {
     if (guids.length === 0) {
       return;
     }
-    guids.sort((a, b) => a.ts - b.ts);
-    const latestGuid = guids.pop();
+    const latestGuid = getNewestGuid(guids);
     if (latestGuid.guid !== curGuid) {
       resetFunc(latestGuid.guid);
     }
