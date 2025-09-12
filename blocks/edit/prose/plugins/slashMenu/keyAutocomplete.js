@@ -8,12 +8,17 @@ function insertAutocompleteText(state, dispatch, text) {
   dispatch(tr);
 }
 
+// Normalize strings for slash menu comparison
+export function normalizeForSlashMenu(str) {
+  return str?.toLowerCase().trim().replace(/\s+/g, '-');
+}
+
 export function processKeyData(data) {
   const blockMap = new Map();
 
   data?.forEach((item) => {
     const itemBlocks = item.blocks?.toLowerCase().trim();
-    const blocks = itemBlocks?.split(',').map((block) => block.trim());
+    const blocks = itemBlocks?.split(',').map((block) => normalizeForSlashMenu(block));
 
     if (!blocks) return;
 
@@ -32,7 +37,7 @@ export function processKeyData(data) {
       if (!blockMap.has(block)) {
         blockMap.set(block, new Map());
       }
-      blockMap.get(block).set(item.key, values);
+      blockMap.get(block).set(normalizeForSlashMenu(item.key), values);
     });
   });
 
@@ -52,6 +57,11 @@ export function processKeyData(data) {
   blockMap.get = (blockName) => {
     if (blockMap.has(blockName)) {
       return originalGet(blockName);
+    }
+    // Try normalized block name
+    const normalizedBlockName = normalizeForSlashMenu(blockName);
+    if (blockMap.has(normalizedBlockName)) {
+      return originalGet(normalizedBlockName);
     }
 
     return originalGet('all');
