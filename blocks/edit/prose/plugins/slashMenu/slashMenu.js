@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
-import { getKeyAutocomplete } from './keyAutocomplete.js';
+import { getKeyAutocomplete, normalizeForSlashMenu } from './keyAutocomplete.js';
 import { getDefaultItems, getTableCellItems, getTableItems } from './slashMenuItems.js';
 import './slash-menu.js';
 
@@ -41,7 +41,8 @@ const getTableName = ($cursor) => {
   const row = $cursor.node(rowDepth);
 
   const firstRowContent = firstRow.child(0).textContent;
-  const tableNameMatch = firstRowContent.match(/^([a-zA-Z0-9_-]+)(?:\s*\([^)]*\))?$/);
+  // Updated regex to allow spaces in table names, which will be normalized later
+  const tableNameMatch = firstRowContent.match(/^([a-zA-Z0-9_\s-]+)(?:\s*\([^)]*\))?$/);
 
   // Only set key value if we're in the second column of a row
   const currentRowFirstColContent = (row.childCount > 1 && cellIndex === 1) ? row.child(0).textContent : null;
@@ -90,8 +91,9 @@ class SlashMenuView {
     const { tableName, keyValue } = getTableName($cursor);
     if (tableName) {
       const keyData = pluginState.autocompleteData?.get(tableName);
-      if (keyData && keyData.get(keyValue)) {
-        this.menu.items = keyData.get(keyValue);
+      const normalizedKey = normalizeForSlashMenu(keyValue);
+      if (keyData && keyData.get(normalizedKey)) {
+        this.menu.items = keyData.get(normalizedKey);
       } else {
         this.menu.items = getTableItems(state);
       }
@@ -104,7 +106,8 @@ class SlashMenuView {
     const { tableName, keyValue } = getTableName($cursor);
     if (tableName) {
       const keyData = pluginState.autocompleteData?.get(tableName);
-      return keyData && keyData.get(keyValue);
+      const normalizedKey = normalizeForSlashMenu(keyValue);
+      return keyData && keyData.get(normalizedKey);
     }
     return false;
   }
