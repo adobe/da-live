@@ -23,7 +23,7 @@ export default class DaDialog extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [SL, STYLE];
     // Trigger animation and show modal by default
-    setTimeout(() => { this.showModal(); }, 0);
+    setTimeout(() => { this.showModal(); }, 20);
   }
 
   updated() {
