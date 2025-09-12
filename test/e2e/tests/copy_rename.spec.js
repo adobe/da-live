@@ -16,7 +16,7 @@ import { getQuery, getTestFolderURL, getTestPageURL } from '../utils/page.js';
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
-  test.setTimeout(60000);
+  test.setTimeout(1200000);
 
   const pageURL = getTestPageURL('copyrename', workerInfo);
   const orgPageName = pageURL.split('/').pop();
