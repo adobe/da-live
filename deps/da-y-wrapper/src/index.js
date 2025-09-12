@@ -1,6 +1,6 @@
 // ProseMirror
 import { EditorView } from 'prosemirror-view';
-import { EditorState, Plugin, PluginKey, TextSelection, NodeSelection } from 'prosemirror-state';
+import { EditorState, Plugin, PluginKey, TextSelection } from 'prosemirror-state';
 import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { baseKeymap, setBlockType, toggleMark, wrapIn } from 'prosemirror-commands';
