@@ -26,7 +26,7 @@ export function getDashesInputRule(dispatchTransaction) {
   );
 }
 
-// This function returns a modified inputrule plugin that triggers when the regex in the
+// This function returns a modified inputrule plugin that trig  gers when the regex in the
 // rule matches and the Enter key is pressed
 export function getEnterInputRulesPlugin(dispatchTransaction) {
   const irsplugin = inputRules({ rules: [getDashesInputRule(dispatchTransaction)] });
