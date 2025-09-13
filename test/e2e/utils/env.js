@@ -7,7 +7,7 @@ function getEnv() {
   if (!owner) {
     owner = 'adobe';
   }
-  if (branch === 'local') {
+  if (branch === 'local' || branch === 'localstg') {
     return 'http://localhost:3000';
   }
   if (branch === 'local-https') {
