@@ -119,6 +119,9 @@ function groupBlocks(blocks) {
     } else if (block.classList.contains('library-container-end') && state.currentGroup) {
       const { container, blockGroup } = state.currentGroup;
       container.appendChild(blockGroup);
+      if (block.nextElementSibling?.classList.contains('library-metadata')) {
+        container.appendChild(block.nextElementSibling.cloneNode(true));
+      }
       state.blocks.push(blockGroup);
       state.currentGroup = null;
     } else if (state.currentGroup) {
