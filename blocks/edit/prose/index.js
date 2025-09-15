@@ -31,6 +31,7 @@ import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { logOut } from '../../shared/utils.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { getLocClass } from './loc-utils.js';
 import { getSchema } from './schema.js';
@@ -133,12 +134,16 @@ export function createAwarenessStatusWidget(wsProvider, win) {
 }
 
 function registerErrorHandler(ydoc) {
-  ydoc.on('update', () => {
+  ydoc.on('update', async () => {
     const errorMap = ydoc.getMap('error');
     if (errorMap && errorMap.size > 0) {
+      const str = JSON.stringify(errorMap);
       // eslint-disable-next-line no-console
-      console.log('Error from server', JSON.stringify(errorMap));
+      console.log('Error from server', str);
       errorMap.clear();
+      if (str.includes('403 - Forbidden') || str.includes('401 - Unauthorized')) {
+        await logOut();
+      }
     }
   });
 }
@@ -218,6 +223,11 @@ export default function initProse({ path, permissions }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  wsProvider.on('connection-error', async () => {
+    await logOut();
+    wsProvider.disconnect();
+  });
+
   addSyncedListener(wsProvider, canWrite);
 
   createAwarenessStatusWidget(wsProvider, window);

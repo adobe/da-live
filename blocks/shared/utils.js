@@ -21,6 +21,12 @@ export async function initIms() {
   }
 }
 
+export async function logOut() {
+  imsDetails = null;
+  const { handleSignOut } = await import(`${getNx()}/utils/ims.js`);
+  handleSignOut();
+}
+
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
   let accessToken;
