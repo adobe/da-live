@@ -1,8 +1,8 @@
-import { AEM_ORIGIN, getDaAdmin } from '../../shared/constants.js';
+import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
 
-const DA_ORIGIN = getDaAdmin();
+const AEM_PERMISSION_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
 
 function getBlockName(block) {
   const classes = block.className.split(' ');
@@ -124,16 +124,14 @@ export async function saveToAem(path, action) {
   // eslint-disable-next-line no-console
   if (!resp.ok) {
     const { status, headers } = resp;
-    const message = [401, 403].some((s) => s === status) ? 'Not authorized to' : 'Error during';
+    const authErr = [401, 403].some((s) => s === status);
+    const message = authErr ? `Not authorized to ${action}` : `Error during ${action}`;
     const xerror = headers.get('x-error');
-    return {
-      error: {
-        status,
-        type: 'error',
-        message,
-        details: parseAemError(xerror),
-      },
-    };
+
+    const error = { action, status, type: 'error', message };
+    if (xerror && !authErr) error.details = parseAemError(xerror);
+
+    return { error };
   }
   return resp.json();
 }
@@ -230,8 +228,8 @@ export function convertSheets(sheets) {
   return json;
 }
 
-async function saveJson(fullPath, sheets, dataType = 'blob') {
-  const json = convertSheets(sheets);
+async function saveJson(fullPath, sheets, jsonToSave, dataType = 'blob') {
+  const json = jsonToSave || convertSheets(sheets);
 
   const formData = new FormData();
 
@@ -258,7 +256,7 @@ export function saveToDa(pathname, sheet) {
 
 export function saveDaConfig(pathname, sheet) {
   const fullPath = `${DA_ORIGIN}/config${pathname}`;
-  return saveJson(fullPath, sheet, 'config');
+  return saveJson(fullPath, sheet, null, 'config');
 }
 
 export async function saveDaVersion(pathname, ext = 'html') {
@@ -275,6 +273,62 @@ export async function saveDaVersion(pathname, ext = 'html') {
     // eslint-disable-next-line no-console
     console.log('Error creating auto version on publish.');
   }
+}
+
+async function getRoleRequestDetails(action) {
+  const action2role = {
+    preview: 'basic_author',
+    publish: 'basic_publish',
+  };
+  const {
+    email: Email,
+    authId: Id,
+    first_name: firstName,
+    last_name: lastName,
+  } = await window.adobeIMS.getProfile();
+
+  // Return in the exact order of the admin console csv export
+  return {
+    Email,
+    'First Name': firstName,
+    'Last Name': lastName,
+    'Country Code': '',
+    Id,
+    'Role Request': action2role[action],
+  };
+}
+
+export async function requestRole(org, site, action) {
+  let json = JSON.parse(AEM_PERMISSION_TPL);
+  const fullpath = `${DA_ORIGIN}/source/${org}/${site}/.da/aem-permission-requests.json`;
+  const resp = await daFetch(fullpath);
+  if (resp.ok) {
+    json = await resp.json();
+  }
+  const details = await getRoleRequestDetails(action);
+  const existingIdx = json.users.data.findIndex((user) => user.Id === details.Id);
+  if (existingIdx === -1) {
+    json.users.data.unshift(details);
+  } else {
+    json.users.data[existingIdx] = details;
+  }
+
+  const postResp = await saveJson(fullpath, null, json);
+  if (!postResp.ok) {
+    return {
+      message: [
+        'Could not request permissions.',
+        'Please notify your administrator.',
+      ],
+    };
+  }
+
+  return {
+    message: [
+      'Successfully requested role!',
+      'An administrator will need to approve.',
+    ],
+  };
 }
 
 export function parse(inital) {
