@@ -56,6 +56,8 @@ export const daFetch = async (url, opts = {}) => {
       const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
       await loadIms();
       handleSignIn();
+      // wait 1 second to let ims do its things
+      await new Promise((resolve) => { setTimeout(resolve, 1000); });
     }
   }
 
