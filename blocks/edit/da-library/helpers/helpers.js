@@ -250,3 +250,22 @@ export const getMetadata = (el) => [...el.childNodes].reduce((rdx, row) => {
   }
   return rdx;
 }, {});
+
+export async function getPreviewUrl(previewUrl) {
+  try {
+    const url = new URL(previewUrl);
+
+    if (url.origin.includes('--')) return url.href;
+    if (url.origin.includes('content.da.live')) {
+      const [, org, site, ...split] = url.pathname.split('/');
+      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+    }
+    if (url.origin.includes('admin.da.live')) {
+      const [, , org, site, ...split] = url.pathname.split('/');
+      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
