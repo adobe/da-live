@@ -375,7 +375,7 @@ ul {
   color: #888;
 }
 
-.da-library-type-group-title button:hover {
+.da-library-type-group .da-library-type-group-title button:hover {
   color: #167AF3;
 }
 
@@ -394,10 +394,18 @@ ul {
   margin: -1px 0;
 }
 
+.da-library-type-group-title .icon:not(.preview) {
+  transition: transform .2s ease-in-out;
+}
+
 .da-library-type-group-detail-item button:hover .icon,
 .da-library-type-group-detail-item button:focus .icon {
   opacity: 1;
   flex: 0 0 auto;
+}
+
+.da-library-type-item-btn.template-item .icon:hover {
+  color: #167AF3;
 }
 
 .da-library-type-group.is-open .da-library-type-group-title .icon:not(.preview) {
@@ -445,10 +453,6 @@ ul {
 .da-library-type-item-btn:hover::before,
 .da-library-type-item-btn:hover::after  {
   background: #167AF3;
-}
-
-.da-library-type-group-title .icon:not(.preview) {
-  transition: transform .2s ease-in-out;
 }
 
 .da-library-group-name {
@@ -593,10 +597,6 @@ ul {
 
 .da-library-type-item-btn.template-item:hover {
   color: #000;
-}
-
-.da-library-type-item-btn.template-item .icon:hover {
-  color: #167AF3;
 }
 
 .da-library-search-section:not(:last-child) {
