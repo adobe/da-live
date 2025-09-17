@@ -23,8 +23,12 @@ export async function initIms() {
 
 export async function logOut() {
   imsDetails = null;
-  const { handleSignOut } = await import(`${getNx()}/utils/ims.js`);
-  handleSignOut();
+  try {
+    const { handleSignOut } = await import(`${getNx()}/utils/ims.js`);
+    handleSignOut();
+  } catch {
+    // do nothing
+  }
   window.location.reload();
 }
 
@@ -54,8 +58,11 @@ export const daFetch = async (url, opts = {}) => {
       }
       // eslint-disable-next-line no-console
       console.warn('You need to sign in because you are not authorized to access this page', url);
-      // try a clean log out and let ims do its thing
-      await logOut();
+      const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+      await loadIms();
+      handleSignIn();
+      // wait 1 second to let ims do its things
+      await new Promise((resolve) => { setTimeout(resolve, 1000); });
     }
   }
 
