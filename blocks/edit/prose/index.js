@@ -225,7 +225,6 @@ export default function initProse({ path, permissions }) {
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
   wsProvider.on('connection-error', async () => {
     await logOut();
-    wsProvider.disconnect();
   });
 
   addSyncedListener(wsProvider, canWrite);
