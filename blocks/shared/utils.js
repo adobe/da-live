@@ -21,6 +21,17 @@ export async function initIms() {
   }
 }
 
+export async function logOut() {
+  imsDetails = null;
+  try {
+    const { handleSignOut } = await import(`${getNx()}/utils/ims.js`);
+    handleSignOut();
+  } catch {
+    // do nothing
+  }
+  window.location.reload();
+}
+
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
   let accessToken;
@@ -50,6 +61,8 @@ export const daFetch = async (url, opts = {}) => {
       const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
       await loadIms();
       handleSignIn();
+      // wait 1 second to let ims do its things
+      await new Promise((resolve) => { setTimeout(resolve, 1000); });
     }
   }
 
