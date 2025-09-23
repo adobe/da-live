@@ -81,6 +81,11 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await page.locator('button.delete-button').locator('visible=true').click();
 
   await page.waitForTimeout(1000);
+
+  await page.locator('sl-button.negative').locator('visible=true').click();
+
+  await page.waitForTimeout(1000);
+
   await expect(page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`)).not.toBeVisible();
 });
 
@@ -121,5 +126,5 @@ test('No access directory should not show anything', async ({ page }) => {
   // was the anchor and that doesn't normally trigger a change
   await page.reload();
   await page.waitForTimeout(3000);
-  await expect(page.getByRole('button', { name: 'Name' })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
 });

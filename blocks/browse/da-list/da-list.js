@@ -1,9 +1,8 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, aemAdmin } from '../../shared/utils.js';
 
-import '../da-actionbar/da-actionbar.js';
 import '../da-list-item/da-list-item.js';
 
 // Styles & Icons
@@ -28,17 +27,25 @@ export default class DaList extends LitElement {
     newItem: { attribute: false },
     _permissions: { state: true },
     _listItems: { state: true },
+    _itemsRemaining: { state: true },
+    _itemErrors: { state: true },
     _filter: { state: true },
     _showFilter: { state: true },
     _selectedItems: { state: true },
     _dropFiles: { state: true },
     _dropMessage: { state: true },
     _status: { state: true },
+    _confirm: { state: true },
+    _confirmText: { state: true },
+    _unpublish: { state: true },
   };
 
   constructor() {
     super();
+    this._itemsRemaining = 0;
+    this._itemErrors = [];
     this._dropFiles = [];
+    this._emptyMessage = 'Empty';
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
     this._filter = '';
@@ -68,6 +75,11 @@ export default class DaList extends LitElement {
     super.update(props);
   }
 
+  async firstUpdated() {
+    await import('../../shared/da-dialog/da-dialog.js');
+    await import('../da-actionbar/da-actionbar.js');
+  }
+
   setStatus(text, description, type = 'info') {
     if (!text) {
       this._status = null;
@@ -86,9 +98,15 @@ export default class DaList extends LitElement {
   }
 
   async getList() {
-    const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
-    if (resp.permissions) this.handlePermissions(resp.permissions);
-    return resp.json();
+    try {
+      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
+      if (resp.permissions) this.handlePermissions(resp.permissions);
+      const json = await resp.json();
+      return json;
+    } catch {
+      this._emptyMessage = 'Not permitted';
+      return [];
+    }
   }
 
   handleNewItem() {
@@ -102,7 +120,22 @@ export default class DaList extends LitElement {
     this._listItems = this._listItems.map((item) => ({ ...item, isChecked: false, rename: false }));
     this._selectedItems = [];
     this._lastCheckedIndex = null;
+
+    // Clear all dialog properties
+    this.handleConfirmClose();
+
+    // Clear all actionbar properties
     if (this.actionBar) this.actionBar.items = [];
+  }
+
+  handleErrorClose() {
+    this._itemErrors = [];
+  }
+
+  handleConfirmClose() {
+    this._confirm = null;
+    this._confirmText = null;
+    this._unpublish = null;
   }
 
   handleSelectionState() {
@@ -163,117 +196,147 @@ export default class DaList extends LitElement {
     });
   }
 
-  async handlePasteItem(item) {
+  async handleItemAction({ item, type = 'copy' }) {
     let continuation = true;
     let continuationToken;
 
-    while (continuation) {
-      const formData = new FormData();
-      formData.append('destination', item.destination);
-      if (continuationToken) formData.append('continuation-token', continuationToken);
-      const opts = { method: 'POST', body: formData };
-      const resp = await daFetch(`${DA_ORIGIN}/copy${item.path}`, opts);
-      if (resp.status === 204) {
-        continuation = false;
-        break;
-      } else if (resp.status >= 400) {
-        this.setStatus('Copying', 'There was an issue copying.');
+    const type2api = {
+      copy: { api: 'copy', method: 'POST' },
+      delete: { api: 'source', method: 'DELETE' },
+      move: { api: 'move', method: 'POST' },
+    };
 
-        // TODO maybe there is a better way to keep the status dialog visible for a bit?
-        await this.wait(2000);
+    const { api, method } = type2api[type];
 
-        return;
+    // If source and dest are in the trash it's a proper move within the trash.
+    const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+
+    try {
+      while (continuation) {
+        let body;
+
+        if (type !== 'delete') {
+          body = new FormData();
+          body.append('destination', item.destination);
+          if (continuationToken) body.append('continuation-token', continuationToken);
+        }
+
+        const opts = { method, body };
+        const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
+        if (resp.status === 204) {
+          continuation = false;
+          break;
+        }
+        const json = await resp.json();
+        ({ continuationToken } = json);
+        if (!continuationToken) continuation = false;
       }
-      const json = await resp.json();
-      ({ continuationToken } = json);
-      if (!continuationToken) continuation = false;
-    }
 
-    item.isChecked = false;
-    const pastedItem = { ...item, path: item.destination, isChecked: false };
-    this._listItems.unshift(pastedItem);
-    this.requestUpdate();
+      item.isChecked = false;
+
+      // Remove or add the item to the current list
+      if (moveToTrash || method === 'DELETE') {
+        this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
+      } else {
+        this._listItems = [
+          { ...item, path: item.destination, isChecked: false },
+          ...this._listItems,
+        ];
+      }
+    } catch (e) {
+      // The assumption here is that the user does not have permission to write to the trash
+      if (moveToTrash) {
+        this.handleItemAction({ item, type: 'delete' });
+      } else {
+        this._itemErrors.push({ ...item, message: `Couldn't ${type} item` });
+      }
+    }
   }
 
-  async handlePaste(evt) {
-    // Format the destination
-    const pasteItems = this._selectedItems.map((item) => {
-      let { name } = item;
+  async handlePaste(e) {
+    // Format the destination items
+    const itemsToPaste = this._selectedItems.map((item) => {
       const prefix = item.path.split('/').slice(0, -1).join('/');
-      let destination = item.path.replace(prefix, this.fullpath);
-      const found = this._listItems.some((listItem) => listItem.path === destination);
-      if (found) {
-        // Fix path with existing name
-        if (item.ext) {
-          destination = `${this.fullpath}/${item.name}-copy.${item.ext}`;
+
+      let checkForExisting = true;
+      let pasteItem = {
+        ...item,
+        destination: item.path.replace(prefix, this.fullpath),
+      };
+
+      while (checkForExisting) {
+        const { destination } = pasteItem;
+        const existing = this._listItems.find(({ path }) => path === destination);
+        if (existing) {
+          const name = `${existing.name}-copy`;
+          const dest = item.ext ? `${this.fullpath}/${name}.${item.ext}` : `${existing.path}-copy`;
+          pasteItem = { ...item, name, destination: dest };
         } else {
-          destination = `${destination}-copy`;
+          checkForExisting = false;
         }
-        // Set name after destination is updated
-        name = `${name}-copy`;
       }
-      return { ...item, name, destination };
+
+      return pasteItem;
     });
 
-    // Give the operation 2s before showing status overlay.
     const showStatus = setTimeout(() => {
-      this.setStatus('Copying', 'Please be patient. Copying items with many children can take time.');
+      this.setStatus('Pasting', 'Please be patient. Pasting items with many children can take time.');
     }, 2000);
 
-    await Promise.all(pasteItems.map(async (item) => {
-      await this.handlePasteItem(item);
+    const type = e.detail?.move ? 'move' : 'copy';
+
+    await Promise.all(itemsToPaste.map(async (item) => {
+      await this.handleItemAction({ item, type });
     }));
 
     clearTimeout(showStatus);
-    if (evt?.detail?.move) {
-      await this.handleDelete();
-    }
+
     this.setStatus();
     this.handleClear();
-  }
-
-  async handleDeleteItem(item) {
-    let continuation = true;
-    let continuationToken;
-
-    while (continuation) {
-      const opts = { method: 'DELETE' };
-
-      if (continuationToken) {
-        const formData = new FormData();
-        formData.append('continuation-token', continuationToken);
-        opts.body = formData;
-      }
-
-      const resp = await daFetch(`${DA_ORIGIN}/source${item.path}`, opts);
-      if (resp.status === 204) {
-        continuation = false;
-        break;
-      }
-      const json = await resp.json();
-      ({ continuationToken } = json);
-      if (!continuationToken) continuation = false;
-    }
-
-    item.isChecked = false;
-    this._listItems = this._listItems.reduce((acc, liItem) => {
-      if (liItem.path !== item.path) acc.push(liItem);
-      return acc;
-    }, []);
-    this.requestUpdate();
   }
 
   async handleDelete() {
-    const showStatus = setTimeout(() => {
-      this.setStatus('Deleting', 'Please be patient. Deleting items with many children can take time.');
-    }, 2000);
+    this._confirm = 'delete';
+  }
 
-    await Promise.all(this._selectedItems.map(async (item) => {
-      await this.handleDeleteItem(item);
-    }));
-    clearTimeout(showStatus);
-    this.setStatus();
-    this.handleClear();
+  async handleConfirmDelete() {
+    const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
+
+    const throttle = this._unpublish ? 250 : 0;
+
+    this._itemsRemaining = this._selectedItems.length;
+
+    const callback = async (item) => {
+      const [, org, site, ...rest] = item.path.split('/');
+
+      // If already in trash or not in a site, its a direct delete
+      const directDelete = item.path.includes('/.trash/') || rest.length === 0;
+      const type = directDelete ? 'delete' : 'move';
+      if (!directDelete) {
+        rest.pop();
+
+        const date = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
+        const datename = `${item.name}--${date}${item.ext ? `.${item.ext}` : ''}`;
+        item.destination = `/${org}/${site}/.trash/${rest.join('/')}/${datename}`;
+      }
+
+      await this.handleItemAction({ item, type });
+
+      if (this._unpublish && this._confirmText === 'YES') {
+        const json = await aemAdmin(item.path, 'live', 'DELETE');
+        if (!json) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish' });
+      }
+      this._itemsRemaining -= 1;
+
+      // Done in the loop to prevent CTA flickering
+      if (this._itemsRemaining === 0) {
+        this.handleClear();
+      }
+    };
+
+    const queue = new Queue(callback, 5, null, throttle);
+
+    await Promise.all(this._selectedItems.map((item) => queue.push(item)));
   }
 
   handleShare() {
@@ -323,7 +386,7 @@ export default class DaList extends LitElement {
     }
 
     const makeBatches = (await import(`${getNx()}/utils/batch.js`)).default;
-    const { getFullEntryList, handleUpload } = await import('./helpers/drag-n-drop.js');
+    const { getFullEntryList, handleUpload } = await import('./helpers/utils.js');
     this._dropFiles = await getFullEntryList(entries);
 
     this.setDropMessage();
@@ -414,8 +477,56 @@ export default class DaList extends LitElement {
     return this.shadowRoot?.querySelector('da-actionbar');
   }
 
+  get _itemString() {
+    return this._selectedItems.length > 1 ? 'items' : 'item';
+  }
+
+  get _confirmContent() {
+    const noUnpub = this._selectedItems.some((item) => !item.ext || item.ext === 'link' || item.path.includes('/.trash/'));
+    const inTrash = this._selectedItems.some((item) => item.path.includes('/.trash/'));
+    const linkOnly = this._selectedItems.length === 1 && this._selectedItems[0].ext === 'link';
+
+    if (noUnpub) {
+      return html`<p>Are you sure you want to delete this content?${inTrash || linkOnly ? '' : ' Published items will remain live.'}</p>`;
+    }
+
+    const checkbox = html`
+      <div class="da-modal-checkbox">
+        <input
+          type="checkbox"
+          name="confirm-unpublish"
+          ?checked=${this._unpublish}
+          @click=${() => { this._unpublish = !this._unpublish; }}>
+        <label
+          for="confirm-unpublish"
+          @click=${() => { this._unpublish = !this._unpublish; }}>
+          Unpublish ${this._itemString}
+        </label>
+      </div>
+    `;
+
+    // If checkbox checked, only return the checkbox
+    if (!this._unpublish) return checkbox;
+
+    // Return checkbox and confirm text
+    return html`
+      ${checkbox}
+      <div class="da-actionbar-modal-confirmation">
+        <p class="sl-heading-m">Are you sure you want to unpublish?</p>
+        <p>Type <strong>YES</strong> to confirm.</p>
+        <sl-input
+          type="text"
+          placeholder="YES"
+          autofocus=""
+          @input=${({ target }) => { this._confirmText = target.value; }}
+          aria-label="Type yes to confirm unpublish"
+          value=${this._confirmText}></sl-input>
+      </div>
+    `;
+  }
+
   renderEmpty() {
-    return html`<div class="empty-list"><h3>Empty</h3></div>`;
+    return html`<div class="empty-list"><h3>${this._emptyMessage}</h3></div>`;
   }
 
   renderStatus() {
@@ -426,6 +537,53 @@ export default class DaList extends LitElement {
           ${this._status.description ? html`<p class="da-list-status-description">${this._status.description}</p>` : nothing}
         </div>
       </div>`;
+  }
+
+  renderConfirm() {
+    const title = `Deleting ${this._selectedItems.length} ${this._itemString}`;
+    const hasRemaining = this._itemsRemaining !== 0;
+    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
+    const unpublishConfirmed = this._unpublish && this._confirmText !== 'YES';
+
+    const action = {
+      style: 'negative',
+      label: this._unpublish ? 'Unpublish & delete' : 'Delete',
+      click: async () => this.handleConfirmDelete(),
+      disabled: unpublishConfirmed || hasRemaining,
+    };
+
+    return html`
+      <da-dialog
+        title=${title}
+        .message=${message}
+        .action=${action}
+        @close=${this.handleConfirmClose}>
+        ${this._confirmContent}
+      </da-dialog>
+    `;
+  }
+
+  renderErrors() {
+    const action = {
+      style: 'accent',
+      label: 'Copy errors to clipboard',
+      click: async () => {
+        const { items2Clipboard } = await import('./helpers/utils.js');
+        items2Clipboard(this._itemErrors);
+      },
+    };
+
+    return html`
+      <da-dialog
+        title="Errors"
+        .action=${action}
+        @close=${this.handleErrorClose}>
+        ${this._itemErrors.map((item) => html`
+          <p class="error-item-message">${item.message}</p>
+          <p class="error-item-name">${item.name}</p>
+        `)}
+      </da-dialog>
+    `;
   }
 
   renderList(items) {
@@ -508,6 +666,8 @@ export default class DaList extends LitElement {
         currentPath="${this.fullpath}"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
+      ${this._confirm ? this.renderConfirm() : nothing}
+      ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;
   }
 }

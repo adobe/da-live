@@ -25,6 +25,7 @@ const ICONS = [
   '/blocks/edit/img/Smock_ExperienceAdd_18_N.svg',
   '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
   '/blocks/edit/img/Smock_AddCircle_18_N.svg',
+  '/blocks/edit/img/Smock_InfoOutline_18_N.svg',
 ];
 
 let accessToken;
@@ -114,7 +115,7 @@ class DaLibrary extends LitElement {
           <div class="da-dialog-header">
             <div class="da-dialog-header-title">
               <img src="${library.icon}" />
-              <p>${library.name}</p>
+              <p>${library.title || library.name}</p>
             </div>
             <button class="primary" @click=${this.handleModalClose}>Close</button>
           </div>
@@ -260,6 +261,11 @@ class DaLibrary extends LitElement {
     }
   }
 
+  handleToolTip(e) {
+    e.stopPropagation();
+    e.target.closest('button').classList.toggle('show-tooltip');
+  }
+
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
@@ -322,14 +328,21 @@ class DaLibrary extends LitElement {
   }
 
   renderBlockItem(item, icon = false) {
+    const hasDesc = item.description?.trim();
     return html`
       <li class="da-library-type-group-detail-item" tabindex="1">
         <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item, true)}>
-          <div>
-            <span class="da-library-group-name">${item.name}</span>
-            <span class="da-library-group-subtitle">${item.variants}</span>
+          <div class="da-library-item-button-title">
+            <div>
+              <span class="da-library-group-name">${item.name}</span>
+              <span class="da-library-group-subtitle">${item.variants}</span>
+            </div>
+            <div class="da-library-icons">
+              ${hasDesc ? html`<svg class="icon" @click=${this.handleToolTip}><use href="#spectrum-InfoOutline"/></svg>` : nothing}
+              <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+            </div>
           </div>
-          <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+          ${hasDesc ? html`<div class="da-library-item-button-tooltip">${item.description}</div>` : nothing}
         </button>
       </li>`;
   }

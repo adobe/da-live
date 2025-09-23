@@ -1,8 +1,8 @@
-import { AEM_ORIGIN, getDaAdmin } from '../../shared/constants.js';
+import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
 
-const DA_ORIGIN = getDaAdmin();
+const AEM_PERMISSION_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
 
 function getBlockName(block) {
   const classes = block.className.split(' ');
@@ -102,6 +102,31 @@ export function aem2prose(doc) {
   });
 }
 
+/* eslint-disable max-len */
+/**
+ * [admin] Unable to preview '.../page.md': source contains large image: error fetching resource at http.../hello: Image 1 exceeds allowed limit of 10.00MB
+ * [admin] Unable to preview '.../doc.pdf': PDF is larger than 10MB: 24.0MB
+ * [admin] Unable to preview '.../video.mp4': MP4 is longer than 2 minutes: 2m 44s
+ * [admin] Unable to preview '.../video.mp4': MP4 has a higher bitrate than 300 KB/s: 494 kilobytes
+ * [admin] not authenticated
+ * [admin] not authorized
+ */
+/* eslint-enable max-len */
+function parseAemError(xError) {
+  if (xError.includes('PDF')) {
+    const [seg1, seg2] = xError.split(': ').slice(-2);
+    return `${seg1}: ${seg2}`;
+  }
+  if (xError.includes('MP4')) {
+    const [seg1] = xError.split(': ').slice(-2);
+    return seg1;
+  }
+  if (xError.includes('Image')) {
+    return xError.split(': ').pop().replace('.00', '');
+  }
+  return xError.replace('[admin] ', '');
+}
+
 export async function saveToAem(path, action) {
   const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
   const aemPath = parts.join('/');
@@ -110,15 +135,15 @@ export async function saveToAem(path, action) {
   const resp = await daFetch(url, { method: 'POST' });
   // eslint-disable-next-line no-console
   if (!resp.ok) {
-    const { status } = resp;
-    const message = [401, 403].some((s) => s === status) ? 'Not authorized to' : 'Error during';
-    return {
-      error: {
-        status,
-        type: 'error',
-        message,
-      },
-    };
+    const { status, headers } = resp;
+    const authErr = [401, 403].some((s) => s === status);
+    const message = authErr ? `Not authorized to ${action}` : `Error during ${action}`;
+    const xerror = headers.get('x-error');
+
+    const error = { action, status, type: 'error', message };
+    if (xerror && !authErr) error.details = parseAemError(xerror);
+
+    return { error };
   }
   return resp.json();
 }
@@ -215,8 +240,8 @@ export function convertSheets(sheets) {
   return json;
 }
 
-async function saveJson(fullPath, sheets, dataType = 'blob') {
-  const json = convertSheets(sheets);
+async function saveJson(fullPath, sheets, jsonToSave, dataType = 'blob') {
+  const json = jsonToSave || convertSheets(sheets);
 
   const formData = new FormData();
 
@@ -243,7 +268,7 @@ export function saveToDa(pathname, sheet) {
 
 export function saveDaConfig(pathname, sheet) {
   const fullPath = `${DA_ORIGIN}/config${pathname}`;
-  return saveJson(fullPath, sheet, 'config');
+  return saveJson(fullPath, sheet, null, 'config');
 }
 
 export async function saveDaVersion(pathname, ext = 'html') {
@@ -260,6 +285,62 @@ export async function saveDaVersion(pathname, ext = 'html') {
     // eslint-disable-next-line no-console
     console.log('Error creating auto version on publish.');
   }
+}
+
+async function getRoleRequestDetails(action) {
+  const action2role = {
+    preview: 'basic_author',
+    publish: 'basic_publish',
+  };
+  const {
+    email: Email,
+    authId: Id,
+    first_name: firstName,
+    last_name: lastName,
+  } = await window.adobeIMS.getProfile();
+
+  // Return in the exact order of the admin console csv export
+  return {
+    Email,
+    'First Name': firstName,
+    'Last Name': lastName,
+    'Country Code': '',
+    Id,
+    'Role Request': action2role[action],
+  };
+}
+
+export async function requestRole(org, site, action) {
+  let json = JSON.parse(AEM_PERMISSION_TPL);
+  const fullpath = `${DA_ORIGIN}/source/${org}/${site}/.da/aem-permission-requests.json`;
+  const resp = await daFetch(fullpath);
+  if (resp.ok) {
+    json = await resp.json();
+  }
+  const details = await getRoleRequestDetails(action);
+  const existingIdx = json.users.data.findIndex((user) => user.Id === details.Id);
+  if (existingIdx === -1) {
+    json.users.data.unshift(details);
+  } else {
+    json.users.data[existingIdx] = details;
+  }
+
+  const postResp = await saveJson(fullpath, null, json);
+  if (!postResp.ok) {
+    return {
+      message: [
+        'Could not request permissions.',
+        'Please notify your administrator.',
+      ],
+    };
+  }
+
+  return {
+    message: [
+      'Successfully requested role!',
+      'An administrator will need to approve.',
+    ],
+  };
 }
 
 export function parse(inital) {

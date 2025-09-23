@@ -119,6 +119,9 @@ function groupBlocks(blocks) {
     } else if (block.classList.contains('library-container-end') && state.currentGroup) {
       const { container, blockGroup } = state.currentGroup;
       container.appendChild(blockGroup);
+      if (block.nextElementSibling?.classList.contains('library-metadata')) {
+        container.appendChild(block.nextElementSibling.cloneNode(true));
+      }
       state.blocks.push(blockGroup);
       state.currentGroup = null;
     } else if (state.currentGroup) {
@@ -147,6 +150,7 @@ function transformBlock(block) {
   if (block.nextElementSibling?.classList.contains('library-metadata')) {
     const md = getMetadata(block.nextElementSibling);
     item.tags = md?.searchtags?.text || '';
+    item.description = md?.description?.text || '';
   }
 
   return item;
