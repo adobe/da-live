@@ -135,12 +135,11 @@ export function createAwarenessStatusWidget(wsProvider, win) {
 }
 
 function registerErrorHandler(ydoc) {
-  ydoc.on('update', async () => {
+  ydoc.on('update', () => {
     const errorMap = ydoc.getMap('error');
     if (errorMap && errorMap.size > 0) {
-      const str = JSON.stringify(errorMap);
       // eslint-disable-next-line no-console
-      console.log('Error from server', str);
+      console.log('Error from server', JSON.stringify(errorMap));
       errorMap.clear();
     }
   });
