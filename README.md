@@ -1,6 +1,5 @@
-# Document Authoring
-
-Document Authoring is a research project.
+# Edge Delivery Authoring
+This repo provides the author experience for https://da.live.
 
 ## Developing locally
 ### Run
