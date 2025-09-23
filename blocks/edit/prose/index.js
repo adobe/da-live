@@ -142,9 +142,6 @@ function registerErrorHandler(ydoc) {
       // eslint-disable-next-line no-console
       console.log('Error from server', str);
       errorMap.clear();
-      if (str.includes('403 - Forbidden') || str.includes('401 - Unauthorized')) {
-        await logOut();
-      }
     }
   });
 }
