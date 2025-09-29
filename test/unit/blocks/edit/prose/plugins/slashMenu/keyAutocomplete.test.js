@@ -20,10 +20,10 @@ describe('processKeyData', () => {
     // Test block1 contents
     const block1Map = result.get('block1');
     expect(block1Map).to.be.instanceof(Map);
-    expect(block1Map.has('testKey')).to.be.true;
+    expect(block1Map.has('testkey')).to.be.true;
 
     // Test values array
-    const values = block1Map.get('testKey');
+    const values = block1Map.get('testkey');
     expect(values).to.be.an('array');
     expect(values).to.have.lengthOf(2);
 
@@ -49,7 +49,7 @@ describe('processKeyData', () => {
     }];
 
     const result = processKeyData(testData);
-    const values = result.get('block1').get('testKey');
+    const values = result.get('block1').get('testkey');
     expect(values[0].title).to.equal('Label1');
     expect(values[0].value).to.equal('Label1');
   });
