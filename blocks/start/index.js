@@ -4,23 +4,21 @@ import { daFetch } from '../shared/utils.js';
 
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 
-const DEMO_PROJECT = '/da-sites/da-start-demo-content';
-
 const MIME_TYPES = {
   html: 'text/html',
   json: 'application/json',
   svg: 'image/svg+xml',
 };
 
-async function getText(org, site, path) {
+async function getText(sourcePath, org, site, path) {
   const getResp = await daFetch(path);
   if (!getResp.ok) return null;
   const text = await getResp.text();
-  return text.replaceAll(DEMO_PROJECT, `/${org}/${site}`);
+  return text.replaceAll(sourcePath, `/${org}/${site}`);
 }
 
-export async function copyConfig(org, site) {
-  const destText = await getText(org, site, `${DA_ORIGIN}/config${DEMO_PROJECT}/`);
+export async function copyConfig(sourcePath, org, site) {
+  const destText = await getText(sourcePath, org, site, `${DA_ORIGIN}/config${sourcePath}/`);
   if (!destText) return { ok: false };
 
   const body = new FormData();
@@ -29,7 +27,7 @@ export async function copyConfig(org, site) {
   return daFetch(`${DA_ORIGIN}/config/${org}/${site}/`, opts);
 }
 
-export async function copyContent(org, site) {
+export async function copyContent(sourcePath, org, site) {
   const callback = async (file) => {
     const { path } = file;
     const ext = path.split('.').pop();
@@ -37,14 +35,14 @@ export async function copyContent(org, site) {
     if (path.includes('/drafts/')) return;
 
     // Get the destination text
-    const destText = await getText(org, site, `${DA_ORIGIN}/source${path}`);
+    const destText = await getText(sourcePath, org, site, `${DA_ORIGIN}/source${path}`);
     if (!destText) {
       file.ok = false;
       return;
     }
 
     // Save the file
-    const savePath = path.replace(DEMO_PROJECT, `/${org}/${site}`);
+    const savePath = path.replace(sourcePath, `/${org}/${site}`);
 
     const body = new FormData();
 
@@ -56,7 +54,7 @@ export async function copyContent(org, site) {
     file.ok = putResp.ok;
   };
 
-  const conf = { path: DEMO_PROJECT, callback, throttle: 50 };
+  const conf = { path: sourcePath, callback, throttle: 50 };
   const { results } = crawl(conf);
   return results;
 }
