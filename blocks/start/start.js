@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
-import { copyConfig, copyContent } from './index.js';
+import { copyConfig, copyContent, previewContent } from './index.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -77,22 +77,30 @@ class DaStart extends LitElement {
     if (hasDemo) {
       e.target.disabled = true;
 
-      this._statusText = 'Copying content';
-      const list = await copyContent(content, this.org, this.site);
+      const setStatus = (text) => { this._statusText = text; };
+
+      const list = await copyContent(content, this.org, this.site, setStatus);
       if (list.some((file) => !file.ok)) {
         this._statusText = 'There was an error copying demo content.';
         return;
       }
 
-      this._statusText = 'Copying library config';
+      setStatus('Copying library config');
       const config = await copyConfig(content, this.org, this.site);
       if (!config.ok) {
         this._statusText = 'There was an error copying the library config.';
         return;
       }
 
+      const previewList = await previewContent(this.org, this.site, setStatus);
+      if (previewList.some((file) => !file.ok)) {
+        setStatus('Could not preview all content. Permissions? AEM Code Sync? fstab?');
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, 3000); });
+      }
+
       delete e.target.disabled;
       this._goText = 'Opening site';
+      this._statusText = '';
     }
     window.location = `${window.location.origin}/#/${this.org}/${this.site}`;
   }

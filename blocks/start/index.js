@@ -1,8 +1,15 @@
 import { getNx } from '../../scripts/utils.js';
 import { DA_ORIGIN } from '../shared/constants.js';
-import { daFetch } from '../shared/utils.js';
+import { daFetch, aemAdmin } from '../shared/utils.js';
 
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
+
+const SEND_EXT_TO_AEM = [
+  'html',
+  'json',
+  'svg',
+  'mp4'
+];
 
 const MIME_TYPES = {
   html: 'text/html',
@@ -33,12 +40,16 @@ export async function copyConfig(sourcePath, org, site) {
   return daFetch(`${DA_ORIGIN}/config/${org}/${site}/`, opts);
 }
 
-export async function copyContent(sourcePath, org, site) {
+export async function copyContent(sourcePath, org, site, setStatus) {
   const callback = async (file) => {
     const { path } = file;
     const ext = path.split('.').pop();
 
     if (path.includes('/drafts/')) return;
+
+    const shortPath = path.split('/').pop().replace('.html', '');
+
+    setStatus(`Copying ${shortPath}`);
 
     let blob;
     if (ext === 'json' || ext === 'html' || ext === 'svg') {
@@ -69,6 +80,33 @@ export async function copyContent(sourcePath, org, site) {
   };
 
   const conf = { path: sourcePath, callback, throttle: 50 };
+  const { results } = crawl(conf);
+  return results;
+}
+
+export async function previewContent(org, site, setStatus) {
+  const callback = async (file) => {
+    const { path } = file;
+    const ext = path.split('.').pop();
+
+    if (!SEND_EXT_TO_AEM.some((aemExt) => aemExt === ext)
+        || path.includes('docs/library')) {
+      file.ok = true;
+      return;
+    }
+
+    const shortPath = path.split('/').pop().replace('.html', '');
+
+    setStatus(`Previewing ${shortPath}`);
+    try {
+      const json = await aemAdmin(path, 'preview', 'POST');
+      file.ok = !!json;
+    } catch {
+      file.ok = false;
+    }
+  };
+
+  const conf = { path: `/${org}/${site}`, callback, throttle: 150, concurrent: 5 };
   const { results } = crawl(conf);
   return results;
 }
