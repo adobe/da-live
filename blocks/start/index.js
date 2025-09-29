@@ -17,6 +17,12 @@ async function getText(sourcePath, org, site, path) {
   return text.replaceAll(sourcePath, `/${org}/${site}`);
 }
 
+async function getBlob(path) {
+  const getResp = await daFetch(path);
+  if (!getResp.ok) return null;
+  return getResp.blob();
+}
+
 export async function copyConfig(sourcePath, org, site) {
   const destText = await getText(sourcePath, org, site, `${DA_ORIGIN}/config${sourcePath}/`);
   if (!destText) return { ok: false };
@@ -34,9 +40,19 @@ export async function copyContent(sourcePath, org, site) {
 
     if (path.includes('/drafts/')) return;
 
-    // Get the destination text
-    const destText = await getText(sourcePath, org, site, `${DA_ORIGIN}/source${path}`);
-    if (!destText) {
+    let blob;
+    if (ext === 'json' || ext === 'html' || ext === 'svg') {
+      const destText = await getText(sourcePath, org, site, `${DA_ORIGIN}/source${path}`);
+      if (destText) {
+        const type = MIME_TYPES[ext];
+        blob = new Blob([destText], { type });
+      }
+    } else {
+      const sourceBlob = await getBlob(`${DA_ORIGIN}/source${path}`);
+      if (sourceBlob) blob = sourceBlob;
+    }
+
+    if (!blob) {
       file.ok = false;
       return;
     }
@@ -46,8 +62,6 @@ export async function copyContent(sourcePath, org, site) {
 
     const body = new FormData();
 
-    const type = MIME_TYPES[ext];
-    const blob = new Blob([destText], { type });
     body.append('data', blob);
     const opts = { method: 'POST', body };
     const putResp = await daFetch(`${DA_ORIGIN}/source${savePath}`, opts);
