@@ -6,6 +6,21 @@ import { daFetch } from '../../../shared/utils.js';
 const FPO_IMG_URL = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
 const SUPPORTED_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
+async function renderError(message) {
+  await import('../../../shared/da-dialog/da-dialog.js');
+  const dialog = document.createElement('da-dialog');
+  dialog.title = 'Error';
+  dialog.message = message;
+  dialog.action = {
+    style: 'accent',
+    label: 'OK',
+    click: async () => { dialog.close(); },
+  };
+  const main = document.body.querySelector('main');
+  main.insertAdjacentElement('afterend', dialog);
+  dialog.showModal();
+}
+
 export default function imageDrop(schema) {
   return new Plugin({
     props: {
@@ -31,7 +46,19 @@ export default function imageDrop(schema) {
             formData.append('data', file);
             const opts = { method: 'POST', body: formData };
             const resp = await daFetch(url, opts);
-            if (!resp.ok) return;
+            if (!resp.ok) {
+              const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
+              const ts = view.state.tr.setSelection(fpoSelection);
+              view.dispatch(ts.deleteSelection().scrollIntoView());
+
+              if (resp.status === 413) {
+                renderError('Image size exceeds 20MB limit');
+              } else {
+                renderError(`Failed to upload image: ${resp.statusText}`);
+              }
+
+              return;
+            }
             const json = await resp.json();
 
             // Create a doc image to pre-download the image before showing it.
