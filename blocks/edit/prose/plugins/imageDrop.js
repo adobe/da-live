@@ -25,11 +25,11 @@ export default function imageDrop(schema) {
             const { $from } = view.state.selection;
 
             const details = getPathDetails();
-            const url = `${details.origin}/source${details.parent}/.${details.name}/${file.name}`;
+            const url = `${details.origin}/media${details.parent}/${file.name}`;
 
             const formData = new FormData();
             formData.append('data', file);
-            const opts = { method: 'PUT', body: formData };
+            const opts = { method: 'POST', body: formData };
             const resp = await daFetch(url, opts);
             if (!resp.ok) return;
             const json = await resp.json();
@@ -39,11 +39,11 @@ export default function imageDrop(schema) {
             docImg.addEventListener('load', () => {
               const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
               const ts = view.state.tr.setSelection(fpoSelection);
-              const img = schema.nodes.image.create({ src: json.source.contentUrl });
+              const img = schema.nodes.image.create({ src: json.uri });
               const tr = ts.replaceSelectionWith(img).scrollIntoView();
               view.dispatch(tr);
             });
-            docImg.src = json.source.contentUrl;
+            docImg.src = json.uri;
           });
         },
       },
