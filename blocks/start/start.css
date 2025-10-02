@@ -209,6 +209,7 @@ div.template-container {
   justify-content: center;
   flex-wrap: wrap;
 
+  /* stylelint-disable-next-line no-descending-specificity */
   p {
     font-weight: 700;
     min-height: 24px;
