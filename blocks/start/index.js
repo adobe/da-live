@@ -8,7 +8,7 @@ const SEND_EXT_TO_AEM = [
   'html',
   'json',
   'svg',
-  'mp4'
+  'mp4',
 ];
 
 const MIME_TYPES = {
