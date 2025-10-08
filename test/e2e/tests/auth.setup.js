@@ -51,7 +51,6 @@ setup('Set up authentication', async ({ page }) => {
   const url = ENV;
 
   await page.goto(url);
-  await page.waitForTimeout(3000);
 
   await fs.promises.mkdir(path.join(__dirname, '../.playwright/shots'), { recursive: true });
   await page.screenshot({ path: path.join(__dirname, '../.playwright/shots/auth-before.png') });
