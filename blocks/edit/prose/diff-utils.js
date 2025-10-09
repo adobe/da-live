@@ -33,8 +33,9 @@ function getLangOverlay(isUpstream) {
 }
 
 function keepDiffContentInPlace(view, pos, node) {
-  node.content.content = node.content.content.filter((c) => c.content.content.length);
-  const newFragment = Fragment.fromArray(node.content.content);
+  // Build a new fragment from the node's children without mutating the original node
+  const children = node.content.content.filter((c) => c.content && c.content.content.length);
+  const newFragment = Fragment.fromArray(children);
   const newSlice = new Slice(newFragment, 0, 0);
   const transaction = view.state.tr.replace(pos, pos + node.nodeSize, newSlice);
   return transaction;
