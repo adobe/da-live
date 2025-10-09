@@ -33,7 +33,7 @@ import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
-import { getLocClass } from './loc-utils.js';
+import { getDiffClass } from './diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
@@ -301,12 +301,12 @@ export default function initProse({ path, permissions }) {
     state,
     dispatchTransaction,
     nodeViews: {
-      loc_added(node, view, getPos) {
-        const LocAddedView = getLocClass('da-loc-added', getSchema, dispatchTransaction, { isLangstore: false });
+      diff_added(node, view, getPos) {
+        const LocAddedView = getDiffClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false });
         return new LocAddedView(node, view, getPos);
       },
-      loc_deleted(node, view, getPos) {
-        const LocDeletedView = getLocClass('da-loc-deleted', getSchema, dispatchTransaction, { isLangstore: true });
+      diff_deleted(node, view, getPos) {
+        const LocDeletedView = getDiffClass('da-diff-deleted', getSchema, dispatchTransaction, { isUpstream: true });
         return new LocDeletedView(node, view, getPos);
       },
     },

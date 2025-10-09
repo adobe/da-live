@@ -804,7 +804,7 @@ da-library.hide {
   white-space: nowrap;
 }
 
-da-loc-deleted, da-loc-added {
+da-diff-deleted, da-diff-added {
   display: block;
   position: relative;
 }
@@ -844,27 +844,27 @@ da-loc-deleted, da-loc-added {
   box-shadow: rgb(181 181 181) 0 0 5px 0;
 }
 
-.loc-keep {
+.diff-keep {
   width: 44px;
   height: 44px;
   background: url('/blocks/edit/img/Smock_CheckmarkCircleOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
-.loc-keep:hover {
+.diff-keep:hover {
   box-shadow: #008000 0 0 5px 0;
 }
 
-.loc-delete {
+.diff-delete {
   width: 44px;
   height: 44px;
   background: url('/blocks/edit/img/Smock_DeleteOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
 }
 
-.loc-delete:hover {
+.diff-delete:hover {
   box-shadow: #f00 0 0 5px 0;
 }
 
-.loc-color-overlay {
+.diff-color-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -873,7 +873,45 @@ da-loc-deleted, da-loc-added {
   border-radius: 6px;
 }
 
-.loc-color-overlay.loc-langstore::after {
+
+.diff-lang-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1001;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.diff-color-overlay.diff-upstream {
+  background-color: rgb(70 130 180 / 40%);
+}
+
+.diff-color-overlay.diff-local {
+  background-color: rgb(144 42 222 / 40%);
+}
+
+.diff-color-overlay.diff-upstream .diff-lang-overlay {
+  background-color: rgb(70 130 180 / 80%);
+}
+
+.diff-color-overlay.diff-local .diff-lang-overlay {
+  background-color: rgb(144 42 222 / 80%);
+}
+
+.diff-color-overlay.diff-upstream .loc-dialog {
+  color: rgb(70 130 180);
+}
+
+.diff-color-overlay.diff-local .loc-dialog {
+  color: rgb(144 42 222);
+}
+
+.diff-color-overlay.diff-upstream::after {
   content: 'Upstream';
   position: absolute;
   bottom: 4px;
@@ -889,7 +927,7 @@ da-loc-deleted, da-loc-added {
   text-align: center;
 }
 
-.loc-color-overlay.loc-regional::after {
+.diff-color-overlay.diff-local::after {
   content: 'Local';
   position: absolute;
   bottom: 4px;
@@ -905,15 +943,4 @@ da-loc-deleted, da-loc-added {
   text-align: center;
 }
 
-.loc-lang-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1001;
-  display: none;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-}
+
