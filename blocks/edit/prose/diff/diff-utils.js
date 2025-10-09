@@ -6,18 +6,6 @@ import {
 import getSheet from '../../../shared/sheet.js';
 import { createElement } from '../../utils/helpers.js';
 
-const LOC_COLORS = {
-  UPSTREAM: 'rgba(70, 130, 180, 0.2)',
-  LOCAL: 'rgba(144, 42, 222, 0.2)',
-  DIFF: 'rgba(150, 150, 150, 0.1)',
-};
-
-const LOC_TEXT = {
-  UPSTREAM: 'Upstream',
-  LOCAL: 'Local',
-  DIFF: 'Difference',
-};
-
 let overlayUIModule = null;
 async function loadOverlayUI() {
   if (!overlayUIModule) {
@@ -103,7 +91,6 @@ async function loadLocCss() {
 }
 
 let globalDialogModule = null;
-
 async function loadGlobalDialog() {
   if (!globalDialogModule) {
     globalDialogModule = await import('./diff-global-dialog.js');
@@ -267,7 +254,7 @@ async function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwi
 async function getLangOverlay(upstream) {
   try {
     const overlayUI = await loadOverlayUI();
-    return overlayUI.getLangOverlay(upstream, LOC_TEXT);
+    return overlayUI.getLangOverlay(upstream);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load lang overlay:', error);
@@ -358,7 +345,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const tabContent = createTabContent(deletedContent, addedContent);
 
       const colorOverlay = createElement('div', 'loc-tabbed-color-overlay');
-      colorOverlay.style.backgroundColor = LOC_COLORS.LOCAL;
+      colorOverlay.classList.add('diff-bg-local');
 
       let actions;
 
@@ -370,12 +357,12 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
         if (targetTab === 'added') {
           colorOverlay.style.display = 'block';
-          colorOverlay.style.backgroundColor = LOC_COLORS.LOCAL;
+          colorOverlay.classList.add('diff-bg-local');
         } else if (targetTab === 'deleted') {
           colorOverlay.style.display = 'block';
-          colorOverlay.style.backgroundColor = LOC_COLORS.UPSTREAM;
+          colorOverlay.classList.add('diff-bg-upstream');
         } else if (targetTab === 'diff') {
-          colorOverlay.style.backgroundColor = LOC_COLORS.DIFF;
+          colorOverlay.classList.add('diff-bg-diff');
 
           const diffTab = tabContent.querySelector('[data-tab="diff"]');
           if (diffTab && !diffTab.loaded) {
@@ -459,10 +446,8 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
     async loadRealOverlays(upstream, coverDiv) {
       try {
-        // Load enhanced overlay
         const { overlay, deleteBtn, keepBtn } = await getLangOverlay(upstream);
 
-        // Set up event listeners
         deleteBtn.addEventListener('click', () => {
           this.handleDeleteSingleNode();
         });
@@ -471,12 +456,10 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
           this.handleKeepSingleNode();
         });
 
-        // Replace placeholder with enhanced overlay
         coverDiv.removeChild(this.langOverlay);
         this.langOverlay = overlay;
         coverDiv.appendChild(this.langOverlay);
 
-        // Update cover div styling
         const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
         coverDiv.className = className;
       } catch (error) {

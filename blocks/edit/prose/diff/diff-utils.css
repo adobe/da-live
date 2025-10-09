@@ -380,6 +380,18 @@ da-loc-added,
   vertical-align: top;
 }
 
+.diff-bg-local {
+  background-color: rgb(144 42 222 / 20%);
+}
+
+.diff-bg-upstream {
+  background-color: rgb(70 130 180 / 20%);
+}
+
+.diff-bg-diff {
+  background-color: rgb(150 150 150 / 10%);
+}
+
 .da-regional-edits-overlay {
   display: none;
   position: absolute;

@@ -1,6 +1,10 @@
 import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
 
-// Overlay UI creation - only needed when user interacts with LOC elements
+const LOC_TEXT = {
+  UPSTREAM: 'Upstream',
+  LOCAL: 'Local',
+  DIFF: 'Difference',
+};
 
 export function getCoverDiv(upstream, LOC_COLORS) {
   const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
@@ -10,7 +14,7 @@ export function getCoverDiv(upstream, LOC_COLORS) {
   return coverDiv;
 }
 
-export function getLangOverlay(upstream, LOC_TEXT) {
+export function getLangOverlay(upstream) {
   const overlay = createElement('div', 'loc-lang-overlay loc-floating-overlay', { 'loc-temp-dom': '' });
 
   const type = upstream ? 'upstream' : 'local';
