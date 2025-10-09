@@ -2,34 +2,58 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
-import { copyConfig, copyContent } from './index.js';
+import { copyConfig, copyContent, previewContent } from './index.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
 const DA_ORIGIN = getDaAdmin();
 
+const AEM_TEMPLATES = [
+  {
+    title: 'AEM Boilerplate',
+    demoTitle: 'None',
+    description: 'A basic project.',
+    demo: 'No sample content.',
+    code: 'https://github.com/adobe/aem-boilerplate',
+  },
+  {
+    title: 'AEM Block Collection',
+    description: 'A project with pre-made blocks.',
+    demo: 'Sample content with library.',
+    code: 'https://github.com/aemsites/da-block-collection',
+    content: '/da-sites/da-start-demo-content',
+  },
+  {
+    title: 'Author Kit',
+    description: 'A project for flexible authoring.',
+    demo: 'Sample content with library.',
+    code: 'https://github.com/aemsites/author-kit',
+    content: '/da-sites/author-kit-starter',
+  },
+];
+
 class DaStart extends LitElement {
   static properties = {
     activeStep: { state: true },
-    owner: { state: true },
-    repo: { state: true },
+    org: { state: true },
+    site: { state: true },
     goEnabled: { state: true },
     url: { state: true },
     showOpen: { state: true },
     showDone: { state: true },
-    _demoContent: { state: true },
     _goText: { state: true },
     _statusText: { state: true },
+    _templates: { state: true },
   };
 
   constructor() {
     super();
     const urlParams = new URLSearchParams(window.location.search);
     this.activeStep = 1;
-    this.owner = urlParams.get('owner');
-    this.repo = urlParams.get('repo');
-    this.url = this.repo && this.owner ? `https://github.com/${this.owner}/${this.repo}` : '';
-    this.goEnabled = this.repo && this.owner;
+    this.org = urlParams.get('org');
+    this.site = urlParams.get('site');
+    this.url = this.site && this.org ? `https://github.com/${this.org}/${this.site}` : '';
+    this.goEnabled = this.site && this.org;
     this._demoContent = false;
     this._goText = 'Make something wonderful';
   }
@@ -37,26 +61,7 @@ class DaStart extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-  }
-
-  goToOpen(e) {
-    try {
-      const code = this.shadowRoot.querySelector('#mountpoint');
-      const blob = new Blob([code.value], { type: 'text/plain' });
-      const data = [new ClipboardItem({ [blob.type]: blob })];
-      navigator.clipboard.write(data);
-      this.showOpen = true;
-    } catch {
-      // Do Firefox things here
-    }
-    e.preventDefault();
-  }
-
-  goToDone(e) {
-    window.open(`https://github.com/${this.owner}/${this.repo}/edit/main/fstab.yaml`);
-    // Wait a beat
-    setTimeout(() => { this.showDone = true; }, 200);
-    e.preventDefault();
+    this._templates = AEM_TEMPLATES;
   }
 
   goToNextStep(e) {
@@ -67,51 +72,54 @@ class DaStart extends LitElement {
   }
 
   async goToSite(e) {
-    if (this._demoContent) {
+    const { code, content } = this._templates.find((tpl) => tpl.selected) || this._templates[0];
+    const hasDemo = !code.includes('aem-boilerplate');
+    if (hasDemo) {
       e.target.disabled = true;
 
-      this._statusText = 'Copying content';
-      const list = await copyContent(this.owner, this.repo);
+      const setStatus = (text) => { this._statusText = text; };
+
+      const list = await copyContent(content, this.org, this.site, setStatus);
       if (list.some((file) => !file.ok)) {
         this._statusText = 'There was an error copying demo content.';
         return;
       }
 
-      this._statusText = 'Copying library config';
-      const config = await copyConfig(this.owner, this.repo);
+      setStatus('Copying library config');
+      const config = await copyConfig(content, this.org, this.site);
       if (!config.ok) {
         this._statusText = 'There was an error copying the library config.';
         return;
       }
 
+      const previewList = await previewContent(this.org, this.site, setStatus);
+      if (previewList.some((file) => !file.ok)) {
+        setStatus('Could not preview all content. Permissions? AEM Code Sync? fstab?');
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, 3000); });
+      }
+
       delete e.target.disabled;
       this._goText = 'Opening site';
+      this._statusText = '';
     }
-    window.location = `${window.location.origin}/#/${this.owner}/${this.repo}`;
-  }
-
-  toggleDemo() {
-    this._demoContent = !this._demoContent;
+    window.location = `${window.location.origin}/#/${this.org}/${this.site}`;
   }
 
   onInputChange(e) {
-    const regex = /^https:\/\/github.com\/([a-zA-Z0-9-]+)\/([a-zA-Z0-9-]+)(.git)?$/;
-
-    if (e.target.value.match(regex)) {
-      // eslint-disable-next-line prefer-destructuring
-      this.owner = e.target.value.match(regex)[1];
-      // eslint-disable-next-line prefer-destructuring
-      this.repo = e.target.value.match(regex)[2];
+    try {
+      const { origin, pathname } = new URL(e.target.value);
+      if (origin !== 'https://github.com') throw Error('Not github');
+      const [, org, site] = pathname.toLowerCase().trim().split('/');
+      if (!(org && site)) throw Error('No org or site');
+      this.org = org;
+      this.site = site;
       this.goEnabled = true;
-    } else {
-      this.owner = null;
-      this.repo = null;
+    } catch (ex) {
+      this.org = null;
+      this.site = null;
       this.goEnabled = false;
+      console.log(ex);
     }
-  }
-
-  isGoDisabled() {
-    return this.repo === 'aem-boilerplate';
   }
 
   async submitForm(e) {
@@ -122,53 +130,77 @@ class DaStart extends LitElement {
     this.goToNextStep(e);
   }
 
-  getStepOnePanel() {
+  setTemplate(el) {
+    const url = el.href || el.dataset.url;
+    for (const template of this._templates) {
+      template.selected = template.code === url;
+    }
+    this.requestUpdate();
+  }
+
+  handleTemplateClick(e) {
+    this.setTemplate(e.target.closest('a'));
+  }
+
+  handleDemoClick(e) {
+    this.setTemplate(e.target.closest('button'));
+  }
+
+  renderOne() {
     return html`
       <div class="step-1-panel">
-        <form class="actions" action="${DA_ORIGIN}/source/${this.owner}/${this.repo}" @submit=${this.submitForm}>
+        <form class="actions" action="${DA_ORIGIN}/source/${this.org}/${this.site}" @submit=${this.submitForm}>
           <div class="git-input">
             <label for="fname">AEM codebase</label>
-            <input type="text" name="repo" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />
+            <input type="text" name="site" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />
           </div>
           <button class="go-button" ?disabled=${!this.goEnabled}>Go</button>
         </form>
         <div class="text-container">
-          <p>Paste your AEM repo URL above.<br/><br/>
-          Don't have one, yet? Use <a href="https://github.com/aemsites/da-block-collection" target="_blank">AEM Block Collection</a>.<br/>(don't forget the code bot)</p>
+          <p>Paste your AEM codebase URL above.</p>
+          <p>Don't have one, yet? Pick a template below.</p>
+        </div>
+        <div class="template-container">
+          <ul>
+            ${this._templates.map((tpl) => html`
+              <li class="template-card">
+                <a
+                  href="${tpl.code}"
+                  target="_blank"
+                  class="${tpl.selected === true ? 'is-selected' : ''}"
+                  @click=${this.handleTemplateClick}>
+                  <p class="template-card-title">${tpl.title}</p>
+                  <p>${tpl.description}</p>
+                </a>
+              </li>
+            `)}
+          </ul>
+        </div>
+        <div class="text-container">
+          <p>Don't forget the <a href="https://da.live/bot">AEM Code Bot</a>.</p>
         </div>
       </div>
     `;
   }
 
-  getStepTwoPanel() {
+  renderTwo() {
     return html`
       <div class="step-2-panel">
-      <div class="pre-code-wrapper">
-        <textarea id="mountpoint">
-mountpoints:
-  /:
-    url: https://content.da.live/${this.owner}/${this.repo}/
-    type: markup</textarea>
-        <div class="fstab-action-container">
-          <button class="go-button" @click=${this.goToOpen}>Copy</button>
-          ${this.showOpen ? html`<button class="go-button" @click=${this.goToDone}>Open</button>` : null}
-          ${this.showDone ? html`<button class="go-button" @click=${this.goToNextStep}>Done</button>` : null}
-        </div>
-      </div>
-      <div class="text-container">
-        <p>Tell your code about your content.<br/>
-        Copy the code above and save it into your fstab.<br/>Head back here when you're done.</p>
-      </div>
-    </div>
-    `;
-  }
-
-  getStepThreePanel() {
-    return html`
-      <div class="step-3-panel">
-        <div class="demo-wrapper">
-          <label for="demo-toggle">Demo content</label>
-          <input class="demo-toggle" id="demo-toggle" type="checkbox" .checked="${this._demoContent}" @click="${this.toggleDemo}" />
+        <h2>Demo content</h2>
+        <div class="template-container">
+          <ul>
+            ${this._templates.map((tpl) => html`
+              <li class="template-card">
+                <button
+                  data-url=${tpl.code}
+                  class="${tpl.selected === true ? 'is-selected' : ''}"
+                  @click=${this.handleDemoClick}>
+                  <p class="template-card-title">${tpl.demoTitle || tpl.title}</p>
+                  <p>${tpl.demo}</p>
+                </button>
+              </li>
+            `)}
+          </ul>
         </div>
         <div class="step-3-actions">
           <button class="da-login-button con-button blue button-xl" @click=${this.goToSite}>${this._goText}</button>
@@ -186,12 +218,10 @@ mountpoints:
         <ul class="step-count">
           <li>1</li>
           <li class="step-2">2</li>
-          <li class="step-3">3</li>
         </ul>
         <div class="panels">
-          ${this.getStepOnePanel()}
-          ${this.getStepTwoPanel()}
-          ${this.getStepThreePanel()}
+          ${this.renderOne()}
+          ${this.renderTwo()}
         </div>
       </div>
     `;

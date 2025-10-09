@@ -3,7 +3,7 @@ import { Plugin, TextSelection } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
 
-const FPO_IMG_URL = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
+const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 const SUPPORTED_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
 export default function imageDrop(schema) {
