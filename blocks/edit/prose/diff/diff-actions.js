@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 // User action handlers - only loaded when user actually clicks action buttons
 
 import { Fragment, Slice } from 'da-y-wrapper';

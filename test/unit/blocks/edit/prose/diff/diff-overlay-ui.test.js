@@ -80,5 +80,3 @@ describe('diff-overlay-ui - getLangOverlay', () => {
     expect(result.deleteBtn).to.equal(deleteBtn);
   });
 });
-
-
