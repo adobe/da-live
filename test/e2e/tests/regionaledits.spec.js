@@ -1,3 +1,4 @@
+import os from 'os';
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { getTestFolderURL } from '../utils/page.js';
@@ -21,8 +22,10 @@ async function findPageTab(title, page, context) {
   throw new Error('Could not find the regional edit page');
 }
 
+const modifier = os.platform() === 'darwin' ? 'Meta' : 'Control';
+
 const sendUndo = async (page) => {
-  await page.locator('.ProseMirror').press('ControlOrMeta+Z');
+  await page.locator('.ProseMirror').press(`${modifier}+Z`);
   await expect(page.locator('div.diff-tabbed-actions.loc-floating-overlay')).toBeVisible();
 };
 
