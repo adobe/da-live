@@ -4,29 +4,10 @@ import {
   Slice,
 } from 'da-y-wrapper';
 
-const DIFF = {
-  UPSTREAM: {
-    BG: 'rgba(70, 130, 180, 0.8)',
-    COVER_BG: 'rgba(70, 130, 180, 0.4)',
-    TEXT: 'Upstream Content',
-    TEXT_COLOR: 'rgba(70, 130, 180)',
-  },
-  LOCAL: {
-    BG: 'rgba(144, 42, 222, 0.8)',
-    COVER_BG: 'rgba(144, 42, 222, 0.4)',
-    TEXT: 'Local Content',
-    TEXT_COLOR: 'rgba(144, 42, 222)',
-  },
-};
-
 function getCoverDiv(isUpstream) {
   const coverDiv = document.createElement('div');
   coverDiv.className = `diff-color-overlay ${isUpstream ? 'diff-upstream' : 'diff-local'}`;
   coverDiv.setAttribute('diff-temp-dom', '');
-
-  coverDiv.style.backgroundColor = isUpstream
-    ? DIFF.UPSTREAM.COVER_BG
-    : DIFF.LOCAL.COVER_BG;
   return coverDiv;
 }
 
@@ -34,21 +15,15 @@ function getLangOverlay(isUpstream) {
   const overlay = document.createElement('div');
   overlay.className = 'diff-lang-overlay';
   overlay.setAttribute('diff-temp-dom', '');
-  overlay.style.backgroundColor = isUpstream
-    ? DIFF.UPSTREAM.BG
-    : DIFF.LOCAL.BG;
 
   const dialog = document.createElement('div');
   dialog.className = 'loc-dialog';
   dialog.innerHTML = `
-    <span>${isUpstream ? DIFF.UPSTREAM.TEXT : DIFF.LOCAL.TEXT}</span>
+    <span>${isUpstream ? 'Upstream Content' : 'Local Content'}</span>
     <div>
     <span class="diff-keep"><div title="Keep">Keep</div></span>
     <span class="diff-delete"><div title="Delete">Delete</div></span>
     </div>`;
-  dialog.style.color = isUpstream
-    ? DIFF.UPSTREAM.TEXT_COLOR
-    : DIFF.LOCAL.TEXT_COLOR;
 
   const deleteBtn = dialog.querySelector('.diff-delete');
   const keepBtn = dialog.querySelector('.diff-keep');
