@@ -44,8 +44,6 @@ let lastCursorPosition = null;
 let daPreview;
 let updatePoller;
 
-const debouncedCheckForLocNodes = debounce(checkForLocNodes, 500);
-
 function dispatchTransaction(transaction) {
   if (!window.view) return;
 
@@ -58,7 +56,7 @@ function dispatchTransaction(transaction) {
   window.view.updateState(newState);
 
   if (transaction.docChanged) {
-    debouncedCheckForLocNodes(window.view);
+    debounce(checkForLocNodes, 500)(window.view);
   }
 }
 
