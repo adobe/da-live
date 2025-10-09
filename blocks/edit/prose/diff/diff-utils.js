@@ -345,7 +345,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       const tabContent = createTabContent(deletedContent, addedContent);
 
       const colorOverlay = createElement('div', 'loc-tabbed-color-overlay');
-      colorOverlay.classList.add('diff-bg-local');
+      colorOverlay.classList.add('diff-bg-local'); // initial view
 
       let actions;
 
@@ -357,12 +357,12 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
 
         if (targetTab === 'added') {
           colorOverlay.style.display = 'block';
-          colorOverlay.classList.add('diff-bg-local');
+          colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-local';
         } else if (targetTab === 'deleted') {
           colorOverlay.style.display = 'block';
-          colorOverlay.classList.add('diff-bg-upstream');
+          colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-upstream';
         } else if (targetTab === 'diff') {
-          colorOverlay.classList.add('diff-bg-diff');
+          colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-diff';
 
           const diffTab = tabContent.querySelector('[data-tab="diff"]');
           if (diffTab && !diffTab.loaded) {

@@ -18,7 +18,7 @@ const NODE = {
 };
 
 let globalDialog = null;
-function hideGlobalDialog() {
+export function hideGlobalDialog() {
   if (globalDialog?.parentNode) {
     const proseMirrorContainer = globalDialog.parentNode;
     proseMirrorContainer.classList.remove('has-regional-edits');
@@ -69,7 +69,7 @@ function processLocNode(tr, node, pos, action, simpleFilterContent) {
     return tr.delete(pos, pos + node.nodeSize);
   }
 
-  return tr;
+  return null;
 }
 
 function processViewNodes(view, action, simpleFilterContent, isLocNode) {
@@ -82,7 +82,7 @@ function processViewNodes(view, action, simpleFilterContent, isLocNode) {
   for (const { node, pos } of locNodes) {
     try {
       const newTr = processLocNode(tr, node, pos, action, simpleFilterContent);
-      if (newTr !== tr) {
+      if (newTr !== null) {
         tr = newTr;
         hasChanges = true;
       }
