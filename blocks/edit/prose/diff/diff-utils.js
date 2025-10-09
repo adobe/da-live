@@ -196,8 +196,8 @@ function checkForLocNodes(view) {
 // Lazy load diff generation
 async function generateDiff(deletedContent, addedContent) {
   try {
-    const diffUtils = await import('./utils.js');
-    return diffUtils.generateDiff(deletedContent, addedContent);
+    const gdUtils = await import('./generate-diff.js');
+    return gdUtils.generateDiff(deletedContent, addedContent);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load diff utilities:', error);
