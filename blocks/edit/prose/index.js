@@ -305,12 +305,12 @@ export default function initProse({ path, permissions }) {
     state,
     dispatchTransaction,
     nodeViews: {
-      loc_added(node, view, getPos) {
-        const LocAddedView = getLocClass('da-loc-added', getSchema, dispatchTransaction, { isUpstream: false });
+      diff_added(node, view, getPos) {
+        const LocAddedView = getDiffClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false });
         return new LocAddedView(node, view, getPos);
       },
-      loc_deleted(node, view, getPos) {
-        const LocDeletedView = getLocClass('da-loc-deleted', getSchema, dispatchTransaction, { isUpstream: true });
+      diff_deleted(node, view, getPos) {
+        const LocDeletedView = getDiffClass('da-diff-deleted', getSchema, dispatchTransaction, { isUpstream: true });
         return new LocDeletedView(node, view, getPos);
       },
     },

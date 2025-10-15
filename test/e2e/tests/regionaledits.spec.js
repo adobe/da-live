@@ -48,8 +48,9 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   await page.getByRole('link', { name: 'regionaledit', exact: true }).click();
 
   const newPage = await findPageTab('Edit regionaledit', page, context);
-  await expect(newPage.locator('div.diff-tabbed-actions.loc-floating-overlay')).toBeVisible();
-  await expect(newPage.locator('div.da-diff-btn.is-local.is-active')).toBeVisible();
+
+  await expect(newPage.locator('div.diff-color-overlay.diff-upstream')).toBeVisible();
+  await expect(newPage.locator('div.diff-color-overlay.diff-local')).toBeVisible();
 
   await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
   await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
