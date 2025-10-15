@@ -346,3 +346,31 @@ export async function requestRole(org, site, action) {
 export function parse(inital) {
   return new DOMParser().parseFromString(inital, 'text/html');
 }
+
+export function debounce(func, wait) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+export function createElement(tag, className = '', attributes = {}) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  Object.entries(attributes).forEach(([key, value]) => {
+    element.setAttribute(key, value);
+  });
+  return element;
+}
+
+export function createTooltip(text, className) {
+  const tooltip = createElement('span', className);
+  tooltip.textContent = text;
+  return tooltip;
+}
+
+export function createButton(className, type = 'button', attributes = {}) {
+  const button = createElement('button', className, { type, ...attributes });
+  return button;
+}

@@ -1,0 +1,420 @@
+/* stylelint-disable selector-class-pattern */
+
+da-loc-deleted,
+da-loc-added,
+.da-loc-deleted-style,
+.da-loc-added-style {
+  display: block;
+  position: relative;
+}
+
+.loc-color-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+}
+
+.loc-lang-overlay {
+  z-index: 1001;
+}
+
+.loc-tabbed-container {
+  display: block;
+  position: relative;
+  margin: 10px 0;
+  background: #fff;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+  z-index: 1000;
+}
+
+.loc-tab-nav {
+  display: none;
+}
+
+.diff-tab-content {
+  position: relative;
+  min-height: 100px;
+  background: #fff;
+  overflow: clip;
+}
+
+.diff-tab-pane {
+  display: none;
+}
+
+.diff-tab-pane.active {
+  display: block;
+}
+
+.diff-tab-pane > p:empty {
+  margin: 0;
+  height: 0;
+}
+
+.loc-floating-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding: 50px 12px 12px 0;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.diff-tabbed-actions {
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  border: 0;
+  z-index: 2000;
+}
+
+.loc-sticky-buttons {
+  position: sticky;
+  top: 0;
+  bottom: 14px;
+  pointer-events: auto;
+}
+
+.diff-action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.da-diff-btn-base {
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: visible;
+  height: 30px;
+  border: 2px solid transparent;
+}
+
+.da-diff-btn-base-element {
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+}
+
+.da-diff-btn .switch-btn,
+.da-diff-btn .confirm-btn {
+  padding: 6px 14px;
+}
+
+.da-diff-btn .switch-btn {
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  position: relative;
+}
+
+.da-diff-btn .confirm-btn {
+  width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 0 6px 6px 0;
+}
+
+.da-diff-btn .confirm-btn::before {
+  content: "✓";
+  font-weight: 800;
+  position: relative;
+  z-index: 1;
+}
+
+.diff-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 50%;
+  transform: translateX(50%) translateY(4px);
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 6px 9px;
+  border-radius: 6px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 40%), 0 2px 4px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 10%);
+  white-space: nowrap;
+  opacity: 0;
+  /* stylelint-disable-next-line max-line-length */
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 2500;
+  visibility: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.diff-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-top: 5px solid #1a1a1a;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 30%));
+}
+
+.diff-tooltip::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-top: 6px solid rgb(255 255 255 / 10%);
+  z-index: -1;
+}
+
+.confirm-btn:hover .diff-tooltip,
+.confirm-btn:focus .diff-tooltip {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
+  visibility: visible;
+}
+
+.da-diff-btn.is-local .switch-btn {
+  color: #fff;
+  background: #7c1dcb;
+}
+
+.da-diff-btn.is-local .confirm-btn {
+  background: #4f0f82;
+}
+
+.da-diff-btn.is-upstream .switch-btn {
+  background: #3a84bf;
+}
+
+.da-diff-btn.is-upstream .confirm-btn {
+  background: #23557a;
+}
+
+.da-diff-btn.is-diff .switch-btn {
+  background: #204fcb;
+}
+
+.da-diff-btn.is-diff .confirm-btn {
+  background: #113282;
+}
+
+.da-diff-btn .confirm-btn:hover {
+  color: #000;
+}
+
+.da-diff-btn.is-active {
+  border-color: #333;
+}
+
+.da-diff-btn.is-active .switch-btn,
+.da-diff-btn.is-active .confirm-btn {
+  color: #e6e6e6;
+}
+
+.da-diff-btn-3part .diff-label {
+  padding: 6px 14px;
+  border-radius: 6px 0 0 6px;
+  cursor: default;
+  pointer-events: none;
+}
+
+.da-diff-btn-3part .diff-accept {
+  width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 0;
+}
+
+.da-diff-btn-3part .diff-accept::before {
+  content: "✓";
+  font-weight: 800;
+  position: relative;
+  z-index: 1;
+}
+
+.da-diff-btn-3part .diff-delete {
+  width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 0 6px 6px 0;
+}
+
+.da-diff-btn-3part .diff-delete::before {
+  content: "✕";
+  font-weight: 800;
+  position: relative;
+  z-index: 1;
+}
+
+.da-diff-btn-3part.is-local .diff-label {
+  background: #7c1dcb;
+}
+
+.da-diff-btn-3part.is-local .diff-accept {
+  background: #4f0f82;
+}
+
+.da-diff-btn-3part.is-local .diff-delete {
+  background: #3d0c65;
+}
+
+.da-diff-btn-3part.is-upstream .diff-label {
+  background: #3a84bf;
+}
+
+.da-diff-btn-3part.is-upstream .diff-accept {
+  background: #23557a;
+}
+
+.da-diff-btn-3part.is-upstream .diff-delete {
+  background: #1a4059;
+}
+
+.da-diff-btn-3part .diff-accept:hover,
+.da-diff-btn-3part .diff-delete:hover {
+  color: #000;
+}
+
+.da-diff-btn-3part .diff-accept:hover .diff-tooltip,
+.da-diff-btn-3part .diff-accept:focus .diff-tooltip,
+.da-diff-btn-3part .diff-delete:hover .diff-tooltip,
+.da-diff-btn-3part .diff-delete:focus .diff-tooltip,
+.da-diff-btn:not(.is-active) .switch-btn:hover .diff-tooltip,
+.da-diff-btn:not(.is-active) .switch-btn:focus .diff-tooltip {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
+  visibility: visible;
+}
+
+.loc-tabbed-color-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@media (max-width: 600px) {
+  .loc-tab-button {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+
+  .diff-action-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .loc-action-btn {
+    min-width: 120px;
+  }
+}
+
+.diff-tab-pane del.diffdel,
+.diff-tab-pane del.diffmod {
+  background-color: #ffebee;
+  color: #c62828;
+  text-decoration: line-through;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #ef9a9a;
+}
+
+.diff-tab-pane ins.diffins,
+.diff-tab-pane ins.diffmod {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #a5d6a7;
+}
+
+.diff-tab-pane del.diffmod {
+  background-color: #fff3e0;
+  color: #ef6c00;
+  border-color: #ffcc02;
+}
+
+.diff-tab-pane ins.diffmod {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border-color: #90caf9;
+}
+
+.diff-tab-pane[data-tab="diff"] p,
+.diff-tab-pane[data-tab="diff"] table,
+.diff-tab-pane[data-tab="diff"] tr,
+.diff-tab-pane[data-tab="diff"] td {
+  margin: 0;
+}
+
+.diff-tab-pane[data-tab="diff"] table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.diff-tab-pane[data-tab="diff"] td {
+  border: 1px solid #e0e0e0;
+  vertical-align: top;
+}
+
+.diff-bg-local {
+  background-color: rgb(144 42 222 / 20%);
+}
+
+.diff-bg-upstream {
+  background-color: rgb(70 130 180 / 20%);
+}
+
+.diff-bg-diff {
+  background-color: rgb(150 150 150 / 10%);
+}
+
+.da-regional-edits-overlay {
+  display: none;
+  position: absolute;
+  right: -48px;
+  z-index: 1500;
+  padding: 16px 20px;
+  margin: 0 48px;
+  box-sizing: border-box;
+}
+
+.da-regional-edits-overlay.show {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.da-regional-edits-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.da-prose-mirror.has-regional-edits .ProseMirror {
+  padding-top: 60px;
+}

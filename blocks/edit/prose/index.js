@@ -2,7 +2,6 @@
 import {
   EditorState,
   EditorView,
-  history,
   buildKeymap,
   keymap,
   baseKeymap,
@@ -33,7 +32,8 @@ import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
-import { getDiffClass } from './diff-utils.js';
+import { debounce } from '../utils/helpers.js';
+import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
@@ -51,8 +51,13 @@ function dispatchTransaction(transaction) {
     hasChanged += 1;
     sendUpdates = true;
   }
+
   const newState = window.view.state.apply(transaction);
   window.view.updateState(newState);
+
+  if (transaction.docChanged) {
+    debounce(checkForLocNodes, 500)(window.view);
+  }
 }
 
 function setPreviewBody() {
@@ -287,7 +292,6 @@ export default function initProse({ path, permissions }) {
     }),
     gapCursor(),
     tableEditing(),
-    history(),
   ];
 
   if (canWrite) plugins.push(menu);
@@ -322,6 +326,12 @@ export default function initProse({ path, permissions }) {
     },
     editable() { return canWrite; },
   });
+
+  // Register view for global dialog management
+  addActiveView(window.view);
+
+  // Check for initial regional edits
+  setTimeout(() => checkForLocNodes(window.view), 100);
 
   handleProseLoaded(editor, permissions);
 
