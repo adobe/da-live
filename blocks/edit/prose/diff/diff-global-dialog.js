@@ -13,8 +13,8 @@ const KEEP_LOCAL = 'keep-local';
 const KEEP_UPSTREAM = 'keep-upstream';
 
 const NODE = {
-  DELETED: 'loc_deleted',
-  ADDED: 'loc_added',
+  DELETED: 'diff_deleted',
+  ADDED: 'diff_added',
 };
 
 let globalDialog = null;

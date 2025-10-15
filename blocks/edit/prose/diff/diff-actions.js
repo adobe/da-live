@@ -168,7 +168,7 @@ export function getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, 
 
       if (canFormLocPair(currentNode, nextSibling)) {
         // We have a valid pair
-        if (currentNode.type.name === 'loc_deleted') {
+        if (currentNode.type.name === 'diff_deleted') {
           return {
             deletedPos: currentPos,
             addedPos: currentPos + currentNode.nodeSize,

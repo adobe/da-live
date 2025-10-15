@@ -844,26 +844,6 @@ da-diff-deleted, da-diff-added {
   box-shadow: rgb(181 181 181) 0 0 5px 0;
 }
 
-.diff-keep {
-  width: 44px;
-  height: 44px;
-  background: url('/blocks/edit/img/Smock_CheckmarkCircleOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
-}
-
-.diff-keep:hover {
-  box-shadow: #008000 0 0 5px 0;
-}
-
-.diff-delete {
-  width: 44px;
-  height: 44px;
-  background: url('/blocks/edit/img/Smock_DeleteOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
-}
-
-.diff-delete:hover {
-  box-shadow: #f00 0 0 5px 0;
-}
-
 .diff-color-overlay {
   position: absolute;
   top: 0;

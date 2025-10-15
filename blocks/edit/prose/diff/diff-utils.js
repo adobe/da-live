@@ -35,7 +35,7 @@ function createContentTransaction(view, startPos, endPos, filteredContent) {
 }
 
 function isLocNode(node) {
-  return node?.type?.name === 'loc_deleted' || node?.type?.name === 'loc_added';
+  return node?.type?.name === 'diff_deleted' || node?.type?.name === 'diff_added';
 }
 
 function isValidPosition(pos) {
@@ -173,7 +173,7 @@ function checkForLocNodes(view) {
   const { doc } = view.state;
   let hasLocNodes = false;
 
-  // Since loc_deleted and loc_added nodes are only one level deep,
+  // Since diff_deleted and diff_added nodes are only one level deep,
   // we only need to check the immediate children of the document
   for (let i = 0; i < doc.childCount; i += 1) {
     const node = doc.child(i);
@@ -270,7 +270,7 @@ export function addActiveView(view) {
 
 export { checkForLocNodes };
 
-export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {
+export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {
   return class {
     constructor(node, view, getPos) {
       this.node = node;
@@ -326,7 +326,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
       let addedNode;
       let deletedPos;
       let addedPos;
-      if (nodeA.type.name === 'loc_deleted') {
+      if (nodeA.type.name === 'diff_deleted') {
         deletedNode = nodeA;
         addedNode = nodeB;
         deletedPos = this.getPos();
@@ -413,7 +413,7 @@ export function getLocClass(elName, getSchema, dispatchTransaction, { isUpstream
     renderSingleNode(node, view, pos, upstream) {
       loadLocCss();
 
-      const isDeleted = node.type.name === 'loc_deleted';
+      const isDeleted = node.type.name === 'diff_deleted';
       const viewClass = isDeleted ? 'loc-deleted-view' : 'loc-added-view';
       const styleClass = isDeleted ? 'da-loc-deleted-style' : 'da-loc-added-style';
 

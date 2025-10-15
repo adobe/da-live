@@ -33,7 +33,7 @@ import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { debounce } from '../utils/helpers.js';
-import { getLocClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
+import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
@@ -306,11 +306,11 @@ export default function initProse({ path, permissions }) {
     dispatchTransaction,
     nodeViews: {
       diff_added(node, view, getPos) {
-        const LocAddedView = getLocClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false });
+        const LocAddedView = getDiffClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false });
         return new LocAddedView(node, view, getPos);
       },
       diff_deleted(node, view, getPos) {
-        const LocDeletedView = getLocClass('da-diff-deleted', getSchema, dispatchTransaction, { isUpstream: true });
+        const LocDeletedView = getDiffClass('da-diff-deleted', getSchema, dispatchTransaction, { isUpstream: true });
         return new LocDeletedView(node, view, getPos);
       },
     },

@@ -30,7 +30,9 @@ function trimEmptyParagraphs(html) {
 export function generateDiff(deletedContent, addedContent) {
   try {
     const deletedHTMLString = fragmentToHTML(deletedContent);
-    const addedHTMLString = fragmentToHTML(addedContent);
+    const addedHTMLString = fragmentToHTML(addedContent)
+      .replaceAll(' da-diff-added=""', '')
+      .replaceAll(' dadiffadded=""', '');
 
     const tempDelDiv = document.createElement('div');
     tempDelDiv.innerHTML = deletedHTMLString;
