@@ -1,8 +1,53 @@
 /* eslint-disable max-len */
+/* global view */
 // User action handlers - only loaded when user actually clicks action buttons
 
-import { Fragment, Slice } from 'da-y-wrapper';
+import { DOMSerializer, Fragment, Slice } from 'da-y-wrapper';
 import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
+import prose2aem from '../../../shared/prose2aem.js';
+
+const HASH_LENGTH = 12;
+const REJECTED_KEY = 'rejectedHashes';
+const ACCEPTED_KEY = 'acceptedHashes';
+
+let objectHashLoaded = false;
+const objHash = async (obj) => {
+  if (!objectHashLoaded) {
+    await import('./object_hash.js');
+    objectHashLoaded = true;
+  }
+  return window.objectHash(obj).substring(0, HASH_LENGTH);
+};
+
+const isTableNode = (node) => (node.content?.content?.length === 3 && node.content.content[1].type.name === 'table');
+
+function nodeToHtml(node) {
+  // const t = prose2aem(node, false);
+  // console.log('Node HTML:', t);
+
+  // Create a serializer from the schema
+  const serializer = DOMSerializer.fromSchema(view.state.schema);
+
+  // Create a DOM fragment from the node
+  const fragment = serializer.serializeFragment(node.content);
+
+  // Convert the DOM fragment to HTML string
+  const div = document.createElement('div');
+  if (isTableNode(node)) {
+    div.classList.add('tableWrapper');
+  }
+  div.appendChild(fragment);
+  const aem = prose2aem(div, true, true);
+  return aem;
+}
+
+const addToHashMetadata = async (node, mdKey) => {
+  const hash = await objHash(nodeToHtml(node));
+  const hashStr = view.getDaMetadata(mdKey);
+  const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
+  hashes.add(hash);
+  view.setDaMetadata(mdKey, Array.from(hashes).join(','));
+};
 
 function createCompositeButton({
   label, id, handler, variant, tooltip, switchTooltip, isActive = false,
@@ -89,6 +134,8 @@ export function handleDeleteSingleNode(view, getPos, isValidPosition, isLocNode)
       return;
     }
 
+    addToHashMetadata(currentNode, REJECTED_KEY);
+
     // Check if parent is a list item for special handling
     if (resolvedPos.parent.type.name === 'list_item') {
       const parentPos = resolvedPos.before(resolvedPos.depth);
@@ -130,6 +177,8 @@ export function handleKeepSingleNode(view, getPos, isValidPosition, isLocNode, f
       console.warn('Current node is not a loc node');
       return;
     }
+
+    addToHashMetadata(currentNode, ACCEPTED_KEY);
 
     // Use the improved content filtering like the tabbed interface
     const filteredContent = filterNodeContent(currentNode);
@@ -204,7 +253,7 @@ export function getPairRange(pair) {
   };
 }
 
-export function handleKeepDeleted(view, getPos, isValidPosition, isLocNode, canFormLocPair, filterNodeContent, dispatchContentTransaction) {
+export async function handleKeepDeleted(view, getPos, isValidPosition, isLocNode, canFormLocPair, filterNodeContent, dispatchContentTransaction) {
   const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
   if (!currentPair) {
     // eslint-disable-next-line no-console
@@ -212,9 +261,12 @@ export function handleKeepDeleted(view, getPos, isValidPosition, isLocNode, canF
     return;
   }
 
-  const { deletedNode: currentDeletedNode } = currentPair;
+  const { addedNode, deletedNode } = currentPair;
 
-  const filteredContent = filterNodeContent(currentDeletedNode);
+  addToHashMetadata(addedNode, REJECTED_KEY);
+  addToHashMetadata(deletedNode, ACCEPTED_KEY);
+
+  const filteredContent = filterNodeContent(deletedNode);
   const { startPos, endPos } = getPairRange(currentPair);
 
   dispatchContentTransaction(startPos, endPos, filteredContent);
@@ -228,9 +280,12 @@ export function handleKeepAdded(view, getPos, isValidPosition, isLocNode, canFor
     return;
   }
 
-  const { addedNode: currentAddedNode } = currentPair;
+  const { addedNode, deletedNode } = currentPair;
 
-  const filteredContent = filterNodeContent(currentAddedNode);
+  addToHashMetadata(addedNode, ACCEPTED_KEY);
+  addToHashMetadata(deletedNode, REJECTED_KEY);
+
+  const filteredContent = filterNodeContent(addedNode);
   const { startPos, endPos } = getPairRange(currentPair);
 
   dispatchContentTransaction(startPos, endPos, filteredContent);
@@ -244,13 +299,13 @@ export function handleKeepBoth(view, getPos, isValidPosition, isLocNode, canForm
     return;
   }
 
-  const {
-    deletedNode: currentDeletedNode,
-    addedNode: currentAddedNode,
-  } = currentPair;
+  const { deletedNode, addedNode } = currentPair;
 
-  const deletedContent = filterNodeContent(currentDeletedNode);
-  const addedContent = filterNodeContent(currentAddedNode);
+  addToHashMetadata(addedNode, ACCEPTED_KEY);
+  addToHashMetadata(deletedNode, ACCEPTED_KEY);
+
+  const deletedContent = filterNodeContent(deletedNode);
+  const addedContent = filterNodeContent(addedNode);
   const combinedContent = [...deletedContent, ...addedContent];
   const { startPos, endPos } = getPairRange(currentPair);
 

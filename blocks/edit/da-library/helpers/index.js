@@ -1,5 +1,6 @@
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
-import { getMetadata, parseDom } from './helpers.js';
+import { getMetadata } from '../../utils/helpers.js';
+import { parseDom } from './helpers.js';
 
 const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 
