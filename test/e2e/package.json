@@ -5,12 +5,14 @@
     "test": "playwright test --project=chromium",
     "test:install": "playwright install",
     "test:all": "playwright test --project=chromium --project=firefox # limit to Chromium and FF as webkit currently fails",
-    "test:nonauth": "SKIP_AUTH=true playwright test --project=chromium tests/*.spec.js",
+    "test:nonauth": "SKIP_AUTH=true playwright test --project=chromium tests/regionaledits.spec.js",
     "test:ui": "playwright test --project=chromium --ui",
-    "test:debug": "playwright test --project=chromium --debug",
+    "test:debug": "SKIP_AUTH=true playwright test --project=chromium --debug tests/regionaledits.spec.js",
     "test:report": "playwright show-report"
   },
-  "keywords": ["test"],
+  "keywords": [
+    "test"
+  ],
   "devDependencies": {
     "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.2"

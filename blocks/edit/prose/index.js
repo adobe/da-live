@@ -237,27 +237,19 @@ export default function initProse({ path, permissions }) {
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
   if (window.adobeIMS?.isSignedInUser()) {
-    window.adobeIMS.getProfile().then(
-      (profile) => {
-        wsProvider.awareness.setLocalStateField(
-          'user',
-          {
-            color: generateColor(profile.email || profile.userId),
-            name: profile.displayName,
-            id: profile.userId,
-          },
-        );
-      },
-    );
+    window.adobeIMS.getProfile().then((profile) => {
+      wsProvider.awareness.setLocalStateField('user', {
+        color: generateColor(profile.email || profile.userId),
+        name: profile.displayName,
+        id: profile.userId,
+      });
+    });
   } else {
-    wsProvider.awareness.setLocalStateField(
-      'user',
-      {
-        color: generateColor(`${wsProvider.awareness.clientID}`),
-        name: 'Anonymous',
-        id: `anonymous-${wsProvider.awareness.clientID}}`,
-      },
-    );
+    wsProvider.awareness.setLocalStateField('user', {
+      color: generateColor(`${wsProvider.awareness.clientID}`),
+      name: 'Anonymous',
+      id: `anonymous-${wsProvider.awareness.clientID}}`,
+    });
   }
 
   const plugins = [
@@ -281,7 +273,8 @@ export default function initProse({ path, permissions }) {
       'Mod-y': handleRedo,
       'Mod-Shift-z': handleRedo,
       'Mod-Shift-l': toggleLibrary,
-      'Mod-k': (state, dispatch, view) => { // toggle link prompt
+      'Mod-k': (state, dispatch, view) => {
+        // toggle link prompt
         const linkMarkType = state.schema.marks.link;
         const linkMenuItem = linkItem(linkMarkType);
         return linkMenuItem.spec.run(state, dispatch, view);
@@ -330,7 +323,9 @@ export default function initProse({ path, permissions }) {
         return false;
       },
     },
-    editable() { return canWrite; },
+    editable() {
+      return canWrite;
+    },
   });
 
   // Register view for global dialog management
@@ -338,6 +333,23 @@ export default function initProse({ path, permissions }) {
 
   // Check for initial regional edits
   setTimeout(() => checkForLocNodes(window.view), 100);
+
+  // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
+  const daMdMap = ydoc.getMap('daMetadata');
+  window.view.setDaMetadata = (key, value) => {
+    if (value === null || value === undefined) {
+      daMdMap.delete(key);
+    } else {
+      daMdMap.set(key, value);
+    }
+  };
+
+  window.view.getDaMetadata = (key) => {
+    if (key) {
+      return daMdMap.get(key) || null;
+    }
+    return Object.fromEntries(daMdMap);
+  };
 
   handleProseLoaded(editor, permissions);
 
