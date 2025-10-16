@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Structured Content on EDS - Autumn Wardrobe Essentials Demo</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --panel-2: #fafbff;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-2: #1d4ed8;
+      --border: #e5e7eb;
+      --code-bg: #f3f4f6;
+      --success: #16a34a;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    h2 {
+      font-size: 22px;
+      margin-top: 28px;
+    }
+
+    h3 {
+      font-size: 16px;
+      margin-top: 20px;
+    }
+
+    p,
+    li {
+      color: var(--text);
+    }
+
+    .intro,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .intro {
+      padding: 16px 18px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 900px) {
+      .grid-two {
+        grid-template-columns: 1.1fr 1.8fr;
+      }
+    }
+
+    .block {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    .tabs {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .tab-btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .tab-btn[aria-selected="true"] {
+      background: var(--accent);
+      border-color: var(--accent-2);
+      color: white;
+    }
+
+    .content {
+      padding: 10px 12px;
+    }
+
+    pre {
+      margin: 0;
+      background: var(--code-bg);
+      color: #111827;
+      padding: 12px;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .img-wrap {
+      display: grid;
+      place-items: center;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .img-wrap img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .step {
+      margin-top: 28px;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .kpi {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    a {
+      color: var(--accent-2);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Inline code highlight (for property names in descriptions) */
+    p code,
+    li code,
+    .hint code {
+      color: var(--accent-2);
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(37, 99, 235, 0.25);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
+
+    /* Resources section */
+    .resources {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    @media (min-width: 900px) {
+      .resources {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    .resource-card {
+      display: block;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      text-decoration: none;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    .resource-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+    }
+
+    .resource-kicker {
+      font-size: 11px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .resource-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .resource-action {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+
+    .resource-card {
+      position: relative;
+    }
+
+    .resource-card:hover .resource-action {
+      color: var(--accent);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Structured Content on EDS - Autumn Wardrobe Essentials Demo</h1>
+
+    <div class="intro">
+      <p>Structured Content on EDS adds first‑class support for authoring and delivering structured
+        content on EDS. The project provides an EDS app with a form‑based editor that lets customers manage and save
+        structured content. Authored data is stored as an EDS document and delivered via headless delivery.</p>
+      <p>At the core is a customer‑owned JSON Schema, stored in the customer’s EDS Git repository. This
+        schema serves as the single source of truth: the application builds the authoring UI from it, validates inputs
+        against it, and defines the structure of the delivered JSON.</p>
+      <div class="kpis">
+        <div class="kpi"><strong>Schema</strong><br><span class="muted">Customer-owned JSON Schema</span></div>
+        <div class="kpi"><strong>UI</strong><br><span class="muted">Auto-generated from schema</span></div>
+        <div class="kpi"><strong>Storage</strong><br><span class="muted">Author Bus</span></div>
+        <div class="kpi"><strong>Delivery</strong><br><span class="muted">JSON Delivery</span></div>
+      </div>
+      <h3 style="margin-top:16px;">Preview</h3>
+      <div class="img-wrap" style="margin-top:8px;">
+        <img src="./static/preview.png" alt="Flat Preview" />
+      </div>
+    </div>
+
+    <h2 style="margin-top:24px;">UI capabilities</h2>
+    <ul>
+      <li><strong>Nested structures</strong>: primitives, nested objects, arrays of primitives, arrays of objects
+        (single-level, non-repeating).</li>
+      <li><strong>Navigation for nesting</strong>: a navigation that helps authors move through nested objects and
+        groups while the content area stays flat.</li>
+      <li><strong>Active section highlighting</strong>: blue vertical line shows the currently authored section.</li>
+      <li><strong>Validation</strong>: client-side; error counts by group; click to jump and scroll to first error.</li>
+      <li><strong>Asset picking</strong>: integrates with AEM Asset Picker (AEM Author / Dynamic Media).</li>
+    </ul>
+
+    <h3>Flat authoring concept</h3>
+    <p>The UI separates navigation (for nested structures) from a flat, spacious content area. This
+      provides an optimal authoring experience even with deep nesting.</p>
+    <div class="img-wrap" style="margin:8px 0 16px 0;">
+      <img src="./static/flat-structure.png" alt="Flat authoring concept" />
+    </div>
+
+    <h2>DEMO</h2>
+    <p>Four incremental steps demonstrate how schema changes update the UI and the JSON Delivery.</p>
+
+    <!-- STEP 1 -->
+    <section class="step" id="step-1">
+      <h3>Step 1 — Base article</h3>
+      <div class="panel" style="padding:10px 12px; margin-bottom:10px;">
+        <ul>
+          <li><strong>Schema changes</strong>: Introduces base fields <code>articleId</code>, <code>title</code>,
+            <code>publishedDate</code> (date), and <code>tags</code> (array of strings). Requires
+            <code>articleId</code>, <code>title</code>, and <code>publishedDate</code>.
+          </li>
+          <li><strong>UI changes</strong>: Renders a single section with inputs for <code>articleId</code>,
+            <code>title</code>, <code>publishedDate</code>,
+            and <code>tags</code>. The <code>publishedDate</code> uses a date input; <code>tags</code> support unique
+            entries. Required fields show validation on blur/save.
+          </li>
+          <li><strong>JSON Delivery changes</strong>: The delivered JSON contains the base fields only under the section
+            keyed by the local schema reference.</li>
+        </ul>
+      </div>
+
+
+
+      <div class="grid-two">
+        <!-- Left: Schema -->
+        <div class="block" data-step="1">
+          <div class="block-header">
+            <div>Schema</div>
+          </div>
+          <div class="content">
+            <pre><code id="schema-out-1">Loading…</code></pre>
+          </div>
+        </div>
+        <!-- Right: UI or JSON Delivery -->
+        <div class="block">
+          <div class="block-header">
+            <div>Output</div>
+            <div class="tabs" role="tablist" aria-label="Output view">
+              <button class="tab-btn" role="tab" aria-selected="true" data-role="output" data-mode="ui"
+                data-step="1">UI</button>
+              <button class="tab-btn" role="tab" aria-selected="false" data-role="output" data-mode="json"
+                data-step="1">JSON</button>
+            </div>
+          </div>
+          <div class="content" id="output-wrap-1">
+            <div class="img-wrap"><img src="./static/ui.s1.png" alt="UI — Base article metadata" /></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="step" id="step-2">
+      <h3>Step 2 — Add author object</h3>
+      <div class="panel" style="padding:10px 12px; margin-bottom:10px;">
+        <ul>
+          <li><strong>Schema changes</strong>: Adds an <code>author</code> object with <code>name</code> (required) and
+            <code>bio</code> (long-text). Marks <code>author</code> as required.
+          </li>
+          <li><strong>UI changes</strong>: Adds an Author section with <code>name</code> and <code>bio</code> fields.
+            <code>name</code> is required; <code>bio</code>
+            is a larger text area. Navigation now includes an <code>author</code> entry, showing the nesting level
+            visually, while the
+            content area maintains a flat structure.
+          </li>
+          <li><strong>JSON Delivery changes</strong>: Adds an <code>author</code> object with the provided
+            <code>name</code> and <code>bio</code> values.
+          </li>
+        </ul>
+      </div>
+      <div class="grid-two">
+        <div class="block" data-step="2">
+          <div class="block-header">
+            <div>Schema</div>
+            <div class="tabs" role="tablist" aria-label="Schema view">
+              <button class="tab-btn" role="tab" aria-selected="true" data-role="schema" data-mode="highlight"
+                data-step="2">Highlight</button>
+              <button class="tab-btn" role="tab" aria-selected="false" data-role="schema" data-mode="full"
+                data-step="2">Full</button>
+            </div>
+          </div>
+          <div class="content">
+            <pre><code id="schema-out-2">Loading…</code></pre>
+          </div>
+        </div>
+        <div class="block">
+          <div class="block-header">
+            <div>Output</div>
+            <div class="tabs" role="tablist" aria-label="Output view">
+              <button class="tab-btn" role="tab" aria-selected="true" data-role="output" data-mode="ui"
+                data-step="2">UI</button>
+              <button class="tab-btn" role="tab" aria-selected="false" data-role="output" data-mode="json"
+                data-step="2">JSON</button>
+            </div>
+          </div>
+          <div class="content" id="output-wrap-2">
+            <div class="img-wrap"><img src="./static/ui.s2.png" alt="UI — Author object" /></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="step" id="step-3">
+      <h3>Step 3 — Add images (author profile + cover)</h3>
+      <div class="panel" style="padding:10px 12px; margin-bottom:10px;">
+        <ul>
+          <li><strong>Schema changes</strong>: Extends <code>author</code> with a <code>profileImage</code> object and
+            adds a top-level <code>coverImage</code>. Both image objects have required <code>url</code> and optional
+            <code>altText</code>.
+          </li>
+          <li><strong>UI changes</strong>: Image pickers are added for the Author
+            <code>profileImage.url</code>/<code>altText</code> and the
+            <code>coverImage.url</code>/<code>altText</code>. <code>url</code> is required; <code>altText</code> is
+            optional. If integrated, the asset picker can be used to choose images. Navigation
+            shows the <code>profileImage</code> nested under <code>author</code>, as defined by the JSON schema.
+          </li>
+          <li><strong>JSON Delivery changes</strong>: JSON now includes <code>author.profileImage</code> and
+            <code>coverImage</code> objects populated with asset URLs and alt text.
+          </li>
+        </ul>
+      </div>
+      <div class="grid-two">
+        <div class="block" data-step="3">
+          <div class="block-header">
+            <div>Schema</div>
+            <div class="tabs" role="tablist" aria-label="Schema view">
+              <button class="tab-btn" role="tab" aria-selected="true" data-role="schema" data-mode="highlight"
+                data-step="3">Highlight</button>
+              <button class="tab-btn" role="tab" aria-selected="false" data-role="schema" data-mode="full"
+                data-step="3">Full</button>
+            </div>
+          </div>
+          <div class="content">
+            <pre><code id="schema-out-3">Loading…</code></pre>
+          </div>
+        </div>
+        <div class="block">
+          <div class="block-header">
+            <div>Output</div>
+            <div class="tabs" role="tablist" aria-label="Output view">
+              <button class="tab-btn" role="tab" aria-selected="true" data-role="output" data-mode="ui"
+                data-step="3">UI</button>
+              <button class="tab-btn" role="tab" aria-selected="false" data-role="output" data-mode="json"
+                data-step="3">JSON</button>
+            </div>
+          </div>
+          <div class="content" id="output-wrap-3">
+            <div class="img-wrap"><img src="./static/ui.s3.png" alt="UI — Images (author profile + cover)" /></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 4 -->
+    <section class="step" id="step-4">
+      <h3>Step 4 — Add featured items (array of objects)</h3>
+      <div class="panel" style="padding:10px 12px; margin-bottom:10px;">
+        <ul>
+          <li><strong>Schema changes</strong>: Adds <code>featuredItems</code> as an array of objects, each with
+            required <code>name</code>, <code>brand</code>, and <code>price</code> (number). Requires
+            <code>featuredItems</code> at the root and enforces at least one item.
+          </li>
+          <li><strong>UI changes</strong>: A Featured Items section displays a flat list of item groups, each containing
+            <code>name</code>, <code>brand</code>, and <code>price</code> fields. Both the content area and navigation
+            provide the option to add more items.
+          </li>
+          <li><strong>JSON Delivery changes</strong>: JSON includes a <code>featuredItems</code> array where each entry
+            is a structured object for an item.</li>
+        </ul>
+      </div>
+      <div class="grid-two">
+        <div class="block" data-step="4">
+          <div class="block-header">
+            <div>Schema</div>
+            <div class="tabs" role="tablist" aria-label="Schema view">
+              <button class="tab-btn" role="tab" aria-selected="true" data-role="schema" data-mode="highlight"
+                data-step="4">Highlight</button>
+              <button class="tab-btn" role="tab" aria-selected="false" data-role="schema" data-mode="full"
+                data-step="4">Full</button>
+            </div>
+          </div>
+          <div class="content">
+            <pre><code id="schema-out-4">Loading…</code></pre>
+          </div>
+        </div>
+        <div class="block">
+          <div class="block-header">
+            <div>Output</div>
+            <div class="tabs" role="tablist" aria-label="Output view">
+              <button class="tab-btn" role="tab" aria-selected="true" data-role="output" data-mode="ui"
+                data-step="4">UI</button>
+              <button class="tab-btn" role="tab" aria-selected="false" data-role="output" data-mode="json"
+                data-step="4">JSON</button>
+            </div>
+          </div>
+          <div class="content" id="output-wrap-4">
+            <div class="img-wrap"><img src="./static/ui.s4.png" alt="UI — Featured items" /></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <h2>Additional resources</h2>
+    <div class="resources">
+      <a class="resource-card"
+        href="https://main--mhast-demo--kozmaadrian.aem.live/forms/autumn-wardrobe-essentials.schema.json"
+        target="_blank" rel="noopener noreferrer">
+        <div class="resource-kicker">Schema</div>
+        <div class="resource-title muted">JSON schema - Autumn Wardrobe Essentials</div>
+        <div class="resource-action">↗</div>
+      </a>
+      <a class="resource-card"
+        href="https://da.live/app/kozmaadrian/mhast-demo/tools/forms/editor#/kozmaadrian/mhast-demo/forms/demo/code/demo-autumn-wardrobe-essentials"
+        target="_blank" rel="noopener noreferrer">
+        <div class="resource-kicker">Document</div>
+        <div class="resource-title muted">Editor UI - Autumn Wardrobe Essentials</div>
+        <div class="resource-action">↗</div>
+      </a>
+      <a class="resource-card"
+        href="https://mhast-html-to-json.adobeaem.workers.dev/kozmaadrian/mhast-demo/forms/demo/code/demo-autumn-wardrobe-essentials?head=false&schema=true&preview=true"
+        target="_blank" rel="noopener noreferrer">
+        <div class="resource-kicker">JSON Delivery</div>
+        <div class="resource-title muted">Preview - Autumn Wardrobe Essentials</div>
+        <div class="resource-action">↗</div>
+      </a>
+      <a class="resource-card"
+        href="https://adobe.sharepoint.com/:v:/s/aemsites-engineering/Ec3iF07Qo5lJp3L-N9dQv1IBVqXco4iS7txRYu48ALGiCA?nav=eyJwbGF5YmFja09wdGlvbnMiOnsic3RhcnRUaW1lSW5TZWNvbmRzIjoxOTQ1LjA1NSwidGltZXN0YW1wZWRMaW5rUmVmZXJyZXJJbmZvIjp7InNjZW5hcmlvIjoiQ2hhcHRlclNoYXJlIiwiYWRkaXRpb25hbEluZm8iOnsiaXNTaGFyZWRDaGFwdGVyQXV0byI6dHJ1ZSwic2hhcmVkQ2hhcHRlclNvdXJjZSI6IkFDU19NZWV0aW5nTWludXRlczoifX19LCJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZUNoYXB0ZXJMaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0&e=aM0huK"
+        target="_blank" rel="noopener noreferrer">
+        <div class="resource-kicker">Previous Recording</div>
+        <div class="resource-title muted">Structured Content Delivery in Edge Delivery</div>
+        <div class="resource-action">↗</div>
+      </a>
+    </div>
+
+    <!-- Inline full schemas and previews to work over file:// -->
+    <script type="application/json" id="schema-full-1">{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/autumn-wardrobe-essentials.schema.json",
+  "title": "Autumn Wardrobe Essentials",
+  "type": "object",
+  "properties": {
+    "articleId": { "type": "string", "title": "Article ID", "minLength": 1 },
+    "title": { "type": "string", "title": "Title", "minLength": 1 },
+    "publishedDate": { "type": "string", "title": "Published Date", "format": "date", "x-semantic-type": "date" },
+    "tags": { "type": "array", "title": "Tags", "items": { "type": "string" } }
+  },
+  "required": ["articleId", "title", "publishedDate"]
+}</script>
+
+    <script type="application/json" id="schema-full-2">{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/autumn-wardrobe-essentials.schema.json",
+  "title": "Autumn Wardrobe Essentials",
+  "type": "object",
+  "properties": {
+    "articleId": { "type": "string", "title": "Article ID", "minLength": 1 },
+    "title": { "type": "string", "title": "Title", "minLength": 1 },
+    "publishedDate": { "type": "string", "title": "Published Date", "format": "date", "x-semantic-type": "date" },
+    "tags": { "type": "array", "title": "Tags", "items": { "type": "string" } },
+    "author": { "type": "object", "title": "Author", "properties": { "name": { "type": "string", "title": "Name", "minLength": 1 }, "bio": { "type": "string", "title": "Bio", "x-semantic-type": "long-text" } }, "required": ["name"] }
+  },
+  "required": ["articleId", "title", "publishedDate", "author"]
+}</script>
+
+    <script type="application/json" id="schema-full-3">{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/autumn-wardrobe-essentials.schema.json",
+  "title": "Autumn Wardrobe Essentials",
+  "type": "object",
+  "properties": {
+    "articleId": { "type": "string", "title": "Article ID", "minLength": 1 },
+    "title": { "type": "string", "title": "Title", "minLength": 1 },
+    "publishedDate": { "type": "string", "title": "Published Date", "format": "date", "x-semantic-type": "date" },
+    "tags": { "type": "array", "title": "Tags", "items": { "type": "string" } },
+    "author": { "type": "object", "title": "Author", "properties": { "name": { "type": "string", "title": "Name", "minLength": 1 }, "bio": { "type": "string", "title": "Bio", "x-semantic-type": "long-text" }, "profileImage": { "type": "object", "title": "Profile Image", "properties": { "url": { "type": "string", "title": "URL", "format": "uri", "x-semantic-type": "image" }, "altText": { "type": "string", "title": "Alt Text" } }, "required": ["url"] } }, "required": ["name"] },
+    "coverImage": { "type": "object", "title": "Cover Image", "properties": { "url": { "type": "string", "title": "URL", "format": "uri", "x-semantic-type": "image" }, "altText": { "type": "string", "title": "Alt Text" } }, "required": ["url"] }
+  },
+  "required": ["articleId", "title", "publishedDate", "author"]
+}</script>
+
+    <script type="application/json" id="schema-full-4">{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/autumn-wardrobe-essentials.schema.json",
+  "title": "Autumn Wardrobe Essentials",
+  "type": "object",
+  "properties": {
+    "articleId": { "type": "string", "title": "Article ID", "minLength": 1 },
+    "title": { "type": "string", "title": "Title", "minLength": 1 },
+    "publishedDate": { "type": "string", "title": "Published Date", "format": "date", "x-semantic-type": "date" },
+    "tags": { "type": "array", "title": "Tags", "items": { "type": "string" } },
+    "author": { "type": "object", "title": "Author", "properties": { "name": { "type": "string", "title": "Name", "minLength": 1 }, "bio": { "type": "string", "title": "Bio", "x-semantic-type": "long-text" }, "profileImage": { "type": "object", "title": "Profile Image", "properties": { "url": { "type": "string", "title": "URL", "format": "uri", "x-semantic-type": "image" }, "altText": { "type": "string", "title": "Alt Text" } }, "required": ["url"] } }, "required": ["name"] },
+    "coverImage": { "type": "object", "title": "Cover Image", "properties": { "url": { "type": "string", "title": "URL", "format": "uri", "x-semantic-type": "image" }, "altText": { "type": "string", "title": "Alt Text" } }, "required": ["url"] },
+    "featuredItems": { "type": "array", "title": "Featured Items", "minItems": 1, "items": { "type": "object", "title": "Item", "properties": { "name": { "type": "string", "title": "Name", "minLength": 1 }, "brand": { "type": "string", "title": "Brand", "minLength": 1 }, "price": { "type": "number", "title": "Price", "minimum": 0 } }, "required": ["name", "brand", "price"] } }
+  },
+  "required": ["articleId", "title", "publishedDate", "author", "featuredItems"]
+}</script>
+
+    <script type="application/json" id="preview-full-1">{
+  "content": [ { "section": { "local:autumn-wardrobe-essentials.s1.schema.json": { "articleId": "FB-001", "title": "Autumn Wardrobe Essentials", "publishedDate": "2025-09-30", "tags": ["fashion", "autumn", "style tips"] } } } ]
+}</script>
+    <script type="application/json" id="preview-full-2">{
+  "content": [ { "section": { "local:autumn-wardrobe-essentials.s2.schema.json": { "articleId": "FB-001", "title": "Autumn Wardrobe Essentials", "publishedDate": "2025-09-30", "tags": ["fashion", "autumn", "style tips"], "author": { "name": "Lila Fontaine", "bio": "Lila Fontaine is a fashion stylist and lifestyle blogger with over a decade of experience in curating seasonal trends. She specializes in combining classic pieces with contemporary styles, helping readers build versatile wardrobes. Lila has contributed to several international fashion magazines and regularly collaborates with emerging designers to showcase innovative looks." } } } } ]
+}</script>
+    <script type="application/json" id="preview-full-3">{
+  "content": [ { "section": { "local:autumn-wardrobe-essentials.s3.schema.json": { "articleId": "FB-001", "title": "Autumn Wardrobe Essentials", "publishedDate": "2025-09-30", "tags": ["fashion", "autumn", "style tips"], "author": { "name": "Lila Fontaine", "bio": "Lila Fontaine is a fashion stylist and lifestyle blogger with over a decade of experience in curating seasonal trends. She specializes in combining classic pieces with contemporary styles, helping readers build versatile wardrobes. Lila has contributed to several international fashion magazines and regularly collaborates with emerging designers to showcase innovative looks.", "profileImage": { "url": "https://delivery-p158912-e1694627.adobeaemcloud.com/adobe/assets/urn:aaid:aem:e29283e1-bdbd-4727-a243-185a5f95eb40/as/f483f893-49d0-4a3b-bf04-3168bbbc9c10.jpg", "altText": "Author Profile Picture" } }, "coverImage": { "url": "https://delivery-p158912-e1694627.adobeaemcloud.com/adobe/assets/urn:aaid:aem:c41b33d7-0f33-4c37-a3dd-a6f46685d051/as/39a88772-fbc5-41b3-8dd5-f61a33c93371.jpg", "altText": "Article Cover Image" } } } } ]
+}</script>
+    <script type="application/json" id="preview-full-4">{
+  "content": [ { "section": { "local:autumn-wardrobe-essentials.s4.schema.json": { "articleId": "FB-001", "title": "Autumn Wardrobe Essentials", "publishedDate": "2025-09-30", "tags": ["fashion", "autumn", "style tips"], "author": { "name": "Lila Fontaine", "bio": "Lila Fontaine is a fashion stylist and lifestyle blogger with over a decade of experience in curating seasonal trends. She specializes in combining classic pieces with contemporary styles, helping readers build versatile wardrobes. Lila has contributed to several international fashion magazines and regularly collaborates with emerging designers to showcase innovative looks.", "profileImage": { "url": "https://delivery-p158912-e1694627.adobeaemcloud.com/adobe/assets/urn:aaid:aem:e29283e1-bdbd-4727-a243-185a5f95eb40/as/f483f893-49d0-4a3b-bf04-3168bbbc9c10.jpg", "altText": "Author Profile Picture" } }, "coverImage": { "url": "https://delivery-p158912-e1694627.adobeaemcloud.com/adobe/assets/urn:aaid:aem:c41b33d7-0f33-4c37-a3dd-a6f46685d051/as/39a88772-fbc5-41b3-8dd5-f61a33c93371.jpg", "altText": "Article Cover Image" }, "featuredItems": [ { "name": "Oversized Knit Sweater", "brand": "CozyWear", "price": 89.99 }, { "name": "Leather Ankle Boots", "brand": "StepUp", "price": 149.5 } ] } } } ]
+}</script>
+
+    <!-- Inline highlight snippets (text, not JSON) -->
+    <script type="text/plain" id="schema-highlight-1">{
+  "properties": {
+    "articleId": {
+      "type": "string",
+      "title": "Article ID",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "title": "Title",
+      "minLength": 1
+    },
+    "publishedDate": {
+      "type": "string",
+      "title": "Published Date",
+      "format": "date",
+      "x-semantic-type": "date"
+    },
+    "tags": {
+      "type": "array",
+      "title": "Tags",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "articleId",
+    "title",
+    "publishedDate"
+  ]
+}</script>
+
+    <script type="text/plain" id="schema-highlight-2">...
+{
+  "properties": {
+    "author": {
+      "type": "object",
+      "title": "Author",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "minLength": 1
+        },
+        "bio": {
+          "type": "string",
+          "title": "Bio",
+          "x-semantic-type": "long-text"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  "required": [
+    "articleId",
+    "title",
+    "publishedDate",
+    "author"
+  ]
+}
+...</script>
+
+    <script type="text/plain" id="schema-highlight-3">...
+{
+  "properties": {
+    "author": {
+      "properties": {
+        "profileImage": {
+          "type": "object",
+          "title": "Profile Image",
+          "properties": {
+            "url": {
+              "type": "string",
+              "title": "URL",
+              "format": "uri",
+              "x-semantic-type": "image"
+            },
+            "altText": {
+              "type": "string",
+              "title": "Alt Text"
+            }
+          },
+          "required": [
+            "url"
+          ]
+        }
+      }
+    },
+    "coverImage": {
+      "type": "object",
+      "title": "Cover Image",
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "uri",
+          "x-semantic-type": "image"
+        },
+        "altText": {
+          "type": "string",
+          "title": "Alt Text"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    }
+  }
+}
+...</script>
+
+    <script type="text/plain" id="schema-highlight-4">...
+{
+  "properties": {
+    "featuredItems": {
+      "type": "array",
+      "title": "Featured Items",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "title": "Item",
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "minLength": 1
+          },
+          "brand": {
+            "type": "string",
+            "title": "Brand",
+            "minLength": 1
+          },
+          "price": {
+            "type": "number",
+            "title": "Price",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "brand",
+          "price"
+        ]
+      }
+    }
+  },
+  "required": [
+    "articleId",
+    "title",
+    "publishedDate",
+    "author",
+    "featuredItems"
+  ]
+}
+...</script>
+
+    <script>
+      const STEP_DATA = {
+        1: { image: './static/ui.s1.png' },
+        2: { image: './static/ui.s2.png' },
+        3: { image: './static/ui.s3.png' },
+        4: { image: './static/ui.s4.png' },
+      };
+
+      function loadInlineJSON(id) {
+        const el = document.getElementById(id);
+        if (!el) return '{}';
+        try { return JSON.stringify(JSON.parse(el.textContent), null, 2); } catch (e) { return el.textContent; }
+      }
+
+      function loadHighlight(step) {
+        const el = document.getElementById('schema-highlight-' + step);
+        return el ? el.textContent.trim() : '// No highlight available';
+      }
+
+      function setActive(btn, groupSelector) {
+        const parent = btn.parentElement;
+        parent.querySelectorAll('.tab-btn').forEach(b => b.setAttribute('aria-selected', 'false'));
+        btn.setAttribute('aria-selected', 'true');
+      }
+
+      async function renderSchema(step, mode) {
+        const out = document.getElementById('schema-out-' + step);
+        if (!out) return;
+        if (mode === 'full') {
+          out.textContent = loadInlineJSON('schema-full-' + step);
+        } else {
+          out.textContent = loadHighlight(step);
+        }
+      }
+
+      async function renderOutput(step, mode) {
+        const wrap = document.getElementById('output-wrap-' + step);
+        if (!wrap) return;
+        if (mode === 'ui') {
+          wrap.innerHTML = `<div class="img-wrap"><img src="${STEP_DATA[step].image}" alt="UI step ${step}"></div>`;
+        } else {
+          const text = loadInlineJSON('preview-full-' + step);
+          wrap.innerHTML = `<pre><code>${text.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</code></pre>`;
+        }
+      }
+
+      function setupTabs() {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            setActive(btn);
+            const step = Number(btn.getAttribute('data-step'));
+            const role = btn.getAttribute('data-role');
+            const mode = btn.getAttribute('data-mode');
+            if (role === 'schema') {
+              await renderSchema(step, mode);
+            } else {
+              await renderOutput(step, mode);
+            }
+          });
+        });
+      }
+
+      async function init() {
+        setupTabs();
+        // defaults
+        await Promise.all([
+          renderSchema(1, 'full'),
+          renderOutput(1, 'ui'),
+          renderSchema(2, 'highlight'),
+          renderOutput(2, 'ui'),
+          renderSchema(3, 'highlight'),
+          renderOutput(3, 'ui'),
+          renderSchema(4, 'highlight'),
+          renderOutput(4, 'ui'),
+        ]);
+      }
+      init();
+    </script>
+
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,557 @@
+.form-nav-tree li[data-group-id="form-group-root"]::before {
+  content: none;
+  display: none
+}
+
+.form-side-panel {
+  padding: 30px 16px 16px 16px;
+}
+
+.form-side-panel-main {
+  order: 1;
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0px;
+  float: right;
+  z-index: 1000;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  transition: none;
+  right: -250px;
+  align-self: flex-start;
+  width: max-content;
+  min-width: 400px;
+  max-width: 400px;
+  background: #FFF;
+  max-height: 99vh;
+  z-index: auto;
+  overflow-y: auto;
+}
+
+.form-side-panel.floating-panel {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 12px;
+  padding: 6px 6px 0;
+  border-radius: 12px;
+  box-shadow: 0 0 5px 0 #b5b5b5;
+  background: #FFF;
+  box-sizing: border-box;
+  z-index: 2;
+  width: 320px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: row;
+  max-height: 600px;
+  overflow: hidden;
+  user-select: none
+}
+
+@media (width > 600px) {
+  .form-side-panel.floating-panel {
+    right: 84px
+  }
+}
+
+.form-side-panel.floating-panel.dragged {
+  position: fixed
+}
+
+.form-side-panel.floating-panel.dragging {
+  transition: none;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, .2), 0 10px 10px -5px rgba(0, 0, 0, .1);
+  transform: rotate(2deg) scale(1.02);
+  z-index: 1001
+}
+
+.form-side-panel.floating-panel.dragging .form-side-panel-header {
+  background: #f9fafb;
+  border-bottom-color: #e5e7eb
+}
+
+.form-side-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #ffffff;
+  transition: background-color .15s ease;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 12px 12px 0 0;
+  padding-top: 12px;
+}
+
+.form-side-panel-title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px
+}
+
+.form-side-panel-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #111827;
+  letter-spacing: -.025em
+}
+
+/* Toggle control for hiding activatable items */
+.form-side-panel-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+/* Search button in side panel controls */
+.form-side-panel-search {
+  border: none;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px;
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+.form-side-panel-search img {
+  display: block;
+}
+
+.nav-activatable-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* no visible text; tooltip only via title attribute */
+
+.nav-activatable-toggle-label input.nav-activatable-toggle {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.nav-activatable-toggle-label .toggle-slider {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: #e5e7eb;
+  border-radius: 9999px;
+  transition: background-color .15s ease;
+}
+
+.nav-activatable-toggle-label .toggle-slider::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+  transition: transform .15s ease;
+}
+
+.nav-activatable-toggle:checked+.toggle-slider {
+  background: #4d7bff;
+}
+
+.nav-activatable-toggle:checked+.toggle-slider::after {
+  transform: translateX(16px);
+}
+
+/* Hide activatable items in navigation when toggle is on */
+.form-container-wrapper.hide-activatable-mode .form-navigation-tree .form-ui-activatable {
+  display: none !important;
+}
+
+.form-side-panel-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-side-panel-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.form-side-panel .form-side-panel-content {
+  background: #ffffff;
+  border-radius: 0 0 12px 12px
+}
+
+.form-navigation-tree {
+  position: relative;
+  overflow: visible
+}
+
+.form-nav-active-indicator {
+  position: absolute;
+  left: 0;
+  width: 2px;
+  background: #4d7bff;
+  border-radius: 9999px;
+  height: 0;
+  top: 0;
+  transition: top 120ms ease, height 120ms ease;
+  pointer-events: none
+}
+
+.form-ui-nav-item {
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  border-radius: 4px;
+  transition: all .2s ease
+}
+
+.form-ui-nav-item-content {
+  padding: 10px 16px;
+  transition: all .15s cubic-bezier(.4, 0, .2, 1);
+  border-left: 3px solid transparent;
+  border-radius: 0 8px 8px 0
+}
+
+.form-ui-nav-item-content:hover {
+  background: #f3f4f6
+}
+
+.form-ui-nav-item-content.active {
+  background: transparent;
+  border-left: 3px solid transparent
+}
+
+.form-ui-nav-item-content.active::after {
+  display: none
+}
+
+.form-ui-nav-item-title {
+  display: block;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+  padding-left: 12px
+}
+
+.form-navigation-tree {
+  min-height: 100px
+}
+
+.form-ui-nav-item:hover {
+  background-color: #f4f5f7
+}
+
+.form-navigation-tree .form-ui-nav-item:hover {
+  background: transparent
+}
+
+.form-navigation-tree .form-ui-nav-item:hover {
+  background: transparent !important
+}
+
+.form-ui-nav-item.active .form-ui-nav-item-content::after {
+  display: none
+}
+
+.form-ui-nav-item-content {
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all .2s ease;
+  border-radius: 4px
+}
+
+.form-ui-nav-item-add .form-ui-nav-item-add-content {
+  border: none;
+  background: transparent
+}
+
+.form-ui-nav-item-add .form-ui-nav-item-add-title {
+  color: #8c94a3;
+  font-weight: 500
+}
+
+.form-ui-nav-item-content:hover {
+  background: #f1f2f4
+}
+
+.form-nav-tree {
+  --tree-clr: #dadfe6;
+  --tree-font-size: 13px;
+  --tree-item-height: 2;
+  --tree-offset: 18px;
+  --tree-thickness: 1px;
+  --tree-style: dotted;
+  /* Sticky parents config */
+  --nav-sticky-step: 24px;
+  --nav-sticky-bg: #fff;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  padding-top: 5px;
+}
+
+.form-nav-tree ul {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--tree-font-size)
+}
+
+.form-nav-tree li {
+  position: relative;
+  line-height: var(--tree-item-height);
+  padding-inline-start: var(--tree-offset);
+  border-left: var(--tree-thickness) var(--tree-style) var(--tree-clr)
+}
+
+.form-nav-tree li:last-child {
+  border-color: transparent
+}
+
+.form-nav-tree li::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--tree-item-height) / 2 * -1 * var(--tree-font-size) + var(--tree-thickness));
+  left: calc(var(--tree-thickness) * -1);
+  width: calc(var(--tree-offset) + var(--tree-thickness) * 2);
+  height: calc(var(--tree-item-height) * var(--tree-font-size));
+  border-left: var(--tree-thickness) var(--tree-style) var(--tree-clr);
+  border-bottom: var(--tree-thickness) var(--tree-style) var(--tree-clr)
+}
+
+.form-nav-tree li::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--tree-clr);
+  top: calc(var(--tree-item-height) / 2 * var(--tree-font-size));
+  left: var(--tree-offset);
+  transform: translate(calc(var(--tree-thickness) * -1), calc(var(--tree-thickness) * -1))
+}
+
+.form-nav-tree .form-ui-nav-item-content {
+  padding-left: 0;
+  border: none;
+  /* Solid backdrop so scrolled items do not show through sticky headers */
+  background: #fff;
+  /* baseline stacking for non-sticky rows; sticky rows override */
+  z-index: 0
+}
+
+/* CSS-only sticky parents like IDE JSON inspectors */
+.form-navigation-tree {
+  position: relative;
+}
+
+/* Sticky parents disabled by default; enable by adding .sticky-parents on .form-navigation-tree */
+.form-navigation-tree.sticky-parents .form-nav-tree .form-ui-nav-item-content {
+  position: sticky;
+  top: calc(var(--nav-level, 0) * var(--nav-sticky-step));
+  /* ensure ancestors sit above deeper levels, but below connectors/dots */
+  z-index: calc(50 - var(--nav-level, 0));
+  background: var(--nav-sticky-bg);
+}
+
+/* Keep tree connectors and dots visible above sticky backgrounds */
+.form-nav-tree li::before {
+  z-index: 55
+}
+
+.form-nav-tree li::after {
+  z-index: 60
+}
+
+/* Render the dot on the sticky row so it stays pinned with it */
+.form-navigation-tree.sticky-parents .form-nav-tree .form-ui-nav-item-content::before {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--tree-clr);
+  left: 0;
+  /* aligns to the tree offset due to li padding */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 65
+}
+
+/* Hide the li-based dot to avoid duplication; keep lines */
+.form-navigation-tree.sticky-parents .form-nav-tree li::after {
+  display: none
+}
+
+/* No dot for the root item */
+.form-nav-tree li[data-group-id="form-group-root"]>.form-ui-nav-item-content::before {
+  display: none
+}
+
+.form-nav-tree {
+  --tree-clr-active: #343434;
+  --tree-thickness-active: 1px
+}
+
+.form-nav-tree li.tree-active::before,
+.form-nav-tree li.tree-ancestor::before {
+  border-left-width: var(--tree-thickness-active);
+  border-bottom-width: var(--tree-thickness-active)
+}
+
+.form-nav-tree li.tree-active::after,
+.form-nav-tree li.tree-ancestor::after {
+  background-color: var(--tree-clr-active)
+}
+
+
+
+.form-ui-nav-item-title {
+  font-size: 13px;
+  color: #172b4d;
+  line-height: 1.2
+}
+
+.form-ui-nav-item.has-error>.form-ui-nav-item-content>.form-ui-nav-item-title {
+  color: inherit
+}
+
+.form-ui-nav-item .error-indicator {
+  position: absolute;
+  right: 8px;
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  color: var(--spectrum-semantic-negative-color-icon, #d73502);
+  pointer-events: none
+}
+
+.form-ui-nav-item-content.active .form-ui-nav-item-title {
+  color: #4d7bff
+}
+
+.form-ui-nav-item.has-error>.form-ui-nav-item-content.active>.form-ui-nav-item-title,
+.form-ui-nav-item.active>.form-ui-nav-item-content>.form-ui-nav-item-title {
+  color: #4d7bff
+}
+
+.error-badge {
+  cursor: pointer;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: rgb(239, 68, 68);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 600
+}
+
+.form-ui-nav-item .error-badge {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%)
+}
+
+/* Header badge should share visual style but not absolute positioning */
+.form-side-panel-header .error-badge {
+  display: inline-block;
+  position: static;
+  transform: none
+}
+
+.form-ui-nav-item-content {
+  position: relative;
+  padding-left: calc(var(--nav-level, 0) * 14px + 18px);
+  padding-right: 24px
+}
+
+.form-ui-nav-item-nested .form-ui-nav-item-title {
+  font-size: 13px;
+  color: #626f86
+}
+
+.form-ui-section-title-nav>.form-ui-nav-item-content>.form-ui-nav-item-title {
+  color: #424242
+}
+
+.form-ui-section-title-nav:hover>.form-ui-nav-item-content {
+  background-color: #f5f5f5
+}
+
+.form-ui-section-title-nav:hover li>.form-ui-nav-item-content {
+  background: transparent !important
+}
+
+.form-ui-form-group-nav .form-ui-nav-item-title {
+  color: #172b4d
+}
+
+.form-ui-form-group-nav:hover {
+  background-color: #f4f5f7
+}
+
+.form-ui-form-group-nav:hover .form-ui-nav-item-title {
+  color: #1976d2
+}
+
+.form-ui-nav-item-title-only .form-ui-nav-item-title {
+  color: #424242
+}
+
+.form-ui-nav-item-title-only:hover {
+  background-color: #f5f5f5
+}
+
+.form-ui-nav-item-title-only:hover .form-ui-nav-item-title {
+  color: #1976d2
+}
+
+.form-navigation-tree.hide-tree-connectors .form-nav-tree li {
+  border-left: none
+}
+
+.form-navigation-tree.hide-tree-connectors .form-nav-tree li::before {
+  content: none
+}
+
+.form-navigation-tree.hide-tree-connectors .form-nav-tree li::after {
+  content: none
+}
+
+@media (max-width:768px) {
+  .form-side-panel.floating-panel {
+    position: fixed !important;
+    left: 8px !important;
+    top: 60px !important;
+    width: calc(100vw - 16px) !important;
+    min-width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: 40vh !important;
+    z-index: 1001 !important
+  }
+
+  .form-ui-nav-item-content {
+    padding: 6px 12px
+  }
+}

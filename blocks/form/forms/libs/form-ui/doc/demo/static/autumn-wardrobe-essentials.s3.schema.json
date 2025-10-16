@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/autumn-wardrobe-essentials.schema.json",
+  "title": "Autumn Wardrobe Essentials",
+  "type": "object",
+  "properties": {
+    "articleId": {
+      "type": "string",
+      "title": "Article ID",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "title": "Title",
+      "minLength": 1
+    },
+    "publishedDate": {
+      "type": "string",
+      "title": "Published Date",
+      "format": "date",
+      "x-semantic-type": "date"
+    },
+    "tags": {
+      "type": "array",
+      "title": "Tags",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "author": {
+      "type": "object",
+      "title": "Author",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "minLength": 1
+        },
+        "bio": {
+          "type": "string",
+          "title": "Bio",
+          "x-semantic-type": "long-text"
+        },
+        "profileImage": {
+          "type": "object",
+          "title": "Profile Image",
+          "properties": {
+            "url": {
+              "type": "string",
+              "title": "URL",
+              "format": "uri",
+              "x-semantic-type": "image"
+            },
+            "altText": {
+              "type": "string",
+              "title": "Alt Text"
+            }
+          },
+          "required": [
+            "url"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "coverImage": {
+      "type": "object",
+      "title": "Cover Image",
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "uri",
+          "x-semantic-type": "image"
+        },
+        "altText": {
+          "type": "string",
+          "title": "Alt Text"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    }
+  },
+  "required": [
+    "articleId",
+    "title",
+    "publishedDate",
+    "author"
+  ]
+}

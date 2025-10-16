@@ -1,0 +1,18 @@
+{
+  "content": [
+    {
+      "section": {
+        "local:autumn-wardrobe-essentials.s1.schema.json": {
+          "articleId": "FB-001",
+          "title": "Autumn Wardrobe Essentials",
+          "publishedDate": "2025-09-30",
+          "tags": [
+            "fashion",
+            "autumn",
+            "style tips"
+          ]
+        }
+      }
+    }
+  ]
+}

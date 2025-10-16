@@ -1,0 +1,42 @@
+{
+  "content": [
+    {
+      "section": {
+        "local:autumn-wardrobe-essentials.s4.schema.json": {
+          "articleId": "FB-001",
+          "title": "Autumn Wardrobe Essentials",
+          "publishedDate": "2025-09-30",
+          "tags": [
+            "fashion",
+            "autumn",
+            "style tips"
+          ],
+          "author": {
+            "name": "Lila Fontaine",
+            "bio": "Lila Fontaine is a fashion stylist and lifestyle blogger with over a decade of experience in curating seasonal trends. She specializes in combining classic pieces with contemporary styles, helping readers build versatile wardrobes. Lila has contributed to several international fashion magazines and regularly collaborates with emerging designers to showcase innovative looks.",
+            "profileImage": {
+              "url": "https://delivery-p158912-e1694627.adobeaemcloud.com/adobe/assets/urn:aaid:aem:e29283e1-bdbd-4727-a243-185a5f95eb40/as/f483f893-49d0-4a3b-bf04-3168bbbc9c10.jpg",
+              "altText": "Author Profile Picture"
+            }
+          },
+          "coverImage": {
+            "url": "https://delivery-p158912-e1694627.adobeaemcloud.com/adobe/assets/urn:aaid:aem:c41b33d7-0f33-4c37-a3dd-a6f46685d051/as/39a88772-fbc5-41b3-8dd5-f61a33c93371.jpg",
+            "altText": "Article Cover Image"
+          },
+          "featuredItems": [
+            {
+              "name": "Oversized Knit Sweater",
+              "brand": "CozyWear",
+              "price": 89.99
+            },
+            {
+              "name": "Leather Ankle Boots",
+              "brand": "StepUp",
+              "price": 149.5
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

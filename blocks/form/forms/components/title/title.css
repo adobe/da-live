@@ -1,0 +1,200 @@
+:host {
+  display: block;
+  padding: 48px 0 24px;
+}
+
+:host>svg {
+  display: none;
+}
+
+h1 {
+  position: relative;
+  margin-top: 0;
+}
+
+.con-button {
+  font-family: var(--body-font-family);
+  border-radius: 100px;
+  border: 2px solid var(--text-color);
+  color: var(--text-color);
+  display: inline-block;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 16px;
+  padding: 5px 14px;
+  text-decoration: none;
+}
+
+.con-button.blue {
+  background: var(--spectrum-blue-800);
+  border-color: var(--spectrum-blue-800);
+  color: #FFF;
+}
+
+/* Disabled buttons: visual treatment and cursor */
+.con-button[disabled],
+.con-button.is-disabled {
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.con-button.blue[disabled],
+.con-button.blue.is-disabled {
+  background: #cbd5e1;
+  border-color: #cbd5e1;
+  color: #ffffff;
+}
+
+.da-title-inner {
+  max-width: var(--grid-container-width);
+  margin: 0 auto;
+  display: block;
+  justify-content: space-between;
+  align-items: end;
+}
+
+.da-title-name-label {
+  display: inline-block;
+  position: relative;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #464646;
+  opacity: 0.5;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  left: -12px;
+}
+
+.da-title-name-label:hover {
+  background: #EFEFEF;
+  opacity: 1;
+}
+
+.da-title-name-label::before {
+  display: block;
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: 11px;
+  left: -24px;
+  background: url('/tools/forms/libs/assets/left-large.svg') center/18px no-repeat;
+}
+
+.da-title-collab-actions-wrapper {
+  display: flex;
+  margin-bottom: 0.67em;
+  justify-content: center;
+  align-items: center;
+}
+
+.da-title-actions {
+  position: relative;
+  border: 12px solid transparent;
+  border-radius: 100px;
+  display: flex;
+  gap: 12px;
+  height: 44px;
+}
+
+.da-title-actions.is-fixed {
+  position: fixed;
+  right: 18px;
+  bottom: 12px;
+  z-index: 10000;
+}
+
+.da-title-actions.is-open {
+  background: #EFEFEF;
+}
+
+/* Prevent opening actions menu when form has errors */
+.da-title-inner:host([hasErrors]) .da-title-actions.is-open,
+.da-title-inner.has-errors .da-title-actions.is-open {
+  background: transparent;
+}
+
+.da-title-actions.is-open .da-title-action {
+  display: unset;
+}
+
+.da-title-action {
+  display: none;
+}
+
+.da-title-action-send {
+  padding: 5px 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.da-title-action-send-icon {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: url('/tools/forms/libs/assets/Smock_Send_18_N.svg') center/22px no-repeat;
+}
+
+.da-title-action-send-icon.is-sending {
+  animation: animated-background 1s linear infinite;
+}
+
+.da-title-error-details {
+  background-color: var(--s2-red);
+  padding: 0 6px;
+  margin: 0 0 0 24px;
+  border-radius: 4px;
+  color: #FFF;
+}
+
+.da-title-action-send.is-error {
+  background-color: var(--s2-red);
+}
+
+/* Stronger red variant to match header error badge (#ef4444) */
+.da-title-action-send.is-error {
+  background-color: rgb(239, 68, 68);
+  border-color: rgb(239, 68, 68);
+}
+
+@keyframes animated-background {
+  from {
+    left: -22px;
+    bottom: -22px;
+  }
+
+  to {
+    left: 22px;
+    bottom: 22px;
+  }
+}
+
+@media (width > 600px) {
+  :host {
+    padding: 24px 0;
+  }
+
+  .da-title-inner {
+    display: flex;
+  }
+
+  .da-title-actions {
+    right: -12px;
+  }
+}
+
+@media (width > 1200px) {
+  .da-title-inner {
+    max-width: 900px;
+  }
+}

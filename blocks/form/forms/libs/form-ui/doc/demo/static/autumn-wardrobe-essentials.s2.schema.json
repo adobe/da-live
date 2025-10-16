@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/autumn-wardrobe-essentials.schema.json",
+  "title": "Autumn Wardrobe Essentials",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "articleId": {
+      "type": "string",
+      "title": "Article ID",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "title": "Title",
+      "minLength": 1
+    },
+    "publishedDate": {
+      "type": "string",
+      "title": "Published Date",
+      "format": "date",
+      "x-semantic-type": "date"
+    },
+    "tags": {
+      "type": "array",
+      "title": "Tags",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "author": {
+      "type": "object",
+      "title": "Author",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "minLength": 1
+        },
+        "bio": {
+          "type": "string",
+          "title": "Bio",
+          "x-semantic-type": "long-text"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  "required": [
+    "articleId",
+    "title",
+    "publishedDate",
+    "author"
+  ]
+}
