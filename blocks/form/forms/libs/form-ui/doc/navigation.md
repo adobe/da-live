@@ -56,6 +56,7 @@ This “one node per object” rule is what prevents duplicates like emitting bo
 
 - `$ref` and `oneOf`: resolved by SchemaService when computing titles and `hasPrimitives` at the node’s `schemaPointer`.
 - Optional gating: driven by the FormUiModel. Optional arrays expose `activatable` until they contain at least one item; required arrays are always `isActive: true`.
+- Sticky parents: when `context.config.navigation.stickyParents` is true, parent path highlighting is enabled in the tree for better context.
 - Root handling: the artificial root emits only its children; the root group itself is not duplicated as a separate nav item beyond the shell header.
 
 ## Building the nested tree from the flat list
