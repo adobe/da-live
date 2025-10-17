@@ -204,8 +204,14 @@ export async function htmlToJson(htmlString, { schema, schemaId, context, servic
         const refIds = valueSanitized.map((id) => toClassName(fromRef(id)));
         // If schema says this property is an array, always return an array
         if (propertySchema && propertySchema.type === "array") {
-          if (propertySchema.items["$ref"]) {
+          if (propertySchema?.items?.["$ref"]) {
             const itemSchema = resolveSchema(propertySchema.items["$ref"]);
+            const items = refIds
+              .map((refId) => (blocks[refId] ? resolveReferences(blocks[refId], itemSchema) : null))
+              .filter((v) => v !== null);
+            resolved[key] = items;
+          } else if (propertySchema?.items?.["type"] === "object") {
+            const itemSchema = propertySchema.items;
             const items = refIds
               .map((refId) => (blocks[refId] ? resolveReferences(blocks[refId], itemSchema) : null))
               .filter((v) => v !== null);
@@ -216,7 +222,16 @@ export async function htmlToJson(htmlString, { schema, schemaId, context, servic
         } else {
           // Single or multi refs but no array in schema → collapse single
           const refs = refIds
-            .map((refId) => (blocks[refId] ? resolveReferences(blocks[refId], resolveSchema(propertySchema["$ref"])) : null))
+            .map((refId) => {
+              if (!blocks?.[refId]) {
+                return null;
+              }
+              if (propertySchema?.items?.["$ref"]) {
+                return resolveReferences(blocks[refId], resolveSchema(propertySchema.items["$ref"]));
+              }
+              return resolveReferences(blocks[refId], propertySchema);
+              // (blocks[refId] && !propertySchema?.items?.["$ref"] ? resolveReferences(blocks[refId], resolveSchema(propertySchema["$ref"])) : null)
+            })
             .filter((v) => v !== null);
           resolved[key] = refs.length === 1 ? refs[0] : refs;
         }
@@ -283,5 +298,3 @@ export default class HtmlTableStorage {
     return `${form}\n${data}`;
   }
 }
-
-
