@@ -17,8 +17,6 @@ import {
   ySyncPlugin,
   yCursorPlugin,
   yUndoPlugin,
-  yUndo,
-  yRedo,
 } from 'da-y-wrapper';
 
 // DA
@@ -36,7 +34,7 @@ import { debounce } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
-import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
+import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin, handleUndo, handleRedo } from './plugins/keyHandlers.js';
 
 let sendUpdates = false;
 let hasChanged = 0;
@@ -271,9 +269,9 @@ export default function initProse({ path, permissions }) {
     keymap(baseKeymap),
     codemark(),
     keymap({
-      'Mod-z': yUndo,
-      'Mod-y': yRedo,
-      'Mod-Shift-z': yRedo,
+      'Mod-z': handleUndo,
+      'Mod-y': handleRedo,
+      'Mod-Shift-z': handleRedo,
       'Mod-Shift-l': toggleLibrary,
       'Mod-k': (state, dispatch, view) => { // toggle link prompt
         const linkMarkType = state.schema.marks.link;
