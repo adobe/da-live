@@ -1,9 +1,9 @@
 /*
  * Copyright 2025 Adobe
  */
-
-import DA_SDK from "https://da.live/nx/utils/sdk.js";
-import { AEM_ORIGIN, DA_ORIGIN, DA_LIVE } from "../../utils.js";
+import { AEM_ORIGIN, DA_ORIGIN } from '../../utils.js';
+import { daFetch } from '../../../../shared/utils.js';
+import getPathDetails from '../../../../shared/pathDetails.js';
 
 /**
  * DaService
@@ -23,11 +23,9 @@ export class DaService {
    * @returns {Promise<{pagePath:string,title:string,formData:object,schemaId?:string}>}
    */
   async readDocument(pagePath, { storageVersion } = {}) {
-    const { context, token } = await DA_SDK;
-    const { org, repo } = context;
-    const opts = { headers: { Authorization: `Bearer ${token}` } };
+    const { owner: org, repo } = getPathDetails();
     const fullpath = `${DA_ORIGIN}/source/${org}/${repo}${pagePath}.html`;
-    const response = await fetch(fullpath, opts);
+    const response = await daFetch(fullpath);
     if (!response.ok) {
       return { pagePath, title: 'Untitled Page', formData: {}, schemaId: undefined };
     }
@@ -42,15 +40,14 @@ export class DaService {
    * Serialize form details to HTML and PUT to DA source. Returns status info.
    */
   async saveDocument(details, { storageVersion, ext = 'html' } = {}) {
-    console.log('saveDocument', { storageVersion, details });
-    const { context, token } = await DA_SDK;
-    const { org, repo } = context;
-    const content = this._storage.serializeDocument({ formMeta: details.formMeta, formData: details.formData }, { storageVersion });
+    const { owner: org, repo } = getPathDetails();
+    const content = this._storage
+      .serializeDocument(details, { storageVersion });
     const body = `\n  <body>\n    <header></header>\n    <main>\n      <div>\n        ${content}\n      </div>\n    </main>\n    <footer></footer>\n  </body>\n`;
-    const blob = new Blob([body], { type: "text/html" });
+    const blob = new Blob([body], { type: 'text/html' });
     const formData = new FormData();
     formData.append('data', blob);
-    const opts = { headers: { Authorization: `Bearer ${token}` }, method: 'PUT', body: formData };
+    const opts = { method: 'POST', body: formData };
     const daPath = `/${org}/${repo}${details.pagePath}`;
     const fullpath = `${DA_ORIGIN}/source${daPath}.${ext}`;
     try {
@@ -80,9 +77,8 @@ export class DaService {
   /** Create a DA version label entry for the saved resource. */
   async saveDaVersion(path, ext = 'html') {
     const fullPath = `${DA_ORIGIN}/versionsource${path}.${ext}`;
-    const { token } = await DA_SDK;
-    const opts = { headers: { Authorization: `Bearer ${token}` }, method: 'POST', body: JSON.stringify({ label: 'Published' }) };
-    try { await fetch(fullPath, opts); } catch {}
+    const opts = { method: 'POST', body: JSON.stringify({ label: 'Published' }) };
+    try { await daFetch(fullPath, opts); } catch {}
   }
 
   /**
@@ -95,8 +91,7 @@ export class DaService {
    */
   async uploadImage(file, { subdir = '.image', filename } = {}) {
     try {
-      const { context, token } = await DA_SDK;
-      const { org, repo } = context || {};
+      const { owner: org, repo } = getPathDetails();
       if (!org || !repo) throw new Error('Missing org/repo context');
       const originalName = /** @type {any} */(file)?.name || `upload-${Date.now()}`;
       const targetName = filename || originalName;
@@ -106,18 +101,22 @@ export class DaService {
       const formData = new FormData();
       // When `file` is a Blob (no name), pass the desired filename explicitly
       formData.append('data', file, targetName);
-      const opts = { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: formData };
+      const opts = { method: 'POST', body: formData };
       console.log('uploadImage', fullUrl, opts);
-      const resp = await fetch(fullUrl, opts);
-      const ok = resp.ok;
-      const status = resp.status;
+      const resp = await daFetch(fullUrl, opts);
+      const { ok } = resp;
+      const { status } = resp;
       const daPath = `${dirPath}/${targetName}`; // /{org}/{repo}/.image/name
       const resourcePath = `/${subdir}/${targetName}`; // /.image/name (relative)
       const previewUrl = `${DA_ORIGIN}/source${daPath}`; // absolute URL for previews and saving
 
-      return { ok, status, daPath, resourcePath, previewUrl, response: resp };
+      return {
+        ok, status, daPath, resourcePath, previewUrl, response: resp,
+      };
     } catch (error) {
-      return { ok: false, status: 0, daPath: '', resourcePath: '', previewUrl: '', error };
+      return {
+        ok: false, status: 0, daPath: '', resourcePath: '', previewUrl: '', error,
+      };
     }
   }
 
@@ -130,13 +129,10 @@ export class DaService {
   async buildPreviewUrl(resourcePath) {
     if (!resourcePath) return '';
     if (/^https?:\/\//i.test(resourcePath)) return resourcePath;
-    const { context } = await DA_SDK;
-    const { org, repo } = context || {};
+    const { owner: org, repo } = getPathDetails();
     const clean = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
     return `${DA_ORIGIN}/source/${org}/${repo}${clean}`;
   }
 }
 
 export default DaService;
-
-

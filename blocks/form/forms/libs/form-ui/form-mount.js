@@ -133,9 +133,7 @@ function wireNavigationClicks(sidebar, generator) {
  *   destroy(): void
  * }}
  */
-export function mountFormUI(context, {
-  mount, schema, data, onChange, ui
-} = {}) {
+export default function mountFormUI(context, { mount, schema, data, onChange, ui } = {}) {
   const { controls, wrapper, host } = createWrapperAndHost(mount, ui);
   let { generator, formEl } = instantiateGenerator(context, schema, controls);
   attachToDom(mount, wrapper, host, formEl);
@@ -252,8 +250,7 @@ export function mountFormUI(context, {
   }
   /** Get the current total validation error count. */
   function getValidationErrorCount() {
-    try { return (generator.fieldErrors?.size || 0) + (generator.groupErrors?.size || 0); }
-    catch { return 0; }
+    try { return (generator.fieldErrors?.size || 0) + (generator.groupErrors?.size || 0); } catch { return 0; }
   }
   /**
    * Replace the current schema and rebuild the form while preserving current data.
@@ -307,7 +304,6 @@ export function mountFormUI(context, {
         }
       }
     } catch { }
-
   }
   /** Programmatically navigate to a group by its DOM id. */
   function navigateTo(groupId) { generator.navigation.navigateToGroup(groupId); }
@@ -333,5 +329,3 @@ export function mountFormUI(context, {
     destroy,
   };
 }
-
-export default mountFormUI;

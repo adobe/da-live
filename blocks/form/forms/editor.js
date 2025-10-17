@@ -1,17 +1,25 @@
 import { LitElement, html, nothing } from 'da-lit';
-import "https://da.live/nx/public/sl/components.js";
-import getStyle from "https://da.live/nx/utils/styles.js";
-import "./components/title/title.js";
-import { ServiceContainer } from "./libs/services/service-container.js";
-import DA_SDK from 'https://da.live/nx/utils/sdk.js';
-import { DA_LIVE, MHAST_LIVE } from "./utils.js";
+import 'https://da.live/nx/public/sl/components.js';
+import getStyle from 'https://da.live/nx/utils/styles.js';
+import './components/title/title.js';
+import { ServiceContainer } from './libs/services/service-container.js';
+import { DA_LIVE, MHAST_LIVE } from './utils.js';
 import mountFormUI from './libs/form-ui/form-mount.js';
+import getPathDetails from '../../shared/pathDetails.js';
 
 const style = await getStyle(import.meta.url);
 const formContentStyles = await getStyle((new URL('./libs/form-ui/styles/form-ui.content.css', import.meta.url)).href);
 const formGroupsStyles = await getStyle((new URL('./libs/form-ui/styles/form-ui.groups.css', import.meta.url)).href);
 const formInputsStyles = await getStyle((new URL('./libs/form-ui/styles/form-ui.inputs.css', import.meta.url)).href);
 const formNavigationStyles = await getStyle((new URL('./libs/form-ui/styles/form-ui.navigation.css', import.meta.url)).href);
+
+const allStyles = [
+  style,
+  formContentStyles,
+  formGroupsStyles,
+  formInputsStyles,
+  formNavigationStyles,
+];
 
 /**
  * FormsEditor
@@ -58,18 +66,20 @@ class FormsEditor extends LitElement {
   /** Lifecycle: attach styles, initialize services, and bootstrap the UI. */
   async connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style, formContentStyles, formGroupsStyles, formInputsStyles, formNavigationStyles];
+    this.shadowRoot.adoptedStyleSheets = allStyles;
 
     // init DA SDK context
-    const { context } = await DA_SDK;
+    const { owner: org, repo } = getPathDetails();
+
+    const context = { org, repo };
+
     this._context = { ...context };
     this._services = new ServiceContainer(this._context);
     this._context.services = this._services;
 
     // Resolve merged project config using ConfigService (sheet + URL + derived)
     const projectConfig = await this._services.config.getProjectConfig(this._context);
-    console.log('cfg', projectConfig);
-    let pagePath = projectConfig.pagePath;
+    const { pagePath } = projectConfig;
     this._storageVersion = projectConfig.storageVersion;
     this._allowLocalSchemas = projectConfig.allowLocalSchemas;
     this._localSchemas = projectConfig.localSchemas;
@@ -107,9 +117,10 @@ class FormsEditor extends LitElement {
 
   /** Fetch and parse the page document into editor state. */
   async loadDocumentData(pagePath) {
+    console.log(pagePath);
     try {
-      this.loading = true;
       this.documentData = await this._services.backend.readDocument(pagePath, { storageVersion: this._storageVersion });
+      console.log(this.documentData);
     } catch (error) {
       this.error = `Failed to load document: ${error.message}`;
       console.error('Error loading document:', error);
@@ -207,7 +218,6 @@ class FormsEditor extends LitElement {
         try { mountEl.removeEventListener('form-validation-state', this._onValidationState); } catch { }
         this._onValidationState = onValidationState;
         mountEl.addEventListener('form-validation-state', onValidationState);
-
       } else {
         this._formApi.updateSchema(schema);
         this._formApi.updateData(dataToUse);
@@ -347,18 +357,18 @@ class FormsEditor extends LitElement {
     return {
       owner: org,
       repo,
-      ref: ref,
+      ref,
       parent: `${DA_LIVE}/#/${org}/${repo}${parentPath}`,
       parentName,
-      name
-    }
+      name,
+    };
   }
 
   /** Show a user-facing error and clear any sending state on the action button. */
   handleError(err, action = 'operation', location) {
     try {
       const message = err?.error?.message || err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
-      console.error('[forms-editor] ' + action + ' error:', err);
+      console.error(`[forms-editor] ${action} error:`, err);
       this.error = `Failed to ${action}: ${message}`;
     } catch (e) {
       // ignore
@@ -397,9 +407,9 @@ class FormsEditor extends LitElement {
     const { action, location } = e.detail;
     const { org, repo } = this._context;
 
-    location.classList.add("is-sending");
+    location.classList.add('is-sending');
 
-    if (action === "preview" || action === "publish") {
+    if (action === 'preview' || action === 'publish') {
       const formMeta = {
         title: this.documentData?.title || '',
         schemaId: this.documentData?.schemaId || this.selectedSchema || '',
@@ -416,13 +426,13 @@ class FormsEditor extends LitElement {
       }
 
       const aemPath = `/${org}/${repo}${this._pagePath}`;
-      let json = await this._services.backend.saveToAem(aemPath, "preview");
+      let json = await this._services.backend.saveToAem(aemPath, 'preview');
       if (json.error) {
         this.handleError(json, action, location);
         return;
       }
-      if (action === "publish") {
-        json = await this._services.backend.saveToAem(aemPath, "live");
+      if (action === 'publish') {
+        json = await this._services.backend.saveToAem(aemPath, 'live');
         if (json.error) {
           this.handleError(json, action, location);
           return;
@@ -430,10 +440,10 @@ class FormsEditor extends LitElement {
         this._services.backend.saveDaVersion(aemPath);
       }
 
-      const toOpenInAem = `${MHAST_LIVE}${aemPath}?head=false&schema=true${action === "preview" ? "&preview=true" : ""}`;
+      const toOpenInAem = `${MHAST_LIVE}${aemPath}?head=false&schema=true${action === 'preview' ? '&preview=true' : ''}`;
       window.open(toOpenInAem, '_blank');
     }
-    location.classList.remove("is-sending");
+    location.classList.remove('is-sending');
   }
 
   render() {
@@ -494,4 +504,4 @@ class FormsEditor extends LitElement {
   }
 }
 
-customElements.define("da-forms-editor", FormsEditor);
+customElements.define('da-forms-editor', FormsEditor);
