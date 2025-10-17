@@ -408,6 +408,18 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       });
 
       setActiveTab('added');
+      this.observeShortContainers();
+    }
+
+    observeShortContainers() {
+      const SHORT_CONTAINER_THRESHOLD = 120; // px
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { height } = entry.contentRect;
+          this.dom.classList.toggle('is-short', height <= SHORT_CONTAINER_THRESHOLD);
+        }
+      });
+      resizeObserver.observe(this.dom);
     }
 
     renderSingleNode(node, view, pos, upstream) {
@@ -442,6 +454,8 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       this.loadRealOverlays(upstream, coverDiv).catch(() => {
         // Keep placeholder on error
       });
+
+      this.observeShortContainers();
     }
 
     async loadRealOverlays(upstream, coverDiv) {

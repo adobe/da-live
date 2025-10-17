@@ -83,6 +83,15 @@ da-loc-added,
   pointer-events: auto;
 }
 
+/* When the container is short, the sticky buttons should be moved down to not block content */
+.loc-single-container.is-short .loc-sticky-buttons,
+.loc-tabbed-container.is-short .loc-sticky-buttons,
+.loc-tabbed-container:has(.diff-tab-content[style*="height"]) .loc-sticky-buttons {
+  position: absolute;
+  bottom: -12px;
+  top: initial;
+}
+
 .diff-action-buttons {
   display: flex;
   gap: 12px;
