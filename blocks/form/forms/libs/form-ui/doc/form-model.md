@@ -2,7 +2,7 @@
 
 A precise, implementation-oriented specification of a service that derives a normalized, precomputed UI model from JSON Schema + JSON data. Both the form UI and the navigation render from this one source of truth to stay perfectly in sync.
 
-See also: `README-FLOW.md`, `features/README-NAVIGATION.md`.
+See also: `ui-flow.md`, `navigation.md`.
 
 Terminology note: In code and services this is referred to as the “Form UI Model”.
 
@@ -11,7 +11,7 @@ Terminology note: In code and services this is referred to as the “Form UI Mod
 ## Objectives
 
 - **Single source of truth**: Form UI and Navigation consume the same derived model; neither re-derives it.
-- **Deterministic activation**: Only arrays of objects control visibility. Optional arrays are hidden until activated; required arrays are always active.
+- **Deterministic activation**: Optional objects and arrays-of-objects are hidden until activated (or data exists); required arrays are always active.
 - **Predictable defaults**: When no data exists, defaults are synthesized from the schema (notably: optional arrays default to `[]`).
 - **Stable structure**: The derived tree mirrors the schema hierarchy (objects and arrays-of-objects only) and records where each group lives in the data via JSON Pointer.
 
@@ -29,8 +29,8 @@ Rendering of primitive fields (including arrays-of-primitives) is handled direct
 ## Glossary
 
 - **Group**: A schema node that is either an object or an array whose `items` resolves to an object (array-of-objects).
-- **Activation**: Visibility/availability semantics for arrays-of-objects. Objects do not have activatable state; they are active if their ancestor arrays are active.
-- **Activatable**: Present on optional arrays-of-objects when currently inactive (data is `[]`).
+- **Activation**: Visibility/availability semantics for groups. Optional objects and arrays-of-objects can be activatable when no data exists.
+- **Activatable**: Present on optional groups that are currently inactive (e.g., optional arrays with `[]`, optional objects with no value present).
 - **JSON Pointer**: RFC 6901 path into the current data, e.g., `/profile/phones/0`.
 
 ---
@@ -107,18 +107,18 @@ Invariants:
 
 - The root node has `key: '$root'`, `type: 'object' | 'array'`, `dataPath: ''`, and `isActive: true`.
 - `isActive` appears only when `true`. `activatable` appears only when `true`.
-- Objects do not carry `activatable`. Their visibility is implied by ancestor array activation.
-- `items.length` equals the number of existing array entries in data. No synthetic item is created for inactive arrays.
+- Optional objects may carry `activatable: true` when no data is present; they become `isActive: true` once data exists or when required.
+- `items.length` equals the number of existing array entries in data for active arrays. For required arrays-of-objects with no data, a single item is exposed in the model to enable immediate traversal.
 
 ---
 
 ## Activation Semantics
 
-- **Required array-of-objects**: Always active, even when data is `[]`. Mark with `isActive: true`.
+- **Required array-of-objects**: Always active, even when data is `[]` (`isActive: true`). When empty, the model exposes a single item entry so navigation/content can recurse immediately.
 - **Optional array-of-objects**:
   - If `data.length > 0`: `isActive: true`.
-  - If `data.length === 0`: `activatable: true` and the node is not rendered in the form UI (nav may offer activation control).
-- **Objects**: Active if their parent is active. They never have `activatable`.
+  - If `data.length === 0`: `activatable: true` and the node is not rendered in the form UI (nav may offer activation control for arrays).
+- **Objects**: If parent is active and the object is required or data exists at its path → `isActive: true`; otherwise `activatable: true` (optional objects without data).
 
 Defaults must ensure optional arrays initialize to `[]` so they become `activatable` (not `isActive`).
 
@@ -282,15 +282,15 @@ Derived groups-only model:
 ## Integration Guidance
 
 - **Navigation**: Render directly from the FormUiModel root. For arrays with `activatable`, render an explicit "Activate" affordance. For arrays with `isActive`, render items and an Add control. Removal is not provided in navigation.
-- **Form UI**: Render only nodes with `isActive`. Objects and primitive fields under them become visible when ancestor arrays are active. Provide both Add and Remove controls; removal is available only in the form UI. Required flags inform validation but not visibility, except for arrays as specified above.
+- **Form UI**: Render only nodes with `isActive`. Optional objects can be activated in the content (or by presence of data); arrays expose Add/Remove/Reorder. Required flags inform validation but not visibility, except for arrays as specified above.
 - **Update flow**: Treat the FormUiModel as read-only. When user actions occur (activate an array, add/remove items), mutate the data accordingly, then recompute the FormUiModel and rerender.
 
 ---
 
 ## Invariants and Edge Cases
 
-- Arrays-of-objects are the only visibility gates.
-- Required arrays can be empty and still active.
+- Optional objects and arrays-of-objects are the visibility gates.
+- Required arrays can be empty and still active; the model exposes a single first item in that empty state.
 - Optional arrays keep `activatable` until they contain at least one item.
 - Root array schemas are supported; an empty root array results in an `activatable` root with a single initial activation afforded by the UI.
 - `$ref` cycles must be prevented; resolved shapes must be used for type decisions.
@@ -308,8 +308,8 @@ Derived groups-only model:
 ## Testing Checklist
 
 - Optional array remains `activatable: true` when empty; becomes `isActive: true` after adding first item.
-- Required array is `isActive: true` for both `[]` and non-empty arrays.
-- Objects inherit activation from ancestors and never expose `activatable`.
+- Required array is `isActive: true` for both `[]` and non-empty arrays; when empty, model includes a first item for traversal.
+- Optional objects without data expose `activatable: true`; they become `isActive: true` when data is present or if required.
 - `hasPrimitives` is set when an object group contains at least one primitive or array-of-primitives field at any depth directly under that group.
 - `$ref`-based schemas produce identical results to inlined schemas.
 - Root array behaves as specified (including activation affordance at empty state).

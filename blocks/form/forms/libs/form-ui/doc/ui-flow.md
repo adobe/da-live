@@ -24,9 +24,9 @@ flowchart LR
   NAV[Navigation features/navigation.js]
   VAL[Validation features/validation.js]
   SB[FormSidebar components/sidebar.js]
-  SL[SchemaLoader utils/schema-loader.js]
+  SS[SchemaService services/schema-service.js]
 
-  PM -- loads schema --> SL
+  PM -- resolves schema --> SS
   PM -- mounts --> MOUNT
   MOUNT -- builds --> FG
   FG -- uses --> FM
@@ -62,10 +62,11 @@ flowchart LR
 
 2) mountFormUI
    - Creates wrapper and host elements
-   - `generator = new FormGenerator(schema, { renderAllGroups })` → `generateForm()` → returns container
+   - `generator = new FormGenerator(context, schema)` → `generateForm()` → returns container
    - Creates `sidebar = new FormSidebar()` and inserts inline under header
    - Wires navigation clicks to generator/navigation
    - Assigns `generator.navigationTree` and calls `navigation.generateNavigationTree()`
+   - Initializes breadcrumb; optionally initializes Search if enabled via config, wiring the optional-groups toggle state
    - If initial data exists: `generator.loadData(data)`
    - State: sidebar DOM
 
@@ -73,7 +74,7 @@ flowchart LR
    - Builds header, body, footer
    - `GroupBuilder.build(root)` creates groups/sections and maps `groupElements`
    - Attaches `HighlightOverlay`
-   - After a tick: `navigation.mapFieldsToGroups()`, `ensureGroupRegistry()`, derive `formUiModel` via `services.formUiModel.createFormUiModel`, `navigation.generateNavigationTree()`, `validation.validateAllFields()`, then `updateData()` emits initial data
+   - After a tick: `navigation.mapFieldsToGroups()`, `ensureGroupRegistry()`, derive `formUiModel` via `services.formUiModel.createFormUiModel`, `navigation.generateNavigationTree()`, `validation.validateAllFields()`, then `updateData()` emits initial data; breadcrumb reflects the active path
    - State: `data`, `groupElements`, `fieldSchemas`, `fieldElements`, `fieldToGroup`, `fieldErrors`
 
 Stacktrace (key calls):

@@ -16,10 +16,10 @@ flowchart LR
   NAV[Navigation features/navigation.js]
   VAL[Validation features/validation.js]
   SB[FormSidebar components/sidebar.js]
-  SL[SchemaLoader utils/schema-loader.js]
+  SS[SchemaService services/schema-service.js]
   CSS[(form-ui.css)]
 
-  PM -- loads --> SL
+  PM -- resolves schema --> SS
   PM -- calls --> MOUNT
   MOUNT -- builds --> FG
   FG -- uses --> FM
@@ -56,7 +56,7 @@ Key APIs:
 
 - Core: orchestration and rendering pipeline
   - `core/form-nodeview.js`: ProseMirror integration; parses `{ schema, data }`, mounts via the factory, serializes back to the document. It no longer creates or manages the sidebar directly.
-  - `core/form-mount.js`: factory that mounts the form UI into a DOM node. Builds `FormGenerator`, creates and wires `FormSidebar`, and exposes a small API. No raw JSON mode UI.
+  - `core/form-mount.js`: factory that mounts the form UI into a DOM node. Builds `FormGenerator`, creates and wires `FormSidebar`, breadcrumb, and feature‑flagged search, and exposes a small API. No raw JSON mode UI.
   - `core/form-generator.js`: orchestrates schema→DOM, data updates, and hooks features.
   - `core/form-generator/path-utils.js`: stable path→id helpers (`hyphenatePath`, `pathToGroupId`, `arrayItemId`).
   - `core/form-generator/schema-utils.js`: schema deref/normalization/title/base JSON helpers (pure, cycle-safe).
@@ -68,8 +68,10 @@ Key APIs:
   - `core/form-generator/group-builder.js`: builds `.form-ui-section` and `.form-ui-group` recursively with stable IDs.
 
 - Features: pluggable behaviors with no DOM structure ownership
-  - `features/navigation.js`: builds/updates sidebar navigation; active/hover sync and indicator bar. Includes nested object children under array items and bracket-aware IDs. Supports drag-and-drop reordering of array items.
+  - `features/navigation.js`: builds/updates sidebar navigation; active/hover sync and indicator bar. Includes nested object children under array items and bracket-aware IDs. Supports drag-and-drop reordering of array items. Optional sticky-parent highlighting via config.
   - `features/validation.js`: inline field validation + sidebar error markers (JSON‑Schema style checks).
+  - `features/breadcrumb.js`: schema‑driven breadcrumb above content with clickable segments.
+  - `features/search.js`: optional feature (behind `context.config.ui.feature.search.enabled`) providing in‑form search; respects the optional‑groups toggle.
 
 - Components: reusable UI widgets
   - `components/sidebar.js`: the right-side navigation panel (navigation-only) with delegated click API.
@@ -95,8 +97,8 @@ Key APIs:
    - Arrays of objects (including `$ref` items) render as their own nested `form-ui-group` at the property position.
    - `InputFactory` creates controls and wires input/change/focus/blur to update data, validate, and highlight group.
    - `FormUiModel` maintains data shape and nested setting logic.
-- `Navigation.generateNavigationTree()` renders from the read‑only Form UI Model tree (`services.formUiModel.createFormUiModel`). It mirrors groups/sections in the sidebar in the same property order and includes nested object children under array items.
-   - `Validation.validateAllFields()` runs after render and nav rebuild so required/invalid states are visible on load. It also runs after optional group activation and after array‑item add.
+- `Navigation.generateNavigationTree()` renders from the read‑only Form UI Model tree (`services.formUiModel.createFormUiModel`). It mirrors groups/sections in the sidebar in the same property order and includes nested object children under array items. Sticky parent highlighting can be enabled via config.
+  - `Validation.validateAllFields()` runs after render and nav rebuild so required/invalid states are visible on load. It also runs after optional group activation and after array‑item add.
 
 4) Sync back to ProseMirror and breadcrumb
    - On any change, `FormGenerator` emits new `data` → `FormNodeView` replaces the code_block text with `{ schema, data }` JSON.
@@ -147,16 +149,7 @@ Key APIs:
 
 ### Rendering strategy: renderAllGroups
 
-- The mount factory accepts `ui.renderAllGroups: boolean` to control optional group rendering and base data shaping.
-  - When `false` (default):
-    - Optional object/array groups do not render until activated via the sidebar.
-    - Base data includes required object subtrees and always includes array keys as `[]`.
-    - Validation runs after activation/array item add to flag required fields immediately.
-  - When `true`:
-    - Optional object/array groups render recursively by default, except optional object children inside array items which remain inactive until explicitly activated or data exists for them (prevents overwhelming newly added array items).
-    - Base data includes all nested objects and arrays present in the schema (arrays initialized to `[]`).
-    - Arrays-of-objects may auto-add a first item when activated from the sidebar (data-first rule).
-    - Navigation lists nested object children under array items.
+In the current implementation the generator renders optional object/array groups recursively by default. Optional object children inside array items remain inactive until explicitly activated or data exists (to avoid overwhelming newly added items). Base data always includes arrays as `[]`; optional objects are created only when activated or when data exists.
 
 ### State tracking (form content and sidebar)
 
@@ -167,7 +160,7 @@ Key APIs:
 - `fieldSchemas`, `fieldElements`, `fieldErrors` (FormGenerator): typing and validation state per field.
 - `fieldToGroup: Map<fieldPath, groupId>` (FormGenerator): links fields to their group container for navigation and error mapping.
 - `isCollapsed`, `currentMode` (FormSidebar): panel UI state.
-- `isRawMode` (mount factory): current visual mode for the form container; raw is inspect‑only.
+- Optional groups visibility toggle: a UI control in the sidebar can hide/show activatable optional groups; state is propagated to search.
 
 ### Arrays (multi-value fields)
 
@@ -296,30 +289,33 @@ There is no raw JSON mode UI in the current implementation. The form view is the
 ### File map
 
 - Core: `core/form-nodeview.js`, `core/form-mount.js`, `core/form-generator.js`, `core/form-generator/path-utils.js`, `core/form-generator/schema-utils.js`, `core/form-generator/input-array-group.js`, `core/form-generator/placeholders.js`, `core/form-data-model.js`, `core/input-factory.js`, `core/inputs/*`, `core/form-generator/group-builder.js`
-- Features: `features/navigation.js`, `features/validation.js`, `features/highlight-overlay.js`
+- Features: `features/navigation.js`, `features/validation.js`, `features/highlight-overlay.js`, `features/breadcrumb.js`, `features/search.js`
 - Components: `components/sidebar.js`
-- Utils: `utils/schema-loader.js`, `utils/icons.js`
+- Services/Utils: `services/schema-service.js`, `utils/icons.js`
 - Styles: `form-ui.css`
 
 ### Factory API (core/form-mount.js)
 
 ```js
-const api = mountFormUI({
-  mount,        // HTMLElement to render into
-  schema,       // JSON schema object
-  data,         // initial data object
-  onChange,     // (data) => void, called on every change
-  onRemove,     // () => void, called when delete confirmed
-  ui: {
-    renderAllGroups: false,  // when true, render optional object/array groups recursively and include arrays as [] in base data
-  },
+const api = mountFormUI(context, {
+  mount,     // HTMLElement to render into
+  schema,    // JSON schema object
+  data,      // initial data object
+  onChange,  // (data) => void, called on every change
 });
 
-api.updateData(next);            // replace form data
-api.updateSchema(nextSchema);    // rebuild with a new schema
-api.navigateTo(groupId);         // navigate to group id
-api.getData();                   // read current data
-api.destroy();                   // unmount
+api.updateData(next);             // replace form data
+api.updateSchema(nextSchema);     // rebuild with a new schema
+api.navigateTo(groupId);          // navigate to group id
+api.getData();                    // read current data
+api.hasValidationErrors();        // boolean
+api.getValidationErrorCount();    // number
+api.destroy();                    // unmount
 ```
+
+Feature flags (via `context.config`):
+- `ui.feature.toggleOptionalGroups.enabled` and `.defaultOn` to show/hide the optional‑groups toggle in the sidebar and default it on/off.
+- `ui.feature.search.enabled` to enable the search feature and its button in the sidebar.
+- `navigation.stickyParents` to enable sticky‑parent path highlighting in the nav tree.
 
 
