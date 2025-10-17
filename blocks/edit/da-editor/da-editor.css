@@ -81,6 +81,7 @@
   border-radius: 10px;
   z-index: 1;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .ProseMirror-focused {
