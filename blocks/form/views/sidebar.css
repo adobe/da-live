@@ -1,0 +1,20 @@
+:host {
+  width: 375px;
+
+  p {
+    line-height: 1;
+  }
+
+  sl-select {
+    margin-bottom: 12px;
+  }
+
+  .da-sidebar-section {
+    margin-bottom: 16px;
+  }
+
+  .da-sidebar-title {
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+}

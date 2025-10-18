@@ -1,8 +1,17 @@
 :host {
   display: block;
-  max-width: var(--grid-container-width);
   margin: 0 auto;
 }
+
+.da-form-wrapper {
+  position: relative;
+
+  .da-form-editor {
+    width: 900px;
+  }
+}
+
+/*
 
 h2 {
     padding: 5px;
@@ -177,4 +186,4 @@ label[for="schema-select"] {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
-}
+} */
