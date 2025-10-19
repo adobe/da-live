@@ -1,9 +1,16 @@
 :host {
   display: block;
+  min-height: 400px;
+  box-shadow: rgb(181 181 181 / 50%) 0 0 10px;
+  border-radius: 8px;
+  overflow: hidden;
 
   h2 {
     line-height: 1;
     margin: 0;
+    padding: 24px 48px;
+    margin-bottom: 24px;
+    background-color: var(--s2-blue-200);
   }
 
   p {
@@ -12,10 +19,7 @@
   }
 
   form {
-    min-height: 400px;
-    box-shadow: rgb(181 181 181 / 50%) 0 0 10px;
-    border-radius: 8px;
-    padding: 48px;
+    padding: 0 48px 48px;
   }
 
   .da-form-title {

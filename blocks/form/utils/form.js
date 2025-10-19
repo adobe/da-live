@@ -70,14 +70,14 @@ export default async function renderForm(json) {
   const rootSchema = schema.$ref ? resolveRef(schema, schema.$ref) : schema;
 
   return html`
-    <div>
-      <h2>${schema.title}</h2>
+    <h2>${schema.title}</h2>
+    <form>
       <div class="da-form-group">
         ${Object.entries(data).map(([key, value]) => {
           const propSchema = rootSchema?.properties?.[key];
           return renderJson(value, schema, propSchema);
         })}
       </div>
-    </div>
+    </form>
   `;
 }

@@ -5,13 +5,6 @@ const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
 const style = await getStyle(import.meta.url);
 
-/**
- * FormsEditor
- *
- * Standalone web component that loads a page's form data from DA, lets the
- * user pick a JSON Schema, mounts the schema-driven Form UI, and provides
- * actions to save/preview/publish via backend services.
- */
 class FormPreview extends LitElement {
   static properties = {
     json: { attribute: false },
@@ -23,15 +16,12 @@ class FormPreview extends LitElement {
   }
 
   updated() {
-    if (this.json) {
-      this.setPreview();
-    }
+    if (this.json) this.setPreview();
   }
 
   async setPreview() {
+    this.toggleVis();
     await this.loadPrism();
-
-    // Remove the existing code el for simplicity
     if (this.code) this.code.remove();
 
     const code = document.createElement('code');
@@ -40,6 +30,7 @@ class FormPreview extends LitElement {
 
     code.textContent = JSON.stringify(this.json, null, 2);
     window.Prism.highlightElement(code);
+    this.toggleVis();
   }
 
   async loadPrism() {
@@ -48,6 +39,11 @@ class FormPreview extends LitElement {
       await import('../deps/prism-json.min.js');
       this.prism = true;
     }
+  }
+
+  toggleVis() {
+    const wrapper = this.shadowRoot.querySelector('.vis-wrapper');
+    wrapper.classList.toggle('is-visible');
   }
 
   get pre() {
@@ -60,8 +56,10 @@ class FormPreview extends LitElement {
 
   render() {
     return html`
-    <p class="da-title">Preview</p>
-    <pre></pre>`;
+      <div class="vis-wrapper is-visible">
+        <p class="da-title">Preview</p>
+        <pre></pre>
+      </div>`;
   }
 }
 

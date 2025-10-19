@@ -1,3 +1,11 @@
+.vis-wrapper {
+  display: none;
+
+  &.is-visible {
+    display: block;
+  }
+}
+
 .da-title {
   font-weight: 700;
   line-height: 1;

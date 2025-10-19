@@ -19,7 +19,6 @@ class FormEditor extends LitElement {
   }
 
   update(props) {
-    console.log(props);
     if (props.has('json') || props.has('schemas')) {
       if (this.json && this.schemas) {
         this.getForm();
@@ -30,13 +29,11 @@ class FormEditor extends LitElement {
 
   async getForm() {
     this._form = await renderForm(this.json);
-    console.log(this._form);
   }
 
   render() {
-    return html`
-    <p class="da-form-title">Edit</p>
-    <form>${this._form}</form>`;
+    if (!this._form) return nothing;
+    return html`<div>${this._form}</div>`;
   }
 }
 
