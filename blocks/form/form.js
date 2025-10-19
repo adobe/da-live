@@ -51,7 +51,6 @@ class FormEditor extends LitElement {
   }
 
   renderFormEditor() {
-    if (this.json === undefined) return nothing;
     if (this.json === null) return html`<p>Select a schema to get started.</p>`;
 
     return html`
@@ -64,7 +63,7 @@ class FormEditor extends LitElement {
   render() {
     return html`
       <div class="da-form-wrapper">
-        ${this.json && this.schemas ? this.renderFormEditor() : nothing}
+        ${this.json !== undefined && this.schemas ? this.renderFormEditor() : nothing}
         <da-form-sidebar .json=${this.json} .schemas=${this.schemas}></da-form-sidebar>
       </div>
     `;
