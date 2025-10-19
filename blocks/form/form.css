@@ -15,9 +15,14 @@ sl-textarea {
     width: 700px;
   }
 
+  da-form-editor {
+    margin-bottom: 20px;
+  }
+
   da-form-sidebar {
     position: absolute;
     top: 0;
-    right: -195px; /* 20px offset */
+    width: 300px;
+    right: -120px; /* 20px offset */
   }
 }

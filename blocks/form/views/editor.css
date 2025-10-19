@@ -1,0 +1,30 @@
+:host {
+  display: block;
+
+  h2 {
+    line-height: 1;
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
+    line-height: 1;
+  }
+
+  form {
+    min-height: 400px;
+    box-shadow: rgb(181 181 181 / 50%) 0 0 10px;
+    border-radius: 8px;
+    padding: 48px;
+  }
+
+  .da-form-title {
+    line-height: 1;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+
+  .da-form-primitive {
+    margin-bottom: 12px;
+  }
+}

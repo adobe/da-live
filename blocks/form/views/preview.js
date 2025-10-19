@@ -31,7 +31,7 @@ class FormPreview extends LitElement {
   async setPreview() {
     await this.loadPrism();
 
-    // Remove the existing code element for simplicity
+    // Remove the existing code el for simplicity
     if (this.code) this.code.remove();
 
     const code = document.createElement('code');
@@ -39,12 +39,15 @@ class FormPreview extends LitElement {
     this.pre.append(code);
 
     code.textContent = JSON.stringify(this.json, null, 2);
-    window.Prism.highlightElement(code, false, () => {});
+    window.Prism.highlightElement(code);
   }
 
   async loadPrism() {
-    await import('../../../deps/prismjs/dist/prism.js');
-    await import('../../../deps/prismjs/src/components/prism-json.min.js');
+    if (!this.prism) {
+      await import('../deps/prism.js');
+      await import('../deps/prism-json.min.js');
+      this.prism = true;
+    }
   }
 
   get pre() {

@@ -11,6 +11,7 @@ import 'https://da.live/nx/public/sl/components.js';
 import '../edit/da-title/da-title.js';
 
 // Internal Web Components
+import './views/editor.js';
 import './views/sidebar.js';
 import './views/preview.js';
 
@@ -59,7 +60,7 @@ class FormEditor extends LitElement {
     return html`
       <div class="da-form-wrapper">
         <div class="da-form-editor">
-          ${this.renderFormEditor()}
+          <da-form-editor .json=${this.json} .schemas=${this.schemas}></da-form-editor>
           <da-form-preview .json=${this.json}></da-form-preview>
         </div>
         <da-form-sidebar .json=${this.json} .schemas=${this.schemas}></da-form-sidebar>
@@ -68,7 +69,7 @@ class FormEditor extends LitElement {
   }
 }
 
-customElements.define('da-form-editor', FormEditor);
+customElements.define('da-form', FormEditor);
 
 export default async function init(el) {
   const details = getPathDetails();
@@ -76,7 +77,7 @@ export default async function init(el) {
   const title = document.createElement('da-title');
   title.details = details;
 
-  const form = document.createElement('da-form-editor');
+  const form = document.createElement('da-form');
   form.details = details;
 
   el.replaceChildren();

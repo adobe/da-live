@@ -54,7 +54,25 @@ export const schemas = (() => new Promise((resolve) => {
   }
 }))();
 
-export async function getSchema(schemaId) {
+export async function getSchema(schemaName) {
   const loaded = await schemas;
-  return loaded[schemaId];
+  return loaded[schemaName];
+}
+
+export function getSchemaDef(schema, ref) {
+  return schema.$defs[ref.replace('#/$defs/', '')];
+}
+
+export function getPropDef(schema, prop) {
+  console.log(schema);
+  console.log(prop);
+}
+
+export function getProp(schema, propName) {
+  const def = getSchemaDef(schema);
+  const prop = def.properties[propName];
+  if (!prop) {
+    return { title: `${propName} (no def)` };
+  }
+  return prop;
 }

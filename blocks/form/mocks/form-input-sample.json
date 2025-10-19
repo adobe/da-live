@@ -1,0 +1,1125 @@
+{
+  "name": "Photoshop",
+  "sapCode": "PHSP",
+  "fulfillmentCode": "photoshop_cc",
+  "layoutID": "pdpDefault",
+  "buyUrlForCch": {
+    "pdp": "https://www.adobe.com/creativecloud/plans.html?plan=individual&filter=all&promoid=61PM7WWW&mv=other",
+    "allApps": "https://www.adobe.com/creativecloud/plans.html?plan=individual&filter=all&promoid=65FN7S5V&mv=other",
+    "category": "https://www.adobe.com/creativecloud/plans.html?plan=individual&filter=all&promoid=695P7NFT&mv=other",
+    "locReady": true
+  },
+  "bannerImage": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/Ps_PDP_Marquee_Desktop_test.jpg",
+  "bannerList": {
+    "name": "phsp-herobannercarousel-20220916",
+    "layoutID": "carousel",
+    "bannerList": [
+      {
+        "name": "phsp-herobanner-20220916",
+        "layoutID": "fullWidth",
+        "itemList": [
+          {
+            "name": "phsp-herobanneritem-20220916",
+            "layoutID": "imageOnly",
+            "imageList": [
+              "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/Max24_PHSP.jpg"
+            ],
+            "backgroundColor": "FFFFFF",
+            "colorTextList": [
+              "FFFFFF"
+            ],
+            "locReady": true,
+            "mandatoryContainers": "null",
+            "imageRefList": [
+              ""
+            ],
+            "iconLayout": "",
+            "textList": [
+              ""
+            ],
+            "ingestDescription": "",
+            "borderColor": [
+              ""
+            ],
+            "maxSearchInputLen": "null"
+          }
+        ],
+        "path": "",
+        "inAppID": "",
+        "numberOfRotations": "null",
+        "rotationTime": "null"
+      }
+    ],
+    "rotationTime": -1,
+    "numberOfRotations": 6,
+    "inAppID": ""
+  },
+  "muteVideo": true,
+  "showControls": false,
+  "overviewTitle": "Main uses",
+  "overview": "Adobe Photoshop is a digital image editing and design application that lets you transform photos, graphics, and illustrations into high quality custom content. Edit and create with layers, brushes, AI tools powered by the latest Adobe Firefly Image model, and more.",
+  "keyFeatureList": [
+    {
+      "name": "Ideate and create high quality assets.",
+      "title": "Ideate and create high quality assets.",
+      "description": "Use descriptive prompts and new creative controls to quickly create stunning results.",
+      "asset": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/PS_Main_Use_Image.png",
+      "locReady": true
+    },
+    {
+      "name": "Adjust and retouch your images",
+      "title": "Adjust and retouch your images",
+      "description": "Remove distractions, fix flaws, recolor, apply effects and filters, and more.",
+      "asset": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/adjust-and-retouch-mainuse.jpg",
+      "locReady": true
+    },
+    {
+      "name": "Layer, composite and create",
+      "title": "Layer, composite, and create",
+      "description": "Blend photos, graphics, and effects – and create incredible art for posters, websites, social media posts, and more.",
+      "asset": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/layer-composite-mainuse.jpg",
+      "locReady": true
+    },
+    {
+      "name": "Paint and draw",
+      "title": "Paint and draw",
+      "description": "Explore thousands of brushes – the largest collection anywhere – or create your own.",
+      "asset": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/Ps_PDP_Main-Uses-Desktop_4.jpg",
+      "locReady": true
+    }
+  ],
+  "tutorialTitle": "Photoshop tutorials",
+  "tutorialList": [
+    {
+      "name": "Photoshop workspace basics Changed",
+      "id": "tutorial-photoshop-2019-update-1-get-started-course",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/photoshop-workspace-basics.jpg",
+      "numberOfTutorials": 10,
+      "durationInMinutes": 147,
+      "link": {
+        "locReady": true,
+        "name": "Tutorial link to Get to know Photoshop",
+        "targetType": "in-browser",
+        "url": "https://www.adobe.com/learn/photoshop/web/ps-basics-fundamentals?learnIn=1&locale=en",
+        "enableSSO": true,
+        "targetClientID": "CreativeCloudWeb1",
+        "targetScope": "openid,creative_cloud",
+        "ingestId": "tutorial-photoshop-46jxqx5j73c4sr8fntsdon",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "targetResponseType": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "locReady": true,
+      "ingestDescription": ""
+    },
+    {
+      "name": "Say goodbye to distractions in your photos",
+      "id": "how-to-make-a-cut-out-collage",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/distractions-in-photos.jpg",
+      "numberOfTutorials": 1,
+      "durationInMinutes": 20,
+      "link": {
+        "locReady": true,
+        "name": "Tutorial Link - How to make a cut out collage",
+        "targetType": "in-browser",
+        "url": "https://www.adobe.com/learn/photoshop/web/quickly-remove-objects?learnIn=1",
+        "enableSSO": true,
+        "ingestId": "tutorial-link-how-to-make-a-cut-out-collage",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "targetClientID": "",
+        "targetScope": "",
+        "targetResponseType": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "locReady": false,
+      "ingestDescription": ""
+    },
+    {
+      "name": "Select people details with the Object Selection Tool for the DEMO",
+      "id": "how-to-do-a-stop-motion-animation",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/select-people-Object-Selection-Tool1.jpg",
+      "numberOfTutorials": 1,
+      "durationInMinutes": 9,
+      "link": {
+        "locReady": true,
+        "name": "Tutorial Link - How to do a stop motion animation",
+        "targetType": "in-browser",
+        "url": "https://www.adobe.com/learn/photoshop/web/auto-select-people-features?learnIn=1",
+        "enableSSO": true,
+        "ingestId": "tutorial-link-how-to-do-a-stop-motion-animation",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "targetClientID": "",
+        "targetScope": "",
+        "targetResponseType": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "locReady": true,
+      "ingestDescription": ""
+    },
+    {
+      "name": "Edit and enhance prominent colors in a scene",
+      "id": "how-to-combine-images",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/edit-and-enhance-colors1.jpg",
+      "numberOfTutorials": 1,
+      "durationInMinutes": 12,
+      "link": {
+        "locReady": true,
+        "name": "Tutorial Link - How to combine images",
+        "targetType": "in-browser",
+        "url": "https://www.adobe.com/learn/photoshop/web/edit-image-colors-in-photoshop?learnIn=1",
+        "enableSSO": true,
+        "ingestId": "tutorial-link-make-it-sell-it-repeating-patterns",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "targetClientID": "",
+        "targetScope": "",
+        "targetResponseType": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "locReady": true,
+      "ingestDescription": ""
+    }
+  ],
+  "moreTutorialsLink": {
+    "locReady": true,
+    "name": "All Photoshop tutorials",
+    "targetType": "in-browser",
+    "url": "https://helpx.adobe.com/photoshop/tutorials.html",
+    "enableSSO": true,
+    "targetClientID": "CreativeCloudWeb1",
+    "targetScope": "openid,creative_cloud",
+    "ingestId": "more-tutorials-photoshop",
+    "useSpectrumQuietVariant": false,
+    "showProductStatusCTA": false,
+    "trackingId": "",
+    "data": "",
+    "title": "",
+    "inAppId": "",
+    "targetResponseType": "",
+    "supportedSurface": [
+      ""
+    ],
+    "ingestDescription": "",
+    "thumbnail": "",
+    "label": "",
+    "ctaStyle": "",
+    "spectrumVariant": "",
+    "ctaBorderColor": "",
+    "ctaBackgroundColor": "",
+    "ctaTextColor": "",
+    "onHoverBorderColor": "",
+    "onHoverBackgroundColor": "",
+    "onHoverTextColor": "",
+    "sapcode": "",
+    "smartCtaConfig": "",
+    "filter": "",
+    "style": ""
+  },
+  "behanceTitle": "Made with Photoshop",
+  "behanceList": [
+    {
+      "name": "Four of Spades",
+      "creator": "Emi Haze",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/spades.jpeg",
+      "link": {
+        "locReady": true,
+        "name": "Behance Photoshop Four of Spades",
+        "targetType": "in-browser",
+        "url": "https://www.behance.net/gallery/36641663/Playing-Arts-Special-Edition-4-of-Spades?sso_inbound=1&promoid=YKHWGH4X",
+        "enableSSO": true,
+        "targetClientID": "BehanceWebSusi1",
+        "targetScope": "AdobeID,openid,gnav,sao.cce_private,creative_cloud,creative_sdk,be.pro2.external_client,additional_info.roles",
+        "targetResponseType": "token",
+        "ingestId": "inspiration-behance-photoshop-4efegxecptyearz1bjc1te",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "ingestDescription": ""
+    },
+    {
+      "name": "UNITED",
+      "creator": "Natacha EINAT",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/ps-behance-united2.jpg",
+      "link": {
+        "locReady": true,
+        "name": "Behance project link to United",
+        "targetType": "in-browser",
+        "url": "https://www.behance.net/gallery/104694829/UNITED?promoid=YKHWGH4X&sso_inbound=1",
+        "enableSSO": true,
+        "targetClientID": "BehanceWebSusi1",
+        "targetScope": "AdobeID,openid,gnav,sao.cce_private,creative_cloud,creative_sdk,be.pro2.external_client,additional_info.roles",
+        "targetResponseType": "token",
+        "ingestId": "behance-project-link-to-united",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "ingestDescription": ""
+    },
+    {
+      "name": "Various illustrations",
+      "creator": "Clément Barbé",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/photoshop-Various_illustrations_-_2018_-_part_1.jpg",
+      "link": {
+        "locReady": true,
+        "name": "Behance project link to Various illustrations - 2018 - part 1",
+        "targetType": "in-browser",
+        "url": "https://www.behance.net/gallery/68609553/Various-illustrations-2018-part-1?sso_inbound=1&promoid=YKHWGH4X",
+        "enableSSO": true,
+        "targetClientID": "BehanceWebSusi1",
+        "targetScope": "AdobeID,openid,gnav,sao.cce_private,creative_cloud,creative_sdk,be.pro2.external_client,additional_info.roles",
+        "targetResponseType": "token",
+        "ingestId": "inspiration-behance-photoshop-5o4iameubquzocgud9kmsi",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "ingestDescription": ""
+    },
+    {
+      "name": "The Light Keeper",
+      "creator": "Erik Johansson",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/photoshop-The_Light_Keeper.jpg",
+      "link": {
+        "locReady": true,
+        "name": "Behance project link to The Light Keeper",
+        "targetType": "in-browser",
+        "url": "https://www.behance.net/gallery/60971009/The-Light-Keeper?sso_inbound=1&promoid=YKHWGH4X",
+        "enableSSO": true,
+        "targetClientID": "BehanceWebSusi1",
+        "targetScope": "AdobeID,openid,gnav,sao.cce_private,creative_cloud,creative_sdk,be.pro2.external_client,additional_info.roles",
+        "targetResponseType": "token",
+        "ingestId": "inspiration-behance-photoshop-2vuyk0i4lh2rrhwwdl0mds",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "ingestDescription": ""
+    },
+    {
+      "name": "Treebeard",
+      "creator": "Cal Redback",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/treebeard.jpg",
+      "link": {
+        "locReady": true,
+        "name": "Behance photoshop treebeard",
+        "targetType": "in-browser",
+        "url": "https://www.behance.net/gallery/20482451/Treebeard?sso_inbound=1&promoid=YKHWGH4X",
+        "enableSSO": true,
+        "targetClientID": "BehanceWebSusi1",
+        "targetScope": "AdobeID,openid,gnav,sao.cce_private,creative_cloud,creative_sdk,be.pro2.external_client,additional_info.roles",
+        "targetResponseType": "token",
+        "ingestId": "inspiration-behance-photoshop-7tgw13sbkbteyxjn6snmzu",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "ingestDescription": ""
+    },
+    {
+      "name": "Water Wigs",
+      "creator": "Tim Tadder",
+      "image": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/waterwig.jpg",
+      "link": {
+        "locReady": true,
+        "name": "Behance photoshop water wigs",
+        "targetType": "in-browser",
+        "url": "https://www.behance.net/gallery/4889175/Water-Wigs?sso_inbound=1&promoid=YKHWGH4X",
+        "enableSSO": true,
+        "targetClientID": "BehanceWebSusi1",
+        "targetScope": "AdobeID,openid,gnav,sao.cce_private,creative_cloud,creative_sdk,be.pro2.external_client,additional_info.roles",
+        "targetResponseType": "token",
+        "ingestId": "inspiration-behance-photoshop-30bdw171ef2z1lccz6qi0r",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "supportedSurface": [
+          ""
+        ],
+        "ingestDescription": "",
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "ingestDescription": ""
+    }
+  ],
+  "moreBehanceLink": {
+    "locReady": true,
+    "name": "Behance Photoshop All Gallery",
+    "targetType": "in-browser",
+    "url": "https://www.behance.net/galleries/adobe/photoshop?sso_inbound=1&promoid=YKHWGH4X",
+    "enableSSO": true,
+    "targetClientID": "BehanceWebSusi1",
+    "targetScope": "AdobeID,openid,gnav,sao.cce_private,creative_cloud,creative_sdk,be.pro2.external_client,additional_info.roles",
+    "targetResponseType": "token",
+    "ingestId": "more-behance-photoshop",
+    "useSpectrumQuietVariant": false,
+    "showProductStatusCTA": false,
+    "trackingId": "",
+    "data": "",
+    "title": "",
+    "inAppId": "",
+    "supportedSurface": [
+      ""
+    ],
+    "ingestDescription": "",
+    "thumbnail": "",
+    "label": "",
+    "ctaStyle": "",
+    "spectrumVariant": "",
+    "ctaBorderColor": "",
+    "ctaBackgroundColor": "",
+    "ctaTextColor": "",
+    "onHoverBorderColor": "",
+    "onHoverBackgroundColor": "",
+    "onHoverTextColor": "",
+    "sapcode": "",
+    "smartCtaConfig": "",
+    "filter": "",
+    "style": ""
+  },
+  "supportedLanguages": [
+    {
+      "languageName": "English",
+      "languageId": "en_US"
+    },
+    {
+      "languageName": "Čeština",
+      "languageId": "cs_CZ"
+    },
+    {
+      "languageName": "Dansk",
+      "languageId": "da_DK"
+    },
+    {
+      "languageName": "Deutsch",
+      "languageId": "de_DE"
+    },
+    {
+      "languageName": "Español",
+      "languageId": "es_ES"
+    },
+    {
+      "languageName": "Français",
+      "languageId": "fr_FR"
+    },
+    {
+      "languageName": "Italiano",
+      "languageId": "it_IT"
+    },
+    {
+      "languageName": "Magyar",
+      "languageId": "hu_HU"
+    },
+    {
+      "languageName": "Nederlands",
+      "languageId": "nl_NL"
+    },
+    {
+      "languageName": "Norsk",
+      "languageId": "nb_NO"
+    },
+    {
+      "languageName": "Polski",
+      "languageId": "pl_PL"
+    },
+    {
+      "languageName": "Português (Brasil)",
+      "languageId": "pt_BR"
+    },
+    {
+      "languageName": "Suomi",
+      "languageId": "fi_FI"
+    },
+    {
+      "languageName": "Svenska",
+      "languageId": "sv_SE"
+    },
+    {
+      "languageName": "Türkçe",
+      "languageId": "tr_TR"
+    },
+    {
+      "languageName": "Русский",
+      "languageId": "ru_RU"
+    },
+    {
+      "languageName": "Українська",
+      "languageId": "uk_UA"
+    },
+    {
+      "languageName": "简体中文",
+      "languageId": "zh_CN"
+    },
+    {
+      "languageName": "日本語",
+      "languageId": "ja_JP"
+    },
+    {
+      "languageName": "한국어",
+      "languageId": "ko_KR"
+    },
+    {
+      "languageName": "繁體中文",
+      "languageId": "zh_TW"
+    },
+    {
+      "languageName": "עברית",
+      "languageId": "he_IL"
+    },
+    {
+      "languageName": "عربي",
+      "languageId": "ar_MENA"
+    },
+    {
+      "languageName": "Tiếng Việt",
+      "languageId": "vi_VN"
+    },
+    {
+      "languageName": "Bahasa Indonesia",
+      "languageId": "id_ID"
+    }
+  ],
+  "troubleshootLink": {
+    "locReady": true,
+    "name": "Troubleshoot & help",
+    "targetType": "in-app",
+    "url": "https://helpx.adobe.com/photoshop/mobile/user-guide.html",
+    "enableSSO": false,
+    "ingestId": "photoshop-help",
+    "useSpectrumQuietVariant": false,
+    "showProductStatusCTA": false,
+    "trackingId": "",
+    "data": "",
+    "title": "",
+    "inAppId": "",
+    "targetClientID": "",
+    "targetScope": "",
+    "targetResponseType": "",
+    "supportedSurface": [
+      ""
+    ],
+    "ingestDescription": "",
+    "thumbnail": "",
+    "label": "",
+    "ctaStyle": "",
+    "spectrumVariant": "",
+    "ctaBorderColor": "",
+    "ctaBackgroundColor": "",
+    "ctaTextColor": "",
+    "onHoverBorderColor": "",
+    "onHoverBackgroundColor": "",
+    "onHoverTextColor": "",
+    "sapcode": "",
+    "smartCtaConfig": "",
+    "filter": "",
+    "style": ""
+  },
+  "contactUsLink": {
+    "locReady": true,
+    "name": "Contact us",
+    "targetType": "in-browser",
+    "url": "https://helpx.adobe.com/contact.html",
+    "enableSSO": true,
+    "targetClientID": "CreativeCloudWeb1",
+    "targetScope": "openid,creative_cloud",
+    "ingestId": "photoshop-contactus",
+    "useSpectrumQuietVariant": false,
+    "showProductStatusCTA": false,
+    "trackingId": "",
+    "data": "",
+    "title": "",
+    "inAppId": "",
+    "targetResponseType": "",
+    "supportedSurface": [
+      ""
+    ],
+    "ingestDescription": "",
+    "thumbnail": "",
+    "label": "",
+    "ctaStyle": "",
+    "spectrumVariant": "",
+    "ctaBorderColor": "",
+    "ctaBackgroundColor": "",
+    "ctaTextColor": "",
+    "onHoverBorderColor": "",
+    "onHoverBackgroundColor": "",
+    "onHoverTextColor": "",
+    "sapcode": "",
+    "smartCtaConfig": "",
+    "filter": "",
+    "style": ""
+  },
+  "communityLink": {
+    "locReady": true,
+    "name": "Community forums PHSP",
+    "targetType": "in-browser",
+    "url": "https://community.adobe.com/t5/photoshop-ecosystem/ct-p/ct-photoshop?page=1&sort=latest_replies&filter=all&lang=all&tabid=discussions&context_guid=fd969760-3742-4f89-8434-3097c4a1d996&guid=646005c1-cb3d-4618-a2c3-9a690e89ebb6&mv=other&mv2=ahome&profile.language=en&promoid=XKMMH7MW&trackingid=KZ6STZ7P&x-product=CCHome&x-product-location=Apps&xProduct=&xProductLocation=",
+    "enableSSO": false,
+    "ingestId": "photoshop-communityforum",
+    "label": "Ask the community",
+    "useSpectrumQuietVariant": false,
+    "showProductStatusCTA": false,
+    "trackingId": "",
+    "data": "",
+    "title": "",
+    "inAppId": "",
+    "targetClientID": "",
+    "targetScope": "",
+    "targetResponseType": "",
+    "supportedSurface": [
+      ""
+    ],
+    "ingestDescription": "",
+    "thumbnail": "",
+    "ctaStyle": "",
+    "spectrumVariant": "",
+    "ctaBorderColor": "",
+    "ctaBackgroundColor": "",
+    "ctaTextColor": "",
+    "onHoverBorderColor": "",
+    "onHoverBackgroundColor": "",
+    "onHoverTextColor": "",
+    "sapcode": "",
+    "smartCtaConfig": "",
+    "filter": "",
+    "style": ""
+  },
+  "relatedApps": [
+    "LRCC",
+    "LTRM"
+  ],
+  "resources": {
+    "name": "PHSP additional resources",
+    "ingestId": "PHSP-additional-resources",
+    "text": "Additional resources",
+    "sectionList": [
+      {
+        "text": "Related plugins",
+        "icon": {
+          "name": "Plugins",
+          "spectrumID": "Plugins",
+          "customIconId": "Plugins",
+          "icon": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/plugins.svg",
+          "locReady": true
+        },
+        "link": {
+          "locReady": true,
+          "name": "Photoshop Plugin Marketplace",
+          "targetType": "in-app",
+          "url": "aam://ccd?workflow=routeToPath&routePath=%2Fpmp%2Fview%2Fbrowse%3FhostSapCode%3DPHSP",
+          "enableSSO": true,
+          "targetClientID": "CreativeCloudWeb1",
+          "targetScope": "openid,creative_cloud",
+          "ingestId": "marketplace-pmp-phsp",
+          "ingestDescription": "marketplace-pmp-phsp",
+          "useSpectrumQuietVariant": false,
+          "showProductStatusCTA": false
+        },
+        "fallbackLink": {
+          "locReady": true,
+          "name": "Photoshop Plugin Marketplace",
+          "targetType": "in-browser",
+          "url": "https://exchange.adobe.com/creativecloud.photoshop.html",
+          "enableSSO": true,
+          "targetScope": "AdobeID,openid,creative_cloud,read_organizations,gnav,additional_info.address.mail_to,sao.stock",
+          "targetResponseType": "token",
+          "ingestId": "web-pmp-phsp",
+          "ingestDescription": "web-pmp-phsp",
+          "useSpectrumQuietVariant": false,
+          "showProductStatusCTA": false
+        },
+        "locReady": true,
+        "showOnBoardingStatusLight": false,
+        "hideBanner": false
+      },
+      {
+        "text": "Community forums",
+        "icon": {
+          "name": "Community",
+          "spectrumID": "Chat",
+          "customIconId": "Chat",
+          "locReady": true
+        },
+        "locReady": true,
+        "showOnBoardingStatusLight": false,
+        "hideBanner": false
+      },
+      {
+        "text": "Help & support",
+        "icon": {
+          "name": "Help & Support",
+          "spectrumID": "HelpOutline",
+          "customIconId": "HelpOutline",
+          "locReady": true
+        },
+        "locReady": true,
+        "showOnBoardingStatusLight": false,
+        "hideBanner": false
+      },
+      {
+        "text": "Behance projects",
+        "icon": {
+          "name": "Behance",
+          "spectrumID": "Behance",
+          "customIconId": "Behance",
+          "locReady": true
+        },
+        "locReady": true,
+        "showOnBoardingStatusLight": false,
+        "hideBanner": false
+      },
+      {
+        "text": "Social media",
+        "icon": {
+          "name": "Social Media",
+          "spectrumID": "SocialNetwork",
+          "customIconId": "SocialNetwork",
+          "locReady": true
+        },
+        "subSectionList": [
+          {
+            "text": "Instagram",
+            "link": {
+              "locReady": true,
+              "name": "PHSP-resource-social-media-instagram",
+              "targetType": "in-browser",
+              "url": "https://www.instagram.com/photoshop",
+              "enableSSO": false,
+              "ingestId": "PHSP-resource-social-media-instagram",
+              "useSpectrumQuietVariant": false,
+              "showProductStatusCTA": false
+            },
+            "locReady": true,
+            "showOnBoardingStatusLight": false,
+            "hideBanner": false
+          },
+          {
+            "text": "Facebook",
+            "link": {
+              "locReady": true,
+              "name": "PHSP-resource-social-media-facebook",
+              "targetType": "in-browser",
+              "url": "https://www.facebook.com/Photoshop",
+              "enableSSO": false,
+              "ingestId": "PHSP-resource-social-media-facebook",
+              "useSpectrumQuietVariant": false,
+              "showProductStatusCTA": false
+            },
+            "locReady": true,
+            "showOnBoardingStatusLight": false,
+            "hideBanner": false
+          },
+          {
+            "text": "X",
+            "link": {
+              "locReady": true,
+              "name": "PHSP resource social media X",
+              "targetType": "in-browser",
+              "url": "https://x.com/photoshop",
+              "enableSSO": false,
+              "ingestId": "SHPRBETA-resource-social-media-instagram",
+              "ingestDescription": "SHPRBETA-resource-social-media-instagram",
+              "useSpectrumQuietVariant": false,
+              "showProductStatusCTA": false
+            },
+            "locReady": true,
+            "showOnBoardingStatusLight": false,
+            "hideBanner": false
+          },
+          {
+            "text": "Tiktok",
+            "link": {
+              "locReady": true,
+              "name": "PHSP resource social media Tiktok",
+              "targetType": "in-browser",
+              "url": "https://www.tiktok.com/@photoshop",
+              "enableSSO": false,
+              "ingestId": "PHSP-resource-social-media-Tiktok",
+              "ingestDescription": "PHSP-resource-social-media-Tiktok",
+              "useSpectrumQuietVariant": false,
+              "showProductStatusCTA": false
+            },
+            "locReady": true,
+            "showOnBoardingStatusLight": false,
+            "hideBanner": false
+          }
+        ],
+        "locReady": true,
+        "showOnBoardingStatusLight": false,
+        "hideBanner": false
+      }
+    ],
+    "locReady": true,
+    "groupType": "",
+    "inAppID": ""
+  },
+  "socialLinks": [
+    {
+      "name": "Facebook Photoshop",
+      "id": "facebook",
+      "link": "https://www.facebook.com/Photoshop/",
+      "ingestId": "social-facebook-photoshop-express-mobile"
+    },
+    {
+      "name": "Instagram Photoshop",
+      "id": "instagram",
+      "link": "https://www.instagram.com/photoshop/",
+      "ingestId": "social-instagram-photoshop-express-mobile"
+    },
+    {
+      "name": "Twitter Photoshop",
+      "id": "twitter",
+      "link": "https://x.com/photoshop",
+      "ingestId": "social-twitter-photoshop-express-mobile"
+    }
+  ],
+  "compatibilityUrl": {
+    "locReady": true,
+    "name": "Photoshop system requirements",
+    "targetType": "in-browser",
+    "url": "https://helpx.adobe.com/photoshop/system-requirements.html",
+    "enableSSO": true,
+    "targetClientID": "CreativeCloudWeb1",
+    "targetScope": "openid,creative_cloud",
+    "ingestId": "photoshop-compatibility",
+    "useSpectrumQuietVariant": false,
+    "showProductStatusCTA": false,
+    "trackingId": "",
+    "data": "",
+    "title": "",
+    "inAppId": "",
+    "targetResponseType": "",
+    "supportedSurface": [
+      ""
+    ],
+    "ingestDescription": "",
+    "thumbnail": "",
+    "label": "",
+    "ctaStyle": "",
+    "spectrumVariant": "",
+    "ctaBorderColor": "",
+    "ctaBackgroundColor": "",
+    "ctaTextColor": "",
+    "onHoverBorderColor": "",
+    "onHoverBackgroundColor": "",
+    "onHoverTextColor": "",
+    "sapcode": "",
+    "smartCtaConfig": "",
+    "filter": "",
+    "style": ""
+  },
+  "shortcutList": [
+    {
+      "title": "Explore tutorials",
+      "shortcutIcon": {
+        "name": "Shortcut Tutorials",
+        "spectrumID": "Education",
+        "customIconId": "Education",
+        "icon": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/tutorials.svg",
+        "locReady": true,
+        "hover": "",
+        "darkestIcon": ""
+      },
+      "shortcutLink": {
+        "locReady": true,
+        "name": "App shortcut to Photoshop discover",
+        "targetType": "in-app",
+        "url": "https://www.adobe.com?command=routeToPath&routePath=/discover/PHSP",
+        "enableSSO": true,
+        "ingestId": "discover-tutorials-phsp",
+        "ingestDescription": "discover-tutorials-phsp",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "targetClientID": "",
+        "targetScope": "",
+        "targetResponseType": "",
+        "supportedSurface": [
+          ""
+        ],
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "shortcutId": "app-shortcut-tutorials-phsp",
+      "sticky": false,
+      "locReady": true
+    },
+    {
+      "title": "Manage plugins",
+      "shortcutIcon": {
+        "name": "Shortcut plugin",
+        "spectrumID": "Plugins",
+        "customIconId": "Plugins",
+        "icon": "https://odin.adobe.com/content/dam/ccsurfaces/AppCatalog/en_US/assets/plugins.svg",
+        "locReady": true,
+        "hover": "",
+        "darkestIcon": ""
+      },
+      "shortcutLink": {
+        "locReady": true,
+        "name": "Manage Plugins",
+        "targetType": "in-app",
+        "url": "aam://ccd?workflow=routeToPath&routePath=%2Fpmp%2Fmanage",
+        "enableSSO": true,
+        "ingestId": "marketplace-manage-plugins-phsp",
+        "ingestDescription": "marketplace-manage-plugins-phsp",
+        "useSpectrumQuietVariant": false,
+        "showProductStatusCTA": false,
+        "trackingId": "",
+        "data": "",
+        "title": "",
+        "inAppId": "",
+        "targetClientID": "",
+        "targetScope": "",
+        "targetResponseType": "",
+        "supportedSurface": [
+          ""
+        ],
+        "thumbnail": "",
+        "label": "",
+        "ctaStyle": "",
+        "spectrumVariant": "",
+        "ctaBorderColor": "",
+        "ctaBackgroundColor": "",
+        "ctaTextColor": "",
+        "onHoverBorderColor": "",
+        "onHoverBackgroundColor": "",
+        "onHoverTextColor": "",
+        "sapcode": "",
+        "smartCtaConfig": "",
+        "filter": "",
+        "style": ""
+      },
+      "shortcutId": "app-shortcut-manage-plugins-phsp",
+      "sticky": true,
+      "locReady": true
+    }
+  ],
+  "locReady": true,
+  "qrCodeCch": "",
+  "qrCodeCcd": ""
+}

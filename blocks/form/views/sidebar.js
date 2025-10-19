@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import renderJson from './nav.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -16,6 +17,7 @@ class FormSidebar extends LitElement {
   static properties = {
     schemas: { attribute: false },
     json: { attribute: false },
+    _nav: { state: true },
   };
 
   connectedCallback() {
@@ -23,23 +25,69 @@ class FormSidebar extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
   }
 
-  renderSchemaPicker() {
-    if (this.schemas === undefined) return nothing;
+  update(props) {
+    if (props.has('json') || props.has('schemas')) {
+      if (this.json && this.schemas) {
+        this.getNav();
+      }
+    }
+    super.update(props);
+  }
+
+  async getNav() {
+    if (this.emptySchemas) return;
+    this._nav = await renderJson(this.json);
+  }
+
+  getSelectedSchema() {
+    const found = this.schemas[this.json?.metadata.schemaId];
+    if (found) return found.id;
+    return null;
+  }
+
+  get emptySchemas() {
+    return !Object.keys(this.schemas).length;
+  }
+
+  renderNoSchemas() {
     return html`
-      <p class="da-sidebar-title">Schema</p>
-      <sl-select value="${this.json?.metadata.schemaId}">
-        ${Object.keys(this.schemas).map((key) => html`<option value="${key}">${this.schemas[key].title}</option>`)}
+      <p>This project has no schemas.</p>
+      <p><a href="https://docs.da.live/administrators/forms">Read documentation</a></p>
+    `;
+  }
+
+  renderSchemaSelector() {
+    const selected = this.getSelectedSchema();
+
+    return html`
+      <sl-select value="${selected || nothing}">
+        ${Object.keys(this.schemas).map((key) => html`
+          <option value="${key}">${this.schemas[key].title}</option>
+        `)}
       </sl-select>
       <p class="da-sidebar-title">Version</p>
       <sl-select>
         <option>Current</option>
       </sl-select>
-      ${this.json === null ? html`<sl-button class="primary outline">Use schema</sl-button>` : nothing}
+      ${this.json === null ? html`<sl-button class="primary outline">Use schema</sl-button>` : nothing}`;
+  }
+
+  renderSchema() {
+    if (!this.schemas) return nothing;
+    return html`
+      <p class="da-sidebar-title">Schema</p>
+      ${this.emptySchemas
+        ? this.renderNoSchemas()
+        : this.renderSchemaSelector()}
     `;
   }
 
-  renderNavigation() {
-    return html`<p class="da-sidebar-title">Navigate</p>`;
+  renderNav() {
+    if (!this._nav) return nothing;
+    return html`
+      <p class="da-sidebar-title">Navigation</p>
+      <div class="nav-list">${this._nav}</div>
+    `;
   }
 
   render() {
@@ -47,10 +95,10 @@ class FormSidebar extends LitElement {
 
     return html`
       <div class="da-sidebar-section">
-        ${this.renderSchemaPicker()}
+        ${this.renderSchema()}
       </div>
       <div class="da-sidebar-section">
-        ${this.renderNavigation()}
+        ${this.renderNav()}
       </div>
     `;
   }

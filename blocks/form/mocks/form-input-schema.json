@@ -1,0 +1,2726 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Apps PDP",
+  "$defs": {
+    "nujQuestionnaireAnswer": {
+      "type": "object",
+      "title": "NUJ - Questionnaire Answer",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/nujQuestionnaireAnswer",
+      "additionalProperties": false,
+      "properties": {
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "inAppID"
+        },
+        "title": {
+          "type": "string",
+          "title": "Title",
+          "x-semantic-type": "long-text"
+        },
+        "image": {
+          "type": "string",
+          "title": "Image",
+          "x-semantic-type": "file"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "x-semantic-type": "long-text"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        },
+        "productID": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PHSP",
+              "ILST",
+              "LRCC",
+              "PPRO",
+              "SPRK",
+              "RUSH",
+              "LTRM",
+              "AEFT",
+              "IDSN",
+              "APRO"
+            ]
+          },
+          "title": "CheckBox Field"
+        },
+        "shouldShowOnlyInVisual": {
+          "type": "boolean",
+          "title": "ShouldShowOnlyInVisual"
+        },
+        "isEquivalentToSkip": {
+          "type": "boolean",
+          "title": "IsEquivalentToSkip"
+        }
+      }
+    },
+    "nujQuestionnaireQuestion": {
+      "type": "object",
+      "title": "NUJ - Questionnaire Question",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/nujQuestionnaireQuestion",
+      "additionalProperties": false,
+      "properties": {
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "inAppID"
+        },
+        "title": {
+          "type": "string",
+          "title": "Title",
+          "x-semantic-type": "long-text"
+        },
+        "ingestTitle": {
+          "type": "string",
+          "title": "ingest Title",
+          "x-semantic-type": "long-text"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "x-semantic-type": "long-text"
+        },
+        "ingestDescription": {
+          "type": "string",
+          "title": "ingest Description",
+          "x-semantic-type": "long-text"
+        },
+        "descriptionVisual": {
+          "type": "string",
+          "title": "Description Visual",
+          "x-semantic-type": "long-text"
+        },
+        "summaryTitle": {
+          "type": "string",
+          "title": "Summary Title",
+          "x-semantic-type": "long-text"
+        },
+        "summarySkippedValue": {
+          "type": "string",
+          "title": "Summary skipped value",
+          "x-semantic-type": "long-text"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "multipleChoice",
+            "singleChoice"
+          ],
+          "title": "Type"
+        },
+        "componentType": {
+          "type": "string",
+          "enum": [
+            "dropdown",
+            "radioGroup",
+            "checkbox"
+          ],
+          "title": "Component Type"
+        },
+        "intentCategory": {
+          "type": "string",
+          "enum": [
+            "UserSignals:Role",
+            "UserSignals:Creative-Field",
+            "UserSignals:App-Affinity",
+            "UserSignals:App-Aptitude",
+            "UserSignals:Creative-Category",
+            "UserSignals:Domain-Aptitude"
+          ],
+          "title": "Signal Category"
+        },
+        "dunamisFilterSubcategory": {
+          "type": "string",
+          "enum": [
+            "Filter:Creative-Field"
+          ],
+          "title": "Dunamis Filter Subcategory"
+        },
+        "productIDList": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PHSP",
+              "ILST",
+              "LRCC",
+              "PPRO",
+              "SPRK",
+              "IDSN",
+              "APRO",
+              "AEFT",
+              "LTRM",
+              "RUSH"
+            ]
+          },
+          "title": "CheckBox Field"
+        },
+        "isSkippable": {
+          "type": "boolean",
+          "title": "Is Skippable"
+        },
+        "dropdownPlaceholderText": {
+          "type": "string",
+          "title": "Dropdown Placeholder Text",
+          "x-semantic-type": "long-text"
+        },
+        "textFieldAnswerID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Text Field Answer ID"
+        },
+        "textFieldPlaceholderText": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Text Field Placeholder Text"
+        },
+        "showImage": {
+          "type": "boolean",
+          "title": "Show Image"
+        },
+        "answerList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nujQuestionnaireAnswer"
+          },
+          "title": "Answer List"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        }
+      },
+      "required": [
+        "inAppID"
+      ]
+    },
+    "nujQuestionnaireNextQuestion": {
+      "type": "object",
+      "title": "NUJ - Questionnaire Next Question",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/nujQuestionnaireNextQuestion",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "answerIDList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Answer ID List"
+        },
+        "questionID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Next question ID"
+        }
+      }
+    },
+    "nujQuestionnaireNextQuestionData": {
+      "type": "object",
+      "title": "NUJ - Questionnaire Next Question Rule Item",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/nujQuestionnaireNextQuestionData",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "questionID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Current Question ID"
+        },
+        "nextQuestionList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nujQuestionnaireNextQuestion"
+          },
+          "title": "Next Question List"
+        }
+      },
+      "required": [
+        "questionID"
+      ]
+    },
+    "nujQuestionnaire": {
+      "type": "object",
+      "title": "NUJ - Questionnaire",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/nujQuestionnaire",
+      "additionalProperties": false,
+      "properties": {
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "inAppID"
+        },
+        "path": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "UCS Path"
+        },
+        "layoutID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "LayoutID"
+        },
+        "title": {
+          "type": "string",
+          "title": "Title",
+          "x-semantic-type": "long-text"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "x-semantic-type": "long-text"
+        },
+        "summaryTitle": {
+          "type": "string",
+          "title": "Summary Title",
+          "x-semantic-type": "long-text"
+        },
+        "backButtonLabel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Back Button Label"
+        },
+        "skipButtonLabel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Skip Button Label"
+        },
+        "continueButtonLabel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Continue Button Label"
+        },
+        "doneButtonLabel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Done Button Label"
+        },
+        "updateButtonLabel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Update Button Label"
+        },
+        "cancelButtonLabel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Cancel Button Label"
+        },
+        "questionList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nujQuestionnaireQuestion"
+          },
+          "title": "Question List"
+        },
+        "nextQuestionList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nujQuestionnaireNextQuestionData"
+          },
+          "title": "Next Question Rules"
+        },
+        "titleVisual": {
+          "type": "string",
+          "title": "TitleVisual",
+          "x-semantic-type": "long-text"
+        },
+        "doneButtonLabelVisual": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Done Button Label Visual"
+        },
+        "answerSetLabelVisual": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Answer Set Label Visual"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        }
+      },
+      "required": [
+        "inAppID"
+      ]
+    },
+    "appsFeedbackSurvey": {
+      "type": "object",
+      "title": "Apps Feedback Survey",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsFeedbackSurvey",
+      "additionalProperties": false,
+      "properties": {
+        "surveyId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Survey ID"
+        },
+        "startToastDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Start Toast Description"
+        },
+        "ingestStartToastDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "ingest Start Toast Description"
+        },
+        "endToastDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "End Toast Description"
+        },
+        "ingestEndToastDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "ingest End Toast Description"
+        },
+        "toastButtonLabel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Toast Button Label"
+        },
+        "questionnaire": {
+          "$ref": "#/$defs/nujQuestionnaire",
+          "title": "Questionnaire"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        }
+      },
+      "required": [
+        "surveyId"
+      ]
+    },
+    "appsIcon": {
+      "type": "object",
+      "title": "Apps Icon",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsIcon",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "hover": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Tooltip on hover"
+        },
+        "spectrumID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Spectrum ID"
+        },
+        "customIconId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Custom Icon ID"
+        },
+        "icon": {
+          "type": "string",
+          "title": "Icon",
+          "x-semantic-type": "file"
+        },
+        "darkestIcon": {
+          "type": "string",
+          "title": "Darkest Icon",
+          "x-semantic-type": "file"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "appsVideo": {
+      "type": "object",
+      "title": "Apps Video",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsVideo",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "ogg": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "OGG video link"
+        },
+        "mp4": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "MP4 video link"
+        },
+        "thumbnailImage": {
+          "type": "string",
+          "title": "Thumbnail Image",
+          "x-semantic-type": "file"
+        },
+        "trackSrc": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Vtt Subtitle link"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        },
+        "trackLang": {
+          "type": "string",
+          "enum": [
+            "en",
+            "fr",
+            "de",
+            "ko",
+            "ja"
+          ],
+          "title": "vtt Subtitle Language"
+        },
+        "gradient": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Gradient"
+        }
+      }
+    },
+    "appsUrl": {
+      "type": "object",
+      "title": "Apps URL",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsUrl",
+      "additionalProperties": false,
+      "properties": {
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "targetType": {
+          "type": "string",
+          "enum": [
+            "in-browser",
+            "in-app",
+            "one-up",
+            "send-link",
+            "video",
+            "open-in-iframe-dialog",
+            "in-app-survey",
+            "open-request-access-dialog",
+            "open-webinar-dialog"
+          ],
+          "title": "Target Type"
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 1024,
+          "title": "URL"
+        },
+        "trackingId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Tracking ID"
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 511,
+          "title": "Data (string)"
+        },
+        "dataRef": {
+          "$ref": "#/$defs/appsFeedbackSurvey",
+          "title": "Data (reference)"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "icon": {
+          "$ref": "#/$defs/appsIcon",
+          "title": "Icon (CCD 5.10+)"
+        },
+        "inAppId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "In-app ID"
+        },
+        "enableSSO": {
+          "type": "boolean",
+          "title": "Enable SSO"
+        },
+        "targetClientID": {
+          "type": "string",
+          "enum": [
+            "AdobeStockClient2",
+            "BehanceWebSusi1",
+            "CreativeCloudWeb1",
+            "TypeKit2",
+            "DME-Lithium-Development",
+            "LithiumDMEProd",
+            "MarvelWeb2",
+            "CCHomeWeb1",
+            "BehancePro2UIWeb",
+            "CreativeCloudPlansWeb1",
+            "SunbreakWebUI1",
+            "AdobeSupport1",
+            "ccweb_webapp_prod",
+            "MarvelWeb3",
+            "AdobeStockContributor1",
+            "ONESIE1",
+            "frameio",
+            "projectx_webapp",
+            "clio-playground-web",
+            "LightroomMobileWeb1",
+            "prd-project-neo",
+            "community-acom-client"
+          ],
+          "title": "Target IMS client ID"
+        },
+        "targetScope": {
+          "type": "string",
+          "maxLength": 900,
+          "title": "Target IMS scope"
+        },
+        "targetResponseType": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Target IMS response type"
+        },
+        "supportedSurface": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Supported surface"
+        },
+        "ingestId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest ID"
+        },
+        "ingestDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest Description"
+        },
+        "thumbnail": {
+          "type": "string",
+          "title": "Thumbnail",
+          "x-semantic-type": "file"
+        },
+        "video": {
+          "$ref": "#/$defs/appsVideo",
+          "title": "Video"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Label"
+        },
+        "ctaStyle": {
+          "type": "string",
+          "enum": [
+            "cta"
+          ],
+          "title": "CTA style (Deprecated post CCD 5.9 - user \"Spectrum variant\" instead)"
+        },
+        "spectrumVariant": {
+          "type": "string",
+          "enum": [
+            "cta",
+            "primary",
+            "secondary",
+            "warning",
+            "action",
+            "toggle",
+            "and",
+            "or",
+            "icon",
+            "quiet",
+            "minimal",
+            "dropdown",
+            "clear",
+            "field",
+            "tool",
+            "overBackground",
+            "darkOverBackground"
+          ],
+          "title": "Spectrum variant (CCD 5.10+)"
+        },
+        "useSpectrumQuietVariant": {
+          "type": "boolean",
+          "title": "Use Spectrum \"Quiet\" variant (CCD 5.10+)"
+        },
+        "ctaBorderColor": {
+          "type": "string",
+          "enum": [
+            "#FFFFFF",
+            "#1373E6",
+            "#000000",
+            "#323232",
+            "#1473E6"
+          ],
+          "title": "CTA Border Color"
+        },
+        "ctaBackgroundColor": {
+          "type": "string",
+          "enum": [
+            "#FFFFFF",
+            "#1373E6",
+            "#000000",
+            "#323232",
+            "#1473E6",
+            "transparent"
+          ],
+          "title": "CTA Background Color"
+        },
+        "ctaTextColor": {
+          "type": "string",
+          "enum": [
+            "#FFFFFF",
+            "#000000",
+            "#323232"
+          ],
+          "title": "CTA Text Color"
+        },
+        "onHoverBorderColor": {
+          "type": "string",
+          "enum": [
+            "#4B4B4B",
+            "#0D65D0",
+            "#F5EFEF",
+            "#FFFFFF"
+          ],
+          "title": "On Hover Border Color"
+        },
+        "onHoverBackgroundColor": {
+          "type": "string",
+          "enum": [
+            "#4B4B4B",
+            "#0D65D0",
+            "#818181",
+            "transparent",
+            "#FFFFFF"
+          ],
+          "title": "On Hover Background Color"
+        },
+        "onHoverTextColor": {
+          "type": "string",
+          "enum": [
+            "#FFFFFF",
+            "#6E6E6E"
+          ],
+          "title": "On Hover Text Color"
+        },
+        "showProductStatusCTA": {
+          "type": "boolean",
+          "title": "Enable Smart CTA"
+        },
+        "sapcode": {
+          "type": "string",
+          "enum": [
+            "PHSP",
+            "ILST",
+            "PPRO",
+            "APRO",
+            "RUSH",
+            "SPRK",
+            "IDSN",
+            "AEFT",
+            "FFC_ccmob",
+            "FFC_psexp",
+            "FFC_lightroom",
+            "FFC_illustrator",
+            "FFC_ccmob",
+            "FFC_capture",
+            "LRCC",
+            "FFC_psweb",
+            "FFC_photoshop",
+            "FFC_capture",
+            "FFC_acrobat",
+            "{{apps:0:default:sapcode}}",
+            "{{apps:1:default:sapcode}}",
+            "{{apps:2:default:sapcode}}",
+            "LTRM",
+            "FFC_scan",
+            "PHSPBETA",
+            "PPROBETA"
+          ],
+          "title": "SAP Code"
+        },
+        "smartCtaConfig": {
+          "type": "string",
+          "enum": [
+            "none",
+            "try",
+            "buy"
+          ],
+          "title": "Smart CTA preference (for try or buy)"
+        },
+        "filter": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Filter"
+        },
+        "style": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Style"
+        }
+      },
+      "required": [
+        "name",
+        "targetType",
+        "ingestId"
+      ]
+    },
+    "buy-url": {
+      "type": "object",
+      "title": "Buy Url",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/buy-url",
+      "additionalProperties": false,
+      "properties": {
+        "pdp": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "PDP"
+        },
+        "allApps": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "All Apps"
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Category"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        }
+      },
+      "required": [
+        "pdp",
+        "allApps",
+        "category"
+      ]
+    },
+    "appsUrl2": {
+      "type": "object",
+      "title": "Apps Url Dynamic",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsUrl2",
+      "additionalProperties": false,
+      "properties": {
+        "targetType": {
+          "type": "string",
+          "enum": [
+            "in-browser",
+            "in-app",
+            "one-up",
+            "send-link",
+            "video"
+          ],
+          "title": "Target Type"
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "URL"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        },
+        "ingestId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "IngestID"
+        },
+        "ingestDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest Description"
+        },
+        "thumbnail": {
+          "type": "string",
+          "title": "thumbnail",
+          "x-semantic-type": "file"
+        },
+        "video": {
+          "$ref": "#/$defs/appsVideo",
+          "title": "Video"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "label"
+        },
+        "showProductStatusCTA": {
+          "type": "boolean",
+          "title": "showProductStatusCTA"
+        },
+        "sapcode": {
+          "type": "string",
+          "enum": [
+            "PHSP",
+            "ILST",
+            "PPRO",
+            "RUSH",
+            "SPRK",
+            "IDSN",
+            "AEFT",
+            "FFC_ccmob"
+          ],
+          "title": "sapcode"
+        }
+      },
+      "required": [
+        "targetType",
+        "ingestId"
+      ]
+    },
+    "buttonList": {
+      "type": "object",
+      "title": "Button List",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/buttonList",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Label"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "quiet",
+            "primary",
+            "secondary",
+            "cta"
+          ],
+          "title": "Variant (Deprecated starting CCD 5.10 - use \"Spectrum variant\" instead)"
+        },
+        "spectrumVariant": {
+          "type": "string",
+          "enum": [
+            "cta",
+            "primary",
+            "secondary",
+            "warning",
+            "action",
+            "toggle",
+            "and",
+            "or",
+            "icon",
+            "quiet",
+            "minimal",
+            "dropdown",
+            "clear",
+            "field",
+            "tool",
+            "overBackground",
+            "darkOverBackground"
+          ],
+          "title": "Spectrum variant"
+        },
+        "useSpectrumQuietVariant": {
+          "type": "boolean",
+          "title": "Use Spectrum \"Quiet\" variant (CCD 5.10+)"
+        },
+        "action": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Action"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "appsBannerItem": {
+      "type": "object",
+      "title": "Apps Banner Item",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsBannerItem",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "layoutID": {
+          "type": "string",
+          "enum": [
+            "default",
+            "searchQuiet",
+            "searchStandard",
+            "contextBanner",
+            "imageWithTextOnRight",
+            "imageWithTextOnLeft",
+            "cardLayout",
+            "videoWithText",
+            "commerceDefault",
+            "imageOnly"
+          ],
+          "title": "Layout ID"
+        },
+        "mandatoryContainers": {
+          "type": "number",
+          "title": "Mandatory Container (Enter container number)"
+        },
+        "imageList": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-semantic-type": "file"
+          },
+          "title": "Image List"
+        },
+        "imageRefList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Image Reference List"
+        },
+        "iconList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsIcon"
+          },
+          "title": "Icon list (CCD 5.10+ only)"
+        },
+        "iconLayout": {
+          "type": "string",
+          "enum": [
+            "default",
+            "firstIconEmphasis"
+          ],
+          "title": "Icon layout (CCD 5.10+ only, used with \"Icon list\")"
+        },
+        "iconSeparator": {
+          "$ref": "#/$defs/appsIcon",
+          "title": "Icon separator (used with Icon list above. CCD 5.10+)"
+        },
+        "textList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Localized Text List"
+        },
+        "urlList": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/appsUrl"
+              },
+              {
+                "$ref": "#/$defs/appsUrl2"
+              }
+            ]
+          },
+          "title": "URL List"
+        },
+        "backgroundColor": {
+          "type": "string",
+          "maxLength": 256,
+          "title": "background color"
+        },
+        "colorTextList": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "FFFFFF",
+              "323232",
+              "--spectrum-global-color-gray-900",
+              "--spectrum-global-color-gray-800"
+            ]
+          },
+          "title": "Text Color"
+        },
+        "ingestDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest Description"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        },
+        "buttonList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/buttonList"
+          },
+          "title": "Button List"
+        },
+        "videoList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsVideo"
+          },
+          "title": "Video List"
+        },
+        "borderColor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Border Color"
+        },
+        "maxSearchInputLen": {
+          "type": "number",
+          "title": "Search field character limit (for \"search\" banners types only)"
+        }
+      },
+      "required": [
+        "name",
+        "layoutID",
+        "backgroundColor",
+        "colorTextList"
+      ]
+    },
+    "appsBanner": {
+      "type": "object",
+      "title": "Apps Banner",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsBanner",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "path": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "path (UCS)"
+        },
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "InApp ID"
+        },
+        "layoutID": {
+          "type": "string",
+          "enum": [
+            "fullWidth",
+            "twoThirdOneThird",
+            "fiftyFifty",
+            "sixtyForty"
+          ],
+          "title": "Layout ID"
+        },
+        "itemList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsBannerItem"
+          },
+          "title": "Banner Item List"
+        },
+        "numberOfRotations": {
+          "type": "number",
+          "title": "Number of Rotations"
+        },
+        "rotationTime": {
+          "type": "number",
+          "title": "Rotation time (ms)"
+        }
+      },
+      "required": [
+        "name",
+        "layoutID",
+        "itemList"
+      ]
+    },
+    "appsBanner1": {
+      "type": "object",
+      "title": "Apps Banner Carousel",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsBanner1",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "InApp ID"
+        },
+        "layoutID": {
+          "type": "string",
+          "enum": [
+            "carousel"
+          ],
+          "title": "Layout ID"
+        },
+        "bannerList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsBanner"
+          },
+          "title": "Banner List"
+        },
+        "rotationTime": {
+          "type": "number",
+          "title": "Rotation Time"
+        },
+        "numberOfRotations": {
+          "type": "number",
+          "title": "Number of Rotations"
+        }
+      },
+      "required": [
+        "name",
+        "layoutID",
+        "bannerList",
+        "rotationTime",
+        "numberOfRotations"
+      ]
+    },
+    "appKeyFeatures": {
+      "type": "object",
+      "title": "App Key Features",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appKeyFeatures",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "icon": {
+          "$ref": "#/$defs/appsIcon",
+          "title": "Icon"
+        },
+        "keyFeatureText": {
+          "type": "string",
+          "title": "Key Feature Text",
+          "x-semantic-type": "long-text"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      },
+      "required": [
+        "title"
+      ]
+    },
+    "slice-sso-details": {
+      "type": "object",
+      "title": "SLiCE SSO details",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/slice-sso-details",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "clientId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Client Id"
+        },
+        "scope": {
+          "type": "string",
+          "maxLength": 511,
+          "title": "Scope"
+        },
+        "responseType": {
+          "type": "string",
+          "enum": [
+            "code",
+            "token"
+          ],
+          "title": "Response Type"
+        }
+      },
+      "required": [
+        "clientId"
+      ]
+    },
+    "slice-media": {
+      "type": "object",
+      "title": "SLiCE Media",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/slice-media",
+      "additionalProperties": false,
+      "properties": {
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "contentId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Content Id"
+        },
+        "image": {
+          "type": "string",
+          "title": "Image",
+          "x-semantic-type": "file"
+        },
+        "imageDarkMode": {
+          "type": "string",
+          "title": "Image Dark Mode",
+          "x-semantic-type": "file"
+        },
+        "imageId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Image Id"
+        },
+        "videoOgg": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Video OGG"
+        },
+        "videoMp4": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Video MP4"
+        },
+        "videoDuration": {
+          "type": "number",
+          "title": "Video duration"
+        },
+        "tooltip": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Tooltip"
+        },
+        "action": {
+          "$ref": "#/$defs/slice-action",
+          "title": "Action"
+        }
+      },
+      "required": [
+        "contentId"
+      ]
+    },
+    "export-option": {
+      "type": "object",
+      "title": "Export option",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/export-option",
+      "additionalProperties": false,
+      "properties": {
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc ready"
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Identifier"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Label"
+        },
+        "featureList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Feature List"
+        },
+        "iconUrl": {
+          "$ref": "#/$defs/slice-media",
+          "title": "Icon Url"
+        },
+        "optionType": {
+          "type": "string",
+          "enum": [
+            "group",
+            "button",
+            "link"
+          ],
+          "title": "Option type"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "cta"
+          ],
+          "title": "Variant"
+        },
+        "buttonType": {
+          "type": "string",
+          "enum": [
+            "native",
+            "custom"
+          ],
+          "title": "Button Type"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "Host",
+            "Editor"
+          ],
+          "title": "Target"
+        },
+        "workflow": {
+          "type": "string",
+          "enum": [
+            "openin",
+            "editor",
+            "download"
+          ],
+          "title": "Workflow"
+        },
+        "trackingParams": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Tracking Params"
+        },
+        "getEditorUrl": {
+          "type": "boolean",
+          "title": "Get Editor URL"
+        },
+        "action": {
+          "$ref": "#/$defs/slice-action",
+          "title": "Action"
+        },
+        "buttons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/export-option"
+          },
+          "title": "Buttons"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ]
+    },
+    "export-option-list": {
+      "type": "object",
+      "title": "Export option list",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/export-option-list",
+      "additionalProperties": false,
+      "properties": {
+        "exportOptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/export-option"
+          },
+          "title": "Export options"
+        }
+      }
+    },
+    "country-map": {
+      "type": "object",
+      "title": "Country Map",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/country-map",
+      "additionalProperties": false,
+      "properties": {
+        "US": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "United States (US)"
+        },
+        "GB": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "United Kingdom (GB)"
+        },
+        "AU": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Australia (AU)"
+        },
+        "DE": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Germany (DE)"
+        },
+        "CA": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Canada (CA)"
+        },
+        "BR": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Brazil (BR)"
+        },
+        "FR": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "France (FR)"
+        },
+        "IT": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Italy (IT)"
+        },
+        "NL": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Netherlands (NL)"
+        },
+        "ES": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Spain (ES)"
+        },
+        "PT": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Portugal (PT)"
+        },
+        "AR": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Argentina (AR)"
+        },
+        "CH": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Switzerland (CH)"
+        },
+        "PL": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Poland (PL)"
+        },
+        "ZA": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "South Africa (ZA)"
+        },
+        "AT": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Austria (AT)"
+        },
+        "IE": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ireland (IE)"
+        },
+        "KR": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Korea (KR)"
+        },
+        "JP": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Japan (JP)"
+        }
+      }
+    },
+    "slice-action": {
+      "type": "object",
+      "title": "SLiCE Action",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/slice-action",
+      "additionalProperties": false,
+      "properties": {
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc ready"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "contentId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Content Id"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "ariaLabel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "ariaLabel"
+        },
+        "style": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Style"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "default",
+            "smart",
+            "deep-link",
+            "open-in-iframe-dialog"
+          ],
+          "title": "Type"
+        },
+        "target": {
+          "type": "string",
+          "maxLength": 1024,
+          "title": "Target"
+        },
+        "deeplinkUrl": {
+          "type": "string",
+          "maxLength": 500,
+          "title": "Deeplink URL"
+        },
+        "filter": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Filter"
+        },
+        "enableSSO": {
+          "type": "boolean",
+          "title": "Enable SSO"
+        },
+        "ssoDetails": {
+          "$ref": "#/$defs/slice-sso-details",
+          "title": "SSO Details"
+        },
+        "data": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/appsFeedbackSurvey"
+            },
+            {
+              "$ref": "#/$defs/slice-media"
+            },
+            {
+              "$ref": "#/$defs/export-option-list"
+            },
+            {
+              "$ref": "#/$defs/country-map"
+            }
+          ],
+          "title": "Data"
+        }
+      },
+      "required": [
+        "contentId",
+        "type"
+      ]
+    },
+    "slice-promotion": {
+      "type": "object",
+      "title": "SLiCE Promotion",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/slice-promotion",
+      "additionalProperties": false,
+      "properties": {
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc ready"
+        },
+        "endText": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "End Text"
+        },
+        "action": {
+          "$ref": "#/$defs/slice-action",
+          "title": "Action"
+        }
+      }
+    },
+    "mediaList": {
+      "type": "object",
+      "title": "Media List",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/mediaList",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "subTitle": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Left nav title"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "description"
+        },
+        "video": {
+          "$ref": "#/$defs/appsVideo",
+          "title": "Video"
+        },
+        "image": {
+          "type": "string",
+          "title": "Image",
+          "x-semantic-type": "file"
+        },
+        "mediaDuration": {
+          "type": "number",
+          "title": "Media Duration"
+        },
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "InAppID"
+        },
+        "primaryCTA": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "primaryCTA"
+        },
+        "secondaryCTA": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "secondaryCTA"
+        },
+        "promotion": {
+          "$ref": "#/$defs/slice-promotion",
+          "title": "Promotion"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "app": {
+      "type": "object",
+      "title": "App",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/app",
+      "additionalProperties": false,
+      "properties": {
+        "sapCode": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "SapCode"
+        },
+        "tagLine": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Tag Line"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "x-semantic-type": "long-text"
+        },
+        "appKeyFeatures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appKeyFeatures"
+          },
+          "title": "App Key Features"
+        },
+        "mediaList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mediaList"
+          },
+          "title": "Media List"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "appsPDPKeyFeature": {
+      "type": "object",
+      "title": "Apps PDP Key Feature",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsPDPKeyFeature",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "x-semantic-type": "long-text"
+        },
+        "icon": {
+          "$ref": "#/$defs/app",
+          "title": "Icon"
+        },
+        "asset": {
+          "type": "string",
+          "title": "Asset",
+          "x-semantic-type": "file"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "appsPDPTutorial": {
+      "type": "object",
+      "title": "Apps PDP Tutorial",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsPDPTutorial",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Identifier"
+        },
+        "image": {
+          "type": "string",
+          "title": "Image",
+          "x-semantic-type": "file"
+        },
+        "numberOfTutorials": {
+          "type": "number",
+          "title": "Number of tutorials"
+        },
+        "durationInMinutes": {
+          "type": "number",
+          "title": "Duration in minutes"
+        },
+        "link": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Link"
+        },
+        "ingestDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest Description"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "appsPDPBehance": {
+      "type": "object",
+      "title": "Apps PDP Behance",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsPDPBehance",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "creator": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Creator"
+        },
+        "image": {
+          "type": "string",
+          "title": "Image",
+          "x-semantic-type": "file"
+        },
+        "link": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Link"
+        },
+        "ingestDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest Description"
+        }
+      }
+    },
+    "referenceTextlink": {
+      "type": "object",
+      "title": "Apps PDP language item",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/referenceTextlink",
+      "additionalProperties": false,
+      "properties": {
+        "languageName": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Language name"
+        },
+        "languageId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Language Id"
+        }
+      }
+    },
+    "empty-state": {
+      "type": "object",
+      "title": "Empty State",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/empty-state",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Description"
+        },
+        "buttonsList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsUrl"
+          },
+          "title": "Buttons List"
+        },
+        "icon": {
+          "$ref": "#/$defs/appsIcon",
+          "title": "Icon"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "dropdown-cta": {
+      "type": "object",
+      "title": "Dropdown CTA",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/dropdown-cta",
+      "additionalProperties": false,
+      "properties": {
+        "inAppId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "In-app ID"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "title"
+        },
+        "actionList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsUrl"
+          },
+          "title": "Action List"
+        },
+        "ingestEventSubtype": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: event.subtype"
+        },
+        "ingestContentId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.id"
+        },
+        "ingestContentName": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.name"
+        },
+        "ingestContentType": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.type"
+        },
+        "ingestContentCategory": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.category"
+        },
+        "ingestContentAction": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.action"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      },
+      "required": [
+        "actionList"
+      ]
+    },
+    "home-skeleton-list-item": {
+      "type": "object",
+      "title": "Home Skeleton List Item",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/home-skeleton-list-item",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Localized text"
+        },
+        "contentId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Content Id"
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "identifier"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Description"
+        },
+        "viewMoreLink": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "View more link"
+        },
+        "emptyState": {
+          "$ref": "#/$defs/empty-state",
+          "title": "Empty state"
+        },
+        "mandatoryContainers": {
+          "type": "number",
+          "title": "Mandatory Containers"
+        },
+        "cardsItem": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Cards Item (deprecated post CCD 5.9 - use \"Data\" instead)"
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Data"
+        },
+        "analyticsData": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Analytics Data"
+        },
+        "reservedCards": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Reserved cards"
+        },
+        "analyticsDataReservedCards": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Analytics Data Reserved Cards"
+        },
+        "actionCta": {
+          "$ref": "#/$defs/dropdown-cta",
+          "title": "Action CTA (deprecated post CCD 5.10 - use \"Action icon list\")"
+        },
+        "actionCtaList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsUrl"
+          },
+          "title": "Shortcuts: Action CTA list (CCD 5.10+)"
+        },
+        "contextMenuCta": {
+          "$ref": "#/$defs/dropdown-cta",
+          "title": "Shortcuts: Context menu CTA (CCD 6.3+)"
+        },
+        "appListSequence": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "App list ordering"
+        },
+        "webAppsCodeList": {
+          "type": "string",
+          "title": "Default web apps shown in list"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        }
+      }
+    },
+    "home-skeleton-section": {
+      "type": "object",
+      "title": "Home Skeleton Section",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/home-skeleton-section",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Localized text"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Localized description"
+        },
+        "icon": {
+          "$ref": "#/$defs/appsIcon",
+          "title": "Icon"
+        },
+        "contentType": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Content Type"
+        },
+        "link": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Link"
+        },
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "inApp ID"
+        },
+        "contextBarList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/home-skeleton-section"
+          },
+          "title": "Context bar list"
+        },
+        "headerList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/home-skeleton-list-item"
+          },
+          "title": "header List"
+        },
+        "rightPanel": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Right panel"
+        },
+        "rightPanelAnalyticsData": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Right panel analytics data"
+        },
+        "ingestContentId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.id"
+        },
+        "ingestContentName": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.name"
+        },
+        "ingestContentType": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.type"
+        },
+        "ingestContentcategory": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest: content.category"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "LocReady"
+        }
+      }
+    },
+    "appsListItem": {
+      "type": "object",
+      "title": "Apps Skeleton List Item",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsListItem",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Localized Text"
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Identifier"
+        },
+        "compositeFilter": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "composite Filter"
+        },
+        "filter": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Filter"
+        },
+        "includedSapCodeList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Included Sap Code List"
+        },
+        "layoutId": {
+          "type": "string",
+          "enum": [
+            "appSectionCardView",
+            "appSectionListView",
+            "appSectionCardMediaTaglineView",
+            "appSectionCardMediaTaglineFeatureView",
+            "appSectionCardMediaDescLeftView",
+            "appSectionCardMediaDescRightView"
+          ],
+          "title": "Layout ID"
+        },
+        "cardSize": {
+          "type": "string",
+          "enum": [
+            "full-width",
+            "50-percent",
+            "33-percent"
+          ],
+          "title": "Card Size"
+        },
+        "minimumAppCount": {
+          "type": "number",
+          "title": "Minimum App Count"
+        },
+        "icon": {
+          "$ref": "#/$defs/appsIcon",
+          "title": "Icon"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "appsEmptySection": {
+      "type": "object",
+      "title": "Apps Skeleton Empty Section",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsEmptySection",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Localized Text Title"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Localized Text Description"
+        },
+        "richTextDescription": {
+          "type": "string",
+          "title": "Localized Rich Text Description",
+          "x-semantic-type": "long-text"
+        },
+        "buttonsList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsUrl"
+          },
+          "title": "Buttons List"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        }
+      }
+    },
+    "appsSection": {
+      "type": "object",
+      "title": "Apps Skeleton Section",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsSection",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Localized Text"
+        },
+        "icon": {
+          "$ref": "#/$defs/appsIcon",
+          "title": "Icon"
+        },
+        "contentType": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Content Type"
+        },
+        "link": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Link"
+        },
+        "fallbackLink": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Fallback link"
+        },
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "InApp: ID"
+        },
+        "banner": {
+          "$ref": "#/$defs/appsBanner",
+          "title": "banner"
+        },
+        "compositeFilter": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "composite Filter"
+        },
+        "subSectionList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsSection"
+          },
+          "title": "InApp: Sub Section List"
+        },
+        "gridSectionList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsListItem"
+          },
+          "title": "Grid Section List (App Catalog 2.0)"
+        },
+        "tabSectionList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsSection"
+          },
+          "title": "Tab Section List (App Catalog 2.0)"
+        },
+        "headerList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsListItem"
+          },
+          "title": "InApp: Header List"
+        },
+        "contextMenuList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsListItem"
+          },
+          "title": "InApp: Context Menu List"
+        },
+        "actionList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsListItem"
+          },
+          "title": "InApp: Action List"
+        },
+        "emptyState": {
+          "$ref": "#/$defs/appsEmptySection",
+          "title": "Empty State"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        },
+        "layoutId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Layout ID"
+        },
+        "showOnBoardingStatusLight": {
+          "type": "boolean",
+          "title": "show OnBoarding Status Light"
+        },
+        "appList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/app"
+          },
+          "title": "App List"
+        },
+        "hideBanner": {
+          "type": "boolean",
+          "title": "Hide Banner"
+        }
+      }
+    },
+    "appsSectionGroup": {
+      "type": "object",
+      "title": "Apps Skeleton Section Group",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsSectionGroup",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "ingestId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Ingest ID"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Localized Text"
+        },
+        "groupType": {
+          "type": "string",
+          "enum": [
+            "TopAligned",
+            "BottomAligned"
+          ],
+          "title": "groupType"
+        },
+        "emptyState": {
+          "$ref": "#/$defs/empty-state",
+          "title": "Empty State"
+        },
+        "sectionList": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/home-skeleton-section"
+              },
+              {
+                "$ref": "#/$defs/appsSection"
+              },
+              {
+                "$ref": "#/$defs/slice-action"
+              }
+            ]
+          },
+          "title": "Section List"
+        },
+        "inAppID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "InApp: ID"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    },
+    "appsPDPSocialLink": {
+      "type": "object",
+      "title": "Apps PDP Social Link",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsPDPSocialLink",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Identifier"
+        },
+        "link": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Link"
+        },
+        "ingestId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "ingestId"
+        }
+      }
+    },
+    "apps-shortcut": {
+      "type": "object",
+      "title": "Apps Shortcut",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/apps-shortcut",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Title"
+        },
+        "shortcutIcon": {
+          "$ref": "#/$defs/appsIcon",
+          "title": "Shortcut Icon"
+        },
+        "shortcutLink": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Shortcut link"
+        },
+        "shortcutId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "shortcut Id"
+        },
+        "sticky": {
+          "type": "boolean",
+          "title": "Sticky"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      },
+      "required": [
+        "title",
+        "shortcutIcon",
+        "shortcutLink"
+      ]
+    },
+    "appsModule": {
+      "type": "object",
+      "title": "Apps Module",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsModule",
+      "additionalProperties": false,
+      "properties": {
+        "moduleName": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "module name"
+        },
+        "moduleId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "module id"
+        },
+        "moduleDescription": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "module description"
+        },
+        "moduleIcon": {
+          "type": "string",
+          "title": "module icon",
+          "x-semantic-type": "file"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "locReady"
+        }
+      }
+    },
+    "appsPDP": {
+      "type": "object",
+      "title": "Apps PDP",
+      "description": "Model path: /conf/ccsurfaces/settings/dam/cfm/models/appsPDP",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Name"
+        },
+        "sapCode": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "SAP Code"
+        },
+        "fulfillmentCode": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Fulfillment Code"
+        },
+        "layoutID": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Layout ID"
+        },
+        "buyURL": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Buy URL"
+        },
+        "buyUrlForCch": {
+          "$ref": "#/$defs/buy-url",
+          "title": "Buy URL for CCH"
+        },
+        "qrCodeCch": {
+          "type": "string",
+          "title": "Mobile QR code sendlink (CCH)",
+          "x-semantic-type": "file"
+        },
+        "qrCodeCcd": {
+          "type": "string",
+          "title": "Mobile QR code sendlink (CCD)",
+          "x-semantic-type": "file"
+        },
+        "bannerImage": {
+          "type": "string",
+          "title": "Banner Image",
+          "x-semantic-type": "file"
+        },
+        "bannerVideo": {
+          "$ref": "#/$defs/appsVideo",
+          "title": "Banner Video"
+        },
+        "bannerList": {
+          "$ref": "#/$defs/appsBanner1",
+          "title": "Banner carousel"
+        },
+        "muteVideo": {
+          "type": "boolean",
+          "title": "Mute video (for banner videos)"
+        },
+        "showControls": {
+          "type": "boolean",
+          "title": "Show video controls (for banner videos)"
+        },
+        "overviewTitle": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Overview Title"
+        },
+        "overview": {
+          "type": "string",
+          "title": "Overview",
+          "x-semantic-type": "long-text"
+        },
+        "keyFeatureList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsPDPKeyFeature"
+          },
+          "title": "Key Feature List"
+        },
+        "tutorialTitle": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Tutorial Title"
+        },
+        "tutorialList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsPDPTutorial"
+          },
+          "title": "Tutorial List"
+        },
+        "moreTutorialsLink": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "More Tutorials Link"
+        },
+        "behanceTitle": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "Behance Title"
+        },
+        "behanceList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsPDPBehance"
+          },
+          "title": "behanceList"
+        },
+        "moreBehanceLink": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "More Behance Link"
+        },
+        "supportedLanguages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/referenceTextlink"
+          },
+          "title": "Supported Languages"
+        },
+        "troubleshootLink": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Troubleshoot & Help Link"
+        },
+        "contactUsLink": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Contact Us Link"
+        },
+        "communityLink": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "Community & Forums Link"
+        },
+        "relatedApps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Related Apps"
+        },
+        "resources": {
+          "$ref": "#/$defs/appsSectionGroup",
+          "title": "Resources"
+        },
+        "socialLinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsPDPSocialLink"
+          },
+          "title": "Social Links"
+        },
+        "compatibilityUrl": {
+          "$ref": "#/$defs/appsUrl",
+          "title": "compatibility url"
+        },
+        "shortcutList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/apps-shortcut"
+          },
+          "title": "shortcut list"
+        },
+        "moduleList": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/appsModule"
+          },
+          "title": "module List"
+        },
+        "locReady": {
+          "type": "boolean",
+          "title": "Loc Ready"
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/appsPDP",
+  "type": "object"
+}
