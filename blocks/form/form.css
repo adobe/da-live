@@ -11,6 +11,12 @@ sl-textarea {
   margin: 0 auto;
   position: relative;
 
+  .da-form-title {
+    line-height: 1;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+
   .da-form-editor {
     width: 700px;
   }

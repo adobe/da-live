@@ -6,8 +6,6 @@ import getPathDetails from '../shared/pathDetails.js';
 import { schemas } from './utils/schema.js';
 import { loadHtml, convertHtmlToJson } from './utils/utils.js';
 
-// External Web Components
-import 'https://da.live/nx/public/sl/components.js';
 import '../edit/da-title/da-title.js';
 
 // Internal Web Components
@@ -15,11 +13,15 @@ import './views/editor.js';
 import './views/sidebar.js';
 import './views/preview.js';
 
+// External Web Components
+await import(`${getNx()}/public/sl/components.js`);
+
 // Styling
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const style = await getStyle(import.meta.url);
 
 const EL_NAME = 'da-form';
+
 class FormEditor extends LitElement {
   static properties = {
     details: { attribute: false },
@@ -51,7 +53,9 @@ class FormEditor extends LitElement {
   }
 
   renderFormEditor() {
-    if (this.json === null) return html`<p>Select a schema to get started.</p>`;
+    if (this.json === null) {
+      return html`<p class="da-form-title">Select a schema to get started.</p>`;
+    }
 
     return html`
       <div class="da-form-editor">

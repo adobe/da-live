@@ -17,6 +17,7 @@ class FormSidebar extends LitElement {
   static properties = {
     schemas: { attribute: false },
     json: { attribute: false },
+    _schema: { state: true },
     _nav: { state: true },
   };
 
@@ -29,20 +30,20 @@ class FormSidebar extends LitElement {
     if (props.has('json') || props.has('schemas')) {
       if (this.json && this.schemas) {
         this.getNav();
+        this.getSchema();
       }
     }
     super.update(props);
   }
 
+  async getSchema() {
+    if (this.emptySchemas) return;
+    this._schema = this.schemas[this.json?.metadata.schemaId];
+  }
+
   async getNav() {
     if (this.emptySchemas) return;
     this._nav = await renderJson(this.json);
-  }
-
-  getSelectedSchema() {
-    const found = this.schemas[this.json?.metadata.schemaId];
-    if (found) return found.id;
-    return null;
   }
 
   get emptySchemas() {
@@ -57,10 +58,8 @@ class FormSidebar extends LitElement {
   }
 
   renderSchemaSelector() {
-    const selected = this.getSelectedSchema();
-
     return html`
-      <sl-select value="${selected || nothing}">
+      <sl-select value="${this._schema?.id || nothing}">
         ${Object.keys(this.schemas).map((key) => html`
           <option value="${key}">${this.schemas[key].title}</option>
         `)}
