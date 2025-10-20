@@ -3,7 +3,7 @@
  * Builds the sidebar tree, maintains active/hover states and scroll syncing,
  * and delegates clicks to navigate and activate optional groups.
  */
-import { getDeepActiveElement } from '../utils/dom-utils.js';
+import { getDeepActiveElement, isElementScrollableY, findNearestScrollableAncestor } from '../utils/dom-utils.js';
 
 import { UI_CLASS as CLASS } from '../constants.js';
 import { render } from 'da-lit';
@@ -163,6 +163,8 @@ export default class FormNavigation {
    */
   updateNavigationActiveState(activeGroupId) {
     if (!this.formGenerator.navigationTree) return;
+
+
 
     // Helper: consider an element visible only if it participates in layout
     const isVisible = (el) => !!el && el.getClientRects && el.getClientRects().length > 0;
@@ -454,9 +456,24 @@ export default class FormNavigation {
    * @returns {{el:HTMLElement|null,type:'element'|'window'}}
    */
   getScrollSource() {
+    // Prefer the form body if it is actually scrollable
     const bodyEl = this.formGenerator?.container?.querySelector?.(`.${CLASS.body}`) || null;
-    const isScrollable = (el) => !!el && el.scrollHeight > el.clientHeight;
-    if (isScrollable(bodyEl)) return { el: bodyEl, type: 'element' };
+    if (isElementScrollableY(bodyEl)) {
+      // eslint-disable-next-line no-console
+      try {
+        const name = `${bodyEl.tagName.toLowerCase()}${bodyEl.id ? `#${bodyEl.id}` : ''}`;
+        console.log('[form-ui][nav] getScrollSource -> body', { elName: name });
+      } catch { }
+      return { el: bodyEl, type: 'element' };
+    }
+
+    // Otherwise, use nearest scrollable ancestor from the container
+    const ancestor = findNearestScrollableAncestor(this.formGenerator?.container);
+    if (ancestor) {
+      return { el: ancestor, type: 'element' };
+    }
+
+    // Fallback to window scrolling
     return { el: null, type: 'window' };
   }
 
@@ -590,10 +607,10 @@ export default class FormNavigation {
    * @param {HTMLElement} inputEl
    */
   highlightActiveGroup(inputEl) {
-    const groupEl = inputEl.closest('.form-ui-group');
-    if (groupEl && groupEl.id) {
-      this.updateActiveGroup(groupEl.id);
-    }
+    // Prefer array item wrapper id for activation
+    const arrayWrapper = inputEl.closest('.form-ui-array-item[id]');
+    const target = arrayWrapper || inputEl.closest('.form-ui-group[id]');
+    if (target && target.id) this.updateActiveGroup(target.id);
   }
 
   /**

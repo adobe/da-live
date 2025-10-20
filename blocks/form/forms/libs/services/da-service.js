@@ -40,6 +40,7 @@ export class DaService {
    * Serialize form details to HTML and PUT to DA source. Returns status info.
    */
   async saveDocument(details, { storageVersion, ext = 'html' } = {}) {
+    console.log('saveDocument', { storageVersion, details });
     const { owner: org, repo } = getPathDetails();
     const content = this._storage
       .serializeDocument(details, { storageVersion });
@@ -78,7 +79,7 @@ export class DaService {
   async saveDaVersion(path, ext = 'html') {
     const fullPath = `${DA_ORIGIN}/versionsource${path}.${ext}`;
     const opts = { method: 'POST', body: JSON.stringify({ label: 'Published' }) };
-    try { await daFetch(fullPath, opts); } catch {}
+    try { await daFetch(fullPath, opts); } catch { }
   }
 
   /**

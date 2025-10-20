@@ -1,12 +1,21 @@
+import { isElementScrollableY, findNearestScrollableAncestor } from '../../../utils/dom-utils.js';
 /**
  * Attach throttled scroll and resize listeners to update nav active state
  * based on the visible content group (scrollspy behavior).
  * @param {import('../../navigation.js').default} nav
  * @returns {() => void} cleanup
  */
+function getScrollSource(nav) {
+  const bodyEl = nav.formGenerator?.container?.querySelector?.('.form-ui-body') || null;
+  if (isElementScrollableY(bodyEl)) return { el: bodyEl, type: 'element' };
+  const ancestor = findNearestScrollableAncestor(nav.formGenerator?.container);
+  if (ancestor) return { el: ancestor, type: 'element' };
+  return { el: null, type: 'window' };
+}
+
 export function enableScrollSync(nav) {
   const { el, type } = getScrollSource(nav);
-  if (!el && type !== 'window') return () => {};
+  if (!el && type !== 'window') return () => { };
 
   let scheduled = false;
   const onScroll = () => {
@@ -38,13 +47,4 @@ export function enableScrollSync(nav) {
   };
 }
 
-function getScrollSource(nav) {
-  const bodyEl = nav.formGenerator?.container?.querySelector?.('.form-ui-body') || null;
-  const isScrollable = (el) => !!el && el.scrollHeight > el.clientHeight;
-  if (isScrollable(bodyEl)) return { el: bodyEl, type: 'element' };
-  return { el: null, type: 'window' };
-}
-
 export default { enableScrollSync };
-
-

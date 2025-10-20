@@ -9,16 +9,21 @@ import { UI_CLASS as CLASS } from '../../../constants.js';
  */
 export function attachContentClick(nav) {
   const bodyEl = nav.formGenerator.container.querySelector(`.${CLASS.body}`) || nav.formGenerator.container;
-  if (!bodyEl) return () => {};
+  if (!bodyEl) return () => { };
 
   const onClick = (e) => {
-    const clickedGroup = e.target.closest?.(`.${CLASS.group}, .${CLASS.arrayItem}[id]`);
+    // Prefer the array item wrapper id when inside an array-of-objects item
+    const arrayWrapper = e.target.closest?.(`.${CLASS.arrayItem}[id]`);
+    const clickedGroup = arrayWrapper || e.target.closest?.(`.${CLASS.group}[id]`);
     if (!clickedGroup) return;
     const groupId = clickedGroup.id;
     if (!groupId) return;
     // Highlight group (also scrolls nav item into view) and update active state
     // Set a short programmatic window to avoid hover/scrollspy fighting with our scroll
-    try { nav.formGenerator._programmaticScrollUntil = Date.now() + 800; } catch {}
+    try {
+      // eslint-disable-next-line no-underscore-dangle
+      nav.formGenerator._programmaticScrollUntil = Date.now() + 800;
+    } catch { /* noop */ }
     nav.formGenerator.highlightFormGroup(groupId);
     nav.updateActiveGroup(groupId);
   };
@@ -28,5 +33,3 @@ export function attachContentClick(nav) {
 }
 
 export default { attachContentClick };
-
-
