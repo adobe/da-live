@@ -18,7 +18,7 @@ import FormDataModel from './form-data-model.js';
 import InputFactory from './input-factory.js';
 import GroupBuilder from './form-generator/group-builder.js';
 import HighlightOverlay from './features/highlight-overlay.js';
-import getControlElement from './utils/dom-utils.js';
+import getControlElement, { isElementScrollableY, findNearestScrollableAncestor } from './utils/dom-utils.js';
 import { renderField } from './renderers/field-renderer.js';
 import { generateForm as lifecycleGenerateForm, rebuildBody as lifecycleRebuildBody } from './form-generator/lifecycle.js';
 import createFormCommands from './commands/form-commands.js';
@@ -177,8 +177,7 @@ export default class FormGenerator {
 
     // Ensure nested path exists in current data
     const schemaNode = this.normalizeSchema(schema);
-    // eslint-disable-next-line no-console
-    console.log('[generator] onActivateOptionalGroup: start', { path, schemaNodeType: schemaNode?.type });
+
     let baseValue = {};
     if (schemaNode) {
       if (schemaNode.type === 'object') {
@@ -192,15 +191,13 @@ export default class FormGenerator {
 
     this.setNestedValue(this.data, path, baseValue);
     // Update presence snapshot so activation reflects in the UI model
-    // eslint-disable-next-line no-console
-    console.log('[generator] data updated for activation at', path, this.data);
+
     // Notify listeners for data change
     this.listeners.forEach((listener) => listener(this.data));
     // Rebuild the form body to materialize the newly activated group
 
     const res = this.rebuildBody();
-    // eslint-disable-next-line no-console
-    console.log('[generator] rebuildBody triggered after activation', res);
+
   }
 
   /** Rebuild the form body while preserving current state and references. */
@@ -512,7 +509,7 @@ export default class FormGenerator {
     this.data = this.deepMerge({}, data || {});
     // Keep derived model in sync for features relying on it
     this.formUiModel = this.services.formUiModel.createFormUiModel({ schema: this.schema, data: this.data });
-    console.log('loadData: formUiModel', this.formUiModel);
+
 
     if (!this.container) return;
 
@@ -666,6 +663,7 @@ export default class FormGenerator {
           behavior: 'smooth',
           block: 'nearest',
         });
+
       }
     }
   }
@@ -680,11 +678,12 @@ export default class FormGenerator {
     const targetGroup = this.container.querySelector(`#${groupId}`);
     if (!targetGroup) return;
 
+    // Find best scroll container: prefer body, else nearest scrollable ancestor, else window
     const bodyEl = this.container.querySelector('.form-ui-body');
     const scrollPadding = (this._headerOffset || 0); // account for sticky header/breadcrumb
 
-    const isScrollable = (el) => !!el && el.scrollHeight > el.clientHeight;
-    if (isScrollable(bodyEl)) {
+    const scrollEl = isElementScrollableY(bodyEl) ? bodyEl : findNearestScrollableAncestor(this.container);
+    if (scrollEl) {
       // Compute offset of the group within the scrollable body
       const getOffsetTopWithinContainer = (element, containerEl) => {
         let top = 0;
@@ -695,8 +694,8 @@ export default class FormGenerator {
         }
         return top;
       };
-      const top = Math.max(0, getOffsetTopWithinContainer(targetGroup, bodyEl) - scrollPadding);
-      bodyEl.scrollTo({ top, behavior: 'smooth' });
+      const top = Math.max(0, getOffsetTopWithinContainer(targetGroup, scrollEl) - scrollPadding);
+      scrollEl.scrollTo({ top, behavior: 'smooth' });
       return;
     }
 

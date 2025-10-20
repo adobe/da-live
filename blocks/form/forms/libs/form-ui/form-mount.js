@@ -39,7 +39,7 @@ function createWrapperAndHost(mount, ui) {
   return { controls, wrapper, host };
 }
 
-function instantiateGenerator(context, schema, controls) {
+function instantiateGenerator(context, schema) {
   let generator;
   let formEl;
   try {
@@ -101,9 +101,9 @@ function scheduleInitialRender(generator, breadcrumbFeature) {
 function loadInitialData(generator, data) {
   if (!data) return;
   generator.loadData(data);
-  try { window.scrollTo({ top: 0 }); } catch { }
+  try { window.scrollTo({ top: 0 }); } catch { /* noop */ }
   generator.rebuildBody();
-  requestAnimationFrame(() => { try { window.scrollTo({ top: 0 }); } catch { } });
+  requestAnimationFrame(() => { try { window.scrollTo({ top: 0 }); } catch { /* noop */ } });
 }
 
 function wireNavigationClicks(sidebar, generator) {
@@ -134,8 +134,8 @@ function wireNavigationClicks(sidebar, generator) {
  * }}
  */
 export default function mountFormUI(context, { mount, schema, data, onChange, ui } = {}) {
-  const { controls, wrapper, host } = createWrapperAndHost(mount, ui);
-  let { generator, formEl } = instantiateGenerator(context, schema, controls);
+  const { wrapper, host } = createWrapperAndHost(mount, ui);
+  let { generator, formEl } = instantiateGenerator(context, schema);
   attachToDom(mount, wrapper, host, formEl);
   // Breadcrumb moved into header
   const { breadcrumbFeature, contentBreadcrumb } = setupBreadcrumbFeature(generator, formEl);

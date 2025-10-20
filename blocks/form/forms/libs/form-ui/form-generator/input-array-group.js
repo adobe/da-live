@@ -33,7 +33,15 @@ export default function createArrayGroupUI(generator, fieldPath, propSchema) {
     });
   };
   const onAddFocus = (e) => generator.navigation?.highlightActiveGroup?.(e.target);
-  render(arrayAddButtonTemplate({ label: `Add '${baseTitle}' Item`, path: fieldPath, onClick: onAddClick, onFocus: onAddFocus }), addBtnMount);
+  render(
+    arrayAddButtonTemplate({
+      label: `Add '${baseTitle}' Item`,
+      path: fieldPath,
+      onClick: onAddClick,
+      onFocus: onAddFocus,
+    }),
+    addBtnMount,
+  );
   const addButton = addBtnMount.firstElementChild;
 
   // Path helpers to find model nodes for each item
@@ -50,7 +58,13 @@ export default function createArrayGroupUI(generator, fieldPath, propSchema) {
     // Build inner content into a wrapper element
     const contentWrapper = document.createElement('div');
     if (modelNode) {
-      generator.groupBuilder.buildFormUiModel(contentWrapper, modelNode, [], new Map(), 0);
+      generator.groupBuilder.buildFormUiModel(
+        contentWrapper,
+        modelNode,
+        [],
+        new Map(),
+        0,
+      );
     } else {
       // Fallback to direct primitive rendering if model node is missing
       generator.generateObjectFields(
@@ -65,25 +79,37 @@ export default function createArrayGroupUI(generator, fieldPath, propSchema) {
     let confirmState = false;
     const removeMount = document.createElement('div');
     const reRenderRemove = () => {
-      render(removeButtonTemplate({
-        confirm: confirmState, onClick: (ev) => {
-          ev?.preventDefault?.();
-          ev?.stopPropagation?.();
-          if (confirmState) {
-            generator.commandRemoveArrayItem(fieldPath, index);
-            requestAnimationFrame(() => generator.validation.validateAllFields());
-          } else {
-            confirmState = true;
-            reRenderRemove();
-            setTimeout(() => { confirmState = false; reRenderRemove(); }, 3000);
-          }
-        }
-      }), removeMount);
+      render(
+        removeButtonTemplate({
+          confirm: confirmState,
+          onClick: (ev) => {
+            ev?.preventDefault?.();
+            ev?.stopPropagation?.();
+            if (confirmState) {
+              generator.commandRemoveArrayItem(fieldPath, index);
+              requestAnimationFrame(() => generator.validation.validateAllFields());
+            } else {
+              confirmState = true;
+              reRenderRemove();
+              setTimeout(() => { confirmState = false; reRenderRemove(); }, 3000);
+            }
+          },
+        }),
+        removeMount,
+      );
     };
     reRenderRemove();
 
     const mount = document.createElement('div');
-    render(arrayItemTemplate({ id: itemId, title: `${baseTitle} #${index + 1}`, content: contentWrapper, removeButton: removeMount.firstElementChild }), mount);
+    render(
+      arrayItemTemplate({
+        id: itemId,
+        title: `${baseTitle} #${index + 1}`,
+        content: contentWrapper,
+        removeButton: removeMount.firstElementChild,
+      }),
+      mount,
+    );
     const itemContainer = mount.firstElementChild;
     itemContainer.dataset.schemaPath = itemDotPath;
 
@@ -98,7 +124,12 @@ export default function createArrayGroupUI(generator, fieldPath, propSchema) {
   const arrayModelNode = findModelNodeByPointer(generator.formUiModel, arrayPointer);
 
   let initialCount = Array.isArray(existing) ? existing.length : 0;
-  if (initialCount === 0 && arrayModelNode && Array.isArray(arrayModelNode.items) && arrayModelNode.items.length > 0) {
+  if (
+    initialCount === 0
+    && arrayModelNode
+    && Array.isArray(arrayModelNode.items)
+    && arrayModelNode.items.length > 0
+  ) {
     // Use FormUiModel's seeded items when data is empty
     initialCount = arrayModelNode.items.length;
   }

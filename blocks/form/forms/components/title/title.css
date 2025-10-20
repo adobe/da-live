@@ -83,7 +83,7 @@ h1 {
   height: 18px;
   top: 11px;
   left: -24px;
-  background: url('/tools/forms/libs/assets/left-large.svg') center/18px no-repeat;
+  background: url('/block/form/forms/libs/assets/left-large.svg') center/18px no-repeat;
 }
 
 .da-title-collab-actions-wrapper {
@@ -142,7 +142,7 @@ h1 {
   display: block;
   width: 22px;
   height: 22px;
-  background: url('/tools/forms/libs/assets/Smock_Send_18_N.svg') center/22px no-repeat;
+  background: url('/blocks/form/forms/libs/assets/Smock_Send_18_N.svg') center/22px no-repeat;
 }
 
 .da-title-action-send-icon.is-sending {

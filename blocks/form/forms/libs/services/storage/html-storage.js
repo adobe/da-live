@@ -102,7 +102,10 @@ export async function htmlToJson(htmlString, { schema, schemaId, context, servic
     }
     return null;
   }
-  function resolveSchema(refId) {
+  function resolveSchema(schemaPart) {
+    if (!schemaPart?.refId) {
+      return schemaPart;
+    }
     let schema = effectiveSchema;
     if (schema) {
       const splittedRefId = refId.split("/");
@@ -280,7 +283,7 @@ export async function htmlToJson(htmlString, { schema, schemaId, context, servic
 
   const rootData = blocks["__root__"] || {};
   effectiveSchema = await loadEffectiveSchema(schemaId);
-  const resolvedRootSchema = resolveSchema(effectiveSchema.$ref);
+  const resolvedRootSchema = resolveSchema(effectiveSchema);
   return { metadata, data: resolveReferences(rootData, resolvedRootSchema) };
 }
 

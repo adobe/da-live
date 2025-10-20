@@ -3,7 +3,13 @@
  */
 
 export function hyphenatePath(path) {
-  return String(path || '').replace(/[.\[\]]/g, '-');
+  const s = String(path || '');
+  // Convert [n] to -n, then drop any leftover brackets, replace dots with hyphens
+  const withIndices = s.replace(/\[(\d+)\]/g, '-$1');
+  const noBrackets = withIndices.replace(/[\[\]]/g, '');
+  const hyphened = noBrackets.replace(/\./g, '-');
+  // Collapse multiple hyphens and trim from ends
+  return hyphened.replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
 export function pathToGroupId(path) {
