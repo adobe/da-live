@@ -308,6 +308,8 @@ export default class FormGenerator {
       controlEl.addEventListener('blur', () => {
         setTimeout(() => {
           if (!this.navigation.isAnyInputFocusedInActiveGroup()) {
+            const until = this._programmaticScrollUntil || 0;
+            if (until && Date.now() <= until) return;
             this.navigation.clearActiveGroupHighlight();
           }
         }, 300);
