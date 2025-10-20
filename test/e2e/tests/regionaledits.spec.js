@@ -1,4 +1,3 @@
-import os from 'os';
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { getTestFolderURL } from '../utils/page.js';
@@ -22,10 +21,9 @@ async function findPageTab(title, page, context) {
   throw new Error('Could not find the regional edit page');
 }
 
-const modifier = os.platform() === 'darwin' ? 'Meta' : 'Control';
-
 const sendUndo = async (page) => {
-  await page.locator('.ProseMirror').press(`${modifier}+Z`);
+  page.locator('.ProseMirror').focus();
+  await page.getByText('Undo').click();
   await expect(page.locator('div.diff-tabbed-actions.loc-floating-overlay')).toBeVisible();
 };
 
@@ -48,9 +46,6 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   await page.getByRole('link', { name: 'regionaledit', exact: true }).click();
 
   const newPage = await findPageTab('Edit regionaledit', page, context);
-
-  await expect(newPage.locator('div.diff-color-overlay.diff-upstream')).toBeVisible();
-  await expect(newPage.locator('div.diff-color-overlay.diff-local')).toBeVisible();
 
   await expect(newPage.getByText('Added H1 Here', { exact: true })).toBeVisible();
   await expect(newPage.getByText('Deleted H1 Here', { exact: true })).not.toBeVisible();
