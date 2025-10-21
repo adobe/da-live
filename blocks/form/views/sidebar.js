@@ -65,7 +65,7 @@ class FormSidebar extends LitElement {
         `)}
       </sl-select>
       <p class="da-sidebar-title">Version</p>
-      <sl-select>
+      <sl-select disabled>
         <option>Current</option>
       </sl-select>
       ${this.json === null ? html`<sl-button class="primary outline">Use schema</sl-button>` : nothing}`;

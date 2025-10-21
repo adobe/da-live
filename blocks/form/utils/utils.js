@@ -61,9 +61,7 @@ export function getArrayItemTitle(schema, currentSchema) {
 // Get the title for an object from the schema
 export function getObjectTitle(schema, currentSchema) {
   // If there's a title directly on currentSchema, use it (even if there's also a $ref)
-  if (currentSchema?.title) {
-    return currentSchema.title;
-  }
+  if (currentSchema?.title) return currentSchema.title;
 
   // Otherwise, check if there's a $ref and resolve it
   if (currentSchema?.$ref) {

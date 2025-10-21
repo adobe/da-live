@@ -3,7 +3,7 @@ import { getSchema } from './schema.js';
 import { getArrayItemTitle, getObjectTitle, resolveRef } from './utils.js';
 
 // Recursive function to render JSON with schema titles
-function renderJson(data, schema, currentSchema, num) {
+function renderJson(data, schema, currentSchema, key) {
   // Handle arrays
   if (Array.isArray(data)) {
     // Only render if array contains objects
@@ -23,7 +23,7 @@ function renderJson(data, schema, currentSchema, num) {
     return html`
       <div class="da-form-array">
         <p class="schema-title">${itemTitle}</p>
-        ${data.map((item, index) => renderJson(item, schema, itemSchema, index + 1))}
+        ${data.map((item) => renderJson(item, schema, itemSchema, key))}
       </div>
     `;
   }
@@ -41,7 +41,7 @@ function renderJson(data, schema, currentSchema, num) {
     const filtered = Object.entries(data).filter(([k]) => k !== '$schema');
     const rendered = filtered.map(([k, v]) => {
       const propSchema = resolvedSchema?.properties?.[k];
-      return renderJson(v, schema, propSchema);
+      return renderJson(v, schema, propSchema, k);
     });
 
     return html`
@@ -52,11 +52,11 @@ function renderJson(data, schema, currentSchema, num) {
     `;
   }
 
-  // handle primitives
+  // Handle primitives
   return html`
     <div class="da-form-primitive">
       <p>${currentSchema.title} - ${currentSchema.type}</p>
-      <sl-input type="text" value=${data} label=></sl-input>
+      <sl-input type="text" name="${key}" value=${data}></sl-input>
     </div>
   `;
 }
@@ -72,10 +72,10 @@ export default async function renderForm(json) {
   return html`
     <h2>${schema.title}</h2>
     <form>
-      <div class="da-form-group">
+      <div class="da-form-array">
         ${Object.entries(data).map(([key, value]) => {
           const propSchema = rootSchema?.properties?.[key];
-          return renderJson(value, schema, propSchema);
+          return renderJson(value, schema, propSchema, key);
         })}
       </div>
     </form>
