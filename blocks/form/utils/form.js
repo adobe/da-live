@@ -1,82 +1,62 @@
-import { html, nothing } from 'da-lit';
-import { getSchema } from './schema.js';
-import { getArrayItemTitle, getObjectTitle, resolveRef } from './utils.js';
+import { html } from 'da-lit';
+
+function renderCheckbox(key, prop) {
+  return html`
+    <div>
+      <p class="schema-title">${prop.schema.title}</p>
+      ${prop.schema.items.enum.map((opt) => {
+        const isChecked = prop.value.find((val) => val === opt);
+        return html`
+          <input type="checkbox" id="sports" name="${key}" value="${opt}" ?checked=${isChecked}>
+          <label for="sports">${opt}</label>
+        `;
+      })}
+    </div>
+  `;
+}
 
 // Recursive function to render JSON with schema titles
-function renderJson(data, schema, currentSchema, key) {
-  // Handle arrays
-  if (Array.isArray(data)) {
-    // Only render if array contains objects
-    const hasObjects = data.some(
-      (item) => typeof item === 'object' && item !== null && !Array.isArray(item),
-    );
-    if (!hasObjects) return nothing;
-
-    // Get the array item title from schema
-    const itemTitle = getArrayItemTitle(schema, currentSchema);
-    if (!itemTitle) return nothing;
-
-    const itemSchema = currentSchema?.items?.$ref
-      ? resolveRef(schema, currentSchema.items.$ref)
-      : currentSchema?.items;
+function renderJson(key, prop) {
+  if (prop.schema.type === 'array') {
+    if (prop.schema['x-semantic-type'] === 'checkbox') return renderCheckbox(key, prop);
 
     return html`
       <div class="da-form-array">
-        <p class="schema-title">${itemTitle}</p>
-        ${data.map((item) => renderJson(item, schema, itemSchema, key))}
+        <p class="schema-title">${prop.schema.title}</p>
+        ${prop.value.map((val) => {
+          const schema = { ...prop.schema.items };
+          return renderJson(key, { value: val, schema });
+        })}
       </div>
     `;
   }
 
-  // Handle objects
-  if (typeof data === 'object') {
-    const schemaTitle = getObjectTitle(schema, currentSchema);
-    if (!schemaTitle) return nothing;
-
-    // Resolve $ref if present to get properties for children
-    const resolvedSchema = currentSchema?.$ref
-      ? resolveRef(schema, currentSchema.$ref)
-      : currentSchema;
-
-    const filtered = Object.entries(data).filter(([k]) => k !== '$schema');
-    const rendered = filtered.map(([k, v]) => {
-      const propSchema = resolvedSchema?.properties?.[k];
-      return renderJson(v, schema, propSchema, k);
-    });
+  if (prop.schema.type === 'object') {
+    const rendered = Object.entries(prop.value).map(([k, p]) => renderJson(k, p));
 
     return html`
       <div class="da-form-object">
-        <p class="schema-title">${schemaTitle}</p>
+        <p class="schema-title">${prop.schema.title}</p>
         ${rendered}
       </div>
     `;
   }
 
-  // Handle primitives
   return html`
     <div class="da-form-primitive">
-      <p>${currentSchema.title} - ${currentSchema.type}</p>
-      <sl-input type="text" name="${key}" value=${data}></sl-input>
-    </div>
-  `;
+      <p>${prop.schema.title} - ${prop.schema.type}</p>
+      <sl-input type="text" name="${key}" value=${prop.value}></sl-input>
+    </div>`;
 }
 
-export default async function renderForm(json) {
-  const { metadata, data } = json;
-  const { schemaId } = metadata;
-  const schema = await getSchema(schemaId);
-
-  // Get the root schema definition
-  const rootSchema = schema.$ref ? resolveRef(schema, schema.$ref) : schema;
+export default function renderForm(formModel) {
+  const { annotatedJson: data } = formModel;
 
   return html`
-    <h2>${schema.title}</h2>
+    <h2>Hello</h2>
     <form>
       <div class="da-form-array">
-        ${Object.entries(data).map(([key, value]) => {
-          const propSchema = rootSchema?.properties?.[key];
-          return renderJson(value, schema, propSchema, key);
-        })}
+        ${Object.entries(data).map(([key, prop]) => renderJson(key, prop))}
       </div>
     </form>
   `;

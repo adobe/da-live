@@ -7,7 +7,7 @@ const style = await getStyle(import.meta.url);
 
 class FormPreview extends LitElement {
   static properties = {
-    json: { attribute: false },
+    formModel: { attribute: false },
   };
 
   connectedCallback() {
@@ -16,7 +16,7 @@ class FormPreview extends LitElement {
   }
 
   updated() {
-    if (this.json) this.setPreview();
+    if (this.formModel) this.setPreview();
   }
 
   async setPreview() {
@@ -28,7 +28,7 @@ class FormPreview extends LitElement {
     code.classList.add('language-json');
     this.pre.append(code);
 
-    code.textContent = JSON.stringify(this.json, null, 2);
+    code.textContent = JSON.stringify(this.formModel.json, null, 2);
     window.Prism.highlightElement(code);
     this.toggleVis();
   }

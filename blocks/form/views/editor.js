@@ -8,8 +8,7 @@ const style = await getStyle(import.meta.url);
 
 class FormEditor extends LitElement {
   static properties = {
-    schemas: { attribute: false },
-    json: { attribute: false },
+    formModel: { state: true },
     _form: { state: true },
   };
 
@@ -19,16 +18,10 @@ class FormEditor extends LitElement {
   }
 
   update(props) {
-    if (props.has('json') || props.has('schemas')) {
-      if (this.json && this.schemas) {
-        this.getForm();
-      }
+    if (props.has('formModel') && this.formModel) {
+      this._form = renderForm(this.formModel);
     }
     super.update(props);
-  }
-
-  async getForm() {
-    this._form = await renderForm(this.json);
   }
 
   render() {

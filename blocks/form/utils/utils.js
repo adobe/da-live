@@ -71,3 +71,53 @@ export function getObjectTitle(schema, currentSchema) {
 
   return null;
 }
+
+export function annotateWithSchema(data, schema) {
+  const annotated = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    const propertySchema = schema.properties?.[key] || {};
+
+    const recursive = typeof value === 'object'
+      && !Array.isArray(value)
+      && propertySchema.type === 'object';
+
+    if (recursive) {
+      annotated[key] = {
+        value: annotateWithSchema(value, propertySchema),
+        schema: propertySchema,
+      };
+    } else {
+      annotated[key] = { value, schema: propertySchema };
+    }
+  }
+
+  return annotated;
+}
+
+export function deReference(schema) {
+  const defs = schema.$defs || {};
+  function resolveRefSm(ref) {
+    const path = ref.replace('#/$defs/', '');
+    return defs[path];
+  }
+
+  function deref(obj) {
+    if (obj.$ref) {
+      const ref = deref(resolveRefSm(obj.$ref));
+      // Local object can override ref props
+      return { ...ref, ...obj };
+    }
+    if (obj.properties) {
+      const resolved = { ...obj };
+      resolved.properties = {};
+      for (const [key, val] of Object.entries(obj.properties)) {
+        resolved.properties[key] = deref(val);
+      }
+      return resolved;
+    }
+    return obj;
+  }
+
+  return deref(schema);
+}

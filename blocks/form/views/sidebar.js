@@ -15,10 +15,8 @@ const style = await getStyle(import.meta.url);
  */
 class FormSidebar extends LitElement {
   static properties = {
-    schemas: { attribute: false },
-    json: { attribute: false },
-    _schema: { state: true },
-    _nav: { state: true },
+    formModel: { attribute: false },
+    _schemas: { attribute: false },
   };
 
   connectedCallback() {
@@ -27,23 +25,19 @@ class FormSidebar extends LitElement {
   }
 
   update(props) {
-    if (props.has('json') || props.has('schemas')) {
-      if (this.json && this.schemas) {
-        this.getNav();
-        this.getSchema();
-      }
+    if (props.has('formModel') && this.formModel) {
+      this.getNav();
     }
     super.update(props);
   }
 
   async getSchema() {
     if (this.emptySchemas) return;
-    this._schema = this.schemas[this.json?.metadata.schemaId];
+    this._schema = this.schemas[this.json?.metadata.schemaName];
   }
 
   async getNav() {
-    if (this.emptySchemas) return;
-    this._nav = await renderJson(this.json);
+    this._nav = renderJson(this.formModel);
   }
 
   get emptySchemas() {
@@ -53,7 +47,7 @@ class FormSidebar extends LitElement {
   renderNoSchemas() {
     return html`
       <p>This project has no schemas.</p>
-      <p><a href="https://docs.da.live/administrators/forms">Read documentation</a></p>
+      <p><a href="https://main--da-live--adobe.aem.live/apps/schema?nx=schema">Create one</a></p>
     `;
   }
 
@@ -90,12 +84,9 @@ class FormSidebar extends LitElement {
   }
 
   render() {
-    if (!this.schemas) return nothing;
+    if (!this.formModel) return nothing;
 
     return html`
-      <div class="da-sidebar-section">
-        ${this.renderSchema()}
-      </div>
       <div class="da-sidebar-section">
         ${this.renderNav()}
       </div>

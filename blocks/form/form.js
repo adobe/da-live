@@ -2,9 +2,11 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../shared/pathDetails.js';
 
+import FormModel from './data/model.js';
+
 // Internal utils
-import { schemas } from './utils/schema.js';
-import { loadHtml, convertHtmlToJson } from './utils/utils.js';
+import { schemas as schemasPromise } from './utils/schema.js';
+import { loadHtml } from './utils/utils.js';
 
 import '../edit/da-title/da-title.js';
 
@@ -25,50 +27,45 @@ const EL_NAME = 'da-form';
 class FormEditor extends LitElement {
   static properties = {
     details: { attribute: false },
-    html: { state: true },
-    json: { state: true },
-    schemas: { state: true },
+    formModel: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this.fetchSchemas(this.details);
     this.fetchDoc(this.details);
   }
 
   async fetchDoc() {
-    const result = await loadHtml(this.details);
+    const resultPromise = loadHtml(this.details);
+
+    const [schemas, result] = await Promise.all([schemasPromise, resultPromise]);
+
     if (!result.html) {
-      this.json = null;
-      this.html = null;
+      this.formModel = null;
       return;
     }
-    this.html = result.html;
-    this.json = await convertHtmlToJson(this.html);
-  }
-
-  async fetchSchemas() {
-    this.schemas = await schemas;
+    this.formModel = new FormModel(result.html, schemas);
+    this.formModel.validate();
   }
 
   renderFormEditor() {
-    if (this.json === null) {
+    if (this.formModel === null) {
       return html`<p class="da-form-title">Select a schema to get started.</p>`;
     }
 
     return html`
       <div class="da-form-editor">
-        <da-form-editor .json=${this.json} .schemas=${this.schemas}></da-form-editor>
-        <da-form-preview .json=${this.json}></da-form-preview>
+        <da-form-editor .formModel=${this.formModel}></da-form-editor>
+        <da-form-preview .formModel=${this.formModel}></da-form-preview>
       </div>`;
   }
 
   render() {
     return html`
       <div class="da-form-wrapper">
-        ${this.json !== undefined && this.schemas ? this.renderFormEditor() : nothing}
-        <da-form-sidebar .json=${this.json} .schemas=${this.schemas}></da-form-sidebar>
+        ${this.formModel !== undefined ? this.renderFormEditor() : nothing}
+        <da-form-sidebar .formModel=${this.formModel}></da-form-sidebar>
       </div>
     `;
   }

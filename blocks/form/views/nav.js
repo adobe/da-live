@@ -59,10 +59,9 @@ function renderJson(data, schema, currentSchema, num) {
   return nothing;
 }
 
-export default async function renderNav(json) {
-  const { metadata, data } = json;
-  const { schemaId } = metadata;
-  const schema = await getSchema(schemaId);
+export default function renderNav(formModel) {
+  const { data } = formModel.json;
+  const { schema } = formModel;
 
   // Get the root schema definition
   const rootSchema = schema.$ref ? resolveRef(schema, schema.$ref) : schema;
