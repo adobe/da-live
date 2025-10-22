@@ -17,8 +17,7 @@ import {
   wrapItem,
   setBlockType,
   toggleMark,
-  undo,
-  redo,
+  yUndoPluginKey,
   wrapInList,
   liftListItem,
   sinkListItem,
@@ -27,7 +26,7 @@ import {
 
 import openPrompt from '../../../da-palette/da-palette.js';
 import openLibrary from '../../../da-library/da-library.js';
-
+import { handleUndo, handleRedo } from '../keyHandlers.js';
 import insertTable from '../../table.js';
 import { linkItem, removeLinkItem } from './linkItem.js';
 import { markActive } from './menuUtils.js';
@@ -401,15 +400,15 @@ function getMenu(view) {
     new MenuItem({
       title: 'Undo last change',
       label: 'Undo',
-      run: undo,
-      enable: (state) => undo(state),
+      run: handleUndo,
+      enable: (state) => yUndoPluginKey.getState(state)?.hasUndoOps,
       class: 'edit-undo',
     }),
     new MenuItem({
       title: 'Redo last undone change',
       label: 'Redo',
-      run: redo,
-      enable: (state) => redo(state),
+      run: handleRedo,
+      enable: (state) => yUndoPluginKey.getState(state)?.hasRedoOps,
       class: 'edit-redo',
     }),
   ];
