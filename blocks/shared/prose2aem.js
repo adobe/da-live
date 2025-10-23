@@ -18,7 +18,7 @@ function toBlockCSSClassNames(text) {
 }
 
 function convertBlocks(editor) {
-  const tables = editor.querySelectorAll('.tableWrapper > table');
+  const tables = editor.querySelectorAll('.tableWrapper > table, da-diff-added > table');
 
   tables.forEach((table) => {
     const tbody = table.querySelector(':scope > tbody');
@@ -147,6 +147,9 @@ export default function prose2aem(editor, live) {
   editor.removeAttribute('class');
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
+
+  const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
+  removeEls(daDiffDeletedEls);
 
   const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
   removeEls(emptyImgs);

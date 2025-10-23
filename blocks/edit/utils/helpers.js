@@ -51,8 +51,20 @@ export function aem2prose(doc) {
   const brs = doc.querySelectorAll('p br');
   brs.forEach((br) => { br.remove(); });
 
+  // Els with da-diff-added property get wrapped in the da-diff-added element
+  const diffAddedEls = doc.querySelectorAll('[da-diff-added]');
+  diffAddedEls.forEach((el) => {
+    const div = document.createElement('da-diff-added');
+    div.setAttribute('da-diff-added', '');
+    if (el.classList.contains('block-group-start')) {
+      div.className = 'da-group';
+    }
+    el.parentElement.insertBefore(div, el);
+    div.appendChild(el);
+  });
+
   // Fix blocks
-  const blocks = doc.querySelectorAll('main > div > div, da-loc-deleted > div, da-loc-added > div, da-loc-deleted.da-group > div > div, da-loc-added.da-group > div > div');
+  const blocks = doc.querySelectorAll('main > div > div, da-diff-deleted > div, da-diff-added > div, da-diff-deleted.da-group > div > div, da-diff-added.da-group > div > div');
   blocks.forEach((block) => {
     if (block.className?.includes('loc-')) return;
     const table = getTable(block);
@@ -333,4 +345,32 @@ export async function requestRole(org, site, action) {
 
 export function parse(inital) {
   return new DOMParser().parseFromString(inital, 'text/html');
+}
+
+export function debounce(func, wait) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+export function createElement(tag, className = '', attributes = {}) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  Object.entries(attributes).forEach(([key, value]) => {
+    element.setAttribute(key, value);
+  });
+  return element;
+}
+
+export function createTooltip(text, className) {
+  const tooltip = createElement('span', className);
+  tooltip.textContent = text;
+  return tooltip;
+}
+
+export function createButton(className, type = 'button', attributes = {}) {
+  const button = createElement('button', className, { type, ...attributes });
+  return button;
 }

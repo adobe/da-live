@@ -10,6 +10,8 @@ import {
   deleteTable,
   InputRule,
   inputRules,
+  yUndo,
+  yRedo,
 } from 'da-y-wrapper';
 
 export function getDashesInputRule(dispatchTransaction) {
@@ -92,3 +94,20 @@ export function handleTableTab(direction) {
     return gtnc(state, dispatch);
   };
 }
+
+const forceMenuUpdate = () => {
+  // Dispatch an empty transaction that will trigger the full view update cycle
+  setTimeout(() => {
+    const { tr } = window.view.state;
+    window.view.dispatch(tr);
+  }, 0);
+};
+
+const runWithMenuUpdate = (cmd, state) => {
+  const result = cmd(state);
+  if (result) forceMenuUpdate();
+  return result;
+};
+
+export const handleUndo = (state) => runWithMenuUpdate(yUndo, state);
+export const handleRedo = (state) => runWithMenuUpdate(yRedo, state);
