@@ -13,7 +13,7 @@ export default class FormModel {
   }
 
   validate() {
-    const validator = new Validator(this._schema);
+    const validator = new Validator(this._schema, '2020-12');
     return validator.validate(this._json.data);
   }
 

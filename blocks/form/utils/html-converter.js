@@ -28,14 +28,21 @@ export default class HTMLConverter {
 
         const key = keyCol.children[0].children[0].value.trim();
 
-        const { children } = valCol.children[0];
-
-        // The value parent can contain arrays or text
-        const val = children.length > 1
-          ? this.getArrayValues(children)
-          : this.getTypedValue(children);
-
-        rdx[key] = val;
+        // If there's absolutely no children in cell, return an empty string
+        if (!valCol.children[0]) {
+          rdx[key] = '';
+        } else if (valCol.children[0].children.length === 1) {
+          // Li
+          if (valCol.children[0].children[0].children?.length) {
+            rdx[key] = [this.getTypedValue(valCol.children[0].children[0].children[0].value)];
+          } else {
+            const isArr = valCol.children[0].children[0].children;
+            const value = this.getTypedValue(valCol.children[0].children[0].value);
+            rdx[key] = isArr ? [value] : value;
+          }
+        } else {
+          rdx[key] = this.getArrayValues(key, valCol.children[0].children);
+        }
       }
       return rdx;
     }, {});
@@ -60,9 +67,13 @@ export default class HTMLConverter {
   }
 
   // We will always try to convert to a strong type.
-  // The schema is responsible for knowing if it is correct.
-  getTypedValue(children) {
-    const { value } = children[0];
+  // The schema is responsible for knowing if it
+  // is correct and converting back if necessary.
+  getTypedValue(value) {
+    // It it doesn't exist, resolve to undefined
+    if (!value) {
+      return '';
+    }
 
     // Attempt boolean
     const boolean = this.getBoolean(value);
@@ -76,13 +87,16 @@ export default class HTMLConverter {
     const number = this.getNumber(value);
     if (number !== null) return number;
 
-    // Fallback to the base value (plaintext)
     return value;
   }
 
-  getArrayValues(parent) {
+  getArrayValues(key, parent) {
     return parent.map((listItem) => {
       const { value } = listItem.children[0];
+      if (!value) {
+        console.log(key);
+        return '';
+      }
       const reference = this.getReference(value);
       return reference || value;
     });

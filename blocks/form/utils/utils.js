@@ -6,10 +6,6 @@ export async function convertHtmlToJson(html) {
   return json;
 }
 
-export function convertJson2Html(doc) {
-  console.log(doc);
-}
-
 export async function loadHtml(details) {
   const resp = await daFetch(details.sourceUrl);
   if (!resp.ok) return { error: 'Could not fetch doc' };
@@ -73,21 +69,46 @@ export function getObjectTitle(schema, currentSchema) {
 }
 
 export function annotateWithSchema(data, schema) {
+  // Handle arrays
+  if (Array.isArray(data)) {
+    const itemSchema = schema.items || {};
+    return data.map((item) => {
+      if (typeof item === 'object' && item !== null) {
+        return {
+          value: annotateWithSchema(item, itemSchema),
+          schema: itemSchema,
+        };
+      }
+      return { value: item, schema: itemSchema };
+    });
+  }
+
+  // Handle objects
   const annotated = {};
 
   for (const [key, value] of Object.entries(data)) {
     const propertySchema = schema.properties?.[key] || {};
 
-    const recursive = typeof value === 'object'
-      && !Array.isArray(value)
-      && propertySchema.type === 'object';
-
-    if (recursive) {
-      annotated[key] = {
-        value: annotateWithSchema(value, propertySchema),
-        schema: propertySchema,
-      };
+    // Check if we should recurse
+    if (value !== null && typeof value === 'object') {
+      if (Array.isArray(value)) {
+        // Handle array values
+        annotated[key] = {
+          value: annotateWithSchema(value, propertySchema),
+          schema: propertySchema,
+        };
+      } else if (propertySchema.type === 'object' || propertySchema.properties) {
+        // Handle object values
+        annotated[key] = {
+          value: annotateWithSchema(value, propertySchema),
+          schema: propertySchema,
+        };
+      } else {
+        // Object but schema doesn't specify - still wrap it
+        annotated[key] = { value, schema: propertySchema };
+      }
     } else {
+      // Primitive values
       annotated[key] = { value, schema: propertySchema };
     }
   }
@@ -97,26 +118,89 @@ export function annotateWithSchema(data, schema) {
 
 export function deReference(schema) {
   const defs = schema.$defs || {};
+  const seen = new WeakMap(); // Cache to prevent infinite recursion
+
   function resolveRefSm(ref) {
     const path = ref.replace('#/$defs/', '');
     return defs[path];
   }
 
-  function deref(obj) {
+  function deref(obj, visiting = new WeakSet()) {
+    // Base case: not an object
+    if (!obj || typeof obj !== 'object') {
+      return obj;
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      return obj.map((item) => deref(item, visiting));
+    }
+
+    // Check cache first
+    if (seen.has(obj)) {
+      return seen.get(obj);
+    }
+
+    // Cycle detection
+    if (visiting.has(obj)) {
+      return { ...obj }; // Return shallow copy to break cycle
+    }
+
+    visiting.add(obj);
+
+    // Handle $ref - DON'T recursively process yet, just get the definition
+    let resolved;
     if (obj.$ref) {
-      const ref = deref(resolveRefSm(obj.$ref));
-      // Local object can override ref props
-      return { ...ref, ...obj };
-    }
-    if (obj.properties) {
-      const resolved = { ...obj };
-      resolved.properties = {};
-      for (const [key, val] of Object.entries(obj.properties)) {
-        resolved.properties[key] = deref(val);
+      const refDef = resolveRefSm(obj.$ref);
+      if (refDef) {
+        // Merge the definition with local properties (local props override)
+        // Don't include $ref in the result
+        const { $ref, ...localProps } = obj;
+        resolved = { ...refDef, ...localProps };
+      } else {
+        // If ref not found, use obj without $ref
+        const { $ref, ...rest } = obj;
+        resolved = rest;
       }
-      return resolved;
+    } else {
+      // No $ref, just copy the object
+      resolved = { ...obj };
     }
-    return obj;
+
+    // Now recursively process the merged result
+    // Recursively process properties
+    if (resolved.properties) {
+      const newProps = {};
+      for (const [key, val] of Object.entries(resolved.properties)) {
+        newProps[key] = deref(val, visiting);
+      }
+      resolved.properties = newProps;
+    }
+
+    // Recursively process items (for arrays)
+    if (resolved.items) {
+      resolved.items = deref(resolved.items, visiting);
+    }
+
+    // Recursively process oneOf
+    if (resolved.oneOf) {
+      resolved.oneOf = resolved.oneOf.map((item) => deref(item, visiting));
+    }
+
+    // Recursively process anyOf
+    if (resolved.anyOf) {
+      resolved.anyOf = resolved.anyOf.map((item) => deref(item, visiting));
+    }
+
+    // Recursively process allOf
+    if (resolved.allOf) {
+      resolved.allOf = resolved.allOf.map((item) => deref(item, visiting));
+    }
+
+    // Cache the result
+    seen.set(obj, resolved);
+
+    return resolved;
   }
 
   return deref(schema);

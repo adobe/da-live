@@ -1,5 +1,4 @@
 import { html, nothing } from 'da-lit';
-import { getSchema } from '../utils/schema.js';
 import { resolveRef, getArrayItemTitle, getObjectTitle } from '../utils/utils.js';
 
 // Recursive function to render JSON with schema titles

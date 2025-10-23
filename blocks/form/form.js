@@ -46,7 +46,8 @@ class FormEditor extends LitElement {
       return;
     }
     this.formModel = new FormModel(result.html, schemas);
-    this.formModel.validate();
+    const validation = this.formModel.validate();
+    console.log(validation);
   }
 
   renderFormEditor() {

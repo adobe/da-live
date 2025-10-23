@@ -7,7 +7,11 @@ const FORMS_BASE_PATH = '/.da/forms';
 async function loadCurrentSchema(schema) {
   const resp = await daFetch(`${DA_ORIGIN}/source${schema.path}`);
   if (!resp.ok) return { error: 'Could not load current schema.' };
-  return resp.json();
+  const html = await resp.text();
+  const parser = new DOMParser();
+  const dom = parser.parseFromString(html, 'text/html');
+  const jsonStr = dom.querySelector('code').textContent;
+  return JSON.parse(jsonStr);
 }
 
 async function loadSchemas() {
