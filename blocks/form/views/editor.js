@@ -80,8 +80,7 @@ class FormEditor extends LitElement {
 
   render() {
     if (!this.formModel) return nothing;
-    const { json, annotatedJson } = this.formModel;
-    console.log(JSON.stringify(annotatedJson));
+    const { json } = this.formModel;
 
     return html`
       <h2>${this.formModel.schema.title}</h2>

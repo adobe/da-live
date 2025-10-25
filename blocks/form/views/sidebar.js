@@ -1,6 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import renderJson from './nav.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -17,6 +16,7 @@ class FormSidebar extends LitElement {
   static properties = {
     formModel: { attribute: false },
     _schemas: { attribute: false },
+    _nav: { state: true },
   };
 
   connectedCallback() {
@@ -31,17 +31,8 @@ class FormSidebar extends LitElement {
     super.update(props);
   }
 
-  async getSchema() {
-    if (this.emptySchemas) return;
-    this._schema = this.schemas[this.json?.metadata.schemaName];
-  }
-
-  async getNav() {
-    this._nav = renderJson(this.formModel);
-  }
-
-  get emptySchemas() {
-    return !Object.keys(this.schemas).length;
+  getNav() {
+    this._nav = this.formModel.jsonWithSchema;
   }
 
   renderNoSchemas() {
@@ -69,17 +60,46 @@ class FormSidebar extends LitElement {
     if (!this.schemas) return nothing;
     return html`
       <p class="da-sidebar-title">Schema</p>
-      ${this.emptySchemas
-        ? this.renderNoSchemas()
-        : this.renderSchemaSelector()}
+    `;
+  }
+
+  renderList(parent) {
+    const list = Object.values(parent);
+
+    return html`
+      <ul>
+        <li>
+          <span>${parent.schema?.title || 'Root'}</span>
+          <ul>
+            ${list.map((item) => {
+              if (!item.schema) return nothing;
+              if (!(item.schema.type === 'object' || item.schema.type === 'array')) return nothing;
+              return html`
+                  <li>${item.schema.title}</li>
+                  ${item.data.map((subItem) => this.renderList(subItem.data))}
+                `;
+            })}
+          </ul>
+        </li>
+      </ul>
     `;
   }
 
   renderNav() {
     if (!this._nav) return nothing;
+
     return html`
       <p class="da-sidebar-title">Navigation</p>
-      <div class="nav-list">${this._nav}</div>
+      <div class="nav-list">
+      <ul>
+        <li>
+          <span>${this.formModel.schema.title}</span>
+          <ul>
+            ${this.renderList(this._nav.data)}
+          </ul>
+        </li>
+      </ul>
+    </div>
     `;
   }
 
