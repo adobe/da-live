@@ -19,7 +19,7 @@ export default class FormModel {
 
   get jsonWithSchema() {
     const propSchema = getPropSchema('root', this._schema, this._schema, this._schema);
-    return matchPropToSchema('root', this._json.data, this._schema.title, propSchema, this._schema);
+    return matchPropToSchema('root', this._json.data, propSchema, this._schema);
   }
 
   get schema() {

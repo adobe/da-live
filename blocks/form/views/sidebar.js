@@ -33,6 +33,7 @@ class FormSidebar extends LitElement {
 
   getNav() {
     this._nav = this.formModel.jsonWithSchema;
+    console.log(this._nav);
   }
 
   renderNoSchemas() {
@@ -63,34 +64,25 @@ class FormSidebar extends LitElement {
     `;
   }
 
-  getArray(data) {
-    return Array.isArray(data) ? data : Object.values(data);
-  }
-
   renderPrimitive(item) {
-    if (!(item.schema.type || ['string', 'boolean', 'number'].some((type) => type === item.schema.type))) return null;
-    return html`<li><span>${item.schema.title}</span></li>`;
+    if (!['string', 'boolean', 'number'].some((type) => type === item.schema.type)) return null;
+    return html`<li data-key="${item.key}"><span>${item.schema.title || item.key}</span></li>`;
   }
 
   renderList(parent) {
     const prim = this.renderPrimitive(parent);
     if (prim) return prim;
 
-    const list = this.getArray(parent.data);
-
-    return list.map((item) => {
+    return parent.data.map((item) => {
       if (!item.schema) return nothing;
 
       const primitive = this.renderPrimitive(item);
       if (primitive) return primitive;
 
-      const itemList = this.getArray(item.data);
-
       return html`
-        <li><span>${item.schema.title}</span>
-        ${itemList && itemList.map((subItem) => {
-          return html`<ul>${this.renderList(subItem)}</ul>`;
-        })}
+        <li data-key="${item.key}">
+          <span class="sub-item">${item.title || item.key}</span>
+          ${item.data.map((subItem) => html`<ul>${this.renderList(subItem)}</ul>`)}
         </li>`;
     });
   }
