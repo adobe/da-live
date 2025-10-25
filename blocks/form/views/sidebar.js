@@ -63,26 +63,36 @@ class FormSidebar extends LitElement {
     `;
   }
 
-  renderList(parent) {
-    const list = Object.values(parent);
+  getArray(data) {
+    return Array.isArray(data) ? data : Object.values(data);
+  }
 
-    return html`
-      <ul>
-        <li>
-          <span>${parent.schema?.title || 'Root'}</span>
-          <ul>
-            ${list.map((item) => {
-              if (!item.schema) return nothing;
-              if (!(item.schema.type === 'object' || item.schema.type === 'array')) return nothing;
-              return html`
-                  <li>${item.schema.title}</li>
-                  ${item.data.map((subItem) => this.renderList(subItem.data))}
-                `;
-            })}
-          </ul>
-        </li>
-      </ul>
-    `;
+  renderPrimitive(item) {
+    if (!(item.schema.type || ['string', 'boolean', 'number'].some((type) => type === item.schema.type))) return null;
+    return html`<li><span>${item.schema.title}</span></li>`;
+  }
+
+  renderList(parent) {
+    const prim = this.renderPrimitive(parent);
+    if (prim) return prim;
+
+    const list = this.getArray(parent.data);
+
+    return list.map((item) => {
+      if (!item.schema) return nothing;
+
+      const primitive = this.renderPrimitive(item);
+      if (primitive) return primitive;
+
+      const itemList = this.getArray(item.data);
+
+      return html`
+        <li><span>${item.schema.title}</span>
+        ${itemList && itemList.map((subItem) => {
+          return html`<ul>${this.renderList(subItem)}</ul>`;
+        })}
+        </li>`;
+    });
   }
 
   renderNav() {
@@ -91,15 +101,13 @@ class FormSidebar extends LitElement {
     return html`
       <p class="da-sidebar-title">Navigation</p>
       <div class="nav-list">
-      <ul>
-        <li>
-          <span>${this.formModel.schema.title}</span>
-          <ul>
-            ${this.renderList(this._nav.data)}
-          </ul>
-        </li>
-      </ul>
-    </div>
+        <ul>
+          <li>
+            <span>${this.formModel.schema.title}</span>
+            <ul>${this.renderList(this._nav)}</ul>
+          </li>
+        </ul>
+      </div>
     `;
   }
 

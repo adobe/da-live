@@ -12,25 +12,22 @@ export async function loadHtml(details) {
   return { html: (await resp.text()) };
 }
 
-export function getPropSchema(key, localSchema, fullSchema) {
-  if (key === 'inAppID') {
-    console.log(localSchema);
-  }
-
+export function getPropSchema(key, localSchema, fullSchema, propSchema) {
+  const title = localSchema.title || propSchema.title;
   if (localSchema.$ref) {
     const path = localSchema.$ref.substring(2).split('/')[1];
 
     // try local ref
     const localRef = localSchema.$defs?.[path].properties;
-    if (localRef) return localRef;
+    if (localRef) return { ...localRef, title };
 
     // try full ref
     const fullRef = fullSchema.$defs?.[path].properties;
 
-    if (fullRef) return fullRef;
+    if (fullRef) return { ...fullRef, title };
   }
 
-  return localSchema;
+  return { ...localSchema, title };
 }
 
 /**
@@ -39,21 +36,21 @@ export function getPropSchema(key, localSchema, fullSchema) {
  * @param {*} propSchema the schema that applies to the current property
  * @param {*} fullSchema the full schema that applies to the form
  */
-export function matchPropToSchema(key, propData, propSchema, fullSchema) {
+export function matchPropToSchema(key, propData, propSchemaTitle, propSchema, fullSchema) {
   if (Array.isArray(propData)) {
-    const resolvedItemsSchema = getPropSchema(key, propSchema.items, fullSchema);
+    const resolvedItemsSchema = getPropSchema(key, propSchema.items, fullSchema, propSchema);
 
     const data = propData.map((itemPropData, idx) => {
       if (resolvedItemsSchema.oneOf) {
         return resolvedItemsSchema.oneOf.map((oneOf) => {
-          const onOfPropSchema = getPropSchema(key, oneOf, fullSchema);
-          return matchPropToSchema(`${key}-${idx + 1}`, itemPropData, onOfPropSchema, fullSchema);
+          const onOfPropSchema = getPropSchema(key, oneOf, fullSchema, resolvedItemsSchema);
+          return matchPropToSchema(`${key}-${idx + 1}`, itemPropData, propSchemaTitle, onOfPropSchema, fullSchema);
         });
       }
-      return matchPropToSchema(`${key}-${idx + 1}`, itemPropData, resolvedItemsSchema, fullSchema);
+      return matchPropToSchema(`${key}-${idx + 1}`, itemPropData, propSchemaTitle, resolvedItemsSchema, fullSchema);
     });
 
-    return { key, data, schema: propSchema };
+    return { key, data, title: propSchemaTitle, schema: propSchema };
   }
 
   if (typeof propData === 'object') {
@@ -62,12 +59,12 @@ export function matchPropToSchema(key, propData, propSchema, fullSchema) {
       // With oneOf, it's possible there isn't a found schema
       if (!propSchema[k]) return;
 
-      const resolvedSchema = getPropSchema(k, propSchema[k], fullSchema);
-      // console.log(k, resolvedSchema);
-      data[k] = matchPropToSchema(k, pD, resolvedSchema, fullSchema);
+      const resolvedSchema = getPropSchema(k, propSchema[k], fullSchema, propSchema);
+
+      data[k] = matchPropToSchema(k, pD, resolvedSchema.title, resolvedSchema, fullSchema);
     });
-    return { key, data, schema: propSchema };
+    return { key, data, title: propSchemaTitle, schema: propSchema };
   }
 
-  return { key, data: propData, schema: propSchema };
+  return { key, data: propData, title: propSchemaTitle, schema: propSchema };
 }
