@@ -33,7 +33,6 @@ class FormSidebar extends LitElement {
 
   getNav() {
     this._nav = this.formModel.jsonWithSchema;
-    console.log(this._nav);
   }
 
   renderNoSchemas() {
@@ -71,18 +70,30 @@ class FormSidebar extends LitElement {
 
   renderList(parent) {
     const prim = this.renderPrimitive(parent);
-    if (prim) return prim;
+    if (prim) return nothing;
 
     return parent.data.map((item) => {
       if (!item.schema) return nothing;
 
       const primitive = this.renderPrimitive(item);
-      if (primitive) return primitive;
+      if (primitive) return nothing;
 
       return html`
         <li data-key="${item.key}">
           <span class="sub-item">${item.title || item.key}</span>
-          ${item.data.map((subItem) => html`<ul>${this.renderList(subItem)}</ul>`)}
+          <ul>
+          ${item.data.map((subItem) => {
+            if (Array.isArray(subItem.data)) {
+              if (subItem?.schema?.items?.type) return nothing;
+              return html`
+                <li data-key="${subItem.key}">
+                  <span class="sub-item-lvl-2">${subItem.title?.title || subItem.title || subItem.key}</span>
+                  <ul>${this.renderList(subItem)}</ul>
+                </li>`;
+            }
+            return nothing;
+          })}
+          </ul>
         </li>`;
     });
   }

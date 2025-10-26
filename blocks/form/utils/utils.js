@@ -13,10 +13,6 @@ export async function loadHtml(details) {
 }
 
 export function getPropSchema(key, localSchema, fullSchema) {
-  if (key === 'buyUrlForCch') {
-    console.log(localSchema);
-  }
-
   if (localSchema.$ref) {
     const path = localSchema.$ref.substring(2).split('/')[1];
 
@@ -40,8 +36,6 @@ export function getPropSchema(key, localSchema, fullSchema) {
  * @param {*} fullSchema the full schema that applies to the form
  */
 export function matchPropToSchema(key, propData, propSchema, fullSchema) {
-  if (key === 'buyUrlForCch') console.log(propSchema);
-
   if (Array.isArray(propData)) {
     const title = propSchema.items.title || propSchema.title;
 
