@@ -69,6 +69,7 @@ class FormSidebar extends LitElement {
   }
 
   renderList(parent) {
+    console.log(parent);
     const prim = this.renderPrimitive(parent);
     if (prim) return nothing;
 
@@ -78,16 +79,20 @@ class FormSidebar extends LitElement {
       const primitive = this.renderPrimitive(item);
       if (primitive) return nothing;
 
+      const title = item.title?.title ? item.key : item.title;
+
       return html`
         <li data-key="${item.key}">
-          <span class="sub-item">${item.title || item.key}</span>
+          <span class="sub-item">${title || item.key}</span>
           <ul>
           ${item.data.map((subItem) => {
+            const subTitle = subItem.title?.title ? subItem.key : subItem.title;
+
             if (Array.isArray(subItem.data)) {
               if (subItem?.schema?.items?.type) return nothing;
               return html`
                 <li data-key="${subItem.key}">
-                  <span class="sub-item-lvl-2">${subItem.title?.title || subItem.title || subItem.key}</span>
+                  <span class="sub-item-lvl-2">${subTitle || subItem.key}</span>
                   <ul>${this.renderList(subItem)}</ul>
                 </li>`;
             }

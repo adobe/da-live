@@ -12,6 +12,21 @@ export async function loadHtml(details) {
   return { html: (await resp.text()) };
 }
 
+export function getSchemaTitle(key, localSchema, fullSchema) {
+  if (localSchema.$ref) {
+    const path = localSchema.$ref.substring(2).split('/')[1];
+
+    // try local ref
+    let title = localSchema.$defs?.[path].title;
+    // try global ref
+    if (!title) title = fullSchema.$defs?.[path].title;
+
+    if (title) return title;
+  }
+
+  return localSchema.title;
+}
+
 export function getPropSchema(key, localSchema, fullSchema) {
   if (localSchema.$ref) {
     const path = localSchema.$ref.substring(2).split('/')[1];
@@ -32,12 +47,13 @@ export function getPropSchema(key, localSchema, fullSchema) {
 /**
  * @param {*} key the key of the property
  * @param {*} prop the current property being acted on
- * @param {*} propSchema the schema that applies to the current property
+ * @param {*} propSchema the schema properties that applies to the current property
  * @param {*} fullSchema the full schema that applies to the form
  */
 export function matchPropToSchema(key, propData, propSchema, fullSchema) {
   if (Array.isArray(propData)) {
-    const title = propSchema.items.title || propSchema.title;
+    const resolvedTitle = getSchemaTitle(key, propSchema.items, fullSchema);
+    const title = resolvedTitle || propSchema.items.title || propSchema.title;
 
     const resolvedItemsSchema = getPropSchema(key, propSchema.items, fullSchema);
 
