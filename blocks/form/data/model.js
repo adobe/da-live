@@ -10,6 +10,13 @@ export default class FormModel {
     const converter = new HTMLConverter(html);
     this._json = converter.json;
     this._schema = schemas[this._json.metadata.schemaName];
+    this._annotated = this._annotateWithSchema();
+  }
+
+  _annotateWithSchema() {
+    const propSchema = getPropSchema('root', this._schema, this._schema, this._schema);
+    const fullSchema = matchPropToSchema('root', this._json.data, propSchema, this._schema);
+    return { ...fullSchema, title: this._schema.title };
   }
 
   validate() {
@@ -17,9 +24,8 @@ export default class FormModel {
     return validator.validate(this._json.data);
   }
 
-  get jsonWithSchema() {
-    const propSchema = getPropSchema('root', this._schema, this._schema, this._schema);
-    return matchPropToSchema('root', this._json.data, propSchema, this._schema);
+  get annotated() {
+    return this._annotated;
   }
 
   get schema() {

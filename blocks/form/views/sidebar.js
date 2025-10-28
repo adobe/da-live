@@ -32,7 +32,7 @@ class FormSidebar extends LitElement {
   }
 
   getNav() {
-    this._nav = this.formModel.jsonWithSchema;
+    this._nav = this.formModel.annotated;
   }
 
   renderNoSchemas() {
@@ -63,44 +63,38 @@ class FormSidebar extends LitElement {
     `;
   }
 
-  renderPrimitive(item) {
-    if (!['string', 'boolean', 'number'].some((type) => type === item.schema.type)) return null;
-    return html`<li data-key="${item.key}"><span>${item.schema.title || item.key}</span></li>`;
+  /**
+   * Determine if the item should be rendered.
+   * Do not render primitves or arrays under certain conditions
+   * @param {Object} item the form item
+   * @returns {Boolean} whether or not something should render
+   */
+  canRender(item) {
+    if (!item.schema || item.schema.items?.type) return false;
+
+    const primitives = ['string', 'boolean', 'number'];
+    const isPrim = primitives.some((type) => type === item.schema.type);
+    if (isPrim) return false;
+
+    if (Array.isArray(item.data)) return true;
+
+    return false;
   }
 
   renderList(parent) {
-    console.log(parent);
-    const prim = this.renderPrimitive(parent);
-    if (prim) return nothing;
+    if (!this.canRender(parent)) return nothing;
 
-    return parent.data.map((item) => {
-      if (!item.schema) return nothing;
+    // If no title or its nested inside another title
+    const title = !parent.title || parent.title.title ? parent.key : parent.title;
 
-      const primitive = this.renderPrimitive(item);
-      if (primitive) return nothing;
-
-      const title = item.title?.title ? item.key : item.title;
-
-      return html`
-        <li data-key="${item.key}">
-          <span class="sub-item">${title || item.key}</span>
-          <ul>
-          ${item.data.map((subItem) => {
-            const subTitle = subItem.title?.title ? subItem.key : subItem.title;
-
-            if (Array.isArray(subItem.data)) {
-              if (subItem?.schema?.items?.type) return nothing;
-              return html`
-                <li data-key="${subItem.key}">
-                  <span class="sub-item-lvl-2">${subTitle || subItem.key}</span>
-                  <ul>${this.renderList(subItem)}</ul>
-                </li>`;
-            }
-            return nothing;
-          })}
-          </ul>
-        </li>`;
-    });
+    return html`
+      <li data-key="${parent.key}">
+        <span class="item">${title}</span>
+        ${parent.data
+          ? html`<ul>${parent.data.map((item) => this.renderList(item))}</ul>`
+          : nothing}
+      </li>
+    `;
   }
 
   renderNav() {
@@ -109,12 +103,7 @@ class FormSidebar extends LitElement {
     return html`
       <p class="da-sidebar-title">Navigation</p>
       <div class="nav-list">
-        <ul>
-          <li>
-            <span>${this.formModel.schema.title}</span>
-            <ul>${this.renderList(this._nav)}</ul>
-          </li>
-        </ul>
+        <ul>${this.renderList(this._nav)}</ul>
       </div>
     `;
   }

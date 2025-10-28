@@ -47,13 +47,13 @@ export function getPropSchema(key, localSchema, fullSchema) {
 /**
  * @param {*} key the key of the property
  * @param {*} prop the current property being acted on
- * @param {*} propSchema the schema properties that applies to the current property
+ * @param {*} propSchema the schema that applies to the current property
  * @param {*} fullSchema the full schema that applies to the form
  */
 export function matchPropToSchema(key, propData, propSchema, fullSchema) {
   if (Array.isArray(propData)) {
     const resolvedTitle = getSchemaTitle(key, propSchema.items, fullSchema);
-    const title = resolvedTitle || propSchema.items.title || propSchema.title;
+    const title = resolvedTitle || propSchema.title;
 
     const resolvedItemsSchema = getPropSchema(key, propSchema.items, fullSchema);
 
