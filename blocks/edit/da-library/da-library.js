@@ -374,7 +374,6 @@ class DaLibrary extends LitElement {
             <span class="da-library-group-subtitle">${item.variants}</span>
           </div>
           <svg class="icon" @click=${() => this.handleItemClick(item, true)}><use href="#spectrum-ExperienceAdd"/></svg>
-          
         </button>
       </li>`;
   }
