@@ -413,10 +413,11 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
 
     observeShortContainers() {
       const SHORT_CONTAINER_THRESHOLD = 120; // px
+      const MIN_CONTAINER_HEIGHT = 50; // px
       const resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { height } = entry.contentRect;
-          this.dom.classList.toggle('is-short', height <= SHORT_CONTAINER_THRESHOLD);
+          this.dom.classList.toggle('is-short', height <= SHORT_CONTAINER_THRESHOLD && height > MIN_CONTAINER_HEIGHT);
         }
       });
       resizeObserver.observe(this.dom);
