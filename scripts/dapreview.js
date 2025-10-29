@@ -52,6 +52,7 @@ export default async function daPreview(loadPage) {
   function initPort(e) {
     if (e.origin !== 'https://da.live'
       && e.origin !== 'http://localhost:3000'
+      && e.origin !== 'http://localhost'
       && !e.origin.match(/^https:\/\/[a-z0-9-]+--da-live--adobe\.aem\.(page|live)$/)
     ) {
       // eslint-disable-next-line no-console
