@@ -70,10 +70,11 @@ class FormSidebar extends LitElement {
    * @returns {Boolean} whether or not something should render
    */
   canRender(item) {
-    if (!item.schema || item.schema.items?.type) return false;
+    if (item.key === 'itemList') console.log(item);
+    if (item.schema.properties.items?.type) return false;
 
     const primitives = ['string', 'boolean', 'number'];
-    const isPrim = primitives.some((type) => type === item.schema.type);
+    const isPrim = primitives.some((type) => type === item.schema.properties.type);
     if (isPrim) return false;
 
     if (Array.isArray(item.data)) return true;
@@ -84,12 +85,9 @@ class FormSidebar extends LitElement {
   renderList(parent) {
     if (!this.canRender(parent)) return nothing;
 
-    // If no title or its nested inside another title
-    const title = !parent.title || parent.title.title ? parent.key : parent.title;
-
     return html`
       <li data-key="${parent.key}">
-        <span class="item">${title}</span>
+        <span class="item">${parent.schema.title}</span>
         ${parent.data
           ? html`<ul>${parent.data.map((item) => this.renderList(item))}</ul>`
           : nothing}
