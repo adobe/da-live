@@ -14,6 +14,38 @@ import {
   yRedo,
 } from 'da-y-wrapper';
 
+function isURL(text) {
+  try {
+    const url = new URL(text);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (e) {
+    return false;
+  }
+}
+
+export function getURLInputRule() {
+  return new InputRule(
+    /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)\s$/,
+    (state, match, start, end) => {
+      const url = match[0].trim();
+
+      if (!isURL(url)) {
+        return null;
+      }
+
+      const linkMark = state.schema.marks.link.create({ href: url });
+
+      // Replace the URL text with linked version, keeping the space
+      const { tr } = state;
+      tr.delete(start, end);
+      tr.insert(start, state.schema.text(url, [linkMark]));
+      tr.insert(start + url.length, state.schema.text(' '));
+
+      return tr;
+    },
+  );
+}
+
 export function getDashesInputRule(dispatchTransaction) {
   return new InputRule(
     /^---[\n]$/,
@@ -28,7 +60,7 @@ export function getDashesInputRule(dispatchTransaction) {
   );
 }
 
-// This function returns a modified inputrule plugin that trig  gers when the regex in the
+// This function returns a modified inputrule plugin that triggers when the regex in the
 // rule matches and the Enter key is pressed
 export function getEnterInputRulesPlugin(dispatchTransaction) {
   const irsplugin = inputRules({ rules: [getDashesInputRule(dispatchTransaction)] });
@@ -42,6 +74,11 @@ export function getEnterInputRulesPlugin(dispatchTransaction) {
   irsplugin.props.handleKeyDown = hkd; // Add the handleKeyDown function
 
   return irsplugin;
+}
+
+// Returns a standard inputRules plugin for URL auto-linking on space
+export function getURLInputRulesPlugin() {
+  return inputRules({ rules: [getURLInputRule()] });
 }
 
 const isRowSelected = (rect) => rect.left === 0 && rect.right === rect.map.width;
