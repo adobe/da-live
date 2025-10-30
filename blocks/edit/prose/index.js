@@ -34,7 +34,14 @@ import { debounce } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
-import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin, handleUndo, handleRedo } from './plugins/keyHandlers.js';
+import {
+  handleTableBackspace,
+  handleTableTab,
+  getEnterInputRulesPlugin,
+  getURLInputRulesPlugin,
+  handleUndo,
+  handleRedo,
+} from './plugins/keyHandlers.js';
 
 let sendUpdates = false;
 let hasChanged = 0;
@@ -264,6 +271,7 @@ export default function initProse({ path, permissions }) {
     base64Uploader(schema),
     columnResizing(),
     getEnterInputRulesPlugin(dispatchTransaction),
+    getURLInputRulesPlugin(),
     keymap(buildKeymap(schema)),
     keymap({ Backspace: handleTableBackspace }),
     keymap(baseKeymap),
