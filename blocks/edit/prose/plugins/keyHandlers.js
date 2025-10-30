@@ -17,7 +17,8 @@ import {
 function isURL(text) {
   try {
     const url = new URL(text);
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    // Only consider https as valid URLs for auto-linking
+    return url.protocol === 'https:';
   } catch (e) {
     return false;
   }

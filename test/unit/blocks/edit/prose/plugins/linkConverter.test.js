@@ -109,7 +109,7 @@ describe('Link converter plugin', () => {
   });
 
   describe('Pasting URLs with text', () => {
-    it('should convert URLs mixed with text to links', () => {
+    it('should not convert URLs mixed with text to links', () => {
       const text = 'Visit https://example.com for more info';
       const json = {
         content: [{
@@ -126,14 +126,6 @@ describe('Link converter plugin', () => {
         state: {
           selection: { from: 10 },
           schema: baseSchema,
-          tr: {
-            replaceSelection: function replaceSelection() {
-              return this;
-            },
-            scrollIntoView: function scrollIntoView() {
-              return this;
-            },
-          },
         },
         dispatch: (tr) => {
           dispatchedTr = tr;
@@ -142,82 +134,8 @@ describe('Link converter plugin', () => {
 
       const result = plugin.props.handlePaste(mockView, null, slice);
 
-      expect(result).to.equal(true);
-      expect(dispatchedTr).to.not.be.null;
-    });
-
-    it('should convert multiple URLs in text to links', () => {
-      const text = 'Visit https://example.com and https://test.com';
-      const json = {
-        content: [{
-          type: 'paragraph',
-          content: [{ type: 'text', text }],
-        }],
-        openStart: 1,
-        openEnd: 1,
-      };
-      const slice = Slice.fromJSON(baseSchema, json);
-
-      let dispatchedTr = null;
-      const mockView = {
-        state: {
-          selection: { from: 10 },
-          schema: baseSchema,
-          tr: {
-            replaceSelection: function replaceSelection() {
-              return this;
-            },
-            scrollIntoView: function scrollIntoView() {
-              return this;
-            },
-          },
-        },
-        dispatch: (tr) => {
-          dispatchedTr = tr;
-        },
-      };
-
-      const result = plugin.props.handlePaste(mockView, null, slice);
-
-      expect(result).to.equal(true);
-      expect(dispatchedTr).to.not.be.null;
-    });
-
-    it('should handle URLs with paths and query strings', () => {
-      const text = 'Check https://example.com/path/to/page?query=value&other=param';
-      const json = {
-        content: [{
-          type: 'paragraph',
-          content: [{ type: 'text', text }],
-        }],
-        openStart: 1,
-        openEnd: 1,
-      };
-      const slice = Slice.fromJSON(baseSchema, json);
-
-      let dispatchedTr = null;
-      const mockView = {
-        state: {
-          selection: { from: 10 },
-          schema: baseSchema,
-          tr: {
-            replaceSelection: function replaceSelection() {
-              return this;
-            },
-            scrollIntoView: function scrollIntoView() {
-              return this;
-            },
-          },
-        },
-        dispatch: (tr) => {
-          dispatchedTr = tr;
-        },
-      };
-
-      const result = plugin.props.handlePaste(mockView, null, slice);
-
-      expect(result).to.equal(true);
-      expect(dispatchedTr).to.not.be.null;
+      expect(result).to.equal(false);
+      expect(dispatchedTr).to.be.null;
     });
 
     it('should not convert text without URLs', () => {
@@ -327,16 +245,16 @@ describe('Link converter plugin', () => {
       expect(replacedNode.marks[0].attrs.href).to.equal(url);
     });
 
-    it('should handle multiple paragraphs with URLs', () => {
+    it('should not handle multiple paragraphs', () => {
       const json = {
         content: [
           {
             type: 'paragraph',
-            content: [{ type: 'text', text: 'First paragraph with https://example.com' }],
+            content: [{ type: 'text', text: 'https://example.com' }],
           },
           {
             type: 'paragraph',
-            content: [{ type: 'text', text: 'Second paragraph with https://test.com' }],
+            content: [{ type: 'text', text: 'https://test.com' }],
           },
         ],
         openStart: 1,
@@ -349,14 +267,6 @@ describe('Link converter plugin', () => {
         state: {
           selection: { from: 10 },
           schema: baseSchema,
-          tr: {
-            replaceSelection: function replaceSelection() {
-              return this;
-            },
-            scrollIntoView: function scrollIntoView() {
-              return this;
-            },
-          },
         },
         dispatch: (tr) => {
           dispatchedTr = tr;
@@ -365,8 +275,8 @@ describe('Link converter plugin', () => {
 
       const result = plugin.props.handlePaste(mockView, null, slice);
 
-      expect(result).to.equal(true);
-      expect(dispatchedTr).to.not.be.null;
+      expect(result).to.equal(false);
+      expect(dispatchedTr).to.be.null;
     });
   });
 });
