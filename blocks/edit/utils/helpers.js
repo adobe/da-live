@@ -130,7 +130,11 @@ function parseAemError(xError) {
 export async function getCdnConfig(path) {
   const [org, site] = path.slice(1).toLowerCase().split('/');
   const resp = await daFetch(`${AEM_ORIGIN}/config/${org}/sites/${site}.json`);
-  if (!resp.ok) return { error: 'Cannot fetch site config.', status: resp.status };
+  if (!resp.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(`Cannot fetch site config. - Status: ${resp.status}`);
+    return { error: 'Cannot fetch site config.', status: resp.status };
+  }
   const json = await resp.json();
   if (!json.cdn) return {};
   return {
