@@ -116,8 +116,9 @@ function convertListItems(editor) {
 
   const lis = editor.querySelectorAll('li');
   lis.forEach((li) => {
-    if (li.children.length === 1 && li.firstChild.firstChild.nodeName === 'P') {
-      li.innerHTML = li.firstChild.firstChild.innerHTML;
+    // Collapse single child p tags
+    if (li.children.length === 1 && li.firstElementChild.nodeName === 'P') {
+      li.innerHTML = li.firstElementChild.innerHTML;
     }
   });
 }
