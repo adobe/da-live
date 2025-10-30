@@ -3,7 +3,7 @@
 // User action handlers - only loaded when user actually clicks action buttons
 
 import { DOMSerializer, Fragment, Slice } from 'da-y-wrapper';
-import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
+import { createElement, createButton, createTooltip, getDaMetadata, setDaMetadata } from '../../utils/helpers.js';
 import prose2aem from '../../../shared/prose2aem.js';
 
 const HASH_LENGTH = 12;
@@ -22,16 +22,9 @@ const objHash = async (obj) => {
 const isTableNode = (node) => (node.content?.content?.length === 3 && node.content.content[1].type.name === 'table');
 
 function nodeToHtml(node) {
-  // const t = prose2aem(node, false);
-  // console.log('Node HTML:', t);
-
-  // Create a serializer from the schema
   const serializer = DOMSerializer.fromSchema(view.state.schema);
-
-  // Create a DOM fragment from the node
   const fragment = serializer.serializeFragment(node.content);
 
-  // Convert the DOM fragment to HTML string
   const div = document.createElement('div');
   if (isTableNode(node)) {
     div.classList.add('tableWrapper');
@@ -43,10 +36,10 @@ function nodeToHtml(node) {
 
 const addToHashMetadata = async (node, mdKey) => {
   const hash = await objHash(nodeToHtml(node));
-  const hashStr = view.getDaMetadata(mdKey);
+  const hashStr = getDaMetadata(mdKey);
   const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
   hashes.add(hash);
-  view.setDaMetadata(mdKey, Array.from(hashes).join(','));
+  setDaMetadata(mdKey, Array.from(hashes).join(','));
 };
 
 function createCompositeButton({

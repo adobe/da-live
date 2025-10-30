@@ -429,3 +429,25 @@ export const getMetadata = (el) => {
   });
   return metadata;
 };
+
+let daMdMap = null;
+export function initDaMetadata(map) {
+  daMdMap = map;
+}
+
+export function getDaMetadata(key) {
+  if (!daMdMap) return key ? null : {};
+  if (key) {
+    return daMdMap.get(key) || null;
+  }
+  return Object.fromEntries(daMdMap);
+}
+
+export function setDaMetadata(key, value) {
+  if (!daMdMap) return;
+  if (value === null || value === undefined) {
+    daMdMap.delete(key);
+  } else {
+    daMdMap.set(key, value);
+  }
+}

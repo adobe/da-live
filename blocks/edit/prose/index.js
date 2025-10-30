@@ -30,7 +30,7 @@ import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
-import { debounce } from '../utils/helpers.js';
+import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
@@ -335,21 +335,7 @@ export default function initProse({ path, permissions }) {
   setTimeout(() => checkForLocNodes(window.view), 100);
 
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
-  const daMdMap = ydoc.getMap('daMetadata');
-  window.view.setDaMetadata = (key, value) => {
-    if (value === null || value === undefined) {
-      daMdMap.delete(key);
-    } else {
-      daMdMap.set(key, value);
-    }
-  };
-
-  window.view.getDaMetadata = (key) => {
-    if (key) {
-      return daMdMap.get(key) || null;
-    }
-    return Object.fromEntries(daMdMap);
-  };
+  initDaMetadata(ydoc.getMap('daMetadata'));
 
   handleProseLoaded(editor, permissions);
 
