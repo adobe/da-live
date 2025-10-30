@@ -7,8 +7,8 @@ const URL_REGEX = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()
 function isURL(text) {
   try {
     const url = new URL(text);
-    // Only consider http and https as valid URLs for auto-linking
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    // Only consider https as valid URLs for auto-linking
+    return url.protocol === 'https:';
   } catch (e) {
     return false;
   }
