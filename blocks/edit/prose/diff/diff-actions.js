@@ -3,7 +3,7 @@
 // User action handlers - only loaded when user actually clicks action buttons
 
 import { DOMSerializer, Fragment, Slice } from 'da-y-wrapper';
-import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
+import { createElement, createButton, createTooltip, getDaMetadata, setDaMetadata } from '../../utils/helpers.js';
 import prose2aem from '../../../shared/prose2aem.js';
 
 const HASH_LENGTH = 12;
@@ -43,10 +43,10 @@ function nodeToHtml(node) {
 
 const addToHashMetadata = async (node, mdKey) => {
   const hash = await objHash(nodeToHtml(node));
-  const hashStr = view.getDaMetadata(mdKey);
+  const hashStr = getDaMetadata(mdKey);
   const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
   hashes.add(hash);
-  view.setDaMetadata(mdKey, Array.from(hashes).join(','));
+  setDaMetadata(mdKey, Array.from(hashes).join(','));
 };
 
 function createCompositeButton({
