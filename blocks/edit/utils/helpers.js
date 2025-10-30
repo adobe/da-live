@@ -127,6 +127,18 @@ function parseAemError(xError) {
   return xError.replace('[admin] ', '');
 }
 
+export async function getCdnConfig(path) {
+  const [org, site] = path.slice(1).toLowerCase().split('/');
+  const resp = await daFetch(`${AEM_ORIGIN}/config/${org}/sites/${site}.json`);
+  if (!resp.ok) return { error: 'Cannot fetch site config.', status: resp.status };
+  const json = await resp.json();
+  if (!json.cdn) return {};
+  return {
+    preview: json.cdn.preview?.host,
+    prod: json.cdn.prod?.host,
+  };
+}
+
 export async function saveToAem(path, action) {
   const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
   const aemPath = parts.join('/');

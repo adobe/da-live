@@ -1,5 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { requestRole, saveToDa, saveToAem, saveDaConfig, saveDaVersion } from '../utils/helpers.js';
+import {
+  requestRole,
+  saveToDa,
+  saveToAem,
+  saveDaConfig,
+  saveDaVersion,
+  getCdnConfig,
+} from '../utils/helpers.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -70,6 +77,12 @@ export default class DaTitle extends LitElement {
     return `${origin}/${pathParts.join('/')}`;
   }
 
+  getCdnHref(url, action, cdn) {
+    const hostname = action === 'publish' ? cdn.prod : cdn.preview;
+    if (!hostname) return url.href;
+    return url.href.replace(url.origin, `https://${hostname}`);
+  }
+
   async handleAction(action) {
     this.toggleActions();
     this._status = null;
@@ -92,6 +105,8 @@ export default class DaTitle extends LitElement {
       }
     }
     if (action === 'preview' || action === 'publish') {
+      const cdn = await getCdnConfig(pathname);
+
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
       let json = await saveToAem(aemPath, 'preview');
       if (json.error) {
@@ -106,7 +121,7 @@ export default class DaTitle extends LitElement {
       const { url: href } = action === 'publish' ? json.live : json.preview;
       const url = new URL(href);
       const isSnap = url.pathname.startsWith('/.snapshots');
-      const toOpen = isSnap ? this.getSnapshotHref(url, action) : href;
+      const toOpen = isSnap ? this.getSnapshotHref(url, action) : this.getCdnHref(url, action, cdn);
       const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
