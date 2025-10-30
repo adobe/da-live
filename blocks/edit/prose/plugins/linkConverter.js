@@ -15,24 +15,24 @@ export default function linkConverter(schema) {
   return new Plugin({
     props: {
       handlePaste: (view, event, slice) => {
-        const { content } = slice.content;
-        // Only handle simple case: pasting a single standalone URL
-        if (content.length !== 1 || content[0].content.content.length !== 1) {
+        if (slice.content.content.length !== 1 // there needs to be only one line
+          || slice.content.content[0].content.content.length !== 1 // only one element needed
+          || slice.content.content[0].content.content[0].type.name !== 'text' // the only element is text
+          || !isURL(slice.content.content[0].content.content[0].text)) {
           return false;
         }
 
-        const node = content[0].content.content[0];
-        if (node.type.name !== 'text') return false;
-
-        const text = node.text.trim();
-        if (!isURL(text)) return false;
-
-        const linkMark = schema.marks.link.create({ href: text });
-        view.dispatch(
-          view.state.tr
-            .replaceSelectionWith(schema.text(text, [linkMark]), false)
-            .scrollIntoView(),
+        const linkMark = schema.marks.link.create(
+          { href: slice.content.content[0].content.content[0].text },
         );
+        const { from } = view.state.selection;
+        const { size } = slice.content.content[0].content;
+
+        const addLinkMark = view.state.tr
+          .insert(from, slice.content.content[0].content)
+          .addMark(from, from + size, linkMark);
+        view.dispatch(addLinkMark);
+
         return true;
       },
     },

@@ -51,13 +51,13 @@ describe('Link converter plugin', () => {
       };
       const slice = Slice.fromJSON(baseSchema, json);
 
-      let replacedNode = null;
+      let addedMark = null;
       const tr = {
-        replaceSelectionWith: function replaceSelectionWith(node) {
-          replacedNode = node;
+        insert: function insert() {
           return this;
         },
-        scrollIntoView: function scrollIntoView() {
+        addMark: function addMark(_from, _to, mark) {
+          addedMark = mark;
           return this;
         },
       };
@@ -74,8 +74,9 @@ describe('Link converter plugin', () => {
       const result = plugin.props.handlePaste(mockView, null, slice);
 
       expect(result).to.equal(true);
-      expect(replacedNode).to.not.be.null;
-      expect(replacedNode.marks[0].attrs.href).to.equal(url);
+      expect(addedMark).to.not.be.null;
+      expect(addedMark.type.name).to.equal('link');
+      expect(addedMark.attrs.href).to.equal(url);
     });
 
     it('should not convert non-URL text', () => {
@@ -181,13 +182,13 @@ describe('Link converter plugin', () => {
       };
       const slice = Slice.fromJSON(baseSchema, json);
 
-      let replacedNode = null;
+      let addedMark = null;
       const tr = {
-        replaceSelectionWith: function replaceSelectionWith(node) {
-          replacedNode = node;
+        insert: function insert() {
           return this;
         },
-        scrollIntoView: function scrollIntoView() {
+        addMark: function addMark(_from, _to, mark) {
+          addedMark = mark;
           return this;
         },
       };
@@ -204,7 +205,8 @@ describe('Link converter plugin', () => {
       const result = plugin.props.handlePaste(mockView, null, slice);
 
       expect(result).to.equal(true);
-      expect(replacedNode.marks[0].attrs.href).to.equal(url);
+      expect(addedMark).to.not.be.null;
+      expect(addedMark.attrs.href).to.equal(url);
     });
 
     it('should handle URLs with fragments', () => {
@@ -219,13 +221,13 @@ describe('Link converter plugin', () => {
       };
       const slice = Slice.fromJSON(baseSchema, json);
 
-      let replacedNode = null;
+      let addedMark = null;
       const tr = {
-        replaceSelectionWith: function replaceSelectionWith(node) {
-          replacedNode = node;
+        insert: function insert() {
           return this;
         },
-        scrollIntoView: function scrollIntoView() {
+        addMark: function addMark(_from, _to, mark) {
+          addedMark = mark;
           return this;
         },
       };
@@ -242,7 +244,8 @@ describe('Link converter plugin', () => {
       const result = plugin.props.handlePaste(mockView, null, slice);
 
       expect(result).to.equal(true);
-      expect(replacedNode.marks[0].attrs.href).to.equal(url);
+      expect(addedMark).to.not.be.null;
+      expect(addedMark.attrs.href).to.equal(url);
     });
 
     it('should not handle multiple paragraphs', () => {
