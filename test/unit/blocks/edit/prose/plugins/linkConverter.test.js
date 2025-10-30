@@ -10,7 +10,7 @@ describe('Link converter plugin', () => {
   });
 
   describe('Pasting standalone URLs', () => {
-    it('should convert a pasted standalone http URL to a link', () => {
+    it('should not convert a pasted standalone http URL to a link', () => {
       const url = 'http://example.com';
       const json = {
         content: [{
@@ -22,33 +22,21 @@ describe('Link converter plugin', () => {
       };
       const slice = Slice.fromJSON(baseSchema, json);
 
-      let replacedNode = null;
-      const tr = {
-        replaceSelectionWith: function replaceSelectionWith(node) {
-          replacedNode = node;
-          return this;
-        },
-        scrollIntoView: function scrollIntoView() {
-          return this;
-        },
-      };
-
+      let dispatchedTr = null;
       const mockView = {
         state: {
           selection: { from: 10 },
           schema: baseSchema,
-          tr,
         },
-        dispatch: () => {},
+        dispatch: (tr) => {
+          dispatchedTr = tr;
+        },
       };
 
       const result = plugin.props.handlePaste(mockView, null, slice);
 
-      expect(result).to.equal(true);
-      expect(replacedNode).to.not.be.null;
-      expect(replacedNode.marks).to.have.lengthOf(1);
-      expect(replacedNode.marks[0].type.name).to.equal('link');
-      expect(replacedNode.marks[0].attrs.href).to.equal(url);
+      expect(result).to.equal(false);
+      expect(dispatchedTr).to.be.null;
     });
 
     it('should convert a pasted standalone https URL to a link', () => {

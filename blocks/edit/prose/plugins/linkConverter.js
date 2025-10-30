@@ -2,7 +2,7 @@
 import { Plugin, Slice, Fragment } from 'da-y-wrapper';
 
 // URL regex pattern that matches common URL formats
-const URL_REGEX = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/gi;
+const URL_REGEX = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
 
 function isURL(text) {
   try {
@@ -19,11 +19,11 @@ function isURL(text) {
  */
 function extractURLs(text) {
   const urls = [];
-  const regex = new RegExp(URL_REGEX);
+  URL_REGEX.lastIndex = 0; // Reset regex state
   let match;
 
   // eslint-disable-next-line no-cond-assign
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = URL_REGEX.exec(text)) !== null) {
     const url = match[0];
     if (isURL(url)) {
       urls.push({
@@ -41,100 +41,78 @@ function extractURLs(text) {
  * Processes node content and converts URLs to links
  */
 function processNodeContent(content, schema) {
-  let modified = false;
   const newNodes = [];
+  let modified = false;
 
   content.forEach((node) => {
     if (node.isText) {
       const urls = extractURLs(node.text);
-      if (urls.length > 0) {
-        modified = true;
-        let lastEnd = 0;
-        const { marks } = node;
+      if (urls.length === 0) {
+        newNodes.push(node);
+        return;
+      }
 
-        urls.forEach(({ url, start, end }) => {
-          // Add text before URL
-          if (start > lastEnd) {
-            newNodes.push(schema.text(node.text.slice(lastEnd, start), marks));
-          }
+      modified = true;
+      let lastEnd = 0;
+      const linkMark = schema.marks.link;
 
-          // Add URL as link
-          const linkMark = schema.marks.link.create({ href: url });
-          newNodes.push(schema.text(url, [...marks, linkMark]));
-
-          lastEnd = end;
-        });
-
-        // Add remaining text after last URL
-        if (lastEnd < node.text.length) {
-          newNodes.push(schema.text(node.text.slice(lastEnd), marks));
+      urls.forEach(({ url, start, end }) => {
+        if (start > lastEnd) {
+          newNodes.push(schema.text(node.text.slice(lastEnd, start), node.marks));
         }
-      } else {
-        newNodes.push(node);
-      }
-    } else if (node.content && node.content.size > 0) {
-      // Recursively process child nodes
-      const result = processNodeContent(node.content, schema);
+        newNodes.push(schema.text(url, node.marks.concat(linkMark.create({ href: url }))));
+        lastEnd = end;
+      });
 
-      if (result.modified) {
-        modified = true;
-        newNodes.push(node.type.create(node.attrs, result.content, node.marks));
-      } else {
-        newNodes.push(node);
+      if (lastEnd < node.text.length) {
+        newNodes.push(schema.text(node.text.slice(lastEnd), node.marks));
       }
+    } else if (node.content?.size > 0) {
+      const result = processNodeContent(node.content, schema);
+      newNodes.push(result.modified
+        ? node.type.create(node.attrs, result.content, node.marks)
+        : node);
+      if (result.modified) modified = true;
     } else {
       newNodes.push(node);
     }
   });
 
-  return {
-    content: Fragment.from(newNodes),
-    modified,
-  };
+  return { content: Fragment.from(newNodes), modified };
 }
 
 export default function linkConverter(schema) {
   return new Plugin({
     props: {
       handlePaste: (view, event, slice) => {
-        // Handle simple case: pasting just a URL
-        if (slice.content.content.length === 1
-          && slice.content.content[0].content.content.length === 1
-          && slice.content.content[0].content.content[0].type.name === 'text') {
-          const text = slice.content.content[0].content.content[0].text.trim();
-
-          if (isURL(text)) {
-            const linkMark = schema.marks.link.create({ href: text });
-            const textNode = schema.text(text, [linkMark]);
-
-            const tr = view.state.tr
-              .replaceSelectionWith(textNode, false)
-              .scrollIntoView();
-            view.dispatch(tr);
-
-            return true;
+        // Fast path: simple URL paste
+        const { content } = slice.content;
+        if (content.length === 1 && content[0].content.content.length === 1) {
+          const node = content[0].content.content[0];
+          if (node.type.name === 'text') {
+            const text = node.text.trim();
+            if (isURL(text)) {
+              const linkMark = schema.marks.link.create({ href: text });
+              view.dispatch(
+                view.state.tr
+                  .replaceSelectionWith(schema.text(text, [linkMark]), false)
+                  .scrollIntoView(),
+              );
+              return true;
+            }
           }
         }
 
-        // Handle complex case: pasted content contains URLs mixed with other text
+        // Complex case: extract URLs from pasted content
         const result = processNodeContent(slice.content, schema);
+        if (!result.modified) return false;
 
-        if (result.modified) {
-          const newSlice = new Slice(
-            result.content,
-            slice.openStart,
-            slice.openEnd,
-          );
-
-          const tr = view.state.tr
-            .replaceSelection(newSlice)
-            .scrollIntoView();
-          view.dispatch(tr);
-
-          return true;
-        }
-
-        return false;
+        view.dispatch(
+          view.state.tr
+            .replaceSelection(new Slice(result.content, slice.openStart, slice.openEnd))
+            .scrollIntoView(),
+        );
+        return true;
       },
     },
   });
