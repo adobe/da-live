@@ -49,7 +49,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       view.dispatch(tr);
 
       // Verify the diff_added node exists
-      const doc = view.state.doc;
+      const { doc } = view.state;
       expect(doc.childCount).to.be.greaterThan(1);
       const insertedNode = doc.child(1);
       expect(insertedNode.type.name).to.equal('diff_added');
@@ -78,7 +78,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffAdded);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       const insertedNode = doc.child(1);
       expect(insertedNode.type.name).to.equal('diff_added');
       expect(insertedNode.content.childCount).to.equal(2);
@@ -102,7 +102,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       view.dispatch(tr);
 
       // Check DOM rendering
-      const dom = view.dom;
+      const { dom } = view;
       const diffElement = dom.querySelector('da-diff-added');
       expect(diffElement).to.exist;
       expect(diffElement.querySelector('li')).to.exist;
@@ -126,7 +126,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffDeleted);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       const insertedNode = doc.child(1);
       expect(insertedNode.type.name).to.equal('diff_deleted');
       expect(insertedNode.content.firstChild.type.name).to.equal('list_item');
@@ -147,7 +147,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffDeleted);
       view.dispatch(tr);
 
-      const dom = view.dom;
+      const { dom } = view;
       const diffElement = dom.querySelector('da-diff-deleted');
       expect(diffElement).to.exist;
       expect(diffElement.querySelector('li')).to.exist;
@@ -168,7 +168,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffAdded);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       const insertedNode = doc.child(1);
       expect(insertedNode.type.name).to.equal('diff_added');
       expect(insertedNode.content.firstChild.type.name).to.equal('paragraph');
@@ -186,7 +186,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffDeleted);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       const insertedNode = doc.child(1);
       expect(insertedNode.type.name).to.equal('diff_deleted');
       expect(insertedNode.content.firstChild.type.name).to.equal('paragraph');
@@ -204,7 +204,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffAdded);
       view.dispatch(tr);
 
-      const dom = view.dom;
+      const { dom } = view;
       const diffElement = dom.querySelector('da-diff-added');
       expect(diffElement).to.exist;
       expect(diffElement.querySelector('p').textContent).to.equal('Block diff content');
@@ -235,7 +235,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffNode);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       expect(doc.child(1).type.name).to.be.oneOf(['diff_added', 'loc_added']);
     });
 
@@ -266,7 +266,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffNode);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       // Verify it was inserted (regardless of exact type)
       expect(doc.childCount).to.be.greaterThan(1);
     });
@@ -301,7 +301,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, parsedNode);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       // Verify it was inserted
       expect(doc.childCount).to.be.greaterThan(1);
     });
@@ -330,7 +330,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.replaceWith(1, view.state.doc.content.size - 1, fragment.content);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       expect(doc.child(1).type.name).to.equal('diff_added');
       expect(doc.child(2).type.name).to.equal('diff_deleted');
       expect(doc.child(1).content.firstChild.type.name).to.equal('list_item');
@@ -354,7 +354,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.insert(1, diffAdded);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       const insertedNode = doc.child(1);
       expect(insertedNode.type.name).to.equal('diff_added');
       expect(insertedNode.content.childCount).to.equal(2);
@@ -386,7 +386,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       let diffNode = null;
 
       // Check fragment children
-      for (let i = 0; i < fragment.childCount; i++) {
+      for (let i = 0; i < fragment.childCount; i += 1) {
         const child = fragment.child(i);
         if (child.type.name === 'bullet_list') {
           bulletList = child;
@@ -394,7 +394,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
           diffNode = child;
           // Check if diff node contains a list
           if (diffNode.content.childCount > 0) {
-            const firstChild = diffNode.content.firstChild;
+            const { firstChild } = diffNode.content;
             if (firstChild.type.name === 'bullet_list') {
               bulletList = firstChild;
             }
@@ -415,7 +415,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.replaceWith(1, view.state.doc.content.size - 1, fragment);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       // Verify something was inserted
       expect(doc.childCount).to.be.greaterThan(0);
     });
@@ -439,7 +439,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       let diffNode = null;
 
       // Check fragment children
-      for (let i = 0; i < fragment.childCount; i++) {
+      for (let i = 0; i < fragment.childCount; i += 1) {
         const child = fragment.child(i);
         if (child.type.name === 'ordered_list') {
           orderedList = child;
@@ -447,7 +447,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
           diffNode = child;
           // Check if diff node contains a list
           if (diffNode.content.childCount > 0) {
-            const firstChild = diffNode.content.firstChild;
+            const { firstChild } = diffNode.content;
             if (firstChild.type.name === 'ordered_list') {
               orderedList = firstChild;
             }
@@ -467,7 +467,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.replaceWith(1, view.state.doc.content.size - 1, fragment);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       // Verify something was inserted
       expect(doc.childCount).to.be.greaterThan(0);
     });
@@ -491,7 +491,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       let diffNode = null;
 
       // Check fragment children
-      for (let i = 0; i < fragment.childCount; i++) {
+      for (let i = 0; i < fragment.childCount; i += 1) {
         const child = fragment.child(i);
         if (child.type.name === 'bullet_list') {
           bulletList = child;
@@ -499,7 +499,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
           diffNode = child;
           // Check if diff node contains a list
           if (diffNode.content.childCount > 0) {
-            const firstChild = diffNode.content.firstChild;
+            const { firstChild } = diffNode.content;
             if (firstChild.type.name === 'bullet_list') {
               bulletList = firstChild;
             }
@@ -520,7 +520,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       const tr = view.state.tr.replaceWith(1, view.state.doc.content.size - 1, fragment);
       view.dispatch(tr);
 
-      const doc = view.state.doc;
+      const { doc } = view.state;
       // Verify something was inserted
       expect(doc.childCount).to.be.greaterThan(0);
     });
@@ -564,7 +564,7 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       view.dispatch(tr);
 
       // Verify it exists
-      let doc = view.state.doc;
+      let { doc } = view.state;
       expect(doc.child(1).type.name).to.equal('diff_added');
 
       // Apply another transaction (simulating editor interaction)
@@ -575,9 +575,8 @@ describe('da-diff changes with lists in ProseMirror editor', () => {
       view.dispatch(tr);
 
       // Diff node should still exist
-      doc = view.state.doc;
+      ({ doc } = view.state);
       expect(doc.child(1).type.name).to.equal('diff_added');
     });
   });
 });
-

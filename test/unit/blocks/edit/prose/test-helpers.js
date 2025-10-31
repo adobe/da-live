@@ -100,9 +100,10 @@ export async function createTestEditor({
   dispatchTransaction = null,
 } = {}) {
   // Lazy load schema to avoid module loading issues
-  if (!schema) {
+  let finalSchema = schema;
+  if (!finalSchema) {
     const { getSchema } = await import('../../../../../blocks/edit/prose/schema.js');
-    schema = getSchema();
+    finalSchema = getSchema();
   }
   // Create a standalone Y.Doc (no server needed)
   const ydoc = new Y.Doc();
@@ -129,7 +130,7 @@ export async function createTestEditor({
   ];
 
   // Create editor state
-  let state = EditorState.create({ schema, plugins });
+  const state = EditorState.create({ schema: finalSchema, plugins });
 
   // Create editor view
   const editorElement = document.createElement('div');
@@ -189,4 +190,3 @@ export function destroyEditor(editor) {
     editor.destroy();
   }
 }
-
