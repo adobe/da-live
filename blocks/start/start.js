@@ -118,6 +118,7 @@ class DaStart extends LitElement {
       this.org = null;
       this.site = null;
       this.goEnabled = false;
+      // eslint-disable-next-line no-console
       console.log(ex);
     }
   }

@@ -161,6 +161,7 @@ class DaLibrary extends LitElement {
         const { pathname } = new URL(url);
         window.open(url, `${pathname.replaceAll('/', '-')}`);
       } catch {
+        // eslint-disable-next-line no-console
         console.log('Could not make plugin URL');
       }
       return;

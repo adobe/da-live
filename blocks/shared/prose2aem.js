@@ -103,11 +103,23 @@ function convertParagraphs(editor) {
 }
 
 function convertListItems(editor) {
+  const topLevelLists = editor.querySelectorAll('ul > li, ol > li');
+
+  topLevelLists.forEach((li) => {
+    if (li.firstChild.classList.contains('loc-deleted-view')) {
+      li.remove(); // remove deleted nodes in preview
+    } else if (li.firstChild.classList.contains('loc-added-view')) {
+      li.querySelector('.loc-color-overlay').remove();
+      li.innerHTML = li.firstChild.innerHTML;
+    }
+  });
+
   const lis = editor.querySelectorAll('li');
   lis.forEach((li) => {
-    const para = li.querySelector(':scope > p');
-    if (!para) return;
-    li.innerHTML = para.innerHTML;
+    // Collapse single child p tags
+    if (li.children.length === 1 && li.firstElementChild.nodeName === 'P') {
+      li.innerHTML = li.firstElementChild.innerHTML;
+    }
   });
 }
 

@@ -70,6 +70,7 @@ export default class DaSearch extends LitElement {
           const resp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
           const text = await resp.text();
           // Log empty files
+          // eslint-disable-next-line no-console
           if (text.length < 2) console.log(file.path);
           match = text.includes(term) || file.path.split('/').pop().includes(term);
         } catch {
