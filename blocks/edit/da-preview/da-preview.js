@@ -1,6 +1,7 @@
 import { LitElement, html } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
+import { CON_ORIGIN } from '../../shared/constants.js';
 
 const sheet = await getSheet('/blocks/edit/da-preview/da-preview.css');
 
@@ -68,7 +69,8 @@ export default class DaPreview extends LitElement {
   }
 
   setBody() {
-    this.port1.postMessage({ set: 'body', get: 'height', body: this.body });
+    //modify the url of images from content.da.live to relative path
+    this.port1.postMessage({ set: 'body', get: 'height', body: this.rewriteDaImgSrcs(this.body)});
   }
 
   iframeLoaded({ target }) {
@@ -112,6 +114,27 @@ export default class DaPreview extends LitElement {
     this.iframe ??= this.shadowRoot.querySelector('iframe');
     if (props.has('body')) this.setBody();
     super.updated(props);
+  }
+  
+  rewriteDaImgSrcs(bodyHtml) {
+    // Parse the HTML string into a DOM structure
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(bodyHtml, 'text/html');
+    
+    // Rewrite img src attributes from content.da.live to relative path
+    const daImgSrcs = doc.querySelectorAll('img[src^="' + CON_ORIGIN + '"]');
+    daImgSrcs.forEach((img) => {
+      img.src = `/${img.src.split('/').slice(5).join('/')}`;
+    });
+  
+    // Rewrite source srcset attributes from content.da.live to relative path
+    const daImgSources = doc.querySelectorAll('source[srcset^="' + CON_ORIGIN + '"]');
+    daImgSources.forEach((source) => {
+      source.srcset = `/${source.srcset.split('/').slice(5).join('/')}`;
+    });
+    
+    // Return the modified HTML as a string, preserving the body tag
+    return doc.body.outerHTML;
   }
 }
 

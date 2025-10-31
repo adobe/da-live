@@ -45,7 +45,7 @@ function convertBlocks(editor) {
   });
 }
 
-function makePictures(editor) {
+function makePictures(editor, live) {
   const imgs = editor.querySelectorAll('img');
   imgs.forEach((img) => {
     img.removeAttribute('contenteditable');
@@ -53,6 +53,17 @@ function makePictures(editor) {
     img.removeAttribute('style');
 
     const clone = img.cloneNode(true);
+    if (live) {
+      const source = new URL(clone.src);
+      if (source.host.endsWith('.da.live')) {
+        source.pathname = '/' + source.pathname
+          .split('/')
+          .slice(3) // remove org and site
+          .join('/');
+        clone.src = source.toString();
+      }
+    }
+
     clone.setAttribute('loading', 'lazy');
 
     let pic = document.createElement('picture');
@@ -179,17 +190,22 @@ export default function prose2aem(editor, live) {
     parseIcons(editor);
   }
 
-  makePictures(editor);
+  makePictures(editor, live);
 
   makeSections(editor);
 
-  const html = `
+  let html = `
     <body>
       <header></header>
       <main>${editor.innerHTML}</main>
       <footer></footer>
     </body>
   `;
+
+  if (live) {
+    html = html.replaceAll('https://content.da.live/', '/');
+    html = html.replaceAll('https://stage-content.da.live/', '/');
+  }
 
   return html;
 }
