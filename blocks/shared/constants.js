@@ -1,4 +1,3 @@
-export const CON_ORIGIN = 'https://content.da.live';
 export const AEM_ORIGIN = 'https://admin.hlx.page';
 
 export const SUPPORTED_FILES = {
@@ -25,6 +24,18 @@ const DA_COLLAB_ENVS = {
   prod: 'wss://collab.da.live',
 };
 
+const DA_CONTENT_ENVS = {
+  local: 'http://localhost:8788',
+  stage: 'https://stage-content.da.live',
+  prod: 'https://content.da.live',
+};
+
+const DA_UNIVERSAL_ENVS = {
+  local: '.localhost.localdomain:4712',
+  stage: '.stage-ue.da.live',
+  prod: '.ue.da.live',
+};
+
 function getDaEnv(location, key, envs) {
   const { href } = location;
   const query = new URL(href).searchParams.get(key);
@@ -49,3 +60,5 @@ export const getDaAdmin = (() => {
 
 export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();
+export const CON_ORIGIN = (() => getDaEnv(window.location, 'da-content', DA_CONTENT_ENVS))();
+export const UNIVERSAL_ORIGIN = (() => getDaEnv(window.location, 'da-universal', DA_UNIVERSAL_ENVS))();

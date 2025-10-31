@@ -3,6 +3,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
 import { initIms, daFetch } from '../../shared/utils.js';
+import { CON_ORIGIN, UNIVERSAL_ORIGIN } from '../../shared/constants.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
@@ -60,13 +61,15 @@ export default class DaContent extends LitElement {
 
     const { owner, repo } = this.details;
     const { accessToken } = await initIms();
-    fetch(`https://stage-content.da.live/${owner}/${repo}/.gimme_cookie`, {
+    // fetch from da-content
+    fetch(CON_ORIGIN + `/${owner}/${repo}/.gimme_cookie`, {
       credentials: 'include',
       headers: {
         Authorization: `Bearer ${accessToken.token}`,
       },
     });
-    fetch(`https://main--${repo}--${owner}.stage-ue.da.live/gimme_cookie`, {
+    // fetch from da-universal
+    fetch(`http://main--${repo}--${owner}` + UNIVERSAL_ORIGIN + `/gimme_cookie`, {
       credentials: 'include',
       headers: {
         Authorization: `Bearer ${accessToken.token}`,
@@ -118,7 +121,7 @@ export default class DaContent extends LitElement {
   render() {
     const { owner, repo, previewUrl } = this.details;
     const { pathname } = new URL(previewUrl);
-    const livePreviewUrl = `https://main--${repo}--${owner}.stage-ue.da.live${pathname}`;
+    const livePreviewUrl = `http://main--${repo}--${owner}` + UNIVERSAL_ORIGIN + `${pathname}`;
 
     return html`
       <div class="editor-wrapper">
