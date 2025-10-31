@@ -97,12 +97,10 @@ export function aem2prose(doc) {
 
     if (!isDiffDeleted && !isDiffAdded) return;
 
-    // Handle special case: diff-deleted with empty li tag
     if (isDiffDeleted && li.firstChild?.nodeName === 'LI' && li.firstChild.children.length === 0) {
       li.firstChild.remove();
     }
 
-    // Restructure if first child is an LI
     if (li.firstChild?.nodeName === 'LI') {
       const innerLi = li.firstChild;
       const newLi = document.createElement('li');

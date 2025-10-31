@@ -169,19 +169,15 @@ function hasMatchingContent(nodeA, nodeB) {
   return true;
 }
 
-function checkForLocNodes(view) {
+export function checkForLocNodes(view) {
   const { doc } = view.state;
-  let hasLocNodes = false;
 
-  // Since diff_deleted and diff_added nodes are only one level deep,
-  // we only need to check the immediate children of the document
-  for (let i = 0; i < doc.childCount; i += 1) {
-    const node = doc.child(i);
-    if (isLocNode(node)) {
-      hasLocNodes = true;
-      break;
-    }
-  }
+  const hasListLocNode = (node) => (node.type.name === 'bullet_list' || node.type.name === 'ordered_list')
+    && Array.from({ length: node.childCount }, (_, i) => node.child(i))
+      .some((listItem) => isLocNode(listItem?.firstChild));
+
+  const hasLocNodes = Array.from({ length: doc.childCount }, (_, i) => doc.child(i))
+    .some((node) => isLocNode(node) || hasListLocNode(node));
 
   if (hasLocNodes) {
     loadLocCss();
@@ -267,8 +263,6 @@ async function getLangOverlay(upstream) {
 export function addActiveView(view) {
   activeViews.add(view);
 }
-
-export { checkForLocNodes };
 
 export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {
   return class {
