@@ -8,6 +8,7 @@ const style = await getStyle(import.meta.url);
 class FormEditor extends LitElement {
   static properties = {
     formModel: { state: true },
+    _data: { state: true },
   };
 
   connectedCallback() {
@@ -15,78 +16,63 @@ class FormEditor extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
   }
 
-  renderCheckbox(key, prop) {
+  update(props) {
+    if (props.has('formModel') && this.formModel) {
+      this.getData();
+    }
+    super.update(props);
+  }
+
+  getData() {
+    this._data = this.formModel.annotated;
+  }
+
+  renderCheckbox(item) {
     return html`
       <div>
-        <p class="schema-title">${prop.schema.title}</p>
-        ${prop.schema.items.enum.map((opt) => {
-          const isChecked = prop.value.find((val) => val === opt);
-          return html`
-            <input type="checkbox" id="${opt}" name="${key}" value="${opt}" ?checked=${isChecked}>
-            <label for="${opt}">${opt}</label>
-          `;
-        })}
+        <input type="checkbox" name="${item.key}" value="${item.data}" ?checked=${item.data}>
+        <label class="primitive-item-title">${item.schema.title}</label>
       </div>
     `;
   }
 
-  // Recursive function to render JSON with schema titles
-  renderTree(key, value) {
-    // if (Array.isArray(value)) {
-    //   console.log('Array');
-    //   console.log(key);
-    // }
+  renderPrimitive(item) {
+    const primitives = ['string', 'boolean', 'number'];
+    const prim = primitives.find((type) => type === item.schema.properties.type);
+    if (prim) {
+      if (prim === 'boolean') return this.renderCheckbox(item);
+      return html`
+        <p class="primitive-item-title">${item.schema.title}</p>
+        <sl-input type="text" value="${item.data}"></sl-input>
+      `;
+    }
 
-    // if (typeof value === 'object') {
-    //   console.log('Object');
-    //   console.log(key);
-    // }
+    return nothing;
+  }
 
+  renderList(parent) {
+    if (parent.schema.properties.items?.type) return nothing;
 
-  //   console.log(prop);
-  //   if (prop.schema.type === 'array') {
-  //     // if (prop.schema['x-semantic-type'] === 'checkbox') return this.renderCheckbox(key, prop);
+    if (!Array.isArray(parent.data)) return this.renderPrimitive(parent);
 
-  //     return html`
-  //       <div class="da-form-array">
-  //         <p class="schema-title">${prop.schema.title}</p>
-  //         ${prop.value.map((val) => {
-  //           const schema = { ...prop.schema.items };
-  //           return this.renderTree(key, { value: val, schema });
-  //         })}
-  //       </div>
-  //     `;
-  //   }
-
-  //   if (prop.schema.type === 'object') {
-  //     const rendered = Object.entries(prop.value).map(([k, p]) => this.renderTree(k, p));
-
-  //     return html`
-  //       <div class="da-form-object">
-  //         <p class="schema-title">${prop.schema.title} - Nested Object</p>
-  //         ${rendered}
-  //       </div>
-  //     `;
-  //   }
-
-  //   if (key === 'keyFeatureList') console.log(prop);
-
-  //   return html`
-  //     <div class="da-form-primitive">
-  //       <p>${prop.schema.title} - ${prop.schema.type}</p>
-  //       <sl-input type="text" name="${key}" value=${prop.value}></sl-input>
-  //     </div>`;
+    return html`
+      <div class="item-group" data-key="${parent.key}">
+        <p class="item-title">${parent.schema.title}</p>
+        ${parent.data
+          ? html`<div class="form-children">${parent.data.map((item) => this.renderList(item))}</div>`
+          : nothing}
+      </div>
+    `;
   }
 
   render() {
-    if (!this.formModel) return nothing;
-    const { json } = this.formModel;
+    if (!this._data) return nothing;
 
     return html`
-      <h2>${this.formModel.schema.title}</h2>
+      <h2>${this._data.schema.title}</h2>
       <form>
-        <div class="da-form-array">
-          ${Object.entries(json.data).map(([key, value]) => this.renderTree(key, value))}
+        <div>
+          ${this.renderList(this._data)}
         </div>
       </form>
     `;

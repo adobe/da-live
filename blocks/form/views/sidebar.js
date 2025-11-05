@@ -70,7 +70,6 @@ class FormSidebar extends LitElement {
    * @returns {Boolean} whether or not something should render
    */
   canRender(item) {
-    if (item.key === 'itemList') console.log(item);
     if (item.schema.properties.items?.type) return false;
 
     const primitives = ['string', 'boolean', 'number'];

@@ -1,6 +1,6 @@
 import HTMLConverter from '../utils/html-converter.js';
 import { Validator } from '../../../deps/da-form/dist/index.js';
-import { annotateProp, getPropSchema, matchPropToSchema } from '../utils/utils.js';
+import { annotateProp } from '../utils/utils.js';
 
 /**
  * A data model that represents a form.
@@ -10,14 +10,7 @@ export default class FormModel {
     const converter = new HTMLConverter(html);
     this._json = converter.json;
     this._schema = schemas[this._json.metadata.schemaName];
-    this._annotated = this._annotateWithSchema();
-    this._annotatedTwo = annotateProp('root', this._json.data, this._schema, this._schema);
-  }
-
-  _annotateWithSchema() {
-    const propSchema = getPropSchema('root', this._schema, this._schema, this._schema);
-    const fullSchema = matchPropToSchema('root', this._json.data, propSchema, this._schema);
-    return { ...fullSchema, title: this._schema.title };
+    this._annotated = annotateProp('root', this._json.data, this._schema, this._schema);
   }
 
   validate() {
@@ -26,7 +19,7 @@ export default class FormModel {
   }
 
   get annotated() {
-    return this._annotatedTwo;
+    return this._annotated;
   }
 
   get schema() {
