@@ -16,6 +16,7 @@
     "hast-util-from-html-isomorphic": "^2.0.0",
     "hast-util-select": "^6.0.4",
     "hast-util-to-dom": "^4.0.1",
+    "json-schema-faker": "^0.5.9",
     "jspreadsheet-ce": "^4.13.4",
     "jsuites": "^5.0.29",
     "lit": "^3.2.0",

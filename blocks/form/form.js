@@ -28,6 +28,7 @@ class FormEditor extends LitElement {
   static properties = {
     details: { attribute: false },
     formModel: { state: true },
+    _schemas: { state: true },
   };
 
   connectedCallback() {
@@ -41,18 +42,47 @@ class FormEditor extends LitElement {
 
     const [schemas, result] = await Promise.all([schemasPromise, resultPromise]);
 
+    if (schemas) this._schemas = schemas;
+
     if (!result.html) {
       this.formModel = null;
       return;
     }
     this.formModel = new FormModel(result.html, schemas);
-    // console.log(this.formModel.annotatedJson);
-    // const validation = this.formModel.validate();
+  }
+
+  async generateJsonFromSchema(schema) {
+    const { JSONSchemaFaker } = await import('../../deps/da-form/dist/json-faker.js');
+    console.log(JSONSchemaFaker);
+  }
+
+  handleSelectSchema(e) {
+    const schemaId = e.target.value;
+    if (!schemaId) return;
+    const json = this.generateJsonFromSchema(this._schemas[schemaId]);
+    // const html = generateFlatHelixHtmlFromStructuredJson(json);
+    // this.formModel = new FormModel(html, this._schemas);
+  }
+
+  renderSchemaSelector() {
+    return html`
+      <p class="da-form-title">Please select a schema to get started</p>
+      <sl-select @change=${this.handleSelectSchema}>
+        <option value="">Select schema</option>
+        ${Object.entries(this._schemas).map(([key, value]) => html`
+          <option value="${key}">${value.title}</option>
+        `)}
+      </sl-select>`;
   }
 
   renderFormEditor() {
     if (this.formModel === null) {
-      return html`<p class="da-form-title">Select a schema to get started.</p>`;
+      if (this._schemas) return this.renderSchemaSelector();
+
+      return html`
+        <p class="da-form-title">Please create a schema</p>
+        <a href="https://main--da-live--adobe.aem.live/apps/schema?nx=schema#/${this.details.owner}/${this.details.repo}">Schema Editor</a>
+      `;
     }
 
     return html`
