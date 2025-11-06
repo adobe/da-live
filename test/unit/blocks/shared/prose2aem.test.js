@@ -3,11 +3,12 @@ import { expect } from '@esm-bundle/chai';
 
 import prose2aem from '../../../../blocks/shared/prose2aem.js';
 
-document.body.innerHTML = await readFile({ path: './mocks/prose2aem.html' });
+const htmlString = await readFile({ path: './mocks/prose2aem.html' });
+const doc = new DOMParser().parseFromString(htmlString, 'text/html');
 
 describe('aem2prose', () => {
   before('parse everything', () => {
-    document.body.outerHTML = prose2aem(document.body, true);
+    document.body.outerHTML = prose2aem(doc.body, true);
   });
 
   it('Removes extras', () => {

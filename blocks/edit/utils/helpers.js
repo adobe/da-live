@@ -49,7 +49,7 @@ function para() {
 export function aem2prose(doc) {
   // Fix BRs
   const brs = doc.querySelectorAll('p br');
-  brs.forEach((br) => { br.remove(); });
+  brs.forEach((br) => br.remove());
 
   // Els with da-diff-added property get wrapped in the da-diff-added element
   const diffAddedEls = doc.querySelectorAll('[da-diff-added]');
@@ -86,6 +86,32 @@ export function aem2prose(doc) {
     if (p.textContent.trim() === '---') {
       const hr = document.createElement('hr');
       p.parentElement.replaceChild(hr, p);
+    }
+  });
+
+  // Fix da-diff-* list items
+  const lis = doc.querySelectorAll('main > div > :is(ul, ol) > :is(da-diff-added, da-diff-deleted)');
+  lis.forEach((li) => {
+    const isDiffDeleted = li.nodeName === 'DA-DIFF-DELETED';
+    const isDiffAdded = li.nodeName === 'DA-DIFF-ADDED';
+
+    if (!isDiffDeleted && !isDiffAdded) return;
+
+    if (isDiffDeleted && li.firstChild?.nodeName === 'LI' && li.firstChild.children.length === 0) {
+      li.firstChild.remove();
+    }
+
+    if (li.firstChild?.nodeName === 'LI') {
+      const innerLi = li.firstChild;
+      const newLi = document.createElement('li');
+      const diffElement = document.createElement(isDiffDeleted ? 'da-diff-deleted' : 'da-diff-added');
+
+      while (innerLi.firstChild) {
+        diffElement.appendChild(innerLi.firstChild);
+      }
+
+      newLi.appendChild(diffElement);
+      li.parentElement.replaceChild(newLi, li);
     }
   });
 
