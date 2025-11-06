@@ -237,7 +237,7 @@ export async function openAssets() {
           cropSelectorWrapper.querySelector('.back').addEventListener('click', () => resetCropSelector());
           cropSelectorWrapper.querySelector('.insert').addEventListener('click', () => {
             dialog.close();
-            
+
             const insertTypeSelection = cropSelectorWrapper.querySelector('.da-dialog-asset-structure-select input:checked');
             const structureConfig = !insertTypeSelection || insertTypeSelection.value === 'single' ? null : JSON.parse(decodeURIComponent(insertTypeSelection.value));
             const singleSelectedCropElement = cropSelectorList.querySelector('.selected');
