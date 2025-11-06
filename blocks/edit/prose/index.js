@@ -217,18 +217,37 @@ export default function initProse({ path, permissions }) {
 
   const ydoc = new Y.Doc();
 
-  const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
-
   const opts = {};
 
-  if (window.adobeIMS?.isSignedInUser()) {
-    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
+  let roomName;
+  const server = new URL(COLLAB_ORIGIN);
+  if (server.searchParams.get('v6')) {
+    // helix v6 colab@aws
+    server.searchParams.delete('v6');
+    let doc = new URL(path).pathname;
+    if (doc.startsWith('/source/')) {
+      doc = doc.substring('/source'.length);
+    }
+    Object.assign(opts, {
+      params: { doc },
+      protocols: ['yjs', '1234'],
+      useBase64: true,
+    });
+    roomName = 'prod00';
+    if (window.adobeIMS?.isSignedInUser()) {
+      opts.protocols.push(window.adobeIMS.getAccessToken().token);
+    }
+  } else {
+    // current DA collab@cloudflare
+    roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+    if (window.adobeIMS?.isSignedInUser()) {
+      opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
+    }
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');
 
-  const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  const wsProvider = new WebsocketProvider(server.href, roomName, ydoc, opts);
   addSyncedListener(wsProvider, canWrite);
 
   createAwarenessStatusWidget(wsProvider, window);

@@ -23,6 +23,9 @@ const DA_COLLAB_ENVS = {
   local: 'ws://localhost:4711',
   stage: 'wss://stage-collab.da.live',
   prod: 'wss://collab.da.live',
+  experimental: 'wss://api.aem.live/collab',
+  // helix: 'ws://localhost:8080?v6=true',
+  helix: 'wss://z21npzmtdj.execute-api.us-east-1.amazonaws.com?v6=true',
 };
 
 function getDaEnv(location, key, envs) {
