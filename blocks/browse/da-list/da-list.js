@@ -317,7 +317,7 @@ export default class DaList extends LitElement {
 
         const date = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
         const datename = `${item.name}--${date}${item.ext ? `.${item.ext}` : ''}`;
-        item.destination = `/${org}/${site}/.trash/${rest.join('/')}/${datename}`;
+        item.destination = `/${org}/${site}/.trash/${rest.length > 0 ? `${rest.join('/')}/` : ''}${datename}`;
       }
 
       await this.handleItemAction({ item, type });
