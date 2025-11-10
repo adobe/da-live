@@ -273,8 +273,7 @@ export default function initProse({ path, permissions }) {
       'Mod-y': handleRedo,
       'Mod-Shift-z': handleRedo,
       'Mod-Shift-l': toggleLibrary,
-      'Mod-k': (state, dispatch, view) => {
-        // toggle link prompt
+      'Mod-k': (state, dispatch, view) => { // toggle link prompt
         const linkMarkType = state.schema.marks.link;
         const linkMenuItem = linkItem(linkMarkType);
         return linkMenuItem.spec.run(state, dispatch, view);
@@ -323,9 +322,7 @@ export default function initProse({ path, permissions }) {
         return false;
       },
     },
-    editable() {
-      return canWrite;
-    },
+    editable() { return canWrite; },
   });
 
   // Register view for global dialog management
