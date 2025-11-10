@@ -9,6 +9,10 @@ import {
   createElement,
   createTooltip,
   createButton,
+  getMetadata,
+  initDaMetadata,
+  getDaMetadata,
+  setDaMetadata,
 } from '../../../../../blocks/edit/utils/helpers.js';
 
 document.body.innerHTML = await readFile({ path: './mocks/body.html' });
@@ -409,5 +413,200 @@ describe('createButton', () => {
     const button = createButton('btn-reset', 'reset');
 
     expect(button.type).to.equal('reset');
+  });
+});
+
+describe('getMetadata', () => {
+  it('Returns empty object when element is null', () => {
+    const result = getMetadata(null);
+    expect(result).to.deep.equal({});
+  });
+
+  it('Returns empty object when element is undefined', () => {
+    const result = getMetadata(undefined);
+    expect(result).to.deep.equal({});
+  });
+
+  it('Extracts metadata from table rows', () => {
+    const metadataEl = document.createElement('div');
+    metadataEl.innerHTML = `
+      <div>
+        <div>Title</div>
+        <div>My Page Title</div>
+      </div>
+      <div>
+        <div>Description</div>
+        <div>Page Description</div>
+      </div>
+    `;
+
+    const result = getMetadata(metadataEl);
+
+    expect(result).to.deep.equal({
+      title: 'my page title',
+      description: 'page description',
+    });
+  });
+
+  it('Handles rows with empty values', () => {
+    const metadataEl = document.createElement('div');
+    metadataEl.innerHTML = `
+      <div>
+        <div>Key1</div>
+        <div></div>
+      </div>
+      <div>
+        <div>Key2</div>
+        <div>Value2</div>
+      </div>
+    `;
+
+    const result = getMetadata(metadataEl);
+
+    expect(result).to.deep.equal({
+      key1: '',
+      key2: 'value2',
+    });
+  });
+
+  it('Trims and lowercases keys and values', () => {
+    const metadataEl = document.createElement('div');
+    metadataEl.innerHTML = `
+      <div>
+        <div>  UPPERCASE KEY  </div>
+        <div>  UPPERCASE VALUE  </div>
+      </div>
+    `;
+
+    const result = getMetadata(metadataEl);
+
+    expect(result).to.deep.equal({
+      'uppercase key': 'uppercase value',
+    });
+  });
+
+  it('Skips rows without children', () => {
+    const metadataEl = document.createElement('div');
+    metadataEl.appendChild(document.createTextNode('Some text node'));
+
+    const rowWithChildren = document.createElement('div');
+    rowWithChildren.innerHTML = `
+      <div>Key</div>
+      <div>Value</div>
+    `;
+    metadataEl.appendChild(rowWithChildren);
+
+    const result = getMetadata(metadataEl);
+
+    expect(result).to.deep.equal({
+      key: 'value',
+    });
+  });
+});
+
+describe('daMetadata functions', () => {
+  let mockMap;
+
+  beforeEach(() => {
+    // Create a simple mock for Y.Map
+    const storage = new Map();
+    mockMap = {
+      get: (key) => storage.get(key) || null,
+      set: (key, value) => storage.set(key, value),
+      delete: (key) => storage.delete(key),
+      entries: () => storage.entries(),
+      [Symbol.iterator]: () => storage.entries(),
+    };
+  });
+
+  describe('initDaMetadata', () => {
+    it('Initializes the metadata map', () => {
+      initDaMetadata(mockMap);
+      // Should not throw and should allow subsequent operations
+      setDaMetadata('test-key', 'test-value');
+      expect(getDaMetadata('test-key')).to.equal('test-value');
+    });
+  });
+
+  describe('getDaMetadata', () => {
+    beforeEach(() => {
+      initDaMetadata(mockMap);
+    });
+
+    it('Returns null for non-existent key', () => {
+      const result = getDaMetadata('non-existent');
+      expect(result).to.be.null;
+    });
+
+    it('Returns value for existing key', () => {
+      setDaMetadata('my-key', 'my-value');
+      const result = getDaMetadata('my-key');
+      expect(result).to.equal('my-value');
+    });
+
+    it('Returns all metadata when no key provided', () => {
+      setDaMetadata('key1', 'value1');
+      setDaMetadata('key2', 'value2');
+
+      const result = getDaMetadata();
+      expect(result).to.deep.equal({
+        key1: 'value1',
+        key2: 'value2',
+      });
+    });
+
+    it('Returns empty object when no metadata exists and no key provided', () => {
+      const result = getDaMetadata();
+      expect(result).to.deep.equal({});
+    });
+  });
+
+  describe('setDaMetadata', () => {
+    beforeEach(() => {
+      initDaMetadata(mockMap);
+    });
+
+    it('Sets a metadata value', () => {
+      setDaMetadata('test-key', 'test-value');
+      expect(getDaMetadata('test-key')).to.equal('test-value');
+    });
+
+    it('Updates an existing metadata value', () => {
+      setDaMetadata('test-key', 'initial-value');
+      setDaMetadata('test-key', 'updated-value');
+      expect(getDaMetadata('test-key')).to.equal('updated-value');
+    });
+
+    it('Deletes metadata when value is null', () => {
+      setDaMetadata('test-key', 'test-value');
+      expect(getDaMetadata('test-key')).to.equal('test-value');
+
+      setDaMetadata('test-key', null);
+      expect(getDaMetadata('test-key')).to.be.null;
+    });
+
+    it('Deletes metadata when value is undefined', () => {
+      setDaMetadata('test-key', 'test-value');
+      expect(getDaMetadata('test-key')).to.equal('test-value');
+
+      setDaMetadata('test-key', undefined);
+      expect(getDaMetadata('test-key')).to.be.null;
+    });
+
+    it('Handles multiple keys independently', () => {
+      setDaMetadata('key1', 'value1');
+      setDaMetadata('key2', 'value2');
+      setDaMetadata('key3', 'value3');
+
+      expect(getDaMetadata('key1')).to.equal('value1');
+      expect(getDaMetadata('key2')).to.equal('value2');
+      expect(getDaMetadata('key3')).to.equal('value3');
+
+      setDaMetadata('key2', null);
+
+      expect(getDaMetadata('key1')).to.equal('value1');
+      expect(getDaMetadata('key2')).to.be.null;
+      expect(getDaMetadata('key3')).to.equal('value3');
+    });
   });
 });
