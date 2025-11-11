@@ -39,8 +39,8 @@ const getTableName = ($cursor) => {
   const firstRow = table.child(0);
   const cellIndex = $cursor.index(tableCellDepth - 1);
   const row = $cursor.node(rowDepth);
-
   const firstRowContent = firstRow.child(0).textContent;
+
   // Updated regex to allow spaces in table names, which will be normalized later
   const tableNameMatch = firstRowContent.match(/^([a-zA-Z0-9_\s-]+)(?:\s*\([^)]*\))?$/);
 
