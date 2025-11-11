@@ -7,8 +7,8 @@ import { createElement, createButton, createTooltip, getDaMetadata, setDaMetadat
 import prose2aem from '../../../shared/prose2aem.js';
 
 const HASH_LENGTH = 12;
-const REJECTED_KEY = 'rejectedHashes';
-const ACCEPTED_KEY = 'acceptedHashes';
+export const REJECTED_KEY = 'rejectedHashes';
+export const ACCEPTED_KEY = 'acceptedHashes';
 
 let objectHashLoaded = false;
 const objHash = async (obj) => {
@@ -21,6 +21,44 @@ const objHash = async (obj) => {
 
 const isTableNode = (node) => (node.content?.content?.length === 3 && node.content.content[1].type.name === 'table');
 
+function escapeHTML(str) {
+  return str.replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getOuterHTMLWithSortedAttributes(element) {
+  if (!(element instanceof Element)) {
+    // eslint-disable-next-line no-param-reassign
+    element = new DOMParser().parseFromString(element, 'text/html').body.firstChild;
+  }
+  const tagName = element.tagName.toLowerCase();
+  const attrs = Array.from(element.attributes)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((attr) => `${attr.name}="${escapeHTML(attr.value)}"`)
+    .join(' ');
+  const voidElements = new Set([
+    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+    'link', 'meta', 'param', 'source', 'track', 'wbr',
+  ]);
+  if (voidElements.has(tagName)) {
+    return `<${tagName}${attrs ? ` ${attrs}` : ''}>`;
+  }
+  let inner = '';
+  for (const child of element.childNodes) {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      inner += getOuterHTMLWithSortedAttributes(child);
+    } else if (child.nodeType === Node.TEXT_NODE) {
+      inner += escapeHTML(child.textContent);
+    } else if (child.nodeType === Node.COMMENT_NODE) {
+      // Sanitize comment content to avoid '-->'
+      inner += `<!--${child.textContent.replace(/-->/g, '--&gt;')}-->`;
+    }
+  }
+  return `<${tagName}${attrs ? ` ${attrs}` : ''}>${inner}</${tagName}>`;
+}
+
 function nodeToHtml(node) {
   const serializer = DOMSerializer.fromSchema(view.state.schema);
   const fragment = serializer.serializeFragment(node.content);
@@ -31,10 +69,10 @@ function nodeToHtml(node) {
   }
   div.appendChild(fragment);
   const aem = prose2aem(div, true, true);
-  return aem;
+  return getOuterHTMLWithSortedAttributes(aem);
 }
 
-const addToHashMetadata = async (node, mdKey) => {
+export const addToHashMetadata = async (node, mdKey) => {
   const hash = await objHash(nodeToHtml(node));
   const hashStr = getDaMetadata(mdKey);
   const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
@@ -246,7 +284,17 @@ export function getPairRange(pair) {
   };
 }
 
-export async function handleKeepDeleted(view, getPos, isValidPosition, isLocNode, canFormLocPair, filterNodeContent, dispatchContentTransaction) {
+function handleOperation(context, { acceptAdded, acceptDeleted, getContent }) {
+  const {
+    view,
+    getPos,
+    isValidPosition,
+    isLocNode,
+    canFormLocPair,
+    filterNodeContent,
+    dispatchContentTransaction,
+  } = context;
+
   const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
   if (!currentPair) {
     // eslint-disable-next-line no-console
@@ -256,53 +304,45 @@ export async function handleKeepDeleted(view, getPos, isValidPosition, isLocNode
 
   const { addedNode, deletedNode } = currentPair;
 
-  addToHashMetadata(addedNode, REJECTED_KEY);
-  addToHashMetadata(deletedNode, ACCEPTED_KEY);
+  // Update metadata based on which nodes are accepted/rejected
+  addToHashMetadata(addedNode, acceptAdded ? ACCEPTED_KEY : REJECTED_KEY);
+  addToHashMetadata(deletedNode, acceptDeleted ? ACCEPTED_KEY : REJECTED_KEY);
 
-  const filteredContent = filterNodeContent(deletedNode);
+  const content = getContent({ addedNode, deletedNode, filterNodeContent });
   const { startPos, endPos } = getPairRange(currentPair);
 
-  dispatchContentTransaction(startPos, endPos, filteredContent);
+  dispatchContentTransaction(startPos, endPos, content);
 }
 
-export function handleKeepAdded(view, getPos, isValidPosition, isLocNode, canFormLocPair, filterNodeContent, dispatchContentTransaction) {
-  const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
-  if (!currentPair) {
-    // eslint-disable-next-line no-console
-    console.warn('Could not find current loc node pair');
-    return;
-  }
-
-  const { addedNode, deletedNode } = currentPair;
-
-  addToHashMetadata(addedNode, ACCEPTED_KEY);
-  addToHashMetadata(deletedNode, REJECTED_KEY);
-
-  const filteredContent = filterNodeContent(addedNode);
-  const { startPos, endPos } = getPairRange(currentPair);
-
-  dispatchContentTransaction(startPos, endPos, filteredContent);
+export async function handleKeepDeleted(context) {
+  const { filterNodeContent } = context;
+  handleOperation(context, {
+    acceptAdded: false,
+    acceptDeleted: true,
+    getContent: ({ deletedNode }) => filterNodeContent(deletedNode),
+  });
 }
 
-export function handleKeepBoth(view, getPos, isValidPosition, isLocNode, canFormLocPair, filterNodeContent, dispatchContentTransaction) {
-  const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
-  if (!currentPair) {
-    // eslint-disable-next-line no-console
-    console.warn('Could not find current loc node pair');
-    return;
-  }
+export function handleKeepAdded(context) {
+  const { filterNodeContent } = context;
+  handleOperation(context, {
+    acceptAdded: true,
+    acceptDeleted: false,
+    getContent: ({ addedNode }) => filterNodeContent(addedNode),
+  });
+}
 
-  const { deletedNode, addedNode } = currentPair;
-
-  addToHashMetadata(addedNode, ACCEPTED_KEY);
-  addToHashMetadata(deletedNode, ACCEPTED_KEY);
-
-  const deletedContent = filterNodeContent(deletedNode);
-  const addedContent = filterNodeContent(addedNode);
-  const combinedContent = [...deletedContent, ...addedContent];
-  const { startPos, endPos } = getPairRange(currentPair);
-
-  dispatchContentTransaction(startPos, endPos, combinedContent);
+export function handleKeepBoth(context) {
+  const { filterNodeContent } = context;
+  handleOperation(context, {
+    acceptAdded: true,
+    acceptDeleted: true,
+    getContent: ({ deletedNode, addedNode }) => {
+      const deletedContent = filterNodeContent(deletedNode);
+      const addedContent = filterNodeContent(addedNode);
+      return [...deletedContent, ...addedContent];
+    },
+  });
 }
 
 export function applyKeepOperation(tr, node, pos, simpleFilterContent) {
