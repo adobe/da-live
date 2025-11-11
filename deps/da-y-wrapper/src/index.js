@@ -122,18 +122,6 @@ function findTableFromPos($pos) {
   return null;
 }
 
-/**
- * Check if the current selection is in the table header row (first row).
- */
-function isInTableHeader(state) {
-  if (!isInTable(state)) {
-    return false;
-  }
-
-  const rect = selectedRect(state);
-  return rect.top === 0;
-}
-
 // ensures header row maintains its colspan when adding columns
 function addColumnBeforeWrapper(state, dispatch) {
   if (!dispatch) {
@@ -189,42 +177,6 @@ function addColumnAfterWrapper(state, dispatch) {
   return result;
 }
 
-// Disable addRowBefore when in the header row
-function addRowBeforeWrapper(state, dispatch) {
-  if (isInTableHeader(state)) {
-    return false;
-  }
-
-  return addRowBefore(state, dispatch);
-}
-
-// Disable splitCell when in the header row
-function splitCellWrapper(state, dispatch) {
-  if (isInTableHeader(state)) {
-    return false;
-  }
-
-  return splitCell(state, dispatch);
-}
-
-// Disable deleteRow when in the header row
-function deleteRowWrapper(state, dispatch) {
-  if (isInTableHeader(state)) {
-    return false;
-  }
-
-  return deleteRow(state, dispatch);
-}
-
-// Disable deleteColumn when in the header row
-function deleteColumnWrapper(state, dispatch) {
-  if (isInTableHeader(state)) {
-    return false;
-  }
-
-  return deleteColumn(state, dispatch);
-}
-
 // All exported
 export {
   EditorView,
@@ -251,12 +203,12 @@ export {
   fixTables,
   addColumnAfterWrapper as addColumnAfter,
   addColumnBeforeWrapper as addColumnBefore,
-  deleteColumnWrapper as deleteColumn,
+  deleteColumn,
   addRowAfter,
-  addRowBeforeWrapper as addRowBefore,
-  deleteRowWrapper as deleteRow,
+  addRowBefore,
+  deleteRow,
   mergeCells,
-  splitCellWrapper as splitCell,
+  splitCell,
   deleteTable,
   gapCursor,
   MenuItem,
