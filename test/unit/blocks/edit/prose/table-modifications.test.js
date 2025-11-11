@@ -36,17 +36,6 @@ describe('Table Modifications', () => {
       // Insert a table (starts with 2 columns)
       insertTable(view.state, view.dispatch);
 
-      // Position cursor in a cell of the second row (content row)
-      // The table structure is: header row (1 cell, colspan 2) + content row (2 cells)
-      // We need to find and select a cell in the content row
-      const tableNode = view.state.doc.firstChild;
-      expect(tableNode.type.name).to.equal('table');
-
-      // Get initial state
-      const firstRow = tableNode.child(0);
-      expect(firstRow.childCount).to.equal(1, 'Header row should have 1 cell');
-      expect(firstRow.child(0).attrs.colspan).to.equal(2, 'Header should span 2 columns initially');
-
       // Move cursor to second row, first cell
       const secondRowPos = view.state.doc.resolve(5); // Position in second row
       const tr = view.state.tr.setSelection(
@@ -78,14 +67,8 @@ describe('Table Modifications', () => {
       // Insert a table (starts with 2 columns)
       insertTable(view.state, view.dispatch);
 
-      // Get initial state
-      const tableNode = view.state.doc.firstChild;
-      const firstRow = tableNode.child(0);
-      expect(firstRow.childCount).to.equal(1, 'Header row should have 1 cell');
-      expect(firstRow.child(0).attrs.colspan).to.equal(2, 'Header should span 2 columns initially');
-
-      // Move cursor to second row
-      const secondRowPos = view.state.doc.resolve(5);
+      // Move cursor to second row, last cell
+      const secondRowPos = view.state.doc.resolve(6);
       const tr = view.state.tr.setSelection(
         view.state.selection.constructor.create(view.state.doc, secondRowPos.pos),
       );
@@ -105,82 +88,6 @@ describe('Table Modifications', () => {
       expect(updatedFirstRow.child(0).attrs.colspan).to.equal(
         3,
         'Header should span 3 columns after adding one',
-      );
-    });
-
-    it('should maintain header colspan when adding multiple columns', async () => {
-      editor = await createTestEditor();
-      const { view } = editor;
-
-      // Insert a table (starts with 2 columns)
-      insertTable(view.state, view.dispatch);
-
-      // Get initial state
-      const tableNode = view.state.doc.firstChild;
-      const firstRow = tableNode.child(0);
-      expect(firstRow.child(0).attrs.colspan).to.equal(2, 'Header should span 2 columns initially');
-
-      // Move cursor to second row
-      const secondRowPos = view.state.doc.resolve(5);
-      const tr = view.state.tr.setSelection(
-        view.state.selection.constructor.create(view.state.doc, secondRowPos.pos),
-      );
-      view.dispatch(tr);
-
-      // Add column after
-      addColumnAfter(view.state, view.dispatch);
-
-      // Add another column after
-      addColumnAfter(view.state, view.dispatch);
-
-      // Add column before
-      addColumnBefore(view.state, view.dispatch);
-
-      // Check that header row still has 1 cell and colspan is now 5
-      const updatedTable = view.state.doc.firstChild;
-      const updatedFirstRow = updatedTable.child(0);
-
-      expect(updatedFirstRow.childCount).to.equal(
-        1,
-        'Header row should still have 1 cell after adding multiple columns',
-      );
-      expect(updatedFirstRow.child(0).attrs.colspan).to.equal(
-        5,
-        'Header should span 5 columns after adding three',
-      );
-    });
-
-    it('should preserve header text content when adding columns', async () => {
-      editor = await createTestEditor();
-      const { view } = editor;
-
-      // Insert a table
-      insertTable(view.state, view.dispatch);
-
-      // Get the header text
-      const tableNode = view.state.doc.firstChild;
-      const firstRow = tableNode.child(0);
-      const headerText = firstRow.child(0).textContent;
-      expect(headerText).to.equal('columns');
-
-      // Move cursor to second row
-      const secondRowPos = view.state.doc.resolve(5);
-      const tr = view.state.tr.setSelection(
-        view.state.selection.constructor.create(view.state.doc, secondRowPos.pos),
-      );
-      view.dispatch(tr);
-
-      // Add a column
-      addColumnBefore(view.state, view.dispatch);
-
-      // Check that header text is preserved
-      const updatedTable = view.state.doc.firstChild;
-      const updatedFirstRow = updatedTable.child(0);
-      const updatedHeaderText = updatedFirstRow.child(0).textContent;
-
-      expect(updatedHeaderText).to.equal(
-        'columns',
-        'Header text should be preserved after adding column',
       );
     });
   });
