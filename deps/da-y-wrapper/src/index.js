@@ -46,7 +46,7 @@ import {
 
 import { MenuItem, Dropdown, renderGrouped, blockTypeItem, wrapItem } from '../../prosemirror-menu/dist/index.js';
 
-import { InputRule, inputRules } from 'prosemirror-inputrules';
+import { InputRule, inputRules, wrappingInputRule } from 'prosemirror-inputrules';
 
 // All exported
 export {
@@ -96,6 +96,7 @@ export {
   sinkListItem,
   InputRule,
   inputRules,
+  wrappingInputRule,
   Y,
   WebsocketProvider,
   ySyncPlugin,

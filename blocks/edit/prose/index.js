@@ -39,6 +39,7 @@ import {
   handleTableTab,
   getEnterInputRulesPlugin,
   getURLInputRulesPlugin,
+  getListInputRulesPlugin,
   handleUndo,
   handleRedo,
 } from './plugins/keyHandlers.js';
@@ -272,6 +273,7 @@ export default function initProse({ path, permissions }) {
     columnResizing(),
     getEnterInputRulesPlugin(dispatchTransaction),
     getURLInputRulesPlugin(),
+    getListInputRulesPlugin(schema),
     keymap(buildKeymap(schema)),
     keymap({ Backspace: handleTableBackspace }),
     keymap(baseKeymap),
