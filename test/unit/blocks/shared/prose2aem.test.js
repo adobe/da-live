@@ -72,8 +72,8 @@ describe('prose2aem with isFragment parameter', () => {
 
   before(async () => {
     // Reload the HTML for fragment tests
-    const htmlString = await readFile({ path: './mocks/prose2aem.html' });
-    originalDoc = new DOMParser().parseFromString(htmlString, 'text/html');
+    const htmlStr = await readFile({ path: './mocks/prose2aem.html' });
+    originalDoc = new DOMParser().parseFromString(htmlStr, 'text/html');
   });
 
   it('Returns HTML string when isFragment is true', () => {
@@ -87,8 +87,8 @@ describe('prose2aem with isFragment parameter', () => {
   });
 
   it('Returns full HTML document when isFragment is false', () => {
-    const doc = originalDoc.cloneNode(true);
-    const result = prose2aem(doc.body, true, false);
+    const newDoc = originalDoc.cloneNode(true);
+    const result = prose2aem(newDoc.body, true, false);
 
     expect(typeof result).to.equal('string');
     expect(result).to.include('<body>');
@@ -129,8 +129,8 @@ describe('prose2aem with isFragment parameter', () => {
   });
 
   it('Creates sections when isFragment is false', () => {
-    const doc = originalDoc.cloneNode(true);
-    const result = prose2aem(doc.body, true, false);
+    const newDoc = originalDoc.cloneNode(true);
+    const result = prose2aem(newDoc.body, true, false);
 
     // Should include section divs
     expect(result).to.include('<div>');

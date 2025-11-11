@@ -1,14 +1,7 @@
 /* eslint-disable max-len */
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import {
-  createTabbedActions,
-  handleDeleteSingleNode,
-  handleKeepSingleNode,
-  handleKeepDeleted,
-  handleKeepAdded,
-  handleKeepBoth,
-} from '../../../../../../blocks/edit/prose/diff/diff-actions.js';
+import { createTabbedActions } from '../../../../../../blocks/edit/prose/diff/diff-actions.js';
 import {
   getDaMetadata,
   setDaMetadata,
@@ -143,9 +136,7 @@ describe('diff-actions - hash tracking metadata', () => {
     // Mock global view and window.objectHash
     window.view = {
       state: {
-        schema: {
-          nodes: {},
-        },
+        schema: { nodes: {} },
         doc: {
           resolve: () => ({
             parent: { type: { name: 'paragraph' } },
@@ -163,7 +154,9 @@ describe('diff-actions - hash tracking metadata', () => {
       let hash = 0;
       for (let i = 0; i < str.length; i += 1) {
         const char = str.charCodeAt(i);
+        // eslint-disable-next-line no-bitwise
         hash = ((hash << 5) - hash) + char;
+        // eslint-disable-next-line no-bitwise
         hash &= hash;
       }
       return Math.abs(hash).toString(16).padStart(12, '0');

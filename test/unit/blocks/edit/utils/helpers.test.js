@@ -480,9 +480,7 @@ describe('getMetadata', () => {
 
     const result = getMetadata(metadataEl);
 
-    expect(result).to.deep.equal({
-      'uppercase key': 'uppercase value',
-    });
+    expect(result).to.deep.equal({ 'uppercase key': 'uppercase value' });
   });
 
   it('Skips rows without children', () => {
@@ -498,9 +496,7 @@ describe('getMetadata', () => {
 
     const result = getMetadata(metadataEl);
 
-    expect(result).to.deep.equal({
-      key: 'value',
-    });
+    expect(result).to.deep.equal({ key: 'value' });
   });
 });
 
