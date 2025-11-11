@@ -216,21 +216,27 @@ function markItem(markType, options) {
   return cmdItem(toggleMark(markType), passedOptions);
 }
 
-function item(label, cmd, css) {
-  return new MenuItem({ label, select: cmd, run: cmd, class: css });
+function item(label, cmd, css, title) {
+  return new MenuItem({
+    label,
+    title: title || label,
+    select: cmd,
+    run: cmd,
+    class: css,
+  });
 }
 
 function getTableMenu() {
   return [
-    item('Insert column before', addColumnBefore, 'addColBefore'),
-    item('Insert column after', addColumnAfter, 'addColumnAfter'),
-    item('Delete column', deleteColumn, 'deleteColumn'),
-    item('Insert row before', addRowBefore, 'addRowBefore'),
-    item('Insert row after', addRowAfter, 'addRowAfter'),
-    item('Delete row', deleteRow, 'deleteRow'),
-    item('Merge cells', mergeCells, 'mergeCells'),
-    item('Split cell', splitCell, 'splitCell'),
-    item('Delete table', deleteTable, 'deleteTable'),
+    item('Insert column before', addColumnBefore, 'addColBefore', 'Insert column before'),
+    item('Insert column after', addColumnAfter, 'addColumnAfter', 'Insert column after'),
+    item('Delete column', deleteColumn, 'deleteColumn', 'Delete column'),
+    item('Insert row before', addRowBefore, 'addRowBefore', 'Insert row before'),
+    item('Insert row after', addRowAfter, 'addRowAfter', 'Insert row after'),
+    item('Delete row', deleteRow, 'deleteRow', 'Delete row'),
+    item('Merge cells', mergeCells, 'mergeCells', 'Merge cells'),
+    item('Split cell', splitCell, 'splitCell', 'Split cell'),
+    item('Delete table', deleteTable, 'deleteTable', 'Delete table'),
   ];
 }
 
@@ -377,7 +383,7 @@ function getMenu(view) {
       class: 'open-library',
     }),
     new Dropdown(editTable, {
-      title: 'Edit text',
+      title: 'Edit block',
       label: 'Edit block',
       class: 'edit-table',
     }),
