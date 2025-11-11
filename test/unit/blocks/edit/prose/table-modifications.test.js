@@ -14,12 +14,6 @@ import { expect } from '@esm-bundle/chai';
 import {
   addColumnBefore,
   addColumnAfter,
-  addRowBefore,
-  addRowAfter,
-  splitCell,
-  deleteRow,
-  deleteColumn,
-  mergeCells,
 } from 'da-y-wrapper';
 import { createTestEditor, destroyEditor } from './test-helpers.js';
 import insertTable from '../../../../../blocks/edit/prose/table.js';
