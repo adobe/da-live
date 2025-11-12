@@ -1,6 +1,6 @@
 import { getNx } from '../../scripts/utils.js';
 import { DA_ORIGIN } from '../shared/constants.js';
-import { daFetch, aemAdmin } from '../shared/utils.js';
+import { daFetch } from '../shared/utils.js';
 
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 
