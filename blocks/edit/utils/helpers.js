@@ -416,3 +416,38 @@ export function createButton(className, type = 'button', attributes = {}) {
   const button = createElement('button', className, { type, ...attributes });
   return button;
 }
+
+export const getMetadata = (el) => {
+  if (!el) return {};
+  const metadata = {};
+  [...el.childNodes].forEach((row) => {
+    if (row.children) {
+      const key = row.children[0].textContent.trim().toLowerCase();
+      const content = row.children[1].textContent.trim().toLowerCase();
+      metadata[key] = content;
+    }
+  });
+  return metadata;
+};
+
+let daMdMap = null;
+export function initDaMetadata(map) {
+  daMdMap = map;
+}
+
+export function getDaMetadata(key) {
+  if (!daMdMap) return key ? null : {};
+  if (key) {
+    return daMdMap.get(key) || null;
+  }
+  return Object.fromEntries(daMdMap);
+}
+
+export function setDaMetadata(key, value) {
+  if (!daMdMap) return;
+  if (value === null || value === undefined) {
+    daMdMap.delete(key);
+  } else {
+    daMdMap.set(key, value);
+  }
+}

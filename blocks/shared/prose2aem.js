@@ -17,7 +17,7 @@ function toBlockCSSClassNames(text) {
     .filter((name) => !!name);
 }
 
-function convertBlocks(editor) {
+function convertBlocks(editor, isFragment = false) {
   const tables = editor.querySelectorAll('.tableWrapper > table, da-diff-added > table');
 
   tables.forEach((table) => {
@@ -41,7 +41,11 @@ function convertBlocks(editor) {
     const div = document.createElement('div');
     div.className = toBlockCSSClassNames(nameRow.textContent).join(' ');
     div.append(...divs);
-    table.parentElement.parentElement.replaceChild(div, table.parentElement);
+    if (isFragment) {
+      table.parentElement.replaceChild(div, table);
+    } else {
+      table.parentElement.parentElement.replaceChild(div, table.parentElement);
+    }
   });
 }
 
@@ -155,8 +159,10 @@ function parseIcons(editor) {
 
 const removeEls = (els) => els.forEach((el) => el.remove());
 
-export default function prose2aem(editor, live) {
-  editor.removeAttribute('class');
+export default function prose2aem(editor, live, isFragment = false) {
+  if (!isFragment) {
+    editor.removeAttribute('class');
+  }
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
 
@@ -184,7 +190,7 @@ export default function prose2aem(editor, live) {
 
   convertParagraphs(editor);
 
-  convertBlocks(editor);
+  convertBlocks(editor, isFragment);
 
   if (live) {
     removeMetadata(editor);
@@ -193,7 +199,13 @@ export default function prose2aem(editor, live) {
 
   makePictures(editor);
 
-  makeSections(editor);
+  if (!isFragment) {
+    makeSections(editor);
+  }
+
+  if (isFragment) {
+    return editor.innerHTML;
+  }
 
   const html = `
     <body>

@@ -1,6 +1,7 @@
 // Global dialog management - only needed when multiple LOC nodes exist
 import { Slice } from 'da-y-wrapper';
 import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
+import { addToHashMetadata, ACCEPTED_KEY, REJECTED_KEY } from './diff-actions.js';
 
 const KEEP = 'keep';
 const DELETE = 'delete';
@@ -62,6 +63,8 @@ function processLocNode(tr, node, pos, action) {
   const $pos = tr.doc.resolve(pos);
 
   if (nodeAction === KEEP) {
+    addToHashMetadata(node, ACCEPTED_KEY);
+
     if (node.content.size === 0) return tr.delete(pos, pos + node.nodeSize);
 
     const isInListItem = $pos.parent.type.name === 'list_item';
@@ -69,6 +72,9 @@ function processLocNode(tr, node, pos, action) {
     const slice = new Slice(node.content, openDepth, openDepth);
     return tr.replace(pos, pos + node.nodeSize, slice);
   }
+
+  // DELETE action - track as rejected
+  addToHashMetadata(node, REJECTED_KEY);
 
   const listItemDepth = findListItemDepth($pos);
   if (listItemDepth !== null) {
