@@ -92,10 +92,10 @@ class DaStart extends LitElement {
         return;
       }
 
-      const previewList = await previewContent(this.org, this.site, setStatus);
-      if (previewList.some((file) => !file.ok)) {
+      const previewResult = await previewContent(this.org, this.site, setStatus);
+      if (previewResult.type === 'error') {
         setStatus('Could not preview all content. Permissions? AEM Code Sync? fstab?');
-        await new Promise((resolve) => { setTimeout(() => { resolve(); }, 3000); });
+        return;
       }
 
       delete e.target.disabled;
