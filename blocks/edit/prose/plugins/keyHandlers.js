@@ -48,34 +48,6 @@ export function getURLInputRule() {
   );
 }
 
-/**
- * Converts "* " or "- " at the start of a line into a bullet list.
- *
- * @param {Schema} schema - The ProseMirror schema
- * @returns {InputRule|null} the bullet list input rule, or null if
- *   bullet_list node doesn't exist
- */
-export function getBulletListInputRule(schema) {
-  const { bullet_list: bulletList } = schema.nodes;
-  if (!bulletList) return null;
-
-  return wrappingInputRule(/^\s*([-*])\s$/, bulletList);
-}
-
-/**
- * converts "1. " or "1) " at the start of a line into an ordered list.
- *
- * @param {Schema} schema - The ProseMirror schema
- * @returns {InputRule|null} the ordered list input rule, or null if
- *   the ordered_list node doesn't exist
- */
-export function getOrderedListInputRule(schema) {
-  const { ordered_list: orderedList } = schema.nodes;
-  if (!orderedList) return null;
-
-  return wrappingInputRule(/^\s*1[.)]\s$/, orderedList);
-}
-
 export function getDashesInputRule(dispatchTransaction) {
   return new InputRule(
     /^---[\n]$/,
@@ -111,9 +83,12 @@ export function getURLInputRulesPlugin() {
   return inputRules({ rules: [getURLInputRule()] });
 }
 
-// Returns an inputRules plugin for list formatting (bullet and ordered lists)
+// Returns an inputRules plugin for auto-creating bullet and ordered lists
 export function getListInputRulesPlugin(schema) {
-  const rules = [getBulletListInputRule(schema), getOrderedListInputRule(schema)].filter(Boolean);
+  const rules = [
+    wrappingInputRule(/^\s*1[.)]\s$/, schema.nodes.ordered_list),
+    wrappingInputRule(/^\s*([-*])\s$/, schema.nodes.bullet_list),
+  ];
   return inputRules({ rules });
 }
 
