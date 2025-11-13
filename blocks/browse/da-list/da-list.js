@@ -29,6 +29,7 @@ export default class DaList extends LitElement {
     _listItems: { state: true },
     _itemsRemaining: { state: true },
     _itemErrors: { state: true },
+    _isLoading: { state: true },
     _filter: { state: true },
     _showFilter: { state: true },
     _selectedItems: { state: true },
@@ -46,9 +47,11 @@ export default class DaList extends LitElement {
     this._itemErrors = [];
     this._dropFiles = [];
     this._emptyMessage = 'Empty';
+    this._loadingMessage = 'Loading ...';
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
     this._filter = '';
+    this._isLoading = false;
   }
 
   connectedCallback() {
@@ -65,7 +68,11 @@ export default class DaList extends LitElement {
     if (props.has('fullpath') && this.fullpath) {
       this._filter = '';
       this._showFilter = undefined;
+      this._isLoading = true;
+      this._listItems = [];
+      super.update(props);
       this._listItems = await this.getList();
+      this._isLoading = false;
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -526,7 +533,7 @@ export default class DaList extends LitElement {
   }
 
   renderEmpty() {
-    return html`<div class="empty-list"><h3>${this._emptyMessage}</h3></div>`;
+    return html`<div class="empty-list"><h3>${this._isLoading ? this._loadingMessage : this._emptyMessage}</h3></div>`;
   }
 
   renderStatus() {
