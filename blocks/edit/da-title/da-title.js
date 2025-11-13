@@ -188,12 +188,6 @@ export default class DaTitle extends LitElement {
     const { hash } = window.location;
     const fullPath = hash.replace('#', '');
     const preflightUrl = `/blocks/edit/da-preflight/preflight.html?org=${context.owner}&repo=${context.repo}&path=${encodeURIComponent(fullPath)}`;
-    // eslint-disable-next-line no-console
-    console.log('Preflight URL:', preflightUrl);
-    // eslint-disable-next-line no-console
-    console.log('Context:', context);
-    // eslint-disable-next-line no-console
-    console.log('Full Path:', fullPath);
     const content = html`
       <style>
         .preflight-modal-container {
@@ -218,8 +212,24 @@ export default class DaTitle extends LitElement {
       </div>
     `;
 
-    this._dialog = { title: 'Preflight Check', content, action, close, large: true };
+    this._dialog = { title: 'Preflight Check', content, action, close };
     this.requestUpdate();
+    
+    // Wait for dialog to render, then inject styles into its shadow DOM
+    await this.updateComplete;
+    setTimeout(() => {
+      const dialog = this.shadowRoot.querySelector('da-dialog');
+      if (dialog?.shadowRoot) {
+        const style = document.createElement('style');
+        style.textContent = `
+          .da-dialog-inner {
+            width: 90vw !important;
+            max-width: 1400px !important;
+          }
+        `;
+        dialog.shadowRoot.appendChild(style);
+      }
+    }, 10);
   }
 
   async continuePublish() {
@@ -321,7 +331,6 @@ export default class DaTitle extends LitElement {
         title=${this._dialog.title}
         .message=${this._dialog.message}
         .action=${this._dialog.action}
-        .large=${this._dialog.large}
         @close=${this._dialog.close}>
         ${this._dialog.content}
       </da-dialog>
