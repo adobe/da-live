@@ -7,6 +7,8 @@ import {
   saveDaVersion,
   getCdnConfig,
 } from '../utils/helpers.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
+import { daFetch } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -107,27 +109,113 @@ export default class DaTitle extends LitElement {
     }
     if (action === 'preview' || action === 'publish') {
       const cdn = await getCdnConfig(pathname);
-
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
+
+      if (action === 'publish') {
+        // Fire preview immediately
+        saveToAem(aemPath, 'preview').catch((error) => {
+          // eslint-disable-next-line no-console
+          console.log('Preview failed during publish:', error);
+        });
+
+        // Check if preflight dialog is configured in DA config
+        const [org, repo] = pathname.slice(1).toLowerCase().split('/');
+        const configResp = await daFetch(`${DA_ORIGIN}/config/${org}/${repo}/`);
+        const daConfig = configResp.ok ? await configResp.json() : {};
+        const publishActions = daConfig.data?.data?.find((item) => item.key === 'publish.actions');
+        const showPreflight = publishActions?.value === 'preflight';
+
+        if (showPreflight) {
+          this._publishState = { pathname, aemPath, cdn, sendBtn };
+          await this.publishAction({
+            title: 'Ready to Publish?',
+            content: html`
+              <p>This will publish your changes and make them live.</p>
+              <p>Click <strong>Publish</strong> to continue, or close this dialog to cancel.</p>
+            `,
+            actions: [{
+              style: 'accent',
+              label: 'Publish',
+              click: async () => {
+                this._dialog = undefined;
+                this.requestUpdate();
+                await this.continuePublish();
+              },
+            }],
+            onClose: () => {
+              if (this._publishState?.sendBtn) {
+                this._publishState.sendBtn.classList.remove('is-sending');
+              }
+              this._publishState = undefined;
+            },
+          });
+          return;
+        }
+
+        // No preflight configured, publish immediately
+        this._publishState = { pathname, aemPath, cdn, sendBtn };
+        await this.continuePublish();
+        return;
+      }
+
       let json = await saveToAem(aemPath, 'preview');
       if (json.error) {
         this.handleError(json, 'preview', sendBtn);
         return;
       }
-      if (action === 'publish') json = await saveToAem(aemPath, 'live');
-      if (json.error) {
-        this.handleError(json, 'publish', sendBtn);
-        return;
-      }
-      const { url: href } = action === 'publish' ? json.live : json.preview;
+      const { url: href } = json.preview;
       const url = new URL(href);
       const isSnap = url.pathname.startsWith('/.snapshots');
-      const toOpen = isSnap ? this.getSnapshotHref(url, action) : this.getCdnHref(url, action, cdn);
+      const toOpen = isSnap ? this.getSnapshotHref(url, 'preview') : this.getCdnHref(url, 'preview', cdn);
       const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
-    if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
+  }
+
+  /**
+   * Handles an action with customizable presentation (dialog, notification, etc).
+   * @param {Object} config - Action configuration
+   * @param {string} config.title - Action title
+   * @param {TemplateResult} config.content - Action content (HTML template)
+   * @param {Array} config.actions - Array of action objects (0 to many)
+   *   Each action: { style: string, label: string, click: function }
+   * @param {Function} config.onClose - Optional callback when action closes
+   * @returns {Promise<void>}
+   */
+  async publishAction({ title, content, actions = [], onClose }) {
+    await import('../../shared/da-dialog/da-dialog.js');
+
+    const close = () => {
+      this._dialog = undefined;
+      if (onClose) onClose();
+    };
+
+    // Use first action for now; can be extended to support multiple actions
+    const action = actions.length > 0 ? actions[0] : undefined;
+
+    this._dialog = { title, content, action, close };
+    this.requestUpdate();
+  }
+
+  async continuePublish() {
+    if (!this._publishState) return;
+    const { pathname, aemPath, cdn, sendBtn } = this._publishState;
+    const json = await saveToAem(aemPath, 'live');
+    if (json.error) {
+      this.handleError(json, 'publish', sendBtn);
+      this._publishState = undefined;
+      return;
+    }
+    const { url: href } = json.live;
+    const url = new URL(href);
+    const isSnap = url.pathname.startsWith('/.snapshots');
+    const toOpen = isSnap ? this.getSnapshotHref(url, 'publish') : this.getCdnHref(url, 'publish', cdn);
+    const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
+    window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
+    if (this.details.view === 'edit') saveDaVersion(pathname);
+    sendBtn.classList.remove('is-sending');
+    this._publishState = undefined;
   }
 
   async handleRoleRequest() {
