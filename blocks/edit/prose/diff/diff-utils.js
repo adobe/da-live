@@ -518,13 +518,16 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       ];
     }
 
-    get pairNodeParams() {
-      return [
-        ...this.baseParams,
-        this.canFormLocPair.bind(this),
+    get pairNodeContext() {
+      return {
+        view: this.view,
+        getPos: this.getPos.bind(this),
+        isValidPosition,
+        isLocNode,
+        canFormLocPair: this.canFormLocPair.bind(this),
         filterNodeContent,
-        this.dispatchContentTransaction.bind(this),
-      ];
+        dispatchContentTransaction: this.dispatchContentTransaction.bind(this),
+      };
     }
 
     async handleDeleteSingleNode() {
@@ -536,15 +539,15 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     async handleKeepDeleted() {
-      await this.callUserAction('handleKeepDeleted', this.pairNodeParams, 'keep deleted');
+      await this.callUserAction('handleKeepDeleted', [this.pairNodeContext], 'keep deleted');
     }
 
     async handleKeepAdded() {
-      await this.callUserAction('handleKeepAdded', this.pairNodeParams, 'keep added');
+      await this.callUserAction('handleKeepAdded', [this.pairNodeContext], 'keep added');
     }
 
     async handleKeepBoth() {
-      await this.callUserAction('handleKeepBoth', this.pairNodeParams, 'keep both');
+      await this.callUserAction('handleKeepBoth', [this.pairNodeContext], 'keep both');
     }
 
     destroy() {
