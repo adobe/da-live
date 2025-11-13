@@ -1,8 +1,84 @@
 /* eslint-disable max-len */
+/* global view */
 // User action handlers - only loaded when user actually clicks action buttons
 
-import { Fragment, Slice } from 'da-y-wrapper';
-import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
+import { DOMSerializer, Fragment, Slice } from 'da-y-wrapper';
+import { createElement, createButton, createTooltip, getDaMetadata, setDaMetadata } from '../../utils/helpers.js';
+import prose2aem from '../../../shared/prose2aem.js';
+
+const HASH_LENGTH = 12;
+export const REJECTED_KEY = 'rejectedHashes';
+export const ACCEPTED_KEY = 'acceptedHashes';
+
+let objectHashLoaded = false;
+const objHash = async (obj) => {
+  if (!objectHashLoaded) {
+    await import('./object_hash.js');
+    objectHashLoaded = true;
+  }
+  return window.objectHash(obj).substring(0, HASH_LENGTH);
+};
+
+const isTableNode = (node) => (node.content?.content?.length === 3 && node.content.content[1].type.name === 'table');
+
+function escapeHTML(str) {
+  return str.replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getOuterHTMLWithSortedAttributes(element) {
+  if (!(element instanceof Element)) {
+    // eslint-disable-next-line no-param-reassign
+    element = new DOMParser().parseFromString(element, 'text/html').body.firstChild;
+  }
+  const tagName = element.tagName.toLowerCase();
+  const attrs = Array.from(element.attributes)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((attr) => `${attr.name}="${escapeHTML(attr.value)}"`)
+    .join(' ');
+  const voidElements = new Set([
+    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+    'link', 'meta', 'param', 'source', 'track', 'wbr',
+  ]);
+  if (voidElements.has(tagName)) {
+    return `<${tagName}${attrs ? ` ${attrs}` : ''}>`;
+  }
+  let inner = '';
+  for (const child of element.childNodes) {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      inner += getOuterHTMLWithSortedAttributes(child);
+    } else if (child.nodeType === Node.TEXT_NODE) {
+      inner += escapeHTML(child.textContent);
+    } else if (child.nodeType === Node.COMMENT_NODE) {
+      // Sanitize comment content to avoid '-->'
+      inner += `<!--${child.textContent.replace(/-->/g, '--&gt;')}-->`;
+    }
+  }
+  return `<${tagName}${attrs ? ` ${attrs}` : ''}>${inner}</${tagName}>`;
+}
+
+function nodeToHtml(node) {
+  const serializer = DOMSerializer.fromSchema(view.state.schema);
+  const fragment = serializer.serializeFragment(node.content);
+
+  const div = document.createElement('div');
+  if (isTableNode(node)) {
+    div.classList.add('tableWrapper');
+  }
+  div.appendChild(fragment);
+  const aem = prose2aem(div, true, true);
+  return getOuterHTMLWithSortedAttributes(aem);
+}
+
+export const addToHashMetadata = async (node, mdKey) => {
+  const hash = await objHash(nodeToHtml(node));
+  const hashStr = getDaMetadata(mdKey);
+  const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
+  hashes.add(hash);
+  setDaMetadata(mdKey, Array.from(hashes).join(','));
+};
 
 function createCompositeButton({
   label, id, handler, variant, tooltip, switchTooltip, isActive = false,
@@ -89,6 +165,8 @@ export function handleDeleteSingleNode(view, getPos, isValidPosition, isLocNode)
       return;
     }
 
+    addToHashMetadata(currentNode, REJECTED_KEY);
+
     // Check if parent is a list item for special handling
     if (resolvedPos.parent.type.name === 'list_item') {
       const parentPos = resolvedPos.before(resolvedPos.depth);
@@ -130,6 +208,8 @@ export function handleKeepSingleNode(view, getPos, isValidPosition, isLocNode, f
       console.warn('Current node is not a loc node');
       return;
     }
+
+    addToHashMetadata(currentNode, ACCEPTED_KEY);
 
     // Use the improved content filtering like the tabbed interface
     const filteredContent = filterNodeContent(currentNode);
@@ -204,57 +284,65 @@ export function getPairRange(pair) {
   };
 }
 
-export function handleKeepDeleted(view, getPos, isValidPosition, isLocNode, canFormLocPair, filterNodeContent, dispatchContentTransaction) {
-  const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
-  if (!currentPair) {
-    // eslint-disable-next-line no-console
-    console.warn('Could not find current loc node pair');
-    return;
-  }
-
-  const { deletedNode: currentDeletedNode } = currentPair;
-
-  const filteredContent = filterNodeContent(currentDeletedNode);
-  const { startPos, endPos } = getPairRange(currentPair);
-
-  dispatchContentTransaction(startPos, endPos, filteredContent);
-}
-
-export function handleKeepAdded(view, getPos, isValidPosition, isLocNode, canFormLocPair, filterNodeContent, dispatchContentTransaction) {
-  const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
-  if (!currentPair) {
-    // eslint-disable-next-line no-console
-    console.warn('Could not find current loc node pair');
-    return;
-  }
-
-  const { addedNode: currentAddedNode } = currentPair;
-
-  const filteredContent = filterNodeContent(currentAddedNode);
-  const { startPos, endPos } = getPairRange(currentPair);
-
-  dispatchContentTransaction(startPos, endPos, filteredContent);
-}
-
-export function handleKeepBoth(view, getPos, isValidPosition, isLocNode, canFormLocPair, filterNodeContent, dispatchContentTransaction) {
-  const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
-  if (!currentPair) {
-    // eslint-disable-next-line no-console
-    console.warn('Could not find current loc node pair');
-    return;
-  }
-
+function handleOperation(context, { acceptAdded, acceptDeleted, getContent }) {
   const {
-    deletedNode: currentDeletedNode,
-    addedNode: currentAddedNode,
-  } = currentPair;
+    view,
+    getPos,
+    isValidPosition,
+    isLocNode,
+    canFormLocPair,
+    filterNodeContent,
+    dispatchContentTransaction,
+  } = context;
 
-  const deletedContent = filterNodeContent(currentDeletedNode);
-  const addedContent = filterNodeContent(currentAddedNode);
-  const combinedContent = [...deletedContent, ...addedContent];
+  const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
+  if (!currentPair) {
+    // eslint-disable-next-line no-console
+    console.warn('Could not find current loc node pair');
+    return;
+  }
+
+  const { addedNode, deletedNode } = currentPair;
+
+  // Update metadata based on which nodes are accepted/rejected
+  addToHashMetadata(addedNode, acceptAdded ? ACCEPTED_KEY : REJECTED_KEY);
+  addToHashMetadata(deletedNode, acceptDeleted ? ACCEPTED_KEY : REJECTED_KEY);
+
+  const content = getContent({ addedNode, deletedNode, filterNodeContent });
   const { startPos, endPos } = getPairRange(currentPair);
 
-  dispatchContentTransaction(startPos, endPos, combinedContent);
+  dispatchContentTransaction(startPos, endPos, content);
+}
+
+export async function handleKeepDeleted(context) {
+  const { filterNodeContent } = context;
+  handleOperation(context, {
+    acceptAdded: false,
+    acceptDeleted: true,
+    getContent: ({ deletedNode }) => filterNodeContent(deletedNode),
+  });
+}
+
+export function handleKeepAdded(context) {
+  const { filterNodeContent } = context;
+  handleOperation(context, {
+    acceptAdded: true,
+    acceptDeleted: false,
+    getContent: ({ addedNode }) => filterNodeContent(addedNode),
+  });
+}
+
+export function handleKeepBoth(context) {
+  const { filterNodeContent } = context;
+  handleOperation(context, {
+    acceptAdded: true,
+    acceptDeleted: true,
+    getContent: ({ deletedNode, addedNode }) => {
+      const deletedContent = filterNodeContent(deletedNode);
+      const addedContent = filterNodeContent(addedNode);
+      return [...deletedContent, ...addedContent];
+    },
+  });
 }
 
 export function applyKeepOperation(tr, node, pos, simpleFilterContent) {
