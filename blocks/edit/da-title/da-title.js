@@ -9,6 +9,7 @@ import {
 } from '../utils/helpers.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch } from '../../shared/utils.js';
+import getPathDetails from '../../shared/pathDetails.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -119,36 +120,24 @@ export default class DaTitle extends LitElement {
         });
 
         // Check if preflight dialog is configured in DA config
-        const [org, repo] = pathname.slice(1).toLowerCase().split('/');
-        const configResp = await daFetch(`${DA_ORIGIN}/config/${org}/${repo}/`);
-        const daConfig = configResp.ok ? await configResp.json() : {};
-        const publishActions = daConfig.data?.data?.find((item) => item.key === 'publish.actions');
-        const showPreflight = publishActions?.value === 'preflight';
+        let showPreflight = false;
+        try {
+          const [org, repo] = pathname.slice(1).toLowerCase().split('/');
+          const configResp = await daFetch(`${DA_ORIGIN}/config/${org}/${repo}/`);
+          if (configResp.ok) {
+            const daConfig = await configResp.json();
+            const publishActions = daConfig.data?.data?.find((item) => item.key === 'publish.actions');
+            showPreflight = publishActions?.value === 'preflight';
+          }
+        } catch (error) {
+          // If config fetch fails for any reason, default to false
+          // eslint-disable-next-line no-console
+          console.log('Failed to fetch publish config:', error);
+        }
 
         if (showPreflight) {
           this._publishState = { pathname, aemPath, cdn, sendBtn };
-          await this.publishAction({
-            title: 'Ready to Publish?',
-            content: html`
-              <p>This will publish your changes and make them live.</p>
-              <p>Click <strong>Publish</strong> to continue, or close this dialog to cancel.</p>
-            `,
-            actions: [{
-              style: 'accent',
-              label: 'Publish',
-              click: async () => {
-                this._dialog = undefined;
-                this.requestUpdate();
-                await this.continuePublish();
-              },
-            }],
-            onClose: () => {
-              if (this._publishState?.sendBtn) {
-                this._publishState.sendBtn.classList.remove('is-sending');
-              }
-              this._publishState = undefined;
-            },
-          });
+          await this.showPreflightModal();
           return;
         }
 
@@ -173,28 +162,63 @@ export default class DaTitle extends LitElement {
     sendBtn.classList.remove('is-sending');
   }
 
-  /**
-   * Handles an action with customizable presentation (dialog, notification, etc).
-   * @param {Object} config - Action configuration
-   * @param {string} config.title - Action title
-   * @param {TemplateResult} config.content - Action content (HTML template)
-   * @param {Array} config.actions - Array of action objects (0 to many)
-   *   Each action: { style: string, label: string, click: function }
-   * @param {Function} config.onClose - Optional callback when action closes
-   * @returns {Promise<void>}
-   */
-  async publishAction({ title, content, actions = [], onClose }) {
+  async showPreflightModal() {
     await import('../../shared/da-dialog/da-dialog.js');
 
     const close = () => {
       this._dialog = undefined;
-      if (onClose) onClose();
+      if (this._publishState?.sendBtn) {
+        this._publishState.sendBtn.classList.remove('is-sending');
+      }
+      this._publishState = undefined;
     };
 
-    // Use first action for now; can be extended to support multiple actions
-    const action = actions.length > 0 ? actions[0] : undefined;
+    const action = {
+      style: 'accent',
+      label: 'Publish',
+      click: async () => {
+        this._dialog = undefined;
+        this.requestUpdate();
+        await this.continuePublish();
+      },
+    };
 
-    this._dialog = { title, content, action, close };
+    const context = getPathDetails();
+    // Construct the full path from the hash
+    const { hash } = window.location;
+    const fullPath = hash.replace('#', '');
+    const preflightUrl = `/blocks/edit/da-preflight/preflight.html?org=${context.owner}&repo=${context.repo}&path=${encodeURIComponent(fullPath)}`;
+    // eslint-disable-next-line no-console
+    console.log('Preflight URL:', preflightUrl);
+    // eslint-disable-next-line no-console
+    console.log('Context:', context);
+    // eslint-disable-next-line no-console
+    console.log('Full Path:', fullPath);
+    const content = html`
+      <style>
+        .preflight-modal-container {
+          width: 100%;
+          height: 70vh;
+          min-height: 500px;
+        }
+        .preflight-iframe {
+          width: 100%;
+          height: 100%;
+          border: none;
+          border-radius: 4px;
+        }
+      </style>
+      <div class="preflight-modal-container">
+        <iframe 
+          src="${preflightUrl}" 
+          class="preflight-iframe"
+          title="Preflight Tests"
+          frameborder="0">
+        </iframe>
+      </div>
+    `;
+
+    this._dialog = { title: 'Preflight Check', content, action, close, large: true };
     this.requestUpdate();
   }
 
@@ -297,6 +321,7 @@ export default class DaTitle extends LitElement {
         title=${this._dialog.title}
         .message=${this._dialog.message}
         .action=${this._dialog.action}
+        .large=${this._dialog.large}
         @close=${this._dialog.close}>
         ${this._dialog.content}
       </da-dialog>
