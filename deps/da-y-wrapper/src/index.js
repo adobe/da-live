@@ -9,7 +9,6 @@ import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from 'prosemirror-example-setup';
 import { gapCursor } from 'prosemirror-gapcursor';
 
-
 import {
   tableEditing,
   columnResizing,
@@ -17,6 +16,8 @@ import {
   selectedRect,
   tableNodes,
   fixTables,
+  addColumnAfter,
+  addColumnBefore,
   deleteColumn,
   addRowAfter,
   addRowBefore,
@@ -25,8 +26,8 @@ import {
   splitCell,
   deleteTable,
   isInTable,
+  TableMap,
 } from 'prosemirror-tables';
-import { addColumnAfterWrapper, addColumnBeforeWrapper } from './table-wrappers.js';
 
 // yjs
 import * as Y from 'yjs';
@@ -72,8 +73,8 @@ export {
   selectedRect,
   tableNodes,
   fixTables,
-  addColumnAfterWrapper as addColumnAfter,
-  addColumnBeforeWrapper as addColumnBefore,
+  addColumnAfter,
+  addColumnBefore,
   deleteColumn,
   addRowAfter,
   addRowBefore,
@@ -81,6 +82,7 @@ export {
   mergeCells,
   splitCell,
   deleteTable,
+  TableMap,
   gapCursor,
   MenuItem,
   Dropdown,

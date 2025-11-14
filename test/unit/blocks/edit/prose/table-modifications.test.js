@@ -14,9 +14,11 @@ import { expect } from '@esm-bundle/chai';
 import {
   addColumnBefore,
   addColumnAfter,
+  tableEditing,
 } from 'da-y-wrapper';
 import { createTestEditor, destroyEditor } from './test-helpers.js';
 import insertTable from '../../../../../blocks/edit/prose/table.js';
+import tableHeaderFix from '../../../../../blocks/edit/prose/plugins/tableHeaderFix.js';
 
 describe('Table Modifications', () => {
   let editor;
@@ -30,14 +32,32 @@ describe('Table Modifications', () => {
 
   describe('Column Operations - Header Row Colspan', () => {
     it('should maintain header colspan when adding column before', async () => {
-      editor = await createTestEditor();
+      editor = await createTestEditor({ additionalPlugins: [tableEditing(), tableHeaderFix()] });
       const { view } = editor;
 
       // Insert a table (starts with 2 columns)
       insertTable(view.state, view.dispatch);
 
+      // Change the block name to a custom value by replacing the header cell content
+      const customBlockName = 'my-custom-block';
+      const table = view.state.doc.firstChild;
+      const headerCell = table.child(0).child(0);
+      const cellStart = 3; // Position of the table cell content
+      const para = view.state.schema.nodes.paragraph.create(
+        null,
+        view.state.schema.text(customBlockName),
+      );
+      const updateNameTr = view.state.tr.replaceWith(
+        cellStart + 1,
+        cellStart + 1 + headerCell.content.size,
+        para,
+      );
+      view.dispatch(updateNameTr);
+
       // Move cursor to second row, first cell
-      const secondRowPos = view.state.doc.resolve(5); // Position in second row
+      const table2 = view.state.doc.firstChild;
+      const headerSize = table2.child(0).nodeSize;
+      const secondRowPos = view.state.doc.resolve(1 + headerSize + 1);
       const tr = view.state.tr.setSelection(
         view.state.selection.constructor.create(view.state.doc, secondRowPos.pos),
       );
@@ -58,17 +78,39 @@ describe('Table Modifications', () => {
         3,
         'Header should span 3 columns after adding one',
       );
+      expect(updatedFirstRow.child(0).textContent).to.equal(
+        customBlockName,
+        'Block name should be preserved',
+      );
     });
 
     it('should maintain header colspan when adding column after', async () => {
-      editor = await createTestEditor();
+      editor = await createTestEditor({ additionalPlugins: [tableEditing(), tableHeaderFix()] });
       const { view } = editor;
 
       // Insert a table (starts with 2 columns)
       insertTable(view.state, view.dispatch);
 
+      // Change the block name to a custom value by replacing the header cell content
+      const customBlockName = 'hero-banner';
+      const table = view.state.doc.firstChild;
+      const headerCell = table.child(0).child(0);
+      const cellStart = 3; // Position of the table cell content
+      const para = view.state.schema.nodes.paragraph.create(
+        null,
+        view.state.schema.text(customBlockName),
+      );
+      const updateNameTr = view.state.tr.replaceWith(
+        cellStart + 1,
+        cellStart + 1 + headerCell.content.size,
+        para,
+      );
+      view.dispatch(updateNameTr);
+
       // Move cursor to second row, last cell
-      const secondRowPos = view.state.doc.resolve(6);
+      const table2 = view.state.doc.firstChild;
+      const headerSize = table2.child(0).nodeSize;
+      const secondRowPos = view.state.doc.resolve(1 + headerSize + 2);
       const tr = view.state.tr.setSelection(
         view.state.selection.constructor.create(view.state.doc, secondRowPos.pos),
       );
@@ -88,6 +130,10 @@ describe('Table Modifications', () => {
       expect(updatedFirstRow.child(0).attrs.colspan).to.equal(
         3,
         'Header should span 3 columns after adding one',
+      );
+      expect(updatedFirstRow.child(0).textContent).to.equal(
+        customBlockName,
+        'Block name should be preserved',
       );
     });
   });
