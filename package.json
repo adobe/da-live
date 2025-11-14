@@ -26,7 +26,7 @@
     "prosemirror-tables": "^1.5.1",
     "prosemirror-view": "^1.34.3",
     "y-prosemirror": "^1.2.12",
-    "@adobe/y-websocket": "git://github.com/adobe-rnd/y-websocket.git#3.0.0-base64",
+    "@adobe/y-websocket": "git://github.com/adobe-rnd/y-websocket.git#1768e91",
     "yjs": "^13.6.20"
   },
   "devDependencies": {

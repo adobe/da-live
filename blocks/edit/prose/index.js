@@ -232,6 +232,7 @@ export default function initProse({ path, permissions }) {
       params: { doc },
       protocols: ['yjs', '1234'],
       useBase64: true,
+      throttle: 500,
     });
     roomName = 'prod00';
     if (window.adobeIMS?.isSignedInUser()) {
