@@ -123,7 +123,7 @@ class DaSheetTabs extends LitElement {
       return;
     }
     if (e.submitter.value === 'confirm') {
-      const name = Object.fromEntries(new FormData(e.target))?.name;
+      const name = Object.fromEntries(new FormData(e.target))?.name?.trim();
       const inputEl = e.target.querySelector('input');
       const cancelEl = e.target.querySelector('button[aria-label="Cancel"]');
 
