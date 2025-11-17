@@ -14,6 +14,9 @@ const ICONS = [
   '/blocks/edit/img/Smock_Checkmark_18_N.svg',
   '/blocks/edit/img/Smock_Refresh_18_N.svg',
 ];
+const CACHE_EXPIRY = 2 * 60 * 60 * 1000; // 2 hours
+const CACHE_MIN_SIZE = 40;
+const LOADING_MSG_TIMEOUT = 1100;
 
 export default class DaList extends LitElement {
   static properties = {
@@ -29,7 +32,7 @@ export default class DaList extends LitElement {
     _listItems: { state: true },
     _itemsRemaining: { state: true },
     _itemErrors: { state: true },
-    _isLoading: { state: true },
+    _showLoadingMessage: { state: true },
     _filter: { state: true },
     _showFilter: { state: true },
     _selectedItems: { state: true },
@@ -51,7 +54,9 @@ export default class DaList extends LitElement {
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
     this._filter = '';
-    this._isLoading = false;
+    this._showLoadingMessage = false;
+    this._loadingTimeout = null;
+    this._abortController = null;
   }
 
   connectedCallback() {
@@ -60,19 +65,59 @@ export default class DaList extends LitElement {
     getSvg({ parent: this.shadowRoot, paths: ICONS });
   }
 
+  cancelPendingFetch() {
+    if (this._abortController) {
+      this._abortController.abort();
+      this._abortController = null;
+    }
+    if (this._loadingTimeout) {
+      clearTimeout(this._loadingTimeout);
+      this._loadingTimeout = null;
+    }
+    this._showLoadingMessage = false;
+  }
+
   async update(props) {
     if (props.has('listItems') && this.listItems) {
+      this.cancelPendingFetch();
       this._listItems = this.listItems;
     }
 
     if (props.has('fullpath') && this.fullpath) {
       this._filter = '';
       this._showFilter = undefined;
-      this._isLoading = true;
-      this._listItems = [];
+      this.cancelPendingFetch();
+
+      this._abortController = new AbortController();
+      const controller = this._abortController;
+
+      const cachedList = this.getCachedList(this.fullpath);
+      if (cachedList) {
+        this._listItems = cachedList;
+      } else {
+        this._loadingTimeout = setTimeout(() => {
+          this._listItems = [];
+          this._showLoadingMessage = true;
+        }, LOADING_MSG_TIMEOUT);
+      }
+
+      if (!this._listItems) this._listItems = [];
       super.update(props);
-      this._listItems = await this.getList();
-      this._isLoading = false;
+
+      const freshList = await this.getList(controller.signal);
+
+      // Clear loading state if still current
+      if (this._abortController === controller) {
+        if (this._loadingTimeout) {
+          clearTimeout(this._loadingTimeout);
+          this._loadingTimeout = null;
+        }
+        this._showLoadingMessage = false;
+
+        if (freshList && !this.listsAreEqual(this._listItems, freshList)) {
+          this._listItems = freshList;
+        }
+      }
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -85,6 +130,64 @@ export default class DaList extends LitElement {
   async firstUpdated() {
     await import('../../shared/da-dialog/da-dialog.js');
     await import('../da-actionbar/da-actionbar.js');
+  }
+
+  updated(changedProperties) {
+    super.updated(changedProperties);
+    if (changedProperties.has('_listItems') && this._listItems) {
+      this.updateCache();
+    }
+  }
+
+  getCachedList(path) {
+    try {
+      const cacheKey = `da-list-cache-${path}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (!cached) return null;
+
+      const { timestamp, data } = JSON.parse(cached);
+      const isExpired = Date.now() - timestamp > CACHE_EXPIRY;
+
+      if (isExpired) {
+        sessionStorage.removeItem(cacheKey);
+        return null;
+      }
+
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  setCachedList(path, data) {
+    try {
+      const cacheKey = `da-list-cache-${path}`;
+      const cacheData = {
+        timestamp: Date.now(),
+        data,
+      };
+      sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+    } catch {
+      // Fail silently if sessionStorage is full or unavailable
+    }
+  }
+
+  updateCache() {
+    if (this.fullpath && this._listItems && this._listItems.length > CACHE_MIN_SIZE) {
+      this.setCachedList(this.fullpath, this._listItems.toSorted(this.getSortFn(1, -1, 'name')));
+    }
+  }
+
+  listsAreEqual(list1, list2) {
+    if (!list1 || !list2) return false;
+    if (list1.length !== list2.length) return false;
+
+    return list1.every((item1, index) => {
+      const item2 = list2[index];
+      return item1.path === item2.path
+        && item1.name === item2.name
+        && item1.lastModified === item2.lastModified;
+    });
   }
 
   setStatus(text, description, type = 'info') {
@@ -104,13 +207,21 @@ export default class DaList extends LitElement {
     this.dispatchEvent(event);
   }
 
-  async getList() {
+  async getList(signal) {
     try {
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
+      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, { signal });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
+
+      if (json.length > CACHE_MIN_SIZE) {
+        this.setCachedList(this.fullpath, json);
+      }
       return json;
-    } catch {
+    } catch (e) {
+      // If aborted, return null to signal cancellation
+      if (e.name === 'AbortError') {
+        return null;
+      }
       this._emptyMessage = 'Not permitted';
       return [];
     }
@@ -118,7 +229,7 @@ export default class DaList extends LitElement {
 
   handleNewItem() {
     // Add it to internal list
-    this._listItems.unshift(this.newItem);
+    this._listItems = [this.newItem, ...this._listItems];
     // Clear the public item
     this.newItem = null;
   }
@@ -195,6 +306,7 @@ export default class DaList extends LitElement {
     item.lastModified = date;
 
     this._listItems[index] = item;
+    this.requestUpdate();
   }
 
   wait(milliseconds) {
@@ -238,8 +350,6 @@ export default class DaList extends LitElement {
         ({ continuationToken } = json);
         if (!continuationToken) continuation = false;
       }
-
-      item.isChecked = false;
 
       // Remove or add the item to the current list
       if (moveToTrash || method === 'DELETE') {
@@ -533,7 +643,7 @@ export default class DaList extends LitElement {
   }
 
   renderEmpty() {
-    return html`<div class="empty-list"><h3>${this._isLoading ? this._loadingMessage : this._emptyMessage}</h3></div>`;
+    return html`<div class="empty-list"><h3>${this._showLoadingMessage ? this._loadingMessage : this._emptyMessage}</h3></div>`;
   }
 
   renderStatus() {
