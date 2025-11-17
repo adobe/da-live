@@ -373,8 +373,9 @@ describe('DaList Caching', () => {
         if (url && url.includes('.svg')) {
           return { ok: true, text: async () => '<svg></svg>' };
         }
-        const count = ++fetchCount;
-        await new Promise((resolve) => setTimeout(resolve, count === 1 ? 100 : 10));
+        fetchCount += 1;
+        const count = fetchCount;
+        await new Promise((resolve) => { setTimeout(resolve, count === 1 ? 100 : 10); });
         const data = [{
           name: `fetch${count}.html`,
           path: `/test/fetch${count}.html`,
@@ -388,7 +389,8 @@ describe('DaList Caching', () => {
       };
 
       daList.fullpath = '/folder1';
-      const controller1 = daList._abortController = new AbortController();
+      daList._abortController = new AbortController();
+      const controller1 = daList._abortController;
       const promise1 = daList.getList(controller1.signal);
 
       // Immediately start second fetch (simulating quick navigation)
@@ -730,7 +732,7 @@ describe('DaList Caching', () => {
         if (url && url.includes('.svg')) {
           return { ok: true, text: async () => '<svg></svg>' };
         }
-        fetchCallCount++;
+        fetchCallCount += 1;
         return {
           ok: true,
           json: async () => cachedData,
@@ -756,7 +758,6 @@ describe('DaList Caching', () => {
     });
 
     it('ignores fetch results when navigated away', async () => {
-      const cachedData1 = [{ name: 'folder1.html', path: '/folder1/file.html', lastModified: '2024-01-01' }];
       const freshData1 = [{ name: 'folder1.html', path: '/folder1/file.html', lastModified: '2024-01-02' }];
       const cachedData2 = [{ name: 'folder2.html', path: '/folder2/file.html', lastModified: '2024-01-01' }];
 
@@ -766,9 +767,10 @@ describe('DaList Caching', () => {
         if (url && url.includes('.svg')) {
           return { ok: true, text: async () => '<svg></svg>' };
         }
-        const count = ++fetchCount;
+        fetchCount += 1;
+        const count = fetchCount;
         // First fetch is slow
-        await new Promise((resolve) => setTimeout(resolve, count === 1 ? 100 : 10));
+        await new Promise((resolve) => { setTimeout(resolve, count === 1 ? 100 : 10); });
         const data = count === 1 ? freshData1 : cachedData2;
         return {
           ok: true,
@@ -787,7 +789,7 @@ describe('DaList Caching', () => {
       const update1Promise = daList.update(props1);
 
       // Quickly navigate to folder2 before first fetch completes
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
       const props2 = new Map();
       props2.set('fullpath', '/folder1');
       daList.fullpath = '/folder2';
@@ -909,4 +911,3 @@ describe('DaList Caching', () => {
     });
   });
 });
-
