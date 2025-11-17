@@ -16,7 +16,7 @@ export async function checkDoc(path) {
 
 async function createDoc(path) {
   const body = new FormData();
-  const data = new Blob([''], { type: 'text/html' });
+  const data = new Blob(['<body><header></header><main><div></div></main><footer></footer></body>'], { type: 'text/html' });
   body.append('data', data);
   const opts = { body, method: 'POST' };
   return daFetch(path, opts);
