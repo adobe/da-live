@@ -6,7 +6,7 @@ import FormModel from './data/model.js';
 
 // Internal utils
 import { schemas as schemasPromise } from './utils/schema.js';
-import { loadHtml } from './utils/utils.js';
+import { loadHtml, convertHtmlToJson } from './utils/utils.js';
 
 import '../edit/da-title/da-title.js';
 
@@ -48,18 +48,25 @@ class FormEditor extends LitElement {
       this.formModel = null;
       return;
     }
-    this.formModel = new FormModel(result.html, schemas);
+    const json = await convertHtmlToJson(result.html);
+    this.formModel = new FormModel(json, schemas);
   }
 
-  async generateJsonFromSchema(schema) {
+  async generateJsonFromSchema() {
     const { JSONSchemaFaker } = await import('../../deps/da-form/dist/json-faker.js');
-    console.log(JSONSchemaFaker);
+    return JSONSchemaFaker;
   }
 
-  handleSelectSchema(e) {
+  async handleModelIntent(e) {
+    const { default: applyOp } = await import('./utils/rfc6902-patch.js');
+    const nextJson = applyOp(this.formModel.json, e.detail);
+    this.formModel = new FormModel(nextJson, this._schemas);
+  }
+
+  async handleSelectSchema(e) {
     const schemaId = e.target.value;
     if (!schemaId) return;
-    const json = this.generateJsonFromSchema(this._schemas[schemaId]);
+    await this.generateJsonFromSchema();
     // const html = generateFlatHelixHtmlFromStructuredJson(json);
     // this.formModel = new FormModel(html, this._schemas);
   }
@@ -87,7 +94,10 @@ class FormEditor extends LitElement {
 
     return html`
       <div class="da-form-editor">
-        <da-form-editor .formModel=${this.formModel}></da-form-editor>
+        <da-form-editor
+          .formModel=${this.formModel}
+          @form-model-intent=${this.handleModelIntent}
+        ></da-form-editor>
         <da-form-preview .formModel=${this.formModel}></da-form-preview>
       </div>`;
   }

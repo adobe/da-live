@@ -27,10 +27,24 @@ class FormEditor extends LitElement {
     this._data = this.formModel.annotated;
   }
 
+  emitReplace(pointer, value) {
+    this.dispatchEvent(new CustomEvent('form-model-intent', {
+      detail: { op: 'replace', path: pointer, value },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
   renderCheckbox(item) {
     return html`
       <div>
-        <input type="checkbox" name="${item.key}" value="${item.data}" ?checked=${item.data}>
+        <input
+          type="checkbox"
+          name="${item.key}"
+          value="${item.data}"
+          ?checked=${item.data}
+          @change=${(e) => this.emitReplace(item.pointer, e.target.checked)}
+        >
         <label class="primitive-item-title">${item.schema.title}</label>
       </div>
     `;
@@ -43,7 +57,11 @@ class FormEditor extends LitElement {
       if (prim === 'boolean') return this.renderCheckbox(item);
       return html`
         <p class="primitive-item-title">${item.schema.title}</p>
-        <sl-input type="text" value="${item.data}"></sl-input>
+        <sl-input
+          type="text"
+          .value=${item.data ?? ''}
+          @change=${(e) => this.emitReplace(item.pointer, e.target.value)}
+        ></sl-input>
       `;
     }
 
@@ -59,8 +77,8 @@ class FormEditor extends LitElement {
       <div class="item-group" data-key="${parent.key}">
         <p class="item-title">${parent.schema.title}</p>
         ${parent.data
-          ? html`<div class="form-children">${parent.data.map((item) => this.renderList(item))}</div>`
-          : nothing}
+        ? html`<div class="form-children">${parent.data.map((item) => this.renderList(item))}</div>`
+        : nothing}
       </div>
     `;
   }

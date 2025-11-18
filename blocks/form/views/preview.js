@@ -16,7 +16,9 @@ class FormPreview extends LitElement {
   }
 
   updated() {
-    if (this.formModel) this.setPreview();
+    if (this.formModel) {
+      this.setPreview();
+    }
   }
 
   async setPreview() {
