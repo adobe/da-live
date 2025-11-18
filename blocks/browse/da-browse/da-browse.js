@@ -129,6 +129,15 @@ export default class DaBrowse extends LitElement {
     return this.shadowRoot.querySelector('da-new');
   }
 
+  get browseListItems() {
+    // eslint-disable-next-line no-underscore-dangle
+    return this.shadowRoot.querySelector('.da-list-type-browse')?._listItems || [];
+  }
+
+  isRootFolder(path) {
+    return path.split('/').length <= 2;
+  }
+
   renderNew() {
     return html`
       <da-new
@@ -139,7 +148,12 @@ export default class DaBrowse extends LitElement {
   }
 
   renderSearch() {
-    return html`<da-search @updated=${this.handleSearch} fullpath="${this.details.fullpath}"></da-search>`;
+    return html`
+      <da-search
+        @updated=${this.handleSearch}
+        fullpath="${this.details.fullpath}"
+        .browseItems="${this.browseListItems}">
+      </da-search>`;
   }
 
   renderList(type, fullpath, select, sort, drag) {
@@ -157,16 +171,21 @@ export default class DaBrowse extends LitElement {
   render() {
     return html`
       <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
-        ${this._tabItems.map((tab, idx) => html`
-          <button
-            id="tab-${tab.id}"
-            type="button"
-            role="tab"
-            aria-selected="${tab.selected}"
-            aria-controls="tabpanel-${tab.id}"
-            @click=${() => { this.handleTabClick(idx); }}>
-            <span class="focus">${tab.title}</span>
-          </button>`)}
+        ${this._tabItems.map((tab, idx) => {
+          if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
+            return nothing;
+          }
+          return html`
+            <button
+              id="tab-${tab.id}"
+              type="button"
+              role="tab"
+              aria-selected="${tab.selected}"
+              aria-controls="tabpanel-${tab.id}"
+              @click=${() => { this.handleTabClick(idx); }}>
+              <span class="focus">${tab.title}</span>
+            </button>`;
+        })}
       </div>
       <div class="da-list-header context-${this.context}">
         <da-breadcrumbs fullpath="${this.details.fullpath}" depth="${this.details.depth}"></da-breadcrumbs>

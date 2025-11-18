@@ -2,6 +2,7 @@
     eslint-disable no-underscore-dangle
 */
 import { expect } from '@esm-bundle/chai';
+import { html } from 'da-lit';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
@@ -9,6 +10,7 @@ const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/bheuaark/', { hostname: 'localhost' });
 
 const { default: DaBrowse } = await import('../../../../../blocks/browse/da-list/da-list.js');
+const { default: DaBrowseComponent } = await import('../../../../../blocks/browse/da-browse/da-browse.js');
 
 describe('Browse', () => {
   it('Pasted item uses the target URL', async () => {
@@ -56,5 +58,60 @@ describe('Browse', () => {
     } finally {
       window.fetch = orgFetch;
     }
+  });
+});
+
+describe('DaBrowse Component', () => {
+  let daBrowseComp;
+
+  beforeEach(() => {
+    daBrowseComp = new DaBrowseComponent();
+    daBrowseComp.details = { fullpath: '/myorg/mysite/folder', owner: 'myorg', depth: 3 };
+  });
+
+  describe('isRootFolder', () => {
+    it('returns true for root path (org only)', () => {
+      expect(daBrowseComp.isRootFolder('/myorg')).to.be.true;
+    });
+
+    it('returns false for org/site path (length = 3)', () => {
+      // '/myorg/mysite' splits into ['', 'myorg', 'mysite'] which has length 3
+      expect(daBrowseComp.isRootFolder('/myorg/mysite')).to.be.false;
+    });
+
+    it('returns false for paths deeper than org/site', () => {
+      expect(daBrowseComp.isRootFolder('/myorg/mysite/folder')).to.be.false;
+      expect(daBrowseComp.isRootFolder('/myorg/mysite/folder/subfolder')).to.be.false;
+    });
+
+    it('returns true for empty path', () => {
+      expect(daBrowseComp.isRootFolder('')).to.be.true;
+    });
+
+    it('returns true for single slash', () => {
+      expect(daBrowseComp.isRootFolder('/')).to.be.true;
+    });
+  });
+
+  describe('browseListItems getter', () => {
+    beforeEach(async () => {
+      // Properly initialize the component by adding to DOM
+      document.body.innerHTML = '<div id="container"></div>';
+      const container = document.getElementById('container');
+      container.appendChild(daBrowseComp);
+      await daBrowseComp.updateComplete;
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    it('returns empty array when browse list is not present', () => {
+      expect(daBrowseComp.browseListItems).to.deep.equal([]);
+    });
+
+    it('returns empty array when browse list has no _listItems', () => {
+      expect(daBrowseComp.browseListItems).to.deep.equal([]);
+    });
   });
 });

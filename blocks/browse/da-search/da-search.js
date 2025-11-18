@@ -9,9 +9,25 @@ const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+const DEFAULT_LOCALES = ['langstore'];
+
+function getLocales(translate) {
+  const locales = new Set(DEFAULT_LOCALES);
+
+  translate?.languages?.data?.forEach((lang) => {
+    lang.locales?.split(',').forEach((loc) => {
+      const trimmed = loc.trim();
+      locales.add(trimmed.startsWith('/') ? trimmed.substring(1) : trimmed);
+    });
+  });
+
+  return locales;
+}
+
 export default class DaSearch extends LitElement {
   static properties = {
     fullpath: { type: String },
+    browseItems: { type: Array },
     _term: { state: true },
     _total: { state: true },
     _matches: { state: true },
@@ -52,6 +68,40 @@ export default class DaSearch extends LitElement {
     this._total = 0;
     this._matches = 0;
     this._time = null;
+  }
+
+  async getSearchScope(startPath) {
+    const isSiteFolder = startPath.split('/').length === 3;
+    if (!isSiteFolder) {
+      return { paths: [startPath], files: [] };
+    }
+
+    const resp = await daFetch(`${DA_ORIGIN}/source${startPath}/.da/translate.json`);
+    if (!resp.ok) {
+      return { paths: [startPath], files: [] };
+    }
+
+    const translate = await resp.json();
+    const locales = getLocales(translate);
+
+    if (!locales.size || !this.browseItems?.length) {
+      return { paths: [startPath], files: [] };
+    }
+
+    const paths = [];
+    const files = [];
+
+    this.browseItems.forEach((item) => {
+      if (!locales.has(item.name)) {
+        if (item.ext) {
+          files.push(item);
+        } else {
+          paths.push(item.path);
+        }
+      }
+    });
+
+    return { paths, files };
   }
 
   async getMatches(startPath, term) {
@@ -97,7 +147,8 @@ export default class DaSearch extends LitElement {
       }
     };
 
-    const { results } = crawl({ path: startPath, callback: searchFile, throttle: 10 });
+    const { paths, files } = await this.getSearchScope(startPath);
+    const { results } = crawl({ path: paths, callback: searchFile, throttle: 10, files });
     await results;
   }
 
