@@ -5,8 +5,9 @@ import getPathDetails from '../shared/pathDetails.js';
 import FormModel from './data/model.js';
 
 // Internal utils
-import { schemas as schemasPromise } from './utils/schema.js';
+import { schemas as schemasPromise, getSchema } from './utils/schema.js';
 import { loadHtml, convertHtmlToJson } from './utils/utils.js';
+import generateMinimalDataForSchema from './utils/data-generator.js';
 
 import '../edit/da-title/da-title.js';
 
@@ -52,11 +53,6 @@ class FormEditor extends LitElement {
     this.formModel = new FormModel(json, schemas);
   }
 
-  async generateJsonFromSchema() {
-    const { JSONSchemaFaker } = await import('../../deps/da-form/dist/json-faker.js');
-    return JSONSchemaFaker;
-  }
-
   async handleModelIntent(e) {
     const { default: applyOp } = await import('./utils/rfc6902-patch.js');
     const nextJson = applyOp(this.formModel.json, e.detail);
@@ -66,9 +62,14 @@ class FormEditor extends LitElement {
   async handleSelectSchema(e) {
     const schemaId = e.target.value;
     if (!schemaId) return;
-    await this.generateJsonFromSchema();
-    // const html = generateFlatHelixHtmlFromStructuredJson(json);
-    // this.formModel = new FormModel(html, this._schemas);
+    let schema = this._schemas?.[schemaId];
+    if (!schema) {
+      schema = await getSchema(schemaId);
+      if (!schema) return;
+    }
+    const data = generateMinimalDataForSchema(schema);
+    const json = { metadata: { schemaName: schemaId }, data };
+    this.formModel = new FormModel(json, this._schemas);
   }
 
   renderSchemaSelector() {

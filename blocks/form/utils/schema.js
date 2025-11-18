@@ -68,8 +68,7 @@ export function getSchemaDef(schema, ref) {
 }
 
 export function getPropDef(schema, prop) {
-  console.log(schema);
-  console.log(prop);
+  return schema?.$defs?.[prop];
 }
 
 export function getProp(schema, propName) {
@@ -79,4 +78,52 @@ export function getProp(schema, propName) {
     return { title: `${propName} (no def)` };
   }
   return prop;
+}
+
+/**
+ * Resolve a local $ref (format '#/$defs/Name') against the provided schema.
+ * @param {string} ref
+ * @param {object} fullSchema
+ * @returns {object|undefined}
+ */
+export function derefRef(ref, fullSchema) {
+  if (typeof ref !== 'string') return undefined;
+  return getSchemaDef(fullSchema, ref);
+}
+
+/**
+ * Normalize a property schema by resolving $ref and preserving local title.
+ * Mirrors the behavior used in other utilities for consistent schema traversal.
+ * @param {string} key
+ * @param {object} localSchema
+ * @param {object} fullSchema
+ * @returns {object}
+ */
+export function resolvePropSchema(key, localSchema, fullSchema) {
+  const normalizedLocal = localSchema || {};
+  const { title } = normalizedLocal;
+  if (normalizedLocal.$ref) {
+    const def = derefRef(normalizedLocal.$ref, fullSchema);
+    if (def) {
+      // Preserve local title override if present, otherwise return the dereferenced schema as-is
+      return title ? { ...def, title } : def;
+    }
+  }
+  // Return the original schema without inventing structure
+  return normalizedLocal;
+}
+
+/**
+ * Resolve the root schema representation for generation/annotation.
+ * @param {object} schema
+ * @returns {object}
+ */
+export function normalizeRoot(schema) {
+  if (schema?.$ref) {
+    const root = derefRef(schema.$ref, schema);
+    if (!root) return schema;
+    // Preserve top-level title override if present
+    return schema.title ? { ...root, title: schema.title } : root;
+  }
+  return schema;
 }
