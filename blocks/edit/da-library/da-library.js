@@ -25,6 +25,7 @@ const ICONS = [
   '/blocks/edit/img/Smock_ExperienceAdd_18_N.svg',
   '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
   '/blocks/edit/img/Smock_AddCircle_18_N.svg',
+  '/blocks/edit/img/Smock_InfoOutline_18_N.svg',
 ];
 
 let accessToken;
@@ -93,6 +94,11 @@ class DaLibrary extends LitElement {
     closeLibrary();
   }
 
+  handleFullsizeModalClose() {
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
+    closeLibrary();
+  }
+
   async handleLibSwitch(e, library) {
     if (library.callback) {
       library.callback();
@@ -109,11 +115,11 @@ class DaLibrary extends LitElement {
           <div class="da-dialog-header">
             <div class="da-dialog-header-title">
               <img src="${library.icon}" />
-              <p>${library.name}</p>
+              <p>${library.title || library.name}</p>
             </div>
             <button class="primary" @click=${this.handleModalClose}>Close</button>
           </div>
-          ${this.renderPlugin(library.url, true)}
+          ${this.renderPlugin(library, true)}
         </dialog>
       `;
 
@@ -124,11 +130,38 @@ class DaLibrary extends LitElement {
       return;
     }
 
+    if (library.experience === 'fullsize-dialog') {
+      let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
+      if (dialog) dialog.remove();
+
+      dialog = html`
+        <dialog class="da-fs-dialog-plugin">
+          <div class="da-dialog-header">
+            <div class="da-dialog-header-title">
+              <img src="${library.icon}" />
+              <p>${library.title || library.name}</p>
+            </div>
+            <button class="primary" @click=${this.handleFullsizeModalClose}>Close</button>
+          </div>
+          ${this.renderPlugin(library, true)}
+        </dialog>
+      `;
+
+      render(dialog, this.shadowRoot);
+
+      this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
+
+      return;
+    }
+
     if (library.experience === 'window') {
       try {
-        const { pathname } = new URL(library.url);
-        window.open(library.url, `${pathname.replaceAll('/', '-')}`);
+        const url = library.sources?.[0] || library.url;
+        if (!url) return;
+        const { pathname } = new URL(url);
+        window.open(url, `${pathname.replaceAll('/', '-')}`);
       } catch {
+        // eslint-disable-next-line no-console
         console.log('Could not make plugin URL');
       }
       return;
@@ -229,11 +262,18 @@ class DaLibrary extends LitElement {
     }
   }
 
+  handleToolTip(e) {
+    e.stopPropagation();
+    e.target.closest('button').classList.toggle('show-tooltip');
+  }
+
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
     const text = await resp.text();
     const doc = new DOMParser().parseFromString(text, 'text/html');
+    // Convert to a metadata block so it can be copied
+    doc.querySelector('.template-metadata')?.classList.replace('template-metadata', 'metadata');
     const proseDom = aem2prose(doc);
     const flattedDom = document.createElement('div');
     flattedDom.append(...proseDom);
@@ -259,6 +299,12 @@ class DaLibrary extends LitElement {
         const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
         window.view.dispatch(window.view.state.tr.replaceSelectionWith(nodes));
       }
+      if (e.data.action === 'setHash') {
+        window.location.hash = e.data.details;
+      }
+      if (e.data.action === 'setHref') {
+        window.location.href = e.data.details;
+      }
       if (e.data.action === 'closeLibrary') {
         closeLibrary();
       }
@@ -283,14 +329,21 @@ class DaLibrary extends LitElement {
   }
 
   renderBlockItem(item, icon = false) {
+    const hasDesc = item.description?.trim();
     return html`
       <li class="da-library-type-group-detail-item" tabindex="1">
         <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item, true)}>
-          <div>
-            <span class="da-library-group-name">${item.name}</span>
-            <span class="da-library-group-subtitle">${item.variants}</span>
+          <div class="da-library-item-button-title">
+            <div>
+              <span class="da-library-group-name">${item.name}</span>
+              <span class="da-library-group-subtitle">${item.variants}</span>
+            </div>
+            <div class="da-library-icons">
+              ${hasDesc ? html`<svg class="icon" @click=${this.handleToolTip}><use href="#spectrum-InfoOutline"/></svg>` : nothing}
+              <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+            </div>
           </div>
-          <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+          ${hasDesc ? html`<div class="da-library-item-button-tooltip">${item.description}</div>` : nothing}
         </button>
       </li>`;
   }
@@ -334,13 +387,13 @@ class DaLibrary extends LitElement {
       <li class="da-library-asset-item">
         <button class="da-library-type-asset-btn"
           @click=${() => this.handleItemClick(item)}>
-          <img src="${item.path}" />
+          <img src="https://content.da.live${item.path}" />
           <svg class="icon"><use href="#spectrum-AddCircle"/></svg>
         </button>
       </li>`;
   }
 
-  renderAssets(items) {
+  renderMedia(items) {
     return html`
       <ul class="da-library-type-list-assets">
       ${items.map((item) => this.renderAssetItem(item))}
@@ -397,7 +450,9 @@ class DaLibrary extends LitElement {
     return searchFor(this._searchStr, data, this);
   }
 
-  renderPlugin(url, preload) {
+  renderPlugin(library, preload) {
+    const url = library.sources?.[0] || library.url;
+
     return html`
       <div class="da-library-type-plugin">
         <iframe
@@ -408,11 +463,10 @@ class DaLibrary extends LitElement {
       </div>`;
   }
 
-  async renderLibrary({ name, sources, url, format }) {
-    // Only plugins have a URL
-    if (url) {
-      return this.renderPlugin(url);
-    }
+  async renderLibrary({ name, sources, url, format, class: className }) {
+    const isPlugin = className.split(' ').some((val) => val === 'is-plugin');
+
+    if (isPlugin) return this.renderPlugin({ sources, url });
 
     if (name === 'blocks') {
       if (!data.blocks) {
@@ -435,9 +489,16 @@ class DaLibrary extends LitElement {
       return nothing;
     }
 
+    if (name === 'media') {
+      const resp = await daFetch(sources[0]);
+      const json = await resp.json();
+      return this.renderMedia(json);
+    }
+
     if (!data[name]) {
       data[name] = await getItems(sources, name, format);
     }
+
     if (data[name].length) {
       return this.renderItems(data[name], name);
     }
@@ -456,7 +517,7 @@ class DaLibrary extends LitElement {
               class="${library.class || library.name} ${library.url ? 'is-plugin' : ''}"
               style="${library.icon ? `background-image: url(${library.icon})` : ''}"
               @click=${(e) => this.handleLibSwitch(e, library)}>
-              <span class="library-type-name">${library.name}</span>
+              <span class="library-type-name">${library.title || library.name}</span>
             </button>
           </li>`,
         )}

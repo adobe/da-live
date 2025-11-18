@@ -11,6 +11,8 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
+    startPreviewing: { attribute: false },
+    stopPreviewing: { attribute: false },
     _editorLoaded: { state: true },
     _versionUrl: { state: true },
     _ueUrl: { state: true },
@@ -29,8 +31,18 @@ export default class DaContent extends LitElement {
   }
 
   showPreview() {
-    this.classList.add('show-preview');
-    this.shadowRoot.querySelector('da-preview').classList.add('show-preview');
+    this.daPreview.showPreview(() => {
+      if (this.startPreviewing) {
+        this.startPreviewing();
+      }
+    });
+  }
+
+  hidePreview() {
+    this.daPreview.hidePreview();
+    if (this.stopPreviewing) {
+      this.stopPreviewing();
+    }
   }
 
   showVersions() {
@@ -80,6 +92,10 @@ export default class DaContent extends LitElement {
     return this.shadowRoot.querySelector('da-versions');
   }
 
+  get daPreview() {
+    return this.shadowRoot.querySelector('da-preview');
+  }
+
   render() {
     return html`
       <div class="editor-wrapper">
@@ -99,7 +115,7 @@ export default class DaContent extends LitElement {
             </div>
             <div class="da-editor-tabs-quiet">
               <button class="da-editor-tab quiet show-versions" title="Versions" @click=${this.showVersions}>Versions</button>
-              ${this._ueUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in Universal Editor" @click=${this.openUe}>Universal Editor</button>` : nothing}
+              ${this._ueUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
             </div>
           </div>
         ` : nothing}

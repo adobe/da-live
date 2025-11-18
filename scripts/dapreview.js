@@ -50,6 +50,16 @@ export default async function daPreview(loadPage) {
   }
 
   function initPort(e) {
+    if (e.origin !== 'https://da.live'
+      && e.origin !== 'http://localhost:3000'
+      && e.origin !== 'https://localhost'
+      && !e.origin.match(/^https:\/\/[a-z0-9-]+--da-live--adobe\.aem\.(page|live)$/)
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn('DA Preview: Origin not allowed');
+      return;
+    }
+
     if (e.data.init) {
       [port2] = e.ports;
       port2.onmessage = onMessage;

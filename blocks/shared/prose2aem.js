@@ -17,8 +17,8 @@ function toBlockCSSClassNames(text) {
     .filter((name) => !!name);
 }
 
-function convertBlocks(editor) {
-  const tables = editor.querySelectorAll('.tableWrapper > table');
+function convertBlocks(editor, isFragment = false) {
+  const tables = editor.querySelectorAll('.tableWrapper > table, da-diff-added > table');
 
   tables.forEach((table) => {
     const tbody = table.querySelector(':scope > tbody');
@@ -41,7 +41,11 @@ function convertBlocks(editor) {
     const div = document.createElement('div');
     div.className = toBlockCSSClassNames(nameRow.textContent).join(' ');
     div.append(...divs);
-    table.parentElement.parentElement.replaceChild(div, table.parentElement);
+    if (isFragment) {
+      table.parentElement.replaceChild(div, table);
+    } else {
+      table.parentElement.parentElement.replaceChild(div, table.parentElement);
+    }
   });
 }
 
@@ -103,11 +107,23 @@ function convertParagraphs(editor) {
 }
 
 function convertListItems(editor) {
+  const topLevelLists = editor.querySelectorAll('ul > li, ol > li');
+
+  topLevelLists.forEach((li) => {
+    if (li.firstChild.classList.contains('loc-deleted-view')) {
+      li.remove(); // remove deleted nodes in preview
+    } else if (li.firstChild.classList.contains('loc-added-view')) {
+      li.querySelector('.loc-color-overlay').remove();
+      li.innerHTML = li.firstChild.innerHTML;
+    }
+  });
+
   const lis = editor.querySelectorAll('li');
   lis.forEach((li) => {
-    const para = li.querySelector(':scope > p');
-    if (!para) return;
-    li.innerHTML = para.innerHTML;
+    // Collapse single child p tags
+    if (li.children.length === 1 && li.firstElementChild.nodeName === 'P') {
+      li.innerHTML = li.firstElementChild.innerHTML;
+    }
   });
 }
 
@@ -132,7 +148,7 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
-const iconRegex = /:([a-zA-Z0-9-]+?):/gm; // any alphanumeric character or - surrounded by :
+const iconRegex = /(?<!(?:https?|urn)[^\s<>]*):(#?[a-z_-]+[a-z\d]*):/gi; // matches icon pattern but not in URLs
 function parseIcons(editor) {
   if (!iconRegex.test(editor.innerHTML)) return;
   editor.innerHTML = editor.innerHTML.replace(
@@ -143,10 +159,15 @@ function parseIcons(editor) {
 
 const removeEls = (els) => els.forEach((el) => el.remove());
 
-export default function prose2aem(editor, live) {
-  editor.removeAttribute('class');
+export default function prose2aem(editor, live, isFragment = false) {
+  if (!isFragment) {
+    editor.removeAttribute('class');
+  }
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
+
+  const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
+  removeEls(daDiffDeletedEls);
 
   const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
   removeEls(emptyImgs);
@@ -169,7 +190,7 @@ export default function prose2aem(editor, live) {
 
   convertParagraphs(editor);
 
-  convertBlocks(editor);
+  convertBlocks(editor, isFragment);
 
   if (live) {
     removeMetadata(editor);
@@ -178,7 +199,13 @@ export default function prose2aem(editor, live) {
 
   makePictures(editor);
 
-  makeSections(editor);
+  if (!isFragment) {
+    makeSections(editor);
+  }
+
+  if (isFragment) {
+    return editor.innerHTML;
+  }
 
   const html = `
     <body>

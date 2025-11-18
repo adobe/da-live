@@ -4,20 +4,25 @@ function insertAutocompleteText(state, dispatch, text) {
   const { $cursor } = state.selection;
 
   if (!$cursor) return;
-  const from = $cursor.before();
-  const to = $cursor.pos;
-  const tr = state.tr.replaceWith(from, to, state.schema.text(text));
+  const tr = state.tr.insert($cursor.pos, state.schema.text(text));
   dispatch(tr);
+}
+
+// Normalize strings for slash menu comparison
+export function normalizeForSlashMenu(str) {
+  return str?.toLowerCase().trim().replace(/\s+/g, '-');
 }
 
 export function processKeyData(data) {
   const blockMap = new Map();
 
   data?.forEach((item) => {
-    const itemBlocks = item.blocks.toLowerCase().trim();
-    const blocks = itemBlocks.split(',').map((block) => block.trim());
+    const itemBlocks = item.blocks?.toLowerCase().trim();
+    const blocks = itemBlocks?.split(',').map((block) => normalizeForSlashMenu(block));
 
-    const values = item.values.toLowerCase().split('|').map((v) => {
+    if (!blocks) return;
+
+    const values = item.values.split('|').map((v) => {
       const [label, val] = v.split('=').map((vb) => vb.trim());
 
       return {
@@ -32,9 +37,35 @@ export function processKeyData(data) {
       if (!blockMap.has(block)) {
         blockMap.set(block, new Map());
       }
-      blockMap.get(block).set(item.key, values);
+      blockMap.get(block).set(normalizeForSlashMenu(item.key), values);
     });
   });
+
+  // values of "all" block are available (thus copied) in all other blocks, if not explicitly set
+  const allBlocks = blockMap.get('all');
+  blockMap.forEach((block, blockName) => {
+    if (blockName === 'all') return;
+    allBlocks?.forEach((values, key) => {
+      if (!block.has(key)) {
+        block.set(key, values);
+      }
+    });
+  });
+
+  // the "all" block is also returned as fallback if no values are configured for the queried block
+  const originalGet = blockMap.get.bind(blockMap);
+  blockMap.get = (blockName) => {
+    if (blockMap.has(blockName)) {
+      return originalGet(blockName);
+    }
+    // Try normalized block name
+    const normalizedBlockName = normalizeForSlashMenu(blockName);
+    if (blockMap.has(normalizedBlockName)) {
+      return originalGet(normalizedBlockName);
+    }
+
+    return originalGet('all');
+  };
 
   return blockMap;
 }

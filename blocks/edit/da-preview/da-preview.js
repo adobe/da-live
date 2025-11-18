@@ -33,6 +33,26 @@ export default class DaPreview extends LitElement {
     return path.endsWith('index') ? path.substring(0, path.lastIndexOf('/') + 1) : path;
   }
 
+  showPreview(callback) {
+    const src = this.iframe.getAttribute('src');
+
+    const show = () => {
+      callback();
+      // leave a small delay to allow the body replacement to complete
+      setTimeout(() => {
+        this.classList.add('show-preview');
+        this._daContent.classList.add('show-preview');
+      }, 500);
+    };
+
+    if (!src) {
+      this.onFrameLoaded = show;
+      this.iframe.src = `${this.formatPath(this.path)}?martech=off&dapreview=${this.getEnv()}`;
+    } else {
+      show();
+    }
+  }
+
   hidePreview() {
     this._daContent.classList.remove('show-preview');
     this.classList.remove('show-preview');
@@ -52,6 +72,9 @@ export default class DaPreview extends LitElement {
   }
 
   iframeLoaded({ target }) {
+    const src = target.getAttribute('src');
+    if (!src) return;
+
     const channel = new MessageChannel();
     this.port1 = channel.port1;
     this.port2 = channel.port2;
@@ -59,6 +82,7 @@ export default class DaPreview extends LitElement {
     setTimeout(() => {
       this.port1.onmessage = (e) => { this.setHeight(e.data); };
       target.contentWindow.postMessage({ init: true }, '*', [this.port2]);
+      if (this.onFrameLoaded) this.onFrameLoaded();
     }, 1500);
   }
 
@@ -74,13 +98,13 @@ export default class DaPreview extends LitElement {
             class="da-preview-menuitem set-${key}"
             @click=${() => this.setWidth(key)}>
           </span>`)}
-        <span class="da-preview-menuitem" @click=${this.hidePreview}></span>
+        <span class="da-preview-menuitem" @click=${() => this._daContent.hidePreview()}></span>
       </div>
       <iframe
-        src="${this.formatPath(this.path)}?martech=off&dapreview=${this.getEnv()}"
+        src=""
         @load=${this.iframeLoaded}
         allow="clipboard-write *"
-        scrolling="no">
+        scrolling="no"></iframe>
     `;
   }
 

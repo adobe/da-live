@@ -3,9 +3,9 @@ import { Plugin } from 'da-y-wrapper';
 
 function isURL(text) {
   try {
-    // eslint-disable-next-line no-new
-    new URL(text);
-    return true;
+    const url = new URL(text);
+    // Only consider https as valid URLs for auto-linking
+    return url.protocol === 'https:';
   } catch (e) {
     return false;
   }

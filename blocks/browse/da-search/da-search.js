@@ -55,7 +55,7 @@ export default class DaSearch extends LitElement {
   }
 
   async getMatches(startPath, term) {
-    const searchTypes = ['.html', '.json'];
+    const searchTypes = ['.html', '.json', '.svg'];
 
     const searchFile = async (file, prevRetry = 0) => {
       if (!searchTypes.some((type) => file.path.endsWith(type))) return;
@@ -69,6 +69,9 @@ export default class DaSearch extends LitElement {
         try {
           const resp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
           const text = await resp.text();
+          // Log empty files
+          // eslint-disable-next-line no-console
+          if (text.length < 2) console.log(file.path);
           match = text.includes(term) || file.path.split('/').pop().includes(term);
         } catch {
           return { error: 'fetch error' };

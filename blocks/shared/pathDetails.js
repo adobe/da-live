@@ -94,14 +94,23 @@ function getView(pathname) {
 }
 
 export default function getPathDetails(loc) {
-  const { pathname, hash } = loc || window.location;
-  if (!pathname || !hash) return undefined;
+  const { pathname, hash: tmpHash } = loc || window.location;
+  if (!pathname || !tmpHash) return undefined;
+
+  // There can be non-ideal pieces in the hash (old_hash, access_token)
+  const parts = tmpHash.split('#');
+  const hashPath = parts.find((part) => part.startsWith('/'));
+
+  // If there's not a hash path, return undefined
+  if (!hashPath) return undefined;
+  const hash = `#${hashPath}`;
 
   // Use cached details if the hash has not changed
   if (currhash === hash && currpath === pathname && details) return details;
   currhash = hash;
 
   const fullpath = hash.replace('#', '');
+  window.name = fullpath;
 
   // config, edit, sheet
   const editor = getView(pathname);
@@ -111,6 +120,12 @@ export default function getPathDetails(loc) {
 
   // Split everything up so it can be later used for both DA & AEM
   const pathParts = fullpath.slice(1).toLowerCase().split('/');
+
+  // Redirect JSON files from edit view to sheet view
+  if (editor === 'edit' && fullpath.endsWith('.json')) {
+    window.location.href = `/sheet#${fullpath.slice(0, -5)}`;
+    return null;
+  }
 
   // Determine if folder (trailing slash split to empty string)
   let isFolder = false;

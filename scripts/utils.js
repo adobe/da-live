@@ -11,6 +11,16 @@
  */
 export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
 
+export function sanitiseRef(ref) {
+  if (!ref) return null;
+
+  return ref.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 export const [setNx, getNx] = (() => {
   let nx;
   return [
@@ -18,9 +28,9 @@ export const [setNx, getNx] = (() => {
       nx = (() => {
         const { hostname, search } = location || window.location;
         if (!(hostname.includes('.hlx.') || hostname.includes('.aem.') || hostname.includes('local'))) return nxBase;
-        const branch = new URLSearchParams(search).get('nx') || 'main';
+        const branch = sanitiseRef(new URLSearchParams(search).get('nx')) || 'main';
         if (branch === 'local') return 'http://localhost:6456/nx';
-        return branch.includes('--') ? `https://${branch}.aem.live/nx` : `https://${branch}--nexter--da-sites.aem.live/nx`;
+        return `https://${branch}--da-nx--adobe.aem.live/nx`;
       })();
       return nx;
     }, () => nx,

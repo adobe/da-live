@@ -75,26 +75,14 @@ export default class DaActionBar extends LitElement {
   }
 
   handleDelete() {
-    this._isDeleting = true;
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('ondelete', opts);
     this.dispatchEvent(event);
   }
 
-  handleShare() {
-    const aemUrls = this.items.reduce((acc, item) => {
-      if (item.ext) {
-        const path = item.path.replace('.html', '');
-        const [org, repo, ...pathParts] = path.substring(1).split('/');
-        const pageName = pathParts.pop();
-        pathParts.push(pageName === 'index' ? '' : pageName);
-        acc.push(`https://main--${repo}--${org}.aem.page/${pathParts.join('/')}`);
-      }
-      return acc;
-    }, []);
-    const blob = new Blob([aemUrls.join('\n')], { type: 'text/plain' });
-    const data = [new ClipboardItem({ [blob.type]: blob })];
-    navigator.clipboard.write(data);
+  async handleShare() {
+    const { items2Clipboard } = await import('../da-list/helpers/utils.js');
+    items2Clipboard(this.items);
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('onshare', opts);
     this.dispatchEvent(event);
@@ -123,7 +111,6 @@ export default class DaActionBar extends LitElement {
       const folderName = this.currentPath.split('/').pop();
       return `Paste ${this.items.length} ${itemStr} into ${folderName}`;
     }
-    if (this._isDeleting) return `Deleting ${this.items.length} ${itemStr}`;
     return `${this.items.length} ${itemStr} selected`;
   }
 

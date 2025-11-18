@@ -41,7 +41,7 @@ describe('Browse', () => {
     const orgFetch = window.fetch;
     try {
       window.fetch = mockFetch;
-      await daBrowse.handlePaste();
+      await daBrowse.handlePaste({});
 
       expect(daBrowse._listItems.length).to.equal(1);
       expect(daBrowse._listItems[0].path).to.equal('/myorg/mysite/myroot/destdir/d1.html');

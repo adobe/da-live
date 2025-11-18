@@ -2,7 +2,6 @@
 import {
   EditorState,
   EditorView,
-  history,
   buildKeymap,
   keymap,
   baseKeymap,
@@ -18,23 +17,31 @@ import {
   ySyncPlugin,
   yCursorPlugin,
   yUndoPlugin,
-  yUndo,
-  yRedo,
 } from 'da-y-wrapper';
 
 // DA
 import prose2aem from '../../shared/prose2aem.js';
-import menu from './plugins/menu.js';
+import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
+import { linkItem } from './plugins/menu/linkItem.js';
+import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
-import { getLocClass } from './loc-utils.js';
+import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
-import { handleTableBackspace, handleTableTab, getEnterInputRulesPlugin } from './plugins/keyHandlers.js';
+import {
+  handleTableBackspace,
+  handleTableTab,
+  getEnterInputRulesPlugin,
+  getURLInputRulesPlugin,
+  handleUndo,
+  handleRedo,
+} from './plugins/keyHandlers.js';
 
 let sendUpdates = false;
 let hasChanged = 0;
@@ -49,8 +56,13 @@ function dispatchTransaction(transaction) {
     hasChanged += 1;
     sendUpdates = true;
   }
+
   const newState = window.view.state.apply(transaction);
   window.view.updateState(newState);
+
+  if (transaction.docChanged) {
+    debounce(checkForLocNodes, 500)(window.view);
+  }
 }
 
 function setPreviewBody() {
@@ -84,13 +96,16 @@ function handleProseLoaded(editor) {
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('proseloaded', opts);
     daEditor.dispatchEvent(event);
-
-    // Give the preview elements time to create
-    setTimeout(() => {
-      setPreviewBody();
-      pollForUpdates();
-    }, 3000);
   }, 3000);
+}
+
+function startPreviewing() {
+  setPreviewBody();
+  pollForUpdates();
+}
+
+function stopPreviewing() {
+  if (updatePoller) clearInterval(updatePoller);
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win) {
@@ -167,9 +182,29 @@ function storeCursorPosition(view) {
 function restoreCursorPosition(view) {
   if (lastCursorPosition) {
     const { from, to } = lastCursorPosition;
-    const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
-    view.dispatch(tr);
+    const docSize = view.state.doc.content.size;
+    if (from <= docSize && to <= docSize) {
+      const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
+      view.dispatch(tr);
+    } else {
+      lastCursorPosition = null;
+    }
   }
+}
+
+function addSyncedListener(wsProvider, canWrite) {
+  const handleSynced = (isSynced) => {
+    if (isSynced) {
+      if (canWrite) {
+        const pm = document.querySelector('da-content')?.shadowRoot
+          .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+        if (pm) pm.contentEditable = 'true';
+      }
+      wsProvider.off('synced', handleSynced);
+    }
+  };
+
+  wsProvider.on('synced', handleSynced);
 }
 
 export default function initProse({ path, permissions }) {
@@ -194,33 +229,27 @@ export default function initProse({ path, permissions }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  addSyncedListener(wsProvider, canWrite);
+
   createAwarenessStatusWidget(wsProvider, window);
   registerErrorHandler(ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
   if (window.adobeIMS?.isSignedInUser()) {
-    window.adobeIMS.getProfile().then(
-      (profile) => {
-        wsProvider.awareness.setLocalStateField(
-          'user',
-          {
-            color: generateColor(profile.email || profile.userId),
-            name: profile.displayName,
-            id: profile.userId,
-          },
-        );
-      },
-    );
+    window.adobeIMS.getProfile().then((profile) => {
+      wsProvider.awareness.setLocalStateField('user', {
+        color: generateColor(profile.email || profile.userId),
+        name: profile.displayName,
+        id: profile.userId,
+      });
+    });
   } else {
-    wsProvider.awareness.setLocalStateField(
-      'user',
-      {
-        color: generateColor(`${wsProvider.awareness.clientID}`),
-        name: 'Anonymous',
-        id: `anonymous-${wsProvider.awareness.clientID}}`,
-      },
-    );
+    wsProvider.awareness.setLocalStateField('user', {
+      color: generateColor(`${wsProvider.awareness.clientID}`),
+      name: 'Anonymous',
+      id: `anonymous-${wsProvider.awareness.clientID}}`,
+    });
   }
 
   const plugins = [
@@ -234,14 +263,22 @@ export default function initProse({ path, permissions }) {
     base64Uploader(schema),
     columnResizing(),
     getEnterInputRulesPlugin(dispatchTransaction),
+    getURLInputRulesPlugin(),
     keymap(buildKeymap(schema)),
     keymap({ Backspace: handleTableBackspace }),
     keymap(baseKeymap),
+    codemark(),
     keymap({
-      'Mod-z': yUndo,
-      'Mod-y': yRedo,
-      'Mod-Shift-z': yRedo,
+      'Mod-z': handleUndo,
+      'Mod-y': handleRedo,
+      'Mod-Shift-z': handleRedo,
       'Mod-Shift-l': toggleLibrary,
+      'Mod-k': (state, dispatch, view) => { // toggle link prompt
+        const linkMarkType = state.schema.marks.link;
+        const linkMenuItem = linkItem(linkMarkType);
+        return linkMenuItem.spec.run(state, dispatch, view);
+      },
+      ...getHeadingKeymap(schema),
     }),
     keymap({
       Tab: handleTableTab(1),
@@ -253,12 +290,9 @@ export default function initProse({ path, permissions }) {
     }),
     gapCursor(),
     tableEditing(),
-    history(),
   ];
 
-  if (canWrite) {
-    plugins.push(menu);
-  }
+  if (canWrite) plugins.push(menu);
 
   let state = EditorState.create({ schema, plugins });
 
@@ -269,12 +303,12 @@ export default function initProse({ path, permissions }) {
     state,
     dispatchTransaction,
     nodeViews: {
-      loc_added(node, view, getPos) {
-        const LocAddedView = getLocClass('da-loc-added', getSchema, dispatchTransaction, { isLangstore: false });
+      diff_added(node, view, getPos) {
+        const LocAddedView = getDiffClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false });
         return new LocAddedView(node, view, getPos);
       },
-      loc_deleted(node, view, getPos) {
-        const LocDeletedView = getLocClass('da-loc-deleted', getSchema, dispatchTransaction, { isLangstore: true });
+      diff_deleted(node, view, getPos) {
+        const LocDeletedView = getDiffClass('da-diff-deleted', getSchema, dispatchTransaction, { isUpstream: true });
         return new LocDeletedView(node, view, getPos);
       },
     },
@@ -291,10 +325,19 @@ export default function initProse({ path, permissions }) {
     editable() { return canWrite; },
   });
 
+  // Register view for global dialog management
+  addActiveView(window.view);
+
+  // Check for initial regional edits
+  setTimeout(() => checkForLocNodes(window.view), 100);
+
+  // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
+  initDaMetadata(ydoc.getMap('daMetadata'));
+
   handleProseLoaded(editor, permissions);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return { proseEl: editor, wsProvider };
+  return { proseEl: editor, wsProvider, startPreviewing, stopPreviewing };
 }

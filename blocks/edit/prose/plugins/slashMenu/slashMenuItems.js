@@ -1,7 +1,19 @@
-import { setBlockType, wrapIn, wrapInList } from 'da-y-wrapper';
+import {
+  setBlockType,
+  wrapIn,
+  wrapInList,
+  addColumnBefore,
+  addColumnAfter,
+  addRowAfter,
+  addRowBefore,
+  deleteColumn,
+  deleteRow,
+  mergeCells,
+  splitCell,
+} from 'da-y-wrapper';
 import openLibrary from '../../../da-library/da-library.js';
 import insertTable from '../../table.js';
-import { insertSectionBreak } from '../menu.js';
+import { insertSectionBreak } from '../menu/menu.js';
 import loremIpsum from './loremIpsum.js';
 
 const setHeading = (state, dispatch, level) => {
@@ -60,6 +72,7 @@ const items = [
     title: 'Section break',
     command: insertSectionBreak,
     class: 'edit-hr',
+    excludeFromTable: true,
   },
   {
     title: 'Lorem ipsum',
@@ -71,6 +84,7 @@ const items = [
     title: 'Table',
     command: insertTable,
     class: 'insert-table',
+    excludeFromTable: true,
   },
   {
     title: 'Library',
@@ -79,4 +93,62 @@ const items = [
   },
 ];
 
-export default items;
+const tableItems = [
+  {
+    title: 'Add Column After',
+    command: addColumnAfter,
+    class: 'insert-column-right',
+  },
+  {
+    title: 'Add Column Before',
+    command: addColumnBefore,
+    class: 'insert-column-left',
+  },
+  {
+    title: 'Add Row After',
+    command: addRowAfter,
+    class: 'insert-row-after',
+  },
+  {
+    title: 'Add Row Before',
+    command: addRowBefore,
+    class: 'insert-row-before',
+  },
+  {
+    title: 'Delete Row',
+    command: deleteRow,
+    class: 'delete-row',
+  },
+  {
+    title: 'Delete Column',
+    command: deleteColumn,
+    class: 'delete-column',
+  },
+  {
+    title: 'Split Cell',
+    command: splitCell,
+    class: 'split-cell',
+  },
+];
+
+export const getTableItems = (state) => ([
+  {
+    title: 'Edit Block',
+    // prevent showing unavailable options.
+    // item.command(state) does not commit the command, but returns whether it's available.
+    submenu: tableItems.filter((item) => item.command(state)),
+    class: 'table-options',
+  },
+  ...items.filter((item) => !item.excludeFromTable),
+]);
+
+export const getTableCellItems = (state) => ([
+  {
+    title: 'Merge Cells',
+    command: mergeCells,
+    class: 'merge-cells',
+    enabled: mergeCells(state),
+  },
+].filter((x) => x.enabled !== false));
+
+export const getDefaultItems = () => items;

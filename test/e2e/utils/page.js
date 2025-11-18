@@ -13,18 +13,18 @@ import ENV from './env.js';
 
 export function getQuery() {
   const { GITHUB_HEAD_REF: branch } = process.env;
-  if (branch === 'local') {
-    return '?da-admin=local&da-collab=local&da-admin-room=local';
+  if (branch === 'local' || branch === 'local-https') {
+    return '?da-admin=local&da-collab=local';
   }
   return '';
 }
 
 const QUERY = getQuery();
 
-function getTestURL(type, testIdentifier, workerInfo) {
+function getTestURL(type, testIdentifier, workerInfo, dir = '/da-sites/da-status/tests') {
   const dateStamp = Date.now().toString(36);
   const pageName = `pw-${testIdentifier}-${dateStamp}-${workerInfo.project.name}`;
-  return `${ENV}/${type}${QUERY}#/da-sites/da-status/tests/${pageName}`;
+  return `${ENV}/${type}${QUERY}#${dir}/${pageName}`;
 }
 
 /**
@@ -32,10 +32,11 @@ function getTestURL(type, testIdentifier, workerInfo) {
  *
  * @param {string} testIdentifier - A identifier for the test
  * @param {object} workerInfo - workerInfo as passed in by Playwright
+ * @param {string} dir - The directory to use (optional)
  * @returns {string} The URL for the test page.
  */
-export function getTestPageURL(testIdentifier, workerInfo) {
-  return getTestURL('edit', testIdentifier, workerInfo);
+export function getTestPageURL(testIdentifier, workerInfo, dir) {
+  return getTestURL('edit', testIdentifier, workerInfo, dir);
 }
 
 /**
@@ -43,10 +44,11 @@ export function getTestPageURL(testIdentifier, workerInfo) {
  *
  * @param {string} testIdentifier - A identifier for the test
  * @param {object} workerInfo - workerInfo as passed in by Playwright
+ * @param {string} dir - The directory to use (optional)
  * @returns {string} The URL for the test page.
  */
-export function getTestFolderURL(testIdentifier, workerInfo) {
-  return getTestURL('', testIdentifier, workerInfo);
+export function getTestFolderURL(testIdentifier, workerInfo, dir) {
+  return getTestURL('', testIdentifier, workerInfo, dir);
 }
 
 /**
