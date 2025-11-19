@@ -161,6 +161,9 @@ const baseNodes = {
       };
       if (dataFocalX != null) attrs['data-focal-x'] = dataFocalX;
       if (dataFocalY != null) attrs['data-focal-y'] = dataFocalY;
+      // TODO: This is temp code to store the focal data in the title attribute
+      // Once helix properly supports data-focal-x and data-focal-y, we can remove this code
+      if (dataFocalX != null) attrs.title = `data-focal:${dataFocalX},${dataFocalY}`;
       return ['img', attrs];
     },
   },

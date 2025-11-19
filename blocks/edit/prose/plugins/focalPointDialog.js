@@ -2,9 +2,10 @@ import '../../../shared/da-dialog/da-dialog.js';
 
 let currentDialog = null;
 let stylesLoaded = false;
+let faceApiLoaded = false;
+let faceApiLoading = null;
 
 const DIALOG_RENDER_DELAY = 50;
-const INDICATOR_POSITION_DELAY = 100;
 
 // Content is slotted and lives in light DOM, so styles must be in main document
 const loadDialogStyles = () => {
@@ -15,6 +16,79 @@ const loadDialogStyles = () => {
     link.href = '/blocks/edit/prose/plugins/focalPointDialog.css';
     document.head.appendChild(link);
     stylesLoaded = true;
+  }
+};
+
+const loadFaceApi = async () => {
+  // Return early if already loaded
+  if (faceApiLoaded) {
+    return true;
+  }
+
+  // If loading is in progress, wait for it
+  if (faceApiLoading) {
+    return faceApiLoading;
+  }
+
+  // Start loading
+  faceApiLoading = (async () => {
+    try {
+      // Load face-api.js library
+      if (!window.faceapi) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = '/deps/face-api/face-api.min.js';
+          script.onload = () => {
+            resolve();
+          };
+          script.onerror = () => {
+            reject(new Error('Failed to load face-api.js'));
+          };
+          document.head.appendChild(script);
+        });
+      }
+
+      // Load tinyFaceDetector model
+      await window.faceapi.nets.tinyFaceDetector.loadFromUri('/deps/face-api/');
+
+      faceApiLoaded = true;
+      return true;
+    } catch (error) {
+      // Silent failure - fall back to manual positioning
+      return false;
+    }
+  })();
+
+  return faceApiLoading;
+};
+
+const detectFaceCenter = async (img) => {
+  try {
+    const detection = await window.faceapi.detectSingleFace(
+      img,
+      new window.faceapi.TinyFaceDetectorOptions(),
+    );
+
+    if (!detection) {
+      return null;
+    }
+
+    const { box } = detection;
+    const imgWidth = img.naturalWidth || img.width;
+    const imgHeight = img.naturalHeight || img.height;
+
+    // Calculate center of detected face as percentage
+    const centerX = ((box.x + box.width / 2) / imgWidth) * 100;
+    const centerY = ((box.y + box.height / 2) / imgHeight) * 100;
+
+    const result = {
+      x: Math.max(0, Math.min(100, centerX)),
+      y: Math.max(0, Math.min(100, centerY)),
+    };
+    return result;
+  } catch (error) {
+    // Silent failure - return null to fall back to default
+    return null;
   }
 };
 
@@ -61,6 +135,10 @@ export function openFocalPointDialog(view, pos, node) {
   const focalX = node.attrs.dataFocalX || '50.00';
   const focalY = node.attrs.dataFocalY || '50.00';
 
+  // Detect face and set focal point if no existing focal point data
+  const shouldDetectFace = !hasFocalPointData(node.attrs);
+  let faceDetectionPromise = null;
+
   const dialog = document.createElement('da-dialog');
   dialog.title = 'Set Image Focal Point';
   dialog.className = 'focal-point-dialog';
@@ -75,6 +153,48 @@ export function openFocalPointDialog(view, pos, node) {
   img.src = node.attrs.src;
   img.className = 'focal-point-image';
   img.draggable = false;
+
+  // Promise that resolves when image is loaded
+  const imageLoadedPromise = new Promise((resolve) => {
+    if (img.complete) {
+      resolve();
+    } else {
+      img.addEventListener('load', () => resolve());
+      img.addEventListener('error', () => resolve()); // Resolve anyway to not block UI
+    }
+  });
+
+  // Set up face detection if needed
+  if (shouldDetectFace) {
+    faceDetectionPromise = (async () => {
+      try {
+        const loaded = await loadFaceApi();
+
+        if (loaded) {
+          // Check if image is same-origin to avoid CORS issues
+          const imageSrc = node.attrs.src;
+          const isSameOrigin = (() => {
+            try {
+              const imgUrl = new URL(imageSrc, window.location.href);
+              return imgUrl.origin === window.location.origin;
+            } catch {
+              return false;
+            }
+          })();
+
+          if (!isSameOrigin) {
+            return null;
+          }
+
+          const faceCenter = await detectFaceCenter(img);
+          return faceCenter;
+        }
+      } catch (error) {
+        // Silent failure
+      }
+      return null;
+    })();
+  }
 
   const indicator = document.createElement('div');
   indicator.className = 'focal-point-indicator';
@@ -217,15 +337,27 @@ export function openFocalPointDialog(view, pos, node) {
 
         footer.insertBefore(leftButtons, footer.firstChild);
       }
-
-      updateIndicatorPosition(currentX, currentY);
     }
   }, DIALOG_RENDER_DELAY);
 
   document.body.appendChild(dialog);
   currentDialog = dialog;
 
-  setTimeout(() => {
+  // Wait for image to load before positioning indicator
+  imageLoadedPromise.then(() => {
     updateIndicatorPosition(currentX, currentY);
-  }, INDICATOR_POSITION_DELAY);
+  });
+
+  // Apply face detection result if it's in progress
+  if (faceDetectionPromise) {
+    faceDetectionPromise.then((faceCenter) => {
+      if (faceCenter && !isDragging) {
+        currentX = faceCenter.x;
+        currentY = faceCenter.y;
+        updateIndicatorPosition(currentX, currentY);
+      }
+    }).catch(() => {
+      // Silent failure
+    });
+  }
 }
