@@ -52,8 +52,6 @@ async function setUI(el) {
   }
 
   let resp = await checkDoc(details.sourceUrl);
-
-  // Create the doc if it does not exist
   if (resp.status === 404) resp = await createDoc(details.sourceUrl);
 
   const { permissions } = resp;

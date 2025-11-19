@@ -139,6 +139,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
     if (resp.status === 404) {
       const split = window.location.hash.slice(2).split('/');
       split.pop();
+      // Navigate to the parent folder
       window.location.replace(`/#/${split.join('/')}`);
     }
   });
