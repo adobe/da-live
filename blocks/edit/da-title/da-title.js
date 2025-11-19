@@ -35,6 +35,7 @@ export default class DaTitle extends LitElement {
     _status: { state: true },
     _fixedActions: { state: true },
     _dialog: { state: true },
+    _breadcrumbMenuOpen: { state: true },
   };
 
   connectedCallback() {
@@ -160,6 +161,10 @@ export default class DaTitle extends LitElement {
     this._actionsVis = !this._actionsVis;
   }
 
+  toggleBreadcrumbMenu() {
+    this._breadcrumbMenuOpen = !this._breadcrumbMenuOpen;
+  }
+
   get _readOnly() {
     if (!this.permissions) return false;
     return !this.permissions.some((permission) => permission === 'write');
@@ -241,13 +246,55 @@ export default class DaTitle extends LitElement {
       </div>`;
   }
 
+  renderBreadcrumbs() {
+    const breadcrumbs = this.details.parent.split('/').filter((part) => part !== '');
+    const visibleBreadcrumbs = breadcrumbs.slice(1);
+    const totalChars = visibleBreadcrumbs.join('').length;
+
+    if (totalChars > 40 && visibleBreadcrumbs.length > 2) {
+      // Show first, more icon, and last
+      const firstCrumb = visibleBreadcrumbs[0];
+      const lastCrumb = visibleBreadcrumbs[visibleBreadcrumbs.length - 1];
+      const firstPath = breadcrumbs.slice(0, 2).join('/');
+      const lastPath = breadcrumbs.join('/');
+      const middleCrumbs = visibleBreadcrumbs.slice(1, -1);
+
+      return html`
+        <a href="/#/${firstPath}" class="da-title-name-label">${firstCrumb}</a>
+        <div class="da-title-breadcrumb-dropdown ${this._breadcrumbMenuOpen ? 'open' : ''}">
+          <button class="da-title-name-more-button" @click=${this.toggleBreadcrumbMenu}></button>
+          <ul class="da-title-breadcrumb-menu">
+            ${middleCrumbs.map((crumb, index) => {
+              const path = breadcrumbs.slice(0, index + 3).join('/');
+              return html`
+                <li>
+                  <a href="/#/${path}" class="da-title-breadcrumb-menu-item">${crumb}</a>
+                </li>
+              `;
+            })}
+          </ul>
+        </div>
+        <a href="/#/${lastPath}" class="da-title-name-label">${lastCrumb}</a>
+      `;
+    }
+
+    return html`
+      ${visibleBreadcrumbs.map((crumb, index) => {
+        const path = breadcrumbs.slice(0, index + 2).join('/');
+        return html`
+          <a
+            href="/#/${path}"
+            class="da-title-name-label">${crumb}</a>
+        `;
+      })}
+    `;
+  }
+
   render() {
     return html`
       <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
         <div class="da-title-name">
-          <a
-            href="/#${this.details.parent}"
-            class="da-title-name-label">${this.details.parentName}</a>
+          ${this.renderBreadcrumbs()}
           <h1>${this.details.name}</h1>
         </div>
         <div class="da-title-collab-actions-wrapper">
