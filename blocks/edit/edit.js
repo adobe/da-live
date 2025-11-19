@@ -36,7 +36,7 @@ async function setUI(el, utils) {
   }
 
   const { daFetch } = await utils;
-  const { permissions } = await daFetch(details.sourceUrl, { method: 'HEAD' });
+  const { permissions = [] } = await daFetch(details.sourceUrl, { method: 'HEAD' });
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
 

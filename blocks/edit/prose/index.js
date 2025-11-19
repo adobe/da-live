@@ -29,6 +29,7 @@ import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { logOut } from '../../shared/utils.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
@@ -229,6 +230,10 @@ export default function initProse({ path, permissions }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  wsProvider.on('connection-error', async () => {
+    await logOut();
+  });
+
   addSyncedListener(wsProvider, canWrite);
 
   createAwarenessStatusWidget(wsProvider, window);
