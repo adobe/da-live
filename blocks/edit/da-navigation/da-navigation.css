@@ -1,0 +1,130 @@
+:host {
+  display: block;
+}
+
+:host > svg {
+  display: none;
+}
+
+.da-navigation {
+  display: inline-block;
+}
+
+.da-navigation-label {
+  display: inline-block;
+  position: relative;
+  margin: 0;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #464646;
+  opacity: 0.5;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  left: -12px;
+  margin-right: 24px;
+}
+
+.da-navigation-label:hover {
+  background: #EFEFEF;
+  opacity: 1;
+}
+
+.da-navigation-more-button {
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  background: none;
+  padding: 6px 12px;
+  height: 36px;
+  border-radius: 4px;
+  position: relative;
+  margin-right: 24px;
+  top: 4px;
+  left: -12px;
+  opacity: 0.5;
+}
+
+.da-navigation-more-button::before {
+  content: '';
+  background: url('/blocks/edit/img/Smock_More_18_N.svg') center/18px no-repeat;
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.da-navigation-more-button:hover {
+  background: #EFEFEF;
+  opacity: 1;
+}
+
+.da-navigation-label:not(:last-of-type)::after {
+  display: block;
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: 11px;
+  right: -24px;
+  background: url('/blocks/edit/img/right-large.svg') center/18px no-repeat;
+}
+
+.da-navigation-more-button::after {
+  display: block;
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: 9.5px;
+  right: -24px;
+  background: url('/blocks/edit/img/right-large.svg') center/18px no-repeat;
+}
+
+.da-navigation-dropdown {
+  display: inline-block;
+  position: relative;
+}
+
+.da-navigation-menu {
+  display: none;
+  position: absolute;
+  left: -6px;
+  top: 40px;
+  margin: 0;
+  list-style: none;
+  background: #FFF;
+  box-shadow: 0 0 5px 0 #b5b5b5;
+  border-radius: 4px;
+  padding: 6px;
+  z-index: 100;
+  min-width: 120px;
+}
+
+.da-navigation-dropdown.open .da-navigation-menu {
+  display: grid;
+  gap: 6px;
+}
+
+.da-navigation-menu li {
+  list-style: none;
+}
+
+.da-navigation-menu-item {
+  display: block;
+  text-align: left;
+  line-height: 28px;
+  padding: 0 10px;
+  border-radius: 2px;
+  background: transparent;
+  text-decoration: none;
+  color: #464646;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.da-navigation-menu-item:hover {
+  background: #EFEFEF;
+}
+
