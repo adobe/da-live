@@ -52,6 +52,7 @@ const getTableName = ($cursor) => {
       tableName: tableNameMatch[1],
       keyValue: currentRowFirstColContent,
       isFirstColumn: cellIndex === 0,
+      columnsInRow: row.childCount,
     };
   }
 
@@ -95,7 +96,7 @@ class SlashMenuView {
       return;
     }
 
-    const { tableName, keyValue, isFirstColumn } = tableInfo;
+    const { tableName, keyValue, isFirstColumn, columnsInRow } = tableInfo;
     const keyData = pluginState.autocompleteData?.get(tableName);
 
     if (!keyData) {
@@ -103,7 +104,7 @@ class SlashMenuView {
       return;
     }
 
-    if (isFirstColumn) {
+    if (isFirstColumn && columnsInRow === 2) {
       this.menu.items = createKeyMenuItems(keyData);
       return;
     }
