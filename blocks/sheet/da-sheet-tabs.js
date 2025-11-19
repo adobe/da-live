@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
-import { handleSave } from './utils/index.js';
+import { handleSave } from './utils/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -121,7 +121,7 @@ class DaSheetTabs extends LitElement {
       this.showSheet(0);
 
       handleSave(this.jexcel, this.tabContainer.details.view);
-      
+
       return;
     }
     if (e.submitter.value === 'confirm') {

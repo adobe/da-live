@@ -1,6 +1,6 @@
 import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
-import { debouncedSaveSheets } from './utils.js';
+import { handleSave } from './utils.js';
 import '../da-sheet-tabs.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
@@ -17,12 +17,6 @@ function resetSheets(el) {
   delete el.jexcel;
   el.innerHTML = '';
   el.className = '';
-}
-
-export function handleSave(jexcel, view) {
-  if (view !== 'config') {
-    debouncedSaveSheets(jexcel);
-  }
 }
 
 function finishSetup(el, data) {
