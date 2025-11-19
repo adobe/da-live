@@ -24,6 +24,15 @@
 
 import { addListNodes, Schema, tableNodes } from 'da-y-wrapper';
 
+function parseLocDOM(locTag) {
+  return [
+    {
+      tag: locTag,
+      contentElement: (dom) => dom,
+    },
+  ];
+}
+
 const topLevelAttrs = {
   dataId: { default: null, validate: 'string|null' },
   daDiffAdded: { default: null, validate: 'string|null' },
@@ -158,6 +167,14 @@ const baseNodes = {
       return ['br'];
     },
   },
+  loc_added: {
+    group: 'block',
+    content: 'block+',
+    atom: true,
+    isolating: true,
+    parseDOM: parseLocDOM('da-loc-added'),
+    toDOM: () => ['da-loc-added', { contenteditable: false }, 0],
+  },
   diff_added: {
     group: 'block',
     content: 'block+',
@@ -190,6 +207,14 @@ const baseNodes = {
       },
     ],
     toDOM: () => ['da-diff-added', { contenteditable: false }, 0],
+  },
+  loc_deleted: {
+    group: 'block',
+    content: 'block+',
+    atom: true,
+    isolating: true,
+    parseDOM: parseLocDOM('da-loc-deleted'),
+    toDOM: () => ['da-loc-deleted', { contenteditable: false }, 0],
   },
   diff_deleted: {
     group: 'block',
@@ -320,6 +345,13 @@ export function getSchema() {
   let { nodes } = baseSchema.spec;
   const { marks } = baseSchema.spec;
   nodes = addListNodeSchema(nodes);
+
+  // Update diff nodes to allow list_item after list nodes are added
+  nodes = nodes.update('diff_deleted', { ...nodes.get('diff_deleted'), content: '(block | list_item)+' });
+  nodes = nodes.update('diff_added', { ...nodes.get('diff_added'), content: '(block | list_item)+' });
+  nodes = nodes.update('loc_deleted', { ...nodes.get('loc_deleted'), content: '(block | list_item)+' });
+  nodes = nodes.update('loc_added', { ...nodes.get('loc_added'), content: '(block | list_item)+' });
+
   nodes = nodes.append(getTableNodeSchema());
   const customMarks = addCustomMarks(marks);
   return new Schema({ nodes, marks: customMarks });

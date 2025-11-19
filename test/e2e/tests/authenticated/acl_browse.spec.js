@@ -104,12 +104,8 @@ test('Readonly directory with writeable document', async ({ page }) => {
   // Check that the expected delete button is there (but don't click it)
   await expect(page.locator('button.delete-button').locator('visible=true')).toBeVisible();
 
-  // Open the document, this will open an new tab (aka 'popup')
-  const newTabPromise = page.waitForEvent('popup');
   await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc_writeable"]').click();
-  const newTab = await newTabPromise;
-
-  const editor = newTab.locator('div.ProseMirror');
+  const editor = page.locator('div.ProseMirror');
   await expect(editor).toContainText('This is doc_writeable');
   await expect(editor).toHaveAttribute('contenteditable', 'true');
 });

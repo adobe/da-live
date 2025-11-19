@@ -1,9 +1,7 @@
 // Global dialog management - only needed when multiple LOC nodes exist
-import {
-  Fragment,
-  Slice,
-} from 'da-y-wrapper';
+import { Slice } from 'da-y-wrapper';
 import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
+import { addToHashMetadata, ACCEPTED_KEY, REJECTED_KEY } from './diff-actions.js';
 
 const KEEP = 'keep';
 const DELETE = 'delete';
@@ -51,56 +49,67 @@ function getNodeAction(action, nodeType) {
   return IGNORE;
 }
 
-function processLocNode(tr, node, pos, action, simpleFilterContent) {
-  const nodeType = node.type.name;
-  const nodeAction = getNodeAction(action, nodeType);
-
-  if (nodeAction === KEEP) {
-    const filteredContent = simpleFilterContent(node.content.content);
-    if (filteredContent.length > 0) {
-      const newFragment = Fragment.fromArray(filteredContent);
-      const newSlice = new Slice(newFragment, 0, 0);
-      return tr.replace(pos, pos + node.nodeSize, newSlice);
-    }
-    return tr.delete(pos, pos + node.nodeSize);
+function findListItemDepth($pos) {
+  for (let { depth } = $pos; depth > 0; depth -= 1) {
+    if ($pos.node(depth).type.name === 'list_item') return depth;
   }
-
-  if (nodeAction === DELETE) {
-    return tr.delete(pos, pos + node.nodeSize);
-  }
-
   return null;
 }
 
-function processViewNodes(view, action, simpleFilterContent, isLocNode) {
+function processLocNode(tr, node, pos, action) {
+  const nodeAction = getNodeAction(action, node.type.name);
+  if (nodeAction === IGNORE) return null;
+
+  const $pos = tr.doc.resolve(pos);
+
+  if (nodeAction === KEEP) {
+    addToHashMetadata(node, ACCEPTED_KEY);
+
+    if (node.content.size === 0) return tr.delete(pos, pos + node.nodeSize);
+
+    const isInListItem = $pos.parent.type.name === 'list_item';
+    const openDepth = isInListItem ? 1 : 0;
+    const slice = new Slice(node.content, openDepth, openDepth);
+    return tr.replace(pos, pos + node.nodeSize, slice);
+  }
+
+  // DELETE action - track as rejected
+  addToHashMetadata(node, REJECTED_KEY);
+
+  const listItemDepth = findListItemDepth($pos);
+  if (listItemDepth !== null) {
+    return tr.delete($pos.before(listItemDepth), $pos.after(listItemDepth));
+  }
+  return tr.delete(pos, pos + node.nodeSize);
+}
+
+function processViewNodes(view, action, isLocNode) {
   const locNodes = getAllLocNodes(view, isLocNode);
   if (locNodes.length === 0) return false;
 
   let { tr } = view.state;
-  let hasChanges = false;
 
-  for (const { node, pos } of locNodes) {
+  locNodes.forEach(({ pos }) => {
     try {
-      const newTr = processLocNode(tr, node, pos, action, simpleFilterContent);
-      if (newTr !== null) {
-        tr = newTr;
-        hasChanges = true;
+      const mappedPos = tr.mapping.map(pos);
+      const node = tr.doc.nodeAt(mappedPos);
+
+      if (isLocNode(node)) {
+        const result = processLocNode(tr, node, mappedPos, action);
+        if (result) tr = result;
       }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.warn('Error processing loc node:', error);
     }
-  }
+  });
 
-  if (hasChanges) {
-    view.dispatch(tr);
-  }
-
-  return hasChanges;
+  view.dispatch(tr);
+  return true;
 }
 
-function handleGlobalAction(action, activeViews, simpleFilterContent, isLocNode) {
-  activeViews.forEach((view) => processViewNodes(view, action, simpleFilterContent, isLocNode));
+function handleGlobalAction(action, activeViews, isLocNode) {
+  activeViews.forEach((view) => processViewNodes(view, action, isLocNode));
   hideGlobalDialog();
 }
 
@@ -110,7 +119,6 @@ function createGlobalAction(
   action,
   tooltipText,
   activeViews,
-  simpleFilterContent,
   isLocNode,
 ) {
   const button = createElement('div', `da-diff-btn da-diff-btn-base is-${type}`);
@@ -119,7 +127,7 @@ function createGlobalAction(
   label.textContent = text;
 
   const confirm = createButton('confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': text });
-  confirm.addEventListener('click', () => handleGlobalAction(action, activeViews, simpleFilterContent, isLocNode));
+  confirm.addEventListener('click', () => handleGlobalAction(action, activeViews, isLocNode));
   confirm.appendChild(createTooltip(tooltipText, 'diff-tooltip'));
 
   button.appendChild(label);
@@ -127,12 +135,12 @@ function createGlobalAction(
   return button;
 }
 
-function createGlobalOverlay(activeViews, simpleFilterContent, isLocNode) {
+function createGlobalOverlay(activeViews, isLocNode) {
   const dialog = createElement('div', 'da-regional-edits-overlay');
   const actionsContainer = createElement('div', 'da-regional-edits-actions');
 
-  const localButton = createGlobalAction('local', 'Keep All Local', KEEP_LOCAL, 'Accept All Local', activeViews, simpleFilterContent, isLocNode);
-  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', KEEP_UPSTREAM, 'Accept All Upstream', activeViews, simpleFilterContent, isLocNode);
+  const localButton = createGlobalAction('local', 'Keep All Local', KEEP_LOCAL, 'Accept All Local', activeViews, isLocNode);
+  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', KEEP_UPSTREAM, 'Accept All Upstream', activeViews, isLocNode);
 
   actionsContainer.appendChild(localButton);
   actionsContainer.appendChild(upstreamButton);
@@ -160,7 +168,7 @@ export function showGlobalDialog(view, activeViews, simpleFilterContent, isLocNo
   if (!pmEl) return;
 
   if (!globalDialog) {
-    globalDialog = createGlobalOverlay(activeViews, simpleFilterContent, isLocNode);
+    globalDialog = createGlobalOverlay(activeViews, isLocNode);
   }
 
   pmContainer.insertBefore(globalDialog, pmEl);
