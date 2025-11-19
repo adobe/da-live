@@ -19,16 +19,20 @@ function resetSheets(el) {
   el.className = '';
 }
 
+export function handleSave(jexcel, view) {
+  if (view !== 'config') {
+    debouncedSaveSheets(jexcel);
+  }
+}
+
 function finishSetup(el, data) {
   // Set the names of each sheet to reference later
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
     sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    if (el.details.view !== 'config') {
-      sheet.options.onafterchanges = () => {
-        debouncedSaveSheets(el.jexcel);
-      };
-    }
+    sheet.options.onafterchanges = () => {
+      handleSave(el.jexcel, el.details.view);
+    };
   });
 
   // Setup tabs
