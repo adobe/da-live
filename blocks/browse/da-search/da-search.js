@@ -16,8 +16,10 @@ function getLocales(translate) {
 
   translate?.languages?.data?.forEach((lang) => {
     lang.locales?.split(',').forEach((loc) => {
-      const trimmed = loc.trim();
-      locales.add(trimmed.startsWith('/') ? trimmed.substring(1) : trimmed);
+      const dir = loc.split('/').find((part) => part?.trim() !== '');
+      if (dir) {
+        locales.add(dir.trim());
+      }
     });
   });
 
