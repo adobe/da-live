@@ -136,15 +136,20 @@ const baseNodes = {
       {
         tag: 'img[src]',
         getAttrs(dom) {
-          return {
+          const attrs = {
             src: dom.getAttribute('src'),
-            title: dom.getAttribute('title'),
             alt: dom.getAttribute('alt'),
             href: dom.getAttribute('href'),
             dataFocalX: dom.getAttribute('data-focal-x'),
             dataFocalY: dom.getAttribute('data-focal-y'),
             ...getTopLevelParseAttrs(dom),
           };
+          const title = dom.getAttribute('title');
+          // TODO: Remove this once helix properly supports data-focal-x and data-focal-y
+          if (!title?.includes('data-focal:')) {
+            attrs.title = title;
+          }
+          return attrs;
         },
       },
     ],

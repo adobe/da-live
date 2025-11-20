@@ -56,6 +56,17 @@ function makePictures(editor) {
     img.removeAttribute('draggable');
     img.removeAttribute('style');
 
+    const dataFocalX = img.getAttribute('data-focal-x');
+    const dataFocalY = img.getAttribute('data-focal-y');
+    if (dataFocalX && dataFocalY) {
+      img.setAttribute('data-title', `data-focal:${dataFocalX},${dataFocalY}`);
+    }
+
+    if (img.parentElement.classList.contains('focal-point-image-wrapper')) {
+      const wrapper = img.parentElement;
+      wrapper.parentElement.replaceChild(img, wrapper);
+    }
+
     const clone = img.cloneNode(true);
     clone.setAttribute('loading', 'lazy');
 

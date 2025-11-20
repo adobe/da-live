@@ -4,6 +4,10 @@
   }
 }
 
+sl-dialog::part(body) {
+  padding: 0;
+}
+
 svg.icon {
   display: block;
   width: 20px;
@@ -19,6 +23,12 @@ svg.icon {
 .da-dialog-header {
   display: flex;
   justify-content: space-between;
+  cursor: grab;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
 
   p {
     line-height: 1;

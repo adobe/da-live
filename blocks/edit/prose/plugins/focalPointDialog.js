@@ -128,6 +128,10 @@ export function openFocalPointDialog(view, pos, node) {
   const focalX = node.attrs.dataFocalX || '50.00';
   const focalY = node.attrs.dataFocalY || '50.00';
 
+  // Store original focal point values for cancel action
+  const originalFocalX = node.attrs.dataFocalX ? parseFloat(node.attrs.dataFocalX) : null;
+  const originalFocalY = node.attrs.dataFocalY ? parseFloat(node.attrs.dataFocalY) : null;
+
   const shouldDetectFace = !hasFocalPointData(node.attrs);
   let faceDetectionPromise = null;
 
@@ -235,6 +239,8 @@ export function openFocalPointDialog(view, pos, node) {
     currentY = Math.max(0, Math.min(100, y));
 
     updateIndicatorPosition(currentX, currentY);
+    // Continuously update ProseMirror as the user moves the focal point
+    updateNodeFocalPoint(view, pos, node, currentX, currentY);
   };
 
   const handleMouseDown = (e) => {
@@ -263,10 +269,10 @@ export function openFocalPointDialog(view, pos, node) {
   document.addEventListener('mouseup', handleMouseUp);
 
   const applyAction = {
-    label: 'Apply',
+    label: 'Accept',
     style: 'accent',
     click: () => {
-      updateNodeFocalPoint(view, pos, node, currentX, currentY);
+      // Value is already continuously updated, just close the dialog
       cleanupEventListeners(handleMouseMove, handleMouseUp);
       dialog.close();
     },
@@ -282,7 +288,11 @@ export function openFocalPointDialog(view, pos, node) {
 
   const cancelBtn = document.createElement('sl-button');
   cancelBtn.textContent = 'Cancel';
-  cancelBtn.addEventListener('click', () => dialog.close());
+  cancelBtn.addEventListener('click', () => {
+    // Restore original focal point value on cancel
+    updateNodeFocalPoint(view, pos, node, originalFocalX, originalFocalY);
+    dialog.close();
+  });
 
   const clearBtn = document.createElement('sl-button');
   clearBtn.textContent = 'Clear Focal Point';
@@ -360,6 +370,8 @@ export function openFocalPointDialog(view, pos, node) {
         currentX = faceCenter.x;
         currentY = faceCenter.y;
         updateIndicatorPosition(currentX, currentY);
+        // Update ProseMirror when face detection sets focal point
+        updateNodeFocalPoint(view, pos, node, currentX, currentY);
       }
     }).catch(() => {});
   }

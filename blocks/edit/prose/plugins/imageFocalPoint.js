@@ -28,6 +28,18 @@ function updateImageAttributes(img, attrs) {
       img.removeAttribute(attr);
     }
   });
+
+  if (attrs.dataFocalX && attrs.dataFocalY) {
+    img.setAttribute('data-focal-x', attrs.dataFocalX);
+    img.setAttribute('data-focal-y', attrs.dataFocalY);
+    // img.title = `data-focal:${attrs.dataFocalX},${attrs.dataFocalY}`;
+  } else {
+    img.removeAttribute('data-focal-x');
+    img.removeAttribute('data-focal-y');
+    if (img.title?.includes('data-focal:')) {
+      img.removeAttribute('title');
+    }
+  }
 }
 
 class ImageWithFocalPointView {
