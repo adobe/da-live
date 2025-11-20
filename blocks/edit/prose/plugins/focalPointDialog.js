@@ -142,9 +142,19 @@ export function openFocalPointDialog(view, pos, node) {
   imageContainer.className = 'focal-point-image-container';
 
   const img = document.createElement('img');
+  img.crossOrigin = 'anonymous';
   img.src = node.attrs.src;
   img.className = 'focal-point-image';
   img.draggable = false;
+
+  let corsAvailable = true;
+
+  // If CORS fails, reload without it
+  img.addEventListener('error', () => {
+    corsAvailable = false;
+    img.crossOrigin = null;
+    img.src = node.attrs.src;
+  }, { once: true });
 
   if (shouldDetectFace) {
     faceDetectionPromise = (async () => {
@@ -159,29 +169,19 @@ export function openFocalPointDialog(view, pos, node) {
           }
         });
 
+        if (!corsAvailable) {
+          // Skip face detection if CORS wasn't available
+          return null;
+        }
+
         const loaded = await loadFaceApi();
 
         if (loaded) {
-          // Check if image is same-origin to avoid CORS issues
-          const imageSrc = node.attrs.src;
-          const isSameOrigin = (() => {
-            try {
-              const imgUrl = new URL(imageSrc, window.location.href);
-              return imgUrl.origin === window.location.origin;
-            } catch {
-              return false;
-            }
-          })();
-
-          if (!isSameOrigin) {
-            return null;
-          }
-
           const faceCenter = await detectFaceCenter(img);
           return faceCenter;
         }
-      } catch (error) {
-        // Ignore errors
+      } catch (e) {
+        // ignore
       }
       return null;
     })();
