@@ -18,6 +18,7 @@ class FormEditor extends LitElement {
 
   update(props) {
     if (props.has('formModel') && this.formModel) {
+      console.debug('[da-form-editor] formModel changed, regenerating annotated data');
       this.getData();
     }
     super.update(props);
@@ -28,6 +29,7 @@ class FormEditor extends LitElement {
   }
 
   emitReplace(pointer, value) {
+    console.debug('[da-form-editor] emit replace', { path: pointer, value });
     this.dispatchEvent(new CustomEvent('form-model-intent', {
       detail: { op: 'replace', path: pointer, value },
       bubbles: true,

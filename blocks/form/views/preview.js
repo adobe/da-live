@@ -17,11 +17,13 @@ class FormPreview extends LitElement {
 
   updated() {
     if (this.formModel) {
+      console.debug('[da-form-preview] formModel changed, updating preview');
       this.setPreview();
     }
   }
 
   async setPreview() {
+    console.debug('[da-form-preview] setPreview start');
     this.toggleVis();
     await this.loadPrism();
     if (this.code) this.code.remove();
@@ -33,6 +35,7 @@ class FormPreview extends LitElement {
     code.textContent = JSON.stringify(this.formModel.json, null, 2);
     window.Prism.highlightElement(code);
     this.toggleVis();
+    console.debug('[da-form-preview] setPreview done');
   }
 
   async loadPrism() {
