@@ -20,20 +20,16 @@ const loadDialogStyles = () => {
 };
 
 const loadFaceApi = async () => {
-  // Return early if already loaded
   if (faceApiLoaded) {
     return true;
   }
 
-  // If loading is in progress, wait for it
   if (faceApiLoading) {
     return faceApiLoading;
   }
 
-  // Start loading
   faceApiLoading = (async () => {
     try {
-      // Load face-api.js library
       if (!window.faceapi) {
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
@@ -48,13 +44,11 @@ const loadFaceApi = async () => {
         });
       }
 
-      // Load tinyFaceDetector model
       await window.faceapi.nets.tinyFaceDetector.loadFromUri('/deps/face-api/');
 
       faceApiLoaded = true;
       return true;
     } catch (error) {
-      // Silent failure - fall back to manual positioning
       return false;
     }
   })();
@@ -87,7 +81,6 @@ const detectFaceCenter = async (img) => {
     };
     return result;
   } catch (error) {
-    // Silent failure - return null to fall back to default
     return null;
   }
 };
@@ -135,7 +128,6 @@ export function openFocalPointDialog(view, pos, node) {
   const focalX = node.attrs.dataFocalX || '50.00';
   const focalY = node.attrs.dataFocalY || '50.00';
 
-  // Detect face and set focal point if no existing focal point data
   const shouldDetectFace = !hasFocalPointData(node.attrs);
   let faceDetectionPromise = null;
 
@@ -154,20 +146,19 @@ export function openFocalPointDialog(view, pos, node) {
   img.className = 'focal-point-image';
   img.draggable = false;
 
-  // Promise that resolves when image is loaded
-  const imageLoadedPromise = new Promise((resolve) => {
-    if (img.complete) {
-      resolve();
-    } else {
-      img.addEventListener('load', () => resolve());
-      img.addEventListener('error', () => resolve()); // Resolve anyway to not block UI
-    }
-  });
-
-  // Set up face detection if needed
   if (shouldDetectFace) {
     faceDetectionPromise = (async () => {
       try {
+        // Wait for image to be loaded before detecting face
+        await new Promise((resolve) => {
+          if (img.complete && img.naturalWidth > 0) {
+            resolve();
+          } else {
+            img.addEventListener('load', () => resolve());
+            img.addEventListener('error', () => resolve());
+          }
+        });
+
         const loaded = await loadFaceApi();
 
         if (loaded) {
@@ -190,7 +181,7 @@ export function openFocalPointDialog(view, pos, node) {
           return faceCenter;
         }
       } catch (error) {
-        // Silent failure
+        // Ignore errors
       }
       return null;
     })();
@@ -296,7 +287,6 @@ export function openFocalPointDialog(view, pos, node) {
   const clearBtn = document.createElement('sl-button');
   clearBtn.textContent = 'Clear Focal Point';
 
-  // Disable Clear button if there's no focal point data currently set
   if (!hasFocalPointData(node.attrs)) {
     clearBtn.setAttribute('disabled', 'true');
   }
@@ -307,7 +297,6 @@ export function openFocalPointDialog(view, pos, node) {
     dialog.close();
   });
 
-  // Customize dialog after it renders in shadow DOM
   setTimeout(() => {
     if (dialog.shadowRoot) {
       const widthStyle = document.createElement('style');
@@ -343,12 +332,28 @@ export function openFocalPointDialog(view, pos, node) {
   document.body.appendChild(dialog);
   currentDialog = dialog;
 
-  // Wait for image to load before positioning indicator
-  imageLoadedPromise.then(() => {
-    updateIndicatorPosition(currentX, currentY);
-  });
+  // Wait for image to load and DOM layout before positioning indicator
+  const positionIndicator = () => {
+    if (img.complete && img.naturalWidth > 0) {
+      requestAnimationFrame(() => {
+        updateIndicatorPosition(currentX, currentY);
+      });
+    } else {
+      img.addEventListener('load', () => {
+        requestAnimationFrame(() => {
+          updateIndicatorPosition(currentX, currentY);
+        });
+      });
+      img.addEventListener('error', () => {
+        requestAnimationFrame(() => {
+          updateIndicatorPosition(currentX, currentY);
+        });
+      });
+    }
+  };
 
-  // Apply face detection result if it's in progress
+  positionIndicator();
+
   if (faceDetectionPromise) {
     faceDetectionPromise.then((faceCenter) => {
       if (faceCenter && !isDragging) {
@@ -356,8 +361,6 @@ export function openFocalPointDialog(view, pos, node) {
         currentY = faceCenter.y;
         updateIndicatorPosition(currentX, currentY);
       }
-    }).catch(() => {
-      // Silent failure
-    });
+    }).catch(() => {});
   }
 }
