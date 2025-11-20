@@ -37,8 +37,7 @@ export default class LinkMenu extends InContextMenu {
   render() {
     return html`
       <div class="link-menu-items">
-        ${this.items.map((item, index) => {
-          return html`
+        ${this.items.map((item, index) => html`
             <div
               class="link-menu-item ${index === this.selectedIndex ? 'selected' : ''}"
               @mouseenter=${() => { this.selectedIndex = index; }}
@@ -49,12 +48,10 @@ export default class LinkMenu extends InContextMenu {
               <span class="link-menu-label">
                 ${item.title}
               </span>
-            </div>`;
-        })}
+            </div>`)}
       </div>
     `;
   }
 }
 
 customElements.define('link-menu', LinkMenu);
-

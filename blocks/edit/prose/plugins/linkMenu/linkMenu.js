@@ -6,14 +6,14 @@ const linkMenuKey = new PluginKey('linkMenu');
 
 // Check if the cursor is on a link
 function isOnLink(state) {
-  const { $from, $to, empty } = state.selection;
-  
+  const { $from, empty } = state.selection;
+
   if (!empty) return false;
-  
+
   // Check if cursor is within a link mark
   const { node } = $from.parent.childAfter($from.parentOffset);
   if (!node) return false;
-  
+
   return node.marks.some((mark) => mark.type.name === 'link');
 }
 
@@ -21,7 +21,7 @@ function isOnLink(state) {
 function getLinkOffset(state) {
   const { $from } = state.selection;
   const { offset } = $from.parent.childAfter($from.parentOffset);
-  
+
   const absolutePos = $from.start() + offset;
   return absolutePos;
 }
@@ -30,7 +30,7 @@ function getLinkOffset(state) {
 function getLinkText(state) {
   const { $from } = state.selection;
   const { node } = $from.parent.childAfter($from.parentOffset);
-  
+
   return node?.textContent || '';
 }
 
@@ -70,7 +70,7 @@ class LinkMenuView {
 
     if (isOnLink(state)) {
       const currentOffset = getLinkOffset(state);
-      
+
       if (!this.menu.visible || currentOffset !== this.lastLinkOffset) {
         this.lastLinkOffset = currentOffset;
         this.showMenu();
@@ -129,4 +129,3 @@ export default function linkMenu() {
     },
   });
 }
-

@@ -1,3 +1,17 @@
+function findLinkAtCursor(state) {
+  const { $from, $to } = state.selection;
+  let linkMark = null;
+
+  state.doc.nodesBetween($from.pos, $to.pos, (node) => {
+    if (!linkMark) {
+      const link = node.marks.find((mark) => mark.type.name === 'link');
+      if (link) linkMark = link;
+    }
+  });
+
+  return linkMark;
+}
+
 function openLink(state) {
   const linkMark = findLinkAtCursor(state);
   if (linkMark?.attrs?.href) {
@@ -22,20 +36,7 @@ function copyLink(state) {
   return true;
 }
 
-function findLinkAtCursor(state) {
-  const { $from, $to } = state.selection;
-  let linkMark = null;
-  
-  state.doc.nodesBetween($from.pos, $to.pos, (node) => {
-    if (!linkMark) {
-      const link = node.marks.find((mark) => mark.type.name === 'link');
-      if (link) linkMark = link;
-    }
-  });
-  
-  return linkMark;
-}
-
+/* eslint-disable import/prefer-default-export */
 export function getLinkMenuItems() {
   return [
     {
@@ -55,4 +56,3 @@ export function getLinkMenuItems() {
     },
   ];
 }
-

@@ -1,9 +1,6 @@
 import { LitElement, html } from 'da-lit';
 
-/**
- * Base class for context menus in the editor (slash menu, link menu, etc.)
- * Provides common functionality for positioning, keyboard navigation, and item selection
- */
+/* shared base class for slash menu and link menu */
 export default class InContextMenu extends LitElement {
   static properties = {
     items: { type: Array },
@@ -24,7 +21,6 @@ export default class InContextMenu extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    // Subclasses should set adoptedStyleSheets in their connectedCallback
   }
 
   show(coords) {
@@ -83,9 +79,7 @@ export default class InContextMenu extends LitElement {
     this.hide();
   }
 
-  /**
-   * Get the items to display - can be overridden by subclasses for filtering
-   */
+  // overridden by subclasses
   getDisplayItems() {
     return this.items;
   }
@@ -153,11 +147,7 @@ export default class InContextMenu extends LitElement {
     });
   }
 
-  /**
-   * Subclasses must implement render()
-   */
   render() {
     return html``;
   }
 }
-

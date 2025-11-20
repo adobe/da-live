@@ -87,7 +87,6 @@ export default class SlashMenu extends InContextMenu {
   }
 
   previous() {
-    const filteredItems = this.getFilteredItems();
     if (this.parent && this.selectedIndex === 0) {
       this.parent.previous();
       return;
