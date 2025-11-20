@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
-import { getKeyAutocomplete, normalizeForSlashMenu } from './keyAutocomplete.js';
+import { getKeyAutocomplete, normalizeForSlashMenu, createKeyMenuItems } from './keyAutocomplete.js';
 import { getDefaultItems, getTableCellItems, getTableItems } from './slashMenuItems.js';
 import './slash-menu.js';
 
@@ -51,6 +51,8 @@ const getTableName = ($cursor) => {
     return {
       tableName: tableNameMatch[1],
       keyValue: currentRowFirstColContent,
+      isFirstColumn: cellIndex === 0,
+      columnsInRow: row.childCount,
     };
   }
 
@@ -88,28 +90,41 @@ class SlashMenuView {
       return;
     }
 
-    const { tableName, keyValue } = getTableName($cursor);
-    if (tableName) {
-      const keyData = pluginState.autocompleteData?.get(tableName);
-      const normalizedKey = normalizeForSlashMenu(keyValue);
-      if (keyData && keyData.get(normalizedKey)) {
-        this.menu.items = keyData.get(normalizedKey);
-      } else {
-        this.menu.items = getTableItems(state);
-      }
-    } else {
+    const tableInfo = getTableName($cursor);
+    if (!tableInfo) {
       this.menu.items = getDefaultItems();
+      return;
     }
+
+    const { tableName, keyValue, isFirstColumn, columnsInRow } = tableInfo;
+    const keyData = pluginState.autocompleteData?.get(tableName);
+
+    if (!keyData) {
+      this.menu.items = getTableItems(state);
+      return;
+    }
+
+    if (isFirstColumn && columnsInRow === 2) {
+      this.menu.items = createKeyMenuItems(keyData);
+      return;
+    }
+
+    const normalizedKey = normalizeForSlashMenu(keyValue);
+    this.menu.items = keyData.get(normalizedKey) || getTableItems(state);
   }
 
   cellHasMenuItems(pluginState, $cursor) {
-    const { tableName, keyValue } = getTableName($cursor);
-    if (tableName) {
-      const keyData = pluginState.autocompleteData?.get(tableName);
-      const normalizedKey = normalizeForSlashMenu(keyValue);
-      return keyData && keyData.get(normalizedKey);
-    }
-    return false;
+    const tableInfo = getTableName($cursor);
+    if (!tableInfo) return false;
+
+    const { tableName, keyValue, isFirstColumn } = tableInfo;
+    const keyData = pluginState.autocompleteData?.get(tableName);
+    if (!keyData) return false;
+
+    if (isFirstColumn) return true;
+
+    const normalizedKey = normalizeForSlashMenu(keyValue);
+    return keyData.has(normalizedKey);
   }
 
   showMenu(command) {
