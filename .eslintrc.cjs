@@ -10,6 +10,7 @@ module.exports = {
   },
   rules: {
     'import/no-unresolved': 'off',
+    'import/no-cycle': 'off',
     'no-param-reassign': [2, { props: false }],
     'linebreak-style': ['error', 'unix'],
     'import/extensions': ['error', { js: 'always' }],
