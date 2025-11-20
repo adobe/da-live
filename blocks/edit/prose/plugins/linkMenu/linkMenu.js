@@ -18,13 +18,12 @@ function isOnLink(state) {
 }
 
 // Get the link mark at cursor position
-function getLinkAtCursor(state) {
+function getLinkOffset(state) {
   const { $from } = state.selection;
-  const { node } = $from.parent.childAfter($from.parentOffset);
+  const { offset } = $from.parent.childAfter($from.parentOffset);
   
-  if (!node) return null;
-  
-  return node.marks.find((mark) => mark.type.name === 'link');
+  const absolutePos = $from.start() + offset;
+  return absolutePos;
 }
 
 // Get the text content of the link
@@ -40,6 +39,7 @@ class LinkMenuView {
     this.view = view;
     this.menu = document.createElement('link-menu');
     this.menu.items = getLinkMenuItems();
+    this.lastLinkOffset = null;
 
     this.menu.addEventListener('item-selected', (e) => {
       this.selectItem(e.detail);
@@ -69,7 +69,10 @@ class LinkMenuView {
     const { state } = view;
 
     if (isOnLink(state)) {
-      if (!this.menu.visible) {
+      const currentOffset = getLinkOffset(state);
+      
+      if (!this.menu.visible || currentOffset !== this.lastLinkOffset) {
+        this.lastLinkOffset = currentOffset;
         this.showMenu();
       }
     } else if (this.menu.visible) {
@@ -91,6 +94,7 @@ class LinkMenuView {
   }
 
   hide() {
+    this.lastLinkOffset = null;
     this.menu.hide();
   }
 
