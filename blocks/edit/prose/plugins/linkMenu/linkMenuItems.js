@@ -12,9 +12,9 @@ function findExistingLink(state) {
 export function findLinkAtCursor(state) {
   const linkMarkType = state.schema.marks.link;
   const { link } = findExistingLink(state);
-  
+
   if (!link) return null;
-  
+
   return link.marks.find((mark) => mark.type === linkMarkType);
 }
 
@@ -54,14 +54,14 @@ function copyLink(state) {
 function removeLink(state, dispatch) {
   const linkMarkType = state.schema.marks.link;
   const { link, offset } = findExistingLink(state);
-  
+
   if (!link) return false;
-  
+
   const { start, end } = calculateLinkPosition(state, link, offset);
   const tr = state.tr
     .setSelection(TextSelection.create(state.doc, start, end))
     .removeMark(start, end, linkMarkType);
-  
+
   dispatch(tr);
   return true;
 }
