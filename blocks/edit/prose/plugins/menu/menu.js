@@ -30,6 +30,12 @@ import { handleUndo, handleRedo } from '../keyHandlers.js';
 import insertTable from '../../table.js';
 import { linkItem, removeLinkItem } from './linkItem.js';
 import { markActive } from './menuUtils.js';
+import {
+  createFloatingToolbar,
+  positionToolbar,
+  shouldShowToolbar,
+  createClickOutsideHandler,
+} from './floatingToolbar.js';
 
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
@@ -444,8 +450,44 @@ export default new Plugin({
     palettes.className = 'da-palettes';
     view.dom.insertAdjacentElement('beforebegin', menu);
     view.dom.insertAdjacentElement('afterend', palettes);
-    update(view.state);
+    
+    // Create floating toolbar with text blocks
+    const { marks, nodes } = view.state.schema;
+    const textBlocks = getTextBlocks(marks, nodes);
+    const floatingToolbar = createFloatingToolbar(view, textBlocks);
+    
+    let lastSelection = null;
+    
+    document.addEventListener('mousedown', createClickOutsideHandler(view, floatingToolbar));
+    
     // eslint-disable-next-line no-shadow
-    return { update: (view) => update(view.state) };
+    return {
+      update: (view) => {
+        update(view.state);
+        
+        const { from, to } = view.state.selection;
+        const selectionChanged = !lastSelection || 
+          lastSelection.from !== from || 
+          lastSelection.to !== to;
+        
+        if (selectionChanged) {
+          if (shouldShowToolbar(view)) {
+            setTimeout(() => {
+              positionToolbar(view, floatingToolbar);
+            }, 50);
+          } else {
+            floatingToolbar.style.display = 'none';
+          }
+        }
+        
+        lastSelection = { from, to };
+      },
+      destroy: () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        if (floatingToolbar && floatingToolbar.parentNode) {
+          floatingToolbar.parentNode.removeChild(floatingToolbar);
+        }
+      },
+    };
   },
 });
