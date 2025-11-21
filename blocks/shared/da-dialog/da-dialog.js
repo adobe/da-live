@@ -16,6 +16,7 @@ export default class DaDialog extends LitElement {
     title: { type: String },
     message: { attribute: false },
     action: { state: true },
+    size: { type: String }, // 'small', 'medium', 'large'
     _showLazyModal: { state: true },
   };
 
@@ -121,10 +122,11 @@ export default class DaDialog extends LitElement {
   }
 
   render() {
+    const sizeClass = this.size ? `da-dialog-${this.size}` : '';
     return html`
       <sl-dialog @close=${this.close}>
-        <div class="da-dialog-inner">
-          <div class="da-dialog-header" @mousedown=${this._startDrag}>
+        <div class="da-dialog-inner ${sizeClass}" part="inner">
+          <div class="da-dialog-header" part="header" @mousedown=${this._startDrag}>
             <p class="sl-heading-m">${this.title}</p>
             <button
               class="da-dialog-close-btn"
@@ -134,14 +136,19 @@ export default class DaDialog extends LitElement {
             </button>
           </div>
           <hr/>
-          <div class="da-dialog-content">
+          <div class="da-dialog-content" part="content">
             <slot></slot>
           </div>
-          <div class="da-dialog-footer">
-            <p class="da-dialog-footer-message">${this.message || nothing}</p>
+          <div class="da-dialog-footer" part="footer">
+            <div class="da-dialog-footer-left" part="footer-left">
+              <slot name="footer-left"></slot>
+              <p class="da-dialog-footer-message">${this.message || nothing}</p>
+            </div>
+            <slot name="footer-right">
               <sl-button class="${this._action.style}" @click=${this._action.click} ?disabled=${this._action.disabled}>
                 ${this._action.label}
               </sl-button>
+            </slot>
           </div>
         </div>
       </sl-dialog>

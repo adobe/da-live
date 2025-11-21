@@ -20,6 +20,15 @@ svg.icon {
   box-sizing: border-box;
 }
 
+.da-dialog-inner.da-dialog-small {
+  width: 300px;
+}
+
+.da-dialog-inner.da-dialog-large {
+  width: 700px;
+  max-width: 90vw;
+}
+
 .da-dialog-header {
   display: flex;
   justify-content: space-between;
@@ -72,4 +81,9 @@ hr {
   .da-dialog-footer-message {
     font-style: italic;
   }
+}
+
+.da-dialog-footer-left {
+  display: flex;
+  gap: 8px;
 }

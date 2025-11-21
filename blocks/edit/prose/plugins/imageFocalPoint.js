@@ -1,8 +1,10 @@
 import { Plugin } from 'da-y-wrapper';
+import inlinesvg from '../../../shared/inlinesvg.js';
 import { openFocalPointDialog } from './focalPointDialog.js';
 import getSheet from '../../../shared/sheet.js';
 
 const focalPointSheet = await getSheet('/blocks/edit/prose/plugins/focalPointDialog.css');
+const injectedRoots = new WeakSet();
 
 function isInTableCell(state, pos) {
   const $pos = state.doc.resolve(pos);
@@ -58,16 +60,18 @@ class ImageWithFocalPointView {
     this.icon.className = hasFocalPointData(node.attrs)
       ? 'focal-point-icon focal-point-icon-active'
       : 'focal-point-icon';
-    this.icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 0 18 18" width="18"><circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="1.5" /><line x1="9" y1="4" x2="9" y2="7" stroke="currentColor" stroke-width="1.5" /><line x1="9" y1="11" x2="9" y2="14" stroke="currentColor" stroke-width="1.5" /><line x1="4" y1="9" x2="7" y2="9" stroke="currentColor" stroke-width="1.5" /><line x1="11" y1="9" x2="14" y2="9" stroke="currentColor" stroke-width="1.5" /><circle cx="9" cy="9" r="1.5" fill="currentColor" /></svg>';
 
-    this.icon.addEventListener('click', (e) => {
+    inlinesvg({ parent: this.icon, paths: ['/blocks/edit/img/Smock_Crosshairs_18_N.svg'] });
+
+    this.handleIconClick = (e) => {
       e.preventDefault();
       e.stopPropagation();
       const pos = this.getPos();
       if (pos != null) {
         openFocalPointDialog(this.view, pos, this.node);
       }
-    });
+    };
+    this.icon.addEventListener('click', this.handleIconClick);
 
     this.dom.appendChild(this.img);
     this.dom.appendChild(this.icon);
@@ -91,20 +95,18 @@ class ImageWithFocalPointView {
 }
 
 export default function imageFocalPoint() {
-  let styleInjected = false;
-
   return new Plugin({
     view() {
       return {
         update(view) {
-          if (!styleInjected) {
-            const shadowRoot = view.dom.getRootNode();
+          const shadowRoot = view.dom.getRootNode();
 
-            if (shadowRoot && shadowRoot instanceof ShadowRoot && shadowRoot.adoptedStyleSheets) {
+          if (shadowRoot instanceof ShadowRoot && shadowRoot.adoptedStyleSheets) {
+            if (!injectedRoots.has(shadowRoot)) {
               if (!shadowRoot.adoptedStyleSheets.includes(focalPointSheet)) {
                 shadowRoot.adoptedStyleSheets = [...shadowRoot.adoptedStyleSheets, focalPointSheet];
               }
-              styleInjected = true;
+              injectedRoots.add(shadowRoot);
             }
           }
         },

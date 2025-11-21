@@ -1,32 +1,28 @@
 import '../../../shared/da-dialog/da-dialog.js';
+import inlinesvg from '../../../shared/inlinesvg.js';
+import getSheet from '../../../shared/sheet.js';
 
 let currentDialog = null;
 let stylesLoaded = false;
 let faceApiLoaded = false;
 let faceApiLoading = null;
+let faceDetectorOptions = null;
 
-const DIALOG_RENDER_DELAY = 50;
+const loadDialogStyles = async () => {
+  if (stylesLoaded) return;
 
-// Content is slotted and lives in light DOM, so styles must be in main document
-const loadDialogStyles = () => {
-  if (!stylesLoaded && !document.getElementById('focal-point-dialog-styles')) {
-    const link = document.createElement('link');
-    link.id = 'focal-point-dialog-styles';
-    link.rel = 'stylesheet';
-    link.href = '/blocks/edit/prose/plugins/focalPointDialog.css';
-    document.head.appendChild(link);
-    stylesLoaded = true;
+  const styleSheet = await getSheet('/blocks/edit/prose/plugins/focalPointDialog.css');
+
+  if (!document.adoptedStyleSheets.includes(styleSheet)) {
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet];
   }
+
+  stylesLoaded = true;
 };
 
 const loadFaceApi = async () => {
-  if (faceApiLoaded) {
-    return true;
-  }
-
-  if (faceApiLoading) {
-    return faceApiLoading;
-  }
+  if (faceApiLoaded) return true;
+  if (faceApiLoading) return faceApiLoading;
 
   faceApiLoading = (async () => {
     try {
@@ -34,18 +30,14 @@ const loadFaceApi = async () => {
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = '/deps/face-api/face-api.min.js';
-          script.onload = () => {
-            resolve();
-          };
-          script.onerror = () => {
-            reject(new Error('Failed to load face-api.js'));
-          };
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Failed to load face-api.js'));
           document.head.appendChild(script);
         });
       }
 
       await window.faceapi.nets.tinyFaceDetector.loadFromUri('/deps/face-api/');
-
+      faceDetectorOptions = new window.faceapi.TinyFaceDetectorOptions();
       faceApiLoaded = true;
       return true;
     } catch (error) {
@@ -58,14 +50,8 @@ const loadFaceApi = async () => {
 
 const detectFaceCenter = async (img) => {
   try {
-    const detection = await window.faceapi.detectSingleFace(
-      img,
-      new window.faceapi.TinyFaceDetectorOptions(),
-    );
-
-    if (!detection) {
-      return null;
-    }
+    const detection = await window.faceapi.detectSingleFace(img, faceDetectorOptions);
+    if (!detection) return null;
 
     const { box } = detection;
     const imgWidth = img.naturalWidth || img.width;
@@ -75,11 +61,10 @@ const detectFaceCenter = async (img) => {
     const centerX = ((box.x + box.width / 2) / imgWidth) * 100;
     const centerY = ((box.y + box.height / 2) / imgHeight) * 100;
 
-    const result = {
+    return {
       x: Math.max(0, Math.min(100, centerX)),
       y: Math.max(0, Math.min(100, centerY)),
     };
-    return result;
   } catch (error) {
     return null;
   }
@@ -97,7 +82,7 @@ function createCoordinateInput(label, value) {
   input.type = 'text';
   input.value = `${parseFloat(value).toFixed(2)}%`;
   input.className = 'focal-point-input';
-  input.readOnly = true;
+  input.disabled = true;
   labelEl.appendChild(input);
   return { labelEl, input };
 }
@@ -108,6 +93,12 @@ function cleanupEventListeners(handleMouseMove, handleMouseUp) {
 }
 
 function updateNodeFocalPoint(view, pos, node, x, y) {
+  // Verify the node at pos is still the same image
+  const docNode = view.state.doc.nodeAt(pos);
+  if (!docNode || docNode.type.name !== node.type.name || docNode.attrs.src !== node.attrs.src) {
+    return;
+  }
+
   const tr = view.state.tr.setNodeMarkup(pos, null, {
     ...node.attrs,
     dataFocalX: x?.toFixed(2) || null,
@@ -117,27 +108,27 @@ function updateNodeFocalPoint(view, pos, node, x, y) {
 }
 
 // eslint-disable-next-line import/prefer-default-export
-export function openFocalPointDialog(view, pos, node) {
-  loadDialogStyles();
+export async function openFocalPointDialog(view, pos, node) {
+  await loadDialogStyles();
 
   if (currentDialog) {
     currentDialog.remove();
     currentDialog = null;
   }
 
-  const focalX = node.attrs.dataFocalX || '50.00';
-  const focalY = node.attrs.dataFocalY || '50.00';
+  const parseCoord = (val) => (val ? parseFloat(val) : null);
+  const originalFocalX = parseCoord(node.attrs.dataFocalX);
+  const originalFocalY = parseCoord(node.attrs.dataFocalY);
 
-  // Store original focal point values for cancel action
-  const originalFocalX = node.attrs.dataFocalX ? parseFloat(node.attrs.dataFocalX) : null;
-  const originalFocalY = node.attrs.dataFocalY ? parseFloat(node.attrs.dataFocalY) : null;
+  let currentX = originalFocalX ?? 50;
+  let currentY = originalFocalY ?? 50;
 
   const shouldDetectFace = !hasFocalPointData(node.attrs);
-  let faceDetectionPromise = null;
 
   const dialog = document.createElement('da-dialog');
   dialog.title = 'Set Image Focal Point';
   dialog.className = 'focal-point-dialog';
+  dialog.size = 'large';
 
   const content = document.createElement('div');
   content.className = 'focal-point-content';
@@ -160,39 +151,9 @@ export function openFocalPointDialog(view, pos, node) {
     img.src = node.attrs.src;
   }, { once: true });
 
-  if (shouldDetectFace) {
-    faceDetectionPromise = (async () => {
-      try {
-        // Wait for image to be loaded before detecting face
-        await new Promise((resolve) => {
-          if (img.complete && img.naturalWidth > 0) {
-            resolve();
-          } else {
-            img.addEventListener('load', () => resolve());
-            img.addEventListener('error', () => resolve());
-          }
-        });
-
-        if (!corsAvailable) {
-          // Skip face detection if CORS wasn't available
-          return null;
-        }
-
-        const loaded = await loadFaceApi();
-
-        if (loaded) {
-          const faceCenter = await detectFaceCenter(img);
-          return faceCenter;
-        }
-      } catch (e) {
-        // ignore
-      }
-      return null;
-    })();
-  }
-
   const indicator = document.createElement('div');
   indicator.className = 'focal-point-indicator';
+  inlinesvg({ parent: indicator, paths: ['/blocks/edit/img/Smock_Crosshairs_18_N.svg'] });
 
   imageContainer.appendChild(img);
   imageContainer.appendChild(indicator);
@@ -200,8 +161,8 @@ export function openFocalPointDialog(view, pos, node) {
   const coordsContainer = document.createElement('div');
   coordsContainer.className = 'focal-point-coords';
 
-  const { labelEl: xLabel, input: xInput } = createCoordinateInput('X', focalX);
-  const { labelEl: yLabel, input: yInput } = createCoordinateInput('Y', focalY);
+  const { labelEl: xLabel, input: xInput } = createCoordinateInput('X', currentX);
+  const { labelEl: yLabel, input: yInput } = createCoordinateInput('Y', currentY);
 
   coordsContainer.appendChild(xLabel);
   coordsContainer.appendChild(yLabel);
@@ -211,8 +172,6 @@ export function openFocalPointDialog(view, pos, node) {
   dialog.appendChild(content);
 
   let isDragging = false;
-  let currentX = parseFloat(focalX);
-  let currentY = parseFloat(focalY);
 
   const updateIndicatorPosition = (x, y) => {
     const imgRect = img.getBoundingClientRect();
@@ -230,6 +189,35 @@ export function openFocalPointDialog(view, pos, node) {
     yInput.value = `${y.toFixed(2)}%`;
   };
 
+  if (shouldDetectFace) {
+    (async () => {
+      try {
+        await new Promise((resolve) => {
+          if (img.complete && img.naturalWidth > 0) resolve();
+          else {
+            img.addEventListener('load', () => resolve(), { once: true });
+            img.addEventListener('error', () => resolve(), { once: true });
+          }
+        });
+
+        if (!corsAvailable) return;
+
+        const loaded = await loadFaceApi();
+        if (loaded) {
+          const faceCenter = await detectFaceCenter(img);
+          if (faceCenter && !isDragging) {
+            currentX = faceCenter.x;
+            currentY = faceCenter.y;
+            updateIndicatorPosition(currentX, currentY);
+            updateNodeFocalPoint(view, pos, node, currentX, currentY);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }
+
   const updatePositionFromEvent = (e) => {
     const rect = img.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -239,8 +227,6 @@ export function openFocalPointDialog(view, pos, node) {
     currentY = Math.max(0, Math.min(100, y));
 
     updateIndicatorPosition(currentX, currentY);
-    // Continuously update ProseMirror as the user moves the focal point
-    updateNodeFocalPoint(view, pos, node, currentX, currentY);
   };
 
   const handleMouseDown = (e) => {
@@ -249,6 +235,7 @@ export function openFocalPointDialog(view, pos, node) {
       imageContainer.style.cursor = 'crosshair';
       e.preventDefault();
       updatePositionFromEvent(e);
+      updateNodeFocalPoint(view, pos, node, currentX, currentY);
     }
   };
 
@@ -261,6 +248,7 @@ export function openFocalPointDialog(view, pos, node) {
     if (isDragging) {
       isDragging = false;
       imageContainer.style.cursor = '';
+      updateNodeFocalPoint(view, pos, node, currentX, currentY);
     }
   };
 
@@ -268,17 +256,14 @@ export function openFocalPointDialog(view, pos, node) {
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', handleMouseUp);
 
-  const applyAction = {
+  dialog.action = {
     label: 'Accept',
     style: 'accent',
     click: () => {
-      // Value is already continuously updated, just close the dialog
       cleanupEventListeners(handleMouseMove, handleMouseUp);
       dialog.close();
     },
   };
-
-  dialog.action = applyAction;
 
   dialog.addEventListener('close', () => {
     cleanupEventListeners(handleMouseMove, handleMouseUp);
@@ -288,14 +273,15 @@ export function openFocalPointDialog(view, pos, node) {
 
   const cancelBtn = document.createElement('sl-button');
   cancelBtn.textContent = 'Cancel';
+  cancelBtn.slot = 'footer-left';
   cancelBtn.addEventListener('click', () => {
-    // Restore original focal point value on cancel
     updateNodeFocalPoint(view, pos, node, originalFocalX, originalFocalY);
     dialog.close();
   });
 
   const clearBtn = document.createElement('sl-button');
   clearBtn.textContent = 'Clear Focal Point';
+  clearBtn.slot = 'footer-left';
 
   if (!hasFocalPointData(node.attrs)) {
     clearBtn.setAttribute('disabled', 'true');
@@ -307,72 +293,27 @@ export function openFocalPointDialog(view, pos, node) {
     dialog.close();
   });
 
-  setTimeout(() => {
-    if (dialog.shadowRoot) {
-      const widthStyle = document.createElement('style');
-      widthStyle.textContent = `
-        .da-dialog-inner {
-          width: 700px !important;
-          max-width: 90vw !important;
-        }
-        .da-dialog-footer {
-          display: flex !important;
-          justify-content: space-between !important;
-          gap: 12px !important;
-        }
-        .da-dialog-footer-left {
-          display: flex;
-          gap: 8px;
-        }
-      `;
-      dialog.shadowRoot.appendChild(widthStyle);
-
-      const footer = dialog.shadowRoot.querySelector('.da-dialog-footer');
-      if (footer) {
-        const leftButtons = document.createElement('div');
-        leftButtons.className = 'da-dialog-footer-left';
-        leftButtons.appendChild(cancelBtn);
-        leftButtons.appendChild(clearBtn);
-
-        footer.insertBefore(leftButtons, footer.firstChild);
-      }
-    }
-  }, DIALOG_RENDER_DELAY);
+  dialog.appendChild(cancelBtn);
+  dialog.appendChild(clearBtn);
 
   document.body.appendChild(dialog);
   currentDialog = dialog;
 
   // Wait for image to load and DOM layout before positioning indicator
   const positionIndicator = () => {
-    if (img.complete && img.naturalWidth > 0) {
+    const update = () => {
       requestAnimationFrame(() => {
         updateIndicatorPosition(currentX, currentY);
       });
+    };
+
+    if (img.complete && img.naturalWidth > 0) {
+      update();
     } else {
-      img.addEventListener('load', () => {
-        requestAnimationFrame(() => {
-          updateIndicatorPosition(currentX, currentY);
-        });
-      });
-      img.addEventListener('error', () => {
-        requestAnimationFrame(() => {
-          updateIndicatorPosition(currentX, currentY);
-        });
-      });
+      img.addEventListener('load', update);
+      img.addEventListener('error', update);
     }
   };
 
   positionIndicator();
-
-  if (faceDetectionPromise) {
-    faceDetectionPromise.then((faceCenter) => {
-      if (faceCenter && !isDragging) {
-        currentX = faceCenter.x;
-        currentY = faceCenter.y;
-        updateIndicatorPosition(currentX, currentY);
-        // Update ProseMirror when face detection sets focal point
-        updateNodeFocalPoint(view, pos, node, currentX, currentY);
-      }
-    }).catch(() => {});
-  }
 }
