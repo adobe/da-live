@@ -35,6 +35,7 @@ import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
+import linkMenu from './plugins/linkMenu/linkMenu.js';
 import {
   handleTableBackspace,
   handleTableTab,
@@ -267,6 +268,7 @@ export default function initProse({ path, permissions }) {
     yCursorPlugin(wsProvider.awareness),
     yUndoPlugin(),
     slashMenu(),
+    linkMenu(),
     imageDrop(schema),
     linkConverter(schema),
     sectionPasteHandler(schema),
