@@ -450,36 +450,37 @@ export default new Plugin({
     palettes.className = 'da-palettes';
     view.dom.insertAdjacentElement('beforebegin', menu);
     view.dom.insertAdjacentElement('afterend', palettes);
-    
+
     // Create floating toolbar with text blocks
     const { marks, nodes } = view.state.schema;
     const textBlocks = getTextBlocks(marks, nodes);
     const floatingToolbar = createFloatingToolbar(view, textBlocks);
-    
+
     let lastSelection = null;
-    
-    document.addEventListener('mousedown', createClickOutsideHandler(view, floatingToolbar));
-    
+
+    const handleClickOutside = createClickOutsideHandler(view, floatingToolbar);
+    document.addEventListener('mousedown', handleClickOutside);
+
     // eslint-disable-next-line no-shadow
     return {
-      update: (view) => {
-        update(view.state);
-        
-        const { from, to } = view.state.selection;
-        const selectionChanged = !lastSelection || 
-          lastSelection.from !== from || 
-          lastSelection.to !== to;
-        
+      update: (updatedView) => {
+        update(updatedView.state);
+
+        const { from, to } = updatedView.state.selection;
+        const selectionChanged = !lastSelection
+          || lastSelection.from !== from
+          || lastSelection.to !== to;
+
         if (selectionChanged) {
-          if (shouldShowToolbar(view)) {
+          if (shouldShowToolbar(updatedView)) {
             setTimeout(() => {
-              positionToolbar(view, floatingToolbar);
+              positionToolbar(updatedView, floatingToolbar);
             }, 50);
           } else {
             floatingToolbar.style.display = 'none';
           }
         }
-        
+
         lastSelection = { from, to };
       },
       destroy: () => {
