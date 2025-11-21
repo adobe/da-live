@@ -44,6 +44,7 @@ import {
   handleUndo,
   handleRedo,
 } from './plugins/keyHandlers.js';
+import tableHeaderFix from './plugins/tableHeaderFix.js';
 
 let sendUpdates = false;
 let hasChanged = 0;
@@ -302,6 +303,7 @@ export default function initProse({ path, permissions }) {
     }),
     gapCursor(),
     tableEditing(),
+    tableHeaderFix(),
   ];
 
   if (canWrite) plugins.push(menu);
