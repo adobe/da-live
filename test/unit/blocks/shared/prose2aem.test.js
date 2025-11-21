@@ -191,4 +191,36 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.include('<picture>');
     expect(result).to.include('alt="Test image"');
   });
+
+  it('Converts focal point attributes to data-title', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <p>
+        <img src="test.jpg" data-focal-x="30.5" data-focal-y="70.2">
+      </p>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.include('data-title="data-focal:30.5,70.2"');
+  });
+
+  it('Unwraps focal point image wrappers', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <p>
+        <span class="focal-point-image-wrapper">
+          <img src="test.jpg" data-focal-x="30.5" data-focal-y="70.2">
+          <span class="focal-point-icon"></span>
+        </span>
+      </p>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.not.include('focal-point-image-wrapper');
+    expect(result).to.not.include('focal-point-icon');
+    expect(result).to.include('<picture>');
+    expect(result).to.include('data-title="data-focal:30.5,70.2"');
+  });
 });
