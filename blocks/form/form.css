@@ -29,6 +29,16 @@ sl-textarea {
     position: absolute;
     top: 0;
     width: 300px;
-    right: -120px; /* 20px offset */
+    right: -120px;
+  }
+
+  /** TODO: Remove this to move the preview to the end of the page */
+  da-form-preview {
+    position: fixed;
+    left: 80px;
+    top: 84px;
+    height: 100%;
+    border-radius: 43px;
+    width: 320px;
   }
 }

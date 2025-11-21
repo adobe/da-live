@@ -1,4 +1,7 @@
 :host {
+  --form-input-height: 30px;
+  --focus-visible-offset: 0px;
+
   display: block;
   min-height: 400px;
   box-shadow: rgb(181 181 181 / 50%) 0 0 10px;
@@ -18,17 +21,71 @@
     line-height: 1;
   }
 
-  form {
-    padding: 0 48px 48px;
-  }
-
   .da-form-title {
     line-height: 1;
     font-weight: 700;
     margin: 0 0 8px;
   }
 
-  .da-form-primitive {
-    margin-bottom: 12px;
+  form {
+    padding: 0 48px 48px;
+
+    .item-group {
+      &:not(:first-child) {
+        .item-title {
+          margin-top: 20px;
+        }
+      }
+
+      .item-title {
+        font-weight: 600;
+        line-height: 1.5em;
+        padding-bottom: 15px;
+        position: relative;
+        margin-bottom: 20px;
+
+        &::before {
+          content: "";
+          position: absolute;
+          left: 0px;
+          bottom: 1px;
+          height: 3px;
+          width: 55px;
+          background-color: var(--s2-gray-800);
+        }
+
+        &::after {
+          content: "";
+          position: absolute;
+          left: 0px;
+          bottom: 2px;
+          height: 1px;
+          width: 100%;
+          background-color: var(--s2-gray-800);
+        }
+      }
+
+      .form-children {
+
+        .form-input {
+          margin-bottom: 10px;
+        }
+
+        /* control visuals moved to component-level shadow sheet (form-elements.css) */
+
+        sl-select-extended {
+          width: 33%;
+          max-width: 100%;
+          min-width: 33%;
+          position: inherit;
+
+          ::part(wrapper) {
+            width: 100%;
+            position: inherit;
+          }
+
+        }
+      }
+    }
   }
 }

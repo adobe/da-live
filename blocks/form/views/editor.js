@@ -1,5 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import './form-elements/sl-textarea-extended.js';
+import './form-elements/sl-input-extended.js';
+import './form-elements/sl-select-extended.js';
+import './form-elements/sl-checkbox.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -39,16 +43,14 @@ class FormEditor extends LitElement {
 
   renderCheckbox(item) {
     return html`
-      <div>
-        <input
-          type="checkbox"
-          name="${item.key}"
-          value="${item.data}"
-          ?checked=${item.data}
-          @change=${(e) => this.emitReplace(item.pointer, e.target.checked)}
-        >
-        <label class="primitive-item-title">${item.schema.title}</label>
-      </div>
+      <sl-checkbox
+        class="form-input"
+        name="${item.key}"
+        label="${item.schema.title}"
+        .checked=${item.data ?? false}
+        data-pointer="${item.pointer}"
+        @change=${(e) => this.emitReplace(item.pointer, e.target.checked)}
+      ></sl-checkbox>
     `;
   }
 
@@ -57,13 +59,51 @@ class FormEditor extends LitElement {
     const prim = primitives.find((type) => type === item.schema.properties.type);
     if (prim) {
       if (prim === 'boolean') return this.renderCheckbox(item);
+
+      // long-text semantic type -> textarea
+      if (item.schema.properties['x-semantic-type'] === 'long-text') {
+        return html`
+          <sl-textarea-extended
+            class="form-input"
+            label="${item.schema.title}"
+            .value=${item.data ?? ''}
+            data-pointer="${item.pointer}"
+            @change=${(e) => this.emitReplace(item.pointer, e.target.value)} 
+          ></sl-textarea-extended>
+        `;
+      }
+
+      // enum -> select (covers string enums and array items with enum)
+      const enumOptions = item.schema.properties.enum
+        || item.schema.properties.items?.enum;
+      if (Array.isArray(enumOptions) && enumOptions.length) {
+        const currentValue = Array.isArray(item.data) ? (item.data[0] ?? '') : (item.data ?? '');
+        return html`
+          <sl-select-extended
+            class="form-input"
+            name="${item.key}"
+            label="${item.schema.title}"
+            .value=${currentValue}
+            data-pointer="${item.pointer}"
+            @change=${(e) => {
+            const next = item.schema.properties.type === 'array' ? [e.target.value] : e.target.value;
+            this.emitReplace(item.pointer, next);
+          }}
+          >
+            ${enumOptions.map((opt) => html`<option value="${opt}">${opt}</option>`)}
+          </sl-select-extended>
+        `;
+      }
+
       return html`
-        <p class="primitive-item-title">${item.schema.title}</p>
-        <sl-input
+        <sl-input-extended
+          class="form-input"
           type="text"
+          label="${item.schema.title}"
           .value=${item.data ?? ''}
+          data-pointer="${item.pointer}"
           @change=${(e) => this.emitReplace(item.pointer, e.target.value)}
-        ></sl-input>
+        ></sl-input-extended>
       `;
     }
 
