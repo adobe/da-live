@@ -1,9 +1,10 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import './form-elements/sl-textarea-extended.js';
-import './form-elements/sl-input-extended.js';
-import './form-elements/sl-select-extended.js';
-import './form-elements/sl-checkbox.js';
+import './components/form/sl-textarea-extended.js';
+import './components/form/sl-input-extended.js';
+import './components/form/sl-select-extended.js';
+import './components/form/sl-checkbox.js';
+import './components/form/form-item-group.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -18,6 +19,20 @@ class FormEditor extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this._handleActivateItemGroup = (e) => {
+      const pointer = e?.detail?.pointer;
+      if (!pointer) return;
+      const target = this.shadowRoot.querySelector(`.item-group[data-key="${pointer}"]`);
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+    window.addEventListener('activate-item-group', this._handleActivateItemGroup);
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener('activate-item-group', this._handleActivateItemGroup);
+    super.disconnectedCallback();
   }
 
   update(props) {
@@ -116,12 +131,16 @@ class FormEditor extends LitElement {
     if (!Array.isArray(parent.data)) return this.renderPrimitive(parent);
 
     return html`
-      <div class="item-group" data-key="${parent.key}">
-        <p class="item-title">${parent.schema.title}</p>
+      <form-item-group
+        class="item-group"
+        data-key="${parent.pointer}"
+        pointer="${parent.pointer}"
+        label="${parent.schema.title}"
+      >
         ${parent.data
-        ? html`<div class="form-children">${parent.data.map((item) => this.renderList(item))}</div>`
+        ? html`${parent.data.map((item) => this.renderList(item))}`
         : nothing}
-      </div>
+      </form-item-group>
     `;
   }
 

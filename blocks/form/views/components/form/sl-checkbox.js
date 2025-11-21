@@ -1,8 +1,8 @@
 import { LitElement, html, nothing, spread } from 'da-lit';
-import { getNx } from '../../../../scripts/utils.js';
+import { getNx } from '../../../../../scripts/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const sharedStyle = await getStyle(new URL('./form-elements.css', import.meta.url).href);
+const sharedStyle = await getStyle(new URL('./style.css', import.meta.url).href);
 
 class SlCheckbox extends LitElement {
   static formAssociated = true;
@@ -80,3 +80,4 @@ class SlCheckbox extends LitElement {
 customElements.define('sl-checkbox', SlCheckbox);
 
 export default SlCheckbox;
+

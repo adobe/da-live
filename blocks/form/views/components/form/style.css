@@ -1,18 +1,10 @@
 :host {
-  font-size: var(--s2-body-s-size, 14px);
+  font-size: var(--s2-body-xs-size, 12px);
+  color: var(--s2-gray-800, #292929)
 }
 
 /* Base control styles with nesting to avoid repetition */
 .sl-inputfield {
-
-  label,
-  input,
-  select,
-  textarea {
-    font-size: var(--s2-body-xs-size, 14px);
-    color: var(--s2-gray-800, #292929);
-  }
-
 
   /* Base control box sizing and appearance */
   input[type="text"],
@@ -20,8 +12,10 @@
   input[type="password"],
   input[type="date"],
   input[type="datetime-local"],
+  select,
   textarea {
     border: 1px solid #d1d5db;
+    font-size: var(--s2-body-xs-size, 12px);
   }
 
   /* Align checkbox and its label horizontally, without affecting other inputs */
@@ -50,6 +44,10 @@
     outline-offset: var(--focus-visible-offset, 0px);
   }
 
+  select {
+    background: none;
+  }
+
   /* Textarea sizing defaults */
   textarea {
     min-height: 200px;
@@ -58,7 +56,4 @@
     position: inherit;
   }
 
-  select {
-    background: none;
-  }
 }

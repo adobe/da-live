@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import './components/sidebar/sitebar-item.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -22,6 +23,21 @@ class FormSidebar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this._onActivateItemGroup = (e) => {
+      const pointer = e?.detail?.pointer;
+      if (!pointer) return;
+      const target = this.shadowRoot.querySelector(`li[data-key="${pointer}"]`)
+        || this.shadowRoot.querySelector(`sidebar-item[pointer="${pointer}"]`);
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+    window.addEventListener('activate-item-group', this._onActivateItemGroup);
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener('activate-item-group', this._onActivateItemGroup);
+    super.disconnectedCallback();
   }
 
   update(props) {
@@ -85,11 +101,14 @@ class FormSidebar extends LitElement {
     if (!this.canRender(parent)) return nothing;
 
     return html`
-      <li data-key="${parent.key}">
-        <span class="item">${parent.schema.title}</span>
+      <li data-key="${parent.pointer}">
+        <sidebar-item
+          label="${parent.schema.title}"
+          pointer="${parent.pointer}"
+        ></sidebar-item>
         ${parent.data
-          ? html`<ul>${parent.data.map((item) => this.renderList(item))}</ul>`
-          : nothing}
+        ? html`<ul>${parent.data.map((item) => this.renderList(item))}</ul>`
+        : nothing}
       </li>
     `;
   }
