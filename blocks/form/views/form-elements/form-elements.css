@@ -1,0 +1,64 @@
+:host {
+  font-size: var(--s2-body-s-size, 14px);
+}
+
+/* Base control styles with nesting to avoid repetition */
+.sl-inputfield {
+
+  label,
+  input,
+  select,
+  textarea {
+    font-size: var(--s2-body-xs-size, 14px);
+    color: var(--s2-gray-800, #292929);
+  }
+
+
+  /* Base control box sizing and appearance */
+  input[type="text"],
+  input[type="number"],
+  input[type="password"],
+  input[type="date"],
+  input[type="datetime-local"],
+  textarea {
+    border: 1px solid #d1d5db;
+  }
+
+  /* Align checkbox and its label horizontally, without affecting other inputs */
+  &:has(> input[type="checkbox"]) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &:has(> input[type="checkbox"]) label {
+    margin: 0;
+  }
+
+  :is(input, select) {
+    height: var(--form-input-height, 30px);
+  }
+
+  /* Focus visual treatment */
+  :is(input, select, textarea):is(:focus, :focus-visible) {
+    outline: none;
+    border-color: var(--s2-blue-700);
+    box-shadow: var(--s2-blue-200) 0px 0px 0px 3px;
+  }
+
+  :is(input, select, textarea):focus-visible {
+    outline-offset: var(--focus-visible-offset, 0px);
+  }
+
+  /* Textarea sizing defaults */
+  textarea {
+    min-height: 200px;
+    max-width: 100%;
+    min-width: 100%;
+    position: inherit;
+  }
+
+  select {
+    background: none;
+  }
+}
