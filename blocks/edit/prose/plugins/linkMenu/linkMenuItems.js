@@ -1,15 +1,30 @@
-function findLinkAtCursor(state) {
-  const { $from, $to } = state.selection;
-  let linkMark = null;
+import { TextSelection } from 'da-y-wrapper';
 
-  state.doc.nodesBetween($from.pos, $to.pos, (node) => {
-    if (!linkMark) {
-      const link = node.marks.find((mark) => mark.type.name === 'link');
-      if (link) linkMark = link;
-    }
-  });
+function findExistingLink(state) {
+  const { $from } = state.selection;
+  const { node, offset } = $from.parent.childAfter($from.parentOffset);
+  return {
+    link: node,
+    offset,
+  };
+}
 
-  return linkMark;
+export function findLinkAtCursor(state) {
+  const linkMarkType = state.schema.marks.link;
+  const { link } = findExistingLink(state);
+  
+  if (!link) return null;
+  
+  return link.marks.find((mark) => mark.type === linkMarkType);
+}
+
+function calculateLinkPosition(state, link, offset) {
+  const { $from } = state.selection;
+  const start = $from.pos - ($from.parentOffset - offset);
+  return {
+    start,
+    end: start + link.nodeSize,
+  };
 }
 
 function openLink(state) {
@@ -36,6 +51,21 @@ function copyLink(state) {
   return true;
 }
 
+function removeLink(state, dispatch) {
+  const linkMarkType = state.schema.marks.link;
+  const { link, offset } = findExistingLink(state);
+  
+  if (!link) return false;
+  
+  const { start, end } = calculateLinkPosition(state, link, offset);
+  const tr = state.tr
+    .setSelection(TextSelection.create(state.doc, start, end))
+    .removeMark(start, end, linkMarkType);
+  
+  dispatch(tr);
+  return true;
+}
+
 /* eslint-disable import/prefer-default-export */
 export function getLinkMenuItems() {
   return [
@@ -53,6 +83,11 @@ export function getLinkMenuItems() {
       title: 'Copy link',
       command: copyLink,
       class: 'menu-item-copy-link',
+    },
+    {
+      title: 'Remove link',
+      command: removeLink,
+      class: 'menu-item-remove-link',
     },
   ];
 }

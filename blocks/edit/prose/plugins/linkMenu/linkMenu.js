@@ -1,5 +1,5 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
-import { getLinkMenuItems } from './linkMenuItems.js';
+import { getLinkMenuItems, findLinkAtCursor } from './linkMenuItems.js';
 import './link-menu.js';
 
 const linkMenuKey = new PluginKey('linkMenu');
@@ -17,21 +17,13 @@ function isOnLink(state) {
   return node.marks.some((mark) => mark.type.name === 'link');
 }
 
-// Get the link mark at cursor position
+// Get the link offset at cursor position
 function getLinkOffset(state) {
   const { $from } = state.selection;
   const { offset } = $from.parent.childAfter($from.parentOffset);
 
   const absolutePos = $from.start() + offset;
   return absolutePos;
-}
-
-// Get the text content of the link
-function getLinkText(state) {
-  const { $from } = state.selection;
-  const { node } = $from.parent.childAfter($from.parentOffset);
-
-  return node?.textContent || '';
 }
 
 class LinkMenuView {
@@ -48,17 +40,21 @@ class LinkMenuView {
 
   showMenu() {
     const { state } = this.view;
-    const { $anchor } = state.selection;
+    const { $anchor, $from } = state.selection;
 
     const coords = this.view.coordsAtPos($anchor.pos);
-    const linkText = getLinkText(state);
+    const linkMark = findLinkAtCursor(state);
+    const linkHref = linkMark?.attrs?.href || '';
+
+    const { node } = $from.parent.childAfter($from.parentOffset);
+    const linkText = node?.textContent || '';
 
     const viewportCoords = {
       left: coords.left + window.pageXOffset,
       bottom: coords.bottom + window.pageYOffset,
     };
 
-    this.menu.show(viewportCoords, linkText);
+    this.menu.show(viewportCoords, linkHref, linkText);
   }
 
   update(view) {

@@ -42,6 +42,12 @@
   flex-shrink: 0;
 }
 
+.link-favicon-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 .link-menu-icon.menu-item-open-link {
   background-image: url('/blocks/edit/img/S2_icon_OpenIn_20_N.svg');
 }
@@ -58,3 +64,41 @@
   background-image: url('/blocks/edit/img/Smock_Unlink_18_N.svg');
 }
 
+.link-text-display {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.link-text {
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-href-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.link-href {
+  font-size: 14px;
+  color: #666;
+  word-break: break-all;
+  flex: 1;
+}
+
+.link-open-icon {
+  width: 14px;
+  height: 14px;
+  background-image: url('/blocks/edit/img/S2_icon_OpenIn_20_N.svg');
+  background-size: 14px;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
