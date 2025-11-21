@@ -4,7 +4,7 @@ export function setConfig(config) {
   return config;
 }
 
-export function loadStyle(href) {
+export function loadStyle() {
   // Mock implementation
   return Promise.resolve();
 }

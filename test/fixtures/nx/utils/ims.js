@@ -8,4 +8,3 @@ export function handleSignIn() {
   // Mock implementation
   return Promise.resolve();
 }
-

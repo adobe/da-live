@@ -82,7 +82,7 @@ describe('imageFocalPoint Plugin', () => {
 
     const mockState = {
       doc: {
-        resolve: (pos) => ({
+        resolve: () => ({
           depth: 3,
           node: (d) => {
             if (d === 3) return { type: { name: 'table_cell' } };
@@ -153,7 +153,7 @@ describe('imageFocalPoint Plugin', () => {
 
     const mockState = {
       doc: {
-        resolve: (pos) => ({
+        resolve: () => ({
           depth: 3,
           node: (d) => {
             if (d === 3) return { type: { name: 'table_cell' } };
