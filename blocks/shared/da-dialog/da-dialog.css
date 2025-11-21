@@ -32,12 +32,8 @@ svg.icon {
 .da-dialog-header {
   display: flex;
   justify-content: space-between;
-  cursor: grab;
   user-select: none;
 
-  &:active {
-    cursor: grabbing;
-  }
 
   p {
     line-height: 1;
