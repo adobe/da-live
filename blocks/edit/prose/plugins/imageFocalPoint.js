@@ -2,23 +2,43 @@ import { Plugin } from 'da-y-wrapper';
 import inlinesvg from '../../../shared/inlinesvg.js';
 import { openFocalPointDialog } from './focalPointDialog.js';
 import getSheet from '../../../shared/sheet.js';
+import { getLibraryList } from '../../da-library/helpers/helpers.js';
+import { getBlocks } from '../../da-library/helpers/index.js';
+import { getTableInfo, isInTableCell } from './tableUtils.js';
 
 const focalPointSheet = await getSheet('/blocks/edit/prose/plugins/focalPointDialog.css');
 const injectedRoots = new WeakSet();
 
-function isInTableCell(state, pos) {
-  const $pos = state.doc.resolve(pos);
-  for (let d = $pos.depth; d > 0; d -= 1) {
-    if ($pos.node(d).type.name === 'table_cell') {
-      return true;
-    }
+// Cache blocks data at module level
+let blocksDataPromise = null;
+async function getBlocksData() {
+  if (!blocksDataPromise) {
+    blocksDataPromise = (async () => {
+      try {
+        const libraryList = await getLibraryList();
+        const blocksInfo = libraryList.find((l) => l.name === 'blocks');
+        if (!blocksInfo) return [];
+        return await getBlocks(blocksInfo.sources);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to load blocks data for focal point:', error);
+        return [];
+      }
+    })();
   }
-  return false;
+  return blocksDataPromise;
 }
 
 function hasFocalPointData(attrs) {
   return (attrs.dataFocalX && attrs.dataFocalX !== '')
     || (attrs.dataFocalY && attrs.dataFocalY !== '');
+}
+
+function shouldShowFocalPoint(tableName, blocks) {
+  if (!tableName || !blocks || blocks.length === 0) return false;
+
+  const tableNameLower = tableName.toLowerCase();
+  return blocks.some((block) => (block.name.toLowerCase() === tableNameLower && block['focal-point'] === 'yes'));
 }
 
 function updateImageAttributes(img, attrs) {
@@ -56,8 +76,33 @@ class ImageWithFocalPointView {
     this.img = document.createElement('img');
     updateImageAttributes(this.img, node.attrs);
 
+    this.dom.appendChild(this.img);
+
+    this.initFocalPoint();
+  }
+
+  async initFocalPoint() {
+    try {
+      const blocks = await getBlocksData();
+      const pos = this.getPos();
+      if (pos == null) return;
+
+      const tableInfo = getTableInfo(this.view.state, pos);
+      if (tableInfo && shouldShowFocalPoint(tableInfo.tableName, blocks)) {
+        this.enableFocalPoint();
+      }
+    } catch (error) {
+      // If blocks data fails to load, don't show focal point
+      // eslint-disable-next-line no-console
+      console.warn('Failed to initialize focal point:', error);
+    }
+  }
+
+  enableFocalPoint() {
+    if (this.icon) return;
+
     this.icon = document.createElement('span');
-    this.icon.className = hasFocalPointData(node.attrs)
+    this.icon.className = hasFocalPointData(this.node.attrs)
       ? 'focal-point-icon focal-point-icon-active'
       : 'focal-point-icon';
 
@@ -73,7 +118,6 @@ class ImageWithFocalPointView {
     };
     this.icon.addEventListener('click', this.handleIconClick);
 
-    this.dom.appendChild(this.img);
     this.dom.appendChild(this.icon);
   }
 
@@ -82,15 +126,20 @@ class ImageWithFocalPointView {
 
     this.node = node;
     updateImageAttributes(this.img, node.attrs);
-    this.icon.className = hasFocalPointData(node.attrs)
-      ? 'focal-point-icon focal-point-icon-active'
-      : 'focal-point-icon';
+
+    if (this.icon) {
+      this.icon.className = hasFocalPointData(node.attrs)
+        ? 'focal-point-icon focal-point-icon-active'
+        : 'focal-point-icon';
+    }
 
     return true;
   }
 
   destroy() {
-    this.icon.removeEventListener('click', this.handleIconClick);
+    if (this.icon) {
+      this.icon.removeEventListener('click', this.handleIconClick);
+    }
   }
 }
 
