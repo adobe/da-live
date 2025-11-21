@@ -5,8 +5,6 @@ import { getLibraryList } from '../../da-library/helpers/helpers.js';
 import { getBlocks } from '../../da-library/helpers/index.js';
 import { getTableInfo, isInTableCell } from './tableUtils.js';
 
-const injectedRoots = new WeakSet();
-
 // Cache blocks data at module level
 let blocksDataPromise = null;
 async function getBlocksData() {
