@@ -1,24 +1,13 @@
 import '../../../shared/da-dialog/da-dialog.js';
-import inlinesvg from '../../../shared/inlinesvg.js';
-import getSheet from '../../../shared/sheet.js';
+import { getNx } from '../../../../scripts/utils.js';
+
+const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
+await loadStyle('/blocks/edit/prose/plugins/focalPointDialog.css');
 
 let currentDialog = null;
-let stylesLoaded = false;
 let faceApiLoaded = false;
 let faceApiLoading = null;
 let faceDetectorOptions = null;
-
-const loadDialogStyles = async () => {
-  if (stylesLoaded) return;
-
-  const styleSheet = await getSheet('/blocks/edit/prose/plugins/focalPointDialog.css');
-
-  if (!document.adoptedStyleSheets.includes(styleSheet)) {
-    document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet];
-  }
-
-  stylesLoaded = true;
-};
 
 const loadFaceApi = async () => {
   if (faceApiLoaded) return true;
@@ -109,16 +98,14 @@ function updateNodeFocalPoint(view, pos, node, x, y) {
 
 // eslint-disable-next-line import/prefer-default-export
 export async function openFocalPointDialog(view, pos, node) {
-  await loadDialogStyles();
-
   if (currentDialog) {
     currentDialog.remove();
     currentDialog = null;
   }
 
   const parseCoord = (val) => (val ? parseFloat(val) : null);
-  const originalFocalX = parseCoord(node.attrs.dataFocalX);
-  const originalFocalY = parseCoord(node.attrs.dataFocalY);
+  let originalFocalX = parseCoord(node.attrs.dataFocalX);
+  let originalFocalY = parseCoord(node.attrs.dataFocalY);
 
   let currentX = originalFocalX ?? 50;
   let currentY = originalFocalY ?? 50;
@@ -153,10 +140,17 @@ export async function openFocalPointDialog(view, pos, node) {
 
   const indicator = document.createElement('div');
   indicator.className = 'focal-point-indicator';
-  inlinesvg({ parent: indicator, paths: ['/blocks/edit/img/Smock_Crosshairs_18_N.svg'] });
+
+  const inner = document.createElement('div');
+  inner.className = 'focal-point-inner';
+
+  indicator.append(inner);
 
   imageContainer.appendChild(img);
-  imageContainer.appendChild(indicator);
+
+  img.addEventListener('load', () => {
+    imageContainer.appendChild(indicator);
+  });
 
   const coordsContainer = document.createElement('div');
   coordsContainer.className = 'focal-point-coords';
@@ -232,7 +226,7 @@ export async function openFocalPointDialog(view, pos, node) {
   const handleMouseDown = (e) => {
     if (e.target === img || e.target === imageContainer) {
       isDragging = true;
-      imageContainer.style.cursor = 'crosshair';
+      imageContainer.style.cursor = 'grabbing';
       e.preventDefault();
       updatePositionFromEvent(e);
       updateNodeFocalPoint(view, pos, node, currentX, currentY);
@@ -260,18 +254,22 @@ export async function openFocalPointDialog(view, pos, node) {
     label: 'Accept',
     style: 'accent',
     click: () => {
+      originalFocalX = currentX;
+      originalFocalY = currentY;
       cleanupEventListeners(handleMouseMove, handleMouseUp);
       dialog.close();
     },
   };
 
   dialog.addEventListener('close', () => {
+    updateNodeFocalPoint(view, pos, node, originalFocalX, originalFocalY);
     cleanupEventListeners(handleMouseMove, handleMouseUp);
     currentDialog = null;
     dialog.remove();
   });
 
   const cancelBtn = document.createElement('sl-button');
+  cancelBtn.className = 'primary outline';
   cancelBtn.textContent = 'Cancel';
   cancelBtn.slot = 'footer-left';
   cancelBtn.addEventListener('click', () => {
@@ -280,6 +278,7 @@ export async function openFocalPointDialog(view, pos, node) {
   });
 
   const clearBtn = document.createElement('sl-button');
+  clearBtn.className = 'negative outline';
   clearBtn.textContent = 'Clear Focal Point';
   clearBtn.slot = 'footer-left';
 
@@ -288,7 +287,8 @@ export async function openFocalPointDialog(view, pos, node) {
   }
 
   clearBtn.addEventListener('click', () => {
-    updateNodeFocalPoint(view, pos, node, null, null);
+    originalFocalX = null;
+    originalFocalY = null;
     cleanupEventListeners(handleMouseMove, handleMouseUp);
     dialog.close();
   });

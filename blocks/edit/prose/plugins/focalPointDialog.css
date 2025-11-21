@@ -1,6 +1,7 @@
-/* Focal Point Dialog Styles */
-
 .focal-point-content {
+  --focal-color: #ec4899;
+  --focal-glow: rgb(236 72 153 / 50%);
+
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -19,6 +20,7 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   overflow: hidden;
+  cursor: grab;
 }
 
 .focal-point-image {
@@ -34,23 +36,47 @@
   position: absolute;
   width: 40px;
   height: 40px;
+  margin-left: -20px;
+  margin-top: -20px;
   pointer-events: none;
-  transform: translate(-50%, -50%);
   z-index: 100;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #f00;
 }
 
-.focal-point-indicator svg {
+.focal-point-inner {
+  position: relative;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 1px rgb(255 255 255 / 80%));
+  border-radius: 50%;
+  background: var(--focal-color);
+  border: 3px solid white;
+  box-sizing: border-box;
+  cursor: grab;
+  box-shadow: 0 0 0 2px var(--focal-color), 0 4px 12px var(--focal-glow);
+  animation: pulse 2s infinite;
 }
 
-.focal-point-indicator svg .fill {
-  fill: currentcolor;
+.focal-point-inner::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+}
+
+@keyframes pulse {
+  0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+  }
+
+  50% {
+      transform: scale(1.1);
+      opacity: 0.9;
+  }
 }
 
 .focal-point-coords {
@@ -87,64 +113,3 @@
   font-weight: 500;
   box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
 }
-
-/* Wrapper for images with focal point overlay */
-.focal-point-image-wrapper {
-  position: relative;
-  display: inline-block;
-  line-height: 0;
-  vertical-align: bottom;
-}
-
-.focal-point-image-wrapper img {
-  display: block;
-  position: relative;
-}
-
-/* Focal point icon overlay on images in tables */
-.focal-point-icon {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  width: 24px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  z-index: 10;
-  pointer-events: auto;
-}
-
-/* Show icon on hover ONLY for images without focal point data */
-.focal-point-image-wrapper:hover .focal-point-icon:not(.focal-point-icon-active) {
-  opacity: 1;
-}
-
-/* Always show icon for images with focal point data */
-.focal-point-icon-active {
-  opacity: 1;
-}
-
-.focal-point-icon:hover {
-  background: #fff;
-  border-color: #0265dc;
-}
-
-.focal-point-icon svg {
-  color: #505050;
-}
-
-.focal-point-icon svg .fill {
-  fill: currentcolor;
-}
-
-.focal-point-icon:hover svg {
-  color: #0265dc;
-}
-

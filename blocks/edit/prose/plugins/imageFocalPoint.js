@@ -1,12 +1,10 @@
 import { Plugin } from 'da-y-wrapper';
 import inlinesvg from '../../../shared/inlinesvg.js';
 import { openFocalPointDialog } from './focalPointDialog.js';
-import getSheet from '../../../shared/sheet.js';
 import { getLibraryList } from '../../da-library/helpers/helpers.js';
 import { getBlocks } from '../../da-library/helpers/index.js';
 import { getTableInfo, isInTableCell } from './tableUtils.js';
 
-const focalPointSheet = await getSheet('/blocks/edit/prose/plugins/focalPointDialog.css');
 const injectedRoots = new WeakSet();
 
 // Cache blocks data at module level
@@ -145,22 +143,6 @@ class ImageWithFocalPointView {
 
 export default function imageFocalPoint() {
   return new Plugin({
-    view() {
-      return {
-        update(view) {
-          const shadowRoot = view.dom.getRootNode();
-
-          if (shadowRoot instanceof ShadowRoot && shadowRoot.adoptedStyleSheets) {
-            if (!injectedRoots.has(shadowRoot)) {
-              if (!shadowRoot.adoptedStyleSheets.includes(focalPointSheet)) {
-                shadowRoot.adoptedStyleSheets = [...shadowRoot.adoptedStyleSheets, focalPointSheet];
-              }
-              injectedRoots.add(shadowRoot);
-            }
-          }
-        },
-      };
-    },
     props: {
       nodeViews: {
         image(node, view, getPos) {
