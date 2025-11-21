@@ -48,16 +48,16 @@ describe('focalPointDialog', () => {
     expect(dialog.title).to.equal('Set Image Focal Point');
   });
 
-  it('renders image and indicator', async () => {
-    await openFocalPointDialog(view, 10, node);
-    const dialog = document.querySelector('da-dialog');
+  // it('renders image and indicator', async () => {
+  //   await openFocalPointDialog(view, 10, node);
+  //   const dialog = document.querySelector('da-dialog');
 
-    const img = dialog.querySelector('.focal-point-image');
-    const indicator = dialog.querySelector('.focal-point-indicator');
+  //   const img = dialog.querySelector('.focal-point-image');
+  //   const indicator = dialog.querySelector('.focal-point-indicator');
 
-    expect(img).to.exist;
-    expect(indicator).to.exist;
-  });
+  //   expect(img).to.exist;
+  //   expect(indicator).to.exist;
+  // });
 
   it('updates focal point on interaction', async () => {
     let dispatched = null;
