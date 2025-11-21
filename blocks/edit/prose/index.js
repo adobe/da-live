@@ -25,6 +25,7 @@ import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
 import { linkItem } from './plugins/menu/linkItem.js';
 import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
+import imageFocalPoint from './plugins/imageFocalPoint.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
@@ -304,7 +305,10 @@ export default function initProse({ path, permissions }) {
     tableEditing(),
   ];
 
-  if (canWrite) plugins.push(menu);
+  if (canWrite) {
+    plugins.push(menu);
+    plugins.push(imageFocalPoint());
+  }
 
   let state = EditorState.create({ schema, plugins });
 

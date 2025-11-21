@@ -171,14 +171,21 @@ export async function getBlockVariants(path) {
   return groupedBlocks.map(transformBlock);
 }
 
+const urlCache = new Map();
 export async function getBlocks(sources) {
   try {
     const sourcesData = await Promise.all(
       sources.map(async (url) => {
+        if (urlCache.has(url)) {
+          return urlCache.get(url);
+        }
+
         try {
-          const resp = await daFetch(url);
+          const resp = await daFetch(url, { noRedirect: true });
           if (!resp.ok) throw new Error('Something went wrong.');
-          return resp.json();
+          const data = await resp.json();
+          urlCache.set(url, data);
+          return data;
         } catch {
           return null;
         }
