@@ -8,15 +8,11 @@
   max-height: 300px;
   overflow-y: auto;
   z-index: 999999;
-  min-width: 180px;
+  border-radius: 10px;
 }
 
 :host([visible]) {
   display: block;
-}
-
-.link-menu-items {
-  padding: 4px 0;
 }
 
 .link-menu-item {
