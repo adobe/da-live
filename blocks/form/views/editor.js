@@ -148,7 +148,9 @@ class FormEditor extends LitElement {
     if (!this._data) return nothing;
 
     return html`
-      <h2>${this._data.schema.title}</h2>
+      <div class="form-header">
+        <h2>${this._data.schema.title}</h2>
+      </div>
       <form>
         <div>
           ${this.renderList(this._data)}

@@ -10,6 +10,9 @@ sl-textarea {
   width: 900px;
   margin: 0 auto;
   position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
 
   .da-form-title {
     line-height: 1;
@@ -19,6 +22,7 @@ sl-textarea {
 
   .da-form-editor {
     width: 700px;
+    flex: 0 0 700px;
   }
 
   da-form-editor {
@@ -26,10 +30,11 @@ sl-textarea {
   }
 
   da-form-sidebar {
-    position: absolute;
-    top: 0;
-    width: 300px;
-    right: -120px;
+    position: sticky;
+    top: 0px;
+    width: 350px;
+    flex: 0 0 300px;
+    align-self: flex-start;
   }
 
   /** TODO: Remove this to move the preview to the end of the page */

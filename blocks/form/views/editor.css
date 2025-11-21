@@ -6,14 +6,23 @@
   min-height: 400px;
   box-shadow: rgb(181 181 181 / 50%) 0 0 10px;
   border-radius: 8px;
-  overflow: hidden;
+  /* Use page scroll so header can reach window top, sidebar remains independent */
+  overflow: visible;
 
-  h2 {
-    line-height: 1;
-    margin: 0;
-    padding: 24px 48px;
-    margin-bottom: 24px;
-    background-color: var(--s2-blue-200);
+  .form-header {
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+
+    h2 {
+      font-size: 16px;
+      line-height: 1;
+      margin: 0;
+      padding: 24px 48px;
+    }
   }
 
   p {

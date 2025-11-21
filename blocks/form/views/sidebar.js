@@ -65,7 +65,7 @@ class FormSidebar extends LitElement {
           <option value="${key}">${this.schemas[key].title}</option>
         `)}
       </sl-select>
-      <p class="da-sidebar-title">Version</p>
+      <div class="da-sidebar-header"><p>Version</p></div>
       <sl-select disabled>
         <option>Current</option>
       </sl-select>
@@ -75,7 +75,7 @@ class FormSidebar extends LitElement {
   renderSchema() {
     if (!this.schemas) return nothing;
     return html`
-      <p class="da-sidebar-title">Schema</p>
+      <div class="da-sidebar-header"><p>Schema</p></div>
     `;
   }
 
@@ -117,7 +117,7 @@ class FormSidebar extends LitElement {
     if (!this._nav) return nothing;
 
     return html`
-      <p class="da-sidebar-title">Navigation</p>
+      <div class="da-sidebar-header"><p>Navigation</p></div>
       <div class="nav-list">
         <ul>${this.renderList(this._nav)}</ul>
       </div>
