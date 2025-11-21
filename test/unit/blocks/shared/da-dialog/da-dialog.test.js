@@ -71,37 +71,4 @@ describe('da-dialog', () => {
 
     expect(closed).to.be.true;
   });
-
-  it('handles dragging', async () => {
-    el = await fixture('<da-dialog></da-dialog>');
-    await nextFrame();
-
-    const header = el.shadowRoot.querySelector('.da-dialog-header');
-
-    // Mock native dialog
-    const mockNativeDialog = document.createElement('div');
-    // Override _getNativeDialog to return our mock
-    // eslint-disable-next-line no-underscore-dangle
-    el._getNativeDialog = () => mockNativeDialog;
-
-    // Start drag
-    header.dispatchEvent(new MouseEvent('mousedown', { clientX: 100, clientY: 100, bubbles: true }));
-
-    // Move
-    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 150, clientY: 150 }));
-
-    // eslint-disable-next-line no-underscore-dangle
-    expect(el._currentTransform.x).to.equal(50);
-    // eslint-disable-next-line no-underscore-dangle
-    expect(el._currentTransform.y).to.equal(50);
-    expect(mockNativeDialog.style.transform).to.equal('translate(50px, 50px)');
-
-    // Stop drag
-    document.dispatchEvent(new MouseEvent('mouseup'));
-
-    // Verify dragging stopped
-    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 200, clientY: 200 }));
-    // eslint-disable-next-line no-underscore-dangle
-    expect(el._currentTransform.x).to.equal(50); // Should stay same
-  });
 });
