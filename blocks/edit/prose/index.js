@@ -30,6 +30,7 @@ import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
+import { checkDoc } from '../edit.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
@@ -108,7 +109,7 @@ function stopPreviewing() {
   if (updatePoller) clearInterval(updatePoller);
 }
 
-function handleAwarenessUpdates(wsProvider, daTitle, win) {
+function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   const users = new Set();
 
   wsProvider.awareness.on('update', (delta) => {
@@ -133,13 +134,22 @@ function handleAwarenessUpdates(wsProvider, daTitle, win) {
   });
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
+  wsProvider.on('connection-close', async () => {
+    const resp = await checkDoc(path);
+    if (resp.status === 404) {
+      const split = window.location.hash.slice(2).split('/');
+      split.pop();
+      // Navigate to the parent folder
+      window.location.replace(`/#/${split.join('/')}`);
+    }
+  });
   win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
   win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
 }
 
-export function createAwarenessStatusWidget(wsProvider, win) {
+export function createAwarenessStatusWidget(wsProvider, win, path) {
   const daTitle = win.document.querySelector('da-title');
-  handleAwarenessUpdates(wsProvider, daTitle, win);
+  handleAwarenessUpdates(wsProvider, daTitle, win, path);
   return daTitle;
 }
 
@@ -231,7 +241,7 @@ export default function initProse({ path, permissions }) {
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
   addSyncedListener(wsProvider, canWrite);
 
-  createAwarenessStatusWidget(wsProvider, window);
+  createAwarenessStatusWidget(wsProvider, window, path);
   registerErrorHandler(ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
