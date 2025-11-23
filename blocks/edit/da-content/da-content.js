@@ -11,8 +11,7 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
-    startPreviewing: { attribute: false },
-    stopPreviewing: { attribute: false },
+    _showLivePreview: { state: true },
     _editorLoaded: { state: true },
     _versionUrl: { state: true },
     _ueUrl: { state: true },
@@ -27,21 +26,6 @@ export default class DaContent extends LitElement {
     if (this.wsProvider) {
       this.wsProvider.disconnect({ data: 'Client navigation' });
       this.wsProvider = undefined;
-    }
-  }
-
-  showPreview() {
-    this.daPreview.showPreview(() => {
-      if (this.startPreviewing) {
-        this.startPreviewing();
-      }
-    });
-  }
-
-  hidePreview() {
-    this.daPreview.hidePreview();
-    if (this.stopPreviewing) {
-      this.stopPreviewing();
     }
   }
 
@@ -74,18 +58,22 @@ export default class DaContent extends LitElement {
     window.location = this._ueUrl;
   }
 
-  handleReset() {
+  handleLivePreview({ detail }) {
+    this.classList.toggle('show-pane');
+    this._showLivePreview = detail;
+  }
+
+  handleVersionReset() {
     this._versionUrl = null;
   }
 
-  handlePreview(e) {
-    this._versionUrl = e.detail.url;
+  handleVersionPreview({ detail }) {
+    this._versionUrl = detail.url;
   }
 
   handleCloseVersions() {
     this.daVersions.open = false;
-    this.classList.remove('show-versions');
-    this.daVersions.classList.remove('show-versions');
+    this.classList.toggle('show-pane');
   }
 
   get daVersions() {
@@ -111,7 +99,7 @@ export default class DaContent extends LitElement {
         ${this._editorLoaded ? html`
           <div class="da-editor-tabs">
             <div class="da-editor-tabs-full">
-              <button class="da-editor-tab show-preview" title="Preview" @click=${this.showPreview}>Preview</button>
+              <button class="da-editor-tab show-preview" title="Preview" @click=${() => { this.handleLivePreview({ detail: true }); }}>Preview</button>
             </div>
             <div class="da-editor-tabs-quiet">
               <button class="da-editor-tab quiet show-versions" title="Versions" @click=${this.showVersions}>Versions</button>
@@ -120,8 +108,14 @@ export default class DaContent extends LitElement {
           </div>
         ` : nothing}
       </div>
-      ${this._editorLoaded ? html`<da-preview path=${this.details.previewUrl}></da-preview>` : nothing}
-      ${this._editorLoaded ? html`<da-versions path=${this.details.fullpath} @preview=${this.handlePreview} @close=${this.handleCloseVersions}></da-versions>` : nothing}
+      ${this._editorLoaded ? html`
+        <da-preview
+          path=${this.details.previewUrl}
+          .show=${this._showLivePreview}
+          class="${this._showLivePreview ? 'is-visible' : ''}"
+          @preview=${this.handleLivePreview}></da-preview>
+        <da-versions path=${this.details.fullpath} @preview=${this.handleVersionPreview} @close=${this.handleCloseVersions}></da-versions>
+        ` : nothing}
     `;
   }
 }

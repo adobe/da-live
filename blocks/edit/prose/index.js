@@ -12,6 +12,7 @@ import {
   sinkListItem,
   gapCursor,
   TextSelection,
+  Plugin,
   Y,
   WebsocketProvider,
   ySyncPlugin,
@@ -20,7 +21,6 @@ import {
 } from 'da-y-wrapper';
 
 // DA
-import prose2aem from '../../shared/prose2aem.js';
 import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
 import { linkItem } from './plugins/menu/linkItem.js';
 import codemark from './plugins/codemark.js';
@@ -46,19 +46,10 @@ import {
   handleRedo,
 } from './plugins/keyHandlers.js';
 
-let sendUpdates = false;
-let hasChanged = 0;
 let lastCursorPosition = null;
-let daPreview;
-let updatePoller;
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
-
-  if (transaction.docChanged) {
-    hasChanged += 1;
-    sendUpdates = true;
-  }
 
   const newState = window.view.state.apply(transaction);
   window.view.updateState(newState);
@@ -69,46 +60,75 @@ function dispatchTransaction(transaction) {
 }
 
 function setPreviewBody() {
-  daPreview ??= document.querySelector('da-content')?.shadowRoot.querySelector('da-preview');
+  const daPreview = document.querySelector('da-content').shadowRoot.querySelector('da-preview');
   if (!daPreview) return;
-
-  const clone = window.view.docView.dom.cloneNode(true);
-  const body = prose2aem(clone, true);
-  daPreview.body = body;
+  daPreview.setBody();
 }
 
-export function pollForUpdates() {
-  if (updatePoller) clearInterval(updatePoller);
+function trackCursorAndChanges() {
+  let lastCursorPos = null;
+  let updateTimeout = null;
+  let pendingDocChange = false;
 
-  updatePoller = setInterval(() => {
-    if (sendUpdates) {
-      if (hasChanged > 0) {
-        hasChanged = 0;
-        return;
-      }
+  const schedulePreviewUpdate = () => {
+    if (updateTimeout) clearTimeout(updateTimeout);
+
+    updateTimeout = setTimeout(() => {
       setPreviewBody();
-      sendUpdates = false;
+      pendingDocChange = false;
+      updateTimeout = null;
+    }, 500);
+  };
+
+  return new Plugin({
+    view() {
+      return {
+        update(view, prevState) {
+          const docChanged = view.state.doc !== prevState.doc;
+
+          if (docChanged) {
+            // Document changed - schedule update after 500ms of no changes
+            pendingDocChange = true;
+            schedulePreviewUpdate();
+            return;
+          }
+
+          // Only track cursor if no pending document changes
+          if (pendingDocChange) return;
+
+          const { from, to } = view.state.selection;
+
+          // Don't update during text selection (when from !== to)
+          if (from !== to) return;
+
+          const currentPos = `${from}-${to}`;
+
+          // Only update if cursor position actually changed
+          if (currentPos !== lastCursorPos) {
+            lastCursorPos = currentPos;
+            setPreviewBody();
+          }
+        },
+      };
+    },
+  });
+}
+
+function handleProseLoaded(editor, wsProvider) {
+  // Wait for the websocket to actually sync before marking as loaded
+  const handleSynced = (isSynced) => {
+    if (isSynced) {
+      const daEditor = editor.getRootNode().host;
+      const opts = { bubbles: true, composed: true };
+      const event = new CustomEvent('proseloaded', opts);
+      daEditor.dispatchEvent(event);
+
+      // Only listen to the first sync
+      wsProvider.off('synced', handleSynced);
     }
-  }, 500);
-}
+  };
 
-function handleProseLoaded(editor) {
-  // Give the websocket time to connect and populate
-  setTimeout(() => {
-    const daEditor = editor.getRootNode().host;
-    const opts = { bubbles: true, composed: true };
-    const event = new CustomEvent('proseloaded', opts);
-    daEditor.dispatchEvent(event);
-  }, 3000);
-}
-
-function startPreviewing() {
-  setPreviewBody();
-  pollForUpdates();
-}
-
-function stopPreviewing() {
-  if (updatePoller) clearInterval(updatePoller);
+  wsProvider.on('synced', handleSynced);
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
@@ -221,7 +241,10 @@ function addSyncedListener(wsProvider, canWrite) {
 
 export default function initProse({ path, permissions }) {
   // Destroy ProseMirror if it already exists - GH-212
-  if (window.view) delete window.view;
+  if (window.view) {
+    window.view.destroy();
+    delete window.view;
+  }
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
 
@@ -268,6 +291,7 @@ export default function initProse({ path, permissions }) {
     ySyncPlugin(yXmlFragment),
     yCursorPlugin(wsProvider.awareness),
     yUndoPlugin(),
+    trackCursorAndChanges(),
     slashMenu(),
     linkMenu(),
     imageDrop(schema),
@@ -350,10 +374,10 @@ export default function initProse({ path, permissions }) {
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
 
-  handleProseLoaded(editor, permissions);
+  handleProseLoaded(editor, wsProvider);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return { proseEl: editor, wsProvider, startPreviewing, stopPreviewing };
+  return { proseEl: editor, wsProvider };
 }
