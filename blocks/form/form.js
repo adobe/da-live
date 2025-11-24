@@ -36,6 +36,75 @@ class FormEditor extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
     this.fetchDoc(this.details);
+    this._boundOnActivateItemGroup = this.handleActivateItemGroup.bind(this);
+    this.attachEventListeners();
+  }
+
+  disconnectedCallback() {
+    this.detachEventListeners();
+    super.disconnectedCallback();
+  }
+
+  attachEventListeners() {
+    // Capture so we can stop the original before components act
+    window.addEventListener('focus-group', this._boundOnActivateItemGroup, { capture: true });
+  }
+
+  detachEventListeners() {
+    window.removeEventListener('focus-group', this._boundOnActivateItemGroup, { capture: true });
+  }
+
+  handleActivateItemGroup(e) {
+    const { pointer, source, coordinated } = e?.detail || {};
+    if (pointer == null) return;
+    // Ignore our own coordination event
+    if (source === 'coordinator' || coordinated) return;
+    // Prevent components from handling the original event; we will orchestrate
+    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    const isSame = this._focusedPointer != null && this._focusedPointer === pointer;
+    // 1) Sync active visuals without scrolling (only if changed)
+    if (!isSame) {
+      window.dispatchEvent(new CustomEvent('focus-group', {
+        detail: { pointer, source: 'coordinator', noScroll: true, coordinated: true },
+        bubbles: true,
+        composed: true,
+      }));
+      this._focusedPointer = pointer;
+    }
+    // 2) Orchestrate scrolling based on source
+    if (source === 'sidebar') {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('editor-scroll-to', {
+          detail: { pointer },
+          bubbles: true,
+          composed: true,
+        }));
+      });
+    } else if (source === 'editor') {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('sidebar-scroll-to', {
+          detail: { pointer },
+          bubbles: true,
+          composed: true,
+        }));
+      });
+    } else if (source === 'breadcrumb') {
+      // Parallel feel: dispatch both in separate rAFs
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('sidebar-scroll-to', {
+          detail: { pointer },
+          bubbles: true,
+          composed: true,
+        }));
+      });
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('editor-scroll-to', {
+          detail: { pointer },
+          bubbles: true,
+          composed: true,
+        }));
+      });
+    }
   }
 
   async fetchDoc() {

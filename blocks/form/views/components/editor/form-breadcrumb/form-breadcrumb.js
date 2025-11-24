@@ -54,8 +54,8 @@ class FormBreadcrumb extends LitElement {
 
   handleActivate(pointer) {
     if (pointer == null) return;
-    window.dispatchEvent(new CustomEvent('breadcrumb-activate', {
-      detail: { pointer },
+    window.dispatchEvent(new CustomEvent('focus-group', {
+      detail: { pointer, source: 'breadcrumb' },
       bubbles: true,
       composed: true,
     }));
@@ -89,5 +89,3 @@ class FormBreadcrumb extends LitElement {
 
 customElements.define('form-breadcrumb', FormBreadcrumb);
 export default FormBreadcrumb;
-
-

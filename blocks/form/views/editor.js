@@ -50,7 +50,12 @@ class FormEditor extends LitElement {
 
   getData() {
     this._data = this.formModel.annotated;
-    this._activePointer = this._data?.pointer ?? '';
+    // Preserve current active pointer across data refresh if still present
+    if (this._activePointer == null) {
+      this._activePointer = this._data?.pointer ?? '';
+    } else if (!this.hasPointer(this._data, this._activePointer)) {
+      this._activePointer = this._data?.pointer ?? '';
+    }
   }
 
   updateHeaderOffsetVar() {
@@ -59,13 +64,24 @@ class FormEditor extends LitElement {
     this.style.setProperty('--editor-header-height', `${headerHeight + 8}px`);
   }
 
+  hasPointer(node, pointer) {
+    if (!node) return false;
+    if (node.pointer === pointer) return true;
+    if (Array.isArray(node.data)) {
+      for (let i = 0; i < node.data.length; i += 1) {
+        if (this.hasPointer(node.data[i], pointer)) return true;
+      }
+    }
+    return false;
+  }
+
   attachEventListeners() {
-    window.addEventListener('activate-item-group', this._boundOnActivateItemGroup);
+    window.addEventListener('focus-group', this._boundOnActivateItemGroup);
     window.addEventListener('editor-scroll-to', this._boundOnEditorScrollTo);
   }
 
   detachEventListeners() {
-    window.removeEventListener('activate-item-group', this._boundOnActivateItemGroup);
+    window.removeEventListener('focus-group', this._boundOnActivateItemGroup);
     window.removeEventListener('editor-scroll-to', this._boundOnEditorScrollTo);
   }
 

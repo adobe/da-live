@@ -11,20 +11,20 @@ class FormSidebarItem extends LitElement {
     super.connectedCallback();
     this._onActivate = (e) => {
       const { pointer } = e.detail || {};
-      this.active = !!pointer && pointer === this.pointer;
+      this.active = pointer === this.pointer;
     };
-    window.addEventListener('activate-item-group', this._onActivate);
+    window.addEventListener('focus-group', this._onActivate);
   }
 
   disconnectedCallback() {
-    window.removeEventListener('activate-item-group', this._onActivate);
+    window.removeEventListener('focus-group', this._onActivate);
     super.disconnectedCallback();
   }
 
   handleActivate() {
     const { pointer } = this;
     if (pointer == null) return;
-    const event = new CustomEvent('activate-item-group', {
+    const event = new CustomEvent('focus-group', {
       detail: { pointer, source: 'sidebar' },
       bubbles: true,
       composed: true,

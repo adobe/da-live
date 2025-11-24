@@ -26,9 +26,10 @@ class FormSidebar extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
     this._navEls = new Map();
-    this._boundOnBreadcrumbActivate = this.handleBreadcrumbActivate.bind(this);
     this._boundOnActivateItemGroup = this.handleActivateItemGroup.bind(this);
+    this._boundOnSidebarScrollTo = this.handleSidebarScrollTo.bind(this);
     this.attachEventListeners();
+    this.updateHeaderOffsetVar();
   }
 
   disconnectedCallback() {
@@ -44,37 +45,28 @@ class FormSidebar extends LitElement {
   }
 
   attachEventListeners() {
-    window.addEventListener('breadcrumb-activate', this._boundOnBreadcrumbActivate, { capture: true });
-    window.addEventListener('activate-item-group', this._boundOnActivateItemGroup);
+    window.addEventListener('focus-group', this._boundOnActivateItemGroup);
+    window.addEventListener('sidebar-scroll-to', this._boundOnSidebarScrollTo);
   }
 
   detachEventListeners() {
-    window.removeEventListener('breadcrumb-activate', this._boundOnBreadcrumbActivate, { capture: true });
-    window.removeEventListener('activate-item-group', this._boundOnActivateItemGroup);
+    window.removeEventListener('focus-group', this._boundOnActivateItemGroup);
+    window.removeEventListener('sidebar-scroll-to', this._boundOnSidebarScrollTo);
   }
 
-  handleBreadcrumbActivate(e) {
+  handleSidebarScrollTo(e) {
     const pointer = e?.detail?.pointer;
     if (pointer == null) return;
     const target = this._navEls.get(pointer);
-    // 1) Sync active state without triggering component scroll handlers
-    window.dispatchEvent(new CustomEvent('activate-item-group', {
-      detail: { pointer, source: 'sidebar', reason: 'breadcrumb', noScroll: true },
-      bubbles: true,
-      composed: true,
-    }));
-    // 2) Start both scrolls in parallel: sidebar (host) and editor
     if (target && typeof target.scrollIntoView === 'function') {
-      scrollWithin(this, target, { behavior: 'smooth', block: 'center' }, { onlyIfNeeded: true });
+      this.updateHeaderOffsetVar();
+      scrollWithin(
+        this,
+        target,
+        { behavior: 'smooth', block: 'start' },
+        { onlyIfNeeded: true },
+      );
     }
-    // Ask editor to perform smooth scroll with header offset
-    requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent('editor-scroll-to', {
-        detail: { pointer },
-        bubbles: true,
-        composed: true,
-      }));
-    });
   }
 
   handleActivateItemGroup(e) {
@@ -87,8 +79,20 @@ class FormSidebar extends LitElement {
     // The host (:host) is the scroll container (overflow: auto), so let the
     // browser bring the target into view within the host only.
     if (typeof target.scrollIntoView === 'function') {
-      scrollWithin(this, target, { behavior: 'smooth', block: 'center' }, { onlyIfNeeded: true });
+      this.updateHeaderOffsetVar();
+      scrollWithin(
+        this,
+        target,
+        { behavior: 'smooth', block: 'start' },
+        { onlyIfNeeded: true },
+      );
     }
+  }
+
+  updateHeaderOffsetVar() {
+    const header = this.shadowRoot.querySelector('.da-sidebar-header');
+    const headerHeight = header?.getBoundingClientRect().height || 0;
+    this.style.setProperty('--sidebar-header-height', `${headerHeight + 8}px`);
   }
 
   getNav() {

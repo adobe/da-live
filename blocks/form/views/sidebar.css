@@ -44,6 +44,10 @@
   position: relative;
 }
 
+.nav-list li {
+  scroll-margin-top: var(--sidebar-header-height, 0px);
+}
+
 .nav-list {
   line-height: 28px;
 
