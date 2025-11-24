@@ -23,6 +23,7 @@ export default class LinkMenu extends InContextMenu {
   show(coords, linkText = '') {
     super.show(coords);
     this.linkText = linkText;
+    this.selectedIndex = undefined;
   }
 
   scrollSelectedIntoView() {
@@ -32,6 +33,17 @@ export default class LinkMenu extends InContextMenu {
         selectedItem.scrollIntoView({ block: 'nearest' });
       }
     });
+  }
+
+  handleKeyDown(event) {
+    if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && this.selectedIndex === undefined) {
+      return false;
+    }
+    if (event.key === 'Tab' && this.selectedIndex === undefined) {
+      event.preventDefault();
+      this.selectedIndex = 0;
+    }
+    super.handleKeyDown(event);
   }
 
   render() {

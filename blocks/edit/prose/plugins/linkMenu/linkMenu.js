@@ -111,7 +111,10 @@ export default function linkMenu() {
     props: {
       handleKeyDown(editorView, event) {
         if (pluginView?.menu.visible) {
-          if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(event.key)) {
+          if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
+            return pluginView.menu.handleKeyDown(event);
+          }
+          if (['Enter', 'Escape', 'Tab'].includes(event.key)) {
             event.preventDefault();
             event.stopPropagation();
             pluginView.menu.handleKeyDown(event);
