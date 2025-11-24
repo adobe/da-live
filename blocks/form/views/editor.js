@@ -21,10 +21,16 @@ class FormEditor extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleActivateItemGroup = (e) => {
       const { pointer, source } = e?.detail || {};
-      if (!pointer || source === 'editor') return;
-      const target = this.shadowRoot.querySelector(`.item-group[data-key="${pointer}"]`);
-      if (target && typeof target.scrollIntoView === 'function') {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (!pointer) return;
+      const container = this.shadowRoot;
+      const prev = container.querySelector('.item-group[active]');
+      if (prev) prev.removeAttribute('active');
+      const target = container.querySelector(`.item-group[data-key="${pointer}"]`);
+      if (target) {
+        target.setAttribute('active', '');
+        if (source !== 'editor' && typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
     };
     window.addEventListener('activate-item-group', this._handleActivateItemGroup);

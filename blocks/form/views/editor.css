@@ -40,6 +40,22 @@
     padding: 0 48px 48px;
 
     .item-group {
+      position: relative;
+
+      &[active]::before {
+        content: "";
+        position: absolute;
+        left: -48px;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background-color: var(--s2-blue-900);
+        box-shadow: none;
+        z-index: 1;
+        border-top-right-radius: 15px;
+        border-bottom-right-radius: 15px;
+      }
+
       &:not(:first-child) {
         .item-title {
           margin-top: 20px;
