@@ -927,9 +927,7 @@ da-diff-deleted, da-diff-added {
 /* Wrapper for images with focal point overlay */
 .focal-point-image-wrapper {
   position: relative;
-  display: inline-block;
-  line-height: 0;
-  vertical-align: bottom;
+  display: block;
 }
 
 .focal-point-image-wrapper img {
