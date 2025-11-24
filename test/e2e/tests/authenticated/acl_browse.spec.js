@@ -52,6 +52,8 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await page.locator('button:text("Create document")').press(' ');
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  // The new page needs a moment to be ready
+  await page.waitForTimeout(2000);
   await page.locator('div.ProseMirror').fill('test writable doc');
   await page.waitForTimeout(3000);
 
