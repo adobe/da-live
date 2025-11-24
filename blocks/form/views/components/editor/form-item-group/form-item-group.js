@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../../../../scripts/utils.js';
+import { EVENT_FOCUS_GROUP } from '../../../../utils/events.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const globalStyle = await getStyle(new URL('../../../../global.css', import.meta.url).href);
@@ -20,7 +21,7 @@ class FormItemGroup extends LitElement {
       e.stopPropagation();
       const { pointer } = this;
       if (pointer == null) return;
-      window.dispatchEvent(new CustomEvent('focus-group', {
+      window.dispatchEvent(new CustomEvent(EVENT_FOCUS_GROUP, {
         detail: { pointer, source: 'editor' },
         bubbles: true,
         composed: true,

@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import './components/sidebar/sitebar-item.js';
 import { scrollWithin } from '../utils/scroll-utils.js';
 import { ref } from '../../../deps/lit/dist/index.js';
+import { EVENT_FOCUS_GROUP, EVENT_SIDEBAR_SCROLL_TO } from '../utils/events.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -45,13 +46,13 @@ class FormSidebar extends LitElement {
   }
 
   attachEventListeners() {
-    window.addEventListener('focus-group', this._boundOnActivateItemGroup);
-    window.addEventListener('sidebar-scroll-to', this._boundOnSidebarScrollTo);
+    window.addEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup);
+    window.addEventListener(EVENT_SIDEBAR_SCROLL_TO, this._boundOnSidebarScrollTo);
   }
 
   detachEventListeners() {
-    window.removeEventListener('focus-group', this._boundOnActivateItemGroup);
-    window.removeEventListener('sidebar-scroll-to', this._boundOnSidebarScrollTo);
+    window.removeEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup);
+    window.removeEventListener(EVENT_SIDEBAR_SCROLL_TO, this._boundOnSidebarScrollTo);
   }
 
   handleSidebarScrollTo(e) {

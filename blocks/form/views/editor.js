@@ -7,6 +7,7 @@ import './components/editor/sl-checkbox/sl-checkbox.js';
 import './components/editor/form-item-group/form-item-group.js';
 import './components/editor/form-breadcrumb/form-breadcrumb.js';
 import { scrollPageTo } from '../utils/scroll-utils.js';
+import { EVENT_FOCUS_GROUP, EVENT_EDITOR_SCROLL_TO } from '../utils/events.js';
 import { ref } from '../../../deps/lit/dist/index.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -76,13 +77,13 @@ class FormEditor extends LitElement {
   }
 
   attachEventListeners() {
-    window.addEventListener('focus-group', this._boundOnActivateItemGroup);
-    window.addEventListener('editor-scroll-to', this._boundOnEditorScrollTo);
+    window.addEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup);
+    window.addEventListener(EVENT_EDITOR_SCROLL_TO, this._boundOnEditorScrollTo);
   }
 
   detachEventListeners() {
-    window.removeEventListener('focus-group', this._boundOnActivateItemGroup);
-    window.removeEventListener('editor-scroll-to', this._boundOnEditorScrollTo);
+    window.removeEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup);
+    window.removeEventListener(EVENT_EDITOR_SCROLL_TO, this._boundOnEditorScrollTo);
   }
 
   handleActivateItemGroup(e) {

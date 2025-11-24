@@ -1,4 +1,5 @@
 import { LitElement, html } from 'da-lit';
+import { EVENT_FOCUS_GROUP } from '../../../utils/events.js';
 
 class FormSidebarItem extends LitElement {
   static properties = {
@@ -13,18 +14,18 @@ class FormSidebarItem extends LitElement {
       const { pointer } = e.detail || {};
       this.active = pointer === this.pointer;
     };
-    window.addEventListener('focus-group', this._onActivate);
+    window.addEventListener(EVENT_FOCUS_GROUP, this._onActivate);
   }
 
   disconnectedCallback() {
-    window.removeEventListener('focus-group', this._onActivate);
+    window.removeEventListener(EVENT_FOCUS_GROUP, this._onActivate);
     super.disconnectedCallback();
   }
 
   handleActivate() {
     const { pointer } = this;
     if (pointer == null) return;
-    const event = new CustomEvent('focus-group', {
+    const event = new CustomEvent(EVENT_FOCUS_GROUP, {
       detail: { pointer, source: 'sidebar' },
       bubbles: true,
       composed: true,

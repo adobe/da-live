@@ -10,6 +10,7 @@ import { loadHtml, convertHtmlToJson } from './utils/utils.js';
 import generateMinimalDataForSchema from './utils/data-generator.js';
 
 import '../edit/da-title/da-title.js';
+import { EVENT_FOCUS_GROUP, EVENT_EDITOR_SCROLL_TO, EVENT_SIDEBAR_SCROLL_TO } from './utils/events.js';
 
 // Internal Web Components
 import './views/editor.js';
@@ -47,24 +48,26 @@ class FormEditor extends LitElement {
 
   attachEventListeners() {
     // Capture so we can stop the original before components act
-    window.addEventListener('focus-group', this._boundOnActivateItemGroup, { capture: true });
+    window.addEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup, { capture: true });
   }
 
   detachEventListeners() {
-    window.removeEventListener('focus-group', this._boundOnActivateItemGroup, { capture: true });
+    window.removeEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup, { capture: true });
   }
 
   handleActivateItemGroup(e) {
     const { pointer, source, coordinated } = e?.detail || {};
     if (pointer == null) return;
+    if (this._coordinating) return;
     // Ignore our own coordination event
     if (source === 'coordinator' || coordinated) return;
     // Prevent components from handling the original event; we will orchestrate
     if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    this._coordinating = true;
     const isSame = this._focusedPointer != null && this._focusedPointer === pointer;
     // 1) Sync active visuals without scrolling (only if changed)
     if (!isSame) {
-      window.dispatchEvent(new CustomEvent('focus-group', {
+      window.dispatchEvent(new CustomEvent(EVENT_FOCUS_GROUP, {
         detail: { pointer, source: 'coordinator', noScroll: true, coordinated: true },
         bubbles: true,
         composed: true,
@@ -74,7 +77,7 @@ class FormEditor extends LitElement {
     // 2) Orchestrate scrolling based on source
     if (source === 'sidebar') {
       requestAnimationFrame(() => {
-        window.dispatchEvent(new CustomEvent('editor-scroll-to', {
+        window.dispatchEvent(new CustomEvent(EVENT_EDITOR_SCROLL_TO, {
           detail: { pointer },
           bubbles: true,
           composed: true,
@@ -82,7 +85,7 @@ class FormEditor extends LitElement {
       });
     } else if (source === 'editor') {
       requestAnimationFrame(() => {
-        window.dispatchEvent(new CustomEvent('sidebar-scroll-to', {
+        window.dispatchEvent(new CustomEvent(EVENT_SIDEBAR_SCROLL_TO, {
           detail: { pointer },
           bubbles: true,
           composed: true,
@@ -91,20 +94,21 @@ class FormEditor extends LitElement {
     } else if (source === 'breadcrumb') {
       // Parallel feel: dispatch both in separate rAFs
       requestAnimationFrame(() => {
-        window.dispatchEvent(new CustomEvent('sidebar-scroll-to', {
+        window.dispatchEvent(new CustomEvent(EVENT_SIDEBAR_SCROLL_TO, {
           detail: { pointer },
           bubbles: true,
           composed: true,
         }));
       });
       requestAnimationFrame(() => {
-        window.dispatchEvent(new CustomEvent('editor-scroll-to', {
+        window.dispatchEvent(new CustomEvent(EVENT_EDITOR_SCROLL_TO, {
           detail: { pointer },
           bubbles: true,
           composed: true,
         }));
       });
     }
+    Promise.resolve().then(() => { this._coordinating = false; });
   }
 
   async fetchDoc() {

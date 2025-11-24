@@ -7,8 +7,8 @@ const style = await getStyle(import.meta.url);
 
 class FormPreview extends LitElement {
   static properties = {
-    formModel: { attribute: false },
-  };
+    formModel: { attribute: false }
+  }
 
   connectedCallback() {
     super.connectedCallback();
