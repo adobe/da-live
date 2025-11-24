@@ -41,6 +41,7 @@
 
     .item-group {
       position: relative;
+      scroll-margin-top: var(--editor-header-height, 0px);
 
       &[active]::before {
         content: "";

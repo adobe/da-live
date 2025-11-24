@@ -29,6 +29,10 @@ class FormEditor extends LitElement {
       if (target) {
         target.setAttribute('active', '');
         if (source !== 'editor' && typeof target.scrollIntoView === 'function') {
+          const header = this.shadowRoot.querySelector('.form-header');
+          const headerHeight = header?.getBoundingClientRect().height || 0;
+          // expose dynamic offset for sticky header via CSS variable
+          this.style.setProperty('--editor-header-height', `${headerHeight + 8}px`);
           target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
