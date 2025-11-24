@@ -20,8 +20,8 @@ class FormEditor extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleActivateItemGroup = (e) => {
-      const pointer = e?.detail?.pointer;
-      if (!pointer) return;
+      const { pointer, source } = e?.detail || {};
+      if (!pointer || source === 'editor') return;
       const target = this.shadowRoot.querySelector(`.item-group[data-key="${pointer}"]`);
       if (target && typeof target.scrollIntoView === 'function') {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });

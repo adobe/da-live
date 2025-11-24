@@ -24,8 +24,8 @@ class FormSidebar extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onActivateItemGroup = (e) => {
-      const pointer = e?.detail?.pointer;
-      if (!pointer) return;
+      const { pointer, source } = e?.detail || {};
+      if (!pointer || source === 'sidebar') return;
       const target = this.shadowRoot.querySelector(`li[data-key="${pointer}"]`)
         || this.shadowRoot.querySelector(`sidebar-item[pointer="${pointer}"]`);
       if (target && typeof target.scrollIntoView === 'function') {
