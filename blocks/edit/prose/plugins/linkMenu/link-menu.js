@@ -40,14 +40,24 @@ export default class LinkMenu extends InContextMenu {
       return false;
     }
     if (event.key === 'Tab') {
-      if (this.selectedIndex === undefined) {
+      if (event.shiftKey) {
+        // Shift+Tab: navigate backwards
+        if (this.selectedIndex === undefined || this.selectedIndex === 0) {
+          return false;
+        }
         event.preventDefault();
-        this.selectedIndex = 0;
-      } else if (this.selectedIndex === this.items.length - 1) {
-        return false;
+        this.previous();
       } else {
-        event.preventDefault();
-        this.selectedIndex = this.selectedIndex + 1;
+        // Tab: navigate forwards
+        if (this.selectedIndex === undefined) {
+          event.preventDefault();
+          this.selectedIndex = 0;
+        } else if (this.selectedIndex === this.items.length - 1) {
+          return false;
+        } else {
+          event.preventDefault();
+          this.next();
+        }
       }
     }
     super.handleKeyDown(event);
