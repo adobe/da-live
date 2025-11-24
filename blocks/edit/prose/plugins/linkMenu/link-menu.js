@@ -39,9 +39,9 @@ export default class LinkMenu extends InContextMenu {
     if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && this.selectedIndex === undefined) {
       return false;
     }
-    if (event.key === 'Tab' && this.selectedIndex === undefined) {
+    if (event.key === 'Tab') {
       event.preventDefault();
-      this.selectedIndex = 0;
+      this.selectedIndex = this.selectedIndex === undefined ? 0 : ((this.selectedIndex + 1) % this.items.length);
     }
     super.handleKeyDown(event);
   }
