@@ -60,11 +60,15 @@ function updateImageAttributes(img, attrs) {
   }
 }
 
+// Track all active image views for global updates
+const imageViews = new Set();
+
 class ImageWithFocalPointView {
   constructor(node, view, getPos) {
     this.node = node;
     this.view = view;
     this.getPos = getPos;
+    this.currentTableName = null;
 
     this.dom = document.createElement('span');
     this.dom.className = 'focal-point-image-wrapper';
@@ -72,8 +76,13 @@ class ImageWithFocalPointView {
     this.img = document.createElement('img');
     updateImageAttributes(this.img, node.attrs);
 
+    if (node.attrs.src?.toLowerCase().endsWith('.svg')) {
+      this.dom.classList.add('focal-point-svg-wrapper');
+    }
+
     this.dom.appendChild(this.img);
 
+    imageViews.add(this);
     this.initFocalPoint();
   }
 
@@ -84,6 +93,7 @@ class ImageWithFocalPointView {
       if (pos == null) return;
 
       const tableInfo = getTableInfo(this.view.state, pos);
+      this.currentTableName = tableInfo?.tableName || null;
       if (tableInfo && shouldShowFocalPoint(tableInfo.tableName, blocks)) {
         this.enableFocalPoint();
       }
@@ -117,11 +127,52 @@ class ImageWithFocalPointView {
     this.dom.appendChild(this.icon);
   }
 
+  disableFocalPoint() {
+    if (!this.icon) return;
+
+    this.icon.removeEventListener('click', this.handleIconClick);
+    this.icon.remove();
+    this.icon = null;
+    this.handleIconClick = null;
+  }
+
+  async recheckFocalPoint() {
+    try {
+      const blocks = await getBlocksData();
+      const pos = this.getPos();
+      if (pos == null) return;
+
+      const tableInfo = getTableInfo(this.view.state, pos);
+      const newTableName = tableInfo?.tableName || null;
+
+      // Only recheck if table name changed
+      if (newTableName !== this.currentTableName) {
+        this.currentTableName = newTableName;
+        const shouldShow = tableInfo && shouldShowFocalPoint(tableInfo.tableName, blocks);
+
+        if (shouldShow && !this.icon) {
+          this.enableFocalPoint();
+        } else if (!shouldShow && this.icon) {
+          this.disableFocalPoint();
+        }
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to recheck focal point:', error);
+    }
+  }
+
   update(node) {
     if (node.type.name !== 'image') return false;
 
     this.node = node;
     updateImageAttributes(this.img, node.attrs);
+
+    if (node.attrs.src?.toLowerCase().endsWith('.svg')) {
+      this.dom.classList.add('focal-point-svg-wrapper');
+    } else {
+      this.dom.classList.remove('focal-point-svg-wrapper');
+    }
 
     if (this.icon) {
       this.icon.className = hasFocalPointData(node.attrs)
@@ -136,11 +187,25 @@ class ImageWithFocalPointView {
     if (this.icon) {
       this.icon.removeEventListener('click', this.handleIconClick);
     }
+    imageViews.delete(this);
   }
 }
 
 export default function imageFocalPoint() {
   return new Plugin({
+    view() {
+      return {
+        update(view, prevState) {
+          // Check if document changed (not just selection)
+          if (!view.state.doc.eq(prevState.doc)) {
+            // Recheck focal point status for all image views
+            imageViews.forEach((imageView) => {
+              imageView.recheckFocalPoint();
+            });
+          }
+        },
+      };
+    },
     props: {
       nodeViews: {
         image(node, view, getPos) {
