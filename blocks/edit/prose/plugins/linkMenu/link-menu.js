@@ -40,8 +40,15 @@ export default class LinkMenu extends InContextMenu {
       return false;
     }
     if (event.key === 'Tab') {
-      event.preventDefault();
-      this.selectedIndex = this.selectedIndex === undefined ? 0 : ((this.selectedIndex + 1) % this.items.length);
+      if (this.selectedIndex === undefined) {
+        event.preventDefault();
+        this.selectedIndex = 0;
+      } else if (this.selectedIndex === this.items.length - 1) {
+        return false;
+      } else {
+        event.preventDefault();
+        this.selectedIndex = this.selectedIndex + 1;
+      }
     }
     super.handleKeyDown(event);
   }
