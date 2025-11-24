@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import './components/sidebar/sitebar-item.js';
-import { isVisibleWithin, scrollWithin } from '../utils/scroll-utils.js';
+import { scrollWithin } from '../utils/scroll-utils.js';
 import { ref } from '../../../deps/lit/dist/index.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);

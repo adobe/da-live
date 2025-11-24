@@ -124,11 +124,8 @@ class FormEditor extends LitElement {
 
   async handleModelIntent(e) {
     const { default: applyOp } = await import('./utils/rfc6902-patch.js');
-    console.debug('[da-form] intent received:', e.detail);
     const nextJson = applyOp(this.formModel.json, e.detail);
-    console.debug('[da-form] next json:', nextJson);
     this.formModel = new FormModel(nextJson, this._schemas);
-    console.debug('[da-form] formModel updated');
   }
 
   async handleSelectSchema(e) {
@@ -139,11 +136,9 @@ class FormEditor extends LitElement {
       schema = await getSchema(schemaId);
       if (!schema) return;
     }
-    console.debug('[da-form] schema selected:', schemaId);
     const data = generateMinimalDataForSchema(schema);
     const json = { metadata: { schemaName: schemaId }, data };
     this.formModel = new FormModel(json, this._schemas);
-    console.debug('[da-form] booted FormModel with minimal data');
   }
 
   renderSchemaSelector() {

@@ -106,10 +106,7 @@ class FormEditor extends LitElement {
     }
   }
 
-  // Breadcrumb computation is handled by <form-breadcrumb>
-
   emitReplace(pointer, value) {
-    console.debug('[da-form-editor] emit replace', { path: pointer, value });
     this.dispatchEvent(new CustomEvent('form-model-intent', {
       detail: { op: 'replace', path: pointer, value },
       bubbles: true,

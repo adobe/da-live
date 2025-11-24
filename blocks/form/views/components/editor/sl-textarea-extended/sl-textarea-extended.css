@@ -1,18 +1,20 @@
-.sl-inputfield {}
-
-.sl-inputfield textarea {
-  border: 1px solid var(--sl-border-color, #d1d5db);
-  font-size: var(--sl-font-size, var(--s2-body-xs-size, 12px));
-  min-height: var(--sl-textarea-min-height, 200px);
+:host {
   max-width: 100%;
-  min-width: 100%;
-  position: inherit;
 }
 
-.sl-inputfield textarea:is(:focus, :focus-visible) {
-  outline: none;
-  border-color: var(--sl-focus-color, var(--s2-blue-700));
-  box-shadow: var(--sl-focus-ring, var(--s2-blue-200)) 0px 0px 0px 3px;
+.sl-inputfield {
+  textarea {
+    border: 1px solid var(--s2-gray-400, #d1d5db);
+    font-size: var(--s2-body-xs-size, 12px);
+    min-height: var(--sl-textarea-min-height, 200px);
+    max-width: 100%;
+    min-width: 100%;
+    position: inherit;
+  }
+
+  textarea:is(:focus, :focus-visible) {
+    outline: none;
+    border-color: var(--s2-blue-700, #5989ff);
+    box-shadow: var(--s2-blue-200, #e5f0fe) 0px 0px 0px 3px;
+  }
 }
-
-
