@@ -19,7 +19,7 @@ class FormItemGroup extends LitElement {
       const { pointer } = this;
       if (!pointer) return;
       window.dispatchEvent(new CustomEvent('activate-item-group', {
-        detail: { pointer },
+        detail: { pointer, source: 'editor' },
         bubbles: true,
         composed: true,
       }));

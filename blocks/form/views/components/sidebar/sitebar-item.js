@@ -25,7 +25,7 @@ class FormSidebarItem extends LitElement {
     const { pointer } = this;
     if (!pointer) return;
     const event = new CustomEvent('activate-item-group', {
-      detail: { pointer },
+      detail: { pointer, source: 'sidebar' },
       bubbles: true,
       composed: true,
     });
@@ -38,7 +38,7 @@ class FormSidebarItem extends LitElement {
         class="item"
         role="button"
         tabindex="0"
-        style="color: inherit"
+        style="color: inherit; cursor: pointer;"
         @click=${() => this.handleActivate()}
       >${this.label}</span>
     `;

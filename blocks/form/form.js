@@ -79,13 +79,13 @@ class FormEditor extends LitElement {
 
   renderSchemaSelector() {
     return html`
-      <p class="da-form-title">Please select a schema to get started</p>
+      <div class="da-schema-selector"><p class="da-form-title">Please select a schema to get started</p>
       <sl-select @change=${this.handleSelectSchema}>
         <option value="">Select schema</option>
         ${Object.entries(this._schemas).map(([key, value]) => html`
           <option value="${key}">${value.title}</option>
         `)}
-      </sl-select>`;
+      </sl-select></div>`;
   }
 
   renderFormEditor() {
@@ -112,7 +112,7 @@ class FormEditor extends LitElement {
     return html`
       <div class="da-form-wrapper">
         ${this.formModel !== undefined ? this.renderFormEditor() : nothing}
-        <da-form-sidebar .formModel=${this.formModel}></da-form-sidebar>
+        ${this.formModel ? html`<da-form-sidebar .formModel=${this.formModel}></da-form-sidebar>` : nothing}
       </div>
     `;
   }
