@@ -23,7 +23,7 @@ class FormSidebarItem extends LitElement {
 
   handleActivate() {
     const { pointer } = this;
-    if (!pointer) return;
+    if (pointer == null) return;
     const event = new CustomEvent('activate-item-group', {
       detail: { pointer, source: 'sidebar' },
       bubbles: true,

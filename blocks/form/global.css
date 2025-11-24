@@ -1,0 +1,10 @@
+:root {
+  /* Inputs */
+  --form-input-height: 30px;
+  --focus-visible-offset: 0px;
+}
+
+p {
+  margin: 0;
+  line-height: 1;
+}

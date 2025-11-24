@@ -14,7 +14,7 @@
     margin-bottom: 20px;
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 100;
     background: #fff;
 
     h2 {
@@ -25,10 +25,7 @@
     }
   }
 
-  p {
-    margin: 0;
-    line-height: 1;
-  }
+
 
   .da-form-title {
     line-height: 1;
@@ -39,79 +36,5 @@
   form {
     padding: 0 48px 48px;
 
-    .item-group {
-      position: relative;
-      scroll-margin-top: var(--editor-header-height, 0px);
-
-      &[active]::before {
-        content: "";
-        position: absolute;
-        left: -48px;
-        top: 0;
-        bottom: 0;
-        width: 3px;
-        background-color: var(--s2-blue-900);
-        box-shadow: none;
-        z-index: 1;
-        border-top-right-radius: 15px;
-        border-bottom-right-radius: 15px;
-      }
-
-      &:not(:first-child) {
-        .item-title {
-          margin-top: 20px;
-        }
-      }
-
-      .item-title {
-        font-weight: 600;
-        line-height: 1.5em;
-        padding-bottom: 15px;
-        position: relative;
-        margin-bottom: 20px;
-
-        &::before {
-          content: "";
-          position: absolute;
-          left: 0px;
-          bottom: 1px;
-          height: 3px;
-          width: 55px;
-          background-color: var(--s2-gray-800);
-        }
-
-        &::after {
-          content: "";
-          position: absolute;
-          left: 0px;
-          bottom: 2px;
-          height: 1px;
-          width: 100%;
-          background-color: var(--s2-gray-800);
-        }
-      }
-
-      .form-children {
-
-        .form-input {
-          margin-bottom: 10px;
-        }
-
-        /* control visuals moved to component-level shadow sheet (form-elements.css) */
-
-        sl-select-extended {
-          width: 33%;
-          max-width: 100%;
-          min-width: 33%;
-          position: inherit;
-
-          ::part(wrapper) {
-            width: 100%;
-            position: inherit;
-          }
-
-        }
-      }
-    }
   }
 }

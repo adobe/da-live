@@ -1,0 +1,22 @@
+.sl-inputfield {}
+
+.sl-inputfield select {
+  border: 1px solid var(--sl-border-color, #d1d5db);
+  background: var(--sl-select-background, none);
+  font-size: var(--sl-font-size, var(--s2-body-xs-size, 12px));
+  height: var(--form-input-height, 30px);
+  appearance: none;
+}
+
+.sl-inputfield select:is(:focus, :focus-visible) {
+  outline: none;
+  border-color: var(--sl-focus-color, var(--s2-blue-700));
+  box-shadow: var(--sl-focus-ring, var(--s2-blue-200)) 0px 0px 0px 3px;
+}
+
+.sl-inputfield ::part(wrapper) {
+  width: 100%;
+  position: inherit;
+}
+
+

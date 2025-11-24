@@ -1,0 +1,20 @@
+.sl-inputfield input[type="text"],
+.sl-inputfield input[type="password"],
+.sl-inputfield input[type="number"],
+.sl-inputfield input[type="date"],
+.sl-inputfield input[type="datetime-local"],
+.sl-inputfield input[type="email"],
+.sl-inputfield input[type="url"] {
+  border: 1px solid var(--sl-border-color, #d1d5db);
+  font-size: var(--sl-font-size, var(--s2-body-xs-size, 12px));
+  height: var(--form-input-height, 30px);
+}
+
+.sl-inputfield input:is(:focus, :focus-visible) {
+  outline: none;
+  border-color: var(--sl-focus-color, var(--s2-blue-700));
+  box-shadow: var(--sl-focus-ring, var(--s2-blue-200)) 0px 0px 0px 3px;
+  outline-offset: var(--focus-visible-offset, 0px);
+}
+
+

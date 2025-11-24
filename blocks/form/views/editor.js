@@ -1,10 +1,13 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import './components/form/sl-textarea-extended.js';
-import './components/form/sl-input-extended.js';
-import './components/form/sl-select-extended.js';
-import './components/form/sl-checkbox.js';
-import './components/form/form-item-group.js';
+import './components/editor/sl-textarea-extended/sl-textarea-extended.js';
+import './components/editor/sl-input-extended/sl-input-extended.js';
+import './components/editor/sl-select-extended/sl-select-extended.js';
+import './components/editor/sl-checkbox/sl-checkbox.js';
+import './components/editor/form-item-group/form-item-group.js';
+import './components/editor/form-breadcrumb/form-breadcrumb.js';
+import { scrollPageTo } from '../utils/scroll-utils.js';
+import { ref } from '../../../deps/lit/dist/index.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -14,40 +17,32 @@ class FormEditor extends LitElement {
   static properties = {
     formModel: { state: true },
     _data: { state: true },
+    _activePointer: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._handleActivateItemGroup = (e) => {
-      const { pointer, source } = e?.detail || {};
-      if (!pointer) return;
-      const container = this.shadowRoot;
-      const prev = container.querySelector('.item-group[active]');
-      if (prev) prev.removeAttribute('active');
-      const target = container.querySelector(`.item-group[data-key="${pointer}"]`);
-      if (target) {
-        target.setAttribute('active', '');
-        if (source !== 'editor' && typeof target.scrollIntoView === 'function') {
-          const header = this.shadowRoot.querySelector('.form-header');
-          const headerHeight = header?.getBoundingClientRect().height || 0;
-          // expose dynamic offset for sticky header via CSS variable
-          this.style.setProperty('--editor-header-height', `${headerHeight + 8}px`);
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-    };
-    window.addEventListener('activate-item-group', this._handleActivateItemGroup);
+    this._groupEls = new Map();
+    this._boundOnActivateItemGroup = this.handleActivateItemGroup.bind(this);
+    this._boundOnEditorScrollTo = this.handleEditorScrollTo.bind(this);
+    this.attachEventListeners();
+    // No resize observer/listener for simplicity
+    // Seed header offset and active pointer once connected
+    this.updateHeaderOffsetVar();
   }
 
   disconnectedCallback() {
-    window.removeEventListener('activate-item-group', this._handleActivateItemGroup);
+    this.detachEventListeners();
+    if (this._scrollRaf) {
+      cancelAnimationFrame(this._scrollRaf);
+      this._scrollRaf = 0;
+    }
     super.disconnectedCallback();
   }
 
   update(props) {
     if (props.has('formModel') && this.formModel) {
-      console.debug('[da-form-editor] formModel changed, regenerating annotated data');
       this.getData();
     }
     super.update(props);
@@ -55,7 +50,47 @@ class FormEditor extends LitElement {
 
   getData() {
     this._data = this.formModel.annotated;
+    this._activePointer = this._data?.pointer ?? '';
   }
+
+  updateHeaderOffsetVar() {
+    const header = this.shadowRoot.querySelector('.form-header');
+    const headerHeight = header?.getBoundingClientRect().height || 0;
+    this.style.setProperty('--editor-header-height', `${headerHeight + 8}px`);
+  }
+
+  attachEventListeners() {
+    window.addEventListener('activate-item-group', this._boundOnActivateItemGroup);
+    window.addEventListener('editor-scroll-to', this._boundOnEditorScrollTo);
+  }
+
+  detachEventListeners() {
+    window.removeEventListener('activate-item-group', this._boundOnActivateItemGroup);
+    window.removeEventListener('editor-scroll-to', this._boundOnEditorScrollTo);
+  }
+
+  handleActivateItemGroup(e) {
+    const { pointer, source, noScroll } = e?.detail || {};
+    if (pointer == null) return;
+    this._activePointer = pointer;
+    const target = this._groupEls.get(pointer);
+    if (!noScroll && source !== 'editor' && target && typeof target.scrollIntoView === 'function') {
+      this.updateHeaderOffsetVar();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  handleEditorScrollTo(e) {
+    const pointer = e?.detail?.pointer;
+    if (pointer == null) return;
+    const target = this._groupEls.get(pointer);
+    if (target && typeof target.scrollIntoView === 'function') {
+      this.updateHeaderOffsetVar();
+      scrollPageTo(target, { behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  // Breadcrumb computation is handled by <form-breadcrumb>
 
   emitReplace(pointer, value) {
     console.debug('[da-form-editor] emit replace', { path: pointer, value });
@@ -146,10 +181,16 @@ class FormEditor extends LitElement {
         data-key="${parent.pointer}"
         pointer="${parent.pointer}"
         label="${parent.schema.title}"
+        ?active=${parent.pointer === this._activePointer}
+        ${ref((el) => {
+      if (el) {
+        this._groupEls.set(parent.pointer, el);
+      } else {
+        this._groupEls.delete(parent.pointer);
+      }
+    })}
+        .items=${Array.isArray(parent.data) ? parent.data.map((item) => this.renderList(item)) : []}
       >
-        ${parent.data
-        ? html`${parent.data.map((item) => this.renderList(item))}`
-        : nothing}
       </form-item-group>
     `;
   }
@@ -157,9 +198,12 @@ class FormEditor extends LitElement {
   render() {
     if (!this._data) return nothing;
 
+    const breadcrumbPointer = (this._activePointer ?? this._data.pointer);
+
     return html`
       <div class="form-header">
         <h2>${this._data.schema.title}</h2>
+        <form-breadcrumb .root=${this._data} .pointer=${breadcrumbPointer}></form-breadcrumb>
       </div>
       <form>
         <div>

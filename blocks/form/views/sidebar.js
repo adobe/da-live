@@ -1,6 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import './components/sidebar/sitebar-item.js';
+import { isVisibleWithin, scrollWithin } from '../utils/scroll-utils.js';
+import { ref } from '../../../deps/lit/dist/index.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -23,20 +25,14 @@ class FormSidebar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._onActivateItemGroup = (e) => {
-      const { pointer, source } = e?.detail || {};
-      if (!pointer || source === 'sidebar') return;
-      const target = this.shadowRoot.querySelector(`li[data-key="${pointer}"]`)
-        || this.shadowRoot.querySelector(`sidebar-item[pointer="${pointer}"]`);
-      if (target && typeof target.scrollIntoView === 'function') {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    };
-    window.addEventListener('activate-item-group', this._onActivateItemGroup);
+    this._navEls = new Map();
+    this._boundOnBreadcrumbActivate = this.handleBreadcrumbActivate.bind(this);
+    this._boundOnActivateItemGroup = this.handleActivateItemGroup.bind(this);
+    this.attachEventListeners();
   }
 
   disconnectedCallback() {
-    window.removeEventListener('activate-item-group', this._onActivateItemGroup);
+    this.detachEventListeners();
     super.disconnectedCallback();
   }
 
@@ -45,6 +41,54 @@ class FormSidebar extends LitElement {
       this.getNav();
     }
     super.update(props);
+  }
+
+  attachEventListeners() {
+    window.addEventListener('breadcrumb-activate', this._boundOnBreadcrumbActivate, { capture: true });
+    window.addEventListener('activate-item-group', this._boundOnActivateItemGroup);
+  }
+
+  detachEventListeners() {
+    window.removeEventListener('breadcrumb-activate', this._boundOnBreadcrumbActivate, { capture: true });
+    window.removeEventListener('activate-item-group', this._boundOnActivateItemGroup);
+  }
+
+  handleBreadcrumbActivate(e) {
+    const pointer = e?.detail?.pointer;
+    if (pointer == null) return;
+    const target = this._navEls.get(pointer);
+    // 1) Sync active state without triggering component scroll handlers
+    window.dispatchEvent(new CustomEvent('activate-item-group', {
+      detail: { pointer, source: 'sidebar', reason: 'breadcrumb', noScroll: true },
+      bubbles: true,
+      composed: true,
+    }));
+    // 2) Start both scrolls in parallel: sidebar (host) and editor
+    if (target && typeof target.scrollIntoView === 'function') {
+      scrollWithin(this, target, { behavior: 'smooth', block: 'center' }, { onlyIfNeeded: true });
+    }
+    // Ask editor to perform smooth scroll with header offset
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('editor-scroll-to', {
+        detail: { pointer },
+        bubbles: true,
+        composed: true,
+      }));
+    });
+  }
+
+  handleActivateItemGroup(e) {
+    const { pointer, source, noScroll } = e?.detail || {};
+    if (pointer == null) return;
+    // Do not scroll the sidebar when the event originates from the sidebar itself
+    if (source === 'sidebar' || noScroll) return;
+    const target = this._navEls.get(pointer);
+    if (!target) return;
+    // The host (:host) is the scroll container (overflow: auto), so let the
+    // browser bring the target into view within the host only.
+    if (typeof target.scrollIntoView === 'function') {
+      scrollWithin(this, target, { behavior: 'smooth', block: 'center' }, { onlyIfNeeded: true });
+    }
   }
 
   getNav() {
@@ -101,7 +145,16 @@ class FormSidebar extends LitElement {
     if (!this.canRender(parent)) return nothing;
 
     return html`
-      <li data-key="${parent.pointer}">
+      <li
+        data-key="${parent.pointer}"
+        ${ref((el) => {
+      if (el) {
+        this._navEls.set(parent.pointer, el);
+      } else {
+        this._navEls.delete(parent.pointer);
+      }
+    })}
+      >
         <sidebar-item
           label="${parent.schema.title}"
           pointer="${parent.pointer}"

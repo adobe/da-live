@@ -1,0 +1,31 @@
+:host {
+  display: block;
+}
+
+.form-content-breadcrumb {
+  display: block;
+  width: 100%;
+  font-size: 12px;
+  color: var(--form-ui-separator-text-color, #666);
+  line-height: 1.3;
+  word-break: break-word;
+  white-space: normal;
+  position: sticky;
+  top: 0px;
+  z-index: 1100;
+  background: var(--form-ui-separator-bg, #fff);
+  max-width: 600px;
+  padding: 0 48px 16px;
+}
+
+.form-ui-breadcrumb-item {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}
+
+

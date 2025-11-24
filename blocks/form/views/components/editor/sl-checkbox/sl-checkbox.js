@@ -1,8 +1,9 @@
 import { LitElement, html, nothing, spread } from 'da-lit';
-import { getNx } from '../../../../../scripts/utils.js';
+import { getNx } from '../../../../../../scripts/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const sharedStyle = await getStyle(new URL('./style.css', import.meta.url).href);
+const globalStyle = await getStyle(new URL('../../../../../global.css', import.meta.url).href);
+const componentStyle = await getStyle(new URL('./sl-checkbox.css', import.meta.url).href);
 
 class SlCheckbox extends LitElement {
   static formAssociated = true;
@@ -26,7 +27,8 @@ class SlCheckbox extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this._setFormValue();
-    this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, sharedStyle];
+    const sheets = this.shadowRoot.adoptedStyleSheets || [];
+    this.shadowRoot.adoptedStyleSheets = [...sheets, globalStyle, componentStyle];
   }
 
   update(props) {
@@ -37,7 +39,6 @@ class SlCheckbox extends LitElement {
   }
 
   _setFormValue() {
-    // Omit from submission when unchecked
     const formValue = this.checked ? (this.value ?? 'on') : null;
     this._internals.setFormValue(formValue);
   }
@@ -64,8 +65,8 @@ class SlCheckbox extends LitElement {
           part="control"
           type="checkbox"
           name=${this.name || nothing}
+          .value=${this.value ?? 'on'}
           .checked=${this.checked}
-          value=${this.value ?? 'on'}
           @change=${this.handleChange}
           class="${this.class} ${this.error ? 'has-error' : ''}"
           ?disabled=${this.disabled}
@@ -78,6 +79,6 @@ class SlCheckbox extends LitElement {
 }
 
 customElements.define('sl-checkbox', SlCheckbox);
-
 export default SlCheckbox;
+
 

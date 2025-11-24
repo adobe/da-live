@@ -1,0 +1,58 @@
+:host {
+  display: block;
+  position: relative;
+  /* Editor can override this to honor sticky header height */
+  scroll-margin-top: var(--form-group-offset, var(--editor-header-height, 0px));
+}
+
+/* Left-side active highlight */
+:host([active])::before {
+  content: "";
+  position: absolute;
+  left: var(--form-group-accent-offset, -48px);
+  top: 0;
+  bottom: 0;
+  width: var(--form-group-accent-width, 3px);
+  background-color: var(--form-group-accent, var(--s2-blue-700));
+  box-shadow: none;
+  z-index: 1;
+  border-top-right-radius: var(--form-group-accent-radius, 15px);
+  border-bottom-right-radius: var(--form-group-accent-radius, 15px);
+}
+
+/* Group title */
+.item-title {
+  font-weight: 600;
+  line-height: 1.5em;
+  padding-bottom: 15px;
+  position: relative;
+  margin-bottom: var(--form-group-title-mb, 20px);
+  margin-top: var(--form-group-title-mt, 0px);
+  font-size: var(--form-group-title-size, var(--s2-body-m-size, 16px));
+}
+
+.item-title::before {
+  content: "";
+  position: absolute;
+  left: 0px;
+  bottom: 1px;
+  height: 3px;
+  width: 55px;
+  background-color: var(--s2-gray-800);
+}
+
+.item-title::after {
+  content: "";
+  position: absolute;
+  left: 0px;
+  bottom: 2px;
+  height: 1px;
+  width: 100%;
+  background-color: var(--s2-gray-800);
+}
+
+/* Container for child controls rendered by the editor */
+.form-children {
+  display: grid;
+  row-gap: var(--form-group-gap, 10px);
+}
