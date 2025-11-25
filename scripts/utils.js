@@ -11,8 +11,15 @@
  */
 export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
 
-export function sanitizeName(name) {
+export function sanitizeName(name, preserveLastDot = true) {
   if (!name) return null;
+
+  if (preserveLastDot && name.indexOf('.') !== -1) {
+    const lastDot = name.lastIndexOf('.');
+    const base = name.substring(0, lastDot);
+    const ext = name.substring(lastDot);
+    return `${sanitizeName(base)}${ext}`;
+  }
 
   return name.toLowerCase()
     .normalize('NFD')
@@ -25,16 +32,7 @@ export function sanitizePathParts(path) {
   return path.slice(1)
     .toLowerCase()
     .split('/')
-    .map((name) => {
-      const lastDot = name.lastIndexOf('.');
-      if (lastDot >= 0) {
-        // sanitize base name and extension separately
-        const ext = name.substring(lastDot + 1);
-        const base = name.substring(0, lastDot);
-        return `${sanitizeName(base)}.${sanitizeName(ext)}`;
-      }
-      return name ? sanitizeName(name) : '';
-    });
+    .map((name) => (name ? sanitizeName(name) : ''));
 }
 
 export function sanitizePath(path) {

@@ -18,7 +18,7 @@ const DA_PLUGINS = [
   'placeholders',
 ];
 
-const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref')) || 'main';
+const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 export function parseDom(dom) {
   const { schema } = window.view.state;

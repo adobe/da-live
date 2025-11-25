@@ -95,7 +95,7 @@ export default class DaSites extends LitElement {
       // eslint-disable-next-line no-unused-vars
       const [_, repo, org] = helixString.split('--');
       if (!repo || !org) return null;
-      return `#/${sanitizeName(org)}/${sanitizeName(repo)}`;
+      return `#/${sanitizeName(org, false)}/${sanitizeName(repo, false)}`;
     } catch (_) {
       return null;
     }
