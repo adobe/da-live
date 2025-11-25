@@ -20,12 +20,13 @@ class FormSidebarItem extends LitElement {
       this.visible = pointer === this.pointer;
     };
     window.addEventListener(EVENT_FOCUS_GROUP, this._onActivate);
-    window.addEventListener(EVENT_VISIBLE_GROUP, this._onVisible);
+    // Listen on parent host (da-form-sidebar) for visible-group
+    this.getRootNode().host?.addEventListener(EVENT_VISIBLE_GROUP, this._onVisible);
   }
 
   disconnectedCallback() {
     window.removeEventListener(EVENT_FOCUS_GROUP, this._onActivate);
-    window.removeEventListener(EVENT_VISIBLE_GROUP, this._onVisible);
+    this.getRootNode().host?.removeEventListener(EVENT_VISIBLE_GROUP, this._onVisible);
     super.disconnectedCallback();
   }
 
