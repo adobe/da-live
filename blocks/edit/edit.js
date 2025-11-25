@@ -7,8 +7,6 @@ import './da-content/da-content.js';
 let prose;
 let proseEl;
 let wsProvider;
-let startPreviewing;
-let stopPreviewing;
 
 export async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
@@ -67,14 +65,10 @@ async function setUI(el) {
   ({
     proseEl,
     wsProvider,
-    startPreviewing,
-    stopPreviewing,
   } = prose.default({ path: details.sourceUrl, permissions }));
 
   daContent.proseEl = proseEl;
   daContent.wsProvider = wsProvider;
-  daContent.startPreviewing = startPreviewing;
-  daContent.stopPreviewing = stopPreviewing;
 }
 
 export default async function init(el) {
