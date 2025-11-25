@@ -23,7 +23,6 @@ export default class LinkMenu extends InContextMenu {
   show(coords, linkText = '') {
     super.show(coords);
     this.linkText = linkText;
-    this.selectedIndex = undefined;
   }
 
   scrollSelectedIntoView() {
@@ -33,34 +32,6 @@ export default class LinkMenu extends InContextMenu {
         selectedItem.scrollIntoView({ block: 'nearest' });
       }
     });
-  }
-
-  handleKeyDown(event) {
-    if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && this.selectedIndex === undefined) {
-      return false;
-    }
-    if (event.key === 'Tab') {
-      if (event.shiftKey) {
-        // Shift+Tab: navigate backwards
-        if (this.selectedIndex === undefined || this.selectedIndex === 0) {
-          return false;
-        }
-        event.preventDefault();
-        this.previous();
-      } else {
-        // Tab: navigate forwards
-        if (this.selectedIndex === undefined) {
-          event.preventDefault();
-          this.selectedIndex = 0;
-        } else if (this.selectedIndex === this.items.length - 1) {
-          return false;
-        } else {
-          event.preventDefault();
-          this.next();
-        }
-      }
-    }
-    super.handleKeyDown(event);
   }
 
   render() {

@@ -68,7 +68,7 @@ class LinkMenuView {
 
     const { state } = view;
 
-    if (isOnLink(state)) {
+    if (isOnLink(state) && view.input.lastSelectionOrigin === 'pointer') {
       const currentOffset = getLinkOffset(state);
 
       if (!this.menu.visible || currentOffset !== this.lastLinkOffset) {
@@ -111,10 +111,7 @@ export default function linkMenu() {
     props: {
       handleKeyDown(editorView, event) {
         if (pluginView?.menu.visible) {
-          if (['ArrowUp', 'ArrowDown', 'Tab'].includes(event.key)) {
-            return pluginView.menu.handleKeyDown(event);
-          }
-          if (['Enter', 'Escape'].includes(event.key)) {
+          if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(event.key)) {
             event.preventDefault();
             event.stopPropagation();
             pluginView.menu.handleKeyDown(event);
