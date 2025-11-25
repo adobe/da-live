@@ -50,7 +50,7 @@
 
 .nav-list {
   line-height: 28px;
-  padding-left: 20px;
+  padding-left: 18px;
 
   ul {
     list-style: none;
@@ -129,7 +129,7 @@
     top: -14px;
   }
 
-  >ul:first-child>li:first-child {
+  >ul>li:first-child {
     &::before {
       display: none;
     }
