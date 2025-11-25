@@ -12,7 +12,7 @@ sl-textarea {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 20px;
+  gap: 30px;
 
   .da-schema-selector {
     margin-bottom: 20px;

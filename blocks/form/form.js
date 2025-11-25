@@ -52,7 +52,11 @@ class FormEditor extends LitElement {
   }
 
   detachEventListeners() {
-    window.removeEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup, { capture: true });
+    window.removeEventListener(
+      EVENT_FOCUS_GROUP,
+      this._boundOnActivateItemGroup,
+      { capture: true },
+    );
   }
 
   handleActivateItemGroup(e) {

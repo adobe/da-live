@@ -3,7 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import './components/sidebar/sitebar-item.js';
 import { scrollWithin } from '../utils/scroll-utils.js';
 import { ref } from '../../../deps/lit/dist/index.js';
-import { EVENT_FOCUS_GROUP, EVENT_SIDEBAR_SCROLL_TO } from '../utils/events.js';
+import { EVENT_FOCUS_GROUP, EVENT_SIDEBAR_SCROLL_TO, EVENT_VISIBLE_GROUP } from '../utils/events.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -29,6 +29,9 @@ class FormSidebar extends LitElement {
     this._navEls = new Map();
     this._boundOnActivateItemGroup = this.handleActivateItemGroup.bind(this);
     this._boundOnSidebarScrollTo = this.handleSidebarScrollTo.bind(this);
+    this._boundOnVisibleGroup = this.handleVisibleGroup.bind(this);
+    this._boundOnScroll = () => this.updateActiveIndicator();
+    this._boundOnResize = () => this.updateActiveIndicator();
     this.attachEventListeners();
     this.updateHeaderOffsetVar();
   }
@@ -48,11 +51,17 @@ class FormSidebar extends LitElement {
   attachEventListeners() {
     window.addEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup);
     window.addEventListener(EVENT_SIDEBAR_SCROLL_TO, this._boundOnSidebarScrollTo);
+    window.addEventListener(EVENT_VISIBLE_GROUP, this._boundOnVisibleGroup);
+    this.addEventListener('scroll', this._boundOnScroll, { passive: true });
+    window.addEventListener('resize', this._boundOnResize);
   }
 
   detachEventListeners() {
     window.removeEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup);
     window.removeEventListener(EVENT_SIDEBAR_SCROLL_TO, this._boundOnSidebarScrollTo);
+    window.removeEventListener(EVENT_VISIBLE_GROUP, this._boundOnVisibleGroup);
+    this.removeEventListener('scroll', this._boundOnScroll);
+    window.removeEventListener('resize', this._boundOnResize);
   }
 
   handleSidebarScrollTo(e) {
@@ -68,6 +77,35 @@ class FormSidebar extends LitElement {
         { onlyIfNeeded: true },
       );
     }
+  }
+
+  handleVisibleGroup(e) {
+    const pointer = e?.detail?.pointer;
+    if (pointer == null) return;
+    this._visiblePointer = pointer;
+    // Update indicator after DOM paints current positions
+    requestAnimationFrame(() => this.updateActiveIndicator());
+  }
+
+  updateActiveIndicator() {
+    // Allow empty string ("") as a valid root pointer; only guard null/undefined
+    if (this._visiblePointer == null || !this._navListEl || !this._indicatorEl) return;
+    const target = this._navEls.get(this._visiblePointer);
+    if (!target) {
+      this._indicatorEl.style.height = '0px';
+      return;
+    }
+    const containerRect = this._navListEl.getBoundingClientRect();
+    // Measure only the label row, not the entire LI (which includes children)
+    const labelEl = target.querySelector('sidebar-item') || target;
+    const labelRect = labelEl.getBoundingClientRect();
+    const top = Math.max(0, labelRect.top - containerRect.top - 5);
+    // Ensure the bar is at least the full row height
+    const containerLineHeight = parseFloat(getComputedStyle(this._navListEl).lineHeight);
+    const fallbackLine = Number.isFinite(containerLineHeight) ? containerLineHeight : 25;
+    const height = Math.max(0, Math.max(labelRect.height, fallbackLine));
+    this._indicatorEl.style.top = `${Math.round(top)}px`;
+    this._indicatorEl.style.height = `${Math.round(height)}px`;
   }
 
   handleActivateItemGroup(e) {
@@ -176,7 +214,8 @@ class FormSidebar extends LitElement {
 
     return html`
       <div class="da-sidebar-header"><p>Navigation</p></div>
-      <div class="nav-list">
+      <div class="nav-list" ${ref((el) => { this._navListEl = el; })}>
+        <div class="form-nav-active-indicator" ${ref((el) => { this._indicatorEl = el; })}></div>
         <ul>${this.renderList(this._nav)}</ul>
       </div>
     `;

@@ -7,8 +7,9 @@ import './components/editor/sl-checkbox/sl-checkbox.js';
 import './components/editor/form-item-group/form-item-group.js';
 import './components/editor/form-breadcrumb/form-breadcrumb.js';
 import { scrollPageTo } from '../utils/scroll-utils.js';
-import { EVENT_FOCUS_GROUP, EVENT_EDITOR_SCROLL_TO } from '../utils/events.js';
+import { EVENT_FOCUS_GROUP, EVENT_EDITOR_SCROLL_TO, EVENT_VISIBLE_GROUP } from '../utils/events.js';
 import { ref } from '../../../deps/lit/dist/index.js';
+import VisibleGroupController from '../utils/visible-group-controller.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -19,6 +20,7 @@ class FormEditor extends LitElement {
     formModel: { state: true },
     _data: { state: true },
     _activePointer: { state: true },
+    _visiblePointer: { state: true },
   };
 
   connectedCallback() {
@@ -27,10 +29,18 @@ class FormEditor extends LitElement {
     this._groupEls = new Map();
     this._boundOnActivateItemGroup = this.handleActivateItemGroup.bind(this);
     this._boundOnEditorScrollTo = this.handleEditorScrollTo.bind(this);
+    this._boundOnVisibleGroup = this.handleVisibleGroup.bind(this);
     this.attachEventListeners();
     // No resize observer/listener for simplicity
     // Seed header offset and active pointer once connected
     this.updateHeaderOffsetVar();
+    // Setup visible group tracking (uses viewport scroll by default)
+    this._visibleGroups = new VisibleGroupController(this, {
+      getGroupId: (el) => el?.getAttribute?.('pointer'),
+      getMeasureTarget: (el) => el?.shadowRoot?.querySelector?.('.item-title') || el,
+      topOffsetPx: this._getHeaderOffsetPx(),
+      root: null,
+    });
   }
 
   disconnectedCallback() {
@@ -39,7 +49,27 @@ class FormEditor extends LitElement {
       cancelAnimationFrame(this._scrollRaf);
       this._scrollRaf = 0;
     }
+    if (this._headerResizeObserver) {
+      this._headerResizeObserver.disconnect();
+      this._headerResizeObserver = null;
+    }
     super.disconnectedCallback();
+  }
+
+  firstUpdated() {
+    // Ensure header height is measured after initial render and keep it in sync
+    this.updateHeaderOffsetVar();
+    const header = this.shadowRoot.querySelector('.form-header');
+    if (header && typeof ResizeObserver !== 'undefined') {
+      this._headerResizeObserver = new ResizeObserver(() => this.updateHeaderOffsetVar());
+      this._headerResizeObserver.observe(header);
+    }
+  }
+
+  _getHeaderOffsetPx() {
+    const header = this.shadowRoot.querySelector('.form-header');
+    const headerHeight = header?.getBoundingClientRect().height || 0;
+    return headerHeight + 8;
   }
 
   update(props) {
@@ -63,6 +93,10 @@ class FormEditor extends LitElement {
     const header = this.shadowRoot.querySelector('.form-header');
     const headerHeight = header?.getBoundingClientRect().height || 0;
     this.style.setProperty('--editor-header-height', `${headerHeight + 8}px`);
+    // Keep controller aligned with sticky header height
+    if (this._visibleGroups?.setTopOffsetPx) {
+      this._visibleGroups.setTopOffsetPx(headerHeight + 8);
+    }
   }
 
   hasPointer(node, pointer) {
@@ -79,11 +113,13 @@ class FormEditor extends LitElement {
   attachEventListeners() {
     window.addEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup);
     window.addEventListener(EVENT_EDITOR_SCROLL_TO, this._boundOnEditorScrollTo);
+    window.addEventListener(EVENT_VISIBLE_GROUP, this._boundOnVisibleGroup);
   }
 
   detachEventListeners() {
     window.removeEventListener(EVENT_FOCUS_GROUP, this._boundOnActivateItemGroup);
     window.removeEventListener(EVENT_EDITOR_SCROLL_TO, this._boundOnEditorScrollTo);
+    window.removeEventListener(EVENT_VISIBLE_GROUP, this._boundOnVisibleGroup);
   }
 
   handleActivateItemGroup(e) {
@@ -105,6 +141,12 @@ class FormEditor extends LitElement {
       this.updateHeaderOffsetVar();
       scrollPageTo(target, { behavior: 'smooth', block: 'start' });
     }
+  }
+
+  handleVisibleGroup(e) {
+    const pointer = e?.detail?.pointer;
+    if (pointer == null) return;
+    this._visiblePointer = pointer;
   }
 
   emitReplace(pointer, value) {
@@ -199,7 +241,9 @@ class FormEditor extends LitElement {
         ${ref((el) => {
       if (el) {
         this._groupEls.set(parent.pointer, el);
+        this._visibleGroups?.registerGroup(el);
       } else {
+        this._visibleGroups?.unregisterGroup(this._groupEls.get(parent.pointer));
         this._groupEls.delete(parent.pointer);
       }
     })}
@@ -212,7 +256,7 @@ class FormEditor extends LitElement {
   render() {
     if (!this._data) return nothing;
 
-    const breadcrumbPointer = (this._activePointer ?? this._data.pointer);
+    const breadcrumbPointer = (this._visiblePointer ?? this._activePointer ?? this._data.pointer);
 
     return html`
       <div class="form-header">

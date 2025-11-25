@@ -1,11 +1,12 @@
 import { LitElement, html } from 'da-lit';
-import { EVENT_FOCUS_GROUP } from '../../../utils/events.js';
+import { EVENT_FOCUS_GROUP, EVENT_VISIBLE_GROUP } from '../../../utils/events.js';
 
 class FormSidebarItem extends LitElement {
   static properties = {
     label: { type: String },
     pointer: { type: String },
     active: { type: Boolean, reflect: true },
+    visible: { type: Boolean, reflect: true },
   };
 
   connectedCallback() {
@@ -14,11 +15,17 @@ class FormSidebarItem extends LitElement {
       const { pointer } = e.detail || {};
       this.active = pointer === this.pointer;
     };
+    this._onVisible = (e) => {
+      const { pointer } = e.detail || {};
+      this.visible = pointer === this.pointer;
+    };
     window.addEventListener(EVENT_FOCUS_GROUP, this._onActivate);
+    window.addEventListener(EVENT_VISIBLE_GROUP, this._onVisible);
   }
 
   disconnectedCallback() {
     window.removeEventListener(EVENT_FOCUS_GROUP, this._onActivate);
+    window.removeEventListener(EVENT_VISIBLE_GROUP, this._onVisible);
     super.disconnectedCallback();
   }
 
