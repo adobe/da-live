@@ -66,9 +66,9 @@ class LinkMenuView {
 
     this.view = view;
 
-    const { state } = view;
+    const { state, input } = view;
 
-    if (isOnLink(state) && view.input.lastSelectionOrigin === 'pointer') {
+    if (isOnLink(state) && input?.lastSelectionOrigin === 'pointer') {
       const currentOffset = getLinkOffset(state);
 
       if (!this.menu.visible || currentOffset !== this.lastLinkOffset) {
