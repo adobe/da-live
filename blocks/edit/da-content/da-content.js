@@ -2,6 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
+import { initIms, daFetch } from '../../shared/utils.js';
+import { CON_ORIGIN, UNIVERSAL_ORIGIN } from '../../shared/constants.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
@@ -52,8 +54,28 @@ export default class DaContent extends LitElement {
   }
 
   async loadViews() {
+    console.log('details', JSON.stringify(this.details, null, 2));
+
     // Only import the web components once
     if (this._editorLoaded) return;
+
+    const { owner, repo } = this.details;
+    const { accessToken } = await initIms();
+    // fetch from da-content
+    fetch(CON_ORIGIN + `/${owner}/${repo}/.gimme_cookie`, {
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${accessToken.token}`,
+      },
+    });
+    // fetch from da-universal
+    fetch(`http://main--${repo}--${owner}` + UNIVERSAL_ORIGIN + `/gimme_cookie`, {
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${accessToken.token}`,
+      },
+    });
+  
     const preview = import('../da-preview/da-preview.js');
     const versions = import('../da-versions/da-versions.js');
     await Promise.all([preview, versions]);
@@ -97,6 +119,10 @@ export default class DaContent extends LitElement {
   }
 
   render() {
+    const { owner, repo, previewUrl } = this.details;
+    const { pathname } = new URL(previewUrl);
+    const livePreviewUrl = `http://main--${repo}--${owner}` + UNIVERSAL_ORIGIN + `${pathname}`;
+
     return html`
       <div class="editor-wrapper">
         <da-editor
@@ -120,7 +146,7 @@ export default class DaContent extends LitElement {
           </div>
         ` : nothing}
       </div>
-      ${this._editorLoaded ? html`<da-preview path=${this.details.previewUrl}></da-preview>` : nothing}
+      ${this._editorLoaded ? html`<da-preview path=${livePreviewUrl}></da-preview>` : nothing}
       ${this._editorLoaded ? html`<da-versions path=${this.details.fullpath} @preview=${this.handlePreview} @close=${this.handleCloseVersions}></da-versions>` : nothing}
     `;
   }
