@@ -153,6 +153,7 @@ export async function openAssets() {
         if (!format) return;
         const mimetype = asset.mimetype || asset['dc:format'];
         const isImage = mimetype?.toLowerCase().startsWith('image/');
+        const isVideo = mimetype?.toLowerCase().startsWith('video/');
         // eslint-disable-next-line no-underscore-dangle
         const status = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dam:assetStatus'];
         // eslint-disable-next-line no-underscore-dangle
@@ -283,8 +284,8 @@ export async function openAssets() {
 
           let src;
           if (aemTierType === 'author') {
-            src = getAssetUrl(asset);
-          } else if (mimetype.startsWith('video/')) {
+            src = `${dmDeliveryEnabled && isVideo ? `${getBaseDmUrl(asset)}/play` : getAssetUrl(asset)}`;
+          } else if (isVideo) {
             src = videoLink;
           } else {
             src = renditionLinks?.[0]?.href.split('?')[0];
