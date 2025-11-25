@@ -924,18 +924,26 @@ da-diff-deleted, da-diff-added {
   text-align: center;
 }
 
-/* Wrapper for images with focal point overlay */
 .focal-point-image-wrapper {
   position: relative;
-  display: block;
+  display: inline-block;
+  line-height: 0;
+  vertical-align: bottom;
 }
 
-.focal-point-image-wrapper img {
+/* stylelint-disable-next-line no-descending-specificity */
+.focal-point-image-wrapper > img {
   display: block;
   position: relative;
 }
 
-/* Focal point icon overlay on images in tables */
+/* SVG images: provide default width only when no explicit dimensions are set */
+.focal-point-svg-wrapper img:not([width], [height]) {
+  width: 150px;
+  height: auto;
+  max-width: 100%;
+}
+
 .focal-point-icon {
   position: absolute;
   bottom: 4px;
@@ -955,6 +963,11 @@ da-diff-deleted, da-diff-added {
   pointer-events: auto;
 }
 
+.focal-point-icon:hover {
+  background: #fff;
+  border-color: #0265dc;
+}
+
 /* Show icon on hover ONLY for images without focal point data */
 .focal-point-image-wrapper:hover .focal-point-icon:not(.focal-point-icon-active) {
   opacity: 1;
@@ -963,11 +976,6 @@ da-diff-deleted, da-diff-added {
 /* Always show icon for images with focal point data */
 .focal-point-icon-active {
   opacity: 1;
-}
-
-.focal-point-icon:hover {
-  background: #fff;
-  border-color: #0265dc;
 }
 
 .focal-point-icon svg {
