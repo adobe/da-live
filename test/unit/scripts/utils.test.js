@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../scripts/utils.js';
+import { setNx, sanitizePath } from '../../../scripts/utils.js';
 
 describe('Libs', () => {
   it('Default Libs', () => {
@@ -32,5 +32,11 @@ describe('Libs', () => {
     };
     const libs = setNx('/nx', location);
     expect(libs).to.equal('http://localhost:6456/nx');
+  });
+
+  it('Returns sanitize file path', async () => {
+    const path = '/new folder/geo_metrixx.jpg';
+    const item = sanitizePath(path);
+    expect(item).to.equal('/new-folder/geo-metrixx.jpg');
   });
 });

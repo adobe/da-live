@@ -1,4 +1,4 @@
-import { getNx } from '../../scripts/utils.js';
+import { getNx, sanitizePath } from '../../scripts/utils.js';
 import { DA_ORIGIN } from '../shared/constants.js';
 import { daFetch } from '../shared/utils.js';
 
@@ -31,10 +31,7 @@ async function getBlob(path) {
 }
 
 async function bulkAemAdmin(org, site, files) {
-  const paths = files.map((file) => {
-    const [, , ...parts] = file.path.slice(1).split('/');
-    return `/${parts.join('/')}`.replace('.html', '');
-  });
+  const paths = files.map((file) => sanitizePath(file.path).replace('.html', ''));
 
   const body = JSON.stringify({ paths, forceUpdate: true, forceSync: true });
   const opts = { body, method: 'POST', headers: { 'Content-Type': 'application/json' } };
