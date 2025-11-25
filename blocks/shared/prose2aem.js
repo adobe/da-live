@@ -1,3 +1,8 @@
+function setCursor(cursor, el) {
+  el.id = cursor.id;
+  cursor.remove();
+}
+
 function toBlockCSSClassNames(text) {
   if (!text) return [];
   const names = [];
@@ -44,7 +49,7 @@ function convertBlocks(editor, isFragment = false) {
 
     // cursor detection
     const daCursor = nameRow.querySelector('#da-cursor-position');
-    if (daCursor) div.id = daCursor.id;
+    if (daCursor) setCursor(daCursor, div);
 
     if (isFragment) {
       table.parentElement.replaceChild(div, table);
@@ -74,7 +79,7 @@ function makePictures(editor) {
 
     // Set the cursor id on the image for live preview scrolling
     const daCursor = img.parentElement.querySelector('#da-cursor-position');
-    if (daCursor) img.id = daCursor.id;
+    if (daCursor) setCursor(daCursor, img);
 
     const clone = img.cloneNode(true);
     clone.setAttribute('loading', 'lazy');
@@ -157,6 +162,11 @@ function makeSections(editor) {
       acc.push(document.createElement('div'));
     } else {
       acc[acc.length - 1].append(child);
+      // Find cursor inside section-metadata and bubble it to parent section
+      if (child.classList.contains('section-metadata')) {
+        const daCursor = child.querySelector('#da-cursor-position');
+        if (daCursor) setCursor(daCursor, acc[acc.length - 1]);
+      }
     }
     return acc;
   }, [section]);

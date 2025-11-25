@@ -74,7 +74,7 @@ export default class DaContent extends LitElement {
           .proseEl=${this.proseEl}
           .wsProvider=${this.wsProvider}
           @proseloaded=${this.handleEditorLoaded}
-          @versionreset=${this.handleReset}>
+          @versionreset=${this.handleVersionReset}>
         </da-editor>
         ${this._editorLoaded ? html`
           <div class="da-editor-tabs ${this._showPane ? 'show-pane' : ''}">

@@ -123,8 +123,8 @@ export default class DaPreview extends LitElement {
     let { path } = this;
 
     const { origin } = new URL(path);
-    const ref = new URL(window.location.href).searchParams.get('ref');
-    if (ref && ref === 'local') path = path.replace(origin, 'http://localhost:3001');
+    const ref = new URL(window.location.href).searchParams.get('ref') || 'on';
+    if (ref === 'local') path = path.replace(origin, 'http://localhost:3001');
     const src = path.endsWith('index') ? path.substring(0, path.lastIndexOf('/') + 1) : path;
     return `${src}?dapreview=${ref}&martech=off`;
   }
