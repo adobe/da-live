@@ -924,4 +924,60 @@ da-diff-deleted, da-diff-added {
   text-align: center;
 }
 
+/* Wrapper for images with focal point overlay */
+.focal-point-image-wrapper {
+  position: relative;
+  display: block;
+}
 
+.focal-point-image-wrapper img {
+  display: block;
+  position: relative;
+}
+
+/* Focal point icon overlay on images in tables */
+.focal-point-icon {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  width: 32px;
+  height: 32px;
+  background: rgb(255 255 255 / 90%);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+/* Show icon on hover ONLY for images without focal point data */
+.focal-point-image-wrapper:hover .focal-point-icon:not(.focal-point-icon-active) {
+  opacity: 1;
+}
+
+/* Always show icon for images with focal point data */
+.focal-point-icon-active {
+  opacity: 1;
+}
+
+.focal-point-icon:hover {
+  background: #fff;
+  border-color: #0265dc;
+}
+
+.focal-point-icon svg {
+  color: #505050;
+}
+
+.focal-point-icon svg .fill {
+  fill: currentcolor;
+}
+
+.focal-point-icon:hover svg {
+  color: #0265dc;
+}

@@ -67,10 +67,6 @@ export async function getItems(sources, listType, format) {
   return items;
 }
 
-let currOwner;
-let currRepo;
-let libraries;
-
 async function getDaLibraries(owner, repo) {
   const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
   if (!resp.ok) return [];
@@ -199,17 +195,12 @@ function mergeLibrary(da, assets) {
   }
 }
 
+let libraryList = null;
 export async function getLibraryList() {
+  if (libraryList) return libraryList;
+
   const { owner, repo } = getPathDetails();
   if (!owner || !repo) return [];
-
-  if (currOwner === owner
-    && currRepo === repo
-    && libraries) {
-    return libraries;
-  }
-  currOwner = owner;
-  currRepo = repo;
 
   // Attempt config-based library
   const aemAssets = getAssetsPlugin(owner, repo);
@@ -218,17 +209,18 @@ export async function getLibraryList() {
   if (library) {
     setupBlockOptions(library);
     if (assets) mergeLibrary(library, assets);
-    return library;
+    libraryList = library;
+  } else {
+    // Fallback to file-based libary
+    const daLibraries = getDaLibraries(owner, repo);
+    const aemPlugins = getAemPlugins(owner, repo);
+
+    const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
+
+    if (assets) mergeLibrary(da, assets);
+    libraryList = [...da, ...aem];
   }
-
-  // Fallback to file-based libary
-  const daLibraries = getDaLibraries(owner, repo);
-  const aemPlugins = getAemPlugins(owner, repo);
-
-  const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
-
-  if (assets) mergeLibrary(da, assets);
-  return [...da, ...aem];
+  return libraryList;
 }
 
 export function andMatch(inputStr, targetStr) {
