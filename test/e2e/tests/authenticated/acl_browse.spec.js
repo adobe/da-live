@@ -20,8 +20,8 @@ test('Read-only directory', async ({ page }) => {
   const newButton = page.getByRole('button', { name: 'New' });
   await expect(newButton).toBeDisabled();
 
-  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/doc_onlyread"]')).toBeVisible();
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/doc_onlyread"]').focus();
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/doc-onlyread"]')).toBeVisible();
+  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/doc-onlyread"]').focus();
 
   // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
   await page.keyboard.press('Shift+Tab');
@@ -95,8 +95,8 @@ test('Readonly directory with writeable document', async ({ page }) => {
   const browseURL = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir/subdir2`;
   await page.goto(browseURL);
 
-  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc_writeable"]')).toBeVisible();
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc_writeable"]').focus();
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc-writeable"]')).toBeVisible();
+  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc-writeable"]').focus();
 
   // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
   await page.keyboard.press('Shift+Tab');
@@ -106,7 +106,7 @@ test('Readonly directory with writeable document', async ({ page }) => {
   // Check that the expected delete button is there (but don't click it)
   await expect(page.locator('button.delete-button').locator('visible=true')).toBeVisible();
 
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc_writeable"]').click();
+  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc-writeable"]').click();
   const editor = page.locator('div.ProseMirror');
   await expect(editor).toContainText('This is doc_writeable');
   await expect(editor).toHaveAttribute('contenteditable', 'true');
