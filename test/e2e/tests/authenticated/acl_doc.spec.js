@@ -14,7 +14,7 @@ import ENV from '../../utils/env.js';
 import { getQuery } from '../../utils/page.js';
 
 test('Read-only document directly configured', async ({ page }, workerInfo) => {
-  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc-readonly`;
+  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc_readonly`;
 
   await page.goto(url);
   const editor = page.locator('div.ProseMirror');
@@ -38,7 +38,7 @@ test('Read-only document directly configured', async ({ page }, workerInfo) => {
 });
 
 test('Read-only document indirectly configured', async ({ page }, workerInfo) => {
-  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/subdir/doc-onlyread`;
+  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/subdir/doc_onlyread`;
 
   await page.goto(url);
   const editor = page.locator('div.ProseMirror');
@@ -62,7 +62,7 @@ test('Read-only document indirectly configured', async ({ page }, workerInfo) =>
 });
 
 test('Read-write document', async ({ page }, workerInfo) => {
-  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc-readwrite`;
+  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc_readwrite`;
 
   await page.goto(url);
   const editor = page.locator('div.ProseMirror');
@@ -82,7 +82,7 @@ test('Read-write document', async ({ page }, workerInfo) => {
 });
 
 test('No access at all', async ({ page }) => {
-  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc-noaccess`;
+  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc_noaccess`;
 
   await page.goto(url);
 
