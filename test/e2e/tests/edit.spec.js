@@ -121,6 +121,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.goto(urlB);
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(1000);
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });
 
