@@ -95,8 +95,8 @@ test('Readonly directory with writeable document', async ({ page }) => {
   const browseURL = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir/subdir2`;
   await page.goto(browseURL);
 
-  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc-writeable"]')).toBeVisible();
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc-writeable"]').focus();
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc_writeable"]')).toBeVisible();
+  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc_writeable"]').focus();
 
   // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
   await page.keyboard.press('Shift+Tab');
