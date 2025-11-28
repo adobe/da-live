@@ -81,7 +81,7 @@ test('Read-write document', async ({ page }, workerInfo) => {
   expect(h1Before.backgroundImage).not.toContain('LockClosed');
 });
 
-test('No access at all', async ({ page }) => {
+test.only('No access at all', async ({ page }) => {
   const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc_noaccess`;
 
   await page.goto(url);
