@@ -20,15 +20,15 @@ test('Read-only directory', async ({ page }) => {
   const newButton = page.getByRole('button', { name: 'New' });
   await expect(newButton).toBeDisabled();
 
-  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/doc-onlyread"]')).toBeVisible();
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/doc-onlyread"]').focus();
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]')).toBeVisible();
+  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]').focus();
 
   // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press(' ');
   await page.waitForTimeout(500);
 
-  const tickbox = page.locator('da-list-item').filter({ hasText: 'doc-onlyread' }).locator('label');
+  const tickbox = page.locator('da-list-item').filter({ hasText: 'onlyread-doc' }).locator('label');
   await expect(tickbox).toBeChecked();
 
   // There should not be a delete button
@@ -95,8 +95,8 @@ test('Readonly directory with writeable document', async ({ page }) => {
   const browseURL = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir/subdir2`;
   await page.goto(browseURL);
 
-  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc-writeable"]')).toBeVisible();
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc-writeable"]').focus();
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc"]')).toBeVisible();
+  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc"]').focus();
 
   // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
   await page.keyboard.press('Shift+Tab');
@@ -106,9 +106,9 @@ test('Readonly directory with writeable document', async ({ page }) => {
   // Check that the expected delete button is there (but don't click it)
   await expect(page.locator('button.delete-button').locator('visible=true')).toBeVisible();
 
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc-writeable"]').click();
+  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc"]').click();
   const editor = page.locator('div.ProseMirror');
-  await expect(editor).toContainText('This is doc-writeable');
+  await expect(editor).toContainText('This is writeable-doc');
   await expect(editor).toHaveAttribute('contenteditable', 'true');
 });
 
