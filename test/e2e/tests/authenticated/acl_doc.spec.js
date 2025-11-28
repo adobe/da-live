@@ -14,16 +14,16 @@ import ENV from '../../utils/env.js';
 import { getQuery } from '../../utils/page.js';
 
 test('Read-only document directly configured', async ({ page }, workerInfo) => {
-  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc_readonly`;
+  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc-readonly`;
 
   await page.goto(url);
   const editor = page.locator('div.ProseMirror');
-  await expect(editor).toHaveText('This is doc_readonly');
+  await expect(editor).toHaveText('This is doc-readonly');
   await expect(editor, 'Should be readonly').toHaveAttribute('contenteditable', 'false');
 
   await editor.pressSequentially('Hello');
   await expect(editor, 'The text should not have been updated since its a readonly doc')
-    .toHaveText('This is doc_readonly');
+    .toHaveText('This is doc-readonly');
 
   // This last part of this test that obtains the ':before' part of the h1
   // apparently only works on Chromium, so skip it for other browsers
@@ -38,16 +38,16 @@ test('Read-only document directly configured', async ({ page }, workerInfo) => {
 });
 
 test('Read-only document indirectly configured', async ({ page }, workerInfo) => {
-  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/subdir/doc_onlyread`;
+  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/subdir/doc-onlyread`;
 
   await page.goto(url);
   const editor = page.locator('div.ProseMirror');
-  await expect(editor).toHaveText('This is doc_onlyread');
+  await expect(editor).toHaveText('This is doc-onlyread');
   await expect(editor, 'Should be readonly').toHaveAttribute('contenteditable', 'false');
 
   await editor.pressSequentially('Hello');
   await expect(editor, 'The text should not have been updated since its a readonly doc')
-    .toHaveText('This is doc_onlyread');
+    .toHaveText('This is doc-onlyread');
 
   // This last part of this test that obtains the ':before' part of the h1
   // apparently only works on Chromium, so skip it for other browsers
@@ -62,11 +62,11 @@ test('Read-only document indirectly configured', async ({ page }, workerInfo) =>
 });
 
 test('Read-write document', async ({ page }, workerInfo) => {
-  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc_readwrite`;
+  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc-readwrite`;
 
   await page.goto(url);
   const editor = page.locator('div.ProseMirror');
-  await expect(editor).toContainText('This is doc_readwrite');
+  await expect(editor).toContainText('This is doc-readwrite');
   await expect(editor, 'Should be editable').toHaveAttribute('contenteditable', 'true');
 
   // This last part of this test that obtains the ':before' part of the h1
@@ -82,10 +82,10 @@ test('Read-write document', async ({ page }, workerInfo) => {
 });
 
 test('No access at all', async ({ page }) => {
-  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc_noaccess`;
+  const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/doc-noaccess`;
 
   await page.goto(url);
 
-  await expect(page.locator('h1')).toContainText('doc_noaccess');
+  await expect(page.locator('h1')).toContainText('doc-noaccess');
   await expect(page.locator('div.ProseMirror'), 'Nothing should be visible').toHaveCount(0);
 });
