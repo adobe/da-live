@@ -106,13 +106,14 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-
+  await page.waitForTimeout(1000);
   await page.locator('div.ProseMirror').fill('page B');
   await page.waitForTimeout(3000);
 
   await page.goto(urlA);
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await page.waitForTimeout(1000);
   await expect(page.locator('div.ProseMirror')).toContainText('mytable');
   await page.waitForTimeout(2000);
   await expect(page.locator('div.ProseMirror')).toContainText('k 2');
@@ -132,6 +133,7 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  await page.waitForTimeout(1000);
   await page.locator('div.ProseMirror').fill('This is a line that will contain a code mark.');
 
   // Forward
@@ -143,7 +145,6 @@ test('Add code mark', async ({ page }, workerInfo) => {
     await page.keyboard.press('ArrowRight');
   }
   await page.keyboard.press('`');
-  await page.waitForTimeout(1500);
   await expect(page.locator('div.ProseMirror').locator('code')).toContainText('code');
 
   // Backward
@@ -157,7 +158,6 @@ test('Add code mark', async ({ page }, workerInfo) => {
     await page.keyboard.press('ArrowLeft');
   }
   await page.keyboard.press('`');
-  await page.waitForTimeout(1500);
   await expect(page.locator('div.ProseMirror').locator('code')).toContainText('code');
 
   // No Overwrite
