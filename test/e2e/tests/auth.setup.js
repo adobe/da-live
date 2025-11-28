@@ -24,9 +24,9 @@ It is assumed to be configured as follows, where the current est user is in IMS 
 The configuration in https://da.live/config#/da-testautomation/ should be as follows:
 
   path groups actions
-  /acltest/testdocs/doc_readwrite 907136ED5D35CBF50A495CD4/DA-Test write
-  /acltest/testdocs/doc_readonly 907136ED5D35CBF50A495CD4 read
-  /acltest/testdocs/doc_noaccess 907136ED5D35CBF50A495CD4/DA-Nonexist write
+  /acltest/testdocs/readwrite-doc 907136ED5D35CBF50A495CD4/DA-Test write
+  /acltest/testdocs/readonly-doc 907136ED5D35CBF50A495CD4 read
+  /acltest/testdocs/noaccess-doc 907136ED5D35CBF50A495CD4/DA-Nonexist write
   /acltest/testdocs/subdir/+** 907136ED5D35CBF50A495CD4 read
   /acltest/testdocs/subdir/subdir2/** 907136ED5D35CBF50A495CD4 write
   /acltest/testdocs/subdir/subdir1/+** 907136ED5D35CBF50A495CD4 write
