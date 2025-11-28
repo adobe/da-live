@@ -28,7 +28,7 @@ test('Read-only directory', async ({ page }) => {
   await page.keyboard.press(' ');
   await page.waitForTimeout(500);
 
-  const tickbox = page.locator('da-list-item').filter({ hasText: 'doc_onlyread' }).locator('label');
+  const tickbox = page.locator('da-list-item').filter({ hasText: 'onlyread-doc' }).locator('label');
   await expect(tickbox).toBeChecked();
 
   // There should not be a delete button
