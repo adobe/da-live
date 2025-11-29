@@ -1,6 +1,7 @@
 import { MenuItem, TextSelection } from 'da-y-wrapper';
 import openPrompt from '../../../da-palette/da-palette.js';
 import { markActive } from './menuUtils.js';
+import { formatShortcut, SHORTCUTS } from '../shortcuts/shortcutsHelpers.js';
 
 function defaultLinkFields() {
   return {
@@ -60,7 +61,7 @@ export function linkItem(linkMarkType) {
   const label = 'Edit link';
 
   return new MenuItem({
-    title: 'Add or Edit link',
+    title: `Add or Edit link (${formatShortcut(SHORTCUTS.LINK)})`,
     label,
     class: 'edit-link',
     active(state) {
