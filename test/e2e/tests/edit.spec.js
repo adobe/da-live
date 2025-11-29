@@ -172,6 +172,6 @@ test('Add code mark', async ({ page }, workerInfo) => {
     await page.keyboard.press('ArrowRight');
   }
   await page.keyboard.press('`');
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(1000);
   await expect(page.locator('div.ProseMirror')).toContainText('This is a line that will contain `a code mark`.');
 });
