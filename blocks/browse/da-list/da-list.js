@@ -1,6 +1,6 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
@@ -307,7 +307,7 @@ export default class DaList extends LitElement {
     this._itemsRemaining = this._selectedItems.length;
 
     const callback = async (item) => {
-      const [, org, site, ...rest] = item.path.split('/');
+      const [org, site, ...rest] = sanitizePathParts(item.path);
 
       // If already in trash or not in a site, its a direct delete
       const directDelete = item.path.includes('/.trash/') || rest.length === 0;
