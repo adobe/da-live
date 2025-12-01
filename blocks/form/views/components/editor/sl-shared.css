@@ -1,0 +1,115 @@
+:host(sl-input-extended) {
+  .sl-inputfield {
+
+    input:is([type="text"],
+      [type="password"],
+      [type="number"],
+      [type="date"],
+      [type="datetime-local"],
+      [type="email"],
+      [type="url"]) {
+      border: 1px solid var(--s2-gray-400, #d1d5db);
+      font-size: var(--s2-body-xs-size, 12px);
+      height: var(--form-input-height, 30px);
+
+      &:is(:focus, :focus-visible) {
+        outline: none;
+        border-color: var(--s2-blue-700, #5989ff);
+        box-shadow: var(--s2-blue-200, rgba(118, 169, 250, 0.45)) 0px 0px 0px 3px;
+        outline-offset: var(--focus-visible-offset, 0px);
+      }
+
+      &:hover {
+        border-color: var(--s2-gray-400, #d1d5db);
+      }
+    }
+  }
+}
+
+:host(sl-textarea-extended) {
+  max-width: 100%;
+
+  .sl-inputfield {
+    textarea {
+      border: 1px solid var(--s2-gray-400, #d1d5db);
+      font-size: var(--s2-body-xs-size, 12px);
+      min-height: var(--sl-textarea-min-height, 200px);
+      max-width: 100%;
+      min-width: 100%;
+      position: inherit;
+
+      &:is(:focus, :focus-visible) {
+        outline: none;
+        border-color: var(--s2-blue-700, #5989ff);
+        box-shadow: var(--s2-blue-200, #e5f0fe) 0px 0px 0px 3px;
+      }
+    }
+  }
+}
+
+:host(sl-select-extended) {
+  width: 40%;
+
+  .sl-inputfield {
+    select {
+      border: 1px solid var(--s2-gray-400, #d1d5db);
+      background: none;
+      font-size: var(--s2-body-xs-size, 12px);
+      height: var(--form-input-height, 30px);
+      appearance: none;
+
+      &:is(:focus, :focus-visible) {
+        outline: none;
+        border-color: var(--s2-blue-700, #5989ff);
+        box-shadow: var(--s2-blue-200, #e5f0fe) 0px 0px 0px 3px;
+      }
+    }
+
+    .sl-inputfield-select-wrapper {
+      position: relative;
+    }
+  }
+}
+
+:host(sl-checkbox) {
+  .sl-inputfield {
+    &:has(> input[type="checkbox"]) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      column-gap: 8px;
+      row-gap: 0;
+
+      label {
+        margin: 0;
+        font-size: var(--s2-body-xs-size, 12px);
+      }
+    }
+
+    input[type="checkbox"] {
+      border: 1px solid var(--s2-gray-400, #d1d5db);
+      font-size: var(--s2-body-xs-size, 12px);
+      height: var(--form-input-height, 30px);
+
+      &:is(:focus, :focus-visible) {
+        outline: none;
+        border-color: var(--s2-blue-700, #5989ff);
+        box-shadow: var(--s2-blue-200, #e5f0fe) 0px 0px 0px 3px;
+      }
+    }
+  }
+}
+
+.sl-inputfield .sl-inputfield-error {
+  padding-top: var(--input-error-padding-top, 4px);
+  color: var(--sl-error-text-color, #ef4444);
+  font-size: var(--s2-body-xs-size);
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+
+.sl-inputfield :is(input, textarea, select):not([type="checkbox"]).has-error {
+  border: 1px solid var(--sl-error-text-color, #ef4444) !important;
+  box-shadow: rgba(239, 68, 68, 0.08) 0px 0px 0px 3px;
+}
