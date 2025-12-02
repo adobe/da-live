@@ -9,42 +9,42 @@
   display: flex;
   gap: 18px;
   margin-bottom: 24px;
-}
 
-.da-tablist button {
-  font-family: var(--body-font-family);
-  position: relative;
-  display: block;
-  background: none;
-  border: none;
-  padding: 0 0 6px;
-  margin: 0;
-  box-sizing: border-box;
-  color: rgb(143 143 143);
-  text-transform: uppercase;
-  font-size: 22px;
-  font-weight: 700;
-}
+  button {
+    font-family: var(--body-font-family);
+    position: relative;
+    display: block;
+    background: none;
+    border: none;
+    padding: 0 0 6px;
+    margin: 0;
+    box-sizing: border-box;
+    color: rgb(143 143 143);
+    text-transform: uppercase;
+    font-size: 22px;
+    font-weight: 700;
+  }
 
-.da-tablist button::after {
-  display: block;
-  content: "";
-  position: absolute;
-  bottom: 0;
-  height: 3px;
-  width: 100%;
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out 0s;
-  background: rgb(19 19 19);
-  border-radius: 3px;
-}
+  button::after {
+    display: block;
+    content: "";
+    position: absolute;
+    bottom: 0;
+    height: 3px;
+    width: 100%;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out 0s;
+    background: rgb(19 19 19);
+    border-radius: 3px;
+  }
 
-.da-tablist button[aria-selected="true"] {
-  color: rgb(19 19 19);
-}
+  button[aria-selected="true"] {
+    color: rgb(19 19 19);
+  }
 
-.da-tablist button[aria-selected="true"]::after {
-  opacity: 1;
+  button[aria-selected="true"]::after {
+    opacity: 1;
+  }
 }
 
 [data-visible="false"] {

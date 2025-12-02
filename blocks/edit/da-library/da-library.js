@@ -26,6 +26,7 @@ const ICONS = [
   '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
   '/blocks/edit/img/Smock_AddCircle_18_N.svg',
   '/blocks/edit/img/Smock_Preview_18_N.svg',
+  '/blocks/edit/img/Smock_InfoOutline_18_N.svg',
 ];
 
 let accessToken;
@@ -68,8 +69,6 @@ class DaLibrary extends LitElement {
     this._libraryDetails = {};
     this._searchStr = '';
     this._searchHasFocus = false;
-    this._blockPreviewPath = '';
-    this._previewItemName = '';
   }
 
   searchInputRef = createRef();
@@ -87,6 +86,10 @@ class DaLibrary extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('keydown', this.handleKeydown);
+  }
+
+  firstUpdated() {
+    import('../../shared/da-dialog/da-dialog.js');
   }
 
   handleKeydown(e) {
@@ -119,7 +122,7 @@ class DaLibrary extends LitElement {
           <div class="da-dialog-header">
             <div class="da-dialog-header-title">
               <img src="${library.icon}" />
-              <p>${library.name}</p>
+              <p>${library.title || library.name}</p>
             </div>
             <button class="primary" @click=${this.handleModalClose}>Close</button>
           </div>
@@ -165,6 +168,7 @@ class DaLibrary extends LitElement {
         const { pathname } = new URL(url);
         window.open(url, `${pathname.replaceAll('/', '-')}`);
       } catch {
+        // eslint-disable-next-line no-console
         console.log('Could not make plugin URL');
       }
       return;
@@ -265,6 +269,11 @@ class DaLibrary extends LitElement {
     }
   }
 
+  handleToolTip(e) {
+    e.stopPropagation();
+    e.target.closest('button').classList.toggle('show-tooltip');
+  }
+
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
@@ -285,43 +294,20 @@ class DaLibrary extends LitElement {
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 
-  async handlePreviewOpen(path, previewName) {
-    const previewPath = await getPreviewUrl(path);
+  handlePreviewOpen(path, previewName) {
+    const previewPath = getPreviewUrl(path);
     this._blockPreviewPath = previewPath || path;
     this._previewItemName = previewName || '';
   }
 
   handlePreviewClose() {
-      this.shadowRoot.querySelector('.da-fs-dialog-plugin').classList.add('hide');
-      this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
-      this._blockPreviewPath = '';
-      this._previewItemName = '';
+    this._blockPreviewPath = '';
+    this._previewItemName = '';
   }
 
   handlePreviewLoad() {
     this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
     this.shadowRoot.querySelector('.da-fs-dialog-plugin').classList.remove('hide');
-  }
-
-  renderPreview() {
-    return html`
-       <dialog class="da-fs-dialog-plugin hide">
-          <div class="da-dialog-header">
-            <h4>${this._previewItemName} Preview</h4>
-            <button class="da-library-close" @click=${() => this.handlePreviewClose()}></button>
-          </div>
-          <div class="da-library-type-plugin">
-            <iframe
-              data-src="${this._blockPreviewPath}"
-              src="${this._blockPreviewPath}"
-              @load=${this.handlePreviewLoad}
-              allow="clipboard-write *"></iframe>
-          </div>
-          <div class="da-dialog-footer">
-            <button class="primary" @click=${() => this.handlePreviewClose()}>Close</button>
-          </div>
-        </dialog>
-    `;
   }
 
   async handlePluginLoad({ target }) {
@@ -365,15 +351,47 @@ class DaLibrary extends LitElement {
     }, 750);
   }
 
+  renderPreview() {
+    const action = {
+      style: 'primary outline',
+      label: 'Close',
+      click: () => this.handlePreviewClose(),
+    };
+
+    return html`
+      <da-dialog
+        class="da-dialog-block-preview"
+        size="auto"
+        emphasis="quiet"
+        title="${this._previewItemName} Preview"
+        .action=${action}
+        @close=${this.handlePreviewClose}>
+        <iframe
+          class="da-dialog-block-preview-frame"
+          data-src="${this._blockPreviewPath}"
+          src="${this._blockPreviewPath}"
+          @load=${this.handlePreviewLoad}
+          allow="clipboard-write *"></iframe>
+      </da-dialog>
+    `;
+  }
+
   renderBlockItem(item, icon = false) {
+    const hasDesc = item.description?.trim();
     return html`
       <li class="da-library-type-group-detail-item" tabindex="1">
-        <button class="${icon ? 'blocks' : ''}">
-          <div class="block-name">
-            <span class="da-library-group-name">${item.name}</span>
-            <span class="da-library-group-subtitle">${item.variants}</span>
+        <button class="${icon ? 'blocks' : ''}" @click=${() => this.handleItemClick(item, true)}>
+          <div class="da-library-item-button-title">
+            <div>
+              <span class="da-library-group-name">${item.name}</span>
+              <span class="da-library-group-subtitle">${item.variants}</span>
+            </div>
           </div>
-          <svg class="icon" @click=${() => this.handleItemClick(item, true)}><use href="#spectrum-ExperienceAdd"/></svg>
+          <div class="da-library-icons">
+              ${hasDesc ? html`<svg class="icon" @click=${this.handleToolTip}><use href="#spectrum-InfoOutline"/></svg>` : nothing}
+              <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
+            </div>
+          ${hasDesc ? html`<div class="da-library-item-button-tooltip">${item.description}</div>` : nothing}
         </button>
       </li>`;
   }
@@ -390,13 +408,18 @@ class DaLibrary extends LitElement {
     return html`
       <li class="da-library-type-group">
         <div class="da-library-type-group-title">
-          <span class="name">${group.name}</span>
-          <button class= "preview" @click=${() => this.handlePreviewOpen(group.path, group.name)}>
-            <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+          <button class="da-library-type-group-expand" @click=${this.handleGroupOpen}>
+             <span class="name">${group.name}</span>
           </button>
-          <button @click=${this.handleGroupOpen}>
-            <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
-          </button>
+          <div class="da-library-type-group-secondary-actions">
+            <button class= "preview" @click=${() => this.handlePreviewOpen(group.path, group.name)}>
+              <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+            </button>
+              <button @click=${this.handleGroupOpen}>
+                <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
+              </button>
+            </button>
+          </div>
         </div>
         <ul class="da-library-type-group-details">
           ${until(this.renderBlockDetail(group.path), html`<span>Loading...</span>`)}
@@ -596,7 +619,7 @@ class DaLibrary extends LitElement {
         )}
       </div>
       <div class="da-library-preview">
-        ${this._blockPreviewPath !== '' ? this.renderPreview() : nothing}
+        ${this._blockPreviewPath ? this.renderPreview() : nothing}
       </div>
     `;
   }

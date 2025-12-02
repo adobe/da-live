@@ -210,6 +210,7 @@ ul {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   width: 100%;
   border: none;
   background: none;
@@ -218,12 +219,6 @@ ul {
   min-height: 50px;
   box-sizing: border-box;
   transition: background-color .2s ease-in-out;
-}
-
-.da-library-type-group-title button {
-  border: none;
-  padding-right: 0;
-  padding-left: 4px;
 }
 
 .da-library-item-list li button {
@@ -319,6 +314,26 @@ ul {
   background: none;
   border: none;
   transition: background-color .2s ease-in-out;
+
+  .da-library-type-group-expand {
+    text-align: left;
+    flex: 1 0 auto;
+  }
+
+  button {
+    padding: 0;
+    border: none;
+  }
+}
+
+.da-library-type-group-secondary-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .icon {
+    display: block;
+  }
 }
 
 .da-library-type-item-btn {
@@ -455,6 +470,71 @@ ul {
   background: #167AF3;
 }
 
+.da-library-type-group-title .icon {
+  transition: transform .2s ease-in-out;
+}
+
+.da-library-type-group-detail-item {
+  button {
+    width: 100%;
+    border: none;
+    background: none;
+    padding: 8px 18px;
+    text-align: left;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease-in-out;
+
+    .da-library-item-button-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 34px;
+    }
+
+    .da-library-item-button-tooltip {
+      width: 100%;
+      display: none;
+      font-size: 14px;
+      margin-top: 8px;
+      background: rgb(0 0 0 / 5%);
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    &.show-tooltip {
+      .da-library-item-button-tooltip {
+        display: block;
+      }
+    }
+  }
+}
+
+.da-library-type-group-detail-item button:hover,
+.da-library-type-group-detail-item button:focus {
+  background-color: #E4F0FF;
+  color: #167AF3;
+
+  .da-library-item-button-tooltip {
+    color: #234064;
+  }
+}
+
+.da-library-type-group-detail-item button:focus {
+  outline: none;
+}
+
+.da-library-type-group-detail-item button .icon {
+  margin-top: 2px;
+  display: block;
+  opacity: 0;
+}
+
+.da-library-type-group-detail-item button:hover .icon,
+.da-library-type-group-detail-item button:focus .icon {
+  opacity: 1;
+  flex: 0 0 auto;
+}
+
 .da-library-group-name {
   display: block;
   font-size: 16px;
@@ -463,6 +543,30 @@ ul {
 .da-library-group-subtitle {
   display: block;
   font-size: 13px;
+}
+
+.da-library-group-tags {
+  display: block;
+  font-size: 11px;
+  color: #6E6E6E;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.da-library-icons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-icon-container {
+  position: relative;
+  display: inline-block;
+}
+
+.da-library-type-group-detail-item button:hover .info-icon,
+.da-library-type-group-detail-item button:focus .info-icon {
+  opacity: 1;
 }
 
 .da-library-type-list-assets {
@@ -526,10 +630,7 @@ ul {
 /* Plugins */
 .da-library-type-plugin {
   position: absolute;
-  top: 44px;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset: 44px 0 0;
 }
 
 .da-library-type-plugin iframe {
@@ -630,4 +731,11 @@ ul {
 .da-library-preview .da-dialog-footer:hover button {
   color: #fff;
   background-color: #000;
+}
+
+.da-dialog-block-preview-frame {
+  width: 60vw;
+  margin: 0 -24px -6px;
+  height: 60vh;
+  border: none;
 }

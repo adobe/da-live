@@ -1,3 +1,8 @@
+function setCursor(cursor, el) {
+  el.id = cursor.id;
+  cursor.remove();
+}
+
 function toBlockCSSClassNames(text) {
   if (!text) return [];
   const names = [];
@@ -17,8 +22,8 @@ function toBlockCSSClassNames(text) {
     .filter((name) => !!name);
 }
 
-function convertBlocks(editor) {
-  const tables = editor.querySelectorAll('.tableWrapper > table');
+function convertBlocks(editor, isFragment = false) {
+  const tables = editor.querySelectorAll('.tableWrapper > table, da-diff-added > table');
 
   tables.forEach((table) => {
     const tbody = table.querySelector(':scope > tbody');
@@ -41,7 +46,16 @@ function convertBlocks(editor) {
     const div = document.createElement('div');
     div.className = toBlockCSSClassNames(nameRow.textContent).join(' ');
     div.append(...divs);
-    table.parentElement.parentElement.replaceChild(div, table.parentElement);
+
+    // cursor detection
+    const daCursor = nameRow.querySelector('#da-cursor-position');
+    if (daCursor) setCursor(daCursor, div);
+
+    if (isFragment) {
+      table.parentElement.replaceChild(div, table);
+    } else {
+      table.parentElement.parentElement.replaceChild(div, table.parentElement);
+    }
   });
 }
 
@@ -51,6 +65,21 @@ function makePictures(editor) {
     img.removeAttribute('contenteditable');
     img.removeAttribute('draggable');
     img.removeAttribute('style');
+
+    const dataFocalX = img.getAttribute('data-focal-x');
+    const dataFocalY = img.getAttribute('data-focal-y');
+    if (dataFocalX && dataFocalY) {
+      img.setAttribute('data-title', `data-focal:${dataFocalX},${dataFocalY}`);
+    }
+
+    if (img.parentElement.classList.contains('focal-point-image-wrapper')) {
+      const wrapper = img.parentElement;
+      wrapper.parentElement.replaceChild(img, wrapper);
+    }
+
+    // Set the cursor id on the image for live preview scrolling
+    const daCursor = img.parentElement.querySelector('#da-cursor-position');
+    if (daCursor) setCursor(daCursor, img);
 
     const clone = img.cloneNode(true);
     clone.setAttribute('loading', 'lazy');
@@ -103,11 +132,23 @@ function convertParagraphs(editor) {
 }
 
 function convertListItems(editor) {
+  const topLevelLists = editor.querySelectorAll('ul > li, ol > li');
+
+  topLevelLists.forEach((li) => {
+    if (li.firstChild.classList.contains('loc-deleted-view')) {
+      li.remove(); // remove deleted nodes in preview
+    } else if (li.firstChild.classList.contains('loc-added-view')) {
+      li.querySelector('.loc-color-overlay').remove();
+      li.innerHTML = li.firstChild.innerHTML;
+    }
+  });
+
   const lis = editor.querySelectorAll('li');
   lis.forEach((li) => {
-    const para = li.querySelector(':scope > p');
-    if (!para) return;
-    li.innerHTML = para.innerHTML;
+    // Collapse single child p tags
+    if (li.children.length === 1 && li.firstElementChild.nodeName === 'P') {
+      li.innerHTML = li.firstElementChild.innerHTML;
+    }
   });
 }
 
@@ -121,6 +162,11 @@ function makeSections(editor) {
       acc.push(document.createElement('div'));
     } else {
       acc[acc.length - 1].append(child);
+      // Find cursor inside section-metadata and bubble it to parent section
+      if (child.classList.contains('section-metadata')) {
+        const daCursor = child.querySelector('#da-cursor-position');
+        if (daCursor) setCursor(daCursor, acc[acc.length - 1]);
+      }
     }
     return acc;
   }, [section]);
@@ -143,10 +189,21 @@ function parseIcons(editor) {
 
 const removeEls = (els) => els.forEach((el) => el.remove());
 
-export default function prose2aem(editor, live) {
-  editor.removeAttribute('class');
+/**
+ * A utility to take ProseMirror formatted DOM and convert to AEM semantic markup
+ * @param {HTMLElement} editor the editor dom
+ * @param {Boolean} livePreview whether or not the target destination is Live Preview
+ * @param {Boolean} isFragment whether or not the DOM is a fragment
+ * @returns AEM-friendly HTML as a text string
+ */
+export default function prose2aem(editor, livePreview, isFragment = false) {
+  if (!isFragment) editor.removeAttribute('class');
+
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
+
+  const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
+  removeEls(daDiffDeletedEls);
 
   const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
   removeEls(emptyImgs);
@@ -169,16 +226,22 @@ export default function prose2aem(editor, live) {
 
   convertParagraphs(editor);
 
-  convertBlocks(editor);
+  convertBlocks(editor, isFragment);
 
-  if (live) {
+  if (livePreview) {
     removeMetadata(editor);
     parseIcons(editor);
   }
 
   makePictures(editor);
 
-  makeSections(editor);
+  if (!isFragment) {
+    makeSections(editor);
+  }
+
+  if (isFragment) {
+    return editor.innerHTML;
+  }
 
   const html = `
     <body>
@@ -189,4 +252,61 @@ export default function prose2aem(editor, live) {
   `;
 
   return html;
+}
+
+export function getHtmlWithCursor(view) {
+  const { selection } = view.state;
+  const cursorPos = selection.from;
+
+  // Clone the editor first so we don't modify the real DOM
+  const editorClone = view.dom.cloneNode(true);
+
+  // Get the DOM position corresponding to the ProseMirror position
+  const { node: domNode, offset } = view.domAtPos(cursorPos);
+
+  // Find the corresponding node in the cloned DOM
+  // Build path from view.dom to domNode
+  const path = [];
+  let current = domNode;
+  while (current && current !== view.dom) {
+    const parent = current.parentNode;
+    if (parent) {
+      const index = Array.from(parent.childNodes).indexOf(current);
+      path.unshift(index);
+      current = parent;
+    } else {
+      break;
+    }
+  }
+
+  // Follow the same path in the clone
+  let clonedNode = editorClone;
+  for (const index of path) {
+    clonedNode = clonedNode.childNodes[index];
+  }
+
+  // Create cursor marker element
+  const marker = document.createElement('span');
+  marker.id = 'da-cursor-position';
+  marker.setAttribute('data-cursor-pos', cursorPos);
+
+  // Insert the marker into the cloned DOM
+  if (clonedNode.nodeType === Node.TEXT_NODE) {
+    const parent = clonedNode.parentNode;
+    const textBefore = clonedNode.textContent.substring(0, offset);
+    const textAfter = clonedNode.textContent.substring(offset);
+
+    const beforeNode = document.createTextNode(textBefore);
+    const afterNode = document.createTextNode(textAfter);
+
+    parent.insertBefore(beforeNode, clonedNode);
+    parent.insertBefore(marker, clonedNode);
+    parent.insertBefore(afterNode, clonedNode);
+    parent.removeChild(clonedNode);
+  } else {
+    clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
+  }
+
+  // Convert to an HTML string using prose2aem
+  return prose2aem(editorClone, true);
 }

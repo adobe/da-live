@@ -25,20 +25,30 @@
 import { addListNodes, Schema, tableNodes } from 'da-y-wrapper';
 
 function parseLocDOM(locTag) {
-  return [{
-    tag: locTag,
-
-    // Do we need to add this to the contentElement function?
-    // Only parse the content of the node, not the temporary elements
-    // const deleteThese = dom.querySelectorAll('[loc-temp-dom]');
-    // deleteThese.forEach((e) => e.remove());
-    contentElement: (dom) => dom,
-  }];
+  return [
+    {
+      tag: locTag,
+      contentElement: (dom) => dom,
+    },
+  ];
 }
 
-const topLevelAttrs = { dataId: { default: null, validate: 'string|null' } };
-const getTopLevelToDomAttrs = (node) => ({ 'data-id': node.attrs.dataId });
-const getTopLevelParseAttrs = (dom) => ({ dataId: dom.getAttribute('dataId') || null });
+const topLevelAttrs = {
+  dataId: { default: null, validate: 'string|null' },
+  daDiffAdded: { default: null, validate: 'string|null' },
+};
+
+const getTopLevelToDomAttrs = (node) => {
+  const attrs = {};
+  if (node.attrs.dataId != null) attrs['data-id'] = node.attrs.dataId;
+  if (node.attrs.daDiffAdded === '') attrs['da-diff-added'] = '';
+  return attrs;
+};
+
+const getTopLevelParseAttrs = (dom) => ({
+  dataId: dom.getAttribute('dataId') ?? null,
+  daDiffAdded: dom.getAttribute('da-diff-added') ?? null,
+});
 
 const getHeadingAttrs = (level) => (dom) => ({
   level,
@@ -116,36 +126,50 @@ const baseNodes = {
       alt: { default: null, validate: 'string|null' },
       title: { default: null, validate: 'string|null' },
       href: { default: null, validate: 'string|null' },
+      dataFocalX: { default: null, validate: 'string|null' },
+      dataFocalY: { default: null, validate: 'string|null' },
       ...topLevelAttrs,
     },
     group: 'inline',
     draggable: true,
-    parseDOM: [{
-      tag: 'img[src]',
-      getAttrs(dom) {
-        return {
-          src: dom.getAttribute('src'),
-          title: dom.getAttribute('title'),
-          alt: dom.getAttribute('alt'),
-          href: dom.getAttribute('href'),
-          ...getTopLevelParseAttrs(dom),
-        };
+    parseDOM: [
+      {
+        tag: 'img[src]',
+        getAttrs(dom) {
+          const attrs = {
+            src: dom.getAttribute('src'),
+            alt: dom.getAttribute('alt'),
+            href: dom.getAttribute('href'),
+            dataFocalX: dom.getAttribute('data-focal-x'),
+            dataFocalY: dom.getAttribute('data-focal-y'),
+            ...getTopLevelParseAttrs(dom),
+          };
+          const title = dom.getAttribute('title');
+          // TODO: Remove this once helix properly supports data-focal-x and data-focal-y
+          if (!title?.includes('data-focal:')) {
+            attrs.title = title;
+          }
+          return attrs;
+        },
       },
-    }],
+    ],
     toDOM(node) {
       const {
-        src,
-        alt,
-        title,
-        href,
+        src, alt, title, href, dataFocalX, dataFocalY,
       } = node.attrs;
-      return ['img', {
+      const attrs = {
         src,
         alt,
         title,
         href,
         ...getTopLevelToDomAttrs(node),
-      }];
+      };
+      if (dataFocalX != null) attrs['data-focal-x'] = dataFocalX;
+      if (dataFocalY != null) attrs['data-focal-y'] = dataFocalY;
+      // TODO: This is temp code to store the focal data in the title attribute
+      // Once helix properly supports data-focal-x and data-focal-y, we can remove this code
+      if (dataFocalX != null) attrs.title = `data-focal:${dataFocalX},${dataFocalY}`;
+      return ['img', attrs];
     },
   },
   hard_break: {
@@ -157,18 +181,71 @@ const baseNodes = {
       return ['br'];
     },
   },
-  // DA diffing tags
   loc_added: {
     group: 'block',
     content: 'block+',
+    atom: true,
+    isolating: true,
     parseDOM: parseLocDOM('da-loc-added'),
     toDOM: () => ['da-loc-added', { contenteditable: false }, 0],
+  },
+  diff_added: {
+    group: 'block',
+    content: 'block+',
+    atom: true,
+    isolating: true,
+    parseDOM: [
+      {
+        tag: 'da-diff-added',
+        contentElement: (dom) => {
+          [...dom.children].forEach((child) => {
+            if (child.properties) {
+              // eslint-disable-next-line no-param-reassign
+              child.properties['da-diff-added'] = '';
+            }
+          });
+          return dom;
+        },
+      },
+      {
+        tag: 'da-loc-added', // Temp code to support old regional edits
+        contentElement: (dom) => {
+          [...dom.children].forEach((child) => {
+            if (child.properties) {
+              // eslint-disable-next-line no-param-reassign
+              child.properties['da-diff-added'] = '';
+            }
+          });
+          return dom;
+        },
+      },
+    ],
+    toDOM: () => ['da-diff-added', { contenteditable: false }, 0],
   },
   loc_deleted: {
     group: 'block',
     content: 'block+',
+    atom: true,
+    isolating: true,
     parseDOM: parseLocDOM('da-loc-deleted'),
     toDOM: () => ['da-loc-deleted', { contenteditable: false }, 0],
+  },
+  diff_deleted: {
+    group: 'block',
+    content: 'block+',
+    atom: true,
+    isolating: true,
+    parseDOM: [
+      {
+        tag: 'da-diff-deleted',
+        contentElement: (dom) => dom,
+      },
+      {
+        tag: 'da-loc-deleted', // Temp code to support old regional edits
+        contentElement: (dom) => dom,
+      },
+    ],
+    toDOM: () => ['da-diff-deleted', { 'data-mdast': 'ignore', contenteditable: false }, 0],
   },
 };
 
@@ -177,28 +254,24 @@ const baseMarks = {
     attrs: {
       href: {},
       title: { default: null },
+      ...topLevelAttrs,
     },
     inclusive: false,
     parseDOM: [
       {
         tag: 'a[href]',
         getAttrs(dom) {
-          return { href: dom.getAttribute('href'), title: dom.getAttribute('title') };
+          return { href: dom.getAttribute('href'), title: dom.getAttribute('title'), ...getTopLevelParseAttrs(dom) };
         },
       },
     ],
     toDOM(node) {
       const { href, title } = node.attrs;
-      return ['a', { href, title }, 0];
+      return ['a', { href, title, ...getTopLevelToDomAttrs(node) }, 0];
     },
   },
   em: {
-    parseDOM: [
-      { tag: 'i' },
-      { tag: 'em' },
-      { style: 'font-style=italic' },
-      { style: 'font-style=normal', clearMark: (m) => m.type.name === 'em' },
-    ],
+    parseDOM: [{ tag: 'i' }, { tag: 'em' }, { style: 'font-style=italic' }, { style: 'font-style=normal', clearMark: (m) => m.type.name === 'em' }],
     toDOM() {
       return ['em', 0];
     },
@@ -242,20 +315,21 @@ const baseSchema = new Schema({ nodes: baseNodes, marks: baseMarks });
 function addCustomMarks(marks) {
   const sup = {
     parseDOM: [{ tag: 'sup' }, { clearMark: (m) => m.type.name === 'sup' }],
-    toDOM() { return ['sup', 0]; },
+    toDOM() {
+      return ['sup', 0];
+    },
   };
 
   const sub = {
     parseDOM: [{ tag: 'sub' }, { clearMark: (m) => m.type.name === 'sub' }],
-    toDOM() { return ['sub', 0]; },
+    toDOM() {
+      return ['sub', 0];
+    },
   };
 
   const contextHighlight = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
 
-  return marks
-    .addToEnd('sup', sup)
-    .addToEnd('sub', sub)
-    .addToEnd('contextHighlightingMark', contextHighlight);
+  return marks.addToEnd('sup', sup).addToEnd('sub', sub).addToEnd('contextHighlightingMark', contextHighlight);
 }
 
 function getTableNodeSchema() {
@@ -285,6 +359,13 @@ export function getSchema() {
   let { nodes } = baseSchema.spec;
   const { marks } = baseSchema.spec;
   nodes = addListNodeSchema(nodes);
+
+  // Update diff nodes to allow list_item after list nodes are added
+  nodes = nodes.update('diff_deleted', { ...nodes.get('diff_deleted'), content: '(block | list_item)+' });
+  nodes = nodes.update('diff_added', { ...nodes.get('diff_added'), content: '(block | list_item)+' });
+  nodes = nodes.update('loc_deleted', { ...nodes.get('loc_deleted'), content: '(block | list_item)+' });
+  nodes = nodes.update('loc_added', { ...nodes.get('loc_added'), content: '(block | list_item)+' });
+
   nodes = nodes.append(getTableNodeSchema());
   const customMarks = addCustomMarks(marks);
   return new Schema({ nodes, marks: customMarks });

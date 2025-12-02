@@ -1,5 +1,6 @@
 /* eslint-disable max-len */
-import { LitElement, html, nothing } from 'da-lit';
+import { html, nothing } from 'da-lit';
+import InContextMenu from '../inContextMenu.js';
 import getSheet from '../../../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/prose/plugins/slashMenu/slash-menu.css');
@@ -17,25 +18,16 @@ function createColorSquare(color) {
   `;
 }
 
-export default class SlashMenu extends LitElement {
+export default class SlashMenu extends InContextMenu {
   static properties = {
-    items: { type: Array },
-    selectedIndex: { type: Number, reflect: true },
+    ...InContextMenu.properties,
     command: { type: String },
-    visible: { type: Boolean, reflect: true },
-    left: { type: Number },
-    top: { type: Number },
     parent: { type: Object, attribute: false },
   };
 
   constructor() {
     super();
-    this.items = [];
-    this.selectedIndex = 0;
     this.command = '';
-    this.visible = false;
-    this.left = 0;
-    this.top = 0;
   }
 
   connectedCallback() {
@@ -44,51 +36,14 @@ export default class SlashMenu extends LitElement {
   }
 
   show(coords) {
-    this.visible = true;
-    this.left = coords.left;
-    this.top = coords.top || (coords.bottom + 5);
+    super.show(coords);
     this.showSubmenu();
-    this.requestUpdate();
   }
 
   hide() {
     this.dispatchEvent(new CustomEvent('reset-slashmenu'));
-    this.visible = false;
     this.command = '';
-    this.selectedIndex = 0;
-  }
-
-  updatePosition() {
-    const { left, top } = this;
-    const rect = this.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    let adjustedLeft = left;
-    let adjustedTop = top;
-
-    // Adjust horizontal position if menu would overflow viewport
-    if (adjustedLeft + rect.width > viewportWidth) {
-      adjustedLeft = viewportWidth - rect.width - 10;
-    }
-
-    // Adjust vertical position if menu would overflow viewport
-    if (adjustedTop + rect.height > viewportHeight) {
-      adjustedTop = top - rect.height - 20;
-    }
-
-    // Ensure menu doesn't go off-screen to the left
-    if (adjustedLeft < 0) {
-      adjustedLeft = 10;
-    }
-
-    // Ensure menu doesn't go above viewport
-    if (adjustedTop < 0) {
-      adjustedTop = 10;
-    }
-
-    this.style.left = `${adjustedLeft}px`;
-    this.style.top = `${adjustedTop}px`;
+    super.hide();
   }
 
   getSubmenuItems() {
@@ -116,17 +71,10 @@ export default class SlashMenu extends LitElement {
   }
 
   updated(changedProperties) {
-    if (changedProperties.has('left') || changedProperties.has('top')) {
-      this.updatePosition();
-    }
+    super.updated(changedProperties);
     if (changedProperties.has('selectedIndex')) {
       this.showSubmenu();
     }
-  }
-
-  handleItemClick(item) {
-    this.dispatchEvent(new CustomEvent('item-selected', { detail: { item } }));
-    this.hide();
   }
 
   next() {
@@ -135,66 +83,25 @@ export default class SlashMenu extends LitElement {
       this.parent.next();
       return;
     }
-    const newIndex = (this.selectedIndex + 1) % filteredItems.length;
-    this.selectedIndex = newIndex;
-    this.scrollSelectedIntoView();
-    this.requestUpdate();
+    super.next();
   }
 
   previous() {
-    const filteredItems = this.getFilteredItems();
     if (this.parent && this.selectedIndex === 0) {
       this.parent.previous();
       return;
     }
-    const len = filteredItems.length;
-    const newIndex = (this.selectedIndex - 1 + len) % len;
-    this.selectedIndex = newIndex;
-    this.scrollSelectedIntoView();
-    this.requestUpdate();
+    super.previous();
   }
 
   handleKeyDown(event) {
-    if (!this.visible) return;
-
     const submenu = this.getSubmenuElement();
     if (submenu) {
       submenu.handleKeyDown(event);
       return;
     }
 
-    const filteredItems = this.getFilteredItems();
-    if (!filteredItems.length) return;
-
-    switch (event.key) {
-      case 'ArrowDown': {
-        event.preventDefault();
-        this.next();
-        break;
-      }
-      case 'ArrowUp': {
-        event.preventDefault();
-        this.previous();
-        break;
-      }
-      case 'Enter': {
-        event.preventDefault();
-        if (filteredItems[this.selectedIndex]) {
-          const selectedItem = filteredItems[this.selectedIndex];
-          this.handleItemClick({ ...selectedItem });
-        }
-        this.requestUpdate();
-        break;
-      }
-      case 'Escape': {
-        event.preventDefault();
-        this.hide();
-        this.requestUpdate();
-        break;
-      }
-      default:
-        break;
-    }
+    super.handleKeyDown(event);
   }
 
   scrollSelectedIntoView() {
@@ -204,6 +111,10 @@ export default class SlashMenu extends LitElement {
         selectedItem.scrollIntoView({ block: 'nearest' });
       }
     });
+  }
+
+  getDisplayItems() {
+    return this.getFilteredItems();
   }
 
   getFilteredItems() {

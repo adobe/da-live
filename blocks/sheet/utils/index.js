@@ -1,6 +1,6 @@
 import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
-import { debouncedSaveSheets } from './utils.js';
+import { handleSave } from './utils.js';
 import '../da-sheet-tabs.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
@@ -24,11 +24,9 @@ function finishSetup(el, data) {
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
     sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    if (el.details.view !== 'config') {
-      sheet.options.onafterchanges = () => {
-        debouncedSaveSheets(el.jexcel);
-      };
-    }
+    sheet.options.onafterchanges = () => {
+      handleSave(el.jexcel, el.details.view);
+    };
   });
 
   // Setup tabs

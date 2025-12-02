@@ -10,6 +10,9 @@ function getEnv() {
   if (branch === 'local') {
     return 'http://localhost:3000';
   }
+  if (branch === 'local-https') {
+    return 'https://localhost';
+  }
   if (branch === 'main' && owner === 'adobe') {
     return 'https://da.live';
   }

@@ -1,4 +1,4 @@
-let port2;
+let port;
 
 async function loadCSS(href) {
   return new Promise((resolve, reject) => {
@@ -15,23 +15,21 @@ async function loadCSS(href) {
   });
 }
 
-function getHeight() {
-  return document.documentElement.offsetHeight;
-}
+function handleScrollTo() {
+  const cursorEl = window.document.getElementById('da-cursor-position');
+  if (cursorEl) {
+    // Calculate header height dynamically and set scroll-margin
+    const header = document.querySelector('header');
+    const headerHeight = header ? header.offsetHeight : 0;
+    const additionalPadding = 20;
 
-/**
- * Watch height is provided as a catch
- * all for slow or lazily loaded items.
- */
-function watchHeight() {
-  let prevHeight = getHeight();
-  setInterval(() => {
-    const currHeight = getHeight();
-    if (currHeight !== prevHeight) {
-      prevHeight = currHeight;
-      port2.postMessage(`${currHeight}px`);
-    }
-  }, 3000);
+    // Set scroll-margin-top dynamically
+    cursorEl.style.scrollMarginTop = `${headerHeight + additionalPadding}px`;
+
+    // Use native scrollIntoView with the margin applied
+    cursorEl.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  }
+  port.postMessage({ updated: true });
 }
 
 export default async function daPreview(loadPage) {
@@ -40,20 +38,34 @@ export default async function daPreview(loadPage) {
 
   async function onMessage(e) {
     if (e.data.set === 'body') {
-      document.body.outerHTML = e.data.body;
+      const doc = new DOMParser().parseFromString(e.data.body, 'text/html');
+      document.body.className = 'da-preview';
+      document.body.innerHTML = doc.body.innerHTML;
       await loadPage();
-    }
-
-    if (e.data.get === 'height') {
-      setTimeout(() => { port2.postMessage(`${getHeight()}px`); }, 500);
+      handleScrollTo();
     }
   }
 
   function initPort(e) {
-    if (e.data.init) {
-      [port2] = e.ports;
-      port2.onmessage = onMessage;
-      watchHeight();
+    if (e.origin !== 'https://da.live'
+      && e.origin !== 'http://localhost:3000'
+      && e.origin !== 'https://localhost'
+      && !e.origin.match(/^https:\/\/[a-z0-9-]+--da-live--adobe\.aem\.(page|live)$/)
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn('DA Preview: Origin not allowed');
+      return;
+    }
+
+    if (e.data?.ready) {
+      [port] = e.ports;
+
+      // Tell the other side we are ready
+      port.postMessage({ ready: true });
+
+      // Going forward, all messages will be sent via the port
+      port.onmessage = onMessage;
+      // watchHeight();
     }
   }
 

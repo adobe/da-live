@@ -21,6 +21,8 @@ The ACL tests require to be logged in, which is what this setup does.
 It is assumed to be configured as follows, where the current est user is in IMS org
 907136ED5D35CBF50A495CD4 and in its group DA-Test BUT NOT iN DA-Nonexist.
 
+The configuration in https://da.live/config#/da-testautomation/ should be as follows:
+
   path groups actions
   /acltest/testdocs/doc_readwrite 907136ED5D35CBF50A495CD4/DA-Test write
   /acltest/testdocs/doc_readonly 907136ED5D35CBF50A495CD4 read
@@ -29,6 +31,8 @@ It is assumed to be configured as follows, where the current est user is in IMS 
   /acltest/testdocs/subdir/subdir2/** 907136ED5D35CBF50A495CD4 write
   /acltest/testdocs/subdir/subdir1/+** 907136ED5D35CBF50A495CD4 write
   /acltest/testdocs/subdir/subdir2/subdir3 907136ED5D35CBF50A495CD4 read
+  /acltest/testdocs/dir-readwrite/+** 907136ED5D35CBF50A495CD4/DA-Test write
+  /acltest/testdocs/dir-readonly/+** 907136ED5D35CBF50A495CD4/DA-Test read
 */
 
 // This is executed once to authenticate the user used during the tests.
@@ -47,6 +51,9 @@ setup('Set up authentication', async ({ page }) => {
   const url = ENV;
 
   await page.goto(url);
+
+  await fs.promises.mkdir(path.join(__dirname, '../.playwright/shots'), { recursive: true });
+  await page.screenshot({ path: path.join(__dirname, '../.playwright/shots/auth-before.png') });
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   // The IMS sign in page needs a bit of time to load
@@ -61,7 +68,7 @@ setup('Set up authentication', async ({ page }) => {
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Password', { exact: true }).fill(pwd);
   console.log('Entered password');
-  await page.getByLabel('Continue', { exact: true }).click();
+  await page.locator('button[aria-label="Continue"]').click();
   await page.getByLabel('Foundation Internal').click();
   await expect(page.locator('a.nx-nav-brand')).toContainText('Author');
 

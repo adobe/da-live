@@ -52,6 +52,8 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await page.locator('button:text("Create document")').press(' ');
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  // The new page needs a moment to be ready
+  await page.waitForTimeout(2000);
   await page.locator('div.ProseMirror').fill('test writable doc');
   await page.waitForTimeout(3000);
 
@@ -81,6 +83,11 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await page.locator('button.delete-button').locator('visible=true').click();
 
   await page.waitForTimeout(1000);
+
+  await page.locator('sl-button.negative').locator('visible=true').click();
+
+  await page.waitForTimeout(1000);
+
   await expect(page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`)).not.toBeVisible();
 });
 
@@ -99,12 +106,8 @@ test('Readonly directory with writeable document', async ({ page }) => {
   // Check that the expected delete button is there (but don't click it)
   await expect(page.locator('button.delete-button').locator('visible=true')).toBeVisible();
 
-  // Open the document, this will open an new tab (aka 'popup')
-  const newTabPromise = page.waitForEvent('popup');
   await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/doc_writeable"]').click();
-  const newTab = await newTabPromise;
-
-  const editor = newTab.locator('div.ProseMirror');
+  const editor = page.locator('div.ProseMirror');
   await expect(editor).toContainText('This is doc_writeable');
   await expect(editor).toHaveAttribute('contenteditable', 'true');
 });
@@ -121,5 +124,5 @@ test('No access directory should not show anything', async ({ page }) => {
   // was the anchor and that doesn't normally trigger a change
   await page.reload();
   await page.waitForTimeout(3000);
-  await expect(page.getByRole('button', { name: 'Name' })).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
 });
