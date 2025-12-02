@@ -706,10 +706,6 @@ ul {
   padding-bottom: 8px;
 }
 
-.da-library-preview .hide {
-  display: none;
-}
-
 .da-library-preview .da-dialog-header {
   justify-content: space-between;
   padding: 10px 16px;
