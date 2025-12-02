@@ -30,7 +30,6 @@ import { handleUndo, handleRedo } from '../keyHandlers.js';
 import insertTable from '../../table.js';
 import { linkItem, removeLinkItem } from './linkItem.js';
 import { markActive } from './menuUtils.js';
-import { formatShortcut, SHORTCUTS } from '../shortcuts/shortcutsHelpers.js';
 
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
@@ -242,14 +241,10 @@ function getTableMenu() {
 }
 
 function getTextBlocks(marks, nodes) {
-  const headingShortcuts = [
-    SHORTCUTS.H1, SHORTCUTS.H2, SHORTCUTS.H3,
-    SHORTCUTS.H4, SHORTCUTS.H5, SHORTCUTS.H6,
-  ];
   const headingItems = [1, 2, 3, 4, 5, 6].map((i) => createBlockMenuItem(nodes.heading, {
     type: 'heading',
     level: i,
-    title: `Change to H${i} (${formatShortcut(headingShortcuts[i - 1])})`,
+    title: `Change to H${i}`,
     label: `H${i}`,
     column: 2,
     class: `menu-item-h${i}`,
@@ -258,23 +253,23 @@ function getTextBlocks(marks, nodes) {
   return [
     createBlockMenuItem(nodes.paragraph, {
       type: 'paragraph',
-      title: `Change to paragraph (${formatShortcut(SHORTCUTS.PARAGRAPH)})`,
+      title: 'Change to paragraph',
       label: 'P',
       column: 2,
       class: 'menu-item-para',
     }),
     markItem(marks.strong, {
-      title: `Toggle bold (${formatShortcut(SHORTCUTS.BOLD)})`,
+      title: 'Toggle bold',
       label: 'B',
       class: 'edit-bold',
     }),
     markItem(marks.em, {
-      title: `Toggle italic (${formatShortcut(SHORTCUTS.ITALIC)})`,
+      title: 'Toggle italic',
       label: 'I',
       class: 'edit-italic',
     }),
     markItem(marks.u, {
-      title: `Toggle underline (${formatShortcut(SHORTCUTS.UNDERLINE)})`,
+      title: 'Toggle underline',
       label: 'U',
       class: 'edit-underline',
     }),
@@ -409,14 +404,14 @@ function getMenu(view) {
 
   const undoMenu = [
     new MenuItem({
-      title: `Undo last change (${formatShortcut(SHORTCUTS.UNDO)})`,
+      title: 'Undo last change',
       label: 'Undo',
       run: handleUndo,
       enable: (state) => yUndoPluginKey.getState(state)?.hasUndoOps,
       class: 'edit-undo',
     }),
     new MenuItem({
-      title: `Redo last undone change (${formatShortcut(SHORTCUTS.REDO)})`,
+      title: 'Redo last undone change',
       label: 'Redo',
       run: handleRedo,
       enable: (state) => yUndoPluginKey.getState(state)?.hasRedoOps,

@@ -1,0 +1,129 @@
+{
+  "categories": [
+    {
+      "name": "Text Formatting",
+      "shortcuts": [
+        {
+          "label": "Bold",
+          "keys": {
+            "mac": "⌘B",
+            "windows": "Ctrl+B"
+          }
+        },
+        {
+          "label": "Italic",
+          "keys": {
+            "mac": "⌘I",
+            "windows": "Ctrl+I"
+          }
+        },
+        {
+          "label": "Underline",
+          "keys": {
+            "mac": "⌘U",
+            "windows": "Ctrl+U"
+          }
+        },
+        {
+          "label": "Link",
+          "keys": {
+            "mac": "⌘K",
+            "windows": "Ctrl+K"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Text Styles",
+      "shortcuts": [
+        {
+          "label": "Paragraph",
+          "keys": {
+            "mac": "⌘⌥0",
+            "windows": "Ctrl+Alt+0"
+          }
+        },
+        {
+          "label": "Heading 1",
+          "keys": {
+            "mac": "⌘⌥1",
+            "windows": "Ctrl+Alt+1"
+          }
+        },
+        {
+          "label": "Heading 2",
+          "keys": {
+            "mac": "⌘⌥2",
+            "windows": "Ctrl+Alt+2"
+          }
+        },
+        {
+          "label": "Heading 3",
+          "keys": {
+            "mac": "⌘⌥3",
+            "windows": "Ctrl+Alt+3"
+          }
+        },
+        {
+          "label": "Heading 4",
+          "keys": {
+            "mac": "⌘⌥4",
+            "windows": "Ctrl+Alt+4"
+          }
+        },
+        {
+          "label": "Heading 5",
+          "keys": {
+            "mac": "⌘⌥5",
+            "windows": "Ctrl+Alt+5"
+          }
+        },
+        {
+          "label": "Heading 6",
+          "keys": {
+            "mac": "⌘⌥6",
+            "windows": "Ctrl+Alt+6"
+          }
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "shortcuts": [
+        {
+          "label": "Undo",
+          "keys": {
+            "mac": "⌘Z",
+            "windows": "Ctrl+Z"
+          }
+        },
+        {
+          "label": "Redo",
+          "keys": {
+            "mac": "⌘⇧Z",
+            "windows": "Ctrl+Shift+Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other",
+      "shortcuts": [
+        {
+          "label": "Toggle library",
+          "keys": {
+            "mac": "⌘⇧L",
+            "windows": "Ctrl+Shift+L"
+          }
+        },
+        {
+          "label": "Show this dialog",
+          "keys": {
+            "mac": "?",
+            "windows": "?"
+          }
+        }
+      ]
+    }
+  ]
+}

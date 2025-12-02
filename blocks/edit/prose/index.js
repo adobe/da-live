@@ -38,7 +38,6 @@ import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import linkMenu from './plugins/linkMenu/linkMenu.js';
-import shortcutsPlugin, { initGlobalShortcutsHandler } from './plugins/shortcuts/shortcuts.js';
 import {
   handleTableBackspace,
   handleTableTab,
@@ -278,12 +277,6 @@ export default function initProse({ path, permissions }) {
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
 
-  // Initialize global keyboard shortcuts handler (once)
-  if (!window.globalShortcutsInitialized) {
-    initGlobalShortcutsHandler();
-    window.globalShortcutsInitialized = true;
-  }
-
   const schema = getSchema();
 
   const ydoc = new Y.Doc();
@@ -330,7 +323,6 @@ export default function initProse({ path, permissions }) {
     trackCursorAndChanges(),
     slashMenu(),
     linkMenu(),
-    shortcutsPlugin(),
     imageDrop(schema),
     linkConverter(schema),
     sectionPasteHandler(schema),
