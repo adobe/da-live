@@ -706,33 +706,6 @@ ul {
   padding-bottom: 8px;
 }
 
-.da-library-preview .hide {
-  display: none;
-}
-
-.da-library-preview .da-dialog-header {
-  justify-content: space-between;
-  padding: 10px 16px;
-}
-
-.da-library-preview .da-dialog-header h4 {
-  margin: 0;
-}
-
-.da-library-preview .da-dialog-footer {
-  display: flex;
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  padding: 12px 16px;
-  justify-content: flex-end;
-}
-
-.da-library-preview .da-dialog-footer:hover button {
-  color: #fff;
-  background-color: #000;
-}
-
 .da-dialog-block-preview-frame {
   width: 60vw;
   margin: 0 -24px -6px;
