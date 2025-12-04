@@ -21,6 +21,19 @@ export default class InContextMenu extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.handleScroll = this.handleScroll.bind(this);
+    window.addEventListener('scroll', this.handleScroll, true);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('scroll', this.handleScroll, true);
+  }
+
+  handleScroll() {
+    if (this.visible) {
+      this.hide();
+    }
   }
 
   show(coords) {
