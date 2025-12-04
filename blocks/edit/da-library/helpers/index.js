@@ -150,8 +150,8 @@ function transformBlock(block) {
 
   if (block.nextElementSibling?.classList.contains('library-metadata')) {
     const md = getMetadata(block.nextElementSibling);
-    item.tags = md?.searchtags?.text || '';
-    item.description = md?.description?.text || '';
+    item.tags = md?.searchtags || '';
+    item.description = md?.description || '';
   }
 
   return item;
