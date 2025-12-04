@@ -38,11 +38,11 @@ export default class InContextMenu extends LitElement {
   updatePosition() {
     const { left, top } = this;
     const rect = this.getBoundingClientRect();
-    
+
     // Find the parent ProseMirror element
     const proseMirrorEl = this.closest('.da-prose-mirror');
     if (!proseMirrorEl) return;
-    
+
     const parentRect = proseMirrorEl.getBoundingClientRect();
     const parentWidth = parentRect.width;
     const parentHeight = parentRect.height;
