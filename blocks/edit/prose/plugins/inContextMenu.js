@@ -23,10 +23,6 @@ export default class InContextMenu extends LitElement {
     super.connectedCallback();
   }
 
-  disconnectedCallback() {
-    super.disconnectedCallback();
-  }
-
   show(coords) {
     this.visible = true;
     this.left = coords.left;
