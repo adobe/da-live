@@ -1,0 +1,29 @@
+:host {
+  display: inline-block;
+}
+
+.error-badge {
+  background: var(--sl-error-text-color, #ef4444);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  min-width: 24px;
+  height: 18px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.error-badge:focus-visible {
+  outline: 2px solid var(--s2-blue-700, #5989ff);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .error-badge {
+    min-width: 20px;
+  }
+}
+

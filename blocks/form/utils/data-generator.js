@@ -1,7 +1,7 @@
 // Minimal data generator for JSON Schema with conservative defaults.
 // Policy:
 // - Prefer const/default when present
-// - Otherwise minimal empties: string '', number/integer null, boolean null, null null
+// - Otherwise minimal empties: string '', number/integer null, boolean false, null null
 // - Objects: include all properties (both required and optional)
 // - Arrays: if optional -> [], if required -> single item (recursively generated)
 
@@ -38,7 +38,7 @@ function generatePrimitive(node) {
   const { type } = node;
   if (type === 'string') return '';
   if (type === 'number' || type === 'integer') return null;
-  if (type === 'boolean') return null;
+  if (type === 'boolean') return false; // Default to false for checkboxes unless schema specifies otherwise
   if (type === 'null') return null;
   return null;
 }

@@ -6,10 +6,10 @@ export const OP_REMOVE = 'remove';
 export const OP_ADD = 'add';
 
 /**
- * Apply a single RFC 6902 (JSON Patch) style op using RFC 6901 pointers.
- * Supported ops: add | remove | replace
- * - For arrays, add supports index insertion and "-" append
+ * RFC 6902 JSON Patch operations.
+ * Apply add, remove, and replace operations using RFC 6901 pointers.
  */
+
 function omitKey(obj, key) {
   const { [key]: _omit, ...rest } = obj || {};
   return rest;

@@ -1,17 +1,19 @@
-import { EVENT_FOCUS_GROUP } from '../utils/events.js';
+import { EVENT_FOCUS_ELEMENT } from '../constants.js';
 
 /**
- * Tracks active/focused pointer state reactively.
- * Automatically updates host when state changes.
+ * Lit controller that tracks the currently active pointer in the form.
+ * Listens to focus events and triggers host re-renders when active state changes.
+ * Validates active pointer and falls back to default when invalid.
  */
 export default class ActiveStateController {
   constructor(host, {
-    initialPointer = null,
-    propertyName = '_activePointer',
+    getDefaultPointer,
+    isPointerValid,
   } = {}) {
     this.host = host;
-    this.propertyName = propertyName;
-    this._pointer = initialPointer;
+    this._pointer = null;
+    this.getDefaultPointer = getDefaultPointer || (() => null);
+    this.isPointerValid = isPointerValid || (() => true);
     this._boundOnFocus = this._handleFocus.bind(this);
     host.addController(this);
   }
@@ -23,17 +25,26 @@ export default class ActiveStateController {
   set pointer(value) {
     if (this._pointer !== value) {
       this._pointer = value;
-      this.host[this.propertyName] = value;
       this.host.requestUpdate();
     }
   }
 
   hostConnected() {
-    window.addEventListener(EVENT_FOCUS_GROUP, this._boundOnFocus);
+    window.addEventListener(EVENT_FOCUS_ELEMENT, this._boundOnFocus);
   }
 
   hostDisconnected() {
-    window.removeEventListener(EVENT_FOCUS_GROUP, this._boundOnFocus);
+    window.removeEventListener(EVENT_FOCUS_ELEMENT, this._boundOnFocus);
+  }
+
+  hostUpdated() {
+    if (this._pointer == null || !this.isPointerValid(this._pointer)) {
+      const defaultPointer = this.getDefaultPointer();
+      if (this._pointer !== defaultPointer) {
+        this._pointer = defaultPointer;
+        this.host.requestUpdate();
+      }
+    }
   }
 
   _handleFocus(e) {
@@ -42,4 +53,3 @@ export default class ActiveStateController {
     this.pointer = pointer;
   }
 }
-

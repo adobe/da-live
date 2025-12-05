@@ -1,6 +1,8 @@
 :host {
   --form-input-height: 30px;
   --focus-visible-offset: 0px;
+  /* Scroll margin for form inputs to account for sticky header */
+  --form-input-scroll-margin-top: var(--editor-header-height, 0px);
 
   display: block;
   min-height: 400px;
@@ -33,6 +35,5 @@
 
   form {
     padding: 0 48px 48px;
-
   }
 }

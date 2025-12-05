@@ -1,5 +1,6 @@
-import { EVENT_VISIBLE_GROUP } from '../utils/events.js';
+import { EVENT_VISIBLE_GROUP } from '../constants.js';
 
+/** Throttle function calls using requestAnimationFrame. */
 function rafThrottle(fn) {
   let scheduled = false;
   let lastArgs = null;
@@ -16,17 +17,25 @@ function rafThrottle(fn) {
   };
 }
 
+/**
+ * Lit controller that tracks which group is currently visible in the viewport.
+ * Uses IntersectionObserver to detect visibility and calculates the "best" visible group
+ * based on distance from top and viewport position. Emits EVENT_VISIBLE_GROUP when changes.
+ */
 export default class VisibleGroupController {
   constructor(host, {
-    getGroupId = (el) => el?.getAttribute?.('pointer'),
-    getMeasureTarget = (el) => el, // element used for visibility/position (e.g., group header)
+    getGroupId,
+    getMeasureTarget,
     topOffsetPx = 0,
     root = null,
     thresholds = [0, 0.25, 0.5, 0.75, 1],
   } = {}) {
+    if (typeof getGroupId !== 'function') {
+      throw new Error('VisibleGroupController requires getGroupId function');
+    }
     this.host = host;
     this.getGroupId = getGroupId;
-    this.getMeasureTarget = getMeasureTarget;
+    this.getMeasureTarget = getMeasureTarget || ((el) => el);
     this._topOffsetPx = Number.isFinite(topOffsetPx) ? topOffsetPx : 0;
     this._root = root; // null = viewport
     this._thresholds = thresholds;
@@ -57,7 +66,7 @@ export default class VisibleGroupController {
     this._recreateObserver();
   }
 
-  get activeId() {
+  get visiblePointer() {
     return this._activeId;
   }
 
@@ -79,7 +88,7 @@ export default class VisibleGroupController {
   registerGroup = (el) => {
     if (!el || this._groups.has(el)) return;
     this._groups.add(el);
-    const target = this.getMeasureTarget?.(el) || el;
+    const target = this.getMeasureTarget(el) || el;
     if (target) {
       this._groupToTarget.set(el, target);
       this._targetToGroup.set(target, el);
@@ -107,9 +116,8 @@ export default class VisibleGroupController {
       threshold: this._thresholds,
       rootMargin: `-${this._topOffsetPx}px 0px -70% 0px`,
     });
-    // Re-observe existing
     this._groups?.forEach((el) => {
-      const target = this._groupToTarget.get(el) || this.getMeasureTarget?.(el) || el;
+      const target = this._groupToTarget.get(el) || this.getMeasureTarget(el) || el;
       if (target) {
         this._groupToTarget.set(el, target);
         this._targetToGroup.set(target, el);
@@ -137,14 +145,12 @@ export default class VisibleGroupController {
   _evaluateNow() {
     if (this._groups.size === 0) return;
 
-    // Measure viewport band
     const rootRect = this._root?.getBoundingClientRect
       ? this._root.getBoundingClientRect()
       : { top: 0, height: window.innerHeight };
     const anchorTop = rootRect.top + this._topOffsetPx;
     const viewportBottom = rootRect.top + (rootRect.height || window.innerHeight);
 
-    // Decide which groups to consider: visible targets if any, otherwise all groups
     const candidateGroups = this._visibleTargets.size > 0
       ? Array.from(this._visibleTargets).map((t) => this._targetToGroup.get(t)).filter(Boolean)
       : Array.from(this._groups);
@@ -172,7 +178,6 @@ export default class VisibleGroupController {
       this._activeId = nextId;
       this.host.requestUpdate?.();
       if (nextId != null) {
-        // Dispatch from host component instead of window for better scoping
         this.host.dispatchEvent(new CustomEvent(EVENT_VISIBLE_GROUP, {
           detail: { pointer: nextId },
           bubbles: true,

@@ -1,10 +1,15 @@
 import { LitElement, html, nothing, spread } from 'da-lit';
 import { getNx } from '../../../../../../scripts/utils.js';
+import { ref, createRef } from '../../../../../../deps/lit/dist/index.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const globalStyle = await getStyle(new URL('../../../../../global.css', import.meta.url).href);
-const componentStyle = await getStyle(new URL('./sl-checkbox.css', import.meta.url).href);
+const sharedStyle = await getStyle(new URL('../sl-shared.css', import.meta.url).href);
 
+/**
+ * Custom checkbox component with form association and error display.
+ * Extends LitElement with form participation capabilities.
+ */
 class SlCheckbox extends LitElement {
   static formAssociated = true;
 
@@ -21,6 +26,7 @@ class SlCheckbox extends LitElement {
   constructor() {
     super();
     this._internals = this.attachInternals();
+    this._inputRef = createRef();
     this.checked = false;
   }
 
@@ -28,7 +34,7 @@ class SlCheckbox extends LitElement {
     super.connectedCallback();
     this._setFormValue();
     const sheets = this.shadowRoot.adoptedStyleSheets || [];
-    this.shadowRoot.adoptedStyleSheets = [...sheets, globalStyle, componentStyle];
+    this.shadowRoot.adoptedStyleSheets = [...sheets, globalStyle, sharedStyle];
   }
 
   update(props) {
@@ -46,8 +52,17 @@ class SlCheckbox extends LitElement {
   handleChange(event) {
     this.checked = event.target.checked;
     this._setFormValue();
-    const wcEvent = new event.constructor(event.type, event);
+    const wcEvent = new CustomEvent('change', {
+      bubbles: true,
+      composed: true,
+      detail: { checked: this.checked },
+    });
+    // eslint-disable-next-line no-console
     this.dispatchEvent(wcEvent);
+  }
+
+  focus(options) {
+    this._inputRef.value?.focus(options);
   }
 
   get _attrs() {
@@ -62,6 +77,7 @@ class SlCheckbox extends LitElement {
     return html`
       <div class="sl-inputfield">
         <input
+          ${ref(this._inputRef)}
           part="control"
           type="checkbox"
           name=${this.name || nothing}
@@ -71,8 +87,8 @@ class SlCheckbox extends LitElement {
           class="${this.class} ${this.error ? 'has-error' : ''}"
           ?disabled=${this.disabled}
           ${spread(this._attrs)} />
-        ${this.error ? html`<p class="sl-inputfield-error">${this.error}</p>` : nothing}
         ${this.label ? html`<label part="label" for="${this.name}">${this.label}</label>` : nothing}
+        ${this.error ? html`<p class="sl-inputfield-error">${this.error}</p>` : nothing}
       </div>
     `;
   }
@@ -80,5 +96,3 @@ class SlCheckbox extends LitElement {
 
 customElements.define('sl-checkbox', SlCheckbox);
 export default SlCheckbox;
-
-

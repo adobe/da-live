@@ -1,3 +1,10 @@
+:host(sl-input-extended.form-input),
+:host(sl-textarea-extended.form-input),
+:host(sl-select-extended.form-input),
+:host(sl-checkbox.form-input) {
+  scroll-margin-top: var(--form-input-scroll-margin-top, 0px);
+}
+
 :host(sl-input-extended) {
   .sl-inputfield {
 
@@ -49,6 +56,8 @@
 
 :host(sl-select-extended) {
   width: 40%;
+  max-width: 100%;
+  box-sizing: border-box;
 
   .sl-inputfield {
     select {
@@ -56,6 +65,9 @@
       background: none;
       font-size: var(--s2-body-xs-size, 12px);
       height: var(--form-input-height, 30px);
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
       appearance: none;
 
       &:is(:focus, :focus-visible) {

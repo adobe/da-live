@@ -51,8 +51,16 @@
   background-color: var(--s2-gray-800, #292929);
 }
 
-/* Container for child controls rendered by the editor */
 .form-children {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* Prevent grid expansion */
   row-gap: var(--form-group-gap, 10px);
+  min-width: 0;
 }
+
+/* Ensure grid items can shrink below their content size */
+.form-children>* {
+  min-width: 0;
+}
+

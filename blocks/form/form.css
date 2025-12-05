@@ -34,11 +34,11 @@ sl-textarea {
     margin-bottom: 20px;
   }
 
-  da-form-sidebar {
+  da-form-navigation {
     position: sticky;
     top: 0px;
     width: 350px;
-    flex: 0 0 300px;
+    flex: 0 0 350px;
     align-self: flex-start;
   }
 

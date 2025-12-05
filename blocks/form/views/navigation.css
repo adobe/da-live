@@ -1,6 +1,6 @@
 :host {
   display: block;
-  /* Make sidebar scroll independently of the page/editor */
+  /* Make navigation scroll independently of the page/editor */
   max-height: calc(100vh - 84px);
   overflow: auto;
 
@@ -12,26 +12,16 @@
     margin-bottom: 12px;
   }
 
-  .da-sidebar-section {
+  .da-navigation-section {
     margin-bottom: 16px;
   }
 
-  .da-sidebar-header {
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 20px;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: #fff;
+  .da-navigation-section .nav-badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
-  .da-sidebar-header p {
-    font-weight: 700;
-    font-size: 16px;
-    line-height: 1;
-    margin: 0;
-    padding: 60px 48px 20px 20px
-  }
 }
 
 .nav-list {
@@ -45,7 +35,7 @@
 }
 
 .nav-list li {
-  scroll-margin-top: var(--sidebar-header-height, 0px);
+  scroll-margin-top: var(--navigation-header-height, 0px);
 }
 
 .nav-list {
@@ -57,16 +47,16 @@
     padding-left: 18px;
   }
 
-  sidebar-item {
+  navigation-item {
     display: inline-block;
-    line-height: 1.2;
+    line-height: 1.9;
 
     &:first-child {
       margin-left: 4px;
     }
   }
 
-  sidebar-item::before {
+  navigation-item::before {
     content: "";
     position: absolute;
     top: 12px;
@@ -77,12 +67,12 @@
     background-color: #dadfe6;
   }
 
-  /* Active sidebar item */
-  sidebar-item[active] {
+  /* Active navigation item */
+  navigation-item[active] {
     color: var(--s2-blue-900);
   }
 
-  sidebar-item[active]::before {
+  navigation-item[active]::before {
     background-color: var(--s2-blue-900);
   }
 
@@ -137,5 +127,23 @@
     &::after {
       display: none;
     }
+  }
+
+  .nav-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-row .nav-badges {
+    margin-left: auto;
+    margin-right: 10px;
+  }
+
+  /* Style error-badge component when used in nav-row context */
+  .nav-row error-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }

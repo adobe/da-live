@@ -17,7 +17,7 @@ async function loadCurrentSchema(schema) {
 async function loadSchemas() {
   const { owner: org, repo: site } = getPathDetails();
 
-  const path = `/${org}/${site}/${FORMS_BASE_PATH}/schemas`;
+  const path = `/${org}/${site}${FORMS_BASE_PATH}/schemas`;
 
   const resp = await daFetch(`${DA_ORIGIN}/list${path}`);
   if (!resp.ok) {

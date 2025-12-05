@@ -1,0 +1,6 @@
+:host {
+  display: block;
+  /* Honor sticky header height for scroll offset */
+  scroll-margin-top: var(--form-group-offset, var(--editor-header-height, 0px));
+}
+
