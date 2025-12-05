@@ -1,5 +1,4 @@
 import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
-import { sanitizePathParts } from '../../scripts/utils.js';
 
 let currpath;
 let currhash;
@@ -37,7 +36,7 @@ function getRepoDetails({ editor, pathParts, ext }) {
   const parentName = ext === null ? repo : org;
   const name = editor === 'config' ? `${repo} config` : repo;
   const daApi = editor === 'config' ? 'config' : 'source';
-  let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
+  let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
   return {
@@ -67,7 +66,7 @@ function getFullDetails({ editor, pathParts, ext }) {
   const parentName = pathParts.pop();
 
   const daApi = editor === 'config' ? 'config' : 'source';
-  const path = ext === 'html' && !fullPath.endsWith('.html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
+  const path = ext === 'html' && !fullPath.endsWith('html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
   return {
     owner: org,
@@ -120,7 +119,7 @@ export default function getPathDetails(loc) {
   if (!fullpath || fullpath.startsWith('old_hash') || fullpath.startsWith('access_token')) return null;
 
   // Split everything up so it can be later used for both DA & AEM
-  const pathParts = sanitizePathParts(fullpath);
+  const pathParts = fullpath.slice(1).toLowerCase().split('/');
 
   // Redirect JSON files from edit view to sheet view
   if (editor === 'edit' && fullpath.endsWith('.json')) {
@@ -146,7 +145,7 @@ export default function getPathDetails(loc) {
 
   if (depth >= 3) details = getFullDetails({ editor, pathParts, ext });
 
-  let path = ext === 'html' && !fullpath.endsWith('.html') ? `${fullpath}.html` : fullpath;
+  let path = ext === 'html' && !fullpath.endsWith('html') ? `${fullpath}.html` : fullpath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
   details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };

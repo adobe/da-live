@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../shared/utils.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 
 // Components
 import '../da-breadcrumbs/da-breadcrumbs.js';
@@ -52,7 +52,7 @@ export default class DaBrowse extends LitElement {
     if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
       e.preventDefault();
       const { fullpath } = this.details;
-      const [...split] = sanitizePathParts(fullpath);
+      const [, ...split] = fullpath.split('/');
       if (split.length < 2) return;
 
       if (split[2] === '.trash') {

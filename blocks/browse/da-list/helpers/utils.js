@@ -1,5 +1,4 @@
 import { SUPPORTED_FILES, DA_ORIGIN } from '../../../shared/constants.js';
-import { sanitizePath, sanitizePathParts } from '../../../../scripts/utils.js';
 import { daFetch } from '../../../shared/utils.js';
 
 const MAX_DEPTH = 1000;
@@ -82,6 +81,12 @@ export async function getFullEntryList(entries) {
   return files.filter((file) => file);
 }
 
+export function sanitizePath(path) {
+  const pathArray = path.split('/');
+  const sanitizedArray = pathArray.map((element) => element.replaceAll(/[^a-zA-Z0-9.]/g, '-').toLowerCase());
+  return [...sanitizedArray].join('/');
+}
+
 export async function handleUpload(list, fullpath, file) {
   const { data, path } = file;
   const formData = new FormData();
@@ -117,7 +122,8 @@ export async function handleUpload(list, fullpath, file) {
 export function items2Clipboard(items) {
   const aemUrls = items.reduce((acc, item) => {
     if (item.ext) {
-      const [org, repo, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));
+      const path = item.path.replace('.html', '');
+      const [org, repo, ...pathParts] = path.substring(1).split('/');
       const pageName = pathParts.pop();
       pathParts.push(pageName === 'index' ? '' : pageName);
 
