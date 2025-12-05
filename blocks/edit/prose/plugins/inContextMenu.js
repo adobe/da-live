@@ -39,7 +39,6 @@ export default class InContextMenu extends LitElement {
     const { left, top } = this;
     const rect = this.getBoundingClientRect();
 
-    // Find the parent ProseMirror element
     const proseMirrorEl = this.closest('.da-prose-mirror');
     if (!proseMirrorEl) return;
 
