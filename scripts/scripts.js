@@ -56,10 +56,10 @@ loadPage();
 // Initialize keyboard shortcuts help
 (function initKeyboardShortcutsHelp() {
   let modalOpen = false;
-
   /**
    * Check if user is typing in an editable field.
-   * Uses composedPath() to handle shadow DOM (LitElement components).
+   * @param {KeyboardEvent} e - The keyboard event.
+   * @returns {boolean} - True if user is typing in an editable field, false otherwise.
    */
   function isUserTyping(e) {
     // Check ProseMirror editor first (most common case)
@@ -75,14 +75,8 @@ loadPage();
   }
 
   document.addEventListener('keydown', (e) => {
-    // Only listen for '?' without modifiers
-    if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey) return;
-
-    // Don't intercept if user is typing
-    if (isUserTyping(e)) return;
-
-    // Don't open if already open
-    if (modalOpen) return;
+    if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey
+      || modalOpen || isUserTyping(e)) return;
 
     e.preventDefault();
 
