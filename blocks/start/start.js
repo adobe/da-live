@@ -3,7 +3,6 @@ import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { sanitizePathParts } from '../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -110,7 +109,7 @@ class DaStart extends LitElement {
     try {
       const { origin, pathname } = new URL(e.target.value);
       if (origin !== 'https://github.com') throw Error('Not github');
-      const [org, site] = sanitizePathParts(pathname);
+      const [, org, site] = pathname.toLowerCase().trim().split('/');
       if (!(org && site)) throw Error('No org or site');
       this.org = org;
       this.site = site;
