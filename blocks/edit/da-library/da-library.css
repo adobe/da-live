@@ -387,6 +387,7 @@ ul {
 }
 
 .da-library-type-group-title button.preview {
+  display: none;
   color: #888;
 }
 
@@ -475,6 +476,8 @@ ul {
 }
 
 .da-library-type-group-detail-item {
+  margin: 0;
+
   button {
     width: 100%;
     border: none;
@@ -685,17 +688,6 @@ ul {
   border: none;
 }
 
-@media (min-width: 900px) {
-  .da-dialog-plugin {
-    width: 600px;
-    height: 600px;
-  }
-}
-
-.da-library-type-group-detail-item {
-  margin: 0;
-}
-
 .da-library-type-item-btn.template-item:hover {
   color: #000;
 }
@@ -707,8 +699,26 @@ ul {
 }
 
 .da-dialog-block-preview-frame {
-  width: 60vw;
-  margin: 0 -24px -6px;
-  height: 60vh;
+  display: block;
+  width: 80vw;
+  height: 80vh;
   border: none;
+}
+
+@media (min-width: 900px) {
+  .da-library-type-group-title button.preview {
+    display: unset;
+  }
+
+  .da-dialog-plugin {
+    width: 600px;
+    height: 600px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .da-dialog-block-preview-frame {
+    width: 60vw;
+    height: 60vh;
+  }
 }
