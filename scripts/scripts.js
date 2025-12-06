@@ -53,6 +53,45 @@ loadStyles();
 decorateArea();
 loadPage();
 
+// Initialize keyboard shortcuts help
+(function initKeyboardShortcutsHelp() {
+  let modalOpen = false;
+  /**
+   * Check if user is typing in an editable field.
+   * @param {KeyboardEvent} e - The keyboard event.
+   * @returns {boolean} - True if user is typing in an editable field, false otherwise.
+   */
+  function isUserTyping(e) {
+    // Check ProseMirror editor first (most common case)
+    if (window.view?.hasFocus?.()) return true;
+
+    // Check composedPath for inputs inside shadow DOMs
+    const path = e.composedPath();
+    return path.some((el) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const isInput = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
+      return isInput || el.isContentEditable;
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey
+      || modalOpen || isUserTyping(e)) return;
+
+    e.preventDefault();
+
+    // Dynamically import and show modal
+    import('../blocks/shared/da-shortcuts-modal/da-shortcuts-modal.js')
+      .then(({ openShortcutsModal }) => {
+        modalOpen = true;
+        const modal = openShortcutsModal();
+        modal.addEventListener('close', () => {
+          modalOpen = false;
+        }, { once: true });
+      });
+  });
+}());
+
 // Side-effects
 (async function loadDa() {
   if (!new URL(window.location.href).searchParams.get('dapreview')) return;
