@@ -40,42 +40,43 @@ describe('Libs', () => {
       expect(sanitizeName('')).to.equal(null);
       expect(sanitizeName('Geö_métrixX')).to.equal('geo-metrixx');
       expect(sanitizeName('Geö_métrixX.jpg')).to.equal('geo-metrixx.jpg');
+      expect(sanitizeName('.da')).to.equal('.da');
     });
 
-    it('Sanitizes name without preserving last dot', async () => {
+    it('Sanitizes name without preserving dots', async () => {
       expect(sanitizeName('branch.name', false)).to.equal('branch-name');
     });
   });
 
   describe('sanitizePath', () => {
     it('Handles root path', () => {
-      const path = '/file.txt';
-      expect(sanitizePath(path)).to.equal('/file.txt');
+      expect(sanitizePath('/file.txt')).to.equal('/file.txt');
     });
 
     it('Sanitizes path with spaces', () => {
-      const path = '/new folder/my file.txt';
-      expect(sanitizePath(path)).to.equal('/new-folder/my-file.txt');
+      expect(sanitizePath('/new folder/my file.txt')).to.equal('/new-folder/my-file.txt');
     });
 
-    it('Sanitizes path with accented characters', () => {
-      const path = '/café/résumé.pdf';
-      expect(sanitizePath(path)).to.equal('/cafe/resume.pdf');
+    it('Sanitizes path with special or uppercase characters', () => {
+      expect(sanitizePath('/café/résumé')).to.equal('/cafe/resume');
+      expect(sanitizePath('/hello@world/file#1!')).to.equal('/hello-world/file-1');
+      expect(sanitizePath('/my___folder/file!!!.json')).to.equal('/my-folder/file.json');
+      expect(sanitizePath('/My Folder/File.JSON')).to.equal('/my-folder/file.json');
     });
 
-    it('Sanitizes path with special characters', () => {
-      const path = '/hello@world/file#1!.doc';
-      expect(sanitizePath(path)).to.equal('/hello-world/file-1.doc');
+    it('Removes empty path parts except if at the end', () => {
+      expect(sanitizePath('/!!!/geometrixx')).to.equal('/geometrixx');
+      expect(sanitizePath('//adobe/geometrixx/')).to.equal('/adobe/geometrixx/');
     });
 
-    it('Sanitizes path with uppercase letters', () => {
-      const path = '/MyFolder/MyFile.TXT';
-      expect(sanitizePath(path)).to.equal('/myfolder/myfile.txt');
+    it('Preserves dots in path parts', () => {
+      const path = '/.da/config.json';
+      expect(sanitizePath(path)).to.equal('/.da/config.json');
     });
 
-    it('Handles paths with consecutive special characters', () => {
-      const path = '/my___folder/file!!!.txt';
-      expect(sanitizePath(path)).to.equal('/my-folder/file.txt');
+    it('Protects against path traversal attacks', () => {
+      const path = './../../../etc/password';
+      expect(sanitizePath(path)).to.equal('/etc/password');
     });
   });
 
