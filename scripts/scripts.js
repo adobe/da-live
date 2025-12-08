@@ -56,11 +56,7 @@ loadPage();
 // Initialize keyboard shortcuts help
 (function initKeyboardShortcutsHelp() {
   let modalOpen = false;
-  /**
-   * Check if user is typing in an editable field.
-   * @param {KeyboardEvent} e - The keyboard event.
-   * @returns {boolean} - True if user is typing in an editable field, false otherwise.
-   */
+
   function isUserTyping(e) {
     // Check ProseMirror editor first (most common case)
     if (window.view?.hasFocus?.()) return true;
