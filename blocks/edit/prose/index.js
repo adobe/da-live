@@ -186,12 +186,6 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
 
-  wsProvider.on('connection-error', () => {
-    // if a connection error occurs, increase the max backoff time to 30 seconds
-    // the socket provider will try to reconnect quickly at the beginning
-    // (exponential backoff starting with 100ms) and then every 30s.
-    wsProvider.maxBackoffTime = 30000;
-  });
   wsProvider.on('connection-close', async () => {
     const resp = await checkDoc(path);
     if (resp.status === 404) {
@@ -300,6 +294,12 @@ export default function initProse({ path, permissions }) {
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+
+  // Increase the max backoff time to 30 seconds. If connection error occurs,
+  // the socket provider will try to reconnect quickly at the beginning
+  // (exponential backoff starting with 100ms) and then every 30s.
+  wsProvider.maxBackoffTime = 30000;
+
   addSyncedListener(wsProvider, canWrite);
 
   createAwarenessStatusWidget(wsProvider, window, path);
