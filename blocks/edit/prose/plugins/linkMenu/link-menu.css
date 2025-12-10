@@ -1,6 +1,6 @@
 :host {
   display: none;
-  position: fixed;
+  position: absolute;
   background: white;
   border: 1px solid #ccc;
   border-radius: 4px;
