@@ -147,7 +147,7 @@ export default class DaTitle extends LitElement {
         return;
       }
 
-      let json = await saveToAem(aemPath, 'preview');
+      const json = await saveToAem(aemPath, 'preview');
       if (json.error) {
         this.handleError(json, 'preview', sendBtn);
         return;

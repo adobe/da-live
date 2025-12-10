@@ -1,8 +1,8 @@
-// eslint-disable-next-line no-console
-console.log('Preflight: Script is loading...');
-
 import { DA_ORIGIN } from '../../shared/constants.js';
 import getPathDetails from '../../shared/pathDetails.js';
+
+// eslint-disable-next-line no-console
+console.log('Preflight: Script is loading...');
 
 // Simple daFetch implementation for iframe context
 // Authentication is inherited from parent page context
@@ -38,10 +38,9 @@ async function init() {
       const urlParams = new URLSearchParams(window.location.search);
       const org = urlParams.get('org');
       const repo = urlParams.get('repo');
-      
+
       // eslint-disable-next-line no-console
       console.log('Preflight: URL params org:', org, 'repo:', repo);
-      
       let context;
       if (org && repo) {
         context = { owner: org, repo };
@@ -55,7 +54,7 @@ async function init() {
       const configUrl = `${DA_ORIGIN}/config/${context.owner}/${context.repo}/`;
       // eslint-disable-next-line no-console
       console.log('Preflight: Fetching config from:', configUrl);
-      
+
       const response = await daFetch(configUrl);
 
       if (!response.ok) {
@@ -63,13 +62,13 @@ async function init() {
       }
 
       const data = await response.json();
-      
+
       // eslint-disable-next-line no-console
       console.log('Preflight: Config data:', data);
 
       // Extract only the preflight section
       const preflightData = data.preflight;
-      
+
       // eslint-disable-next-line no-console
       console.log('Preflight: Preflight data:', preflightData);
 
@@ -374,7 +373,7 @@ async function init() {
       const org = urlParams.get('org');
       const repo = urlParams.get('repo');
       const path = urlParams.get('path');
-      
+
       let context;
       let fullPath;
       if (org && repo) {
@@ -384,7 +383,7 @@ async function init() {
         context = getPathDetails();
         fullPath = context.fullPath || `/${context.owner}/${context.repo}${context.path || ''}`;
       }
-      
+
       // Add cache-busting parameter to ensure fresh content is fetched
       const cacheBuster = `?_=${Date.now()}`;
       const pageSourceResponse = await daFetch(
@@ -454,4 +453,3 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
-
