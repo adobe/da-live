@@ -97,6 +97,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
+  await page.waitForTimeout(2000);
   const enteredText = `Some content entered at ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
@@ -131,8 +132,8 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await list.locator('sl-button.negative').locator('visible=true').click();
 
   // Give the second window a chance to update itself
-  await list.waitForTimeout(10000);
+  await list.waitForTimeout(5000);
 
   // The open window should be cleared out now
-  await expect(page2.locator('div.ProseMirror')).not.toContainText(enteredText);
+  await expect(page2.locator('div.ProseMirror')).not.toBeVisible();
 });

@@ -16,4 +16,10 @@ export const saveSheets = async (sheets) => {
   return true;
 };
 
-export const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
+const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
+
+export function handleSave(jexcel, view) {
+  if (view !== 'config') {
+    debouncedSaveSheets(jexcel);
+  }
+}

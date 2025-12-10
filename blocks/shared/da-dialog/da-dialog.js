@@ -16,13 +16,13 @@ export default class DaDialog extends LitElement {
     title: { type: String },
     message: { attribute: false },
     action: { state: true },
+    size: { type: String }, // 'small', 'medium', 'large'
     _showLazyModal: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [SL, STYLE];
-    // Trigger animation and show modal by default
     setTimeout(() => { this.showModal(); }, 20);
   }
 
@@ -42,7 +42,6 @@ export default class DaDialog extends LitElement {
   }
 
   close() {
-    // Close the SL dialog
     this._dialog?.close();
 
     const event = new CustomEvent('close', { bubbles: true, composed: true });
@@ -50,7 +49,6 @@ export default class DaDialog extends LitElement {
   }
 
   get _action() {
-    // If supplied an action, use it.
     if (this.action) return this.action;
 
     // Build out a default action.
@@ -65,11 +63,16 @@ export default class DaDialog extends LitElement {
     return this.shadowRoot.querySelector('sl-dialog');
   }
 
+  _getNativeDialog() {
+    return this._dialog?.shadowRoot?.querySelector('dialog');
+  }
+
   render() {
+    const sizeClass = this.size ? `da-dialog-${this.size}` : '';
     return html`
       <sl-dialog @close=${this.close}>
-        <div class="da-dialog-inner">
-          <div class="da-dialog-header">
+        <div class="da-dialog-inner ${sizeClass}" part="inner">
+          <div class="da-dialog-header" part="header">
             <p class="sl-heading-m">${this.title}</p>
             <button
               class="da-dialog-close-btn"
@@ -79,14 +82,19 @@ export default class DaDialog extends LitElement {
             </button>
           </div>
           <hr/>
-          <div class="da-dialog-content">
+          <div class="da-dialog-content" part="content">
             <slot></slot>
           </div>
-          <div class="da-dialog-footer">
-            <p class="da-dialog-footer-message">${this.message || nothing}</p>
+          <div class="da-dialog-footer" part="footer">
+            <div class="da-dialog-footer-left" part="footer-left">
+              <slot name="footer-left"></slot>
+              <p class="da-dialog-footer-message">${this.message || nothing}</p>
+            </div>
+            <slot name="footer-right">
               <sl-button class="${this._action.style}" @click=${this._action.click} ?disabled=${this._action.disabled}>
                 ${this._action.label}
               </sl-button>
+            </slot>
           </div>
         </div>
       </sl-dialog>

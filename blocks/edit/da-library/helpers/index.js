@@ -150,8 +150,8 @@ function transformBlock(block) {
 
   if (block.nextElementSibling?.classList.contains('library-metadata')) {
     const md = getMetadata(block.nextElementSibling);
-    item.tags = md?.searchtags?.text || '';
-    item.description = md?.description?.text || '';
+    item.tags = md?.searchtags || '';
+    item.description = md?.description || '';
   }
 
   return item;
@@ -171,14 +171,21 @@ export async function getBlockVariants(path) {
   return groupedBlocks.map(transformBlock);
 }
 
+const urlCache = new Map();
 export async function getBlocks(sources) {
   try {
     const sourcesData = await Promise.all(
       sources.map(async (url) => {
+        if (urlCache.has(url)) {
+          return urlCache.get(url);
+        }
+
         try {
-          const resp = await daFetch(url);
+          const resp = await daFetch(url, { noRedirect: true });
           if (!resp.ok) throw new Error('Something went wrong.');
-          return resp.json();
+          const data = await resp.json();
+          urlCache.set(url, data);
+          return data;
         } catch {
           return null;
         }
