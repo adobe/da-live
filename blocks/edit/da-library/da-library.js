@@ -14,7 +14,7 @@ import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import { aem2prose } from '../utils/helpers.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
 import { delay, getItems, getLibraryList, getPreviewUrl } from './helpers/helpers.js';
 
@@ -61,6 +61,7 @@ class DaLibrary extends LitElement {
     _searchStr: { state: true },
     _blockPreviewPath: { state: true },
     _previewItemName: { Type: String },
+    _blockPreviewStatus: { Type: Array },
   };
 
   constructor() {
@@ -306,8 +307,7 @@ class DaLibrary extends LitElement {
   }
 
   handlePreviewLoad() {
-    this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
-    this.shadowRoot.querySelector('.da-fs-dialog-plugin').classList.remove('hide');
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin')?.showModal();
   }
 
   async handlePluginLoad({ target }) {
@@ -352,6 +352,8 @@ class DaLibrary extends LitElement {
   }
 
   renderPreview() {
+    const [status, error] = this._blockPreviewStatus[this._previewItemName];
+
     const action = {
       style: 'primary outline',
       label: 'Close',
@@ -366,12 +368,12 @@ class DaLibrary extends LitElement {
         title="${this._previewItemName} Preview"
         .action=${action}
         @close=${this.handlePreviewClose}>
-        <iframe
+        ${status === 200 ? html`<iframe
           class="da-dialog-block-preview-frame"
           data-src="${this._blockPreviewPath}"
           src="${this._blockPreviewPath}"
           @load=${this.handlePreviewLoad}
-          allow="clipboard-write *"></iframe>
+          allow="clipboard-write *"></iframe>` : html`<div>${error || 'This block / template has not been previewed.'}</div>`}
       </da-dialog>
     `;
   }
@@ -531,6 +533,28 @@ class DaLibrary extends LitElement {
     if (name === 'blocks') {
       if (!data.blocks) {
         data.blocks = await getBlocks(sources);
+        // Check all block paths status in parallel without blocking
+      }
+
+      if (!this._blockPreviewStatus) {
+        Promise.all(data.blocks.map(async (block) => {
+          let path;
+          try {
+            const blockUrl = new URL(block.path);
+            path = blockUrl.pathname;
+          } catch {
+            block.error = 'Please use a fully qualified url for your library';
+          }
+          await aemAdmin(path, 'status', 'GET')
+          .then((response) => { block.status = response.preview.status; })
+          .catch(() => { block.status = 'error'; });
+        })).then(() => {
+            const status = data.blocks.reduce((rdx, block) => {
+              rdx[block.name] = [block.status, block.error];
+              return rdx;
+            }, {});
+            this._blockPreviewStatus = status;
+        });
       }
       return this.renderBlockGroups(data.blocks);
     }
