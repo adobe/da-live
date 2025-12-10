@@ -214,7 +214,7 @@ export default class DaTitle extends LitElement {
 
     this._dialog = { title: 'Preflight Check', content, action, close };
     this.requestUpdate();
-    
+
     // Wait for dialog to render, then inject styles into its shadow DOM
     await this.updateComplete;
     setTimeout(() => {
