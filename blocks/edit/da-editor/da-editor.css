@@ -359,7 +359,8 @@ span.ProseMirror-menuseparator {
   border-radius: 8px;
 }
 
-.ProseMirror-menu-dropdown-item:hover:has(div:not(.ProseMirror-menu-disabled)) {
+.ProseMirror-menu-dropdown-item:hover:has(div:not(.ProseMirror-menu-disabled)),
+.floating-text-toolbar .ProseMirror-menu-dropdown-item:hover:has(div:not(.active)) {
   background-color: var(--editor-btn-bg-color-hover);
 
   div {
@@ -418,6 +419,7 @@ span.ProseMirror-menuseparator {
   border-radius: 2px;
   overflow: hidden;
   text-indent: -1000px;
+  cursor: pointer;
 }
 
 .ProseMirror-menu-dropdown-item > .separator {
@@ -425,6 +427,42 @@ span.ProseMirror-menuseparator {
   display: block;
   background: var(--editor-btn-bg-color);
   border-radius: 1px;
+}
+
+.floating-text-toolbar {
+  position: absolute;
+  display: none;
+  background: #FFF;
+  padding: 6px 6px 0;
+  box-shadow: 0 0 5px 0 #b5b5b5;
+  border-radius: 12px;
+  z-index: 1000;
+  grid-template-columns: repeat(4, auto);
+  grid-auto-flow: row;
+  gap: 6px;
+  max-width: calc(100vw - 20px);
+  overflow-x: auto;
+}
+
+@media (min-width: 600px) {
+  .floating-text-toolbar {
+    grid-template-columns: repeat(6, auto);
+  }
+}
+
+@media (min-width: 900px) {
+  .floating-text-toolbar {
+    grid-template-columns: repeat(8, auto);
+  }
+}
+
+.floating-text-toolbar .ProseMirror-menu-dropdown-item {
+  border-radius: 8px;
+}
+
+.floating-text-toolbar .ProseMirror-menu-dropdown-item > div.active {
+  background-color: #E4F0FF;
+  border-radius: 8px;
 }
 
 .menu-item-para {
