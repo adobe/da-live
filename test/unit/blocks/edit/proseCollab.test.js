@@ -46,7 +46,7 @@ describe('Prose collab', () => {
     elOffline.f(); // Call the callback function sent to the listener
     expect(daTitle.collabStatus).to.equal('offline');
 
-    expect(wspOnCalled.length).to.equal(1);
+    expect(wspOnCalled.length).to.equal(2);
     expect(wspOnCalled[0].n).to.equal('status');
     wspOnCalled[0].f({ status: 'connected' });
     expect(daTitle.collabStatus).to.equal('connected');

@@ -4,6 +4,10 @@
   }
 }
 
+sl-dialog::part(body) {
+  padding: 0;
+}
+
 svg.icon {
   display: block;
   width: 20px;
@@ -16,9 +20,20 @@ svg.icon {
   box-sizing: border-box;
 }
 
+.da-dialog-inner.da-dialog-small {
+  width: 300px;
+}
+
+.da-dialog-inner.da-dialog-large {
+  width: 700px;
+  max-width: 90vw;
+}
+
 .da-dialog-header {
   display: flex;
   justify-content: space-between;
+  user-select: none;
+
 
   p {
     line-height: 1;
@@ -62,4 +77,9 @@ hr {
   .da-dialog-footer-message {
     font-style: italic;
   }
+}
+
+.da-dialog-footer-left {
+  display: flex;
+  gap: 8px;
 }

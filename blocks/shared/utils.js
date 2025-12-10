@@ -35,7 +35,7 @@ export const daFetch = async (url, opts = {}) => {
     }
   }
   const resp = await fetch(url, opts);
-  if (resp.status === 401) {
+  if (resp.status === 401 && opts.noRedirect !== true) {
     // Only attempt sign-in if the request is for DA.
     if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
       // If the user has an access token, but are not permitted, redirect them to not found.
