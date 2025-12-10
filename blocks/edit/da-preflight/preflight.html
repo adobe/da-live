@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <title>Preflight - AEM Sites Config</title>
+    <link rel="stylesheet" href="preflight.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <h1 class="preflight-logo">PREFLIGHT</h1>
+        </div>
+        <button id="scan-now-btn" class="scan-now-btn">Scan Now</button>
+        <div id="loading">Loading configuration...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="test-results-section" class="test-results-section" style="display: none;">
+            <h2 id="results-heading" class="results-heading">
+                <span class="heading-text">Test Results:</span>
+            </h2>
+            <div id="results-content" class="results-content">
+                <table class="results-table">
+                    <tbody id="results-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="configured-tests-section" class="configured-tests-section" style="display: none;">
+            <h2 id="tests-heading" class="tests-heading">
+                <span class="collapse-indicator">▼</span>
+                <span class="heading-text">Configured Tests:</span>
+            </h2>
+            <div id="tests-content" class="tests-content"></div>
+        </div>
+    </div>
+    <script src="preflight.js" type="module"></script>
+</body>
+</html>
+
