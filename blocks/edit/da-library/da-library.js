@@ -16,7 +16,7 @@ import inlinesvg from '../../shared/inlinesvg.js';
 import { aem2prose } from '../utils/helpers.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { delay, getItems, getLibraryList, getPreviewUrl } from './helpers/helpers.js';
+import { delay, getItems, getLibraryList, getPreviewUrl, getEdsUrlVars } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -61,7 +61,7 @@ class DaLibrary extends LitElement {
     _searchStr: { state: true },
     _blockPreviewPath: { state: true },
     _previewItemName: { Type: String },
-    _blockPreviewStatus: { Type: Array },
+    _previewStatus: { Type: Object },
   };
 
   constructor() {
@@ -352,7 +352,7 @@ class DaLibrary extends LitElement {
   }
 
   renderPreview() {
-    const [status, error] = this._blockPreviewStatus[this._previewItemName];
+    const [status, error] = this._previewStatus[this._previewItemName];
 
     const action = {
       style: 'primary outline',
@@ -525,6 +525,31 @@ class DaLibrary extends LitElement {
       </div>`;
   }
 
+  async checkPreviewStatus(items, getUrl, getKey) {
+    await Promise.all(items.map(async (item) => {
+      let path;
+      try {
+        const itemUrl = new URL(getUrl(item));
+        path = itemUrl.pathname;
+        if (itemUrl.origin.includes('--')) {
+          const [org, site] = getEdsUrlVars(getUrl(item));
+          path = `/${org}/${site}${itemUrl.pathname}`;
+        }
+      } catch {
+        item.error = 'Please use a fully qualified url for your library';
+      }
+      await aemAdmin(path, 'status', 'GET')
+        .then((response) => { item.status = response.preview.status; })
+        .catch(() => { item.status = 'error'; });
+    }));
+
+    const status = items.reduce((acc, item) => {
+      acc[getKey(item)] = [item.status, item.error];
+      return acc;
+    }, {});
+    this._previewStatus = { ...this._previewStatus, ...status };
+  }
+
   async renderLibrary({ name, sources, url, format, class: className }) {
     const isPlugin = className.split(' ').some((val) => val === 'is-plugin');
 
@@ -533,28 +558,9 @@ class DaLibrary extends LitElement {
     if (name === 'blocks') {
       if (!data.blocks) {
         data.blocks = await getBlocks(sources);
-        // Check all block paths status in parallel without blocking
       }
-
-      if (!this._blockPreviewStatus) {
-        Promise.all(data.blocks.map(async (block) => {
-          let path;
-          try {
-            const blockUrl = new URL(block.path);
-            path = blockUrl.pathname;
-          } catch {
-            block.error = 'Please use a fully qualified url for your library';
-          }
-          await aemAdmin(path, 'status', 'GET')
-          .then((response) => { block.status = response.preview.status; })
-          .catch(() => { block.status = 'error'; });
-        })).then(() => {
-            const status = data.blocks.reduce((rdx, block) => {
-              rdx[block.name] = [block.status, block.error];
-              return rdx;
-            }, {});
-            this._blockPreviewStatus = status;
-        });
+      if (!this._previewStatus) {
+        this.checkPreviewStatus(data.blocks, (block) => block.path, (block) => block.name);
       }
       return this.renderBlockGroups(data.blocks);
     }
@@ -564,6 +570,10 @@ class DaLibrary extends LitElement {
         data.templateItems = await getItems(sources, name, format);
       }
       if (data.templateItems.length) {
+        const firstItemName = data.templateItems[0].key;
+        if (!this._previewStatus || !this._previewStatus[firstItemName]) {
+          this.checkPreviewStatus(data.templateItems, (t) => t.value, (t) => t.key);
+        }
         return this.renderTemplates(data.templateItems, name);
       }
       return html`No templates found.`;
