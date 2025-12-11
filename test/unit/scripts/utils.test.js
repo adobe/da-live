@@ -123,10 +123,16 @@ describe('Libs', () => {
       expect(parts).to.deep.equal(['my-folder', 'file-name.txt']);
     });
 
-    it('Removes leading and trailing dashes from parts', () => {
-      const path = '/-folder-/--file--.txt';
+    it('Removes trailing dashes from parts', () => {
+      const path = '/folder-/file--';
       const parts = sanitizePathParts(path);
-      expect(parts).to.deep.equal(['folder', 'file.txt']);
+      expect(parts).to.deep.equal(['folder', 'file']);
+    });
+
+    it('Retains leading dashes in parts', () => {
+      const path = '/-folder/--file';
+      const parts = sanitizePathParts(path);
+      expect(parts).to.deep.equal(['-folder', '-file']);
     });
   });
 });

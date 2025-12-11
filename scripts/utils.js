@@ -26,7 +26,7 @@ export function sanitizeName(name, preserveDots = true) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/-$/g, '');
 }
 
 export function sanitizePathParts(path) {
