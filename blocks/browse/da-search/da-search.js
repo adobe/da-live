@@ -72,7 +72,9 @@ export default class DaSearch extends LitElement {
           // Log empty files
           // eslint-disable-next-line no-console
           if (text.length < 2) console.log(file.path);
-          match = text.includes(term) || file.path.split('/').pop().includes(term);
+          const lowerTerm = term.toLowerCase();
+          match = text.toLowerCase().includes(lowerTerm)
+            || file.path.split('/').pop().toLowerCase().includes(lowerTerm);
         } catch {
           return { error: 'fetch error' };
         }
