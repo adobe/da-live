@@ -6,7 +6,7 @@ import '../da-sheet-tabs.js';
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
-const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
+const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'default' };
 
 let permissions;
 let canWrite;
