@@ -160,6 +160,27 @@ describe('Path details', () => {
         expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
         expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/testing-123.html');
       });
+
+      it('Handles HTML edit if page has .html extension ()', () => {
+        const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/testing-123.html' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/testing-123.html');
+      });
+
+      it('Handles HTML edit if page name is html and no extension ()', () => {
+        const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/html' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/html.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/html.html');
+      });
+
+      it('Handles HTML edit if page name is html and no extension and has .html extension ()', () => {
+        const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/html.html' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/html.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/html.html');
+      });
     });
   });
 
