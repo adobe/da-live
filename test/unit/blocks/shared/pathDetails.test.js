@@ -175,6 +175,13 @@ describe('Path details', () => {
         expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/html.html');
       });
 
+      it('Handles HTML edit if page name is "ilikehtml" and no extension ()', () => {
+        const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/ilikehtml' };
+        const details = getPathDetails(loc);
+        expect(details.fullpath).to.equal('/adobe/geometrixx/ilikehtml.html');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/source/adobe/geometrixx/ilikehtml.html');
+      });
+
       it('Handles HTML edit if page name is html and no extension and has .html extension ()', () => {
         const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/html.html' };
         const details = getPathDetails(loc);
