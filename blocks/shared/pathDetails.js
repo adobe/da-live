@@ -16,7 +16,7 @@ function getOrgDetails({ editor, pathParts, ext }) {
   const parentName = ext === null ? pathParts[0] : 'Root';
   const name = editor === 'config' && ext === null ? 'config' : pathParts[0];
   const daApi = editor === 'config' ? 'config' : 'source';
-  let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
+  let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
   return {
@@ -36,7 +36,7 @@ function getRepoDetails({ editor, pathParts, ext }) {
   const parentName = ext === null ? repo : org;
   const name = editor === 'config' ? `${repo} config` : repo;
   const daApi = editor === 'config' ? 'config' : 'source';
-  let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
+  let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
   return {
@@ -66,7 +66,7 @@ function getFullDetails({ editor, pathParts, ext }) {
   const parentName = pathParts.pop();
 
   const daApi = editor === 'config' ? 'config' : 'source';
-  const path = ext === 'html' && !fullPath.endsWith('html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
+  const path = ext === 'html' && !fullPath.endsWith('.html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
   return {
     owner: org,
@@ -145,7 +145,7 @@ export default function getPathDetails(loc) {
 
   if (depth >= 3) details = getFullDetails({ editor, pathParts, ext });
 
-  let path = ext === 'html' && !fullpath.endsWith('html') ? `${fullpath}.html` : fullpath;
+  let path = ext === 'html' && !fullpath.endsWith('.html') ? `${fullpath}.html` : fullpath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
   details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
