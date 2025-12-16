@@ -1,4 +1,4 @@
-import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
+import { CON_ORIGIN, DA_ORIGIN, DA_HLX } from './constants.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
 
 let currpath;
@@ -40,13 +40,17 @@ function getRepoDetails({ editor, pathParts, ext }) {
   let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
+  const sourceUrl = DA_HLX
+    ? `${DA_ORIGIN}/${org}/sites/${repo}/${daApi}/${path}`
+    : `${DA_ORIGIN}/${daApi}/${path}`;
+
   return {
     owner: org,
     repo,
     name,
     parent,
     parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    sourceUrl,
     previewUrl: `https://main--${repo}--${org}.aem.live`,
     contentUrl: `${CON_ORIGIN}/${fullPath}`,
   };
@@ -69,13 +73,17 @@ function getFullDetails({ editor, pathParts, ext }) {
   const daApi = editor === 'config' ? 'config' : 'source';
   const path = ext === 'html' && !fullPath.endsWith('.html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
+  const sourceUrl = DA_HLX
+    ? `${DA_ORIGIN}/${org}/sites/${repo}/${daApi}${pathname}.${ext}`
+    : `${DA_ORIGIN}/${daApi}/${path}`;
+
   return {
     owner: org,
     repo,
     name: ext === null ? 'config' : name,
     parent: ext === null ? `${parent}/${name}` : parent,
     parentName: ext === null ? name : parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    sourceUrl,
     previewUrl: `https://main--${repo}--${org}.aem.live${pathname}`,
     contentUrl: `${CON_ORIGIN}/${fullPath}`,
   };

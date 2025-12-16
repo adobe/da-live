@@ -15,6 +15,7 @@ export const SUPPORTED_FILES = {
 
 const DA_ADMIN_ENVS = {
   local: 'http://localhost:8787',
+  hlx6: 'http://localhost:3000',
   stage: 'https://stage-admin.da.live',
   prod: 'https://admin.da.live',
 };
@@ -48,4 +49,5 @@ export const getDaAdmin = (() => {
 })();
 
 export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
+export const DA_HLX = DA_ADMIN_ENVS.hlx6 === DA_ORIGIN;
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();
