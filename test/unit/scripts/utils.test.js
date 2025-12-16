@@ -38,8 +38,8 @@ describe('Libs', () => {
     it('Sanitizes name', async () => {
       expect(sanitizeName(undefined)).to.equal(null);
       expect(sanitizeName('')).to.equal(null);
-      expect(sanitizeName('Geö_métrixX')).to.equal('geo-metrixx');
-      expect(sanitizeName('Geö_métrixX.jpg')).to.equal('geo-metrixx.jpg');
+      expect(sanitizeName('Geö métrixX')).to.equal('geo-metrixx');
+      expect(sanitizeName('Geö métrixX.jpg')).to.equal('geo-metrixx.jpg');
       expect(sanitizeName('.da')).to.equal('.da');
     });
 
@@ -60,7 +60,7 @@ describe('Libs', () => {
     it('Sanitizes path with special or uppercase characters', () => {
       expect(sanitizePath('/café/résumé')).to.equal('/cafe/resume');
       expect(sanitizePath('/hello@world/file#1!')).to.equal('/hello-world/file-1');
-      expect(sanitizePath('/my___folder/file!!!.json')).to.equal('/my-folder/file.json');
+      expect(sanitizePath('/my---folder/file!!!.json')).to.equal('/my-folder/file.json');
       expect(sanitizePath('/My Folder/File.JSON')).to.equal('/my-folder/file.json');
     });
 
@@ -82,7 +82,7 @@ describe('Libs', () => {
 
   describe('sanitizePathParts', () => {
     it('Returns array of sanitized path parts', () => {
-      const path = '/New folder/Geo_metrixx.jpg';
+      const path = '/New folder/Geo metrixx.jpg';
       const parts = sanitizePathParts(path);
       expect(parts).to.deep.equal(['new-folder', 'geo-metrixx.jpg']);
     });
@@ -118,7 +118,7 @@ describe('Libs', () => {
     });
 
     it('Removes consecutive dashes', () => {
-      const path = '/my___folder/file!!!name.txt';
+      const path = '/my---folder/file!!!name.txt';
       const parts = sanitizePathParts(path);
       expect(parts).to.deep.equal(['my-folder', 'file-name.txt']);
     });
@@ -133,6 +133,12 @@ describe('Libs', () => {
       const path = '/-folder/--file';
       const parts = sanitizePathParts(path);
       expect(parts).to.deep.equal(['-folder', '-file']);
+    });
+
+    it('Retains underscores', () => {
+      const path = '/my_folder/file';
+      const parts = sanitizePathParts(path);
+      expect(parts).to.deep.equal(['my_folder', 'file']);
     });
   });
 });
