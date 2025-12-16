@@ -1,4 +1,5 @@
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { sanitizePathParts } from '../../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
 
@@ -154,7 +155,7 @@ function parseAemError(xError) {
 }
 
 export async function getCdnConfig(path) {
-  const [org, site] = path.slice(1).toLowerCase().split('/');
+  const [org, site] = sanitizePathParts(path);
   const resp = await daFetch(`${AEM_ORIGIN}/config/${org}/sites/${site}.json`);
   if (!resp.ok) {
     // eslint-disable-next-line no-console
