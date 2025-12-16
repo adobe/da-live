@@ -11,35 +11,14 @@
  */
 export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
 
-export function sanitizeName(name, preserveDots = true) {
-  if (!name) return null;
+export function sanitiseRef(ref) {
+  if (!ref) return null;
 
-  if (preserveDots && name.indexOf('.') !== -1) {
-    return name
-      .split('.')
-      .map((part) => sanitizeName(part))
-      .join('.');
-  }
-
-  return name
-    .toLowerCase()
+  return ref.toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/-$/g, '');
-}
-
-export function sanitizePathParts(path) {
-  return path.slice(1)
-    .toLowerCase()
-    .split('/')
-    .map((name) => (name ? sanitizeName(name) : ''))
-    // remove path traversal parts, and empty strings unless at the end
-    .filter((name, i, parts) => !/^[.]{1,2}$/.test(name) && (name !== '' || i === parts.length - 1));
-}
-
-export function sanitizePath(path) {
-  return `/${sanitizePathParts(path).join('/')}`;
+    .replace(/^-|-$/g, '');
 }
 
 export const [setNx, getNx] = (() => {
@@ -49,7 +28,7 @@ export const [setNx, getNx] = (() => {
       nx = (() => {
         const { hostname, search } = location || window.location;
         if (!(hostname.includes('.hlx.') || hostname.includes('.aem.') || hostname.includes('local'))) return nxBase;
-        const branch = sanitizeName(new URLSearchParams(search).get('nx'), false) || 'main';
+        const branch = sanitiseRef(new URLSearchParams(search).get('nx')) || 'main';
         if (branch === 'local') return 'http://localhost:6456/nx';
         return `https://${branch}--da-nx--adobe.aem.live/nx`;
       })();

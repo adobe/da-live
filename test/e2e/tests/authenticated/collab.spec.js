@@ -27,7 +27,6 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
 
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-  await page.waitForTimeout(1000);
   await page.locator('div.ProseMirror').fill('Entered by user 1');
 
   // Right now there should not be any collab indicators yet
