@@ -38,20 +38,26 @@ export default class InContextMenu extends LitElement {
   updatePosition() {
     const { left, top } = this;
     const rect = this.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
 
-    let adjustedLeft = left;
-    let adjustedTop = top;
+    const proseMirrorEl = this.closest('.da-prose-mirror');
+    if (!proseMirrorEl) return;
 
-    // Adjust horizontal position if menu would overflow viewport
-    if (adjustedLeft + rect.width > viewportWidth) {
-      adjustedLeft = viewportWidth - rect.width - 10;
+    const parentRect = proseMirrorEl.getBoundingClientRect();
+    const parentWidth = parentRect.width;
+    const parentHeight = parentRect.height;
+
+    // Convert viewport coordinates to parent-relative coordinates
+    let adjustedLeft = left - parentRect.left;
+    let adjustedTop = top - parentRect.top;
+
+    // Adjust horizontal position if menu would overflow parent
+    if (adjustedLeft + rect.width > parentWidth) {
+      adjustedLeft = parentWidth - rect.width - 10;
     }
 
-    // Adjust vertical position if menu would overflow viewport
-    if (adjustedTop + rect.height > viewportHeight) {
-      adjustedTop = top - rect.height - 20;
+    // Adjust vertical position if menu would overflow parent
+    if (adjustedTop + rect.height > parentHeight) {
+      adjustedTop = adjustedTop - rect.height - 20;
     }
 
     // Ensure menu doesn't go off-screen to the left
@@ -59,7 +65,7 @@ export default class InContextMenu extends LitElement {
       adjustedLeft = 10;
     }
 
-    // Ensure menu doesn't go above viewport
+    // Ensure menu doesn't go above parent
     if (adjustedTop < 0) {
       adjustedTop = 10;
     }
