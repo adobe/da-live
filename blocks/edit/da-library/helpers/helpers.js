@@ -5,7 +5,7 @@ import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getConfKey, openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
-import { sanitizeName } from '../../../../scripts/utils.js';
+import { sanitiseRef } from '../../../../scripts/utils.js';
 
 const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
@@ -18,7 +18,7 @@ const DA_PLUGINS = [
   'placeholders',
 ];
 
-const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
+const ref = sanitiseRef(new URLSearchParams(window.location.search).get('ref')) || 'main';
 
 export function parseDom(dom) {
   const { schema } = window.view.state;
