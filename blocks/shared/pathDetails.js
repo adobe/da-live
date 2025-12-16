@@ -17,7 +17,7 @@ function getOrgDetails({ editor, pathParts, ext }) {
   const parentName = ext === null ? pathParts[0] : 'Root';
   const name = editor === 'config' && ext === null ? 'config' : pathParts[0];
   const daApi = editor === 'config' ? 'config' : 'source';
-  let path = ext === 'html' && !fullPath.endsWith('html') ? `${fullPath}.html` : fullPath;
+  let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
   return {
