@@ -1,5 +1,5 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
+import { DA_ORIGIN, DA_HLX } from '../../shared/constants.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 
@@ -97,12 +97,38 @@ export default class DaList extends LitElement {
     this.dispatchEvent(event);
   }
 
+  transformList(json) {
+    if (!DA_HLX) return json;
+
+    /*
+    * name without extension
+    * ext is the extension
+    * lastModified is last-modified in millis
+    * path is full plus original name with extension
+    */
+
+    const transformed = [];
+    for (const item of json) {
+      const [name, ext] = item.name.split('.');
+      const lastModified = new Date(item['last-modified']).getTime();
+      const path = `${this.fullpath}/${item.name}`;
+
+      transformed.push({ name, ext, lastModified, path });
+    }
+    return transformed;
+  }
+
   async getList() {
+    const [, org, repo, ...rest] = this.fullpath.split('/');
+    const listUrl = DA_HLX
+      ? `${DA_ORIGIN}/${org}/sites/${repo}/source/${rest.join('/')}/`
+      : `${DA_ORIGIN}/list${this.fullpath}`;
+
     try {
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
+      const resp = await daFetch(listUrl);
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
-      return json;
+      return this.transformList(json);
     } catch {
       this._emptyMessage = 'Not permitted';
       return [];
