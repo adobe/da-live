@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/no-unresolved
-import { Plugin, TextSelection } from 'da-y-wrapper';
+import { Plugin } from 'da-y-wrapper';
 
 function isURL(text) {
   try {
@@ -31,8 +31,8 @@ export default function linkConverter(schema) {
         const selectedSlice = view.state.doc.slice(from, to);
 
         // if we have some text selected, add the link to the selected text
-        if (selectedSlice.size > 0 
-          && selectedSlice.content.content.length === 1 
+        if (selectedSlice.size > 0
+          && selectedSlice.content.content.length === 1
           && selectedSlice.content.content[0].type.name === 'text') {
           const addLinkMark = view.state.tr.addMark(from, to, linkMark);
           view.dispatch(addLinkMark);
