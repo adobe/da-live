@@ -7,8 +7,11 @@ import {
   saveDaVersion,
   getCdnConfig,
 } from '../utils/helpers.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
+import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
+import getPathDetails from '../../shared/pathDetails.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
@@ -31,7 +34,7 @@ export default class DaTitle extends LitElement {
     permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
-    _actionsVis: {},
+    _actionsVis: { state: true },
     _status: { state: true },
     _fixedActions: { state: true },
     _dialog: { state: true },
@@ -40,7 +43,7 @@ export default class DaTitle extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this._actionsVis = false;
+    this._actionsVis = [];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     if (this.details.view === 'sheet') {
       this.collabStatus = window.navigator.onLine
@@ -156,8 +159,44 @@ export default class DaTitle extends LitElement {
     this._dialog = { title, content, action: closeAction };
   }
 
-  toggleActions() {
-    this._actionsVis = !this._actionsVis;
+  async fetchConfig() {
+    const { owner, repo } = this.details;
+    if (this.config) return this.config;
+
+    const [orgConfig, siteConfig] = await Promise.all([
+      daFetch(`${DA_ORIGIN}/config/${owner}`),
+      daFetch(`${DA_ORIGIN}/config/${owner}/${repo}`),
+    ]);
+    const [org, site] = await Promise.all([
+      orgConfig.json().then(getFirstSheet).then((data) => data ?? []),
+      siteConfig.json().then(getFirstSheet).then((data) => data ?? []),
+    ]);
+    this.config = { org, site };
+    return this.config;
+  }
+
+  async toggleActions() {
+    // toggle off if already on
+    if (this._actionsVis.length > 0) {
+      this._actionsVis = [];
+      return;
+    }
+
+    // toggle on for config
+    if (this.details.view === 'config') {
+      this._actionsVis = ['save'];
+      return;
+    }
+
+    // check which actions should be allowed for the document based on config
+    const config = await this.fetchConfig();
+    const { fullpath } = this.details;
+
+    const allConfigs = [...config.org, ...config.site];
+    const publishButtonConfigs = allConfigs.filter((config) => config.key === 'editor.hidePublish');
+    const hasMatchingPublishConfig = publishButtonConfigs.some((config) => fullpath.startsWith(config.value));
+
+    this._actionsVis = hasMatchingPublishConfig ? ['preview'] : ['preview', 'publish'];
   }
 
   get _readOnly() {
@@ -165,30 +204,17 @@ export default class DaTitle extends LitElement {
     return !this.permissions.some((permission) => permission === 'write');
   }
 
-  renderSave() {
-    return html`
-    <button
-      @click=${this.handleAction}
-      class="con-button blue da-title-action"
-      aria-label="Send">
-      Save
-    </button>`;
-  }
-
-  renderAemActions() {
-    return html`
-      <button
-        @click=${() => this.handleAction('preview')}
-        class="con-button blue da-title-action"
-        aria-label="Send">
-        Preview
-      </button>
-      <button
-        @click=${() => this.handleAction('publish')}
-        class="con-button blue da-title-action"
-        aria-label="Send">
-        Publish
-      </button>`;
+  renderActions() {
+    return html`${this._actionsVis.map((action) => {
+      return html`
+        <button
+          @click=${() => this.handleAction(action)}
+          class="con-button blue da-title-action"
+          aria-label="Send">
+          ${action.charAt(0).toUpperCase() + action.slice(1)}
+        </button>
+      `;
+    })}`;
   }
 
   popover({ target }) {
@@ -253,8 +279,8 @@ export default class DaTitle extends LitElement {
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis ? 'is-open' : ''}">
-            ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
+          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis.length > 0 ? 'is-open' : ''}">
+            ${this.renderActions()}
             <button
               @click=${this.toggleActions}
               class="con-button blue da-title-action-send"
