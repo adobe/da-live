@@ -11,7 +11,6 @@ import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
-import getPathDetails from '../../shared/pathDetails.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
@@ -163,13 +162,15 @@ export default class DaTitle extends LitElement {
     const { owner, repo } = this.details;
     if (this.config) return this.config;
 
-    const [orgConfig, siteConfig] = await Promise.all([
-      daFetch(`${DA_ORIGIN}/config/${owner}`),
-      daFetch(`${DA_ORIGIN}/config/${owner}/${repo}`),
-    ]);
+    const fetchSingleConfig = (path) => daFetch(path)
+      .then((r) => r.json())
+      .then(getFirstSheet)
+      .then((data) => data ?? [])
+      .catch(() => []);
+
     const [org, site] = await Promise.all([
-      orgConfig.json().then(getFirstSheet).then((data) => data ?? []),
-      siteConfig.json().then(getFirstSheet).then((data) => data ?? []),
+      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}`),
+      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}/${repo}`),
     ]);
     this.config = { org, site };
     return this.config;
@@ -193,8 +194,8 @@ export default class DaTitle extends LitElement {
     const { fullpath } = this.details;
 
     const allConfigs = [...config.org, ...config.site];
-    const publishButtonConfigs = allConfigs.filter((config) => config.key === 'editor.hidePublish');
-    const hasMatchingPublishConfig = publishButtonConfigs.some((config) => fullpath.startsWith(config.value));
+    const publishButtonConfigs = allConfigs.filter((c) => c.key === 'editor.hidePublish');
+    const hasMatchingPublishConfig = publishButtonConfigs.some((c) => fullpath.startsWith(c.value));
 
     this._actionsVis = hasMatchingPublishConfig ? ['preview'] : ['preview', 'publish'];
   }
@@ -205,16 +206,14 @@ export default class DaTitle extends LitElement {
   }
 
   renderActions() {
-    return html`${this._actionsVis.map((action) => {
-      return html`
-        <button
-          @click=${() => this.handleAction(action)}
-          class="con-button blue da-title-action"
-          aria-label="Send">
-          ${action.charAt(0).toUpperCase() + action.slice(1)}
-        </button>
-      `;
-    })}`;
+    return html`${this._actionsVis.map((action) => html`
+      <button
+        @click=${() => this.handleAction(action)}
+        class="con-button blue da-title-action"
+        aria-label="Send">
+        ${action.charAt(0).toUpperCase() + action.slice(1)}
+      </button>
+    `)}`;
   }
 
   popover({ target }) {
