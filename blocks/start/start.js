@@ -125,9 +125,64 @@ class DaStart extends LitElement {
 
   async submitForm(e) {
     e.preventDefault();
+
+    // Check if this is a new org
+    const orgCheckResp = await daFetch(`${DA_ORIGIN}/list/${this.org}/`);
+    const isNewOrg = !orgCheckResp.ok;
+
     const opts = { method: 'PUT' };
     const resp = await daFetch(e.target.action, opts);
     if (!resp.ok) return;
+
+    // If this is a new org, create org-level permissions
+    if (isNewOrg && window.adobeIMS?.isSignedInUser()) {
+      try {
+        const profile = await window.adobeIMS.getProfile();
+        const { email } = profile;
+
+        const configJson = {
+          data: {
+            total: 2,
+            limit: 2,
+            offset: 0,
+            data: [{ key: '', value: '' }],
+            ':colWidths': [169, 169],
+          },
+          permissions: {
+            total: 2,
+            limit: 2,
+            offset: 0,
+            data: [
+              {
+                path: 'CONFIG',
+                groups: email,
+                actions: 'write',
+                comments: 'The ability to set configurations for an org.',
+              },
+              {
+                path: '/ + **',
+                groups: email,
+                actions: 'write',
+                comments: 'The ability to create content.',
+              },
+            ],
+            ':colWidths': [169, 169, 169, 300],
+          },
+          ':names': ['data', 'permissions'],
+          ':version': 3,
+          ':type': 'multi-sheet',
+        };
+
+        const body = new FormData();
+        body.append('config', JSON.stringify(configJson));
+        const configOpts = { method: 'PUT', body };
+        await daFetch(`${DA_ORIGIN}/config/${this.org}/`, configOpts);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to create org permissions:', err);
+      }
+    }
+
     this.goToNextStep(e);
   }
 
