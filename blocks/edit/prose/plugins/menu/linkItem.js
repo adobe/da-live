@@ -251,6 +251,11 @@ export function linkItem(linkMarkType) {
         useLabelsAbove: true,
       };
       linkPromptState.lastPrompt = openPrompt(promptOptions);
+      linkPromptState.lastPrompt.addEventListener('closed', () => {
+        const tr = view.state.tr;
+        tr.removeMark(currentRangeStart, currentRangeEnd, contextHighlightingMarkType);
+        dispatch(tr);
+      })
     },
   });
 }
