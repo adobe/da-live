@@ -252,10 +252,10 @@ export function linkItem(linkMarkType) {
       };
       linkPromptState.lastPrompt = openPrompt(promptOptions);
       linkPromptState.lastPrompt.addEventListener('closed', () => {
-        const tr = view.state.tr;
+        const { tr } = view.state;
         tr.removeMark(currentRangeStart, currentRangeEnd, contextHighlightingMarkType);
         dispatch(tr);
-      })
+      });
     },
   });
 }
