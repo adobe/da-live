@@ -162,6 +162,13 @@ div.text-container {
   }
 }
 
+p.error-text {
+  color: #d73220;
+  font-weight: 800;
+  margin: 12px;
+  text-align: center;
+}
+
 div.template-container {
   display: flex;
   justify-content: center;

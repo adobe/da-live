@@ -143,9 +143,16 @@ class DaStart extends LitElement {
     this._loading = true;
     const opts = { method: 'PUT' };
     const resp = await daFetch(e.target.action, opts);
-    if (!resp.ok) return;
-    this.goToNextStep(e);
     this._loading = false;
+    if (!resp.ok) {
+      if (resp.status === 401 || resp.status === 403) {
+        this._errorText = 'You are not authorized to create this site. Check your permissions.';
+      } else {
+        this._errorText = 'The site could not be created. Check the console logs or contact an administrator.';
+      }
+      return;
+    }
+    this.goToNextStep(e);
   }
 
   setTemplate(el) {
@@ -177,6 +184,7 @@ class DaStart extends LitElement {
           </button>
         </form>
         <div class="text-container">
+          <p class="error-text">${this._errorText ? this._errorText : nothing}</p>
           <p>Paste your AEM codebase URL above.</p>
           <p>Don't have one, yet? Pick a template below.</p>
         </div>
