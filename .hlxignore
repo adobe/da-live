@@ -5,3 +5,4 @@
 test/*
 LICENSE
 web-test-runner.config.js
+AGENTS.md

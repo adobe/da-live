@@ -7,6 +7,9 @@ import {
   saveDaVersion,
   getCdnConfig,
 } from '../utils/helpers.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
+import { daFetch } from '../../shared/utils.js';
+import getPathDetails from '../../shared/pathDetails.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -107,27 +110,146 @@ export default class DaTitle extends LitElement {
     }
     if (action === 'preview' || action === 'publish') {
       const cdn = await getCdnConfig(pathname);
-
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
-      let json = await saveToAem(aemPath, 'preview');
+
+      if (action === 'publish') {
+        // Fire preview immediately
+        saveToAem(aemPath, 'preview').catch((error) => {
+          // eslint-disable-next-line no-console
+          console.log('Preview failed during publish:', error);
+        });
+
+        // Check if preflight dialog is configured in DA config
+        let showPreflight = false;
+        try {
+          const [org, repo] = pathname.slice(1).toLowerCase().split('/');
+          const configResp = await daFetch(`${DA_ORIGIN}/config/${org}/${repo}/`);
+          if (configResp.ok) {
+            const daConfig = await configResp.json();
+            const publishActions = daConfig.data?.data?.find((item) => item.key === 'publish.actions');
+            showPreflight = publishActions?.value === 'preflight';
+          }
+        } catch (error) {
+          // If config fetch fails for any reason, default to false
+          // eslint-disable-next-line no-console
+          console.log('Failed to fetch publish config:', error);
+        }
+
+        if (showPreflight) {
+          this._publishState = { pathname, aemPath, cdn, sendBtn };
+          await this.showPreflightModal();
+          return;
+        }
+
+        // No preflight configured, publish immediately
+        this._publishState = { pathname, aemPath, cdn, sendBtn };
+        await this.continuePublish();
+        return;
+      }
+
+      const json = await saveToAem(aemPath, 'preview');
       if (json.error) {
         this.handleError(json, 'preview', sendBtn);
         return;
       }
-      if (action === 'publish') json = await saveToAem(aemPath, 'live');
-      if (json.error) {
-        this.handleError(json, 'publish', sendBtn);
-        return;
-      }
-      const { url: href } = action === 'publish' ? json.live : json.preview;
+      const { url: href } = json.preview;
       const url = new URL(href);
       const isSnap = url.pathname.startsWith('/.snapshots');
-      const toOpen = isSnap ? this.getSnapshotHref(url, action) : this.getCdnHref(url, action, cdn);
+      const toOpen = isSnap ? this.getSnapshotHref(url, 'preview') : this.getCdnHref(url, 'preview', cdn);
       const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
-    if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
+  }
+
+  async showPreflightModal() {
+    await import('../../shared/da-dialog/da-dialog.js');
+
+    const close = () => {
+      this._dialog = undefined;
+      if (this._publishState?.sendBtn) {
+        this._publishState.sendBtn.classList.remove('is-sending');
+      }
+      this._publishState = undefined;
+    };
+
+    const action = {
+      style: 'accent',
+      label: 'Publish',
+      click: async () => {
+        this._dialog = undefined;
+        this.requestUpdate();
+        await this.continuePublish();
+      },
+    };
+
+    const context = getPathDetails();
+    // Construct the full path from the hash
+    const { hash } = window.location;
+    const fullPath = hash.replace('#', '');
+    const preflightUrl = `/blocks/edit/da-preflight/preflight.html?org=${context.owner}&repo=${context.repo}&path=${encodeURIComponent(fullPath)}`;
+    const content = html`
+      <style>
+        .preflight-modal-container {
+          width: 100%;
+          height: 70vh;
+          min-height: 500px;
+        }
+        .preflight-iframe {
+          width: 100%;
+          height: 100%;
+          border: none;
+          border-radius: 4px;
+        }
+      </style>
+      <div class="preflight-modal-container">
+        <iframe 
+          src="${preflightUrl}" 
+          class="preflight-iframe"
+          title="Preflight Tests"
+          frameborder="0">
+        </iframe>
+      </div>
+    `;
+
+    this._dialog = { title: 'Preflight Check', content, action, close };
+    this.requestUpdate();
+
+    // Wait for dialog to render, then inject styles into its shadow DOM
+    await this.updateComplete;
+    setTimeout(() => {
+      const dialog = this.shadowRoot.querySelector('da-dialog');
+      if (dialog?.shadowRoot) {
+        const style = document.createElement('style');
+        style.textContent = `
+          .da-dialog-inner {
+            width: 90vw !important;
+            max-width: 1400px !important;
+          }
+        `;
+        dialog.shadowRoot.appendChild(style);
+      }
+    }, 10);
+  }
+
+  async continuePublish() {
+    if (!this._publishState) return;
+    const { pathname, aemPath, cdn, sendBtn } = this._publishState;
+    const json = await saveToAem(aemPath, 'live');
+    if (json.error) {
+      this.handleError(json, 'publish', sendBtn);
+      this._publishState = undefined;
+      return;
+    }
+    const { url: href } = json.live;
+    const url = new URL(href);
+    const isSnap = url.pathname.startsWith('/.snapshots');
+    const toOpen = isSnap ? this.getSnapshotHref(url, 'publish') : this.getCdnHref(url, 'publish', cdn);
+    const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
+    window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
+    if (this.details.view === 'edit') saveDaVersion(pathname);
+    sendBtn.classList.remove('is-sending');
+    this._publishState = undefined;
   }
 
   async handleRoleRequest() {
