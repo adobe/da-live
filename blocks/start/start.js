@@ -32,6 +32,39 @@ const AEM_TEMPLATES = [
   },
 ];
 
+const ORG_CONFIG = {
+  data: {
+    total: 2,
+    limit: 2,
+    offset: 0,
+    data: [{ key: '', value: '' }],
+    ':colWidths': [169, 169],
+  },
+  permissions: {
+    total: 2,
+    limit: 2,
+    offset: 0,
+    data: [
+      {
+        path: 'CONFIG',
+        groups: '$EMAIL$',
+        actions: 'write',
+        comments: 'The ability to set configurations for an org.',
+      },
+      {
+        path: '/ + **',
+        groups: '$EMAIL$',
+        actions: 'write',
+        comments: 'The ability to create content.',
+      },
+    ],
+    ':colWidths': [169, 169, 169, 300],
+  },
+  ':names': ['data', 'permissions'],
+  ':version': 3,
+  ':type': 'multi-sheet',
+};
+
 class DaStart extends LitElement {
   static properties = {
     activeStep: { state: true },
@@ -160,40 +193,9 @@ class DaStart extends LitElement {
         return;
       }
 
-      const configJson = {
-        data: {
-          total: 2,
-          limit: 2,
-          offset: 0,
-          data: [{ key: '', value: '' }],
-          ':colWidths': [169, 169],
-        },
-        permissions: {
-          total: 2,
-          limit: 2,
-          offset: 0,
-          data: [
-            {
-              path: 'CONFIG',
-              groups: email,
-              actions: 'write',
-              comments: 'The ability to set configurations for an org.',
-            },
-            {
-              path: '/ + **',
-              groups: email,
-              actions: 'write',
-              comments: 'The ability to create content.',
-            },
-          ],
-          ':colWidths': [169, 169, 169, 300],
-        },
-        ':names': ['data', 'permissions'],
-        ':version': 3,
-        ':type': 'multi-sheet',
-      };
+      const orgConfigJson = JSON.stringify(ORG_CONFIG).replace('$EMAIL$', email);
+      const body = new FormData([['config', orgConfigJson]]);
 
-      const body = new FormData([['config', JSON.stringify(configJson)]]);
       const orgResp = await daFetch(orgUrl, { method: 'PUT', body });
       if (!orgResp.ok) {
         if (orgResp.status === 401 || orgResp.status === 403) {
