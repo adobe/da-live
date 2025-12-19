@@ -143,23 +143,23 @@ class DaStart extends LitElement {
 
     // Check if user is signed in
     if (!window.adobeIMS?.isSignedInUser()) {
-      this._errorText = 'You need to sign in to create a new org.';
-      return;
-    }
-
-    // Check if user has an email address
-    const { email } = await window.adobeIMS.getProfile();
-    if (!email) {
-      this._errorText = 'Make sure your profile contains an email address.';
+      this._errorText = 'You need to sign in first.';
       return;
     }
 
     this._loading = true;
-    const opts = { method: 'PUT' };
 
-    // Check if this is a new org
-    const orgCheckResp = await daFetch(e.target.action);
+    // Check if this is a new org and add org-level permissions
+    const orgUrl = e.target.action.substring(0, e.target.action.lastIndexOf('/'));
+    const orgCheckResp = await daFetch(orgUrl);
     if (orgCheckResp.status === 404) {
+      // Check if user has an email address
+      const { email } = await window.adobeIMS.getProfile();
+      if (!email) {
+        this._errorText = 'Make sure your profile contains an email address.';
+        return;
+      }
+
       const configJson = {
         data: {
           total: 2,
@@ -193,11 +193,19 @@ class DaStart extends LitElement {
         ':type': 'multi-sheet',
       };
 
-      opts.body = new FormData();
-      opts.body.append('config', JSON.stringify(configJson));
+      const body = new FormData([['config', JSON.stringify(configJson)]]);
+      const orgResp = await daFetch(orgUrl, { method: 'PUT', body });
+      if (!orgResp.ok) {
+        if (orgResp.status === 401 || orgResp.status === 403) {
+          this._errorText = 'You are not authorized to create this org. Check your permissions.';
+        } else {
+          this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
+        }
+        return;
+      }
     }
 
-    const resp = await daFetch(e.target.action, opts);
+    const resp = await daFetch(e.target.action, { method: 'PUT' });
     this._loading = false;
     if (!resp.ok) {
       if (resp.status === 401 || resp.status === 403) {
