@@ -21,6 +21,12 @@ export function sanitiseRef(ref) {
     .replace(/^-|-$/g, '');
 }
 
+export function sanitizeName() {}
+
+export function sanitizePathParts() {}
+
+export function sanitizePath() {}
+
 export const [setNx, getNx] = (() => {
   let nx;
   return [
