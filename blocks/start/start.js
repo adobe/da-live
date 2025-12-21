@@ -173,6 +173,7 @@ class DaStart extends LitElement {
 
   async submitForm(e) {
     e.preventDefault();
+    const siteUrl = e.target.action;
 
     // Check if user is signed in
     if (!window.adobeIMS?.isSignedInUser()) {
@@ -183,7 +184,7 @@ class DaStart extends LitElement {
     this._loading = true;
 
     // Check if this is a new org and add org-level permissions
-    const orgUrl = e.target.action.substring(0, e.target.action.lastIndexOf('/'));
+    const orgUrl = siteUrl.substring(0, siteUrl.lastIndexOf('/'));
     const orgCheckResp = await daFetch(orgUrl);
     if (orgCheckResp.status === 404) {
       // Check if user has an email address
@@ -208,7 +209,7 @@ class DaStart extends LitElement {
       }
     }
 
-    const resp = await daFetch(e.target.action, { method: 'PUT' });
+    const resp = await daFetch(siteUrl, { method: 'PUT' });
     this._loading = false;
     if (!resp.ok) {
       if (resp.status === 401 || resp.status === 403) {
