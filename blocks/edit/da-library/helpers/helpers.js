@@ -232,3 +232,55 @@ export function delay(ms) {
   // eslint-disable-next-line no-promise-executor-return
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export const getMetadata = (el) => [...el.childNodes].reduce((rdx, row) => {
+  if (row.children) {
+    const key = row.children[0].textContent.trim().toLowerCase();
+    const content = row.children[1];
+    const text = content.textContent.trim().toLowerCase();
+    if (key && content) rdx[key] = { content, text };
+  }
+  return rdx;
+}, {});
+
+export function getPreviewUrl(previewUrl) {
+  try {
+    const url = new URL(previewUrl);
+
+    if (url.origin.includes('--')) return url.href;
+    if (url.origin.includes('content.da.live')) {
+      const [, org, site, ...split] = url.pathname.split('/');
+      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+    }
+    if (url.origin.includes('admin.da.live')) {
+      const [, , org, site, ...split] = url.pathname.split('/');
+      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+export function getEdsUrlVars(url) {
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.origin.includes('--')) {
+      const [branch, site, orgPlus] = urlObj.hostname.split('--');
+      const [org] = orgPlus.split('.');
+      return [org, site, branch];
+    }
+
+    if (urlObj.origin.includes('content.da.live')) {
+      const [, org, site] = urlObj.pathname.split('/');
+      return [org, site, 'main'];
+    }
+    if (urlObj.origin.includes('admin.da.live')) {
+      const [, , org, site] = urlObj.pathname.split('/');
+      return [org, site, 'main'];
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
