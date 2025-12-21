@@ -194,7 +194,8 @@ class DaStart extends LitElement {
       }
 
       const orgConfigJson = JSON.stringify(ORG_CONFIG).replace('$EMAIL$', email);
-      const body = new FormData([['config', orgConfigJson]]);
+      const body = new FormData();
+      body.append('config', orgConfigJson);
 
       const orgResp = await daFetch(orgUrl, { method: 'PUT', body });
       if (!orgResp.ok) {
