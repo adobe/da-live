@@ -45,7 +45,7 @@ async function setupExperience(el, e) {
 export default async function init(el) {
   await setupExperience(el);
 
-  // Lazily rreload the editor
+  // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
 
   window.addEventListener('hashchange', async (e) => {
