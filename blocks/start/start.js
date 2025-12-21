@@ -184,7 +184,7 @@ class DaStart extends LitElement {
     this._loading = true;
 
     // Check if this is a new org and add org-level permissions
-    const orgUrl = siteUrl.substring(0, siteUrl.lastIndexOf('/'));
+    const orgUrl = siteUrl.substring(0, siteUrl.lastIndexOf('/') + 1);
     const orgCheckResp = await daFetch(orgUrl);
     if (orgCheckResp.status === 404) {
       // Check if user has an email address
