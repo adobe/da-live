@@ -14,9 +14,9 @@ import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import { aem2prose } from '../utils/helpers.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { delay, getItems, getLibraryList, getPreviewUrl } from './helpers/helpers.js';
+import { delay, getItems, getLibraryList, getPreviewUrl, getEdsUrlVars } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -61,6 +61,7 @@ class DaLibrary extends LitElement {
     _searchStr: { state: true },
     _blockPreviewPath: { state: true },
     _previewItemName: { Type: String },
+    _previewStatus: { Type: Object },
   };
 
   constructor() {
@@ -306,8 +307,7 @@ class DaLibrary extends LitElement {
   }
 
   handlePreviewLoad() {
-    this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
-    this.shadowRoot.querySelector('.da-fs-dialog-plugin').classList.remove('hide');
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin')?.showModal();
   }
 
   async handlePluginLoad({ target }) {
@@ -352,6 +352,8 @@ class DaLibrary extends LitElement {
   }
 
   renderPreview() {
+    const [status, error] = this._previewStatus[this._previewItemName];
+
     const action = {
       style: 'primary outline',
       label: 'Close',
@@ -366,12 +368,12 @@ class DaLibrary extends LitElement {
         title="${this._previewItemName} Preview"
         .action=${action}
         @close=${this.handlePreviewClose}>
-        <iframe
+        ${status === 200 ? html`<iframe
           class="da-dialog-block-preview-frame"
           data-src="${this._blockPreviewPath}"
           src="${this._blockPreviewPath}"
           @load=${this.handlePreviewLoad}
-          allow="clipboard-write *"></iframe>
+          allow="clipboard-write *"></iframe>` : html`<div>${error || 'This block / template has not been previewed.'}</div>`}
       </da-dialog>
     `;
   }
@@ -523,6 +525,31 @@ class DaLibrary extends LitElement {
       </div>`;
   }
 
+  async checkPreviewStatus(items, getUrl, getKey) {
+    await Promise.all(items.map(async (item) => {
+      let path;
+      try {
+        const itemUrl = new URL(getUrl(item));
+        path = itemUrl.pathname;
+        if (itemUrl.origin.includes('--')) {
+          const [org, site] = getEdsUrlVars(getUrl(item));
+          path = `/${org}/${site}${itemUrl.pathname}`;
+        }
+      } catch {
+        item.error = 'Please use a fully qualified url for your library';
+      }
+      await aemAdmin(path, 'status', 'GET')
+        .then((response) => { item.status = response.preview.status; })
+        .catch(() => { item.status = 'error'; });
+    }));
+
+    const status = items.reduce((acc, item) => {
+      acc[getKey(item)] = [item.status, item.error];
+      return acc;
+    }, {});
+    this._previewStatus = { ...this._previewStatus, ...status };
+  }
+
   async renderLibrary({ name, sources, url, format, class: className }) {
     const isPlugin = className.split(' ').some((val) => val === 'is-plugin');
 
@@ -532,6 +559,9 @@ class DaLibrary extends LitElement {
       if (!data.blocks) {
         data.blocks = await getBlocks(sources);
       }
+      if (!this._previewStatus) {
+        this.checkPreviewStatus(data.blocks, (block) => block.path, (block) => block.name);
+      }
       return this.renderBlockGroups(data.blocks);
     }
 
@@ -540,6 +570,10 @@ class DaLibrary extends LitElement {
         data.templateItems = await getItems(sources, name, format);
       }
       if (data.templateItems.length) {
+        const firstItemName = data.templateItems[0].key;
+        if (!this._previewStatus || !this._previewStatus[firstItemName]) {
+          this.checkPreviewStatus(data.templateItems, (t) => t.value, (t) => t.key);
+        }
         return this.renderTemplates(data.templateItems, name);
       }
       return html`No templates found.`;

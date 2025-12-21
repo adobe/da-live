@@ -261,3 +261,26 @@ export function getPreviewUrl(previewUrl) {
   }
   return false;
 }
+
+export function getEdsUrlVars(url) {
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.origin.includes('--')) {
+      const [branch, site, orgPlus] = urlObj.hostname.split('--');
+      const [org] = orgPlus.split('.');
+      return [org, site, branch];
+    }
+
+    if (urlObj.origin.includes('content.da.live')) {
+      const [, org, site] = urlObj.pathname.split('/');
+      return [org, site, 'main'];
+    }
+    if (urlObj.origin.includes('admin.da.live')) {
+      const [, , org, site] = urlObj.pathname.split('/');
+      return [org, site, 'main'];
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
