@@ -3,7 +3,7 @@ import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { loadConfig, saveConfig } from './utils.js';
+import { loadConfig } from './utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
