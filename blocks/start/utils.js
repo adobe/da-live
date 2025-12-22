@@ -1,5 +1,5 @@
 import { DA_ORIGIN } from '../../public/utils/constants.js';
-import { daFetch } from '../../utils/daFetch.js';
+import { daFetch } from '../shared/utils.js';
 
 const DEF_CONFIG = `{
     "data": {
