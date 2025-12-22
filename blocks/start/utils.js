@@ -70,6 +70,4 @@ export async function saveConfig(org, email, existingConfig) {
   body.append('config', JSON.stringify(defConfig));
 
   await fetchConfig(org, body);
-
-  window.location.reload(true);
 }
