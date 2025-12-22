@@ -32,7 +32,7 @@ const AEM_TEMPLATES = [
   },
 ];
 
-const DEF_CONFIG = `{
+const ORG_CONFIG = `{
     "data": {
         "total": 1,
         "limit": 1,
@@ -91,7 +91,7 @@ export async function loadConfig(org) {
 }
 
 export async function saveConfig(org, email, existingConfig) {
-  const defConfigStr = DEF_CONFIG.replaceAll('{{EMAIL}}', email);
+  const defConfigStr = ORG_CONFIG.replaceAll('{{EMAIL}}', email);
   const defConfig = JSON.parse(defConfigStr);
 
   // Preserve the existing config
