@@ -9,7 +9,7 @@ import {
   ref,
   nothing,
 } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
@@ -291,7 +291,7 @@ class DaLibrary extends LitElement {
 
   getParts() {
     const view = 'edit';
-    const [org, repo, ...path] = window.location.hash.replace('#/', '').split('/');
+    const [org, repo, ...path] = sanitizePathParts(window.location.hash.substring(1));
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
   }
 

@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
+import { sanitizeName } from '../../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/browse/da-sites/da-sites.css');
 
@@ -94,7 +95,7 @@ export default class DaSites extends LitElement {
       // eslint-disable-next-line no-unused-vars
       const [_, repo, org] = helixString.split('--');
       if (!repo || !org) return null;
-      return `#/${org}/${repo}`;
+      return `#/${sanitizeName(org, false)}/${sanitizeName(repo, false)}`;
     } catch (_) {
       return null;
     }
