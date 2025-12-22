@@ -157,16 +157,18 @@ class DaStart extends LitElement {
       const { email } = await window.adobeIMS.getProfile();
       if (!email) {
         this._errorText = 'Make sure your profile contains an email address.';
+        this._loading = false;
         return;
       }
 
       const { status: orgSaveStatus } = await saveConfig(this.org, email);
-      if (orgSaveStatus !== 200) {
+      if (orgSaveStatus !== 201) {
         if (orgSaveStatus === 401 || orgSaveStatus === 403) {
           this._errorText = 'You are not authorized to create this org. Check your permissions.';
         } else {
           this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
         }
+        this._loading = false;
         return;
       }
     }
