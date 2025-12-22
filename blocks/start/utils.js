@@ -1,4 +1,4 @@
-import { DA_ORIGIN } from '../../public/utils/constants.js';
+import { DA_ORIGIN } from '../shared/constants.js';
 import { daFetch } from '../shared/utils.js';
 
 const DEF_CONFIG = `{
