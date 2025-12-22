@@ -42,12 +42,6 @@ export function sanitizePath(path) {
   return `/${sanitizePathParts(path).join('/')}`;
 }
 
-export function sanitizeName() {}
-
-export function sanitizePathParts() {}
-
-export function sanitizePath() {}
-
 export const [setNx, getNx] = (() => {
   let nx;
   return [
