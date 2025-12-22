@@ -11,6 +11,9 @@ This repo provides the author experience for https://da.live.
 ### Authentication
 DA requires an Adobe Identity. You will need a _Stage_ Adobe Identity to work on `localhost` or `aem.page`.
 
+### Content
+Local development will use DA's stage content repository. If you don't have any content or configs there, make some.
+
 ### Admin & Collab
 You will want to point your local to stage admin & collab or run these services locally. We recommend using stage.
 
