@@ -45,6 +45,7 @@ class DaStart extends LitElement {
     _goText: { state: true },
     _statusText: { state: true },
     _templates: { state: true },
+    _loading: { state: true },
   };
 
   constructor() {
@@ -53,8 +54,9 @@ class DaStart extends LitElement {
     this.activeStep = 1;
     this.org = urlParams.get('org');
     this.site = urlParams.get('site');
-    this.url = this.site && this.org ? `https://github.com/${this.org}/${this.site}` : '';
-    this.goEnabled = this.site && this.org;
+    this.autoSubmit = this.site && this.org;
+    this.url = this.autoSubmit ? `https://github.com/${this.org}/${this.site}` : '';
+    this.goEnabled = this.autoSubmit;
     this._demoContent = false;
     this._goText = 'Make something wonderful';
   }
@@ -63,6 +65,19 @@ class DaStart extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._templates = AEM_TEMPLATES;
+  }
+
+  async firstUpdated() {
+    if (this.autoSubmit) {
+      const form = this.shadowRoot.querySelector('form');
+      if (form) {
+        const event = {
+          preventDefault: () => {},
+          target: form,
+        };
+        await this.submitForm(event);
+      }
+    }
   }
 
   goToNextStep(e) {
@@ -126,9 +141,18 @@ class DaStart extends LitElement {
 
   async submitForm(e) {
     e.preventDefault();
+    this._loading = true;
     const opts = { method: 'PUT' };
     const resp = await daFetch(e.target.action, opts);
-    if (!resp.ok) return;
+    this._loading = false;
+    if (!resp.ok) {
+      if (resp.status === 401 || resp.status === 403) {
+        this._errorText = 'You are not authorized to create this site. Check your permissions.';
+      } else {
+        this._errorText = 'The site could not be created. Check the console logs or contact an administrator.';
+      }
+      return;
+    }
     this.goToNextStep(e);
   }
 
@@ -156,9 +180,12 @@ class DaStart extends LitElement {
             <label for="fname">AEM codebase</label>
             <input type="text" name="site" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />
           </div>
-          <button class="go-button" ?disabled=${!this.goEnabled}>Go</button>
+          <button class="go-button ${this._loading ? 'is-loading' : ''}" ?disabled=${!this.goEnabled || this._loading}>
+            ${this._loading ? html`<span class="spinner"></span>` : 'Go'}
+          </button>
         </form>
         <div class="text-container">
+          <p class="error-text">${this._errorText ? this._errorText : nothing}</p>
           <p>Paste your AEM codebase URL above.</p>
           <p>Don't have one, yet? Pick a template below.</p>
         </div>
