@@ -32,38 +32,78 @@ const AEM_TEMPLATES = [
   },
 ];
 
-const ORG_CONFIG = {
-  data: {
-    total: 2,
-    limit: 2,
-    offset: 0,
-    data: [{ key: '', value: '' }],
-    ':colWidths': [169, 169],
-  },
-  permissions: {
-    total: 2,
-    limit: 2,
-    offset: 0,
-    data: [
-      {
-        path: 'CONFIG',
-        groups: '$EMAIL$',
-        actions: 'write',
-        comments: 'The ability to set configurations for an org.',
-      },
-      {
-        path: '/ + **',
-        groups: '$EMAIL$',
-        actions: 'write',
-        comments: 'The ability to create content.',
-      },
+const ORG_CONFIG = `{
+    "data": {
+        "total": 1,
+        "limit": 1,
+        "offset": 0,
+        "data": [{}]
+    },
+    "permissions": {
+        "total": 2,
+        "limit": 2,
+        "offset": 0,
+        "data": [
+          {
+              "path": "CONFIG",
+              "groups": "{{EMAIL}}",
+              "actions": "write",
+              "comments": "The ability to set configurations for an org."
+          },
+          {
+              "path": "/ + **",
+              "groups": "{{EMAIL}}",
+              "actions": "write",
+              "comments": "The ability to create content."
+          }
+        ]
+    },
+    ":names": [
+        "data",
+        "permissions"
     ],
-    ':colWidths': [169, 169, 169, 300],
-  },
-  ':names': ['data', 'permissions'],
-  ':version': 3,
-  ':type': 'multi-sheet',
-};
+    ":version": 3,
+    ":type": "multi-sheet"
+}`;
+
+async function fetchConfig(org, body) {
+  let opts;
+  if (body) opts = { method: 'POST', body };
+
+  return daFetch(`${DA_ORIGIN}/config/${org}/`, opts);
+}
+
+export async function loadConfig(org) {
+  const resp = await fetchConfig(org);
+
+  const result = { status: resp.status };
+
+  if (!resp.ok) {
+    if (resp.status === 403 && resp.status === 401) {
+      result.message = 'You are not authorized to change this organization.';
+    }
+  } else {
+    const json = await resp.json();
+    if (json) result.json = json;
+  }
+
+  return result;
+}
+
+export async function saveConfig(org, email, existingConfig) {
+  const defConfigStr = ORG_CONFIG.replaceAll('{{EMAIL}}', email);
+  const defConfig = JSON.parse(defConfigStr);
+
+  // Preserve the existing config
+  if (existingConfig?.data) defConfig.data = existingConfig;
+
+  const body = new FormData();
+  body.append('config', JSON.stringify(defConfig));
+
+  const resp = await fetchConfig(org, body);
+
+  return { status: resp.status };
+}
 
 class DaStart extends LitElement {
   static properties = {
@@ -183,28 +223,24 @@ class DaStart extends LitElement {
 
     this._loading = true;
 
-    // Check if this is a new org and add org-level permissions
-    const orgUrl = siteUrl.substring(0, siteUrl.lastIndexOf('/'));
-    const orgCheckResp = await daFetch(orgUrl);
-    if (orgCheckResp.status === 404) {
+    const { status: orgLoadStatus } = await loadConfig(this.org);
+    if (orgLoadStatus === 404) {
       // Check if user has an email address
       const { email } = await window.adobeIMS.getProfile();
       if (!email) {
         this._errorText = 'Make sure your profile contains an email address.';
+        this._loading = false;
         return;
       }
 
-      const orgConfigJson = JSON.stringify(ORG_CONFIG).replace('$EMAIL$', email);
-      const body = new FormData();
-      body.append('config', orgConfigJson);
-
-      const orgResp = await daFetch(orgUrl, { method: 'PUT', body });
-      if (!orgResp.ok) {
-        if (orgResp.status === 401 || orgResp.status === 403) {
+      const { status: orgSaveStatus } = await saveConfig(this.org, email);
+      if (orgSaveStatus !== 201) {
+        if (orgSaveStatus === 401 || orgSaveStatus === 403) {
           this._errorText = 'You are not authorized to create this org. Check your permissions.';
         } else {
           this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
         }
+        this._loading = false;
         return;
       }
     }
