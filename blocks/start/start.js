@@ -151,8 +151,8 @@ class DaStart extends LitElement {
 
     this._loading = true;
 
-    const { status } = await loadConfig(this.org);
-    if (status === 404) {
+    const { status: orgLoadStatus } = await loadConfig(this.org);
+    if (orgLoadStatus === 404) {
       // Check if user has an email address
       const { email } = await window.adobeIMS.getProfile();
       if (!email) {
@@ -160,9 +160,9 @@ class DaStart extends LitElement {
         return;
       }
 
-      const orgResp = await saveConfig(this.org, email);
-      if (!orgResp.ok) {
-        if (orgResp.status === 401 || orgResp.status === 403) {
+      const { status: orgSaveStatus } = await saveConfig(this.org, email);
+      if (orgSaveStatus !== 200) {
+        if (orgSaveStatus === 401 || orgSaveStatus === 403) {
           this._errorText = 'You are not authorized to create this org. Check your permissions.';
         } else {
           this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
