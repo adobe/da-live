@@ -69,5 +69,7 @@ export async function saveConfig(org, email, existingConfig) {
   const body = new FormData();
   body.append('config', JSON.stringify(defConfig));
 
-  await fetchConfig(org, body);
+  const resp = await fetchConfig(org, body);
+
+  return { status: resp.status };
 }
