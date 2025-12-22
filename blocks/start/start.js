@@ -3,7 +3,7 @@ import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { loadConfig } from './utils.js';
+import { loadConfig, saveConfig } from './utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -32,39 +32,6 @@ const AEM_TEMPLATES = [
     content: '/da-sites/author-kit-starter',
   },
 ];
-
-const ORG_CONFIG = {
-  data: {
-    total: 2,
-    limit: 2,
-    offset: 0,
-    data: [{ key: '', value: '' }],
-    ':colWidths': [169, 169],
-  },
-  permissions: {
-    total: 2,
-    limit: 2,
-    offset: 0,
-    data: [
-      {
-        path: 'CONFIG',
-        groups: '$EMAIL$',
-        actions: 'write',
-        comments: 'The ability to set configurations for an org.',
-      },
-      {
-        path: '/ + **',
-        groups: '$EMAIL$',
-        actions: 'write',
-        comments: 'The ability to create content.',
-      },
-    ],
-    ':colWidths': [169, 169, 169, 300],
-  },
-  ':names': ['data', 'permissions'],
-  ':version': 3,
-  ':type': 'multi-sheet',
-};
 
 class DaStart extends LitElement {
   static properties = {
@@ -184,15 +151,8 @@ class DaStart extends LitElement {
 
     this._loading = true;
 
-    const { json } = await loadConfig(this.org);
-    if (json) {
-      this._alert = { type: 'success', message: 'This org already exists.' };
-    }
-
-    // Check if this is a new org and add org-level permissions
-    const orgUrl = siteUrl.substring(0, siteUrl.lastIndexOf('/'));
-    const orgCheckResp = await daFetch(orgUrl);
-    if (orgCheckResp.status === 404) {
+    const { status } = await loadConfig(this.org);
+    if (status === 404) {
       // Check if user has an email address
       const { email } = await window.adobeIMS.getProfile();
       if (!email) {
@@ -200,11 +160,7 @@ class DaStart extends LitElement {
         return;
       }
 
-      const orgConfigJson = JSON.stringify(ORG_CONFIG).replace('$EMAIL$', email);
-      const body = new FormData();
-      body.append('config', orgConfigJson);
-
-      const orgResp = await daFetch(orgUrl, { method: 'PUT', body });
+      const orgResp = await saveConfig(this.org, email);
       if (!orgResp.ok) {
         if (orgResp.status === 401 || orgResp.status === 403) {
           this._errorText = 'You are not authorized to create this org. Check your permissions.';
