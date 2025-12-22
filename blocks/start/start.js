@@ -3,6 +3,7 @@ import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
+import { loadConfig, saveConfig } from './utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -182,6 +183,11 @@ class DaStart extends LitElement {
     }
 
     this._loading = true;
+
+    const { json } = await loadConfig(this.org);
+    if (json) {
+      this._alert = { type: 'success', message: 'This org already exists.' };
+    }
 
     // Check if this is a new org and add org-level permissions
     const orgUrl = siteUrl.substring(0, siteUrl.lastIndexOf('/'));
