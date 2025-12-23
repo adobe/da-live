@@ -98,6 +98,7 @@ export default class DaContent extends LitElement {
           @close=${this.togglePane}></da-preview>
         <da-versions
           path=${this.details.fullpath}
+          .open=${this._showPane === 'versions'}
           class="${this._showPane === 'versions' ? 'is-visible' : ''}"
           @preview=${this.handleVersionPreview}
           @close=${this.togglePane}></da-versions>
