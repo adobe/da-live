@@ -23,6 +23,7 @@ const ICONS = [
 
 const CLOUD_ICONS = {
   connected: 'spectrum-Cloud-connected',
+  disconnected: 'spectrum-Cloud-offline',
   offline: 'spectrum-Cloud-offline',
   connecting: 'cloud_refresh',
   error: 'spectrum-Cloud-error',
