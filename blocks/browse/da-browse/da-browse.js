@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../shared/utils.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
 import '../da-breadcrumbs/da-breadcrumbs.js';
@@ -39,6 +39,30 @@ export default class DaBrowse extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
+    document.addEventListener('keydown', this.handleShortcuts.bind(this));
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.handleShortcuts.bind(this));
+  }
+
+  handleShortcuts(e) {
+    // Check for Command / Control + Option + T
+    if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
+      e.preventDefault();
+      const { fullpath } = this.details;
+      const [...split] = sanitizePathParts(fullpath);
+      if (split.length < 2) return;
+
+      if (split[2] === '.trash') {
+        split.splice(2, 1);
+      } else {
+        split.splice(2, 0, '.trash');
+      }
+
+      window.location.hash = `/${split.join('/')}`;
+    }
   }
 
   handlePermissions(e) {
@@ -81,7 +105,6 @@ export default class DaBrowse extends LitElement {
 
     // Sort by length in descending order (longest first)
     const matchedConf = matchedConfs.sort((a, b) => b.length - a.length)[0];
-    console.log(matchedConf);
 
     return matchedConf.split('=')[1];
   }

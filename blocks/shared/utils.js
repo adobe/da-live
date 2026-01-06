@@ -35,7 +35,7 @@ export const daFetch = async (url, opts = {}) => {
     }
   }
   const resp = await fetch(url, opts);
-  if (resp.status === 401) {
+  if (resp.status === 401 && opts.noRedirect !== true) {
     // Only attempt sign-in if the request is for DA.
     if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
       // If the user has an access token, but are not permitted, redirect them to not found.
@@ -76,14 +76,19 @@ export const daFetch = async (url, opts = {}) => {
   return resp;
 };
 
-export async function aemPreview(path, api, method = 'POST') {
+export async function aemAdmin(path, api, method = 'POST') {
   const [owner, repo, ...parts] = path.slice(1).split('/');
   const name = parts.pop() || repo || owner;
   parts.push(name.replace('.html', ''));
   const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
   const resp = await daFetch(aemUrl, { method });
+  if (method === 'DELETE' && resp.status === 204) return {};
   if (!resp.ok) return undefined;
-  return resp.json();
+  try {
+    return resp.json();
+  } catch {
+    return undefined;
+  }
 }
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
@@ -99,7 +104,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
   if (!daResp.ok) return undefined;
   if (!preview) return undefined;
-  return aemPreview(path, 'preview');
+  return aemAdmin(path, 'preview');
 }
 
 export const getSheetByIndex = (json, index = 0) => {

@@ -78,6 +78,11 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   // Hit the delete button
   await page.getByRole('button', { name: 'Delete' }).click();
 
+  // Hit the delete confirmation button
+  await page.locator('sl-button.negative').locator('visible=true').click();
+
+  await page.waitForTimeout(10000);
+
   // Wait for the delete button to disappear which is when we're done
   await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible({ timeout: 600000 });
 });
@@ -92,6 +97,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
+  await page.waitForTimeout(2000);
   const enteredText = `Some content entered at ${new Date()}`;
   await page.locator('div.ProseMirror').fill(enteredText);
 
@@ -119,9 +125,15 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await list.waitForTimeout(500);
   await list.locator('button.delete-button').locator('visible=true').click();
 
+  // Give the modal a chance to open
+  await list.waitForTimeout(1000);
+
+  // Hit the delete confirmation button
+  await list.locator('sl-button.negative').locator('visible=true').click();
+
   // Give the second window a chance to update itself
-  await list.waitForTimeout(10000);
+  await list.waitForTimeout(5000);
 
   // The open window should be cleared out now
-  await expect(page2.locator('div.ProseMirror')).not.toContainText(enteredText);
+  await expect(page2.locator('div.ProseMirror')).not.toBeVisible();
 });

@@ -1,10 +1,26 @@
 import getPathDetails from '../shared/pathDetails.js';
+import { daFetch } from '../shared/utils.js';
+
+import './da-title/da-title.js';
+import './da-content/da-content.js';
 
 let prose;
 let proseEl;
 let wsProvider;
 
-async function setUI(el, utils) {
+export async function checkDoc(path) {
+  return daFetch(path, { method: 'HEAD' });
+}
+
+async function createDoc(path) {
+  const body = new FormData();
+  const data = new Blob(['<body><header></header><main><div></div></main><footer></footer></body>'], { type: 'text/html' });
+  body.append('data', data);
+  const opts = { body, method: 'POST' };
+  return daFetch(path, opts);
+}
+
+async function setUI(el) {
   const details = getPathDetails();
   if (!details) return;
 
@@ -33,31 +49,32 @@ async function setUI(el, utils) {
     daContent.details = details;
   }
 
-  const { daFetch } = await utils;
-  const { permissions } = await daFetch(details.sourceUrl, { method: 'HEAD' });
-  daTitle.permissions = permissions;
-  daContent.permissions = permissions;
+  let resp = await checkDoc(details.sourceUrl);
+  if (resp.status === 404) resp = await createDoc(details.sourceUrl);
+
+  const { permissions } = resp;
+
+  daTitle.permissions = resp.permissions;
+  daContent.permissions = resp.permissions;
 
   if (daContent.wsProvider) {
     daContent.wsProvider.disconnect({ data: 'Client navigation' });
     daContent.wsProvider = undefined;
   }
 
-  ({ proseEl, wsProvider } = prose.default({ path: details.sourceUrl, permissions }));
+  ({
+    proseEl,
+    wsProvider,
+  } = prose.default({ path: details.sourceUrl, permissions }));
+
   daContent.proseEl = proseEl;
   daContent.wsProvider = wsProvider;
 }
 
 export default async function init(el) {
-  const utils = import('../shared/utils.js');
-  const title = import('./da-title/da-title.js');
-  const content = import('./da-content/da-content.js');
-
-  await Promise.all([utils, title, content]);
-
-  setUI(el, utils);
+  setUI(el);
 
   window.addEventListener('hashchange', () => {
-    setUI(el, utils);
+    setUI(el);
   });
 }
