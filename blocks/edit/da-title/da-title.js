@@ -18,12 +18,13 @@ const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
   '/blocks/edit/img/Smock_CloudDisconnected_18_N.svg',
   '/blocks/edit/img/Smock_CloudError_18_N.svg',
+  '/blocks/edit/img/cloud_refresh.svg',
 ];
 
 const CLOUD_ICONS = {
   connected: 'spectrum-Cloud-connected',
   offline: 'spectrum-Cloud-offline',
-  connecting: 'spectrum-Cloud-error',
+  connecting: 'cloud_refresh',
   error: 'spectrum-Cloud-error',
 };
 
@@ -64,6 +65,7 @@ export default class DaTitle extends LitElement {
   }
 
   handleError(json, action, icon) {
+    console.log('handleError', json, action, icon);
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');
     icon.parentElement.classList.add('is-error');
