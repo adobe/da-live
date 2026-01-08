@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simple Test Form",
+  "description": "A comprehensive schema for testing the form editor with various data structures",
+  "$ref": "#/$defs/simpleTestForm",
+  "type": "object",
+  "$defs": {
+    "simpleTestForm": {
+      "type": "object",
+      "title": "Simple Test Form",
+      "required": [
+        "name",
+        "email"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Full Name",
+          "minLength": 1
+        },
+        "email": {
+          "type": "string",
+          "title": "Email Address",
+          "format": "email",
+          "minLength": 1
+        },
+        "age": {
+          "type": "integer",
+          "title": "Age",
+          "minimum": 0,
+          "maximum": 150
+        },
+        "subscribe": {
+          "type": "boolean",
+          "title": "Subscribe to Newsletter"
+        },
+        "interests": {
+          "type": "array",
+          "title": "Interests (Array of Primitives)",
+          "description": "Simple array of strings",
+          "items": {
+            "type": "string",
+            "title": "Interest"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags (Array of Primitives - Numbers)",
+          "description": "Array of numeric tags",
+          "items": {
+            "type": "number",
+            "title": "Tag ID"
+          }
+        },
+        "address": {
+          "$ref": "#/$defs/address"
+        },
+        "emergencyContacts": {
+          "type": "array",
+          "title": "Emergency Contacts (Array of Objects)",
+          "description": "Array of contact objects",
+          "items": {
+            "$ref": "#/$defs/contact"
+          }
+        },
+        "workHistory": {
+          "type": "array",
+          "title": "Work History (Array of Complex Objects)",
+          "description": "Array of job objects with nested properties",
+          "items": {
+            "$ref": "#/$defs/job"
+          }
+        },
+        "skillCategories": {
+          "type": "array",
+          "title": "Skill Categories (Array of Arrays)",
+          "description": "Each category contains an array of skills",
+          "items": {
+            "type": "array",
+            "title": "Skills in Category",
+            "items": {
+              "type": "string",
+              "title": "Skill"
+            }
+          }
+        },
+        "projectGroups": {
+          "type": "array",
+          "title": "Project Groups (Array of Arrays of Objects)",
+          "description": "Groups of projects, each project is an object",
+          "items": {
+            "type": "array",
+            "title": "Project Group",
+            "items": {
+              "$ref": "#/$defs/project"
+            }
+          }
+        },
+        "preferences": {
+          "$ref": "#/$defs/preferences"
+        },
+        "metadata": {
+          "type": "object",
+          "title": "Metadata (Nested Object)",
+          "description": "Object with nested objects",
+          "properties": {
+            "created": {
+              "type": "string",
+              "title": "Created Date",
+              "format": "date"
+            },
+            "author": {
+              "$ref": "#/$defs/author"
+            },
+            "tags": {
+              "type": "object",
+              "title": "Tag Metadata",
+              "properties": {
+                "primary": {
+                  "type": "string",
+                  "title": "Primary Tag"
+                },
+                "secondary": {
+                  "type": "array",
+                  "title": "Secondary Tags",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "title": "Address",
+      "properties": {
+        "street": {
+          "type": "string",
+          "title": "Street"
+        },
+        "city": {
+          "type": "string",
+          "title": "City"
+        },
+        "zipCode": {
+          "type": "string",
+          "title": "ZIP Code",
+          "pattern": "^[0-9]{5}$"
+        },
+        "country": {
+          "type": "string",
+          "title": "Country"
+        }
+      }
+    },
+    "contact": {
+      "type": "object",
+      "title": "Contact",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "phone": {
+          "type": "string",
+          "title": "Phone Number"
+        },
+        "relationship": {
+          "type": "string",
+          "title": "Relationship",
+          "enum": [
+            "Family",
+            "Friend",
+            "Colleague",
+            "Other"
+          ]
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "title": "Job",
+      "properties": {
+        "company": {
+          "type": "string",
+          "title": "Company Name"
+        },
+        "position": {
+          "type": "string",
+          "title": "Position"
+        },
+        "startDate": {
+          "type": "string",
+          "title": "Start Date",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "title": "End Date",
+          "format": "date"
+        },
+        "responsibilities": {
+          "type": "array",
+          "title": "Responsibilities",
+          "items": {
+            "type": "string",
+            "title": "Responsibility"
+          }
+        },
+        "location": {
+          "$ref": "#/$defs/address"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "title": "Project",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Project Name"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "x-semantic-type": "long-text"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "Planning",
+            "Active",
+            "Completed",
+            "On Hold"
+          ]
+        },
+        "priority": {
+          "type": "integer",
+          "title": "Priority",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "title": "Preferences",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "title": "Theme",
+          "enum": [
+            "Light",
+            "Dark",
+            "Auto"
+          ]
+        },
+        "notifications": {
+          "type": "object",
+          "title": "Notification Settings",
+          "properties": {
+            "email": {
+              "type": "boolean",
+              "title": "Email Notifications"
+            },
+            "push": {
+              "type": "boolean",
+              "title": "Push Notifications"
+            },
+            "frequency": {
+              "type": "string",
+              "title": "Frequency",
+              "enum": [
+                "Immediate",
+                "Daily",
+                "Weekly"
+              ]
+            }
+          }
+        },
+        "language": {
+          "type": "string",
+          "title": "Language",
+          "enum": [
+            "English",
+            "Spanish",
+            "French",
+            "German"
+          ]
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "title": "Author",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Author ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "Author Name"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "email"
+        }
+      }
+    }
+  }
+}

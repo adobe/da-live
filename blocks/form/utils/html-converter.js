@@ -94,7 +94,6 @@ export default class HTMLConverter {
     return parent.map((listItem) => {
       const { value } = listItem.children[0];
       if (!value) {
-        console.log(key);
         return '';
       }
       const reference = this.getReference(value);

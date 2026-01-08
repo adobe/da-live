@@ -9,6 +9,7 @@ export const EVENT_EDITOR_SCROLL_TO = 'editor-scroll-to';
 export const EVENT_NAVIGATION_SCROLL_TO = 'navigation-scroll-to';
 export const EVENT_VISIBLE_GROUP = 'visible-group';
 export const EVENT_VALIDATION_STATE_CHANGE = 'validation-state-change';
+export const EVENT_ACTIVATE_FIELD = 'activate-field';
 
 // ============================================
 // COMPONENT CUSTOM EVENTS
@@ -68,7 +69,7 @@ export const TIMING = {
 export const SCROLL = {
   // Scroll behavior for navigation (error badge, nav items, breadcrumbs)
   // Possible values: 'auto' (instant), 'smooth' (animated)
-  BEHAVIOR: 'smooth',
+  BEHAVIOR: 'auto',
 };
 
 // ============================================
@@ -85,3 +86,34 @@ export const INTERSECTION = {
 // ============================================
 
 export const SEMANTIC_TYPES = { LONG_TEXT: 'long-text' };
+
+// ============================================
+// SCHEMA TYPES
+// ============================================
+
+export const SCHEMA_TYPES = {
+  OBJECT: 'object',
+  ARRAY: 'array',
+  STRING: 'string',
+  NUMBER: 'number',
+  INTEGER: 'integer',
+  BOOLEAN: 'boolean',
+  NULL: 'null',
+};
+
+export const DEFAULT_ITEM_TITLE = 'Item';
+
+// ============================================
+// DATA GENERATION CONSTANTS
+// ============================================
+
+// TODO: This depth limit is a safeguard against infinite recursion (circular refs).
+// Could be improved with more sophisticated cycle detection that tracks reference chains
+// while still allowing legitimate deep nesting beyond this limit.
+export const MAX_GENERATION_DEPTH = 10;
+
+// ============================================
+// URLS
+// ============================================
+
+export const SCHEMA_EDITOR_URL = 'https://main--da-live--adobe.aem.live/apps/schema?nx=schema';

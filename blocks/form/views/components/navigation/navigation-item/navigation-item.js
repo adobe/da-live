@@ -1,29 +1,30 @@
 import { LitElement, html } from 'da-lit';
+import navigationItemStyles from './navigation-item.css' with { type: 'css' };
 import { EVENT_FOCUS_ELEMENT } from '../../../../constants.js';
 
 /**
- * Navigation item component - displays a clickable navigation item.
- * Receives active/visible state as props from parent for better performance.
- * 
+ * Navigation item component - displays a clickable navigation item label.
+ * Icons are now rendered inline by the parent component.
+ * Receives active state as props from parent for better performance.
+ *
  * @property {string} label - Display label
  * @property {string} pointer - Item pointer/ID
  * @property {boolean} active - Whether this item is currently active
- * @property {boolean} visible - Whether this item is currently visible
- * 
+ *
  * @fires Custom event via window for navigation
  */
 class FormNavigationItem extends LitElement {
+  static styles = [navigationItemStyles];
+
   static properties = {
     label: { type: String },
     pointer: { type: String },
     active: { type: Boolean, reflect: true },
-    visible: { type: Boolean, reflect: true },
   };
 
   constructor() {
     super();
     this.active = false;
-    this.visible = false;
   }
 
   handleActivate() {
@@ -43,7 +44,6 @@ class FormNavigationItem extends LitElement {
         class="item"
         role="button"
         tabindex="0"
-        style="color: inherit; cursor: pointer;"
         @click=${() => this.handleActivate()}
       >${this.label}</span>
     `;
@@ -51,4 +51,3 @@ class FormNavigationItem extends LitElement {
 }
 
 customElements.define('navigation-item', FormNavigationItem);
-

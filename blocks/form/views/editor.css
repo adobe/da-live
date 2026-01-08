@@ -1,6 +1,7 @@
 :host {
   --form-input-height: 30px;
   --focus-visible-offset: 0px;
+  --primitive-array-label-height: 28px;
   /* Scroll margin for form inputs to account for sticky header */
   --form-input-scroll-margin-top: var(--editor-header-height, 0px);
 
@@ -36,4 +37,169 @@
   form {
     padding: 0 48px 48px;
   }
+
+  /* Activation Placeholder */
+  .activation-placeholder {
+    padding: 32px 24px;
+    margin: 16px 0;
+    border: 2px dashed #d0d0d0;
+    border-radius: 8px;
+    text-align: center;
+    background: #fafafa;
+    transition: all 0.2s ease;
+  }
+
+  .activation-placeholder:hover {
+    border-color: #1473e6;
+    background: #f5f9ff;
+  }
+
+  .activation-hint {
+    color: #6e6e6e;
+    font-size: 14px;
+    margin: 0 0 16px;
+    line-height: 1.5;
+  }
+
+  .activation-btn {
+    padding: 10px 20px;
+    background: #1473e6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .activation-btn:hover {
+    background: #0d66d0;
+  }
+
+  .activation-btn:active {
+    background: #095aba;
+  }
+
+  /* Add More Container */
+  .add-more-container {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed #e5e7eb;
+    text-align: center;
+  }
+
+  .add-more-btn {
+    width: 100%;
+    padding: 10px 16px;
+    background: #f0f7ff;
+    color: #1473e6;
+    border: 1px solid #1473e6;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .add-more-btn:hover {
+    background: #e3f2fd;
+  }
+
+  .add-more-btn:active {
+    background: #d1e9fc;
+  }
+
+  .add-more-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #d0d0d0;
+    color: #999;
+  }
+
+  .add-more-btn:disabled:hover {
+    background: transparent;
+    border-style: dashed;
+  }
+
+  .item-count {
+    color: #6e6e6e;
+    font-size: 12px;
+    font-weight: normal;
+  }
+
+  .max-items-message {
+    margin: 8px 0 0;
+    color: #6e6e6e;
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* Array Item Actions - now handled in form-item-group component */
+  .array-item {
+    position: relative;
+  }
+
+  /* Remove button styles now in remove-button component */
+
+
+  .add-item-btn {
+    padding: 6px 14px;
+    background: #f0f7ff;
+    color: #1473e6;
+    border: 1px solid #1473e6;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .add-item-btn:hover {
+    background: #e3f2fd;
+  }
+
+  .add-item-btn:active {
+    background: #d1e9fc;
+  }
+
+  /* Primitive Array Field (array of primitives as single field) */
+
+  .primitive-array-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+  }
+
+  .primitive-array-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .primitive-array-item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .primitive-array-item generic-field {
+    flex: 1;
+    width: 100%;
+  }
+
+  .primitive-array-item action-menu {
+    position: absolute;
+    right: -36px;
+    /* Align with input field, accounting for label height */
+    top: var(--primitive-array-label-height, 28px);
+  }
+
+
 }

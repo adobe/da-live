@@ -5,6 +5,11 @@
   scroll-margin-top: var(--form-group-offset, var(--editor-header-height, 0px));
 }
 
+/* Add spacing between groups, except for array items */
+:host(:not(.array-item)) {
+  margin-top: 12px;
+}
+
 /* Left-side active highlight */
 :host([active])::before {
   content: "";
@@ -20,6 +25,14 @@
   border-bottom-right-radius: var(--form-group-accent-radius, 15px);
 }
 
+/* Header container for title and actions */
+.item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+}
+
 /* Group title */
 .item-title {
   font-weight: 600;
@@ -29,6 +42,16 @@
   margin-bottom: var(--form-group-title-mb, 20px);
   margin-top: var(--form-group-title-mt, 0px);
   font-size: var(--s2-body-m-size, 16px);
+  flex: 1;
+}
+
+/* Actions container */
+.item-actions {
+  position: absolute;
+  right: -36px;
+  top: 0;
+  display: flex;
+  align-items: center;
 }
 
 .item-title::before {
@@ -63,4 +86,3 @@
 .form-children>* {
   min-width: 0;
 }
-

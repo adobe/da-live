@@ -49,7 +49,12 @@ class FormItemGroup extends LitElement {
 
   render() {
     return html`
-      <p class="item-title" part="title" @click=${this.handleClick}>${this.label || ''}</p>
+      <div class="item-header">
+        <p class="item-title" part="title" @click=${this.handleClick}>${this.label || ''}</p>
+        <div class="item-actions">
+          <slot name="actions"></slot>
+        </div>
+      </div>
       <div class="form-children">
         <slot></slot>
       </div>

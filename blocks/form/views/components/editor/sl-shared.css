@@ -1,11 +1,13 @@
 :host(sl-input-extended.form-input),
+:host(sl-number-extended.form-input),
 :host(sl-textarea-extended.form-input),
 :host(sl-select-extended.form-input),
 :host(sl-checkbox.form-input) {
   scroll-margin-top: var(--form-input-scroll-margin-top, 0px);
 }
 
-:host(sl-input-extended) {
+:host(sl-input-extended),
+:host(sl-number-extended) {
   .sl-inputfield {
 
     input:is([type="text"],
@@ -28,6 +30,29 @@
 
       &:hover {
         border-color: var(--s2-gray-400, #d1d5db);
+      }
+    }
+  }
+}
+
+:host(sl-number-extended) {
+  .sl-inputfield {
+    input[type="number"] {
+      /* Make spinners larger and more visible */
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        opacity: 1;
+        height: 30px;
+        width: 20px;
+        cursor: pointer;
+      }
+
+      /* Firefox spinner buttons */
+      -moz-appearance: textfield;
+      
+      &:hover::-webkit-outer-spin-button,
+      &:hover::-webkit-inner-spin-button {
+        opacity: 1;
       }
     }
   }
@@ -119,6 +144,12 @@
   display: block;
   width: 100%;
   margin: 0;
+  min-height: var(--input-error-min-height, 18px);
+}
+
+.sl-inputfield .sl-inputfield-error:empty {
+  padding-top: 0;
+  min-height: 0;
 }
 
 .sl-inputfield :is(input, textarea, select):not([type="checkbox"]).has-error {

@@ -34,12 +34,32 @@ export default class ActiveIndicatorController {
     this.getRegistry = getRegistry;
     this.offsetPx = offsetPx;
     this._currentPointer = null;
+    this._pendingFrame = null; // Track pending animation frame
 
     host.addController(this);
   }
 
-  /** Update indicator position for the given pointer. */
+  /**
+   * Update indicator position for the given pointer.
+   * Cancels any pending update to prevent "shaking" from rapid successive calls.
+   * @param {string} pointer - Pointer to update to
+   */
   updatePosition(pointer) {
+    // Cancel any pending update
+    if (this._pendingFrame) {
+      cancelAnimationFrame(this._pendingFrame);
+      this._pendingFrame = null;
+    }
+
+    // Schedule update in next animation frame
+    this._pendingFrame = requestAnimationFrame(() => {
+      this._pendingFrame = null;
+      this._applyPosition(pointer);
+    });
+  }
+
+  /** Internal method to apply the indicator position immediately. */
+  _applyPosition(pointer) {
     if (pointer == null) {
       this._hideIndicator();
       return;
@@ -79,6 +99,11 @@ export default class ActiveIndicatorController {
   }
 
   hostDisconnected() {
+    // Cancel any pending update on disconnect
+    if (this._pendingFrame) {
+      cancelAnimationFrame(this._pendingFrame);
+      this._pendingFrame = null;
+    }
     this._currentPointer = null;
   }
 }

@@ -4,6 +4,7 @@ import { getNx } from '../../../../../../scripts/utils.js';
 // Import existing sl-* components
 import '../sl-checkbox/sl-checkbox.js';
 import '../sl-input-extended/sl-input-extended.js';
+import '../sl-number-extended/sl-number-extended.js';
 import '../sl-select-extended/sl-select-extended.js';
 import '../sl-textarea-extended/sl-textarea-extended.js';
 
@@ -13,9 +14,9 @@ const componentStyle = await getStyle(new URL('./generic-field.css', import.meta
 /**
  * Generic form field component.
  * Completely domain-agnostic - works with any form system.
- * 
+ *
  * @property {string} id - Unique identifier
- * @property {string} type - Field type: 'text' | 'checkbox' | 'select' | 'textarea'
+ * @property {string} type - Field type: 'text' | 'number' | 'checkbox' | 'select' | 'textarea'
  * @property {string} label - Field label
  * @property {*} value - Current value
  * @property {Array} options - Options for select field
@@ -24,7 +25,7 @@ const componentStyle = await getStyle(new URL('./generic-field.css', import.meta
  * @property {boolean} disabled - Is field disabled
  * @property {string} placeholder - Placeholder text
  * @property {Function} onRef - Callback for element registration
- * 
+ *
  * @fires value-change - { detail: { id, value, source } }
  */
 class GenericField extends LitElement {
@@ -83,6 +84,19 @@ class GenericField extends LitElement {
       this.onRef(this.id, null);
     }
     super.disconnectedCallback();
+  }
+
+  updated(changedProps) {
+    super.updated(changedProps);
+
+    // Force Shoelace component to update when value changes
+    // This ensures DOM reuse (from repeat directive) doesn't leave stale values
+    if (changedProps.has('value')) {
+      const input = this.shadowRoot.querySelector('sl-input-extended, sl-number-extended, sl-textarea-extended, sl-select-extended');
+      if (input && input.value !== this.value) {
+        input.value = this.value ?? '';
+      }
+    }
   }
 
   /**
@@ -215,10 +229,33 @@ class GenericField extends LitElement {
     `;
   }
 
+  renderNumber() {
+    return html`
+      <sl-number-extended
+        class="form-input"
+        label="${this.label}"
+        .value=${this.value ?? ''}
+        data-id="${this.id}"
+        .error=${this.error}
+        placeholder="${this.placeholder}"
+        aria-invalid=${this._ariaInvalid}
+        aria-required=${this.required ? 'true' : 'false'}
+        ?required=${this.required}
+        ?disabled=${this.disabled}
+        @input=${(e) => {
+        const numValue = e.target.value === '' ? null : Number(e.target.value);
+        this.handleValueChange(numValue, 'number-input');
+      }}
+      ></sl-number-extended>
+    `;
+  }
+
   render() {
     switch (this.type) {
       case 'checkbox':
         return this.renderCheckbox();
+      case 'number':
+        return this.renderNumber();
       case 'textarea':
         return this.renderTextarea();
       case 'select':
@@ -232,4 +269,3 @@ class GenericField extends LitElement {
 
 customElements.define('generic-field', GenericField);
 export default GenericField;
-

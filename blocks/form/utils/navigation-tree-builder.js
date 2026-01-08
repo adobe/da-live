@@ -8,8 +8,8 @@ import { isPrimitiveType } from './field-helper.js';
  * @returns {boolean}
  */
 export function shouldRenderInNav(node, formModel) {
-  // Don't render if it has items type (array of primitives)
-  if (node.schema?.properties?.items?.type) {
+  // Don't render primitive arrays (they're single fields, not groups)
+  if (node.isPrimitiveArray) {
     return false;
   }
   
@@ -28,16 +28,38 @@ export function shouldRenderInNav(node, formModel) {
  * @param {Object} node - Form node
  * @param {FormModel} formModel - Form model
  * @param {ValidationState} validationState - Current validation state
- * @returns {Object} - Tree node { id, label, badge?, children? }
+ * @returns {Object} - Tree node { id, label, badge?, children?, nodeType? }
  */
 function buildTreeNode(node, formModel, validationState) {
   const errorCount = getGroupErrorCount(node.pointer, validationState);
   const children = formModel.getChildren(node.pointer);
+
+  let label = node.schema.title;
+  let isArrayItem = false;
+  let arrayIndex = null;
+  let parentPointer = null;
+
+  if (node.groupPointer) {
+    const parentNode = formModel.getNode(node.groupPointer);
+    if (parentNode?.type === 'array') {
+      isArrayItem = true;
+      parentPointer = node.groupPointer;
+      arrayIndex = parseInt(node.pointer.split('/').pop(), 10);
+      label = `#${arrayIndex + 1} ${node.schema.title}`;
+    }
+  }
   
   const treeNode = {
     id: node.pointer,
-    label: node.schema.title,
+    label,
+    itemType: node.type || 'object',
   };
+
+  if (isArrayItem) {
+    treeNode.isArrayItem = true;
+    treeNode.arrayIndex = arrayIndex + 1;
+    treeNode.parentPointer = parentPointer;
+  }
   
   // Add badge if there are errors
   if (errorCount > 0) {
@@ -73,8 +95,11 @@ export function buildNavigationTree(formModel, validationState, rootPointer = ''
 
   const children = formModel.getChildren(root.pointer);
   
-  return children
-    .filter((child) => shouldRenderInNav(child, formModel))
-    .map((child) => buildTreeNode(child, formModel, validationState));
-}
+  const filteredChildren = children.filter((child) => shouldRenderInNav(child, formModel));
 
+  const treeNodes = filteredChildren.map((child) => (
+    buildTreeNode(child, formModel, validationState)
+  ));
+
+  return treeNodes;
+}

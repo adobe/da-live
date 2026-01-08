@@ -1,6 +1,7 @@
-/* eslint-disable no-console */
 import { Validator } from '../../../deps/da-form/dist/index.js';
 import { append } from '../utils/rfc6901-pointer.js';
+import { resolveArrayItemsSchema } from '../utils/activation-helper.js';
+import { SCHEMA_TYPES, DEFAULT_ITEM_TITLE } from '../constants.js';
 
 /**
  * A data model that represents a form.
@@ -13,13 +14,10 @@ export default class FormModel {
   constructor(json, schemas) {
     this._json = json;
     this._schema = schemas[this._json.metadata.schemaName];
-    // Build flat annotated structure with essential indexes pre-computed
     const annotated = FormModel.buildAnnotatedStructure(this._json.data, this._schema);
     this._primitiveNodes = annotated.primitiveNodes;
     this._groupNodes = annotated.groupNodes;
-    // Cache primitive nodes array for stable reference (prevents unnecessary re-renders)
-    this._primitiveNodesArray = Array.from(annotated.primitiveNodes.values());
-    this._emptyArray = []; // Stable empty array reference
+    this._emptyArray = [];
   }
 
   /** Resolve property schema, handling $ref references. */
@@ -29,10 +27,9 @@ export default class FormModel {
     if (localSchema.$ref) {
       const path = localSchema.$ref.substring(2).split('/')[1];
 
-      // try local ref
       let def = localSchema.$defs?.[path];
-      // TODO: walk up the tree looking for the def
-      // try global ref
+      // NOTE: Nested $defs resolution not yet implemented.
+      // Currently only resolves from localSchema.$defs or fullSchema.$defs.
       if (!def) def = fullSchema.$defs?.[path];
       if (def) {
         if (!title) return def;
@@ -40,8 +37,8 @@ export default class FormModel {
       }
     }
 
-    // Normalize local props to the same format as referenced schema
-    return { title, properties: localSchema };
+    if (!title) return localSchema;
+    return { ...localSchema, title };
   }
 
   /** Build annotated node with metadata from form data. */
@@ -54,7 +51,6 @@ export default class FormModel {
     context = {},
     flatArray = [],
   ) {
-    // Will have schema.props
     const resolvedSchema = FormModel.resolvePropSchema(key, propSchema, fullSchema);
     const pointer = key === 'root' ? '' : parentPointer;
     const { groupPointer: parentGroupPointer = null, requiredSet = undefined } = context;
@@ -68,37 +64,31 @@ export default class FormModel {
 
       const currentGroupPointer = pointer;
 
-      // Create the array group node (no data value, just metadata)
       const groupNode = {
         key,
-        data: undefined, // Groups don't have primitive data values
+        data: undefined,
         schema: resolvedSchema,
         pointer,
         groupPointer: parentGroupPointer,
         parentPointer: parentGroupPointer,
         type: 'array',
+        isRequired: FormModel.isEffectivelyRequired(key, resolvedSchema, requiredSet),
       };
       flatArray.push(groupNode);
-
-      // Process children and add them to flatArray
-      propData.forEach((itemPropData, index) => {
+      propData.forEach((arrayItem, index) => {
         if (propSchema.items.oneOf) {
-          // TODO: Support one of schemas
-          // propSchema.items.oneOf.forEach((oneOf) => {
-          //   const ctx = { groupPointer: currentGroupPointer, requiredSet: undefined };
-          //   const childPtr = `${pointer}/${index}`;
-          //   FormModel.annotateProp(
-          //     key, itemPropData, oneOf, fullSchema, childPtr, ctx, flatArray);
-          // });
+          // NOTE: oneOf schemas (discriminated unions) not yet supported.
+          // Array items with oneOf will be skipped in current implementation.
         } else {
           const childPointer = append(pointer, String(index));
           const childContext = {
             groupPointer: currentGroupPointer,
             requiredSet: undefined, // Array items don't have required sets
           };
+
           FormModel.annotateProp(
-            key,
-            itemPropData,
+            String(index),
+            arrayItem,
             propSchema.items,
             fullSchema,
             childPointer,
@@ -113,27 +103,25 @@ export default class FormModel {
 
     // Guard against null being typeof 'object'
     if (propData && typeof propData === 'object') {
-      // This is an object group
       const currentGroupPointer = pointer;
-      const objectRequiredSet = schemaType === 'object'
+      const objectRequiredSet = schemaType === SCHEMA_TYPES.OBJECT
         ? new Set(resolvedSchema.required || [])
         : undefined;
 
-      // Create the object group node (no data value, just metadata)
       const groupNode = {
         key,
-        data: undefined, // Groups don't have primitive data values
+        data: undefined,
         schema: resolvedSchema,
         pointer,
         groupPointer: parentGroupPointer,
         parentPointer: parentGroupPointer,
         type: 'object',
+        isRequired: FormModel.isEffectivelyRequired(key, resolvedSchema, requiredSet),
       };
       flatArray.push(groupNode);
 
-      // Process children and add them to flatArray
       Object.entries(propData).forEach(([k, pD]) => {
-        if (resolvedSchema.properties[k]) {
+        if (resolvedSchema.properties && resolvedSchema.properties[k]) {
           const childPointer = append(pointer, k);
           const childContext = {
             groupPointer: currentGroupPointer,
@@ -154,13 +142,12 @@ export default class FormModel {
       return groupNode;
     }
 
-    // Primitive field (not a group) - has actual data value
     const fieldNode = {
       key,
       data: propData,
       schema: resolvedSchema,
       pointer,
-      required: Boolean(requiredSet?.has?.(key)),
+      required: FormModel.isEffectivelyRequired(key, resolvedSchema, requiredSet),
       groupPointer: parentGroupPointer,
     };
     flatArray.push(fieldNode);
@@ -180,85 +167,155 @@ export default class FormModel {
     const groupNodes = new Map();
     const childrenByParent = new Map(); // Temporary: collect children by parent
 
-    // First pass: separate primitives from groups and collect children
     flatArray.forEach((node) => {
       const isGroup = node.type === 'array' || node.type === 'object';
 
       if (isGroup) {
-        // Group node - will be stored in groupNodes with its children
-        // Initialize children array for this group
         if (!childrenByParent.has(node.pointer)) {
           childrenByParent.set(node.pointer, []);
         }
       } else {
-        // Primitive node - store in primitiveNodes
         primitiveNodes.set(node.pointer, node);
       }
 
-      // Collect children by parent (for building groupNodes)
       const parent = node.groupPointer ?? null;
       if (!childrenByParent.has(parent)) {
         childrenByParent.set(parent, []);
       }
       childrenByParent.get(parent).push(node);
     });
-
-    // Second pass: build groupNodes with their children
     flatArray.forEach((node) => {
       const isGroup = node.type === 'array' || node.type === 'object';
       if (isGroup) {
         const children = childrenByParent.get(node.pointer) || [];
-        groupNodes.set(node.pointer, {
-          node, // Reference to the same node object from flatArray
-          children, // Array of child nodes (same references from flatArray)
-        });
+
+        if (node.type === 'array') {
+          const maxItems = node.schema?.maxItems;
+          let minItems = node.schema?.minItems || 0;
+
+          // Enforce minimum of 1 for required arrays
+          if (node.isRequired && minItems === 0) {
+            minItems = 1;
+          }
+
+          const itemCount = children.length;
+          const tempFormModel = { _schema: schema };
+          const itemsSchema = resolveArrayItemsSchema(node, tempFormModel);
+          const itemType = itemsSchema?.type;
+
+          node.isEmpty = itemCount === 0;
+          node.itemCount = itemCount;
+          node.maxItems = maxItems;
+          node.minItems = minItems;
+          node.itemTitle = itemsSchema?.title || DEFAULT_ITEM_TITLE;
+          node.isPrimitiveArray = itemType
+            && itemType !== SCHEMA_TYPES.OBJECT
+            && itemType !== SCHEMA_TYPES.ARRAY
+            && !itemsSchema?.properties;
+          node.canAddMore = maxItems ? itemCount < maxItems : true;
+          node.canRemoveItems = itemCount > minItems;
+          node.isAtMaxItems = maxItems && itemCount >= maxItems;
+          node.isAtMinItems = itemCount <= minItems;
+        }
+
+        groupNodes.set(node.pointer, { node, children });
       }
     });
 
     return { primitiveNodes, groupNodes };
   }
 
+  /**
+   * Determine if a field should show as "required" (with asterisk *) in the UI.
+   * A field is effectively required when it must have a meaningful value, not just exist.
+   *
+   * @param {string} key - Field key
+   * @param {Object} schema - Field's resolved schema
+   * @param {Set} requiredSet - Parent's required fields set
+   * @returns {boolean} - True if field should show asterisk
+   */
+  static isEffectivelyRequired(key, schema, requiredSet) {
+    const isInRequiredArray = Boolean(requiredSet?.has?.(key));
+
+    if (!isInRequiredArray) {
+      return false;
+    }
+
+    const { type } = schema;
+
+    // String fields: must have validation constraints to be effectively required
+    if (type === SCHEMA_TYPES.STRING) {
+      return Boolean(
+        (schema.minLength && schema.minLength >= 1)
+        || schema.pattern
+        || schema.enum,
+      );
+    }
+
+    // Number/integer fields: if required, show asterisk
+    if (type === SCHEMA_TYPES.NUMBER || type === SCHEMA_TYPES.INTEGER) {
+      return true;
+    }
+
+    // Boolean fields: checkboxes are optional by nature (false is valid)
+    if (type === SCHEMA_TYPES.BOOLEAN) {
+      return false;
+    }
+
+    // Array fields: required only if minItems >= 1
+    if (type === SCHEMA_TYPES.ARRAY) {
+      const minItems = schema.minItems || 0;
+      return minItems >= 1;
+    }
+
+    // Object fields: if required, must exist (even if empty {})
+    if (type === SCHEMA_TYPES.OBJECT) {
+      return true;
+    }
+
+    // Fallback: use required array status
+    return isInRequiredArray;
+  }
+
   validate() {
-    const validator = new Validator(this._schema, '2020-12');
+    // shortCircuit: false - Report ALL validation errors, not just the first one
+    const validator = new Validator(this._schema, '2020-12', false);
     const result = validator.validate(this._json.data);
     return result;
   }
 
-  /** Get children of a group (O(1) lookup). Returns stable array reference. */
+  /** Get children of a group (O(1) lookup). */
   getChildren(parentPointer) {
     const key = parentPointer ?? null;
     const group = this._groupNodes.get(key);
-    // Return stable empty array if no children found (prevents unnecessary re-renders)
     return group?.children || this._emptyArray || (this._emptyArray = []);
   }
 
   /** Get node by pointer (O(1) lookup). */
   getNode(pointer) {
-    // Check primitive nodes first (more common)
     const primitive = this._primitiveNodes.get(pointer);
     if (primitive) return primitive;
-    // Check group nodes
     return this._groupNodes.get(pointer)?.node;
   }
 
-  /** Check if pointer represents a field (not a group). */
+  /** Check if pointer represents a field. */
   isField(pointer) {
     return this._primitiveNodes.has(pointer);
   }
 
-  /** Get field node by pointer (null if not a field). */
+  /** Get field node by pointer. */
   getField(pointer) {
     return this._primitiveNodes.get(pointer) || null;
   }
 
-  /** Get group node by pointer (null if not a group). */
+  /** Get group node by pointer. */
   getGroup(pointer) {
     return this._groupNodes.get(pointer)?.node || null;
   }
 
-  /** Get all field nodes. Returns stable array reference. */
+  /** Get all field nodes. */
   getFields() {
-    return this._primitiveNodesArray;
+    return Array.from(this._primitiveNodes.values());
   }
 
   /** Get the root node. */

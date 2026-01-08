@@ -37,14 +37,12 @@ export function buildBreadcrumbSegments(root, pointer, formModel) {
 
     if (!node) break;
 
-    // For array indices, show "Item #N"
+    // For array indices, show "#N Item" using the item's own title
     if (/^\d+$/.test(token)) {
-      const parentPointer = currentPointer.slice(0, -token.length - 1) || '';
-      const parentNode = formModel.getNode(parentPointer);
-      const base = parentNode?.schema?.title || 'Item';
+      const base = node.schema?.title || 'Item';
       segments.push({
         id: node.pointer,
-        label: `${base} #${Number(token) + 1}`,
+        label: `#${Number(token) + 1} ${base}`,
       });
     } else {
       segments.push({

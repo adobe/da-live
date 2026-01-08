@@ -4,6 +4,32 @@
   max-height: calc(100vh - 84px);
   overflow: auto;
 
+  /* Indentation */
+  --nav-indent: 22px;
+
+  /* Icon positioning */
+  --nav-icon-size: 14px;
+  --nav-icon-left: -21px;
+  --nav-icon-center: -14px;
+
+  /* Line positioning */
+  --nav-line-parent: calc(var(--nav-icon-center) - var(--nav-indent));
+
+  /* Item spacing */
+  --nav-item-margin: 3px;
+
+  /* Colors */
+  --nav-line-color: #dadfe6;
+  --nav-icon-active: #1473e6;
+  --nav-icon-inactive: #b0b0b0;
+  --nav-icon-bg-active: #e3f2fd;
+  --nav-icon-bg-inactive: #f5f5f5;
+  --nav-text-active: #1473e6;
+  --nav-text-default: #2c2c2c;
+  --nav-add-color: #1473e6;
+  --nav-add-bg: #f0f7ff;
+  --nav-add-bg-hover: #e3f2fd;
+
   p {
     line-height: 1;
   }
@@ -15,48 +41,219 @@
   .da-navigation-section {
     margin-bottom: 16px;
   }
-
-  .da-navigation-section .nav-badges {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
 }
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
 
 .nav-list {
-  font-size: var(--s2-body-s-size, 14px);
+  font-size: 14px;
+  line-height: 28px;
+  padding-left: var(--nav-indent);
+  margin: 0;
+  list-style: none;
+  position: relative;
 }
 
-.nav-list,
-.nav-list ul,
-.nav-list li {
+.nav-list *,
+.nav-list *::before,
+.nav-list *::after {
+  box-sizing: border-box;
+}
+
+.nav-list ul {
+  list-style: none;
+  padding-left: var(--nav-indent);
+  margin: 0;
   position: relative;
 }
 
 .nav-list li {
+  position: relative;
+  margin: var(--nav-item-margin) 0;
   scroll-margin-top: var(--navigation-header-height, 0px);
 }
 
-.nav-list {
-  line-height: 28px;
-  padding-left: 18px;
+/* ========================================
+   CONNECTOR LINES - STANDARD TREE STRUCTURE
+   ======================================== */
 
-  ul {
-    list-style: none;
-    padding-left: 18px;
-  }
+/* Hide connectors for all root level items (direct children of first ul) */
+.nav-list>ul>li::before,
+.nav-list>ul>li::after {
+  display: none;
+}
 
-  navigation-item {
+/* Horizontal branch - all items get L-shaped connectors */
+.nav-list ul>li:not(.nav-add-item)::before {
+  content: "";
+  position: absolute;
+  border-top: 1px dotted var(--nav-line-color);
+  top: 14px;
+  left: var(--nav-line-parent);
+  width: var(--nav-indent);
+  height: 0;
+}
+
+/* Vertical trunk - all items draw from bottom (full height) */
+.nav-list ul>li:not(.nav-add-item)::after {
+  content: "";
+  position: absolute;
+  border-left: 1px dotted var(--nav-line-color);
+  width: 0;
+  left: var(--nav-line-parent);
+  bottom: 0;
+  top: calc(-1 * var(--nav-item-margin));
+}
+
+/* Last item: only draw from connection point upward */
+.nav-list ul>li:last-child:not(.nav-add-item)::after {
+  bottom: calc(100% - 14px);
+}
+
+/* Parent to children: extend line from parent icon down to children */
+.nav-list ul>li:has(> ul > li)>.nav-row::after {
+  content: "";
+  position: absolute;
+  left: var(--nav-icon-center);
+  top: 14px;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dotted var(--nav-line-color);
+  pointer-events: none;
+}
+
+/* Add button: draw from connection point only (partial height) */
+.nav-add-item::after {
+  content: "";
+  position: absolute;
+  border-left: 1px dotted var(--nav-line-color);
+  width: 0;
+  left: var(--nav-line-parent);
+  bottom: calc(100% - 14px);
+  top: calc(-1 * var(--nav-item-margin));
+}
+
+/* Add button: horizontal branch */
+.nav-add-item::before {
+  content: "";
+  position: absolute;
+  border-top: 1px dotted var(--nav-line-color);
+  top: 14px;
+  left: var(--nav-line-parent);
+  width: var(--nav-indent);
+  height: 0;
+}
+
+/* ========================================
+   NAVIGATION ITEM LAYOUT
+   ======================================== */
+
+.nav-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  position: relative;
+  cursor: pointer;
+}
+
+.nav-item-icon {
+  flex-shrink: 0;
+  position: absolute;
+  top: 8px;
+  left: var(--nav-icon-left);
+  width: var(--nav-icon-size);
+  height: var(--nav-icon-size);
+  z-index: 10;
+}
+
+/* Icon colors based on active state */
+li[data-active="true"] .nav-icon-fill {
+  fill: var(--nav-icon-active);
+}
+
+li:not([data-active="true"]) .nav-icon-fill {
+  fill: var(--nav-icon-inactive);
+}
+
+li[data-active="true"] .nav-icon-bg {
+  fill: var(--nav-icon-bg-active);
+}
+
+li:not([data-active="true"]) .nav-icon-bg {
+  fill: var(--nav-icon-bg-inactive);
+}
+
+/* ========================================
+   NAVIGATION ITEM COMPONENT
+   ======================================== */
+
+.nav-list navigation-item {
     display: inline-block;
     line-height: 1.9;
+  margin-left: 4px;
+  user-select: none;
+}
 
-    &:first-child {
+/* ========================================
+   ADD ITEM BUTTON
+   ======================================== */
+
+.nav-add-item {
+  margin: var(--nav-item-margin) 0;
+}
+
+/* Ensure no line continues from add button's row (parent-to-child lines) */
+.nav-add-item .nav-row::after {
+  display: none !important;
+}
+
+.nav-add-icon {
+  position: absolute;
+  top: 8px;
+  left: var(--nav-icon-left);
+  z-index: 10;
+}
+
+.nav-add-button {
+  all: unset;
+  display: inline-block;
+  padding: 2px 4px;
       margin-left: 4px;
-    }
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--nav-add-color);
+  border-radius: 4px;
+  transition: background-color 150ms ease;
+  line-height: 1.9;
+  user-select: none;
+}
+
+.nav-add-button:hover:not(:disabled) {
+  background-color: var(--nav-add-bg-hover);
+}
+
+.nav-add-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.nav-add-item:has(.nav-add-button:disabled) .nav-add-icon {
+  opacity: 0.4;
   }
 
-  navigation-item::before {
+  /* Activation items - bullet point only (component styles its own content) */
+  navigation-activation-item {
+    display: inline-block;
+    line-height: 1.4;
+}
+
+navigation-activation-item:first-child {
+      margin-left: 4px;
+  }
+
+  navigation-activation-item::before {
     content: "";
     position: absolute;
     top: 12px;
@@ -64,86 +261,63 @@
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background-color: #dadfe6;
+    background-color: #b8bec6;
   }
 
-  /* Active navigation item */
-  navigation-item[active] {
-    color: var(--s2-blue-900);
+  navigation-activation-item[active]::before {
+    background-color: var(--s2-blue-700);
   }
 
-  navigation-item[active]::before {
-    background-color: var(--s2-blue-900);
-  }
+/* ========================================
+   BADGES AND ACTIONS
+   ======================================== */
 
-  /* Vertical active indicator that moves with the visible item */
-  .form-nav-active-indicator {
-    position: absolute;
-    left: 0;
-    width: 2px;
-    background: #4d7bff;
-    border-radius: 9999px;
-    height: 0;
-    top: 0;
-    transition: top 120ms ease, height 120ms ease;
-    pointer-events: none;
-  }
-
-  li::before,
-  li::after {
-    content: "";
-    position: absolute;
-    left: -32px;
-  }
-
-  li::before {
-    border-top: 1px dotted #dadfe6;
-    top: 14px;
-    width: 18px;
-    height: 0;
-  }
-
-  li::after {
-    border-left: 1px dotted #dadfe6;
-    width: 0;
-    bottom: 0;
-    top: -14px;
-  }
-
-  >ul>li:first-child::after {
-    top: 12px;
-  }
-
-  ul>li:last-child::after {
-    height: 28px;
-    top: -14px;
-  }
-
-  >ul>li:first-child {
-    &::before {
-      display: none;
-    }
-
-    &::after {
-      display: none;
-    }
-  }
-
-  .nav-row {
+.nav-badges {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+  margin-left: auto;
+  margin-right: 10px;
+    margin-top: 2px;
   }
 
-  .nav-row .nav-badges {
-    margin-left: auto;
-    margin-right: 10px;
-  }
-
-  /* Style error-badge component when used in nav-row context */
   .nav-row error-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
+
+  .nav-row .nav-item-actions {
+    display: inline-flex;
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+
+  .nav-row:hover .nav-item-actions {
+    opacity: 1;
+  }
+
+  /* Hide parent action menus when hovering nested items */
+  li:hover>ul li .nav-row .nav-item-actions {
+    opacity: 0;
+  }
+
+  li:hover>ul li .nav-row:hover .nav-item-actions {
+    opacity: 1;
+  }
+
+/* ========================================
+   ACTIVE INDICATOR
+   ======================================== */
+
+.form-nav-active-indicator {
+  position: absolute;
+  left: 0;
+  width: 2px;
+  background: #4d7bff;
+  border-radius: 9999px;
+  height: 0;
+  top: 0;
+  transition: top 120ms ease, height 120ms ease;
+  pointer-events: none;
 }

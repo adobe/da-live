@@ -3,6 +3,12 @@ import { getNx } from '../../../scripts/utils.js';
 import './components/editor/generic-field/generic-field.js';
 import './components/editor/form-item-group/form-item-group.js';
 import './components/navigation/breadcrumb-nav/breadcrumb-nav.js';
+import './components/navigation/navigation-activation-item/navigation-activation-item.js';
+import './components/shared/action-menu/action-menu.js';
+import './components/shared/remove-button/remove-button.js';
+import './components/shared/insert-button/insert-button.js';
+import './components/shared/add-item-button/add-item-button.js';
+import './components/shared/move-to-position-button/move-to-position-button.js';
 import { ref, createRef } from '../../../deps/lit/dist/index.js';
 import {
   EVENT_EDITOR_SCROLL_TO,
@@ -13,7 +19,6 @@ import {
 import ElementRegistryController from '../controllers/element-registry-controller.js';
 import VisibleGroupController from '../controllers/visible-group-controller.js';
 import ScrollTargetController from '../controllers/scroll-target-controller.js';
-import ActiveStateController from '../controllers/active-state-controller.js';
 
 // Import utilities
 import * as fieldHelper from '../utils/field-helper.js';
@@ -21,14 +26,12 @@ import * as validationHelper from '../utils/validation-helper.js';
 import * as navigationHelper from '../utils/navigation-helper.js';
 import * as breadcrumbHelper from '../utils/breadcrumb-helper.js';
 import * as focusHelper from '../utils/focus-helper.js';
+import { generateArrayItem } from '../utils/data-generator.js';
+import { parseArrayItemPointer, buildArrayItemPointer, getParentPointer } from '../utils/pointer-utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
 const style = await getStyle(import.meta.url);
-
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
 
 function getHeaderOffsetPx(headerElement) {
   const headerHeight = headerElement?.getBoundingClientRect().height || 0;
@@ -42,31 +45,22 @@ class FormEditor extends LitElement {
   static properties = {
     formModel: { attribute: false },
     validationState: { attribute: false },
+    activePointer: { attribute: false },
     _data: { state: true },
   };
-
-  // ============================================
-  // INITIALIZATION
-  // ============================================
 
   constructor() {
     super();
     this._headerRef = createRef();
 
-    // Unified element registry
     this._registry = new ElementRegistryController(this);
 
-    // Active pointer tracking
-    this._activeState = new ActiveStateController(this, {
-      getDefaultPointer: () => this._data?.pointer ?? '',
-      isPointerValid: (pointer) => {
-        if (!this._data) return false;
-        return this._data.pointer === pointer
-          || pointer.startsWith(this._data.pointer === '' ? '/' : `${this._data.pointer}/`);
-      },
+    this._visibleGroups = new VisibleGroupController(this, {
+      getGroupId: (el) => el?.getAttribute?.('pointer'),
+      getMeasureTarget: (el) => el?.shadowRoot?.firstElementChild || el,
+      topOffsetPx: 0,
     });
 
-    // Scroll-to functionality
     this._scrollTarget = new ScrollTargetController(this, {
       scrollEvent: EVENT_EDITOR_SCROLL_TO,
       getTarget: (pointer) => this._registry.get(pointer),
@@ -74,27 +68,19 @@ class FormEditor extends LitElement {
       scrollBehavior: SCROLL.BEHAVIOR,
     });
 
-    // Visible group detection
-    this._visibleGroups = new VisibleGroupController(this, {
-      getGroupId: (el) => el?.getAttribute?.('pointer'),
-      getMeasureTarget: (el) => el?.shadowRoot?.firstElementChild || el,
-      topOffsetPx: 0,
-    });
-
     this.validationState = null;
     this._fieldPropsMap = new Map();
 
-    // Bind event handlers
     this._handleTargetFieldFocus = this._handleTargetFieldFocus.bind(this);
     this._handleFieldValueChange = this._handleFieldValueChange.bind(this);
     this._handleBreadcrumbNavigation = this._handleBreadcrumbNavigation.bind(this);
     this._handleSectionNavigation = this._handleSectionNavigation.bind(this);
+    this._handleInsertArrayItem = this._handleInsertArrayItem.bind(this);
+    this._handleRemoveArrayItem = this._handleRemoveArrayItem.bind(this);
+    this._handleAddToArrayEnd = this._handleAddToArrayEnd.bind(this);
     this._handleFieldClick = this._handleFieldClick.bind(this);
+    this._handleMoveToPosition = this._handleMoveToPosition.bind(this);
   }
-
-  // ============================================
-  // LIFECYCLE HOOKS
-  // ============================================
 
   connectedCallback() {
     super.connectedCallback();
@@ -129,16 +115,13 @@ class FormEditor extends LitElement {
     }
   }
 
-  // ============================================
-  // PROP CACHING (Performance)
-  // ============================================
-
   _buildFieldPropsCache() {
     this._fieldPropsMap.clear();
 
     if (!this.formModel) return;
 
-    this.formModel.getFields().forEach((field) => {
+    const fields = this.formModel.getFields();
+    fields.forEach((field) => {
       this._fieldPropsMap.set(field.pointer, {
         type: fieldHelper.determineFieldType(field.schema),
         label: `${field.schema.title}${field.required ? ' *' : ''}`,
@@ -149,14 +132,15 @@ class FormEditor extends LitElement {
     });
   }
 
-  // ============================================
-  // HEADER MANAGEMENT (DOM Orchestration)
-  // ============================================
-
   updateHeaderOffsetVar() {
-    const offset = getHeaderOffsetPx(this._headerRef.value);
-    this.style.setProperty('--editor-header-height', `${offset}px`);
-    this._visibleGroups?.setTopOffsetPx(offset);
+    const headerOffset = getHeaderOffsetPx(this._headerRef.value);
+    this.style.setProperty('--editor-header-height', `${headerOffset}px`);
+
+    // Add extra offset so item must be more visible before becoming active
+    // This prevents breadcrumb from switching when item is mostly hidden under header
+    const additionalOffset = 80; // pixels below header before item is considered "visible"
+    const totalOffset = headerOffset + additionalOffset;
+    this._visibleGroups?.setTopOffsetPx(totalOffset);
   }
 
   observeHeaderResize() {
@@ -169,21 +153,9 @@ class FormEditor extends LitElement {
     this._headerResizeObserver.observe(header);
   }
 
-  // ============================================
-  // STATE ACCESSORS
-  // ============================================
-
-  get activePointer() {
-    return this._activeState.pointer;
-  }
-
   get visiblePointer() {
     return this._visibleGroups?.visiblePointer;
   }
-
-  // ============================================
-  // ELEMENT REGISTRATION (Lit ref integration)
-  // ============================================
 
   registerElement = (pointer, el) => {
     if (el) {
@@ -208,15 +180,10 @@ class FormEditor extends LitElement {
     });
   }
 
-  // ============================================
-  // EVENT HANDLERS
-  // ============================================
-
   _handleTargetFieldFocus(e) {
     const targetPointer = e.detail?.targetFieldPointer;
     if (targetPointer == null) return;
 
-    // Focus without scrolling - ScrollTargetController handles scroll with SCROLL.BEHAVIOR
     focusHelper.focusElement(targetPointer, this._registry, { preventScroll: true });
   }
 
@@ -237,36 +204,19 @@ class FormEditor extends LitElement {
   }
 
   _handleFieldClick(e) {
-    // When a field is clicked, navigate to its parent group to highlight it
     const fieldPointer = e.detail.id;
-    const parentPointer = this._getParentPointer(fieldPointer);
+    const parentPointer = getParentPointer(fieldPointer);
 
     if (parentPointer != null) {
       navigationHelper.navigateToPointer(parentPointer, { source: 'editor' });
     }
   }
 
-  /**
-   * Get parent pointer from a child pointer.
-   * @param {string} pointer - Child pointer (e.g., '/group/field')
-   * @returns {string|null} - Parent pointer (e.g., '/group') or null
-   * @private
-   */
-  _getParentPointer(pointer) {
-    if (!pointer || pointer === '') return null;
-    const lastSlash = pointer.lastIndexOf('/');
-    if (lastSlash === -1) return ''; // Root
-    return pointer.substring(0, lastSlash);
-  }
-
-  // ============================================
-  // RENDERING
-  // ============================================
-
   render() {
     if (!this._data) return nothing;
 
-    const breadcrumbPointer = (this.visiblePointer ?? this.activePointer ?? this._data.pointer);
+    // activePointer updates from both manual clicks and natural scrolling
+    const breadcrumbPointer = (this.activePointer ?? this._data.pointer);
     const segments = breadcrumbHelper.buildBreadcrumbSegments(
       this._data,
       breadcrumbPointer,
@@ -290,12 +240,17 @@ class FormEditor extends LitElement {
   }
 
   _renderItem(item) {
-    if (item.schema.properties.items?.type) return nothing;
-
     const children = this.formModel?.getChildren(item.pointer) || [];
     const isGroup = children.length > 0;
 
-    if (!isGroup) return this._renderField(item);
+    if (item.isPrimitiveArray) {
+      return this._renderPrimitiveArray(item, children);
+    }
+
+    if (!isGroup) {
+      return this._renderField(item);
+    }
+
     return this._renderGroup(item);
   }
 
@@ -308,13 +263,129 @@ class FormEditor extends LitElement {
         id=${item.pointer}
         type=${props.type}
         label=${props.label}
-        value=${item.data}
+        .value=${item.data}
         error=${props.error}
         required=${props.required}
         .options=${props.options}
         .onRef=${this.registerElement}
         @value-change=${this._handleFieldValueChange}
       ></generic-field>
+    `;
+  }
+
+  _renderPrimitiveArray(arrayItem, children) {
+    const label = `${arrayItem.schema.title}${arrayItem.isRequired ? ' *' : ''}`;
+    const canRemove = arrayItem.canRemoveItems;
+    const canAdd = arrayItem.canAddMore && arrayItem.maxItems !== 1;
+
+    if (children.length === 0 && !arrayItem.isRequired) {
+      // Get item title - for empty arrays, use items schema if it has a title
+      const itemsSchema = arrayItem.schema?.items;
+      const itemTitle = itemsSchema?.title || 'Item';
+      const addTitle = `Add #1 ${itemTitle}`;
+
+      return html`
+        <div class="primitive-array-field primitive-array-empty" data-pointer="${arrayItem.pointer}">
+          <label class="primitive-array-label">${label}</label>
+          ${canAdd ? html`
+            <add-item-button
+              .pointer=${arrayItem.pointer}
+              ?disabled=${!arrayItem.canAddMore}
+              title="${addTitle}"
+              @confirm-add=${(e) => this._handleAddArrayItem(e.detail.pointer, arrayItem)}
+            ></add-item-button>
+          ` : nothing}
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="primitive-array-field" data-pointer="${arrayItem.pointer}">
+        <label class="primitive-array-label">${label}</label>
+        <div class="primitive-array-items">
+          ${children.map((child, index) => {
+      const props = this._fieldPropsMap.get(child.pointer);
+      if (!props) {
+        return nothing;
+      }
+
+      // Add item number to label
+      const itemLabel = `#${index + 1} ${props.label}`;
+
+      return html`
+                <div class="primitive-array-item">
+                  <generic-field
+                    id=${child.pointer}
+                    type=${props.type}
+                    label=${itemLabel}
+                    .value=${child.data}
+                    error=${props.error}
+                    required=${props.required}
+                    .options=${props.options}
+                    .onRef=${this.registerElement}
+                    @value-change=${this._handleFieldValueChange}
+                  ></generic-field>
+                  ${canRemove || canAdd ? html`
+                    <action-menu label="Item actions" align="right" class="primitive-array-actions">
+                      ${children.length > 1 ? html`
+                        <move-to-position-button
+                          slot="actions"
+                          .pointer=${child.pointer}
+                          .currentIndex=${index}
+                          .totalItems=${children.length}
+                          @confirm-move=${this._handleMoveToPosition}
+                        ></move-to-position-button>
+                      ` : nothing}
+                      ${canAdd ? html`
+                        <insert-button
+                          slot="actions"
+                          .pointer=${child.pointer}
+                          ?disabled=${!arrayItem.canAddMore}
+                          .index=${index + 1}
+                          .mode=${'after'}
+                          @confirm-insert=${this._handleInsertArrayItem}
+                        ></insert-button>
+                      ` : nothing}
+                      ${canRemove ? html`
+                        <remove-button
+                          slot="actions"
+                          .pointer=${child.pointer}
+                          ?disabled=${arrayItem.isAtMinItems}
+                          .index=${index + 1}
+                          @confirm-remove=${this._handleRemoveArrayItem}
+                        ></remove-button>
+                      ` : nothing}
+                    </action-menu>
+                  ` : nothing}
+                </div>
+              `;
+    })}
+          ${canAdd ? (() => {
+        // Get item title - check existing children first (handles $ref)
+        let itemTitle = 'Item';
+        const itemsSchema = arrayItem.schema?.items;
+
+        if (children.length > 0 && children[0]?.schema?.title) {
+          // Use first child's title (already resolved if $ref)
+          itemTitle = children[0].schema.title;
+        } else if (itemsSchema?.title) {
+          // Use items schema title if no children
+          itemTitle = itemsSchema.title;
+        }
+
+        const nextIndex = (arrayItem.itemCount || 0) + 1;
+
+        return html`
+            <add-item-button
+              .pointer=${arrayItem.pointer}
+              ?disabled=${!arrayItem.canAddMore}
+              title="Add #${nextIndex} ${itemTitle}"
+              @confirm-add=${(e) => this._handleAddArrayItem(e.detail.pointer, arrayItem)}
+            ></add-item-button>
+          `;
+      })() : nothing}
+        </div>
+      </div>
     `;
   }
 
@@ -325,21 +396,267 @@ class FormEditor extends LitElement {
       this.validationState,
     );
 
+    // Check if this item is inside an array (array item)
+    const parentNode = item.groupPointer
+      ? this.formModel?.getNode(item.groupPointer)
+      : null;
+    const isArrayItem = parentNode?.type === 'array';
+    const canRemove = isArrayItem && parentNode?.canRemoveItems;
+
+    // Calculate item index if it's an array item
+    const itemIndex = isArrayItem
+      ? parseInt(item.pointer.split('/').pop(), 10) + 1
+      : null;
+
+    // Check if this item is an array that can add items
+    const isArray = item.type === 'array';
+    const canAddToArray = isArray && item.canAddMore;
+
+    const hasArrayItemActions = isArrayItem && (canRemove || parentNode?.canAddMore);
+    const hasArrayActions = canAddToArray && !isArrayItem;
+    const hasBothActions = isArrayItem && canAddToArray;
+
+    let actionMenu = nothing;
+    if (hasBothActions) {
+      // Get sibling count for move button - get fresh count from parent
+      const siblings = item.groupPointer ? this.formModel?.getChildren(item.groupPointer) : [];
+      const siblingCount = siblings.length;
+      const currentIndex = itemIndex - 1; // itemIndex is 1-based, convert to 0-based
+
+      actionMenu = html`
+        <action-menu slot="actions" label="Item and array actions" align="right">
+          ${siblingCount > 1 ? html`
+            <move-to-position-button
+              slot="actions"
+              .pointer=${item.pointer}
+              .currentIndex=${currentIndex}
+              .totalItems=${siblingCount}
+              @confirm-move=${this._handleMoveToPosition}
+            ></move-to-position-button>
+          ` : nothing}
+          ${parentNode?.canAddMore ? html`
+            <insert-button
+              slot="actions"
+              .pointer=${item.pointer}
+              ?disabled=${!parentNode.canAddMore}
+              .index=${itemIndex}
+              .mode=${'after'}
+              showLabel=${true}
+              label="Insert sibling"
+              @confirm-insert=${this._handleInsertArrayItem}
+            ></insert-button>
+          ` : nothing}
+          ${canRemove ? html`
+            <remove-button
+              slot="actions"
+              .pointer=${item.pointer}
+              ?disabled=${parentNode.isAtMinItems}
+              .index=${itemIndex}
+              @confirm-remove=${this._handleRemoveArrayItem}
+            ></remove-button>
+          ` : nothing}
+          <insert-button
+            slot="actions"
+            .pointer=${item.pointer}
+            ?disabled=${!item.canAddMore}
+            showLabel=${true}
+            label="Add child item"
+            @confirm-insert=${this._handleAddToArrayEnd}
+          ></insert-button>
+        </action-menu>
+      `;
+    } else if (hasArrayItemActions) {
+      // Get sibling count for move button - get fresh count from parent
+      const siblings = item.groupPointer ? this.formModel?.getChildren(item.groupPointer) : [];
+      const siblingCount = siblings.length;
+      const currentIndex = itemIndex - 1; // itemIndex is 1-based, convert to 0-based
+
+      actionMenu = html`
+        <action-menu slot="actions" label="Item actions" align="right">
+          ${siblingCount > 1 ? html`
+            <move-to-position-button
+              slot="actions"
+              .pointer=${item.pointer}
+              .currentIndex=${currentIndex}
+              .totalItems=${siblingCount}
+              @confirm-move=${this._handleMoveToPosition}
+            ></move-to-position-button>
+          ` : nothing}
+          ${parentNode?.canAddMore ? html`
+            <insert-button
+              slot="actions"
+              .pointer=${item.pointer}
+              ?disabled=${!parentNode.canAddMore}
+              .index=${itemIndex}
+              .mode=${'after'}
+              showLabel=${true}
+              label="Insert sibling"
+              @confirm-insert=${this._handleInsertArrayItem}
+            ></insert-button>
+          ` : nothing}
+          ${canRemove ? html`
+            <remove-button
+              slot="actions"
+              .pointer=${item.pointer}
+              ?disabled=${parentNode.isAtMinItems}
+              .index=${itemIndex}
+              @confirm-remove=${this._handleRemoveArrayItem}
+            ></remove-button>
+          ` : nothing}
+        </action-menu>
+      `;
+    } else if (hasArrayActions) {
+      actionMenu = html`
+        <action-menu slot="actions" label="Array actions" align="right">
+          <insert-button
+            slot="actions"
+            .pointer=${item.pointer}
+            ?disabled=${!item.canAddMore}
+            showLabel=${true}
+            label="Add child item"
+            @confirm-insert=${this._handleAddToArrayEnd}
+          ></insert-button>
+        </action-menu>
+      `;
+    }
+
+    // Render normal group with children
     return html`
       <form-item-group
-        class="item-group"
+        class="item-group ${isArrayItem ? 'array-item' : ''}"
         data-key="${item.pointer}"
         id="${item.pointer}"
         pointer="${item.pointer}"
-        label="${item.schema.title}"
+        label="${isArrayItem ? `#${itemIndex} ` : ''}${item.schema.title}"
         badge=${errorCount}
         ?active=${item.pointer === this.activePointer}
         ${this.createGroupRef(item.pointer)}
         @section-click=${this._handleSectionNavigation}
       >
+        ${actionMenu}
+        
         ${children.map((child) => this._renderItem(child))}
       </form-item-group>
     `;
+  }
+
+  _handleAddArrayItem(arrayPointer, arrayNode) {
+    if (!arrayNode.canAddMore) {
+      return;
+    }
+
+    const nextIndex = arrayNode.itemCount;
+    const newItemPointer = `${arrayPointer}/${nextIndex}`;
+
+    // eslint-disable-next-line no-underscore-dangle
+    const itemValue = generateArrayItem(arrayNode.schema, this.formModel._schema);
+    this.dispatchEvent(new CustomEvent('form-model-intent', {
+      detail: {
+        op: 'add',
+        path: newItemPointer,
+        value: itemValue,
+        focusAfter: newItemPointer,
+        focusSource: 'editor',
+      },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _handleInsertArrayItem(event) {
+    const { pointer, mode = 'after' } = event.detail;
+
+    const { arrayPointer, index: currentIndex } = parseArrayItemPointer(pointer);
+
+    const arrayNode = this.formModel?.getNode(arrayPointer);
+    if (!arrayNode || !arrayNode.canAddMore) {
+      return;
+    }
+
+    const insertIndex = mode === 'before' ? currentIndex : currentIndex + 1;
+    const newItemPointer = `${arrayPointer}/${insertIndex}`;
+
+    // eslint-disable-next-line no-underscore-dangle
+    const itemValue = generateArrayItem(arrayNode.schema, this.formModel._schema);
+    this.dispatchEvent(new CustomEvent('form-model-intent', {
+      detail: {
+        op: 'add',
+        path: newItemPointer,
+        value: itemValue,
+        focusAfter: newItemPointer,
+        focusSource: 'editor',
+      },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _handleAddToArrayEnd(event) {
+    const { pointer: arrayPointer } = event.detail;
+
+    const arrayNode = this.formModel?.getNode(arrayPointer);
+    if (!arrayNode || !arrayNode.canAddMore) {
+      return;
+    }
+
+    const nextIndex = arrayNode.itemCount;
+    const newItemPointer = `${arrayPointer}/${nextIndex}`;
+
+    // eslint-disable-next-line no-underscore-dangle
+    const itemValue = generateArrayItem(arrayNode.schema, this.formModel._schema);
+
+    this.dispatchEvent(new CustomEvent('form-model-intent', {
+      detail: {
+        op: 'add',
+        path: newItemPointer,
+        value: itemValue,
+        focusAfter: newItemPointer,
+        focusSource: 'editor',
+      },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _handleRemoveArrayItem(event) {
+    const { pointer } = event.detail;
+
+    this.dispatchEvent(new CustomEvent('form-model-intent', {
+      detail: {
+        op: 'remove',
+        path: pointer,
+      },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _handleMoveToPosition(event) {
+    const { pointer, targetPosition } = event.detail;
+
+    // Extract current index and array pointer
+    const { arrayPointer, index: currentIndex } = parseArrayItemPointer(pointer);
+
+    // If already at target position, do nothing
+    if (currentIndex === targetPosition) {
+      return;
+    }
+
+    const newPointer = buildArrayItemPointer(arrayPointer, targetPosition);
+
+    // Dispatch move operation with target pointer for focusing after update
+    this.dispatchEvent(new CustomEvent('form-model-intent', {
+      detail: {
+        op: 'move',
+        path: pointer,
+        from: currentIndex,
+        to: targetPosition,
+        focusAfter: newPointer,
+        focusSource: 'editor',
+      },
+      bubbles: true,
+      composed: true,
+    }));
   }
 }
 

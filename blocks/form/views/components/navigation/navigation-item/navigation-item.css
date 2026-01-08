@@ -1,0 +1,26 @@
+:host {
+  display: inline-block;
+  line-height: 1.9;
+  cursor: pointer;
+  color: var(--nav-text-default, #2c2c2c);
+}
+
+:host([active]) {
+  color: var(--nav-text-active, #1473e6);
+}
+
+.item {
+  display: inline;
+  color: inherit;
+  outline: none;
+}
+
+.item:hover {
+  text-decoration: underline;
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--s2-blue-700, #1473e6);
+  outline-offset: 2px;
+  border-radius: 2px;
+}

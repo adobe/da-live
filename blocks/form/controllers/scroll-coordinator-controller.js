@@ -31,8 +31,16 @@ export default class ScrollCoordinatorController {
 
     const isSame = this._focusedPointer === pointer;
     // Always dispatch coordinated event to update active states in both views
+    // Preserve original source so ActiveStateController can detect manual selections
     window.dispatchEvent(new CustomEvent(EVENT_FOCUS_ELEMENT, {
-      detail: { pointer, source: 'coordinator', noScroll: true, coordinated: true, targetFieldPointer },
+      detail: { 
+        pointer, 
+        source: source || 'unknown', 
+        originalSource: source,
+        noScroll: true, 
+        coordinated: true, 
+        targetFieldPointer 
+      },
       bubbles: true,
       composed: true,
     }));

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../shared/pathDetails.js';
@@ -9,11 +8,14 @@ import FormModel from './data/model.js';
 import { schemas as schemasPromise, getSchema } from './utils/schema.js';
 import { loadHtml, convertHtmlToJson } from './utils/utils.js';
 import generateMinimalDataForSchema from './utils/data-generator.js';
+import applyOp from './utils/rfc6902-patch.js';
 
 import '../edit/da-title/da-title.js';
 import ScrollCoordinatorController from './controllers/scroll-coordinator-controller.js';
+import PostUpdateActionsController from './controllers/post-update-actions-controller.js';
+import ActiveStateController from './controllers/active-state-controller.js';
 import ValidationStateModel from './validation/validation-state.js';
-import { EVENT_VALIDATION_STATE_CHANGE } from './constants.js';
+import { EVENT_VALIDATION_STATE_CHANGE, SCHEMA_EDITOR_URL } from './constants.js';
 
 // Internal Web Components
 import './views/editor.js';
@@ -46,7 +48,27 @@ class FormEditor extends LitElement {
     super();
     // Controller handles all focus/scroll coordination
     this._scrollCoordinator = new ScrollCoordinatorController(this);
+    // Controller handles post-update actions (focus, etc.)
+    this._postUpdateActions = new PostUpdateActionsController(this, {
+      getChildComponents: () => [
+        this.shadowRoot?.querySelector('da-form-editor'),
+        this.shadowRoot?.querySelector('da-form-navigation'),
+      ],
+    });
+    // Shared active state controller for both editor and navigation
+    this._activeState = new ActiveStateController(this, {
+      getDefaultPointer: () => this.formModel?.root?.pointer ?? '',
+      isPointerValid: (pointer) => {
+        if (!this.formModel) return false;
+        return this.formModel.getNode(pointer) != null;
+      },
+      manualSelectionLockMs: 1000,
+    });
     this._validationState = ValidationStateModel.empty();
+  }
+
+  get activePointer() {
+    return this._activeState?.pointer;
   }
 
   connectedCallback() {
@@ -70,10 +92,19 @@ class FormEditor extends LitElement {
     this.formModel = new FormModel(json, schemas);
   }
 
-  async handleModelIntent(e) {
-    const { default: applyOp } = await import('./utils/rfc6902-patch.js');
-    const nextJson = applyOp(this.formModel.json, e.detail);
+  handleModelIntent(e) {
+    const operation = e.detail;
+    const nextJson = applyOp(this.formModel.json, operation);
     this.formModel = new FormModel(nextJson, this._schemas);
+
+    // Schedule post-update actions if present in operation
+    if (operation.focusAfter) {
+      this._postUpdateActions.scheduleAction({
+        type: 'focus',
+        pointer: operation.focusAfter,
+        source: operation.focusSource || 'unknown',
+      });
+    }
   }
 
   async handleSelectSchema(e) {
@@ -103,11 +134,13 @@ class FormEditor extends LitElement {
       return;
     }
     const validationResult = this.formModel.validate();
+
     this._validationState = ValidationStateModel.fromResult(
       validationResult,
       this.formModel,
       this.formModel?.json?.data,
     );
+
     this.emitValidationState();
   }
 
@@ -137,7 +170,7 @@ class FormEditor extends LitElement {
 
       return html`
         <p class="da-form-title">Please create a schema</p>
-        <a href="https://main--da-live--adobe.aem.live/apps/schema?nx=schema#/${this.details.owner}/${this.details.repo}">Schema Editor</a>
+        <a href="${SCHEMA_EDITOR_URL}#/${this.details.owner}/${this.details.repo}">Schema Editor</a>
       `;
     }
 
@@ -146,6 +179,7 @@ class FormEditor extends LitElement {
         <da-form-editor
           .formModel=${this.formModel}
           .validationState=${this._validationState}
+          .activePointer=${this.activePointer}
           @form-model-intent=${this.handleModelIntent}
         ></da-form-editor>
         <da-form-preview .formModel=${this.formModel}></da-form-preview>
@@ -160,6 +194,8 @@ class FormEditor extends LitElement {
           <da-form-navigation
             .formModel=${this.formModel}
             .validationState=${this._validationState}
+            .activePointer=${this.activePointer}
+            @form-model-intent=${this.handleModelIntent}
           ></da-form-navigation>
         ` : nothing}
       </div>

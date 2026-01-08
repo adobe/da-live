@@ -4,6 +4,7 @@ import { get as pointerGet, exists as pointerExists, splitPointer } from './rfc6
 export const OP_REPLACE = 'replace';
 export const OP_REMOVE = 'remove';
 export const OP_ADD = 'add';
+export const OP_MOVE = 'move';
 
 /**
  * RFC 6902 JSON Patch operations.
@@ -36,7 +37,6 @@ function arrayIndexForAdd(key, length) {
 function applyReplace(json, operation) {
   const { data } = json;
   const { path, value } = operation;
-  resolveParentAndKey(data, path);
   if (!pointerExists(path, data)) {
     throw new TypeError(`RFC6902 replace: target path missing '${path}'`);
   }
@@ -77,9 +77,42 @@ function applyAdd(json, operation) {
   return { ...json, data: nextData };
 }
 
+function applyMove(json, operation) {
+  const { data } = json;
+  const { path, from, to } = operation;
+  const { parent, parentPointer } = resolveParentAndKey(data, path);
+
+  if (!Array.isArray(parent)) {
+    throw new TypeError('RFC6902 move: target must be an array');
+  }
+
+  if (!Number.isInteger(from) || from < 0 || from >= parent.length) {
+    throw new TypeError(`RFC6902 move: invalid from index ${from}`);
+  }
+
+  if (!Number.isInteger(to) || to < 0 || to >= parent.length) {
+    throw new TypeError(`RFC6902 move: invalid to index ${to}`);
+  }
+
+  if (from === to) {
+    return json; // No-op if moving to same position
+  }
+
+  // Remove item from original position
+  const item = parent[from];
+  const withoutItem = parent.slice(0, from).concat(parent.slice(from + 1));
+
+  // Insert at new position
+  const nextParent = withoutItem.slice(0, to).concat([item], withoutItem.slice(to));
+  const nextData = setAtPointer(parentPointer, data, nextParent);
+
+  return { ...json, data: nextData };
+}
+
 export default function applyOp(json, operation) {
   if (operation.op === OP_REPLACE) return applyReplace(json, operation);
   if (operation.op === OP_REMOVE) return applyRemove(json, operation);
   if (operation.op === OP_ADD) return applyAdd(json, operation);
+  if (operation.op === OP_MOVE) return applyMove(json, operation);
   return json;
 }

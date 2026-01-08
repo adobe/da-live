@@ -57,7 +57,6 @@ class SlCheckbox extends LitElement {
       composed: true,
       detail: { checked: this.checked },
     });
-    // eslint-disable-next-line no-console
     this.dispatchEvent(wcEvent);
   }
 

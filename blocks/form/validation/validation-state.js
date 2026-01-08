@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { append, get as getPointerValue } from '../utils/rfc6901-pointer.js';
 
 const REQUIRED_PROPERTY_RE = /"([^"]+)"/;

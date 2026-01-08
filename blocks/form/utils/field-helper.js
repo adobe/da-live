@@ -6,7 +6,9 @@ import { PRIMITIVE_TYPES, SEMANTIC_TYPES } from '../constants.js';
  * @returns {Array|null}
  */
 export function getEnumOptions(schema) {
-  return schema.properties?.enum
+  return schema.enum
+    || schema.properties?.enum
+    || schema.items?.enum
     || schema.properties?.items?.enum
     || null;
 }
@@ -14,18 +16,24 @@ export function getEnumOptions(schema) {
 /**
  * Determine the appropriate field type from schema.
  * @param {Object} schema - Field schema
- * @returns {'checkbox' | 'select' | 'textarea' | 'text'}
+ * @returns {'checkbox' | 'select' | 'number' | 'textarea' | 'text'}
  */
 export function determineFieldType(schema) {
-  const type = schema.properties?.type;
+  const type = schema.type || schema.properties?.type;
 
   // Boolean → checkbox
   if (type === 'boolean') {
     return 'checkbox';
   }
 
+  // Number/Integer → number input
+  if (type === 'number' || type === 'integer') {
+    return 'number';
+  }
+
   // Long text semantic type → textarea
-  if (schema.properties?.['x-semantic-type'] === SEMANTIC_TYPES.LONG_TEXT) {
+  const semanticType = schema['x-semantic-type'] || schema.properties?.['x-semantic-type'];
+  if (semanticType === SEMANTIC_TYPES.LONG_TEXT) {
     return 'textarea';
   }
 

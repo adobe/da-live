@@ -1,0 +1,107 @@
+:host {
+  display: inline-flex;
+  position: relative;
+}
+
+.action-menu {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Dropdown trigger button (icon only) */
+.action-menu-trigger {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--s2-gray-700, #6e6e6e);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.action-menu-trigger:hover {
+  background: var(--s2-gray-100, #f5f5f5);
+}
+
+/* Trigger stays visible when expanded */
+.action-menu.expanded .action-menu-trigger {
+  background: var(--s2-gray-100, #f5f5f5);
+}
+
+.trigger-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.expand-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Action buttons container (dropdown menu) */
+.action-menu-items {
+  position: absolute;
+  top: calc(100% + 2px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-width: 120px;
+  padding: 4px 0;
+  visibility: hidden;
+  pointer-events: none;
+  background-color: rgb(255, 255, 255);
+  border: 1px solid var(--s2-gray-300, #e0e0e0);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: visible;
+  transform: translateY(-5px);
+  opacity: 0;
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+}
+
+/* Alignment variants */
+.action-menu.align-left .action-menu-items {
+  left: 0;
+}
+
+.action-menu.align-right .action-menu-items {
+  right: 0;
+}
+
+/* Expanded state */
+.action-menu.expanded .action-menu-items {
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+  opacity: 1;
+  background-color: rgb(255, 255, 255);
+  /* Ensure fully opaque white */
+}
+
+/* Slotted buttons as menu items */
+.action-menu-items ::slotted(*) {
+  flex-shrink: 0;
+  width: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+/* Ensure buttons inside slotted elements also take full width */
+.action-menu-items ::slotted(*) button {
+  width: 100%;
+}

@@ -1,0 +1,44 @@
+:host {
+  display: block;
+}
+
+.add-item-wrapper {
+  margin-top: 4px;
+}
+
+.add-item-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  color: #1473e6;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.add-item-btn:hover:not(:disabled) {
+  background: #e3f2fd;
+}
+
+.add-item-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.add-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.add-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
