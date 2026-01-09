@@ -63,28 +63,31 @@ export default async function init(el) {
   // Flag to prevent infinite loops when applying synced data
   let isApplyingSync = false;
 
-  const topContainer = document.createElement('div');
-  const bottomContainer = document.createElement('div');
+  // Use object to store mutable container references
+  const containers = {
+    top: document.createElement('div'),
+    bottom: document.createElement('div')
+  };
   const syncButton = document.createElement('button');
 
-  topContainer.classList.add('da-sheet-top');
-  bottomContainer.classList.add('da-sheet-bottom');
+  containers.top.classList.add('da-sheet-top');
+  containers.bottom.classList.add('da-sheet-bottom');
   syncButton.textContent = 'Sync Data Between Sheets';
   syncButton.style.cssText = 'margin: 20px; padding: 10px 20px; font-size: 16px; cursor: pointer;';
 
-  el.append(topContainer, syncButton, bottomContainer);
+  el.append(containers.top, syncButton, containers.bottom);
 
-  window.jspreadsheet.tabs(topContainer, sheetsTop);
-  window.jspreadsheet.tabs(bottomContainer, sheetsBottom);
+  window.jspreadsheet.tabs(containers.top, sheetsTop);
+  window.jspreadsheet.tabs(containers.bottom, sheetsBottom);
 
   // Helper to reload sheet from Y state
   const reloadFromYState = (sheet, idx, ysheets) => {
     isApplyingSync = true;
     try {
       const convertedSheets = yToJSheet(ysheets);
-      const newData = convertedSheets[idx].data;
-      sheet.setData(newData);
-      console.log(`Reloaded sheet ${idx} from Y state:`, newData);
+      const sheetData = convertedSheets[idx].data;
+      sheet.setData(sheetData);
+      console.log(`Reloaded sheet ${idx} from Y state`);
     } finally {
       isApplyingSync = false;
     }
@@ -94,6 +97,7 @@ export default async function init(el) {
   const setupEventHandlers = (sheet, idx, ydoc, ysheets, label) => {
     const ysheet = ysheets.get(idx);
     const ydata = ysheet.get('data');
+    const ycolumns = ysheet.get('columns');
 
     // Cell value change
     sheet.options.onchange = (instance, cell, colIndex, rowIndex, value) => {
@@ -145,7 +149,7 @@ export default async function init(el) {
         console.log(`[${label}] Actual insert index: ${insertIndex}`);
         
         for (let i = 0; i < numOfColumns; i++) {
-          insertColumn(ydata, insertIndex + i);
+          insertColumn(ydata, ycolumns, insertIndex + i);
         }
       });
     };
@@ -156,7 +160,7 @@ export default async function init(el) {
       console.log(`[${label}] Deleted ${numOfColumns} column(s) at index ${colIndex}`);
       
       ydoc.transact(() => {
-        deleteColumn(ydata, colIndex, numOfColumns);
+        deleteColumn(ydata, ycolumns, colIndex, numOfColumns);
       });
     };
 
@@ -176,7 +180,7 @@ export default async function init(el) {
       console.log(`[${label}] Moved column from ${fromIndex} to ${toIndex}`);
       
       ydoc.transact(() => {
-        moveColumn(ydata, fromIndex, toIndex);
+        moveColumn(ydata, ycolumns, fromIndex, toIndex);
       });
     
     };
@@ -188,19 +192,17 @@ export default async function init(el) {
   };
 
   // Setup event handlers for top sheets
-  topContainer.jexcel.forEach((sheet, idx) => {
+  containers.top.jexcel.forEach((sheet, idx) => {
     setupEventHandlers(sheet, idx, ySheetTop.ydoc, ySheetTop.ysheets, 'Top');
   });
 
   // Setup event handlers for bottom sheets
-  bottomContainer.jexcel.forEach((sheet, idx) => {
+  containers.bottom.jexcel.forEach((sheet, idx) => {
     setupEventHandlers(sheet, idx, ySheetBottom.ydoc, ySheetBottom.ysheets, 'Bottom');
   });
 
   // Sync button handler
   syncButton.addEventListener('click', () => {
-    console.log('=== Starting Sync ===');
-    
     // Set flag to prevent onafterchanges from triggering
     isApplyingSync = true;
     
@@ -211,9 +213,6 @@ export default async function init(el) {
 
       console.log('Top update:', topUpdate);
       console.log('Bottom update:', bottomUpdate);
-      
-      console.log('Top update size:', topUpdate.length);
-      console.log('Bottom update size:', bottomUpdate.length);
       
       // Apply updates: top -> bottom, bottom -> top
       Y.applyUpdate(ySheetBottom.ydoc, topUpdate);
@@ -228,15 +227,47 @@ export default async function init(el) {
       console.log('Synced top sheets:', syncedTopSheets);
       console.log('Synced bottom sheets:', syncedBottomSheets);
       
-      // Update the spreadsheet displays with new data
-      topContainer.jexcel.forEach((sheet, idx) => {
-        const newData = syncedTopSheets[idx].data;
-        sheet.setData(newData);
+      // Destroy existing spreadsheets
+      if (containers.top.jexcel) {
+        containers.top.jexcel.forEach(sheet => {
+          if (sheet.destroy) sheet.destroy();
+        });
+        delete containers.top.jexcel;
+      }
+      
+      if (containers.bottom.jexcel) {
+        containers.bottom.jexcel.forEach(sheet => {
+          if (sheet.destroy) sheet.destroy();
+        });
+        delete containers.bottom.jexcel;
+      }
+      
+      // Create new container divs to replace the old ones
+      const newTopContainer = document.createElement('div');
+      newTopContainer.classList.add('da-sheet-top');
+      
+      const newBottomContainer = document.createElement('div');
+      newBottomContainer.classList.add('da-sheet-bottom');
+      
+      // Replace old containers with new ones in the DOM
+      containers.top.replaceWith(newTopContainer);
+      containers.bottom.replaceWith(newBottomContainer);
+      
+      // Update references
+      containers.top = newTopContainer;
+      containers.bottom = newBottomContainer;
+      
+      // Recreate spreadsheets with synced data
+      window.jspreadsheet.tabs(containers.top, syncedTopSheets);
+      window.jspreadsheet.tabs(containers.bottom, syncedBottomSheets);
+      
+      // Reattach event handlers
+      containers.top.jexcel.forEach((sheet, idx) => {
+        setupEventHandlers(sheet, idx, ySheetTop.ydoc, ySheetTop.ysheets, 'Top');
       });
       
-      bottomContainer.jexcel.forEach((sheet, idx) => {
-        const newData = syncedBottomSheets[idx].data;
-        sheet.setData(newData);
+      containers.bottom.jexcel.forEach((sheet, idx) => {
+        setupEventHandlers(sheet, idx, ySheetBottom.ydoc, ySheetBottom.ysheets, 'Bottom');
       });
       
       console.log('=== Sync Complete ===');

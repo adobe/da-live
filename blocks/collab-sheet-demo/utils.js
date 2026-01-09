@@ -246,33 +246,49 @@ export function deleteRow(ydata, rowIndex, count = 1) {
 /**
  * Insert a column at the specified index
  * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.Array} ycolumns - Y.Array containing column metadata
  * @param {number} colIndex - Index where to insert the column
  * @param {Array} columnData - Array of cell values for the new column (optional)
  */
-export function insertColumn(ydata, colIndex, columnData = null) {
+export function insertColumn(ydata, ycolumns, colIndex, columnData = null) {
+  // Insert data cells in each row
   ydata.forEach((yrow, rowIdx) => {
     const ytext = new Y.Text();
     const value = columnData && columnData[rowIdx] ? columnData[rowIdx] : '';
     ytext.insert(0, String(value));
     yrow.insert(colIndex, [ytext]);
   });
-  console.log(`Inserted column at index ${colIndex}`);
+  
+  // Insert column metadata
+  const ycol = new Y.Map();
+  ycol.set('width', '300');
+  ycolumns.insert(colIndex, [ycol]);
+  
+  console.log(`Inserted column at index ${colIndex} (data and metadata)`);
 }
 
 /**
  * Delete a column at the specified index
  * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.Array} ycolumns - Y.Array containing column metadata
  * @param {number} colIndex - Index of the column to delete
  * @param {number} count - Number of columns to delete (default 1)
  */
-export function deleteColumn(ydata, colIndex, count = 1) {
+export function deleteColumn(ydata, ycolumns, colIndex, count = 1) {
+  // Delete data cells from each row
   ydata.forEach((yrow) => {
     const yCells = yrow.toArray();
     if (colIndex >= 0 && colIndex < yCells.length) {
       yrow.delete(colIndex, count);
     }
   });
-  console.log(`Deleted ${count} column(s) at index ${colIndex}`);
+  
+  // Delete column metadata
+  if (colIndex >= 0 && colIndex < ycolumns.length) {
+    ycolumns.delete(colIndex, count);
+  }
+  
+  console.log(`Deleted ${count} column(s) at index ${colIndex} (data and metadata)`);
 }
 
 /**
@@ -307,10 +323,12 @@ export function moveRow(ydata, fromIndex, toIndex) {
 /**
  * Move a column from one position to another
  * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.Array} ycolumns - Y.Array containing column metadata
  * @param {number} fromIndex - Source column index
  * @param {number} toIndex - Destination column index
  */
-export function moveColumn(ydata, fromIndex, toIndex) {
+export function moveColumn(ydata, ycolumns, fromIndex, toIndex) {
+  // Move data cells in each row
   ydata.forEach((yrow) => {
     const yCells = yrow.toArray();
     
@@ -334,7 +352,15 @@ export function moveColumn(ydata, fromIndex, toIndex) {
     yrow.insert(adjustedToIndex, [cellToMove]);
   });
   
-  console.log(`Moved column from index ${fromIndex} to ${toIndex}`);
+  // Move column metadata
+  if (fromIndex >= 0 && fromIndex < ycolumns.length && toIndex >= 0 && toIndex < ycolumns.length) {
+    const colToMove = ycolumns.get(fromIndex);
+    ycolumns.delete(fromIndex, 1);
+    const adjustedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+    ycolumns.insert(adjustedToIndex, [colToMove]);
+  }
+  
+  console.log(`Moved column from index ${fromIndex} to ${toIndex} (data and metadata)`);
 }
 
 /**
