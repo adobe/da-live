@@ -18,12 +18,18 @@ import { getDaAdmin } from '../shared/constants.js';
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
-export default async function init(el) {
+async function getJson() {
   const admin = getDaAdmin();
   const demoSheet = `${admin}/source/hannessolo/da-playground/testsheet.json`;
 
   const resp = await daFetch(demoSheet);
-  const json = await resp.json();
+  if (!resp.ok) return { ":type": "sheet", "data": [] };
+
+  return resp.json();
+}
+
+export default async function init(el) {
+  const json = await getJson();
 
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');
@@ -34,6 +40,8 @@ export default async function init(el) {
   
   // Convert to Yjs structure - create base doc first
   const baseYSheet = jSheetToY(sheetsTop);
+
+  console.log('baseYSheet', baseYSheet);
   
   // Clone the state to create two separate docs with common history
   const baseState = Y.encodeStateAsUpdate(baseYSheet.ydoc);

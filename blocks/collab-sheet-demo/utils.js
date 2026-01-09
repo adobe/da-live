@@ -1,6 +1,7 @@
 import { Y } from '/deps/da-y-wrapper/dist/index.js';
 
-const SHEET_TEMPLATE = { minDimensions: [3, 3], sheetName: 'data' };
+const MIN_DIMENSIONS = 4;
+const SHEET_TEMPLATE = { minDimensions: [MIN_DIMENSIONS, MIN_DIMENSIONS], sheetName: 'data' };
 
 function getSheetData(sheetData) {
   if (!sheetData?.length) return [[], []];
@@ -16,12 +17,30 @@ function getSheetData(sheetData) {
 function getSheet(json, sheetName) {
   const data = getSheetData(json.data);
   const templ = { ...SHEET_TEMPLATE };
+  
+  // Ensure data is padded to minDimensions
+  const [minRows, minCols] = templ.minDimensions;
+  
+  // Pad rows
+  while (data.length < minRows) {
+    data.push([]);
+  }
+  
+  // Pad columns in each row
+  for (let i = 0; i < data.length; i++) {
+    while (data[i].length < minCols) {
+      data[i].push('');
+    }
+  }
+  
+  // Create columns array that matches the data width
+  const numColumns = Math.max(minCols, data[0]?.length || 0);
 
   return {
     ...templ,
     sheetName,
     data,
-    columns: data[0].map((column) => ({ width: '300' })),
+    columns: new Array(numColumns).fill(null).map(() => ({ width: '300' })),
   };
 }
 
@@ -341,6 +360,7 @@ export function jSheetToY(sheets) {
     ysheet.set('minDimensions', yMinDimensions);
     
     // Convert data array using helper function
+    // Data should already be padded by getSheet
     const ydata = new Y.Array();
     dataArrayToY(sheet.data, ydata);
     ysheet.set('data', ydata);
