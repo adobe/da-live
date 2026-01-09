@@ -19,13 +19,15 @@ const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 async function getJson() {
-  const admin = getDaAdmin();
-  const demoSheet = `${admin}/source/hannessolo/da-playground/testsheet.json`;
+  // const admin = getDaAdmin();
+  // const demoSheet = `${admin}/source/hannessolo/da-playground/testsheet.json`;
 
-  const resp = await daFetch(demoSheet);
-  if (!resp.ok) return { ":type": "sheet", "data": [] };
+  // const resp = await daFetch(demoSheet);
+  // if (!resp.ok) return { ":type": "sheet", "data": [] };
 
-  return resp.json();
+  return { ":type": "sheet", "data": [] };
+
+  // return resp.json();
 }
 
 export default async function init(el) {
