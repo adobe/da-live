@@ -103,9 +103,6 @@ export default async function init(el) {
       ydoc.transact(() => {
         updateCell(ydata, rowIndex, colIndex, value);
       });
-      
-      // Reload from Y state to verify
-      reloadFromYState(sheet, idx, ysheets);
     };
 
     // Row inserted
@@ -124,9 +121,6 @@ export default async function init(el) {
           insertRow(ydata, insertIndex + i, null, numColumns);
         }
       });
-      
-      // Reload from Y state to verify
-      reloadFromYState(sheet, idx, ysheets);
     };
 
     // Row deleted
@@ -137,13 +131,10 @@ export default async function init(el) {
       ydoc.transact(() => {
         deleteRow(ydata, rowIndex, numOfRows);
       });
-      
-      // Reload from Y state to verify
-      reloadFromYState(sheet, idx, ysheets);
     };
 
     // Column inserted
-    sheet.options.oninsertcolumn = (instance, colIndex, numOfColumns, insertBefore) => {
+    sheet.options.oninsertcolumn = (instance, colIndex, numOfColumns, colData, insertBefore) => {
       if (isApplyingSync) return;
       console.log(`[${label}] Inserted ${numOfColumns} column(s) at index ${colIndex}, insertBefore: ${insertBefore}`);
       
@@ -157,9 +148,6 @@ export default async function init(el) {
           insertColumn(ydata, insertIndex + i);
         }
       });
-      
-      // Reload from Y state to verify
-      reloadFromYState(sheet, idx, ysheets);
     };
 
     // Column deleted
@@ -170,9 +158,6 @@ export default async function init(el) {
       ydoc.transact(() => {
         deleteColumn(ydata, colIndex, numOfColumns);
       });
-      
-      // Reload from Y state to verify
-      reloadFromYState(sheet, idx, ysheets);
     };
 
     // Row moved
@@ -183,9 +168,6 @@ export default async function init(el) {
       ydoc.transact(() => {
         moveRow(ydata, fromIndex, toIndex);
       });
-      
-      // Reload from Y state to verify
-      reloadFromYState(sheet, idx, ysheets);
     };
 
     // Column moved
@@ -196,8 +178,11 @@ export default async function init(el) {
       ydoc.transact(() => {
         moveColumn(ydata, fromIndex, toIndex);
       });
-      
-      // Reload from Y state to verify
+    
+    };
+
+    sheet.options.onafterchanges = (instance, changes) => {
+      console.log(`[${label}] After changes:`, changes);
       reloadFromYState(sheet, idx, ysheets);
     };
   };
