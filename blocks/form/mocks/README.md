@@ -63,10 +63,3 @@ A complete form schema for testing all data structures and field types:
 1. Create a new file following the naming pattern: `{name}.schema.json`
 2. Use valid JSON Schema draft 2020-12 format
 3. Test it by accessing: `?localSchema={name}`
-
-## Benefits
-
-- **Fast iteration**: No need to deploy schemas to the server
-- **Offline testing**: Test without network access
-- **Version control**: Keep test schemas in git
-- **Isolated testing**: Test schemas don't affect production data
