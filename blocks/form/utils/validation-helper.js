@@ -54,4 +54,3 @@ export function isFieldRequired(pointer, formModel) {
   const fieldNode = formModel?.getField(pointer);
   return Boolean(fieldNode?.required);
 }
-

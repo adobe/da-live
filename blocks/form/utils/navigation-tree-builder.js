@@ -12,12 +12,12 @@ export function shouldRenderInNav(node, formModel) {
   if (node.isPrimitiveArray) {
     return false;
   }
-  
+
   // Don't render primitive types
   if (isPrimitiveType(node.schema)) {
     return false;
   }
-  
+
   // Only render if it has children
   const children = formModel?.getChildren(node.pointer) || [];
   return children.length > 0;
@@ -48,7 +48,7 @@ function buildTreeNode(node, formModel, validationState) {
       label = `#${arrayIndex + 1} ${node.schema.title}`;
     }
   }
-  
+
   const treeNode = {
     id: node.pointer,
     label,
@@ -60,23 +60,23 @@ function buildTreeNode(node, formModel, validationState) {
     treeNode.arrayIndex = arrayIndex + 1;
     treeNode.parentPointer = parentPointer;
   }
-  
+
   // Add badge if there are errors
   if (errorCount > 0) {
     treeNode.badge = errorCount;
   }
-  
+
   // Recursively build children
   if (children.length > 0) {
     const childNodes = children
       .filter((child) => shouldRenderInNav(child, formModel))
       .map((child) => buildTreeNode(child, formModel, validationState));
-    
+
     if (childNodes.length > 0) {
       treeNode.children = childNodes;
     }
   }
-  
+
   return treeNode;
 }
 
@@ -89,12 +89,12 @@ function buildTreeNode(node, formModel, validationState) {
  */
 export function buildNavigationTree(formModel, validationState, rootPointer = '') {
   if (!formModel) return [];
-  
+
   const root = rootPointer ? formModel.getGroup(rootPointer) : formModel.root;
   if (!root) return [];
 
   const children = formModel.getChildren(root.pointer);
-  
+
   const filteredChildren = children.filter((child) => shouldRenderInNav(child, formModel));
 
   const treeNodes = filteredChildren.map((child) => (

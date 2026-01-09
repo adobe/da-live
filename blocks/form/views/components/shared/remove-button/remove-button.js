@@ -67,11 +67,14 @@ class RemoveButton extends LitElement {
   }
 
   render() {
-    const ariaLabel = this._confirmState
-      ? 'Confirm removal'
-      : this.index !== null
-        ? `Remove item ${this.index}`
-        : 'Remove item';
+    let ariaLabel;
+    if (this._confirmState) {
+      ariaLabel = 'Confirm removal';
+    } else if (this.index !== null) {
+      ariaLabel = `Remove item ${this.index}`;
+    } else {
+      ariaLabel = 'Remove item';
+    }
 
     const title = this._confirmState
       ? 'Click to confirm removal'
