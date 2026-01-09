@@ -13,12 +13,14 @@ import {
   moveRow,
   moveColumn,
 } from './utils.js';
+import { getDaAdmin } from '../shared/constants.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 export default async function init(el) {
-  const demoSheet = 'https://stage-admin.da.live/source/hannessolo/da-playground/testsheet.json';
+  const admin = getDaAdmin();
+  const demoSheet = `${admin}/source/hannessolo/da-playground/testsheet.json`;
 
   const resp = await daFetch(demoSheet);
   const json = await resp.json();
