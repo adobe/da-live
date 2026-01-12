@@ -51,16 +51,24 @@ export default async function init(el) {
   // Create top doc from base
   const ySheetTop = {
     ydoc: baseYSheet.ydoc,
-    ysheets: baseYSheet.ysheets
+    ysheets: baseYSheet.ysheets,
+    yUndoManager: new Y.UndoManager(baseYSheet.ysheets, {
+      trackedOrigins: new Set(['Top']),
+    })
   };
   
   // Create bottom doc from base state
+  const bottomYDoc = new Y.Doc();
   const ySheetBottom = {
-    ydoc: new Y.Doc(),
-    ysheets: null
+    ydoc: bottomYDoc,
+    ysheets: null,
+    yUndoManager: null
   };
   Y.applyUpdate(ySheetBottom.ydoc, baseState);
   ySheetBottom.ysheets = ySheetBottom.ydoc.getArray('sheets');
+  ySheetBottom.yUndoManager = new Y.UndoManager(ySheetBottom.ysheets, {
+    trackedOrigins: new Set(['Bottom']),
+  });
 
   // Flag to prevent infinite loops when applying synced data
   let isApplyingSync = false;
@@ -82,21 +90,49 @@ export default async function init(el) {
   window.jspreadsheet.tabs(containers.top, sheetsTop);
   window.jspreadsheet.tabs(containers.bottom, sheetsBottom);
 
-  // Helper to reload sheet from Y state
-  const reloadFromYState = (sheet, idx, ysheets) => {
+  // Helper to reload a spreadsheet container from Y state (destroy and recreate)
+  const reloadSpreadsheetFromY = (containerKey, ysheets, ydoc, yUndoManager, label) => {
     isApplyingSync = true;
     try {
+      // Convert Y documents back to jexcel format
       const convertedSheets = yToJSheet(ysheets);
-      const sheetData = convertedSheets[idx].data;
-      sheet.setData(sheetData);
-      console.log(`Reloaded sheet ${idx} from Y state`);
+      
+      console.log(`Reloading ${label} sheets:`, convertedSheets);
+      
+      // Destroy existing spreadsheets
+      if (containers[containerKey].jexcel) {
+        containers[containerKey].jexcel.forEach(sheet => {
+          if (sheet.destroy) sheet.destroy();
+        });
+        delete containers[containerKey].jexcel;
+      }
+      
+      // Create new container div to replace the old one
+      const newContainer = document.createElement('div');
+      newContainer.classList.add(`da-sheet-${containerKey}`);
+      
+      // Replace old container with new one in the DOM
+      containers[containerKey].replaceWith(newContainer);
+      
+      // Update reference
+      containers[containerKey] = newContainer;
+      
+      // Recreate spreadsheet with converted data
+      window.jspreadsheet.tabs(containers[containerKey], convertedSheets);
+      
+      // Reattach event handlers
+      containers[containerKey].jexcel.forEach((sheet, idx) => {
+        setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, label);
+      });
+      
+      console.log(`${label} spreadsheet reloaded from Y state`);
     } finally {
       isApplyingSync = false;
     }
   };
 
   // Helper to setup granular event handlers
-  const setupEventHandlers = (sheet, idx, ydoc, ysheets, label) => {
+  const setupEventHandlers = (sheet, idx, ydoc, ysheets, yUndoManager, label) => {
     const ysheet = ysheets.get(idx);
     const ydata = ysheet.get('data');
     const ycolumns = ysheet.get('columns');
@@ -108,7 +144,7 @@ export default async function init(el) {
       
       ydoc.transact(() => {
         updateCell(ydata, rowIndex, colIndex, value);
-      });
+      }, label);
     };
 
     // Row inserted
@@ -126,7 +162,7 @@ export default async function init(el) {
         for (let i = 0; i < numOfRows; i++) {
           insertRow(ydata, insertIndex + i, null, numColumns);
         }
-      });
+      }, label);
     };
 
     // Row deleted
@@ -136,7 +172,7 @@ export default async function init(el) {
       
       ydoc.transact(() => {
         deleteRow(ydata, rowIndex, numOfRows);
-      });
+      }, label);
     };
 
     // Column inserted
@@ -153,7 +189,7 @@ export default async function init(el) {
         for (let i = 0; i < numOfColumns; i++) {
           insertColumn(ydata, ycolumns, insertIndex + i);
         }
-      });
+      }, label);
     };
 
     // Column deleted
@@ -163,7 +199,7 @@ export default async function init(el) {
       
       ydoc.transact(() => {
         deleteColumn(ydata, ycolumns, colIndex, numOfColumns);
-      });
+      }, label);
     };
 
     // Row moved
@@ -173,7 +209,7 @@ export default async function init(el) {
       
       ydoc.transact(() => {
         moveRow(ydata, fromIndex, toIndex);
-      });
+      }, label);
     };
 
     // Column moved
@@ -183,24 +219,35 @@ export default async function init(el) {
       
       ydoc.transact(() => {
         moveColumn(ydata, ycolumns, fromIndex, toIndex);
-      });
+      }, label);
     
     };
 
-    sheet.options.onafterchanges = (instance, changes) => {
-      console.log(`[${label}] After changes:`, changes);
-      reloadFromYState(sheet, idx, ysheets);
+    sheet.options.onundo = (instance) => {
+      console.log(`[${label}] Undo triggered`);
+      yUndoManager.undo();
+      // Reload spreadsheet from Y state after undo
+      const containerKey = label.toLowerCase();
+      reloadSpreadsheetFromY(containerKey, ysheets, ydoc, yUndoManager, label);
+    };
+
+    sheet.options.onredo = (instance) => {
+      console.log(`[${label}] Redo triggered`);
+      yUndoManager.redo();
+      // Reload spreadsheet from Y state after redo
+      const containerKey = label.toLowerCase();
+      reloadSpreadsheetFromY(containerKey, ysheets, ydoc, yUndoManager, label);
     };
   };
 
   // Setup event handlers for top sheets
   containers.top.jexcel.forEach((sheet, idx) => {
-    setupEventHandlers(sheet, idx, ySheetTop.ydoc, ySheetTop.ysheets, 'Top');
+    setupEventHandlers(sheet, idx, ySheetTop.ydoc, ySheetTop.ysheets, ySheetTop.yUndoManager, 'Top');
   });
 
   // Setup event handlers for bottom sheets
   containers.bottom.jexcel.forEach((sheet, idx) => {
-    setupEventHandlers(sheet, idx, ySheetBottom.ydoc, ySheetBottom.ysheets, 'Bottom');
+    setupEventHandlers(sheet, idx, ySheetBottom.ydoc, ySheetBottom.ysheets, ySheetBottom.yUndoManager, 'Bottom');
   });
 
   // Sync button handler
@@ -222,55 +269,9 @@ export default async function init(el) {
       
       console.log('Updates applied to Y documents');
       
-      // Convert Y documents back to jexcel format
-      const syncedTopSheets = yToJSheet(ySheetTop.ysheets);
-      const syncedBottomSheets = yToJSheet(ySheetBottom.ysheets);
-      
-      console.log('Synced top sheets:', syncedTopSheets);
-      console.log('Synced bottom sheets:', syncedBottomSheets);
-      
-      // Destroy existing spreadsheets
-      if (containers.top.jexcel) {
-        containers.top.jexcel.forEach(sheet => {
-          if (sheet.destroy) sheet.destroy();
-        });
-        delete containers.top.jexcel;
-      }
-      
-      if (containers.bottom.jexcel) {
-        containers.bottom.jexcel.forEach(sheet => {
-          if (sheet.destroy) sheet.destroy();
-        });
-        delete containers.bottom.jexcel;
-      }
-      
-      // Create new container divs to replace the old ones
-      const newTopContainer = document.createElement('div');
-      newTopContainer.classList.add('da-sheet-top');
-      
-      const newBottomContainer = document.createElement('div');
-      newBottomContainer.classList.add('da-sheet-bottom');
-      
-      // Replace old containers with new ones in the DOM
-      containers.top.replaceWith(newTopContainer);
-      containers.bottom.replaceWith(newBottomContainer);
-      
-      // Update references
-      containers.top = newTopContainer;
-      containers.bottom = newBottomContainer;
-      
-      // Recreate spreadsheets with synced data
-      window.jspreadsheet.tabs(containers.top, syncedTopSheets);
-      window.jspreadsheet.tabs(containers.bottom, syncedBottomSheets);
-      
-      // Reattach event handlers
-      containers.top.jexcel.forEach((sheet, idx) => {
-        setupEventHandlers(sheet, idx, ySheetTop.ydoc, ySheetTop.ysheets, 'Top');
-      });
-      
-      containers.bottom.jexcel.forEach((sheet, idx) => {
-        setupEventHandlers(sheet, idx, ySheetBottom.ydoc, ySheetBottom.ysheets, 'Bottom');
-      });
+      // Reload both spreadsheets from their Y state
+      reloadSpreadsheetFromY('top', ySheetTop.ysheets, ySheetTop.ydoc, ySheetTop.yUndoManager, 'Top');
+      reloadSpreadsheetFromY('bottom', ySheetBottom.ysheets, ySheetBottom.ydoc, ySheetBottom.yUndoManager, 'Bottom');
       
       console.log('=== Sync Complete ===');
     } finally {
