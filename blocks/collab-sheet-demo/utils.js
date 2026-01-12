@@ -71,58 +71,25 @@ export function getSheets(json) {
 }
 
 /**
- * Helper: Extract text from Y.Text or return plain value
- * @param {*} cell - Y.Text object or plain value
- * @returns {string} - String representation of the cell
- */
-function getCellText(cell) {
-  if (cell && typeof cell.toString === 'function' && cell._start !== undefined) {
-    // It's a Y.Text object
-    return cell.toString();
-  }
-  return cell || '';
-}
-
-/**
- * Helper: Convert a row array to Y.Array with Y.Text cells
+ * Helper: Convert a row array to Y.XmlElement with cell children
  * @param {Array} row - Row array
- * @returns {Y.Array} - Y.Array representation of the row with Y.Text cells
+ * @returns {Y.XmlElement} - Y.XmlElement 'row' with 'cell' children (value stored as attribute)
  */
 function rowToY(row) {
-  const yrow = new Y.Array();
-  row.forEach((cell) => {
-    const ytext = new Y.Text();
-    ytext.insert(0, String(cell || ''));
-    yrow.push([ytext]);
+  const yrow = new Y.XmlElement('row');
+  row.forEach((cellValue, idx) => {
+    const ycell = new Y.XmlElement('cell');
+    ycell.setAttribute('value', String(cellValue || ''));
+    yrow.insert(idx, [ycell]);
   });
   return yrow;
 }
 
 /**
- * Helper: Update a Y.Text cell with new content
- * @param {Y.Text} ytext - Y.Text object to update
- * @param {string} newValue - New value to set
- */
-function updateYTextCell(ytext, newValue) {
-  const currentText = ytext.toString();
-  const newText = String(newValue || '');
-  
-  if (currentText === newText) return;
-  
-  // Delete old content and insert new
-  if (currentText.length > 0) {
-    ytext.delete(0, currentText.length);
-  }
-  if (newText.length > 0) {
-    ytext.insert(0, newText);
-  }
-}
-
-/**
- * Convert a 2D data array to Y.Array structure (initial population only)
+ * Convert a 2D data array to Y.XmlFragment structure (initial population only)
  * Internal helper function - only used for initial conversion in jSheetToY
  * @param {Array} data - 2D array of cell values
- * @param {Y.Array} ydata - Y.Array to populate
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment to populate
  */
 function dataArrayToY(data, ydata) {
   // Clear existing data
@@ -132,26 +99,30 @@ function dataArrayToY(data, ydata) {
   
   // Populate with new data
   if (data) {
-    data.forEach((row) => {
+    data.forEach((row, idx) => {
       const yrow = rowToY(row);
-      ydata.push([yrow]);
+      ydata.insert(idx, [yrow]);
     });
   }
 }
 
 /**
- * Convert Y.Array structure back to 2D data array
+ * Convert Y.XmlFragment structure back to 2D data array
  * Internal helper function - only used in yToJSheet
- * @param {Y.Array} ydata - Y.Array containing row data
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
  * @returns {Array} - 2D array of cell values
  */
 function yToDataArray(ydata) {
   const data = [];
   if (ydata) {
     ydata.forEach((yrow) => {
-      // Each yrow is a Y.Array containing Y.Text cells
-      const yCells = yrow.toArray();
-      const row = yCells.map(cell => getCellText(cell));
+      // Each yrow is a Y.XmlElement 'row' containing Y.XmlElement 'cell' children
+      const row = [];
+      yrow.forEach((ycell) => {
+        // Get cell value from attribute
+        const cellValue = ycell.getAttribute('value') || '';
+        row.push(cellValue);
+      });
       data.push(row);
     });
   }
@@ -163,8 +134,8 @@ function yToDataArray(ydata) {
 // ============================================================================
 
 /**
- * Update a specific cell's Y.Text value
- * @param {Y.Array} ydata - Y.Array containing rows
+ * Update a specific cell's value (sets attribute - last-write-wins)
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
  * @param {number} rowIndex - Row index
  * @param {number} colIndex - Column index
  * @param {string} newValue - New cell value
@@ -181,55 +152,56 @@ export function updateCell(ydata, rowIndex, colIndex, newValue) {
     return;
   }
   
-  const yCells = yrow.toArray();
-  if (colIndex < 0 || colIndex >= yCells.length) {
+  if (colIndex < 0 || colIndex >= yrow.length) {
     console.warn(`Column index ${colIndex} out of bounds`);
     return;
   }
   
-  const yCell = yCells[colIndex];
-  if (yCell && typeof yCell.toString === 'function' && yCell._start !== undefined) {
-    // It's a Y.Text, update it
-    updateYTextCell(yCell, newValue);
-    console.log(`Updated cell [${rowIndex}, ${colIndex}] to "${newValue}"`);
-  } else {
-    console.warn(`Cell at [${rowIndex}, ${colIndex}] is not a Y.Text`);
+  // Get the Y.XmlElement 'cell' and set its value attribute (last-write-wins)
+  const ycell = yrow.get(colIndex);
+  if (!ycell) {
+    console.warn(`No cell at [${rowIndex}, ${colIndex}]`);
+    return;
   }
+  
+  ycell.setAttribute('value', String(newValue || ''));
+  
+  console.log(`Updated cell [${rowIndex}, ${colIndex}] to "${newValue}"`);
 }
 
 /**
  * Insert a new row at the specified index
- * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
  * @param {number} rowIndex - Index where to insert the row
  * @param {Array} rowData - Array of cell values for the new row (optional)
  * @param {number} numColumns - Number of columns (used if rowData not provided)
  */
 export function insertRow(ydata, rowIndex, rowData = null, numColumns = 0) {
-  const newRow = new Y.Array();
+  const yrow = new Y.XmlElement('row');
   
   if (rowData) {
     // Create row from provided data
-    rowData.forEach((cell) => {
-      const ytext = new Y.Text();
-      ytext.insert(0, String(cell || ''));
-      newRow.push([ytext]);
+    rowData.forEach((cellValue, idx) => {
+      const ycell = new Y.XmlElement('cell');
+      ycell.setAttribute('value', String(cellValue || ''));
+      yrow.insert(idx, [ycell]);
     });
   } else {
     // Create empty row with specified number of columns
     for (let i = 0; i < numColumns; i++) {
-      const ytext = new Y.Text();
-      ytext.insert(0, '');
-      newRow.push([ytext]);
+      const ycell = new Y.XmlElement('cell');
+      ycell.setAttribute('value', '');
+      yrow.insert(i, [ycell]);
     }
   }
   
-  ydata.insert(rowIndex, [newRow]);
+  ydata.insert(rowIndex, [yrow]);
   console.log(`Inserted row at index ${rowIndex}`);
 }
 
 /**
  * Delete a row at the specified index
- * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
  * @param {number} rowIndex - Index of the row to delete
  * @param {number} count - Number of rows to delete (default 1)
  */
@@ -245,7 +217,7 @@ export function deleteRow(ydata, rowIndex, count = 1) {
 
 /**
  * Insert a column at the specified index
- * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
  * @param {Y.Array} ycolumns - Y.Array containing column metadata
  * @param {number} colIndex - Index where to insert the column
  * @param {Array} columnData - Array of cell values for the new column (optional)
@@ -253,10 +225,10 @@ export function deleteRow(ydata, rowIndex, count = 1) {
 export function insertColumn(ydata, ycolumns, colIndex, columnData = null) {
   // Insert data cells in each row
   ydata.forEach((yrow, rowIdx) => {
-    const ytext = new Y.Text();
     const value = columnData && columnData[rowIdx] ? columnData[rowIdx] : '';
-    ytext.insert(0, String(value));
-    yrow.insert(colIndex, [ytext]);
+    const ycell = new Y.XmlElement('cell');
+    ycell.setAttribute('value', String(value));
+    yrow.insert(colIndex, [ycell]);
   });
   
   // Insert column metadata
@@ -269,7 +241,7 @@ export function insertColumn(ydata, ycolumns, colIndex, columnData = null) {
 
 /**
  * Delete a column at the specified index
- * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
  * @param {Y.Array} ycolumns - Y.Array containing column metadata
  * @param {number} colIndex - Index of the column to delete
  * @param {number} count - Number of columns to delete (default 1)
@@ -293,7 +265,7 @@ export function deleteColumn(ydata, ycolumns, colIndex, count = 1) {
 
 /**
  * Move a row from one position to another
- * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
  * @param {number} fromIndex - Source row index
  * @param {number} toIndex - Destination row index
  */
@@ -322,7 +294,7 @@ export function moveRow(ydata, fromIndex, toIndex) {
 
 /**
  * Move a column from one position to another
- * @param {Y.Array} ydata - Y.Array containing rows
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
  * @param {Y.Array} ycolumns - Y.Array containing column metadata
  * @param {number} fromIndex - Source column index
  * @param {number} toIndex - Destination column index
@@ -387,7 +359,7 @@ export function jSheetToY(sheets) {
     
     // Convert data array using helper function
     // Data should already be padded by getSheet
-    const ydata = new Y.Array();
+    const ydata = new Y.XmlFragment();
     dataArrayToY(sheet.data, ydata);
     ysheet.set('data', ydata);
     
@@ -430,7 +402,7 @@ export function yToJSheet(ysheets) {
       sheet.minDimensions = yMinDimensions.toArray()[0];
     }
     
-    // Convert Y.Array data back to regular arrays using helper function
+    // Convert Y.XmlFragment data back to regular arrays using helper function
     const ydata = ysheet.get('data');
     sheet.data = yToDataArray(ydata);
     
