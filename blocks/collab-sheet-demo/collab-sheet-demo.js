@@ -90,10 +90,131 @@ export default async function init(el) {
   window.jspreadsheet.tabs(containers.top, sheetsTop);
   window.jspreadsheet.tabs(containers.bottom, sheetsBottom);
 
+  // Helper to capture current spreadsheet state
+  const captureSpreadsheetState = (container) => {
+    const savedStates = [];
+    
+    if (container.jexcel) {
+      container.jexcel.forEach((sheet, sheetIdx) => {
+        const state = {
+          sheetIdx,
+          selection: null,
+          editorCell: null,
+          editorValue: null
+        };
+        
+        // Capture selection using jSpreadsheet API methods
+        const selectedColumns = sheet.getSelectedColumns ? sheet.getSelectedColumns() : null;
+        const selectedRows = sheet.getSelectedRows ? sheet.getSelectedRows() : null;
+        
+        console.log(`Selected columns:`, selectedColumns);
+        console.log(`Selected rows:`, selectedRows);
+        
+        if (selectedColumns && selectedColumns.length > 0 && selectedRows && selectedRows.length > 0) {
+          // Columns are already numbers, rows need to extract data-y from DOM elements
+          const colIndices = selectedColumns.map(col => parseInt(col)).filter(x => !isNaN(x));
+          const rowIndices = selectedRows.map(row => parseInt(row.getAttribute('data-y'))).filter(y => !isNaN(y));
+          
+          if (colIndices.length > 0 && rowIndices.length > 0) {
+            state.selection = {
+              x1: Math.min(...colIndices),
+              y1: Math.min(...rowIndices),
+              x2: Math.max(...colIndices),
+              y2: Math.max(...rowIndices)
+            };
+            console.log(`Captured selection:`, state.selection);
+          }
+        }
+        
+        // Capture editor state (if a cell is being edited)
+        const editor = sheet.edition;
+        if (editor && editor.length > 0) {
+          const editorCell = editor[0];
+          const x = parseInt(editorCell.getAttribute('data-x'));
+          const y = parseInt(editorCell.getAttribute('data-y'));
+          state.editorCell = { x, y };
+          // Get the current editor input value
+          const editorInput = editorCell.querySelector('input');
+          if (editorInput) {
+            state.editorValue = editorInput.value;
+          }
+          console.log(`Captured editor at [${x}, ${y}] with value:`, state.editorValue);
+        }
+        
+        savedStates.push(state);
+      });
+    }
+    
+    return savedStates;
+  };
+  
+  // Helper to restore spreadsheet state
+  const restoreSpreadsheetState = (container, savedStates) => {
+    if (!container.jexcel || !savedStates) return;
+    
+    savedStates.forEach((state) => {
+      const sheet = container.jexcel[state.sheetIdx];
+      if (!sheet) return;
+      
+      // Restore selection
+      if (state.selection) {
+        const { x1, y1, x2, y2 } = state.selection;
+        
+        // Check if the selection bounds are still valid
+        const maxY = sheet.rows.length - 1;
+        const maxX = sheet.options.columns.length - 1;
+        
+        if (x1 <= maxX && y1 <= maxY && x2 <= maxX && y2 <= maxY) {
+          // Update selection
+          sheet.updateSelectionFromCoords(x1, y1, x2, y2);
+          console.log(`Restored selection:`, state.selection);
+        } else {
+          console.log(`Selection out of bounds, skipping restore`);
+        }
+      }
+      
+      // Restore editor state
+      if (state.editorCell) {
+        const { x, y } = state.editorCell;
+        
+        // Check if the cell position is still valid
+        const maxY = sheet.rows.length - 1;
+        const maxX = sheet.options.columns.length - 1;
+        
+        console.log('restoring editor cell', x, y, maxX, maxY);
+
+        if (x <= maxX && y <= maxY) {
+          const cell = sheet.records[y][x];
+          if (cell) {
+            console.log('restoring editor cell')
+            // Open the editor
+            setTimeout(() => {
+              sheet.openEditor(cell);
+              // Restore the editor value if we had captured it
+              if (state.editorValue !== null) {
+                console.log('Restoring editor value:', state.editorValue);
+                const editorInput = cell.querySelector('input');
+                if (editorInput) {
+                  editorInput.value = state.editorValue;
+                }
+              }
+              console.log(`Restored editor at [${x}, ${y}]`);
+            }, 0);
+          }
+        } else {
+          console.log(`Editor cell position out of bounds, skipping restore`);
+        }
+      }
+    });
+  };
+  
   // Helper to reload a spreadsheet container from Y state (destroy and recreate)
   const reloadSpreadsheetFromY = (containerKey, ysheets, ydoc, yUndoManager, label) => {
     isApplyingSync = true;
     try {
+      // Capture current state before destroying
+      const savedStates = captureSpreadsheetState(containers[containerKey]);
+      
       // Convert Y documents back to jexcel format
       const convertedSheets = yToJSheet(ysheets);
       
@@ -124,6 +245,11 @@ export default async function init(el) {
       containers[containerKey].jexcel.forEach((sheet, idx) => {
         setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, label);
       });
+
+      console.log('savedStates', JSON.stringify(savedStates, null, 2));
+      
+      // Restore state after recreation
+      restoreSpreadsheetState(containers[containerKey], savedStates);
       
       console.log(`${label} spreadsheet reloaded from Y state`);
     } finally {
@@ -252,31 +378,45 @@ export default async function init(el) {
 
   // Sync button handler
   syncButton.addEventListener('click', () => {
-    // Set flag to prevent onafterchanges from triggering
-    isApplyingSync = true;
+    console.log('=== Sync will start in 2 seconds ===');
     
-    try {
-      // Encode each document as an update
-      const topUpdate = Y.encodeStateAsUpdate(ySheetTop.ydoc);
-      const bottomUpdate = Y.encodeStateAsUpdate(ySheetBottom.ydoc);
+    setTimeout(() => {
+      // Set flag to prevent onafterchanges from triggering
+      isApplyingSync = true;
+      
+      try {
+        console.log('=== Starting Sync ===');
+        
+        // Encode each document as an update
+        const topUpdate = Y.encodeStateAsUpdate(ySheetTop.ydoc);
+        const bottomUpdate = Y.encodeStateAsUpdate(ySheetBottom.ydoc);
 
-      console.log('Top update:', topUpdate);
-      console.log('Bottom update:', bottomUpdate);
-      
-      // Apply updates: top -> bottom, bottom -> top
-      Y.applyUpdate(ySheetBottom.ydoc, topUpdate);
-      Y.applyUpdate(ySheetTop.ydoc, bottomUpdate);
-      
-      console.log('Updates applied to Y documents');
-      
-      // Reload both spreadsheets from their Y state
-      reloadSpreadsheetFromY('top', ySheetTop.ysheets, ySheetTop.ydoc, ySheetTop.yUndoManager, 'Top');
-      reloadSpreadsheetFromY('bottom', ySheetBottom.ysheets, ySheetBottom.ydoc, ySheetBottom.yUndoManager, 'Bottom');
-      
-      console.log('=== Sync Complete ===');
-    } finally {
-      // Reset flag after sync is complete
-      isApplyingSync = false;
-    }
-  });
+        console.log('Top update:', topUpdate);
+        console.log('Bottom update:', bottomUpdate);
+        
+        // Apply updates: top -> bottom, bottom -> top
+        Y.applyUpdate(ySheetBottom.ydoc, topUpdate);
+        Y.applyUpdate(ySheetTop.ydoc, bottomUpdate);
+        
+        console.log('Updates applied to Y documents');
+        
+        // Reload both spreadsheets from their Y state
+        reloadSpreadsheetFromY('top', ySheetTop.ysheets, ySheetTop.ydoc, ySheetTop.yUndoManager, 'Top');
+        reloadSpreadsheetFromY('bottom', ySheetBottom.ysheets, ySheetBottom.ydoc, ySheetBottom.yUndoManager, 'Bottom');
+        
+        console.log('=== Sync Complete ===');
+      } finally {
+        // Reset flag after sync is complete
+        isApplyingSync = false;
+      }
+    }, 2000);
+  }); 
+
+  // setTimeout(() => {
+  //   console.log('Opening editor for cell C3');
+  //   const sheet = containers.top.jexcel[0];
+  //   const cell = sheet.getCell('C3'); // Column C (index 2), Row 3 (index 2)
+  //   sheet.openEditor(cell);
+  //   console.log('Editor opened');
+  // }, 1000);
 }
