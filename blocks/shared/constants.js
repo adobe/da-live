@@ -26,6 +26,13 @@ const DA_COLLAB_ENVS = {
   prod: 'wss://collab.da.live',
 };
 
+// HTTP versions of collab endpoints for REST API calls (convert API)
+const DA_COLLAB_HTTP_ENVS = {
+  local: 'http://localhost:4711',
+  stage: 'https://stage-collab.da.live',
+  prod: 'https://collab.da.live',
+};
+
 function getDaEnv(location, key, envs) {
   const { href } = location;
   const query = new URL(href).searchParams.get(key);
@@ -50,3 +57,4 @@ export const getDaAdmin = (() => {
 
 export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();
+export const COLLAB_HTTP_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_HTTP_ENVS))();

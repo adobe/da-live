@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { DOMParser as proseDOMParser, TextSelection } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, DOMSerializer, TextSelection } from 'da-y-wrapper';
 import {
   LitElement,
   html,
@@ -13,10 +13,10 @@ import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
-import { aem2prose } from '../utils/helpers.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
 import { delay, getItems, getLibraryList, getPreviewUrl, getEdsUrlVars } from './helpers/helpers.js';
+import { convertHtmlToProsemirror } from '../../shared/convertHtml.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -278,15 +278,29 @@ class DaLibrary extends LitElement {
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
-    const text = await resp.text();
-    const doc = new DOMParser().parseFromString(text, 'text/html');
-    // Convert to a metadata block so it can be copied
-    doc.querySelector('.template-metadata')?.classList.replace('template-metadata', 'metadata');
-    const proseDom = aem2prose(doc);
-    const flattedDom = document.createElement('div');
-    flattedDom.append(...proseDom);
-    const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(flattedDom);
-    window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));
+    let html = await resp.text();
+
+    // Convert template-metadata to metadata block before conversion
+    html = html.replace(/class="template-metadata"/g, 'class="metadata"');
+
+    try {
+      // Use da-collab's convert API for consistent HTML-to-ProseMirror conversion
+      const { prosemirror } = await convertHtmlToProsemirror(html);
+      const { schema } = window.view.state;
+      const doc = schema.nodeFromJSON(prosemirror);
+
+      // Serialize back to DOM for ProseMirror to parse
+      const serializer = DOMSerializer.fromSchema(schema);
+      const fragment = serializer.serializeFragment(doc.content);
+      const flattedDom = document.createElement('div');
+      flattedDom.append(fragment);
+
+      const newNodes = proseDOMParser.fromSchema(schema).parse(flattedDom);
+      window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to insert template:', err);
+    }
   }
 
   getParts() {

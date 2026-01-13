@@ -6,7 +6,7 @@ import prose2aem from '../../../../blocks/shared/prose2aem.js';
 const htmlString = await readFile({ path: './mocks/prose2aem.html' });
 const doc = new DOMParser().parseFromString(htmlString, 'text/html');
 
-describe('aem2prose', () => {
+describe('prose2aem', () => {
   before('parse everything', () => {
     document.body.outerHTML = prose2aem(doc.body, true);
   });

@@ -1,8 +1,9 @@
-import { DOMParser as proseDOMParser } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, DOMSerializer } from 'da-y-wrapper';
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import { initIms, daFetch } from '../../shared/utils.js';
-import { getMetadata, parse, aem2prose, setDaMetadata } from '../utils/helpers.js';
+import { setDaMetadata } from '../utils/helpers.js';
+import { convertHtmlToProsemirror } from '../../shared/convertHtml.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
 
@@ -29,19 +30,32 @@ export default class DaEditor extends LitElement {
     this._versionDom = null;
     const resp = await daFetch(this.version);
     if (!resp.ok) return;
-    const text = await resp.text();
-    const doc = parse(text);
-    this._daMetadata = getMetadata(doc.querySelector('body > .da-metadata'));
-    const proseDom = aem2prose(doc);
-    const flattedDom = document.createElement('div');
-    flattedDom.append(...proseDom);
-    flattedDom.querySelectorAll('table').forEach((table) => {
-      const div = document.createElement('div');
-      div.className = 'tableWrapper';
-      table.insertAdjacentElement('afterend', div);
-      div.append(table);
-    });
-    this._versionDom = flattedDom;
+    const html = await resp.text();
+
+    try {
+      // Use da-collab's convert API for consistent HTML-to-ProseMirror conversion
+      const { prosemirror, daMetadata } = await convertHtmlToProsemirror(html);
+      this._daMetadata = daMetadata;
+
+      // Reconstruct DOM from ProseMirror JSON for preview
+      const { schema } = window.view.state;
+      const doc = schema.nodeFromJSON(prosemirror);
+      const serializer = DOMSerializer.fromSchema(schema);
+      const fragment = serializer.serializeFragment(doc.content);
+
+      const flattedDom = document.createElement('div');
+      flattedDom.append(fragment);
+      flattedDom.querySelectorAll('table').forEach((table) => {
+        const div = document.createElement('div');
+        div.className = 'tableWrapper';
+        table.insertAdjacentElement('afterend', div);
+        div.append(table);
+      });
+      this._versionDom = flattedDom;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to fetch version:', err);
+    }
   }
 
   handleCancel() {
