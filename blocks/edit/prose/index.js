@@ -197,6 +197,19 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   });
   win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
   win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
+  const DISCONNECT_TIMEOUT = 10 * 60 * 1000;
+  let disconnectTimeout = null;
+  win.addEventListener('focus', () => {
+    // cancel any pending disconnect
+    if (disconnectTimeout) clearTimeout(disconnectTimeout);
+    wsProvider.connect();
+  });
+  win.addEventListener('blur', () => {
+    if (disconnectTimeout) clearTimeout(disconnectTimeout);
+    disconnectTimeout = setTimeout(() => {
+      wsProvider.disconnect();
+    }, DISCONNECT_TIMEOUT);
+  });
 }
 
 export function createAwarenessStatusWidget(wsProvider, win, path) {
