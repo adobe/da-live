@@ -197,9 +197,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   });
   win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
   win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
-  // TODO: use 10 mins in production
-  // const DISCONNECT_TIMEOUT = 10 * 60 * 1000;
-  const DISCONNECT_TIMEOUT = 5000;
+  const DISCONNECT_TIMEOUT = 10 * 60 * 1000;
   let disconnectTimeout = null;
   win.addEventListener('focus', () => {
     // cancel any pending disconnect
