@@ -300,10 +300,12 @@ export default function initProse({ path, permissions }) {
   const server = COLLAB_ORIGIN;
   const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
 
-  const opts = {};
+  const opts = { protocols: ['yjs'] };
 
   if (window.adobeIMS?.isSignedInUser()) {
-    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
+    const { token } = window.adobeIMS.getAccessToken();
+    // add token to the sec-websocket-protocol header
+    opts.protocols.push(token);
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');
