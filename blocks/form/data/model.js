@@ -212,6 +212,14 @@ export default class FormModel {
             && itemType !== SCHEMA_TYPES.OBJECT
             && itemType !== SCHEMA_TYPES.ARRAY
             && !itemsSchema?.properties;
+
+          // Check if array items are primitive arrays (arrays of primitives)
+          // This is used to hide "+Add Item" in navigation for such arrays
+          node.itemsArePrimitiveArrays = itemType === SCHEMA_TYPES.ARRAY
+            && itemsSchema.items?.type
+            && itemsSchema.items.type !== SCHEMA_TYPES.OBJECT
+            && itemsSchema.items.type !== SCHEMA_TYPES.ARRAY;
+
           node.canAddMore = maxItems ? itemCount < maxItems : true;
           node.canRemoveItems = itemCount > minItems;
           node.isAtMaxItems = maxItems && itemCount >= maxItems;

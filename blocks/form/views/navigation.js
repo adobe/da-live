@@ -336,7 +336,10 @@ class FormNavigation extends LitElement {
       itemIndex,
       isActive: item.id === this.activePointer,
       canRemove: isArrayItem && parentNode?.canRemoveItems,
-      canAddToArray: isArray && node?.canAddMore,
+      canAddToArray: isArray
+        && node?.canAddMore
+        && !node?.isPrimitiveArray
+        && !node?.itemsArePrimitiveArrays,
     };
   }
 
