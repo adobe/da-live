@@ -85,12 +85,30 @@ class FormEditor extends LitElement {
 
     if (schemas) this._schemas = schemas;
 
-    if (!result.json) {
+    // Check if document has meaningful content
+    if (!result.json || this.isEmptyDocument(result.json)) {
       this.formModel = null;
       return;
     }
 
     this.formModel = new FormModel(result.json, schemas);
+  }
+
+  /**
+   * Checks if a document is empty (no metadata or data).
+   * @param {Object} json - The document JSON
+   * @returns {boolean} True if document is empty
+   */
+  isEmptyDocument(json) {
+    if (!json) return true;
+
+    const hasMetadata = json.metadata
+      && Object.keys(json.metadata).length > 0
+      && json.metadata.schemaName;
+
+    const hasData = json.data && Object.keys(json.data).length > 0;
+
+    return !hasMetadata && !hasData;
   }
 
   handleModelIntent(e) {
