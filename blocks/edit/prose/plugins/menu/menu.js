@@ -17,8 +17,7 @@ import {
   wrapItem,
   setBlockType,
   toggleMark,
-  undo,
-  redo,
+  yUndoPluginKey,
   wrapInList,
   liftListItem,
   sinkListItem,
@@ -27,7 +26,7 @@ import {
 
 import openPrompt from '../../../da-palette/da-palette.js';
 import openLibrary from '../../../da-library/da-library.js';
-
+import { handleUndo, handleRedo } from '../keyHandlers.js';
 import insertTable from '../../table.js';
 import { linkItem, removeLinkItem } from './linkItem.js';
 import { markActive } from './menuUtils.js';
@@ -217,21 +216,27 @@ function markItem(markType, options) {
   return cmdItem(toggleMark(markType), passedOptions);
 }
 
-function item(label, cmd, css) {
-  return new MenuItem({ label, select: cmd, run: cmd, class: css });
+function tableItem(label, cmd, css) {
+  return new MenuItem({
+    label,
+    title: label,
+    select: cmd,
+    run: cmd,
+    class: css,
+  });
 }
 
 function getTableMenu() {
   return [
-    item('Insert column before', addColumnBefore, 'addColBefore'),
-    item('Insert column after', addColumnAfter, 'addColumnAfter'),
-    item('Delete column', deleteColumn, 'deleteColumn'),
-    item('Insert row before', addRowBefore, 'addRowBefore'),
-    item('Insert row after', addRowAfter, 'addRowAfter'),
-    item('Delete row', deleteRow, 'deleteRow'),
-    item('Merge cells', mergeCells, 'mergeCells'),
-    item('Split cell', splitCell, 'splitCell'),
-    item('Delete table', deleteTable, 'deleteTable'),
+    tableItem('Insert column before', addColumnBefore, 'addColBefore'),
+    tableItem('Insert column after', addColumnAfter, 'addColumnAfter'),
+    tableItem('Delete column', deleteColumn, 'deleteColumn'),
+    tableItem('Insert row before', addRowBefore, 'addRowBefore'),
+    tableItem('Insert row after', addRowAfter, 'addRowAfter'),
+    tableItem('Delete row', deleteRow, 'deleteRow'),
+    tableItem('Merge cells', mergeCells, 'mergeCells'),
+    tableItem('Split cell', splitCell, 'splitCell'),
+    tableItem('Delete table', deleteTable, 'deleteTable'),
   ];
 }
 
@@ -378,7 +383,7 @@ function getMenu(view) {
       class: 'open-library',
     }),
     new Dropdown(editTable, {
-      title: 'Edit text',
+      title: 'Edit block',
       label: 'Edit block',
       class: 'edit-table',
     }),
@@ -401,15 +406,15 @@ function getMenu(view) {
     new MenuItem({
       title: 'Undo last change',
       label: 'Undo',
-      run: undo,
-      enable: (state) => undo(state),
+      run: handleUndo,
+      enable: (state) => yUndoPluginKey.getState(state)?.hasUndoOps,
       class: 'edit-undo',
     }),
     new MenuItem({
       title: 'Redo last undone change',
       label: 'Redo',
-      run: redo,
-      enable: (state) => redo(state),
+      run: handleRedo,
+      enable: (state) => yUndoPluginKey.getState(state)?.hasRedoOps,
       class: 'edit-redo',
     }),
   ];

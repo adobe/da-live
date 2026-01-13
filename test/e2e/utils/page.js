@@ -13,7 +13,7 @@ import ENV from './env.js';
 
 export function getQuery() {
   const { GITHUB_HEAD_REF: branch } = process.env;
-  if (branch === 'local') {
+  if (branch === 'local' || branch === 'local-https') {
     return '?da-admin=local&da-collab=local';
   }
   return '';

@@ -11,9 +11,8 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
-    startPreviewing: { attribute: false },
-    stopPreviewing: { attribute: false },
     _editorLoaded: { state: true },
+    _showPane: { state: true },
     _versionUrl: { state: true },
     _ueUrl: { state: true },
   };
@@ -28,27 +27,6 @@ export default class DaContent extends LitElement {
       this.wsProvider.disconnect({ data: 'Client navigation' });
       this.wsProvider = undefined;
     }
-  }
-
-  showPreview() {
-    this.daPreview.showPreview(() => {
-      if (this.startPreviewing) {
-        this.startPreviewing();
-      }
-    });
-  }
-
-  hidePreview() {
-    this.daPreview.hidePreview();
-    if (this.stopPreviewing) {
-      this.stopPreviewing();
-    }
-  }
-
-  showVersions() {
-    this.classList.add('show-versions');
-    this.daVersions.open = true;
-    this.daVersions.classList.add('show-versions');
   }
 
   async loadViews() {
@@ -74,26 +52,16 @@ export default class DaContent extends LitElement {
     window.location = this._ueUrl;
   }
 
-  handleReset() {
+  togglePane({ detail }) {
+    this._showPane = detail;
+  }
+
+  handleVersionReset() {
     this._versionUrl = null;
   }
 
-  handlePreview(e) {
-    this._versionUrl = e.detail.url;
-  }
-
-  handleCloseVersions() {
-    this.daVersions.open = false;
-    this.classList.remove('show-versions');
-    this.daVersions.classList.remove('show-versions');
-  }
-
-  get daVersions() {
-    return this.shadowRoot.querySelector('da-versions');
-  }
-
-  get daPreview() {
-    return this.shadowRoot.querySelector('da-preview');
+  handleVersionPreview({ detail }) {
+    this._versionUrl = detail.url;
   }
 
   render() {
@@ -106,22 +74,35 @@ export default class DaContent extends LitElement {
           .proseEl=${this.proseEl}
           .wsProvider=${this.wsProvider}
           @proseloaded=${this.handleEditorLoaded}
-          @versionreset=${this.handleReset}>
+          @versionreset=${this.handleVersionReset}>
         </da-editor>
         ${this._editorLoaded ? html`
-          <div class="da-editor-tabs">
+          <div class="da-editor-tabs ${this._showPane ? 'show-pane' : ''}">
             <div class="da-editor-tabs-full">
-              <button class="da-editor-tab show-preview" title="Preview" @click=${this.showPreview}>Preview</button>
+              <button
+                class="da-editor-tab show-preview"
+                title="Preview" @click=${() => this.togglePane({ detail: 'preview' })}>Preview</button>
             </div>
             <div class="da-editor-tabs-quiet">
-              <button class="da-editor-tab quiet show-versions" title="Versions" @click=${this.showVersions}>Versions</button>
+              <button class="da-editor-tab quiet show-versions" title="Versions" @click=${() => this.togglePane({ detail: 'versions' })}>Versions</button>
               ${this._ueUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
             </div>
           </div>
         ` : nothing}
       </div>
-      ${this._editorLoaded ? html`<da-preview path=${this.details.previewUrl}></da-preview>` : nothing}
-      ${this._editorLoaded ? html`<da-versions path=${this.details.fullpath} @preview=${this.handlePreview} @close=${this.handleCloseVersions}></da-versions>` : nothing}
+      ${this._editorLoaded ? html`
+        <da-preview
+          path=${this.details.previewUrl}
+          .show=${this._showPane === 'preview'}
+          class="${this._showPane === 'preview' ? 'is-visible' : ''}"
+          @close=${this.togglePane}></da-preview>
+        <da-versions
+          path=${this.details.fullpath}
+          .open=${this._showPane === 'versions'}
+          class="${this._showPane === 'versions' ? 'is-visible' : ''}"
+          @preview=${this.handleVersionPreview}
+          @close=${this.togglePane}></da-versions>
+        ` : nothing}
     `;
   }
 }

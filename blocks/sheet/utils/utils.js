@@ -1,14 +1,6 @@
-import { convertSheets, saveToDa } from '../../edit/utils/helpers.js';
+import { convertSheets, debounce, saveToDa } from '../../edit/utils/helpers.js';
 
 const DEBOUNCE_TIME = 1000;
-
-function debounce(func, wait) {
-  let timeout;
-  return (...args) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
 
 export const saveSheets = async (sheets) => {
   document.querySelector('da-sheet-panes').data = convertSheets(sheets);
@@ -24,4 +16,10 @@ export const saveSheets = async (sheets) => {
   return true;
 };
 
-export const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
+const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
+
+export function handleSave(jexcel, view) {
+  if (view !== 'config') {
+    debouncedSaveSheets(jexcel);
+  }
+}

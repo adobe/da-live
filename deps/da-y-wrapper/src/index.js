@@ -1,10 +1,9 @@
 // ProseMirror
 import { EditorView } from 'prosemirror-view';
-import { EditorState, Plugin, PluginKey, TextSelection } from 'prosemirror-state';
+import { EditorState, Plugin, PluginKey, TextSelection, NodeSelection } from 'prosemirror-state';
 import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { baseKeymap, setBlockType, toggleMark, wrapIn } from 'prosemirror-commands';
-import { history, undo, redo } from 'prosemirror-history';
 import { addListNodes, wrapInList, splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from 'prosemirror-example-setup';
@@ -36,6 +35,7 @@ import {
   ySyncPlugin,
   yCursorPlugin,
   yUndoPlugin,
+  yUndoPluginKey,
   undo as yUndo,
   redo as yRedo,
   prosemirrorToYDoc,
@@ -60,12 +60,12 @@ export {
   Plugin,
   PluginKey,
   TextSelection,
+  NodeSelection,
   baseSchema,
   baseKeymap,
   addListNodes,
   keymap,
   buildKeymap,
-  history,
   tableEditing,
   columnResizing,
   goToNextCell,
@@ -95,8 +95,6 @@ export {
   splitListItem,
   liftListItem,
   sinkListItem,
-  undo,
-  redo,
   InputRule,
   inputRules,
   Y,
@@ -104,6 +102,7 @@ export {
   ySyncPlugin,
   yCursorPlugin,
   yUndoPlugin,
+  yUndoPluginKey,
   yUndo,
   yRedo,
   prosemirrorToYDoc,

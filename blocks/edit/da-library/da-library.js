@@ -9,14 +9,14 @@ import {
   ref,
   nothing,
 } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import { aem2prose } from '../utils/helpers.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { delay, getItems, getLibraryList } from './helpers/helpers.js';
+import { delay, getItems, getLibraryList, getPreviewUrl, getEdsUrlVars } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -25,6 +25,7 @@ const ICONS = [
   '/blocks/edit/img/Smock_ExperienceAdd_18_N.svg',
   '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
   '/blocks/edit/img/Smock_AddCircle_18_N.svg',
+  '/blocks/edit/img/Smock_Preview_18_N.svg',
   '/blocks/edit/img/Smock_InfoOutline_18_N.svg',
 ];
 
@@ -58,6 +59,9 @@ class DaLibrary extends LitElement {
     _libraryList: { state: true },
     _libraryDetails: { state: true },
     _searchStr: { state: true },
+    _blockPreviewPath: { state: true },
+    _previewItemName: { Type: String },
+    _previewStatus: { Type: Object },
   };
 
   constructor() {
@@ -83,6 +87,10 @@ class DaLibrary extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('keydown', this.handleKeydown);
+  }
+
+  firstUpdated() {
+    import('../../shared/da-dialog/da-dialog.js');
   }
 
   handleKeydown(e) {
@@ -161,6 +169,7 @@ class DaLibrary extends LitElement {
         const { pathname } = new URL(url);
         window.open(url, `${pathname.replaceAll('/', '-')}`);
       } catch {
+        // eslint-disable-next-line no-console
         console.log('Could not make plugin URL');
       }
       return;
@@ -282,8 +291,23 @@ class DaLibrary extends LitElement {
 
   getParts() {
     const view = 'edit';
-    const [org, repo, ...path] = window.location.hash.replace('#/', '').split('/');
+    const [org, repo, ...path] = sanitizePathParts(window.location.hash.substring(1));
     return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
+  }
+
+  handlePreviewOpen(path, previewName) {
+    const previewPath = getPreviewUrl(path);
+    this._blockPreviewPath = previewPath || path;
+    this._previewItemName = previewName || '';
+  }
+
+  handlePreviewClose() {
+    this._blockPreviewPath = '';
+    this._previewItemName = '';
+  }
+
+  handlePreviewLoad() {
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin')?.showModal();
   }
 
   async handlePluginLoad({ target }) {
@@ -327,6 +351,33 @@ class DaLibrary extends LitElement {
     }, 750);
   }
 
+  renderPreview() {
+    const [status, error] = this._previewStatus[this._previewItemName];
+
+    const action = {
+      style: 'primary outline',
+      label: 'Close',
+      click: () => this.handlePreviewClose(),
+    };
+
+    return html`
+      <da-dialog
+        class="da-dialog-block-preview"
+        size="auto"
+        emphasis="quiet"
+        title="${this._previewItemName} Preview"
+        .action=${action}
+        @close=${this.handlePreviewClose}>
+        ${status === 200 ? html`<iframe
+          class="da-dialog-block-preview-frame"
+          data-src="${this._blockPreviewPath}"
+          src="${this._blockPreviewPath}"
+          @load=${this.handlePreviewLoad}
+          allow="clipboard-write *"></iframe>` : html`<div style="margin: 0 24px">${error || 'This block / template has not been previewed.'}</div>`}
+      </da-dialog>
+    `;
+  }
+
   renderBlockItem(item, icon = false) {
     const hasDesc = item.description?.trim();
     return html`
@@ -337,11 +388,11 @@ class DaLibrary extends LitElement {
               <span class="da-library-group-name">${item.name}</span>
               <span class="da-library-group-subtitle">${item.variants}</span>
             </div>
-            <div class="da-library-icons">
+          </div>
+          <div class="da-library-icons">
               ${hasDesc ? html`<svg class="icon" @click=${this.handleToolTip}><use href="#spectrum-InfoOutline"/></svg>` : nothing}
               <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
             </div>
-          </div>
           ${hasDesc ? html`<div class="da-library-item-button-tooltip">${item.description}</div>` : nothing}
         </button>
       </li>`;
@@ -358,10 +409,20 @@ class DaLibrary extends LitElement {
   renderBlockGroup(group) {
     return html`
       <li class="da-library-type-group">
-        <button class="da-library-type-group-title" @click=${this.handleGroupOpen}>
-          <span class="name">${group.name}</span>
-          <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
-        </button>
+        <div class="da-library-type-group-title">
+          <button class="da-library-type-group-expand" @click=${this.handleGroupOpen}>
+             <span class="name">${group.name}</span>
+          </button>
+          <div class="da-library-type-group-secondary-actions">
+            <button class= "preview" @click=${() => this.handlePreviewOpen(group.path, group.name)}>
+              <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+            </button>
+              <button @click=${this.handleGroupOpen}>
+                <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
+              </button>
+            </button>
+          </div>
+        </div>
         <ul class="da-library-type-group-details">
           ${until(this.renderBlockDetail(group.path), html`<span>Loading...</span>`)}
         </ul>
@@ -403,15 +464,17 @@ class DaLibrary extends LitElement {
   renderTemplateItem(item, icon = false) {
     return html`
       <li class="da-library-type-item">
-        <button class="da-library-type-item-btn ${icon ? 'templates' : ''}"
-          @click=${() => this.handleTemplateClick(item)}>
+        <div class="da-library-type-item-btn template-item ${icon ? 'templates' : ''}">
           <div class="da-library-type-item-detail">
             <span>${item.key}</span>
-            <svg class="icon">
+            <button class= "preview" @click=${() => this.handlePreviewOpen(item.value, item.key)}>
+              <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+            </button>
+            <svg class="icon" @click=${() => this.handleTemplateClick(item)}>
               <use href="#spectrum-AddCircle"/>
             </svg>
           </div>
-        </button>
+        </div>
       </li>`;
   }
 
@@ -462,6 +525,31 @@ class DaLibrary extends LitElement {
       </div>`;
   }
 
+  async checkPreviewStatus(items, getUrl, getKey) {
+    await Promise.all(items.map(async (item) => {
+      let path;
+      try {
+        const itemUrl = new URL(getUrl(item));
+        path = itemUrl.pathname;
+        if (itemUrl.origin.includes('--')) {
+          const [org, site] = getEdsUrlVars(getUrl(item));
+          path = `/${org}/${site}${itemUrl.pathname}`;
+        }
+      } catch {
+        item.error = 'Please use a fully qualified url for your library';
+      }
+      await aemAdmin(path, 'status', 'GET')
+        .then((response) => { item.status = response.preview.status; })
+        .catch(() => { item.status = 'error'; });
+    }));
+
+    const status = items.reduce((acc, item) => {
+      acc[getKey(item)] = [item.status, item.error];
+      return acc;
+    }, {});
+    this._previewStatus = { ...this._previewStatus, ...status };
+  }
+
   async renderLibrary({ name, sources, url, format, class: className }) {
     const isPlugin = className.split(' ').some((val) => val === 'is-plugin');
 
@@ -471,6 +559,9 @@ class DaLibrary extends LitElement {
       if (!data.blocks) {
         data.blocks = await getBlocks(sources);
       }
+      if (!this._previewStatus) {
+        this.checkPreviewStatus(data.blocks, (block) => block.path, (block) => block.name);
+      }
       return this.renderBlockGroups(data.blocks);
     }
 
@@ -479,6 +570,10 @@ class DaLibrary extends LitElement {
         data.templateItems = await getItems(sources, name, format);
       }
       if (data.templateItems.length) {
+        const firstItemName = data.templateItems[0].key;
+        if (!this._previewStatus || !this._previewStatus[firstItemName]) {
+          this.checkPreviewStatus(data.templateItems, (t) => t.value, (t) => t.key);
+        }
         return this.renderTemplates(data.templateItems, name);
       }
       return html`No templates found.`;
@@ -556,6 +651,9 @@ class DaLibrary extends LitElement {
           </div>
         `,
         )}
+      </div>
+      <div class="da-library-preview">
+        ${this._blockPreviewPath ? this.renderPreview() : nothing}
       </div>
     `;
   }

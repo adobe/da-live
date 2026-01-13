@@ -1,11 +1,48 @@
-iframe {
-  display: block;
-  width: 375px;
-  min-height: 844px;
-  margin: 0 auto;
-  border: none;
+.iframe-container {
+  position: sticky;
+  top: 36px; /* a reasonable offset that works for most screens */
+}
+
+.iframe-wrapper {
+  position: relative;
+  border-radius: 10px;
   box-shadow: rgb(181 181 181) 0 0 20px 0;
   overflow: hidden;
+
+  .iframe-overlay {
+    display: flex;
+    justify-content: center;
+    padding-top: 48px;
+    position: absolute;
+    inset: 0;
+    background-color: #efefef;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
+
+    a {
+      color: #676767;
+      font-weight: 700;
+      pointer-events: all;
+    }
+  }
+
+  iframe {
+    border: none;
+  }
+
+  &.is-updating {
+    .iframe-overlay {
+      z-index: 100;
+      opacity: 1;
+    }
+
+    iframe {
+      position: fixed;
+      opacity: 0;
+    }
+  }
 }
 
 .da-preview-menubar {

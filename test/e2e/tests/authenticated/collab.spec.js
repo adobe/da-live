@@ -23,11 +23,11 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await expect(page.getByLabel('Open profile menu')).toBeVisible();
   // Wait a little bit so that the collab awareness has caught up and knows that we are logged in as
   // 'DA Testuser'
-  await page.waitForTimeout(1000);
-  await page.reload();
+  await page.waitForTimeout(2000);
 
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  await page.waitForTimeout(1000);
   await page.locator('div.ProseMirror').fill('Entered by user 1');
 
   // Right now there should not be any collab indicators yet
