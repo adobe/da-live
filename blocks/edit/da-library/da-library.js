@@ -16,7 +16,7 @@ import inlinesvg from '../../shared/inlinesvg.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
 import { delay, getItems, getLibraryList, getPreviewUrl, getEdsUrlVars } from './helpers/helpers.js';
-import { convertHtmlToProsemirror } from '../../shared/convertHtml.js';
+import convertHtmlToProsemirror from '../../shared/convertHtml.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -278,14 +278,14 @@ class DaLibrary extends LitElement {
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
-    let html = await resp.text();
+    let htmlContent = await resp.text();
 
     // Convert template-metadata to metadata block before conversion
-    html = html.replace(/class="template-metadata"/g, 'class="metadata"');
+    htmlContent = htmlContent.replace(/class="template-metadata"/g, 'class="metadata"');
 
     try {
       // Use da-collab's convert API for consistent HTML-to-ProseMirror conversion
-      const { prosemirror } = await convertHtmlToProsemirror(html);
+      const { prosemirror } = await convertHtmlToProsemirror(htmlContent);
       const { schema } = window.view.state;
       const doc = schema.nodeFromJSON(prosemirror);
 

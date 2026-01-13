@@ -9,7 +9,7 @@ import { COLLAB_HTTP_ORIGIN } from './constants.js';
  * @returns {Promise<{prosemirror: Object, daMetadata: Object}>} - The converted document
  * @throws {Error} - If the conversion fails
  */
-export async function convertHtmlToProsemirror(html) {
+export default async function convertHtmlToProsemirror(html) {
   const response = await fetch(`${COLLAB_HTTP_ORIGIN}/api/v1/convert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

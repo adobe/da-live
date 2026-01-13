@@ -3,7 +3,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import { initIms, daFetch } from '../../shared/utils.js';
 import { setDaMetadata } from '../utils/helpers.js';
-import { convertHtmlToProsemirror } from '../../shared/convertHtml.js';
+import convertHtmlToProsemirror from '../../shared/convertHtml.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
 
@@ -30,11 +30,11 @@ export default class DaEditor extends LitElement {
     this._versionDom = null;
     const resp = await daFetch(this.version);
     if (!resp.ok) return;
-    const html = await resp.text();
+    const htmlContent = await resp.text();
 
     try {
       // Use da-collab's convert API for consistent HTML-to-ProseMirror conversion
-      const { prosemirror, daMetadata } = await convertHtmlToProsemirror(html);
+      const { prosemirror, daMetadata } = await convertHtmlToProsemirror(htmlContent);
       this._daMetadata = daMetadata;
 
       // Reconstruct DOM from ProseMirror JSON for preview
