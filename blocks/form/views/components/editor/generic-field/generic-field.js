@@ -51,6 +51,8 @@ class GenericField extends LitElement {
     this.required = false;
     this.disabled = false;
     this.placeholder = '';
+    this._inputDebounceTimer = null;
+    this._inputDebounceDelay = 300;
   }
 
   connectedCallback() {
@@ -79,6 +81,11 @@ class GenericField extends LitElement {
   }
 
   disconnectedCallback() {
+    // Clear debounce timer
+    if (this._inputDebounceTimer) {
+      clearTimeout(this._inputDebounceTimer);
+      this._inputDebounceTimer = null;
+    }
     // Unregister element
     if (this.onRef) {
       this.onRef(this.id, null);
@@ -132,6 +139,23 @@ class GenericField extends LitElement {
     }));
   }
 
+  /**
+   * Debounced input handler for text-based inputs.
+   * Delays emitting value-change events to batch rapid keystrokes.
+   * @param {*} value - New value
+   * @param {string} source - Change source
+   */
+  handleDebouncedInput(value, source) {
+    if (this._inputDebounceTimer) {
+      clearTimeout(this._inputDebounceTimer);
+    }
+
+    this._inputDebounceTimer = setTimeout(() => {
+      this.handleValueChange(value, source);
+      this._inputDebounceTimer = null;
+    }, this._inputDebounceDelay);
+  }
+
   get _ariaInvalid() {
     return this.error ? 'true' : 'false';
   }
@@ -170,7 +194,7 @@ class GenericField extends LitElement {
         aria-required=${this.required ? 'true' : 'false'}
         ?required=${this.required}
         ?disabled=${this.disabled}
-        @input=${(e) => this.handleValueChange(e.target.value, 'textarea-input')}
+        @input=${(e) => this.handleDebouncedInput(e.target.value, 'textarea-input')}
       ></sl-textarea-extended>
     `;
   }
@@ -224,7 +248,7 @@ class GenericField extends LitElement {
         aria-required=${this.required ? 'true' : 'false'}
         ?required=${this.required}
         ?disabled=${this.disabled}
-        @input=${(e) => this.handleValueChange(e.target.value, 'input-input')}
+        @input=${(e) => this.handleDebouncedInput(e.target.value, 'input-input')}
       ></sl-input-extended>
     `;
   }
@@ -244,7 +268,7 @@ class GenericField extends LitElement {
         ?disabled=${this.disabled}
         @input=${(e) => {
         const numValue = e.target.value === '' ? null : Number(e.target.value);
-        this.handleValueChange(numValue, 'number-input');
+        this.handleDebouncedInput(numValue, 'number-input');
       }}
       ></sl-number-extended>
     `;

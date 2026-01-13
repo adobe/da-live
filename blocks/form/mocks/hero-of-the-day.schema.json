@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hero of the day",
+  "$defs": {
+    "hero-of-the-day": {
+      "type": "object",
+      "title": "Hero of the day",
+      "description": "Model path: /conf/sandbox/settings/dam/cfm/models/hero-of-the-day",
+      "additionalProperties": false,
+      "properties": {
+        "userEmail": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "user email "
+        },
+        "slackId": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "slack id"
+        },
+        "slackTag": {
+          "type": "string",
+          "maxLength": 255,
+          "title": "slack tag"
+        },
+        "timeZone": {
+          "type": "string",
+          "enum": [
+            "PST",
+            "CET",
+            "IST"
+          ],
+          "title": "time zone "
+        },
+        "shiftStart": {
+          "type": "string",
+          "title": "Shift start"
+        }
+      },
+      "required": [
+        "timeZone"
+      ]
+    }
+  },
+  "$ref": "#/$defs/hero-of-the-day",
+  "type": "object",
+  "required": [
+    "timeZone"
+  ]
+}

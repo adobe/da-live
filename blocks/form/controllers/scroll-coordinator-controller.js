@@ -33,13 +33,13 @@ export default class ScrollCoordinatorController {
     // Always dispatch coordinated event to update active states in both views
     // Preserve original source so ActiveStateController can detect manual selections
     window.dispatchEvent(new CustomEvent(EVENT_FOCUS_ELEMENT, {
-      detail: { 
-        pointer, 
-        source: source || 'unknown', 
+      detail: {
+        pointer,
+        source: source || 'unknown',
         originalSource: source,
-        noScroll: true, 
-        coordinated: true, 
-        targetFieldPointer 
+        noScroll: true,
+        coordinated: true,
+        targetFieldPointer,
       },
       bubbles: true,
       composed: true,

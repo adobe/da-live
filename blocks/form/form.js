@@ -6,7 +6,7 @@ import FormModel from './data/model.js';
 
 // Internal utils
 import { schemas as schemasPromise, getSchema } from './utils/schema.js';
-import { loadHtml, convertHtmlToJson } from './utils/utils.js';
+import { loadJson, saveJson } from './utils/persist.js';
 import generateMinimalDataForSchema from './utils/data-generator.js';
 import applyOp from './utils/rfc6902-patch.js';
 
@@ -74,22 +74,23 @@ class FormEditor extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this.fetchDoc(this.details);
+    this._path = this.details.fullpath;
+    this.fetchDoc(this.details.sourceUrl);
   }
 
   async fetchDoc() {
-    const resultPromise = loadHtml(this.details);
+    const resultPromise = loadJson(this.details.sourceUrl);
 
     const [schemas, result] = await Promise.all([schemasPromise, resultPromise]);
 
     if (schemas) this._schemas = schemas;
 
-    if (!result.html) {
+    if (!result.json) {
       this.formModel = null;
       return;
     }
-    const json = await convertHtmlToJson(result.html);
-    this.formModel = new FormModel(json, schemas);
+
+    this.formModel = new FormModel(result.json, schemas);
   }
 
   handleModelIntent(e) {
@@ -104,6 +105,20 @@ class FormEditor extends LitElement {
         pointer: operation.focusAfter,
         source: operation.focusSource || 'unknown',
       });
+    }
+
+    // Save the updated data
+    this.saveFormData(nextJson);
+  }
+
+  /**
+   * Saves form data to the server.
+   * Debouncing is already handled at the input component level (generic-field).
+   * @param {Object} json - The form data to save
+   */
+  saveFormData(json) {
+    if (this._path) {
+      saveJson(json, this._path);
     }
   }
 
