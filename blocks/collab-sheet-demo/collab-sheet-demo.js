@@ -377,39 +377,35 @@ export default async function init(el) {
   });
 
   // Sync button handler
-  syncButton.addEventListener('click', () => {
-    console.log('=== Sync will start in 2 seconds ===');
-    
-    setTimeout(() => {
-      // Set flag to prevent onafterchanges from triggering
-      isApplyingSync = true;
+  syncButton.addEventListener('click', () => {    
+    // Set flag to prevent onafterchanges from triggering
+    isApplyingSync = true;
       
-      try {
-        console.log('=== Starting Sync ===');
-        
-        // Encode each document as an update
-        const topUpdate = Y.encodeStateAsUpdate(ySheetTop.ydoc);
-        const bottomUpdate = Y.encodeStateAsUpdate(ySheetBottom.ydoc);
+    try {
+      console.log('=== Starting Sync ===');
+      
+      // Encode each document as an update
+      const topUpdate = Y.encodeStateAsUpdate(ySheetTop.ydoc);
+      const bottomUpdate = Y.encodeStateAsUpdate(ySheetBottom.ydoc);
 
-        console.log('Top update:', topUpdate);
-        console.log('Bottom update:', bottomUpdate);
-        
-        // Apply updates: top -> bottom, bottom -> top
-        Y.applyUpdate(ySheetBottom.ydoc, topUpdate);
-        Y.applyUpdate(ySheetTop.ydoc, bottomUpdate);
-        
-        console.log('Updates applied to Y documents');
-        
-        // Reload both spreadsheets from their Y state
-        reloadSpreadsheetFromY('top', ySheetTop.ysheets, ySheetTop.ydoc, ySheetTop.yUndoManager, 'Top');
-        reloadSpreadsheetFromY('bottom', ySheetBottom.ysheets, ySheetBottom.ydoc, ySheetBottom.yUndoManager, 'Bottom');
-        
-        console.log('=== Sync Complete ===');
-      } finally {
-        // Reset flag after sync is complete
-        isApplyingSync = false;
-      }
-    }, 2000);
+      console.log('Top update:', topUpdate);
+      console.log('Bottom update:', bottomUpdate);
+      
+      // Apply updates: top -> bottom, bottom -> top
+      Y.applyUpdate(ySheetBottom.ydoc, topUpdate);
+      Y.applyUpdate(ySheetTop.ydoc, bottomUpdate);
+      
+      console.log('Updates applied to Y documents');
+      
+      // Reload both spreadsheets from their Y state
+      reloadSpreadsheetFromY('top', ySheetTop.ysheets, ySheetTop.ydoc, ySheetTop.yUndoManager, 'Top');
+      reloadSpreadsheetFromY('bottom', ySheetBottom.ysheets, ySheetBottom.ydoc, ySheetBottom.yUndoManager, 'Bottom');
+      
+      console.log('=== Sync Complete ===');
+    } finally {
+      // Reset flag after sync is complete
+      isApplyingSync = false;
+    }
   }); 
 
   // setTimeout(() => {
