@@ -26,7 +26,7 @@ class FormEditor extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this.debouncedHandleChange = debounce(this.handleChange.bind(this), 2000);
+    this.debouncedHandleChange = debounce(this.handleChange.bind(this), 1500);
   }
 
   update(props) {
