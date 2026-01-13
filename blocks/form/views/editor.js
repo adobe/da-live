@@ -5,6 +5,18 @@ const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
 const style = await getStyle(import.meta.url);
 
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func.apply(this, args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 class FormEditor extends LitElement {
   static properties = {
     formModel: { state: true },
@@ -14,6 +26,7 @@ class FormEditor extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this.debouncedHandleChange = debounce(this.handleChange.bind(this), 2000);
   }
 
   update(props) {
@@ -27,6 +40,17 @@ class FormEditor extends LitElement {
     this._data = this.formModel.annotated;
   }
 
+  handleChange({ target }) {
+    const { name, value } = target;
+    const opts = { detail: { name, value }, bubbles: true, composed: true };
+    const event = new CustomEvent('update', opts);
+    this.dispatchEvent(event);
+  }
+
+  handleInput({ target }) {
+    const hello = this.debouncedHandleChange({ target });
+  }
+
   renderCheckbox(item) {
     return html`
       <div>
@@ -36,14 +60,27 @@ class FormEditor extends LitElement {
     `;
   }
 
+  renderSelect(item) {
+    return html`
+      <div>
+        <p class="primitive-item-title">${item.schema.title}</p>
+        <sl-select name="${item.key}" value="${item.data}" @change=${this.handleChange}>
+          ${item.schema.properties.enum.map((val) => html`<option>${val}</option>`)}
+        </sl-select>
+      </div>
+    `;
+  }
+
   renderPrimitive(item) {
+    if (item.schema.properties.enum) return this.renderSelect(item);
+
     const primitives = ['string', 'boolean', 'number'];
     const prim = primitives.find((type) => type === item.schema.properties.type);
     if (prim) {
       if (prim === 'boolean') return this.renderCheckbox(item);
       return html`
         <p class="primitive-item-title">${item.schema.title}</p>
-        <sl-input type="text" value="${item.data}"></sl-input>
+        <sl-input type="text" name="${item.key}" value="${item.data}" @input=${this.handleInput}></sl-input>
       `;
     }
 

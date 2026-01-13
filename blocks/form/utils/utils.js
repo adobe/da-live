@@ -1,10 +1,4 @@
 import { daFetch } from '../../shared/utils.js';
-import HTMLToJSON from './converters.js';
-
-export async function convertHtmlToJson(html) {
-  const { json } = new HTMLToJSON(html);
-  return json;
-}
 
 export async function loadHtml(details) {
   const resp = await daFetch(details.sourceUrl);

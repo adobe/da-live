@@ -14,6 +14,7 @@ import '../edit/da-title/da-title.js';
 import './views/editor.js';
 import './views/sidebar.js';
 import './views/preview.js';
+import generateEmptyObject from './utils/generator.js';
 
 // External Web Components
 await import(`${getNx()}/public/sl/components.js`);
@@ -48,20 +49,28 @@ class FormEditor extends LitElement {
       this.formModel = null;
       return;
     }
-    this.formModel = new FormModel(result.html, schemas);
+
+    const path = this.details.fullpath;
+    this.formModel = new FormModel({ path, html: result.html, schemas });
   }
 
-  async generateJsonFromSchema(schema) {
-    const { JSONSchemaFaker } = await import('../../deps/da-form/dist/json-faker.js');
-    console.log(JSONSchemaFaker);
-  }
-
-  handleSelectSchema(e) {
+  async handleSelectSchema(e) {
     const schemaId = e.target.value;
     if (!schemaId) return;
-    const json = this.generateJsonFromSchema(this._schemas[schemaId]);
-    // const html = generateFlatHelixHtmlFromStructuredJson(json);
-    // this.formModel = new FormModel(html, this._schemas);
+
+    const title = this.details.name;
+
+    const data = generateEmptyObject(this._schemas[schemaId]);
+    const metadata = { title, schemaName: schemaId };
+    const emptyForm = { data, metadata };
+
+    const path = this.details.fullpath;
+    this.formModel = new FormModel({ path, json: emptyForm, schemas: this._schemas });
+  }
+
+  async handleUpdate({ detail }) {
+    this.formModel.updateProperty(detail);
+    await this.formModel.saveHtml();
   }
 
   renderSchemaSelector() {
@@ -87,7 +96,7 @@ class FormEditor extends LitElement {
 
     return html`
       <div class="da-form-editor">
-        <da-form-editor .formModel=${this.formModel}></da-form-editor>
+        <da-form-editor @update=${this.handleUpdate} .formModel=${this.formModel}></da-form-editor>
         <da-form-preview .formModel=${this.formModel}></da-form-preview>
       </div>`;
   }
