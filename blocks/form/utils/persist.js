@@ -4,6 +4,54 @@ import HTMLConverter from './html2json.js';
 import JSONConverter from './json2html.js';
 
 /**
+ * Convert JSON to HTML with code block format.
+ * @param {object} json - The form data in JSON format
+ * @returns {string} HTML string with JSON in a code block
+ */
+function json2CodeBlock(json) {
+  const doc = document.implementation.createHTMLDocument();
+
+  const header = document.createElement('header');
+  const main = document.createElement('main');
+  const section = document.createElement('div');
+  const footer = document.createElement('footer');
+
+  // Create da-form block with metadata
+  const daForm = document.createElement('div');
+  daForm.className = 'da-form';
+
+  // Add x-schema-name
+  const schemaRow = document.createElement('div');
+  const schemaKey = document.createElement('div');
+  schemaKey.textContent = 'x-schema-name';
+  const schemaValue = document.createElement('div');
+  schemaValue.textContent = json.metadata?.schemaName || '';
+  schemaRow.append(schemaKey, schemaValue);
+
+  // Add x-storage-format
+  const formatRow = document.createElement('div');
+  const formatKey = document.createElement('div');
+  formatKey.textContent = 'x-storage-format';
+  const formatValue = document.createElement('div');
+  formatValue.textContent = 'code';
+  formatRow.append(formatKey, formatValue);
+
+  daForm.append(schemaRow, formatRow);
+
+  // Create code block with JSON
+  const pre = document.createElement('pre');
+  const code = document.createElement('code');
+  code.textContent = JSON.stringify(json, null, 2);
+  pre.append(code);
+
+  section.append(daForm, pre);
+  main.append(section);
+  doc.body.append(header, main, footer);
+
+  return doc.body.outerHTML;
+}
+
+/**
  * Load form data from source URL and convert to JSON.
  * Handles the HTML to JSON conversion internally.
  * @param {string} path - The URL to load the form data from
@@ -35,11 +83,17 @@ export async function loadJson(path) {
  * Handles the JSON to HTML conversion internally.
  * @param {object} json - The form data in JSON format
  * @param {string} path - The path to save the form data to
+ * @param {object} options - Save options
+ * @param {string} options.format - Format to save in: 'code' (default) or 'table'
  * @returns {Promise<{success: boolean, response: Response} | {error: string, response?: Response}>}
  */
-export async function saveJson(json, path) {
+export async function saveJson(json, path, options = {}) {
   try {
-    const html = JSONConverter(json);
+    const { format = 'code' } = options;
+
+    // Use code block format by default, or table format if specified
+    const html = format === 'table' ? JSONConverter(json) : json2CodeBlock(json);
+
     const formData = new Blob([html], { type: 'text/html' });
     const body = new FormData();
     body.append('data', formData);
