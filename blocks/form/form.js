@@ -199,6 +199,11 @@ class FormEditor extends LitElement {
       </sl-select></div>`;
   }
 
+  shouldShowPreview() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('showPreview') === 'true';
+  }
+
   renderFormEditor() {
     if (this.formModel === null) {
       if (this._schemas) return this.renderSchemaSelector();
@@ -217,7 +222,7 @@ class FormEditor extends LitElement {
           .activePointer=${this.activePointer}
           @form-model-intent=${this.handleModelIntent}
         ></da-form-editor>
-        <da-form-preview .formModel=${this.formModel}></da-form-preview>
+        ${this.shouldShowPreview() ? html`<da-form-preview .formModel=${this.formModel}></da-form-preview>` : nothing}
       </div>`;
   }
 
