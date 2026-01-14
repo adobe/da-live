@@ -2,6 +2,10 @@ import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import { handleSave } from './utils.js';
 import '../da-sheet-tabs.js';
+import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { WebsocketProvider, Y } from 'da-y-wrapper';
+import { yToJSheet } from './convert.js';
+import { setupEventHandlers } from './collab.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
@@ -24,9 +28,9 @@ function finishSetup(el, data) {
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
     sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    sheet.options.onafterchanges = () => {
-      handleSave(el.jexcel, el.details.view);
-    };
+    // sheet.options.onafterchanges = () => {
+    //   handleSave(el.jexcel, el.details.view);
+    // };
   });
 
   // Setup tabs
@@ -130,6 +134,53 @@ export async function getData(url) {
   return sheets;
 }
 
+async function joinCollab(el) {
+  const path = el.details.sourceUrl;
+
+  const ydoc = new Y.Doc();
+  const ysheets = ydoc.getArray('sheets');
+
+  const server = COLLAB_ORIGIN;
+  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+
+  const opts = { protocols: ['yjs'] };
+
+  if (window.adobeIMS?.isSignedInUser()) {
+    const { token } = window.adobeIMS.getAccessToken();
+    // add token to the sec-websocket-protocol header
+    opts.protocols.push(token);
+  }
+
+  const canWrite = permissions.some((permission) => permission === 'write');
+
+  const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+
+  // Increase the max backoff time to 30 seconds. If connection error occurs,
+  // the socket provider will try to reconnect quickly at the beginning
+  // (exponential backoff starting with 100ms) and then every 30s.
+  wsProvider.maxBackoffTime = 30000;
+
+  const yUndoManager = new Y.UndoManager(ysheets, {
+    trackedOrigins: new Set(['foo']), // todo client id from awareness
+  });
+
+  return { ydoc, wsProvider, yUndoManager };
+}
+
+function rerenderSheets(el, ydoc, yUndoManager) {
+  resetSheets(el);
+
+  const ysheets = ydoc.getArray('sheets');
+  const sheets = yToJSheet(ysheets);
+
+  window.jspreadsheet.tabs(el, sheets);
+  finishSetup(el, sheets);
+
+  el.jexcel.forEach((sheet, idx) => {
+    setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, `collab-${Math.random()}`);
+  });
+}
+
 export default async function init(el, data) {
   const suppliedData = data || await getData(el.details.sourceUrl);
 
@@ -139,10 +190,15 @@ export default async function init(el, data) {
 
   resetSheets(el);
 
-  // Initialize the spreadsheet
-  window.jspreadsheet.tabs(el, suppliedData);
-  // Manually fix it to be what we need
-  finishSetup(el, suppliedData);
+  const { ydoc, wsProvider, yUndoManager } = await joinCollab(el);
+
+  wsProvider.on('sync', () => {
+    rerenderSheets(el, ydoc, yUndoManager);
+  });
+
+  ydoc.on('update', (...args) => {
+    rerenderSheets(el, ydoc, yUndoManager);
+  });
 
   return el.jexcel;
 }
