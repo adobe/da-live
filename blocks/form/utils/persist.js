@@ -52,8 +52,60 @@ function json2CodeBlock(json) {
 }
 
 /**
+ * Extract JSON from HTML code block format.
+ * @param {string} html - The HTML string containing code block
+ * @returns {object|null} The parsed JSON data or null if not found
+ */
+function extractJsonFromCodeBlock(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Check if x-storage-format is 'code'
+  const daFormRows = doc.querySelectorAll('.da-form > div');
+  let isCodeFormat = false;
+  let schemaName = '';
+
+  daFormRows.forEach((row) => {
+    const cells = row.querySelectorAll('div');
+    if (cells.length === 2) {
+      const key = cells[0].textContent.trim();
+      const value = cells[1].textContent.trim();
+      if (key === 'x-storage-format' && value === 'code') {
+        isCodeFormat = true;
+      }
+      if (key === 'x-schema-name') {
+        schemaName = value;
+      }
+    }
+  });
+
+  if (!isCodeFormat) {
+    return null;
+  }
+
+  // Extract JSON from code block
+  const codeBlock = doc.querySelector('pre code');
+  if (!codeBlock) {
+    return null;
+  }
+
+  try {
+    const data = JSON.parse(codeBlock.textContent);
+    return {
+      metadata: { schemaName },
+      data,
+    };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to parse JSON from code block:', error);
+    return null;
+  }
+}
+
+/**
  * Load form data from source URL and convert to JSON.
  * Handles the HTML to JSON conversion internally.
+ * Supports both table format and code block format.
  * @param {string} path - The URL to load the form data from
  * @returns {Promise<{json: object} | {error: string}>}
  */
@@ -69,6 +121,13 @@ export async function loadJson(path) {
       return { error: 'Empty document' };
     }
 
+    // Try to load from code block format first
+    const codeBlockJson = extractJsonFromCodeBlock(html);
+    if (codeBlockJson) {
+      return { json: codeBlockJson };
+    }
+
+    // Fall back to table format
     const converter = new HTMLConverter(html);
     return { json: converter.json };
   } catch (error) {
