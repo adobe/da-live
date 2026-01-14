@@ -30,8 +30,8 @@ const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const style = await getStyle(import.meta.url);
 
 const EL_NAME = 'da-form';
-const PREVIEW_ORIGIN = 'https://da-sc.adobeaem.workers.dev/preview';
-const LIVE_ORIGIN = 'https://da-sc.adobeaem.workers.dev/live';
+const PREVIEW_ORIGIN = 'https://mhast-html-to-json.adobeaem.workers.dev/preview';
+const LIVE_ORIGIN = 'https://mhast-html-to-json.adobeaem.workers.dev/live';
 
 /**
  * Main form editor component.
