@@ -38,10 +38,10 @@ function json2CodeBlock(json) {
 
   daForm.append(schemaRow, formatRow);
 
-  // Create code block with JSON
+  // Create code block with JSON data only (not metadata)
   const pre = document.createElement('pre');
   const code = document.createElement('code');
-  code.textContent = JSON.stringify(json, null, 2);
+  code.textContent = JSON.stringify(json.data, null, 2);
   pre.append(code);
 
   section.append(daForm, pre);
