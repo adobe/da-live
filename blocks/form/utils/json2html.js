@@ -1,3 +1,6 @@
+// TODO: Find a more functional way of handling this.
+let NESTED_BLOCKS = [];
+
 function getDocument() {
   const doc = document.implementation.createHTMLDocument();
 
@@ -14,21 +17,13 @@ function getDocument() {
   return doc;
 }
 
-function createTextRow(key, value) {
+function createRow(key, valCol) {
   const row = document.createElement('div');
 
   const keyCol = document.createElement('div');
   const keyPara = document.createElement('p');
   keyPara.textContent = key;
   keyCol.append(keyPara);
-
-  const valCol = document.createElement('div');
-
-  if (value) {
-    const valPara = document.createElement('p');
-    valPara.textContent = value;
-    valCol.append(valPara);
-  }
 
   row.append(keyCol, valCol);
   return row;
@@ -40,13 +35,47 @@ function createBlock(name) {
   return block;
 }
 
+function createValueCol(key, value) {
+  const valCol = document.createElement('div');
+
+  if (value) {
+    // Create a paragraph to hold the property
+    const valPara = document.createElement('p');
+
+    // Handle objects by creating a nested block
+    if (typeof value === 'object') {
+      // Create unique-ish guid
+      const guid = Math.random().toString(36).substring(2, 8);
+
+      const nestedBlock = createBlock(`${key} ${key}-${guid}`);
+      const rows = Object.entries(value).map(([k, v]) => {
+        const nestedValCol = createValueCol(k, v);
+        return createRow(k, nestedValCol);
+      });
+      nestedBlock.append(...rows);
+      NESTED_BLOCKS.push(nestedBlock);
+
+      valPara.textContent = `self://#${key}-${guid}`;
+    } else {
+      valPara.textContent = value;
+    }
+
+    valCol.append(valPara);
+  }
+
+  return valCol;
+}
+
 function getFormBlock(metadata) {
   const daForm = createBlock('da-form');
 
   const rows = Object.entries(metadata).map((entry) => {
     const [key, value] = entry;
     const xKey = key === 'schemaName' ? 'x-schema-name' : key;
-    return createTextRow(xKey, value);
+
+    const valCol = createValueCol(key, value);
+
+    return createRow(xKey, valCol);
   });
 
   daForm.append(...rows);
@@ -57,13 +86,19 @@ function getDataBlock(schemaName, data) {
   const dataBlock = createBlock(schemaName);
   const rows = Object.entries(data).map((entry) => {
     const [key, value] = entry;
-    return createTextRow(key, value);
+
+    const valCol = createValueCol(key, value);
+
+    return createRow(key, valCol);
   });
   dataBlock.append(...rows);
   return dataBlock;
 }
 
 export default function json2html(json) {
+  // Reset all nested blocks
+  NESTED_BLOCKS = [];
+
   const doc = getDocument();
 
   const { metadata, data } = json;
@@ -71,9 +106,9 @@ export default function json2html(json) {
   const formBlock = getFormBlock(metadata);
   const dataBlock = getDataBlock(schemaName, data);
 
-  doc.querySelector('main > div').append(formBlock, dataBlock);
+  doc.querySelector('main > div').append(formBlock, dataBlock, ...NESTED_BLOCKS);
 
-  console.log(doc.body.outerHTML);
+  console.log(doc.body.querySelector('main'));
 
   return doc.body.outerHTML;
 }

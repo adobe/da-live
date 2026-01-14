@@ -26,7 +26,7 @@ class FormEditor extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this.debouncedHandleChange = debounce(this.handleChange.bind(this), 1500);
+    this.debouncedHandleChange = debounce(this.handleChange.bind(this), 1000);
   }
 
   update(props) {
@@ -64,7 +64,7 @@ class FormEditor extends LitElement {
     return html`
       <div>
         <p class="primitive-item-title">${item.schema.title}</p>
-        <sl-select name="${item.key}" value="${item.data}" @change=${this.handleChange}>
+        <sl-select name="${item.path}" value="${item.data}" @change=${this.handleChange}>
           ${item.schema.properties.enum.map((val) => html`<option>${val}</option>`)}
         </sl-select>
       </div>
@@ -80,7 +80,7 @@ class FormEditor extends LitElement {
       if (prim === 'boolean') return this.renderCheckbox(item);
       return html`
         <p class="primitive-item-title">${item.schema.title}</p>
-        <sl-input type="text" name="${item.key}" value="${item.data}" @input=${this.handleInput}></sl-input>
+        <sl-input type="text" name="${item.path}" value="${item.data}" @input=${this.handleInput}></sl-input>
       `;
     }
 

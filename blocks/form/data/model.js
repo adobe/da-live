@@ -1,7 +1,7 @@
 import HTMLConverter from '../utils/html2json.js';
 import JSONConverter from '../utils/json2html.js';
 import { Validator } from '../../../deps/da-form/dist/index.js';
-import { annotateProp } from '../utils/utils.js';
+import { annotateProp, setValueByPath } from '../utils/utils.js';
 import { daFetch } from '../../shared/utils.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 
@@ -23,11 +23,19 @@ export default class FormModel {
       this.updateHtml();
     }
 
-    console.log(path);
-
     this._path = path;
+    this._schemas = schemas;
     this._schema = schemas[this._json.metadata.schemaName];
-    this._annotated = annotateProp('root', this._json.data, this._schema, this._schema);
+    this._annotated = annotateProp('data', this._json.data, this._schema, this._schema);
+  }
+
+  clone() {
+    return new FormModel({
+      path: this._path,
+      html: this._html,
+      json: JSON.parse(JSON.stringify(this._json)), // Deep copy of JSON
+      schemas: this._schemas, // or clone this too if needed
+    });
   }
 
   validate() {
@@ -45,9 +53,8 @@ export default class FormModel {
     this._html = html;
   }
 
-  // TODO: Support nested properties
   updateProperty({ name, value }) {
-    this._json.data[name] = value;
+    setValueByPath(this._json, name, value);
     this.updateHtml();
   }
 
@@ -57,7 +64,9 @@ export default class FormModel {
     body.append('data', data);
 
     const opts = { method: 'POST', body };
-    const resp = await daFetch(`${DA_ORIGIN}/source${this._path}`, opts);
+
+    // TODO: Don't assume the save went perfect
+    await daFetch(`${DA_ORIGIN}/source${this._path}`, opts);
   }
 
   set html(html) {

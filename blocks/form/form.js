@@ -70,6 +70,11 @@ class FormEditor extends LitElement {
 
   async handleUpdate({ detail }) {
     this.formModel.updateProperty(detail);
+
+    // Update the view with the new values
+    this.formModel = this.formModel.clone();
+
+    // Persist the data
     await this.formModel.saveHtml();
   }
 
