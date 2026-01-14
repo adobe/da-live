@@ -23,9 +23,12 @@ function createTextRow(key, value) {
   keyCol.append(keyPara);
 
   const valCol = document.createElement('div');
-  const valPara = document.createElement('p');
-  valPara.textContent = value;
-  valCol.append(valPara);
+
+  if (value) {
+    const valPara = document.createElement('p');
+    valPara.textContent = value;
+    valCol.append(valPara);
+  }
 
   row.append(keyCol, valCol);
   return row;
