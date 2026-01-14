@@ -24,6 +24,8 @@ export default class DaTitle extends LitElement {
     permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
+    previewOrigin: { attribute: false },
+    liveOrigin: { attribute: false },
     _actionsVis: {},
     _status: { state: true },
     _fixedActions: { state: true },
@@ -107,7 +109,15 @@ export default class DaTitle extends LitElement {
       const url = new URL(href);
       const isSnap = url.pathname.startsWith('/.snapshots');
       const toOpen = isSnap ? this.getSnapshotHref(url, action) : href;
-      const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
+      let toOpenInAem = toOpen.replace('.hlx.', '.aem.');
+      // let toOpenInAem = 'https://main--da-frescopa--aemsites.aem.page/forms/cmillar/offer';
+
+      if (this.previewOrigin || this.liveOrigin) {
+        const { pathname: path } = new URL(toOpenInAem);
+        const origin = action === 'publish' ? this.liveOrigin : this.previewOrigin;
+        toOpenInAem = `${origin}${path}`;
+      }
+
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
