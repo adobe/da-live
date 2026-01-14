@@ -30,6 +30,8 @@ const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const style = await getStyle(import.meta.url);
 
 const EL_NAME = 'da-form';
+const PREVIEW_ORIGIN = 'https://da-sc.adobeaem.workers.dev/preview';
+const LIVE_ORIGIN = 'https://da-sc.adobeaem.workers.dev/live';
 
 /**
  * Main form editor component.
@@ -241,6 +243,12 @@ customElements.define(EL_NAME, FormEditor);
 function setDetails(parent, name, details) {
   const cmp = document.createElement(name);
   cmp.details = details;
+
+  if (name === 'da-title') {
+    cmp.previewOrigin = `${PREVIEW_ORIGIN}/${details.owner}/${details.repo}`;
+    cmp.liveOrigin = `${LIVE_ORIGIN}/${details.owner}/${details.repo}`;
+  }
+
   parent.append(cmp);
 }
 
