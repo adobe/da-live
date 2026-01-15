@@ -1,3 +1,9 @@
+import { Y } from 'da-y-wrapper';
+
+/**
+ * ================== YJS TO JSHEET ==================
+ */
+
 /**
  * Convert Y.XmlFragment structure back to 2D data array
  * Internal helper function - only used in yToJSheet
@@ -62,4 +68,96 @@ export function yToJSheet(ysheets) {
   });
   
   return sheets;
+}
+
+/**
+ * ================== JSHEET TO YJS ==================
+ */
+
+/**
+ * Helper: Convert a row array to Y.XmlElement with cell children
+ * @param {Array} row - Row array
+ * @returns {Y.XmlElement} - Y.XmlElement 'row' with 'cell' children (value stored as attribute)
+ */
+function rowToY(row) {
+  const yrow = new Y.XmlElement('row');
+  row.forEach((cellValue, idx) => {
+    const ycell = new Y.XmlElement('cell');
+    ycell.setAttribute('value', String(cellValue || ''));
+    yrow.insert(idx, [ycell]);
+  });
+  return yrow;
+}
+
+/**
+ * Convert a 2D data array to Y.XmlFragment structure (initial population only)
+ * Internal helper function - only used for initial conversion in jSheetToY
+ * @param {Array} data - 2D array of cell values
+ * @param {Y.XmlFragment} ydata - Y.XmlFragment to populate
+ */
+function dataArrayToY(data, ydata) {
+  // Clear existing data
+  if (ydata.length > 0) {
+    ydata.delete(0, ydata.length);
+  }
+
+  // Populate with new data
+  if (data) {
+    data.forEach((row, idx) => {
+      const yrow = rowToY(row);
+      ydata.insert(idx, [yrow]);
+    });
+  }
+}
+
+/**
+ * Convert jSpreadsheet sheet data to Yjs structure
+ * @param {Array} sheets - Array of sheet objects from getSheets()
+ * @returns {Object} - Object containing ydoc and ysheets array
+ */
+export function jSheetToY(sheets, ydoc, deleteExisting = false) {
+  ydoc.transact(() => {
+    if (deleteExisting) {
+      ydoc.getArray('sheets').delete(0, ydoc.getArray('sheets').length);
+    }
+
+    const ysheets = ydoc.getArray('sheets');
+
+    sheets.forEach((sheet) => {
+      const ysheet = new Y.Map();
+
+      // Set basic properties
+      ysheet.set('sheetName', sheet.sheetName);
+
+      // Set minDimensions - wrap in array to push as single element
+      const yMinDimensions = new Y.Array();
+      if (sheet.minDimensions) {
+        yMinDimensions.push([sheet.minDimensions]);
+      }
+      ysheet.set('minDimensions', yMinDimensions);
+
+      // Convert data array using helper function
+      // Data should already be padded by getSheet
+      const ydata = new Y.XmlFragment();
+      dataArrayToY(sheet.data, ydata);
+      ysheet.set('data', ydata);
+
+      // Convert columns array to Y.Array of Y.Maps
+      const ycolumns = new Y.Array();
+      if (sheet.columns) {
+        sheet.columns.forEach((col) => {
+          const ycol = new Y.Map();
+          Object.entries(col).forEach(([key, value]) => {
+            ycol.set(key, value);
+          });
+          ycolumns.push([ycol]);
+        });
+      }
+      ysheet.set('columns', ycolumns);
+
+      ysheets.push([ysheet]);
+    });
+  });
+
+  return ydoc.getArray('sheets');
 }

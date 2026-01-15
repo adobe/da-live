@@ -4,7 +4,7 @@ import { handleSave } from './utils.js';
 import '../da-sheet-tabs.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { WebsocketProvider, Y } from 'da-y-wrapper';
-import { yToJSheet } from './convert.js';
+import { yToJSheet, jSheetToY } from './convert.js';
 import { setupEventHandlers } from './collab.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
@@ -28,9 +28,6 @@ function finishSetup(el, data) {
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
     sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    // sheet.options.onafterchanges = () => {
-    //   handleSave(el.jexcel, el.details.view);
-    // };
   });
 
   // Setup tabs
@@ -86,6 +83,15 @@ function getSheet(json, sheetName) {
 
 export function getPermissions() {
   return permissions;
+}
+
+async function checkPermissions(url) {
+  const resp = await daFetch(url, { method: 'HEAD' });
+
+  const daTitle = document.querySelector('da-title');
+  if (daTitle) daTitle.permissions = resp.permissions;
+
+  permissions = resp.permissions;
 }
 
 export async function getData(url) {
@@ -151,8 +157,6 @@ async function joinCollab(el) {
     opts.protocols.push(token);
   }
 
-  const canWrite = permissions.some((permission) => permission === 'write');
-
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
 
   // Increase the max backoff time to 30 seconds. If connection error occurs,
@@ -167,11 +171,31 @@ async function joinCollab(el) {
   return { ydoc, wsProvider, yUndoManager };
 }
 
-function rerenderSheets(el, ydoc, yUndoManager) {
-  resetSheets(el);
+function checkSheetDimensionsEqual(jExcelData, newData) {
+  const jExcelDimensions = jExcelData.length;
+  const newDimensions = newData.length;
+  if (jExcelDimensions !== newDimensions) return false;
 
+  for (let i = 0; i < jExcelDimensions; i += 1) {
+    const jExcelRow = jExcelData[i];
+    const newRow = newData[i];
+    if (jExcelRow.length !== newRow.length) return false;
+  }
+
+  return true;
+}
+
+function rerenderSheets(el, ydoc, yUndoManager) {
   const ysheets = ydoc.getArray('sheets');
-  const sheets = yToJSheet(ysheets);
+  let sheets = yToJSheet(ysheets);
+
+  if (sheets.length === 0) {
+    // TODO handle this on backend. Backend should always return a sheet.
+    sheets = getDefaultSheet();
+    jSheetToY(sheets, ydoc);
+  }
+
+  resetSheets(el);
 
   window.jspreadsheet.tabs(el, sheets);
   finishSetup(el, sheets);
@@ -181,8 +205,9 @@ function rerenderSheets(el, ydoc, yUndoManager) {
   });
 }
 
-export default async function init(el, data) {
-  const suppliedData = data || await getData(el.details.sourceUrl);
+export default async function init(el) {
+  await getData(el.details.sourceUrl);
+  await checkPermissions(el.details.sourceUrl);
 
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');
@@ -196,9 +221,9 @@ export default async function init(el, data) {
     rerenderSheets(el, ydoc, yUndoManager);
   });
 
-  ydoc.on('update', (...args) => {
+  ydoc.on('update', () => {
     rerenderSheets(el, ydoc, yUndoManager);
   });
 
-  return el.jexcel;
+  return { jexcel: el.jexcel, ydoc };
 }
