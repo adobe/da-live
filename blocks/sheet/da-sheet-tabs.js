@@ -73,30 +73,13 @@ class DaSheetTabs extends LitElement {
     return this.permissions.some((permission) => permission === 'write');
   }
 
-  handleAdd() {
-    const sheets = [{
-      ...SHEET_TEMPLATE,
-      sheetName: `data-${this.jexcel.length + 1}`,
-    }];
-    // Add the new tab
-    window.jspreadsheet.tabs(this.tabContainer, sheets);
-    const newSheet = this.jexcel.slice(-1)[0];
-    newSheet.name = sheets[0].sheetName;
-    newSheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-
-    newSheet.options.onafterchanges = () => {
-      handleSave(this.jexcel, this.tabContainer.details.view);
-    };
-
-    // Refresh the tab names
-    this._names = this.getNames();
-    // Only set active as jspreadsheet will set the visibility of the sheet
-    this._active = this.jexcel.length - 1;
-    // Set the tab to be in edit mode
-    this._edit = this.jexcel.length - 1;
+  async handleAdd() {
+    const { addSheet: collabAddSheet } = await import('./utils/collab.js');
+    const ydoc = this.closest('.da-sheet-wrapper').ydoc;
+    collabAddSheet(ydoc, `data-${this.jexcel.length + 1}`);
   }
 
-  handleEdit(e, idx) {
+  async handleEdit(e, idx) {
     e.preventDefault();
     if (e.submitter.value === 'select') {
       this.showSheet(idx);
@@ -113,16 +96,9 @@ class DaSheetTabs extends LitElement {
       return;
     }
     if (e.submitter.value === 'remove') {
-      this._names.splice(idx, 1);
-      this.jexcel.splice(idx, 1);
-      this.hiddenTabs[idx].remove();
-      this.sheetContents[idx].remove();
-      this._edit = null;
-      this.showSheet(0);
-
-      handleSave(this.jexcel, this.tabContainer.details.view);
-
-      return;
+      const { deleteSheet: collabDeleteSheet } = await import('./utils/collab.js');
+      const ydoc = this.closest('.da-sheet-wrapper').ydoc;
+      collabDeleteSheet(ydoc, idx);
     }
     if (e.submitter.value === 'confirm') {
       const name = Object.fromEntries(new FormData(e.target))?.name?.trim();
@@ -147,12 +123,9 @@ class DaSheetTabs extends LitElement {
         return;
       }
 
-      handleSave(this.jexcel, this.tabContainer.details.view);
-
-      this._names[idx] = name;
-      this.jexcel[idx].name = name;
-      this.hiddenTabs[idx].textContent = name;
-      this._edit = null;
+      const { renameSheet: collabRenameSheet } = await import('./utils/collab.js');
+      const ydoc = this.closest('.da-sheet-wrapper').ydoc;
+      collabRenameSheet(ydoc, idx, name);
     }
   }
 

@@ -107,7 +107,7 @@ customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
 
-async function setSheet(details, daTitle, daSheet, daSheetPanes) {
+async function setSheet(details, daTitle, daSheet, daSheetPanes, wrapper) {
   daTitle.details = details;
   daSheet.details = details;
 
@@ -115,6 +115,7 @@ async function setSheet(details, daTitle, daSheet, daSheetPanes) {
   const { jexcel, ydoc } = await initSheet(daSheet);
   daTitle.sheet = jexcel;
   daSheetPanes.ydoc = ydoc;
+  wrapper.ydoc = ydoc;
 }
 
 export default async function init(el) {
@@ -146,12 +147,12 @@ export default async function init(el) {
   versionWrapper.append(wrapper, daSheetPanes);
 
   // Set data against the title & sheet
-  setSheet(details, daTitle, daSheet, daSheetPanes);
+  setSheet(details, daTitle, daSheet, daSheetPanes, wrapper);
 
   el.append(daTitle, versionWrapper);
 
   window.addEventListener('hashchange', async () => {
     details = getPathDetails();
-    setSheet(details, daTitle, daSheet);
+    setSheet(details, daTitle, daSheet, daSheetPanes, wrapper);
   });
 }

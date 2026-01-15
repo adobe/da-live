@@ -1,5 +1,7 @@
 import { Y } from 'da-y-wrapper';
 
+const MIN_DIMENSIONS = 20;
+
 /**
  * ================== YJS TO JSHEET ==================
  */
@@ -86,6 +88,15 @@ function rowToY(row) {
     ycell.setAttribute('value', String(cellValue || ''));
     yrow.insert(idx, [ycell]);
   });
+
+  if (row.length < MIN_DIMENSIONS) {
+    for (let i = row.length; i < MIN_DIMENSIONS; i++) {
+      const ycell = new Y.XmlElement('cell');
+      ycell.setAttribute('value', '');
+      yrow.insert(i, [ycell]);
+    }
+  }
+
   return yrow;
 }
 
@@ -95,7 +106,7 @@ function rowToY(row) {
  * @param {Array} data - 2D array of cell values
  * @param {Y.XmlFragment} ydata - Y.XmlFragment to populate
  */
-function dataArrayToY(data, ydata) {
+export function dataArrayToY(data, ydata) {
   // Clear existing data
   if (ydata.length > 0) {
     ydata.delete(0, ydata.length);
@@ -107,6 +118,13 @@ function dataArrayToY(data, ydata) {
       const yrow = rowToY(row);
       ydata.insert(idx, [yrow]);
     });
+  }
+
+  if (data.length < MIN_DIMENSIONS) {
+    for (let i = data.length; i < MIN_DIMENSIONS; i++) {
+      const yrow = rowToY([]);
+      ydata.insert(i, [yrow]);
+    }
   }
 }
 

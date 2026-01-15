@@ -1,4 +1,5 @@
 import { Y } from 'da-y-wrapper';
+import { dataArrayToY } from './convert.js';
 
 /**
  * Update a specific cell's value (sets attribute - last-write-wins)
@@ -200,6 +201,29 @@ export function moveColumn(ydata, ycolumns, fromIndex, toIndex) {
   }
   
   console.log(`Moved column from index ${fromIndex} to ${toIndex} (data and metadata)`);
+}
+
+export function addSheet(ydoc, sheetName) {
+  const sheets = ydoc.getArray('sheets');
+  const sheet = new Y.Map();
+  sheet.set('sheetName', sheetName);
+  const dataFragment = new Y.XmlFragment();
+  dataArrayToY([], dataFragment);
+  sheet.set('data', dataFragment);
+  sheet.set('columns', new Y.Array());
+  sheets.insert(sheets.length, [sheet]);
+  return sheet;
+}
+
+export function deleteSheet(ydoc, index) {
+  const sheets = ydoc.getArray('sheets');
+  sheets.delete(index, 1);
+}
+
+export function renameSheet(ydoc, index, newName) {
+  const sheets = ydoc.getArray('sheets');
+  const sheet = sheets.get(index);
+  sheet.set('sheetName', newName);
 }
 
 export function setupEventHandlers(sheet, idx,ydoc, ysheets, yUndoManager, label) {
