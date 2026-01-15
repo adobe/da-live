@@ -34,7 +34,7 @@ function buildTreeNode(node, formModel, validationState) {
   const errorCount = getGroupErrorCount(node.pointer, validationState);
   const children = formModel.getChildren(node.pointer);
 
-  let label = node.schema.title;
+  let label = node.title;
   let isArrayItem = false;
   let arrayIndex = null;
   let parentPointer = null;
@@ -45,7 +45,7 @@ function buildTreeNode(node, formModel, validationState) {
       isArrayItem = true;
       parentPointer = node.groupPointer;
       arrayIndex = parseInt(node.pointer.split('/').pop(), 10);
-      label = `#${arrayIndex + 1} ${node.schema.title}`;
+      label = `#${arrayIndex + 1} ${node.title}`;
     }
   }
 

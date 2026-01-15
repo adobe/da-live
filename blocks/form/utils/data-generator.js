@@ -64,7 +64,7 @@ function generateForNode(node, fullSchema, requiredSet, depth = 0) {
 
   // Resolve $ref first if present at this level
   if (node.$ref) {
-    const target = derefRef(node.$ref, fullSchema);
+    const target = derefRef(fullSchema, node.$ref);
     if (target) return generateForNode(target, fullSchema, requiredSet, depth + 1);
   }
 
@@ -74,7 +74,7 @@ function generateForNode(node, fullSchema, requiredSet, depth = 0) {
 
     // Resolve item schema to check its type
     const resolvedItemSchema = itemsSchema?.$ref
-      ? derefRef(itemsSchema.$ref, fullSchema)
+      ? derefRef(fullSchema, itemsSchema.$ref)
       : itemsSchema;
     const itemType = resolvedItemSchema?.type;
 
@@ -100,7 +100,7 @@ function generateForNode(node, fullSchema, requiredSet, depth = 0) {
     const required = new Set(node.required || []);
     const out = {};
     for (const [k, v] of Object.entries(props)) {
-      const child = resolvePropSchema(k, v, fullSchema);
+      const child = resolvePropSchema(fullSchema, k, v);
       const childWithName = tagWithPropName(child, k);
       // Always include the property. For arrays, generateForNode
       // will return [] when the property is optional.
@@ -127,16 +127,16 @@ export default function generateMinimalDataForSchema(schema) {
  * @returns {*} Generated item value
  */
 export function generateArrayItem(arraySchema, fullSchema) {
-  // Get the items schema from the array schema
-  // Could be in schema.items or schema.properties.items
-  const itemsSchema = arraySchema.items || arraySchema.properties?.items;
+  // For array schemas, items is always at the top level
+  const itemsSchema = arraySchema.items;
 
   if (!itemsSchema) {
+    console.warn('Array schema missing items definition', arraySchema);
     return null;
   }
 
   // Resolve the property schema (handles $refs)
-  const resolved = resolvePropSchema('item', itemsSchema, fullSchema);
+  const resolved = resolvePropSchema(fullSchema, 'item', itemsSchema);
 
   // Generate the item value (empty required set since array items don't inherit required)
   const generatedValue = generateForNode(resolved, fullSchema, new Set(), 0);

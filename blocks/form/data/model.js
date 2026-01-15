@@ -1,6 +1,7 @@
 import { Validator } from '../../../deps/da-form/dist/index.js';
 import { append } from '../utils/rfc6901-pointer.js';
 import { resolveArrayItemsSchema } from '../utils/activation-helper.js';
+import { resolvePropSchema as resolveSchema } from '../utils/schema.js';
 import { SCHEMA_TYPES, DEFAULT_ITEM_TITLE } from '../constants.js';
 
 /**
@@ -20,25 +21,12 @@ export default class FormModel {
     this._emptyArray = [];
   }
 
-  /** Resolve property schema, handling $ref references. */
+  /**
+   * Resolve property schema, handling $ref references.
+   * Delegates to the utility function in schema.js for proper JSON Pointer resolution.
+   */
   static resolvePropSchema(key, localSchema, fullSchema) {
-    const { title } = localSchema;
-
-    if (localSchema.$ref) {
-      const path = localSchema.$ref.substring(2).split('/')[1];
-
-      let def = localSchema.$defs?.[path];
-      // NOTE: Nested $defs resolution not yet implemented.
-      // Currently only resolves from localSchema.$defs or fullSchema.$defs.
-      if (!def) def = fullSchema.$defs?.[path];
-      if (def) {
-        if (!title) return def;
-        return { ...def, title };
-      }
-    }
-
-    if (!title) return localSchema;
-    return { ...localSchema, title };
+    return resolveSchema(fullSchema, key, localSchema);
   }
 
   /** Build annotated node with metadata from form data. */
@@ -54,7 +42,7 @@ export default class FormModel {
     const resolvedSchema = FormModel.resolvePropSchema(key, propSchema, fullSchema);
     const pointer = key === 'root' ? '' : parentPointer;
     const { groupPointer: parentGroupPointer = null, requiredSet = undefined } = context;
-    const schemaType = resolvedSchema.type || resolvedSchema.properties?.type;
+    const schemaType = resolvedSchema.type;
 
     if (Array.isArray(propData)) {
       const resolvedItemsSchema = FormModel.resolvePropSchema(key, propSchema.items, fullSchema);
@@ -68,6 +56,7 @@ export default class FormModel {
         key,
         data: undefined,
         schema: resolvedSchema,
+        title: resolvedSchema.title || key, // Fallback to key if no title in schema
         pointer,
         groupPointer: parentGroupPointer,
         parentPointer: parentGroupPointer,
@@ -112,6 +101,7 @@ export default class FormModel {
         key,
         data: undefined,
         schema: resolvedSchema,
+        title: resolvedSchema.title || key, // Fallback to key if no title in schema
         pointer,
         groupPointer: parentGroupPointer,
         parentPointer: parentGroupPointer,
@@ -146,6 +136,7 @@ export default class FormModel {
       key,
       data: propData,
       schema: resolvedSchema,
+      title: resolvedSchema.title || key, // Fallback to key if no title in schema
       pointer,
       required: FormModel.isEffectivelyRequired(key, resolvedSchema, requiredSet),
       groupPointer: parentGroupPointer,

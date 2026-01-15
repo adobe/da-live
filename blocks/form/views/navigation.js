@@ -488,8 +488,8 @@ class FormNavigation extends LitElement {
     // Strategy 1: Get from existing children (handles $ref)
     if (item.children?.length > 0) {
       const firstChild = this.formModel?.getNode(item.children[0].id);
-      if (firstChild?.schema?.title) {
-        return firstChild.schema.title;
+      if (firstChild?.title) {
+        return firstChild.title;
       }
     }
 
@@ -611,7 +611,7 @@ class FormNavigation extends LitElement {
         <div class="nav-row">
           ${icon}
           <navigation-item
-            label="${root.schema.title}"
+            label="${root.title}"
             pointer="${root.pointer}"
             ?active=${isActive}
           ></navigation-item>
@@ -619,7 +619,7 @@ class FormNavigation extends LitElement {
             <div class="nav-badges">
               <error-badge
                 .count=${errorCount}
-                label="Jump to first error in ${root.schema.title} (${errorCount} issues)"
+                label="Jump to first error in ${root.title} (${errorCount} issues)"
                 @error-badge-click=${(e) => this._handleBadgeClick(e)}
               ></error-badge>
             </div>

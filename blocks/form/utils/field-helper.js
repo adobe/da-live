@@ -6,11 +6,17 @@ import { PRIMITIVE_TYPES, SEMANTIC_TYPES } from '../constants.js';
  * @returns {Array|null}
  */
 export function getEnumOptions(schema) {
-  return schema.enum
-    || schema.properties?.enum
-    || schema.items?.enum
-    || schema.properties?.items?.enum
-    || null;
+  // Direct enum on this schema
+  if (schema.enum) {
+    return schema.enum;
+  }
+  
+  // For array schemas, check if items have enum
+  if (schema.items?.enum) {
+    return schema.items.enum;
+  }
+  
+  return null;
 }
 
 /**
@@ -19,7 +25,12 @@ export function getEnumOptions(schema) {
  * @returns {'checkbox' | 'select' | 'number' | 'textarea' | 'text'}
  */
 export function determineFieldType(schema) {
-  const type = schema.type || schema.properties?.type;
+  const type = schema.type;
+
+  if (!type) {
+    console.warn('Schema missing type', schema);
+    return 'text';
+  }
 
   // Boolean → checkbox
   if (type === 'boolean') {
@@ -32,7 +43,7 @@ export function determineFieldType(schema) {
   }
 
   // Long text semantic type → textarea
-  const semanticType = schema['x-semantic-type'] || schema.properties?.['x-semantic-type'];
+  const semanticType = schema['x-semantic-type'];
   if (semanticType === SEMANTIC_TYPES.LONG_TEXT) {
     return 'textarea';
   }
@@ -53,6 +64,6 @@ export function determineFieldType(schema) {
  * @returns {boolean}
  */
 export function isPrimitiveType(schema) {
-  const type = schema.properties?.type;
+  const type = schema.type;
   return PRIMITIVE_TYPES.includes(type);
 }

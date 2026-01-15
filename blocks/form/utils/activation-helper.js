@@ -38,8 +38,13 @@ export function isFieldRequiredInParent(node, formModel) {
  * @returns {Object|null} Resolved items schema or null
  */
 export function resolveArrayItemsSchema(node, formModel) {
-  // Get items schema from node
-  let itemsSchema = node.schema?.items || node.schema?.properties?.items;
+  // Get items schema from node - always at top level for arrays
+  let itemsSchema = node.schema?.items;
+
+  if (!itemsSchema) {
+    console.warn('Array node missing items schema', node);
+    return null;
+  }
 
   // Resolve $ref if present
   if (itemsSchema?.$ref) {
@@ -47,7 +52,7 @@ export function resolveArrayItemsSchema(node, formModel) {
     // eslint-disable-next-line no-underscore-dangle
     const fullSchema = formModel._schema;
     if (fullSchema) {
-      itemsSchema = resolvePropSchema('items', itemsSchema, fullSchema);
+      itemsSchema = resolvePropSchema(fullSchema, 'items', itemsSchema);
     }
   }
 
@@ -131,7 +136,7 @@ export function getActivationInfo(node, formModel) {
 
   return {
     pointer: node.pointer,
-    label: node.schema.title,
+    label: node.title,
     itemsSchema,
     canActivate: true,
   };

@@ -124,7 +124,7 @@ class FormEditor extends LitElement {
     fields.forEach((field) => {
       this._fieldPropsMap.set(field.pointer, {
         type: fieldHelper.determineFieldType(field.schema),
-        label: `${field.schema.title}${field.required ? ' *' : ''}`,
+        label: `${field.title}${field.required ? ' *' : ''}`,
         error: validationHelper.getFieldError(field.pointer, this.validationState),
         required: field.required,
         options: fieldHelper.getEnumOptions(field.schema),
@@ -225,7 +225,7 @@ class FormEditor extends LitElement {
 
     return html`
       <div class="form-header" ${ref(this._headerRef)}>
-        <h2>${this._data.schema.title}</h2>
+        <h2>${this._data.title}</h2>
         <breadcrumb-nav 
           .segments=${segments}
           @segment-click=${this._handleBreadcrumbNavigation}
@@ -274,7 +274,7 @@ class FormEditor extends LitElement {
   }
 
   _renderPrimitiveArray(arrayItem, children) {
-    const label = `${arrayItem.schema.title}${arrayItem.isRequired ? ' *' : ''}`;
+    const label = `${arrayItem.title}${arrayItem.isRequired ? ' *' : ''}`;
     const canRemove = arrayItem.canRemoveItems;
     const canAdd = arrayItem.canAddMore && arrayItem.maxItems !== 1;
 
@@ -365,9 +365,9 @@ class FormEditor extends LitElement {
         let itemTitle = 'Item';
         const itemsSchema = arrayItem.schema?.items;
 
-        if (children.length > 0 && children[0]?.schema?.title) {
-          // Use first child's title (already resolved if $ref)
-          itemTitle = children[0].schema.title;
+        if (children.length > 0 && children[0]?.title) {
+          // Use first child's title (with automatic fallback to key)
+          itemTitle = children[0].title;
         } else if (itemsSchema?.title) {
           // Use items schema title if no children
           itemTitle = itemsSchema.title;
@@ -527,7 +527,7 @@ class FormEditor extends LitElement {
         data-key="${item.pointer}"
         id="${item.pointer}"
         pointer="${item.pointer}"
-        label="${isArrayItem ? `#${itemIndex} ` : ''}${item.schema.title}"
+        label="${isArrayItem ? `#${itemIndex} ` : ''}${item.title}"
         badge=${errorCount}
         ?active=${item.pointer === this.activePointer}
         ${this.createGroupRef(item.pointer)}
