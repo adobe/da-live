@@ -10,9 +10,11 @@
     "test:debug": "playwright test --project=chromium --debug",
     "test:report": "playwright show-report"
   },
-  "keywords": ["test"],
+  "keywords": [
+    "test"
+  ],
   "devDependencies": {
-    "@playwright/test": "1.49.1",
-    "@types/node": "22.10.2"
+    "@playwright/test": "1.57.0",
+    "@types/node": "25.0.3"
   }
 }
