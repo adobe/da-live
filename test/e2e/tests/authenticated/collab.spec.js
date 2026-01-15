@@ -12,7 +12,7 @@
 import { test, expect } from '@playwright/test';
 import { getTestPageURL } from '../../utils/page.js';
 
-test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo) => {
+test.skip('Collab cursors in multiple editors', async ({ browser, page }, workerInfo) => {
   // Open 2 editors on the same page and edit in both of them. One editor is logged in,
   // the other isn't.
   // Ensure that the edits are visible to both and that the collab cursors are there

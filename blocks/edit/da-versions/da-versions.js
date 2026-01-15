@@ -12,23 +12,29 @@ export default class DaVersions extends LitElement {
     path: { type: String },
     _versions: { state: true },
     _newVersion: { state: true },
+    _loading: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this.getVersions();
   }
 
   async getVersions() {
+    this._loading = true;
+    this._versions = null;
     const resp = await daFetch(`${DA_ORIGIN}/versionlist${this.path}`);
-    if (!resp.ok) return;
+    if (!resp.ok) {
+      this._loading = false;
+      return;
+    }
     try {
       const json = await resp.json();
       this._versions = formatVersions(json);
     } catch {
       this._versions = [];
     }
+    this._loading = false;
   }
 
   handleClose() {
@@ -149,6 +155,15 @@ export default class DaVersions extends LitElement {
     return this._versions.map((entry) => html`${entry.isVersion ? this.renderVersion(entry) : this.renderAudits(entry)}`);
   }
 
+  renderLoading() {
+    return html`
+      <li class="da-version-entry is-loading">
+        <div class="da-version-loading-dot"></div>
+        <p class="da-version-date">Loading...</p>
+      </li>
+    `;
+  }
+
   render() {
     return html`
       <div class="da-versions-panel">
@@ -157,6 +172,7 @@ export default class DaVersions extends LitElement {
         </p>
         <ul class="da-version-list">
           ${this._newVersion ? this.renderNewVersion() : this.renderNow()}
+          ${this._loading ? this.renderLoading() : nothing}
           ${this._versions?.length > 0 ? this.renderVersionList() : nothing}
         </ul>
       </div>
