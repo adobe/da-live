@@ -70,7 +70,14 @@ export function drawOverlays(states, ownClientId) {
       wrapper.appendChild(overlayDiv);
     }
 
-    // Position and style the overlay (dynamic values only)
+    // Hide overlay if scrolled out of view
+    if (left < 0 || top < 0) {
+      overlayDiv.style.display = 'none';
+      return;
+    }
+
+    // Show and position the overlay
+    overlayDiv.style.display = '';
     overlayDiv.style.left = `${left}px`;
     overlayDiv.style.top = `${top}px`;
     overlayDiv.style.width = `${width}px`;

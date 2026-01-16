@@ -198,6 +198,16 @@ function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
     };
     daSheetTabs.addEventListener('sheet-changed', daSheetTabs._sheetChangedHandler);
   }
+
+  // Set up listener for scroll events to redraw overlays
+  const jexcelContent = wrapper.querySelector('.jexcel_content');
+  if (jexcelContent && wsProvider?.awareness) {
+    jexcelContent.removeEventListener('scroll', jexcelContent._scrollHandler);
+    jexcelContent._scrollHandler = () => {
+      drawOverlays(wsProvider.awareness.getStates(), wsProvider.awareness.clientID);
+    };
+    jexcelContent.addEventListener('scroll', jexcelContent._scrollHandler, { passive: true });
+  }
 }
 
 let listenerContext = { disableListeners: false };
