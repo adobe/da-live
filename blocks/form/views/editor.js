@@ -27,7 +27,7 @@ import * as navigationHelper from '../utils/navigation-helper.js';
 import * as breadcrumbHelper from '../utils/breadcrumb-helper.js';
 import * as focusHelper from '../utils/focus-helper.js';
 import { generateArrayItem } from '../utils/data-generator.js';
-import { parseArrayItemPointer, buildArrayItemPointer, getParentPointer } from '../utils/pointer-utils.js';
+import { parseArrayItemPointer, buildArrayItemPointer, getParentPointer, isPointerDefined } from '../utils/pointer-utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
@@ -274,7 +274,24 @@ class FormEditor extends LitElement {
   }
 
   _renderPrimitiveArray(arrayItem, children) {
-    const label = `${arrayItem.title}${arrayItem.isRequired ? ' *' : ''}`;
+    // Check if this primitive array is inside another array (array item)
+    // Note: groupPointer can be '' for root's children, which is valid
+    const parentNode = isPointerDefined(arrayItem.groupPointer)
+      ? this.formModel?.getNode(arrayItem.groupPointer)
+      : null;
+    const isArrayItem = parentNode?.type === 'array';
+
+    // Calculate item index if it's an array item
+    const itemIndex = isArrayItem
+      ? parseInt(arrayItem.pointer.split('/').pop(), 10) + 1
+      : null;
+
+    // Build label with index prefix if it's an array item
+    const baseLabel = isArrayItem && itemIndex
+      ? `#${itemIndex} ${arrayItem.title}`
+      : arrayItem.title;
+    const label = `${baseLabel}${arrayItem.isRequired ? ' *' : ''}`;
+
     const canRemove = arrayItem.canRemoveItems;
     const canAdd = arrayItem.canAddMore && arrayItem.maxItems !== 1;
 
@@ -397,7 +414,8 @@ class FormEditor extends LitElement {
     );
 
     // Check if this item is inside an array (array item)
-    const parentNode = item.groupPointer
+    // Note: groupPointer can be '' for root's children, which is valid
+    const parentNode = isPointerDefined(item.groupPointer)
       ? this.formModel?.getNode(item.groupPointer)
       : null;
     const isArrayItem = parentNode?.type === 'array';
@@ -419,7 +437,9 @@ class FormEditor extends LitElement {
     let actionMenu = nothing;
     if (hasBothActions) {
       // Get sibling count for move button - get fresh count from parent
-      const siblings = item.groupPointer ? this.formModel?.getChildren(item.groupPointer) : [];
+      const siblings = isPointerDefined(item.groupPointer)
+        ? this.formModel?.getChildren(item.groupPointer)
+        : [];
       const siblingCount = siblings.length;
       const currentIndex = itemIndex - 1; // itemIndex is 1-based, convert to 0-based
 
@@ -467,7 +487,9 @@ class FormEditor extends LitElement {
       `;
     } else if (hasArrayItemActions) {
       // Get sibling count for move button - get fresh count from parent
-      const siblings = item.groupPointer ? this.formModel?.getChildren(item.groupPointer) : [];
+      const siblings = isPointerDefined(item.groupPointer)
+        ? this.formModel?.getChildren(item.groupPointer)
+        : [];
       const siblingCount = siblings.length;
       const currentIndex = itemIndex - 1; // itemIndex is 1-based, convert to 0-based
 

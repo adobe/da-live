@@ -56,7 +56,7 @@ export function buildArrayItemPointer(arrayPointer, index) {
  * @example
  * getParentPointer('/group/field')
  * // Returns: '/group'
- * 
+ *
  * getParentPointer('/field')
  * // Returns: ''
  */
@@ -65,4 +65,20 @@ export function getParentPointer(pointer) {
   const lastSlash = pointer.lastIndexOf('/');
   if (lastSlash === -1) return null;
   return pointer.substring(0, lastSlash);
+}
+
+/**
+ * Check if a pointer value is defined (not undefined or null).
+ * Empty string '' is a valid pointer (represents root), so this returns true for it.
+ *
+ * @param {string|undefined|null} pointer - Pointer to check
+ * @returns {boolean} True if pointer is defined (including empty string)
+ * @example
+ * isPointerDefined('') // true - empty string is valid (root pointer)
+ * isPointerDefined('/field') // true
+ * isPointerDefined(null) // false
+ * isPointerDefined(undefined) // false
+ */
+export function isPointerDefined(pointer) {
+  return pointer !== undefined && pointer !== null;
 }

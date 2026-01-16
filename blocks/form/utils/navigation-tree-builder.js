@@ -1,5 +1,6 @@
 import { getGroupErrorCount } from './validation-helper.js';
 import { isPrimitiveType } from './field-helper.js';
+import { isPointerDefined } from './pointer-utils.js';
 
 /**
  * Check if a node should be rendered in navigation.
@@ -39,7 +40,9 @@ function buildTreeNode(node, formModel, validationState) {
   let arrayIndex = null;
   let parentPointer = null;
 
-  if (node.groupPointer) {
+  // Check if this node has a parent
+  // Note: groupPointer can be '' for root's children, which is valid
+  if (isPointerDefined(node.groupPointer)) {
     const parentNode = formModel.getNode(node.groupPointer);
     if (parentNode?.type === 'array') {
       isArrayItem = true;
@@ -93,13 +96,8 @@ export function buildNavigationTree(formModel, validationState, rootPointer = ''
   const root = rootPointer ? formModel.getGroup(rootPointer) : formModel.root;
   if (!root) return [];
 
-  const children = formModel.getChildren(root.pointer);
-
-  const filteredChildren = children.filter((child) => shouldRenderInNav(child, formModel));
-
-  const treeNodes = filteredChildren.map((child) => (
-    buildTreeNode(child, formModel, validationState)
-  ));
-
-  return treeNodes;
+  // Always include root as the first item in the navigation tree
+  // This ensures consistent rendering for both object and array roots
+  const rootNode = buildTreeNode(root, formModel, validationState);
+  return [rootNode];
 }

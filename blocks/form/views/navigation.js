@@ -590,45 +590,10 @@ class FormNavigation extends LitElement {
       ${this.renderNavHeader()}
       <div class="nav-list" ${ref((el) => { this._navListEl = el; })}>
         <div class="form-nav-active-indicator" ${ref((el) => { this._indicatorEl = el; })}></div>
-        <ul>${this.renderRootItem(this._nav)}</ul>
+        <ul>
+          ${this._navTree.map((item) => this.renderNavItem(item))}
+        </ul>
       </div>
-    `;
-  }
-
-  renderRootItem(root) {
-    const errorCount = this.validationState?.groupCounts?.get(root.pointer ?? '') ?? 0;
-    const isActive = root.pointer === this.activePointer;
-
-    const icon = html`
-      <svg class="nav-item-icon" width="14" height="14" viewBox="0 0 14 14">
-        <circle cx="7" cy="7" r="7" class="nav-icon-bg" />
-        <circle cx="7" cy="7" r="3.5" class="nav-icon-fill" />
-      </svg>
-    `;
-
-    return html`
-      <li data-key="${root.pointer}" ?data-active=${isActive} ${this.createNavItemRef(root.pointer)}>
-        <div class="nav-row">
-          ${icon}
-          <navigation-item
-            label="${root.title}"
-            pointer="${root.pointer}"
-            ?active=${isActive}
-          ></navigation-item>
-          ${errorCount > 0 ? html`
-            <div class="nav-badges">
-              <error-badge
-                .count=${errorCount}
-                label="Jump to first error in ${root.title} (${errorCount} issues)"
-                @error-badge-click=${(e) => this._handleBadgeClick(e)}
-              ></error-badge>
-            </div>
-          ` : nothing}
-        </div>
-        ${this._navTree?.length > 0 ? html`
-          <ul>${this._navTree.map((item) => this.renderNavItem(item))}</ul>
-        ` : nothing}
-      </li>
     `;
   }
 
