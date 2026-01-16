@@ -1,11 +1,10 @@
 import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
-import { handleSave } from './utils.js';
 import '../da-sheet-tabs.js';
-import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { WebsocketProvider, Y } from 'da-y-wrapper';
-import { yToJSheet, jSheetToY } from './convert.js';
-import { setupEventHandlers } from './collab.js';
+import { yToJSheet, jSheetToY } from '../collab/convert.js';
+import { setupEventHandlers } from '../collab/events.js';
+import joinCollab from '../collab/index.js';
+import { captureSpreadsheetState, restoreSpreadsheetState } from '../collab/position.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
@@ -140,37 +139,6 @@ export async function getData(url) {
   return sheets;
 }
 
-async function joinCollab(el) {
-  const path = el.details.sourceUrl;
-
-  const ydoc = new Y.Doc();
-  const ysheets = ydoc.getArray('sheets');
-
-  const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
-
-  const opts = { protocols: ['yjs'] };
-
-  if (window.adobeIMS?.isSignedInUser()) {
-    const { token } = window.adobeIMS.getAccessToken();
-    // add token to the sec-websocket-protocol header
-    opts.protocols.push(token);
-  }
-
-  const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-
-  // Increase the max backoff time to 30 seconds. If connection error occurs,
-  // the socket provider will try to reconnect quickly at the beginning
-  // (exponential backoff starting with 100ms) and then every 30s.
-  wsProvider.maxBackoffTime = 30000;
-
-  const yUndoManager = new Y.UndoManager(ysheets, {
-    trackedOrigins: new Set(['foo']), // todo client id from awareness
-  });
-
-  return { ydoc, wsProvider, yUndoManager };
-}
-
 function checkSheetDimensionsEqual(jExcelData, newData) {
   const jExcelDimensions = jExcelData.length;
   const newDimensions = newData.length;
@@ -186,27 +154,34 @@ function checkSheetDimensionsEqual(jExcelData, newData) {
 }
 
 function rerenderSheets(el, ydoc, yUndoManager) {
-  const ysheets = ydoc.getArray('sheets');
-  let sheets = yToJSheet(ysheets);
+  // Allow events (eg navigate to next cell) to complete before capturing state
+  setTimeout(() => {  
+    const wrapper = el.closest('.da-sheet-wrapper');
 
-  if (sheets.length === 0) {
-    // TODO handle this on backend. Backend should always return a sheet.
-    sheets = getDefaultSheet();
-    jSheetToY(sheets, ydoc);
-  }
-
-  resetSheets(el);
-
-  window.jspreadsheet.tabs(el, sheets);
-  finishSetup(el, sheets);
-
-  el.jexcel.forEach((sheet, idx) => {
-    setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, `collab-${Math.random()}`);
-  });
+    const ysheets = ydoc.getArray('sheets');
+    let sheets = yToJSheet(ysheets);
+  
+    if (sheets.length === 0) {
+      console.error('No sheets found in Yjs document');
+      return;
+    }
+    const savedState = captureSpreadsheetState(wrapper);
+    console.log('savedState', savedState);
+  
+    resetSheets(el);
+  
+    window.jspreadsheet.tabs(el, sheets);
+    finishSetup(el, sheets);
+  
+    restoreSpreadsheetState(wrapper, savedState);
+  
+    el.jexcel.forEach((sheet, idx) => {
+      setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, `collab-${Math.random()}`);
+    });
+  }, 0);
 }
 
 export default async function init(el) {
-  await getData(el.details.sourceUrl);
   await checkPermissions(el.details.sourceUrl);
 
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');

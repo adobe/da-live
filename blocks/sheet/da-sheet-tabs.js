@@ -59,6 +59,10 @@ class DaSheetTabs extends LitElement {
     return this.tabContainer.jexcel;
   }
 
+  get activeIndex() {
+    return this._active;
+  }
+
   get hiddenTabs() {
     const parent = this.tabContainer.querySelector(':scope > div:first-child');
     return parent.querySelectorAll('.jexcel_tab_link');
@@ -74,7 +78,7 @@ class DaSheetTabs extends LitElement {
   }
 
   async handleAdd() {
-    const { addSheet: collabAddSheet } = await import('./utils/collab.js');
+    const { addSheet: collabAddSheet } = await import('./collab/events.js');
     const ydoc = this.closest('.da-sheet-wrapper').ydoc;
     collabAddSheet(ydoc, `data-${this.jexcel.length + 1}`);
   }
@@ -96,7 +100,7 @@ class DaSheetTabs extends LitElement {
       return;
     }
     if (e.submitter.value === 'remove') {
-      const { deleteSheet: collabDeleteSheet } = await import('./utils/collab.js');
+      const { deleteSheet: collabDeleteSheet } = await import('./collab/events.js');
       const ydoc = this.closest('.da-sheet-wrapper').ydoc;
       collabDeleteSheet(ydoc, idx);
     }
@@ -123,7 +127,7 @@ class DaSheetTabs extends LitElement {
         return;
       }
 
-      const { renameSheet: collabRenameSheet } = await import('./utils/collab.js');
+      const { renameSheet: collabRenameSheet } = await import('./collab/events.js');
       const ydoc = this.closest('.da-sheet-wrapper').ydoc;
       collabRenameSheet(ydoc, idx, name);
     }
