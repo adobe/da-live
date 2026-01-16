@@ -7,7 +7,6 @@ const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
 
 const style = await getStyle(import.meta.url);
 
-const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 const ICONS = [
   '/blocks/edit/img/Smock_Delete_18_N.svg',
   '/blocks/edit/img/Smock_Edit_18_N.svg',
@@ -46,6 +45,7 @@ class DaSheetTabs extends LitElement {
     this._active = idx;
     this.sheetContents.forEach((sheet) => { sheet.style.display = 'none'; });
     this.sheetContents[idx].style.display = 'block';
+    this.dispatchEvent(new CustomEvent('sheet-changed', { detail: { idx } }));
   }
 
   getNames() {

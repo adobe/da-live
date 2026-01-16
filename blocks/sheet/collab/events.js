@@ -226,10 +226,12 @@ export function renameSheet(ydoc, index, newName) {
   sheet.set('sheetName', newName);
 }
 
-export function setupEventHandlers(sheet, idx,ydoc, ysheets, yUndoManager, label, listenerContext) {
+export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, listenerContext, wsProvider) {
   const ysheet = ysheets.get(idx);
   const ydata = ysheet.get('data');
   const ycolumns = ysheet.get('columns');
+
+  const label = wsProvider.awareness.clientID;
 
   // Cell value change
   sheet.options.onchange = (instance, cell, colIndex, rowIndex, value) => {
@@ -240,6 +242,27 @@ export function setupEventHandlers(sheet, idx,ydoc, ysheets, yUndoManager, label
       updateCell(ydata, rowIndex, colIndex, value);
     }, label);
   };
+
+  // Selection change - update awareness position
+  sheet.options.onselection = (instance, x1, y1, x2, y2) => {
+    if (wsProvider?.awareness) {
+      const position = {
+        sheetIdx: idx,
+        selection: { x1, y1, x2, y2 },
+      };
+      wsProvider.awareness.setLocalStateField('position', position);
+    }
+  };
+
+  sheet.options.onblur = () => {
+    if (wsProvider?.awareness) {
+      const position = {
+        sheetIdx: idx,
+        selection: null,
+      };
+      wsProvider.awareness.setLocalStateField('position', position);
+    }
+  }
 
   // Row inserted
   sheet.options.oninsertrow = (instance, rowIndex, numOfRows, rowData, insertBefore) => {

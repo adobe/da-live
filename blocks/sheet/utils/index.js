@@ -3,7 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import '../da-sheet-tabs.js';
 import { yToJSheet, jSheetToY } from '../collab/convert.js';
 import { setupEventHandlers } from '../collab/events.js';
-import joinCollab from '../collab/index.js';
+import joinCollab, { drawOverlays } from '../collab/index.js';
 import { captureSpreadsheetState, restoreSpreadsheetState } from '../collab/position.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
@@ -162,7 +162,7 @@ function checkSheetDimensionsEqual(jExcelData, newDataFromY) {
   return true;
 }
 
-function rerenderSheets(el, ydoc, yUndoManager) {
+function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
   const wrapper = el.closest('.da-sheet-wrapper');
   const ysheets = ydoc.getArray('sheets');
   let sheets = yToJSheet(ysheets);
@@ -181,8 +181,23 @@ function rerenderSheets(el, ydoc, yUndoManager) {
   restoreSpreadsheetState(wrapper, savedState);
 
   el.jexcel.forEach((sheet, idx) => {
-    setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, `collab-${Math.random()}`, listenerContext);
+    setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, listenerContext, wsProvider);
   });
+
+  // Redraw collaboration overlays after rerender
+  if (wsProvider?.awareness) {
+    drawOverlays(wsProvider.awareness.getStates(), wsProvider.awareness.clientID);
+  }
+
+  // Set up listener for tab changes to redraw overlays
+  const daSheetTabs = wrapper.querySelector('da-sheet-tabs');
+  if (daSheetTabs && wsProvider?.awareness) {
+    daSheetTabs.removeEventListener('sheet-changed', daSheetTabs._sheetChangedHandler);
+    daSheetTabs._sheetChangedHandler = () => {
+      drawOverlays(wsProvider.awareness.getStates(), wsProvider.awareness.clientID);
+    };
+    daSheetTabs.addEventListener('sheet-changed', daSheetTabs._sheetChangedHandler);
+  }
 }
 
 let listenerContext = { disableListeners: false };
@@ -202,7 +217,7 @@ function updateSheetsInPlace(el, sheets) {
   listenerContext.disableListeners = false;
 }
 
-function updateSheets(el, ydoc, yUndoManager) {
+function updateSheets(el, ydoc, yUndoManager, wsProvider) {
   const ysheets = ydoc.getArray('sheets');
   let sheets = yToJSheet(ysheets);
 
@@ -220,7 +235,7 @@ function updateSheets(el, ydoc, yUndoManager) {
     // rerender full sheets after a timeout to allow events 
     // (eg navigate to next cell) to complete before capturing state
     setTimeout(() => {
-      rerenderSheets(el, ydoc, yUndoManager);
+      rerenderSheets(el, ydoc, yUndoManager, wsProvider);
     }, 0);
   }
 }
@@ -237,11 +252,11 @@ export default async function init(el) {
   const { ydoc, wsProvider, yUndoManager } = await joinCollab(el);
 
   wsProvider.on('sync', () => {
-    rerenderSheets(el, ydoc, yUndoManager);
+    rerenderSheets(el, ydoc, yUndoManager, wsProvider);
   });
 
   ydoc.on('update', () => {
-    updateSheets(el, ydoc, yUndoManager);
+    updateSheets(el, ydoc, yUndoManager, wsProvider);
   });
 
   return { jexcel: el.jexcel, ydoc };
