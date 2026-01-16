@@ -84,13 +84,31 @@ export function getPermissions() {
   return permissions;
 }
 
+async function createSheet(url) {
+  const body = new FormData();
+  // Create default sheet structure
+  const defaultSheet = {
+    ':type': 'sheet',
+    ':sheetname': 'data',
+    total: 0,
+    limit: 0,
+    offset: 0,
+    data: [],
+  };
+  body.append('data', new Blob([JSON.stringify(defaultSheet)], { type: 'application/json' }));
+  const opts = { body, method: 'POST' };
+  return daFetch(url, opts);
+}
+
 async function checkPermissions(url) {
-  const resp = await daFetch(url, { method: 'HEAD' });
+  let resp = await daFetch(url, { method: 'HEAD' });
+  if (resp.status === 404) resp = await createSheet(url);
 
   const daTitle = document.querySelector('da-title');
   if (daTitle) daTitle.permissions = resp.permissions;
 
   permissions = resp.permissions;
+  canWrite = resp.permissions?.some((permission) => permission === 'write');
 }
 
 export async function getData(url) {
