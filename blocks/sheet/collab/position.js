@@ -16,9 +16,6 @@ export function captureSpreadsheetState(wrapper) {
   const selectedColumns = sheet.getSelectedColumns ? sheet.getSelectedColumns() : null;
   const selectedRows = sheet.getSelectedRows ? sheet.getSelectedRows() : null;
   
-  console.log(`Selected columns:`, selectedColumns);
-  console.log(`Selected rows:`, selectedRows);
-  
   if (selectedColumns && selectedColumns.length > 0 && selectedRows && selectedRows.length > 0) {
     // Columns are already numbers, rows need to extract data-y from DOM elements
     const colIndices = selectedColumns.map(col => parseInt(col)).filter(x => !isNaN(x));
@@ -31,7 +28,6 @@ export function captureSpreadsheetState(wrapper) {
         x2: Math.max(...colIndices),
         y2: Math.max(...rowIndices)
       };
-      console.log(`Captured selection:`, state.selection);
     }
   }
   
@@ -47,7 +43,6 @@ export function captureSpreadsheetState(wrapper) {
     if (editorInput) {
       state.editorValue = editorInput.value;
     }
-    console.log(`Captured editor at [${x}, ${y}] with value:`, state.editorValue);
   }
 
   return state;
@@ -72,7 +67,6 @@ export function restoreSpreadsheetState(wrapper, state) {
     if (x1 <= maxX && y1 <= maxY && x2 <= maxX && y2 <= maxY) {
       // Update selection
       sheet.updateSelectionFromCoords(x1, y1, x2, y2);
-      console.log(`Restored selection:`, state.selection);
     } else {
       console.log(`Selection out of bounds, skipping restore`);
     }
@@ -86,24 +80,19 @@ export function restoreSpreadsheetState(wrapper, state) {
     const maxY = sheet.rows.length - 1;
     const maxX = sheet.options.columns.length - 1;
     
-    console.log('restoring editor cell', x, y, maxX, maxY);
-
     if (x <= maxX && y <= maxY) {
       const cell = sheet.records[y][x];
       if (cell) {
-        console.log('restoring editor cell')
         // Open the editor
         setTimeout(() => {
           sheet.openEditor(cell);
           // Restore the editor value if we had captured it
           if (state.editorValue !== null) {
-            console.log('Restoring editor value:', state.editorValue);
             const editorInput = cell.querySelector('input');
             if (editorInput) {
               editorInput.value = state.editorValue;
             }
           }
-          console.log(`Restored editor at [${x}, ${y}]`);
         }, 0);
       }
     } else {

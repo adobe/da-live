@@ -42,6 +42,7 @@ class DaSheetTabs extends LitElement {
   }
 
   showSheet(idx) {
+    if (idx < 0 || idx >= this.jexcel.length) return;
     this._active = idx;
     this.sheetContents.forEach((sheet) => { sheet.style.display = 'none'; });
     this.sheetContents[idx].style.display = 'block';

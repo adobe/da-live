@@ -226,13 +226,14 @@ export function renameSheet(ydoc, index, newName) {
   sheet.set('sheetName', newName);
 }
 
-export function setupEventHandlers(sheet, idx,ydoc, ysheets, yUndoManager, label) {
+export function setupEventHandlers(sheet, idx,ydoc, ysheets, yUndoManager, label, listenerContext) {
   const ysheet = ysheets.get(idx);
   const ydata = ysheet.get('data');
   const ycolumns = ysheet.get('columns');
 
   // Cell value change
   sheet.options.onchange = (instance, cell, colIndex, rowIndex, value) => {
+    if (listenerContext.disableListeners) return;
     console.log(`[${label}] Cell changed at [${rowIndex}, ${colIndex}] to "${value}"`);
     
     ydoc.transact(() => {

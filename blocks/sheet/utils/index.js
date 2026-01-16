@@ -139,46 +139,90 @@ export async function getData(url) {
   return sheets;
 }
 
-function checkSheetDimensionsEqual(jExcelData, newData) {
-  const jExcelDimensions = jExcelData.length;
-  const newDimensions = newData.length;
-  if (jExcelDimensions !== newDimensions) return false;
-
-  for (let i = 0; i < jExcelDimensions; i += 1) {
-    const jExcelRow = jExcelData[i];
-    const newRow = newData[i];
-    if (jExcelRow.length !== newRow.length) return false;
+function checkSheetDimensionsEqual(jExcelData, newDataFromY) {
+  if (!jExcelData || !newDataFromY) return false;
+  const jExcelSheetCount = jExcelData.length;
+  const newSheetCount = newDataFromY.length;
+  // compare number of sheets
+  if (jExcelSheetCount !== newSheetCount) return false;
+  // compare sheet names
+  for (let i = 0; i < jExcelSheetCount; i += 1) {
+    if (jExcelData[i].name !== newDataFromY[i].sheetName) return false;
   }
 
+  // check col/row count
+  for (let i = 0; i < jExcelSheetCount; i += 1) {
+    const oldData = jExcelData[i].getData();
+    const newData = newDataFromY[i].data;
+    if (oldData.length !== newData.length) return false;
+    for (let j = 0; j < oldData.length; j += 1) {
+      if (oldData[j].length !== newData[j].length) return false;
+    }
+  }
   return true;
 }
 
 function rerenderSheets(el, ydoc, yUndoManager) {
-  // Allow events (eg navigate to next cell) to complete before capturing state
-  setTimeout(() => {  
-    const wrapper = el.closest('.da-sheet-wrapper');
+  const wrapper = el.closest('.da-sheet-wrapper');
+  const ysheets = ydoc.getArray('sheets');
+  let sheets = yToJSheet(ysheets);
 
-    const ysheets = ydoc.getArray('sheets');
-    let sheets = yToJSheet(ysheets);
-  
-    if (sheets.length === 0) {
-      console.error('No sheets found in Yjs document');
-      return;
-    }
-    const savedState = captureSpreadsheetState(wrapper);
-    console.log('savedState', savedState);
-  
-    resetSheets(el);
-  
-    window.jspreadsheet.tabs(el, sheets);
-    finishSetup(el, sheets);
-  
-    restoreSpreadsheetState(wrapper, savedState);
-  
-    el.jexcel.forEach((sheet, idx) => {
-      setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, `collab-${Math.random()}`);
+  if (sheets.length === 0) {
+    console.error('No sheets found in Yjs document');
+    return;
+  }
+  const savedState = captureSpreadsheetState(wrapper);
+
+  resetSheets(el);
+
+  window.jspreadsheet.tabs(el, sheets);
+  finishSetup(el, sheets);
+
+  restoreSpreadsheetState(wrapper, savedState);
+
+  el.jexcel.forEach((sheet, idx) => {
+    setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, `collab-${Math.random()}`, listenerContext);
+  });
+}
+
+let listenerContext = { disableListeners: false };
+function updateSheetsInPlace(el, sheets) {
+  listenerContext.disableListeners = true;
+  const tabs = el.closest('.da-sheet-wrapper').querySelector('da-sheet-tabs');
+
+  tabs.jexcel.forEach((sheet, idx) => {
+    const newSheet = sheets[idx];
+
+    newSheet.data.forEach((row, rowIdx) => {
+      row.forEach((cell, colIdx) => {
+        sheet.setValueFromCoords(colIdx, rowIdx, newSheet.data[rowIdx][colIdx]);
+      });
     });
-  }, 0);
+  });
+  listenerContext.disableListeners = false;
+}
+
+function updateSheets(el, ydoc, yUndoManager) {
+  const ysheets = ydoc.getArray('sheets');
+  let sheets = yToJSheet(ysheets);
+
+  if (sheets.length === 0) {
+    console.error('No sheets found in Yjs document');
+    return;
+  }
+
+  const dimensionsEqual = checkSheetDimensionsEqual(el.jexcel, sheets);
+  if (dimensionsEqual) {
+    // update in-place. This preserves the editor state better.
+    updateSheetsInPlace(el, sheets);
+  } else {
+    // Re-render to match dimensions, tab names etc.
+    // rerender full sheets after a timeout to allow events 
+    // (eg navigate to next cell) to complete before capturing state
+    setTimeout(() => {
+      rerenderSheets(el, ydoc, yUndoManager);
+    }, 0);
+  }
 }
 
 export default async function init(el) {
@@ -197,7 +241,7 @@ export default async function init(el) {
   });
 
   ydoc.on('update', () => {
-    rerenderSheets(el, ydoc, yUndoManager);
+    updateSheets(el, ydoc, yUndoManager);
   });
 
   return { jexcel: el.jexcel, ydoc };
