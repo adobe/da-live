@@ -107,6 +107,7 @@ function rowToY(row) {
  * @param {Y.XmlFragment} ydata - Y.XmlFragment to populate
  */
 export function dataArrayToY(data, ydata) {
+  console.log('deleting data');
   // Clear existing data
   if (ydata.length > 0) {
     ydata.delete(0, ydata.length);

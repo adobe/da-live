@@ -199,7 +199,7 @@ function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
   restoreSpreadsheetState(wrapper, savedState);
 
   el.jexcel.forEach((sheet, idx) => {
-    setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, listenerContext, wsProvider);
+    setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerContext, wsProvider);
   });
 
   // Redraw collaboration overlays after rerender

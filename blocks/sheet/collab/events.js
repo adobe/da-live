@@ -101,7 +101,7 @@ export function insertColumn(ydata, ycolumns, colIndex, columnData = null) {
   
   // Insert column metadata
   const ycol = new Y.Map();
-  ycol.set('width', '300');
+  ycol.set('width', '50');
   ycolumns.insert(colIndex, [ycol]);
   
   console.log(`Inserted column at index ${colIndex} (data and metadata)`);
@@ -226,11 +226,17 @@ export function renameSheet(ydoc, index, newName) {
   sheet.set('sheetName', newName);
 }
 
-export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, listenerContext, wsProvider) {
-  const ysheet = ysheets.get(idx);
-  const ydata = ysheet.get('data');
-  const ycolumns = ysheet.get('columns');
-
+export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerContext, wsProvider) {
+  const getYData = () => {
+    const ysheet = ydoc.getArray('sheets').get(idx);
+    return ysheet.get('data');
+  };
+  
+  const getYColumns = () => {
+    const ysheet = ydoc.getArray('sheets').get(idx);
+    return ysheet.get('columns');
+  };
+  
   const label = wsProvider.awareness.clientID;
 
   // Cell value change
@@ -239,6 +245,7 @@ export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, list
     console.log(`[${label}] Cell changed at [${rowIndex}, ${colIndex}] to "${value}"`);
     
     ydoc.transact(() => {
+      const ydata = getYData();
       updateCell(ydata, rowIndex, colIndex, value);
     }, label);
   };
@@ -269,6 +276,7 @@ export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, list
     console.log(`[${label}] Inserted ${numOfRows} row(s) at index ${rowIndex}, insertBefore: ${insertBefore}`);
     
     ydoc.transact(() => {
+      const ydata = getYData();
       const numColumns = ydata.length > 0 ? ydata.get(0).toArray().length : 0;
       // If insertBefore is false, we want to insert after the selected row
       // so we need to adjust the index
@@ -286,6 +294,7 @@ export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, list
     console.log(`[${label}] Deleted ${numOfRows} row(s) at index ${rowIndex}`);
     
     ydoc.transact(() => {
+      const ydata = getYData();
       deleteRow(ydata, rowIndex, numOfRows);
     }, label);
   };
@@ -295,6 +304,8 @@ export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, list
     console.log(`[${label}] Inserted ${numOfColumns} column(s) at index ${colIndex}, insertBefore: ${insertBefore}`);
     
     ydoc.transact(() => {
+      const ydata = getYData();
+      const ycolumns = getYColumns();
       // If insertBefore is false, we want to insert after the selected column
       // so we need to adjust the index
       const insertIndex = insertBefore ? colIndex : colIndex + 1;
@@ -311,6 +322,8 @@ export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, list
     console.log(`[${label}] Deleted ${numOfColumns} column(s) at index ${colIndex}`);
     
     ydoc.transact(() => {
+      const ydata = getYData();
+      const ycolumns = getYColumns();
       deleteColumn(ydata, ycolumns, colIndex, numOfColumns);
     }, label);
   };
@@ -320,6 +333,7 @@ export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, list
     console.log(`[${label}] Moved row from ${fromIndex} to ${toIndex}`);
     
     ydoc.transact(() => {
+      const ydata = getYData();
       moveRow(ydata, fromIndex, toIndex);
     }, label);
   };
@@ -329,6 +343,8 @@ export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, list
     console.log(`[${label}] Moved column from ${fromIndex} to ${toIndex}`);
     
     ydoc.transact(() => {
+      const ydata = getYData();
+      const ycolumns = getYColumns();
       moveColumn(ydata, ycolumns, fromIndex, toIndex);
     }, label);
   
@@ -337,16 +353,10 @@ export function setupEventHandlers(sheet, idx, ydoc, ysheets, yUndoManager, list
   sheet.options.onundo = (instance) => {
     console.log(`[${label}] Undo triggered`);
     yUndoManager.undo();
-    // Reload spreadsheet from Y state after undo
-    const containerKey = label.toLowerCase();
-    reloadSpreadsheetFromY(containerKey, ysheets, ydoc, yUndoManager, label);
   };
 
   sheet.options.onredo = (instance) => {
     console.log(`[${label}] Redo triggered`);
     yUndoManager.redo();
-    // Reload spreadsheet from Y state after redo
-    const containerKey = label.toLowerCase();
-    reloadSpreadsheetFromY(containerKey, ysheets, ydoc, yUndoManager, label);
   };
 };
