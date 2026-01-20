@@ -8,6 +8,7 @@
     "url": "git+https://github.com/adobe/da-live.git"
   },
   "dependencies": {
+    "@da-tools/da-parser": "1.0.1",
     "@open-wc/lit-helpers": "0.7.0",
     "esbuild": "0.21.0",
     "jspreadsheet-ce": "4.13.4",
@@ -52,11 +53,12 @@
     "lint:css": "stylelint blocks/**/*.css styles/*.css",
     "lint": "npm run lint:js && npm run lint:css",
     "copy:deps": "node ./deps/copy.js",
-    "postinstall": "npm run build:da-y-wrapper && npm run build:da-lit",
+    "postinstall": "npm run build:da-y-wrapper && npm run build:da-lit && npm run build:da-parser",
     "test": "wtr \"./test/unit/**/*.test.js\" --node-resolve --port=2000 --coverage",
     "test:watch": "npm test -- --watch",
     "test:e2e": "cd test/e2e && npm i && npm run test:all",
     "build:da-lit": "esbuild --format=esm --minify ./deps/lit/src/index.js --bundle --outfile=./deps/lit/dist/index.js",
-    "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js"
+    "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js",
+    "build:da-parser": "./tools/build-da-parser.sh"
   }
 }

@@ -33,6 +33,8 @@ export default {
             imports: {
               'da-y-wrapper': '/deps/da-y-wrapper/dist/index.js',
               'da-lit': '/deps/lit/dist/index.js',
+              'da-parser': '/deps/da-parser/dist/index.js',
+              'hast-util-from-html': '/test/fixtures/hast-stub.js',
             },
           },
         },
