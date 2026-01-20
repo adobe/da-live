@@ -10,12 +10,12 @@ export function getEnumOptions(schema) {
   if (schema.enum) {
     return schema.enum;
   }
-  
+
   // For array schemas, check if items have enum
   if (schema.items?.enum) {
     return schema.items.enum;
   }
-  
+
   return null;
 }
 
@@ -25,7 +25,7 @@ export function getEnumOptions(schema) {
  * @returns {'checkbox' | 'select' | 'number' | 'textarea' | 'text'}
  */
 export function determineFieldType(schema) {
-  const type = schema.type;
+  const { type } = schema;
 
   if (!type) {
     console.warn('Schema missing type', schema);
@@ -64,6 +64,6 @@ export function determineFieldType(schema) {
  * @returns {boolean}
  */
 export function isPrimitiveType(schema) {
-  const type = schema.type;
+  const { type } = schema;
   return PRIMITIVE_TYPES.includes(type);
 }

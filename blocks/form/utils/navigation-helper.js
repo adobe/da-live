@@ -25,23 +25,6 @@ export function navigateToPointer(pointer, options = {}) {
 }
 
 /**
- * Navigate to the first error field within a group.
- * @param {string} groupPointer - Group pointer
- * @param {FormModel} formModel - Form model
- * @param {ValidationState} validationState - Current validation state
- * @param {Object} options - Navigation options
- */
-export function navigateToFirstError(groupPointer, formModel, validationState, options = {}) {
-  const fieldPointer = findFirstErrorField(groupPointer, formModel, validationState);
-
-  navigateToPointer(groupPointer, {
-    ...options,
-    targetFieldPointer: fieldPointer,
-    reason: options.reason || 'validation-error',
-  });
-}
-
-/**
  * Navigate to a specific field (finds its group and focuses field).
  * @param {string} fieldPointer - Field pointer
  * @param {FormModel} formModel - Form model
@@ -51,10 +34,36 @@ export function navigateToField(fieldPointer, formModel, options = {}) {
   if (!fieldPointer) return;
 
   const fieldNode = formModel?.getField(fieldPointer);
-  const groupPointer = fieldNode?.groupPointer ?? fieldPointer;
+  let groupPointer = fieldNode?.groupPointer ?? fieldPointer;
+
+  // Check if the group is a primitive array (not rendered in navigation)
+  // If so, navigate to the grandparent instead
+  if (groupPointer != null) {
+    const groupNode = formModel?.getNode(groupPointer);
+    if (groupNode?.isPrimitiveArray) {
+      groupPointer = groupNode.groupPointer ?? groupPointer;
+    }
+  }
 
   navigateToPointer(groupPointer, {
     ...options,
     targetFieldPointer: fieldPointer,
+  });
+}
+
+/**
+ * Navigate to the first error field within a group.
+ * @param {string} groupPointer - Group pointer
+ * @param {FormModel} formModel - Form model
+ * @param {ValidationState} validationState - Current validation state
+ * @param {Object} options - Navigation options
+ */
+export function navigateToFirstError(groupPointer, formModel, validationState, options = {}) {
+  const fieldPointer = findFirstErrorField(groupPointer, formModel, validationState);
+
+  // Delegate to navigateToField which handles primitive arrays
+  navigateToField(fieldPointer, formModel, {
+    ...options,
+    reason: options.reason || 'validation-error',
   });
 }

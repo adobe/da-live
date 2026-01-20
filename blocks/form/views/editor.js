@@ -205,10 +205,19 @@ class FormEditor extends LitElement {
 
   _handleFieldClick(e) {
     const fieldPointer = e.detail.id;
-    const parentPointer = getParentPointer(fieldPointer);
+    let parentPointer = getParentPointer(fieldPointer);
 
     if (parentPointer != null) {
-      navigationHelper.navigateToPointer(parentPointer, { source: 'editor' });
+      // Check if parent is a primitive array (not rendered in navigation)
+      // If so, navigate to the grandparent instead
+      const parentNode = this.formModel?.getNode(parentPointer);
+      if (parentNode?.isPrimitiveArray) {
+        parentPointer = getParentPointer(parentPointer);
+      }
+
+      if (parentPointer != null) {
+        navigationHelper.navigateToPointer(parentPointer, { source: 'editor' });
+      }
     }
   }
 

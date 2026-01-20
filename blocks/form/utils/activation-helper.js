@@ -141,5 +141,3 @@ export function getActivationInfo(node, formModel) {
     canActivate: true,
   };
 }
-
-
