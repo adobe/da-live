@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { DOMParser as proseDOMParser, TextSelection } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, DOMSerializer, TextSelection, Y } from 'da-y-wrapper';
 import {
   LitElement,
   html,
@@ -9,11 +9,11 @@ import {
   ref,
   nothing,
 } from 'da-lit';
+import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
-import { aem2prose } from '../utils/helpers.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
 import { delay, getItems, getLibraryList, getPreviewUrl, getEdsUrlVars } from './helpers/helpers.js';
@@ -278,14 +278,22 @@ class DaLibrary extends LitElement {
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
-    const text = await resp.text();
-    const doc = new DOMParser().parseFromString(text, 'text/html');
-    // Convert to a metadata block so it can be copied
-    doc.querySelector('.template-metadata')?.classList.replace('template-metadata', 'metadata');
-    const proseDom = aem2prose(doc);
-    const flattedDom = document.createElement('div');
-    flattedDom.append(...proseDom);
-    const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(flattedDom);
+    let text = await resp.text();
+
+    // Convert template-metadata to metadata block so it can be copied
+    text = text.replace('class="template-metadata"', 'class="metadata"');
+
+    const tempYdoc = new Y.Doc();
+    await aem2doc(text, tempYdoc);
+
+    const parserSchema = getSchema();
+    const pmDoc = yDocToProsemirror(parserSchema, tempYdoc);
+    const serializer = DOMSerializer.fromSchema(parserSchema);
+    const fragment = serializer.serializeFragment(pmDoc.content);
+    const templateDom = document.createElement('div');
+    templateDom.append(fragment);
+
+    const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(templateDom);
     window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));
   }
 
