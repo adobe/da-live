@@ -158,6 +158,11 @@ button.new-sheet {
   white-space: nowrap;
 }
 
+.collab-name-label.position-below {
+  top: 100%;
+  bottom: auto;
+}
+
 /* stylelint-disable-next-line selector-class-pattern */
 .jexcel_tabs > div:first-child {
   display: none;

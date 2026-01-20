@@ -3,7 +3,8 @@ import { getNx } from '../../../scripts/utils.js';
 import '../da-sheet-tabs.js';
 import { yToJSheet, jSheetToY } from '../collab/convert.js';
 import { setupEventHandlers } from '../collab/events.js';
-import joinCollab, { drawOverlays } from '../collab/index.js';
+import joinCollab from '../collab/index.js';
+import { drawOverlays } from '../collab/overlays.js';
 import { captureSpreadsheetState, restoreSpreadsheetState } from '../collab/position.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
@@ -204,27 +205,7 @@ function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
 
   // Redraw collaboration overlays after rerender
   if (wsProvider?.awareness) {
-    drawOverlays(wsProvider.awareness.getStates(), wsProvider.awareness.clientID);
-  }
-
-  // Set up listener for tab changes to redraw overlays
-  const daSheetTabs = wrapper.querySelector('da-sheet-tabs');
-  if (daSheetTabs && wsProvider?.awareness) {
-    daSheetTabs.removeEventListener('sheet-changed', daSheetTabs._sheetChangedHandler);
-    daSheetTabs._sheetChangedHandler = () => {
-      drawOverlays(wsProvider.awareness.getStates(), wsProvider.awareness.clientID);
-    };
-    daSheetTabs.addEventListener('sheet-changed', daSheetTabs._sheetChangedHandler);
-  }
-
-  // Set up listener for scroll events to redraw overlays
-  const jexcelContent = wrapper.querySelector('.jexcel_content');
-  if (jexcelContent && wsProvider?.awareness) {
-    jexcelContent.removeEventListener('scroll', jexcelContent._scrollHandler);
-    jexcelContent._scrollHandler = () => {
-      drawOverlays(wsProvider.awareness.getStates(), wsProvider.awareness.clientID);
-    };
-    jexcelContent.addEventListener('scroll', jexcelContent._scrollHandler, { passive: true });
+    drawOverlays(wsProvider);
   }
 }
 
