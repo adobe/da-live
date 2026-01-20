@@ -1,4 +1,4 @@
-import { EVENT_FOCUS_ELEMENT } from '../constants.js';
+import { EVENT_FOCUS_ELEMENT, EVENT_SOURCE } from '../constants.js';
 
 /**
  * Lit controller that handles post-update actions after model changes.
@@ -102,7 +102,7 @@ export default class PostUpdateActionsController {
     window.dispatchEvent(new CustomEvent(EVENT_FOCUS_ELEMENT, {
       detail: {
         pointer: action.pointer,
-        source: action.source || 'unknown',
+        source: action.source || EVENT_SOURCE.UNKNOWN,
       },
       bubbles: true,
       composed: true,

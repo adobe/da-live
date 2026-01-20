@@ -1,7 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import './components/navigation/navigation-item/navigation-item.js';
-import './components/navigation/navigation-activation-item/navigation-activation-item.js';
 import './components/navigation/navigation-header/navigation-header.js';
 import './components/shared/error-badge/error-badge.js';
 import './components/shared/action-menu/action-menu.js';
@@ -11,7 +10,7 @@ import './components/shared/move-to-position-button/move-to-position-button.js';
 import { ref, createRef } from '../../../deps/lit/dist/index.js';
 import {
   EVENT_NAVIGATION_SCROLL_TO,
-  EVENT_ACTIVATE_FIELD,
+  EVENT_SOURCE,
   TIMING,
   SCROLL,
 } from '../constants.js';
@@ -83,7 +82,6 @@ class FormNavigation extends LitElement {
 
     this._onHeaderBadgeClick = this._handleHeaderBadgeClick.bind(this);
     this._handleBadgeClick = this._handleBadgeClick.bind(this);
-    this._handleActivationClick = this._handleActivationClick.bind(this);
     this._handleInsertArrayItem = this._handleInsertArrayItem.bind(this);
     this._handleRemoveArrayItem = this._handleRemoveArrayItem.bind(this);
     this._handleAddToArrayEnd = this._handleAddToArrayEnd.bind(this);
@@ -102,9 +100,6 @@ class FormNavigation extends LitElement {
 
     this.addEventListener('header-badge-click', this._onHeaderBadgeClick);
 
-    // Listen for activation events
-    window.addEventListener(EVENT_ACTIVATE_FIELD, this._handleActivationClick);
-
     this.addEventListener('scroll', () => {
       this._indicatorController?.updatePosition(this.activePointer);
     }, { passive: true });
@@ -113,7 +108,6 @@ class FormNavigation extends LitElement {
 
   disconnectedCallback() {
     this.removeEventListener('header-badge-click', this._onHeaderBadgeClick);
-    window.removeEventListener(EVENT_ACTIVATE_FIELD, this._handleActivationClick);
     window.removeEventListener('resize', this._debouncedResize);
     if (this._resizeTimer) {
       clearTimeout(this._resizeTimer);
@@ -171,7 +165,7 @@ class FormNavigation extends LitElement {
       navigationHelper.navigateToField(
         firstError,
         this.formModel,
-        { source: 'navigation', reason: 'header-badge' },
+        { source: EVENT_SOURCE.NAVIGATION, reason: 'header-badge' },
       );
     }
   }
@@ -188,34 +182,8 @@ class FormNavigation extends LitElement {
       pointer,
       this.formModel,
       this.validationState,
-      { source: 'navigation', reason: 'validation-badge' },
+      { source: EVENT_SOURCE.NAVIGATION, reason: 'validation-badge' },
     );
-  }
-
-  _handleActivationClick(e) {
-    const { pointer } = e.detail || {};
-
-    if (!pointer || !this.formModel) return;
-
-    const node = this.formModel.getNode(pointer);
-    if (!node) return;
-
-    // eslint-disable-next-line no-underscore-dangle
-    const itemValue = generateArrayItem(node.schema, this.formModel._schema);
-
-    const newItemPointer = `${pointer}/${node.itemCount || 0}`;
-
-    this.dispatchEvent(new CustomEvent('form-model-intent', {
-      detail: {
-        op: 'add',
-        path: newItemPointer,
-        value: itemValue,
-        focusAfter: newItemPointer,
-        focusSource: 'navigation',
-      },
-      bubbles: true,
-      composed: true,
-    }));
   }
 
   _handleInsertArrayItem(event) {

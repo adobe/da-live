@@ -1,11 +1,5 @@
-/**
- * Focus an element by ID from registry.
- * @param {string} id - Element ID
- * @param {ElementRegistryController} registry - Element registry
- * @param {Object} options - Focus options
- * @param {boolean} options.preventScroll - Prevent scroll on focus (default: true)
- */
-export function focusElement(id, registry, options = {}) {
+/** Sets keyboard focus on an element without scrolling. */
+export default function focusElement(id, registry, options = {}) {
   if (!id || !registry) return;
 
   const element = registry.get(id);
@@ -14,4 +8,3 @@ export function focusElement(id, registry, options = {}) {
   const preventScroll = options.preventScroll !== false;
   element.focus({ preventScroll });
 }
-

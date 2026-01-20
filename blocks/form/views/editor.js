@@ -3,7 +3,6 @@ import { getNx } from '../../../scripts/utils.js';
 import './components/editor/generic-field/generic-field.js';
 import './components/editor/form-item-group/form-item-group.js';
 import './components/navigation/breadcrumb-nav/breadcrumb-nav.js';
-import './components/navigation/navigation-activation-item/navigation-activation-item.js';
 import './components/shared/action-menu/action-menu.js';
 import './components/shared/remove-button/remove-button.js';
 import './components/shared/insert-button/insert-button.js';
@@ -13,6 +12,7 @@ import { ref, createRef } from '../../../deps/lit/dist/index.js';
 import {
   EVENT_EDITOR_SCROLL_TO,
   EVENT_FOCUS_ELEMENT,
+  EVENT_SOURCE,
   LAYOUT,
   SCROLL,
 } from '../constants.js';
@@ -25,7 +25,7 @@ import * as fieldHelper from '../utils/field-helper.js';
 import * as validationHelper from '../utils/validation-helper.js';
 import * as navigationHelper from '../utils/navigation-helper.js';
 import * as breadcrumbHelper from '../utils/breadcrumb-helper.js';
-import * as focusHelper from '../utils/focus-helper.js';
+import focusElement from '../utils/focus-helper.js';
 import { generateArrayItem } from '../utils/data-generator.js';
 import { parseArrayItemPointer, buildArrayItemPointer, getParentPointer, isPointerDefined } from '../utils/pointer-utils.js';
 
@@ -184,7 +184,7 @@ class FormEditor extends LitElement {
     const targetPointer = e.detail?.targetFieldPointer;
     if (targetPointer == null) return;
 
-    focusHelper.focusElement(targetPointer, this._registry, { preventScroll: true });
+    focusElement(targetPointer, this._registry, { preventScroll: true });
   }
 
   _handleFieldValueChange(e) {
@@ -196,27 +196,27 @@ class FormEditor extends LitElement {
   }
 
   _handleBreadcrumbNavigation(e) {
-    navigationHelper.navigateToPointer(e.detail.id, { source: 'breadcrumb' });
+    navigationHelper.navigateToPointer(e.detail.id, { source: EVENT_SOURCE.BREADCRUMB });
   }
 
   _handleSectionNavigation(e) {
-    navigationHelper.navigateToPointer(e.detail.id, { source: 'editor' });
+    navigationHelper.navigateToPointer(e.detail.id, { source: EVENT_SOURCE.EDITOR });
   }
 
+  /** Activates the parent group when a field is clicked. */
   _handleFieldClick(e) {
     const fieldPointer = e.detail.id;
     let parentPointer = getParentPointer(fieldPointer);
 
     if (parentPointer != null) {
-      // Check if parent is a primitive array (not rendered in navigation)
-      // If so, navigate to the grandparent instead
+      // Primitive arrays aren't rendered in navigation, use their parent instead
       const parentNode = this.formModel?.getNode(parentPointer);
       if (parentNode?.isPrimitiveArray) {
         parentPointer = getParentPointer(parentPointer);
       }
 
       if (parentPointer != null) {
-        navigationHelper.navigateToPointer(parentPointer, { source: 'editor' });
+        navigationHelper.navigateToPointer(parentPointer, { source: EVENT_SOURCE.EDITOR });
       }
     }
   }

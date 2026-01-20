@@ -1,4 +1,9 @@
-import { EVENT_FOCUS_ELEMENT, EVENT_EDITOR_SCROLL_TO, EVENT_NAVIGATION_SCROLL_TO } from '../constants.js';
+import {
+  EVENT_FOCUS_ELEMENT,
+  EVENT_EDITOR_SCROLL_TO,
+  EVENT_NAVIGATION_SCROLL_TO,
+  EVENT_SOURCE,
+} from '../constants.js';
 
 /**
  * Lit controller that coordinates scroll behavior between editor and navigation.
@@ -24,7 +29,7 @@ export default class ScrollCoordinatorController {
 
   _handleFocus(e) {
     const { pointer, source, coordinated, targetFieldPointer } = e?.detail || {};
-    if (pointer == null || this._coordinating || source === 'coordinator' || coordinated) return;
+    if (pointer == null || this._coordinating || source === EVENT_SOURCE.COORDINATOR || coordinated) return;
 
     e.stopImmediatePropagation();
     this._coordinating = true;
@@ -35,7 +40,7 @@ export default class ScrollCoordinatorController {
     window.dispatchEvent(new CustomEvent(EVENT_FOCUS_ELEMENT, {
       detail: {
         pointer,
-        source: source || 'unknown',
+        source: source || EVENT_SOURCE.UNKNOWN,
         originalSource: source,
         noScroll: true,
         coordinated: true,
@@ -55,9 +60,9 @@ export default class ScrollCoordinatorController {
 
   _dispatchScrollEvents(pointer, source, originalEvent) {
     const scrollMap = {
-      navigation: [EVENT_EDITOR_SCROLL_TO],
-      editor: [EVENT_NAVIGATION_SCROLL_TO],
-      breadcrumb: [EVENT_EDITOR_SCROLL_TO, EVENT_NAVIGATION_SCROLL_TO],
+      [EVENT_SOURCE.NAVIGATION]: [EVENT_EDITOR_SCROLL_TO],
+      [EVENT_SOURCE.EDITOR]: [EVENT_NAVIGATION_SCROLL_TO],
+      [EVENT_SOURCE.BREADCRUMB]: [EVENT_EDITOR_SCROLL_TO, EVENT_NAVIGATION_SCROLL_TO],
     };
 
     const targetFieldPointer = originalEvent?.detail?.targetFieldPointer;

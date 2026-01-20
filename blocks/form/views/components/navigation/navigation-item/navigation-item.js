@@ -1,6 +1,6 @@
 import { LitElement, html } from 'da-lit';
 import navigationItemStyles from './navigation-item.css' with { type: 'css' };
-import { EVENT_FOCUS_ELEMENT } from '../../../../constants.js';
+import { EVENT_FOCUS_ELEMENT, EVENT_SOURCE } from '../../../../constants.js';
 
 /**
  * Navigation item component - displays a clickable navigation item label.
@@ -31,7 +31,7 @@ class FormNavigationItem extends LitElement {
     const { pointer } = this;
     if (pointer == null) return;
     const event = new CustomEvent(EVENT_FOCUS_ELEMENT, {
-      detail: { pointer, source: 'navigation' },
+      detail: { pointer, source: EVENT_SOURCE.NAVIGATION },
       bubbles: true,
       composed: true,
     });

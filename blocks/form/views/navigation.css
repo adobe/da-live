@@ -241,32 +241,7 @@ li:not([data-active="true"]) .nav-icon-bg {
 
 .nav-add-item:has(.nav-add-button:disabled) .nav-add-icon {
   opacity: 0.4;
-  }
-
-  /* Activation items - bullet point only (component styles its own content) */
-  navigation-activation-item {
-    display: inline-block;
-    line-height: 1.4;
 }
-
-navigation-activation-item:first-child {
-      margin-left: 4px;
-  }
-
-  navigation-activation-item::before {
-    content: "";
-    position: absolute;
-    top: 12px;
-    left: -16px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background-color: #b8bec6;
-  }
-
-  navigation-activation-item[active]::before {
-    background-color: var(--s2-blue-700);
-  }
 
 /* ========================================
    BADGES AND ACTIONS

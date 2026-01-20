@@ -15,7 +15,7 @@ import ScrollCoordinatorController from './controllers/scroll-coordinator-contro
 import PostUpdateActionsController from './controllers/post-update-actions-controller.js';
 import ActiveStateController from './controllers/active-state-controller.js';
 import ValidationStateModel from './validation/validation-state.js';
-import { EVENT_VALIDATION_STATE_CHANGE, SCHEMA_EDITOR_URL } from './constants.js';
+import { EVENT_VALIDATION_STATE_CHANGE, EVENT_SOURCE, SCHEMA_EDITOR_URL } from './constants.js';
 
 // Internal Web Components
 import './views/editor.js';
@@ -123,7 +123,7 @@ class FormEditor extends LitElement {
       this._postUpdateActions.scheduleAction({
         type: 'focus',
         pointer: operation.focusAfter,
-        source: operation.focusSource || 'unknown',
+        source: operation.focusSource || EVENT_SOURCE.UNKNOWN,
       });
     }
 

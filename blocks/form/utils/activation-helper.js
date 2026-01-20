@@ -1,17 +1,6 @@
 import { resolvePropSchema } from './schema.js';
 
-/**
- * Activation Helper Utilities
- * Reusable logic for determining when array fields should show activation buttons.
- * Can be used in both navigation and editor components.
- */
-
-/**
- * Check if a field is required in its parent schema.
- * @param {Object} node - Form node
- * @param {FormModel} formModel - Form model
- * @returns {boolean}
- */
+/** Checks if a field is required in its parent schema. */
 export function isFieldRequiredInParent(node, formModel) {
   // If node has no parent, it's the root (always "required" in a sense)
   if (!node.groupPointer && node.groupPointer !== '') {

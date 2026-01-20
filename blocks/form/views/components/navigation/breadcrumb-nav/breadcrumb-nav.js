@@ -60,4 +60,3 @@ class BreadcrumbNav extends LitElement {
 
 customElements.define('breadcrumb-nav', BreadcrumbNav);
 export default BreadcrumbNav;
-
