@@ -9,7 +9,19 @@ let proseEl;
 let wsProvider;
 
 export async function checkDoc(path) {
-  return daFetch(path, { method: 'HEAD' });
+  const resp = await daFetch(path);
+  if (resp.status === 200) {
+    // Check to see if doc has DA Form
+    const text = await resp.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    // Look for a `da-form` element
+    const daForm = doc.querySelector('.da-form');
+    if (daForm) {
+      console.log(daForm);
+      window.location = window.location.href.replace('edit', 'form');
+    }
+  }
+  return resp;
 }
 
 async function createDoc(path) {
@@ -50,25 +62,25 @@ async function setUI(el) {
   }
 
   let resp = await checkDoc(details.sourceUrl);
-  if (resp.status === 404) resp = await createDoc(details.sourceUrl);
+  // if (resp.status === 404) resp = await createDoc(details.sourceUrl);
 
-  const { permissions } = resp;
+  // const { permissions } = resp;
 
-  daTitle.permissions = resp.permissions;
-  daContent.permissions = resp.permissions;
+  // daTitle.permissions = resp.permissions;
+  // daContent.permissions = resp.permissions;
 
-  if (daContent.wsProvider) {
-    daContent.wsProvider.disconnect({ data: 'Client navigation' });
-    daContent.wsProvider = undefined;
-  }
+  // if (daContent.wsProvider) {
+  //   daContent.wsProvider.disconnect({ data: 'Client navigation' });
+  //   daContent.wsProvider = undefined;
+  // }
 
-  ({
-    proseEl,
-    wsProvider,
-  } = prose.default({ path: details.sourceUrl, permissions }));
+  // ({
+  //   proseEl,
+  //   wsProvider,
+  // } = prose.default({ path: details.sourceUrl, permissions }));
 
-  daContent.proseEl = proseEl;
-  daContent.wsProvider = wsProvider;
+  // daContent.proseEl = proseEl;
+  // daContent.wsProvider = wsProvider;
 }
 
 export default async function init(el) {

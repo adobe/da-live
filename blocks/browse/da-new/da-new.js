@@ -75,6 +75,9 @@ export default class DaNew extends LitElement {
       case 'sheet':
         ext = 'json';
         break;
+      case 'form':
+        ext = 'html';
+        break;
       case 'link':
         ext = 'link';
         formData = new FormData();
@@ -88,7 +91,7 @@ export default class DaNew extends LitElement {
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
-    const editPath = getEditPath({ path, ext, editor: this.editor });
+    const editPath = getEditPath({ path, ext, editor: this.editor, type: this._createType });
     if (ext && ext !== 'link') {
       window.location = editPath;
     } else {
@@ -172,6 +175,9 @@ export default class DaNew extends LitElement {
           </li>
           <li class=da-actions-menu-item>
             <button data-type=media @click=${this.handleNewType}>Media</button>
+          </li>
+          <li class=da-actions-menu-item>
+            <button data-type=form @click=${this.handleNewType}>Form</button>
           </li>
           <li class=da-actions-menu-item>
             <button data-type=link @click=${this.handleNewType}>Link</button>
