@@ -83,6 +83,12 @@ export function deleteRow(ydata, rowIndex, count = 1) {
   console.log(`Deleted ${count} row(s) at index ${rowIndex}`);
 }
 
+export function resizeColumn(ycolumns, colIndex, width) {
+  const ycol = ycolumns.get(colIndex);
+  ycol.set('width', width);
+  console.log(`Resized column ${colIndex} to ${width}`);
+}
+
 /**
  * Insert a column at the specified index
  * @param {Y.XmlFragment} ydata - Y.XmlFragment containing row elements
@@ -296,6 +302,16 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
     ydoc.transact(() => {
       const ydata = getYData();
       deleteRow(ydata, rowIndex, numOfRows);
+    }, label);
+  };
+
+  // Column resized
+  sheet.options.onresizecolumn = (instance, colIndex, width) => {
+    console.log(`[${label}] Column ${colIndex} resized to ${width}`);
+    
+    ydoc.transact(() => {
+      const ycolumns = getYColumns();
+      resizeColumn(ycolumns, colIndex, width);
     }, label);
   };
 
