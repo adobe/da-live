@@ -262,6 +262,14 @@ export default async function init(el) {
 
   resetSheets(el);
 
+  // for config sheets, don't join collaboration
+  if (el.details.view === 'config') {
+    const data = await getData(el.details.sourceUrl);
+    window.jspreadsheet.tabs(el, data);
+    finishSetup(el, data);
+    return { jexcel: el.jexcel, ydoc: null };
+  }
+
   const { ydoc, wsProvider, yUndoManager } = await joinCollab(el);
 
   createAwarenessStatusWidget(wsProvider, window, el.details.sourceUrl);
