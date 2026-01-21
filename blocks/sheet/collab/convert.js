@@ -120,7 +120,7 @@ export function dataArrayToY(data, ydata) {
     });
   }
 
-  if (data.length < MIN_DIMENSIONS) {
+  if (data?.length < MIN_DIMENSIONS) {
     for (let i = data.length; i < MIN_DIMENSIONS; i++) {
       const yrow = rowToY([]);
       ydata.insert(i, [yrow]);
