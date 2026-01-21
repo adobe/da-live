@@ -6,6 +6,7 @@ import { setupEventHandlers } from '../collab/events.js';
 import joinCollab from '../collab/index.js';
 import { drawOverlays } from '../collab/overlays.js';
 import { captureSpreadsheetState, restoreSpreadsheetState } from '../collab/position.js';
+import { createAwarenessStatusWidget } from '../../shared/collab-status.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
@@ -205,7 +206,10 @@ function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
 
   // Redraw collaboration overlays after rerender
   if (wsProvider?.awareness) {
-    drawOverlays(wsProvider);
+    setTimeout(() => {
+      // Allow spreadsheet to render before drawing overlays
+      drawOverlays(wsProvider);
+    }, 0);
   }
 }
 
@@ -259,6 +263,8 @@ export default async function init(el) {
   resetSheets(el);
 
   const { ydoc, wsProvider, yUndoManager } = await joinCollab(el);
+
+  createAwarenessStatusWidget(wsProvider, window, el.details.sourceUrl);
 
   wsProvider.on('sync', () => {
     rerenderSheets(el, ydoc, yUndoManager, wsProvider);

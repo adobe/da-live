@@ -32,8 +32,8 @@ import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
-import { checkDoc } from '../edit.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { createAwarenessStatusWidget } from '../../shared/collab-status.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
@@ -158,51 +158,6 @@ function handleProseLoaded(editor, wsProvider) {
   };
 
   wsProvider.on('synced', handleSynced);
-}
-
-function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
-  const users = new Set();
-
-  wsProvider.awareness.on('update', (delta) => {
-    delta.added.forEach((u) => users.add(u));
-    delta.updated.forEach((u) => users.add(u));
-    delta.removed.forEach((u) => users.delete(u));
-
-    // Don't show the current user
-    users.delete(wsProvider.awareness.clientID);
-
-    const awarenessStates = wsProvider.awareness.getStates();
-    const userMap = new Map();
-    [...users].forEach((u) => {
-      const userInfo = awarenessStates.get(u)?.user;
-      if (!userInfo?.id) {
-        userMap.set(`anonymous-${u}`, 'Anonymous');
-      } else if (userInfo.id !== wsProvider.awareness.getLocalState().user?.id) {
-        userMap.set(userInfo.id, userInfo.name);
-      }
-    });
-    daTitle.collabUsers = [...userMap.values()].sort();
-  });
-
-  wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
-
-  wsProvider.on('connection-close', async () => {
-    const resp = await checkDoc(path);
-    if (resp.status === 404) {
-      const split = window.location.hash.slice(2).split('/');
-      split.pop();
-      // Navigate to the parent folder
-      window.location.replace(`/#/${split.join('/')}`);
-    }
-  });
-  win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
-  win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
-}
-
-export function createAwarenessStatusWidget(wsProvider, win, path) {
-  const daTitle = win.document.querySelector('da-title');
-  handleAwarenessUpdates(wsProvider, daTitle, win, path);
-  return daTitle;
 }
 
 function registerErrorHandler(ydoc) {
