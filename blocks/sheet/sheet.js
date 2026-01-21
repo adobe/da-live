@@ -54,6 +54,7 @@ class DaSheetPanes extends LitElement {
         jSheetToY(verReview.data, this.ydoc, true);
       } else {
         // if not connected to collab, replace the rendered sheet
+        // this is the case for config sheets only
         const daTitle = document.querySelector('da-title');
         const daSheet = document.querySelector('.da-sheet');
 
