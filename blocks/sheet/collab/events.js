@@ -1,5 +1,5 @@
 import { Y } from 'da-y-wrapper';
-import { dataArrayToY } from './convert.js';
+import { dataArrayToY, MIN_DIMENSIONS } from './convert.js';
 
 /**
  * Update a specific cell's value (sets attribute - last-write-wins)
@@ -216,7 +216,13 @@ export function addSheet(ydoc, sheetName) {
   const dataFragment = new Y.XmlFragment();
   dataArrayToY([], dataFragment);
   sheet.set('data', dataFragment);
-  sheet.set('columns', new Y.Array());
+  const ycolumns = new Y.Array();
+  for (let i = 0; i < MIN_DIMENSIONS; i += 1) {
+    const ycol = new Y.Map();
+    ycol.set('width', '50');
+    ycolumns.insert(i, [ycol]);
+  }
+  sheet.set('columns', ycolumns);
   sheets.insert(sheets.length, [sheet]);
   return sheet;
 }

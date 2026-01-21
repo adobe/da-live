@@ -1,6 +1,6 @@
 import { Y } from 'da-y-wrapper';
 
-const MIN_DIMENSIONS = 20;
+export const MIN_DIMENSIONS = 20;
 
 /**
  * ================== YJS TO JSHEET ==================
