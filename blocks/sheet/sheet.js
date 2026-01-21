@@ -48,20 +48,8 @@ class DaSheetPanes extends LitElement {
     verReview.data = await getData(e.detail.url);
     verReview.addEventListener('close', () => { verReview.remove(); });
     verReview.addEventListener('restore', async () => {
-      if (this.ydoc) {
-        // if connected to collab, restore to ydoc
-        const { jSheetToY } = await import('./collab/convert.js');
-        jSheetToY(verReview.data, this.ydoc, true);
-      } else {
-        // if not connected to collab, replace the rendered sheet
-        // this is the case for config sheets only
-        const daTitle = document.querySelector('da-title');
-        const daSheet = document.querySelector('.da-sheet');
-
-        const initSheet = (await import('./utils/index.js')).default;
-        const { jexcel } = await initSheet(daSheet);
-        daTitle.sheet = jexcel;
-      }
+      const { jSheetToY } = await import('./collab/convert.js');
+      jSheetToY(verReview.data, this.ydoc, true);
       verReview.remove();
     });
 
@@ -124,8 +112,7 @@ async function setSheet(details, daTitle, daSheet, daSheetPanes, wrapper) {
   daSheet.details = details;
 
   if (!initSheet) initSheet = (await import('./utils/index.js')).default;
-  const { jexcel, ydoc } = await initSheet(daSheet);
-  daTitle.sheet = jexcel;
+  const { ydoc } = await initSheet(daSheet);
   daSheetPanes.ydoc = ydoc;
   wrapper.ydoc = ydoc;
 }

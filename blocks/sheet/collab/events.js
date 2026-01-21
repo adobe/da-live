@@ -243,7 +243,7 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
     return ysheet.get('columns');
   };
   
-  const label = wsProvider.awareness.clientID;
+  const label = wsProvider?.awareness?.clientID ?? 'local';
 
   // Cell value change
   sheet.options.onchange = (instance, cell, colIndex, rowIndex, value) => {

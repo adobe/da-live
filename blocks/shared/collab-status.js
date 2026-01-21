@@ -3,7 +3,7 @@ import { daFetch } from './utils.js';
 function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   const users = new Set();
 
-  wsProvider.awareness.on('update', (delta) => {
+  wsProvider?.awareness.on('update', (delta) => {
     delta.added.forEach((u) => users.add(u));
     delta.updated.forEach((u) => users.add(u));
     delta.removed.forEach((u) => users.delete(u));
@@ -24,9 +24,9 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
     daTitle.collabUsers = [...userMap.values()].sort();
   });
 
-  wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
+  wsProvider?.on('status', (st) => { daTitle.collabStatus = st.status; });
 
-  wsProvider.on('connection-close', async () => {
+  wsProvider?.on('connection-close', async () => {
     const resp = await daFetch(path, { method: 'HEAD' });
     if (resp.status === 404) {
       const split = window.location.hash.slice(2).split('/');

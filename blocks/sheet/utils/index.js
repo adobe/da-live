@@ -3,7 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import '../da-sheet-tabs.js';
 import { yToJSheet, jSheetToY } from '../collab/convert.js';
 import { setupEventHandlers } from '../collab/events.js';
-import joinCollab from '../collab/index.js';
+import joinCollab, { attachLocalYDoc } from '../collab/index.js';
 import { drawOverlays } from '../collab/overlays.js';
 import { captureSpreadsheetState, restoreSpreadsheetState } from '../collab/position.js';
 import { createAwarenessStatusWidget } from '../../shared/collab-status.js';
@@ -25,6 +25,8 @@ function resetSheets(el) {
 }
 
 function finishSetup(el, data) {
+  const daTitle = document.querySelector('da-title');
+
   // Set the names of each sheet to reference later
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
@@ -35,6 +37,8 @@ function finishSetup(el, data) {
   const daSheetTabs = document.createElement('da-sheet-tabs');
   daSheetTabs.permissions = permissions;
   el.insertAdjacentElement('beforebegin', daSheetTabs);
+
+  daTitle.sheet = el.jexcel;
 }
 
 function getDefaultSheet() {
@@ -102,8 +106,9 @@ async function createSheet(url) {
   return daFetch(url, opts);
 }
 
-async function checkPermissions(url) {
-  let resp = await daFetch(url, { method: 'HEAD' });
+async function checkPermissions(url, type) {
+  // config doesn't support HEAD requests
+  let resp = await daFetch(url, { method: type === 'config' ? 'GET' : 'HEAD' });
   if (resp.status === 404) resp = await createSheet(url);
 
   const daTitle = document.querySelector('da-title');
@@ -254,7 +259,7 @@ function updateSheets(el, ydoc, yUndoManager, wsProvider) {
 }
 
 export default async function init(el) {
-  await checkPermissions(el.details.sourceUrl);
+  await checkPermissions(el.details.sourceUrl, el.details.view);
 
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');
@@ -262,19 +267,11 @@ export default async function init(el) {
 
   resetSheets(el);
 
-  // for config sheets, don't join collaboration
-  if (el.details.view === 'config') {
-    const data = await getData(el.details.sourceUrl);
-    window.jspreadsheet.tabs(el, data);
-    finishSetup(el, data);
-    return { jexcel: el.jexcel, ydoc: null };
-  }
-
-  const { ydoc, wsProvider, yUndoManager } = await joinCollab(el);
+  const { ydoc, wsProvider, yUndoManager } = el.details.view === 'config' ? await attachLocalYDoc(el) : joinCollab(el);
 
   createAwarenessStatusWidget(wsProvider, window, el.details.sourceUrl);
 
-  wsProvider.on('sync', () => {
+  wsProvider?.on('sync', () => {
     rerenderSheets(el, ydoc, yUndoManager, wsProvider);
   });
 
@@ -282,5 +279,5 @@ export default async function init(el) {
     updateSheets(el, ydoc, yUndoManager, wsProvider);
   });
 
-  return { jexcel: el.jexcel, ydoc };
+  return { ydoc };
 }

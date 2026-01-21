@@ -1,8 +1,28 @@
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { WebsocketProvider, Y } from 'da-y-wrapper';
 import { drawOverlays, generateColor } from './overlays.js';
+import { jSheetToY } from './convert.js';
+import { getData } from '../utils/index.js';
 
-export default async function joinCollab(el) {
+// for config sheets, we don't join collab, instead use a local ydoc
+export async function attachLocalYDoc(el) {
+  const data = await getData(el.details.sourceUrl);
+  const ydoc = new Y.Doc();
+
+  // wait for ydoc to start listening for changes before setting data
+  setTimeout(() => {
+    ydoc.transact(() => {
+      jSheetToY(data, ydoc);
+    });
+  }, 0);
+  
+  const ysheets = ydoc.getArray('sheets');
+  const yUndoManager = new Y.UndoManager(ysheets);
+
+  return { ydoc, yUndoManager };
+}
+
+export default function joinCollab(el) {
   const path = el.details.sourceUrl;
 
   const ydoc = new Y.Doc();
