@@ -20,6 +20,7 @@ import {
   yCursorPlugin,
   yUndoPlugin,
 } from 'da-y-wrapper';
+import { getSchema } from 'da-parser';
 
 // DA
 import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
@@ -35,7 +36,6 @@ import toggleLibrary from '../da-library/da-library.js';
 import { checkDoc } from '../edit.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
-import { getSchema } from 'da-parser';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import linkMenu from './plugins/linkMenu/linkMenu.js';
 import {
@@ -46,6 +46,26 @@ import {
   handleUndo,
   handleRedo,
 } from './plugins/keyHandlers.js';
+
+// Auth token loading - duplicated from daFetch logic for parallel WebSocket connection
+let imsDetails;
+async function getAuthToken() {
+  if (!localStorage.getItem('nx-ims')) {
+    return null;
+  }
+
+  if (!imsDetails) {
+    try {
+      const { getNx } = await import('../../../scripts/utils.js');
+      const { loadIms } = await import(`${getNx()}/utils/ims.js`);
+      imsDetails = await loadIms();
+    } catch {
+      return null;
+    }
+  }
+
+  return imsDetails?.accessToken?.token || null;
+}
 
 let lastCursorPosition = null;
 
@@ -144,15 +164,28 @@ function trackCursorAndChanges() {
 }
 
 function handleProseLoaded(editor, wsProvider) {
-  // Wait for the websocket to actually sync before marking as loaded
+  const dispatchLoaded = () => {
+    // Defer to next tick to ensure editor is in DOM
+    // (editor gets added to DOM after initProse returns)
+    setTimeout(() => {
+      const daEditor = editor.getRootNode().host;
+      if (daEditor) {
+        const opts = { bubbles: true, composed: true };
+        const event = new CustomEvent('proseloaded', opts);
+        daEditor.dispatchEvent(event);
+      }
+    }, 0);
+  };
+
+  // Check if already synced (can happen if WebSocket syncs before ProseMirror init)
+  if (wsProvider.synced) {
+    dispatchLoaded();
+    return;
+  }
+
   const handleSynced = (isSynced) => {
     if (isSynced) {
-      const daEditor = editor.getRootNode().host;
-      const opts = { bubbles: true, composed: true };
-      const event = new CustomEvent('proseloaded', opts);
-      daEditor.dispatchEvent(event);
-
-      // Only listen to the first sync
+      dispatchLoaded();
       wsProvider.off('synced', handleSynced);
     }
   };
@@ -268,13 +301,29 @@ function restoreCursorPosition(view) {
 }
 
 function addSyncedListener(wsProvider, canWrite) {
-  const handleSynced = (isSynced) => {
-    if (isSynced) {
+  const enableEditing = () => {
+    // Defer to next tick to ensure editor is in DOM
+    // (editor gets added to DOM after initProse returns)
+    setTimeout(() => {
       if (canWrite) {
         const pm = document.querySelector('da-content')?.shadowRoot
           .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
-        if (pm) pm.contentEditable = 'true';
+        if (pm) {
+          pm.contentEditable = 'true';
+        }
       }
+    }, 0);
+  };
+
+  // Check if already synced (can happen if WebSocket syncs before ProseMirror init)
+  if (wsProvider.synced) {
+    enableEditing();
+    return;
+  }
+
+  const handleSynced = (isSynced) => {
+    if (isSynced) {
+      enableEditing();
       wsProvider.off('synced', handleSynced);
     }
   };
@@ -282,7 +331,38 @@ function addSyncedListener(wsProvider, canWrite) {
   wsProvider.on('synced', handleSynced);
 }
 
-export default function initProse({ path, permissions }) {
+/**
+ * Create WebSocket connection early (before permissions are known).
+ * This allows the connection to start while HEAD request is in progress.
+ * @param {string} path - The document path
+ * @param {boolean} autoConnect - Whether to connect immediately (default: true)
+ * @returns {Promise<{ wsProvider: WebsocketProvider, ydoc: Y.Doc }>}
+ */
+export async function createConnection(path, autoConnect = true) {
+  const ydoc = new Y.Doc();
+
+  const server = COLLAB_ORIGIN;
+  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+
+  const opts = {
+    protocols: ['yjs'],
+    connect: autoConnect,
+  };
+
+  // Get auth token using same logic as daFetch (properly waits for IMS)
+  const token = await getAuthToken();
+  if (token) {
+    opts.protocols.push(token);
+  }
+
+  const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  wsProvider.maxBackoffTime = 30000;
+
+  return { wsProvider, ydoc };
+}
+
+// eslint-disable-next-line max-len
+export default async function initProse({ path, permissions, wsProvider: existingWsProvider, ydoc: existingYdoc }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) {
     window.view.destroy();
@@ -293,27 +373,21 @@ export default function initProse({ path, permissions }) {
 
   const schema = getSchema();
 
-  const ydoc = new Y.Doc();
+  // Use existing connection if provided (for parallel loading optimization)
+  let ydoc;
+  let wsProvider;
 
-  const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
-
-  const opts = { protocols: ['yjs'] };
-
-  if (window.adobeIMS?.isSignedInUser()) {
-    const { token } = window.adobeIMS.getAccessToken();
-    // add token to the sec-websocket-protocol header
-    opts.protocols.push(token);
+  if (existingWsProvider && existingYdoc) {
+    wsProvider = existingWsProvider;
+    ydoc = existingYdoc;
+  } else {
+    // Fallback: create new connection (async)
+    const conn = await createConnection(path);
+    wsProvider = conn.wsProvider;
+    ydoc = conn.ydoc;
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');
-
-  const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
-
-  // Increase the max backoff time to 30 seconds. If connection error occurs,
-  // the socket provider will try to reconnect quickly at the beginning
-  // (exponential backoff starting with 100ms) and then every 30s.
-  wsProvider.maxBackoffTime = 30000;
 
   addSyncedListener(wsProvider, canWrite);
 

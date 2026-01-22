@@ -7,6 +7,7 @@ import './da-content/da-content.js';
 let prose;
 let proseEl;
 let wsProvider;
+let earlyConnection; // For parallel loading optimization
 
 export async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
@@ -49,26 +50,45 @@ async function setUI(el) {
     daContent.details = details;
   }
 
-  let resp = await checkDoc(details.sourceUrl);
-  if (resp.status === 404) resp = await createDoc(details.sourceUrl);
-
-  const { permissions } = resp;
-
-  daTitle.permissions = resp.permissions;
-  daContent.permissions = resp.permissions;
-
   if (daContent.wsProvider) {
     daContent.wsProvider.disconnect({ data: 'Client navigation' });
     daContent.wsProvider = undefined;
+    earlyConnection = undefined;
   }
+
+  // Start HEAD and WebSocket setup in parallel
+  const headPromise = checkDoc(details.sourceUrl);
+  // create socket but wait to connect until prosemirror is ready
+  const wsPromise = prose.createConnection(details.sourceUrl, false);
+
+  const [resp, wsConnection] = await Promise.all([headPromise, wsPromise]);
+  earlyConnection = wsConnection;
+
+  let permissions;
+  if (resp.status === 404) {
+    const createResp = await createDoc(details.sourceUrl);
+    permissions = createResp.permissions;
+  } else {
+    permissions = resp.permissions;
+  }
+
+  daTitle.permissions = permissions;
+  daContent.permissions = permissions;
 
   ({
     proseEl,
     wsProvider,
-  } = prose.default({ path: details.sourceUrl, permissions }));
+  } = await prose.default({
+    path: details.sourceUrl,
+    permissions,
+    wsProvider: earlyConnection.wsProvider,
+    ydoc: earlyConnection.ydoc,
+  }));
 
   daContent.proseEl = proseEl;
   daContent.wsProvider = wsProvider;
+
+  wsProvider.connect();
 }
 
 export default async function init(el) {
