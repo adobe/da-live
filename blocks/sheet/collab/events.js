@@ -81,6 +81,16 @@ export function deleteRow(ydata, rowIndex, count = 1) {
   
   ydata.delete(rowIndex, count);
   console.log(`Deleted ${count} row(s) at index ${rowIndex}`);
+
+  const numRows = ydata.length;
+  if (numRows < MIN_DIMENSIONS) {
+    for (let i = numRows; i < MIN_DIMENSIONS; i++) {
+      const numColumns = ydata.get(0).toArray().length || MIN_DIMENSIONS;
+      insertRow(ydata, i, null, numColumns);
+    }
+  }
+
+  console.log(`Inserted ${MIN_DIMENSIONS - numRows} row(s) at index ${numRows} (data and metadata)`);
 }
 
 export function resizeColumn(ycolumns, colIndex, width) {
@@ -133,8 +143,17 @@ export function deleteColumn(ydata, ycolumns, colIndex, count = 1) {
   if (colIndex >= 0 && colIndex < ycolumns.length) {
     ycolumns.delete(colIndex, count);
   }
-  
+
   console.log(`Deleted ${count} column(s) at index ${colIndex} (data and metadata)`);
+
+  const numColumns = ydata.length > 0 ? ydata.get(0).toArray().length : 0;
+  if (numColumns < MIN_DIMENSIONS) {
+    for (let i = numColumns; i < MIN_DIMENSIONS; i++) {
+      insertColumn(ydata, ycolumns, i);
+    }
+  }
+
+  console.log(`Inserted ${MIN_DIMENSIONS - numColumns} column(s) at index ${numColumns} (data and metadata)`);
 }
 
 /**
