@@ -190,7 +190,7 @@ function checkSheetDimensionsEqual(jExcelData, newDataFromY) {
 function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
   const wrapper = el.closest('.da-sheet-wrapper');
   const ysheets = ydoc.getArray('sheets');
-  let sheets = yToJSheet(ysheets);
+  let sheets = yToJSheet(ysheets, canWrite);
 
   if (sheets.length === 0) {
     console.error('No sheets found in Yjs document');
