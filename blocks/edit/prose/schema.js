@@ -250,12 +250,6 @@ const baseNodes = {
 };
 
 const baseMarks = {
-    code: {
-    parseDOM: [{ tag: 'code' }],
-    toDOM() {
-      return ['code', 0];
-    },
-  },
   s: {
     parseDOM: [{ tag: 's' }],
     toDOM() {
@@ -300,6 +294,12 @@ const baseMarks = {
     toDOM(node) {
       const { href, title } = node.attrs;
       return ['a', { href, title, ...getTopLevelToDomAttrs(node) }, 0];
+    },
+  },
+  code: {
+    parseDOM: [{ tag: 'code' }],
+    toDOM() {
+      return ['code', 0];
     },
   },
   u: {
