@@ -34,7 +34,7 @@ function yToDataArray(ydata) {
  * @param {Y.Array} ysheets - Yjs Array containing sheet data
  * @returns {Array} - Array of sheet objects compatible with jSpreadsheet
  */
-export function yToJSheet(ysheets) {
+export function yToJSheet(ysheets, canWrite = true) {
   const sheets = [];
   
   ysheets.forEach((ysheet) => {
@@ -62,8 +62,15 @@ export function yToJSheet(ysheets) {
         ycol.forEach((value, key) => {
           col[key] = value;
         });
+        if (!canWrite) {
+          col.readOnly = true;
+        }
         sheet.columns.push(col);
       });
+    }
+
+    if (!canWrite) {
+      delete sheet.minDimensions;
     }
     
     sheets.push(sheet);
