@@ -250,24 +250,16 @@ const baseNodes = {
 };
 
 const baseMarks = {
-  link: {
-    attrs: {
-      href: {},
-      title: { default: null },
-      ...topLevelAttrs,
+    code: {
+    parseDOM: [{ tag: 'code' }],
+    toDOM() {
+      return ['code', 0];
     },
-    inclusive: false,
-    parseDOM: [
-      {
-        tag: 'a[href]',
-        getAttrs(dom) {
-          return { href: dom.getAttribute('href'), title: dom.getAttribute('title'), ...getTopLevelParseAttrs(dom) };
-        },
-      },
-    ],
-    toDOM(node) {
-      const { href, title } = node.attrs;
-      return ['a', { href, title, ...getTopLevelToDomAttrs(node) }, 0];
+  },
+  s: {
+    parseDOM: [{ tag: 's' }],
+    toDOM() {
+      return ['s', 0];
     },
   },
   em: {
@@ -290,16 +282,24 @@ const baseMarks = {
       return ['strong', 0];
     },
   },
-  code: {
-    parseDOM: [{ tag: 'code' }],
-    toDOM() {
-      return ['code', 0];
+  link: {
+    attrs: {
+      href: {},
+      title: { default: null },
+      ...topLevelAttrs,
     },
-  },
-  s: {
-    parseDOM: [{ tag: 's' }],
-    toDOM() {
-      return ['s', 0];
+    inclusive: false,
+    parseDOM: [
+      {
+        tag: 'a[href]',
+        getAttrs(dom) {
+          return { href: dom.getAttribute('href'), title: dom.getAttribute('title'), ...getTopLevelParseAttrs(dom) };
+        },
+      },
+    ],
+    toDOM(node) {
+      const { href, title } = node.attrs;
+      return ['a', { href, title, ...getTopLevelToDomAttrs(node) }, 0];
     },
   },
   u: {
@@ -329,7 +329,7 @@ function addCustomMarks(marks) {
 
   const contextHighlight = { toDOM: () => ['span', { class: 'highlighted-context' }, 0] };
 
-  return marks.addToEnd('sup', sup).addToEnd('sub', sub).addToEnd('contextHighlightingMark', contextHighlight);
+  return marks.addToEnd('sub', sub).addToEnd('sup', sup).addToEnd('contextHighlightingMark', contextHighlight);
 }
 
 function getTableNodeSchema() {
