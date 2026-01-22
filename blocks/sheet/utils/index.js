@@ -245,13 +245,16 @@ function updateSheets(el, ydoc, yUndoManager, wsProvider) {
   }
 
   const dimensionsEqual = checkSheetDimensionsEqual(el.jexcel, sheets);
-  if (dimensionsEqual) {
+  const editingCell = el.querySelector('.editor');
+  if (dimensionsEqual && !editingCell) {
     // update in-place. This preserves the editor state better.
     updateSheetsInPlace(el, sheets);
   } else {
     // Re-render to match dimensions, tab names etc.
     // rerender full sheets after a timeout to allow events 
     // (eg navigate to next cell) to complete before capturing state
+    // if we're currently editing a cell, we also need a full rerender,
+    // as using setData will break the editor if a cell is being edited
     setTimeout(() => {
       rerenderSheets(el, ydoc, yUndoManager, wsProvider);
     }, 0);
