@@ -14,38 +14,94 @@ import {
   TextSelection,
   NodeSelection,
   Plugin,
-  Y,
   WebsocketProvider,
   ySyncPlugin,
   yCursorPlugin,
   yUndoPlugin,
+  Y,
 } from 'da-y-wrapper';
 
-// DA
-import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
-import { linkItem } from './plugins/menu/linkItem.js';
-import codemark from './plugins/codemark.js';
-import imageDrop from './plugins/imageDrop.js';
-import imageFocalPoint from './plugins/imageFocalPoint.js';
-import linkConverter from './plugins/linkConverter.js';
-import sectionPasteHandler from './plugins/sectionPasteHandler.js';
-import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import toggleLibrary from '../da-library/da-library.js';
-import { checkDoc } from '../edit.js';
-import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
-import slashMenu from './plugins/slashMenu/slashMenu.js';
-import linkMenu from './plugins/linkMenu/linkMenu.js';
-import {
-  handleTableBackspace,
-  handleTableTab,
-  getEnterInputRulesPlugin,
-  getURLInputRulesPlugin,
-  handleUndo,
-  handleRedo,
-} from './plugins/keyHandlers.js';
+import { debounce, initDaMetadata } from '../utils/helpers.js';
+
+async function checkDoc(path) {
+  return daFetch(path, { method: 'HEAD' });
+}
+
+async function createConnection(path) {
+  const ydoc = new Y.Doc();
+
+  const server = COLLAB_ORIGIN;
+  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+
+  const opts = {
+    protocols: ['yjs'],
+    connect: true,
+  };
+
+  const token = await getAuthToken();
+  if (token) {
+    opts.protocols.push(token);
+  }
+
+  const provider = new WebsocketProvider(server, roomName, ydoc, opts);
+
+  // Increase the max backoff time to 30 seconds. If connection error occurs,
+  // the socket provider will try to reconnect quickly at the beginning
+  // (exponential backoff starting with 100ms) and then every 30s.
+  provider.maxBackoffTime = 30000;
+
+  return { wsProvider: provider, ydoc };
+}
+
+async function loadCustomPlugins() {
+  const [
+    keyHandlers,
+    { default: menu, getHeadingKeymap },
+    { linkItem },
+    { default: codemark },
+    { default: imageDrop },
+    { default: imageFocalPoint },
+    { default: linkConverter },
+    { default: sectionPasteHandler },
+    { default: base64Uploader },
+    { default: toggleLibrary },
+    { default: slashMenu },
+    { default: linkMenu },
+  ] = await Promise.all([
+    import('./plugins/keyHandlers.js'),
+    import('./plugins/menu/menu.js'),
+    import('./plugins/menu/linkItem.js'),
+    import('./plugins/codemark.js'),
+    import('./plugins/imageDrop.js'),
+    import('./plugins/imageFocalPoint.js'),
+    import('./plugins/linkConverter.js'),
+    import('./plugins/sectionPasteHandler.js'),
+    import('./plugins/base64uploader.js'),
+    import('../da-library/da-library.js'),
+    import('./plugins/slashMenu/slashMenu.js'),
+    import('./plugins/linkMenu/linkMenu.js'),
+  ]);
+
+  return {
+    ...keyHandlers,
+    menu,
+    getHeadingKeymap,
+    linkItem,
+    codemark,
+    imageDrop,
+    imageFocalPoint,
+    linkConverter,
+    sectionPasteHandler,
+    base64Uploader,
+    toggleLibrary,
+    slashMenu,
+    linkMenu,
+  };
+}
 
 let lastCursorPosition = null;
 
@@ -143,21 +199,27 @@ function trackCursorAndChanges() {
   });
 }
 
-function handleProseLoaded(editor, wsProvider) {
-  // Wait for the websocket to actually sync before marking as loaded
+function onWsSync(wsProvider, callback) {
+  if (wsProvider.synced) {
+    setTimeout(callback, 0);
+    return;
+  }
   const handleSynced = (isSynced) => {
     if (isSynced) {
-      const daEditor = editor.getRootNode().host;
-      const opts = { bubbles: true, composed: true };
-      const event = new CustomEvent('proseloaded', opts);
-      daEditor.dispatchEvent(event);
-
-      // Only listen to the first sync
+      setTimeout(callback, 0);
       wsProvider.off('synced', handleSynced);
     }
   };
-
   wsProvider.on('synced', handleSynced);
+}
+
+function handleProseLoaded(editor, wsProvider) {
+  onWsSync(wsProvider, () => {
+    const daEditor = editor.getRootNode().host;
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('proseloaded', opts);
+    daEditor.dispatchEvent(event);
+  });
 }
 
 function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
@@ -268,56 +330,103 @@ function restoreCursorPosition(view) {
 }
 
 function addSyncedListener(wsProvider, canWrite) {
-  const handleSynced = (isSynced) => {
-    if (isSynced) {
-      if (canWrite) {
-        const pm = document.querySelector('da-content')?.shadowRoot
-          .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
-        if (pm) pm.contentEditable = 'true';
-      }
-      wsProvider.off('synced', handleSynced);
+  onWsSync(wsProvider, () => {
+    if (canWrite) {
+      const pm = document.querySelector('da-content')?.shadowRoot
+        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+      if (pm) pm.contentEditable = 'true';
     }
-  };
-
-  wsProvider.on('synced', handleSynced);
+  });
 }
 
-export default function initProse({ path, permissions }) {
+function applyCustomPlugins(pluginsPromise, schema, canWrite, basePlugins) {
+  pluginsPromise.then((plugins) => {
+    const {
+      syncPlugin,
+      cursorPlugin,
+    } = basePlugins;
+
+    const undoPlugin = yUndoPlugin();
+    const trackPlugin = trackCursorAndChanges();
+    const buildKeymapPlugin = keymap(buildKeymap(schema));
+    const baseKeymapPlugin = keymap(baseKeymap);
+    const gapCursorPlugin = gapCursor();
+    const tableEditingPlugin = tableEditing();
+
+    const pluginList = [
+      syncPlugin,
+      cursorPlugin,
+      undoPlugin,
+      trackPlugin,
+      plugins.slashMenu(),
+      plugins.linkMenu(),
+      plugins.imageDrop(schema),
+      plugins.linkConverter(schema),
+      plugins.sectionPasteHandler(schema),
+      plugins.base64Uploader(schema),
+      columnResizing(),
+      plugins.getEnterInputRulesPlugin(dispatchTransaction),
+      plugins.getURLInputRulesPlugin(),
+      buildKeymapPlugin,
+      keymap({ Backspace: plugins.handleTableBackspace }),
+      baseKeymapPlugin,
+      plugins.codemark(),
+      keymap({
+        'Mod-z': plugins.handleUndo,
+        'Mod-y': plugins.handleRedo,
+        'Mod-Shift-z': plugins.handleRedo,
+        'Mod-Shift-l': plugins.toggleLibrary,
+        'Mod-k': (editorState, dispatch, view) => {
+          const linkMarkType = editorState.schema.marks.link;
+          const linkMenuItem = plugins.linkItem(linkMarkType);
+          return linkMenuItem.spec.run(editorState, dispatch, view);
+        },
+        ...plugins.getHeadingKeymap(schema),
+      }),
+      keymap({
+        Tab: plugins.handleTableTab(1),
+        'Shift-Tab': plugins.handleTableTab(-1),
+      }),
+      keymap({
+        Tab: sinkListItem(schema.nodes.list_item),
+        'Shift-Tab': liftListItem(schema.nodes.list_item),
+      }),
+      gapCursorPlugin,
+      tableEditingPlugin,
+    ];
+
+    if (canWrite) {
+      pluginList.unshift(plugins.menu);
+      pluginList.push(plugins.imageFocalPoint());
+    }
+
+    // Reconfigure the view with the full plugin list
+    const newState = window.view.state.reconfigure({ plugins: pluginList });
+    window.view.updateState(newState);
+  });
+}
+
+// eslint-disable-next-line no-unused-vars
+export default async function initProse({ path, permissions, doc, daContent }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) {
     window.view.destroy();
     delete window.view;
   }
+
+  const wsPromise = createConnection(path);
+
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
 
   const schema = getSchema();
-
-  const ydoc = new Y.Doc();
-
-  const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
-
-  const opts = { protocols: ['yjs'] };
-
-  if (window.adobeIMS?.isSignedInUser()) {
-    const { token } = window.adobeIMS.getAccessToken();
-    // add token to the sec-websocket-protocol header
-    opts.protocols.push(token);
-  }
-
   const canWrite = permissions.some((permission) => permission === 'write');
 
-  const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+  const pluginsPromise = loadCustomPlugins();
 
-  // Increase the max backoff time to 30 seconds. If connection error occurs,
-  // the socket provider will try to reconnect quickly at the beginning
-  // (exponential backoff starting with 100ms) and then every 30s.
-  wsProvider.maxBackoffTime = 30000;
+  const { wsProvider, ydoc } = await wsPromise;
 
   addSyncedListener(wsProvider, canWrite);
-
-  createAwarenessStatusWidget(wsProvider, window, path);
   registerErrorHandler(ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
@@ -338,54 +447,10 @@ export default function initProse({ path, permissions }) {
     });
   }
 
-  const plugins = [
-    ySyncPlugin(yXmlFragment),
-    yCursorPlugin(wsProvider.awareness),
-    yUndoPlugin(),
-    trackCursorAndChanges(),
-    slashMenu(),
-    linkMenu(),
-    imageDrop(schema),
-    linkConverter(schema),
-    sectionPasteHandler(schema),
-    base64Uploader(schema),
-    columnResizing(),
-    getEnterInputRulesPlugin(dispatchTransaction),
-    getURLInputRulesPlugin(),
-    keymap(buildKeymap(schema)),
-    keymap({ Backspace: handleTableBackspace }),
-    keymap(baseKeymap),
-    codemark(),
-    keymap({
-      'Mod-z': handleUndo,
-      'Mod-y': handleRedo,
-      'Mod-Shift-z': handleRedo,
-      'Mod-Shift-l': toggleLibrary,
-      'Mod-k': (state, dispatch, view) => { // toggle link prompt
-        const linkMarkType = state.schema.marks.link;
-        const linkMenuItem = linkItem(linkMarkType);
-        return linkMenuItem.spec.run(state, dispatch, view);
-      },
-      ...getHeadingKeymap(schema),
-    }),
-    keymap({
-      Tab: handleTableTab(1),
-      'Shift-Tab': handleTableTab(-1),
-    }),
-    keymap({
-      Tab: sinkListItem(schema.nodes.list_item),
-      'Shift-Tab': liftListItem(schema.nodes.list_item),
-    }),
-    gapCursor(),
-    tableEditing(),
-  ];
+  const syncPlugin = ySyncPlugin(yXmlFragment);
+  const cursorPlugin = yCursorPlugin(wsProvider.awareness);
 
-  if (canWrite) {
-    plugins.push(menu);
-    plugins.push(imageFocalPoint());
-  }
-
-  let state = EditorState.create({ schema, plugins });
+  let state = EditorState.create({ schema, plugins: [syncPlugin, cursorPlugin] });
 
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
@@ -416,19 +481,21 @@ export default function initProse({ path, permissions }) {
     editable() { return canWrite; },
   });
 
-  // Register view for global dialog management
   addActiveView(window.view);
-
-  // Check for initial regional edits
-  setTimeout(() => checkForLocNodes(window.view), 100);
 
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
 
   handleProseLoaded(editor, wsProvider);
 
+  applyCustomPlugins(pluginsPromise, schema, canWrite, {
+    syncPlugin,
+    cursorPlugin,
+  });
+
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return { proseEl: editor, wsProvider };
+  daContent.proseEl = editor;
+  daContent.wsProvider = wsProvider;
 }
