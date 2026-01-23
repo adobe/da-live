@@ -1,71 +1,104 @@
-import { EVENT_FOCUS_ELEMENT, EVENT_VISIBLE_GROUP, EVENT_SOURCE } from '../constants.js';
+import { LAYOUT, EVENT_ACTIVE_STATE_CHANGE, EVENT_FOCUS_ELEMENT } from '../constants.js';
 
 /**
- * Lit controller that tracks the currently active navigation item in the form.
+ * Unified ActiveStateController - manages active section tracking,
+ * visual indicator, and scroll detection.
  *
- * This controller manages a sophisticated state synchronization system that handles
- * two competing sources of "active" state:
- * 1. **Manual user interaction** (clicks, keyboard navigation) - HIGH PRIORITY
- * 2. **Scroll-based visibility** (automatic highlighting) - LOW PRIORITY
+ * This controller consolidates three previously separate controllers:
+ * - Active state management (pointer tracking)
+ * - Visual indicator positioning (navigation highlight)
+ * - Scroll visibility detection (IntersectionObserver)
  *
  * Key Features:
- * - Listens to focus events (EVENT_FOCUS_ELEMENT) for manual user selections
- * - Listens to visible group events (EVENT_VISIBLE_GROUP) for scroll-based updates
- * - Implements a "manual selection lock" to prevent scroll events from overriding
- *   explicit user choices (prevents jarring UX when user clicks then scrolls)
- * - Validates active pointer and falls back to default when invalid
- * - Triggers host component re-renders when active state changes
+ * - Listens to 'active-state-change' events
+ * - Automatically positions visual indicator in navigation panel
+ * - Detects most visible section while scrolling using IntersectionObserver
  *
  * @example
- * // In a Lit component:
- * this.activeStateController = new ActiveStateController(this, {
- *   getDefaultPointer: () => '/section/0',
- *   isPointerValid: (ptr) => this.navigationTree.has(ptr),
- *   manualSelectionLockMs: 1000 // Lock scroll updates for 1 second after clicks
+ * // In FormEditor component:
+ * this._activeState = new ActiveStateController(this, {
+ *   getDefaultPointer: () => this.formModel?.root?.pointer ?? '',
+ *   isPointerValid: (pointer) => this.formModel?.getNode(pointer) != null,
  * });
  *
- * // Get current active pointer:
- * const currentActive = this.activeStateController.pointer;
+ * // In child components:
+ * import { EVENT_ACTIVE_STATE_CHANGE } from '../constants.js';
  *
- * @note This controller automatically updates breadcrumbs and active indicators
- *       by triggering host.requestUpdate() when the pointer changes
+ * window.dispatchEvent(new CustomEvent(EVENT_ACTIVE_STATE_CHANGE, {
+ *   detail: { pointer: '/field' },
+ *   bubbles: true,
+ *   composed: true,
+ * }));
  */
 export default class ActiveStateController {
   /**
    * @param {Object} host - The Lit component that owns this controller
    * @param {Object} options - Configuration options
    * @param {Function} [options.getDefaultPointer] - Returns the default pointer
-   *   to use when current pointer is null or invalid. Defaults to () => null
+   *   when current is invalid
    * @param {Function} [options.isPointerValid] - Validates if a pointer exists
-   *   in the current navigation tree. Defaults to () => true
-   * @param {number} [options.manualSelectionLockMs=1000] - Duration in
-   *   milliseconds to lock out scroll-based updates after a manual selection.
-   *   This prevents jarring behavior where user clicks an item then scrolls,
-   *   and the active indicator jumps away from their selection
+   *   in the navigation tree
+   * @param {Function} [options.getIndicatorElement] - Returns the indicator
+   *   HTMLElement (setup after render)
+   * @param {Function} [options.getListElement] - Returns the navigation list
+   *   container
+   * @param {Function} [options.getRegistry] - Returns the element registry
+   *   (pointer -> element Map)
+   * @param {number} [options.indicatorOffsetPx] - Vertical offset for
+   *   indicator positioning
+   * @param {Element} [options.observerRoot] - Root element for
+   *   IntersectionObserver (null = viewport)
+   * @param {number[]} [options.observerThresholds] - Intersection thresholds
+   * @param {string} [options.observerRootMargin] - Root margin for
+   *   IntersectionObserver
    */
   constructor(host, {
-    getDefaultPointer,
-    isPointerValid,
-    manualSelectionLockMs = 1000,
+    // Validation functions
+    getDefaultPointer = () => null,
+    isPointerValid = () => true,
+
+    // Indicator element access (configured after render by child components)
+    getIndicatorElement = () => null,
+    getListElement = () => null,
+    getRegistry = () => null,
+    indicatorOffsetPx = LAYOUT.INDICATOR_OFFSET,
+
+    // IntersectionObserver configuration
+    observerRoot = null,
+    observerThresholds = [0, 0.25, 0.5, 0.75, 1],
+    observerRootMargin = '-80px 0px -70% 0px',
   } = {}) {
     this.host = host;
 
-    // Current active pointer (navigation item identifier)
+    // State
     this._pointer = null;
+    this._lastUserActionTime = 0;
+    this._userActionLockDuration = 800; // ms to ignore scroll after user click
 
-    // Manual selection lock configuration and state
-    this._manualSelectionLockMs = manualSelectionLockMs;
-    this._manualSelectionUntil = 0; // Timestamp when lock expires
+    // Validation
+    this.getDefaultPointer = getDefaultPointer;
+    this.isPointerValid = isPointerValid;
 
-    // Validation and default value functions
-    this.getDefaultPointer = getDefaultPointer || (() => null);
-    this.isPointerValid = isPointerValid || (() => true);
+    // Indicator configuration (from ActiveIndicatorController)
+    this.getIndicatorElement = getIndicatorElement;
+    this.getListElement = getListElement;
+    this.getRegistry = getRegistry;
+    this._indicatorOffsetPx = indicatorOffsetPx;
+    this._pendingIndicatorFrame = null;
 
-    // Pre-bind event handlers for proper cleanup
-    this._boundOnFocus = this._handleFocus.bind(this);
-    this._boundOnVisibleGroup = this._handleVisibleGroup.bind(this);
+    // Scroll tracking configuration (from VisibleGroupController)
+    this._observer = null;
+    this._observerRoot = observerRoot;
+    this._observerThresholds = observerThresholds;
+    this._observerRootMargin = observerRootMargin;
+    this._visibleElements = new Map(); // element -> intersectionRatio
+    this._scrollThrottle = null;
 
-    // Register this controller with the Lit component lifecycle
+    // Pre-bind event handlers
+    this._handleActiveStateChange = this._handleActiveStateChange.bind(this);
+    this._handleFocusElement = this._handleFocusElement.bind(this);
+
+    // Register with Lit lifecycle
     host.addController(this);
   }
 
@@ -77,57 +110,331 @@ export default class ActiveStateController {
     return this._pointer;
   }
 
+  // ============================================
+  // PUBLIC API
+  // ============================================
+
   /**
-   * Set the active navigation pointer.
-   * Triggers a host component re-render if the value changes.
+   * Setup scroll tracking with IntersectionObserver.
+   * Call this after DOM is ready with a function that returns group elements.
    *
-   * @param {string|null} value - New pointer value
+   * @param {Function} getGroupElements - Returns array of group elements
+   * @param {number} [headerOffset] - Optional header offset in pixels
+   *   (overrides default rootMargin)
+   *
+   * @example
+   * // Using element registry (preferred - filter to only group elements)
+   * activeState.setupScrollTracking(
+   *   () => this._registry.getElements()
+   *     .filter(el => el.tagName?.toLowerCase() === 'form-item-group'),
+   *   120 // header offset in pixels
+   * );
    */
-  set pointer(value) {
-    if (this._pointer !== value) {
-      this._pointer = value;
-      // Trigger Lit component re-render to update breadcrumbs/indicators
-      this.host.requestUpdate();
+  setupScrollTracking(getGroupElements, headerOffset) {
+    // Disconnect and clean up existing observer if present
+    if (this._observer) {
+      this._observer.disconnect();
+      this._visibleElements.clear();
+    }
+
+    // Use dynamic header offset if provided, otherwise use default rootMargin
+    const rootMargin = headerOffset != null
+      ? `-${headerOffset}px 0px -70% 0px`
+      : this._observerRootMargin;
+
+    this._observer = new IntersectionObserver(
+      (entries) => {
+        // Update visibility map based on intersection changes
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            this._visibleElements.set(entry.target, entry.intersectionRatio);
+          } else {
+            this._visibleElements.delete(entry.target);
+          }
+        }
+
+        // Throttle scroll updates using requestAnimationFrame
+        this._scheduleScrollUpdate();
+      },
+      {
+        root: this._observerRoot,
+        threshold: this._observerThresholds,
+        rootMargin,
+      },
+    );
+
+    // Observe all group elements with safety check
+    const elements = getGroupElements();
+    if (Array.isArray(elements)) {
+      elements.forEach((el) => {
+        if (el) this._observer.observe(el);
+      });
     }
   }
 
   /**
+   * Manually trigger indicator position update.
+   * Useful for handling window resize or layout changes.
+   */
+  updateIndicator() {
+    this._scheduleIndicatorUpdate();
+  }
+
+  /**
+   * Setup indicator element references (called from navigation component).
+   * Cleaner than directly mutating controller properties.
+   *
+   * @param {Object} config - Configuration object
+   * @param {Function} config.getIndicatorElement - Returns indicator element
+   * @param {Function} config.getListElement - Returns list element
+   * @param {Function} config.getRegistry - Returns element registry
+   */
+  setupIndicator({ getIndicatorElement, getListElement, getRegistry }) {
+    this.getIndicatorElement = getIndicatorElement;
+    this.getListElement = getListElement;
+    this.getRegistry = getRegistry;
+  }
+
+  // ============================================
+  // EVENT HANDLING
+  // ============================================
+
+  /**
+   * Handle EVENT_FOCUS_ELEMENT (user-initiated navigation).
+   * Sets a lock to prevent scroll events from overriding user clicks.
+   *
+   * @private
+   * @param {CustomEvent} e - Event with {pointer, source, ...}
+   */
+  _handleFocusElement(e) {
+    const { pointer, source } = e?.detail || {};
+    if (pointer == null) return;
+
+    // Set lock timestamp for user-initiated actions
+    // This prevents scroll events from overriding for a short period
+    if (source) {
+      this._lastUserActionTime = Date.now();
+    }
+  }
+
+  /**
+   * Handle 'active-state-change' events.
+   *
+   * Event structure:
+   * - detail.pointer: The pointer to make active
+   *
+   * Coordination:
+   * - Tracks event source using internal flag (_isScrollEvent)
+   * - User clicks set a lock via EVENT_FOCUS_ELEMENT handler
+   * - Scroll events are ignored during lock period (800ms)
+   *
+   * @private
+   * @param {CustomEvent} e - Event with {pointer}
+   */
+  _handleActiveStateChange(e) {
+    const { pointer } = e?.detail || {};
+    // Allow empty string pointer (root element), but not null/undefined
+    if (pointer == null) return;
+
+    // Detect if this is a user-initiated action vs scroll-based
+    // Scroll actions come from _handleScrollVisibility
+    const isFromScroll = this._isScrollEvent;
+
+    if (isFromScroll) {
+      // Check if we're in user action lock period
+      const timeSinceUserAction = Date.now() - this._lastUserActionTime;
+      if (timeSinceUserAction < this._userActionLockDuration) {
+        // Ignore scroll updates during lock period
+        return;
+      }
+    }
+
+    this._updatePointer(pointer);
+  }
+
+  // ============================================
+  // STATE UPDATES
+  // ============================================
+
+  /**
+   * Update active pointer and trigger dependent updates.
+   * @private
+   * @param {string} newPointer - New pointer value
+   */
+  _updatePointer(newPointer) {
+    if (this._pointer === newPointer) return;
+
+    this._pointer = newPointer;
+    this.host.requestUpdate();
+    this._scheduleIndicatorUpdate();
+  }
+
+  // ============================================
+  // SCROLL VISIBILITY TRACKING
+  // ============================================
+
+  /**
+   * Throttle scroll updates using requestAnimationFrame.
+   * @private
+   */
+  _scheduleScrollUpdate() {
+    if (this._scrollThrottle) return;
+
+    this._scrollThrottle = requestAnimationFrame(() => {
+      this._scrollThrottle = null;
+      this._handleScrollVisibility();
+    });
+  }
+
+  /**
+   * Find most visible element and dispatch state change event.
+   * @private
+   */
+  _handleScrollVisibility() {
+    let mostVisible = null;
+    let highestRatio = 0;
+
+    // Find element with highest intersection ratio
+    for (const [element, ratio] of this._visibleElements) {
+      if (ratio > highestRatio) {
+        highestRatio = ratio;
+        mostVisible = element;
+      }
+    }
+
+    if (mostVisible) {
+      const pointer = mostVisible.getAttribute('pointer');
+      // Allow empty string pointer (root element), but not null/undefined
+      if (pointer != null) {
+        // Mark this as a scroll event for coordination
+        this._isScrollEvent = true;
+
+        // Dispatch active state change for scroll-based update
+        window.dispatchEvent(new CustomEvent(EVENT_ACTIVE_STATE_CHANGE, {
+          detail: { pointer },
+          bubbles: true,
+          composed: true,
+        }));
+
+        // Reset flag
+        this._isScrollEvent = false;
+      }
+    }
+  }
+
+  // ============================================
+  // INDICATOR POSITIONING
+  // ============================================
+
+  /**
+   * Schedule indicator position update using requestAnimationFrame.
+   * Debounces rapid successive updates to prevent visual "shaking".
+   * @private
+   */
+  _scheduleIndicatorUpdate() {
+    if (this._pendingIndicatorFrame) {
+      cancelAnimationFrame(this._pendingIndicatorFrame);
+    }
+
+    this._pendingIndicatorFrame = requestAnimationFrame(() => {
+      this._pendingIndicatorFrame = null;
+      this._updateIndicatorPosition();
+    });
+  }
+
+  /**
+   * Calculate and apply indicator position based on active pointer.
+   * @private
+   */
+  _updateIndicatorPosition() {
+    const indicator = this.getIndicatorElement();
+    const list = this.getListElement();
+    const registry = this.getRegistry();
+
+    // Hide indicator if any required element is missing
+    // Allow empty string pointer (root element)
+    if (!indicator || !list || !registry || this._pointer == null) {
+      if (indicator) indicator.style.height = '0px';
+      return;
+    }
+
+    const target = registry.get(this._pointer);
+    if (!target) {
+      indicator.style.height = '0px';
+      return;
+    }
+
+    // Calculate position relative to container
+    const containerRect = list.getBoundingClientRect();
+
+    // Use the label element (first child) if available, otherwise use target itself
+    const labelEl = target.firstElementChild || target;
+    const labelRect = labelEl.getBoundingClientRect();
+
+    // Calculate vertical position with offset, clamped to 0
+    const top = Math.max(0, labelRect.top - containerRect.top - this._indicatorOffsetPx);
+
+    // Get container's line height for fallback sizing
+    const containerLineHeight = parseFloat(getComputedStyle(list).lineHeight);
+    const fallbackHeight = Number.isFinite(containerLineHeight)
+      ? containerLineHeight
+      : LAYOUT.FALLBACK_LINE_HEIGHT;
+
+    // Use the larger of label height or line height
+    const height = Math.max(0, Math.max(labelRect.height, fallbackHeight));
+
+    // Apply calculated styles
+    indicator.style.top = `${Math.round(top)}px`;
+    indicator.style.height = `${Math.round(height)}px`;
+  }
+
+  // ============================================
+  // LIT CONTROLLER LIFECYCLE
+  // ============================================
+
+  /**
    * Lit lifecycle: Called when the host component is connected to the DOM.
-   * Sets up event listeners for focus and visibility changes.
-   * @see https://lit.dev/docs/composition/controllers/#host-update-cycle
+   * Sets up event listeners.
    */
   hostConnected() {
-    // Listen to focus events globally (bubbles from form elements)
-    window.addEventListener(EVENT_FOCUS_ELEMENT, this._boundOnFocus);
-
-    // Listen to visible group events on the host component
-    this.host.addEventListener(EVENT_VISIBLE_GROUP, this._boundOnVisibleGroup);
+    window.addEventListener(EVENT_ACTIVE_STATE_CHANGE, this._handleActiveStateChange);
+    window.addEventListener(EVENT_FOCUS_ELEMENT, this._handleFocusElement);
   }
 
   /**
    * Lit lifecycle: Called when the host component is disconnected from the DOM.
-   * Cleans up event listeners and resets state.
-   * @see https://lit.dev/docs/composition/controllers/#host-update-cycle
+   * Cleans up event listeners, observers, and pending animations.
    */
   hostDisconnected() {
-    // Remove event listeners to prevent memory leaks
-    window.removeEventListener(EVENT_FOCUS_ELEMENT, this._boundOnFocus);
-    this.host.removeEventListener(EVENT_VISIBLE_GROUP, this._boundOnVisibleGroup);
+    // Cleanup event listeners
+    window.removeEventListener(EVENT_ACTIVE_STATE_CHANGE, this._handleActiveStateChange);
+    window.removeEventListener(EVENT_FOCUS_ELEMENT, this._handleFocusElement);
 
-    // Clear manual selection lock
-    this._manualSelectionUntil = 0;
+    // Cancel pending animation frames
+    if (this._pendingIndicatorFrame) {
+      cancelAnimationFrame(this._pendingIndicatorFrame);
+      this._pendingIndicatorFrame = null;
+    }
+
+    if (this._scrollThrottle) {
+      cancelAnimationFrame(this._scrollThrottle);
+      this._scrollThrottle = null;
+    }
+
+    // Disconnect and cleanup observer
+    if (this._observer) {
+      this._observer.disconnect();
+      this._observer = null;
+    }
+
+    // Clear state
+    this._visibleElements.clear();
+    this._lastUserActionTime = 0;
   }
 
   /**
    * Lit lifecycle: Called after the host component has updated.
    * Validates the current pointer and falls back to default if invalid.
-   *
-   * This handles cases where:
-   * - The navigation tree structure changes (items added/removed)
-   * - The pointer becomes invalid due to data updates
-   * - Initial render when pointer hasn't been set yet
-   *
-   * @see https://lit.dev/docs/composition/controllers/#host-update-cycle
    */
   hostUpdated() {
     // Check if current pointer is null or invalid
@@ -140,73 +447,5 @@ export default class ActiveStateController {
         this.host.requestUpdate();
       }
     }
-  }
-
-  /**
-   * Handle focus events (manual user interactions).
-   *
-   * Focus events are triggered when users explicitly interact with form elements:
-   * - Clicking on navigation items
-   * - Clicking on form fields
-   * - Using keyboard navigation
-   *
-   * This handler implements a "manual selection lock" that prevents scroll-based
-   * updates from immediately overriding explicit user choices. Without this lock,
-   * the UX would be jarring: user clicks an item, scrolls, and the active
-   * indicator jumps away from their selection.
-   *
-   * @private
-   * @param {CustomEvent} e - Focus event with detail: {pointer, source,
-   *   originalSource}
-   */
-  _handleFocus(e) {
-    const { pointer, source, originalSource } = e?.detail || {};
-    if (pointer == null) return;
-
-    // Determine if this is a manual user interaction or automated
-    // - originalSource: preserved by coordinator when re-dispatching events
-    // - source: direct source if not coordinated
-    // - EVENT_SOURCE.COORDINATOR: automated system events
-    // - EVENT_SOURCE.UNKNOWN: indeterminate source
-    const actualSource = originalSource || source;
-    const isManualSelection = actualSource
-      && actualSource !== EVENT_SOURCE.COORDINATOR
-      && actualSource !== EVENT_SOURCE.UNKNOWN;
-
-    // Lock scroll-based updates for a period after manual selections
-    // This ensures user's explicit choice is respected even if they scroll
-    if (isManualSelection) {
-      this._manualSelectionUntil = Date.now() + this._manualSelectionLockMs;
-    }
-
-    // Update active pointer (will trigger re-render)
-    this.pointer = pointer;
-  }
-
-  /**
-   * Handle visible group events (scroll-based automatic highlighting).
-   *
-   * Visible group events are triggered when scrolling makes a different section
-   * visible in the viewport. This provides automatic breadcrumb updates as users
-   * scroll through the form.
-   *
-   * These updates are LOW PRIORITY and will be blocked if a manual selection
-   * lock is active (see _handleFocus for details).
-   *
-   * @private
-   * @param {CustomEvent} e - Visible group event with detail: {pointer}
-   */
-  _handleVisibleGroup(e) {
-    const { pointer } = e?.detail || {};
-    if (pointer == null) return;
-
-    // Check if manual selection lock is active
-    // If user recently clicked something, don't override with scroll updates
-    if (Date.now() < this._manualSelectionUntil) {
-      return; // Lock active - ignore this scroll-based update
-    }
-
-    // No lock active - safe to update from scroll position
-    this.pointer = pointer;
   }
 }

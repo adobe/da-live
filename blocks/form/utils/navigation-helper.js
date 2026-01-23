@@ -1,10 +1,22 @@
-import { EVENT_FOCUS_ELEMENT, EVENT_SOURCE } from '../constants.js';
+import {
+  EVENT_FOCUS_ELEMENT,
+  EVENT_ACTIVE_STATE_CHANGE,
+  EVENT_SOURCE,
+} from '../constants.js';
 import { findFirstErrorField } from './validation-helper.js';
 
 /** Navigates to a group or field in the form. */
 export function navigateToPointer(pointer, options = {}) {
   if (pointer == null) return;
 
+  // Dispatch active state change
+  window.dispatchEvent(new CustomEvent(EVENT_ACTIVE_STATE_CHANGE, {
+    detail: { pointer },
+    bubbles: true,
+    composed: true,
+  }));
+
+  // Also dispatch for scroll coordination
   window.dispatchEvent(new CustomEvent(EVENT_FOCUS_ELEMENT, {
     detail: {
       pointer,

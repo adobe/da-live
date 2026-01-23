@@ -16,7 +16,6 @@ import {
 } from '../constants.js';
 import ElementRegistryController from '../controllers/element-registry-controller.js';
 import ScrollTargetController from '../controllers/scroll-target-controller.js';
-import ActiveIndicatorController from '../controllers/active-indicator-controller.js';
 
 // Import utilities
 import * as navigationHelper from '../utils/navigation-helper.js';
@@ -44,6 +43,7 @@ class FormNavigation extends LitElement {
     formModel: { attribute: false },
     validationState: { attribute: false },
     activePointer: { attribute: false },
+    activeState: { attribute: false }, // ActiveStateController instance
     _nav: { state: true },
     _navTree: { state: true },
   };
@@ -55,6 +55,8 @@ class FormNavigation extends LitElement {
   constructor() {
     super();
     this._headerRef = createRef();
+    this._indicatorRef = createRef();
+    this._navListRef = createRef();
     this._resizeTimer = null;
     this._navTree = [];
 
@@ -74,12 +76,6 @@ class FormNavigation extends LitElement {
       scrollBehavior: SCROLL.BEHAVIOR,
     });
 
-    this._indicatorController = new ActiveIndicatorController(this, {
-      getIndicator: () => this._indicatorEl,
-      getList: () => this._navListEl,
-      getRegistry: () => this._registry,
-    });
-
     this._onHeaderBadgeClick = this._handleHeaderBadgeClick.bind(this);
     this._handleBadgeClick = this._handleBadgeClick.bind(this);
     this._handleInsertArrayItem = this._handleInsertArrayItem.bind(this);
@@ -88,10 +84,22 @@ class FormNavigation extends LitElement {
     this._handleMoveToPosition = this._handleMoveToPosition.bind(this);
     this._debouncedResize = createDebouncedHandler(
       () => {
-        this._indicatorController?.updatePosition(this.activePointer);
+        // Update indicator via passed controller property
+        this.activeState?.updateIndicator();
       },
       TIMING.DEBOUNCE_DELAY,
     );
+  }
+
+  firstUpdated() {
+    // Setup indicator element getters for active state controller
+    if (this.activeState) {
+      this.activeState.setupIndicator({
+        getIndicatorElement: () => this._indicatorRef.value,
+        getListElement: () => this._navListRef.value,
+        getRegistry: () => this._registry,
+      });
+    }
   }
 
   connectedCallback() {
@@ -101,7 +109,8 @@ class FormNavigation extends LitElement {
     this.addEventListener('header-badge-click', this._onHeaderBadgeClick);
 
     this.addEventListener('scroll', () => {
-      this._indicatorController?.updatePosition(this.activePointer);
+      // Update indicator via passed controller property
+      this.activeState?.updateIndicator();
     }, { passive: true });
     window.addEventListener('resize', this._debouncedResize);
   }
@@ -135,8 +144,8 @@ class FormNavigation extends LitElement {
 
     // Update indicator position when nav tree is rendered or active pointer changes
     if (changedProps.has('_navTree') || changedProps.has('activePointer')) {
-      const activePointer = this.activePointer || this._nav?.pointer;
-      this._indicatorController?.updatePosition(activePointer);
+      // Update indicator via passed controller property
+      this.activeState?.updateIndicator();
     }
   }
 
@@ -556,8 +565,8 @@ class FormNavigation extends LitElement {
 
     return html`
       ${this.renderNavHeader()}
-      <div class="nav-list" ${ref((el) => { this._navListEl = el; })}>
-        <div class="form-nav-active-indicator" ${ref((el) => { this._indicatorEl = el; })}></div>
+      <div class="nav-list" ${ref(this._navListRef)}>
+        <div class="form-nav-active-indicator" ${ref(this._indicatorRef)}></div>
         <ul>
           ${this._navTree.map((item) => this.renderNavItem(item))}
         </ul>

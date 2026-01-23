@@ -5,9 +5,9 @@
 // and are used for cross-component communication
 
 export const EVENT_FOCUS_ELEMENT = 'focus-element';
+export const EVENT_ACTIVE_STATE_CHANGE = 'active-state-change';
 export const EVENT_EDITOR_SCROLL_TO = 'editor-scroll-to';
 export const EVENT_NAVIGATION_SCROLL_TO = 'navigation-scroll-to';
-export const EVENT_VISIBLE_GROUP = 'visible-group';
 export const EVENT_VALIDATION_STATE_CHANGE = 'validation-state-change';
 
 // ============================================

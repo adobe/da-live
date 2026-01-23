@@ -57,14 +57,13 @@ class FormEditor extends LitElement {
         this.shadowRoot?.querySelector('da-form-navigation'),
       ],
     });
-    // Shared active state controller for both editor and navigation
+    // Unified active state controller (manages tracking, indicator, and scroll detection)
     this._activeState = new ActiveStateController(this, {
       getDefaultPointer: () => this.formModel?.root?.pointer ?? '',
       isPointerValid: (pointer) => {
         if (!this.formModel) return false;
         return this.formModel.getNode(pointer) != null;
       },
-      manualSelectionLockMs: 1000,
     });
     this._validationState = ValidationStateModel.empty();
   }
@@ -220,6 +219,7 @@ class FormEditor extends LitElement {
           .formModel=${this.formModel}
           .validationState=${this._validationState}
           .activePointer=${this.activePointer}
+          .activeState=${this._activeState}
           @form-model-intent=${this.handleModelIntent}
         ></da-form-editor>
         ${this.shouldShowPreview() ? html`<da-form-preview .formModel=${this.formModel}></da-form-preview>` : nothing}
@@ -235,6 +235,7 @@ class FormEditor extends LitElement {
             .formModel=${this.formModel}
             .validationState=${this._validationState}
             .activePointer=${this.activePointer}
+            .activeState=${this._activeState}
             @form-model-intent=${this.handleModelIntent}
           ></da-form-navigation>
         ` : nothing}

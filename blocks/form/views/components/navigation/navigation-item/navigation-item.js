@@ -1,6 +1,10 @@
 import { LitElement, html } from 'da-lit';
 import navigationItemStyles from './navigation-item.css' with { type: 'css' };
-import { EVENT_FOCUS_ELEMENT, EVENT_SOURCE } from '../../../../constants.js';
+import {
+  EVENT_FOCUS_ELEMENT,
+  EVENT_ACTIVE_STATE_CHANGE,
+  EVENT_SOURCE,
+} from '../../../../constants.js';
 
 /**
  * Navigation item component - displays a clickable navigation item label.
@@ -30,12 +34,20 @@ class FormNavigationItem extends LitElement {
   handleActivate() {
     const { pointer } = this;
     if (pointer == null) return;
-    const event = new CustomEvent(EVENT_FOCUS_ELEMENT, {
+
+    // Dispatch active state change
+    window.dispatchEvent(new CustomEvent(EVENT_ACTIVE_STATE_CHANGE, {
+      detail: { pointer },
+      bubbles: true,
+      composed: true,
+    }));
+
+    // Dispatch focus element for scroll coordination
+    window.dispatchEvent(new CustomEvent(EVENT_FOCUS_ELEMENT, {
       detail: { pointer, source: EVENT_SOURCE.NAVIGATION },
       bubbles: true,
       composed: true,
-    });
-    window.dispatchEvent(event);
+    }));
   }
 
   render() {

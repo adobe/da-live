@@ -17,7 +17,6 @@ import {
   SCROLL,
 } from '../constants.js';
 import ElementRegistryController from '../controllers/element-registry-controller.js';
-import VisibleGroupController from '../controllers/visible-group-controller.js';
 import ScrollTargetController from '../controllers/scroll-target-controller.js';
 
 // Import utilities
@@ -46,6 +45,7 @@ class FormEditor extends LitElement {
     formModel: { attribute: false },
     validationState: { attribute: false },
     activePointer: { attribute: false },
+    activeState: { attribute: false }, // ActiveStateController instance
     _data: { state: true },
   };
 
@@ -54,12 +54,6 @@ class FormEditor extends LitElement {
     this._headerRef = createRef();
 
     this._registry = new ElementRegistryController(this);
-
-    this._visibleGroups = new VisibleGroupController(this, {
-      getGroupId: (el) => el?.getAttribute?.('pointer'),
-      getMeasureTarget: (el) => el?.shadowRoot?.firstElementChild || el,
-      topOffsetPx: 0,
-    });
 
     this._scrollTarget = new ScrollTargetController(this, {
       scrollEvent: EVENT_EDITOR_SCROLL_TO,
@@ -115,6 +109,28 @@ class FormEditor extends LitElement {
     }
   }
 
+  updated(changedProps) {
+    // Setup/update scroll tracking after DOM updates
+    if (this.activeState && (changedProps.has('formModel') || changedProps.has('_data'))) {
+      // Use requestAnimationFrame to ensure DOM is fully updated
+      requestAnimationFrame(() => {
+        // Calculate header offset to account for sticky header
+        // Add extra offset so item must be more visible before becoming active
+        // This prevents breadcrumb from switching when item is mostly hidden under header
+        const headerOffset = getHeaderOffsetPx(this._headerRef.value);
+        const additionalOffset = 120; // pixels below header before item is considered "visible"
+        const totalOffset = headerOffset + additionalOffset;
+
+        // Filter registry to only get group elements (form-item-group), not fields
+        this.activeState.setupScrollTracking(
+          () => this._registry.getElements()
+            .filter((el) => el.tagName?.toLowerCase() === 'form-item-group'),
+          totalOffset,
+        );
+      });
+    }
+  }
+
   _buildFieldPropsCache() {
     this._fieldPropsMap.clear();
 
@@ -135,12 +151,6 @@ class FormEditor extends LitElement {
   updateHeaderOffsetVar() {
     const headerOffset = getHeaderOffsetPx(this._headerRef.value);
     this.style.setProperty('--editor-header-height', `${headerOffset}px`);
-
-    // Add extra offset so item must be more visible before becoming active
-    // This prevents breadcrumb from switching when item is mostly hidden under header
-    const additionalOffset = 80; // pixels below header before item is considered "visible"
-    const totalOffset = headerOffset + additionalOffset;
-    this._visibleGroups?.setTopOffsetPx(totalOffset);
   }
 
   observeHeaderResize() {
@@ -153,10 +163,6 @@ class FormEditor extends LitElement {
     this._headerResizeObserver.observe(header);
   }
 
-  get visiblePointer() {
-    return this._visibleGroups?.visiblePointer;
-  }
-
   registerElement = (pointer, el) => {
     if (el) {
       this._registry.register(pointer, el);
@@ -166,17 +172,8 @@ class FormEditor extends LitElement {
   };
 
   createGroupRef(pointer) {
-    let groupElement = null;
     return ref((el) => {
       this.registerElement(pointer, el);
-
-      if (el) {
-        groupElement = el;
-        this._visibleGroups?.registerGroup(el);
-      } else if (groupElement) {
-        this._visibleGroups?.unregisterGroup(groupElement);
-        groupElement = null;
-      }
     });
   }
 
