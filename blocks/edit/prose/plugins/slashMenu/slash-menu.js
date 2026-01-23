@@ -76,7 +76,7 @@ export default class SlashMenu extends InContextMenu {
     const selectedItem = this.shadowRoot.querySelector('.slash-menu-item.selected');
     const width = selectedItem?.getBoundingClientRect().width ?? 0;
     const top = selectedItem?.getBoundingClientRect().top ?? 0;
-    submenuElement.show({ top: top, left: width });
+    submenuElement.show({ top, left: width });
     submenuElement.focus();
   }
 
