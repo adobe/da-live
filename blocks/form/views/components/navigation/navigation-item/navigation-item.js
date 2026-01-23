@@ -3,7 +3,6 @@ import navigationItemStyles from './navigation-item.css' with { type: 'css' };
 import {
   EVENT_FOCUS_ELEMENT,
   EVENT_ACTIVE_STATE_CHANGE,
-  EVENT_SOURCE,
 } from '../../../../constants.js';
 
 /**
@@ -43,8 +42,14 @@ class FormNavigationItem extends LitElement {
     }));
 
     // Dispatch focus element for scroll coordination
+    // Navigation doesn't need scrolling (you just clicked it, it's visible)
+    // But editor should scroll to show the corresponding content
     window.dispatchEvent(new CustomEvent(EVENT_FOCUS_ELEMENT, {
-      detail: { pointer, source: EVENT_SOURCE.NAVIGATION },
+      detail: {
+        pointer,
+        scrollEditor: true,
+        scrollNavigation: false,
+      },
       bubbles: true,
       composed: true,
     }));

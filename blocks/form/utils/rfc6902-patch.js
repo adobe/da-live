@@ -79,22 +79,35 @@ function applyAdd(json, operation) {
 
 function applyMove(json, operation) {
   const { data } = json;
-  const { path, from, to } = operation;
-  const { parent, parentPointer } = resolveParentAndKey(data, path);
+  const { path, to } = operation;
+  const { parent, parentPointer, key } = resolveParentAndKey(data, path);
 
   if (!Array.isArray(parent)) {
     throw new TypeError('RFC6902 move: target must be an array');
   }
 
+  // Extract 'from' index from path (path already tells us the source)
+  const from = Number(key);
   if (!Number.isInteger(from) || from < 0 || from >= parent.length) {
     throw new TypeError(`RFC6902 move: invalid from index ${from}`);
   }
 
-  if (!Number.isInteger(to) || to < 0 || to >= parent.length) {
-    throw new TypeError(`RFC6902 move: invalid to index ${to}`);
+  // Extract 'to' index (support both integer and pointer format)
+  let toIndex;
+  if (typeof to === 'string') {
+    // Pointer format: '/items/2' → extract '2'
+    const toKey = to.substring(to.lastIndexOf('/') + 1);
+    toIndex = Number(toKey);
+  } else {
+    // Integer format (backward compatible)
+    toIndex = to;
   }
 
-  if (from === to) {
+  if (!Number.isInteger(toIndex) || toIndex < 0 || toIndex >= parent.length) {
+    throw new TypeError(`RFC6902 move: invalid to index ${toIndex}`);
+  }
+
+  if (from === toIndex) {
     return json; // No-op if moving to same position
   }
 
@@ -103,7 +116,7 @@ function applyMove(json, operation) {
   const withoutItem = parent.slice(0, from).concat(parent.slice(from + 1));
 
   // Insert at new position
-  const nextParent = withoutItem.slice(0, to).concat([item], withoutItem.slice(to));
+  const nextParent = withoutItem.slice(0, toIndex).concat([item], withoutItem.slice(toIndex));
   const nextData = setAtPointer(parentPointer, data, nextParent);
 
   return { ...json, data: nextData };

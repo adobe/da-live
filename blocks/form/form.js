@@ -12,10 +12,13 @@ import applyOp from './utils/rfc6902-patch.js';
 
 import '../edit/da-title/da-title.js';
 import ScrollCoordinatorController from './controllers/scroll-coordinator-controller.js';
-import PostUpdateActionsController from './controllers/post-update-actions-controller.js';
 import ActiveStateController from './controllers/active-state-controller.js';
 import ValidationStateModel from './validation/validation-state.js';
-import { EVENT_VALIDATION_STATE_CHANGE, EVENT_SOURCE, SCHEMA_EDITOR_URL } from './constants.js';
+import * as navigationHelper from './utils/navigation-helper.js';
+import {
+  EVENT_VALIDATION_STATE_CHANGE,
+  SCHEMA_EDITOR_URL,
+} from './constants.js';
 
 // Internal Web Components
 import './views/editor.js';
@@ -50,14 +53,7 @@ class FormEditor extends LitElement {
     super();
     // Controller handles all focus/scroll coordination
     this._scrollCoordinator = new ScrollCoordinatorController(this);
-    // Controller handles post-update actions (focus, etc.)
-    this._postUpdateActions = new PostUpdateActionsController(this, {
-      getChildComponents: () => [
-        this.shadowRoot?.querySelector('da-form-editor'),
-        this.shadowRoot?.querySelector('da-form-navigation'),
-      ],
-    });
-    // Unified active state controller (manages tracking, indicator, and scroll detection)
+    // Active state controller (manages tracking and visual indicator)
     this._activeState = new ActiveStateController(this, {
       getDefaultPointer: () => this.formModel?.root?.pointer ?? '',
       isPointerValid: (pointer) => {
@@ -112,18 +108,16 @@ class FormEditor extends LitElement {
     return !hasMetadata && !hasData;
   }
 
-  handleModelIntent(e) {
+  async handleModelIntent(e) {
     const operation = e.detail;
     const nextJson = applyOp(this.formModel.json, operation);
     this.formModel = new FormModel(nextJson, this._schemas);
 
-    // Schedule post-update actions if present in operation
-    if (operation.focusAfter) {
-      this._postUpdateActions.scheduleAction({
-        type: 'focus',
-        pointer: operation.focusAfter,
-        source: operation.focusSource || EVENT_SOURCE.UNKNOWN,
-      });
+    // Focus after add/move operations: 'add' uses path, 'move' uses to
+    const focusPointer = (operation.op === 'add') ? operation.path : operation.to;
+    if (focusPointer) {
+      await this.updateComplete;
+      navigationHelper.navigateToPointer(focusPointer, { scroll: true });
     }
 
     // Save the updated data

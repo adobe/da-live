@@ -293,6 +293,5 @@ li:not([data-active="true"]) .nav-icon-bg {
   border-radius: 9999px;
   height: 0;
   top: 0;
-  transition: top 120ms ease, height 120ms ease;
   pointer-events: none;
 }

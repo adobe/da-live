@@ -12,7 +12,6 @@ import { ref, createRef } from '../../../deps/lit/dist/index.js';
 import {
   EVENT_EDITOR_SCROLL_TO,
   EVENT_FOCUS_ELEMENT,
-  EVENT_SOURCE,
   LAYOUT,
   SCROLL,
 } from '../constants.js';
@@ -109,27 +108,6 @@ class FormEditor extends LitElement {
     }
   }
 
-  updated(changedProps) {
-    // Setup/update scroll tracking after DOM updates
-    if (this.activeState && (changedProps.has('formModel') || changedProps.has('_data'))) {
-      // Use requestAnimationFrame to ensure DOM is fully updated
-      requestAnimationFrame(() => {
-        // Calculate header offset to account for sticky header
-        // Add extra offset so item must be more visible before becoming active
-        // This prevents breadcrumb from switching when item is mostly hidden under header
-        const headerOffset = getHeaderOffsetPx(this._headerRef.value);
-        const additionalOffset = 120; // pixels below header before item is considered "visible"
-        const totalOffset = headerOffset + additionalOffset;
-
-        // Filter registry to only get group elements (form-item-group), not fields
-        this.activeState.setupScrollTracking(
-          () => this._registry.getElements()
-            .filter((el) => el.tagName?.toLowerCase() === 'form-item-group'),
-          totalOffset,
-        );
-      });
-    }
-  }
 
   _buildFieldPropsCache() {
     this._fieldPropsMap.clear();
@@ -193,11 +171,13 @@ class FormEditor extends LitElement {
   }
 
   _handleBreadcrumbNavigation(e) {
-    navigationHelper.navigateToPointer(e.detail.id, { source: EVENT_SOURCE.BREADCRUMB });
+    // Breadcrumb clicks should scroll both panels
+    navigationHelper.navigateToPointer(e.detail.id, { scroll: true });
   }
 
   _handleSectionNavigation(e) {
-    navigationHelper.navigateToPointer(e.detail.id, { source: EVENT_SOURCE.EDITOR });
+    // Section clicks in editor: don't scroll editor (already visible), but scroll navigation (to highlight)
+    navigationHelper.navigateToPointer(e.detail.id, { scrollEditor: false, scrollNavigation: true });
   }
 
   /** Activates the parent group when a field is clicked. */
@@ -213,7 +193,8 @@ class FormEditor extends LitElement {
       }
 
       if (parentPointer != null) {
-        navigationHelper.navigateToPointer(parentPointer, { source: EVENT_SOURCE.EDITOR });
+        // Field clicks in editor: don't scroll editor (already visible), but scroll navigation (to highlight)
+        navigationHelper.navigateToPointer(parentPointer, { scrollEditor: false, scrollNavigation: true });
       }
     }
   }
@@ -221,7 +202,7 @@ class FormEditor extends LitElement {
   render() {
     if (!this._data) return nothing;
 
-    // activePointer updates from both manual clicks and natural scrolling
+    // activePointer updates from user clicks and navigation actions
     const breadcrumbPointer = (this.activePointer ?? this._data.pointer);
     const segments = breadcrumbHelper.buildBreadcrumbSegments(
       this._data,
@@ -574,7 +555,7 @@ class FormEditor extends LitElement {
     }
 
     const nextIndex = arrayNode.itemCount;
-    const newItemPointer = `${arrayPointer}/${nextIndex}`;
+    const newItemPointer = buildArrayItemPointer(arrayPointer, nextIndex);
 
     // eslint-disable-next-line no-underscore-dangle
     const itemValue = generateArrayItem(arrayNode.schema, this.formModel._schema);
@@ -583,8 +564,6 @@ class FormEditor extends LitElement {
         op: 'add',
         path: newItemPointer,
         value: itemValue,
-        focusAfter: newItemPointer,
-        focusSource: 'editor',
       },
       bubbles: true,
       composed: true,
@@ -602,7 +581,7 @@ class FormEditor extends LitElement {
     }
 
     const insertIndex = mode === 'before' ? currentIndex : currentIndex + 1;
-    const newItemPointer = `${arrayPointer}/${insertIndex}`;
+    const newItemPointer = buildArrayItemPointer(arrayPointer, insertIndex);
 
     // eslint-disable-next-line no-underscore-dangle
     const itemValue = generateArrayItem(arrayNode.schema, this.formModel._schema);
@@ -611,8 +590,6 @@ class FormEditor extends LitElement {
         op: 'add',
         path: newItemPointer,
         value: itemValue,
-        focusAfter: newItemPointer,
-        focusSource: 'editor',
       },
       bubbles: true,
       composed: true,
@@ -628,7 +605,7 @@ class FormEditor extends LitElement {
     }
 
     const nextIndex = arrayNode.itemCount;
-    const newItemPointer = `${arrayPointer}/${nextIndex}`;
+    const newItemPointer = buildArrayItemPointer(arrayPointer, nextIndex);
 
     // eslint-disable-next-line no-underscore-dangle
     const itemValue = generateArrayItem(arrayNode.schema, this.formModel._schema);
@@ -638,8 +615,6 @@ class FormEditor extends LitElement {
         op: 'add',
         path: newItemPointer,
         value: itemValue,
-        focusAfter: newItemPointer,
-        focusSource: 'editor',
       },
       bubbles: true,
       composed: true,
@@ -662,7 +637,6 @@ class FormEditor extends LitElement {
   _handleMoveToPosition(event) {
     const { pointer, targetPosition } = event.detail;
 
-    // Extract current index and array pointer
     const { arrayPointer, index: currentIndex } = parseArrayItemPointer(pointer);
 
     // If already at target position, do nothing
@@ -670,17 +644,15 @@ class FormEditor extends LitElement {
       return;
     }
 
-    const newPointer = buildArrayItemPointer(arrayPointer, targetPosition);
+    // Build target pointer
+    const targetPointer = buildArrayItemPointer(arrayPointer, targetPosition);
 
-    // Dispatch move operation with target pointer for focusing after update
+    // Dispatch move operation
     this.dispatchEvent(new CustomEvent('form-model-intent', {
       detail: {
         op: 'move',
         path: pointer,
-        from: currentIndex,
-        to: targetPosition,
-        focusAfter: newPointer,
-        focusSource: 'editor',
+        to: targetPointer,
       },
       bubbles: true,
       composed: true,

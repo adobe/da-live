@@ -10,7 +10,6 @@ import './components/shared/move-to-position-button/move-to-position-button.js';
 import { ref, createRef } from '../../../deps/lit/dist/index.js';
 import {
   EVENT_NAVIGATION_SCROLL_TO,
-  EVENT_SOURCE,
   TIMING,
   SCROLL,
 } from '../constants.js';
@@ -174,7 +173,6 @@ class FormNavigation extends LitElement {
       navigationHelper.navigateToField(
         firstError,
         this.formModel,
-        { source: EVENT_SOURCE.NAVIGATION, reason: 'header-badge' },
       );
     }
   }
@@ -191,7 +189,6 @@ class FormNavigation extends LitElement {
       pointer,
       this.formModel,
       this.validationState,
-      { source: EVENT_SOURCE.NAVIGATION, reason: 'validation-badge' },
     );
   }
 
@@ -206,7 +203,7 @@ class FormNavigation extends LitElement {
     }
 
     const insertIndex = mode === 'before' ? currentIndex : currentIndex + 1;
-    const newItemPointer = `${arrayPointer}/${insertIndex}`;
+    const newItemPointer = buildArrayItemPointer(arrayPointer, insertIndex);
 
     // eslint-disable-next-line no-underscore-dangle
     const itemValue = generateArrayItem(arrayNode.schema, this.formModel._schema);
@@ -216,8 +213,6 @@ class FormNavigation extends LitElement {
         op: 'add',
         path: newItemPointer,
         value: itemValue,
-        focusAfter: newItemPointer,
-        focusSource: 'navigation',
       },
       bubbles: true,
       composed: true,
@@ -246,7 +241,7 @@ class FormNavigation extends LitElement {
     }
 
     const nextIndex = arrayNode.itemCount;
-    const newItemPointer = `${arrayPointer}/${nextIndex}`;
+    const newItemPointer = buildArrayItemPointer(arrayPointer, nextIndex);
 
     // eslint-disable-next-line no-underscore-dangle
     const itemValue = generateArrayItem(arrayNode.schema, this.formModel._schema);
@@ -256,8 +251,6 @@ class FormNavigation extends LitElement {
         op: 'add',
         path: newItemPointer,
         value: itemValue,
-        focusAfter: newItemPointer,
-        focusSource: 'navigation',
       },
       bubbles: true,
       composed: true,
@@ -267,7 +260,6 @@ class FormNavigation extends LitElement {
   _handleMoveToPosition(event) {
     const { pointer, targetPosition } = event.detail;
 
-    // Extract current index and array pointer
     const { arrayPointer, index: currentIndex } = parseArrayItemPointer(pointer);
 
     // If already at target position, do nothing
@@ -275,17 +267,15 @@ class FormNavigation extends LitElement {
       return;
     }
 
-    const newPointer = buildArrayItemPointer(arrayPointer, targetPosition);
+    // Build target pointer
+    const targetPointer = buildArrayItemPointer(arrayPointer, targetPosition);
 
-    // Dispatch move operation with target pointer for focusing after update
+    // Dispatch move operation
     this.dispatchEvent(new CustomEvent('form-model-intent', {
       detail: {
         op: 'move',
         path: pointer,
-        from: currentIndex,
-        to: targetPosition,
-        focusAfter: newPointer,
-        focusSource: 'navigation',
+        to: targetPointer,
       },
       bubbles: true,
       composed: true,

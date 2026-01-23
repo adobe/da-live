@@ -11,20 +11,6 @@ export const EVENT_NAVIGATION_SCROLL_TO = 'navigation-scroll-to';
 export const EVENT_VALIDATION_STATE_CHANGE = 'validation-state-change';
 
 // ============================================
-// EVENT SOURCE IDENTIFIERS
-// ============================================
-// These constants identify the source of events for coordination
-// and priority handling in the active state system
-
-export const EVENT_SOURCE = {
-  COORDINATOR: 'coordinator', // System-coordinated events
-  UNKNOWN: 'unknown', // Unspecified or indeterminate source
-  NAVIGATION: 'navigation', // From navigation panel clicks
-  EDITOR: 'editor', // From editor panel interactions
-  BREADCRUMB: 'breadcrumb', // From breadcrumb navigation
-};
-
-// ============================================
 // COMPONENT CUSTOM EVENTS
 // ============================================
 // These events are dispatched by specific components
