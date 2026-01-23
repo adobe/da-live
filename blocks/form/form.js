@@ -117,7 +117,8 @@ class FormEditor extends LitElement {
     const focusPointer = (operation.op === 'add') ? operation.path : operation.to;
     if (focusPointer) {
       await this.updateComplete;
-      navigationHelper.navigateToPointer(focusPointer, { scroll: true });
+      // Use navigateToField to handle primitive arrays (navigates to parent group)
+      navigationHelper.navigateToField(focusPointer, this.formModel, { scroll: true });
     }
 
     // Save the updated data
