@@ -55,6 +55,16 @@ export default class SlashMenu extends InContextMenu {
     return this.shadowRoot.querySelector('.submenu slash-menu');
   }
 
+  updatePosition() {
+    if (this.parent) {
+      const adjustedTop = this.top - this.parent.getBoundingClientRect().top;
+      this.style.left = `${this.left}px`;
+      this.style.top = `${adjustedTop}px`;
+    }
+
+    super.updatePosition();
+  }
+
   showSubmenu() {
     const submenuElement = this.getSubmenuElement();
     const items = this.getSubmenuItems();
@@ -64,9 +74,9 @@ export default class SlashMenu extends InContextMenu {
 
     // calculate submenu position
     const selectedItem = this.shadowRoot.querySelector('.slash-menu-item.selected');
-    const topOffset = selectedItem?.offsetTop ?? 0;
-    const width = selectedItem?.offsetWidth ?? 0;
-    submenuElement.show({ top: this.top + topOffset, left: this.left + width });
+    const width = selectedItem?.getBoundingClientRect().width ?? 0;
+    const top = selectedItem?.getBoundingClientRect().top ?? 0;
+    submenuElement.show({ top, left: width });
     submenuElement.focus();
   }
 
