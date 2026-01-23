@@ -331,7 +331,7 @@ class DaLibrary extends LitElement {
       if (e.data.action === 'closeLibrary') {
         closeLibrary();
       }
-      if (e.data.action === 'readSelection') {
+      if (e.data.action === 'getSelection') {
         const { selection } = window.view.state;
         if (selection.empty) {
           channel.port1.postMessage({ action: 'error', details: 'No selection found' });
