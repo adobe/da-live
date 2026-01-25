@@ -33,6 +33,7 @@ da-dialog {
   line-height: 16px;
   padding: 5px 14px;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .con-button.blue {
@@ -186,12 +187,39 @@ da-dialog {
   background: #EFEFEF;
 }
 
+.da-title-action {
+  display: none;
+}
+
 .da-title-actions.is-open .da-title-action {
   display: unset;
 }
 
-.da-title-action {
-  display: none;
+.da-title-actions.config .da-title-action {
+  display: unset;
+}
+
+.da-title-actions.config .da-title-action:not(.blue) {
+  background: var(--s2-gray-200);
+  border-color: var(--s2-gray-200);
+  color: var(--s2-gray-700);
+  cursor: default;
+}
+
+.da-title-actions.config .da-title-action.is-sending {
+  color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.da-title-actions.config .da-title-action.is-sending::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: url('/blocks/edit/img/Smock_Send_18_N.svg') center/22px no-repeat;
+  filter: brightness(0) invert(1);
+  animation: animated-background 1s linear infinite;
 }
 
 .da-title-action-send {
