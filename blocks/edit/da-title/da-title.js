@@ -14,6 +14,16 @@ import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
+function isSaveOnlyView(details) {
+  if (!details) return false;
+  if (details.view === 'config') return true;
+  return details.view === 'sheet' && details.fullpath?.includes('/.da/');
+}
+
+function isHiddenActionsView(details) {
+  return details?.view === 'edit' && details?.fullpath?.includes('/.da/');
+}
+
 const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
   '/blocks/edit/img/Smock_CloudDisconnected_18_N.svg',
@@ -37,6 +47,8 @@ export default class DaTitle extends LitElement {
     collabUsers: { attribute: false },
     previewPrefix: { attribute: false },
     livePrefix: { attribute: false },
+    hasChanges: { attribute: false },
+    disableMessage: { attribute: false },
     _actionsVis: { state: true },
     _status: { state: true },
     _fixedActions: { state: true },
@@ -46,16 +58,17 @@ export default class DaTitle extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this._actionsVis = [];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
-    if (this.details.view === 'sheet') {
-      this.collabStatus = window.navigator.onLine
-        ? 'connected'
-        : 'offline';
+  }
 
-      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
-      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
-    }
+  disconnectedCallback() {
+    this.removeCollabListeners();
+    super.disconnectedCallback();
+  }
+
+  updated(changedProperties) {
+    super.updated(changedProperties);
+    if (changedProperties.has('details')) this.syncDetailsState();
   }
 
   firstUpdated() {
@@ -68,6 +81,7 @@ export default class DaTitle extends LitElement {
   }
 
   handleError(json, action, icon) {
+    // eslint-disable-next-line no-console
     console.log('handleError', json, action, icon);
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');
@@ -91,26 +105,43 @@ export default class DaTitle extends LitElement {
   }
 
   async handleAction(action) {
+    if (!this.details) return;
     this.toggleActions();
     this._status = null;
-    const sendBtn = this.shadowRoot.querySelector('.da-title-action-send-icon');
-    sendBtn.classList.add('is-sending');
+
+    const sendBtn = this.shadowRoot.querySelector(
+      this.actionView === 'saveOnly' ? '.da-title-action' : '.da-title-action-send-icon',
+    );
+
+    if (sendBtn) {
+      sendBtn.classList.add('is-sending');
+    }
 
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
 
-    // Only save to DA if it is a sheet or config
-    if (this.details.view === 'sheet') {
+    if (this.details.view === 'sheet' && action === 'save') {
       const dasSave = await saveToDa(pathname, this.sheet);
+      if (sendBtn) sendBtn.classList.remove('is-sending');
       if (!dasSave.ok) return;
+      this.hasChanges = false;
+      return;
     }
-    if (this.details.view === 'config') {
+
+    if (this._isConfigView) {
       const daConfigResp = await saveDaConfig(pathname, this.sheet);
+
+      if (sendBtn) {
+        sendBtn.classList.remove('is-sending');
+      }
+
       if (!daConfigResp.ok) {
         // eslint-disable-next-line no-console
         console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
-        return;
+      } else {
+        this.dispatchEvent(new Event('config-saved'));
       }
+      return;
     }
     if (action === 'preview' || action === 'publish') {
       const cdn = await getCdnConfig(pathname);
@@ -141,7 +172,7 @@ export default class DaTitle extends LitElement {
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
-    sendBtn.classList.remove('is-sending');
+    if (sendBtn) sendBtn.classList.remove('is-sending');
   }
 
   async handleRoleRequest() {
@@ -189,15 +220,13 @@ export default class DaTitle extends LitElement {
   }
 
   async toggleActions() {
-    // toggle off if already on
-    if (this._actionsVis.length > 0) {
-      this._actionsVis = [];
+    if (this.actionView !== 'full') {
       return;
     }
 
-    // toggle on for config
-    if (this.details.view === 'config') {
-      this._actionsVis = ['save'];
+    // toggle off if already on
+    if ((this._actionsVis || []).length > 0) {
+      this._actionsVis = [];
       return;
     }
 
@@ -217,15 +246,85 @@ export default class DaTitle extends LitElement {
     return !this.permissions.some((permission) => permission === 'write');
   }
 
+  get _isConfigView() {
+    return this.details?.view === 'config';
+  }
+
+  get actionView() {
+    if (isHiddenActionsView(this.details)) return 'hidden';
+    if (isSaveOnlyView(this.details)) return 'saveOnly';
+    return 'full';
+  }
+
+  get visibleActions() {
+    if (this.actionView === 'saveOnly') {
+      return ['save'];
+    }
+    return this._actionsVis || [];
+  }
+
+  syncDetailsState() {
+    this._actionsVis = [];
+    this.syncCollabStatus();
+  }
+
+  syncCollabStatus() {
+    this.removeCollabListeners();
+    if (this.details?.view !== 'sheet') {
+      this.collabStatus = undefined;
+      return;
+    }
+
+    this.collabStatus = window.navigator.onLine
+      ? 'connected'
+      : 'offline';
+
+    this._handleOnline = () => { this.collabStatus = 'connected'; };
+    this._handleOffline = () => { this.collabStatus = 'offline'; };
+    window.addEventListener('online', this._handleOnline);
+    window.addEventListener('offline', this._handleOffline);
+  }
+
+  removeCollabListeners() {
+    if (this._handleOnline) {
+      window.removeEventListener('online', this._handleOnline);
+      this._handleOnline = null;
+    }
+    if (this._handleOffline) {
+      window.removeEventListener('offline', this._handleOffline);
+      this._handleOffline = null;
+    }
+  }
+
   renderActions() {
-    return html`${this._actionsVis.map((action) => html`
+    const isDisabled = !!this.disableMessage || (this.actionView === 'saveOnly' && !this.hasChanges);
+    return html`${this.visibleActions.map((action) => html`
       <button
         @click=${() => this.handleAction(action)}
-        class="con-button blue da-title-action"
-        aria-label="Send">
+        class="con-button da-title-action ${isDisabled ? '' : 'blue'}"
+        aria-label="${action}"
+        ?disabled=${isDisabled}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
     `)}`;
+  }
+
+  renderActionControls() {
+    if (this.actionView === 'hidden') return nothing;
+
+    return html`
+      <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this.actionView === 'full' && this._actionsVis?.length > 0 ? 'is-open' : ''} ${this.actionView === 'saveOnly' ? 'save-only' : ''}">
+        ${this.renderActions()}
+        ${this.actionView === 'saveOnly' ? nothing : html`
+          <button
+            @click=${this.toggleActions}
+            class="con-button blue da-title-action-send"
+            aria-label="Send">
+            <span class="da-title-action-send-icon"></span>
+          </button>
+        `}
+      </div>
+    `;
   }
 
   popover({ target }) {
@@ -279,6 +378,8 @@ export default class DaTitle extends LitElement {
   }
 
   render() {
+    if (!this.details) return nothing;
+
     return html`
       <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
         <div class="da-title-name">
@@ -290,17 +391,12 @@ export default class DaTitle extends LitElement {
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis.length > 0 ? 'is-open' : ''}">
-            ${this.renderActions()}
-            <button
-              @click=${this.toggleActions}
-              class="con-button blue da-title-action-send"
-              aria-label="Send">
-              <span class="da-title-action-send-icon"></span>
-            </button>
-          </div>
+          ${this.renderActionControls()}
         </div>
       </div>
+      ${this.disableMessage
+    ? html`<p class="da-title-save-disabled-msg">${this.disableMessage}</p>`
+    : nothing}
       ${this._dialog ? this.renderDialog() : nothing}
     `;
   }

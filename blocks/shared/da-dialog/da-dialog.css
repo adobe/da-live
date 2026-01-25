@@ -63,6 +63,13 @@ svg.icon {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+
+    .da-dialog-footer-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
   
     .da-dialog-footer-message {
       font-style: italic;
