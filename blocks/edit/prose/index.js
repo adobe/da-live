@@ -174,12 +174,12 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
     const awarenessStates = wsProvider.awareness.getStates();
     const userMap = new Map();
-    [...users].forEach((u) => {
+    [...users].forEach((u, i) => {
       const userInfo = awarenessStates.get(u)?.user;
       if (!userInfo?.id) {
         userMap.set(`anonymous-${u}`, 'Anonymous');
-      } else if (userInfo.id !== wsProvider.awareness.getLocalState().user?.id) {
-        userMap.set(userInfo.id, userInfo.name);
+      } else {
+        userMap.set(`${userInfo.id}-${i}`, userInfo.name);
       }
     });
     daTitle.collabUsers = [...userMap.values()].sort();

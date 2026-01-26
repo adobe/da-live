@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { DOMParser as proseDOMParser, TextSelection } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, TextSelection, DOMSerializer } from 'da-y-wrapper';
 import {
   LitElement,
   html,
@@ -330,6 +330,19 @@ class DaLibrary extends LitElement {
       }
       if (e.data.action === 'closeLibrary') {
         closeLibrary();
+      }
+      if (e.data.action === 'getSelection') {
+        const { selection } = window.view.state;
+        if (selection.empty) {
+          channel.port1.postMessage({ action: 'error', details: 'No selection found' });
+          return;
+        }
+        const slice = selection.content();
+        const serializer = DOMSerializer.fromSchema(window.view.state.schema);
+        const fragment = serializer.serializeFragment(slice.content);
+        const div = document.createElement('div');
+        div.appendChild(fragment);
+        target.contentWindow.postMessage({ action: 'sendSelection', details: div.innerHTML }, '*');
       }
     };
 
