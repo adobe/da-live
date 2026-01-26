@@ -1,0 +1,163 @@
+/*
+ * Copyright 2025 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+
+.da-ai-assistant-wrapper {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999999;
+  font-family: var(--body-font-family, adobe-clean, 'Trebuchet MS', sans-serif);
+}
+
+/* Trigger Button */
+.da-ai-trigger {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5258e4 0%, #7c82f6 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(82, 88, 228, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.da-ai-trigger:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(82, 88, 228, 0.5);
+}
+
+.da-ai-trigger:active {
+  transform: scale(0.95);
+}
+
+.da-ai-trigger svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Container */
+.da-ai-container {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 400px;
+  max-width: calc(100vw - 40px);
+  height: 600px;
+  max-height: calc(100vh - 140px);
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: scale(0.9) translateY(20px);
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.da-ai-container.is-visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: all;
+}
+
+/* Header */
+.da-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e5;
+  background: linear-gradient(135deg, #5258e4 0%, #7c82f6 100%);
+  color: white;
+}
+
+.da-ai-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.da-ai-close {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.da-ai-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.da-ai-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Content */
+.da-ai-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.da-ai-content web-fragment {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.da-ai-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .da-ai-container {
+    width: calc(100vw - 40px);
+    height: calc(100vh - 140px);
+    bottom: 90px;
+    right: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .da-ai-trigger {
+    width: 48px;
+    height: 48px;
+  }
+
+  .da-ai-trigger svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .da-ai-container {
+    bottom: 80px;
+  }
+}

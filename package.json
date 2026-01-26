@@ -1,5 +1,7 @@
 {
-  "name": "@adobecom/dark-alley",
+  "name": "@da/live",
+  "version": "1.0.0",
+  "description": "DA Live - Frontend authoring UI",
   "type": "module",
   "author": "Adobe",
   "license": "Apache License 2.0",
@@ -9,6 +11,7 @@
   },
   "dependencies": {
     "@open-wc/lit-helpers": "0.7.0",
+    "web-fragments": "catalog:",
     "esbuild": "0.21.0",
     "jspreadsheet-ce": "4.13.4",
     "jsuites": "5.0.29",
@@ -48,15 +51,17 @@
     "stylelint-config-standard": "40.0.0"
   },
   "scripts": {
+    "dev": "aem up",
     "lint:js": "eslint .",
     "lint:css": "stylelint blocks/**/*.css styles/*.css",
     "lint": "npm run lint:js && npm run lint:css",
     "copy:deps": "node ./deps/copy.js",
-    "postinstall": "npm run build:da-y-wrapper && npm run build:da-lit",
+    "postinstall": "npm run build:da-y-wrapper && npm run build:da-lit && npm run build:web-fragments",
     "test": "wtr \"./test/unit/**/*.test.js\" --node-resolve --port=2000 --coverage",
     "test:watch": "npm test -- --watch",
     "test:e2e": "cd test/e2e && npm i && npm run test:all",
     "build:da-lit": "esbuild --format=esm --minify ./deps/lit/src/index.js --bundle --outfile=./deps/lit/dist/index.js",
-    "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js"
+    "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js",
+    "build:web-fragments": "esbuild --format=esm --minify ./deps/web-fragments/src/index.js --bundle --outfile=./deps/web-fragments/dist/index.js"
   }
 }

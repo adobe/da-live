@@ -47,6 +47,40 @@ function loadStyles() {
 
 export default async function loadPage() {
   await loadArea();
+  loadAiAssistant();
+}
+
+async function loadAiAssistant() {
+  // Wait for IMS to be ready and check if user is signed in
+  const checkIms = () => window.adobeIMS?.isSignedInUser?.();
+  
+  // If IMS isn't ready yet, wait for it (max 5 seconds)
+  if (!checkIms()) {
+    await new Promise((resolve) => {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (checkIms() || attempts > 50) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 100);
+    });
+  }
+  
+  // Only load for authenticated users
+  if (!checkIms()) return;
+  
+  // Load the AI assistant component
+  try {
+    const { default: initAssistant } = await import('/blocks/shared/da-ai-assistant/da-ai-assistant.js');
+    const container = document.createElement('div');
+    container.className = 'da-ai-assistant-mount';
+    document.body.appendChild(container);
+    initAssistant(container);
+  } catch (error) {
+    console.warn('AI Assistant could not be loaded:', error);
+  }
 }
 
 loadStyles();
