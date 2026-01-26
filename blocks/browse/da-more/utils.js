@@ -90,8 +90,9 @@ async function loadAndFormatGroup(group) {
   }
 }
 
-function loadGroupsList(groups) {
-  return Promise.all(groups.map((group) => loadAndFormatGroup(group)));
+async function loadGroupsList(groups) {
+  const allGroups = await Promise.all(groups.map((group) => loadAndFormatGroup(group)));
+  return allGroups.filter((group) => !group.error);
 }
 
 export const loadGroups = (() => {
