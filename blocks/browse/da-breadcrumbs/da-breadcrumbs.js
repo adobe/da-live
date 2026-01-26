@@ -10,8 +10,7 @@ const ICONS = await getSvg({ paths: ['/blocks/browse/da-browse/img/Smock_Setting
 
 export default class DaBreadcrumbs extends LitElement {
   static properties = {
-    fullpath: { type: String },
-    depth: { type: Number },
+    details: { attribute: false },
     _breadcrumbs: { state: true },
   };
 
@@ -27,7 +26,7 @@ export default class DaBreadcrumbs extends LitElement {
   }
 
   getBreadcrumbs() {
-    const pathSplit = this.fullpath.split('/').filter((part) => part !== '');
+    const pathSplit = this.details.fullpath.split('/').filter((part) => part !== '');
     this._breadcrumbs = pathSplit.map((part, idx) => ({
       name: part,
       path: `#/${pathSplit.slice(0, idx + 1).join('/')}`,
@@ -35,7 +34,7 @@ export default class DaBreadcrumbs extends LitElement {
   }
 
   renderConfig(length, crumb, idx) {
-    if (this.depth <= 2 && idx + 1 === length) {
+    if (this.details.depth <= 2 && idx + 1 === length) {
       return html`
         <a class="da-breadcrumb-list-item-config"
            href="/config${crumb.path}/"

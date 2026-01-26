@@ -1,0 +1,73 @@
+.more-dialog {
+  .more-list {
+    list-style: none;
+    max-height: 360px;
+    margin: -6px 0 0;
+    padding: 0;
+
+    .more-group-title {
+      margin: 0px;
+      padding: 0 12px 2px 0;
+      font-size: 12px;
+      color: var(--s2-gray-600);
+    }
+
+    .template-list {
+      list-style: none;
+      margin: 0 0 8px;
+      padding: 0;
+      font-size: 14px;
+
+      button {
+        display: block;
+        min-width: 180px;
+        padding: 6px 12px;
+        font-family: var(--body-font-family);
+        text-align: left;
+        cursor: pointer;
+        border-radius: 8px;
+        background-color: transparent;
+        border: none;
+        transition: background-color 0.2s ease-in-out;
+
+        &:hover {
+          background-color: var(--s2-blue-200);
+        }
+
+        &.is-selected {
+          background-color: var(--s2-blue-300);
+        }
+      }
+    }
+  }
+
+  .more-name-container {
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--s2-gray-500);
+      margin-bottom: 2px;
+    }
+  }
+
+  #more-name {
+    display: block;
+    min-width: 180px;
+    font-family: var(--body-font-family);
+    padding: 0 12px;
+    margin: 0;
+    box-sizing: border-box;
+    line-height: 32px;
+    border: none;
+    background-color: var(--s2-gray-100);
+    border-radius: 8px;
+
+    &::placeholder {
+      font-style: italic;
+    }
+  }
+}

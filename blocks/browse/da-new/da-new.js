@@ -1,7 +1,9 @@
-import { LitElement, html } from 'da-lit';
-import { saveToDa } from '../../shared/utils.js';
+import { LitElement, html, nothing } from 'da-lit';
+import { getDaConfig, saveToDa } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
+
+import '../da-more/da-more.js';
 
 // Styles & Icons
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -11,7 +13,7 @@ const INPUT_ERROR = 'da-input-error';
 
 export default class DaNew extends LitElement {
   static properties = {
-    fullpath: { type: String },
+    details: { attribute: false },
     editor: { type: String },
     permissions: { attribute: false },
     _createShow: { attribute: false },
@@ -20,12 +22,32 @@ export default class DaNew extends LitElement {
     _createName: { attribute: false },
     _fileLabel: { attribute: false },
     _externalUrl: { attribute: false },
+    _showMore: { state: true },
+    _showMoreDialog: { state: true },
   };
 
   connectedCallback() {
     this._fileLabel = 'Select file';
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
+  }
+
+  update(props) {
+    if (props.has('details') && this.details) this.toggleMore(props);
+    super.update(props);
+  }
+
+  async toggleMore(changedProps) {
+    const changedOrg = changedProps.get('details')?.owner !== this.details.owner;
+    const changedSite = changedProps.get('details')?.repo !== this.details.repo;
+    if (!changedOrg && !changedSite) return;
+    const { owner, repo } = this.details;
+    let path = `/${owner}`;
+    if (repo) path += `/${repo}`;
+    const config = await getDaConfig({ path });
+    const hasEditors = !!config.editors;
+    const hasTemplates = config.library?.data.some((row) => row.title === 'Templates');
+    this._showMore = hasTemplates || hasEditors;
   }
 
   sendNewItem(item) {
@@ -86,7 +108,7 @@ export default class DaNew extends LitElement {
       default:
         break;
     }
-    let path = `${this.fullpath}/${this._createName}`;
+    let path = `${this.details.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
     const editPath = getEditPath({ path, ext, editor: this.editor });
     if (ext && ext !== 'link') {
@@ -113,7 +135,7 @@ export default class DaNew extends LitElement {
     const ext = split.pop();
     const name = split.join('.').replaceAll(/[^a-zA-Z0-9.]/g, '-').toLowerCase();
     const filename = `${name}.${ext}`;
-    const path = `${this.fullpath}/${filename}`;
+    const path = `${this.details.fullpath}/${filename}`;
 
     await saveToDa({ path, formData });
 
@@ -139,6 +161,10 @@ export default class DaNew extends LitElement {
     if (fileLabelError) fileLabelError.classList.remove(INPUT_ERROR);
   }
 
+  handleMore() {
+    this._showMoreDialog = true;
+  }
+
   resetCreate(e) {
     if (e) e.preventDefault();
     this._createShow = '';
@@ -147,6 +173,7 @@ export default class DaNew extends LitElement {
     this._createFile = '';
     this._fileLabel = 'Select file';
     this._externalUrl = '';
+    this._showMoreDialog = false;
     const input = this.shadowRoot.querySelector('.da-actions-input.da-input-error');
     if (input) input.classList.remove(INPUT_ERROR);
   }
@@ -176,6 +203,9 @@ export default class DaNew extends LitElement {
           <li class=da-actions-menu-item>
             <button data-type=link @click=${this.handleNewType}>Link</button>
           </li>
+          ${this._showMore ? html`<li class=da-actions-menu-item>
+            <button data-type=more @click=${this.handleMore}>More...</button>
+          </li>` : nothing}
         </ul>
         <div class="da-actions-input-container">
           <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
@@ -189,7 +219,8 @@ export default class DaNew extends LitElement {
           <button class="da-actions-button">Upload</button>
           <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
         </form>
-      </div>`;
+      </div>
+      ${this._showMoreDialog ? html`<da-more .details=${this.details} .defaultEditor=${this.editor} @close=${this.resetCreate}></da-more>` : nothing}`;
   }
 }
 

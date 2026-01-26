@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { daFetch, getDaConfig, getFirstSheet } from '../../shared/utils.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
@@ -83,9 +83,7 @@ export default class DaBrowse extends LitElement {
     const DEF_EDIT = '/edit#';
 
     if (reFetch) {
-      const resp = await daFetch(`${DA_ORIGIN}/config/${this.details.owner}/`);
-      if (!resp.ok) return DEF_EDIT;
-      const json = await resp.json();
+      const json = await getDaConfig({ path: `/${this.details.owner}` });
 
       const rows = getFirstSheet(json);
       this.editorConfs = rows?.reduce((acc, row) => {
@@ -133,7 +131,7 @@ export default class DaBrowse extends LitElement {
     return html`
       <da-new
         @newitem=${this.handleNewItem}
-        fullpath="${this.details.fullpath}"
+        .details="${this.details}"
         editor="${this.editor}">
       </da-new>`;
   }
@@ -169,7 +167,7 @@ export default class DaBrowse extends LitElement {
           </button>`)}
       </div>
       <div class="da-list-header context-${this.context}">
-        <da-breadcrumbs fullpath="${this.details.fullpath}" depth="${this.details.depth}"></da-breadcrumbs>
+        <da-breadcrumbs .details=${this.details}></da-breadcrumbs>
         ${this._tabItems.map((tab) => html`
           <div class="da-list-header-action" data-visible="${tab.selected}">
             ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}

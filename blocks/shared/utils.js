@@ -8,6 +8,7 @@ const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
 const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS];
 
 let imsDetails;
+const daConfigDetails = {};
 
 export async function initIms() {
   if (imsDetails) return imsDetails;
@@ -115,3 +116,24 @@ export const getSheetByIndex = (json, index = 0) => {
 };
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
+
+export const getDaConfig = ({ path }) => {
+  const fetchConfig = async (pathname) => {
+    const resp = await daFetch(`${DA_ORIGIN}/config${path}`);
+    if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
+    return resp.json();
+  };
+
+  const [org, site] = path.slice(1).split('/');
+  if (site) {
+    // Set the site config promise if it does not exist
+    daConfigDetails[`/${org}/${site}`] ??= fetchConfig(`/${org}/${site}`);
+
+    return daConfigDetails[`/${org}/${site}`];
+  }
+
+  // Set the org config promise if it does not exist
+  daConfigDetails[`/${org}`] ??= fetchConfig(`/${org}`);
+
+  return daConfigDetails[`/${org}`];
+};

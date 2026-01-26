@@ -73,7 +73,7 @@ export default class DaDialog extends LitElement {
     const emphasisClass = this.emphasis ? `da-dialog-${this.emphasis}` : '';
 
     return html`
-      <sl-dialog @close=${this.close}>
+      <sl-dialog>
         <div class="da-dialog-inner ${sizeClass} ${emphasisClass}" part="inner">
           <div class="da-dialog-header" part="header">
             <p class="sl-heading-m">${this.title}</p>
