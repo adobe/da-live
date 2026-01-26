@@ -115,7 +115,7 @@ class DaAiAssistant extends LitElement {
           </button>
         </div>
         <div class="da-ai-content">
-          <web-fragment fragment-id="da-ai-chat"></web-fragment>
+          <web-fragment fragment-id="da-ai-assistant"></web-fragment>
         </div>
       </div>
     `;
