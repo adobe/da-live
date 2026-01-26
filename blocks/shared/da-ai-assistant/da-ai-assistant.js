@@ -58,6 +58,26 @@ class DaAiAssistant extends LitElement {
     this.isOpen = !this.isOpen;
   }
 
+  updated(changedProperties) {
+    if (changedProperties.has('isOpen')) {
+      if (this.isOpen) {
+        // Create fragment after DOM updates
+        this.createFragment();
+      } else {
+        // Fragment is removed when container is removed from DOM
+      }
+    }
+  }
+
+  createFragment() {
+    const container = this.shadowRoot.querySelector('.da-ai-content');
+    if (container && !container.querySelector('web-fragment')) {
+      const fragment = document.createElement('web-fragment');
+      fragment.setAttribute('src', '/__fragments/da-ai-chat/');
+      container.appendChild(fragment);
+    }
+  }
+
   renderTriggerButton() {
     return html`
       <button 
@@ -95,7 +115,7 @@ class DaAiAssistant extends LitElement {
           </button>
         </div>
         <div class="da-ai-content">
-          <web-fragment fragment-id="da-ai-assistant"></web-fragment>
+          <web-fragment fragment-id="da-ai-chat"></web-fragment>
         </div>
       </div>
     `;
