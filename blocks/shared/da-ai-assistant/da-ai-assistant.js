@@ -28,7 +28,7 @@ class DaAiAssistant extends LitElement {
   constructor() {
     super();
     this.isOpen = false;
-    this.isLoading = false;
+    this.isLoading = true;
   }
 
   connectedCallback() {
@@ -38,16 +38,15 @@ class DaAiAssistant extends LitElement {
   }
 
   /**
-   * Load the web-fragments client library and register custom elements
+   * Load the web-fragments client library
+   * The web-fragment-host element will handle fetching and rendering
+   * the remote application from the deployed endpoint
    */
   async loadWebFragmentScript() {
     if (customElements.get('web-fragment')) return;
 
     try {
-      // Load web-fragments client library (bundled in deps/)
       const { initializeWebFragments } = await import('da-web-fragments');
-
-      // Initialize and register <web-fragment> custom element
       initializeWebFragments();
     } catch (error) {
       console.error('Failed to load web fragments:', error);
@@ -56,25 +55,54 @@ class DaAiAssistant extends LitElement {
 
   toggleAssistant() {
     this.isOpen = !this.isOpen;
-  }
-
-  updated(changedProperties) {
-    if (changedProperties.has('isOpen')) {
-      if (this.isOpen) {
-        // Create fragment after DOM updates
-        this.createFragment();
-      } else {
-        // Fragment is removed when container is removed from DOM
-      }
+    if (this.isOpen) {
+      this.isLoading = true;
+      // Wait for render then style the web-fragment-host and hide loading
+      setTimeout(() => this.styleFragmentHost(), 100);
     }
   }
 
-  createFragment() {
-    const container = this.shadowRoot.querySelector('.da-ai-content');
-    if (container && !container.querySelector('web-fragment')) {
-      const fragment = document.createElement('web-fragment');
-      fragment.setAttribute('src', '/__fragments/da-ai-chat/');
-      container.appendChild(fragment);
+  styleFragmentHost(retries = 20) {
+    const webFragment = this.shadowRoot?.querySelector('web-fragment');
+    if (webFragment?.shadowRoot) {
+      const host = webFragment.shadowRoot.querySelector('web-fragment-host');
+      if (host) {
+        host.style.cssText = 'display: block !important; height: 100% !important; overflow: auto !important;';
+        // Check if iframe content is ready
+        const iframe = host.querySelector('iframe');
+        if (iframe) {
+          // Wait for iframe to signal ready or timeout
+          const checkReady = () => {
+            try {
+              const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+              if (iframeDoc && iframeDoc.readyState === 'complete') {
+                // Give a small delay for styles to apply
+                setTimeout(() => {
+                  this.isLoading = false;
+                }, 150);
+                return;
+              }
+            } catch (e) {
+              // Cross-origin, use timeout fallback
+            }
+            // Retry
+            if (retries > 0) {
+              setTimeout(checkReady, 100);
+            } else {
+              this.isLoading = false;
+            }
+          };
+          checkReady();
+          return;
+        }
+      }
+    }
+    // Retry if not found yet
+    if (retries > 0) {
+      setTimeout(() => this.styleFragmentHost(retries - 1), 100);
+    } else {
+      // Fallback: hide loading after max retries
+      this.isLoading = false;
     }
   }
 
@@ -85,15 +113,38 @@ class DaAiAssistant extends LitElement {
         @click=${this.toggleAssistant}
         aria-label="Toggle AI Assistant"
         title="AI Assistant">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          ${this.isOpen ? html`
+        ${this.isOpen ? html`
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
-          ` : html`
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          `}
-        </svg>
+          </svg>
+        ` : html`
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/>
+            <circle cx="8" cy="10" r="1.5"/>
+            <circle cx="12" cy="10" r="1.5"/>
+            <circle cx="16" cy="10" r="1.5"/>
+          </svg>
+        `}
       </button>
+    `;
+  }
+
+  renderLoadingOverlay() {
+    if (!this.isLoading) return html``;
+    
+    return html`
+      <div class="da-ai-loading-overlay">
+        <div class="da-ai-loading-skeleton">
+          <div class="skeleton-header"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line"></div>
+          </div>
+          <div class="skeleton-input"></div>
+        </div>
+      </div>
     `;
   }
 
@@ -115,6 +166,7 @@ class DaAiAssistant extends LitElement {
           </button>
         </div>
         <div class="da-ai-content">
+          ${this.renderLoadingOverlay()}
           <web-fragment fragment-id="da-ai-assistant"></web-fragment>
         </div>
       </div>
