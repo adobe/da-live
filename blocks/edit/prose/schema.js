@@ -337,6 +337,7 @@ function getTableNodeSchema() {
   schema.table.attrs = { ...topLevelAttrs };
   schema.table.parseDOM = [{ tag: 'table', getAttrs: getTopLevelParseAttrs }];
   schema.table.toDOM = (node) => ['table', node.attrs, ['tbody', 0]];
+  schema.table.draggable = true;
   return schema;
 }
 
