@@ -1,4 +1,4 @@
-import { DOMParser as proseDOMParser, DOMSerializer, Y } from 'da-y-wrapper';
+import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { sanitizePathParts } from '../../../../scripts/utils.js';
