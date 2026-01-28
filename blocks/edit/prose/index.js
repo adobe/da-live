@@ -339,7 +339,7 @@ function addSyncedListener(wsProvider, canWrite) {
   });
 }
 
-function applyCustomPlugins(pluginsPromise, schema, canWrite, basePlugins) {
+function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
   pluginsPromise.then((plugins) => {
     const {
       syncPlugin,
@@ -488,7 +488,7 @@ export default async function initProse({ path, permissions, doc, daContent }) {
 
   handleProseLoaded(editor, wsProvider);
 
-  applyCustomPlugins(pluginsPromise, schema, canWrite, {
+  applyDelayedPlugins(pluginsPromise, schema, canWrite, {
     syncPlugin,
     cursorPlugin,
   });
