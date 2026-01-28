@@ -28,7 +28,7 @@
     "prosemirror-view": "1.34.3",
     "y-prosemirror": "1.2.12",
     "y-websocket": "2.0.4",
-    "yjs": "13.6.20"
+    "yjs": "13.6.29"
   },
   "devDependencies": {
     "@babel/core": "7.28.6",
