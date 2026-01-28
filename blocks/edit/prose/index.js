@@ -427,6 +427,7 @@ export default async function initProse({ path, permissions, doc, daContent }) {
   const { wsProvider, ydoc } = await wsPromise;
 
   addSyncedListener(wsProvider, canWrite);
+  createAwarenessStatusWidget(wsProvider, window, path);
   registerErrorHandler(ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
