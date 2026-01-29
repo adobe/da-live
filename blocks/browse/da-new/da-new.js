@@ -2,6 +2,7 @@ import { LitElement, html } from 'da-lit';
 import { saveToDa } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
+import { DA_HLX } from '../../shared/constants.js';
 
 // Styles & Icons
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -82,6 +83,11 @@ export default class DaNew extends LitElement {
           'data',
           new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
         );
+        break;
+      case 'folder':
+        if (DA_HLX) {
+          this._createName += '/';
+        }
         break;
       default:
         break;
