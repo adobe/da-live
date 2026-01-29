@@ -428,24 +428,29 @@ function getMenu(view) {
   return { menu, update };
 }
 
-export default new Plugin({
-  props: {
-    handleDOMEvents: {
-      focus: (view) => {
-        view.root.querySelectorAll('da-palette').forEach((palette) => {
-          palette.updateSelection();
-        });
+// Export a factory function instead of a singleton to avoid
+// "Adding different instances of a keyed plugin" error when
+// the editor is re-initialized
+export default function createMenuPlugin() {
+  return new Plugin({
+    props: {
+      handleDOMEvents: {
+        focus: (view) => {
+          view.root.querySelectorAll('da-palette').forEach((palette) => {
+            palette.updateSelection();
+          });
+        },
       },
     },
-  },
-  view: (view) => {
-    const { menu, update } = getMenu(view);
-    const palettes = document.createElement('div');
-    palettes.className = 'da-palettes';
-    view.dom.insertAdjacentElement('beforebegin', menu);
-    view.dom.insertAdjacentElement('afterend', palettes);
-    update(view.state);
-    // eslint-disable-next-line no-shadow
-    return { update: (view) => update(view.state) };
-  },
-});
+    view: (view) => {
+      const { menu, update } = getMenu(view);
+      const palettes = document.createElement('div');
+      palettes.className = 'da-palettes';
+      view.dom.insertAdjacentElement('beforebegin', menu);
+      view.dom.insertAdjacentElement('afterend', palettes);
+      update(view.state);
+      // eslint-disable-next-line no-shadow
+      return { update: (view) => update(view.state) };
+    },
+  });
+}

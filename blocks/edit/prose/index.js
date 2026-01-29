@@ -22,7 +22,7 @@ import {
 } from 'da-y-wrapper';
 
 // DA
-import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
+import createMenuPlugin, { getHeadingKeymap } from './plugins/menu/menu.js';
 import { linkItem } from './plugins/menu/linkItem.js';
 import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
@@ -381,7 +381,7 @@ export default function initProse({ path, permissions }) {
   ];
 
   if (canWrite) {
-    plugins.push(menu);
+    plugins.push(createMenuPlugin());
     plugins.push(imageFocalPoint());
   }
 
