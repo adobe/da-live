@@ -1,4 +1,6 @@
-import { Plugin, Slice } from 'da-y-wrapper';
+import { Plugin, PluginKey, Slice } from 'da-y-wrapper';
+
+const sectionPasteKey = new PluginKey('sectionPaste');
 
 function closeParagraph(paraContent, newContent) {
   if (paraContent.length > 0) {
@@ -69,6 +71,7 @@ function handleWordOnlineSectionBreaks(doc) {
 /* When text is pasted, handle section breaks. */
 export default function sectionPasteHandler(schema) {
   return new Plugin({
+    key: sectionPasteKey,
     props: {
       /* A section break entered in Word is not kept in the text of the document, but
        * buried in the HTML that is pasted. This function uses highly specific ways to find

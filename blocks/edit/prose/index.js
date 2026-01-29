@@ -14,6 +14,7 @@ import {
   TextSelection,
   NodeSelection,
   Plugin,
+  PluginKey,
   WebsocketProvider,
   ySyncPlugin,
   yCursorPlugin,
@@ -156,7 +157,10 @@ function trackCursorAndChanges() {
     return pos;
   };
 
+  const trackCursorKey = new PluginKey('trackCursor');
+
   return new Plugin({
+    key: trackCursorKey,
     view() {
       return {
         update(view, prevState) {
