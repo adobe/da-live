@@ -4,7 +4,7 @@ const { getNx } = await import('../../scripts/utils.js');
 
 // TODO: INFRA
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'https://stage-content.da.live', 'http://localhost:8787'];
-const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
+const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live', 'https://api.aem.live'];
 const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS];
 
 let imsDetails;

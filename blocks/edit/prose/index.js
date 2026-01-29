@@ -30,11 +30,10 @@ import imageFocalPoint from './plugins/imageFocalPoint.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
-import { COLLAB_ORIGIN, DA_ORIGIN, DA_HLX } from '../../shared/constants.js';
+import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { checkDoc } from '../edit.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
-import { getImsDetails } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
@@ -305,9 +304,6 @@ export default function initProse({ path, permissions }) {
     const { token } = window.adobeIMS.getAccessToken();
     // add token to the sec-websocket-protocol header
     opts.protocols.push(token);
-  // } else if (DA_HLX) {
-  //   const imsDetails = getImsDetails();
-  //   opts.params = { 'X-Auth-Token': imsDetails.accessToken.token };
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');

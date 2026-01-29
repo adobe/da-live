@@ -16,7 +16,7 @@ export const SUPPORTED_FILES = {
 
 const DA_ADMIN_ENVS = {
   local: 'http://localhost:8787',
-  hlx6: 'http://localhost:3000',
+  hlx6: 'https://api.aem.live',
   stage: 'https://stage-admin.da.live',
   prod: 'https://admin.da.live',
 };

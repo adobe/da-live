@@ -121,7 +121,7 @@ export default class DaList extends LitElement {
   async getList() {
     const [, org, repo, ...rest] = this.fullpath.split('/');
     const listUrl = DA_HLX
-      ? `${DA_ORIGIN}/${org}/sites/${repo}/source/${rest.join('/')}/`
+      ? `${DA_ORIGIN}/${org}/sites/${repo}/source/${rest.join('/')}`
       : `${DA_ORIGIN}/list${this.fullpath}`;
 
     try {
