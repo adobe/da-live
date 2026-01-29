@@ -1,9 +1,11 @@
-import { Plugin } from 'da-y-wrapper';
+import { Plugin, PluginKey } from 'da-y-wrapper';
 import inlinesvg from '../../../shared/inlinesvg.js';
 import { openFocalPointDialog } from './focalPointDialog.js';
 import { getLibraryList } from '../../da-library/helpers/helpers.js';
 import { getBlocks } from '../../da-library/helpers/index.js';
 import { getTableInfo, isInTableCell } from './tableUtils.js';
+
+const imageFocalPointKey = new PluginKey('imageFocalPoint');
 
 // Cache blocks data at module level
 let blocksDataPromise = null;
@@ -141,6 +143,7 @@ class ImageWithFocalPointView {
 
 export default function imageFocalPoint() {
   return new Plugin({
+    key: imageFocalPointKey,
     props: {
       nodeViews: {
         image(node, view, getPos) {

@@ -1,13 +1,16 @@
 // eslint-disable-next-line import/no-unresolved
-import { Plugin, TextSelection } from 'da-y-wrapper';
+import { Plugin, PluginKey, TextSelection } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
+
+const imageDropKey = new PluginKey('imageDrop');
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 const SUPPORTED_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
 export default function imageDrop(schema) {
   return new Plugin({
+    key: imageDropKey,
     props: {
       handleDOMEvents: {
         drop: (view, event) => {

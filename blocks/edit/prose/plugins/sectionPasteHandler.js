@@ -1,4 +1,6 @@
-import { Fragment, Plugin, Slice } from 'da-y-wrapper';
+import { Fragment, Plugin, PluginKey, Slice } from 'da-y-wrapper';
+
+const sectionPasteKey = new PluginKey('sectionPaste');
 
 // Non-global regex for detection only
 const NONSTANDARD_SPACE_DETECT = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/;
@@ -164,6 +166,7 @@ function handleDivLineBreaks(doc) {
 /* When text is pasted, handle section breaks. */
 export default function sectionPasteHandler(schema) {
   return new Plugin({
+    key: sectionPasteKey,
     props: {
       handlePaste: (view, event, slice) => {
         const text = event.clipboardData?.getData('text/plain') || '';
