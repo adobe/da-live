@@ -1,4 +1,4 @@
-import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { AEM_ORIGIN, DA_ORIGIN, DA_HLX } from '../../shared/constants.js';
 import { sanitizePathParts } from '../../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
@@ -286,24 +286,35 @@ export function convertSheets(sheets) {
 async function saveJson(fullPath, sheets, jsonToSave, dataType = 'blob') {
   const json = jsonToSave || convertSheets(sheets);
 
-  const formData = new FormData();
+  let putBody;
 
-  if (dataType === 'blob') {
-    const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
-    formData.append('data', blob);
+  if (DA_HLX) {
+    putBody = JSON.stringify(json);
+  } else {
+    const formData = new FormData();
+
+    if (dataType === 'blob') {
+      const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+      formData.append('data', blob);
+    }
+
+    if (dataType === 'config') {
+      formData.append('config', JSON.stringify(json));
+    }
+    putBody = formData;
   }
 
-  if (dataType === 'config') {
-    formData.append('config', JSON.stringify(json));
-  }
-
-  const opts = { method: 'PUT', body: formData };
+  const opts = { method: 'PUT', body: putBody };
   return daFetch(fullPath, opts);
 }
 
 export function saveToDa(pathname, sheet) {
   const suffix = sheet ? '.json' : '.html';
-  const fullPath = `${DA_ORIGIN}/source${pathname}${suffix}`;
+
+  const [, org, repo, ...rest] = pathname.split('/');
+  const fullPath = DA_HLX
+    ? `${DA_ORIGIN}/${org}/sites/${repo}/source/${rest.join('/')}${suffix}`
+    : `${DA_ORIGIN}/source${pathname}${suffix}`;
 
   if (!sheet) return saveHtml(fullPath);
   return saveJson(fullPath, sheet);

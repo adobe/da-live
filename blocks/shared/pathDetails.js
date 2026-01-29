@@ -74,7 +74,7 @@ function getFullDetails({ editor, pathParts, ext }) {
   const path = ext === 'html' && !fullPath.endsWith('.html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
   const sourceUrl = DA_HLX
-    ? `${DA_ORIGIN}/${org}/sites/${repo}/${daApi}${pathname}.${ext}`
+    ? `${DA_ORIGIN}/${org}/sites/${repo}/${daApi}/${parts.join('/')}.${ext}`
     : `${DA_ORIGIN}/${daApi}/${path}`;
 
   return {
