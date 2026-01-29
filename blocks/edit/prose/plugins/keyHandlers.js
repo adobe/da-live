@@ -13,16 +13,7 @@ import {
   yUndo,
   yRedo,
 } from 'da-y-wrapper';
-
-function isURL(text) {
-  try {
-    const url = new URL(text);
-    // Only consider https as valid URLs for auto-linking
-    return url.protocol === 'https:';
-  } catch (e) {
-    return false;
-  }
-}
+import { isURL } from '../../utils/helpers.js';
 
 export function getURLInputRule() {
   return new InputRule(

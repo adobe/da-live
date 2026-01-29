@@ -1,15 +1,6 @@
 // eslint-disable-next-line import/no-unresolved
 import { Plugin } from 'da-y-wrapper';
-
-function isURL(text) {
-  try {
-    const url = new URL(text);
-    // Only consider https as valid URLs for auto-linking
-    return url.protocol === 'https:';
-  } catch (e) {
-    return false;
-  }
-}
+import { isURL } from '../../utils/helpers.js';
 
 export default function linkConverter(schema) {
   return new Plugin({
