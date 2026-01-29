@@ -69,6 +69,7 @@ export default class DaNew extends LitElement {
 
     let ext;
     let formData;
+    let method = 'PUT';
     switch (this._createType) {
       case 'document':
         ext = 'html';
@@ -87,6 +88,7 @@ export default class DaNew extends LitElement {
       case 'folder':
         if (DA_HLX) {
           this._createName += '/';
+          method = 'POST';
         }
         break;
       default:
@@ -98,7 +100,7 @@ export default class DaNew extends LitElement {
     if (ext && ext !== 'link') {
       window.location = editPath;
     } else {
-      await saveToDa({ path, formData });
+      await saveToDa({ path, formData, method });
       const item = { name: this._createName, path };
       if (ext) item.ext = ext;
       this.sendNewItem(item);

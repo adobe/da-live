@@ -1,4 +1,4 @@
-import { DA_ORIGIN } from './constants.js';
+import { DA_ORIGIN, DA_HLX } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
@@ -91,17 +91,28 @@ export async function aemAdmin(path, api, method = 'POST') {
   }
 }
 
-export async function saveToDa({ path, formData, blob, props, preview = false }) {
-  const opts = { method: 'PUT' };
+export async function saveToDa({
+  path, formData, blob, props, preview = false, method = 'PUT',
+}) {
+  const opts = { method };
 
-  const form = formData || new FormData();
-  if (blob || props) {
-    if (blob) form.append('data', blob);
-    if (props) form.append('props', JSON.stringify(props));
+  const [, org, repo, ...rest] = path.split('/');
+  const fullPath = DA_HLX
+    ? `${DA_ORIGIN}/${org}/sites/${repo}/source/${rest.join('/')}`
+    : `${DA_ORIGIN}/source${path}`;
+
+  if (DA_HLX) {
+    opts.body = blob;
+  } else {
+    const form = formData || new FormData();
+    if (blob || props) {
+      if (blob) form.append('data', blob);
+      if (props) form.append('props', JSON.stringify(props));
+    }
+    if ([...form.keys()].length) opts.body = form;
   }
-  if ([...form.keys()].length) opts.body = form;
 
-  const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
+  const daResp = await daFetch(fullPath, opts);
   if (!daResp.ok) return undefined;
   if (!preview) return undefined;
   return aemAdmin(path, 'preview');
