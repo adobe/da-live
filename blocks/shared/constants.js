@@ -11,6 +11,7 @@ export const SUPPORTED_FILES = {
   mp4: 'video/mp4',
   pdf: 'application/pdf',
   svg: 'image/svg+xml',
+  ico: 'image/x-icon',
 };
 
 const DA_ADMIN_ENVS = {

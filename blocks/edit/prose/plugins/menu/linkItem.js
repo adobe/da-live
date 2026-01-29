@@ -247,10 +247,15 @@ export function linkItem(linkMarkType) {
         title: label,
         fields: promptFieldsConfiguration,
         callback,
-        saveOnClose: true,
+        saveOnClose: false,
         useLabelsAbove: true,
       };
       linkPromptState.lastPrompt = openPrompt(promptOptions);
+      linkPromptState.lastPrompt.addEventListener('closed', () => {
+        const { tr } = view.state;
+        tr.removeMark(currentRangeStart, currentRangeEnd, contextHighlightingMarkType);
+        dispatch(tr);
+      });
     },
   });
 }

@@ -33,7 +33,7 @@ function hasFocalPointData(attrs) {
 function shouldShowFocalPoint(tableName, blocks) {
   if (!tableName || !blocks || blocks.length === 0) return false;
 
-  const tableNameLower = tableName.toLowerCase();
+  const tableNameLower = tableName.toLowerCase().replace(/-/g, ' ');
   return blocks.some((block) => (block.name.toLowerCase() === tableNameLower && block['focal-point'] === 'yes'));
 }
 

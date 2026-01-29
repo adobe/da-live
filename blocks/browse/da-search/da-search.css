@@ -24,6 +24,47 @@ input[type="text"] {
   border-radius: 8px;
 }
 
+.search-input-wrapper {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+
+.search-input-wrapper input[type="text"] {
+  flex: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+}
+
+.case-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-family: var(--body-font-family);
+  font-size: 14px;
+  font-weight: 600;
+  background: #f5f5f5;
+  border: 2px solid #e1e1e1;
+  border-left: 1px solid #e1e1e1;
+  border-radius: 0 8px 8px 0;
+  color: #888;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.case-toggle:hover {
+  background: #eaeaea;
+}
+
+.case-toggle.active {
+  background: var(--spectrum-blue-800);
+  border-color: var(--spectrum-blue-800);
+  color: #fff;
+}
+
 input[type="submit"] {
   background-color: var(--spectrum-blue-800);
   border-radius: 8px;

@@ -174,12 +174,12 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
     const awarenessStates = wsProvider.awareness.getStates();
     const userMap = new Map();
-    [...users].forEach((u) => {
+    [...users].forEach((u, i) => {
       const userInfo = awarenessStates.get(u)?.user;
       if (!userInfo?.id) {
         userMap.set(`anonymous-${u}`, 'Anonymous');
-      } else if (userInfo.id !== wsProvider.awareness.getLocalState().user?.id) {
-        userMap.set(userInfo.id, userInfo.name);
+      } else {
+        userMap.set(`${userInfo.id}-${i}`, userInfo.name);
       }
     });
     daTitle.collabUsers = [...userMap.values()].sort();
@@ -198,6 +198,19 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   });
   win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
   win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
+  const DISCONNECT_TIMEOUT = 10 * 60 * 1000;
+  let disconnectTimeout = null;
+  win.addEventListener('focus', () => {
+    // cancel any pending disconnect
+    if (disconnectTimeout) clearTimeout(disconnectTimeout);
+    wsProvider.connect();
+  });
+  win.addEventListener('blur', () => {
+    if (disconnectTimeout) clearTimeout(disconnectTimeout);
+    disconnectTimeout = setTimeout(() => {
+      wsProvider.disconnect();
+    }, DISCONNECT_TIMEOUT);
+  });
 }
 
 export function createAwarenessStatusWidget(wsProvider, win, path) {
@@ -286,13 +299,15 @@ export default function initProse({ path, permissions }) {
   const server = COLLAB_ORIGIN;
   const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
 
-  const opts = {};
+  const opts = { protocols: ['yjs'] };
 
   if (window.adobeIMS?.isSignedInUser()) {
-    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
-  } else if (DA_HLX) {
-    const imsDetails = getImsDetails();
-    opts.params = { 'X-Auth-Token': imsDetails.accessToken.token };
+    const { token } = window.adobeIMS.getAccessToken();
+    // add token to the sec-websocket-protocol header
+    opts.protocols.push(token);
+  // } else if (DA_HLX) {
+  //   const imsDetails = getImsDetails();
+  //   opts.params = { 'X-Auth-Token': imsDetails.accessToken.token };
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');

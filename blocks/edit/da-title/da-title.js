@@ -7,6 +7,8 @@ import {
   saveDaVersion,
   getCdnConfig,
 } from '../utils/helpers.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
+import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -16,12 +18,14 @@ const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
   '/blocks/edit/img/Smock_CloudDisconnected_18_N.svg',
   '/blocks/edit/img/Smock_CloudError_18_N.svg',
+  '/blocks/edit/img/cloud_refresh.svg',
 ];
 
 const CLOUD_ICONS = {
   connected: 'spectrum-Cloud-connected',
+  disconnected: 'spectrum-Cloud-offline',
   offline: 'spectrum-Cloud-offline',
-  connecting: 'spectrum-Cloud-error',
+  connecting: 'cloud_refresh',
   error: 'spectrum-Cloud-error',
 };
 
@@ -31,7 +35,7 @@ export default class DaTitle extends LitElement {
     permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
-    _actionsVis: {},
+    _actionsVis: { state: true },
     _status: { state: true },
     _fixedActions: { state: true },
     _dialog: { state: true },
@@ -40,7 +44,7 @@ export default class DaTitle extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this._actionsVis = false;
+    this._actionsVis = [];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     if (this.details.view === 'sheet') {
       this.collabStatus = window.navigator.onLine
@@ -62,6 +66,7 @@ export default class DaTitle extends LitElement {
   }
 
   handleError(json, action, icon) {
+    console.log('handleError', json, action, icon);
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');
     icon.parentElement.classList.add('is-error');
@@ -156,8 +161,46 @@ export default class DaTitle extends LitElement {
     this._dialog = { title, content, action: closeAction };
   }
 
-  toggleActions() {
-    this._actionsVis = !this._actionsVis;
+  async fetchConfig() {
+    const { owner, repo } = this.details;
+    if (this.config) return this.config;
+
+    const fetchSingleConfig = (path) => daFetch(path)
+      .then((r) => r.json())
+      .then(getFirstSheet)
+      .then((data) => data ?? [])
+      .catch(() => []);
+
+    const [org, site] = await Promise.all([
+      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}`),
+      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}/${repo}`),
+    ]);
+    this.config = { org, site };
+    return this.config;
+  }
+
+  async toggleActions() {
+    // toggle off if already on
+    if (this._actionsVis.length > 0) {
+      this._actionsVis = [];
+      return;
+    }
+
+    // toggle on for config
+    if (this.details.view === 'config') {
+      this._actionsVis = ['save'];
+      return;
+    }
+
+    // check which actions should be allowed for the document based on config
+    const config = await this.fetchConfig();
+    const { fullpath } = this.details;
+
+    const allConfigs = [...config.org, ...config.site];
+    const publishButtonConfigs = allConfigs.filter((c) => c.key === 'editor.hidePublish');
+    const hasMatchingPublishConfig = publishButtonConfigs.some((c) => fullpath.startsWith(c.value));
+
+    this._actionsVis = hasMatchingPublishConfig ? ['preview'] : ['preview', 'publish'];
   }
 
   get _readOnly() {
@@ -165,30 +208,15 @@ export default class DaTitle extends LitElement {
     return !this.permissions.some((permission) => permission === 'write');
   }
 
-  renderSave() {
-    return html`
-    <button
-      @click=${this.handleAction}
-      class="con-button blue da-title-action"
-      aria-label="Send">
-      Save
-    </button>`;
-  }
-
-  renderAemActions() {
-    return html`
+  renderActions() {
+    return html`${this._actionsVis.map((action) => html`
       <button
-        @click=${() => this.handleAction('preview')}
+        @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
         aria-label="Send">
-        Preview
+        ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
-      <button
-        @click=${() => this.handleAction('publish')}
-        class="con-button blue da-title-action"
-        aria-label="Send">
-        Publish
-      </button>`;
+    `)}`;
   }
 
   popover({ target }) {
@@ -253,8 +281,8 @@ export default class DaTitle extends LitElement {
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis ? 'is-open' : ''}">
-            ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
+          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis.length > 0 ? 'is-open' : ''}">
+            ${this.renderActions()}
             <button
               @click=${this.toggleActions}
               class="con-button blue da-title-action-send"

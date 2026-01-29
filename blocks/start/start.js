@@ -33,6 +33,79 @@ const AEM_TEMPLATES = [
   },
 ];
 
+const ORG_CONFIG = `{
+    "data": {
+        "total": 1,
+        "limit": 1,
+        "offset": 0,
+        "data": [{}]
+    },
+    "permissions": {
+        "total": 2,
+        "limit": 2,
+        "offset": 0,
+        "data": [
+          {
+              "path": "CONFIG",
+              "groups": "{{EMAIL}}",
+              "actions": "write",
+              "comments": "The ability to set configurations for an org."
+          },
+          {
+              "path": "/ + **",
+              "groups": "{{EMAIL}}",
+              "actions": "write",
+              "comments": "The ability to create content."
+          }
+        ]
+    },
+    ":names": [
+        "data",
+        "permissions"
+    ],
+    ":version": 3,
+    ":type": "multi-sheet"
+}`;
+
+async function fetchConfig(org, body) {
+  let opts;
+  if (body) opts = { method: 'POST', body };
+
+  return daFetch(`${DA_ORIGIN}/config/${org}/`, opts);
+}
+
+export async function loadConfig(org) {
+  const resp = await fetchConfig(org);
+
+  const result = { status: resp.status };
+
+  if (!resp.ok) {
+    if (resp.status === 403 && resp.status === 401) {
+      result.message = 'You are not authorized to change this organization.';
+    }
+  } else {
+    const json = await resp.json();
+    if (json) result.json = json;
+  }
+
+  return result;
+}
+
+export async function saveConfig(org, email, existingConfig) {
+  const defConfigStr = ORG_CONFIG.replaceAll('{{EMAIL}}', email);
+  const defConfig = JSON.parse(defConfigStr);
+
+  // Preserve the existing config
+  if (existingConfig?.data) defConfig.data = existingConfig;
+
+  const body = new FormData();
+  body.append('config', JSON.stringify(defConfig));
+
+  const resp = await fetchConfig(org, body);
+
+  return { status: resp.status };
+}
+
 class DaStart extends LitElement {
   static properties = {
     activeStep: { state: true },
@@ -45,6 +118,7 @@ class DaStart extends LitElement {
     _goText: { state: true },
     _statusText: { state: true },
     _templates: { state: true },
+    _loading: { state: true },
   };
 
   constructor() {
@@ -53,8 +127,9 @@ class DaStart extends LitElement {
     this.activeStep = 1;
     this.org = urlParams.get('org');
     this.site = urlParams.get('site');
-    this.url = this.site && this.org ? `https://github.com/${this.org}/${this.site}` : '';
-    this.goEnabled = this.site && this.org;
+    this.autoSubmit = this.site && this.org;
+    this.url = this.autoSubmit ? `https://github.com/${this.org}/${this.site}` : '';
+    this.goEnabled = this.autoSubmit;
     this._demoContent = false;
     this._goText = 'Make something wonderful';
   }
@@ -63,6 +138,19 @@ class DaStart extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._templates = AEM_TEMPLATES;
+  }
+
+  async firstUpdated() {
+    if (this.autoSubmit) {
+      const form = this.shadowRoot.querySelector('form');
+      if (form) {
+        const event = {
+          preventDefault: () => {},
+          target: form,
+        };
+        await this.submitForm(event);
+      }
+    }
   }
 
   goToNextStep(e) {
@@ -126,9 +214,49 @@ class DaStart extends LitElement {
 
   async submitForm(e) {
     e.preventDefault();
-    const opts = { method: 'PUT' };
-    const resp = await daFetch(e.target.action, opts);
-    if (!resp.ok) return;
+    const siteUrl = e.target.action;
+
+    // Check if user is signed in
+    if (!window.adobeIMS?.isSignedInUser()) {
+      this._errorText = 'You need to sign in first.';
+      return;
+    }
+
+    this._loading = true;
+
+    const { status: orgLoadStatus } = await loadConfig(this.org);
+    if (orgLoadStatus === 404) {
+      // Check if user has an email address
+      const { email } = await window.adobeIMS.getProfile();
+      if (!email) {
+        this._errorText = 'Make sure your profile contains an email address.';
+        this._loading = false;
+        return;
+      }
+
+      const { status: orgSaveStatus } = await saveConfig(this.org, email);
+      if (orgSaveStatus !== 201) {
+        if (orgSaveStatus === 401 || orgSaveStatus === 403) {
+          this._errorText = 'You are not authorized to create this org. Check your permissions.';
+        } else {
+          this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
+        }
+        this._loading = false;
+        return;
+      }
+    }
+
+    const resp = await daFetch(siteUrl, { method: 'PUT' });
+    this._loading = false;
+    if (!resp.ok) {
+      if (resp.status === 401 || resp.status === 403) {
+        this._errorText = 'You are not authorized to create this site. Check your permissions.';
+      } else {
+        this._errorText = 'The site could not be created. Check the console logs or contact an administrator.';
+      }
+      return;
+    }
+
     this.goToNextStep(e);
   }
 
@@ -156,9 +284,12 @@ class DaStart extends LitElement {
             <label for="fname">AEM codebase</label>
             <input type="text" name="site" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />
           </div>
-          <button class="go-button" ?disabled=${!this.goEnabled}>Go</button>
+          <button class="go-button ${this._loading ? 'is-loading' : ''}" ?disabled=${!this.goEnabled || this._loading}>
+            ${this._loading ? html`<span class="spinner"></span>` : 'Go'}
+          </button>
         </form>
         <div class="text-container">
+          <p class="error-text">${this._errorText ? this._errorText : nothing}</p>
           <p>Paste your AEM codebase URL above.</p>
           <p>Don't have one, yet? Pick a template below.</p>
         </div>
@@ -179,7 +310,7 @@ class DaStart extends LitElement {
           </ul>
         </div>
         <div class="text-container">
-          <p>Don't forget the <a href="https://da.live/bot">AEM Code Bot</a>.</p>
+          <p>Don't forget to add the <a href="https://da.live/bot">AEM Code Sync App</a> to your repository.</p>
         </div>
       </div>
     `;
