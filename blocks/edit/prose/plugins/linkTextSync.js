@@ -1,6 +1,8 @@
 // eslint-disable-next-line import/no-unresolved
-import { Plugin } from 'da-y-wrapper';
+import { Plugin, PluginKey } from 'da-y-wrapper';
 import { isURL } from '../../utils/helpers.js';
+
+const linkTextSyncKey = new PluginKey('linkTextSync');
 
 function getLinkAtCursor(state) {
   const { $from } = state.selection;
@@ -21,6 +23,7 @@ function getLinkAtCursor(state) {
 
 export default function linkTextSync() {
   return new Plugin({
+    key: linkTextSyncKey,
     appendTransaction(trs, oldState, state) {
       const skipTransaction = trs.some((t) => t.getMeta('linkSync')) || !trs.some((t) => t.docChanged);
       const oldLink = !skipTransaction && getLinkAtCursor(oldState);
