@@ -8,21 +8,24 @@
 <script nonce="aem">
   (() => {
     const CK = 'da-cache=off';
-    const CK_PATH = 'path=/';
+    const CK_PATH = ';path=/';
+    const COUNT = 'da-reload-count';
+    const storage = sessionStorage;
 
-    const hasCookie = document.cookie.includes('da-cache=off');
-    if (hasCookie) {
-      setTimeout(() => {
-        document.cookie = `${CK}; ${CK_PATH}; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
-      }, 10000);
+    if (document.cookie.includes(CK)) {
+      setTimeout(() => { document.cookie = CK + CK_PATH + ';max-age=0'; }, 10000);
     }
+    setTimeout(() => { storage.removeItem(COUNT); }, 10000);
 
     const h = (e) => {
-      const m = e.reason?.message || e.message || e.error?.message || "";
-
-      if (m.includes("does not provide an export named") && !hasCookie) {
-        document.cookie = `${CK}; ${CK_PATH}`;
-        location.reload();
+      const msg = e.reason?.message || e.message || e.error?.message || '';
+      if (msg.includes('does not provide an export named')) {
+        const count = Number(storage.getItem(COUNT)) || 0;
+        if (count < 3) {
+          storage.setItem(COUNT, count + 1);
+          document.cookie = CK + CK_PATH;
+          location.reload();
+        }
       }
     };
 
