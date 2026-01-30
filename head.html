@@ -4,6 +4,33 @@
   move-to-http-header="true"
 >
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<script nonce="aem">
+  (() => {
+    const CK = 'da-cache=off';
+    const CK_PATH = 'path=/';
+
+    const hasCookie = document.cookie.includes('da-cache=off');
+    if (hasCookie) {
+      setTimeout(() => {
+        document.cookie = `${CK}; ${CK_PATH}; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+      }, 10000);
+    }
+
+    const h = (e) => {
+      const m = e.reason?.message || e.message || e.error?.message || "";
+
+      if (m.includes("does not provide an export named") && !hasCookie) {
+        document.cookie = `${CK}; ${CK_PATH}`;
+        location.reload();
+      }
+    };
+
+    addEventListener('error', h, true);
+    addEventListener('unhandledrejection', h);
+  })();
+</script>
+
 <script nonce="aem" type="importmap">
 {
   "imports": {
