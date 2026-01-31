@@ -263,8 +263,8 @@ div.template-container {
 }
 
 .con-button.blue {
-  background: var(--spectrum-blue-800);
-  border-color: var(--spectrum-blue-800);
+  background: var(--s2-blue-900);
+  border-color: var(--s2-blue-900);
   color: #FFF;
 }
 

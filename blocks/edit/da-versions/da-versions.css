@@ -99,7 +99,7 @@
   left: -45px;
   max-width: 32px;
   max-height: 32px;
-  background: var(--spectrum-blue-800) url('/blocks/edit/img/Smock_CheckmarkWhite_18_N.svg') center / 55% no-repeat;
+  background: var(--s2-blue-900) url('/blocks/edit/img/Smock_CheckmarkWhite_18_N.svg') center / 55% no-repeat;
 }
 
 .da-version-entry.is-new .da-version-btn-cancel {
