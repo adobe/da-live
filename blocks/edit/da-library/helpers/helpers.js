@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
 import { getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';

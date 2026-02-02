@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 import { html, nothing } from 'da-lit';
 import InContextMenu from '../inContextMenu.js';
 import getSheet from '../../../../shared/sheet.js';

@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-unresolved
 import { Plugin } from 'da-y-wrapper';
 import { isURL } from '../../utils/helpers.js';
 

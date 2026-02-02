@@ -21,7 +21,7 @@ import {
   wrapInList,
   liftListItem,
   sinkListItem,
-// eslint-disable-next-line import/no-unresolved
+
 } from 'da-y-wrapper';
 
 import openPrompt from '../../../da-palette/da-palette.js';

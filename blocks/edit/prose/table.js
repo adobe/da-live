@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-unresolved
 import { Fragment, DOMParser } from 'da-y-wrapper';
 
 function getHeading(schema) {

@@ -66,6 +66,7 @@ export default class DaTitle extends LitElement {
   }
 
   handleError(json, action, icon) {
+    // eslint-disable-next-line no-console
     console.log('handleError', json, action, icon);
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');

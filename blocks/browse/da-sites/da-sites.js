@@ -92,7 +92,6 @@ export default class DaSites extends LitElement {
       }
       const helixString = url.hostname.split('.')[0];
       if (!helixString) return null;
-      // eslint-disable-next-line no-unused-vars
       const [_, repo, org] = helixString.split('--');
       if (!repo || !org) return null;
       return `#/${sanitizeName(org, false)}/${sanitizeName(repo, false)}`;
@@ -136,12 +135,12 @@ export default class DaSites extends LitElement {
   renderGo() {
     return html`
       <form @submit=${this.handleGo}>
-        <input 
+        <input
             @keydown="${() => { this._urlError = false; }}"
-            @change="${() => { this._urlError = false; }}" 
-            type="text" name="siteUrl" 
-            placeholder="https://main--site--org.aem.page" 
-            class="${this._urlError ? 'error' : nothing}" 
+            @change="${() => { this._urlError = false; }}"
+            type="text" name="siteUrl"
+            placeholder="https://main--site--org.aem.page"
+            class="${this._urlError ? 'error' : nothing}"
         />
         <div class="da-form-btn-offset">
           <button aria-label="Go to site">

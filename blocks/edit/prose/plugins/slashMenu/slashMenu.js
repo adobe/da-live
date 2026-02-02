@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import { getKeyAutocomplete, normalizeForSlashMenu, createKeyMenuItems } from './keyAutocomplete.js';
 import { getDefaultItems, getTableCellItems, getTableItems } from './slashMenuItems.js';

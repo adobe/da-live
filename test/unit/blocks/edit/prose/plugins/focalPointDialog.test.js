@@ -30,7 +30,7 @@ describe('focalPointDialog', () => {
       dispatch: () => {},
       state: {
         doc: { nodeAt: () => node },
-        // eslint-disable-next-line no-unused-vars
+
         tr: { setNodeMarkup: (pos, mark, attrs) => ({ attrs }) },
       },
     };

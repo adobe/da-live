@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { createTabbedActions } from '../../../../../../blocks/edit/prose/diff/diff-actions.js';
@@ -23,7 +22,12 @@ describe('diff-actions - createTabbedActions', () => {
       onSwitchTab: sinon.spy(),
     };
 
-    const container = render(spies.onKeepDeleted, spies.onKeepAdded, spies.onKeepBoth, spies.onSwitchTab);
+    const container = render(
+      spies.onKeepDeleted,
+      spies.onKeepAdded,
+      spies.onKeepBoth,
+      spies.onSwitchTab,
+    );
 
     expect(container.className).to.equal('diff-tabbed-actions loc-floating-overlay');
     const actionButtons = container.querySelector('.diff-action-buttons.loc-sticky-buttons');
@@ -105,7 +109,12 @@ describe('diff-actions - createTabbedActions', () => {
       onSwitchTab: sinon.spy(),
     };
 
-    const container = render(spies.onKeepDeleted, spies.onKeepAdded, spies.onKeepBoth, spies.onSwitchTab);
+    const container = render(
+      spies.onKeepDeleted,
+      spies.onKeepAdded,
+      spies.onKeepBoth,
+      spies.onSwitchTab,
+    );
 
     const wrappers = [...container.querySelectorAll('.da-diff-btn.da-diff-btn-base')];
     const ids = ['added', 'deleted', 'diff'];

@@ -200,7 +200,6 @@ const baseNodes = {
         contentElement: (dom) => {
           [...dom.children].forEach((child) => {
             if (child.properties) {
-              // eslint-disable-next-line no-param-reassign
               child.properties['da-diff-added'] = '';
             }
           });
@@ -212,7 +211,6 @@ const baseNodes = {
         contentElement: (dom) => {
           [...dom.children].forEach((child) => {
             if (child.properties) {
-              // eslint-disable-next-line no-param-reassign
               child.properties['da-diff-added'] = '';
             }
           });

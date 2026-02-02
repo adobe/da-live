@@ -153,7 +153,6 @@ function findProseMirrorContainer(view) {
   return view.dom.closest('.da-prose-mirror');
 }
 
-// eslint-disable-next-line import/prefer-default-export
 export function showGlobalDialog(view, activeViews, simpleFilterContent, isLocNode) {
   if (globalDialog?.parentNode) return; // Dialog already shown
 

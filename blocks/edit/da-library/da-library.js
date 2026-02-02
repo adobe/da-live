@@ -1,4 +1,3 @@
-/* eslint-disable indent */
 import { DOMParser as proseDOMParser, TextSelection, DOMSerializer } from 'da-y-wrapper';
 import {
   LitElement,
@@ -252,7 +251,7 @@ class DaLibrary extends LitElement {
 
     if (insertParagraphAfter) {
       const paragraph = window.view.state.schema.nodes.paragraph.create();
-        newTr = tr.insert(insertPos, paragraph);
+      newTr = tr.insert(insertPos, paragraph);
     }
 
     newTr = (newTr || tr).replaceSelectionWith(item.parsed);

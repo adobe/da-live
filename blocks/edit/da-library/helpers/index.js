@@ -11,7 +11,6 @@ function isHeading(element) {
 function decorateImages(element, path) {
   if (!element || !path) return;
   try {
-    // eslint-disable-next-line no-unused-vars
     const url = new URL(path);
     element.querySelectorAll('img').forEach((img) => {
       if (img.getAttribute('src').startsWith('./')) {

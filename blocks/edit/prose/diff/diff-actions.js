@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 /* global view */
 // User action handlers - only loaded when user actually clicks action buttons
 
@@ -188,7 +187,14 @@ export function handleDeleteSingleNode(view, getPos, isValidPosition, isLocNode)
   }
 }
 
-export function handleKeepSingleNode(view, getPos, isValidPosition, isLocNode, filterNodeContent, dispatchContentTransaction) {
+export function handleKeepSingleNode(
+  view,
+  getPos,
+  isValidPosition,
+  isLocNode,
+  filterNodeContent,
+  dispatchContentTransaction,
+) {
   try {
     const currentPos = getPos();
     if (!isValidPosition(currentPos)) {
@@ -295,7 +301,13 @@ function handleOperation(context, { acceptAdded, acceptDeleted, getContent }) {
     dispatchContentTransaction,
   } = context;
 
-  const currentPair = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
+  const currentPair = getCurrentLocNodePair(
+    view,
+    getPos,
+    isValidPosition,
+    isLocNode,
+    canFormLocPair,
+  );
   if (!currentPair) {
     // eslint-disable-next-line no-console
     console.warn('Could not find current loc node pair');

@@ -66,7 +66,6 @@ function removeLink(state, dispatch) {
   return true;
 }
 
-/* eslint-disable import/prefer-default-export */
 export function getLinkMenuItems() {
   return [
     {
