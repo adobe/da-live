@@ -544,10 +544,8 @@ class DaLibrary extends LitElement {
       try {
         const itemUrl = new URL(getUrl(item));
         path = itemUrl.pathname;
-        if (itemUrl.origin.includes('--')) {
-          const [org, site] = getEdsUrlVars(getUrl(item));
-          path = `/${org}/${site}${itemUrl.pathname}`;
-        }
+        const [org, site] = getEdsUrlVars(getUrl(item));
+        path = `/${org}/${site}${itemUrl.pathname}`;
       } catch {
         item.error = 'Please use a fully qualified url for your library';
       }
