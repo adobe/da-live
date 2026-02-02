@@ -544,6 +544,13 @@ class DaLibrary extends LitElement {
       try {
         const itemUrl = new URL(getUrl(item));
         path = itemUrl.pathname;
+
+        // DA Admin Flavored URLs
+        if (itemUrl.origin.endsWith('admin.da.live') && path.startsWith('/source')) {
+          path = path.replace('/source', '');
+        }
+
+        // AEM Flavored URLs
         if (itemUrl.origin.includes('--')) {
           const [org, site] = getEdsUrlVars(getUrl(item));
           path = `/${org}/${site}${itemUrl.pathname}`;
