@@ -120,6 +120,7 @@ class DaStart extends LitElement {
     _errorText: { state: true },
     _templates: { state: true },
     _loading: { state: true },
+    _disableCreate: { state: true },
   };
 
   constructor() {
@@ -158,6 +159,7 @@ class DaStart extends LitElement {
     this.showOpen = false;
     this.showDone = false;
     this._errorText = undefined;
+    this._disableCreate = undefined;
     e.preventDefault();
     this.activeStep = this.activeStep === 3 ? 1 : this.activeStep += 1;
   }
@@ -166,12 +168,13 @@ class DaStart extends LitElement {
     const { code, content } = this._templates.find((tpl) => tpl.selected) || this._templates[0];
     const hasDemo = !code.includes('aem-boilerplate');
     if (hasDemo) {
-      e.target.disabled = true;
+      this._disableCreate = true;
 
       const resp = await daFetch(`${DA_ORIGIN}/list/${this.org}/${this.site}`);
       const json = await resp.json();
       if (json.length > 0) {
         this._errorText = 'The target site is not empty. Choose no demo content or a different site.';
+        this._disableCreate = undefined;
         return;
       }
 
@@ -344,9 +347,9 @@ class DaStart extends LitElement {
             `)}
           </ul>
         </div>
+        ${this._errorText ? html`<p class="error-text">${this._errorText}</p>` : nothing}
         <div class="step-3-actions">
-          <button class="da-login-button con-button blue button-xl" @click=${this.goToSite}>${this._goText}</button>
-          ${this._errorText ? html`<p class="error-text">${this._errorText}</p>` : nothing}
+          <button class="da-login-button con-button blue button-xl" @click=${this.goToSite} ?disabled=${this._disableCreate}>${this._goText}</button>
           <p>${this._statusText ? this._statusText : nothing}</p>
         </div>
       </div>

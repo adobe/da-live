@@ -164,14 +164,14 @@ div.text-container {
 
 p.error-text {
   justify-self: center;
-  color: rgb(255, 255, 255);
+  color: #fff;
   font-weight: 700;
   margin-block: 24px;
   text-align: center;
-  background: rgba(215, 50, 32, 0.44);
-  width: 300px;
+  background: rgb(215 50 32 / 44%);
+  width: 600px;
   border-radius: 8px;
-  padding: 6px 0px;
+  padding: 6px 0;
   box-sizing: border-box;
 }
 
