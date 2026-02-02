@@ -14,7 +14,7 @@ export default class DaContent extends LitElement {
     _editorLoaded: { state: true },
     _showPane: { state: true },
     _versionUrl: { state: true },
-    _ueUrl: { state: true },
+    _externalUrl: { state: true },
   };
 
   connectedCallback() {
@@ -40,7 +40,7 @@ export default class DaContent extends LitElement {
 
   async loadUe() {
     const { default: ueUrlHelper } = await import('./helpers/index.js');
-    this._ueUrl = await ueUrlHelper(this.details.owner, this.details.previewUrl);
+    this._externalUrl = await ueUrlHelper(this.details.owner, this.details.previewUrl);
   }
 
   async handleEditorLoaded() {
@@ -49,7 +49,7 @@ export default class DaContent extends LitElement {
   }
 
   openUe() {
-    window.location = this._ueUrl;
+    window.location = this._externalUrl;
   }
 
   togglePane({ detail }) {
@@ -85,7 +85,7 @@ export default class DaContent extends LitElement {
             </div>
             <div class="da-editor-tabs-quiet">
               <button class="da-editor-tab quiet show-versions" title="Versions" @click=${() => this.togglePane({ detail: 'versions' })}>Versions</button>
-              ${this._ueUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
+              ${this._externalUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
             </div>
           </div>
         ` : nothing}
