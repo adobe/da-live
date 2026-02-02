@@ -60,6 +60,8 @@ function createValueCol(key, value) {
       valPara.textContent = value;
     }
 
+    // TODO: Handle arrays
+
     valCol.append(valPara);
   }
 
