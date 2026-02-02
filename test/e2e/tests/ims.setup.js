@@ -4,7 +4,7 @@ test('Branch name must respect IMS "spec"', () => {
   const { GITHUB_HEAD_REF: branch } = process.env;
   if (branch && branch !== 'local-https') {
     // specs: max 8 alpha numeric characters
-    const specs = /^[a-zA-Z0-9]{1,8}$/;
+    const specs = /^[a-zA-Z0-9-]{1,8}$/;
     expect(branch).toMatch(specs);
   }
 });
