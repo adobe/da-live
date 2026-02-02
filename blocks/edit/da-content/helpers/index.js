@@ -25,9 +25,9 @@ export async function getQeUrl(previewUrl) {
   return `${previewUrl}?quick-edit=on`;
 }
 
-export default async function getExternalUrl(org, previewUrl) {
+export default async function getExternalUrl(org, repo, previewUrl) {
   const confSheet = await getConfSheet(org);
-  const qeConf = confSheet.find((row) => row.key === 'quick-edit');
+  const qeConf = confSheet.find((row) => row.key === 'quick-edit' && row.value.split(',').find((split) => split.startsWith(repo)));
   if (qeConf) return getQeUrl(previewUrl);
   const ueConf = confSheet.find((row) => row.key === 'editor.path');
   if (ueConf) return getUeUrl(ueConf, previewUrl);
