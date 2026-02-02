@@ -98,6 +98,7 @@ async function loadCustomPlugins() {
     imageDrop,
     imageFocalPoint,
     linkConverter,
+    linkTextSync,
     sectionPasteHandler,
     base64Uploader,
     toggleLibrary,
