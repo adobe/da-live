@@ -2,7 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
-
+import { messageSidekick } from '../../shared/sidekick.js';
+import { initIms } from '../../shared/utils.js';
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
 export default class DaContent extends LitElement {
@@ -32,6 +33,34 @@ export default class DaContent extends LitElement {
   async loadViews() {
     // Only import the web components once
     if (this._editorLoaded) return;
+
+    // Check authentication with sidekick
+    const getAuthInfoMessage = { action: 'getAuthInfo' };
+    console.log('Sending to sidekick:', JSON.stringify(getAuthInfoMessage, null, 2));
+    const authenticatedOwners = await messageSidekick(getAuthInfoMessage);
+    console.log('Authenticated owners:', authenticatedOwners);
+    
+    // Check if current project's owner is authenticated
+    const isProjectAuthenticated = Array.isArray(authenticatedOwners) 
+      && authenticatedOwners.includes(this.details.owner);
+    console.log(`Project ${this.details.owner}/${this.details.repo} authenticated:`, isProjectAuthenticated);
+
+    // If project is not authenticated, login
+    if (!isProjectAuthenticated && this.details.owner && this.details.repo) {
+      const imsData = await initIms();
+      if (imsData?.accessToken) {
+        const loginMessage = {
+          action: 'login',
+          owner: this.details.owner,
+          repo: this.details.repo,
+          imsToken: imsData.accessToken.token,
+        };
+        console.log('Sending to sidekick:', JSON.stringify(loginMessage, null, 2));
+        const loginResponse = await messageSidekick(loginMessage);
+        console.log('Login response:', loginResponse);
+      }
+    }
+
     const preview = import('../da-preview/da-preview.js');
     const versions = import('../da-versions/da-versions.js');
     await Promise.all([preview, versions]);
