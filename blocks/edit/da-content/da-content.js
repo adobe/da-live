@@ -3,6 +3,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
 import { contentLogin, livePreviewLogin } from '../../shared/utils.js';
+import { getLivePreviewUrl } from '../../shared/constants.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
@@ -31,8 +32,6 @@ export default class DaContent extends LitElement {
   }
 
   async loadViews() {
-    console.log('details', JSON.stringify(this.details, null, 2));
-
     // Only import the web components once
     if (this._editorLoaded) return;
 
@@ -77,7 +76,7 @@ export default class DaContent extends LitElement {
   render() {
     const { owner, repo, previewUrl } = this.details;
     const { pathname } = new URL(previewUrl);
-    const livePreviewUrl = `https://main--${repo}--${owner}.ue.da.live${pathname}`;
+    const livePreviewUrl = `${getLivePreviewUrl(owner, repo)}${pathname}`;
 
     return html`
       <div class="editor-wrapper">

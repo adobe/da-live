@@ -26,9 +26,6 @@ export default class DaEditor extends LitElement {
   }
 
   async fetchVersion() {
-    const { accessToken } = await initIms();
-    //const response = await fetch('https://stage-content.da.live/')
-
     this._versionDom = null;
     const resp = await daFetch(this.version);
     if (!resp.ok) return;
