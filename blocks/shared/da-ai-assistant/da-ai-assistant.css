@@ -706,6 +706,140 @@
   border-radius: 2px;
 }
 
+/* Asset Browser Panels */
+.asset-browsers {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.asset-panel {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.asset-panel:last-child {
+  border-bottom: none;
+}
+
+.asset-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: background 0.15s;
+}
+
+.asset-panel-header:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.panel-toggle-icon {
+  font-size: 8px;
+  color: var(--color-text-muted);
+  width: 12px;
+}
+
+.asset-count {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.asset-slider {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px 12px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+}
+
+.asset-slider::-webkit-scrollbar {
+  height: 4px;
+}
+
+.asset-slider::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+.asset-loading,
+.asset-empty {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  padding: 8px 0;
+}
+
+.asset-thumb-wrapper {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.asset-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+  background: var(--color-bg-tertiary);
+}
+
+.asset-thumb:hover {
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.asset-thumb.selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(82, 88, 228, 0.2);
+}
+
+.doc-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.doc-thumb:hover {
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.doc-thumb.selected {
+  border-color: var(--color-primary);
+  background: rgba(82, 88, 228, 0.05);
+}
+
+.doc-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-muted);
+}
+
+.doc-name {
+  font-size: 8px;
+  max-width: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
 /* Confirmation Modal */
 .confirm-modal {
   background: var(--color-bg);

@@ -274,6 +274,13 @@ class DaAiAssistant extends LitElement {
     uploadedFiles: { type: Array, state: true },
     toolsUsed: { type: Array, state: true },
     isListening: { type: Boolean, state: true },
+    // Asset browser state
+    showMediaPanel: { type: Boolean, state: true },
+    showDocsPanel: { type: Boolean, state: true },
+    mediaFiles: { type: Array, state: true },
+    docFiles: { type: Array, state: true },
+    isLoadingAssets: { type: Boolean, state: true },
+    selectedAsset: { type: Object, state: true },
   };
 
   constructor() {
@@ -297,6 +304,13 @@ class DaAiAssistant extends LitElement {
     this.currentAbortController = null;
     this.isListening = false;
     this.speechRecognition = null;
+    // Asset browser state
+    this.showMediaPanel = false;
+    this.showDocsPanel = false;
+    this.mediaFiles = [];
+    this.docFiles = [];
+    this.isLoadingAssets = false;
+    this.selectedAsset = null;
 
     this.enabledTools = {};
     AVAILABLE_TOOLS.forEach((tool) => {
@@ -484,6 +498,13 @@ class DaAiAssistant extends LitElement {
       if (imsDetails?.accessToken?.token) {
         this.imsToken = imsDetails.accessToken.token;
       }
+      // Get user profile for AI attribution
+      if (window.adobeIMS?.isSignedInUser()) {
+        const profile = await window.adobeIMS.getProfile();
+        this.userName = profile?.displayName || profile?.email || 'Unknown User';
+        this.userId = profile?.userId;
+        console.log('[DA-AI] User profile loaded:', this.userName);
+      }
     } catch (e) {
       console.warn('[DA-AI] Could not load IMS token:', e);
     }
@@ -613,6 +634,117 @@ class DaAiAssistant extends LitElement {
 
   togglePromptsModal() {
     this.showPromptsModal = !this.showPromptsModal;
+  }
+
+  // Asset Browser Methods
+  async toggleMediaPanel() {
+    this.showMediaPanel = !this.showMediaPanel;
+    if (this.showMediaPanel && this.mediaFiles.length === 0) {
+      await this.loadMediaFiles();
+    }
+  }
+
+  async toggleDocsPanel() {
+    this.showDocsPanel = !this.showDocsPanel;
+    if (this.showDocsPanel && this.docFiles.length === 0) {
+      await this.loadDocFiles();
+    }
+  }
+
+  async loadMediaFiles() {
+    const context = parsePageContext();
+    if (!context.org || !context.project) return;
+
+    this.isLoadingAssets = true;
+    try {
+      const response = await fetch(`${CHAT_API_URL}/api/list-assets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          org: context.org,
+          repo: context.project,
+          path: 'media',
+          imsToken: this.imsToken,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filter for image files
+        this.mediaFiles = (data.files || []).filter((f) => /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || f.path));
+        console.log('[DA-AI] Loaded media files:', this.mediaFiles.length);
+      }
+    } catch (err) {
+      console.error('[DA-AI] Failed to load media files:', err);
+    } finally {
+      this.isLoadingAssets = false;
+    }
+  }
+
+  async loadDocFiles() {
+    const context = parsePageContext();
+    if (!context.org || !context.project) return;
+
+    this.isLoadingAssets = true;
+    try {
+      const response = await fetch(`${CHAT_API_URL}/api/list-assets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          org: context.org,
+          repo: context.project,
+          path: '',
+          imsToken: this.imsToken,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filter for document files (html, md)
+        this.docFiles = (data.files || []).filter((f) => {
+          const name = f.name || f.path || '';
+          return /\.(html|md)$/i.test(name) && !name.startsWith('.');
+        });
+        console.log('[DA-AI] Loaded doc files:', this.docFiles.length);
+      }
+    } catch (err) {
+      console.error('[DA-AI] Failed to load doc files:', err);
+    } finally {
+      this.isLoadingAssets = false;
+    }
+  }
+
+  getThumbnailUrl(file) {
+    const context = parsePageContext();
+    const filePath = file.path || file.name;
+    const isLocal = window.location.hostname === 'localhost';
+    
+    if (isLocal) {
+      return `http://localhost:8787/source/${context.org}/${context.project}/${filePath}`;
+    }
+    return `https://content.da.live/${context.org}/${context.project}/${filePath}`;
+  }
+
+  selectAsset(file) {
+    this.selectedAsset = file;
+    const filePath = file.path || file.name;
+    const url = this.getThumbnailUrl(file);
+    
+    // Add reference to input based on file type
+    if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filePath)) {
+      // For images, add markdown-style reference
+      const prefix = this.inputValue && !this.inputValue.endsWith(' ') ? ' ' : '';
+      this.inputValue = `${this.inputValue}${prefix}[image: ${file.name || filePath}]`;
+    } else {
+      // For docs, add page reference
+      const prefix = this.inputValue && !this.inputValue.endsWith(' ') ? ' ' : '';
+      this.inputValue = `${this.inputValue}${prefix}[page: ${filePath}]`;
+    }
+    
+    // Focus the input
+    this.updateComplete.then(() => {
+      this.shadowRoot?.querySelector('.input-field')?.focus();
+    });
   }
 
   toggleTool(toolId) {
@@ -772,6 +904,7 @@ class DaAiAssistant extends LitElement {
             return atts;
           })(),
           pageContext: { org: context.org, project: context.project, page: context.page, sourcePath: `${context.org}/${context.project}/${context.page}` },
+          userInfo: { name: this.userName || 'Unknown User', id: this.userId },
         }),
       });
 
@@ -932,6 +1065,73 @@ class DaAiAssistant extends LitElement {
     `;
   }
 
+  renderAssetPanels() {
+    return html`
+      <div class="asset-browsers">
+        <!-- Media Panel -->
+        <div class="asset-panel">
+          <div class="asset-panel-header" @click=${this.toggleMediaPanel}>
+            <span class="panel-toggle-icon">${this.showMediaPanel ? '▼' : '▶'}</span>
+            <span>Media</span>
+            <span class="asset-count">(${this.mediaFiles.length})</span>
+          </div>
+          ${this.showMediaPanel ? html`
+            <div class="asset-slider">
+              ${this.isLoadingAssets && this.mediaFiles.length === 0 ? html`
+                <div class="asset-loading">Loading...</div>
+              ` : this.mediaFiles.length === 0 ? html`
+                <div class="asset-empty">No media found</div>
+              ` : this.mediaFiles.map((file) => html`
+                <div class="asset-thumb-wrapper" @click=${() => this.selectAsset(file)} title="${file.name || file.path}">
+                  <img 
+                    class="asset-thumb ${this.selectedAsset === file ? 'selected' : ''}"
+                    src="${this.getThumbnailUrl(file)}"
+                    alt="${file.name || file.path}"
+                    loading="lazy"
+                    @error=${(e) => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              `)}
+            </div>
+          ` : nothing}
+        </div>
+        
+        <!-- Documents Panel -->
+        <div class="asset-panel">
+          <div class="asset-panel-header" @click=${this.toggleDocsPanel}>
+            <span class="panel-toggle-icon">${this.showDocsPanel ? '▼' : '▶'}</span>
+            <span>Documents</span>
+            <span class="asset-count">(${this.docFiles.length})</span>
+          </div>
+          ${this.showDocsPanel ? html`
+            <div class="asset-slider">
+              ${this.isLoadingAssets && this.docFiles.length === 0 ? html`
+                <div class="asset-loading">Loading...</div>
+              ` : this.docFiles.length === 0 ? html`
+                <div class="asset-empty">No documents found</div>
+              ` : this.docFiles.map((file) => html`
+                <div 
+                  class="doc-thumb ${this.selectedAsset === file ? 'selected' : ''}"
+                  @click=${() => this.selectAsset(file)}
+                  title="${file.name || file.path}"
+                >
+                  <svg class="doc-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                  <span class="doc-name">${(file.name || file.path || '').replace(/\.(html|md)$/i, '')}</span>
+                </div>
+              `)}
+            </div>
+          ` : nothing}
+        </div>
+      </div>
+    `;
+  }
+
   renderPromptsModal() {
     if (!this.showPromptsModal) return nothing;
     return html`
@@ -1024,6 +1224,7 @@ class DaAiAssistant extends LitElement {
         <div class="messages-container">${this.renderMessages()}</div>
         ${this.renderReasoningPanel()}
         ${this.renderToolsPanel()}
+        ${this.renderAssetPanels()}
         ${this.renderFileChips()}
         <div class="input-container">
           <button class="mic-btn ${this.isListening ? 'listening' : ''}" @click=${this.toggleListening} title="${this.isListening ? 'Stop listening' : 'Voice input'}" ?disabled=${this.isThinking}>
