@@ -244,7 +244,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
     parseIcons(editor);
   }
 
-  makePictures(editor, live);
+  makePictures(editor, livePreview);
 
   if (!isFragment) {
     makeSections(editor);
