@@ -52,3 +52,6 @@ export const getDaAdmin = (() => {
 export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
 export const DA_HLX = DA_ADMIN_ENVS.hlx6 === DA_ORIGIN;
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();
+
+export const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'https://stage-content.da.live', 'http://localhost:8787'];
+export const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live', 'https://api.aem.live'];

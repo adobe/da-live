@@ -1,5 +1,6 @@
-import { CON_ORIGIN, DA_ORIGIN, DA_HLX } from './constants.js';
+import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
+import { daApi } from './da-api.js';
 
 let currpath;
 let currhash;
@@ -16,16 +17,17 @@ function getOrgDetails({ editor, pathParts, ext }) {
   const parent = ext === null ? `/${fullPath}` : '/';
   const parentName = ext === null ? pathParts[0] : 'Root';
   const name = editor === 'config' && ext === null ? 'config' : pathParts[0];
-  const daApi = editor === 'config' ? 'config' : 'source';
   let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+
+  const sourceUrl = editor === 'config' ? daApi.getConfigUrl(`/${path}`) : daApi.getSourceUrl(`/${path}`);
 
   return {
     owner: pathParts[0],
     name,
     parent,
     parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    sourceUrl,
   };
 }
 
@@ -36,13 +38,10 @@ function getRepoDetails({ editor, pathParts, ext }) {
   const parent = ext === null ? `/${org}/${repo}` : `/${org}`;
   const parentName = ext === null ? repo : org;
   const name = editor === 'config' ? `${repo} config` : repo;
-  const daApi = editor === 'config' ? 'config' : 'source';
   let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
-  const sourceUrl = DA_HLX
-    ? `${DA_ORIGIN}/${org}/sites/${repo}/${daApi}/${path}`
-    : `${DA_ORIGIN}/${daApi}/${path}`;
+  const sourceUrl = editor === 'config' ? daApi.getConfigUrl(`/${path}`) : daApi.getSourceUrl(`/${path}`);
 
   return {
     owner: org,
@@ -70,12 +69,9 @@ function getFullDetails({ editor, pathParts, ext }) {
   const parent = `/${pathParts.join('/')}`;
   const parentName = pathParts.pop();
 
-  const daApi = editor === 'config' ? 'config' : 'source';
   const path = ext === 'html' && !fullPath.endsWith('.html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
-  const sourceUrl = DA_HLX
-    ? `${DA_ORIGIN}/${org}/sites/${repo}/${daApi}/${parts.join('/')}.${ext}`
-    : `${DA_ORIGIN}/${daApi}/${path}`;
+  const sourceUrl = editor === 'config' ? daApi.getConfigUrl(`/${path}`) : daApi.getSourceUrl(`/${path}`);
 
   return {
     owner: org,
