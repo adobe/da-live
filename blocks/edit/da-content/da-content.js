@@ -36,7 +36,7 @@ export default class DaContent extends LitElement {
     if (this._editorLoaded) return;
 
     const { owner, repo } = this.details;
-    await Promise.all([
+    await Promise.allSettled([
       contentLogin(owner, repo),
       livePreviewLogin(owner, repo),
     ]);
