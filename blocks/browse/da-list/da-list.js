@@ -802,7 +802,7 @@ export default class DaList extends LitElement {
       if (!parent || parent === node) break;
       if (parent instanceof HTMLElement) {
         const style = window.getComputedStyle(parent);
-        const overflowY = style.overflowY;
+        const { overflowY } = style;
         if ((overflowY === 'auto' || overflowY === 'scroll') && parent.scrollHeight > parent.clientHeight) {
           return parent;
         }
@@ -857,7 +857,7 @@ export default class DaList extends LitElement {
     let sameTokenCount = 0;
     while (this._continuationToken && safety < 500) {
       // eslint-disable-next-line no-await-in-loop
-      const { added, token } = await this.loadMore();
+      const { token } = await this.loadMore();
       if (!token) break;
       if (token === prevToken) {
         sameTokenCount += 1;
