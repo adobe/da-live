@@ -105,6 +105,7 @@ export default class DaContent extends LitElement {
         <da-preview
           path=${displayUrl}
           .show=${this._showPane === 'preview'}
+          .lockdownImages=${this.lockdownImages}
           class="${this._showPane === 'preview' ? 'is-visible' : ''}"
           @close=${this.togglePane}></da-preview>
         <da-versions

@@ -59,7 +59,7 @@ function convertBlocks(editor, isFragment = false) {
   });
 }
 
-function makePictures(editor, live) {
+function makePictures(editor, live, lockdown) {
   const imgs = editor.querySelectorAll('img');
   imgs.forEach((img) => {
     img.removeAttribute('contenteditable');
@@ -82,13 +82,13 @@ function makePictures(editor, live) {
     if (daCursor) setCursor(daCursor, img);
 
     const clone = img.cloneNode(true);
-    if (live) {
+    if (live && lockdown) {
       const source = new URL(clone.src);
       if (source.host.endsWith('.da.live')) {
-        source.pathname = '/' + source.pathname
+        source.pathname = `/${source.pathname
           .split('/')
           .slice(3) // remove org and site
-          .join('/');
+          .join('/')}`;
         clone.src = source.toString();
       }
     }
@@ -205,9 +205,10 @@ const removeEls = (els) => els.forEach((el) => el.remove());
  * @param {HTMLElement} editor the editor dom
  * @param {Boolean} livePreview whether or not the target destination is Live Preview
  * @param {Boolean} isFragment whether or not the DOM is a fragment
+ * @param {Boolean} lockdownImages whether or not to make images and content.da.live URLs relative
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false) {
+export default function prose2aem(editor, livePreview, isFragment = false, lockdownImages = false) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -244,7 +245,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
     parseIcons(editor);
   }
 
-  makePictures(editor, livePreview);
+  makePictures(editor, livePreview, lockdownImages);
 
   if (!isFragment) {
     makeSections(editor);
@@ -262,7 +263,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
     </body>
   `;
 
-  if (livePreview) {
+  if (livePreview && lockdownImages) {
     html = html.replaceAll('https://content.da.live/', '/');
     html = html.replaceAll('https://stage-content.da.live/', '/');
   }
@@ -270,7 +271,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   return html;
 }
 
-export function getHtmlWithCursor(view) {
+export function getHtmlWithCursor(view, lockdownImages = false) {
   const { selection } = view.state;
   const cursorPos = selection.from;
 
@@ -324,5 +325,6 @@ export function getHtmlWithCursor(view) {
   }
 
   // Convert to an HTML string using prose2aem
-  return prose2aem(editorClone, true);
+  // Always use livePreview mode, but only lockdown images if lockdownImages is enabled
+  return prose2aem(editorClone, true, false, lockdownImages);
 }
