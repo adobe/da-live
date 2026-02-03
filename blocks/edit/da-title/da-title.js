@@ -1,5 +1,14 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { saveToDa, saveToAem, saveDaConfig, saveDaVersion } from '../utils/helpers.js';
+import {
+  requestRole,
+  saveToDa,
+  saveToAem,
+  saveDaConfig,
+  saveDaVersion,
+  getCdnConfig,
+} from '../utils/helpers.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
+import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -9,12 +18,14 @@ const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
   '/blocks/edit/img/Smock_CloudDisconnected_18_N.svg',
   '/blocks/edit/img/Smock_CloudError_18_N.svg',
+  '/blocks/edit/img/cloud_refresh.svg',
 ];
 
 const CLOUD_ICONS = {
   connected: 'spectrum-Cloud-connected',
+  disconnected: 'spectrum-Cloud-offline',
   offline: 'spectrum-Cloud-offline',
-  connecting: 'spectrum-Cloud-error',
+  connecting: 'cloud_refresh',
   error: 'spectrum-Cloud-error',
 };
 
@@ -24,15 +35,16 @@ export default class DaTitle extends LitElement {
     permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
-    _actionsVis: {},
+    _actionsVis: { state: true },
     _status: { state: true },
     _fixedActions: { state: true },
+    _dialog: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this._actionsVis = false;
+    this._actionsVis = [];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     if (this.details.view === 'sheet') {
       this.collabStatus = window.navigator.onLine
@@ -54,6 +66,7 @@ export default class DaTitle extends LitElement {
   }
 
   handleError(json, action, icon) {
+    console.log('handleError', json, action, icon);
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');
     icon.parentElement.classList.add('is-error');
@@ -67,6 +80,12 @@ export default class DaTitle extends LitElement {
       .replace('https://', `https://${snapName}--`)
       .replace(tldRepl, 'aem.reviews');
     return `${origin}/${pathParts.join('/')}`;
+  }
+
+  getCdnHref(url, action, cdn) {
+    const hostname = action === 'publish' ? cdn.prod : cdn.preview;
+    if (!hostname) return url.href;
+    return url.href.replace(url.origin, `https://${hostname}`);
   }
 
   async handleAction(action) {
@@ -86,26 +105,29 @@ export default class DaTitle extends LitElement {
     if (this.details.view === 'config') {
       const daConfigResp = await saveDaConfig(pathname, this.sheet);
       if (!daConfigResp.ok) {
+        // eslint-disable-next-line no-console
         console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
         return;
       }
     }
     if (action === 'preview' || action === 'publish') {
+      const cdn = await getCdnConfig(pathname);
+
       const aemPath = this.sheet ? `${pathname}.json` : pathname;
       let json = await saveToAem(aemPath, 'preview');
       if (json.error) {
-        this.handleError(json, action, sendBtn);
+        this.handleError(json, 'preview', sendBtn);
         return;
       }
       if (action === 'publish') json = await saveToAem(aemPath, 'live');
       if (json.error) {
-        this.handleError(json, action, sendBtn);
+        this.handleError(json, 'publish', sendBtn);
         return;
       }
       const { url: href } = action === 'publish' ? json.live : json.preview;
       const url = new URL(href);
       const isSnap = url.pathname.startsWith('/.snapshots');
-      const toOpen = isSnap ? this.getSnapshotHref(url, action) : href;
+      const toOpen = isSnap ? this.getSnapshotHref(url, action) : this.getCdnHref(url, action, cdn);
       const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
@@ -113,8 +135,72 @@ export default class DaTitle extends LitElement {
     sendBtn.classList.remove('is-sending');
   }
 
-  toggleActions() {
-    this._actionsVis = !this._actionsVis;
+  async handleRoleRequest() {
+    this._dialog = undefined;
+    await import('../../shared/da-dialog/da-dialog.js');
+
+    const { owner: org, repo: site } = this.details;
+
+    const title = 'Role request';
+
+    const action = {
+      style: 'accent',
+      label: 'OK',
+      click: async () => { this._dialog = undefined; },
+      disabled: true,
+    };
+
+    let content = html`<p>Requesting ${this._status.action} permissions...</p>`;
+    this._dialog = { title, content, action };
+
+    const { message } = await requestRole(org, site, this._status.action);
+
+    content = html`<p>${message[0]}</p><p>${message[1]}</p>`;
+
+    const closeAction = { ...action, disabled: false };
+    this._dialog = { title, content, action: closeAction };
+  }
+
+  async fetchConfig() {
+    const { owner, repo } = this.details;
+    if (this.config) return this.config;
+
+    const fetchSingleConfig = (path) => daFetch(path)
+      .then((r) => r.json())
+      .then(getFirstSheet)
+      .then((data) => data ?? [])
+      .catch(() => []);
+
+    const [org, site] = await Promise.all([
+      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}`),
+      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}/${repo}`),
+    ]);
+    this.config = { org, site };
+    return this.config;
+  }
+
+  async toggleActions() {
+    // toggle off if already on
+    if (this._actionsVis.length > 0) {
+      this._actionsVis = [];
+      return;
+    }
+
+    // toggle on for config
+    if (this.details.view === 'config') {
+      this._actionsVis = ['save'];
+      return;
+    }
+
+    // check which actions should be allowed for the document based on config
+    const config = await this.fetchConfig();
+    const { fullpath } = this.details;
+
+    const allConfigs = [...config.org, ...config.site];
+    const publishButtonConfigs = allConfigs.filter((c) => c.key === 'editor.hidePublish');
+    const hasMatchingPublishConfig = publishButtonConfigs.some((c) => fullpath.startsWith(c.value));
+
+    this._actionsVis = hasMatchingPublishConfig ? ['preview'] : ['preview', 'publish'];
   }
 
   get _readOnly() {
@@ -122,30 +208,15 @@ export default class DaTitle extends LitElement {
     return !this.permissions.some((permission) => permission === 'write');
   }
 
-  renderSave() {
-    return html`
-    <button
-      @click=${this.handleAction}
-      class="con-button blue da-title-action"
-      aria-label="Send">
-      Save
-    </button>`;
-  }
-
-  renderAemActions() {
-    return html`
+  renderActions() {
+    return html`${this._actionsVis.map((action) => html`
       <button
-        @click=${() => this.handleAction('preview')}
+        @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
         aria-label="Send">
-        Preview
+        ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
-      <button
-        @click=${() => this.handleAction('publish')}
-        class="con-button blue da-title-action"
-        aria-label="Send">
-        Publish
-      </button>`;
+    `)}`;
   }
 
   popover({ target }) {
@@ -158,6 +229,18 @@ export default class DaTitle extends LitElement {
     const openPopups = this.shadowRoot.querySelectorAll('.collab-popup');
     openPopups.forEach((pop) => { pop.classList.remove('collab-popup'); });
     target.classList.add('collab-popup');
+  }
+
+  renderDialog() {
+    return html`
+      <da-dialog
+        title=${this._dialog.title}
+        .message=${this._dialog.message}
+        .action=${this._dialog.action}
+        @close=${this._dialog.close}>
+        ${this._dialog.content}
+      </da-dialog>
+    `;
   }
 
   renderCollabUsers() {
@@ -177,21 +260,29 @@ export default class DaTitle extends LitElement {
       </div>`;
   }
 
+  renderError() {
+    return html`
+      <div class="da-title-error">
+        <p><strong>${this._status.message}</strong></p>
+        ${this._status.details ? html`<p>${this._status.details}</p>` : nothing}
+        ${this._status.status === 403 ? html`<button @click=${this.handleRoleRequest}>Request access</button>` : nothing}
+      </div>`;
+  }
+
   render() {
     return html`
       <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
         <div class="da-title-name">
           <a
             href="/#${this.details.parent}"
-            target="${this.details.parent}"
             class="da-title-name-label">${this.details.parentName}</a>
           <h1>${this.details.name}</h1>
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
-          ${this._status ? html`<p class="da-title-error-details">${this._status.message} ${this._status.action}.</p>` : nothing}
-          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis ? 'is-open' : ''}">
-            ${this.details.view === 'config' ? this.renderSave() : this.renderAemActions()}
+          ${this._status ? this.renderError() : nothing}
+          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis.length > 0 ? 'is-open' : ''}">
+            ${this.renderActions()}
             <button
               @click=${this.toggleActions}
               class="con-button blue da-title-action-send"
@@ -201,6 +292,7 @@ export default class DaTitle extends LitElement {
           </div>
         </div>
       </div>
+      ${this._dialog ? this.renderDialog() : nothing}
     `;
   }
 }

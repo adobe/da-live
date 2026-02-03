@@ -51,7 +51,7 @@ export default {
           window.fetch = async (resource, options) => {
             if (!resource.startsWith('/') && !resource.startsWith('http://localhost')) {
               console.error(
-                '** fetch request for an external resource is disallowed in unit tests, please find a way to mock! https://github.com/orgs/adobecom/discussions/814#discussioncomment-6060759 provides guidance on how to fix the issue.',
+                '** fetch request for an external resource is disallowed in unit tests, please find a way to mock! https://github.com/orgs/adobecom/discussions/127 provides guidance on how to fix the issue.',
                 resource
               );
             }
@@ -63,7 +63,7 @@ export default {
             let [method, url, asyn] = args;
             if (!resource.startsWith('/') && url.startsWith('http://localhost')) {
               console.error(
-                '** XMLHttpRequest request for an external resource is disallowed in unit tests, please find a way to mock! https://github.com/orgs/adobecom/discussions/814#discussioncomment-6060759 provides guidance on how to fix the issue.',
+                '** XMLHttpRequest request for an external resource is disallowed in unit tests, please find a way to mock! https://github.com/orgs/adobecom/discussions/127 provides guidance on how to fix the issue.',
                 url
               );
             }

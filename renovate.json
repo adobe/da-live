@@ -1,6 +1,15 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ]
+  "extends": ["config:recommended"],
+  "branchNameStrict": true,
+  "branchName": "renovate",
+  "includePaths": [
+    "package.json",
+    "test/e2e/package.json"
+  ],
+  "packageRules": [{
+      "matchDepTypes": ["devDependencies"],
+      "labels": ["ignore-psi-check"], 
+      "automerge": true,
+      "branchName": "renodev"
+  }]
 }

@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
-import { debouncedSaveSheets } from './utils/utils.js';
+import { handleSave } from './utils/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -83,11 +83,10 @@ class DaSheetTabs extends LitElement {
     const newSheet = this.jexcel.slice(-1)[0];
     newSheet.name = sheets[0].sheetName;
     newSheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    if (this.tabContainer.details.view !== 'config') {
-      newSheet.options.onafterchanges = () => {
-        debouncedSaveSheets(this.jexcel);
-      };
-    }
+
+    newSheet.options.onafterchanges = () => {
+      handleSave(this.jexcel, this.tabContainer.details.view);
+    };
 
     // Refresh the tab names
     this._names = this.getNames();
@@ -120,10 +119,13 @@ class DaSheetTabs extends LitElement {
       this.sheetContents[idx].remove();
       this._edit = null;
       this.showSheet(0);
+
+      handleSave(this.jexcel, this.tabContainer.details.view);
+
       return;
     }
     if (e.submitter.value === 'confirm') {
-      const name = Object.fromEntries(new FormData(e.target))?.name;
+      const name = Object.fromEntries(new FormData(e.target))?.name?.trim();
       const inputEl = e.target.querySelector('input');
       const cancelEl = e.target.querySelector('button[aria-label="Cancel"]');
 
@@ -145,9 +147,11 @@ class DaSheetTabs extends LitElement {
         return;
       }
 
+      handleSave(this.jexcel, this.tabContainer.details.view);
+
       this._names[idx] = name;
       this.jexcel[idx].name = name;
-      this.hiddenTabs[idx].innerHTML = name;
+      this.hiddenTabs[idx].textContent = name;
       this._edit = null;
     }
   }

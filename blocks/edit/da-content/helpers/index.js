@@ -14,6 +14,8 @@ export default async function getUeUrl(org, previewUrl) {
   const dxOrg = value.split('/').find((split) => split.startsWith('@'));
   if (!dxOrg) return null;
   const prefix = UE_PREFIX.replace('{{DX_ORG}}', dxOrg);
-  const ueDomain = previewUrl.replace('https://', '').replace('.aem.live', '.ue.da.live');
+  // TODO: INFRA
+  let ueDomain = previewUrl.replace('https://', '').replace('.aem.', '.ue.da.');
+  ueDomain = window.location.origin === 'https://da.page' ? ueDomain.replace('.ue.da.live', '.ue.da.page') : ueDomain;
   return `${prefix}${ueDomain}`;
 }

@@ -1,7 +1,8 @@
 /* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
-import { getKeyAutocomplete } from './keyAutocomplete.js';
+import { getKeyAutocomplete, normalizeForSlashMenu, createKeyMenuItems } from './keyAutocomplete.js';
 import { getDefaultItems, getTableCellItems, getTableItems } from './slashMenuItems.js';
+import { getTableInfo } from '../tableUtils.js';
 import './slash-menu.js';
 
 const SLASH_COMMAND_REGEX = /\/(([^/\s]+(?:\s+[^/\s]+)*)\s*([^/\s]*))?$/;
@@ -15,46 +16,6 @@ function extractArgument(title, command) {
 }
 
 const hasCellAreaSelected = (state) => state.selection.content().size > 0;
-
-// Get the table name if the cursor is in a table cell
-const getTableName = ($cursor) => {
-  const { depth } = $cursor;
-  let tableCellDepth = -1;
-
-  // Search up the tree for a table cell
-  for (let d = depth; d > 0; d -= 1) {
-    const node = $cursor.node(d);
-    if (node.type.name === 'table_cell') {
-      tableCellDepth = d;
-      break;
-    }
-  }
-
-  if (tableCellDepth === -1) return false; // not in a table cell
-
-  // Get the row node and cell index
-  const rowDepth = tableCellDepth - 1;
-  const tableDepth = rowDepth - 1;
-  const table = $cursor.node(tableDepth);
-  const firstRow = table.child(0);
-  const cellIndex = $cursor.index(tableCellDepth - 1);
-  const row = $cursor.node(rowDepth);
-
-  const firstRowContent = firstRow.child(0).textContent;
-  const tableNameMatch = firstRowContent.match(/^([a-zA-Z0-9_-]+)(?:\s*\([^)]*\))?$/);
-
-  // Only set key value if we're in the second column of a row
-  const currentRowFirstColContent = (row.childCount > 1 && cellIndex === 1) ? row.child(0).textContent : null;
-
-  if (tableNameMatch) {
-    return {
-      tableName: tableNameMatch[1],
-      keyValue: currentRowFirstColContent,
-    };
-  }
-
-  return false;
-};
 
 class SlashMenuView {
   constructor(view) {
@@ -87,26 +48,41 @@ class SlashMenuView {
       return;
     }
 
-    const { tableName, keyValue } = getTableName($cursor);
-    if (tableName) {
-      const keyData = pluginState.autocompleteData?.get(tableName);
-      if (keyData && keyData.get(keyValue)) {
-        this.menu.items = keyData.get(keyValue);
-      } else {
-        this.menu.items = getTableItems(state);
-      }
-    } else {
+    const tableInfo = getTableInfo(state, $cursor.pos);
+    if (!tableInfo) {
       this.menu.items = getDefaultItems();
+      return;
     }
+
+    const { tableName, keyValue, isFirstColumn, columnsInRow } = tableInfo;
+    const keyData = pluginState.autocompleteData?.get(tableName);
+
+    if (!keyData) {
+      this.menu.items = getTableItems(state);
+      return;
+    }
+
+    if (isFirstColumn && columnsInRow === 2) {
+      this.menu.items = createKeyMenuItems(keyData);
+      return;
+    }
+
+    const normalizedKey = normalizeForSlashMenu(keyValue);
+    this.menu.items = keyData.get(normalizedKey) || getTableItems(state);
   }
 
-  cellHasMenuItems(pluginState, $cursor) {
-    const { tableName, keyValue } = getTableName($cursor);
-    if (tableName) {
-      const keyData = pluginState.autocompleteData?.get(tableName);
-      return keyData && keyData.get(keyValue);
-    }
-    return false;
+  cellHasMenuItems(pluginState, state, $cursor) {
+    const tableInfo = getTableInfo(state, $cursor.pos);
+    if (!tableInfo) return false;
+
+    const { tableName, keyValue, isFirstColumn } = tableInfo;
+    const keyData = pluginState.autocompleteData?.get(tableName);
+    if (!keyData) return false;
+
+    if (isFirstColumn) return true;
+
+    const normalizedKey = normalizeForSlashMenu(keyValue);
+    return keyData.has(normalizedKey);
   }
 
   showMenu(command) {
@@ -140,7 +116,7 @@ class SlashMenuView {
     }
 
     const textBefore = $cursor.parent.textContent.slice(0, $cursor.parentOffset);
-    if (!this.cellHasMenuItems(slashMenuKey.getState(state), $cursor) && !textBefore?.startsWith('/')) {
+    if (!this.cellHasMenuItems(slashMenuKey.getState(state), state, $cursor) && !textBefore?.startsWith('/')) {
       if (this.menu.visible) this.hide();
       return;
     }

@@ -10,7 +10,33 @@ import {
   deleteTable,
   InputRule,
   inputRules,
+  yUndo,
+  yRedo,
 } from 'da-y-wrapper';
+import { isURL } from '../../utils/helpers.js';
+
+export function getURLInputRule() {
+  return new InputRule(
+    /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)\s$/,
+    (state, match, start, end) => {
+      const url = match[0].trim();
+
+      if (!isURL(url)) {
+        return null;
+      }
+
+      const linkMark = state.schema.marks.link.create({ href: url });
+
+      // Replace the URL text with linked version, keeping the space
+      const { tr } = state;
+      tr.delete(start, end);
+      tr.insert(start, state.schema.text(url, [linkMark]));
+      tr.insert(start + url.length, state.schema.text(' '));
+
+      return tr;
+    },
+  );
+}
 
 export function getDashesInputRule(dispatchTransaction) {
   return new InputRule(
@@ -40,6 +66,11 @@ export function getEnterInputRulesPlugin(dispatchTransaction) {
   irsplugin.props.handleKeyDown = hkd; // Add the handleKeyDown function
 
   return irsplugin;
+}
+
+// Returns a standard inputRules plugin for URL auto-linking on space
+export function getURLInputRulesPlugin() {
+  return inputRules({ rules: [getURLInputRule()] });
 }
 
 const isRowSelected = (rect) => rect.left === 0 && rect.right === rect.map.width;
@@ -92,3 +123,20 @@ export function handleTableTab(direction) {
     return gtnc(state, dispatch);
   };
 }
+
+const forceMenuUpdate = () => {
+  // Dispatch an empty transaction that will trigger the full view update cycle
+  setTimeout(() => {
+    const { tr } = window.view.state;
+    window.view.dispatch(tr);
+  }, 0);
+};
+
+const runWithMenuUpdate = (cmd, state) => {
+  const result = cmd(state);
+  if (result) forceMenuUpdate();
+  return result;
+};
+
+export const handleUndo = (state) => runWithMenuUpdate(yUndo, state);
+export const handleRedo = (state) => runWithMenuUpdate(yRedo, state);

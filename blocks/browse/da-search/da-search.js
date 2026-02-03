@@ -19,11 +19,13 @@ export default class DaSearch extends LitElement {
     _time: { state: true },
     _items: { state: true },
     showReplace: { state: true },
+    _caseSensitive: { state: true },
   };
 
   constructor() {
     super();
     this.setDefault();
+    this._caseSensitive = true;
   }
 
   connectedCallback() {
@@ -55,7 +57,7 @@ export default class DaSearch extends LitElement {
   }
 
   async getMatches(startPath, term) {
-    const searchTypes = ['.html', '.json'];
+    const searchTypes = ['.html', '.json', '.svg'];
 
     const searchFile = async (file, prevRetry = 0) => {
       if (!searchTypes.some((type) => file.path.endsWith(type))) return;
@@ -69,7 +71,17 @@ export default class DaSearch extends LitElement {
         try {
           const resp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
           const text = await resp.text();
-          match = text.includes(term) || file.path.split('/').pop().includes(term);
+          // Log empty files
+          // eslint-disable-next-line no-console
+          if (text.length < 2) console.log(file.path);
+          const filename = file.path.split('/').pop();
+          if (this._caseSensitive) {
+            match = text.includes(term) || filename.includes(term);
+          } else {
+            const lowerTerm = term.toLowerCase();
+            match = text.toLowerCase().includes(lowerTerm)
+              || filename.toLowerCase().includes(lowerTerm);
+          }
         } catch {
           return { error: 'fetch error' };
         }
@@ -204,10 +216,23 @@ export default class DaSearch extends LitElement {
     this.showReplace = !this.showReplace;
   }
 
+  toggleCaseSensitive() {
+    this._caseSensitive = !this._caseSensitive;
+  }
+
   render() {
     return html`
       <form @submit=${this.handleSearch}>
-        <input type="text" placeholder="Enter search" name="term"/>
+        <div class="search-input-wrapper">
+          <input type="text" placeholder="Enter search" name="term"/>
+          <button
+            type="button"
+            class="case-toggle${this._caseSensitive ? ' active' : ''}"
+            @click=${this.toggleCaseSensitive}
+            title="${this._caseSensitive ? 'Case sensitive (click for case insensitive)' : 'Case insensitive (click for case sensitive)'}">
+            Aa
+          </button>
+        </div>
         <input type="submit" value="Search" />
       </form>
       <p>${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>
