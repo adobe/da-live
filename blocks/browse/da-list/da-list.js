@@ -38,6 +38,10 @@ export default class DaList extends LitElement {
     _confirm: { state: true },
     _confirmText: { state: true },
     _unpublish: { state: true },
+    _continuationToken: { state: true },
+    _isLoadingMore: { state: true },
+    _bulkLoading: { state: true },
+    _filterLoading: { state: true },
   };
 
   constructor() {
@@ -49,6 +53,16 @@ export default class DaList extends LitElement {
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
     this._filter = '';
+    this._continuationToken = null;
+    this._isLoadingMore = false;
+    this._observer = null;
+    this._scrollEl = null;
+    this._onScroll = null;
+    this._onResize = null;
+    this._autoCheckTimer = null;
+    this._forceLoadAll = false;
+    this._bulkLoading = false;
+    this._filterLoading = false;
   }
 
   connectedCallback() {
@@ -66,6 +80,7 @@ export default class DaList extends LitElement {
       this._filter = '';
       this._showFilter = undefined;
       this._listItems = await this.getList();
+      requestAnimationFrame(() => this.checkLoadMore());
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -78,6 +93,8 @@ export default class DaList extends LitElement {
   async firstUpdated() {
     await import('../../shared/da-dialog/da-dialog.js');
     await import('../da-actionbar/da-actionbar.js');
+    this.setupObserver();
+    this.setupScrollListener();
   }
 
   setStatus(text, description, type = 'info') {
@@ -99,14 +116,41 @@ export default class DaList extends LitElement {
 
   async getList() {
     try {
+      this._continuationToken = null;
       const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
+      this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+      this.scheduleAutoCheck();
       return json;
     } catch {
       this._emptyMessage = 'Not permitted';
       return [];
     }
+  }
+
+  async loadMore() {
+    if (this._isLoadingMore || !this._continuationToken) {
+      return { added: 0, token: this._continuationToken || null };
+    }
+    this._isLoadingMore = true;
+    try {
+      const url = new URL(`${DA_ORIGIN}/list${this.fullpath}`);
+      url.searchParams.set('continuation-token', this._continuationToken);
+      const resp = await daFetch(url.toString());
+      if (resp.permissions) this.handlePermissions(resp.permissions);
+      const json = await resp.json();
+      const nextItems = Array.isArray(json) ? json : json?.items || [];
+      this._listItems = [...(this._listItems || []), ...nextItems];
+      this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+      if (!this._bulkLoading) this.scheduleAutoCheck();
+      return { added: nextItems.length, token: this._continuationToken };
+    } catch {
+      // ignore load-more errors for now
+    } finally {
+      this._isLoadingMore = false;
+    }
+    return { added: 0, token: null };
   }
 
   handleNewItem() {
@@ -440,19 +484,36 @@ export default class DaList extends LitElement {
     this.handleSort(this._sortName, 'name');
   }
 
-  handleDateSort() {
+  async handleDateSort() {
     this._sortName = undefined;
     this._sortDate = this._sortDate === 'old' ? 'new' : 'old';
+    if (this._continuationToken) {
+      this._forceLoadAll = true;
+      this._bulkLoading = true;
+      await this.loadAllPages();
+      this._bulkLoading = false;
+      this._forceLoadAll = false;
+    }
     this.handleSort(this._sortDate, 'lastModified');
   }
 
-  toggleFilterView() {
+  async toggleFilterView() {
     this._filter = '';
+    this._filterLoading = true;
     this._showFilter = !this._showFilter;
     const filterInput = this.shadowRoot?.querySelector('input[name="filter"]');
     filterInput.value = '';
     if (this._showFilter) {
-      this.wait(1).then(() => { filterInput.focus(); });
+      if (this._continuationToken) {
+        this._bulkLoading = true;
+        await this.loadAllPages();
+        this._bulkLoading = false;
+      }
+      await this.wait(1);
+      filterInput.focus();
+      this._filterLoading = false;
+    } else {
+      this._filterLoading = false;
     }
   }
 
@@ -605,6 +666,7 @@ export default class DaList extends LitElement {
           editor="${this.editor}"
           idx=${idx}>
         </da-list-item>`)}
+        <div class="da-list-sentinel" aria-hidden="true"></div>
       </div>
     `;
   }
@@ -635,11 +697,21 @@ export default class DaList extends LitElement {
         <div class="da-browse-sort">
           <!-- Toggle button is split into 2 buttons (enable/disable) to prevent bug re-toggling on blur event -->
           ${!this._showFilter ? html`
-            <button class="da-browse-filter" name="toggle-filter" @click=${() => this.toggleFilterView()}>
+            <button
+              class="da-browse-filter ${this._filterLoading ? 'loading' : ''}"
+              name="toggle-filter"
+              @click=${() => this.toggleFilterView()}
+              ?disabled=${this._filterLoading}
+              aria-disabled=${this._filterLoading ? 'true' : 'false'}>
               <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" />
             </button>
           ` : html`
-            <button class="da-browse-filter selected" name="toggle-filter" @click=${() => this.toggleFilterView()}>
+            <button
+              class="da-browse-filter selected ${this._filterLoading ? 'loading' : ''}"
+              name="toggle-filter"
+              @click=${() => this.toggleFilterView()}
+              ?disabled=${this._filterLoading}
+              aria-disabled=${this._filterLoading ? 'true' : 'false'}>
               <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" />
             </button>
           `}
@@ -648,7 +720,13 @@ export default class DaList extends LitElement {
             <button class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''}" @click=${this.handleNameSort}>Name</button>
           </div>
           <div class="da-browse-header-container">
-            <button class="da-browse-header-name ${this._sortDate}" @click=${this.handleDateSort}>Modified</button>
+            <button
+              class="da-browse-header-name ${this._sortDate} ${this._bulkLoading ? 'loading' : ''}"
+              @click=${this.handleDateSort}
+              ?disabled=${this._bulkLoading}
+              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+              Modified
+            </button>
           </div>
         </div>
       </div>
@@ -669,6 +747,130 @@ export default class DaList extends LitElement {
       ${this._confirm ? this.renderConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;
+  }
+
+  setupObserver() {
+    if (this._observer) return;
+    const panel = this.shadowRoot?.querySelector('.da-browse-panel') || null;
+    const usePanelAsRoot = panel && panel.scrollHeight > panel.clientHeight;
+    this._observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) this.loadMore();
+      });
+    }, { root: usePanelAsRoot ? panel : null, rootMargin: '200px' });
+  }
+
+  updated(changedProps) {
+    super.updated(changedProps);
+    this.setupScrollListener();
+    if (!this._observer) this.setupObserver();
+    const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
+    if (sentinel && this._observer) {
+      this._observer.disconnect();
+      this._observer.observe(sentinel);
+    }
+    this.checkLoadMore();
+  }
+
+  setupScrollListener() {
+    const nextScrollEl = this.getScrollableAncestor();
+
+    if (this._scrollEl === nextScrollEl) return;
+    if (this._scrollEl && this._onScroll) this._scrollEl.removeEventListener('scroll', this._onScroll);
+
+    this._scrollEl = nextScrollEl;
+    this._onScroll = () => {
+      this.checkLoadMore();
+    };
+    this._scrollEl.addEventListener('scroll', this._onScroll, { passive: true });
+
+    if (!this._onResize) {
+      this._onResize = () => this.checkLoadMore();
+      window.addEventListener('resize', this._onResize, { passive: true });
+      window.addEventListener('scroll', this._onScroll, { passive: true });
+    }
+  }
+
+  getScrollableAncestor() {
+    let node = this;
+    while (node) {
+      let parent = node.parentNode;
+      if (!parent && node.getRootNode) {
+        const root = node.getRootNode();
+        parent = root && root.host ? root.host : null;
+      }
+      if (!parent || parent === node) break;
+      if (parent instanceof HTMLElement) {
+        const style = window.getComputedStyle(parent);
+        const overflowY = style.overflowY;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && parent.scrollHeight > parent.clientHeight) {
+          return parent;
+        }
+      }
+      node = parent;
+    }
+    return window;
+  }
+
+  checkLoadMore() {
+    if (this._bulkLoading) return;
+    if (!this._continuationToken) return;
+    const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
+    if (!sentinel) return;
+
+    const isWindow = this._scrollEl === window;
+    const rootRect = isWindow
+      ? { top: 0, bottom: window.innerHeight }
+      : this._scrollEl.getBoundingClientRect();
+    const rect = sentinel.getBoundingClientRect();
+
+    const rootHeight = rootRect.bottom - rootRect.top;
+    const threshold = rootHeight * 4;
+    if (this._forceLoadAll || rect.top <= rootRect.bottom + threshold) {
+      this.loadMore();
+    }
+  }
+
+  scheduleAutoCheck() {
+    if (this._bulkLoading) return;
+    if (this._autoCheckTimer || !this._continuationToken) return;
+    this._autoCheckTimer = setTimeout(() => {
+      this._autoCheckTimer = null;
+      this.checkLoadMore();
+      if (this._continuationToken) this.scheduleAutoCheck();
+    }, 250);
+  }
+
+  disconnectedCallback() {
+    if (this._observer) this._observer.disconnect();
+    if (this._scrollEl && this._onScroll) this._scrollEl.removeEventListener('scroll', this._onScroll);
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
+    if (this._onScroll) window.removeEventListener('scroll', this._onScroll);
+    if (this._autoCheckTimer) clearTimeout(this._autoCheckTimer);
+    super.disconnectedCallback();
+  }
+
+  async loadAllPages() {
+    if (this._isLoadingMore) return;
+    let safety = 0;
+    let prevToken = this._continuationToken;
+    let sameTokenCount = 0;
+    while (this._continuationToken && safety < 500) {
+      // eslint-disable-next-line no-await-in-loop
+      const { added, token } = await this.loadMore();
+      if (!token) break;
+      if (token === prevToken) {
+        sameTokenCount += 1;
+      } else {
+        sameTokenCount = 0;
+      }
+      if (sameTokenCount >= 2) break;
+      prevToken = token;
+      // Small delay to avoid overwhelming the list API.
+      // eslint-disable-next-line no-await-in-loop
+      await this.wait(75);
+      safety += 1;
+    }
   }
 }
 
