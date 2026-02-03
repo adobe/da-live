@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
-import { contentLogin, livePreviewLogin } from '../../shared/utils.js';
 import { getLivePreviewUrl } from '../../shared/constants.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
@@ -13,6 +12,7 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
+    lockdownImages: { attribute: false },
     _editorLoaded: { state: true },
     _showPane: { state: true },
     _versionUrl: { state: true },
@@ -35,12 +35,6 @@ export default class DaContent extends LitElement {
     // Only import the web components once
     if (this._editorLoaded) return;
 
-    const { owner, repo } = this.details;
-    await Promise.allSettled([
-      contentLogin(owner, repo),
-      livePreviewLogin(owner, repo),
-    ]);
-  
     const preview = import('../da-preview/da-preview.js');
     const versions = import('../da-versions/da-versions.js');
     await Promise.all([preview, versions]);
@@ -76,7 +70,11 @@ export default class DaContent extends LitElement {
   render() {
     const { owner, repo, previewUrl } = this.details;
     const { pathname } = new URL(previewUrl);
-    const livePreviewUrl = `${getLivePreviewUrl(owner, repo)}${pathname}`;
+
+    // Only use livePreviewUrl if lockdownImages flag is set to true
+    const displayUrl = this.lockdownImages
+      ? `${getLivePreviewUrl(owner, repo)}${pathname}`
+      : previewUrl;
 
     return html`
       <div class="editor-wrapper">
@@ -105,7 +103,7 @@ export default class DaContent extends LitElement {
       </div>
       ${this._editorLoaded ? html`
         <da-preview
-          path=${livePreviewUrl}
+          path=${displayUrl}
           .show=${this._showPane === 'preview'}
           class="${this._showPane === 'preview' ? 'is-visible' : ''}"
           @close=${this.togglePane}></da-preview>

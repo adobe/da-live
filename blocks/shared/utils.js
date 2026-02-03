@@ -120,9 +120,7 @@ export async function contentLogin(owner, repo) {
   const { accessToken } = await initIms();
   return fetch(`${CON_ORIGIN}/${owner}/${repo}/.gimme_cookie`, {
     credentials: 'include',
-    headers: {
-      Authorization: `Bearer ${accessToken.token}`,
-    },
+    headers: { Authorization: `Bearer ${accessToken.token}` },
   });
 }
 
@@ -130,8 +128,33 @@ export async function livePreviewLogin(owner, repo) {
   const { accessToken } = await initIms();
   return fetch(`${getLivePreviewUrl(owner, repo)}/gimme_cookie`, {
     credentials: 'include',
-    headers: {
-      Authorization: `Bearer ${accessToken.token}`,
-    },
+    headers: { Authorization: `Bearer ${accessToken.token}` },
   });
+}
+
+/**
+ * Checks if the lockdownImages flag is enabled for the given owner.
+ * When enabled, images are served through the live preview URL with authentication
+ * instead of the public preview URL, preventing unauthorized access to images.
+ * @param {string} owner - The owner identifier
+ * @returns {Promise<boolean>} True if lockdownImages flag is enabled, false otherwise
+ */
+export async function checkLockdownImages(owner) {
+  try {
+    const resp = await daFetch(`${DA_ORIGIN}/config/${owner}`);
+    if (!resp.ok) return false;
+
+    const config = await resp.json();
+
+    // Check if flags sheet exists and has lockdownImages=true
+    if (config.flags?.data) {
+      const lockdownFlag = config.flags.data.find(
+        (item) => item.key === 'lockdownImages' && item.value === 'true',
+      );
+      return !!lockdownFlag;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
