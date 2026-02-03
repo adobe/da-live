@@ -108,18 +108,35 @@ export default class DaEditor extends LitElement {
       // LOCAL DEV ONLY: Initialize authenticated image loading
       // This is a no-op in production (content.da.live serves images publicly)
       // In local dev, images need auth to load from R2 via da-admin
-      if (this.path && pm) {
-        // Extract org/repo from path (e.g., "/anfibiacreativa/da-test-env/index" -> "anfibiacreativa/da-test-env")
-        const pathParts = this.path.split('/').filter(Boolean);
-        if (pathParts.length >= 2) {
-          const orgRepo = `${pathParts[0]}/${pathParts[1]}`;
-          // Clean up previous loader if exists
-          if (this._imageLoaderCleanup) {
-            this._imageLoaderCleanup();
+      // Use requestAnimationFrame to ensure ProseMirror is fully rendered
+      requestAnimationFrame(() => {
+        const pmElement = this.shadowRoot.querySelector('.ProseMirror');
+        if (this.path && pmElement) {
+          // Extract org/repo from path URL
+          // path is like "http://localhost:8787/source/org/repo/page.html"
+          // or "https://admin.da.live/source/org/repo/page.html"
+          try {
+            const url = new URL(this.path);
+            // pathname is like "/source/org/repo/page.html"
+            const pathParts = url.pathname.split('/').filter(Boolean);
+            // Skip "source" to get [org, repo, page]
+            const sourceIdx = pathParts.indexOf('source');
+            if (sourceIdx !== -1 && pathParts.length > sourceIdx + 2) {
+              const org = pathParts[sourceIdx + 1];
+              const repo = pathParts[sourceIdx + 2];
+              const orgRepo = `${org}/${repo}`;
+              console.log('[DA-Editor] Initializing image loader for:', orgRepo);
+              // Clean up previous loader if exists
+              if (this._imageLoaderCleanup) {
+                this._imageLoaderCleanup();
+              }
+              this._imageLoaderCleanup = initLocalDevImageLoader(pmElement, orgRepo);
+            }
+          } catch (e) {
+            console.warn('[DA-Editor] Could not parse path for image loader:', this.path, e);
           }
-          this._imageLoaderCleanup = initLocalDevImageLoader(pm, orgRepo);
         }
-      }
+      });
     }
   }
 

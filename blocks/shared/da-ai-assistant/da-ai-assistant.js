@@ -268,6 +268,8 @@ class DaAiAssistant extends LitElement {
     streamingResponse: { type: String, state: true },
     showToolsPanel: { type: Boolean, state: true },
     showPromptsModal: { type: Boolean, state: true },
+    showConfirmModal: { type: Boolean, state: true },
+    confirmModalAction: { type: String, state: true },
     enabledTools: { type: Object, state: true },
     uploadedFiles: { type: Array, state: true },
     toolsUsed: { type: Array, state: true },
@@ -286,6 +288,8 @@ class DaAiAssistant extends LitElement {
     this.imsToken = null;
     this.showToolsPanel = false;
     this.showPromptsModal = false;
+    this.showConfirmModal = false;
+    this.confirmModalAction = null; // 'reset' or { type: 'close', tabId: id }
     this.uploadedFiles = [];
     this.toolsUsed = [];
     this.nextTabId = 2;
@@ -345,10 +349,13 @@ class DaAiAssistant extends LitElement {
   // Tab management
   switchTab(tabId) {
     if (tabId !== this.activeTabId) {
+      console.log('[DA-AI] Switching to tab:', tabId);
       this.activeTabId = tabId;
       this.reasoningText = '';
       this.streamingResponse = '';
-      this.requestUpdate();
+      this.toolsUsed = [];
+      // Force update by reassigning conversations (triggers reactivity)
+      this.conversations = [...this.conversations];
     }
   }
 
@@ -364,12 +371,26 @@ class DaAiAssistant extends LitElement {
     this.activeTabId = newTab.id;
     this.reasoningText = '';
     this.streamingResponse = '';
+    this.toolsUsed = [];
     this.persistConversations();
   }
 
   closeTab(tabId, e) {
     e.stopPropagation();
     if (this.conversations.length <= 1) return;
+    
+    // Check if tab has messages - show confirmation
+    const tab = this.conversations.find((c) => c.id === tabId);
+    if (tab && tab.messages.length > 0) {
+      this.confirmModalAction = { type: 'close', tabId };
+      this.showConfirmModal = true;
+      return;
+    }
+    
+    this.doCloseTab(tabId);
+  }
+
+  doCloseTab(tabId) {
     const tabIndex = this.conversations.findIndex((c) => c.id === tabId);
     this.conversations = this.conversations.filter((c) => c.id !== tabId);
     if (this.activeTabId === tabId) {
@@ -381,6 +402,17 @@ class DaAiAssistant extends LitElement {
 
   resetConversation() {
     const conv = this.activeConversation;
+    // Show confirmation if there are messages
+    if (conv && conv.messages.length > 0) {
+      this.confirmModalAction = 'reset';
+      this.showConfirmModal = true;
+      return;
+    }
+    this.doResetConversation();
+  }
+
+  doResetConversation() {
+    const conv = this.activeConversation;
     if (conv) {
       conv.messages = [];
       this.conversations = [...this.conversations];
@@ -389,6 +421,21 @@ class DaAiAssistant extends LitElement {
     this.streamingResponse = '';
     this.toolsUsed = [];
     this.persistConversations();
+  }
+
+  confirmModalYes() {
+    this.showConfirmModal = false;
+    if (this.confirmModalAction === 'reset') {
+      this.doResetConversation();
+    } else if (this.confirmModalAction?.type === 'close') {
+      this.doCloseTab(this.confirmModalAction.tabId);
+    }
+    this.confirmModalAction = null;
+  }
+
+  confirmModalNo() {
+    this.showConfirmModal = false;
+    this.confirmModalAction = null;
   }
 
   stopRequest() {
@@ -755,6 +802,28 @@ class DaAiAssistant extends LitElement {
     `;
   }
 
+  renderConfirmModal() {
+    if (!this.showConfirmModal) return nothing;
+    const isReset = this.confirmModalAction === 'reset';
+    const title = isReset ? 'Reset Chat?' : 'Close Chat?';
+    const message = isReset
+      ? 'This will clear all messages in this chat. This action cannot be undone.'
+      : 'This chat has messages that will be lost. Are you sure you want to close it?';
+    
+    return html`
+      <div class="modal-overlay" @click=${this.confirmModalNo}>
+        <div class="confirm-modal" @click=${(e) => e.stopPropagation()}>
+          <h3 class="confirm-title">${title}</h3>
+          <p class="confirm-message">${message}</p>
+          <div class="confirm-actions">
+            <button class="confirm-btn cancel" @click=${this.confirmModalNo}>Cancel</button>
+            <button class="confirm-btn confirm" @click=${this.confirmModalYes}>${isReset ? 'Reset' : 'Close'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   renderFileChips() {
     if (this.uploadedFiles.length === 0) return nothing;
     return html`
@@ -814,6 +883,7 @@ class DaAiAssistant extends LitElement {
         ${this.renderFooter()}
       </div>
       ${this.renderPromptsModal()}
+      ${this.renderConfirmModal()}
     `;
   }
 
