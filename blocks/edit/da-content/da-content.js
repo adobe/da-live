@@ -86,7 +86,7 @@ export default class DaContent extends LitElement {
   render() {
     const { owner, repo, previewUrl } = this.details;
     const { pathname } = new URL(previewUrl);
-    const livePreviewUrl = `https://main--${repo}--${owner}.stage-ue.da.live${pathname}`;
+    const livePreviewUrl = `https://main--${repo}--${owner}.ue.da.live${pathname}`;
 
     return html`
       <div class="editor-wrapper">
