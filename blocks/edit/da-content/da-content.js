@@ -38,13 +38,13 @@ export default class DaContent extends LitElement {
 
     const { owner, repo } = this.details;
     const { accessToken } = await initIms();
-    fetch(`https://stage-content.da.live/${owner}/${repo}/.gimme_cookie`, {
+    fetch(`https://content.da.live/${owner}/${repo}/.gimme_cookie`, {
       credentials: 'include',
       headers: {
         Authorization: `Bearer ${accessToken.token}`,
       },
     });
-    fetch(`https://main--${repo}--${owner}.stage-ue.da.live/gimme_cookie`, {
+    fetch(`https://main--${repo}--${owner}.ue.da.live/gimme_cookie`, {
       credentials: 'include',
       headers: {
         Authorization: `Bearer ${accessToken.token}`,
