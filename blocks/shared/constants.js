@@ -34,6 +34,12 @@ function getDaEnv(location, key, envs) {
   } else if (query) {
     localStorage.setItem(key, query);
   }
+  
+  // Auto-detect local environment
+  if (location.hostname === 'localhost' && !localStorage.getItem(key)) {
+    return envs.local;
+  }
+  
   const env = envs[localStorage.getItem(key) || 'prod'];
   // TODO: INFRA
   return location.origin === 'https://da.page' ? env.replace('.live', '.page') : env;
@@ -48,5 +54,8 @@ export const getDaAdmin = (() => {
   };
 })();
 
-export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
+export const getDaOrigin = () => getDaAdmin(window.location);
+
+// Legacy export - now dynamic
+export const DA_ORIGIN = getDaOrigin();
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();

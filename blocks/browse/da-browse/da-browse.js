@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
+import { getDaAdmin } from '../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
@@ -83,7 +83,7 @@ export default class DaBrowse extends LitElement {
     const DEF_EDIT = '/edit#';
 
     if (reFetch) {
-      const resp = await daFetch(`${DA_ORIGIN}/config/${this.details.owner}/`);
+      const resp = await daFetch(`${getDaAdmin()}/config/${this.details.owner}/`);
       if (!resp.ok) return DEF_EDIT;
       const json = await resp.json();
 
