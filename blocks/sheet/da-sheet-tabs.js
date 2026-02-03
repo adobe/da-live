@@ -167,7 +167,7 @@ class DaSheetTabs extends LitElement {
             </form>
           </li>`)}
       </ul>
-      <button disabled=${!this._canWrite} class="add-sheet ${this._canWrite ? '' : 'is-read-only'}" @click=${this.handleAdd}>Add sheet</button>
+      <button .disabled=${!this._canWrite} class="add-sheet ${this._canWrite ? '' : 'is-read-only'}" @click=${this.handleAdd}>Add sheet</button>
     `;
   }
 }
