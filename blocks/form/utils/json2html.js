@@ -1,6 +1,3 @@
-// TODO: Find a more functional way of handling this.
-let NESTED_BLOCKS = [];
-
 function getDocument() {
   const doc = document.implementation.createHTMLDocument();
 
@@ -35,7 +32,19 @@ function createBlock(name) {
   return block;
 }
 
-function createValueCol(key, value) {
+function createNestedBlock(key, obj, nestedBlocks) {
+  const guid = Math.random().toString(36).substring(2, 8);
+  const nestedBlock = createBlock(`${key} ${key}-${guid}`);
+  const rows = Object.entries(obj).map(([k, v]) => {
+    const nestedValCol = createValueCol(k, v, nestedBlocks);
+    return createRow(k, nestedValCol);
+  });
+  nestedBlock.append(...rows);
+  nestedBlocks.push(nestedBlock);
+  return guid;
+}
+
+function createValueCol(key, value, nestedBlocks) {
   const valCol = document.createElement('div');
 
   if (value) {
@@ -44,23 +53,34 @@ function createValueCol(key, value) {
 
     // Handle objects by creating a nested block
     if (typeof value === 'object') {
-      // Create unique-ish guid
-      const guid = Math.random().toString(36).substring(2, 8);
+      // Check if value is an array and create multiple nested blocks if needed
+      if (Array.isArray(value)) {
+        // If it's an array of objects, create a nested block for each object
+        const ul = document.createElement('ul');
+        value.forEach((item) => {
+          if (typeof item === 'object' && item !== null) {
+            const guid = createNestedBlock(key, item, nestedBlocks);
+            const li = document.createElement('li');
+            li.textContent = `self://#${key}-${guid}`;
+            ul.append(li);
+          } else {
+            // If the array entry is a primitive, treat accordingly
+            const li = document.createElement('li');
+            li.textContent = item;
+            ul.append(li);
+          }
+        });
+        if (ul.children.length) valCol.append(ul);
+        // Since we already appended paragraphs above, skip the rest of this function
+        return valCol;
+      }
 
-      const nestedBlock = createBlock(`${key} ${key}-${guid}`);
-      const rows = Object.entries(value).map(([k, v]) => {
-        const nestedValCol = createValueCol(k, v);
-        return createRow(k, nestedValCol);
-      });
-      nestedBlock.append(...rows);
-      NESTED_BLOCKS.push(nestedBlock);
-
+      // handle objects
+      const guid = createNestedBlock(key, value, nestedBlocks);
       valPara.textContent = `self://#${key}-${guid}`;
     } else {
       valPara.textContent = value;
     }
-
-    // TODO: Handle arrays
 
     valCol.append(valPara);
   }
@@ -68,14 +88,14 @@ function createValueCol(key, value) {
   return valCol;
 }
 
-function getFormBlock(metadata) {
+function getFormBlock(metadata, nestedBlocks) {
   const daForm = createBlock('da-form');
 
   const rows = Object.entries(metadata).map((entry) => {
     const [key, value] = entry;
     const xKey = key === 'schemaName' ? 'x-schema-name' : key;
 
-    const valCol = createValueCol(key, value);
+    const valCol = createValueCol(key, value, nestedBlocks);
 
     return createRow(xKey, valCol);
   });
@@ -84,12 +104,12 @@ function getFormBlock(metadata) {
   return daForm;
 }
 
-function getDataBlock(schemaName, data) {
+function getDataBlock(schemaName, data, nestedBlocks) {
   const dataBlock = createBlock(schemaName);
   const rows = Object.entries(data).map((entry) => {
     const [key, value] = entry;
 
-    const valCol = createValueCol(key, value);
+    const valCol = createValueCol(key, value, nestedBlocks);
 
     return createRow(key, valCol);
   });
@@ -98,19 +118,15 @@ function getDataBlock(schemaName, data) {
 }
 
 export default function json2html(json) {
-  // Reset all nested blocks
-  NESTED_BLOCKS = [];
-
+  const nestedBlocks = [];
   const doc = getDocument();
 
   const { metadata, data } = json;
   const { schemaName } = metadata;
-  const formBlock = getFormBlock(metadata);
-  const dataBlock = getDataBlock(schemaName, data);
+  const formBlock = getFormBlock(metadata, nestedBlocks);
+  const dataBlock = getDataBlock(schemaName, data, nestedBlocks);
 
-  doc.querySelector('main > div').append(formBlock, dataBlock, ...NESTED_BLOCKS);
-
-  console.log(doc.body.querySelector('main'));
+  doc.querySelector('main > div').append(formBlock, dataBlock, ...nestedBlocks);
 
   return doc.body.outerHTML;
 }

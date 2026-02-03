@@ -88,8 +88,6 @@ class FormEditor extends LitElement {
   }
 
   renderList(parent) {
-    if (parent.schema.properties.items?.type) return nothing;
-
     if (!Array.isArray(parent.data)) return this.renderPrimitive(parent);
 
     return html`
