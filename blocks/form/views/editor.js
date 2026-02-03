@@ -80,7 +80,7 @@ class FormEditor extends LitElement {
       if (prim === 'boolean') return this.renderCheckbox(item);
       return html`
         <p class="primitive-item-title">${item.schema.title}</p>
-        <sl-input type="text" name="${item.path}" value="${item.data}" @input=${this.handleInput}></sl-input>
+        <sl-input class="da-form-primitive" type="text" name="${item.path}" value="${item.data}" @input=${this.handleInput}></sl-input>
       `;
     }
 

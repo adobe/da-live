@@ -28,7 +28,11 @@
     margin: 0 0 8px;
   }
 
+  .primitive-item-title {
+    margin-bottom: 2px;
+  }
+
   .da-form-primitive {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 }
