@@ -386,7 +386,7 @@ class DaLibrary extends LitElement {
           data-src="${this._blockPreviewPath}"
           src="${this._blockPreviewPath}"
           @load=${this.handlePreviewLoad}
-          allow="clipboard-write *"></iframe>` : html`<div style="margin: 0 24px">${error || 'This block / template has not been previewed.'}</div>`}
+          allow="clipboard-write *"></iframe>` : html`<div style="margin: 0 24px">${error || 'This block/template has not been previewed.'}</div>`}
       </da-dialog>
     `;
   }
