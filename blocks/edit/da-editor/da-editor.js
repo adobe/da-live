@@ -1,7 +1,7 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
-import { initIms, daFetch } from '../../shared/utils.js';
+import { initIms, daFetch, initLocalDevImageLoader } from '../../shared/utils.js';
 import { getMetadata, parse, aem2prose, setDaMetadata } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
@@ -104,6 +104,30 @@ export default class DaEditor extends LitElement {
       this.shadowRoot.append(this.proseEl);
       const pm = this.shadowRoot.querySelector('.ProseMirror');
       if (pm) pm.contentEditable = 'false';
+
+      // LOCAL DEV ONLY: Initialize authenticated image loading
+      // This is a no-op in production (content.da.live serves images publicly)
+      // In local dev, images need auth to load from R2 via da-admin
+      if (this.path && pm) {
+        // Extract org/repo from path (e.g., "/anfibiacreativa/da-test-env/index" -> "anfibiacreativa/da-test-env")
+        const pathParts = this.path.split('/').filter(Boolean);
+        if (pathParts.length >= 2) {
+          const orgRepo = `${pathParts[0]}/${pathParts[1]}`;
+          // Clean up previous loader if exists
+          if (this._imageLoaderCleanup) {
+            this._imageLoaderCleanup();
+          }
+          this._imageLoaderCleanup = initLocalDevImageLoader(pm, orgRepo);
+        }
+      }
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    // Clean up image loader on disconnect
+    if (this._imageLoaderCleanup) {
+      this._imageLoaderCleanup();
     }
   }
 }

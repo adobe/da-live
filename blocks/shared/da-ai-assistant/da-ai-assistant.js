@@ -19,6 +19,22 @@
  * - Simpler architecture (no iframe, no proxy needed)
  * - Full control over UI and state management
  * - Direct API calls to da-chat-api
+ * 
+ * LOCAL DEV IMAGE LOADING:
+ * In production, images are served via content.da.live (public CDN).
+ * In local dev, images need authenticated loading because browser <img> requests
+ * don't include auth headers. This is handled by:
+ * 
+ * 1. initLocalDevImageLoader() in shared/utils.js - observes for images in the editor
+ * 2. Uses daFetch() to load images via authenticated API calls
+ * 3. Replaces image src with blob URLs for display
+ * 4. ONLY active when hostname is 'localhost' - production behavior unchanged
+ * 
+ * The local dev image loader is initialized in da-editor/da-editor.js when the
+ * ProseMirror editor is mounted. This approach:
+ * - Preserves security (no public sandbox bypass)
+ * - Works with user's authenticated session
+ * - No changes to da-admin auth logic needed
  */
 
 import { LitElement, html, nothing } from 'da-lit';

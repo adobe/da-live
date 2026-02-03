@@ -115,3 +115,145 @@ export const getSheetByIndex = (json, index = 0) => {
 };
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
+
+/**
+ * Authenticated Image Loader for Local Development
+ * 
+ * In production, images are served via content.da.live (public CDN).
+ * In local dev, images need authenticated loading because:
+ * - Browser img requests don't include IMS token
+ * - da-admin requires authentication for /source/ paths
+ * 
+ * This function observes an element for broken images and reloads them
+ * via authenticated fetch, replacing the src with blob URLs.
+ * 
+ * IMPORTANT: Only active in local dev (localhost). Production behavior unchanged.
+ */
+export function initLocalDevImageLoader(containerElement, orgRepo) {
+  // Only activate in local development
+  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (!isLocalDev) {
+    console.log('[DA] Production mode - using standard image loading');
+    return () => {}; // No-op cleanup
+  }
+
+  console.log('[DA] Local dev mode - enabling authenticated image loading');
+  
+  // Track which images we've already processed
+  const processedImages = new WeakSet();
+  
+  async function loadImageAuthenticated(img) {
+    if (processedImages.has(img)) return;
+    processedImages.add(img);
+    
+    const originalSrc = img.getAttribute('src') || img.getAttribute('srcset');
+    if (!originalSrc) return;
+    
+    // Skip if already a blob URL or data URL or external URL (not our origin)
+    if (originalSrc.startsWith('blob:') || originalSrc.startsWith('data:')) {
+      return;
+    }
+    
+    // Skip external URLs (not on localhost)
+    if (originalSrc.startsWith('http') && !originalSrc.includes('localhost')) {
+      return;
+    }
+    
+    // Construct the authenticated URL
+    let sourcePath;
+    if (originalSrc.startsWith('/source/')) {
+      // Already a /source/ path - use directly
+      sourcePath = `${DA_ORIGIN}${originalSrc}`;
+    } else if (originalSrc.startsWith('http://localhost')) {
+      // Full localhost URL
+      sourcePath = originalSrc;
+    } else {
+      // Relative path - prepend /source/orgRepo/
+      sourcePath = `${DA_ORIGIN}/source/${orgRepo}/${originalSrc}`;
+    }
+    
+    console.log(`[DA] Loading image via auth: ${sourcePath}`);
+    
+    try {
+      const response = await daFetch(sourcePath);
+      if (!response.ok) {
+        console.warn(`[DA] Image fetch failed: ${response.status} for ${sourcePath}`);
+        return;
+      }
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Replace the src
+      if (img.tagName === 'SOURCE') {
+        img.srcset = blobUrl;
+      } else {
+        img.src = blobUrl;
+      }
+      
+      console.log(`[DA] Image loaded: ${originalSrc} -> blob`);
+    } catch (err) {
+      console.error(`[DA] Image load error:`, err);
+    }
+  }
+  
+  // Check if an image needs authenticated loading
+  function needsAuthLoad(src) {
+    if (!src) return false;
+    if (src.startsWith('blob:') || src.startsWith('data:')) return false;
+    // External URLs (not localhost) don't need auth
+    if (src.startsWith('http') && !src.includes('localhost')) return false;
+    // /source/ paths, localhost URLs, and relative paths all need auth
+    return true;
+  }
+
+  // Handle broken images
+  function handleImageError(event) {
+    const img = event.target;
+    if (img.tagName === 'IMG' || img.tagName === 'SOURCE') {
+      loadImageAuthenticated(img);
+    }
+  }
+  
+  // Observe for new images
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const images = node.querySelectorAll?.('img, source') || [];
+          images.forEach((img) => {
+            const src = img.getAttribute('src') || img.getAttribute('srcset');
+            if (needsAuthLoad(src)) {
+              loadImageAuthenticated(img);
+            }
+          });
+          if (node.tagName === 'IMG' || node.tagName === 'SOURCE') {
+            const src = node.getAttribute('src') || node.getAttribute('srcset');
+            if (needsAuthLoad(src)) {
+              loadImageAuthenticated(node);
+            }
+          }
+        }
+      }
+    }
+  });
+  
+  // Start observing
+  containerElement.addEventListener('error', handleImageError, true);
+  observer.observe(containerElement, { childList: true, subtree: true });
+  
+  // Also process any existing images
+  const existingImages = containerElement.querySelectorAll('img, source');
+  existingImages.forEach((img) => {
+    const src = img.getAttribute('src') || img.getAttribute('srcset');
+    if (needsAuthLoad(src)) {
+      loadImageAuthenticated(img);
+    }
+  });
+  
+  // Return cleanup function
+  return () => {
+    containerElement.removeEventListener('error', handleImageError, true);
+    observer.disconnect();
+  };
+}
