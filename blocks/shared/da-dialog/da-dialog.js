@@ -16,7 +16,8 @@ export default class DaDialog extends LitElement {
     title: { type: String },
     message: { attribute: false },
     action: { state: true },
-    size: { type: String }, // 'small', 'medium', 'large'
+    emphasis: { type: String }, // quiet
+    size: { type: String }, // 'small', 'medium', 'large', 'auto'
     _showLazyModal: { state: true },
   };
 
@@ -69,9 +70,11 @@ export default class DaDialog extends LitElement {
 
   render() {
     const sizeClass = this.size ? `da-dialog-${this.size}` : '';
+    const emphasisClass = this.emphasis ? `da-dialog-${this.emphasis}` : '';
+
     return html`
       <sl-dialog @close=${this.close}>
-        <div class="da-dialog-inner ${sizeClass}" part="inner">
+        <div class="da-dialog-inner ${sizeClass} ${emphasisClass}" part="inner">
           <div class="da-dialog-header" part="header">
             <p class="sl-heading-m">${this.title}</p>
             <button

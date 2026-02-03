@@ -28,6 +28,7 @@ import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
 import imageFocalPoint from './plugins/imageFocalPoint.js';
 import linkConverter from './plugins/linkConverter.js';
+import linkTextSync from './plugins/linkTextSync.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
@@ -173,12 +174,12 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
     const awarenessStates = wsProvider.awareness.getStates();
     const userMap = new Map();
-    [...users].forEach((u) => {
+    [...users].forEach((u, i) => {
       const userInfo = awarenessStates.get(u)?.user;
       if (!userInfo?.id) {
         userMap.set(`anonymous-${u}`, 'Anonymous');
-      } else if (userInfo.id !== wsProvider.awareness.getLocalState().user?.id) {
-        userMap.set(userInfo.id, userInfo.name);
+      } else {
+        userMap.set(`${userInfo.id}-${i}`, userInfo.name);
       }
     });
     daTitle.collabUsers = [...userMap.values()].sort();
@@ -197,6 +198,19 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   });
   win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
   win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
+  const DISCONNECT_TIMEOUT = 10 * 60 * 1000;
+  let disconnectTimeout = null;
+  win.addEventListener('focus', () => {
+    // cancel any pending disconnect
+    if (disconnectTimeout) clearTimeout(disconnectTimeout);
+    wsProvider.connect();
+  });
+  win.addEventListener('blur', () => {
+    if (disconnectTimeout) clearTimeout(disconnectTimeout);
+    disconnectTimeout = setTimeout(() => {
+      wsProvider.disconnect();
+    }, DISCONNECT_TIMEOUT);
+  });
 }
 
 export function createAwarenessStatusWidget(wsProvider, win, path) {
@@ -285,10 +299,12 @@ export default function initProse({ path, permissions }) {
   const server = COLLAB_ORIGIN;
   const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
 
-  const opts = {};
+  const opts = { protocols: ['yjs'] };
 
   if (window.adobeIMS?.isSignedInUser()) {
-    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
+    const { token } = window.adobeIMS.getAccessToken();
+    // add token to the sec-websocket-protocol header
+    opts.protocols.push(token);
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');
@@ -332,6 +348,7 @@ export default function initProse({ path, permissions }) {
     linkMenu(),
     imageDrop(schema),
     linkConverter(schema),
+    linkTextSync(),
     sectionPasteHandler(schema),
     base64Uploader(schema),
     columnResizing(),
