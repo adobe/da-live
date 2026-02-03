@@ -22,7 +22,7 @@ export async function getUeUrl(ueConf, previewUrl) {
 }
 
 export async function getQeUrl(previewUrl) {
-  return `${previewUrl}?quick-edit=on`;
+  return `${previewUrl.replace('.aem.live', '.aem.page')}?quick-edit=on`;
 }
 
 export default async function getExternalUrl(org, repo, previewUrl) {
