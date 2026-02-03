@@ -1,5 +1,5 @@
 import { LitElement, html } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx } from '../../scripts/utils.js';
 
 // Styles
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);

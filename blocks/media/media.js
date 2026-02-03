@@ -1,5 +1,5 @@
 import getPathDetails from '../shared/pathDetails.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx } from '../../scripts/utils.js';
 
 import '../edit/da-title/da-title.js';
 import { daFetch } from '../shared/utils.js';

@@ -2,106 +2,82 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
-import chaiFriendly from 'eslint-plugin-chai-friendly';
-import importPlugin from 'eslint-plugin-import';
-import js from '@eslint/js';
-import { FlatCompat } from '@eslint/eslintrc';
-import airbnbBase from 'airbnb-eslint9';
-import stylistic from '@stylistic/eslint-plugin';
+import { recommended, source, test } from '@adobe/eslint-config-helix';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-  allConfig: js.configs.all,
-});
-
 export default defineConfig([
-  ...airbnbBase,
+  globalIgnores([
+    'eslint.config.js',
+    '**/deps',
+    'test/e2e/playwright.config.js',
+  ]),
   {
     languageOptions: {
+      ...recommended.languageOptions,
       globals: {
+        ...globals.serviceworker,
         ...globals.browser,
         ...globals.mocha,
+        ...globals.es6,
+        __rootdir: true,
       },
-
-      sourceType: 'module',
-      ecmaVersion: 'latest',
     },
-
+    settings: {
+      'import/core-modules': ['da-lit', 'da-y-wrapper'],
+    },
     rules: {
-      'import/no-unresolved': 'off',
+      'class-methods-use-this': 0,
+
+      // headers not required to keep file size down
+      'header/header': 0,
+
+      // TODO: Remove this after we fix the import cycle in edit.js and prose/index.js
       'import/no-cycle': 'off',
 
-      'no-param-reassign': [2, { props: false }],
-
-      'linebreak-style': ['error', 'unix'],
-
-      'import/extensions': ['error', { js: 'always' }],
-
-      'object-curly-newline': 'off', // Using @stylistic/object-curly-newline instead
-      '@stylistic/object-curly-newline': ['error', {
-        ObjectExpression: {
-          multiline: true,
-          minProperties: 6,
-        },
-
-        ObjectPattern: {
-          multiline: true,
-          minProperties: 6,
-        },
-
-        ImportDeclaration: {
-          multiline: true,
-          minProperties: 6,
-        },
-
-        ExportDeclaration: {
-          multiline: true,
-          minProperties: 6,
-        },
+      'import/no-unresolved': ['error', {
+        ignore: ['^https?://']
       }],
 
-      'no-await-in-loop': 0,
-      'class-methods-use-this': 0,
-      'no-return-assign': ['error', 'except-parens'],
-      'no-unused-expressions': 0,
-      'chai-friendly/no-unused-expressions': 2,
-      'no-unused-vars': ['error', {
-        varsIgnorePattern: '^_$|^e$',
-        argsIgnorePattern: '^_$|^e$',
-        caughtErrorsIgnorePattern: '^_$|^e$',
-      }],
+      'import/prefer-default-export': 0,
 
-      'no-underscore-dangle': ['error', { allowAfterThis: true }],
-
-      'no-restricted-syntax': ['error', {
-        selector: 'ForInStatement',
-        message: 'for..in loops iterate over the entire prototype chain, which is virtually never what you want. Use Object.{keys,values,entries}, and iterate over the resulting array.',
-      }, {
-        selector: 'LabeledStatement',
-        message: 'Labels are a form of GOTO; using them makes code confusing and hard to maintain and understand.',
-      }, {
-        selector: 'WithStatement',
-        message: '`with` is disallowed in strict mode because it makes code impossible to predict and optimize.',
-      }],
-
-      indent: 'off', // Using @stylistic/indent instead
-      '@stylistic/indent': ['error', 2, {
+      'indent': ['error', 2, {
         ignoredNodes: ['TemplateLiteral *'],
         SwitchCase: 1,
       }],
-    },
 
+      'max-statements-per-line': ['error', { max: 2 }],
+
+      'no-await-in-loop': 0,
+
+      'no-param-reassign': [2, { props: false }],
+
+      'no-unused-vars': ['error', {
+        argsIgnorePattern: '^_$|^e$',
+        caughtErrorsIgnorePattern: '^_$|^e$',
+        varsIgnorePattern: '^_$|^e$',
+      }],
+
+      'object-curly-newline': ['error', {
+        multiline: true,
+        minProperties: 6,
+        consistent: true,
+      }],
+    },
     plugins: {
-      'chai-friendly': chaiFriendly,
-      '@stylistic': stylistic,
-      import: importPlugin,
+      import: recommended.plugins.import,
     },
-  }, {
+    extends: [recommended],
+  },
+  source,
+  test,
+  {
+    // Allow console in test files
     files: ['test/**/*.js'],
-
-    rules: { 'no-console': 'off' },
-  }, globalIgnores(['eslint.config.js', '**/deps', 'test/e2e/playwright.config.js'])]);
+    rules: {
+      'no-console': 'off',
+      'no-unused-expressions': 0,
+    },
+  }
+]);

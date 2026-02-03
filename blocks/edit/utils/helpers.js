@@ -1,5 +1,5 @@
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { sanitizePathParts } from '../../../../scripts/utils.js';
+import { sanitizePathParts } from '../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
 
