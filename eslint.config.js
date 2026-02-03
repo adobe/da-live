@@ -25,7 +25,11 @@ export default defineConfig([
       },
     },
     settings: {
-      'import/core-modules': ['da-lit', 'da-y-wrapper'],
+      'import/core-modules': [
+        '@playwright/test',
+        'da-lit',
+        'da-y-wrapper',
+      ],
     },
     rules: {
       'class-methods-use-this': 0,
