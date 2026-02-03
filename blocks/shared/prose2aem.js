@@ -262,7 +262,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
     </body>
   `;
 
-  if (live) {
+  if (livePreview) {
     html = html.replaceAll('https://content.da.live/', '/');
     html = html.replaceAll('https://stage-content.da.live/', '/');
   }
