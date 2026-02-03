@@ -246,7 +246,7 @@ function updateSheets(el, ydoc, yUndoManager, wsProvider) {
 
   const dimensionsEqual = checkSheetDimensionsEqual(el.jexcel, sheets);
   const editingCell = el.querySelector('.editor');
-  if (dimensionsEqual && !editingCell) {
+  if (dimensionsEqual && !editingCell && canWrite) {
     // update in-place. This preserves the editor state better.
     updateSheetsInPlace(el, sheets);
   } else {
