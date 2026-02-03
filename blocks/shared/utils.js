@@ -1,4 +1,4 @@
-import { DA_ORIGIN } from './constants.js';
+import { DA_ORIGIN, CON_ORIGIN, getLivePreviewUrl } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
@@ -115,3 +115,23 @@ export const getSheetByIndex = (json, index = 0) => {
 };
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
+
+export async function contentLogin(owner, repo) {
+  const { accessToken } = await initIms();
+  return fetch(`${CON_ORIGIN}/${owner}/${repo}/.gimme_cookie`, {
+    credentials: 'include',
+    headers: {
+      Authorization: `Bearer ${accessToken.token}`,
+    },
+  });
+}
+
+export async function livePreviewLogin(owner, repo) {
+  const { accessToken } = await initIms();
+  return fetch(`${getLivePreviewUrl(owner, repo)}/gimme_cookie`, {
+    credentials: 'include',
+    headers: {
+      Authorization: `Bearer ${accessToken.token}`,
+    },
+  });
+}

@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
-import { initIms, daFetch } from '../../shared/utils.js';
+import { contentLogin, livePreviewLogin } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
@@ -37,19 +37,10 @@ export default class DaContent extends LitElement {
     if (this._editorLoaded) return;
 
     const { owner, repo } = this.details;
-    const { accessToken } = await initIms();
-    fetch(`https://content.da.live/${owner}/${repo}/.gimme_cookie`, {
-      credentials: 'include',
-      headers: {
-        Authorization: `Bearer ${accessToken.token}`,
-      },
-    });
-    fetch(`https://main--${repo}--${owner}.ue.da.live/gimme_cookie`, {
-      credentials: 'include',
-      headers: {
-        Authorization: `Bearer ${accessToken.token}`,
-      },
-    });
+    await Promise.all([
+      contentLogin(owner, repo),
+      livePreviewLogin(owner, repo),
+    ]);
   
     const preview = import('../da-preview/da-preview.js');
     const versions = import('../da-versions/da-versions.js');
