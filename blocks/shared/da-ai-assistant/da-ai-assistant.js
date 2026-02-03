@@ -273,6 +273,7 @@ class DaAiAssistant extends LitElement {
     enabledTools: { type: Object, state: true },
     uploadedFiles: { type: Array, state: true },
     toolsUsed: { type: Array, state: true },
+    isListening: { type: Boolean, state: true },
   };
 
   constructor() {
@@ -294,11 +295,159 @@ class DaAiAssistant extends LitElement {
     this.toolsUsed = [];
     this.nextTabId = 2;
     this.currentAbortController = null;
+    this.isListening = false;
+    this.speechRecognition = null;
 
     this.enabledTools = {};
     AVAILABLE_TOOLS.forEach((tool) => {
       this.enabledTools[tool.id] = tool.enabled;
     });
+
+    // Initialize Speech Recognition if available
+    this.initSpeechRecognition();
+  }
+
+  initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn('[DA-AI] Speech Recognition not supported in this browser');
+      return;
+    }
+
+    this.speechRecognition = new SpeechRecognition();
+    this.speechRecognition.continuous = true; // Keep listening until manually stopped
+    this.speechRecognition.interimResults = true;
+    // Don't set lang - let browser use system default (more compatible)
+    // this.speechRecognition.lang = 'en-US';
+    this.wantsToListen = false; // Track user intent
+    this._silenceTimeout = null;
+    this._lastSpeechTime = null;
+    const SILENCE_TIMEOUT_MS = 10000; // 10 seconds of silence
+
+    this.speechRecognition.onstart = () => {
+      console.log('[DA-AI] Speech recognition started');
+      this.isListening = true;
+      this._lastSpeechTime = Date.now();
+      this._startSilenceTimer(SILENCE_TIMEOUT_MS);
+    };
+
+    this.speechRecognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      // Reset silence timer on any speech
+      this._lastSpeechTime = Date.now();
+      this._startSilenceTimer(SILENCE_TIMEOUT_MS);
+
+      // Update input with final transcript, appending to existing
+      if (finalTranscript) {
+        // Add space if there's existing content
+        const prefix = this.inputValue && !this.inputValue.endsWith(' ') ? ' ' : '';
+        this.inputValue = this.inputValue + prefix + finalTranscript;
+      }
+      
+      // Store interim for display but don't permanently add it
+      this._interimTranscript = interimTranscript;
+      this.requestUpdate();
+    };
+
+    this.speechRecognition.onend = () => {
+      console.log('[DA-AI] Speech recognition ended, wantsToListen:', this.wantsToListen);
+      this._clearSilenceTimer();
+      // If user still wants to listen (didn't click stop), restart
+      if (this.wantsToListen) {
+        console.log('[DA-AI] Restarting speech recognition...');
+        try {
+          this.speechRecognition.start();
+        } catch (e) {
+          console.warn('[DA-AI] Could not restart:', e);
+          this.isListening = false;
+          this.wantsToListen = false;
+        }
+      } else {
+        this.isListening = false;
+      }
+      this._interimTranscript = '';
+    };
+
+    this.speechRecognition.onerror = (event) => {
+      console.error('[DA-AI] Speech recognition error:', event.error);
+      // Don't stop on no-speech error, just keep listening
+      if (event.error === 'no-speech') {
+        console.log('[DA-AI] No speech detected, continuing...');
+        return;
+      }
+      if (event.error === 'aborted') {
+        // User stopped, that's fine
+        return;
+      }
+      // For all other errors, stop completely to prevent loops
+      this._clearSilenceTimer();
+      this.isListening = false;
+      this.wantsToListen = false;
+      if (event.error === 'not-allowed') {
+        alert('Microphone access denied. Please allow microphone access to use voice input.');
+      } else if (event.error === 'language-not-supported') {
+        alert('Speech recognition language not supported. Please check your browser settings.');
+      } else if (event.error === 'network') {
+        alert('Network error during speech recognition. Please check your connection.');
+      }
+    };
+  }
+
+  _startSilenceTimer(timeout) {
+    this._clearSilenceTimer();
+    this._silenceTimeout = setTimeout(() => {
+      console.log('[DA-AI] Silence timeout - stopping mic');
+      this.stopListening();
+    }, timeout);
+  }
+
+  _clearSilenceTimer() {
+    if (this._silenceTimeout) {
+      clearTimeout(this._silenceTimeout);
+      this._silenceTimeout = null;
+    }
+  }
+
+  stopListening() {
+    if (this.speechRecognition && this.isListening) {
+      console.log('[DA-AI] Stopping listening');
+      this.wantsToListen = false;
+      this._clearSilenceTimer();
+      this.speechRecognition.stop();
+    }
+  }
+
+  toggleListening() {
+    if (!this.speechRecognition) {
+      alert('Speech recognition is not supported in your browser. Try Chrome or Edge.');
+      return;
+    }
+
+    if (this.isListening) {
+      this.stopListening();
+    } else {
+      console.log('[DA-AI] User starting listening');
+      this.wantsToListen = true;
+      this._interimTranscript = '';
+      try {
+        this.speechRecognition.start();
+      } catch (e) {
+        console.error('[DA-AI] Could not start:', e);
+        // Might already be running, try to stop and restart
+        this.speechRecognition.stop();
+      }
+    }
   }
 
   get activeConversation() {
@@ -344,6 +493,10 @@ class DaAiAssistant extends LitElement {
     this.isOpen = !this.isOpen;
     this.showToolsPanel = false;
     this.showPromptsModal = false;
+    // Stop listening when closing the panel
+    if (!this.isOpen) {
+      this.stopListening();
+    }
   }
 
   // Tab management
@@ -415,11 +568,14 @@ class DaAiAssistant extends LitElement {
     const conv = this.activeConversation;
     if (conv) {
       conv.messages = [];
+      conv.name = `Chat ${conv.id}`; // Reset the tab name too
       this.conversations = [...this.conversations];
     }
     this.reasoningText = '';
     this.streamingResponse = '';
     this.toolsUsed = [];
+    this.uploadedFiles = [];
+    this._interimTranscript = '';
     this.persistConversations();
   }
 
@@ -870,7 +1026,15 @@ class DaAiAssistant extends LitElement {
         ${this.renderToolsPanel()}
         ${this.renderFileChips()}
         <div class="input-container">
-          <input class="input-field" type="text" placeholder="Ask me anything..." .value=${this.inputValue} @input=${this.handleInputChange} @keydown=${this.handleKeyDown} ?disabled=${this.isThinking} />
+          <button class="mic-btn ${this.isListening ? 'listening' : ''}" @click=${this.toggleListening} title="${this.isListening ? 'Stop listening' : 'Voice input'}" ?disabled=${this.isThinking}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <input class="input-field" type="text" placeholder="${this.isListening ? (this._interimTranscript || 'Listening...') : 'Ask me anything...'}" .value=${this.inputValue} @input=${this.handleInputChange} @keydown=${this.handleKeyDown} ?disabled=${this.isThinking} />
           ${this.isThinking
             ? html`<button class="stop-btn" @click=${this.stopRequest} title="Stop request">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
