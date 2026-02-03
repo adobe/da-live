@@ -76,13 +76,22 @@ function resolvePropSchema(key, localSchema, fullSchema) {
  * @param {*} propSchema the schema that applies to the current property
  * @param {*} fullSchema the full schema that applies to the form
  * @param {*} path the full path to this property (e.g., "grand.parent[0].child")
+ * @param {*} parentRequired array of required field names from parent schema
  */
-export function annotateProp(key, propData, propSchema, fullSchema, path = '') {
+export function annotateProp(key, propData, propSchema, fullSchema, path = '', parentRequired = []) {
   // Build the current path
   const currentPath = path ? `${path}.${key}` : key;
 
+  // Determine if this field is required (array indices are not checked against required)
+  const isRequired = !key.startsWith('[') && parentRequired.includes(key);
+
   // Will have schema.props
   const resolvedSchema = resolvePropSchema(key, propSchema, fullSchema);
+
+  // Get required fields for children from resolved schema
+  const childRequired = resolvedSchema.properties?.required
+    || resolvedSchema.required
+    || [];
 
   if (Array.isArray(propData)) {
     const resolvedItemsSchema = resolvePropSchema(key, propSchema.items, fullSchema);
@@ -102,11 +111,11 @@ export function annotateProp(key, propData, propSchema, fullSchema, path = '') {
         //   data.push(annotateProp(key, itemPropData, oneOf, fullSchema, arrayPath));
         // });
       } else {
-        data.push(annotateProp(`[${index}]`, itemPropData, propSchema.items, fullSchema, currentPath));
+        data.push(annotateProp(`[${index}]`, itemPropData, propSchema.items, fullSchema, currentPath, childRequired));
       }
     });
 
-    return { key, data, schema: resolvedSchema, path: currentPath };
+    return { key, data, schema: resolvedSchema, path: currentPath, required: isRequired };
   }
 
   if (typeof propData === 'object') {
@@ -114,20 +123,20 @@ export function annotateProp(key, propData, propSchema, fullSchema, path = '') {
     // return as array to keep consistent with upper array
     const data = Object.entries(propData).reduce((acc, [k, pD]) => {
       if (resolvedSchema.properties[k]) {
-        acc.push(annotateProp(k, pD, resolvedSchema.properties[k], fullSchema, currentPath));
+        acc.push(annotateProp(k, pD, resolvedSchema.properties[k], fullSchema, currentPath, childRequired));
       }
 
       // Look for sub-property schemas
       if (resolvedSchema.properties.properties?.[k]) {
         const subPropSchema = resolvedSchema.properties.properties[k];
-        acc.push(annotateProp(k, pD, subPropSchema, fullSchema, currentPath));
+        acc.push(annotateProp(k, pD, subPropSchema, fullSchema, currentPath, childRequired));
       }
 
       return acc;
     }, []);
 
-    return { key, data, schema: resolvedSchema, path: currentPath };
+    return { key, data, schema: resolvedSchema, path: currentPath, required: isRequired };
   }
 
-  return { key, data: propData, schema: resolvedSchema, path: currentPath };
+  return { key, data: propData, schema: resolvedSchema, path: currentPath, required: isRequired };
 }

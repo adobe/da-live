@@ -54,8 +54,8 @@ class FormEditor extends LitElement {
   renderCheckbox(item) {
     return html`
       <div>
-        <input type="checkbox" name="${item.key}" value="${item.data}" ?checked=${item.data}>
-        <label class="primitive-item-title">${item.schema.title}</label>
+        <input type="checkbox" name="${item.key}" value="${item.data}" ?checked=${item.data} ?required=${item.required}>
+        <label class="primitive-item-title">${item.schema.title}${item.required ? html`<span class="required">*</span>` : nothing}</label>
       </div>
     `;
   }
@@ -63,8 +63,8 @@ class FormEditor extends LitElement {
   renderSelect(item) {
     return html`
       <div>
-        <p class="primitive-item-title">${item.schema.title}</p>
-        <sl-select name="${item.path}" value="${item.data}" @change=${this.handleChange}>
+        <p class="primitive-item-title">${item.schema.title}${item.required ? html`<span class="required">*</span>` : nothing}</p>
+        <sl-select name="${item.path}" value="${item.data}" ?required=${item.required} @change=${this.handleChange}>
           ${item.schema.properties.enum.map((val) => html`<option>${val}</option>`)}
         </sl-select>
       </div>
@@ -79,8 +79,8 @@ class FormEditor extends LitElement {
     if (prim) {
       if (prim === 'boolean') return this.renderCheckbox(item);
       return html`
-        <p class="primitive-item-title">${item.schema.title}</p>
-        <sl-input class="da-form-primitive" type="text" name="${item.path}" value="${item.data}" @input=${this.handleInput}></sl-input>
+        <p class="primitive-item-title">${item.schema.title}${item.required ? html`<span class="required">*</span>` : nothing}</p>
+        <sl-input class="da-form-primitive" type="text" name="${item.path}" value="${item.data}" ?required=${item.required} @input=${this.handleInput}></sl-input>
       `;
     }
 

@@ -29,7 +29,27 @@
   }
 
   .primitive-item-title {
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+  }
+
+  .item-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    margin-top: 16px;
+  }
+
+  .item-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: var(--s2-gray-300, #d1d1d1);
+  }
+
+  .required {
+    color: var(--s2-red-600, #c9252d);
+    margin-left: 2px;
   }
 
   .da-form-primitive {
