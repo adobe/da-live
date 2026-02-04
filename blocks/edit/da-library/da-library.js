@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { DOMParser as proseDOMParser, TextSelection } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, TextSelection, DOMSerializer } from 'da-y-wrapper';
 import {
   LitElement,
   html,
@@ -331,6 +331,19 @@ class DaLibrary extends LitElement {
       if (e.data.action === 'closeLibrary') {
         closeLibrary();
       }
+      if (e.data.action === 'getSelection') {
+        const { selection } = window.view.state;
+        if (selection.empty) {
+          channel.port1.postMessage({ action: 'error', details: 'No selection found' });
+          return;
+        }
+        const slice = selection.content();
+        const serializer = DOMSerializer.fromSchema(window.view.state.schema);
+        const fragment = serializer.serializeFragment(slice.content);
+        const div = document.createElement('div');
+        div.appendChild(fragment);
+        target.contentWindow.postMessage({ action: 'sendSelection', details: div.innerHTML }, '*');
+      }
     };
 
     if (!accessToken) {
@@ -373,7 +386,7 @@ class DaLibrary extends LitElement {
           data-src="${this._blockPreviewPath}"
           src="${this._blockPreviewPath}"
           @load=${this.handlePreviewLoad}
-          allow="clipboard-write *"></iframe>` : html`<div style="margin: 0 24px">${error || 'This block / template has not been previewed.'}</div>`}
+          allow="clipboard-write *"></iframe>` : html`<div style="margin: 0 24px">${error || 'This block/template has not been previewed.'}</div>`}
       </da-dialog>
     `;
   }
@@ -531,6 +544,13 @@ class DaLibrary extends LitElement {
       try {
         const itemUrl = new URL(getUrl(item));
         path = itemUrl.pathname;
+
+        // DA Admin Flavored URLs
+        if (itemUrl.origin.endsWith('admin.da.live') && path.startsWith('/source')) {
+          path = path.replace('/source', '');
+        }
+
+        // AEM Flavored URLs
         if (itemUrl.origin.includes('--')) {
           const [org, site] = getEdsUrlVars(getUrl(item));
           path = `/${org}/${site}${itemUrl.pathname}`;
