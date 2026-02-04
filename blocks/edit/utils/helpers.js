@@ -1,7 +1,8 @@
-import { AEM_ORIGIN, DA_ORIGIN, DA_HLX } from '../../shared/constants.js';
+import { AEM_ORIGIN } from '../../shared/constants.js';
 import { sanitizePathParts } from '../../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 
 const AEM_PERMISSION_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
 
@@ -196,11 +197,7 @@ async function saveHtml(fullPath) {
   const html = prose2aem(editor, false);
   const blob = new Blob([html], { type: 'text/html' });
 
-  const formData = new FormData();
-  formData.append('data', blob);
-
-  const opts = { method: 'PUT', body: formData };
-  return daFetch(fullPath, opts);
+  return daApi.saveSource(fullPath, { blob });
 }
 
 function formatSheetData(jData) {
@@ -286,47 +283,27 @@ export function convertSheets(sheets) {
 async function saveJson(fullPath, sheets, jsonToSave, dataType = 'blob') {
   const json = jsonToSave || convertSheets(sheets);
 
-  let putBody;
+  const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+  const props = dataType === 'config' ? { config: json } : undefined;
 
-  if (DA_HLX) {
-    putBody = JSON.stringify(json);
-  } else {
-    const formData = new FormData();
-
-    if (dataType === 'blob') {
-      const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
-      formData.append('data', blob);
-    }
-
-    if (dataType === 'config') {
-      formData.append('config', JSON.stringify(json));
-    }
-    putBody = formData;
-  }
-
-  const opts = { method: 'PUT', body: putBody };
-  return daFetch(fullPath, opts);
+  return daApi.saveSource(fullPath, { blob, props });
 }
 
 export function saveToDa(pathname, sheet) {
   const suffix = sheet ? '.json' : '.html';
 
-  const [, org, repo, ...rest] = pathname.split('/');
-  const fullPath = DA_HLX
-    ? `${DA_ORIGIN}/${org}/sites/${repo}/source/${rest.join('/')}${suffix}`
-    : `${DA_ORIGIN}/source${pathname}${suffix}`;
+  const fullPath = `${pathname}${suffix}`;
 
   if (!sheet) return saveHtml(fullPath);
   return saveJson(fullPath, sheet);
 }
 
 export function saveDaConfig(pathname, sheet) {
-  const fullPath = `${DA_ORIGIN}/config${pathname}`;
-  return saveJson(fullPath, sheet, null, 'config');
+  return daApi.saveSource(`${pathname}`, { blob: new Blob([JSON.stringify(sheet)], { type: 'application/json' }), props: { config: sheet } });
 }
 
 export async function saveDaVersion(pathname, ext = 'html') {
-  const fullPath = `${DA_ORIGIN}/versionsource${pathname}.${ext}`;
+  const fullPath = `${pathname}.${ext}`;
 
   const opts = {
     method: 'POST',
@@ -334,7 +311,8 @@ export async function saveDaVersion(pathname, ext = 'html') {
   };
 
   try {
-    await daFetch(fullPath, opts);
+    // eslint-disable-next-line no-undef
+    await daApi.getVersionSource(fullPath, opts);
   } catch {
     // eslint-disable-next-line no-console
     console.log('Error creating auto version on publish.');
@@ -366,8 +344,8 @@ async function getRoleRequestDetails(action) {
 
 export async function requestRole(org, site, action) {
   let json = JSON.parse(AEM_PERMISSION_TPL);
-  const fullpath = `${DA_ORIGIN}/source/${org}/${site}/.da/aem-permission-requests.json`;
-  const resp = await daFetch(fullpath);
+  const fullpath = `/${org}/${site}/.da/aem-permission-requests.json`;
+  const resp = await daApi.getSource(fullpath);
   if (resp.ok) {
     json = await resp.json();
   }

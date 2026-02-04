@@ -1,9 +1,8 @@
-import { DA_ORIGIN } from '../../../shared/constants.js';
-import { daFetch } from '../../../shared/utils.js';
+import { daApi } from '../../../shared/da-api.js';
 
 export default async function getUeUrl(org, previewUrl) {
   const UE_PREFIX = 'https://experience.adobe.com/#/{{DX_ORG}}/aem/editor/canvas/';
-  const resp = await daFetch(`${DA_ORIGIN}/config/${org}/`);
+  const resp = await daApi.getConfig(`/${org}/`);
   if (!resp.ok) return null;
   const json = await resp.json();
   const confSheet = json.data.data || json.data;

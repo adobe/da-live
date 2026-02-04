@@ -22,9 +22,14 @@ export default class DaHlx6Api {
   }
 
   getConfigUrl(path) {
-    const { org, repo, rest } = getPathParts(path);
-    if (!repo) return `${this.origin}/config${path}`;
-    return `${this.origin}/${org}/sites/${repo}/config/${rest}`;
+    const { org, repo } = getPathParts(path);
+
+    // TODO: migrate to api.aem.live when ready
+    // cannot work as is because auth... not the same token is required
+    // https://admin.hlx.page/config/kptdobe/sites/daplayground.json
+    return `https://admin.hlx.page/config/${org}/sites/${repo}.json`;
+
+    // return `${this.origin}/${org}/sites/${repo}/config/`;
   }
 
   getListUrl(path) {
