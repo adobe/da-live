@@ -1,6 +1,7 @@
 import {
   DOMParser,
   Plugin,
+  PluginKey,
   addColumnAfter,
   addColumnBefore,
   deleteColumn,
@@ -428,7 +429,10 @@ function getMenu(view) {
   return { menu, update };
 }
 
+const menuKey = new PluginKey('menu');
+
 export default new Plugin({
+  key: menuKey,
   props: {
     handleDOMEvents: {
       focus: (view) => {
