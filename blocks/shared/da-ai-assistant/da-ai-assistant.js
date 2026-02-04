@@ -38,7 +38,7 @@
  */
 
 import { LitElement, html, nothing } from 'da-lit';
-import { initIms } from '../../shared/utils.js';
+import { initIms, daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const CHAT_API_URL = 'http://localhost:3007';
@@ -276,11 +276,13 @@ class DaAiAssistant extends LitElement {
     isListening: { type: Boolean, state: true },
     // Asset browser state
     showMediaPanel: { type: Boolean, state: true },
-    showDocsPanel: { type: Boolean, state: true },
+    showBriefsPanel: { type: Boolean, state: true },
     mediaFiles: { type: Array, state: true },
-    docFiles: { type: Array, state: true },
+    briefs: { type: Array, state: true },
     isLoadingAssets: { type: Boolean, state: true },
     selectedAsset: { type: Object, state: true },
+    mediaLoaded: { type: Boolean, state: true },
+    isDraggingBrief: { type: Boolean, state: true },
   };
 
   constructor() {
@@ -306,11 +308,13 @@ class DaAiAssistant extends LitElement {
     this.speechRecognition = null;
     // Asset browser state
     this.showMediaPanel = false;
-    this.showDocsPanel = false;
+    this.showBriefsPanel = false;
     this.mediaFiles = [];
-    this.docFiles = [];
+    this.briefs = []; // Uploaded docx/pdf briefs
     this.isLoadingAssets = false;
     this.selectedAsset = null;
+    this.mediaLoaded = false;
+    this.isDraggingBrief = false;
 
     this.enabledTools = {};
     AVAILABLE_TOOLS.forEach((tool) => {
@@ -517,6 +521,9 @@ class DaAiAssistant extends LitElement {
     // Stop listening when closing the panel
     if (!this.isOpen) {
       this.stopListening();
+    } else {
+      // Preload media assets when opening the panel
+      if (!this.mediaLoaded) this.loadMediaFiles();
     }
   }
 
@@ -644,85 +651,230 @@ class DaAiAssistant extends LitElement {
     }
   }
 
-  async toggleDocsPanel() {
-    this.showDocsPanel = !this.showDocsPanel;
-    if (this.showDocsPanel && this.docFiles.length === 0) {
-      await this.loadDocFiles();
+  toggleBriefsPanel() {
+    this.showBriefsPanel = !this.showBriefsPanel;
+  }
+
+  handleBriefDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDraggingBrief = true;
+  }
+
+  handleBriefDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDraggingBrief = false;
+  }
+
+  async handleBriefDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDraggingBrief = false;
+    
+    const files = Array.from(e.dataTransfer?.files || []);
+    await this.processBriefFiles(files);
+  }
+
+  async handleBriefUpload(e) {
+    const files = Array.from(e.target?.files || []);
+    await this.processBriefFiles(files);
+    if (e.target) e.target.value = '';
+  }
+
+  async processBriefFiles(files) {
+    for (const file of files) {
+      const name = file.name;
+      const type = file.type;
+      
+      // Accept docx, pdf, txt, md
+      if (!/(\.docx?|\.pdf|\.txt|\.md)$/i.test(name) && 
+          !type.includes('word') && 
+          !type.includes('pdf') && 
+          !type.includes('text')) {
+        console.warn('[DA-AI] Unsupported brief type:', name, type);
+        continue;
+      }
+      
+      console.log('[DA-AI] Processing brief:', name, type);
+      
+      try {
+        let content = '';
+        
+        // Extract text content based on file type
+        if (type.includes('text') || /\.(txt|md)$/i.test(name)) {
+          // Plain text - read directly on client
+          content = await file.text();
+          this.briefs = [...this.briefs, { name, type, content, size: file.size }];
+          console.log('[DA-AI] Brief added (text):', name, 'content length:', content.length);
+        } else {
+          // Binary files (docx, pdf) - send to server for parsing
+          const base64 = await this.fileToBase64(file);
+          const parsed = await this.parseBriefOnServer(name, type, base64);
+          
+          this.briefs = [...this.briefs, {
+            name,
+            type,
+            content: parsed.content || `[Failed to parse ${name}]`,
+            size: file.size,
+          }];
+          console.log('[DA-AI] Brief added (parsed):', name, 'content length:', parsed.content?.length);
+        }
+      } catch (err) {
+        console.error('[DA-AI] Failed to process brief:', err);
+        this.briefs = [...this.briefs, {
+          name,
+          type,
+          content: `[Failed to extract content from ${name}: ${err.message}]`,
+          error: err.message,
+        }];
+      }
     }
   }
+
+  async fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(',')[1]; // Remove data URL prefix
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async parseBriefOnServer(name, type, base64) {
+    try {
+      const response = await fetch(`${CHAT_API_URL}/api/parse-brief`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, type, base64 }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Parse failed: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (err) {
+      console.error('[DA-AI] Server parse failed:', err);
+      return { content: `[Server parsing failed for ${name}]` };
+    }
+  }
+
+  removeBrief(index) {
+    this.briefs = this.briefs.filter((_, i) => i !== index);
+  }
+
 
   async loadMediaFiles() {
     const context = parsePageContext();
     if (!context.org || !context.project) return;
 
+    // Ensure IMS token is loaded
+    if (!this.imsToken) {
+      await this.loadImsToken();
+    }
+    
+    if (!this.imsToken) {
+      console.warn('[DA-AI] No IMS token available for media listing');
+      return;
+    }
+
     this.isLoadingAssets = true;
+    console.log('[DA-AI] Loading media files for:', context.org, context.project);
+    
     try {
-      const response = await fetch(`${CHAT_API_URL}/api/list-assets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          org: context.org,
-          repo: context.project,
-          path: 'media',
-          imsToken: this.imsToken,
-        }),
-      });
+      // List both media/ folder AND hidden folder .{page}/ for uploaded images
+      const pageName = context.page || 'index';
+      const paths = ['media', `.${pageName}`];
       
-      if (response.ok) {
-        const data = await response.json();
-        // Filter for image files
-        this.mediaFiles = (data.files || []).filter((f) => /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || f.path));
-        console.log('[DA-AI] Loaded media files:', this.mediaFiles.length);
+      const allFiles = [];
+      
+      for (const path of paths) {
+        try {
+          const response = await fetch(`${CHAT_API_URL}/api/list-assets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              org: context.org,
+              repo: context.project,
+              path,
+              imsToken: this.imsToken,
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`[DA-AI] List assets (${path}) response:`, data.files?.length || 0);
+            // Filter for image files
+            const images = (data.files || []).filter((f) => {
+              const checkPath = f.path || f.name || '';
+              return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(checkPath);
+            });
+            allFiles.push(...images);
+          }
+        } catch (err) {
+          console.warn(`[DA-AI] Failed to list ${path}:`, err);
+        }
       }
+      
+      // Remove duplicates based on path
+      const uniqueFiles = allFiles.filter((file, index, self) => 
+        index === self.findIndex((f) => f.path === file.path)
+      );
+      
+      this.mediaFiles = uniqueFiles;
+      console.log('[DA-AI] Loaded media files (total):', this.mediaFiles.length);
     } catch (err) {
       console.error('[DA-AI] Failed to load media files:', err);
     } finally {
       this.isLoadingAssets = false;
+      this.mediaLoaded = true;
     }
   }
 
-  async loadDocFiles() {
-    const context = parsePageContext();
-    if (!context.org || !context.project) return;
-
-    this.isLoadingAssets = true;
-    try {
-      const response = await fetch(`${CHAT_API_URL}/api/list-assets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          org: context.org,
-          repo: context.project,
-          path: '',
-          imsToken: this.imsToken,
-        }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Filter for document files (html, md)
-        this.docFiles = (data.files || []).filter((f) => {
-          const name = f.name || f.path || '';
-          return /\.(html|md)$/i.test(name) && !name.startsWith('.');
-        });
-        console.log('[DA-AI] Loaded doc files:', this.docFiles.length);
-      }
-    } catch (err) {
-      console.error('[DA-AI] Failed to load doc files:', err);
-    } finally {
-      this.isLoadingAssets = false;
-    }
-  }
 
   getThumbnailUrl(file) {
-    const context = parsePageContext();
+    // Return cached blob URL if available
+    if (file._blobUrl) return file._blobUrl;
+    
     const filePath = file.path || file.name;
     const isLocal = window.location.hostname === 'localhost';
     
+    // Path from API already includes /org/repo/path, so just prepend the base
+    // Remove leading slash if present to avoid double slashes
+    const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+    
     if (isLocal) {
-      return `http://localhost:8787/source/${context.org}/${context.project}/${filePath}`;
+      return `http://localhost:8787/source/${cleanPath}`;
     }
-    return `https://content.da.live/${context.org}/${context.project}/${filePath}`;
+    return `https://content.da.live/${cleanPath}`;
+  }
+
+  async loadThumbnailAuth(file, imgElement) {
+    const isLocal = window.location.hostname === 'localhost';
+    if (!isLocal) return; // Production uses public CDN, no auth needed
+    
+    const filePath = file.path || file.name;
+    const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+    const url = `http://localhost:8787/source/${cleanPath}`;
+    
+    try {
+      const response = await daFetch(url);
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        file._blobUrl = blobUrl; // Cache it
+        imgElement.src = blobUrl;
+      } else {
+        imgElement.classList.add('error');
+      }
+    } catch (err) {
+      console.error('[DA-AI] Failed to load thumbnail:', err);
+      imgElement.classList.add('error');
+    }
   }
 
   selectAsset(file) {
@@ -809,6 +961,10 @@ class DaAiAssistant extends LitElement {
             contentUrl: uploadResult.contentUrl,
           }];
           console.log('[DA-AI] Image uploaded:', uploadResult.path, 'URL:', uploadResult.url);
+          
+          // Refresh media list to show the new image
+          this.mediaLoaded = false;
+          this.loadMediaFiles();
         } catch (err) {
           console.error('[DA-AI] Image upload failed:', err);
           // Fallback: show error to user
@@ -902,6 +1058,15 @@ class DaAiAssistant extends LitElement {
             }));
             console.log('[DA-AI] Sending attachments:', atts.length, atts.map(a => ({ name: a.name, uploaded: a.uploaded, path: a.path, url: a.url })));
             return atts;
+          })(),
+          briefs: (() => {
+            const briefData = this.briefs.map((b) => ({
+              name: b.name,
+              type: b.type,
+              content: b.content,
+            }));
+            console.log('[DA-AI] Sending briefs:', briefData.length, briefData.map(b => b.name));
+            return briefData;
           })(),
           pageContext: { org: context.org, project: context.project, page: context.page, sourcePath: `${context.org}/${context.project}/${context.page}` },
           userInfo: { name: this.userName || 'Unknown User', id: this.userId },
@@ -1073,7 +1238,10 @@ class DaAiAssistant extends LitElement {
           <div class="asset-panel-header" @click=${this.toggleMediaPanel}>
             <span class="panel-toggle-icon">${this.showMediaPanel ? '▼' : '▶'}</span>
             <span>Media</span>
-            <span class="asset-count">(${this.mediaFiles.length})</span>
+            ${this.mediaLoaded 
+              ? html`<span class="asset-count">(${this.mediaFiles.length})</span>`
+              : html`<span class="asset-count asset-loading-spinner">◐</span>`
+            }
           </div>
           ${this.showMediaPanel ? html`
             <div class="asset-slider">
@@ -1082,13 +1250,17 @@ class DaAiAssistant extends LitElement {
               ` : this.mediaFiles.length === 0 ? html`
                 <div class="asset-empty">No media found</div>
               ` : this.mediaFiles.map((file) => html`
-                <div class="asset-thumb-wrapper" @click=${() => this.selectAsset(file)} title="${file.name || file.path}">
+                <div 
+                  class="asset-thumb-wrapper ${this.selectedAsset === file ? 'selected' : ''}" 
+                  @click=${() => this.selectAsset(file)} 
+                  title="${file.path || file.name}"
+                >
                   <img 
-                    class="asset-thumb ${this.selectedAsset === file ? 'selected' : ''}"
+                    class="asset-thumb"
                     src="${this.getThumbnailUrl(file)}"
                     alt="${file.name || file.path}"
                     loading="lazy"
-                    @error=${(e) => { e.target.style.display = 'none'; }}
+                    @error=${(e) => this.loadThumbnailAuth(file, e.target)}
                   />
                 </div>
               `)}
@@ -1096,35 +1268,55 @@ class DaAiAssistant extends LitElement {
           ` : nothing}
         </div>
         
-        <!-- Documents Panel -->
+        <!-- Briefs Panel -->
         <div class="asset-panel">
-          <div class="asset-panel-header" @click=${this.toggleDocsPanel}>
-            <span class="panel-toggle-icon">${this.showDocsPanel ? '▼' : '▶'}</span>
-            <span>Documents</span>
-            <span class="asset-count">(${this.docFiles.length})</span>
+          <div class="asset-panel-header" @click=${this.toggleBriefsPanel}>
+            <span class="panel-toggle-icon">${this.showBriefsPanel ? '▼' : '▶'}</span>
+            <span>Briefs</span>
+            <span class="asset-count">(${this.briefs.length})</span>
           </div>
-          ${this.showDocsPanel ? html`
-            <div class="asset-slider">
-              ${this.isLoadingAssets && this.docFiles.length === 0 ? html`
-                <div class="asset-loading">Loading...</div>
-              ` : this.docFiles.length === 0 ? html`
-                <div class="asset-empty">No documents found</div>
-              ` : this.docFiles.map((file) => html`
-                <div 
-                  class="doc-thumb ${this.selectedAsset === file ? 'selected' : ''}"
-                  @click=${() => this.selectAsset(file)}
-                  title="${file.name || file.path}"
-                >
-                  <svg class="doc-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          ${this.showBriefsPanel ? html`
+            <div 
+              class="briefs-dropzone ${this.isDraggingBrief ? 'dragging' : ''}"
+              @dragover=${this.handleBriefDragOver}
+              @dragleave=${this.handleBriefDragLeave}
+              @drop=${this.handleBriefDrop}
+            >
+              ${this.briefs.length === 0 ? html`
+                <div class="dropzone-content">
+                  <svg class="dropzone-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10 9 9 9 8 9"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
                   </svg>
-                  <span class="doc-name">${(file.name || file.path || '').replace(/\.(html|md)$/i, '')}</span>
+                  <span class="dropzone-text">Drop docx, pdf, or txt files here</span>
+                  <label class="dropzone-browse">
+                    or browse
+                    <input type="file" multiple accept=".docx,.doc,.pdf,.txt,.md" @change=${this.handleBriefUpload} style="display:none" />
+                  </label>
                 </div>
-              `)}
+              ` : html`
+                <div class="briefs-list">
+                  ${this.briefs.map((brief, idx) => html`
+                    <div class="brief-chip">
+                      <svg class="brief-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                      </svg>
+                      <span class="brief-name">${brief.name}</span>
+                      <button class="brief-remove" @click=${() => this.removeBrief(idx)}>×</button>
+                    </div>
+                  `)}
+                  <label class="brief-add">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    <input type="file" multiple accept=".docx,.doc,.pdf,.txt,.md" @change=${this.handleBriefUpload} style="display:none" />
+                  </label>
+                </div>
+              `}
             </div>
           ` : nothing}
         </div>
