@@ -1,9 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
 import { daApi } from '../../shared/da-api.js';
 import { formatDate, formatVersions } from './helpers.js';
-import { daFetch } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
 

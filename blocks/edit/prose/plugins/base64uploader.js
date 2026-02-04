@@ -1,6 +1,5 @@
 import { Plugin } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch } from '../../../shared/utils.js';
 import { daApi } from '../../../shared/da-api.js';
 import { CON_ORIGIN } from '../../../shared/constants.js';
 

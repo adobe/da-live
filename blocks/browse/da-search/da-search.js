@@ -1,6 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
 import { daApi } from '../../shared/da-api.js';
 
 const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
