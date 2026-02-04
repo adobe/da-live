@@ -116,51 +116,51 @@ export default class DaActionBar extends LitElement {
 
   render() {
     return html`
-      <div class="da-action-bar">
-        <div class="da-action-bar-left-rail">
+      <div class="da-action-bar" role="gridcell" aria-label="Action Bar">
+        <div class="da-action-bar-left-rail" role="presentation">
           <button
             class="close-circle"
             @click=${this.handleClear}
             aria-label="Unselect items">
-            <img src="/blocks/browse/da-browse/img/CrossSize200.svg" />
+            <img src="/blocks/browse/da-browse/img/CrossSize200.svg" alt="" />
           </button>
           <span>${this.currentAction}</span>
         </div>
-        <div class="da-action-bar-right-rail">
+        <div class="da-action-bar-right-rail" role="toolbar">
           <button
             @click=${this.handleRename}
             class="rename-button ${this._canWrite ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_TextEdit_18_N.svg" />
+            <img src="/blocks/browse/da-browse/img/Smock_TextEdit_18_N.svg" alt="" aria-hidden="true"/>
             <span>Rename</span>
           </button>
           <button
             @click=${this.handleCopy}
             class="copy-button ${this._isCopying ? 'hide' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
+            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" alt="" aria-hidden="true"/>
             <span>Copy</span>
           </button>
           <button
             @click=${this.handleMove}
             class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_Cut_18_N.svg" />
+            <img src="/blocks/browse/da-browse/img/Smock_Cut_18_N.svg" alt="" aria-hidden="true"/>
             <span>Cut</span>
           </button>
           <button
             @click=${this.handlePaste}
             class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? '' : 'hide'}">
-            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" />
+            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" alt="" aria-hidden="true"/>
             <span>Paste</span>
           </button>
           <button
             @click=${this.handleDelete}
             class="delete-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" />
+            <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" alt="" aria-hidden="true"/>
             <span>Delete</span>
           </button>
           <button
             @click=${this.handleShare}
             class="share-button ${this._canShare ? '' : 'hide'}">
-            <img src="/blocks/browse/img/Smock_Share_18_N.svg" />
+            <img src="/blocks/browse/img/Smock_Share_18_N.svg" alt="" aria-hidden="true"/>
             <span>Share</span>
           </button>
         </div>

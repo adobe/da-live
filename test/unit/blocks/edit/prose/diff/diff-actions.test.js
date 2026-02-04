@@ -9,6 +9,21 @@ import {
 } from '../../../../../../blocks/edit/utils/helpers.js';
 
 describe('diff-actions - createTabbedActions', () => {
+  let mockMap;
+
+  beforeEach(() => {
+    // Create a simple mock for Y.Map
+    const storage = new Map();
+    mockMap = {
+      get: (key) => storage.get(key) || null,
+      set: (key, value) => storage.set(key, value),
+      delete: (key) => storage.delete(key),
+      entries: () => storage.entries(),
+      [Symbol.iterator]: () => storage.entries(),
+    };
+    initDaMetadata(mockMap);
+  });
+
   function render(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab) {
     const container = createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwitchTab);
     document.body.appendChild(container);
@@ -115,6 +130,49 @@ describe('diff-actions - createTabbedActions', () => {
     });
 
     expect(spies.onSwitchTab.callCount).to.equal(3);
+  });
+
+  it('uses custom labels from metadata for local and upstream buttons', () => {
+    setDaMetadata('diff-label-local', 'Regional');
+    setDaMetadata('diff-label-upstream', 'Langstore');
+
+    const container = render(sinon.spy(), sinon.spy(), sinon.spy(), sinon.spy());
+    const wrappers = [...container.querySelectorAll('.da-diff-btn.da-diff-btn-base')];
+
+    const labels = wrappers.map((w) => {
+      const switchBtn = w.querySelector('.switch-btn');
+      const textNode = [...switchBtn.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
+      return textNode?.textContent.trim();
+    });
+    expect(labels).to.deep.equal(['Regional', 'Langstore', 'Difference']);
+  });
+
+  it('uses custom labels in tooltips and aria-labels', () => {
+    setDaMetadata('diff-label-local', 'My Local');
+    setDaMetadata('diff-label-upstream', 'My Upstream');
+
+    const container = render(sinon.spy(), sinon.spy(), sinon.spy(), sinon.spy());
+    const wrappers = [...container.querySelectorAll('.da-diff-btn.da-diff-btn-base')];
+
+    const expected = [
+      { variant: 'is-local', switchTip: 'View My Local', confirmAria: 'Accept My Local' },
+      { variant: 'is-upstream', switchTip: 'View My Upstream', confirmAria: 'Accept My Upstream' },
+      { variant: 'is-diff', switchTip: 'View Diff', confirmAria: 'Accept Both' },
+    ];
+
+    wrappers.forEach((wrap, idx) => {
+      expect(wrap.classList.contains(expected[idx].variant)).to.be.true;
+
+      const switchBtn = wrap.querySelector('.switch-btn.da-diff-btn-base-element');
+      const confirmBtn = wrap.querySelector('.confirm-btn.da-diff-btn-base-element');
+
+      const switchTip = switchBtn.querySelector('.diff-tooltip');
+      const confirmTip = confirmBtn.querySelector('.diff-tooltip');
+      expect(switchTip?.textContent).to.equal(expected[idx].switchTip);
+      expect(confirmTip?.textContent).to.equal(expected[idx].confirmAria);
+
+      expect(confirmBtn.getAttribute('aria-label')).to.equal(expected[idx].confirmAria);
+    });
   });
 });
 
