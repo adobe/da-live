@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 
 const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
 
@@ -69,7 +69,7 @@ export default class DaSearch extends LitElement {
         let match;
 
         try {
-          const resp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
+          const resp = await daApi.getSource(file.path);
           const text = await resp.text();
           // Log empty files
           // eslint-disable-next-line no-console
@@ -163,14 +163,11 @@ export default class DaSearch extends LitElement {
       let retryCount = prevRetry;
 
       const getFile = async () => {
-        const getResp = await daFetch(`${DA_ORIGIN}/source${file.path}`);
+        const getResp = await daApi.getSource(file.path);
         const text = await getResp.text();
         const replacedText = text.replaceAll(this._term, replace.value);
         const blob = new Blob([replacedText], { type: 'text/html' });
-        const formData = new FormData();
-        formData.append('data', blob);
-        const opts = { method: 'PUT', body: formData };
-        const postResp = await daFetch(`${DA_ORIGIN}/source${file.path}`, opts);
+        const postResp = await daApi.saveSource(file.path, { blob });
         if (!postResp.ok) return { error: 'Error saving file' };
         this._matches += 1;
         return file;

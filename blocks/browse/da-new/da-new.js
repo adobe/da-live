@@ -2,7 +2,7 @@ import { LitElement, html } from 'da-lit';
 import { saveToDa } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
-import { DA_HLX } from '../../shared/constants.js';
+import { daApi } from '../../shared/da-api.js';
 
 // Styles & Icons
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -86,7 +86,7 @@ export default class DaNew extends LitElement {
         );
         break;
       case 'folder':
-        if (DA_HLX) {
+        if (daApi.isHlx) {
           this._createName += '/';
           method = 'POST';
         }

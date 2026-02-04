@@ -1,6 +1,6 @@
 import { getNx, sanitizePathParts } from '../../scripts/utils.js';
-import { DA_ORIGIN } from '../shared/constants.js';
 import { daFetch } from '../shared/utils.js';
+import { daApi } from '../shared/da-api.js';
 
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 
@@ -47,13 +47,13 @@ async function bulkAemAdmin(org, site, files) {
 }
 
 export async function copyConfig(sourcePath, org, site) {
-  const destText = await getText(sourcePath, org, site, `${DA_ORIGIN}/config${sourcePath}/`);
+  const destText = await getText(sourcePath, org, site, daApi.getConfigUrl(`${sourcePath}/`));
   if (!destText) return { ok: false };
 
   const body = new FormData();
   body.append('config', destText);
   const opts = { method: 'PUT', body };
-  return daFetch(`${DA_ORIGIN}/config/${org}/${site}/`, opts);
+  return daFetch(daApi.getConfigUrl(`/${org}/${site}/`), opts);
 }
 
 export async function copyContent(sourcePath, org, site, setStatus) {
@@ -69,13 +69,13 @@ export async function copyContent(sourcePath, org, site, setStatus) {
 
     let blob;
     if (ext === 'json' || ext === 'html' || ext === 'svg') {
-      const destText = await getText(sourcePath, org, site, `${DA_ORIGIN}/source${path}`);
+      const destText = await getText(sourcePath, org, site, daApi.getSourceUrl(path));
       if (destText) {
         const type = MIME_TYPES[ext];
         blob = new Blob([destText], { type });
       }
     } else {
-      const sourceBlob = await getBlob(`${DA_ORIGIN}/source${path}`);
+      const sourceBlob = await getBlob(daApi.getSourceUrl(path));
       if (sourceBlob) blob = sourceBlob;
     }
 
@@ -87,11 +87,7 @@ export async function copyContent(sourcePath, org, site, setStatus) {
     // Save the file
     const savePath = path.replace(sourcePath, `/${org}/${site}`);
 
-    const body = new FormData();
-
-    body.append('data', blob);
-    const opts = { method: 'POST', body };
-    const putResp = await daFetch(`${DA_ORIGIN}/source${savePath}`, opts);
+    const putResp = await daApi.saveSource(savePath, { blob, method: 'POST' });
     file.ok = putResp.ok;
   };
 

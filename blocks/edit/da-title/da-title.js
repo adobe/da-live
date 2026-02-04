@@ -7,8 +7,8 @@ import {
   saveDaVersion,
   getCdnConfig,
 } from '../utils/helpers.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -172,8 +172,8 @@ export default class DaTitle extends LitElement {
       .catch(() => []);
 
     const [org, site] = await Promise.all([
-      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}`),
-      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}/${repo}`),
+      fetchSingleConfig(daApi.getConfigUrl(`/${owner}`)),
+      fetchSingleConfig(daApi.getConfigUrl(`/${owner}/${repo}`)),
     ]);
     this.config = { org, site };
     return this.config;

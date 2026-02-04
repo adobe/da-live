@@ -30,7 +30,8 @@ import imageFocalPoint from './plugins/imageFocalPoint.js';
 import linkConverter from './plugins/linkConverter.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
-import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { COLLAB_ORIGIN } from '../../shared/constants.js';
+import { daApi } from '../../shared/da-api.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { checkDoc } from '../edit.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
@@ -296,7 +297,7 @@ export default function initProse({ path, permissions }) {
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+  const roomName = `${daApi.origin}${new URL(path).pathname}`;
 
   const opts = { protocols: ['yjs'] };
 

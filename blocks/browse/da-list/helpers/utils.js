@@ -1,6 +1,6 @@
-import { SUPPORTED_FILES, DA_ORIGIN } from '../../../shared/constants.js';
+import { SUPPORTED_FILES } from '../../../shared/constants.js';
 import { sanitizePath, sanitizePathParts } from '../../../../scripts/utils.js';
-import { daFetch } from '../../../shared/utils.js';
+import { daApi } from '../../../shared/da-api.js';
 
 const MAX_DEPTH = 1000;
 
@@ -84,14 +84,11 @@ export async function getFullEntryList(entries) {
 
 export async function handleUpload(list, fullpath, file) {
   const { data, path } = file;
-  const formData = new FormData();
-  formData.append('data', data);
-  const opts = { method: 'POST', body: formData };
   const sanitizedPath = sanitizePath(path);
   const postpath = `${fullpath}${sanitizedPath}`;
 
   try {
-    await daFetch(`${DA_ORIGIN}/source${postpath}`, opts);
+    await daApi.saveSource(postpath, { blob: data, method: 'POST' });
     file.imported = true;
 
     const [displayName] = sanitizedPath.split('/').slice(1);

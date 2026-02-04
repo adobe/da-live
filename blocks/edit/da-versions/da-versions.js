@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
+import { daApi } from '../../shared/da-api.js';
 import { formatDate, formatVersions } from './helpers.js';
 import { daFetch } from '../../shared/utils.js';
 
@@ -23,7 +24,7 @@ export default class DaVersions extends LitElement {
   async getVersions() {
     this._loading = true;
     this._versions = null;
-    const resp = await daFetch(`${DA_ORIGIN}/versionlist${this.path}`);
+    const resp = await daApi.getVersionList(this.path);
     if (!resp.ok) {
       this._loading = false;
       return;
@@ -49,7 +50,7 @@ export default class DaVersions extends LitElement {
     if (!entryEl.classList.contains('is-open')) {
       entryEl.classList.toggle('is-open');
     }
-    const detail = { url: `${DA_ORIGIN}${entry.url}` };
+    const detail = { url: `${daApi.origin}${entry.url}` };
     const opts = { detail, bubbles: true, composed: true };
     const event = new CustomEvent('preview', opts);
     this.dispatchEvent(event);
@@ -67,7 +68,7 @@ export default class DaVersions extends LitElement {
     const opts = { method: 'POST' };
     if (entry.label) opts.body = JSON.stringify({ label: entry.label });
 
-    const res = await daFetch(`${DA_ORIGIN}/versionsource${this.path}`, opts);
+    const res = await daApi.getVersionSource(this.path, opts);
     if (res.status !== 201) return;
 
     this._newVersion = null;

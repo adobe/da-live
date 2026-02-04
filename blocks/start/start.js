@@ -1,13 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
+import { daApi } from '../shared/da-api.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
-
-const DA_ORIGIN = getDaAdmin();
 
 const AEM_TEMPLATES = [
   {
@@ -71,7 +69,7 @@ async function fetchConfig(org, body) {
   let opts;
   if (body) opts = { method: 'POST', body };
 
-  return daFetch(`${DA_ORIGIN}/config/${org}/`, opts);
+  return daApi.getConfig(`/${org}/`, opts);
 }
 
 export async function loadConfig(org) {
@@ -279,7 +277,7 @@ class DaStart extends LitElement {
   renderOne() {
     return html`
       <div class="step-1-panel">
-        <form class="actions" action="${DA_ORIGIN}/source/${this.org}/${this.site}" @submit=${this.submitForm}>
+        <form class="actions" action="${daApi.getSourceUrl(`/${this.org}/${this.site}`)}" @submit=${this.submitForm}>
           <div class="git-input">
             <label for="fname">AEM codebase</label>
             <input type="text" name="site" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />

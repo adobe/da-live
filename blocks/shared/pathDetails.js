@@ -1,4 +1,4 @@
-import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
+import { CON_ORIGIN } from './constants.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
 import { daApi } from './da-api.js';
 
@@ -153,7 +153,7 @@ export default function getPathDetails(loc) {
   let path = ext === 'html' && !fullpath.endsWith('.html') ? `${fullpath}.html` : fullpath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
-  details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
+  details = { ...details, origin: daApi.origin, fullpath: path, depth, view: editor };
 
   return details;
 }
