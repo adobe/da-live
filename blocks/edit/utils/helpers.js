@@ -5,6 +5,15 @@ import { sanitizePathParts } from '../../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
 
+export function isURL(text) {
+  try {
+    const url = new URL(text);
+    return url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 const AEM_PERMISSION_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
 
 /* eslint-disable max-len */
@@ -329,6 +338,13 @@ export function setDaMetadata(key, value) {
   } else {
     daMdMap.set(key, value);
   }
+}
+
+export function getDiffLabels() {
+  return {
+    local: getDaMetadata('diff-label-local') || 'Local',
+    upstream: getDaMetadata('diff-label-upstream') || 'Upstream',
+  };
 }
 
 export async function htmlToProse(html) {

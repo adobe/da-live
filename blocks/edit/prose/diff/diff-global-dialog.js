@@ -1,6 +1,6 @@
 // Global dialog management - only needed when multiple LOC nodes exist
 import { Slice } from 'da-y-wrapper';
-import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
+import { createElement, createButton, createTooltip, getDiffLabels } from '../../utils/helpers.js';
 import { addToHashMetadata, ACCEPTED_KEY, REJECTED_KEY } from './diff-actions.js';
 
 const KEEP = 'keep';
@@ -23,6 +23,7 @@ export function hideGlobalDialog() {
     globalDialog.classList.remove('show');
     globalDialog.remove();
   }
+  globalDialog = null;
 }
 
 function getAllLocNodes(view, isLocNode) {
@@ -139,8 +140,10 @@ function createGlobalOverlay(activeViews, isLocNode) {
   const dialog = createElement('div', 'da-regional-edits-overlay');
   const actionsContainer = createElement('div', 'da-regional-edits-actions');
 
-  const localButton = createGlobalAction('local', 'Keep All Local', KEEP_LOCAL, 'Accept All Local', activeViews, isLocNode);
-  const upstreamButton = createGlobalAction('upstream', 'Keep All Upstream', KEEP_UPSTREAM, 'Accept All Upstream', activeViews, isLocNode);
+  const labels = getDiffLabels();
+
+  const localButton = createGlobalAction('local', `Keep All ${labels.local}`, KEEP_LOCAL, `Accept All ${labels.local}`, activeViews, isLocNode);
+  const upstreamButton = createGlobalAction('upstream', `Keep All ${labels.upstream}`, KEEP_UPSTREAM, `Accept All ${labels.upstream}`, activeViews, isLocNode);
 
   actionsContainer.appendChild(localButton);
   actionsContainer.appendChild(upstreamButton);

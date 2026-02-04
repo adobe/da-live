@@ -24,7 +24,7 @@ describe('UE URLs', () => {
 
     try {
       window.fetch = mockFetch;
-      const ueUrl = await ueUrlHelper('aabsites', 'https://main--gov--geometrixx.aem.page/query-builder');
+      const ueUrl = await ueUrlHelper('aabsites', 'gov', 'https://main--gov--geometrixx.aem.page/query-builder');
       expect(ueUrl).to.equal('https://experience.adobe.com/#/@sitesinternal/aem/editor/canvas/main--gov--geometrixx.ue.da.page/query-builder');
     } finally {
       window.fetch = orgFetch;
@@ -37,7 +37,7 @@ describe('UE URLs', () => {
 
     try {
       window.fetch = mockFetch;
-      const ueUrl = await ueUrlHelper('aabsites', 'https://main--gov--geometrixx.aem.page/query-builder');
+      const ueUrl = await ueUrlHelper('aabsites', 'gov', 'https://main--gov--geometrixx.aem.page/query-builder');
       expect(ueUrl).to.equal('https://experience.adobe.com/#/@sitesinternal/aem/editor/canvas/main--gov--geometrixx.ue.da.page/query-builder');
     } finally {
       window.fetch = orgFetch;
@@ -50,7 +50,7 @@ describe('UE URLs', () => {
 
     try {
       window.fetch = mockFetch;
-      const ueUrl = await ueUrlHelper('aabsites', 'https://main--gov--geometrixx.aem.page/query-builder');
+      const ueUrl = await ueUrlHelper('aabsites', 'gov', 'https://main--gov--geometrixx.aem.page/query-builder');
       expect(ueUrl).to.be.null;
     } finally {
       window.fetch = orgFetch;
