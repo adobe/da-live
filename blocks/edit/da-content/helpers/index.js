@@ -34,4 +34,5 @@ export default async function getExternalUrl(org, repo, previewUrl) {
   if (qeConf) return getQeUrl(previewUrl);
   const ueConf = confSheet.find((row) => row.key === 'editor.path');
   if (ueConf) return getUeUrl(ueConf, previewUrl);
+  return null;
 }

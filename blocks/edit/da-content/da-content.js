@@ -39,8 +39,12 @@ export default class DaContent extends LitElement {
   }
 
   async loadUe() {
-    const { default: ueUrlHelper } = await import('./helpers/index.js');
-    this._externalUrl = await ueUrlHelper(this.details.owner, this.details.repo, this.details.previewUrl);
+    const { default: getExternalUrl } = await import('./helpers/index.js');
+    this._externalUrl = await getExternalUrl(
+      this.details.owner,
+      this.details.repo,
+      this.details.previewUrl,
+    );
   }
 
   async handleEditorLoaded() {
