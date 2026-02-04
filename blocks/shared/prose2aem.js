@@ -83,6 +83,7 @@ function makePictures(editor, live, lockdown) {
 
     const clone = img.cloneNode(true);
     if (live && lockdown) {
+      // make images relative to the live preview URL
       const source = new URL(clone.src);
       if (source.host.endsWith('.da.live')) {
         source.pathname = `/${source.pathname
