@@ -23,6 +23,9 @@ const DA_ADMIN_ENVS = {
 
 const DA_COLLAB_ENVS = {
   local: 'ws://localhost:4711',
+  // TODO: use when DNS ready
+  // hlx6: 'wss://collab-hlx6.da.live',
+  hlx6: 'wss://da-collab-hlx6.adobeaem.workers.dev',
   stage: 'wss://stage-collab.da.live',
   prod: 'wss://collab.da.live',
 };
