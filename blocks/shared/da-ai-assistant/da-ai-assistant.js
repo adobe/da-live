@@ -41,7 +41,33 @@ import { LitElement, html, nothing } from 'da-lit';
 import { initIms, daFetch } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 
-const CHAT_API_URL = 'http://localhost:3007';
+/**
+ * Environment-aware configuration
+ * Automatically detects local development vs production
+ */
+const IS_LOCAL_DEV = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+const ENV_CONFIG = {
+  // Chat API server (Node.js backend for LLM interaction)
+  CHAT_API_URL: IS_LOCAL_DEV
+    ? 'http://localhost:3007'
+    : 'https://chat-api.da.live', // TODO: Update with production URL when deployed
+
+  // DA Admin API (proxy to R2 storage)
+  DA_ADMIN_URL: IS_LOCAL_DEV
+    ? 'http://localhost:8787'
+    : 'https://admin.da.live',
+
+  // Content CDN (public image delivery)
+  CONTENT_CDN_URL: IS_LOCAL_DEV
+    ? 'http://localhost:8787/source' // Local dev uses da-admin with auth
+    : 'https://content.da.live',
+};
+
+const CHAT_API_URL = ENV_CONFIG.CHAT_API_URL;
+const DA_ADMIN_URL = ENV_CONFIG.DA_ADMIN_URL;
+const CONTENT_CDN_URL = ENV_CONFIG.CONTENT_CDN_URL;
+
 const DB_NAME = 'da-ai-assistant';
 const DB_VERSION = 1;
 const STORE_NAME = 'conversations';
@@ -173,7 +199,7 @@ async function uploadImageToDA(blob, filename, context, imsToken) {
   formData.append('data', blob, filename);
 
   // Use PUT method like DA editor does
-  const url = `http://localhost:8787/source/${org}/${project}/${hiddenPath}`;
+  const url = `${DA_ADMIN_URL}/source/${org}/${project}/${hiddenPath}`;
   console.log('[DA-AI] Uploading image to:', url);
 
   const headers = {};
@@ -200,15 +226,14 @@ async function uploadImageToDA(blob, filename, context, imsToken) {
   console.log('[DA-AI] Content URL:', contentUrl);
   
   // For local dev, content.da.live won't work. Use /source/ path that da-admin serves.
-  const isLocal = window.location.hostname === 'localhost';
   let imageUrl = contentUrl;
   
-  if (!imageUrl || (isLocal && imageUrl.includes('content.da.live'))) {
-    // Local dev: use /source/ path - da-admin has a bypass for hidden folder GETs
+  if (!imageUrl || (IS_LOCAL_DEV && imageUrl.includes('content.da.live'))) {
+    // Local dev: use /source/ path - da-admin serves with auth
     // Production: use content.da.live CDN
-    imageUrl = isLocal 
-      ? `/source/${org}/${project}/${hiddenPath}`  // da-admin serves this with bypass
-      : `https://content.da.live/${org}/${project}/${hiddenPath}`;
+    imageUrl = IS_LOCAL_DEV 
+      ? `/source/${org}/${project}/${hiddenPath}`
+      : `${CONTENT_CDN_URL}/${org}/${project}/${hiddenPath}`;
   }
   
   console.log('[DA-AI] Final image URL:', imageUrl);
@@ -841,25 +866,23 @@ class DaAiAssistant extends LitElement {
     if (file._blobUrl) return file._blobUrl;
     
     const filePath = file.path || file.name;
-    const isLocal = window.location.hostname === 'localhost';
     
     // Path from API already includes /org/repo/path, so just prepend the base
     // Remove leading slash if present to avoid double slashes
     const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
     
-    if (isLocal) {
-      return `http://localhost:8787/source/${cleanPath}`;
+    if (IS_LOCAL_DEV) {
+      return `${DA_ADMIN_URL}/source/${cleanPath}`;
     }
-    return `https://content.da.live/${cleanPath}`;
+    return `${CONTENT_CDN_URL}/${cleanPath}`;
   }
 
   async loadThumbnailAuth(file, imgElement) {
-    const isLocal = window.location.hostname === 'localhost';
-    if (!isLocal) return; // Production uses public CDN, no auth needed
+    if (!IS_LOCAL_DEV) return; // Production uses public CDN, no auth needed
     
     const filePath = file.path || file.name;
     const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-    const url = `http://localhost:8787/source/${cleanPath}`;
+    const url = `${DA_ADMIN_URL}/source/${cleanPath}`;
     
     try {
       const response = await daFetch(url);
