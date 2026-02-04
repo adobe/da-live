@@ -1,7 +1,8 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
-import { DA_ORIGIN, DA_HLX } from '../../shared/constants.js';
+import { DA_HLX } from '../../shared/constants.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { aemAdmin } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -119,13 +120,8 @@ export default class DaList extends LitElement {
   }
 
   async getList() {
-    const [, org, repo, ...rest] = this.fullpath.split('/');
-    const listUrl = DA_HLX
-      ? `${DA_ORIGIN}/${org}/sites/${repo}/source/${rest.join('/')}`
-      : `${DA_ORIGIN}/list${this.fullpath}`;
-
     try {
-      const resp = await daFetch(listUrl);
+      const resp = await daApi.getList(this.fullpath);
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       return this.transformList(json);
@@ -238,24 +234,23 @@ export default class DaList extends LitElement {
     const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
     try {
-      while (continuation) {
-        let body;
+      if (type === 'delete') {
+        const resp = await daApi.deleteSource(item.path);
+        if (resp.status !== 204) throw new Error('Could not delete');
+      } else {
+        while (continuation) {
+          const resp = await (api === 'move'
+            ? daApi.move(item.path, item.destination, continuationToken)
+            : daApi.copy(item.path, item.destination, continuationToken));
 
-        if (type !== 'delete') {
-          body = new FormData();
-          body.append('destination', item.destination);
-          if (continuationToken) body.append('continuation-token', continuationToken);
+          if (resp.status === 204) {
+            continuation = false;
+            break;
+          }
+          const json = await resp.json();
+          ({ continuationToken } = json);
+          if (!continuationToken) continuation = false;
         }
-
-        const opts = { method, body };
-        const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
-        if (resp.status === 204) {
-          continuation = false;
-          break;
-        }
-        const json = await resp.json();
-        ({ continuationToken } = json);
-        if (!continuationToken) continuation = false;
       }
 
       item.isChecked = false;
