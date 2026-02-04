@@ -36,8 +36,8 @@ da-dialog {
 }
 
 .con-button.blue {
-  background: var(--spectrum-blue-800);
-  border-color: var(--spectrum-blue-800);
+  background: var(--s2-blue-900);
+  border-color: var(--s2-blue-900);
   color: #FFF;
 }
 
@@ -67,7 +67,7 @@ da-dialog {
   text-transform: uppercase;
   font-weight: 700;
   color: #464646;
-  opacity: 0.5;
+  opacity: 0.75;
   text-decoration: none;
   padding: 6px 12px;
   border-radius: 4px;
@@ -290,8 +290,8 @@ div.collab-users {
 }
 
 div.collab-initial {
-  background-color: var(--spectrum-blue-800);
-  border-color: var(--spectrum-blue-800);
+  background-color: var(--s2-blue-900);
+  border-color: var(--s2-blue-900);
   border-style: solid;
   border-width: 1px;
   border-radius: 50%;

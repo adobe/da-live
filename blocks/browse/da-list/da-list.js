@@ -588,10 +588,10 @@ export default class DaList extends LitElement {
 
   renderList(items) {
     return html`
-      <div class="da-item-list" role="list">
+      <div class="da-item-list" role="presentation">
       ${repeat(items, (item) => item.path, (item, idx) => html`
         <da-list-item
-          role="listitem"
+          role="row"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
@@ -616,12 +616,17 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <div class="checkbox-wrapper">
-        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}">
+      <div class="checkbox-wrapper" role="columnheader">
+        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items">
         <label class="checkbox-label" for="select-all"></label>
       </div>
       <input type="checkbox" name="select" style="display: none;">
     `;
+  }
+
+  getSortAttr(sortType) {
+    if (!sortType) return 'none';
+    return sortType === 'old' ? 'descending' : 'ascending';
   }
 
   render() {
@@ -630,29 +635,31 @@ export default class DaList extends LitElement {
       : this._listItems;
 
     return html`
-      <div class="da-browse-panel-header">
+      <div class="da-browse-panel-header" role="row">
         ${this.renderCheckBox()}
-        <div class="da-browse-sort">
+        <div class="da-browse-sort" role="presentation">
           <!-- Toggle button is split into 2 buttons (enable/disable) to prevent bug re-toggling on blur event -->
-          ${!this._showFilter ? html`
-            <button class="da-browse-filter" name="toggle-filter" @click=${() => this.toggleFilterView()}>
-              <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" />
-            </button>
-          ` : html`
-            <button class="da-browse-filter selected" name="toggle-filter" @click=${() => this.toggleFilterView()}>
-              <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" />
-            </button>
-          `}
-          <div class="da-browse-header-container">
-            <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter">
+          <div role="columnheader" class="da-browse-sort-filter-container">
+            ${!this._showFilter ? html`
+              <button class="da-browse-filter" name="toggle-filter" @click=${() => this.toggleFilterView()} aria-label="Toggle filter">
+                <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
+              </button>
+            ` : html`
+              <button class="da-browse-filter selected" name="toggle-filter" @click=${() => this.toggleFilterView()} aria-label="Toggle filter">
+                <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
+              </button>
+            `}
+          </div>
+          <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortName) || 'none'}">
+            <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter" aria-label="Filter items">
             <button class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''}" @click=${this.handleNameSort}>Name</button>
           </div>
-          <div class="da-browse-header-container">
+          <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortDate) || 'none'}">
             <button class="da-browse-header-name ${this._sortDate}" @click=${this.handleDateSort}>Modified</button>
           </div>
         </div>
       </div>
-      <div class="da-browse-panel" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
+      <div class="da-browse-panel" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
         ${filteredItems?.length > 0 ? this.renderList(filteredItems, true) : this.renderEmpty()}
         ${this.drag ? this.renderDropArea() : nothing}
       </div>
@@ -664,6 +671,7 @@ export default class DaList extends LitElement {
         @ondelete=${this.handleDelete}
         @onshare=${this.handleShare}
         currentPath="${this.fullpath}"
+        role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
       ${this._confirm ? this.renderConfirm() : nothing}
