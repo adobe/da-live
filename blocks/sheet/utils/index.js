@@ -238,6 +238,7 @@ function updateSheetsInPlace(el, sheets) {
 function updateSheets(el, ydoc, yUndoManager, wsProvider) {
   const ysheets = ydoc.getArray('sheets');
   let sheets = yToJSheet(ysheets, canWrite);
+  const longestSheet = sheets.reduce((acc, sheet) => Math.max(acc, sheet.data.length), 0);
 
   if (sheets.length === 0) {
     console.error('No sheets found in Yjs document');
@@ -246,8 +247,11 @@ function updateSheets(el, ydoc, yUndoManager, wsProvider) {
 
   const dimensionsEqual = checkSheetDimensionsEqual(el.jexcel, sheets);
   const editingCell = el.querySelector('.editor');
-  if (dimensionsEqual && !editingCell && canWrite) {
-    // update in-place. This preserves the editor state better.
+  if (dimensionsEqual && !editingCell && canWrite && longestSheet < 100) {
+    // update in-place. Prevents flickering on update.
+    // - doesn't work if the local user is editing a cell
+    // - doesn't work for read-only sheets (sheet ignores setValue)
+    // - doesn't work for long sheets (bad performance)
     updateSheetsInPlace(el, sheets);
   } else {
     // Re-render to match dimensions, tab names etc.
