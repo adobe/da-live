@@ -461,3 +461,10 @@ export function setDaMetadata(key, value) {
     daMdMap.set(key, value);
   }
 }
+
+export function getDiffLabels() {
+  return {
+    local: getDaMetadata('diff-label-local') || 'Local',
+    upstream: getDaMetadata('diff-label-upstream') || 'Upstream',
+  };
+}
