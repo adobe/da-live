@@ -5,7 +5,7 @@ async function getConfSheet(org) {
   const resp = await daFetch(`${DA_ORIGIN}/config/${org}/`);
   if (!resp.ok) return null;
   const json = await resp.json();
-  return json.data.data || json.data;
+  return json?.data?.data || json?.data;
 }
 
 export async function getUeUrl(ueConf, previewUrl) {
@@ -30,9 +30,9 @@ export async function getQeUrl(previewUrl) {
 
 export default async function getExternalUrl(org, repo, previewUrl) {
   const confSheet = await getConfSheet(org);
-  const qeConf = confSheet.find((row) => row.key === 'quick-edit' && row.value.split(',').find((split) => split.startsWith(repo)));
+  const qeConf = confSheet?.find((row) => row.key === 'quick-edit' && row.value.split(',').find((split) => split.startsWith(repo)));
   if (qeConf) return getQeUrl(previewUrl);
-  const ueConf = confSheet.find((row) => row.key === 'editor.path');
+  const ueConf = confSheet?.find((row) => row.key === 'editor.path');
   if (ueConf) return getUeUrl(ueConf, previewUrl);
   return null;
 }
