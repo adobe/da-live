@@ -347,9 +347,9 @@ export function getDiffLabels() {
   };
 }
 
-export async function htmlToProse(html) {
+export function htmlToProse(html) {
   const ydoc = new Y.Doc();
-  await aem2doc(html, ydoc);
+  aem2doc(html, ydoc);
 
   const schema = getSchema();
   const pmDoc = yDocToProsemirror(schema, ydoc);

@@ -3,9 +3,9 @@ import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import prose2aem from '../../../../blocks/shared/prose2aem.js';
 
-async function aem2dom(htmlString) {
+function aem2dom(htmlString) {
   const tempYdoc = new Y.Doc();
-  await aem2doc(htmlString, tempYdoc);
+  aem2doc(htmlString, tempYdoc);
   const schema = getSchema();
   const pmDoc = yDocToProsemirror(schema, tempYdoc);
   const serializer = DOMSerializer.fromSchema(schema);
@@ -17,18 +17,18 @@ async function aem2dom(htmlString) {
 
 describe('Diff tags in lists - aem2doc', () => {
   describe('da-diff-deleted in lists', () => {
-    it('should remove empty li tag inside da-diff-deleted', async () => {
+    it('should remove empty li tag inside da-diff-deleted', () => {
       const html = '<body><main><div><ul><da-diff-deleted><li></li></da-diff-deleted><li><p>Normal</p></li></ul></div></main></body>';
-      const main = await aem2dom(html);
+      const main = aem2dom(html);
 
       const diffDeleted = main.querySelector('da-diff-deleted');
       expect(diffDeleted).to.exist;
       expect(diffDeleted.querySelector('li')).to.not.exist;
     });
 
-    it('should restructure da-diff-deleted > li to li > da-diff-deleted', async () => {
+    it('should restructure da-diff-deleted > li to li > da-diff-deleted', () => {
       const html = '<body><main><div><ul><da-diff-deleted><li><p>Deleted item</p></li></da-diff-deleted><li><p>Normal</p></li></ul></div></main></body>';
-      const main = await aem2dom(html);
+      const main = aem2dom(html);
 
       const ul = main.querySelector('ul');
       const firstLi = ul.firstElementChild;
@@ -38,9 +38,9 @@ describe('Diff tags in lists - aem2doc', () => {
       expect(firstLi.querySelector('da-diff-deleted p').textContent).to.equal('Deleted item');
     });
 
-    it('should handle multiple da-diff-deleted elements in a list', async () => {
+    it('should handle multiple da-diff-deleted elements in a list', () => {
       const html = '<body><main><div><ol><da-diff-deleted><li><p>Deleted 1</p></li></da-diff-deleted><li><p>Normal item</p></li><da-diff-deleted><li><p>Deleted 2</p></li></da-diff-deleted></ol></div></main></body>';
-      const main = await aem2dom(html);
+      const main = aem2dom(html);
 
       const ol = main.querySelector('ol');
       const items = ol.querySelectorAll('li');
@@ -54,9 +54,9 @@ describe('Diff tags in lists - aem2doc', () => {
     });
 
     // TODO: aem2doc handles this case differently - needs review
-    it.skip('should not restructure da-diff-deleted without li child', async () => {
+    it.skip('should not restructure da-diff-deleted without li child', () => {
       const html = '<body><main><div><ul><da-diff-deleted><p>Direct paragraph</p></da-diff-deleted><li><p>Normal</p></li></ul></div></main></body>';
-      const main = await aem2dom(html);
+      const main = aem2dom(html);
 
       const ul = main.querySelector('ul');
       expect(ul.firstElementChild.nodeName).to.equal('DA-DIFF-DELETED');
@@ -65,9 +65,9 @@ describe('Diff tags in lists - aem2doc', () => {
   });
 
   describe('da-diff-added in lists', () => {
-    it('should restructure da-diff-added > li to li > da-diff-added', async () => {
+    it('should restructure da-diff-added > li to li > da-diff-added', () => {
       const html = '<body><main><div><ul><da-diff-added><li><p>Added item</p></li></da-diff-added><li><p>Normal</p></li></ul></div></main></body>';
-      const main = await aem2dom(html);
+      const main = aem2dom(html);
 
       const ul = main.querySelector('ul');
       const firstLi = ul.firstElementChild;
@@ -78,9 +78,9 @@ describe('Diff tags in lists - aem2doc', () => {
     });
 
     // TODO: aem2doc serialization produces different structure - needs review
-    it.skip('should handle multiple da-diff-added elements in a list', async () => {
+    it.skip('should handle multiple da-diff-added elements in a list', () => {
       const html = '<body><main><div><ul><da-diff-added><li><p>Added 1</p></li></da-diff-added><li><p>Normal</p></li><da-diff-added><li><p>Added 2</p></li></da-diff-added></ul></div></main></body>';
-      const main = await aem2dom(html);
+      const main = aem2dom(html);
 
       const ul = main.querySelector('ul');
       const items = ul.querySelectorAll('li');
@@ -96,9 +96,9 @@ describe('Diff tags in lists - aem2doc', () => {
 
   describe('Mixed diff elements in lists', () => {
     // TODO: aem2doc serialization produces different structure - needs review
-    it.skip('should handle both da-diff-added and da-diff-deleted in same list', async () => {
+    it.skip('should handle both da-diff-added and da-diff-deleted in same list', () => {
       const html = '<body><main><div><ul><da-diff-deleted><li><p>Deleted</p></li></da-diff-deleted><li><p>Normal</p></li><da-diff-added><li><p>Added</p></li></da-diff-added></ul></div></main></body>';
-      const main = await aem2dom(html);
+      const main = aem2dom(html);
 
       const ul = main.querySelector('ul');
       const items = ul.querySelectorAll('li');

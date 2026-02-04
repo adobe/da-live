@@ -283,7 +283,7 @@ class DaLibrary extends LitElement {
     // Convert template-metadata to metadata block so it can be copied
     text = text.replace('class="template-metadata"', 'class="metadata"');
 
-    const { dom } = await htmlToProse(text);
+    const { dom } = htmlToProse(text);
 
     const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
     window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));

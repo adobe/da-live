@@ -31,7 +31,7 @@ export default class DaEditor extends LitElement {
     if (!resp.ok) return;
     const text = await resp.text();
 
-    const { dom, ydoc } = await htmlToProse(text);
+    const { dom, ydoc } = htmlToProse(text);
 
     const metadataMap = ydoc.getMap('daMetadata');
     this._daMetadata = Object.fromEntries(metadataMap.entries());

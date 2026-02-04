@@ -19,10 +19,10 @@ import {
 const bodyHtml = await readFile({ path: './mocks/body.html' });
 
 describe('aem2doc', () => {
-  before('parse everything', async () => {
+  before('parse everything', () => {
     // Use aem2doc to convert the HTML
     const tempYdoc = new Y.Doc();
-    await aem2doc(bodyHtml, tempYdoc);
+    aem2doc(bodyHtml, tempYdoc);
     const schema = getSchema();
     const pmDoc = yDocToProsemirror(schema, tempYdoc);
     const serializer = DOMSerializer.fromSchema(schema);
