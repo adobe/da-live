@@ -33,8 +33,8 @@ const DA_CONTENT_ENVS = {
 
 const DA_LIVE_PREVIEW_ENVS = {
   local: 'localhost:8000',
-  stage: 'stage-ue.da.live',
-  prod: 'ue.da.live',
+  stage: 'stage-preview.da.live',
+  prod: 'preview.da.live',
 };
 
 function getDaEnv(location, key, envs) {
