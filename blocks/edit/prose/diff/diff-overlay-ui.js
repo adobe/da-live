@@ -1,10 +1,4 @@
-import { createElement, createButton, createTooltip } from '../../utils/helpers.js';
-
-const LOC_TEXT = {
-  UPSTREAM: 'Upstream',
-  LOCAL: 'Local',
-  DIFF: 'Difference',
-};
+import { createElement, createButton, createTooltip, getDiffLabels } from '../../utils/helpers.js';
 
 export function getCoverDiv(upstream, LOC_COLORS) {
   const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
@@ -17,8 +11,9 @@ export function getCoverDiv(upstream, LOC_COLORS) {
 export function getLangOverlay(upstream) {
   const overlay = createElement('div', 'loc-lang-overlay loc-floating-overlay', { 'loc-temp-dom': '' });
 
+  const labels = getDiffLabels();
   const type = upstream ? 'upstream' : 'local';
-  const text = upstream ? LOC_TEXT.UPSTREAM : LOC_TEXT.LOCAL;
+  const text = upstream ? labels.upstream : labels.local;
 
   const compositeBtn = createElement('div', `da-diff-btn-3part da-diff-btn-base loc-sticky-buttons is-${type}`);
 
