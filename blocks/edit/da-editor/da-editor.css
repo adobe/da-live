@@ -893,7 +893,7 @@ da-diff-deleted, da-diff-added {
 }
 
 .diff-color-overlay.diff-upstream::after {
-  content: 'Upstream';
+  content: var(--diff-label-upstream, 'Upstream');
   position: absolute;
   bottom: 4px;
   right: 4px;
@@ -909,7 +909,7 @@ da-diff-deleted, da-diff-added {
 }
 
 .diff-color-overlay.diff-local::after {
-  content: 'Local';
+  content: var(--diff-label-local, 'Local');
   position: absolute;
   bottom: 4px;
   right: 4px;
