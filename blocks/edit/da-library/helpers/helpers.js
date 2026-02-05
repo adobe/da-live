@@ -1,13 +1,12 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
-import { getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
+import { daApi } from '../../../shared/da-api.js';
 import { getConfKey, openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { sanitizeName } from '../../../../scripts/utils.js';
 
-const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
 const DA_CONFIG = '/.da/config.json';
 const DA_PLUGINS = [
@@ -68,7 +67,7 @@ export async function getItems(sources, listType, format) {
 }
 
 async function getDaLibraries(owner, repo) {
-  const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
+  const resp = await daApi.getSource(`/${owner}/${repo}${DA_CONFIG}`);
   if (!resp.ok) return [];
 
   const json = await resp.json();
@@ -159,7 +158,7 @@ function calculateSources(org, repo, sheetPath) {
 }
 
 async function getConfigLibraries(org, repo) {
-  const resp = await daFetch(`${DA_ORIGIN}/config/${org}/${repo}/`);
+  const resp = await daApi.getConfig(`/${org}/${repo}/`);
   if (!resp.ok) return null;
   const { library } = await resp.json();
   if (!library) return null;
@@ -256,6 +255,25 @@ export function getPreviewUrl(previewUrl) {
       const [, , org, site, ...split] = url.pathname.split('/');
       return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
     }
+    if (url.origin === daApi.origin) {
+      if (daApi.isHlx) {
+        // HLX6: /org/sites/repo/source/path...
+        // Assuming previewUrl is sourceUrl.
+        // If path is /org/sites/repo/source/rest
+        // Site is repo. Org is org.
+        const parts = url.pathname.split('/');
+        // parts: ['', org, 'sites', repo, 'source', ...rest]
+        if (parts[2] === 'sites' && parts[4] === 'source') {
+          const org = parts[1];
+          const repo = parts[3];
+          const rest = parts.slice(5).join('/');
+          return `https://main--${repo}--${org}.aem.page/${rest}`;
+        }
+      } else {
+        const [, , org, site, ...split] = url.pathname.split('/');
+        return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+      }
+    }
   } catch {
     return false;
   }
@@ -275,7 +293,13 @@ export function getEdsUrlVars(url) {
       const [, org, site] = urlObj.pathname.split('/');
       return [org, site, 'main'];
     }
-    if (urlObj.origin.includes('admin.da.live')) {
+    if (urlObj.origin.includes('admin.da.live') || urlObj.origin === daApi.origin) {
+      if (daApi.isHlx && urlObj.origin === daApi.origin) {
+        const parts = urlObj.pathname.split('/');
+        if (parts[2] === 'sites' && parts[4] === 'source') {
+          return [parts[1], parts[3], 'main'];
+        }
+      }
       const [, , org, site] = urlObj.pathname.split('/');
       return [org, site, 'main'];
     }

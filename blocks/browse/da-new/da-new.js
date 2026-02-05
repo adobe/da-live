@@ -2,6 +2,7 @@ import { LitElement, html } from 'da-lit';
 import { saveToDa } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
+import { daApi } from '../../shared/da-api.js';
 
 // Styles & Icons
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -68,6 +69,7 @@ export default class DaNew extends LitElement {
 
     let ext;
     let formData;
+    let method = 'PUT';
     switch (this._createType) {
       case 'document':
         ext = 'html';
@@ -83,6 +85,12 @@ export default class DaNew extends LitElement {
           new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
         );
         break;
+      case 'folder':
+        if (daApi.isHlx) {
+          this._createName += '/';
+          method = 'POST';
+        }
+        break;
       default:
         break;
     }
@@ -92,7 +100,7 @@ export default class DaNew extends LitElement {
     if (ext && ext !== 'link') {
       window.location = editPath;
     } else {
-      await saveToDa({ path, formData });
+      await saveToDa({ path, formData, method });
       const item = { name: this._createName, path };
       if (ext) item.ext = ext;
       this.sendNewItem(item);

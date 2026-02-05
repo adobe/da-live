@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { DA_HLX } from '../../shared/constants.js';
+import { getFirstSheet } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
@@ -82,8 +83,12 @@ export default class DaBrowse extends LitElement {
   async getEditor(reFetch) {
     const DEF_EDIT = '/edit#';
 
+    if (DA_HLX) { // TODO handle editor path for hlx6
+      return DEF_EDIT;
+    }
+
     if (reFetch) {
-      const resp = await daFetch(`${DA_ORIGIN}/config/${this.details.owner}/`);
+      const resp = await daApi.getConfig(`/${this.details.owner}/`);
       if (!resp.ok) return DEF_EDIT;
       const json = await resp.json();
 

@@ -1,6 +1,6 @@
 import { LitElement, html, nothing, until } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { aemAdmin } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
@@ -73,7 +73,7 @@ export default class DaListItem extends LitElement {
   }
 
   async updateDAStatus() {
-    const resp = await daFetch(`${DA_ORIGIN}/versionlist${this.path}`);
+    const resp = await daApi.getVersionList(this.path);
     if (!resp.ok) return;
     const json = await resp.json();
     if (json.length === 0) {
@@ -131,10 +131,6 @@ export default class DaListItem extends LitElement {
       this._preview = null;
       this._live = null;
 
-      const formData = new FormData();
-      formData.append('destination', newPath);
-      const opts = { body: formData, method: 'POST' };
-
       this.name = newName;
       this.path = newPath;
       this.rename = false;
@@ -142,7 +138,7 @@ export default class DaListItem extends LitElement {
       this.date = Date.now();
 
       const showStatus = setTimeout(() => { this.setStatus('Renaming', 'Please be patient. Renaming items with many children can take time.'); }, 5000);
-      const resp = await daFetch(`${DA_ORIGIN}/move${oldPath}`, opts);
+      const resp = await daApi.move(oldPath, newPath);
 
       if (resp.status === 204) {
         clearTimeout(showStatus);
@@ -204,7 +200,7 @@ export default class DaListItem extends LitElement {
     let externalUrlPromise;
     if (this.ext === 'link') {
       path = nothing;
-      externalUrlPromise = daFetch(`${DA_ORIGIN}/source${this.path}`)
+      externalUrlPromise = daApi.getSource(this.path)
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }
@@ -216,8 +212,8 @@ export default class DaListItem extends LitElement {
           </span>
         ` : html`
           <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
+          </span>
         `}
-        </span>
         <div class="da-item-list-item-name">${this.name}</div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;

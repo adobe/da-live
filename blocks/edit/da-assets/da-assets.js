@@ -1,7 +1,7 @@
 import { DOMParser as proseDOMParser, Fragment } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 import getPathDetails from '../../shared/pathDetails.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
@@ -15,7 +15,7 @@ const CONFS = {};
 
 async function fetchConf(path) {
   if (CONFS[path]) return CONFS[path];
-  const resp = await daFetch(`${DA_ORIGIN}/config${path}`);
+  const resp = await daApi.getConfig(path);
   if (!resp.ok) return null;
 
   fullConfJsons[path] = await resp.json();
@@ -37,7 +37,7 @@ async function fetchValue(path, key) {
 }
 
 function constructConfigPaths(owner, repo) {
-  return [`/${owner}/${repo}/`, `/${owner}/`];
+  return [`/${owner}/${repo}/`];
 }
 
 // Note: this is called externally to determine if the button should be visible.
