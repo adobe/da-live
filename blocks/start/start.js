@@ -168,7 +168,7 @@ class DaStart extends LitElement {
     if (hasDemo) {
       this._disableCreate = true;
 
-      const resp = await daFetch(`${DA_ORIGIN}/list/${this.org}/${this.site}`);
+      const resp = await daApi.getList(`/${this.org}/${this.site}`);
       const json = await resp.json();
       if (json.length > 0) {
         this._errorText = 'The target site is not empty. Choose no demo content or a different site.';
