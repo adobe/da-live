@@ -21,6 +21,8 @@ import {
   yUndoPlugin,
 } from 'da-y-wrapper';
 
+import { getSchema } from 'da-parser';
+
 // DA
 import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
 import { linkItem } from './plugins/menu/linkItem.js';
@@ -36,7 +38,6 @@ import toggleLibrary from '../da-library/da-library.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { createAwarenessStatusWidget } from '../../shared/collab-status.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
-import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import linkMenu from './plugins/linkMenu/linkMenu.js';
 import {

@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
+import { getLivePreviewUrl } from '../../shared/constants.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
@@ -11,10 +12,11 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
+    lockdownImages: { attribute: false },
     _editorLoaded: { state: true },
     _showPane: { state: true },
     _versionUrl: { state: true },
-    _ueUrl: { state: true },
+    _externalUrl: { state: true },
   };
 
   connectedCallback() {
@@ -32,6 +34,7 @@ export default class DaContent extends LitElement {
   async loadViews() {
     // Only import the web components once
     if (this._editorLoaded) return;
+
     const preview = import('../da-preview/da-preview.js');
     const versions = import('../da-versions/da-versions.js');
     await Promise.all([preview, versions]);
@@ -39,8 +42,12 @@ export default class DaContent extends LitElement {
   }
 
   async loadUe() {
-    const { default: ueUrlHelper } = await import('./helpers/index.js');
-    this._ueUrl = await ueUrlHelper(this.details.owner, this.details.previewUrl);
+    const { default: getExternalUrl } = await import('./helpers/index.js');
+    this._externalUrl = await getExternalUrl(
+      this.details.owner,
+      this.details.repo,
+      this.details.previewUrl,
+    );
   }
 
   async handleEditorLoaded() {
@@ -49,7 +56,7 @@ export default class DaContent extends LitElement {
   }
 
   openUe() {
-    window.location = this._ueUrl;
+    window.location = this._externalUrl;
   }
 
   togglePane({ detail }) {
@@ -65,6 +72,14 @@ export default class DaContent extends LitElement {
   }
 
   render() {
+    const { owner, repo, previewUrl } = this.details;
+    const { pathname } = new URL(previewUrl);
+
+    // Only use livePreviewUrl if lockdownImages flag is set to true
+    const displayUrl = this.lockdownImages
+      ? `${getLivePreviewUrl(owner, repo)}${pathname}`
+      : previewUrl;
+
     return html`
       <div class="editor-wrapper">
         <da-editor
@@ -85,15 +100,16 @@ export default class DaContent extends LitElement {
             </div>
             <div class="da-editor-tabs-quiet">
               <button class="da-editor-tab quiet show-versions" title="Versions" @click=${() => this.togglePane({ detail: 'versions' })}>Versions</button>
-              ${this._ueUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
+              ${this._externalUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
             </div>
           </div>
         ` : nothing}
       </div>
       ${this._editorLoaded ? html`
         <da-preview
-          path=${this.details.previewUrl}
+          path=${displayUrl}
           .show=${this._showPane === 'preview'}
+          .lockdownImages=${this.lockdownImages}
           class="${this._showPane === 'preview' ? 'is-visible' : ''}"
           @close=${this.togglePane}></da-preview>
         <da-versions

@@ -35,6 +35,8 @@ export default class DaTitle extends LitElement {
     permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
+    previewPrefix: { attribute: false },
+    livePrefix: { attribute: false },
     _actionsVis: { state: true },
     _status: { state: true },
     _fixedActions: { state: true },
@@ -116,7 +118,14 @@ export default class DaTitle extends LitElement {
       const url = new URL(href);
       const isSnap = url.pathname.startsWith('/.snapshots');
       const toOpen = isSnap ? this.getSnapshotHref(url, action) : this.getCdnHref(url, action, cdn);
-      const toOpenInAem = toOpen.replace('.hlx.', '.aem.');
+      let toOpenInAem = toOpen.replace('.hlx.', '.aem.');
+
+      if (this.previewPrefix || this.livePrefix) {
+        const { pathname: path } = new URL(toOpenInAem);
+        const origin = action === 'publish' ? this.livePrefix : this.previewPrefix;
+        toOpenInAem = `${origin}${path}`;
+      }
+
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
