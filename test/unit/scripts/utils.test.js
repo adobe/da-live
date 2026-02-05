@@ -3,21 +3,26 @@ import { setNx, sanitizePath, sanitizePathParts, sanitizeName } from '../../../s
 
 describe('Libs', () => {
   it('Default Libs', () => {
-    const location = {
-      hostname: 'da.live',
-      search: '',
-    };
-    const libs = setNx('/nx', location);
+    const libs = setNx('/nx');
     expect(libs).to.equal('https://main--da-nx--adobe.aem.live/nx');
   });
 
-  it('Supports NX query param on any domain', () => {
+  it('Supports NX query param on da.live', () => {
     const location = {
-      hostname: 'business.adobe.com',
+      hostname: 'da.live',
       search: '?nx=foo',
     };
     const libs = setNx('/nx', location);
     expect(libs).to.equal('https://foo--da-nx--adobe.aem.live/nx');
+  });
+
+  it('Returns nxBase for non-whitelisted domains (test fixtures)', () => {
+    const location = {
+      hostname: 'example.com',
+      search: '?nx=foo',
+    };
+    const libs = setNx('/test/fixtures/nx', location);
+    expect(libs).to.equal('/test/fixtures/nx');
   });
 
   it('Supports NX query param', () => {
