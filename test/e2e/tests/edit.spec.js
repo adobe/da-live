@@ -149,9 +149,7 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await page.keyboard.press('`');
   // leave time for the code mark to be processed
   await page.waitForTimeout(1000);
-  let codeElement = proseMirror.locator('code');
-  await codeElement.waitFor();
-  await expect(codeElement).toContainText('code');
+  await expect(page.locator('div.ProseMirror').locator('code')).toContainText('code');
 
   // Backward
   await page.locator('div.ProseMirror').fill('This is a line that will contain a code mark.');
@@ -165,9 +163,7 @@ test('Add code mark', async ({ page }, workerInfo) => {
   }
   await page.keyboard.press('`');
   await page.waitForTimeout(1000);
-  codeElement = proseMirror.locator('code');
-  await codeElement.waitFor();
-  await expect(codeElement).toContainText('code');
+  await expect(page.locator('div.ProseMirror').locator('code')).toContainText('code');
 
   // No Overwrite
   for (let i = 0; i < 6; i += 1) {
@@ -180,5 +176,5 @@ test('Add code mark', async ({ page }, workerInfo) => {
   }
   await page.keyboard.press('`');
   await page.waitForTimeout(1000);
-  await expect(proseMirror).toContainText('This is a line that will contain `a code mark`.');
+  await expect(page.locator('div.ProseMirror')).toContainText('This is a line that will contain `a code mark`.');
 });
