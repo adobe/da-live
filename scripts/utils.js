@@ -47,8 +47,7 @@ export const [setNx, getNx] = (() => {
   return [
     (nxBase, location) => {
       nx = (() => {
-        const { hostname, search } = location || window.location;
-        if (!(hostname.includes('.hlx.') || hostname.includes('.aem.') || hostname.includes('local'))) return nxBase;
+        const { search } = location || window.location;
         const branch = sanitizeName(new URLSearchParams(search).get('nx'), false) || 'main';
         if (branch === 'local') return 'http://localhost:6456/nx';
         return `https://${branch}--da-nx--adobe.aem.live/nx`;
