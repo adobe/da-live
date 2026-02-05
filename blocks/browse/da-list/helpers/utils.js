@@ -90,6 +90,9 @@ export async function handleUpload(list, fullpath, file) {
   const sanitizedPath = sanitizePath(path);
   const postpath = `${fullpath}${sanitizedPath}`;
 
+  console.log('postpath', postpath);
+  console.log('sanitizedPath', sanitizedPath);
+
   try {
     await daFetch(`${DA_ORIGIN}/source${postpath}`, opts);
     file.imported = true;
