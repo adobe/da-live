@@ -10,6 +10,11 @@
   background: #f8f8f8;
 }
 
+.da-list-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
 /* List Item */
 da-list-item::before {
   display: block;
@@ -80,6 +85,7 @@ da-list-item.is-expanded::after {
   align-items: center;
   padding: 2px;
   height: 18px;
+  position: relative;
 }
 
 .da-browse-filter img {
@@ -92,6 +98,25 @@ da-list-item.is-expanded::after {
 
 .da-browse-filter:hover img {
   opacity: 1;
+}
+
+.da-browse-filter:disabled {
+  cursor: default;
+}
+
+.da-browse-filter.loading img {
+  opacity: 0;
+}
+
+.da-browse-filter.loading::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #c7c7c7;
+  border-top-color: #5a5a5a;
+  border-radius: 50%;
+  animation: da-list-spin 0.8s linear infinite;
 }
 
 .da-browse-header-name {
@@ -107,6 +132,11 @@ da-list-item.is-expanded::after {
   font-family: var(--body-font-family);
   font-weight: 700;
   cursor: pointer;
+}
+
+.da-browse-header-name:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .da-browse-header-container input {
@@ -137,7 +167,7 @@ da-list-item.is-expanded::after {
   outline: none;
 }
 
-.da-browse-header-name:hover::after {
+.da-browse-header-name:not(:disabled):hover::after {
   position: absolute;
   content: "";
   left: 0;
@@ -152,7 +182,7 @@ da-list-item.is-expanded::after {
   display: none;
   position: absolute;
   content: "";
-  right: -20px;
+  right: -16px;
   width: 18px;
   height: 18px;
   filter: invert(26%) sepia(0%) saturate(946%) hue-rotate(145deg) brightness(102%) contrast(81%);
@@ -168,6 +198,23 @@ da-list-item.is-expanded::after {
 .da-browse-header-name.old::before {
   display: block;
   transform: rotate(90deg);
+}
+
+.da-browse-header-name.loading::before {
+  display: block;
+  background: none;
+  border: 2px solid #c7c7c7;
+  border-top-color: #5a5a5a;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  right: -22px;
+  animation: da-list-spin 0.8s linear infinite;
+  transform: none;
+}
+
+@keyframes da-list-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Drag & Drop */
