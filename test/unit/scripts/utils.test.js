@@ -144,10 +144,16 @@ describe('Libs', () => {
       expect(parts).to.deep.equal(['-folder', '-file']);
     });
 
-    it('Retains underscores', () => {
+    it('Retains underscores in folders', () => {
       const path = '/my_folder/file';
       const parts = sanitizePathParts(path);
       expect(parts).to.deep.equal(['my_folder', 'file']);
+    });
+
+    it('Retains underscores in folders, but not on files', () => {
+      const path = '/my_folder/file_with_underscore.txt';
+      const sanitizedPath  = sanitizePath(path);
+      expect(sanitizedPath).to.deep.equal('/my_folder/file-with-underscore.txt');
     });
   });
 });

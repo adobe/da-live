@@ -39,7 +39,9 @@ export function sanitizePathParts(path) {
 }
 
 export function sanitizePath(path) {
-  return `/${sanitizePathParts(path).join('/')}`;
+  const pathParts = sanitizePathParts(path);
+  pathParts[pathParts.length - 1] = pathParts[pathParts.length - 1].replaceAll('_', '-');
+  return `/${pathParts.join('/')}`;
 }
 
 export const [setNx, getNx] = (() => {
