@@ -1,4 +1,3 @@
-export const CON_ORIGIN = 'https://content.da.live';
 export const AEM_ORIGIN = 'https://admin.hlx.page';
 
 export const SUPPORTED_FILES = {
@@ -30,6 +29,18 @@ const DA_COLLAB_ENVS = {
   prod: 'wss://collab.da.live',
 };
 
+const DA_CONTENT_ENVS = {
+  local: 'http://localhost:8788',
+  stage: 'https://stage-content.da.live',
+  prod: 'https://content.da.live',
+};
+
+const DA_LIVE_PREVIEW_ENVS = {
+  local: 'localhost:8000',
+  stage: 'stage-preview.da.live',
+  prod: 'preview.da.live',
+};
+
 function getDaEnv(location, key, envs) {
   const { href } = location;
   const query = new URL(href).searchParams.get(key);
@@ -58,3 +69,11 @@ export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_CO
 
 export const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'https://stage-content.da.live', 'http://localhost:8787'];
 export const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live', 'https://api.aem.live'];
+
+export const CON_ORIGIN = (() => getDaEnv(window.location, 'da-content', DA_CONTENT_ENVS))();
+export const LIVE_PREVIEW_DOMAIN = (() => getDaEnv(window.location, 'da-live-preview', DA_LIVE_PREVIEW_ENVS))();
+
+export function getLivePreviewUrl(owner, repo) {
+  const protocol = LIVE_PREVIEW_DOMAIN.startsWith('localhost') ? 'http' : 'https';
+  return `${protocol}://main--${repo}--${owner}.${LIVE_PREVIEW_DOMAIN}`;
+}

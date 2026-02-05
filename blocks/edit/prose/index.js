@@ -28,6 +28,7 @@ import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
 import imageFocalPoint from './plugins/imageFocalPoint.js';
 import linkConverter from './plugins/linkConverter.js';
+import linkTextSync from './plugins/linkTextSync.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN } from '../../shared/constants.js';
@@ -348,6 +349,7 @@ export default function initProse({ path, permissions }) {
     linkMenu(),
     imageDrop(schema),
     linkConverter(schema),
+    linkTextSync(),
     sectionPasteHandler(schema),
     base64Uploader(schema),
     columnResizing(),
