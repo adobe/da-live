@@ -3,7 +3,11 @@ import { setNx, sanitizePath, sanitizePathParts, sanitizeName } from '../../../s
 
 describe('Libs', () => {
   it('Default Libs', () => {
-    const libs = setNx('/nx');
+    const location = {
+      hostname: 'da.live',
+      search: '',
+    };
+    const libs = setNx('/nx', location);
     expect(libs).to.equal('https://main--da-nx--adobe.aem.live/nx');
   });
 
