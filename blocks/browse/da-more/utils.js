@@ -50,7 +50,7 @@ function formatTemplatePath(path) {
 
 async function aemPreview(destination) {
   const [, org, site, ...rest] = destination.split('/');
-  const resp = await daFetch(`${AEM_ORIGIN}/preview/${org}/${site}/${rest.join('/')}`);
+  const resp = await daFetch(`${AEM_ORIGIN}/preview/${org}/${site}/main/${rest.join('/')}`);
 }
 
 function formatGroupTemplates(rows) {
