@@ -23,7 +23,7 @@
   gap: 12px;
   position: absolute;
   top: 0;
-  z-index: 2;
+  z-index: 5;
   width: 100%;
   padding: 20px;
   background: #EFEFEF;
