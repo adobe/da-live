@@ -86,6 +86,7 @@ export async function openAssets() {
 
   const { owner, repo } = getPathDetails();
   const repoId = await getConfKey(owner, repo, 'aem.repositoryId');
+  const isAuthorRepo = repoId?.startsWith('author');
 
   // Custom publicly available asset origin
   let prodOrigin = await getConfKey(owner, repo, 'aem.assets.prod.origin');
@@ -171,7 +172,9 @@ export async function openAssets() {
           return state.schema.nodes.image.create(imgObj);
         };
 
-        if (dmDeliveryEnabled && activationTarget !== 'delivery' && status !== 'approved') {
+        // Only show the error message if the asset is not approved for delivery
+        // and the repository is an author repository
+        if (dmDeliveryEnabled && isAuthorRepo && activationTarget !== 'delivery' && status !== 'approved') {
           assetSelectorWrapper.style.display = 'none';
           cropSelectorWrapper.style.display = 'block';
           cropSelectorWrapper.innerHTML = '<p class="da-dialog-asset-error">The selected asset is not available because it is not approved for delivery. Please check the status.</p><div class="da-dialog-asset-buttons"><button class="back">Back</button><button class="cancel">Cancel</button></div>';

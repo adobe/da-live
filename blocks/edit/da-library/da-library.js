@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { DOMParser as proseDOMParser, TextSelection, DOMSerializer } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, DOMSerializer, TextSelection } from 'da-y-wrapper';
 import {
   LitElement,
   html,
@@ -10,11 +10,11 @@ import {
   nothing,
   repeat,
 } from 'da-lit';
+import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { getBlocks, getBlockVariants } from './helpers/index.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
-import { aem2prose } from '../utils/helpers.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
 import { delay, getItems, getLibraryList, getPreviewUrl, getEdsUrlVars } from './helpers/helpers.js';
@@ -280,14 +280,14 @@ class DaLibrary extends LitElement {
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
-    const text = await resp.text();
-    const doc = new DOMParser().parseFromString(text, 'text/html');
-    // Convert to a metadata block so it can be copied
-    doc.querySelector('.template-metadata')?.classList.replace('template-metadata', 'metadata');
-    const proseDom = aem2prose(doc);
-    const flattedDom = document.createElement('div');
-    flattedDom.append(...proseDom);
-    const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(flattedDom);
+    let text = await resp.text();
+
+    // Convert template-metadata to metadata block so it can be copied
+    text = text.replace('class="template-metadata"', 'class="metadata"');
+
+    const { dom } = htmlToProse(text);
+
+    const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
     window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));
   }
 

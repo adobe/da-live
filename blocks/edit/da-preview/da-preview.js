@@ -17,6 +17,7 @@ export default class DaPreview extends LitElement {
   static properties = {
     path: { type: String },
     show: { attribute: false },
+    lockdownImages: { attribute: false },
     _size: { state: true },
     _updating: { state: true },
     _message: { state: true },
@@ -47,7 +48,7 @@ export default class DaPreview extends LitElement {
     if (!window.view) return;
 
     // Always cache the body for future use
-    this.body = getHtmlWithCursor(window.view);
+    this.body = getHtmlWithCursor(window.view, this.lockdownImages);
 
     // If initialized, send the preview to the iframe
     if (this.initialized && this.body) this.sendPreview();

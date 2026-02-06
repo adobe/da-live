@@ -2,7 +2,7 @@ import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../../scripts/utils.js';
 
 import '../edit/da-title/da-title.js';
-import { daFetch } from '../shared/utils.js';
+import { daFetch, checkLockdownImages, contentLogin } from '../shared/utils.js';
 
 const PDF_VIEWER_SRC = 'https://acrobatservices.adobe.com/view-sdk/viewer.js';
 const PDF_CLIENT_ID = 'cd73455ea6c04d0aac86270f9f5f830c';
@@ -63,8 +63,12 @@ async function loadPdfMedia(url, fileName) {
 
 export default async function init(el) {
   const details = getPathDetails();
-  const { name, sourceUrl } = details;
+  const { name, sourceUrl, owner, repo } = details;
   const ext = name.split('.').pop();
+
+  if (await checkLockdownImages(owner)) {
+    await contentLogin(owner, repo);
+  }
 
   const daTitle = document.createElement('da-title');
 
