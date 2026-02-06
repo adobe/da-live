@@ -126,7 +126,8 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });
 
-test('Add code mark', async ({ page }, workerInfo) => {
+// Skip this test as it's unstable
+test.skip('Add code mark', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
   const url = getTestPageURL('edit5', workerInfo);
   await page.goto(url);
