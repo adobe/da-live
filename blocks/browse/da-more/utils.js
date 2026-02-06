@@ -50,6 +50,7 @@ function formatTemplatePath(path) {
 
 async function aemPreview(destination) {
   const [, org, site, ...rest] = destination.split('/');
+  rest.at(-1).replace('.html', '');
   const resp = await daFetch(`${AEM_ORIGIN}/preview/${org}/${site}/main/${rest.join('/')}`);
 }
 
