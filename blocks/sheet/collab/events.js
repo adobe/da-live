@@ -1,5 +1,6 @@
+/* eslint-disable no-console */
 import { Y } from 'da-y-wrapper';
-import { dataArrayToY, MIN_DIMENSIONS } from './convert.js';
+import { dataArrayToY, MIN_SHEET_DIMENSIONS as MIN_DIMENSIONS } from '../../../deps/da-parser/dist/index.js';
 
 /**
  * Update a specific cell's value (sets attribute - last-write-wins)
@@ -13,27 +14,27 @@ export function updateCell(ydata, rowIndex, colIndex, newValue) {
     console.warn(`Row index ${rowIndex} out of bounds`);
     return;
   }
-  
+
   const yrow = ydata.get(rowIndex);
   if (!yrow) {
     console.warn(`No row at index ${rowIndex}`);
     return;
   }
-  
+
   if (colIndex < 0 || colIndex >= yrow.length) {
     console.warn(`Column index ${colIndex} out of bounds`);
     return;
   }
-  
+
   // Get the Y.XmlElement 'cell' and set its value attribute (last-write-wins)
   const ycell = yrow.get(colIndex);
   if (!ycell) {
     console.warn(`No cell at [${rowIndex}, ${colIndex}]`);
     return;
   }
-  
+
   ycell.setAttribute('value', String(newValue || ''));
-  
+
   console.log(`Updated cell [${rowIndex}, ${colIndex}] to "${newValue}"`);
 }
 
@@ -46,7 +47,7 @@ export function updateCell(ydata, rowIndex, colIndex, newValue) {
  */
 export function insertRow(ydata, rowIndex, rowData = null, numColumns = 0) {
   const yrow = new Y.XmlElement('row');
-  
+
   if (rowData) {
     // Create row from provided data
     rowData.forEach((cellValue, idx) => {
@@ -56,13 +57,13 @@ export function insertRow(ydata, rowIndex, rowData = null, numColumns = 0) {
     });
   } else {
     // Create empty row with specified number of columns
-    for (let i = 0; i < numColumns; i++) {
+    for (let i = 0; i < numColumns; i += 1) {
       const ycell = new Y.XmlElement('cell');
       ycell.setAttribute('value', '');
       yrow.insert(i, [ycell]);
     }
   }
-  
+
   ydata.insert(rowIndex, [yrow]);
   console.log(`Inserted row at index ${rowIndex}`);
 }
@@ -78,13 +79,13 @@ export function deleteRow(ydata, rowIndex, count = 1) {
     console.warn(`Row index ${rowIndex} out of bounds`);
     return;
   }
-  
+
   ydata.delete(rowIndex, count);
   console.log(`Deleted ${count} row(s) at index ${rowIndex}`);
 
   const numRows = ydata.length;
   if (numRows < MIN_DIMENSIONS) {
-    for (let i = numRows; i < MIN_DIMENSIONS; i++) {
+    for (let i = numRows; i < MIN_DIMENSIONS; i += 1) {
       const numColumns = ydata.get(0).toArray().length || MIN_DIMENSIONS;
       insertRow(ydata, i, null, numColumns);
     }
@@ -114,12 +115,12 @@ export function insertColumn(ydata, ycolumns, colIndex, columnData = null) {
     ycell.setAttribute('value', String(value));
     yrow.insert(colIndex, [ycell]);
   });
-  
+
   // Insert column metadata
   const ycol = new Y.Map();
   ycol.set('width', '50');
   ycolumns.insert(colIndex, [ycol]);
-  
+
   console.log(`Inserted column at index ${colIndex} (data and metadata)`);
 }
 
@@ -138,7 +139,7 @@ export function deleteColumn(ydata, ycolumns, colIndex, count = 1) {
       yrow.delete(colIndex, count);
     }
   });
-  
+
   // Delete column metadata
   if (colIndex >= 0 && colIndex < ycolumns.length) {
     ycolumns.delete(colIndex, count);
@@ -148,7 +149,7 @@ export function deleteColumn(ydata, ycolumns, colIndex, count = 1) {
 
   const numColumns = ydata.length > 0 ? ydata.get(0).toArray().length : 0;
   if (numColumns < MIN_DIMENSIONS) {
-    for (let i = numColumns; i < MIN_DIMENSIONS; i++) {
+    for (let i = numColumns; i < MIN_DIMENSIONS; i += 1) {
       insertColumn(ydata, ycolumns, i);
     }
   }
@@ -171,17 +172,17 @@ export function moveRow(ydata, fromIndex, toIndex) {
     console.warn(`Destination row index ${toIndex} out of bounds`);
     return;
   }
-  
+
   // Get the row to move
   const rowToMove = ydata.get(fromIndex);
-  
+
   // Delete from original position
   ydata.delete(fromIndex, 1);
-  
+
   // Insert at new position (adjust index if moving down)
   const adjustedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
   ydata.insert(adjustedToIndex, [rowToMove]);
-  
+
   console.log(`Moved row from index ${fromIndex} to ${adjustedToIndex}`);
 }
 
@@ -196,7 +197,7 @@ export function moveColumn(ydata, ycolumns, fromIndex, toIndex) {
   // Move data cells in each row
   ydata.forEach((yrow) => {
     const yCells = yrow.toArray();
-    
+
     if (fromIndex < 0 || fromIndex >= yCells.length) {
       console.warn(`Source column index ${fromIndex} out of bounds`);
       return;
@@ -205,18 +206,18 @@ export function moveColumn(ydata, ycolumns, fromIndex, toIndex) {
       console.warn(`Destination column index ${toIndex} out of bounds`);
       return;
     }
-    
+
     // Get the cell to move
     const cellToMove = yCells[fromIndex];
-    
+
     // Delete from original position
     yrow.delete(fromIndex, 1);
-    
+
     // Insert at new position (adjust index if moving right)
     const adjustedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
     yrow.insert(adjustedToIndex, [cellToMove]);
   });
-  
+
   // Move column metadata
   if (fromIndex >= 0 && fromIndex < ycolumns.length && toIndex >= 0 && toIndex < ycolumns.length) {
     const colToMove = ycolumns.get(fromIndex);
@@ -224,7 +225,7 @@ export function moveColumn(ydata, ycolumns, fromIndex, toIndex) {
     const adjustedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
     ycolumns.insert(adjustedToIndex, [colToMove]);
   }
-  
+
   console.log(`Moved column from index ${fromIndex} to ${toIndex} (data and metadata)`);
 }
 
@@ -233,7 +234,7 @@ export function addSheet(ydoc, sheetName) {
   const sheet = new Y.Map();
   sheet.set('sheetName', sheetName);
   const dataFragment = new Y.XmlFragment();
-  dataArrayToY([], dataFragment);
+  dataArrayToY([], dataFragment, ydoc, Y);
   sheet.set('data', dataFragment);
   const ycolumns = new Y.Array();
   for (let i = 0; i < MIN_DIMENSIONS; i += 1) {
@@ -262,19 +263,19 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
     const ysheet = ydoc.getArray('sheets').get(idx);
     return ysheet.get('data');
   };
-  
+
   const getYColumns = () => {
     const ysheet = ydoc.getArray('sheets').get(idx);
     return ysheet.get('columns');
   };
-  
+
   const label = wsProvider?.awareness?.clientID ?? 'local';
 
   // Cell value change
   sheet.options.onchange = (instance, cell, colIndex, rowIndex, value) => {
     if (listenerContext.disableListeners) return;
     console.log(`[${label}] Cell changed at [${rowIndex}, ${colIndex}] to "${value}"`);
-    
+
     ydoc.transact(() => {
       const ydata = getYData();
       updateCell(ydata, rowIndex, colIndex, value);
@@ -300,12 +301,12 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
       };
       wsProvider.awareness.setLocalStateField('position', position);
     }
-  }
+  };
 
   // Row inserted
   sheet.options.oninsertrow = (instance, rowIndex, numOfRows, rowData, insertBefore) => {
     console.log(`[${label}] Inserted ${numOfRows} row(s) at index ${rowIndex}, insertBefore: ${insertBefore}`);
-    
+
     ydoc.transact(() => {
       const ydata = getYData();
       const numColumns = ydata.length > 0 ? ydata.get(0).toArray().length : 0;
@@ -313,8 +314,8 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
       // so we need to adjust the index
       const insertIndex = insertBefore ? rowIndex : rowIndex + 1;
       console.log(`[${label}] Actual insert index: ${insertIndex}`);
-      
-      for (let i = 0; i < numOfRows; i++) {
+
+      for (let i = 0; i < numOfRows; i += 1) {
         insertRow(ydata, insertIndex + i, null, numColumns);
       }
     }, label);
@@ -323,7 +324,7 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
   // Row deleted
   sheet.options.ondeleterow = (instance, rowIndex, numOfRows) => {
     console.log(`[${label}] Deleted ${numOfRows} row(s) at index ${rowIndex}`);
-    
+
     ydoc.transact(() => {
       const ydata = getYData();
       deleteRow(ydata, rowIndex, numOfRows);
@@ -333,7 +334,7 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
   // Column resized
   sheet.options.onresizecolumn = (instance, colIndex, width) => {
     console.log(`[${label}] Column ${colIndex} resized to ${width}`);
-    
+
     ydoc.transact(() => {
       const ycolumns = getYColumns();
       resizeColumn(ycolumns, colIndex, width);
@@ -343,7 +344,7 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
   // Column inserted
   sheet.options.oninsertcolumn = (instance, colIndex, numOfColumns, colData, insertBefore) => {
     console.log(`[${label}] Inserted ${numOfColumns} column(s) at index ${colIndex}, insertBefore: ${insertBefore}`);
-    
+
     ydoc.transact(() => {
       const ydata = getYData();
       const ycolumns = getYColumns();
@@ -351,8 +352,8 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
       // so we need to adjust the index
       const insertIndex = insertBefore ? colIndex : colIndex + 1;
       console.log(`[${label}] Actual insert index: ${insertIndex}`);
-      
-      for (let i = 0; i < numOfColumns; i++) {
+
+      for (let i = 0; i < numOfColumns; i += 1) {
         insertColumn(ydata, ycolumns, insertIndex + i);
       }
     }, label);
@@ -361,7 +362,7 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
   // Column deleted
   sheet.options.ondeletecolumn = (instance, colIndex, numOfColumns) => {
     console.log(`[${label}] Deleted ${numOfColumns} column(s) at index ${colIndex}`);
-    
+
     ydoc.transact(() => {
       const ydata = getYData();
       const ycolumns = getYColumns();
@@ -372,7 +373,7 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
   // Row moved
   sheet.options.onmoverow = (instance, fromIndex, toIndex) => {
     console.log(`[${label}] Moved row from ${fromIndex} to ${toIndex}`);
-    
+
     ydoc.transact(() => {
       const ydata = getYData();
       moveRow(ydata, fromIndex, toIndex);
@@ -382,22 +383,21 @@ export function setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerConte
   // Column moved
   sheet.options.onmovecolumn = (instance, fromIndex, toIndex) => {
     console.log(`[${label}] Moved column from ${fromIndex} to ${toIndex}`);
-    
+
     ydoc.transact(() => {
       const ydata = getYData();
       const ycolumns = getYColumns();
       moveColumn(ydata, ycolumns, fromIndex, toIndex);
     }, label);
-  
   };
 
-  sheet.options.onundo = (instance) => {
+  sheet.options.onundo = () => {
     console.log(`[${label}] Undo triggered`);
     yUndoManager.undo();
   };
 
-  sheet.options.onredo = (instance) => {
+  sheet.options.onredo = () => {
     console.log(`[${label}] Redo triggered`);
     yUndoManager.redo();
   };
-};
+}

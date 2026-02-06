@@ -48,7 +48,7 @@ class DaSheetPanes extends LitElement {
     verReview.data = await getData(e.detail.url);
     verReview.addEventListener('close', () => { verReview.remove(); });
     verReview.addEventListener('restore', async () => {
-      const { jSheetToY } = await import('./collab/convert.js');
+      const { jSheetToY } = await import('../../deps/da-parser/dist/index.js');
       jSheetToY(verReview.data, this.ydoc, true);
       verReview.remove();
     });

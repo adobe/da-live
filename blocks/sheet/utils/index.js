@@ -1,7 +1,7 @@
 import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import '../da-sheet-tabs.js';
-import { yToJSheet, jSheetToY } from '../collab/convert.js';
+import { yToJSheet } from '../../../deps/da-parser/dist/index.js';
 import { setupEventHandlers } from '../collab/events.js';
 import joinCollab, { attachLocalYDoc } from '../collab/index.js';
 import { drawOverlays } from '../collab/overlays.js';
@@ -15,6 +15,7 @@ const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
 let permissions;
 let canWrite;
+const listenerContext = { disableListeners: false };
 
 function resetSheets(el) {
   document.querySelector('da-sheet-tabs')?.remove();
@@ -190,7 +191,7 @@ function checkSheetDimensionsEqual(jExcelData, newDataFromY) {
 function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
   const wrapper = el.closest('.da-sheet-wrapper');
   const ysheets = ydoc.getArray('sheets');
-  let sheets = yToJSheet(ysheets, canWrite);
+  const sheets = yToJSheet(ysheets, canWrite);
 
   if (sheets.length === 0) {
     console.error('No sheets found in Yjs document');
@@ -218,7 +219,6 @@ function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
   }
 }
 
-let listenerContext = { disableListeners: false };
 function updateSheetsInPlace(el, sheets) {
   listenerContext.disableListeners = true;
   const tabs = el.closest('.da-sheet-wrapper').querySelector('da-sheet-tabs');
@@ -237,7 +237,7 @@ function updateSheetsInPlace(el, sheets) {
 
 function updateSheets(el, ydoc, yUndoManager, wsProvider) {
   const ysheets = ydoc.getArray('sheets');
-  let sheets = yToJSheet(ysheets, canWrite);
+  const sheets = yToJSheet(ysheets, canWrite);
   const longestSheet = sheets.reduce((acc, sheet) => Math.max(acc, sheet.data.length), 0);
 
   if (sheets.length === 0) {
@@ -255,7 +255,7 @@ function updateSheets(el, ydoc, yUndoManager, wsProvider) {
     updateSheetsInPlace(el, sheets);
   } else {
     // Re-render to match dimensions, tab names etc.
-    // rerender full sheets after a timeout to allow events 
+    // rerender full sheets after a timeout to allow events
     // (eg navigate to next cell) to complete before capturing state
     // if we're currently editing a cell, we also need a full rerender,
     // as using setData will break the editor if a cell is being edited

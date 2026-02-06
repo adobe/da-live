@@ -1,7 +1,7 @@
-import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { WebsocketProvider, Y } from 'da-y-wrapper';
+import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { drawOverlays, generateColor } from './overlays.js';
-import { jSheetToY } from './convert.js';
+import { jSheetToY } from '../../../deps/da-parser/dist/index.js';
 import { getData } from '../utils/index.js';
 
 // for config sheets, we don't join collab, instead use a local ydoc
@@ -12,10 +12,10 @@ export async function attachLocalYDoc(el) {
   // wait for ydoc to start listening for changes before setting data
   setTimeout(() => {
     ydoc.transact(() => {
-      jSheetToY(data, ydoc);
+      jSheetToY(data, ydoc, false, Y);
     });
   }, 0);
-  
+
   const ysheets = ydoc.getArray('sheets');
   const yUndoManager = new Y.UndoManager(ysheets);
 
@@ -67,9 +67,10 @@ export default function joinCollab(el) {
     drawOverlays(wsProvider);
   });
 
-  const yUndoManager = new Y.UndoManager(ysheets, {
-    trackedOrigins: new Set([wsProvider.awareness.clientID]),
-  });
+  const yUndoManager = new Y.UndoManager(
+    ysheets,
+    { trackedOrigins: new Set([wsProvider.awareness.clientID]) },
+  );
 
   return { ydoc, wsProvider, yUndoManager };
 }

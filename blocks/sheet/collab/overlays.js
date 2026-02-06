@@ -1,3 +1,5 @@
+/* eslint-disable no-use-before-define */
+/* eslint-disable no-underscore-dangle */
 export function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40, 60]) {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
@@ -80,7 +82,7 @@ export function drawOverlays(wsProvider) {
 
     const { sheetIdx, selection } = position;
     const { x1, y1 } = selection;
-    
+
     const sheet = tabs.jexcel[sheetIdx];
     if (!sheet || !sheet.records) return;
 
@@ -91,11 +93,11 @@ export function drawOverlays(wsProvider) {
     // Calculate position relative to da-sheet-wrapper container
     const cellRect = cell.getBoundingClientRect();
     const containerRect = wrapper.getBoundingClientRect();
-    
+
     const left = cellRect.left - containerRect.left;
     const top = cellRect.top - containerRect.top;
-    const width = cellRect.width;
-    const height = cellRect.height;
+    const { width } = cellRect;
+    const { height } = cellRect;
 
     // Create or update the overlay div
     let overlayDiv = document.getElementById(`collab-overlay-${clientId}`);
@@ -112,16 +114,16 @@ export function drawOverlays(wsProvider) {
     }
 
     // Check if remote cell is within local user's selection
-    const isWithinLocalSelection = localSelection && 
-                                    localSheetIdx === sheetIdx &&
-                                    x1 >= localSelection.x1 && x1 <= localSelection.x2 &&
-                                    y1 >= localSelection.y1 && y1 <= localSelection.y2;
+    const isWithinLocalSelection = localSelection
+                                    && localSheetIdx === sheetIdx
+                                    && x1 >= localSelection.x1 && x1 <= localSelection.x2
+                                    && y1 >= localSelection.y1 && y1 <= localSelection.y2;
 
     // Check if local user has selected the row just before this marker
-    const shouldPositionBelow = localSelection && 
-                                 localSheetIdx === sheetIdx &&
-                                 localSelection.y2 === y1 - 1 &&
-                                 !isWithinLocalSelection;
+    const shouldPositionBelow = localSelection
+                                 && localSheetIdx === sheetIdx
+                                 && localSelection.y2 === y1 - 1
+                                 && !isWithinLocalSelection;
 
     // Show and position the overlay
     overlayDiv.style.display = '';
@@ -144,7 +146,7 @@ export function drawOverlays(wsProvider) {
       nameLabel.style.display = 'none';
     } else {
       nameLabel.style.display = '';
-      
+
       // Toggle position-below class based on local selection
       if (shouldPositionBelow) {
         nameLabel.classList.add('position-below');

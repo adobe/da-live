@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { Y } from 'da-y-wrapper';
-import { jSheetToY } from '../../../../blocks/sheet/collab/convert.js';
+import { jSheetToY } from '../../../deps/da-parser/dist/index.js';
 import { updateCell, deleteRow, deleteColumn } from '../../../../blocks/sheet/collab/events.js';
 
 describe('Sheet Collab', () => {
