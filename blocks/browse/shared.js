@@ -5,7 +5,7 @@ export default function getEditPath({ path, ext, editor }) {
     const extentionlessPath = path.substring(0, lastIndex);
 
     const isUe = route.includes('experience.adobe.com');
-    const isQe = route.includes('quickedit=on');
+    const isQe = route.includes('quick-edit=on');
     const hasPlaceholder = route.includes('{{path}}');
 
     if (isUe || isQe || hasPlaceholder) {
