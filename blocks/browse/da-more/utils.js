@@ -5,7 +5,7 @@ import getEditPath from '../shared.js';
 const SKIP_TEMPLATE_PARAMS = [
   (url) => url.hostname === 'experience.adobe.com',
   (url) => url.pathname.startsWith('/edit'),
-  (url) => url.searchParams.has('quickedit'),
+  (url) => url.searchParams.has('quick-edit'),
 ];
 
 function getGroupError(group) {
@@ -46,6 +46,10 @@ function formatTemplatePath(path) {
 
   // Fallback
   return url.pathname.endsWith('.html') ? url.pathname : `${url.pathname}.html`;
+}
+
+async function aemPreview(result) {
+  console.log(result);
 }
 
 function formatGroupTemplates(rows) {
@@ -170,7 +174,13 @@ export async function navigateOrCreateNew(defaultEditorPath, selected, destinati
 
   // If provided source, copy it to the destination
   if (source) {
-    const result = await copyTemplate(source, destination);
+    let result;
+    if (!editorUrl.includes('formsref')) {
+      result = await copyTemplate(source, destination);
+    }
+    if (editorUrl.includes('quick-edit')) {
+      await aemPreview(result);
+    }
     if (result.error) return result.error;
   }
 
