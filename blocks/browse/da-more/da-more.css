@@ -2,8 +2,9 @@
   .more-list {
     list-style: none;
     max-height: 360px;
-    margin: -6px 0 0;
+    margin: -6px 0 12px;
     padding: 0;
+    overflow: auto;
 
     .more-group-title {
       margin: 0px;

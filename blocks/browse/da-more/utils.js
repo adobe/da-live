@@ -1,4 +1,4 @@
-import { DA_ORIGIN } from '../../shared/constants.js';
+import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getDaConfig, getFirstSheet } from '../../shared/utils.js';
 import getEditPath from '../shared.js';
 
@@ -48,8 +48,9 @@ function formatTemplatePath(path) {
   return url.pathname.endsWith('.html') ? url.pathname : `${url.pathname}.html`;
 }
 
-async function aemPreview(result) {
-  console.log(result);
+async function aemPreview(destination) {
+  const [, org, site, ...rest] = destination.split('/');
+  const resp = await daFetch(`${AEM_ORIGIN}/preview/${org}/${site}/${rest.join('/')}`);
 }
 
 function formatGroupTemplates(rows) {
@@ -175,13 +176,13 @@ export async function navigateOrCreateNew(defaultEditorPath, selected, destinati
   // If provided source, copy it to the destination
   if (source) {
     let result;
-    if (!editorUrl.includes('formsref')) {
+    if (!nav.includes('/form')) {
       result = await copyTemplate(source, destination);
     }
-    if (editorUrl.includes('quick-edit')) {
-      await aemPreview(result);
+    if (nav.includes('quick-edit')) {
+      await aemPreview(destination);
     }
-    if (result.error) return result.error;
+    if (result?.error) return result.error;
   }
 
   window.location = nav;
