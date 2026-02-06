@@ -52,7 +52,7 @@ async function aemPreview(destination) {
   const [, org, site, ...rest] = destination.split('/');
   rest[rest.length - 1] = rest[rest.length - 1].replace('.html', '');
   const opts = { method: 'POST' };
-  const resp = await daFetch(`${AEM_ORIGIN}/preview/${org}/${site}/main/${rest.join('/')}`, opts);
+  await daFetch(`${AEM_ORIGIN}/preview/${org}/${site}/main/${rest.join('/')}`, opts);
 }
 
 function formatGroupTemplates(rows) {
