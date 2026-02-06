@@ -116,6 +116,8 @@ class DaLibrary extends LitElement {
       return;
     }
 
+    this._activePane = library.name;
+
     if (library.experience === 'dialog') {
       let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
       if (dialog) dialog.remove();
@@ -178,13 +180,11 @@ class DaLibrary extends LitElement {
     }
 
     const { target } = e;
-    const type = target.dataset.libraryName;
     target.closest('.palette-pane').classList.add('backward');
     target.closest('.palette-pane').inert = true;
-    const toShow = this.shadowRoot.querySelector(`[data-library-type="${type}"]`);
+    const toShow = this.shadowRoot.querySelector(`[data-library-type="${library.name}"]`);
     toShow.classList.remove('forward');
     toShow.inert = false;
-    this._activePane = type;
   }
 
   handleBack(e) {
