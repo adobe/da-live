@@ -141,10 +141,16 @@ describe('Libs', () => {
       expect(parts).to.deep.equal(['-folder', '-file']);
     });
 
-    it('Retains underscores', () => {
+    it('Retains underscores in folder segments', () => {
       const path = '/my_folder/file';
       const parts = sanitizePathParts(path);
       expect(parts).to.deep.equal(['my_folder', 'file']);
+    });
+
+    it('Strips underscores from last segment', () => {
+      const path = '/my_folder/My_file';
+      const parts = sanitizePathParts(path);
+      expect(parts).to.deep.equal(['my_folder', 'my-file']);
     });
   });
 });
