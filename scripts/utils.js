@@ -11,31 +11,34 @@
  */
 export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
 
-export function sanitizeName(name, preserveDots = true) {
+export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
   if (!name) return null;
 
   if (preserveDots && name.indexOf('.') !== -1) {
     return name
       .split('.')
-      .map((part) => sanitizeName(part))
+      .map((part) => sanitizeName(part, true, allowUnderscores))
       .join('.');
   }
+
+  const pattern = allowUnderscores ? /[^a-z0-9_]+/g : /[^a-z0-9]+/g;
 
   return name
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9_]+/g, '-')
+    .replace(pattern, '-')
     .replace(/-$/g, '');
 }
 
 export function sanitizePathParts(path) {
-  return path.slice(1)
+  const parts = path.slice(1)
     .toLowerCase()
-    .split('/')
-    .map((name) => (name ? sanitizeName(name) : ''))
+    .split('/');
+  return parts
+    .map((name, i) => (name ? sanitizeName(name, true, i < parts.length - 1) : ''))
     // remove path traversal parts, and empty strings unless at the end
-    .filter((name, i, parts) => !/^[.]{1,2}$/.test(name) && (name !== '' || i === parts.length - 1));
+    .filter((name, i, filtered) => !/^[.]{1,2}$/.test(name) && (name !== '' || i === filtered.length - 1));
 }
 
 export function sanitizePath(path) {
