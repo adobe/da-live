@@ -57,9 +57,6 @@ export default class DaList extends LitElement {
     this._continuationToken = null;
     this._isLoadingMore = false;
     this._observer = null;
-    this._scrollEl = null;
-    this._onScroll = null;
-    this._onResize = null;
     this._autoCheckTimer = null;
     this._forceLoadAll = false;
     this._bulkLoading = false;
@@ -83,7 +80,7 @@ export default class DaList extends LitElement {
       this._showFilter = undefined;
       this._allPagesLoaded = false;
       this._listItems = await this.getList();
-      requestAnimationFrame(() => this.checkLoadMore());
+      this.scheduleAutoCheck();
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -97,7 +94,6 @@ export default class DaList extends LitElement {
     await import('../../shared/da-dialog/da-dialog.js');
     await import('../da-actionbar/da-actionbar.js');
     this.setupObserver();
-    this.setupScrollListener();
   }
 
   setStatus(text, description, type = 'info') {
@@ -817,65 +813,22 @@ export default class DaList extends LitElement {
 
   setupObserver() {
     if (this._observer) return;
-    const panel = this.shadowRoot?.querySelector('.da-browse-panel') || null;
-    const usePanelAsRoot = panel && panel.scrollHeight > panel.clientHeight;
     this._observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) this.loadMore();
       });
-    }, { root: usePanelAsRoot ? panel : null, rootMargin: '200px' });
+    }, { root: null, rootMargin: '200px' });
   }
 
-  updated(changedProps) {
-    super.updated(changedProps);
-    this.setupScrollListener();
+  updated() {
+    super.updated();
     if (!this._observer) this.setupObserver();
     const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
     if (sentinel && this._observer) {
       this._observer.disconnect();
       this._observer.observe(sentinel);
     }
-    this.checkLoadMore();
-  }
-
-  setupScrollListener() {
-    const nextScrollEl = this.getScrollableAncestor();
-
-    if (this._scrollEl === nextScrollEl) return;
-    if (this._scrollEl && this._onScroll) this._scrollEl.removeEventListener('scroll', this._onScroll);
-
-    this._scrollEl = nextScrollEl;
-    this._onScroll = () => {
-      this.checkLoadMore();
-    };
-    this._scrollEl.addEventListener('scroll', this._onScroll, { passive: true });
-
-    if (!this._onResize) {
-      this._onResize = () => this.checkLoadMore();
-      window.addEventListener('resize', this._onResize, { passive: true });
-      window.addEventListener('scroll', this._onScroll, { passive: true });
-    }
-  }
-
-  getScrollableAncestor() {
-    let node = this;
-    while (node) {
-      let parent = node.parentNode;
-      if (!parent && node.getRootNode) {
-        const root = node.getRootNode();
-        parent = root && root.host ? root.host : null;
-      }
-      if (!parent || parent === node) break;
-      if (parent instanceof HTMLElement) {
-        const style = window.getComputedStyle(parent);
-        const { overflowY } = style;
-        if ((overflowY === 'auto' || overflowY === 'scroll') && parent.scrollHeight > parent.clientHeight) {
-          return parent;
-        }
-      }
-      node = parent;
-    }
-    return window;
+    this.scheduleAutoCheck();
   }
 
   checkLoadMore() {
@@ -884,36 +837,29 @@ export default class DaList extends LitElement {
     if (!this._continuationToken) return;
     const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
     if (!sentinel) return;
+    const panel = this.shadowRoot?.querySelector('.da-browse-panel');
+    if (!panel) return;
 
-    const isWindow = this._scrollEl === window;
-    const rootRect = isWindow
-      ? { top: 0, bottom: window.innerHeight }
-      : this._scrollEl.getBoundingClientRect();
+    const rootRect = panel.getBoundingClientRect();
     const rect = sentinel.getBoundingClientRect();
 
     const rootHeight = rootRect.bottom - rootRect.top;
-    const threshold = rootHeight * 4;
+    const threshold = rootHeight * 2;
     if (this._forceLoadAll || rect.top <= rootRect.bottom + threshold) {
       this.loadMore();
     }
   }
 
   scheduleAutoCheck() {
-    if (this._bulkLoading) return;
-    if (this._allPagesLoaded) return;
-    if (this._autoCheckTimer || !this._continuationToken) return;
+    if (this._autoCheckTimer) return;
     this._autoCheckTimer = setTimeout(() => {
       this._autoCheckTimer = null;
       this.checkLoadMore();
-      if (this._continuationToken && !this._allPagesLoaded) this.scheduleAutoCheck();
-    }, 250);
+    }, 0);
   }
 
   disconnectedCallback() {
     if (this._observer) this._observer.disconnect();
-    if (this._scrollEl && this._onScroll) this._scrollEl.removeEventListener('scroll', this._onScroll);
-    if (this._onResize) window.removeEventListener('resize', this._onResize);
-    if (this._onScroll) window.removeEventListener('scroll', this._onScroll);
     if (this._autoCheckTimer) clearTimeout(this._autoCheckTimer);
     super.disconnectedCallback();
   }
