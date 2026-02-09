@@ -40,6 +40,7 @@ import {
   redo as yRedo,
   prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
+  yDocToProsemirror,
   yDocToProsemirrorJSON,
   yXmlFragmentToProsemirrorJSON,
 } from 'y-prosemirror';
@@ -107,6 +108,7 @@ export {
   yRedo,
   prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
+  yDocToProsemirror,
   yDocToProsemirrorJSON,
   yXmlFragmentToProsemirrorJSON,
 };

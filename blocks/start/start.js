@@ -249,7 +249,7 @@ class DaStart extends LitElement {
       const { status: orgSaveStatus } = await saveConfig(this.org, email);
       if (orgSaveStatus !== 201) {
         if (orgSaveStatus === 401 || orgSaveStatus === 403) {
-          this._errorText = 'You are not authorized to create this org. Check your permissions.';
+          this._errorText = 'You are not authorized to create this DA organization. Check your permissions.';
         } else {
           this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
         }
@@ -262,7 +262,7 @@ class DaStart extends LitElement {
     this._loading = false;
     if (!resp.ok) {
       if (resp.status === 401 || resp.status === 403) {
-        this._errorText = 'You are not authorized to create this site. Check your permissions.';
+        this._errorText = 'You are not authorized to create this site in the corresponding DA organization. Check with the organization administrator.';
       } else {
         this._errorText = 'The site could not be created. Check the console logs or contact an administrator.';
       }

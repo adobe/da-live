@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { DOMParser } from 'da-y-wrapper';
-import { getSchema } from '../../../../../../blocks/edit/prose/schema.js';
+import { getSchema } from 'da-parser';
 
 describe('Prose Schema', () => {
   const schema = getSchema();

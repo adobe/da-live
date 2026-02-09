@@ -7,13 +7,19 @@ describe('Libs', () => {
     expect(libs).to.equal('https://main--da-nx--adobe.aem.live/nx');
   });
 
-  it('Does not support NX query param on prod', () => {
+  it('Default NX on production / CDN', () => {
+    const location = { hostname: 'da.live' };
+    const libs = setNx('/nx', location);
+    expect(libs).to.equal('/nx');
+  });
+
+  it('Supports NX query param on production', () => {
     const location = {
-      hostname: 'business.adobe.com',
+      hostname: 'da.live',
       search: '?nx=foo',
     };
     const libs = setNx('/nx', location);
-    expect(libs).to.equal('/nx');
+    expect(libs).to.equal('https://foo--da-nx--adobe.aem.live/nx');
   });
 
   it('Supports NX query param', () => {
