@@ -178,7 +178,12 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
       if (!userInfo?.id) {
         userMap.set(`anonymous-${u}`, 'Anonymous');
       } else if (userInfo.id !== wsProvider.awareness.getLocalState().user?.id) {
-        userMap.set(userInfo.id, userInfo.name);
+        // Check if this is an AI user - display robot emoji instead of name
+        if (userInfo.isAI) {
+          userMap.set(userInfo.id, '🤖 AI Assistant');
+        } else {
+          userMap.set(userInfo.id, userInfo.name);
+        }
       }
     });
     daTitle.collabUsers = [...userMap.values()].sort();

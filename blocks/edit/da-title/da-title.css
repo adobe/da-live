@@ -150,6 +150,23 @@ da-dialog {
   background: rgb(150 150 150 / 50%);
 }
 
+.collab-icon-ai {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 14px;
+  padding: 0 8px;
+  animation: sparkle-pulse 2s ease-in-out infinite;
+}
+
+.collab-icon-ai:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
 .collab-status-cloud {
   height: 27px;
   margin-left: -4px;

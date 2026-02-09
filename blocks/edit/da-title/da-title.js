@@ -245,6 +245,11 @@ export default class DaTitle extends LitElement {
 
   renderCollabUsers() {
     return html`${this.collabUsers.map((user) => {
+      // Check if this is an AI user - show sparkles instead of initials
+      const isAI = user.includes('AI Assistant') || user.startsWith('🤖');
+      if (isAI) {
+        return html`<div class="collab-icon collab-icon-user collab-icon-ai" data-popup-content="AI Assistant" @click=${this.popover}>✨</div>`;
+      }
       const initials = user.split(' ').map((name) => name.toString().substring(0, 1));
       return html`<div class="collab-icon collab-icon-user" data-popup-content="${user}" @click=${this.popover}>${initials.join('')}</div>`;
     })}`;

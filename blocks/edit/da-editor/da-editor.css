@@ -164,13 +164,12 @@ blockquote::before {
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  left: 12px;
+  left: 84px;
   padding: 6px 6px 0;
   border-radius: 12px;
   box-shadow: 0 0 5px 0 #b5b5b5;
   background: #FFF;
   box-sizing: border-box;
-  grid-area: toolbar;
   z-index: 2;
 
   &:hover,
@@ -197,7 +196,7 @@ blockquote::before {
 }
 
 .ProseMirror-menubar > .ProseMirror-menuitem {
-  display: block;
+  display: flex;
   max-width: 44px;
   height: 44px;
   overflow: hidden;
@@ -215,10 +214,11 @@ blockquote::before {
 }
 
 span.ProseMirror-menuseparator {
+  width: 32px;
   height: 2px;
   display: block;
   background: var(--editor-btn-bg-color);
-  margin: 0 8px 6px;
+  margin: 8px 6px;
   border-radius: 1px;
 }
 
@@ -738,11 +738,6 @@ da-library.hide {
   display: none;
 }
 
-@media (width > 600px) {
-  .ProseMirror-menubar {
-    left: 84px;
-  }
-}
 
 
 @media (min-width: 900px) {
@@ -981,3 +976,4 @@ da-diff-deleted, da-diff-added {
 .focal-point-icon:hover svg {
   color: #0265dc;
 }
+
