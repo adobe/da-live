@@ -358,6 +358,22 @@ da-list-item.is-expanded::after {
   }
 }
 
+.checkbox-wrapper input[type="checkbox"]:disabled {
+  cursor: default;
+}
+
+.checkbox-wrapper.loading .checkbox-label::before {
+  background: none;
+  border: 2px solid #c7c7c7;
+  border-top-color: #5a5a5a;
+  border-radius: 50%;
+  animation: da-list-spin 0.8s linear infinite;
+}
+
+.checkbox-wrapper.loading .checkbox-label::after {
+  display: none;
+}
+
 /* Error dialog */
 .error-item-message {
   margin: 0;

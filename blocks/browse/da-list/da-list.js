@@ -451,8 +451,18 @@ export default class DaList extends LitElement {
     this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
   }
 
-  handleCheckAll() {
+  async handleCheckAll() {
     const check = !this.isSelectAll;
+
+    if (check && this._continuationToken) {
+      this._bulkLoading = true;
+      try {
+        await this.loadAllPages();
+      } finally {
+        this._bulkLoading = false;
+      }
+    }
+
     this._listItems.forEach((item) => { item.isChecked = check; });
     this.handleSelectionState();
   }
@@ -478,9 +488,19 @@ export default class DaList extends LitElement {
     this.requestUpdate();
   }
 
-  handleNameSort() {
+  async handleNameSort() {
     this._sortDate = undefined;
     this._sortName = this._sortName === 'old' ? 'new' : 'old';
+    if (this._continuationToken) {
+      this._forceLoadAll = true;
+      this._bulkLoading = true;
+      try {
+        await this.loadAllPages();
+      } finally {
+        this._bulkLoading = false;
+        this._forceLoadAll = false;
+      }
+    }
     this.handleSort(this._sortName, 'name');
   }
 
@@ -678,8 +698,8 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <div class="checkbox-wrapper" role="columnheader">
-        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items">
+      <div class="checkbox-wrapper ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
+        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
         <label class="checkbox-label" for="select-all"></label>
       </div>
       <input type="checkbox" name="select" style="display: none;">
@@ -726,7 +746,13 @@ export default class DaList extends LitElement {
           </div>
           <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortName) || 'none'}">
             <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter" aria-label="Filter items">
-            <button class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''}" @click=${this.handleNameSort}>Name</button>
+            <button
+              class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''} ${this._bulkLoading ? 'loading' : ''}"
+              @click=${this.handleNameSort}
+              ?disabled=${this._bulkLoading}
+              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+              Name
+            </button>
           </div>
           <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortDate) || 'none'}">
             <button
