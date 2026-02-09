@@ -42,6 +42,7 @@ export default class DaList extends LitElement {
     _isLoadingMore: { state: true },
     _bulkLoading: { state: true },
     _filterLoading: { state: true },
+    _allPagesLoaded: { state: true },
   };
 
   constructor() {
@@ -63,6 +64,7 @@ export default class DaList extends LitElement {
     this._forceLoadAll = false;
     this._bulkLoading = false;
     this._filterLoading = false;
+    this._allPagesLoaded = false;
   }
 
   connectedCallback() {
@@ -79,6 +81,7 @@ export default class DaList extends LitElement {
     if (props.has('fullpath') && this.fullpath) {
       this._filter = '';
       this._showFilter = undefined;
+      this._allPagesLoaded = false;
       this._listItems = await this.getList();
       requestAnimationFrame(() => this.checkLoadMore());
     }
@@ -121,6 +124,7 @@ export default class DaList extends LitElement {
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+      this._allPagesLoaded = !this._continuationToken;
       this.scheduleAutoCheck();
       return json;
     } catch {
@@ -130,29 +134,53 @@ export default class DaList extends LitElement {
   }
 
   async loadMore() {
-    if (this._isLoadingMore || !this._continuationToken) {
+    if (this._isLoadingMore || !this._continuationToken || this._allPagesLoaded) {
       return { added: 0, token: this._continuationToken || null };
     }
+    const requestToken = this._continuationToken;
     this._isLoadingMore = true;
     try {
       const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, {
         headers: {
-          'continuation-token': this._continuationToken,
+          'da-continuation-token': requestToken,
         },
       });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       const nextItems = Array.isArray(json) ? json : json?.items || [];
-      this._listItems = [...(this._listItems || []), ...nextItems];
-      this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
-      if (!this._bulkLoading) this.scheduleAutoCheck();
-      return { added: nextItems.length, token: this._continuationToken };
+      const beforeCount = (this._listItems || []).length;
+      this._listItems = this.mergeUniqueItemsByPath(this._listItems || [], nextItems);
+      const uniqueAdded = this._listItems.length - beforeCount;
+      const nextToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+
+      if (!nextToken) {
+        this._continuationToken = null;
+        this._allPagesLoaded = true;
+      } else {
+        this._continuationToken = nextToken;
+        this._allPagesLoaded = false;
+      }
+
+      if (!this._bulkLoading && !this._allPagesLoaded) this.scheduleAutoCheck();
+      return { added: uniqueAdded, token: this._continuationToken };
     } catch {
       // ignore load-more errors for now
     } finally {
       this._isLoadingMore = false;
     }
     return { added: 0, token: null };
+  }
+
+  mergeUniqueItemsByPath(existingItems = [], incomingItems = []) {
+    const seen = new Set();
+    const merged = [];
+    [...existingItems, ...incomingItems].forEach((item) => {
+      const key = item?.path;
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      merged.push(item);
+    });
+    return merged;
   }
 
   handleNewItem() {
@@ -456,7 +484,7 @@ export default class DaList extends LitElement {
   async handleCheckAll() {
     const check = !this.isSelectAll;
 
-    if (check && this._continuationToken) {
+    if (check && this._continuationToken && !this._allPagesLoaded) {
       this._bulkLoading = true;
       try {
         await this.loadAllPages();
@@ -493,7 +521,7 @@ export default class DaList extends LitElement {
   async handleNameSort() {
     this._sortDate = undefined;
     this._sortName = this._sortName === 'old' ? 'new' : 'old';
-    if (this._continuationToken) {
+    if (this._continuationToken && !this._allPagesLoaded) {
       this._forceLoadAll = true;
       this._bulkLoading = true;
       try {
@@ -509,7 +537,7 @@ export default class DaList extends LitElement {
   async handleDateSort() {
     this._sortName = undefined;
     this._sortDate = this._sortDate === 'old' ? 'new' : 'old';
-    if (this._continuationToken) {
+    if (this._continuationToken && !this._allPagesLoaded) {
       this._forceLoadAll = true;
       this._bulkLoading = true;
       await this.loadAllPages();
@@ -526,7 +554,7 @@ export default class DaList extends LitElement {
     const filterInput = this.shadowRoot?.querySelector('input[name="filter"]');
     filterInput.value = '';
     if (this._showFilter) {
-      if (this._continuationToken) {
+      if (this._continuationToken && !this._allPagesLoaded) {
         this._bulkLoading = true;
         await this.loadAllPages();
         this._bulkLoading = false;
@@ -852,6 +880,7 @@ export default class DaList extends LitElement {
 
   checkLoadMore() {
     if (this._bulkLoading) return;
+    if (this._allPagesLoaded) return;
     if (!this._continuationToken) return;
     const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
     if (!sentinel) return;
@@ -871,11 +900,12 @@ export default class DaList extends LitElement {
 
   scheduleAutoCheck() {
     if (this._bulkLoading) return;
+    if (this._allPagesLoaded) return;
     if (this._autoCheckTimer || !this._continuationToken) return;
     this._autoCheckTimer = setTimeout(() => {
       this._autoCheckTimer = null;
       this.checkLoadMore();
-      if (this._continuationToken) this.scheduleAutoCheck();
+      if (this._continuationToken && !this._allPagesLoaded) this.scheduleAutoCheck();
     }, 250);
   }
 
@@ -889,24 +919,12 @@ export default class DaList extends LitElement {
   }
 
   async loadAllPages() {
-    if (this._isLoadingMore) return;
+    if (this._isLoadingMore || this._allPagesLoaded) return;
     let safety = 0;
-    let prevToken = this._continuationToken;
-    let sameTokenCount = 0;
-    while (this._continuationToken && safety < 500) {
+    while (this._continuationToken && safety < 500 && !this._allPagesLoaded) {
       // eslint-disable-next-line no-await-in-loop
       const { token } = await this.loadMore();
       if (!token) break;
-      if (token === prevToken) {
-        sameTokenCount += 1;
-      } else {
-        sameTokenCount = 0;
-      }
-      if (sameTokenCount >= 2) break;
-      prevToken = token;
-      // Small delay to avoid overwhelming the list API.
-      // eslint-disable-next-line no-await-in-loop
-      await this.wait(75);
       safety += 1;
     }
   }
