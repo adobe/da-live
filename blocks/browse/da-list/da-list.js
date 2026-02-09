@@ -135,9 +135,11 @@ export default class DaList extends LitElement {
     }
     this._isLoadingMore = true;
     try {
-      const url = new URL(`${DA_ORIGIN}/list${this.fullpath}`);
-      url.searchParams.set('continuation-token', this._continuationToken);
-      const resp = await daFetch(url.toString());
+      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, {
+        headers: {
+          'continuation-token': this._continuationToken,
+        },
+      });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       const nextItems = Array.isArray(json) ? json : json?.items || [];

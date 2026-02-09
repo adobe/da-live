@@ -57,4 +57,40 @@ describe('Browse', () => {
       window.fetch = orgFetch;
     }
   });
+
+  it('Load more uses continuation-token request header', async () => {
+    const daBrowse = new DaBrowse();
+
+    const fetchedArgs = [];
+    const mockFetch = async (url, opts) => {
+      fetchedArgs.push({ url, opts });
+      return {
+        ok: true,
+        json: async () => ([]),
+        headers: {
+          get: (name) => {
+            if (name === 'da-continuation-token') return 'token-next';
+            return null;
+          },
+        },
+      };
+    };
+
+    daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
+    daBrowse._listItems = [];
+    daBrowse._continuationToken = 'token-1';
+    daBrowse.scheduleAutoCheck = () => {};
+
+    const orgFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      await daBrowse.loadMore();
+
+      expect(fetchedArgs.length).to.equal(1);
+      expect(fetchedArgs[0].url).to.equal('https://admin.da.live/list/myorg/mysite/myroot/destdir');
+      expect(fetchedArgs[0].opts.headers['continuation-token']).to.equal('token-1');
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
 });
