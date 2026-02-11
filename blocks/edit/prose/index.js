@@ -11,7 +11,6 @@ import {
   liftListItem,
   sinkListItem,
   gapCursor,
-  dropCursor,
   TextSelection,
   NodeSelection,
   Plugin,
@@ -383,7 +382,6 @@ export default function initProse({ path, permissions }) {
       'Shift-Tab': liftListItem(schema.nodes.list_item),
     }),
     gapCursor(),
-    dropCursor({ color: 'var(--s2-blue-800)', width: 2 }),
     tableEditing({ allowTableNodeSelection: true }),
   ];
 

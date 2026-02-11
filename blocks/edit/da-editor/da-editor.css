@@ -994,7 +994,7 @@ da-diff-deleted, da-diff-added {
   border: 1px solid #ccc;
   border-radius: 4px;
   z-index: 100;
-  cursor: grab;
+  cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
@@ -1007,8 +1007,4 @@ da-diff-deleted, da-diff-added {
 .table-drag-handle:hover {
   background-color: #f0f7ff;
   border-color: var(--s2-blue-800);
-}
-
-.table-drag-handle:active {
-  cursor: grabbing;
 }

@@ -20,7 +20,7 @@ function getTablePos(view, tableEl) {
 }
 
 /**
- * Allows dragging and easier copy/pasting of entire blocks/tables.
+ * Allows selecting an entire table by clicking an icon in the top left corner.
  */
 export default function tableDragHandle() {
   let handle = null;
@@ -46,7 +46,6 @@ export default function tableDragHandle() {
   function createHandle(view) {
     const el = document.createElement('div');
     el.className = 'table-drag-handle';
-    el.draggable = true;
     el.contentEditable = 'false';
 
     el.addEventListener('mousedown', (e) => {
@@ -54,6 +53,7 @@ export default function tableDragHandle() {
         return;
       }
 
+      e.preventDefault();
       e.stopPropagation();
 
       const tablePos = getTablePos(view, currentTable);
@@ -61,30 +61,8 @@ export default function tableDragHandle() {
       if (tablePos !== null) {
         const sel = NodeSelection.create(view.state.doc, tablePos);
         view.dispatch(view.state.tr.setSelection(sel));
+        view.focus();
       }
-    });
-
-    el.addEventListener('dragstart', (e) => {
-      if (!currentTable) {
-        e.preventDefault();
-        return;
-      }
-
-      const tablePos = getTablePos(view, currentTable);
-
-      if (tablePos === null) {
-        e.preventDefault();
-        return;
-      }
-
-      let { state } = view;
-      const sel = NodeSelection.create(state.doc, tablePos);
-      view.dispatch(state.tr.setSelection(sel));
-      state = view.state;
-
-      const slice = state.selection.content();
-      view.dragging = { slice, move: true };
-      e.dataTransfer.effectAllowed = 'move';
     });
 
     el.addEventListener('mouseleave', (e) => {
@@ -95,32 +73,10 @@ export default function tableDragHandle() {
       hideHandle();
     });
 
-    el.addEventListener('dragend', () => {
-      hideHandle();
-    });
-
     return el;
   }
 
   return new Plugin({
-    props: {
-      handleDOMEvents: {
-        drop(view, event) {
-          const isFileDrop = event.dataTransfer.files.length > 0;
-          if (isFileDrop) {
-            // let imageDrop handle it.
-            return false;
-          }
-
-          if (!view.dragging) {
-            return true;
-          }
-
-          const isTableDrag = view.dragging.slice.content.firstChild?.type.name === 'table';
-          return !isTableDrag;
-        },
-      },
-    },
     view(editorView) {
       handle = createHandle(editorView);
       const container = editorView.dom.parentElement;
@@ -162,6 +118,11 @@ export default function tableDragHandle() {
       editorView.dom.addEventListener('mouseout', onMouseOut);
 
       return {
+        update() {
+          if (currentWrapper && !currentWrapper.isConnected) {
+            hideHandle();
+          }
+        },
         destroy() {
           editorView.dom.removeEventListener('mouseover', onMouseOver);
           editorView.dom.removeEventListener('mouseout', onMouseOut);
