@@ -1,14 +1,15 @@
 :host {
   display: none;
-  position: fixed;
+  position: absolute;
   background: white;
   border: 1px solid #ccc;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
   max-height: 500px;
-  overflow-y: auto;
+  overflow-y: visible;
   z-index: 999999;
   min-width: 150px;
+  border-radius: 10px;
 }
 
 :host([visible]) {
@@ -16,7 +17,6 @@
 }
 
 .slash-menu-items {
-  padding: 4px 0;
   max-height: 500px;
   overflow-y: auto;
 }
@@ -28,6 +28,16 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.slash-menu-item:first-child {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.slash-menu-item:last-child {
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 
 .slash-menu-item:hover,

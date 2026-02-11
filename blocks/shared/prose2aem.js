@@ -1,3 +1,8 @@
+function setCursor(cursor, el) {
+  el.id = cursor.id;
+  cursor.remove();
+}
+
 function toBlockCSSClassNames(text) {
   if (!text) return [];
   const names = [];
@@ -41,6 +46,11 @@ function convertBlocks(editor, isFragment = false) {
     const div = document.createElement('div');
     div.className = toBlockCSSClassNames(nameRow.textContent).join(' ');
     div.append(...divs);
+
+    // cursor detection
+    const daCursor = nameRow.querySelector('#da-cursor-position');
+    if (daCursor) setCursor(daCursor, div);
+
     if (isFragment) {
       table.parentElement.replaceChild(div, table);
     } else {
@@ -49,14 +59,41 @@ function convertBlocks(editor, isFragment = false) {
   });
 }
 
-function makePictures(editor) {
+function makePictures(editor, live, lockdown) {
   const imgs = editor.querySelectorAll('img');
   imgs.forEach((img) => {
     img.removeAttribute('contenteditable');
     img.removeAttribute('draggable');
     img.removeAttribute('style');
 
+    const dataFocalX = img.getAttribute('data-focal-x');
+    const dataFocalY = img.getAttribute('data-focal-y');
+    if (dataFocalX && dataFocalY) {
+      img.setAttribute('data-title', `data-focal:${dataFocalX},${dataFocalY}`);
+    }
+
+    if (img.parentElement.classList.contains('focal-point-image-wrapper')) {
+      const wrapper = img.parentElement;
+      wrapper.parentElement.replaceChild(img, wrapper);
+    }
+
+    // Set the cursor id on the image for live preview scrolling
+    const daCursor = img.parentElement.querySelector('#da-cursor-position');
+    if (daCursor) setCursor(daCursor, img);
+
     const clone = img.cloneNode(true);
+    if (live && lockdown) {
+      // make images relative to the live preview URL
+      const source = new URL(clone.src);
+      if (source.host.endsWith('.da.live')) {
+        source.pathname = `/${source.pathname
+          .split('/')
+          .slice(3) // remove org and site
+          .join('/')}`;
+        clone.src = source.toString();
+      }
+    }
+
     clone.setAttribute('loading', 'lazy');
 
     let pic = document.createElement('picture');
@@ -137,6 +174,11 @@ function makeSections(editor) {
       acc.push(document.createElement('div'));
     } else {
       acc[acc.length - 1].append(child);
+      // Find cursor inside section-metadata and bubble it to parent section
+      if (child.classList.contains('section-metadata')) {
+        const daCursor = child.querySelector('#da-cursor-position');
+        if (daCursor) setCursor(daCursor, acc[acc.length - 1]);
+      }
     }
     return acc;
   }, [section]);
@@ -159,10 +201,17 @@ function parseIcons(editor) {
 
 const removeEls = (els) => els.forEach((el) => el.remove());
 
-export default function prose2aem(editor, live, isFragment = false) {
-  if (!isFragment) {
-    editor.removeAttribute('class');
-  }
+/**
+ * A utility to take ProseMirror formatted DOM and convert to AEM semantic markup
+ * @param {HTMLElement} editor the editor dom
+ * @param {Boolean} livePreview whether or not the target destination is Live Preview
+ * @param {Boolean} isFragment whether or not the DOM is a fragment
+ * @param {Boolean} lockdownImages whether or not to make images and content.da.live URLs relative
+ * @returns AEM-friendly HTML as a text string
+ */
+export default function prose2aem(editor, livePreview, isFragment = false, lockdownImages = false) {
+  if (!isFragment) editor.removeAttribute('class');
+
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
 
@@ -192,12 +241,12 @@ export default function prose2aem(editor, live, isFragment = false) {
 
   convertBlocks(editor, isFragment);
 
-  if (live) {
+  if (livePreview) {
     removeMetadata(editor);
     parseIcons(editor);
   }
 
-  makePictures(editor);
+  makePictures(editor, livePreview, lockdownImages);
 
   if (!isFragment) {
     makeSections(editor);
@@ -207,7 +256,7 @@ export default function prose2aem(editor, live, isFragment = false) {
     return editor.innerHTML;
   }
 
-  const html = `
+  let html = `
     <body>
       <header></header>
       <main>${editor.innerHTML}</main>
@@ -215,5 +264,68 @@ export default function prose2aem(editor, live, isFragment = false) {
     </body>
   `;
 
+  if (livePreview && lockdownImages) {
+    html = html.replaceAll('https://content.da.live/', '/');
+    html = html.replaceAll('https://stage-content.da.live/', '/');
+  }
+
   return html;
+}
+
+export function getHtmlWithCursor(view, lockdownImages = false) {
+  const { selection } = view.state;
+  const cursorPos = selection.from;
+
+  // Clone the editor first so we don't modify the real DOM
+  const editorClone = view.dom.cloneNode(true);
+
+  // Get the DOM position corresponding to the ProseMirror position
+  const { node: domNode, offset } = view.domAtPos(cursorPos);
+
+  // Find the corresponding node in the cloned DOM
+  // Build path from view.dom to domNode
+  const path = [];
+  let current = domNode;
+  while (current && current !== view.dom) {
+    const parent = current.parentNode;
+    if (parent) {
+      const index = Array.from(parent.childNodes).indexOf(current);
+      path.unshift(index);
+      current = parent;
+    } else {
+      break;
+    }
+  }
+
+  // Follow the same path in the clone
+  let clonedNode = editorClone;
+  for (const index of path) {
+    clonedNode = clonedNode.childNodes[index];
+  }
+
+  // Create cursor marker element
+  const marker = document.createElement('span');
+  marker.id = 'da-cursor-position';
+  marker.setAttribute('data-cursor-pos', cursorPos);
+
+  // Insert the marker into the cloned DOM
+  if (clonedNode.nodeType === Node.TEXT_NODE) {
+    const parent = clonedNode.parentNode;
+    const textBefore = clonedNode.textContent.substring(0, offset);
+    const textAfter = clonedNode.textContent.substring(offset);
+
+    const beforeNode = document.createTextNode(textBefore);
+    const afterNode = document.createTextNode(textAfter);
+
+    parent.insertBefore(beforeNode, clonedNode);
+    parent.insertBefore(marker, clonedNode);
+    parent.insertBefore(afterNode, clonedNode);
+    parent.removeChild(clonedNode);
+  } else {
+    clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
+  }
+
+  // Convert to an HTML string using prose2aem
+  // Always use livePreview mode, but only lockdown images if lockdownImages is enabled
+  return prose2aem(editorClone, true, false, lockdownImages);
 }

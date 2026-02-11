@@ -115,8 +115,13 @@ export const [setKeyAutocomplete, getKeyAutocomplete] = (() => {
 })();
 
 export async function fetchKeyAutocompleteData(libraryBlockUrl) {
-  const resp = await daFetch(libraryBlockUrl);
-  const json = await resp.json();
-  const keyMap = processKeyData(json?.options?.data);
-  setKeyAutocomplete(keyMap);
+  try {
+    const resp = await daFetch(libraryBlockUrl, { noRedirect: true });
+    const json = await resp.json();
+    const keyMap = processKeyData(json?.options?.data);
+    setKeyAutocomplete(keyMap);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error fetching key autocomplete data:', error);
+  }
 }

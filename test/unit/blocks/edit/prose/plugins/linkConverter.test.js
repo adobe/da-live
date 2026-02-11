@@ -60,13 +60,24 @@ describe('Link converter plugin', () => {
           addedMark = mark;
           return this;
         },
+        replaceWith: function replaceWith() {
+          return this;
+        },
+      };
+
+      const mockDoc = {
+        slice: () => ({
+          size: 0,
+          content: { content: [] },
+        }),
       };
 
       const mockView = {
         state: {
-          selection: { from: 10 },
+          selection: { from: 10, to: 10 },
           schema: baseSchema,
           tr,
+          doc: mockDoc,
         },
         dispatch: () => {},
       };
@@ -191,13 +202,24 @@ describe('Link converter plugin', () => {
           addedMark = mark;
           return this;
         },
+        replaceWith: function replaceWith() {
+          return this;
+        },
+      };
+
+      const mockDoc = {
+        slice: () => ({
+          size: 0,
+          content: { content: [] },
+        }),
       };
 
       const mockView = {
         state: {
-          selection: { from: 10 },
+          selection: { from: 10, to: 10 },
           schema: baseSchema,
           tr,
+          doc: mockDoc,
         },
         dispatch: () => {},
       };
@@ -230,13 +252,24 @@ describe('Link converter plugin', () => {
           addedMark = mark;
           return this;
         },
+        replaceWith: function replaceWith() {
+          return this;
+        },
+      };
+
+      const mockDoc = {
+        slice: () => ({
+          size: 0,
+          content: { content: [] },
+        }),
       };
 
       const mockView = {
         state: {
-          selection: { from: 10 },
+          selection: { from: 10, to: 10 },
           schema: baseSchema,
           tr,
+          doc: mockDoc,
         },
         dispatch: () => {},
       };

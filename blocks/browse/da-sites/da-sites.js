@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
+import { sanitizeName } from '../../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/browse/da-sites/da-sites.css');
 
@@ -94,7 +95,7 @@ export default class DaSites extends LitElement {
       // eslint-disable-next-line no-unused-vars
       const [_, repo, org] = helixString.split('--');
       if (!repo || !org) return null;
-      return `#/${org}/${repo}`;
+      return `#/${sanitizeName(org, false)}/${sanitizeName(repo, false)}`;
     } catch (_) {
       return null;
     }
@@ -139,6 +140,7 @@ export default class DaSites extends LitElement {
             @keydown="${() => { this._urlError = false; }}"
             @change="${() => { this._urlError = false; }}" 
             type="text" name="siteUrl" 
+            aria-label="Site URL"
             placeholder="https://main--site--org.aem.page" 
             class="${this._urlError ? 'error' : nothing}" 
         />
@@ -184,7 +186,7 @@ export default class DaSites extends LitElement {
               <span>Hide</span>
             </button>
           </div>
-          <button class="da-site-card-action da-site-card-action-more" @click=${(e) => this.handleFlip(e, site)}>
+          <button class="da-site-card-action da-site-card-action-more" @click=${(e) => this.handleFlip(e, site)} aria-label="More options">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                 <path fill="currentColor" d="M16,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
                 <path fill="currentColor" d="M10,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />

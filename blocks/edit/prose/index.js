@@ -12,6 +12,8 @@ import {
   sinkListItem,
   gapCursor,
   TextSelection,
+  NodeSelection,
+  Plugin,
   Y,
   WebsocketProvider,
   ySyncPlugin,
@@ -19,21 +21,25 @@ import {
   yUndoPlugin,
 } from 'da-y-wrapper';
 
+import { getSchema } from 'da-parser';
+
 // DA
-import prose2aem from '../../shared/prose2aem.js';
 import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
 import { linkItem } from './plugins/menu/linkItem.js';
 import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
+import imageFocalPoint from './plugins/imageFocalPoint.js';
 import linkConverter from './plugins/linkConverter.js';
+import linkTextSync from './plugins/linkTextSync.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
+import { checkDoc } from '../edit.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
-import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
+import linkMenu from './plugins/linkMenu/linkMenu.js';
 import {
   handleTableBackspace,
   handleTableTab,
@@ -43,19 +49,10 @@ import {
   handleRedo,
 } from './plugins/keyHandlers.js';
 
-let sendUpdates = false;
-let hasChanged = 0;
 let lastCursorPosition = null;
-let daPreview;
-let updatePoller;
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
-
-  if (transaction.docChanged) {
-    hasChanged += 1;
-    sendUpdates = true;
-  }
 
   const newState = window.view.state.apply(transaction);
   window.view.updateState(newState);
@@ -66,49 +63,106 @@ function dispatchTransaction(transaction) {
 }
 
 function setPreviewBody() {
-  daPreview ??= document.querySelector('da-content')?.shadowRoot.querySelector('da-preview');
+  const daPreview = document.querySelector('da-content').shadowRoot.querySelector('da-preview');
   if (!daPreview) return;
-
-  const clone = window.view.docView.dom.cloneNode(true);
-  const body = prose2aem(clone, true);
-  daPreview.body = body;
+  daPreview.setBody();
 }
 
-export function pollForUpdates() {
-  if (updatePoller) clearInterval(updatePoller);
+function trackCursorAndChanges() {
+  let lastCursorPos = null;
+  let lastBlockPos = null;
+  let updateTimeout = null;
+  let pendingDocChange = false;
 
-  updatePoller = setInterval(() => {
-    if (sendUpdates) {
-      if (hasChanged > 0) {
-        hasChanged = 0;
-        return;
-      }
+  const schedulePreviewUpdate = () => {
+    if (updateTimeout) clearTimeout(updateTimeout);
+
+    updateTimeout = setTimeout(() => {
       setPreviewBody();
-      sendUpdates = false;
+      pendingDocChange = false;
+      updateTimeout = null;
+    }, 500);
+  };
+
+  const getBlockPosition = (state, pos) => {
+    // Resolve the position to get context about where it is in the document
+    const $pos = state.doc.resolve(pos);
+
+    // Find the depth of the nearest block-level node
+    // Start from the deepest position and walk up to find a block
+    for (let d = $pos.depth; d > 0; d -= 1) {
+      const node = $pos.node(d);
+      if (node.isBlock) {
+        // Return the position before this block node
+        return $pos.before(d);
+      }
     }
-  }, 500);
+
+    // Fallback to the position itself
+    return pos;
+  };
+
+  return new Plugin({
+    view() {
+      return {
+        update(view, prevState) {
+          const docChanged = view.state.doc !== prevState.doc;
+
+          if (docChanged) {
+            // Document changed - schedule update after 500ms of no changes
+            pendingDocChange = true;
+            schedulePreviewUpdate();
+            return;
+          }
+
+          // Only track cursor if no pending document changes
+          if (pendingDocChange) return;
+
+          const { from, to } = view.state.selection;
+          const isNodeSelection = view.state.selection instanceof NodeSelection;
+
+          // Don't update during text selection (when from !== to),
+          // but allow node selections (like images)
+          if (from !== to && !isNodeSelection) return;
+
+          const currentPos = `${from}-${to}`;
+          const currentBlockPos = getBlockPosition(view.state, from);
+
+          // Only update if cursor position actually changed
+          if (currentPos !== lastCursorPos) {
+            // Only set preview body if:
+            // 1. We had a lastCursorPos (not the first position)
+            // 2. AND the block changed (moved to a different block/row)
+            if (lastCursorPos && currentBlockPos !== lastBlockPos) {
+              setPreviewBody();
+            }
+            lastCursorPos = currentPos;
+            lastBlockPos = currentBlockPos;
+          }
+        },
+      };
+    },
+  });
 }
 
-function handleProseLoaded(editor) {
-  // Give the websocket time to connect and populate
-  setTimeout(() => {
-    const daEditor = editor.getRootNode().host;
-    const opts = { bubbles: true, composed: true };
-    const event = new CustomEvent('proseloaded', opts);
-    daEditor.dispatchEvent(event);
-  }, 3000);
+function handleProseLoaded(editor, wsProvider) {
+  // Wait for the websocket to actually sync before marking as loaded
+  const handleSynced = (isSynced) => {
+    if (isSynced) {
+      const daEditor = editor.getRootNode().host;
+      const opts = { bubbles: true, composed: true };
+      const event = new CustomEvent('proseloaded', opts);
+      daEditor.dispatchEvent(event);
+
+      // Only listen to the first sync
+      wsProvider.off('synced', handleSynced);
+    }
+  };
+
+  wsProvider.on('synced', handleSynced);
 }
 
-function startPreviewing() {
-  setPreviewBody();
-  pollForUpdates();
-}
-
-function stopPreviewing() {
-  if (updatePoller) clearInterval(updatePoller);
-}
-
-function handleAwarenessUpdates(wsProvider, daTitle, win) {
+function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   const users = new Set();
 
   wsProvider.awareness.on('update', (delta) => {
@@ -121,25 +175,48 @@ function handleAwarenessUpdates(wsProvider, daTitle, win) {
 
     const awarenessStates = wsProvider.awareness.getStates();
     const userMap = new Map();
-    [...users].forEach((u) => {
+    [...users].forEach((u, i) => {
       const userInfo = awarenessStates.get(u)?.user;
       if (!userInfo?.id) {
         userMap.set(`anonymous-${u}`, 'Anonymous');
-      } else if (userInfo.id !== wsProvider.awareness.getLocalState().user?.id) {
-        userMap.set(userInfo.id, userInfo.name);
+      } else {
+        userMap.set(`${userInfo.id}-${i}`, userInfo.name);
       }
     });
     daTitle.collabUsers = [...userMap.values()].sort();
   });
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
+
+  wsProvider.on('connection-close', async () => {
+    const resp = await checkDoc(path);
+    if (resp.status === 404) {
+      const split = window.location.hash.slice(2).split('/');
+      split.pop();
+      // Navigate to the parent folder
+      window.location.replace(`/#/${split.join('/')}`);
+    }
+  });
   win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
   win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
+  const DISCONNECT_TIMEOUT = 10 * 60 * 1000;
+  let disconnectTimeout = null;
+  win.addEventListener('focus', () => {
+    // cancel any pending disconnect
+    if (disconnectTimeout) clearTimeout(disconnectTimeout);
+    wsProvider.connect();
+  });
+  win.addEventListener('blur', () => {
+    if (disconnectTimeout) clearTimeout(disconnectTimeout);
+    disconnectTimeout = setTimeout(() => {
+      wsProvider.disconnect();
+    }, DISCONNECT_TIMEOUT);
+  });
 }
 
-export function createAwarenessStatusWidget(wsProvider, win) {
+export function createAwarenessStatusWidget(wsProvider, win, path) {
   const daTitle = win.document.querySelector('da-title');
-  handleAwarenessUpdates(wsProvider, daTitle, win);
+  handleAwarenessUpdates(wsProvider, daTitle, win, path);
   return daTitle;
 }
 
@@ -209,7 +286,10 @@ function addSyncedListener(wsProvider, canWrite) {
 
 export default function initProse({ path, permissions }) {
   // Destroy ProseMirror if it already exists - GH-212
-  if (window.view) delete window.view;
+  if (window.view) {
+    window.view.destroy();
+    delete window.view;
+  }
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
 
@@ -220,18 +300,26 @@ export default function initProse({ path, permissions }) {
   const server = COLLAB_ORIGIN;
   const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
 
-  const opts = {};
+  const opts = { protocols: ['yjs'] };
 
   if (window.adobeIMS?.isSignedInUser()) {
-    opts.params = { Authorization: `Bearer ${window.adobeIMS.getAccessToken().token}` };
+    const { token } = window.adobeIMS.getAccessToken();
+    // add token to the sec-websocket-protocol header
+    opts.protocols.push(token);
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, opts);
+
+  // Increase the max backoff time to 30 seconds. If connection error occurs,
+  // the socket provider will try to reconnect quickly at the beginning
+  // (exponential backoff starting with 100ms) and then every 30s.
+  wsProvider.maxBackoffTime = 30000;
+
   addSyncedListener(wsProvider, canWrite);
 
-  createAwarenessStatusWidget(wsProvider, window);
+  createAwarenessStatusWidget(wsProvider, window, path);
   registerErrorHandler(ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
@@ -256,9 +344,12 @@ export default function initProse({ path, permissions }) {
     ySyncPlugin(yXmlFragment),
     yCursorPlugin(wsProvider.awareness),
     yUndoPlugin(),
+    trackCursorAndChanges(),
     slashMenu(),
+    linkMenu(),
     imageDrop(schema),
     linkConverter(schema),
+    linkTextSync(),
     sectionPasteHandler(schema),
     base64Uploader(schema),
     columnResizing(),
@@ -292,7 +383,10 @@ export default function initProse({ path, permissions }) {
     tableEditing(),
   ];
 
-  if (canWrite) plugins.push(menu);
+  if (canWrite) {
+    plugins.push(menu);
+    plugins.push(imageFocalPoint());
+  }
 
   let state = EditorState.create({ schema, plugins });
 
@@ -334,10 +428,10 @@ export default function initProse({ path, permissions }) {
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
 
-  handleProseLoaded(editor, permissions);
+  handleProseLoaded(editor, wsProvider);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
-  return { proseEl: editor, wsProvider, startPreviewing, stopPreviewing };
+  return { proseEl: editor, wsProvider };
 }

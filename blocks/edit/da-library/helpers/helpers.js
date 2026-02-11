@@ -5,7 +5,7 @@ import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getConfKey, openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
-import { sanitiseRef } from '../../../../scripts/utils.js';
+import { sanitizeName } from '../../../../scripts/utils.js';
 
 const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
@@ -18,7 +18,7 @@ const DA_PLUGINS = [
   'placeholders',
 ];
 
-const ref = sanitiseRef(new URLSearchParams(window.location.search).get('ref')) || 'main';
+const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 export function parseDom(dom) {
   const { schema } = window.view.state;
@@ -66,10 +66,6 @@ export async function getItems(sources, listType, format) {
   }
   return items;
 }
-
-let currOwner;
-let currRepo;
-let libraries;
 
 async function getDaLibraries(owner, repo) {
   const resp = await daFetch(`${DA_ORIGIN}/source/${owner}/${repo}${DA_CONFIG}`);
@@ -199,17 +195,12 @@ function mergeLibrary(da, assets) {
   }
 }
 
+let libraryList = null;
 export async function getLibraryList() {
+  if (libraryList) return libraryList;
+
   const { owner, repo } = getPathDetails();
   if (!owner || !repo) return [];
-
-  if (currOwner === owner
-    && currRepo === repo
-    && libraries) {
-    return libraries;
-  }
-  currOwner = owner;
-  currRepo = repo;
 
   // Attempt config-based library
   const aemAssets = getAssetsPlugin(owner, repo);
@@ -218,17 +209,18 @@ export async function getLibraryList() {
   if (library) {
     setupBlockOptions(library);
     if (assets) mergeLibrary(library, assets);
-    return library;
+    libraryList = library;
+  } else {
+    // Fallback to file-based libary
+    const daLibraries = getDaLibraries(owner, repo);
+    const aemPlugins = getAemPlugins(owner, repo);
+
+    const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
+
+    if (assets) mergeLibrary(da, assets);
+    libraryList = [...da, ...aem];
   }
-
-  // Fallback to file-based libary
-  const daLibraries = getDaLibraries(owner, repo);
-  const aemPlugins = getAemPlugins(owner, repo);
-
-  const [da, aem] = await Promise.all([daLibraries, aemPlugins]);
-
-  if (assets) mergeLibrary(da, assets);
-  return [...da, ...aem];
+  return libraryList;
 }
 
 export function andMatch(inputStr, targetStr) {
@@ -239,4 +231,56 @@ export function andMatch(inputStr, targetStr) {
 export function delay(ms) {
   // eslint-disable-next-line no-promise-executor-return
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export const getMetadata = (el) => [...el.childNodes].reduce((rdx, row) => {
+  if (row.children) {
+    const key = row.children[0].textContent.trim().toLowerCase();
+    const content = row.children[1];
+    const text = content.textContent.trim().toLowerCase();
+    if (key && content) rdx[key] = { content, text };
+  }
+  return rdx;
+}, {});
+
+export function getPreviewUrl(previewUrl) {
+  try {
+    const url = new URL(previewUrl);
+
+    if (url.origin.includes('--')) return url.href;
+    if (url.origin.includes('content.da.live')) {
+      const [, org, site, ...split] = url.pathname.split('/');
+      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+    }
+    if (url.origin.includes('admin.da.live')) {
+      const [, , org, site, ...split] = url.pathname.split('/');
+      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+export function getEdsUrlVars(url) {
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.origin.includes('--')) {
+      const [branch, site, orgPlus] = urlObj.hostname.split('--');
+      const [org] = orgPlus.split('.');
+      return [org, site, branch];
+    }
+
+    if (urlObj.origin.includes('content.da.live')) {
+      const [, org, site] = urlObj.pathname.split('/');
+      return [org, site, 'main'];
+    }
+    if (urlObj.origin.includes('admin.da.live')) {
+      const [, , org, site] = urlObj.pathname.split('/');
+      return [org, site, 'main'];
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }

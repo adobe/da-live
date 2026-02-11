@@ -99,7 +99,7 @@
   left: -45px;
   max-width: 32px;
   max-height: 32px;
-  background: var(--spectrum-blue-800) url('/blocks/edit/img/Smock_CheckmarkWhite_18_N.svg') center / 55% no-repeat;
+  background: var(--s2-blue-900) url('/blocks/edit/img/Smock_CheckmarkWhite_18_N.svg') center / 55% no-repeat;
 }
 
 .da-version-entry.is-new .da-version-btn-cancel {
@@ -182,4 +182,56 @@
 .da-version-new-input::placeholder {
   font-style: italic;
   font-weight: 400;
+}
+
+/* Loading state */
+.da-version-entry.is-loading {
+  color: #8A8A8A;
+}
+
+.da-version-entry.is-loading .da-version-date {
+  font-size: 16px;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.da-version-loading-dot {
+  position: absolute;
+  top: 4px;
+  left: -35px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #C8C8C8;
+  animation: pulse-scale 1.2s ease-in-out infinite;
+}
+
+/* Fade in versions when loaded */
+.da-version-entry.is-version,
+.da-version-entry.is-audit {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
