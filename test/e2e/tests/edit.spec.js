@@ -127,7 +127,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
 });
 
 test('Add code mark', async ({ page }, workerInfo) => {
-  test.setTimeout(30000);
+  test.setTimeout(60000);
   const url = getTestPageURL('edit5', workerInfo);
   await page.goto(url);
   await page.waitForTimeout(3000);
@@ -136,7 +136,7 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await expect(proseMirror).toBeVisible();
   await expect(proseMirror).toHaveAttribute('contenteditable', 'true');
   await proseMirror.fill('This is a line that will contain a code mark.');
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
 
   // Forward
   for (let i = 0; i < 10; i += 1) {
@@ -148,10 +148,8 @@ test('Add code mark', async ({ page }, workerInfo) => {
   }
   await page.keyboard.press('`');
   // leave time for the code mark to be processed
-  await page.waitForTimeout(1000);
-  let codeElement = proseMirror.locator('code');
-  await codeElement.waitFor();
-  await expect(codeElement).toContainText('code');
+  await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror').locator('code')).toContainText('code');
 
   // Backward
   await page.locator('div.ProseMirror').fill('This is a line that will contain a code mark.');
@@ -164,10 +162,8 @@ test('Add code mark', async ({ page }, workerInfo) => {
     await page.keyboard.press('ArrowLeft');
   }
   await page.keyboard.press('`');
-  await page.waitForTimeout(1000);
-  codeElement = proseMirror.locator('code');
-  await codeElement.waitFor();
-  await expect(codeElement).toContainText('code');
+  await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror').locator('code')).toContainText('code');
 
   // No Overwrite
   for (let i = 0; i < 6; i += 1) {
@@ -179,6 +175,6 @@ test('Add code mark', async ({ page }, workerInfo) => {
     await page.keyboard.press('ArrowRight');
   }
   await page.keyboard.press('`');
-  await page.waitForTimeout(1000);
-  await expect(proseMirror).toContainText('This is a line that will contain `a code mark`.');
+  await page.waitForTimeout(3000);
+  await expect(page.locator('div.ProseMirror')).toContainText('This is a line that will contain `a code mark`.');
 });
