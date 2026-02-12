@@ -2,7 +2,6 @@
     eslint-disable no-underscore-dangle
 */
 import { expect } from '@esm-bundle/chai';
-import { html } from 'da-lit';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js

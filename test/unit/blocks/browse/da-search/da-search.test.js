@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { stub, spy } from 'sinon';
 
@@ -6,28 +7,6 @@ const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/bheuaark/', { hostname: 'localhost' });
 
 const { default: DaSearch } = await import('../../../../../blocks/browse/da-search/da-search.js');
-
-// Mock crawl function
-const mockCrawl = (files = []) => ({
-  crawl: ({ callback }) => ({
-    results: (async () => {
-      // eslint-disable-next-line no-restricted-syntax
-      for (const file of files) {
-        // eslint-disable-next-line no-await-in-loop
-        await callback(file);
-      }
-    })(),
-  }),
-  Queue: class {
-    constructor(fn) {
-      this.fn = fn;
-    }
-
-    async push(item) {
-      return this.fn(item);
-    }
-  },
-});
 
 describe('DaSearch', () => {
   let daSearch;
@@ -354,9 +333,7 @@ describe('DaSearch', () => {
       const startPath = '/myorg/mysite';
       fetchStub.resolves({
         ok: true,
-        json: async () => ({
-          languages: { data: undefined },
-        }),
+        json: async () => ({ languages: { data: undefined } }),
       });
       daSearch.browseItems = [
         { name: 'content', path: '/myorg/mysite/content' },
@@ -464,9 +441,7 @@ describe('DaSearch', () => {
     it('prevents default event behavior', async () => {
       const event = {
         preventDefault: spy(),
-        target: {
-          elements: [{ value: 'test' }],
-        },
+        target: { elements: [{ value: 'test' }] },
       };
       stub(daSearch, 'search').resolves();
 
@@ -480,9 +455,7 @@ describe('DaSearch', () => {
       daSearch._matches = 5;
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: 'test' }],
-        },
+        target: { elements: [{ value: 'test' }] },
       };
       stub(daSearch, 'search').resolves();
 
@@ -495,9 +468,7 @@ describe('DaSearch', () => {
     it('does not search when term is empty', async () => {
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: '' }],
-        },
+        target: { elements: [{ value: '' }] },
       };
       const searchStub = stub(daSearch, 'search').resolves();
 
@@ -509,9 +480,7 @@ describe('DaSearch', () => {
     it('calls search with fullpath and term', async () => {
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: 'my search term' }],
-        },
+        target: { elements: [{ value: 'my search term' }] },
       };
       const searchStub = stub(daSearch, 'search').resolves();
 
@@ -524,9 +493,7 @@ describe('DaSearch', () => {
     it('sets _term property', async () => {
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: 'search term' }],
-        },
+        target: { elements: [{ value: 'search term' }] },
       };
       stub(daSearch, 'search').resolves();
 
@@ -589,9 +556,7 @@ describe('DaSearch', () => {
     it('prevents default event behavior', async () => {
       const event = {
         preventDefault: spy(),
-        target: {
-          elements: [{ value: 'newtext' }],
-        },
+        target: { elements: [{ value: 'newtext' }] },
       };
       fetchStub.resolves({ ok: true, text: async () => 'content with oldtext' });
 
@@ -603,9 +568,7 @@ describe('DaSearch', () => {
     it('does not replace when value is empty', async () => {
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: '' }],
-        },
+        target: { elements: [{ value: '' }] },
       };
       const initialMatches = daSearch._matches;
 
@@ -618,9 +581,7 @@ describe('DaSearch', () => {
     it('sets action to "Replaced"', async () => {
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: 'newtext' }],
-        },
+        target: { elements: [{ value: 'newtext' }] },
       };
       fetchStub.resolves({ ok: true, text: async () => 'content' });
 
@@ -633,9 +594,7 @@ describe('DaSearch', () => {
       daSearch._time = '1.234';
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: 'newtext' }],
-        },
+        target: { elements: [{ value: 'newtext' }] },
       };
       fetchStub.resolves({ ok: true, text: async () => 'content' });
 
@@ -649,9 +608,7 @@ describe('DaSearch', () => {
       daSearch._matches = 5;
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: 'newtext' }],
-        },
+        target: { elements: [{ value: 'newtext' }] },
       };
       fetchStub.resolves({ ok: true, text: async () => 'content' });
 
@@ -809,9 +766,7 @@ describe('DaSearch', () => {
       const searchStub = stub(daSearch, 'search').resolves();
       const event = {
         preventDefault: () => {},
-        target: {
-          elements: [{ value: '   ' }],
-        },
+        target: { elements: [{ value: '   ' }] },
       };
 
       await daSearch.handleSearch(event);
@@ -836,4 +791,3 @@ describe('DaSearch', () => {
     });
   });
 });
-
