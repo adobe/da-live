@@ -134,7 +134,6 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await proseMirror.waitFor();
   await expect(proseMirror).toBeVisible();
   await expect(proseMirror).toHaveAttribute('contenteditable', 'true');
-  console.log(await proseMirror.getAttribute('contenteditable'));
   await proseMirror.fill('This is a line that will contain a code mark.');
   await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
 
