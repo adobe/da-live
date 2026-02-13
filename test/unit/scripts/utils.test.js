@@ -7,9 +7,15 @@ describe('Libs', () => {
     expect(libs).to.equal('https://main--da-nx--adobe.aem.live/nx');
   });
 
-  it('Supports NX query param on any domain', () => {
+  it('Default NX on production / CDN', () => {
+    const location = { hostname: 'da.live' };
+    const libs = setNx('/nx', location);
+    expect(libs).to.equal('/nx');
+  });
+
+  it('Supports NX query param on production', () => {
     const location = {
-      hostname: 'business.adobe.com',
+      hostname: 'da.live',
       search: '?nx=foo',
     };
     const libs = setNx('/nx', location);
@@ -135,10 +141,16 @@ describe('Libs', () => {
       expect(parts).to.deep.equal(['-folder', '-file']);
     });
 
-    it('Retains underscores', () => {
+    it('Retains underscores in folder segments', () => {
       const path = '/my_folder/file';
       const parts = sanitizePathParts(path);
       expect(parts).to.deep.equal(['my_folder', 'file']);
+    });
+
+    it('Strips underscores from last segment', () => {
+      const path = '/my_folder/My_file';
+      const parts = sanitizePathParts(path);
+      expect(parts).to.deep.equal(['my_folder', 'my-file']);
     });
   });
 });
