@@ -102,7 +102,7 @@ export async function createTestEditor({
   // Lazy load schema to avoid module loading issues
   let finalSchema = schema;
   if (!finalSchema) {
-    const { getSchema } = await import('../../../../../blocks/edit/prose/schema.js');
+    const { getSchema } = await import('da-parser');
     finalSchema = getSchema();
   }
   // Create a standalone Y.Doc (no server needed)

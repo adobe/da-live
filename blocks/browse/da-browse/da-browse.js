@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../shared/utils.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
 import '../da-breadcrumbs/da-breadcrumbs.js';
@@ -52,7 +52,7 @@ export default class DaBrowse extends LitElement {
     if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
       e.preventDefault();
       const { fullpath } = this.details;
-      const [, ...split] = fullpath.split('/');
+      const [...split] = sanitizePathParts(fullpath);
       if (split.length < 2) return;
 
       if (split[2] === '.trash') {
@@ -177,7 +177,7 @@ export default class DaBrowse extends LitElement {
         `)}
       </div>
       ${this._tabItems.map((tab) => html`
-        <div class="da-tabpanel" id="tabpanel-${tab.id}" role="tabpanel" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
+        <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
           ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
         </div>
       `)}

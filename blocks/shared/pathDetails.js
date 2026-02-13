@@ -1,4 +1,5 @@
 import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
+import { sanitizePathParts } from '../../scripts/utils.js';
 
 let currpath;
 let currhash;
@@ -119,7 +120,7 @@ export default function getPathDetails(loc) {
   if (!fullpath || fullpath.startsWith('old_hash') || fullpath.startsWith('access_token')) return null;
 
   // Split everything up so it can be later used for both DA & AEM
-  const pathParts = fullpath.slice(1).toLowerCase().split('/');
+  const pathParts = sanitizePathParts(fullpath);
 
   // Redirect JSON files from edit view to sheet view
   if (editor === 'edit' && fullpath.endsWith('.json')) {
