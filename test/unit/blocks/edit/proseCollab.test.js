@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { getEnterInputRulesPlugin, getDashesInputRule } from '../../../../blocks/edit/prose/plugins/keyHandlers.js';
+import { createAwarenessStatusWidget } from '../../../../blocks/shared/collab-status.js';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from edit/prose/index.js
@@ -32,7 +33,7 @@ describe('Prose collab', () => {
       on: (n, f) => wspOnCalled.push({ n, f }),
     };
 
-    const daTitle = pi.createAwarenessStatusWidget(wsp, win);
+    const daTitle = createAwarenessStatusWidget(wsp, win);
     expect(daTitle).to.equal(dat);
 
     expect(winEventListeners.length).to.equal(4);
