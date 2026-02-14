@@ -27,6 +27,6 @@ describe('DA Admin', () => {
 
 describe('DA Collab', () => {
   it('Gets DA Collab default', () => {
-    expect(COLLAB_ORIGIN).to.equal('wss://collab.da.live');
+    expect(COLLAB_ORIGIN).to.equal('wss://api.aem.live/collab');
   });
 });
