@@ -8,6 +8,10 @@ import { formatDate } from '../../edit/da-versions/helpers.js';
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+function delay(ms) {
+  return new Promise((res) => { setTimeout(res, ms); });
+}
+
 export default class DaListItem extends LitElement {
   static properties = {
     idx: { type: Number },
@@ -116,6 +120,11 @@ export default class DaListItem extends LitElement {
     this.dispatchEvent(event);
   }
 
+  async doesFileExist(path) {
+    const resp = await daFetch(`${DA_ORIGIN}/source${path}`, { method: 'HEAD' });
+    return resp.status === 200;
+  }
+
   async handleRenameSubmit(e) {
     e.preventDefault();
 
@@ -127,6 +136,14 @@ export default class DaListItem extends LitElement {
       const idx = this.path.lastIndexOf(this.name);
       const oldPath = this.path;
       const newPath = `${this.path.slice(0, idx)}${newName}${this.path.slice(idx + this.name.length)}`;
+
+      const fileExists = await this.doesFileExist(newPath);
+      if (fileExists) {
+        this.setStatus('A file with this name already exists.', 'Please choose a different name.');
+        await delay(2000);
+        this.setStatus();
+        return;
+      }
 
       this._preview = null;
       this._live = null;
