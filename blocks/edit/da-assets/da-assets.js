@@ -8,7 +8,7 @@ const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
-const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/assets/resources/assets-selectors.js';
+const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 
 const fullConfJsons = {};
 const CONFS = {};
@@ -146,6 +146,7 @@ export async function openAssets() {
       imsToken: details.accessToken.token,
       repositoryId: repoId,
       aemTierType,
+      featureSet: ['upload', 'collections', 'detail-panel', 'advisor'],
       onClose: () => assetSelectorWrapper.style.display !== 'none' && dialog.close(),
       handleSelection: async (assets) => {
         const [asset] = assets;
