@@ -136,8 +136,7 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await proseMirror.waitFor();
   await expect(proseMirror).toBeVisible();
   await expect(proseMirror).toHaveAttribute('contenteditable', 'true');
-  await proseMirror.click();
-  await page.keyboard.type('This is a line that will contain a code mark.');
+  await fill(page, 'This is a line that will contain a code mark.');
 
   // Forward
   for (let i = 0; i < 10; i += 1) {
@@ -154,9 +153,7 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await expect(codeElement).toContainText('code');
 
   // Backward
-  await proseMirror.focus();
-  await page.keyboard.press('Meta+a');
-  await page.keyboard.type('This is a line that will contain a code mark.');
+  await fill(page, 'This is a line that will contain a code mark.');
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('ArrowLeft');
   }
