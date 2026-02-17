@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../../utils/env.js';
-import { getTestPageURL, getQuery } from '../../utils/page.js';
+import { getTestPageURL, getQuery, tabBackward, fill } from '../../utils/page.js';
 
 test('Read-only directory', async ({ page }) => {
   const url = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
@@ -23,8 +23,7 @@ test('Read-only directory', async ({ page }) => {
   await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]')).toBeVisible();
   await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]').focus();
 
-  // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
-  await page.keyboard.press('Shift+Tab');
+  await tabBackward(page);
   await page.keyboard.press(' ');
   await page.waitForTimeout(500);
 
@@ -54,7 +53,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // The new page needs a moment to be ready
   await page.waitForTimeout(2000);
-  await page.locator('div.ProseMirror').fill('test writable doc');
+  await fill(page, 'test writable doc');
   await page.waitForTimeout(3000);
 
   const newPage = await browser.newPage();
@@ -70,8 +69,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await expect(page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`)).toBeVisible();
   await page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`).focus();
 
-  // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
-  await page.keyboard.press('Shift+Tab');
+  await tabBackward(page);
   await page.keyboard.press(' ');
   await page.waitForTimeout(500);
 
@@ -98,8 +96,7 @@ test('Readonly directory with writeable document', async ({ page }) => {
   await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc"]')).toBeVisible();
   await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc"]').focus();
 
-  // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
-  await page.keyboard.press('Shift+Tab');
+  await tabBackward(page);
   await page.keyboard.press(' ');
   await page.waitForTimeout(500);
 

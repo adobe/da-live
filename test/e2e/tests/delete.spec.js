@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestPageURL, getTestResourceAge } from '../utils/page.js';
+import { getQuery, getTestPageURL, getTestResourceAge, tabBackward, fill } from '../utils/page.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
@@ -99,7 +99,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
 
   await page.waitForTimeout(2000);
   const enteredText = `Some content entered at ${new Date()}`;
-  await page.locator('div.ProseMirror').fill(enteredText);
+  await fill(page, enteredText);
 
   // Create a second window on the same document
   const page2 = await browser.newPage();
@@ -119,8 +119,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   // Now delete the document
   await expect(list.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
   await list.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
-  // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
-  await list.keyboard.press('Shift+Tab');
+  await tabBackward(list);
   await list.keyboard.press(' ');
   await list.waitForTimeout(500);
   await list.locator('button.delete-button').locator('visible=true').click();

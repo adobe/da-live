@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestPageURL } from '../utils/page.js';
+import { getQuery, getTestPageURL, tabBackward, fill } from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
@@ -23,7 +23,7 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
-  await page.locator('div.ProseMirror').fill(enteredText);
+  await fill(page, enteredText);
 
   await page.waitForTimeout(3000);
   await page.close();
@@ -49,7 +49,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.locator('button:text("Create document")').click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-  await page.locator('div.ProseMirror').fill('testcontent');
+  await fill(page, 'testcontent');
   await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
@@ -60,8 +60,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
   await newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
-  // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
-  await newPage.keyboard.press('Shift+Tab');
+  await tabBackward(newPage);
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
   await page.close(); // Close the original page to avoid it writing the content
@@ -87,18 +86,21 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
-  await page.locator('div.ProseMirror').fill('before table');
+  await fill(page, 'before table');
   await page.getByText('Block', { exact: true }).click();
-  await page.getByText('columns').fill('mytable');
-  await page.keyboard.press('Tab');
+  await page.getByText('columns').dblclick();
+  await page.keyboard.type('mytable');
+  const dataCells = page.locator('div.ProseMirror table tr:nth-child(2) td');
+  await dataCells.nth(0).click();
   await page.keyboard.press('k');
-  await page.keyboard.press('Tab');
+  await dataCells.nth(1).click();
   await page.keyboard.press('v');
   await page.getByText('Edit Block').click();
   await page.getByText('Insert row after').click();
-  await page.keyboard.press('Tab');
+  const newRowCells = page.locator('div.ProseMirror table tr:nth-child(3) td');
+  await newRowCells.nth(0).click();
   await page.keyboard.type('k 2');
-  await page.keyboard.press('Tab');
+  await newRowCells.nth(1).click();
   await page.keyboard.type('v 2');
   await page.waitForTimeout(3000);
 
@@ -107,7 +109,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   await page.waitForTimeout(1000);
-  await page.locator('div.ProseMirror').fill('page B');
+  await fill(page, 'page B');
   await page.waitForTimeout(3000);
 
   await page.goto(urlA);
@@ -134,8 +136,8 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await proseMirror.waitFor();
   await expect(proseMirror).toBeVisible();
   await expect(proseMirror).toHaveAttribute('contenteditable', 'true');
-  await proseMirror.fill('This is a line that will contain a code mark.');
-  await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
+  await proseMirror.click();
+  await page.keyboard.type('This is a line that will contain a code mark.');
 
   // Forward
   for (let i = 0; i < 10; i += 1) {
@@ -152,7 +154,9 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await expect(codeElement).toContainText('code');
 
   // Backward
-  await page.locator('div.ProseMirror').fill('This is a line that will contain a code mark.');
+  await proseMirror.focus();
+  await page.keyboard.press('Meta+a');
+  await page.keyboard.type('This is a line that will contain a code mark.');
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('ArrowLeft');
   }

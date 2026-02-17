@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { getTestPageURL } from '../../utils/page.js';
+import { getTestPageURL, fill } from '../../utils/page.js';
 
 test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo) => {
   // Open 2 editors on the same page and edit in both of them. One editor is logged in,
@@ -28,7 +28,7 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   await page.waitForTimeout(1000);
-  await page.locator('div.ProseMirror').fill('Entered by user 1');
+  await fill(page, 'Entered by user 1');
 
   // Right now there should not be any collab indicators yet
   await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).not.toBeVisible();

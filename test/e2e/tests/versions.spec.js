@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { getTestPageURL } from '../utils/page.js';
+import { getTestPageURL, fill } from '../utils/page.js';
 
 test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
@@ -22,13 +22,13 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   // Enter some initial text onto the page
-  await page.locator('div.ProseMirror').fill('Initial version');
+  await fill(page, 'Initial version');
 
   // Wait to ensure its saved in da-admin
   await page.waitForTimeout(5000);
 
   // Add some more text
-  await page.locator('div.ProseMirror').fill('Second version');
+  await fill(page, 'Second version');
   await page.waitForTimeout(5000);
 
   // Create a new stored version called 'ver 1'
@@ -39,13 +39,13 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
 
   // Close the versions panel and add some more text
   await page.locator('button.da-versions-close-btn').click();
-  await page.locator('div.ProseMirror').fill('Some modifications');
+  await fill(page, 'Some modifications');
 
   // Wait to ensure its saved
   await page.waitForTimeout(5000);
 
   // And add some more text
-  await page.locator('div.ProseMirror').fill('Some more modifications');
+  await fill(page, 'Some more modifications');
   // Wait to ensure its saved
   await page.waitForTimeout(5000);
 
@@ -67,6 +67,7 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
 
   // Select 'ver 1' and restore it
   await page.getByText('ver 1', { exact: false }).click();
+  await page.waitForTimeout(500);
   await page.locator('li').filter({ hasText: 'ver 1' }).getByRole('button').click();
   await page.locator('div.da-version-action-area').getByText('Restore').click();
 

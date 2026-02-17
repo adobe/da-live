@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestFolderURL, getTestPageURL } from '../utils/page.js';
+import { getQuery, getTestFolderURL, getTestPageURL, fill } from '../utils/page.js';
 
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
@@ -25,13 +25,13 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
 
   // Enter some initial text onto the page
-  await page.locator('div.ProseMirror').fill('First text');
+  await fill(page, 'First text');
 
   // Wait to ensure its saved in da-admin
   await page.waitForTimeout(5000);
 
   // Add some more text
-  await page.locator('div.ProseMirror').fill('Versioned text');
+  await fill(page, 'Versioned text');
   await page.waitForTimeout(5000);
 
   // Create a new stored version called 'myver'
@@ -43,7 +43,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await expect(page.getByText('myver', { exact: false })).toBeVisible();
 
   // Add some more text
-  await page.locator('div.ProseMirror').fill('After versioned');
+  await fill(page, 'After versioned');
   await page.waitForTimeout(5000);
 
   // Go back to the directory view
@@ -99,8 +99,13 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.locator('li').filter({ hasText: 'myver' }).getByRole('button').click();
   await page.locator('div.da-version-action-area').getByText('Restore').click();
 
-  // Ensure that the original text is still there
-  await expect(page.locator('div.ProseMirror')).toContainText('Versioned text');
+  // Wait for the version preview to dismiss before checking editor content
+  await expect(page.locator('div.da-version-action-area')).not.toBeVisible();
+
+  // Ensure that the restored version text is there.
+  // A longer timeout is needed because the Y.js sync plugin may temporarily
+  // clear the editor while reconciling the restored state.
+  await expect(page.locator('div.ProseMirror')).toContainText('Versioned text', { timeout: 15000 });
 
   // now go to the copy
   await page.goto(`${ENV}/edit${getQuery()}#/da-sites/da-status/tests/${copyFolderName}/${orgPageName}`);

@@ -24,9 +24,11 @@ test('Can read versions of read-write document', async ({ page }) => {
 
   // find v1 and check it
   await page.getByText('v1').click();
+  await page.waitForTimeout(500);
   await page.locator('li').filter({ hasText: 'v1' }).getByRole('button').click();
 
-  const versionPreview = page.locator('div.da-version-preview > div.ProseMirror > div');
+  await page.locator('div.da-version-preview').waitFor({ timeout: 10000 });
+  const versionPreview = page.locator('div.da-version-preview > div.ProseMirror');
   await expect(versionPreview).toHaveText('Initial version');
 
   // check that the restore button is enabled
@@ -44,9 +46,11 @@ test('Cannot read versions of read-only document', async ({ page }) => {
 
   // find v1 and check it
   await page.getByText('version 1').click();
+  await page.waitForTimeout(500);
   await page.locator('li').filter({ hasText: 'version 1' }).getByRole('button').click();
 
-  const versionPreview = page.locator('div.da-version-preview > div.ProseMirror > div');
+  await page.locator('div.da-version-preview').waitFor({ timeout: 10000 });
+  const versionPreview = page.locator('div.da-version-preview > div.ProseMirror');
   await expect(versionPreview).toHaveText('We have v1 here');
 
   // check the restore button is disabled, as it's a readonly page
