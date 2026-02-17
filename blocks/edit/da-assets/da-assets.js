@@ -79,6 +79,29 @@ function findBlockContext() {
   return [];
 }
 
+function formatExternalBrief(document) {
+  // Find the first H1 title and get the full text of the document
+  let title = '';
+  document.descendants((node) => {
+    if (node.type.name === 'heading' && node.attrs.level === 1 && !title) {
+      title = node.textContent;
+    }
+    return !title;
+  });
+
+  const contentPlainText = document.textContent;
+  if (!contentPlainText) return '';
+
+  // return the external brief prompt with the title and content
+  return `The user is looking for assets that match a web page with the following content:
+
+  ${title ? `Title: ${title}` : ''}
+
+  ${contentPlainText}
+
+  Please suggest Assets that are visually appealing and relevant to the subject.`;
+}
+
 export async function openAssets() {
   const details = await loadIms();
   if (details.anonymous) handleSignIn();
@@ -141,12 +164,18 @@ export async function openAssets() {
     const loadResponsiveImageConfig = getResponsiveImageConfig(owner, repo);
 
     const aemTierType = repoId.includes('delivery') ? 'delivery' : 'author';
+    const featureSet = ['upload', 'collections', 'detail-panel', 'advisor'];
+    if (aemTierType === 'delivery') {
+      featureSet.push('dynamic-media');
+    }
+    const externalBrief = formatExternalBrief(window.view.state.doc);
 
     const selectorProps = {
       imsToken: details.accessToken.token,
       repositoryId: repoId,
       aemTierType,
-      featureSet: ['upload', 'collections', 'detail-panel', 'advisor'],
+      featureSet,
+      externalBrief,
       onClose: () => assetSelectorWrapper.style.display !== 'none' && dialog.close(),
       handleSelection: async (assets) => {
         const [asset] = assets;
