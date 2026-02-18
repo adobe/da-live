@@ -22,11 +22,16 @@ test('Can read versions of read-write document', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Versions' }).click();
 
-  // find v1 and check it
+  // find v1 and check it — the click expands the version entry to reveal its
+  // button; WebKit needs a beat for the expansion to start processing.
   await page.getByText('v1').click();
-  await page.locator('li').filter({ hasText: 'v1' }).getByRole('button').click();
+  await page.waitForTimeout(500);
+  const v1Button = page.locator('li').filter({ hasText: 'v1' }).getByRole('button');
+  await expect(v1Button).toBeVisible();
+  await v1Button.click();
 
-  const versionPreview = page.locator('div.da-version-preview > div.ProseMirror > div');
+  await page.locator('div.da-version-preview').waitFor({ timeout: 15000 });
+  const versionPreview = page.locator('div.da-version-preview > div.ProseMirror');
   await expect(versionPreview).toHaveText('Initial version');
 
   // check that the restore button is enabled
@@ -42,11 +47,16 @@ test('Cannot read versions of read-only document', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Versions' }).click();
 
-  // find v1 and check it
+  // find v1 and check it — the click expands the version entry to reveal its
+  // button; WebKit needs a beat for the expansion to start processing.
   await page.getByText('version 1').click();
-  await page.locator('li').filter({ hasText: 'version 1' }).getByRole('button').click();
+  await page.waitForTimeout(500);
+  const v1Button = page.locator('li').filter({ hasText: 'version 1' }).getByRole('button');
+  await expect(v1Button).toBeVisible();
+  await v1Button.click();
 
-  const versionPreview = page.locator('div.da-version-preview > div.ProseMirror > div');
+  await page.locator('div.da-version-preview').waitFor({ timeout: 15000 });
+  const versionPreview = page.locator('div.da-version-preview > div.ProseMirror');
   await expect(versionPreview).toHaveText('We have v1 here');
 
   // check the restore button is disabled, as it's a readonly page
