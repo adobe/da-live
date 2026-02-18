@@ -22,10 +22,10 @@ import {
   Y,
 } from 'da-y-wrapper';
 
+import { getSchema } from 'da-parser';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
-import { getSchema } from './schema.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 
 async function checkDoc(path) {
@@ -375,6 +375,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
       columnResizing(),
       plugins.getEnterInputRulesPlugin(dispatchTransaction),
       plugins.getURLInputRulesPlugin(),
+      plugins.getListInputRulesPlugin(schema),
       buildKeymapPlugin,
       keymap({ Backspace: plugins.handleTableBackspace }),
       baseKeymapPlugin,
