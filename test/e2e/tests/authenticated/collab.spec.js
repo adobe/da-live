@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { getTestPageURL } from '../../utils/page.js';
+import { getTestPageURL, fill } from '../../utils/page.js';
 
 test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo) => {
   // Open 2 editors on the same page and edit in both of them. One editor is logged in,
@@ -28,7 +28,7 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   await page.waitForTimeout(1000);
-  await page.locator('div.ProseMirror').fill('Entered by user 1');
+  await fill(page, 'Entered by user 1');
 
   // Right now there should not be any collab indicators yet
   await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).not.toBeVisible();
@@ -39,11 +39,9 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   const page2 = await browser.newPage();
   await page2.goto(pageURL);
 
-  // The following assertion has an extended timeout as it might cycle through the login screen
+  // The following assertions have an extended timeout as they might cycle through the login screen
   // before the document is visible. The login screen doesn't need any input though, it will just
   // continue with the existing login
-  await page2.waitForTimeout(3000);
-
   await expect(page2.locator('div.ProseMirror')).toBeVisible();
   await expect(page2.locator('div.ProseMirror')).toContainText('Entered by user 1');
 
@@ -52,7 +50,6 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await page2.mouse.click(editBox.x + 10, editBox.y + 10);
   await page2.keyboard.type('From user 2');
 
-  await page.waitForTimeout(2000); // give it some time to appear
   // Check the little cloud icon for collaborators
   // as we use the same user for both pages, the cloud icon should be visible on both pages
   await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
