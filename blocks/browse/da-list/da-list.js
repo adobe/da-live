@@ -58,10 +58,6 @@ export default class DaList extends LitElement {
     this._isLoadingMore = false;
     this._observer = null;
     this._autoCheckTimer = null;
-    this._forceLoadAll = false;
-    this._bulkLoading = false;
-    this._filterLoading = false;
-    this._allPagesLoaded = false;
   }
 
   connectedCallback() {
@@ -136,11 +132,7 @@ export default class DaList extends LitElement {
     const requestToken = this._continuationToken;
     this._isLoadingMore = true;
     try {
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, {
-        headers: {
-          'da-continuation-token': requestToken,
-        },
-      });
+      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, { headers: { 'da-continuation-token': requestToken } });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       const nextItems = Array.isArray(json) ? json : json?.items || [];
