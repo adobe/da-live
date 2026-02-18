@@ -35,6 +35,7 @@ test('Read-only directory', async ({ page }) => {
 });
 
 test('Read-write directory', async ({ browser, page }, workerInfo) => {
+  test.setTimeout(60000);
   const pageURL = getTestPageURL('acl-browse-edt', workerInfo, '/da-testautomation/acltest/testdocs/subdir/subdir1');
   const pageName = pageURL.split('/').pop();
   const browseURL = pageURL.replace(`/${pageName}`, '').replace('/edit#/', '/#/');
@@ -61,7 +62,6 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   // The following assertion has an extended timeout as it might cycle through the login screen
   // before the document is visible. The login screen doesn't need any input though, it will just
   // continue with the existing login
-  await newPage.waitForTimeout(3000);
   await expect(newPage.locator('div.ProseMirror')).toContainText('test writable doc');
   newPage.close();
 
@@ -120,6 +120,5 @@ test('No access directory should not show anything', async ({ page }) => {
   // We need to reload the page explicitly because the only thing we changed
   // was the anchor and that doesn't normally trigger a change
   await page.reload();
-  await page.waitForTimeout(3000);
   await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
 });

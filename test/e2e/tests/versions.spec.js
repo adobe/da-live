@@ -15,11 +15,13 @@ import { getTestPageURL, fill } from '../utils/page.js';
 test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   await page.goto(getTestPageURL('versions', workerInfo));
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
 
   // Enter some initial text onto the page
   await fill(page, 'Initial version');
@@ -65,10 +67,13 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   const expectedUser = process.env.SKIP_AUTH ? 'anonymous' : 'da-test@adobetest.com';
   await expect(audit).toContainText(expectedUser);
 
-  // Select 'ver 1' and restore it
+  // Select 'ver 1' and restore it — the click expands the version entry;
+  // WebKit needs a beat for the expansion to start processing.
   await page.getByText('ver 1', { exact: false }).click();
   await page.waitForTimeout(500);
-  await page.locator('li').filter({ hasText: 'ver 1' }).getByRole('button').click();
+  const ver1Button = page.locator('li').filter({ hasText: 'ver 1' }).getByRole('button');
+  await expect(ver1Button).toBeVisible();
+  await ver1Button.click();
   await page.locator('div.da-version-action-area').getByText('Restore').click();
 
   // Ensure that the original text is still there

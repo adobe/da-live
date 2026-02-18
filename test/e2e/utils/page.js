@@ -77,10 +77,12 @@ export function getTestResourceAge(fileName) {
   return null;
 }
 
+const SELECT_ALL = process.platform === 'darwin' ? 'Meta+a' : 'Control+a';
+
 export async function fill(page, text) {
   const proseMirror = page.locator('div.ProseMirror');
   await proseMirror.click();
-  await page.keyboard.press('Meta+a');
+  await page.keyboard.press(SELECT_ALL);
   await page.keyboard.type(text);
 }
 

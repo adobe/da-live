@@ -22,12 +22,15 @@ test('Can read versions of read-write document', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Versions' }).click();
 
-  // find v1 and check it
+  // find v1 and check it — the click expands the version entry to reveal its
+  // button; WebKit needs a beat for the expansion to start processing.
   await page.getByText('v1').click();
   await page.waitForTimeout(500);
-  await page.locator('li').filter({ hasText: 'v1' }).getByRole('button').click();
+  const v1Button = page.locator('li').filter({ hasText: 'v1' }).getByRole('button');
+  await expect(v1Button).toBeVisible();
+  await v1Button.click();
 
-  await page.locator('div.da-version-preview').waitFor({ timeout: 10000 });
+  await page.locator('div.da-version-preview').waitFor({ timeout: 15000 });
   const versionPreview = page.locator('div.da-version-preview > div.ProseMirror');
   await expect(versionPreview).toHaveText('Initial version');
 
@@ -44,12 +47,15 @@ test('Cannot read versions of read-only document', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Versions' }).click();
 
-  // find v1 and check it
+  // find v1 and check it — the click expands the version entry to reveal its
+  // button; WebKit needs a beat for the expansion to start processing.
   await page.getByText('version 1').click();
   await page.waitForTimeout(500);
-  await page.locator('li').filter({ hasText: 'version 1' }).getByRole('button').click();
+  const v1Button = page.locator('li').filter({ hasText: 'version 1' }).getByRole('button');
+  await expect(v1Button).toBeVisible();
+  await v1Button.click();
 
-  await page.locator('div.da-version-preview').waitFor({ timeout: 10000 });
+  await page.locator('div.da-version-preview').waitFor({ timeout: 15000 });
   const versionPreview = page.locator('div.da-version-preview > div.ProseMirror');
   await expect(versionPreview).toHaveText('We have v1 here');
 

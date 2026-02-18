@@ -31,9 +31,6 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   // Open the directory listing
   await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
 
-  // Wait for the page to appear
-  await page.waitForTimeout(1000);
-
   // This page will always be there as its used by a test
   await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
 
@@ -76,19 +73,17 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   }
 
   // Hit the delete button
-  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.locator('button.delete-button').locator('visible=true').click();
 
   // Hit the delete confirmation button
   await page.locator('sl-button.negative').locator('visible=true').click();
 
-  await page.waitForTimeout(10000);
-
   // Wait for the delete button to disappear which is when we're done
-  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible({ timeout: 600000 });
+  await expect(page.locator('button.delete-button').locator('visible=true')).not.toBeVisible({ timeout: 600000 });
 });
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   const url = getTestPageURL('delete', workerInfo);
   const pageName = url.split('/').pop();
@@ -96,15 +91,15 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await page.goto(url);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-
+  // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
+
   const enteredText = `Some content entered at ${new Date()}`;
   await fill(page, enteredText);
 
   // Create a second window on the same document
   const page2 = await browser.newPage();
   await page2.goto(url);
-  await page2.waitForTimeout(3000);
   await expect(page2.locator('div.ProseMirror')).toContainText(enteredText);
 
   // Close the first window
@@ -129,9 +124,6 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
 
   // Hit the delete confirmation button
   await list.locator('sl-button.negative').locator('visible=true').click();
-
-  // Give the second window a chance to update itself
-  await list.waitForTimeout(5000);
 
   // The open window should be cleared out now
   await expect(page2.locator('div.ProseMirror')).not.toBeVisible();
