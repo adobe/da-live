@@ -8,6 +8,7 @@ import {
   createRef,
   ref,
   nothing,
+  repeat,
 } from 'da-lit';
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
@@ -62,6 +63,7 @@ class DaLibrary extends LitElement {
     _blockPreviewPath: { state: true },
     _previewItemName: { Type: String },
     _previewStatus: { Type: Object },
+    _activePane: { state: true },
   };
 
   constructor() {
@@ -113,6 +115,8 @@ class DaLibrary extends LitElement {
       closeLibrary();
       return;
     }
+
+    this._activePane = library.name;
 
     if (library.experience === 'dialog') {
       let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
@@ -176,19 +180,16 @@ class DaLibrary extends LitElement {
     }
 
     const { target } = e;
-    const type = target.dataset.libraryName;
     target.closest('.palette-pane').classList.add('backward');
     target.closest('.palette-pane').inert = true;
-    const toShow = this.shadowRoot.querySelector(`[data-library-type="${type}"]`);
+    const toShow = this.shadowRoot.querySelector(`[data-library-type="${library.name}"]`);
     toShow.classList.remove('forward');
     toShow.inert = false;
-    const pluginIframe = toShow.querySelector('iframe');
-    if (!pluginIframe) return;
-    pluginIframe.src = pluginIframe.dataset.src;
   }
 
   handleBack(e) {
     const { target } = e;
+    this._activePane = null;
     target.closest('.palette-pane').classList.add('forward');
     target.closest('.palette-pane').inert = true;
     const wrapper = target.closest('.palette-wrapper');
@@ -199,6 +200,7 @@ class DaLibrary extends LitElement {
 
   handleCloseSearch() {
     this._searchStr = '';
+    this._activePane = null;
     this.searchInputRef.value.value = '';
   }
 
@@ -383,7 +385,6 @@ class DaLibrary extends LitElement {
         @close=${this.handlePreviewClose}>
         ${status === 200 ? html`<iframe
           class="da-dialog-block-preview-frame"
-          data-src="${this._blockPreviewPath}"
           src="${this._blockPreviewPath}"
           @load=${this.handlePreviewLoad}
           allow="clipboard-write *"></iframe>` : html`<div style="margin: 0 24px">${error || 'This block/template has not been previewed.'}</div>`}
@@ -531,8 +532,7 @@ class DaLibrary extends LitElement {
     return html`
       <div class="da-library-type-plugin">
         <iframe
-          data-src="${preload ? null : url}"
-          src="${preload ? url : null}"
+          src="${preload ? url : nothing}"
           @load=${this.handlePluginLoad}
           allow="clipboard-write *"></iframe>
       </div>`;
@@ -570,11 +570,7 @@ class DaLibrary extends LitElement {
     this._previewStatus = { ...this._previewStatus, ...status };
   }
 
-  async renderLibrary({ name, sources, url, format, class: className }) {
-    const isPlugin = className.split(' ').some((val) => val === 'is-plugin');
-
-    if (isPlugin) return this.renderPlugin({ sources, url });
-
+  async renderLibrary({ name, sources, format }) {
     if (name === 'blocks') {
       if (!data.blocks) {
         data.blocks = await getBlocks(sources);
@@ -623,12 +619,14 @@ class DaLibrary extends LitElement {
   renderMainMenu() {
     return html`
       <ul class="da-library-item-list da-library-item-list-main">
-        ${this._libraryList.map(
+        ${repeat(
+          this._libraryList,
+          (library) => library.name,
           (library) => html`
           <li>
             <button
               data-library-name="${library.name}"
-              class="${library.class || library.name} ${library.url ? 'is-plugin' : ''}"
+              class="${library.class || library.name}"
               style="${library.icon ? `background-image: url(${library.icon})` : ''}"
               @click=${(e) => this.handleLibSwitch(e, library)}>
               <span class="library-type-name">${library.title || library.name}</span>
@@ -660,16 +658,24 @@ class DaLibrary extends LitElement {
           </div>
           ${this._searchStr ? this.renderSearch() : this.renderMainMenu()}
         </div>
-        ${this._libraryList.map(
-          (library) => html`
-          <div class="palette-pane forward" data-library-type="${library.name}" inert>
-            <div class="palette-pane-header">
-              <button class="palette-back" @click=${this.handleBack}>Back</button>
-              <h2>${library.name}</h2>
-            </div>
-            ${until(this.renderLibrary(library), html`<span>Loading...</span>`)}
-          </div>
-        `,
+        ${repeat(
+          this._libraryList,
+          (library) => library.name,
+          (library) => {
+            const isPlugin = library.class?.includes('is-plugin');
+
+            return html`
+              <div class="palette-pane forward" data-library-type="${library.name}" inert>
+                <div class="palette-pane-header">
+                  <button class="palette-back" @click=${this.handleBack}>Back</button>
+                  <h2>${library.name}</h2>
+                </div>
+                ${isPlugin
+                  ? this.renderPlugin(library, this._activePane === library.name)
+                  : until(this.renderLibrary(library), html`<span>Loading...</span>`)}
+              </div>
+            `;
+          },
         )}
       </div>
       <div class="da-library-preview">
