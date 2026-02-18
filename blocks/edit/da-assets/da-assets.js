@@ -165,7 +165,7 @@ export async function openAssets() {
 
     const aemTierType = repoId.includes('delivery') ? 'delivery' : 'author';
     const featureSet = ['upload', 'collections', 'detail-panel', 'advisor'];
-    if (aemTierType === 'delivery') {
+    if (dmDeliveryEnabled) {
       featureSet.push('dynamic-media');
     }
     const externalBrief = formatExternalBrief(window.view.state.doc);
