@@ -8,6 +8,10 @@ import { formatDate } from '../../edit/da-versions/helpers.js';
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+function delay(ms) {
+  return new Promise((res) => { setTimeout(res, ms); });
+}
+
 export default class DaListItem extends LitElement {
   static properties = {
     idx: { type: Number },
@@ -116,6 +120,11 @@ export default class DaListItem extends LitElement {
     this.dispatchEvent(event);
   }
 
+  async doesFileExist(path) {
+    const resp = await daFetch(`${DA_ORIGIN}/source${path}`, { method: 'HEAD' });
+    return resp.status === 200;
+  }
+
   async handleRenameSubmit(e) {
     e.preventDefault();
 
@@ -127,6 +136,14 @@ export default class DaListItem extends LitElement {
       const idx = this.path.lastIndexOf(this.name);
       const oldPath = this.path;
       const newPath = `${this.path.slice(0, idx)}${newName}${this.path.slice(idx + this.name.length)}`;
+
+      const fileExists = await this.doesFileExist(newPath);
+      if (fileExists) {
+        this.setStatus('A file with this name already exists.', 'Please choose a different name.');
+        await delay(2000);
+        this.setStatus();
+        return;
+      }
 
       this._preview = null;
       this._live = null;
@@ -186,7 +203,7 @@ export default class DaListItem extends LitElement {
       <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
         <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
         </span>
-        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name">
+        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="Rename item">
         <div class="da-item-list-item-rename-actions">
           <button aria-label="Confirm" value="confirm">
             <div class="icon checkmark-icon"></div>
@@ -226,7 +243,7 @@ export default class DaListItem extends LitElement {
   renderCheckBox() {
     return html`
       <div class="checkbox-wrapper">
-        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${(e) => { this.handleChecked(e); }}">
+        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${(e) => { this.handleChecked(e); }}" aria-label="Select item">
         <label class="checkbox-label" for="item-selected-${this.idx}"></label>
       </div>
       <input type="checkbox" name="select" style="display: none;">
@@ -259,7 +276,7 @@ export default class DaListItem extends LitElement {
 
   render() {
     return html`
-      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}">
+      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}" role="gridcell">
         ${this.allowselect ? this.renderCheckBox() : nothing}
         ${this.rename ? this.renderRename() : this.renderItem()}
         <button
@@ -268,7 +285,7 @@ export default class DaListItem extends LitElement {
           class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
         </button>
       </div>
-      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}">
+      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}" role="gridcell">
         ${this.renderDaDetails()}
         <a
           href=${this._preview?.url}

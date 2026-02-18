@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestFolderURL, getTestPageURL } from '../utils/page.js';
+import { getQuery, getTestFolderURL, getTestPageURL, fill } from '../utils/page.js';
 
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
@@ -23,15 +23,17 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.goto(pageURL);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
 
   // Enter some initial text onto the page
-  await page.locator('div.ProseMirror').fill('First text');
+  await fill(page, 'First text');
 
   // Wait to ensure its saved in da-admin
   await page.waitForTimeout(5000);
 
   // Add some more text
-  await page.locator('div.ProseMirror').fill('Versioned text');
+  await fill(page, 'Versioned text');
   await page.waitForTimeout(5000);
 
   // Create a new stored version called 'myver'
@@ -43,7 +45,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await expect(page.getByText('myver', { exact: false })).toBeVisible();
 
   // Add some more text
-  await page.locator('div.ProseMirror').fill('After versioned');
+  await fill(page, 'After versioned');
   await page.waitForTimeout(5000);
 
   // Go back to the directory view
@@ -92,14 +94,19 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   await page.waitForTimeout(3000);
   await page.goto(`${pageURL}ren`);
 
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.getByText('myver', { exact: false }).click();
-  await page.locator('li').filter({ hasText: 'myver' }).getByRole('button').click();
+  await page.waitForTimeout(500);
+  const myverButton = page.locator('li').filter({ hasText: 'myver' }).getByRole('button');
+  await expect(myverButton).toBeVisible();
+  await myverButton.click();
   await page.locator('div.da-version-action-area').getByText('Restore').click();
 
-  // Ensure that the original text is still there
+  // Wait for the version preview to dismiss before checking editor content
+  await expect(page.locator('div.da-version-action-area')).not.toBeVisible();
+
+  // Ensure that the restored version text is there
   await expect(page.locator('div.ProseMirror')).toContainText('Versioned text');
 
   // now go to the copy
