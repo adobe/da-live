@@ -1,7 +1,7 @@
 /* eslint-disable max-len */
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import { getKeyAutocomplete, normalizeForSlashMenu, createKeyMenuItems } from './keyAutocomplete.js';
-import { getDefaultItems, getTableCellItems, getTableItems } from './slashMenuItems.js';
+import { getDefaultItems, getBlockCellItems, getBlockItems } from './slashMenuItems.js';
 import { getTableInfo } from '../tableUtils.js';
 import './slash-menu.js';
 
@@ -39,7 +39,7 @@ class SlashMenuView {
     const { $cursor } = state.selection;
 
     if (hasCellAreaSelected(state)) {
-      this.menu.items = getTableCellItems(state);
+      this.menu.items = getBlockCellItems(state);
       return;
     }
 
@@ -58,7 +58,7 @@ class SlashMenuView {
     const keyData = pluginState.autocompleteData?.get(tableName);
 
     if (!keyData) {
-      this.menu.items = getTableItems(state);
+      this.menu.items = getBlockItems(state);
       return;
     }
 
@@ -68,7 +68,7 @@ class SlashMenuView {
     }
 
     const normalizedKey = normalizeForSlashMenu(keyValue);
-    this.menu.items = keyData.get(normalizedKey) || getTableItems(state);
+    this.menu.items = keyData.get(normalizedKey) || getBlockItems(state);
   }
 
   cellHasMenuItems(pluginState, state, $cursor) {

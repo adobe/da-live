@@ -99,11 +99,11 @@
   background-image: url('/blocks/edit/img/Smock_TextNumbered_18_N.svg');
 }
 
-.slash-menu-icon.insert-table {
+.slash-menu-icon.insert-block {
   background-image: url('/blocks/edit/img/S2_Icon_TableAdd_20_N.svg');
 }
 
-.slash-menu-icon.table-options {
+.slash-menu-icon.block-options {
   background-image: url('/blocks/edit/img/S2_Icon_TableEdit_20_N.svg');
 }
 
