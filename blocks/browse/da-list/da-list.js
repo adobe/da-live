@@ -323,8 +323,11 @@ export default class DaList extends LitElement {
       await this.handleItemAction({ item, type });
 
       if (this._unpublish && this._confirmText === 'YES') {
-        const json = await aemAdmin(item.path, 'live', 'DELETE');
-        if (!json) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish' });
+        const previewJson = await aemAdmin(item.path, 'preview', 'DELETE');
+        if (!previewJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
+
+        const liveJson = await aemAdmin(item.path, 'live', 'DELETE');
+        if (!liveJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
       }
       this._itemsRemaining -= 1;
 
