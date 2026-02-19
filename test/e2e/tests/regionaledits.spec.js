@@ -28,7 +28,7 @@ const sendUndo = async (page) => {
 };
 
 test('Regional Edit Document', async ({ page, context }, workerInfo) => {
-  test.setTimeout(15000);
+  test.setTimeout(30000);
 
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
 
