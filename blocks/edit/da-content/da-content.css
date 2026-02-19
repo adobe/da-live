@@ -29,7 +29,8 @@ da-version {
 }
 
 da-preview,
-da-versions {
+da-versions,
+.comments-pane {
   visibility: hidden;
   position: absolute;
   width: 0;
@@ -44,6 +45,10 @@ da-versions {
     height: unset;
     overflow: unset;
   }
+}
+
+.comments-pane-content {
+  min-width: 280px;
 }
 
 .da-editor-tabs {
@@ -78,6 +83,10 @@ da-versions {
 
 .da-editor-tab.show-preview {
   background: url("/blocks/edit/img/S2_icon_DeviceDesktopMobile_20_N.svg") center center / 20px no-repeat rgb(239 239 239);
+}
+
+.da-editor-tab.show-comments {
+  background: url("/blocks/edit/img/S2_Icon_Comment_20_N.svg") center center / 20px no-repeat;
 }
 
 .da-editor-tab.show-versions {
