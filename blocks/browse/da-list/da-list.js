@@ -34,6 +34,7 @@ export default class DaList extends LitElement {
     _selectedItems: { state: true },
     _dropFiles: { state: true },
     _dropMessage: { state: true },
+    _dropConflicts: { state: true },
     _status: { state: true },
     _confirm: { state: true },
     _confirmText: { state: true },
@@ -385,9 +386,21 @@ export default class DaList extends LitElement {
       return;
     }
 
-    const makeBatches = (await import(`${getNx()}/utils/batch.js`)).default;
-    const { getFullEntryList, handleUpload } = await import('./helpers/utils.js');
+    const { getFullEntryList, getDropConflicts } = await import('./helpers/utils.js');
     this._dropFiles = await getFullEntryList(entries);
+
+    const conflicts = getDropConflicts(this._listItems, this._dropFiles);
+    if (conflicts.length) {
+      this._dropConflicts = conflicts;
+      return;
+    }
+
+    await this.processDropFiles();
+  }
+
+  async processDropFiles() {
+    const makeBatches = (await import(`${getNx()}/utils/batch.js`)).default;
+    const { handleUpload } = await import('./helpers/utils.js');
 
     this.setDropMessage();
 
@@ -398,10 +411,22 @@ export default class DaList extends LitElement {
         this.setDropMessage();
         if (item) {
           this._listItems.unshift(item);
-          this.requestUpdate();
         }
+        this.requestUpdate();
       }));
     }
+    this._dropFiles = [];
+    this.setDropMessage();
+    this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
+  }
+
+  async handleDropConfirm() {
+    this._dropConflicts = null;
+    await this.processDropFiles();
+  }
+
+  handleDropCancel() {
+    this._dropConflicts = null;
     this._dropFiles = [];
     this.setDropMessage();
     this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
@@ -563,6 +588,29 @@ export default class DaList extends LitElement {
     `;
   }
 
+  renderDropConfirm() {
+    const count = this._dropConflicts.length;
+    const itemWord = count === 1 ? 'item' : 'items';
+
+    const action = {
+      style: 'negative',
+      label: 'Replace',
+      click: async () => this.handleDropConfirm(),
+    };
+
+    return html`
+      <da-dialog
+        title="Replace ${count} existing ${itemWord}"
+        .action=${action}
+        @close=${this.handleDropCancel}>
+        <p>The following ${count === 1 ? 'item already exists' : 'items already exist'} and will be replaced:</p>
+        <ul class="da-drop-conflicts">
+          ${this._dropConflicts.map((name) => html`<li>${name}</li>`)}
+        </ul>
+      </da-dialog>
+    `;
+  }
+
   renderErrors() {
     const action = {
       style: 'accent',
@@ -675,6 +723,7 @@ export default class DaList extends LitElement {
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
       ${this._confirm ? this.renderConfirm() : nothing}
+      ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;
   }
