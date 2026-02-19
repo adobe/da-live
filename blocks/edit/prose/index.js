@@ -40,6 +40,7 @@ import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import linkMenu from './plugins/linkMenu/linkMenu.js';
+import commentPlugin, { addCommentCommand } from './plugins/commentPlugin.js';
 import {
   handleTableBackspace,
   handleTableTab,
@@ -348,6 +349,7 @@ export default function initProse({ path, permissions }) {
     trackCursorAndChanges(),
     slashMenu(),
     linkMenu(),
+    commentPlugin(),
     imageDrop(schema),
     linkConverter(schema),
     linkTextSync(),
@@ -366,6 +368,7 @@ export default function initProse({ path, permissions }) {
       'Mod-y': handleRedo,
       'Mod-Shift-z': handleRedo,
       'Mod-Shift-l': toggleLibrary,
+      'Mod-Shift-m': addCommentCommand,
       'Mod-k': (state, dispatch, view) => { // toggle link prompt
         const linkMarkType = state.schema.marks.link;
         const linkMenuItem = linkItem(linkMarkType);
