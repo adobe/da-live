@@ -37,6 +37,7 @@ export default class DaTitle extends LitElement {
     collabUsers: { attribute: false },
     previewPrefix: { attribute: false },
     livePrefix: { attribute: false },
+    hasChanges: { attribute: false },
     _actionsVis: { state: true },
     _status: { state: true },
     _fixedActions: { state: true },
@@ -47,7 +48,13 @@ export default class DaTitle extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._actionsVis = [];
+    this.hasChanges = false;
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
+
+    if (this._isConfigView) {
+      this._actionsVis = ['save'];
+    }
+
     if (this.details.view === 'sheet') {
       this.collabStatus = window.navigator.onLine
         ? 'connected'
@@ -68,6 +75,7 @@ export default class DaTitle extends LitElement {
   }
 
   handleError(json, action, icon) {
+    // eslint-disable-next-line no-console
     console.log('handleError', json, action, icon);
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');
@@ -93,8 +101,14 @@ export default class DaTitle extends LitElement {
   async handleAction(action) {
     this.toggleActions();
     this._status = null;
-    const sendBtn = this.shadowRoot.querySelector('.da-title-action-send-icon');
-    sendBtn.classList.add('is-sending');
+
+    const sendBtn = this.shadowRoot.querySelector(
+      this._isConfigView ? '.da-title-action' : '.da-title-action-send-icon',
+    );
+
+    if (sendBtn) {
+      sendBtn.classList.add('is-sending');
+    }
 
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
@@ -104,13 +118,21 @@ export default class DaTitle extends LitElement {
       const dasSave = await saveToDa(pathname, this.sheet);
       if (!dasSave.ok) return;
     }
-    if (this.details.view === 'config') {
+
+    if (this._isConfigView) {
       const daConfigResp = await saveDaConfig(pathname, this.sheet);
+
+      if (sendBtn) {
+        sendBtn.classList.remove('is-sending');
+      }
+
       if (!daConfigResp.ok) {
         // eslint-disable-next-line no-console
         console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
-        return;
+      } else {
+        this.hasChanges = false;
       }
+      return;
     }
     if (action === 'preview' || action === 'publish') {
       const cdn = await getCdnConfig(pathname);
@@ -141,7 +163,7 @@ export default class DaTitle extends LitElement {
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
-    sendBtn.classList.remove('is-sending');
+    if (sendBtn) sendBtn.classList.remove('is-sending');
   }
 
   async handleRoleRequest() {
@@ -189,15 +211,14 @@ export default class DaTitle extends LitElement {
   }
 
   async toggleActions() {
-    // toggle off if already on
-    if (this._actionsVis.length > 0) {
-      this._actionsVis = [];
+    // Config view doesn't toggle
+    if (this._isConfigView) {
       return;
     }
 
-    // toggle on for config
-    if (this.details.view === 'config') {
-      this._actionsVis = ['save'];
+    // toggle off if already on
+    if (this._actionsVis.length > 0) {
+      this._actionsVis = [];
       return;
     }
 
@@ -217,12 +238,17 @@ export default class DaTitle extends LitElement {
     return !this.permissions.some((permission) => permission === 'write');
   }
 
+  get _isConfigView() {
+    return this.details.view === 'config';
+  }
+
   renderActions() {
     return html`${this._actionsVis.map((action) => html`
       <button
         @click=${() => this.handleAction(action)}
-        class="con-button blue da-title-action"
-        aria-label="Send">
+        class="con-button da-title-action ${this._isConfigView && !this.hasChanges ? '' : 'blue'}"
+        aria-label="${action}"
+        ?disabled=${this._isConfigView && !this.hasChanges}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
     `)}`;
@@ -290,14 +316,16 @@ export default class DaTitle extends LitElement {
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis.length > 0 ? 'is-open' : ''}">
+          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${!this._isConfigView && this._actionsVis.length > 0 ? 'is-open' : ''} ${this._isConfigView ? 'config' : ''}">
             ${this.renderActions()}
-            <button
-              @click=${this.toggleActions}
-              class="con-button blue da-title-action-send"
-              aria-label="Send">
-              <span class="da-title-action-send-icon"></span>
-            </button>
+            ${this._isConfigView ? nothing : html`
+              <button
+                @click=${this.toggleActions}
+                class="con-button blue da-title-action-send"
+                aria-label="Send">
+                <span class="da-title-action-send-icon"></span>
+              </button>
+            `}
           </div>
         </div>
       </div>

@@ -19,7 +19,13 @@ export const saveSheets = async (sheets) => {
 const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
 
 export function handleSave(jexcel, view) {
-  if (view !== 'config') {
+  if (view === 'config') {
+    const daTitle = document.querySelector('da-title');
+
+    if (daTitle) {
+      daTitle.hasChanges = true;
+    }
+  } else {
     debouncedSaveSheets(jexcel);
   }
 }
