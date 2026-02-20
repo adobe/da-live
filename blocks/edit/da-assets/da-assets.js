@@ -125,7 +125,7 @@ export async function openAssets() {
     if (!dmDeliveryEnabled) {
       return `https://${prodOrigin}${asset.path}`;
     }
-    return `${getBaseDmUrl(asset)}/as/${name}`;
+    return `${getBaseDmUrl(asset)}/original/as/${name}`;
   };
 
   // Determine if images should be links
