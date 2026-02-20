@@ -82,6 +82,22 @@ export async function getFullEntryList(entries) {
   return files.filter((file) => file);
 }
 
+export function getDropConflicts(list, files) {
+  const existing = new Set(
+    list.map((item) => (item.ext ? `${item.name}.${item.ext}` : item.name)),
+  );
+  const matched = new Set();
+  return files.reduce((conflicts, file) => {
+    const sanitizedPath = sanitizePath(file.path);
+    const [displayName] = sanitizedPath.split('/').slice(1);
+    if (!matched.has(displayName) && existing.has(displayName)) {
+      matched.add(displayName);
+      conflicts.push(displayName);
+    }
+    return conflicts;
+  }, []);
+}
+
 export async function handleUpload(list, fullpath, file) {
   const { data, path } = file;
   const formData = new FormData();
@@ -99,11 +115,17 @@ export async function handleUpload(list, fullpath, file) {
     const ext = rest.pop();
     const rejoined = [filename, ...rest].join('.');
 
-    const listHasName = list.some((item) => item.name === rejoined);
+    const existingItem = list.find((item) => {
+      const itemDisplay = item.ext ? `${item.name}.${item.ext}` : item.name;
+      return itemDisplay === displayName;
+    });
 
-    if (listHasName) return null;
+    if (existingItem) {
+      existingItem.lastModified = Date.now();
+      return null;
+    }
 
-    const item = { name: rejoined, path: `${fullpath}/${displayName}` };
+    const item = { name: rejoined, path: `${fullpath}/${displayName}`, lastModified: Date.now() };
     if (ext) item.ext = ext;
 
     return item;
