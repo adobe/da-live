@@ -8,6 +8,7 @@
   --editor-btn-bg-color: #EFEFEF;
   --editor-btn-bg-color-hover: var(--s2-blue-900);
 
+  position: relative;
   grid-area: editor;
 }
 
@@ -980,4 +981,30 @@ da-diff-deleted, da-diff-added {
 
 .focal-point-icon:hover svg {
   color: #0265dc;
+}
+
+.table-drag-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: #fff;
+  background-image: url('/blocks/edit/img/drag-handle.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  z-index: 100;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-drag-handle.is-visible {
+  display: flex;
+}
+
+.table-drag-handle:hover {
+  background-color: #f0f7ff;
+  border-color: var(--s2-blue-800);
 }
