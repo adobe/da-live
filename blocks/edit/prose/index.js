@@ -21,6 +21,8 @@ import {
   yUndoPlugin,
 } from 'da-y-wrapper';
 
+import { getSchema } from 'da-parser';
+
 // DA
 import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
 import { linkItem } from './plugins/menu/linkItem.js';
@@ -28,6 +30,7 @@ import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
 import imageFocalPoint from './plugins/imageFocalPoint.js';
 import linkConverter from './plugins/linkConverter.js';
+import linkTextSync from './plugins/linkTextSync.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
@@ -35,7 +38,6 @@ import toggleLibrary from '../da-library/da-library.js';
 import { checkDoc } from '../edit.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
-import { getSchema } from './schema.js';
 import slashMenu from './plugins/slashMenu/slashMenu.js';
 import linkMenu from './plugins/linkMenu/linkMenu.js';
 import {
@@ -347,6 +349,7 @@ export default function initProse({ path, permissions }) {
     linkMenu(),
     imageDrop(schema),
     linkConverter(schema),
+    linkTextSync(),
     sectionPasteHandler(schema),
     base64Uploader(schema),
     columnResizing(),

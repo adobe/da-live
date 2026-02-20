@@ -175,7 +175,7 @@ export default class DaBrowse extends LitElement {
         `)}
       </div>
       ${this._tabItems.map((tab) => html`
-        <div class="da-tabpanel" id="tabpanel-${tab.id}" role="tabpanel" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
+        <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
           ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
         </div>
       `)}

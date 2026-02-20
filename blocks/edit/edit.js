@@ -1,5 +1,5 @@
 import getPathDetails from '../shared/pathDetails.js';
-import { daFetch } from '../shared/utils.js';
+import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin } from '../shared/utils.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -25,6 +25,16 @@ async function setUI(el) {
   if (!details) return;
 
   document.title = `Edit ${details.name} - DA`;
+
+  const { owner, repo } = details;
+  const lockdownImages = await checkLockdownImages(owner);
+
+  if (lockdownImages) {
+    await Promise.allSettled([
+      contentLogin(owner, repo),
+      livePreviewLogin(owner, repo),
+    ]);
+  }
 
   // Title area
   let daTitle = document.querySelector('da-title');
@@ -56,6 +66,7 @@ async function setUI(el) {
 
   daTitle.permissions = resp.permissions;
   daContent.permissions = resp.permissions;
+  daContent.lockdownImages = lockdownImages;
 
   if (daContent.wsProvider) {
     daContent.wsProvider.disconnect({ data: 'Client navigation' });

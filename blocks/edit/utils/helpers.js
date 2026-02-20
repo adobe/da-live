@@ -1,133 +1,20 @@
+import { DOMSerializer, Y } from 'da-y-wrapper';
+import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { sanitizePathParts } from '../../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
 
+export function isURL(text) {
+  try {
+    const url = new URL(text);
+    return url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 const AEM_PERMISSION_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
-
-function getBlockName(block) {
-  const classes = block.className.split(' ');
-  const name = classes.shift();
-  return classes.length > 0 ? `${name} (${classes.join(', ')})` : name;
-}
-
-function handleRow(row, maxCols, table) {
-  const tr = document.createElement('tr');
-  const cells = [...row.children];
-  cells.forEach((cell, idx) => {
-    const td = document.createElement('td');
-    if (cells.length < maxCols && idx === cells.length - 1) {
-      td.setAttribute('colspan', maxCols - idx);
-    }
-    td.innerHTML = cells[idx].innerHTML;
-    tr.append(td);
-  });
-  table.append(tr);
-}
-
-export function getTable(block) {
-  const name = getBlockName(block);
-  const rows = [...block.children];
-  const maxCols = rows.reduce((cols, row) => (
-    row.children.length > cols ? row.children.length : cols), 0);
-  const table = document.createElement('table');
-  const headerRow = document.createElement('tr');
-
-  const td = document.createElement('td');
-  td.setAttribute('colspan', maxCols);
-  td.append(name);
-
-  headerRow.append(td);
-  table.append(headerRow);
-  rows.forEach((row) => { handleRow(row, maxCols, table); });
-  return table;
-}
-
-function para() {
-  return document.createElement('p');
-}
-
-export function aem2prose(doc) {
-  // Fix BRs
-  const brs = doc.querySelectorAll('p br');
-  brs.forEach((br) => br.remove());
-
-  // Els with da-diff-added property get wrapped in the da-diff-added element
-  const diffAddedEls = doc.querySelectorAll('[da-diff-added]');
-  diffAddedEls.forEach((el) => {
-    const div = document.createElement('da-diff-added');
-    div.setAttribute('da-diff-added', '');
-    if (el.classList.contains('block-group-start')) {
-      div.className = 'da-group';
-    }
-    el.parentElement.insertBefore(div, el);
-    div.appendChild(el);
-  });
-
-  // Fix blocks
-  const blocks = doc.querySelectorAll('main > div > div, da-diff-deleted > div, da-diff-added > div, da-diff-deleted.da-group > div > div, da-diff-added.da-group > div > div');
-  blocks.forEach((block) => {
-    if (block.className?.includes('loc-')) return;
-    const table = getTable(block);
-    block.parentElement.replaceChild(table, block);
-    table.insertAdjacentElement('beforebegin', para());
-    table.insertAdjacentElement('afterend', para());
-  });
-
-  // Fix pictures
-  const imgs = doc.querySelectorAll('picture img');
-  imgs.forEach((img) => {
-    const pic = img.closest('picture');
-    pic.parentElement.replaceChild(img, pic);
-  });
-
-  // Fix three dashes
-  const paras = doc.querySelectorAll('p');
-  paras.forEach((p) => {
-    if (p.textContent.trim() === '---') {
-      const hr = document.createElement('hr');
-      p.parentElement.replaceChild(hr, p);
-    }
-  });
-
-  // Fix da-diff-* list items
-  const lis = doc.querySelectorAll('main > div > :is(ul, ol) > :is(da-diff-added, da-diff-deleted)');
-  lis.forEach((li) => {
-    const isDiffDeleted = li.nodeName === 'DA-DIFF-DELETED';
-    const isDiffAdded = li.nodeName === 'DA-DIFF-ADDED';
-
-    if (!isDiffDeleted && !isDiffAdded) return;
-
-    if (isDiffDeleted && li.firstChild?.nodeName === 'LI' && li.firstChild.children.length === 0) {
-      li.firstChild.remove();
-    }
-
-    if (li.firstChild?.nodeName === 'LI') {
-      const innerLi = li.firstChild;
-      const newLi = document.createElement('li');
-      const diffElement = document.createElement(isDiffDeleted ? 'da-diff-deleted' : 'da-diff-added');
-
-      while (innerLi.firstChild) {
-        diffElement.appendChild(innerLi.firstChild);
-      }
-
-      newLi.appendChild(diffElement);
-      li.parentElement.replaceChild(newLi, li);
-    }
-  });
-
-  // Fix sections
-  const sections = doc.body.querySelectorAll('main > div');
-  return [...sections].map((section, idx) => {
-    const fragment = new DocumentFragment();
-    if (idx > 0) {
-      const hr = document.createElement('hr');
-      fragment.append(para(), hr, para());
-    }
-    fragment.append(...section.querySelectorAll(':scope > *'));
-    return fragment;
-  });
-}
 
 /* eslint-disable max-len */
 /**
@@ -451,4 +338,26 @@ export function setDaMetadata(key, value) {
   } else {
     daMdMap.set(key, value);
   }
+}
+
+export function getDiffLabels() {
+  return {
+    local: getDaMetadata('diff-label-local') || 'Local',
+    upstream: getDaMetadata('diff-label-upstream') || 'Upstream',
+  };
+}
+
+export function htmlToProse(html) {
+  const ydoc = new Y.Doc();
+  aem2doc(html, ydoc);
+
+  const schema = getSchema();
+  const pmDoc = yDocToProsemirror(schema, ydoc);
+  const serializer = DOMSerializer.fromSchema(schema);
+  const fragment = serializer.serializeFragment(pmDoc.content);
+
+  const dom = document.createElement('div');
+  dom.append(fragment);
+
+  return { dom, ydoc };
 }

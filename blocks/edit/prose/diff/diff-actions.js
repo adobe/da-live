@@ -3,7 +3,14 @@
 // User action handlers - only loaded when user actually clicks action buttons
 
 import { DOMSerializer, Fragment, Slice } from 'da-y-wrapper';
-import { createElement, createButton, createTooltip, getDaMetadata, setDaMetadata } from '../../utils/helpers.js';
+import {
+  createElement,
+  createButton,
+  createTooltip,
+  getDaMetadata,
+  setDaMetadata,
+  getDiffLabels,
+} from '../../utils/helpers.js';
 import prose2aem from '../../../shared/prose2aem.js';
 
 const HASH_LENGTH = 12;
@@ -108,23 +115,25 @@ export function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSw
   const actionsContainer = createElement('div', 'diff-tabbed-actions loc-floating-overlay');
   const actionButtons = createElement('div', 'diff-action-buttons loc-sticky-buttons');
 
+  const labels = getDiffLabels();
+
   const buttonConfigs = [
     {
-      label: 'Local',
+      label: labels.local,
       id: 'added',
       handler: onKeepAdded,
       variant: 'is-local',
-      tooltip: 'Accept Local',
-      switchTooltip: 'View Local',
+      tooltip: `Accept ${labels.local}`,
+      switchTooltip: `View ${labels.local}`,
       isActive: true, // Local is the default active tab
     },
     {
-      label: 'Upstream',
+      label: labels.upstream,
       id: 'deleted',
       handler: onKeepDeleted,
       variant: 'is-upstream',
-      tooltip: 'Accept Upstream',
-      switchTooltip: 'View Upstream',
+      tooltip: `Accept ${labels.upstream}`,
+      switchTooltip: `View ${labels.upstream}`,
     },
     {
       label: 'Difference',

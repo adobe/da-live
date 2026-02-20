@@ -117,8 +117,10 @@ class DaStart extends LitElement {
     showDone: { state: true },
     _goText: { state: true },
     _statusText: { state: true },
+    _errorText: { state: true },
     _templates: { state: true },
     _loading: { state: true },
+    _disableCreate: { state: true },
   };
 
   constructor() {
@@ -156,6 +158,8 @@ class DaStart extends LitElement {
   goToNextStep(e) {
     this.showOpen = false;
     this.showDone = false;
+    this._errorText = undefined;
+    this._disableCreate = undefined;
     e.preventDefault();
     this.activeStep = this.activeStep === 3 ? 1 : this.activeStep += 1;
   }
@@ -164,7 +168,15 @@ class DaStart extends LitElement {
     const { code, content } = this._templates.find((tpl) => tpl.selected) || this._templates[0];
     const hasDemo = !code.includes('aem-boilerplate');
     if (hasDemo) {
-      e.target.disabled = true;
+      this._disableCreate = true;
+
+      const resp = await daFetch(`${DA_ORIGIN}/list/${this.org}/${this.site}`);
+      const json = await resp.json();
+      if (json.length > 0) {
+        this._errorText = 'The target site is not empty. Choose no demo content or a different site.';
+        this._disableCreate = undefined;
+        return;
+      }
 
       const setStatus = (text) => { this._statusText = text; };
 
@@ -237,7 +249,7 @@ class DaStart extends LitElement {
       const { status: orgSaveStatus } = await saveConfig(this.org, email);
       if (orgSaveStatus !== 201) {
         if (orgSaveStatus === 401 || orgSaveStatus === 403) {
-          this._errorText = 'You are not authorized to create this org. Check your permissions.';
+          this._errorText = 'You are not authorized to create this DA organization. Check your permissions.';
         } else {
           this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
         }
@@ -250,7 +262,7 @@ class DaStart extends LitElement {
     this._loading = false;
     if (!resp.ok) {
       if (resp.status === 401 || resp.status === 403) {
-        this._errorText = 'You are not authorized to create this site. Check your permissions.';
+        this._errorText = 'You are not authorized to create this site in the corresponding DA organization. Check with the organization administrator.';
       } else {
         this._errorText = 'The site could not be created. Check the console logs or contact an administrator.';
       }
@@ -288,8 +300,8 @@ class DaStart extends LitElement {
             ${this._loading ? html`<span class="spinner"></span>` : 'Go'}
           </button>
         </form>
+        ${this._errorText ? html`<p class="error-text">${this._errorText}</p>` : nothing}
         <div class="text-container">
-          <p class="error-text">${this._errorText ? this._errorText : nothing}</p>
           <p>Paste your AEM codebase URL above.</p>
           <p>Don't have one, yet? Pick a template below.</p>
         </div>
@@ -335,8 +347,9 @@ class DaStart extends LitElement {
             `)}
           </ul>
         </div>
+        ${this._errorText ? html`<p class="error-text">${this._errorText}</p>` : nothing}
         <div class="step-3-actions">
-          <button class="da-login-button con-button blue button-xl" @click=${this.goToSite}>${this._goText}</button>
+          <button class="da-login-button con-button blue button-xl" @click=${this.goToSite} ?disabled=${this._disableCreate}>${this._goText}</button>
           <p>${this._statusText ? this._statusText : nothing}</p>
         </div>
       </div>
