@@ -1,9 +1,12 @@
 // eslint-disable-next-line import/no-unresolved
-import { Plugin } from 'da-y-wrapper';
+import { Plugin, PluginKey } from 'da-y-wrapper';
 import { isURL } from '../../utils/helpers.js';
+
+const linkConverterKey = new PluginKey('linkConverter');
 
 export default function linkConverter(schema) {
   return new Plugin({
+    key: linkConverterKey,
     props: {
       handlePaste: (view, event, slice) => {
         if (slice.content.content.length !== 1 // there needs to be only one line

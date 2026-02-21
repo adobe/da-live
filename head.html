@@ -4,6 +4,36 @@
   move-to-http-header="true"
 >
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<script nonce="aem">
+  (() => {
+    const CK = 'da-cache=off';
+    const CK_PATH = ';path=/';
+    const COUNT = 'da-reload-count';
+    const storage = sessionStorage;
+
+    if (document.cookie.includes(CK)) {
+      setTimeout(() => { document.cookie = CK + CK_PATH + ';max-age=0'; }, 10000);
+    }
+    setTimeout(() => { storage.removeItem(COUNT); }, 10000);
+
+    const h = (e) => {
+      const msg = e.reason?.message || e.message || e.error?.message || '';
+      if (msg.includes('does not provide an export named')) {
+        const count = Number(storage.getItem(COUNT)) || 0;
+        if (count < 3) {
+          storage.setItem(COUNT, count + 1);
+          document.cookie = CK + CK_PATH;
+          location.reload();
+        }
+      }
+    };
+
+    addEventListener('error', h, true);
+    addEventListener('unhandledrejection', h);
+  })();
+</script>
+
 <script nonce="aem" type="importmap">
 {
   "imports": {
