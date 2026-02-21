@@ -20,7 +20,7 @@ function getPara(schema) {
   return DOMParser.fromSchema(schema).parse(fragment);
 }
 
-export default function insertTable(state, dispatch) {
+export default function insertBlock(state, dispatch) {
   const heading = getHeading(state.schema);
   const content = getContent(state.schema);
   const para = getPara(state.schema);

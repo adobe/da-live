@@ -12,7 +12,7 @@ import {
   splitCell,
 } from 'da-y-wrapper';
 import openLibrary from '../../../da-library/da-library.js';
-import insertTable from '../../table.js';
+import insertBlock from '../../block.js';
 import { insertSectionBreak } from '../menu/menu.js';
 import loremIpsum from './loremIpsum.js';
 
@@ -72,7 +72,7 @@ const items = [
     title: 'Section break',
     command: insertSectionBreak,
     class: 'edit-hr',
-    excludeFromTable: true,
+    excludeFromBlock: true,
   },
   {
     title: 'Lorem ipsum',
@@ -81,10 +81,10 @@ const items = [
     argument: true,
   },
   {
-    title: 'Table',
-    command: insertTable,
-    class: 'insert-table',
-    excludeFromTable: true,
+    title: 'Block',
+    command: insertBlock,
+    class: 'insert-block',
+    excludeFromBlock: true,
   },
   {
     title: 'Library',
@@ -93,7 +93,7 @@ const items = [
   },
 ];
 
-const tableItems = [
+const blockItems = [
   {
     title: 'Add Column After',
     command: addColumnAfter,
@@ -131,18 +131,18 @@ const tableItems = [
   },
 ];
 
-export const getTableItems = (state) => ([
+export const getBlockItems = (state) => ([
   {
     title: 'Edit Block',
     // prevent showing unavailable options.
     // item.command(state) does not commit the command, but returns whether it's available.
-    submenu: tableItems.filter((item) => item.command(state)),
-    class: 'table-options',
+    submenu: blockItems.filter((item) => item.command(state)),
+    class: 'block-options',
   },
-  ...items.filter((item) => !item.excludeFromTable),
+  ...items.filter((item) => !item.excludeFromBlock),
 ]);
 
-export const getTableCellItems = (state) => ([
+export const getBlockCellItems = (state) => ([
   {
     title: 'Merge Cells',
     command: mergeCells,

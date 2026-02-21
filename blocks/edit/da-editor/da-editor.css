@@ -206,7 +206,7 @@ blockquote::before {
   transition: max-width 0.2s ease-in-out 0s;
 }
 
-.ProseMirror-menuitem:has(.edit-table):not([style="display: none;"]) + .ProseMirror-menuitem {
+.ProseMirror-menuitem:has(.edit-block):not([style="display: none;"]) + .ProseMirror-menuitem {
   display: none;
 }
 
@@ -275,7 +275,7 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/S2_Icon_CCLibrary_20_N.svg') center / 20px no-repeat;
 }
 
-.insert-table::before {
+.insert-block::before {
   display: block;
   content: '';
   width: 44px;
@@ -284,7 +284,7 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/S2_Icon_TableAdd_20_N.svg') center / 20px no-repeat;
 }
 
-.ProseMirror-menu-dropdown.edit-table::before {
+.ProseMirror-menu-dropdown.edit-block::before {
   display: block;
   content: '';
   width: 44px;
@@ -333,13 +333,13 @@ span.ProseMirror-menuseparator {
   background-color: var(--editor-btn-bg-color-hover);
 
   .ProseMirror-menu-dropdown.edit-text,
-  .ProseMirror-menu-dropdown.edit-table,
+  .ProseMirror-menu-dropdown.edit-block,
   .ProseMirror-menu-dropdown.list-menu,
   .edit-link,
   .edit-unlink,
   .img-alt-text,
   .open-library,
-  .insert-table,
+  .insert-block,
   .edit-hr,
   .edit-undo,
   .edit-redo {
@@ -540,7 +540,7 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_TableRowRemoveCenter_18_N.svg') center / 18px no-repeat;
 }
 
-.deleteTable {
+.deleteBlock {
   background: url('/blocks/edit/img/Smock_TableRemove_18_N.svg') center / 18px no-repeat;
 }
 

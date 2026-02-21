@@ -27,7 +27,7 @@ import {
 import openPrompt from '../../../da-palette/da-palette.js';
 import openLibrary from '../../../da-library/da-library.js';
 import { handleUndo, handleRedo } from '../keyHandlers.js';
-import insertTable from '../../table.js';
+import insertBlock from '../../block.js';
 import { linkItem, removeLinkItem } from './linkItem.js';
 import { markActive } from './menuUtils.js';
 
@@ -216,7 +216,7 @@ function markItem(markType, options) {
   return cmdItem(toggleMark(markType), passedOptions);
 }
 
-function tableItem(label, cmd, css) {
+function blockItem(label, cmd, css) {
   return new MenuItem({
     label,
     title: label,
@@ -226,17 +226,17 @@ function tableItem(label, cmd, css) {
   });
 }
 
-function getTableMenu() {
+function getBlockMenu() {
   return [
-    tableItem('Insert column before', addColumnBefore, 'addColBefore'),
-    tableItem('Insert column after', addColumnAfter, 'addColumnAfter'),
-    tableItem('Delete column', deleteColumn, 'deleteColumn'),
-    tableItem('Insert row before', addRowBefore, 'addRowBefore'),
-    tableItem('Insert row after', addRowAfter, 'addRowAfter'),
-    tableItem('Delete row', deleteRow, 'deleteRow'),
-    tableItem('Merge cells', mergeCells, 'mergeCells'),
-    tableItem('Split cell', splitCell, 'splitCell'),
-    tableItem('Delete table', deleteTable, 'deleteTable'),
+    blockItem('Insert column before', addColumnBefore, 'addColBefore'),
+    blockItem('Insert column after', addColumnAfter, 'addColumnAfter'),
+    blockItem('Delete column', deleteColumn, 'deleteColumn'),
+    blockItem('Insert row before', addRowBefore, 'addRowBefore'),
+    blockItem('Insert row after', addRowAfter, 'addRowAfter'),
+    blockItem('Delete row', deleteRow, 'deleteRow'),
+    blockItem('Merge cells', mergeCells, 'mergeCells'),
+    blockItem('Split cell', splitCell, 'splitCell'),
+    blockItem('Delete block', deleteTable, 'deleteBlock'),
   ];
 }
 
@@ -350,7 +350,7 @@ function getMenu(view) {
   menu.className = 'ProseMirror-menubar';
 
   const { marks, nodes } = view.state.schema;
-  const editTable = getTableMenu();
+  const editBlock = getBlockMenu();
   const textBlocks = getTextBlocks(marks, nodes);
 
   const textMenu = [
@@ -382,16 +382,16 @@ function getMenu(view) {
       },
       class: 'open-library',
     }),
-    new Dropdown(editTable, {
+    new Dropdown(editBlock, {
       title: 'Edit block',
       label: 'Edit block',
-      class: 'edit-table',
+      class: 'edit-block',
     }),
     new MenuItem({
       title: 'Insert block',
       label: 'Block',
-      run: insertTable,
-      class: 'insert-table',
+      run: insertBlock,
+      class: 'insert-block',
     }),
     new MenuItem({
       title: 'Insert section break',
