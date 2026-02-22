@@ -27,14 +27,10 @@ async function setUI(el) {
   document.title = `Edit ${details.name} - DA`;
 
   const { owner, repo } = details;
-  const lockdownImages = await checkLockdownImages(owner);
-
-  if (lockdownImages) {
-    await Promise.allSettled([
-      contentLogin(owner, repo),
-      livePreviewLogin(owner, repo),
-    ]);
-  }
+  await Promise.all([
+    contentLogin(owner, repo),
+    livePreviewLogin(owner, repo),
+  ]);
 
   // Title area
   let daTitle = document.querySelector('da-title');
@@ -66,7 +62,7 @@ async function setUI(el) {
 
   daTitle.permissions = resp.permissions;
   daContent.permissions = resp.permissions;
-  daContent.lockdownImages = lockdownImages;
+  daContent.lockdownImages = await checkLockdownImages(owner);
 
   if (daContent.wsProvider) {
     daContent.wsProvider.disconnect({ data: 'Client navigation' });
