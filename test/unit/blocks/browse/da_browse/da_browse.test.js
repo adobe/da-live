@@ -57,4 +57,89 @@ describe('Browse', () => {
       window.fetch = orgFetch;
     }
   });
+
+  it('Load more uses da-continuation-token request header', async () => {
+    const daBrowse = new DaBrowse();
+
+    const fetchedArgs = [];
+    const mockFetch = async (url, opts) => {
+      fetchedArgs.push({ url, opts });
+      return {
+        ok: true,
+        json: async () => ([]),
+        headers: {
+          get: (name) => {
+            if (name === 'da-continuation-token') return 'token-next';
+            return null;
+          },
+        },
+      };
+    };
+
+    daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
+    daBrowse._listItems = [];
+    daBrowse._continuationToken = 'token-1';
+    daBrowse.scheduleAutoCheck = () => {};
+
+    const orgFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      await daBrowse.loadMore();
+
+      expect(fetchedArgs.length).to.equal(1);
+      expect(fetchedArgs[0].url).to.equal('https://admin.da.live/list/myorg/mysite/myroot/destdir');
+      expect(fetchedArgs[0].opts.headers['da-continuation-token']).to.equal('token-1');
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('Does not mark pagination exhausted while token is still present', async () => {
+    const daBrowse = new DaBrowse();
+    const fetchedArgs = [];
+    const mockFetch = async (url, opts) => {
+      fetchedArgs.push({ url, opts });
+      return {
+        ok: true,
+        json: async () => ([{ path: '/already-there', name: 'already-there' }]),
+        headers: {
+          get: (name) => {
+            if (name === 'da-continuation-token') return 'token-1';
+            return null;
+          },
+        },
+      };
+    };
+
+    daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
+    daBrowse._listItems = [{ path: '/already-there', name: 'already-there' }];
+    daBrowse._continuationToken = 'token-1';
+    daBrowse.scheduleAutoCheck = () => {};
+
+    const orgFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      await daBrowse.loadMore();
+      expect(daBrowse._allPagesLoaded).to.be.false;
+      expect(daBrowse._continuationToken).to.equal('token-1');
+
+      await daBrowse.loadMore();
+      expect(fetchedArgs.length).to.equal(2);
+      expect(daBrowse._allPagesLoaded).to.be.false;
+      expect(daBrowse._continuationToken).to.equal('token-1');
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('Merges paged items with unique paths only', () => {
+    const daBrowse = new DaBrowse();
+
+    const merged = daBrowse.mergeUniqueItemsByPath(
+      [{ path: '/a', name: 'a' }, { path: '/b', name: 'b' }],
+      [{ path: '/b', name: 'b-dup' }, { path: '/c', name: 'c' }],
+    );
+
+    expect(merged.map((item) => item.path)).to.deep.equal(['/a', '/b', '/c']);
+  });
 });
