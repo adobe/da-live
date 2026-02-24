@@ -78,14 +78,16 @@ export default class DaList extends LitElement {
   async firstUpdated() {
     await import('../../shared/da-dialog/da-dialog.js');
     await import('../da-actionbar/da-actionbar.js');
+    this.resumePendingJobs();
   }
 
   setStatus(text, description, type = 'info') {
     if (!text) {
       this._status = null;
-      return;
+    } else {
+      this._status = { type, text, description };
     }
-    this._status = { type, text, description };
+    this.requestUpdate();
   }
 
   handlePermissions(permissions) {
@@ -196,10 +198,11 @@ export default class DaList extends LitElement {
     });
   }
 
-  async handleItemAction({ item, type = 'copy' }) {
-    let continuation = true;
-    let continuationToken;
-
+  /**
+   * Performs the API call only; returns sync/async result for aggregated paste (Option A).
+   * Used by handlePaste to collect all 202s, then poll in one loop.
+   */
+  async handleItemActionApi({ item, type = 'copy' }) {
     const type2api = {
       copy: { api: 'copy', method: 'POST' },
       delete: { api: 'source', method: 'DELETE' },
@@ -207,53 +210,251 @@ export default class DaList extends LitElement {
     };
 
     const { api, method } = type2api[type];
+    const moveToTrash = api === 'move' && !item.path.includes('/.trash/')
+      && item.destination.includes('/.trash/');
 
-    // If source and dest are in the trash it's a proper move within the trash.
-    const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const copyUrl = `${DA_ORIGIN}/${api}${item.path}`;
+    // eslint-disable-next-line no-console
+    console.log('[da-list handleItemActionApi] start', { type, itemPath: item.path, url: copyUrl });
 
-    try {
-      while (continuation) {
-        let body;
+    let jobKey = this.findExistingJob(type, item);
 
-        if (type !== 'delete') {
-          body = new FormData();
-          body.append('destination', item.destination);
-          if (continuationToken) body.append('continuation-token', continuationToken);
-        }
+    if (!jobKey) {
+      let body;
+      if (type !== 'delete') {
+        body = new FormData();
+        body.append('destination', item.destination);
+      }
 
-        const opts = { method, body };
-        const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
-        if (resp.status === 204) {
-          continuation = false;
-          break;
-        }
+      const resp = await daFetch(copyUrl, { method, body });
+      // eslint-disable-next-line no-console
+      console.log('[da-list handleItemActionApi] response', { status: resp.status, type });
+
+      if (resp.status === 204 || resp.status === 200) {
+        let total = 1;
+        try {
+          const json = await resp.json();
+          if (typeof json?.total === 'number') total = json.total;
+        } catch { /* empty or invalid body */ }
+        this.updateListAfterAction(item, type, moveToTrash);
+        return { sync: true, total };
+      }
+      if (resp.status === 202) {
         const json = await resp.json();
-        ({ continuationToken } = json);
-        if (!continuationToken) continuation = false;
+        jobKey = `da-job-${json.jobId}`;
+        localStorage.setItem(jobKey, JSON.stringify({
+          jobId: json.jobId,
+          total: json.total,
+          type,
+          path: item.path,
+          destination: item.destination,
+          name: item.name,
+          ext: item.ext,
+        }));
+        return { sync: false, jobKey, jobId: json.jobId, total: json.total, item, type, moveToTrash };
       }
+      let errorMessage = `Unexpected status ${resp.status}`;
+      try {
+        const body = await resp.json();
+        if (body?.message) errorMessage = body.message;
+        else if (body?.error) errorMessage = body.error;
+      } catch { /* body not JSON or empty */ }
+      this._itemErrors.push({ ...item, message: errorMessage });
+      return { sync: true, error: true };
+    }
 
-      item.isChecked = false;
+    const stored = JSON.parse(localStorage.getItem(jobKey));
+    return { sync: false, jobKey, jobId: stored.jobId, total: stored.total, item, type, moveToTrash };
+  }
 
-      // Remove or add the item to the current list
-      if (moveToTrash || method === 'DELETE') {
-        this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
-      } else {
-        this._listItems = [
-          { ...item, path: item.destination, isChecked: false },
-          ...this._listItems,
-        ];
-      }
-    } catch (e) {
-      // The assumption here is that the user does not have permission to write to the trash
+  async handleItemAction({ item, type = 'copy' }) {
+    const result = await this.handleItemActionApi({ item, type });
+    if (result.sync) return;
+
+    const { jobKey, item: it, type: t, moveToTrash } = result;
+    try {
+      await this.pollJob(jobKey, it, t);
+      this.updateListAfterAction(it, t, moveToTrash);
+    } catch {
       if (moveToTrash) {
-        this.handleItemAction({ item, type: 'delete' });
+        await this.handleItemAction({ item: it, type: 'delete' });
       } else {
-        this._itemErrors.push({ ...item, message: `Couldn't ${type} item` });
+        this._itemErrors.push({ ...it, message: `Couldn't ${t} item` });
+      }
+    }
+  }
+
+  findExistingJob(type, item) {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith('da-job-')) continue;
+      try {
+        const stored = JSON.parse(localStorage.getItem(key));
+        if (stored.type === type && stored.path === item.path
+          && stored.destination === (item.destination || undefined)) return key;
+      } catch { /* ignore */ }
+    }
+    return null;
+  }
+
+  /**
+   * Polls multiple jobs in one loop, aggregating progress for Option A.
+   * Shows "X of Y items" across all jobs (includes sync-completed when opts passed).
+   */
+  async pollAllJobs(asyncResults, opts = {}) {
+    const POLL_INTERVAL = 1000;
+    const labels = { copy: 'Copying', move: 'Moving' };
+    const type = asyncResults[0]?.type || 'copy';
+    const totalItems = opts.totalFiles ?? asyncResults.reduce((s, r) => s + r.total, 0);
+    const initialCompleted = opts.initialCompleted ?? 0;
+    const completedByJob = {};
+    let remaining = [...asyncResults];
+
+    this.setStatus(labels[type] || 'Processing', `${initialCompleted} of ${totalItems} items`);
+
+    // eslint-disable-next-line no-console
+    console.log('[da-list pollAllJobs] start', { count: asyncResults.length, totalItems, initialCompleted });
+
+    while (remaining.length > 0) {
+      const stillRunning = [];
+
+      for (const r of remaining) {
+        const [org] = r.item.path.slice(1).split('/');
+        const jobUrl = `${DA_ORIGIN}/job/${org}/${r.jobId}`;
+        try {
+          const resp = await daFetch(jobUrl, { cache: 'no-store' });
+          if (!resp.ok) throw new Error('Job status unavailable');
+          const status = await resp.json();
+          completedByJob[r.jobId] = status.completed ?? 0;
+
+          // eslint-disable-next-line no-console
+          console.log('[da-list pollAllJobs] job status', { jobId: r.jobId, url: jobUrl, completed: status.completed, total: status.total, state: status.state });
+
+          if (status.state === 'complete') {
+            localStorage.removeItem(r.jobKey);
+            this.updateListAfterAction(r.item, r.type, r.moveToTrash);
+          } else {
+            stillRunning.push(r);
+          }
+        } catch {
+          this._itemErrors.push({ ...r.item, message: `Couldn't ${r.type} item` });
+          localStorage.removeItem(r.jobKey);
+        }
+      }
+
+      const asyncCompleted = Object.values(completedByJob).reduce((a, b) => a + b, 0);
+      const displayCompleted = initialCompleted + asyncCompleted;
+      this.setStatus(
+        labels[type] || 'Processing',
+        `${displayCompleted} of ${totalItems} items`,
+      );
+      // eslint-disable-next-line no-console
+      console.log('[da-list pollAllJobs] display', { displayCompleted, totalItems, initialCompleted, asyncCompleted, byJob: { ...completedByJob } });
+      remaining = stillRunning;
+
+      if (remaining.length > 0) {
+        await new Promise((r) => { setTimeout(r, POLL_INTERVAL); });
+      }
+    }
+  }
+
+  async pollJob(jobKey, item, type) {
+    const POLL_INTERVAL = 1000;
+    const stored = JSON.parse(localStorage.getItem(jobKey));
+    const { jobId, total } = stored;
+    const [org] = item.path.slice(1).split('/');
+    const jobUrl = `${DA_ORIGIN}/job/${org}/${jobId}`;
+    const labels = { copy: 'Copying', move: 'Moving', delete: 'Deleting' };
+
+    // eslint-disable-next-line no-console
+    console.log('[da-list pollJob] start', { jobKey, jobId, total, itemPath: item.path, org, jobUrl });
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // eslint-disable-next-line no-await-in-loop
+      const resp = await daFetch(jobUrl, { cache: 'no-store' });
+      // eslint-disable-next-line no-console
+      console.log('[da-list pollJob] fetch', { ok: resp.ok, status: resp.status, url: jobUrl });
+      if (!resp.ok) throw new Error('Job status unavailable');
+      // eslint-disable-next-line no-await-in-loop
+      const status = await resp.json();
+      // eslint-disable-next-line no-console
+      console.log('[da-list pollJob] status', { state: status.state, completed: status.completed, total: status.total, failed: status.failed, raw: status });
+
+      this.setStatus(
+        `${labels[type] || 'Processing'} ${item.name}`,
+        `${status.completed} of ${total} items`,
+      );
+
+      if (status.state === 'complete') {
+        // eslint-disable-next-line no-console
+        console.log('[da-list pollJob] complete', { failed: status.failed });
+        localStorage.removeItem(jobKey);
+        if (status.failed > 0) {
+          this.setStatus(
+            `${labels[type] || 'Processed'} ${item.name}`,
+            `Done with ${status.failed} error${status.failed > 1 ? 's' : ''}`,
+            'warning',
+          );
+        } else {
+          this.setStatus();
+        }
+        return;
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => { setTimeout(r, POLL_INTERVAL); });
+    }
+  }
+
+  updateListAfterAction(item, type, moveToTrash = false) {
+    item.isChecked = false;
+    if (moveToTrash || type === 'delete') {
+      this._listItems = this._listItems.filter((li) => li.path !== item.path);
+    } else {
+      this._listItems = [
+        { ...item, path: item.destination || item.path, isChecked: false },
+        ...this._listItems,
+      ];
+    }
+  }
+
+  async resumePendingJobs() {
+    const allKeys = Array.from(
+      { length: localStorage.length },
+      (_, i) => localStorage.key(i),
+    ).filter((k) => k?.startsWith('da-job-'));
+
+    for (const key of allKeys) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(key));
+        const resumeItem = {
+          name: stored.name || 'previous operation',
+          path: stored.path,
+          destination: stored.destination,
+          ext: stored.ext,
+        };
+        const resumeMoveToTrash = stored.type === 'move'
+          && !stored.path?.includes('/.trash/')
+          && stored.destination?.includes('/.trash/');
+        this.pollJob(key, resumeItem, stored.type)
+          .then(() => {
+            this.updateListAfterAction(resumeItem, stored.type, resumeMoveToTrash);
+            this.setStatus();
+          })
+          .catch(() => {
+            localStorage.removeItem(key);
+            this.setStatus();
+          });
+      } catch {
+        localStorage.removeItem(key);
       }
     }
   }
 
   async handlePaste(e) {
+    // eslint-disable-next-line no-console
+    console.log('[da-list handlePaste] invoked', { move: e.detail?.move, selectedCount: this._selectedItems?.length });
     // Format the destination items
     const itemsToPaste = this._selectedItems.map((item) => {
       const prefix = item.path.split('/').slice(0, -1).join('/');
@@ -284,12 +485,76 @@ export default class DaList extends LitElement {
     }, 2000);
 
     const type = e.detail?.move ? 'move' : 'copy';
+    const labels = { copy: 'Copying', move: 'Moving' };
 
-    await Promise.all(itemsToPaste.map(async (item) => {
-      await this.handleItemAction({ item, type });
-    }));
+    // Prefetch file counts (including subfolders) via GET /count so we have correct total from the start
+    let totalFiles = 0;
+    const countPromises = itemsToPaste.map(async (item) => {
+      try {
+        const resp = await daFetch(`${DA_ORIGIN}/count${item.path}`, { cache: 'no-store' });
+        if (resp.ok) {
+          const json = await resp.json();
+          return typeof json?.total === 'number' ? json.total : (item.ext ? 1 : 0);
+        }
+      } catch { /* ignore */ }
+      return item.ext ? 1 : 0;
+    });
+    const counts = await Promise.all(countPromises);
+    totalFiles = counts.reduce((s, c) => s + c, 0);
+    if (totalFiles > 0) {
+      clearTimeout(showStatus);
+      this.setStatus(labels[type] || 'Pasting', `0 of ${totalFiles} items`);
+    }
 
+    // Option A: run all API calls in parallel, collect 202s, poll in one loop with aggregated progress
+    let completedFiles = 0;
+    let lastProgressTime = Date.now();
+    const STALL_MS = 3000;
+    const heartbeat = totalFiles > 0 ? setInterval(() => {
+      if (Date.now() - lastProgressTime > STALL_MS) {
+        this.setStatus(labels[type] || 'Pasting', `${completedFiles} of ${totalFiles} items (still working…)`);
+      }
+    }, 1000) : null;
+
+    const results = await Promise.all(
+      itemsToPaste.map(async (item) => {
+        const result = await this.handleItemActionApi({ item, type });
+        if (result.sync && !result.error) {
+          completedFiles += result.total ?? 1;
+        }
+        lastProgressTime = Date.now();
+        clearTimeout(showStatus);
+        this.setStatus(labels[type] || 'Pasting', `${completedFiles} of ${totalFiles} items`);
+        return result;
+      }),
+    );
+    if (heartbeat) clearInterval(heartbeat);
     clearTimeout(showStatus);
+
+    // Fallback if count API failed or returned 0
+    if (totalFiles === 0) {
+      totalFiles = results.reduce(
+        (sum, r) => sum + (r.error ? 0 : (r.total ?? (r.sync ? 1 : 0))),
+        0,
+      );
+    }
+
+    const completedFromSync = results.reduce(
+      (sum, r) => sum + (r.sync && !r.error ? (r.total ?? 1) : 0),
+      0,
+    );
+
+    const asyncResults = results.filter((r) => !r.sync && !r.error);
+    // eslint-disable-next-line no-console
+    console.log('[da-list handlePaste] results', { total: results.length, async: asyncResults.length, sync: results.filter((r) => r.sync).length, totalFiles, completedFromSync });
+    if (asyncResults.length > 0) {
+      if (totalFiles > 0) {
+        this.setStatus(labels[type] || 'Pasting', `${completedFromSync} of ${totalFiles} items`);
+      }
+      await this.pollAllJobs(asyncResults, { totalFiles, initialCompleted: completedFromSync });
+    } else if (totalFiles > 0) {
+      this.setStatus(labels[type] || 'Pasting', `${totalFiles} of ${totalFiles} items`);
+    }
 
     this.setStatus();
     this.handleClear();
