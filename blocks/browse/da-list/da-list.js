@@ -881,15 +881,33 @@ export default class DaList extends LitElement {
     }, { root: null, rootMargin: '200px' });
   }
 
-  updated() {
-    super.updated();
+  hasPaginationStateChanges(changedProps = new Map()) {
+    if (
+      changedProps.has('fullpath')
+      || changedProps.has('_continuationToken')
+      || changedProps.has('_allPagesLoaded')
+      || changedProps.has('_bulkLoading')
+      || changedProps.has('_isLoadingMore')
+    ) {
+      return true;
+    }
+
+    if (!changedProps.has('_listItems')) return false;
+    const previousItems = changedProps.get('_listItems');
+    const previousLength = Array.isArray(previousItems) ? previousItems.length : 0;
+    const nextLength = Array.isArray(this._listItems) ? this._listItems.length : 0;
+    return previousLength !== nextLength;
+  }
+
+  updated(changedProps) {
+    super.updated(changedProps);
     if (!this._observer) this.setupObserver();
     const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
     if (sentinel && this._observer) {
       this._observer.disconnect();
       this._observer.observe(sentinel);
     }
-    this.scheduleAutoCheck();
+    if (this.hasPaginationStateChanges(changedProps)) this.scheduleAutoCheck();
   }
 
   checkLoadMore() {

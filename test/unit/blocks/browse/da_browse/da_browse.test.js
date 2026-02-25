@@ -199,4 +199,20 @@ describe('Browse', () => {
 
     expect(calls).to.equal(2);
   });
+
+  it('hasPaginationStateChanges ignores unrelated property changes', () => {
+    const daBrowse = new DaBrowse();
+    daBrowse._listItems = [{ path: '/a', name: 'a' }];
+    const changedProps = new Map([['_showFilter', false]]);
+
+    expect(daBrowse.hasPaginationStateChanges(changedProps)).to.be.false;
+  });
+
+  it('hasPaginationStateChanges tracks list length changes', () => {
+    const daBrowse = new DaBrowse();
+    daBrowse._listItems = [{ path: '/a', name: 'a' }, { path: '/b', name: 'b' }];
+    const changedProps = new Map([['_listItems', [{ path: '/a', name: 'a' }]]]);
+
+    expect(daBrowse.hasPaginationStateChanges(changedProps)).to.be.true;
+  });
 });
