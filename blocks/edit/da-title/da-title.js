@@ -1,7 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import {
   requestRole,
-  saveToDa,
   saveToAem,
   saveDaConfig,
   saveDaVersion,

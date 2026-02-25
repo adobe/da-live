@@ -52,6 +52,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   });
 }
 
+// eslint-disable-next-line import/prefer-default-export
 export function createAwarenessStatusWidget(wsProvider, win, path) {
   const daTitle = win.document.querySelector('da-title');
   handleAwarenessUpdates(wsProvider, daTitle, win, path);

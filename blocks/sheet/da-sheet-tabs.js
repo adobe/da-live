@@ -1,6 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
-import { handleSave } from './utils/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -80,7 +79,7 @@ class DaSheetTabs extends LitElement {
 
   async handleAdd() {
     const { addSheet: collabAddSheet } = await import('./collab/events.js');
-    const ydoc = this.closest('.da-sheet-wrapper').ydoc;
+    const { ydoc } = this.closest('.da-sheet-wrapper');
     collabAddSheet(ydoc, `data-${this.jexcel.length + 1}`);
   }
 
@@ -102,7 +101,7 @@ class DaSheetTabs extends LitElement {
     }
     if (e.submitter.value === 'remove') {
       const { deleteSheet: collabDeleteSheet } = await import('./collab/events.js');
-      const ydoc = this.closest('.da-sheet-wrapper').ydoc;
+      const { ydoc } = this.closest('.da-sheet-wrapper');
       collabDeleteSheet(ydoc, idx);
     }
     if (e.submitter.value === 'confirm') {
@@ -129,7 +128,7 @@ class DaSheetTabs extends LitElement {
       }
 
       const { renameSheet: collabRenameSheet } = await import('./collab/events.js');
-      const ydoc = this.closest('.da-sheet-wrapper').ydoc;
+      const { ydoc } = this.closest('.da-sheet-wrapper');
       collabRenameSheet(ydoc, idx, name);
     }
   }
