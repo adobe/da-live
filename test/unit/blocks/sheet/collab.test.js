@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { Y } from 'da-y-wrapper';
-import { jSheetToY } from '../../../deps/da-parser/dist/index.js';
+import { jSheetToY } from 'da-parser';
 import { updateCell, deleteRow, deleteColumn } from '../../../../blocks/sheet/collab/events.js';
 
 describe('Sheet Collab', () => {
@@ -21,7 +21,7 @@ describe('Sheet Collab', () => {
       },
     ];
 
-    jSheetToY(sheets, ydoc);
+    jSheetToY(sheets, ydoc, false, Y);
 
     const ysheets = ydoc.getArray('sheets');
     expect(ysheets.length).to.equal(1);
@@ -59,7 +59,7 @@ describe('Sheet Collab', () => {
       },
     ];
 
-    jSheetToY(sheets, ydoc);
+    jSheetToY(sheets, ydoc, false, Y);
 
     const ysheets = ydoc.getArray('sheets');
     expect(ysheets.length).to.equal(2);
@@ -90,7 +90,7 @@ describe('Sheet Collab', () => {
       },
     ];
 
-    jSheetToY(sheets, ydoc);
+    jSheetToY(sheets, ydoc, false, Y);
 
     const ysheets = ydoc.getArray('sheets');
     expect(ysheets.length).to.equal(1);
@@ -110,7 +110,7 @@ describe('Sheet Collab', () => {
       },
     ];
 
-    jSheetToY(sheets1, ydoc);
+    jSheetToY(sheets1, ydoc, false, Y);
 
     const sheets2 = [
       {
@@ -119,7 +119,7 @@ describe('Sheet Collab', () => {
       },
     ];
 
-    jSheetToY(sheets2, ydoc);
+    jSheetToY(sheets2, ydoc, false, Y);
 
     expect(ydoc.getArray('sheets').length).to.equal(2);
 
@@ -130,7 +130,7 @@ describe('Sheet Collab', () => {
       },
     ];
 
-    jSheetToY(sheets3, ydoc, true);
+    jSheetToY(sheets3, ydoc, true, Y);
     expect(ydoc.getArray('sheets').length).to.equal(1);
     expect(ydoc.getArray('sheets').get(0).get('sheetName')).to.equal('sheet3');
   });
@@ -146,7 +146,7 @@ describe('Sheet Collab Events', () => {
       },
     ];
 
-    jSheetToY(sheets, ydoc);
+    jSheetToY(sheets, ydoc, false, Y);
 
     const firstSheet = ydoc.getArray('sheets').get(0).get('data');
 
@@ -162,11 +162,11 @@ describe('Sheet Collab Events', () => {
       {
         sheetName: 'sheet1',
         data: [['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'I']],
-        columns: [],
+        columns: Array(20).fill({ width: '50' }),
       },
     ];
 
-    jSheetToY(sheets, ydoc);
+    jSheetToY(sheets, ydoc, false, Y);
 
     const getFirstSheet = () => ydoc.getArray('sheets').get(0).get('data');
     const getFirstSheetColumns = () => ydoc.getArray('sheets').get(0).get('columns');

@@ -234,7 +234,7 @@ export function addSheet(ydoc, sheetName) {
   const sheet = new Y.Map();
   sheet.set('sheetName', sheetName);
   const dataFragment = new Y.XmlFragment();
-  dataArrayToY([], dataFragment, ydoc, Y);
+  dataArrayToY([], dataFragment, Y);
   sheet.set('data', dataFragment);
   const ycolumns = new Y.Array();
   for (let i = 0; i < MIN_DIMENSIONS; i += 1) {
