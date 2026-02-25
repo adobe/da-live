@@ -116,8 +116,6 @@ class DaLibrary extends LitElement {
       return;
     }
 
-    this._activePane = library.name;
-
     if (library.experience === 'dialog') {
       let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
       if (dialog) dialog.remove();
@@ -178,6 +176,8 @@ class DaLibrary extends LitElement {
       }
       return;
     }
+
+    this._activePane = library.name;
 
     const { target } = e;
     target.closest('.palette-pane').classList.add('backward');
@@ -259,10 +259,12 @@ class DaLibrary extends LitElement {
 
     newTr = (newTr || tr).replaceSelectionWith(item.parsed);
     const finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
+    const $pos = newTr.doc.resolve(finalPos);
+    const sel = TextSelection.between($pos, $pos);
 
     window.view.dispatch(
       newTr
-        .setSelection(TextSelection.create(newTr.doc, finalPos))
+        .setSelection(sel)
         .scrollIntoView(),
     );
 

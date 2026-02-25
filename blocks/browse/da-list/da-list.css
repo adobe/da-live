@@ -372,6 +372,15 @@ da-list-item.is-expanded::after {
 
 .checkbox-wrapper.loading .checkbox-label::after {
   display: none;
+/* Drop conflicts dialog */
+.da-drop-conflicts {
+  margin: 8px 0 0;
+  padding: 0 0 0 20px;
+  font-size: 14px;
+}
+
+.da-drop-conflicts li {
+  padding: 2px 0;
 }
 
 /* Error dialog */
