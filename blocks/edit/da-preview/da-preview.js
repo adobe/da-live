@@ -103,7 +103,7 @@ export default class DaPreview extends LitElement {
       // Give up after 6 attempts
       if (count > 6) {
         this._message = {
-          url: 'https://docs.da.live/author/reference/live-preview',
+          url: 'https://docs.da.live/authors/reference/live-preview',
           text: 'Could not load live preview',
         };
         clearInterval(interval);
