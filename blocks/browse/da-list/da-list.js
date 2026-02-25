@@ -502,7 +502,6 @@ export default class DaList extends LitElement {
     this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
   }
 
-  async handleCheckAll() {
   async handleDropConfirm() {
     this._dropConflicts = null;
     await this.processDropFiles();
@@ -515,7 +514,7 @@ export default class DaList extends LitElement {
     this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
   }
 
-  handleCheckAll() {
+  async handleCheckAll() {
     const check = !this.isSelectAll;
 
     if (check && this._continuationToken && !this._allPagesLoaded) {
