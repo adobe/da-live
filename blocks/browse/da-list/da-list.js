@@ -58,6 +58,7 @@ export default class DaList extends LitElement {
     this._isLoadingMore = false;
     this._observer = null;
     this._autoCheckTimer = null;
+    this._listItemPaths = new Set();
   }
 
   connectedCallback() {
@@ -69,6 +70,7 @@ export default class DaList extends LitElement {
   async update(props) {
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
+      this.resetListItemPaths(this._listItems);
     }
 
     if (props.has('fullpath') && this.fullpath) {
@@ -76,7 +78,6 @@ export default class DaList extends LitElement {
       this._showFilter = undefined;
       this._allPagesLoaded = false;
       this._listItems = await this.getList();
-      this.scheduleAutoCheck();
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -115,12 +116,15 @@ export default class DaList extends LitElement {
       const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
+      const items = Array.isArray(json) ? json : json?.items || [];
       this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
       this._allPagesLoaded = !this._continuationToken;
+      this.resetListItemPaths(items);
       this.scheduleAutoCheck();
-      return json;
+      return items;
     } catch {
       this._emptyMessage = 'Not permitted';
+      this.resetListItemPaths([]);
       return [];
     }
   }
@@ -136,9 +140,17 @@ export default class DaList extends LitElement {
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       const nextItems = Array.isArray(json) ? json : json?.items || [];
-      const beforeCount = (this._listItems || []).length;
-      this._listItems = this.mergeUniqueItemsByPath(this._listItems || [], nextItems);
-      const uniqueAdded = this._listItems.length - beforeCount;
+      const existingItems = this._listItems || [];
+      if (existingItems.length && this._listItemPaths.size === 0) {
+        this.resetListItemPaths(existingItems);
+      }
+      const mergedItems = this.mergeUniqueItemsByPath(
+        existingItems,
+        nextItems,
+        this._listItemPaths,
+      );
+      const uniqueAdded = mergedItems.length - existingItems.length;
+      if (uniqueAdded) this._listItems = mergedItems;
       const nextToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
 
       if (!nextToken) {
@@ -159,10 +171,14 @@ export default class DaList extends LitElement {
     return { added: 0, token: null };
   }
 
-  mergeUniqueItemsByPath(existingItems = [], incomingItems = []) {
-    const seen = new Set();
-    const merged = [];
-    [...existingItems, ...incomingItems].forEach((item) => {
+  resetListItemPaths(items = []) {
+    this._listItemPaths = new Set(items.map((item) => item?.path).filter(Boolean));
+  }
+
+  mergeUniqueItemsByPath(existingItems = [], incomingItems = [], pathIndex = null) {
+    const seen = pathIndex || new Set(existingItems.map((item) => item?.path).filter(Boolean));
+    const merged = [...existingItems];
+    incomingItems.forEach((item) => {
       const key = item?.path;
       if (!key || seen.has(key)) return;
       seen.add(key);
@@ -173,6 +189,7 @@ export default class DaList extends LitElement {
 
   handleNewItem() {
     // Add it to internal list
+    if (this.newItem?.path) this._listItemPaths.add(this.newItem.path);
     this._listItems.unshift(this.newItem);
     // Clear the public item
     this.newItem = null;
@@ -249,6 +266,8 @@ export default class DaList extends LitElement {
     item.name = name;
     item.lastModified = date;
 
+    this._listItemPaths.delete(oldPath);
+    if (path) this._listItemPaths.add(path);
     this._listItems[index] = item;
   }
 
@@ -299,11 +318,13 @@ export default class DaList extends LitElement {
       // Remove or add the item to the current list
       if (moveToTrash || method === 'DELETE') {
         this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
+        this._listItemPaths.delete(item.path);
       } else {
-        this._listItems = [
-          { ...item, path: item.destination, isChecked: false },
-          ...this._listItems,
-        ];
+        const updatedItem = { ...item, path: item.destination, isChecked: false };
+        if (!this._listItemPaths.has(updatedItem.path)) {
+          this._listItemPaths.add(updatedItem.path);
+          this._listItems = [updatedItem, ...this._listItems];
+        }
       }
     } catch (e) {
       // The assumption here is that the user does not have permission to write to the trash
@@ -459,6 +480,7 @@ export default class DaList extends LitElement {
         const item = await handleUpload(this._listItems, this.fullpath, file);
         this.setDropMessage();
         if (item) {
+          if (item.path) this._listItemPaths.add(item.path);
           this._listItems.unshift(item);
           this.requestUpdate();
         }
@@ -843,6 +865,9 @@ export default class DaList extends LitElement {
   }
 
   scheduleAutoCheck() {
+    if (this._bulkLoading) return;
+    if (this._allPagesLoaded) return;
+    if (!this._continuationToken) return;
     if (this._autoCheckTimer) return;
     this._autoCheckTimer = setTimeout(() => {
       this._autoCheckTimer = null;
@@ -859,10 +884,19 @@ export default class DaList extends LitElement {
   async loadAllPages() {
     if (this._isLoadingMore || this._allPagesLoaded) return;
     let safety = 0;
+    let stalledPages = 0;
+    let previousToken = this._continuationToken;
     while (this._continuationToken && safety < 500 && !this._allPagesLoaded) {
       // eslint-disable-next-line no-await-in-loop
-      const { token } = await this.loadMore();
+      const { token, added } = await this.loadMore();
       if (!token) break;
+      if (token === previousToken && added === 0) {
+        stalledPages += 1;
+      } else {
+        stalledPages = 0;
+      }
+      if (stalledPages >= 2) break;
+      previousToken = token;
       safety += 1;
     }
   }

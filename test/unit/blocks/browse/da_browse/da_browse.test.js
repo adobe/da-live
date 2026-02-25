@@ -142,4 +142,61 @@ describe('Browse', () => {
 
     expect(merged.map((item) => item.path)).to.deep.equal(['/a', '/b', '/c']);
   });
+
+  it('loadMore keeps list reference when page adds no unique paths', async () => {
+    const daBrowse = new DaBrowse();
+    const initialItems = [{ path: '/already-there', name: 'already-there' }];
+
+    const mockFetch = async () => ({
+      ok: true,
+      json: async () => ([{ path: '/already-there', name: 'already-there' }]),
+      headers: {
+        get: (name) => {
+          if (name === 'da-continuation-token') return 'token-1';
+          return null;
+        },
+      },
+    });
+
+    daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
+    daBrowse._listItems = initialItems;
+    daBrowse._continuationToken = 'token-1';
+    daBrowse.scheduleAutoCheck = () => {};
+
+    const orgFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      await daBrowse.loadMore();
+      expect(daBrowse._listItems).to.equal(initialItems);
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('scheduleAutoCheck does not schedule without an active continuation token', () => {
+    const daBrowse = new DaBrowse();
+    daBrowse._continuationToken = null;
+    daBrowse._allPagesLoaded = false;
+    daBrowse._bulkLoading = false;
+
+    daBrowse.scheduleAutoCheck();
+
+    expect(daBrowse._autoCheckTimer).to.equal(null);
+  });
+
+  it('loadAllPages exits when pagination stalls with the same token', async () => {
+    const daBrowse = new DaBrowse();
+    let calls = 0;
+
+    daBrowse._continuationToken = 'token-1';
+    daBrowse._allPagesLoaded = false;
+    daBrowse.loadMore = async () => {
+      calls += 1;
+      return { added: 0, token: 'token-1' };
+    };
+
+    await daBrowse.loadAllPages();
+
+    expect(calls).to.equal(2);
+  });
 });
