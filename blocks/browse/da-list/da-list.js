@@ -278,7 +278,6 @@ export default class DaList extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
-    let continuation = true;
     let continuationToken;
 
     const type2api = {
@@ -293,7 +292,7 @@ export default class DaList extends LitElement {
     const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
     try {
-      while (continuation) {
+      do {
         let body;
 
         if (type !== 'delete') {
@@ -305,13 +304,11 @@ export default class DaList extends LitElement {
         const opts = { method, body };
         const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
         if (resp.status === 204) {
-          continuation = false;
           break;
         }
         const json = await resp.json();
-        ({ continuationToken } = json);
-        if (!continuationToken) continuation = false;
-      }
+        continuationToken = json?.continuationToken;
+      } while (continuationToken);
 
       item.isChecked = false;
 
@@ -341,23 +338,21 @@ export default class DaList extends LitElement {
     const itemsToPaste = this._selectedItems.map((item) => {
       const prefix = item.path.split('/').slice(0, -1).join('/');
 
-      let checkForExisting = true;
       let pasteItem = {
         ...item,
         destination: item.path.replace(prefix, this.fullpath),
       };
 
-      while (checkForExisting) {
+      let existing;
+      do {
         const { destination } = pasteItem;
-        const existing = this._listItems.find(({ path }) => path === destination);
+        existing = this._listItems.find(({ path }) => path === destination);
         if (existing) {
           const name = `${existing.name}-copy`;
           const dest = item.ext ? `${this.fullpath}/${name}.${item.ext}` : `${existing.path}-copy`;
           pasteItem = { ...item, name, destination: dest };
-        } else {
-          checkForExisting = false;
         }
-      }
+      } while (existing);
 
       return pasteItem;
     });
