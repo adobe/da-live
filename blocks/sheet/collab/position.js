@@ -83,20 +83,20 @@ export function restoreSpreadsheetState(wrapper, state) {
     const maxX = sheet.options.columns.length - 1;
 
     if (x <= maxX && y <= maxY) {
-      const cell = sheet.records[y][x];
-      if (cell) {
-        // Open the editor
-        setTimeout(() => {
-          sheet.openEditor(cell);
-          // Restore the editor value if we had captured it
-          if (state.editorValue !== null) {
-            const editorInput = cell.querySelector('input');
-            if (editorInput) {
-              editorInput.value = state.editorValue;
-            }
+      setTimeout(() => {
+        // DOM cell may have changed in the meantime, so re-obtain it
+        const updatedSheet = tabs.jexcel[state.sheetIdx];
+        const cell = updatedSheet?.records[y][x];
+        if (!cell || !updatedSheet) return;
+        updatedSheet.openEditor(cell);
+        // Restore the editor value if we had captured it
+        if (state.editorValue !== null) {
+          const editorInput = cell.querySelector('input');
+          if (editorInput) {
+            editorInput.value = state.editorValue;
           }
-        }, 0);
-      }
+        }
+      }, 0);
     } else {
       console.log('Editor cell position out of bounds, skipping restore');
     }
