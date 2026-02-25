@@ -405,7 +405,7 @@ da-loc-added,
   display: none;
   position: absolute;
   right: -48px;
-  z-index: 1500;
+  z-index: 4;
   padding: 16px 20px;
   margin: 0 48px;
   box-sizing: border-box;

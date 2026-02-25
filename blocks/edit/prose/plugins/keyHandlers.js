@@ -10,6 +10,7 @@ import {
   deleteTable,
   InputRule,
   inputRules,
+  wrappingInputRule,
   yUndo,
   yRedo,
 } from 'da-y-wrapper';
@@ -71,6 +72,15 @@ export function getEnterInputRulesPlugin(dispatchTransaction) {
 // Returns a standard inputRules plugin for URL auto-linking on space
 export function getURLInputRulesPlugin() {
   return inputRules({ rules: [getURLInputRule()] });
+}
+
+// Returns an inputRules plugin for auto-creating bullet and ordered lists
+export function getListInputRulesPlugin(schema) {
+  const rules = [
+    wrappingInputRule(/^\s*1[.)]\s$/, schema.nodes.ordered_list),
+    wrappingInputRule(/^\s*([-*])\s$/, schema.nodes.bullet_list),
+  ];
+  return inputRules({ rules });
 }
 
 const isRowSelected = (rect) => rect.left === 0 && rect.right === rect.map.width;

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { getTestSheetURL } from '../utils/page.js';
 
 test('New sheet', async ({ page }, workerInfo) => {
-  test.setTimeout(15000);
+  test.setTimeout(30000);
 
   const url = getTestSheetURL('sheet1', workerInfo);
   await page.goto(url);

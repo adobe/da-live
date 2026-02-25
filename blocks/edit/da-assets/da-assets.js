@@ -8,7 +8,7 @@ const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
-const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/assets/resources/assets-selectors.js';
+const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 
 const fullConfJsons = {};
 const CONFS = {};
@@ -79,6 +79,29 @@ function findBlockContext() {
   return [];
 }
 
+function formatExternalBrief(document) {
+  // Find the first H1 title and get the full text of the document
+  let title = '';
+  document.descendants((node) => {
+    if (node.type.name === 'heading' && node.attrs.level === 1 && !title) {
+      title = node.textContent;
+    }
+    return !title;
+  });
+
+  const contentPlainText = document.textContent;
+  if (!contentPlainText) return '';
+
+  // return the external brief prompt with the title and content
+  return `The user is looking for assets that match a web page with the following content:
+
+  ${title ? `Title: ${title}` : ''}
+
+  ${contentPlainText}
+
+  Please suggest Assets that are visually appealing and relevant to the subject.`;
+}
+
 export async function openAssets() {
   const details = await loadIms();
   if (details.anonymous) handleSignIn();
@@ -102,7 +125,7 @@ export async function openAssets() {
     if (!dmDeliveryEnabled) {
       return `https://${prodOrigin}${asset.path}`;
     }
-    return `${getBaseDmUrl(asset)}/as/${name}`;
+    return `${getBaseDmUrl(asset)}/original/as/${name}`;
   };
 
   // Determine if images should be links
@@ -141,11 +164,18 @@ export async function openAssets() {
     const loadResponsiveImageConfig = getResponsiveImageConfig(owner, repo);
 
     const aemTierType = repoId.includes('delivery') ? 'delivery' : 'author';
+    const featureSet = ['upload', 'collections', 'detail-panel', 'advisor'];
+    if (dmDeliveryEnabled) {
+      featureSet.push('dynamic-media');
+    }
+    const externalBrief = formatExternalBrief(window.view.state.doc);
 
     const selectorProps = {
       imsToken: details.accessToken.token,
       repositoryId: repoId,
       aemTierType,
+      featureSet,
+      externalBrief,
       onClose: () => assetSelectorWrapper.style.display !== 'none' && dialog.close(),
       handleSelection: async (assets) => {
         const [asset] = assets;

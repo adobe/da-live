@@ -76,3 +76,24 @@ export function getTestResourceAge(fileName) {
   }
   return null;
 }
+
+const SELECT_ALL = process.platform === 'darwin' ? 'Meta+a' : 'Control+a';
+
+export async function fill(page, text) {
+  const proseMirror = page.locator('div.ProseMirror');
+  await proseMirror.click();
+  await page.keyboard.press(SELECT_ALL);
+  await page.keyboard.type(text);
+}
+
+export async function tabForward(page) {
+  const browserName = page.context().browser()?.browserType().name();
+  const key = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+  await page.keyboard.press(key);
+}
+
+export async function tabBackward(page) {
+  const browserName = page.context().browser()?.browserType().name();
+  const key = browserName === 'webkit' ? 'Shift+Alt+Tab' : 'Shift+Tab';
+  await page.keyboard.press(key);
+}

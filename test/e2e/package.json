@@ -4,7 +4,7 @@
   "scripts": {
     "test": "playwright test --project=chromium",
     "test:install": "playwright install",
-    "test:all": "playwright test --project=chromium --project=firefox # limit to Chromium and FF as webkit currently fails",
+    "test:all": "playwright test --project=chromium --project=firefox --project=webkit",
     "test:nonauth": "SKIP_AUTH=true playwright test --project=chromium tests/*.spec.js",
     "test:ui": "playwright test --project=chromium --ui",
     "test:debug": "playwright test --project=chromium --debug",

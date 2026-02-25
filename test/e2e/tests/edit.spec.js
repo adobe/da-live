@@ -11,7 +11,7 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestPageURL } from '../utils/page.js';
+import { getQuery, getTestPageURL, tabBackward, fill } from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
@@ -19,18 +19,18 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
-  await page.locator('div.ProseMirror').fill(enteredText);
+  await fill(page, enteredText);
 
+  // Wait for content to save before closing
   await page.waitForTimeout(3000);
   await page.close();
 
   const newPage = await browser.newPage();
   await newPage.goto(url);
-  await newPage.waitForTimeout(3000);
   await expect(newPage.locator('div.ProseMirror')).toBeVisible();
   await expect(newPage.locator('div.ProseMirror')).toContainText(enteredText);
 });
@@ -49,7 +49,9 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.locator('button:text("Create document")').click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-  await page.locator('div.ProseMirror').fill('testcontent');
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
+  await fill(page, 'testcontent');
   await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
@@ -60,8 +62,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
   await newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
-  // Note this currently does not work on webkit as the checkbox isn't keyboard focusable there
-  await newPage.keyboard.press('Shift+Tab');
+  await tabBackward(newPage);
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
   await page.close(); // Close the original page to avoid it writing the content
@@ -76,7 +77,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 });
 
 test('Change document by switching anchors', async ({ page }, workerInfo) => {
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   const url = getTestPageURL('edit3', workerInfo);
   const urlA = `${url}A`;
@@ -84,45 +85,48 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
 
   await page.goto(urlA);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
 
-  await page.locator('div.ProseMirror').fill('before table');
+  await fill(page, 'before table');
   await page.getByText('Block', { exact: true }).click();
-  await page.getByText('columns').fill('mytable');
-  await page.keyboard.press('Tab');
+  await page.getByText('columns').dblclick();
+  await page.keyboard.type('mytable');
+  const dataCells = page.locator('div.ProseMirror table tr:nth-child(2) td');
+  await dataCells.nth(0).click();
   await page.keyboard.press('k');
-  await page.keyboard.press('Tab');
+  await dataCells.nth(1).click();
   await page.keyboard.press('v');
   await page.getByText('Edit Block').click();
   await page.getByText('Insert row after').click();
-  await page.keyboard.press('Tab');
+  const newRowCells = page.locator('div.ProseMirror table tr:nth-child(3) td');
+  await newRowCells.nth(0).click();
   await page.keyboard.type('k 2');
-  await page.keyboard.press('Tab');
+  await newRowCells.nth(1).click();
   await page.keyboard.type('v 2');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
 
   await page.goto(urlB);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-  await page.waitForTimeout(1000);
-  await page.locator('div.ProseMirror').fill('page B');
+  // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(3000);
+  await fill(page, 'page B');
+  // Verify the fill took effect locally before waiting for persistence
+  await expect(page.locator('div.ProseMirror')).toContainText('page B');
+  // Wait for Y.js to persist the content to the server
+  await page.waitForTimeout(5000);
 
   await page.goto(urlA);
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(1000);
   await expect(page.locator('div.ProseMirror')).toContainText('mytable');
-  await page.waitForTimeout(2000);
   await expect(page.locator('div.ProseMirror')).toContainText('k 2');
   await expect(page.locator('div.ProseMirror')).toContainText('v 2');
 
   await page.goto(urlB);
-  await page.waitForTimeout(3000);
   await expect(page.locator('div.ProseMirror')).toBeVisible();
-  await page.waitForTimeout(1000);
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });
 
@@ -130,13 +134,13 @@ test('Add code mark', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
   const url = getTestPageURL('edit5', workerInfo);
   await page.goto(url);
-  await page.waitForTimeout(3000);
   const proseMirror = page.locator('div.ProseMirror');
   await proseMirror.waitFor();
   await expect(proseMirror).toBeVisible();
   await expect(proseMirror).toHaveAttribute('contenteditable', 'true');
-  await proseMirror.fill('This is a line that will contain a code mark.');
-  await page.waitForTimeout(1000);
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
+  await fill(page, 'This is a line that will contain a code mark.');
 
   // Forward
   for (let i = 0; i < 10; i += 1) {
@@ -148,13 +152,12 @@ test('Add code mark', async ({ page }, workerInfo) => {
   }
   await page.keyboard.press('`');
   // leave time for the code mark to be processed
-  await page.waitForTimeout(1000);
   let codeElement = proseMirror.locator('code');
   await codeElement.waitFor();
   await expect(codeElement).toContainText('code');
 
   // Backward
-  await page.locator('div.ProseMirror').fill('This is a line that will contain a code mark.');
+  await fill(page, 'This is a line that will contain a code mark.');
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('ArrowLeft');
   }
@@ -164,7 +167,6 @@ test('Add code mark', async ({ page }, workerInfo) => {
     await page.keyboard.press('ArrowLeft');
   }
   await page.keyboard.press('`');
-  await page.waitForTimeout(1000);
   codeElement = proseMirror.locator('code');
   await codeElement.waitFor();
   await expect(codeElement).toContainText('code');
@@ -179,6 +181,5 @@ test('Add code mark', async ({ page }, workerInfo) => {
     await page.keyboard.press('ArrowRight');
   }
   await page.keyboard.press('`');
-  await page.waitForTimeout(1000);
   await expect(proseMirror).toContainText('This is a line that will contain `a code mark`.');
 });
