@@ -33,6 +33,7 @@ import linkConverter from './plugins/linkConverter.js';
 import linkTextSync from './plugins/linkTextSync.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
+import librarySelection from './plugins/librarySelection.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import toggleLibrary from '../da-library/da-library.js';
 import { checkDoc } from '../edit.js';
@@ -353,6 +354,7 @@ export default function initProse({ path, permissions }) {
     linkTextSync(),
     sectionPasteHandler(schema),
     base64Uploader(schema),
+    librarySelection(),
     columnResizing(),
     getEnterInputRulesPlugin(dispatchTransaction),
     getURLInputRulesPlugin(),
@@ -411,10 +413,12 @@ export default function initProse({ path, permissions }) {
     handleDOMEvents: {
       blur: (view) => {
         storeCursorPosition(view);
+        view.dispatch(view.state.tr.setMeta('addToHistory', false));
         return false;
       },
       focus: (view) => {
         restoreCursorPosition(view);
+        view.dispatch(view.state.tr.setMeta('addToHistory', false));
         return false;
       },
     },
