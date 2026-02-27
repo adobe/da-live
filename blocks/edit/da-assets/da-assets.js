@@ -125,7 +125,7 @@ export async function openAssets() {
     if (!dmDeliveryEnabled) {
       return `https://${prodOrigin}${asset.path}`;
     }
-    return `${getBaseDmUrl(asset)}/original/as/${name}`;
+    return `${getBaseDmUrl(asset)}${asset.mimetype?.startsWith('video/') ? '/original' : ''}/as/${name}`;
   };
 
   // Determine if images should be links
