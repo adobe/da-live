@@ -8,7 +8,7 @@ import {
   getCdnConfig,
 } from '../utils/helpers.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { daFetch, getFirstSheet, initIms } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -41,6 +41,7 @@ export default class DaTitle extends LitElement {
     _status: { state: true },
     _fixedActions: { state: true },
     _dialog: { state: true },
+    _publishLater: { state: true },
   };
 
   connectedCallback() {
@@ -188,10 +189,82 @@ export default class DaTitle extends LitElement {
     return this.config;
   }
 
+  async handlePublishLater() {
+    this._dialog = undefined;
+    await import('../../shared/da-dialog/da-dialog.js');
+    const { schedulePagePublish } = await import('./scheduler.js');
+
+    const { owner: org, repo: site } = this.details;
+    const { hash } = window.location;
+    const path = hash.replace('#', '') || '/';
+
+    const title = 'Publish Later';
+    let scheduledTime = '';
+
+    const action = {
+      style: 'accent',
+      label: 'Schedule',
+      disabled: true,
+      click: async () => {
+        const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000);
+        const selected = new Date(scheduledTime);
+        if (!scheduledTime || selected < fiveMinFromNow) {
+          this._dialog = {
+            ...this._dialog,
+            content: html`
+              <p>Choose a date and time at least 5 minutes in the future.</p>
+              <input type="datetime-local" @change=${(e) => { scheduledTime = e.target.value; }}
+                style="margin-top:12px;width:100%">
+              <p style="color:#d73220;margin-top:8px">Please select a valid future date/time.</p>
+            `,
+          };
+          return;
+        }
+
+        // Close dialog and preview first (same as regular publish)
+        this._dialog = undefined;
+        const sendBtn = this.shadowRoot.querySelector('.da-title-action-send-icon');
+        sendBtn.classList.add('is-sending');
+
+        const aemPath = this.sheet ? `${path}.json` : path;
+        const previewJson = await saveToAem(aemPath, 'preview');
+        if (previewJson.error) {
+          this.handleError(previewJson, 'preview', sendBtn);
+          return;
+        }
+
+        const imsDetails = await initIms();
+        const userId = imsDetails?.email;
+        const resp = await schedulePagePublish(org, site, path, userId, selected.toISOString());
+        sendBtn.classList.remove('is-sending');
+        if (resp?.ok) {
+          this._status = { message: `Scheduled for ${selected.toLocaleString()}` };
+          setTimeout(() => { this._status = null; }, 4000);
+        } else {
+          this._status = { message: 'Failed to schedule publish. Please try again.' };
+        }
+      },
+    };
+
+    this._dialog = {
+      title,
+      action,
+      close: () => { this._dialog = undefined; },
+      content: html`
+        <p>Choose when to publish this page.</p>
+        <input type="datetime-local" @change=${(e) => {
+    scheduledTime = e.target.value;
+    this._dialog = { ...this._dialog, action: { ...this._dialog.action, disabled: false } };
+  }} style="margin-top:12px;width:100%">
+      `,
+    };
+  }
+
   async toggleActions() {
     // toggle off if already on
     if (this._actionsVis.length > 0) {
       this._actionsVis = [];
+      this._publishLater = false;
       return;
     }
 
@@ -203,13 +276,19 @@ export default class DaTitle extends LitElement {
 
     // check which actions should be allowed for the document based on config
     const config = await this.fetchConfig();
-    const { fullpath } = this.details;
+    const { fullpath, owner: org, repo: site } = this.details;
 
     const allConfigs = [...config.org, ...config.site];
     const publishButtonConfigs = allConfigs.filter((c) => c.key === 'editor.hidePublish');
     const hasMatchingPublishConfig = publishButtonConfigs.some((c) => fullpath.startsWith(c.value));
 
     this._actionsVis = hasMatchingPublishConfig ? ['preview'] : ['preview', 'publish'];
+
+    // Only check registration if publish is available for this doc
+    if (this._actionsVis.includes('publish')) {
+      const { isRegistered } = await import('./scheduler.js');
+      this._publishLater = await isRegistered(org, site);
+    }
   }
 
   get _readOnly() {
@@ -218,14 +297,21 @@ export default class DaTitle extends LitElement {
   }
 
   renderActions() {
-    return html`${this._actionsVis.map((action) => html`
-      <button
-        @click=${() => this.handleAction(action)}
-        class="con-button blue da-title-action"
-        aria-label="Send">
-        ${action.charAt(0).toUpperCase() + action.slice(1)}
-      </button>
-    `)}`;
+    return html`
+      ${this._actionsVis.map((action) => html`
+        <button
+          @click=${() => this.handleAction(action)}
+          class="con-button blue da-title-action"
+          aria-label="Send">
+          ${action.charAt(0).toUpperCase() + action.slice(1)}
+        </button>
+      `)}
+      ${this._publishLater && this._actionsVis.includes('publish') ? html`
+        <button @click=${this.handlePublishLater} class="con-button blue da-title-action" aria-label="Publish Later">
+          Publish Later
+        </button>
+      ` : nothing}
+    `;
   }
 
   popover({ target }) {
