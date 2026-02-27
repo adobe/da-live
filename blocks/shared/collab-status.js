@@ -17,7 +17,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
       const userInfo = awarenessStates.get(u)?.user;
       if (!userInfo?.id) {
         userMap.set(`anonymous-${u}`, 'Anonymous');
-      } else if (userInfo.id !== wsProvider.awareness.getLocalState().user?.id) {
+      } else {
         userMap.set(userInfo.id, userInfo.name);
       }
     });
