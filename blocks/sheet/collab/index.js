@@ -22,6 +22,18 @@ export async function attachLocalYDoc(el) {
   return { ydoc, yUndoManager };
 }
 
+function debounce(func, wait = 500) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func.apply(this, args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 export default function joinCollab(el) {
   const path = el.details.sourceUrl;
 
@@ -59,13 +71,13 @@ export default function joinCollab(el) {
     wsProvider.awareness.setLocalStateField('user', {
       color: generateColor(`${wsProvider.awareness.clientID}`),
       name: 'Anonymous',
-      id: `anonymous-${wsProvider.awareness.clientID}}`,
+      id: `anonymous-${wsProvider.awareness.clientID}`,
     });
   }
 
-  wsProvider.awareness.on('change', () => {
+  wsProvider.awareness.on('change', debounce(() => {
     drawOverlays(wsProvider);
-  });
+  }));
 
   const yUndoManager = new Y.UndoManager(
     ysheets,

@@ -42,12 +42,12 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   win.addEventListener('focus', () => {
     // cancel any pending disconnect
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
-    wsProvider.connect();
+    wsProvider?.connect();
   });
   win.addEventListener('blur', () => {
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
     disconnectTimeout = setTimeout(() => {
-      wsProvider.disconnect();
+      wsProvider?.disconnect();
     }, DISCONNECT_TIMEOUT);
   });
 }
