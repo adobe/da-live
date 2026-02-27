@@ -40,9 +40,11 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   const DISCONNECT_TIMEOUT = 10 * 60 * 1000;
   let disconnectTimeout = null;
   win.addEventListener('focus', () => {
-    // cancel any pending disconnect
-    if (disconnectTimeout) clearTimeout(disconnectTimeout);
-    wsProvider?.connect();
+    if (wsProvider) {
+      // cancel any pending disconnect
+      if (disconnectTimeout) clearTimeout(disconnectTimeout);
+      wsProvider.connect();
+    }
   });
   win.addEventListener('blur', () => {
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
