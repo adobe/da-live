@@ -236,7 +236,7 @@ function getTableMenu() {
     tableItem('Delete row', deleteRow, 'deleteRow'),
     tableItem('Merge cells', mergeCells, 'mergeCells'),
     tableItem('Split cell', splitCell, 'splitCell'),
-    tableItem('Delete table', deleteTable, 'deleteTable'),
+    tableItem('Delete block', deleteTable, 'deleteTable'),
   ];
 }
 
