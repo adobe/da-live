@@ -116,6 +116,8 @@ class DaLibrary extends LitElement {
       return;
     }
 
+    this._activePane = library.name;
+
     if (library.experience === 'dialog') {
       let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
       if (dialog) dialog.remove();
@@ -176,8 +178,6 @@ class DaLibrary extends LitElement {
       }
       return;
     }
-
-    this._activePane = library.name;
 
     const { target } = e;
     target.closest('.palette-pane').classList.add('backward');
