@@ -262,10 +262,7 @@ function restoreCursorPosition(view) {
     const { from, to } = lastCursorPosition;
     const docSize = view.state.doc.content.size;
     if (from <= docSize && to <= docSize) {
-      const $from = view.state.doc.resolve(from);
-      const $to = view.state.doc.resolve(to);
-      const sel = TextSelection.between($from, $to);
-      const tr = view.state.tr.setSelection(sel);
+      const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
       view.dispatch(tr);
     } else {
       lastCursorPosition = null;

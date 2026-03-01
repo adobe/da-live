@@ -257,12 +257,10 @@ class DaLibrary extends LitElement {
 
     newTr = (newTr || tr).replaceSelectionWith(item.parsed);
     const finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
-    const $pos = newTr.doc.resolve(finalPos);
-    const sel = TextSelection.between($pos, $pos);
 
     window.view.dispatch(
       newTr
-        .setSelection(sel)
+        .setSelection(TextSelection.create(newTr.doc, finalPos))
         .scrollIntoView(),
     );
 
