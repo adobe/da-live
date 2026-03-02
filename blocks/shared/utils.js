@@ -21,16 +21,23 @@ export async function initIms() {
   }
 }
 
+export async function getAuthToken() {
+  if (!localStorage.getItem('nx-ims')) {
+    return null;
+  }
+  const ims = await initIms();
+  return ims?.accessToken?.token || null;
+}
+
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
-  let accessToken;
-  if (localStorage.getItem('nx-ims')) {
-    ({ accessToken } = await initIms());
+  const accessToken = await getAuthToken();
+  if (accessToken) {
     const canToken = ALLOWED_TOKEN.some((origin) => new URL(url).origin === origin);
-    if (accessToken && canToken) {
-      opts.headers.Authorization = `Bearer ${accessToken.token}`;
+    if (canToken) {
+      opts.headers.Authorization = `Bearer ${accessToken}`;
       if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
-        opts.headers['x-content-source-authorization'] = `Bearer ${accessToken.token}`;
+        opts.headers['x-content-source-authorization'] = `Bearer ${accessToken}`;
       }
     }
   }

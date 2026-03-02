@@ -4,25 +4,40 @@ import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin } from '..
 import './da-title/da-title.js';
 import './da-content/da-content.js';
 
-let prose;
-let proseEl;
-let wsProvider;
+const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
+const DOMPARSER = new DOMParser();
 
-export async function checkDoc(path) {
-  return daFetch(path, { method: 'HEAD' });
+let prose;
+
+async function getDoc(path) {
+  return daFetch(path);
 }
 
 async function createDoc(path) {
   const body = new FormData();
-  const data = new Blob(['<body><header></header><main><div></div></main><footer></footer></body>'], { type: 'text/html' });
+  const data = new Blob([EMPTY_DOC], { type: 'text/html' });
   body.append('data', data);
   const opts = { body, method: 'POST' };
   return daFetch(path, opts);
 }
 
+function initArea(areaName, details, el) {
+  let areaEl = document.querySelector(areaName);
+  if (!areaEl) {
+    areaEl = document.createElement(areaName);
+    areaEl.details = details;
+    el.append(areaEl);
+  } else {
+    areaEl.details = details;
+  }
+  return areaEl;
+}
+
 async function setUI(el) {
   const details = getPathDetails();
   if (!details) return;
+
+  const docPromise = getDoc(details.sourceUrl);
 
   document.title = `Edit ${details.name} - DA`;
 
@@ -36,50 +51,51 @@ async function setUI(el) {
     ]);
   }
 
-  // Title area
-  let daTitle = document.querySelector('da-title');
-  if (!daTitle) {
-    daTitle = document.createElement('da-title');
-    daTitle.details = details;
-    el.append(daTitle);
-  } else {
-    daTitle.details = details;
-  }
+  const daTitle = initArea('da-title', details, el);
 
-  // Lazily load prose after the title has been added to DOM.
-  if (!prose) prose = await import('./prose/index.js');
-
-  // Content area
-  let daContent = document.querySelector('da-content');
-  if (!daContent) {
-    daContent = document.createElement('da-content');
-    daContent.details = details;
-    el.append(daContent);
-  } else {
-    daContent.details = details;
-  }
-
-  let resp = await checkDoc(details.sourceUrl);
-  if (resp.status === 404) resp = await createDoc(details.sourceUrl);
-
-  const { permissions } = resp;
-
-  daTitle.permissions = resp.permissions;
-  daContent.permissions = resp.permissions;
-  daContent.lockdownImages = lockdownImages;
+  const daContent = initArea('da-content', details, el);
 
   if (daContent.wsProvider) {
     daContent.wsProvider.disconnect({ data: 'Client navigation' });
     daContent.wsProvider = undefined;
   }
 
-  ({
-    proseEl,
-    wsProvider,
-  } = prose.default({ path: details.sourceUrl, permissions }));
+  const resp = await docPromise;
 
-  daContent.proseEl = proseEl;
-  daContent.wsProvider = wsProvider;
+  let permissions;
+  let doc;
+  if (resp.status === 404) {
+    const createResp = await createDoc(details.sourceUrl);
+    permissions = createResp.permissions;
+    doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
+  } else {
+    permissions = resp.permissions;
+    const respText = await resp.text();
+    doc = DOMPARSER.parseFromString(respText, 'text/html');
+  }
+
+  daTitle.permissions = permissions;
+  daContent.permissions = permissions;
+  daContent.lockdownImages = lockdownImages;
+
+  const metadataEl = doc.querySelector('main > .metadata');
+  // Check if the metadata div has no additional classes (or doesn't exist)
+  const isDefaultMetadata = !(metadataEl?.classList.length > 1);
+  if (isDefaultMetadata) {
+    // Load Default ProseMirrorEditor
+
+    if (!prose) {
+      prose = await import('./prose/index.js');
+    }
+
+    await prose.default({
+      path: details.sourceUrl,
+      permissions,
+      doc,
+      daContent,
+    });
+  }
+  // FUTURE: else load BYO Editor
 }
 
 export default async function init(el) {
