@@ -551,32 +551,29 @@ export default class DaList extends LitElement {
     this.requestUpdate();
   }
 
+  async ensureAllPagesLoadedForSort() {
+    if (!this._continuationToken || this._allPagesLoaded) return;
+    this._forceLoadAll = true;
+    this._bulkLoading = true;
+    try {
+      await this.loadAllPages();
+    } finally {
+      this._bulkLoading = false;
+      this._forceLoadAll = false;
+    }
+  }
+
   async handleNameSort() {
     this._sortDate = undefined;
     this._sortName = this._sortName === 'old' ? 'new' : 'old';
-    if (this._continuationToken && !this._allPagesLoaded) {
-      this._forceLoadAll = true;
-      this._bulkLoading = true;
-      try {
-        await this.loadAllPages();
-      } finally {
-        this._bulkLoading = false;
-        this._forceLoadAll = false;
-      }
-    }
+    await this.ensureAllPagesLoadedForSort();
     this.handleSort(this._sortName, 'name');
   }
 
   async handleDateSort() {
     this._sortName = undefined;
     this._sortDate = this._sortDate === 'old' ? 'new' : 'old';
-    if (this._continuationToken && !this._allPagesLoaded) {
-      this._forceLoadAll = true;
-      this._bulkLoading = true;
-      await this.loadAllPages();
-      this._bulkLoading = false;
-      this._forceLoadAll = false;
-    }
+    await this.ensureAllPagesLoadedForSort();
     this.handleSort(this._sortDate, 'lastModified');
   }
 
@@ -754,6 +751,7 @@ export default class DaList extends LitElement {
   }
 
   renderList(items) {
+    const showSentinel = this._continuationToken && !this._allPagesLoaded;
     return html`
       <div class="da-item-list" role="presentation">
       ${repeat(items, (item) => item.path, (item, idx) => html`
@@ -772,7 +770,7 @@ export default class DaList extends LitElement {
           editor="${this.editor}"
           idx=${idx}>
         </da-list-item>`)}
-        <div class="da-list-sentinel" aria-hidden="true"></div>
+        ${showSentinel ? html`<div class="da-list-sentinel" aria-hidden="true"></div>` : nothing}
       </div>
     `;
   }
@@ -798,9 +796,11 @@ export default class DaList extends LitElement {
   }
 
   render() {
+    const hasMorePages = this._continuationToken && !this._allPagesLoaded;
     const filteredItems = this._filter
       ? this._listItems.filter((item) => item.name.includes(this._filter))
       : this._listItems;
+    const showList = filteredItems?.length > 0 || hasMorePages;
 
     return html`
       <div class="da-browse-panel-header" role="row">
@@ -852,7 +852,7 @@ export default class DaList extends LitElement {
         </div>
       </div>
       <div class="da-browse-panel" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
-        ${filteredItems?.length > 0 ? this.renderList(filteredItems, true) : this.renderEmpty()}
+        ${showList ? this.renderList(filteredItems) : this.renderEmpty()}
         ${this.drag ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar
@@ -903,9 +903,9 @@ export default class DaList extends LitElement {
     super.updated(changedProps);
     if (!this._observer) this.setupObserver();
     const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
-    if (sentinel && this._observer) {
+    if (this._observer) {
       this._observer.disconnect();
-      this._observer.observe(sentinel);
+      if (sentinel) this._observer.observe(sentinel);
     }
     if (this.hasPaginationStateChanges(changedProps)) this.scheduleAutoCheck();
   }
@@ -947,22 +947,30 @@ export default class DaList extends LitElement {
   }
 
   async loadAllPages() {
-    if (this._isLoadingMore || this._allPagesLoaded) return;
+    if (this._allPagesLoaded) return;
     let safety = 0;
     let stalledPages = 0;
     let previousToken = this._continuationToken;
-    while (this._continuationToken && safety < 500 && !this._allPagesLoaded) {
-      // eslint-disable-next-line no-await-in-loop
-      const { token, added } = await this.loadMore();
-      if (!token) break;
-      if (token === previousToken && added === 0) {
-        stalledPages += 1;
+    while (safety < 500 && !this._allPagesLoaded) {
+      if (this._isLoadingMore) {
+        // Wait for in-flight pagination requests before continuing.
+        // eslint-disable-next-line no-await-in-loop
+        await this.wait(25);
+        safety += 1;
       } else {
-        stalledPages = 0;
+        if (!this._continuationToken) break;
+        // eslint-disable-next-line no-await-in-loop
+        const { token, added } = await this.loadMore();
+        if (!token) break;
+        if (token === previousToken && added === 0) {
+          stalledPages += 1;
+        } else {
+          stalledPages = 0;
+        }
+        if (stalledPages >= 2) break;
+        previousToken = token;
+        safety += 1;
       }
-      if (stalledPages >= 2) break;
-      previousToken = token;
-      safety += 1;
     }
   }
 }

@@ -372,6 +372,8 @@ da-list-item.is-expanded::after {
 
 .checkbox-wrapper.loading .checkbox-label::after {
   display: none;
+}
+
 /* Drop conflicts dialog */
 .da-drop-conflicts {
   margin: 8px 0 0;
