@@ -142,6 +142,8 @@ button span {
   padding-left: 28px;
 }
 
+
+
 .da-library-item-list-main button,
 .da-library-search-results button {
   background-position-x: 18px;
@@ -220,6 +222,7 @@ ul {
   transition: background-color .2s ease-in-out;
 }
 
+.da-library-main-menu-plugin button,
 .da-library-item-list li button {
   margin: 0;
   position: relative;
@@ -261,6 +264,11 @@ ul {
 .da-library-item-list li button:hover {
   background-color: #E4F0FF;
   padding: 0;
+  z-index: 5;
+}
+
+.da-library-search-section .da-library-main-menu-plugin button:hover {
+  background-color: #E4F0FF;
   z-index: 5;
 }
 
@@ -691,6 +699,15 @@ ul {
 
 .da-library-type-item-btn.template-item:hover {
   color: #000;
+}
+
+.da-library-search-section {
+  .da-library-type-item {
+    /* Let the actual search result icon show */
+    button.da-library-type-item-btn.icons {
+      background-image: none;
+    }
+  }
 }
 
 .da-library-search-section:not(:last-child) {

@@ -13,7 +13,7 @@ import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { loadLibrary, getPreviewUrl, getAemUrlVars } from './helpers/helpers.js';
+import { OOTB_PLUGINS, loadLibrary, getPreviewUrl, getAemUrlVars } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -71,23 +71,33 @@ class DaLibrary extends LitElement {
 
   async loadDetails() {
     for (const plugin of this.config) {
-      // If the plugin has items loading, await them
-      if (plugin.loadItems) {
+      // If the plugin has items to load, await them
+      if (plugin.loadItems && !plugin.items) {
         plugin.items = await plugin.loadItems;
-
-        const renderFn = plugin.name === 'blocks'
-          ? this.renderBlockItem.bind(this)
-          : this.renderItems.bind(this);
-
-        // Add to search index
-        searchIndex[plugin.name] = {
-          ...plugin,
-          renderFn,
-        };
-
+        // Update the UI immediately
         this.requestUpdate();
+
+        // Blocks have another level of
+        // loading to get their variations
+        if (plugin.name === 'blocks') {
+          plugin.items = await Promise.all(plugin.items.map(async (block) => {
+            const variants = await block.loadVariants;
+            return { ...block, variants };
+          }));
+        }
       }
+      this.addToSearchIndex(plugin);
     }
+  }
+
+  async addToSearchIndex(plugin) {
+    const isOotb = OOTB_PLUGINS.some((name) => plugin.name === name);
+    if (isOotb) {
+      searchIndex[plugin.name] = plugin.items;
+      return;
+    }
+    searchIndex.byoPlugins ??= [];
+    searchIndex.byoPlugins.push(plugin);
   }
 
   // Remove the component completely from the DOM
@@ -350,16 +360,12 @@ class DaLibrary extends LitElement {
 
   async renderBlockDetail(block) {
     // Load variants if not already loaded
-    if (!block.variantDetails) {
+    if (!block.variants) {
       const variants = await block.loadVariants;
-      block.variantDetails = variants;
-
-      // Update block with aggregated info for search
-      block.variants = variants.map((v) => v.variants || v.name || '').join(' ');
-      block.tags = variants.map((v) => v.tags || '').join(' ');
+      block.variants = variants;
     }
 
-    return html`${block.variantDetails.map((item) => this.renderBlockItem(item))}`;
+    return html`${block.variants.map((variant) => this.renderBlockItem(variant))}`;
   }
 
   renderBlockGroup(group) {
@@ -392,28 +398,31 @@ class DaLibrary extends LitElement {
       </ul>`;
   }
 
+  renderItem(pluginName, item) {
+    const name = item.name || item.key || item.value;
+    if (!name) return nothing;
+
+    return html`
+      <li class="da-library-type-item">
+        <button class="da-library-type-item-btn ${pluginName}"
+          @click=${() => this.handleItemClick(pluginName, item)}>
+          <div class="da-library-type-item-detail">
+            ${item.icon ? html`<img src="${item.icon}" />` : nothing}
+            <span>${name}</span>
+            <svg class="icon">
+              <use href="#spectrum-AddCircle"/>
+            </svg>
+          </div>
+        </button>
+      </li>`;
+  }
+
   renderItems(plugin) {
     const { items } = plugin;
 
     return html`
       <ul class="da-library-type-list da-library-type-list-${plugin.name}">
-        ${items.map((item) => {
-          const name = item.name || item.key || item.value;
-          if (!name) return null;
-          return html`
-            <li class="da-library-type-item">
-              <button class="da-library-type-item-btn ${plugin.name}"
-                @click=${() => this.handleItemClick(plugin.name, item)}>
-                <div class="da-library-type-item-detail">
-                  ${item.icon ? html`<img src="${item.icon}" />` : nothing}
-                  <span>${name}</span>
-                  <svg class="icon">
-                    <use href="#spectrum-AddCircle"/>
-                  </svg>
-                </div>
-              </button>
-            </li>`;
-        })}
+        ${items.map((item) => this.renderItem(plugin.name, item))}
       </ul>`;
   }
 
@@ -512,18 +521,22 @@ class DaLibrary extends LitElement {
     });
   }
 
+  renderMainMenuItem(plugin) {
+    return html`
+      <li class="da-library-main-menu-plugin">
+        <button
+          class="${plugin.name}"
+          style="${plugin.icon ? `background-image: url(${plugin.icon})` : ''}"
+          @click=${() => this.handlePluginClick(plugin)}>
+          <span class="library-type-name">${plugin.title || plugin.name}</span>
+        </button>
+      </li>`;
+  }
+
   renderMainMenu() {
     return html`
       <ul class="da-library-item-list da-library-item-list-main">
-        ${this.config.map((library) => html`
-          <li>
-            <button
-              class="${library.name}"
-              style="${library.icon ? `background-image: url(${library.icon})` : ''}"
-              @click=${() => this.handlePluginClick(library)}>
-              <span class="library-type-name">${library.title || library.name}</span>
-            </button>
-          </li>`)}
+        ${this.config.map((plugin) => this.renderMainMenuItem(plugin))}
       </ul>`;
   }
 

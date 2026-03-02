@@ -8,6 +8,8 @@ import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutoc
 import { sanitizeName } from '../../../../scripts/utils.js';
 import { getBlocks } from './index.js';
 
+export const OOTB_PLUGINS = ['blocks', 'templates', 'icons', 'placeholders'];
+
 const LIBRARY_CACHE = {};
 const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
