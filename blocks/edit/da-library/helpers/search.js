@@ -40,7 +40,7 @@ function searchKv(searchStr, data, renderCallback) {
 
 function searchByoPlugins(searchStr, data, renderCallback) {
   if (!data.byoPlugins) return '';
-  return data.byoPlugins.reduce((acc, plugin) => {
+  const plugins = data.byoPlugins.reduce((acc, plugin) => {
     const isOotb = OOTB_PLUGINS.some((name) => plugin.name === name);
     // If it's BYO and the search term matches, add it
     if (!isOotb && andMatch(searchStr, plugin.name)) {
@@ -48,6 +48,8 @@ function searchByoPlugins(searchStr, data, renderCallback) {
     }
     return acc;
   }, []);
+
+  return plugins;
 }
 
 export default function search(_searchStr, data, daLib) {

@@ -91,11 +91,21 @@ class DaLibrary extends LitElement {
   }
 
   async addToSearchIndex(plugin) {
+    // Check the main index
+    if (searchIndex[plugin.name]) return;
+
+    // Check in byo
+    const foundByo = searchIndex.byoPlugins?.some((byo) => byo.name === plugin.name);
+    if (foundByo) return;
+
+    // Add a top level out of the box plugin
     const isOotb = OOTB_PLUGINS.some((name) => plugin.name === name);
     if (isOotb) {
       searchIndex[plugin.name] = plugin.items;
       return;
     }
+
+    // Add to byo plugins
     searchIndex.byoPlugins ??= [];
     searchIndex.byoPlugins.push(plugin);
   }
