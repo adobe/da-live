@@ -58,7 +58,6 @@ describe('Browse', () => {
       window.fetch = orgFetch;
     }
   });
-
   it('Load more uses da-continuation-token request header', async () => {
     const daBrowse = new DaBrowse();
 

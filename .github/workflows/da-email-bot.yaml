@@ -18,6 +18,7 @@ jobs:
       - name: Use email bot
         uses: adobecom/da-email-bot@main
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMS_CLIENT_ID: ${{ secrets.IMS_CLIENT_ID }}
           IMS_CLIENT_SECRET: ${{ secrets.IMS_CLIENT_SECRET }}
           AEM_API_KEY: ${{ secrets.AEM_API_KEY }}
