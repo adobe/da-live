@@ -101,24 +101,44 @@ test('Text formatting and links persist after reload', async ({ page }, workerIn
   const paraStart = await getFirstParagraphStart(page);
 
   // "Lorem" → Bold
-  await applyMarkToRange(page, 'strong', paraStart + WORDS.Lorem.offset,
-    paraStart + WORDS.Lorem.offset + WORDS.Lorem.length);
+  await applyMarkToRange(
+    page,
+    'strong',
+    paraStart + WORDS.Lorem.offset,
+    paraStart + WORDS.Lorem.offset + WORDS.Lorem.length,
+  );
 
   // "ipsum" → Italic
-  await applyMarkToRange(page, 'em', paraStart + WORDS.ipsum.offset,
-    paraStart + WORDS.ipsum.offset + WORDS.ipsum.length);
+  await applyMarkToRange(
+    page,
+    'em',
+    paraStart + WORDS.ipsum.offset,
+    paraStart + WORDS.ipsum.offset + WORDS.ipsum.length,
+  );
 
   // "dolor" → Underline
-  await applyMarkToRange(page, 'u', paraStart + WORDS.dolor.offset,
-    paraStart + WORDS.dolor.offset + WORDS.dolor.length);
+  await applyMarkToRange(
+    page,
+    'u',
+    paraStart + WORDS.dolor.offset,
+    paraStart + WORDS.dolor.offset + WORDS.dolor.length,
+  );
 
   // "sit" → Superscript
-  await applyMarkToRange(page, 'sup', paraStart + WORDS.sit.offset,
-    paraStart + WORDS.sit.offset + WORDS.sit.length);
+  await applyMarkToRange(
+    page,
+    'sup',
+    paraStart + WORDS.sit.offset,
+    paraStart + WORDS.sit.offset + WORDS.sit.length,
+  );
 
   // "amet" → Subscript
-  await applyMarkToRange(page, 'sub', paraStart + WORDS.amet.offset,
-    paraStart + WORDS.amet.offset + WORDS.amet.length);
+  await applyMarkToRange(
+    page,
+    'sub',
+    paraStart + WORDS.amet.offset,
+    paraStart + WORDS.amet.offset + WORDS.amet.length,
+  );
 
   // --- Apply link to "consectetur" pointing to https://adobe.com ---
   // Select the word then use Mod+K to open the link dialog
