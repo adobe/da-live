@@ -3,7 +3,6 @@ import { DOMParser as proseDOMParser, DOMSerializer, TextSelection } from 'da-y-
 import {
   LitElement,
   html,
-  render,
   until,
   createRef,
   ref,
@@ -60,8 +59,9 @@ class DaLibrary extends LitElement {
     _libraryDetails: { state: true },
     _searchStr: { state: true },
     _blockPreviewPath: { state: true },
-    _previewItemName: { Type: String },
-    _previewStatus: { Type: Object },
+    _previewItemName: { state: true },
+    _previewStatus: { state: true },
+    _activeDialogPlugin: { state: true },
   };
 
   constructor() {
@@ -93,17 +93,28 @@ class DaLibrary extends LitElement {
     import('../../shared/da-dialog/da-dialog.js');
   }
 
+  updated(changedProperties) {
+    if (changedProperties.has('_activeDialogPlugin') && this._activeDialogPlugin) {
+      const selector = this._activeDialogPlugin.experience === 'fullsize-dialog'
+        ? '.da-fs-dialog-plugin'
+        : '.da-dialog-plugin';
+      this.shadowRoot.querySelector(selector)?.showModal();
+    }
+  }
+
   handleKeydown(e) {
     if (e.key === 'Escape') closeLibrary();
   }
 
   handleModalClose() {
-    this.shadowRoot.querySelector('.da-dialog-plugin').close();
+    this.shadowRoot.querySelector('.da-dialog-plugin')?.close();
+    this._activeDialogPlugin = null;
     closeLibrary();
   }
 
   handleFullsizeModalClose() {
-    this.shadowRoot.querySelector('.da-fs-dialog-plugin').close();
+    this.shadowRoot.querySelector('.da-fs-dialog-plugin')?.close();
+    this._activeDialogPlugin = null;
     closeLibrary();
   }
 
@@ -114,51 +125,8 @@ class DaLibrary extends LitElement {
       return;
     }
 
-    if (library.experience === 'dialog') {
-      let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
-      if (dialog) dialog.remove();
-
-      dialog = html`
-        <dialog class="da-dialog-plugin">
-          <div class="da-dialog-header">
-            <div class="da-dialog-header-title">
-              <img src="${library.icon}" />
-              <p>${library.title || library.name}</p>
-            </div>
-            <button class="primary" @click=${this.handleModalClose}>Close</button>
-          </div>
-          ${this.renderPlugin(library, true)}
-        </dialog>
-      `;
-
-      render(dialog, this.shadowRoot);
-
-      this.shadowRoot.querySelector('.da-dialog-plugin').showModal();
-
-      return;
-    }
-
-    if (library.experience === 'fullsize-dialog') {
-      let dialog = this.shadowRoot.querySelector('.da-dialog-plugin');
-      if (dialog) dialog.remove();
-
-      dialog = html`
-        <dialog class="da-fs-dialog-plugin">
-          <div class="da-dialog-header">
-            <div class="da-dialog-header-title">
-              <img src="${library.icon}" />
-              <p>${library.title || library.name}</p>
-            </div>
-            <button class="primary" @click=${this.handleFullsizeModalClose}>Close</button>
-          </div>
-          ${this.renderPlugin(library, true)}
-        </dialog>
-      `;
-
-      render(dialog, this.shadowRoot);
-
-      this.shadowRoot.querySelector('.da-fs-dialog-plugin').showModal();
-
+    if (library.experience === 'dialog' || library.experience === 'fullsize-dialog') {
+      this._activeDialogPlugin = library;
       return;
     }
 
@@ -620,6 +588,28 @@ class DaLibrary extends LitElement {
     return html`${name}`;
   }
 
+  renderActiveDialog() {
+    const library = this._activeDialogPlugin;
+    const isFullsize = library.experience === 'fullsize-dialog';
+    const className = isFullsize ? 'da-fs-dialog-plugin' : 'da-dialog-plugin';
+    const closeHandler = isFullsize
+      ? this.handleFullsizeModalClose
+      : this.handleModalClose;
+
+    return html`
+      <dialog class="${className}">
+        <div class="da-dialog-header">
+          <div class="da-dialog-header-title">
+            <img src="${library.icon}" />
+            <p>${library.title || library.name}</p>
+          </div>
+          <button class="primary" @click=${closeHandler}>Close</button>
+        </div>
+        ${this.renderPlugin(library, true)}
+      </dialog>
+    `;
+  }
+
   renderMainMenu() {
     return html`
       <ul class="da-library-item-list da-library-item-list-main">
@@ -675,6 +665,7 @@ class DaLibrary extends LitElement {
       <div class="da-library-preview">
         ${this._blockPreviewPath ? this.renderPreview() : nothing}
       </div>
+      ${this._activeDialogPlugin ? this.renderActiveDialog() : nothing}
     `;
   }
 
