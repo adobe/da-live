@@ -117,19 +117,29 @@ export const getSheetByIndex = (json, index = 0) => {
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
 export async function contentLogin(owner, repo) {
-  const { accessToken } = await initIms();
-  return fetch(`${CON_ORIGIN}/${owner}/${repo}/.gimme_cookie`, {
-    credentials: 'include',
-    headers: { Authorization: `Bearer ${accessToken.token}` },
-  });
+  try {
+    const { accessToken } = await initIms();
+    await fetch(`${CON_ORIGIN}/${owner}/${repo}/.gimme_cookie`, {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${accessToken.token}` },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Content Login failed', e);
+  }
 }
 
 export async function livePreviewLogin(owner, repo) {
-  const { accessToken } = await initIms();
-  return fetch(`${getLivePreviewUrl(owner, repo)}/gimme_cookie`, {
-    credentials: 'include',
-    headers: { Authorization: `Bearer ${accessToken.token}` },
-  });
+  try {
+    const { accessToken } = await initIms();
+    await fetch(`${getLivePreviewUrl(owner, repo)}/gimme_cookie`, {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${accessToken.token}` },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Live Preview Login failed', e);
+  }
 }
 
 /**
