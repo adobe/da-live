@@ -81,7 +81,7 @@ const items = [
     argument: true,
   },
   {
-    title: 'Table',
+    title: 'Block',
     command: insertTable,
     class: 'insert-table',
     excludeFromTable: true,
