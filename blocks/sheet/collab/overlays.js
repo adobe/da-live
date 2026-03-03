@@ -65,6 +65,12 @@ export function drawOverlays(wsProvider) {
   const localSelection = localState?.position?.selection;
   const localSheetIdx = localState?.position?.sheetIdx;
 
+  // Remove all existing overlays
+  const overlays = document.querySelectorAll('.collab-overlay');
+  overlays.forEach((overlay) => {
+    overlay.remove();
+  });
+
   states.forEach((state, clientId) => {
     if (clientId === ownClientId) {
       return;
@@ -104,6 +110,7 @@ export function drawOverlays(wsProvider) {
     if (!overlayDiv) {
       overlayDiv = document.createElement('div');
       overlayDiv.id = `collab-overlay-${clientId}`;
+      overlayDiv.classList.add('collab-overlay');
       wrapper.appendChild(overlayDiv);
     }
 

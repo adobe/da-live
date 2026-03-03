@@ -22,18 +22,6 @@ export async function attachLocalYDoc(el) {
   return { ydoc, yUndoManager };
 }
 
-function debounce(func, wait = 500) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func.apply(this, args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
 export default function joinCollab(el) {
   const path = el.details.sourceUrl;
 
@@ -75,9 +63,9 @@ export default function joinCollab(el) {
     });
   }
 
-  wsProvider.awareness.on('change', debounce(() => {
+  wsProvider.awareness.on('update', () => {
     drawOverlays(wsProvider);
-  }));
+  });
 
   const yUndoManager = new Y.UndoManager(
     ysheets,
