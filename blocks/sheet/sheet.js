@@ -1,4 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
+import { Y } from 'da-y-wrapper';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
@@ -49,7 +50,7 @@ class DaSheetPanes extends LitElement {
     verReview.addEventListener('close', () => { verReview.remove(); });
     verReview.addEventListener('restore', async () => {
       const { jSheetToY } = await import('../../deps/da-parser/dist/index.js');
-      jSheetToY(verReview.data, this.ydoc, true);
+      jSheetToY(verReview.data, this.ydoc, true, Y);
       verReview.remove();
     });
 

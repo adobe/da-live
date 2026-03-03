@@ -89,9 +89,8 @@ export function deleteRow(ydata, rowIndex, count = 1) {
       const numColumns = ydata.get(0).toArray().length || MIN_DIMENSIONS;
       insertRow(ydata, i, null, numColumns);
     }
+    console.log(`Inserted ${MIN_DIMENSIONS - numRows} row(s) at index ${numRows} (data and metadata)`);
   }
-
-  console.log(`Inserted ${MIN_DIMENSIONS - numRows} row(s) at index ${numRows} (data and metadata)`);
 }
 
 export function resizeColumn(ycolumns, colIndex, width) {
@@ -152,9 +151,8 @@ export function deleteColumn(ydata, ycolumns, colIndex, count = 1) {
     for (let i = numColumns; i < MIN_DIMENSIONS; i += 1) {
       insertColumn(ydata, ycolumns, i);
     }
+    console.log(`Inserted ${MIN_DIMENSIONS - numColumns} column(s) at index ${numColumns} (data and metadata)`);
   }
-
-  console.log(`Inserted ${MIN_DIMENSIONS - numColumns} column(s) at index ${numColumns} (data and metadata)`);
 }
 
 /**
