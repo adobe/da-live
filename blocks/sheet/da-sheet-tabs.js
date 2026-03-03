@@ -44,6 +44,7 @@ class DaSheetTabs extends LitElement {
     this._active = idx;
     this.sheetContents.forEach((sheet) => { sheet.style.display = 'none'; });
     this.sheetContents[idx].style.display = 'block';
+    window.jspreadsheet.current = this.jexcel[idx];
     this.dispatchEvent(new CustomEvent('sheet-changed', { detail: { idx } }));
   }
 
