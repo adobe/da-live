@@ -12,7 +12,6 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
-    lockdownImages: { attribute: false },
     _editorLoaded: { state: true },
     _showPane: { state: true },
     _versionUrl: { state: true },
@@ -75,11 +74,6 @@ export default class DaContent extends LitElement {
     const { owner, repo, previewUrl } = this.details;
     const { pathname } = new URL(previewUrl);
 
-    // Only use livePreviewUrl if lockdownImages flag is set to true
-    const displayUrl = this.lockdownImages
-      ? `${getLivePreviewUrl(owner, repo)}${pathname}`
-      : previewUrl;
-
     return html`
       <div class="editor-wrapper">
         <da-editor
@@ -107,9 +101,8 @@ export default class DaContent extends LitElement {
       </div>
       ${this._editorLoaded ? html`
         <da-preview
-          path=${displayUrl}
+          path="${getLivePreviewUrl(owner, repo)}${pathname}"
           .show=${this._showPane === 'preview'}
-          .lockdownImages=${this.lockdownImages}
           class="${this._showPane === 'preview' ? 'is-visible' : ''}"
           @close=${this.togglePane}></da-preview>
         <da-versions

@@ -1,5 +1,5 @@
 import getPathDetails from '../shared/pathDetails.js';
-import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin } from '../shared/utils.js';
+import { daFetch, contentLogin, livePreviewLogin } from '../shared/utils.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -62,7 +62,6 @@ async function setUI(el) {
 
   daTitle.permissions = resp.permissions;
   daContent.permissions = resp.permissions;
-  daContent.lockdownImages = await checkLockdownImages(owner);
 
   if (daContent.wsProvider) {
     daContent.wsProvider.disconnect({ data: 'Client navigation' });
