@@ -82,15 +82,18 @@ function makePictures(editor, live) {
     if (daCursor) setCursor(daCursor, img);
 
     const clone = img.cloneNode(true);
-    if (live) {
-      // make images relative to the live preview URL
-      const source = new URL(clone.src);
-      if (source.host.endsWith('.da.live')) {
-        source.pathname = `/${source.pathname
-          .split('/')
-          .slice(3) // remove org and site
-          .join('/')}`;
-        clone.src = source.toString();
+    if (live && clone.src) {
+      try {
+        const source = new URL(clone.src);
+        if (source.host.endsWith('.da.live')) {
+          source.pathname = `/${source.pathname
+            .split('/')
+            .slice(3) // remove org and site
+            .join('/')}`;
+          clone.src = source.toString();
+        }
+      } catch {
+        // src is not an absolute URL, nothing to rewrite
       }
     }
 
