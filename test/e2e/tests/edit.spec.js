@@ -90,7 +90,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.waitForTimeout(2000);
 
   await fill(page, 'before table');
-  await page.getByText('Block', { exact: true }).click();
+  await page.getByTitle('Insert block').click();
   await page.getByText('columns').dblclick();
   await page.keyboard.type('mytable');
   const dataCells = page.locator('div.ProseMirror table tr:nth-child(2) td');
