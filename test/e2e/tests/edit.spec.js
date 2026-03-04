@@ -90,7 +90,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.waitForTimeout(2000);
 
   await fill(page, 'before table');
-  await page.getByText('Block', { exact: true }).click();
+  await page.locator('.insert-table').getByText('Block', { exact: true }).click();
   await page.getByText('columns').dblclick();
   await page.keyboard.type('mytable');
   const dataCells = page.locator('div.ProseMirror table tr:nth-child(2) td');
@@ -145,10 +145,12 @@ test('Add code mark', async ({ page }, workerInfo) => {
   // Forward
   for (let i = 0; i < 10; i += 1) {
     await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(100);
   }
   await page.keyboard.press('`');
   for (let i = 0; i < 4; i += 1) {
     await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(100);
   }
   await page.keyboard.press('`');
   // leave time for the code mark to be processed
@@ -160,11 +162,13 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await fill(page, 'This is a line that will contain a code mark.');
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(100);
   }
   await page.keyboard.press('`');
   await page.locator('div.ProseMirror').locator('code');
   for (let i = 0; i < 5; i += 1) {
     await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(100);
   }
   await page.keyboard.press('`');
   codeElement = proseMirror.locator('code');
@@ -174,11 +178,13 @@ test('Add code mark', async ({ page }, workerInfo) => {
   // No Overwrite
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(100);
   }
   await page.keyboard.press('`');
 
   for (let i = 0; i < 11; i += 1) {
     await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(100);
   }
   await page.keyboard.press('`');
   await expect(proseMirror).toContainText('This is a line that will contain `a code mark`.');
