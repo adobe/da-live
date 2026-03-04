@@ -82,11 +82,13 @@ class DaLibrary extends LitElement {
     window.addEventListener('keydown', this.handleKeydown);
     this.addEventListener('blur', () => window.view?.focus());
     this.searchInputRef.value.focus();
+    window.dispatchEvent(new CustomEvent('da-library-open', { composed: true }));
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('keydown', this.handleKeydown);
+    window.dispatchEvent(new CustomEvent('da-library-close', { composed: true }));
   }
 
   firstUpdated() {

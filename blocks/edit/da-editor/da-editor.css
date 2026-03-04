@@ -629,7 +629,6 @@ td.selectedCell {
 }
 
 .ProseMirror-hideselection *::selection { background: transparent; }
-.ProseMirror-hideselection *::selection { background: transparent; }
 .ProseMirror-hideselection { caret-color: transparent; }
 
 .ProseMirror-selectednode {
@@ -980,4 +979,19 @@ da-diff-deleted, da-diff-added {
 
 .focal-point-icon:hover svg {
   color: #0265dc;
+}
+
+.da-fake-selection {
+  background-color: #b3d4fc;
+  box-decoration-break: clone;
+  /* stylelint-disable-next-line property-no-vendor-prefix */
+  -webkit-box-decoration-break: clone;
+  padding: 5px 0;
+}
+
+.da-fake-caret {
+  border-left: 1px solid black;
+  margin-left: -1px;
+  pointer-events: none;
+  animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite;
 }
