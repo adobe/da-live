@@ -330,6 +330,14 @@ ul {
   button {
     padding: 0;
     border: none;
+
+    &:hover {
+      color:#167AF3;
+    }
+  }
+
+  .add-item-btn {
+    height: 18px;
   }
 }
 

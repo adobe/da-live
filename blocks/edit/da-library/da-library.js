@@ -8,12 +8,12 @@ import {
 } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { daFetch } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { OOTB_PLUGINS, loadLibrary, getPreviewUrl, getAemUrlVars } from './helpers/helpers.js';
+import { OOTB_PLUGINS, loadLibrary, getItemDetails, getPreviewStatus } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -110,7 +110,6 @@ class DaLibrary extends LitElement {
     searchIndex.byoPlugins.push(plugin);
   }
 
-  // Remove the component completely from the DOM
   handleClose() {
     this.remove();
   }
@@ -240,21 +239,20 @@ class DaLibrary extends LitElement {
     }
   }
 
-  getParts() {
-    const view = 'edit';
-    const [org, repo, ...path] = sanitizePathParts(window.location.hash.substring(1));
-    return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
-  }
+  async handleOpenPreview(item) {
+    const { org, site, pathname } = getItemDetails(item);
+    this._preview = {
+      name: item.name || item.key,
+      url: `https://main--${site}--${org}.aem.page${pathname}`,
+    };
 
-  handlePreviewOpen(path, previewName) {
-    const previewPath = getPreviewUrl(path);
-    this._blockPreviewPath = previewPath || path;
-    this._previewItemName = previewName || '';
+    // Lazily get the preview status
+    this._preview.ok = await getPreviewStatus({ org, site, pathname });
+    this.requestUpdate();
   }
 
   handlePreviewClose() {
-    this._blockPreviewPath = '';
-    this._previewItemName = '';
+    delete this._preview;
   }
 
   async handlePluginLoad({ target }) {
@@ -297,6 +295,10 @@ class DaLibrary extends LitElement {
     setTimeout(() => {
       if (!target.contentWindow) return;
 
+      // const view = 'edit';
+      // const [org, repo, ...path] = sanitizePathParts(window.location.hash.substring(1));
+      // return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
+
       const project = this.getParts();
       const { token } = window.adobeIMS.getAccessToken();
 
@@ -311,38 +313,47 @@ class DaLibrary extends LitElement {
     }, 750);
   }
 
-  renderPreviewDialog() {
-    if (!this._preview) return nothing;
-
-    const [status, error] = this._previewStatus[this._previewItemName];
-
-    const action = {
-      style: 'primary outline',
-      label: 'Close',
-      click: () => this.handlePreviewClose(),
-    };
-
-    return html`
-      <da-dialog
-        class="da-dialog-block-preview"
-        size="auto"
-        emphasis="quiet"
-        title="${this._previewItemName} Preview"
-        .action=${action}
-        @close=${this.handlePreviewClose}>
-        ${status === 200 ? html`<iframe
-          class="da-dialog-block-preview-frame"
-          src="${this._blockPreviewPath}"
-          @load=${this.handlePreviewLoad}
-          allow="clipboard-write *"></iframe>` : html`<div style="margin: 0 24px">${error || 'This block/template has not been previewed.'}</div>`}
-      </da-dialog>
-    `;
-  }
-
   handleToolTip(e, item) {
     e.stopPropagation();
     item.showToolTip = !item.showToolTip;
     this.requestUpdate();
+  }
+
+  renderPreviewDialog() {
+    if (!this._preview) return nothing;
+
+    const handleClose = () => { this._preview = undefined; };
+
+    const { ok } = this._preview;
+
+    // Hide the iframe while fetching OK or if OK is false
+    const hideIframe = ok === undefined || ok === false ? 'hide-iframe' : '';
+
+    // Only display an error if we truly know the OK status
+    const error = ok === false
+      ? `It appears ${this._preview.name} has not been previewed.`
+      : undefined;
+
+    const action = {
+      style: 'primary outline',
+      label: 'Close',
+      click: handleClose,
+    };
+
+    return html`
+      <da-dialog
+        size="auto"
+        emphasis="quiet"
+        title="${this._preview.name} Preview"
+        .action=${action}
+        @close=${handleClose}>
+        ${error ? html`<div class="iframe-overlay"><p>${error}</p></div>` : nothing}
+        <iframe
+          src=${this._preview.url}
+          class="da-dialog-block-preview-frame ${hideIframe}"
+          allow="clipboard-write *"></iframe>
+      </da-dialog>
+    `;
   }
 
   renderBlockItem(item, icon = false) {
@@ -386,12 +397,11 @@ class DaLibrary extends LitElement {
              <span class="name">${group.name}</span>
           </button>
           <div class="da-library-type-group-secondary-actions">
-            <button class= "preview" @click=${() => this.handlePreviewOpen(group.path, group.name)}>
+            <button class= "preview" @click=${() => this.handleOpenPreview(group)}>
               <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
             </button>
-              <button @click=${this.handleGroupOpen}>
-                <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
-              </button>
+            <button @click=${this.handleGroupOpen}>
+              <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
             </button>
           </div>
         </div>
@@ -412,18 +422,27 @@ class DaLibrary extends LitElement {
     const name = item.name || item.key || item.value;
     if (!name) return nothing;
 
+    const previewBtn = pluginName === 'templates'
+      ? html`
+        <button class= "preview" @click=${() => this.handleOpenPreview(item)}>
+          <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+        </button>`
+      : nothing;
+
     return html`
       <li class="da-library-type-item">
-        <button class="da-library-type-item-btn ${pluginName}"
-          @click=${() => this.handleItemClick(pluginName, item)}>
+        <div class="da-library-type-item-btn ${pluginName}">
           <div class="da-library-type-item-detail">
             ${item.icon ? html`<img src="${item.icon}" />` : nothing}
-            <span>${name}</span>
-            <svg class="icon">
-              <use href="#spectrum-AddCircle"/>
-            </svg>
+            <button>${name}</button>
+            <div class="da-library-icons">
+              ${previewBtn}
+              <button class="add-item-btn" @click=${() => this.handleItemClick(pluginName, item)}>
+                <svg class="icon"><use href="#spectrum-AddCircle"/></svg>
+              </button>
+            </div>
           </div>
-        </button>
+        </div>
       </li>`;
   }
 
@@ -454,45 +473,17 @@ class DaLibrary extends LitElement {
       </div>`;
   }
 
-  async checkPreviewStatus(items, getUrl, getKey) {
-    await Promise.all(items.map(async (item) => {
-      let path;
-      try {
-        const itemUrl = new URL(getUrl(item));
-        path = itemUrl.pathname;
-
-        // DA Admin Flavored URLs
-        if (itemUrl.origin.endsWith('admin.da.live') && path.startsWith('/source')) {
-          path = path.replace('/source', '');
-        }
-
-        // AEM Flavored URLs
-        if (itemUrl.origin.includes('--')) {
-          const [org, site] = getAemUrlVars(getUrl(item));
-          path = `/${org}/${site}${itemUrl.pathname}`;
-        }
-      } catch {
-        item.error = 'Please use a fully qualified url for your library';
-      }
-      await aemAdmin(path, 'status', 'GET')
-        .then((response) => { item.status = response.preview.status; })
-        .catch(() => { item.status = 'error'; });
-    }));
-
-    const status = items.reduce((acc, item) => {
-      acc[getKey(item)] = [item.status, item.error];
-      return acc;
-    }, {});
-    this._previewStatus = { ...this._previewStatus, ...status };
-  }
-
   renderPluginDetail(plugin) {
-    const { name } = plugin;
+    // Blocks get special treatment due to grouping
+    if (plugin.name === 'blocks') return this.renderBlockGroups(plugin);
 
-    // Only blocks get special treatment due to grouping
-    if (name === 'blocks') return this.renderBlockGroups(plugin);
+    // Most OOTB plugins use the default renderItems
+    if (OOTB_PLUGINS.some((name) => plugin.name === name)) {
+      return this.renderItems(plugin);
+    }
 
-    return this.renderItems(plugin);
+    // This is a BYO plugin
+    return this.renderPlugin(plugin);
   }
 
   renderPluginDialog() {
@@ -519,13 +510,16 @@ class DaLibrary extends LitElement {
     return filtered.map((plugin) => {
       const isActive = this._active === plugin;
 
+      // If there are items, or it doesn't have items to load (byo plugin), it's ready
+      const isReady = plugin.items || !plugin.loadItems;
+
       return html`
         <div class="palette-pane ${isActive ? '' : 'forward'}" ?inert=${!isActive}>
           <div class="palette-pane-header">
             <button class="palette-back" @click=${this.handleBack}>Back</button>
             <h2>${plugin.name}</h2>
           </div>
-          ${plugin.items ? this.renderPluginDetail(plugin) : html`</p>Loading...</p>`}
+          ${isReady ? this.renderPluginDetail(plugin) : html`</p>Loading...</p>`}
         </div>
       `;
     });

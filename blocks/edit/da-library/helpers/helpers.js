@@ -2,7 +2,7 @@
 import { DOMParser } from 'da-y-wrapper';
 import { getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch } from '../../../shared/utils.js';
+import { daFetch, aemAdmin } from '../../../shared/utils.js';
 import { getConfKey, openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { sanitizeName } from '../../../../scripts/utils.js';
@@ -246,4 +246,35 @@ export async function loadLibrary() {
   LIBRARY_CACHE[sitePath] ??= getLibraryList();
 
   return LIBRARY_CACHE[sitePath];
+}
+
+export function getItemDetails(item) {
+  // Blocks will be path, templates will be value
+  const url = new URL(item.path || item.value);
+  const { hostname, pathname } = url;
+
+  // AEM Flavor
+  if (hostname.includes('.aem.')) {
+    const [org, site] = hostname.split('.')[0].split('--').reverse();
+    return { org, site, pathname };
+  }
+  // DA Content Flavor
+  if (hostname.includes('content.da.live')) {
+    const [org, site, ...rest] = pathname.slice(1).split('/');
+    return { org, site, pathname: `/${rest.join('/')}` };
+  }
+  // DA Admin Flavor
+  const [, org, site, ...rest] = pathname.slice(1).split('/');
+  return { org, site, pathname: `/${rest.join('/')}` };
+}
+
+export async function getPreviewStatus({ org, site, pathname }) {
+  const path = `/${org}/${site}${pathname}`;
+  try {
+    const json = await aemAdmin(path, 'status', 'GET');
+    return json.preview.status === 200;
+  } catch (err) {
+    console.log(`Could not get preview status for ${path}`, err);
+    return null;
+  }
 }
