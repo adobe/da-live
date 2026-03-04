@@ -240,8 +240,8 @@ export function getAemUrlVars(url) {
 
 export async function loadLibrary() {
   // Get the current org and site
-  const { org, repo } = getPathDetails();
-  const sitePath = `/${org}/${repo}`;
+  const { owner, repo } = getPathDetails();
+  const sitePath = `/${owner}/${repo}`;
 
   LIBRARY_CACHE[sitePath] ??= getLibraryList();
 
