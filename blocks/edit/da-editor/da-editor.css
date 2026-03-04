@@ -8,6 +8,7 @@
   --editor-btn-bg-color: #EFEFEF;
   --editor-btn-bg-color-hover: var(--s2-blue-900);
 
+  position: relative;
   grid-area: editor;
 }
 
@@ -23,7 +24,7 @@
   gap: 12px;
   position: absolute;
   top: 0;
-  z-index: 2;
+  z-index: 5;
   width: 100%;
   padding: 20px;
   background: #EFEFEF;
@@ -81,6 +82,7 @@
   border-radius: 10px;
   z-index: 1;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .ProseMirror-focused {
@@ -804,7 +806,7 @@ da-library.hide {
   white-space: nowrap;
 }
 
-da-loc-deleted, da-loc-added {
+da-diff-deleted, da-diff-added {
   display: block;
   position: relative;
 }
@@ -844,27 +846,7 @@ da-loc-deleted, da-loc-added {
   box-shadow: rgb(181 181 181) 0 0 5px 0;
 }
 
-.loc-keep {
-  width: 44px;
-  height: 44px;
-  background: url('/blocks/edit/img/Smock_CheckmarkCircleOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
-}
-
-.loc-keep:hover {
-  box-shadow: #008000 0 0 5px 0;
-}
-
-.loc-delete {
-  width: 44px;
-  height: 44px;
-  background: url('/blocks/edit/img/Smock_DeleteOutline_18_N.svg') center / 18px no-repeat var(--editor-btn-bg-color);
-}
-
-.loc-delete:hover {
-  box-shadow: #f00 0 0 5px 0;
-}
-
-.loc-color-overlay {
+.diff-color-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -873,8 +855,46 @@ da-loc-deleted, da-loc-added {
   border-radius: 6px;
 }
 
-.loc-color-overlay.loc-langstore::after {
-  content: 'Upstream';
+
+.diff-lang-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1001;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.diff-color-overlay.diff-upstream {
+  background-color: rgb(70 130 180 / 40%);
+}
+
+.diff-color-overlay.diff-local {
+  background-color: rgb(144 42 222 / 40%);
+}
+
+.diff-color-overlay.diff-upstream .diff-lang-overlay {
+  background-color: rgb(70 130 180 / 80%);
+}
+
+.diff-color-overlay.diff-local .diff-lang-overlay {
+  background-color: rgb(144 42 222 / 80%);
+}
+
+.diff-color-overlay.diff-upstream .loc-dialog {
+  color: rgb(70 130 180);
+}
+
+.diff-color-overlay.diff-local .loc-dialog {
+  color: rgb(144 42 222);
+}
+
+.diff-color-overlay.diff-upstream::after {
+  content: var(--diff-label-upstream, 'Upstream');
   position: absolute;
   bottom: 4px;
   right: 4px;
@@ -889,8 +909,8 @@ da-loc-deleted, da-loc-added {
   text-align: center;
 }
 
-.loc-color-overlay.loc-regional::after {
-  content: 'Local';
+.diff-color-overlay.diff-local::after {
+  content: var(--diff-label-local, 'Local');
   position: absolute;
   bottom: 4px;
   right: 4px;
@@ -905,15 +925,86 @@ da-loc-deleted, da-loc-added {
   text-align: center;
 }
 
-.loc-lang-overlay {
+/* Wrapper for images with focal point overlay */
+.focal-point-image-wrapper {
+  position: relative;
+  display: block;
+}
+
+.focal-point-image-wrapper img {
+  display: block;
+  position: relative;
+}
+
+/* Focal point icon overlay on images in tables */
+.focal-point-icon {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1001;
-  display: none;
-  justify-content: center;
+  bottom: 4px;
+  left: 4px;
+  width: 32px;
+  height: 32px;
+  background: rgb(255 255 255 / 90%);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  display: flex;
   align-items: center;
-  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+/* Show icon on hover ONLY for images without focal point data */
+.focal-point-image-wrapper:hover .focal-point-icon:not(.focal-point-icon-active) {
+  opacity: 1;
+}
+
+/* Always show icon for images with focal point data */
+.focal-point-icon-active {
+  opacity: 1;
+}
+
+.focal-point-icon:hover {
+  background: #fff;
+  border-color: #0265dc;
+}
+
+.focal-point-icon svg {
+  color: #505050;
+}
+
+.focal-point-icon svg .fill {
+  fill: currentcolor;
+}
+
+.focal-point-icon:hover svg {
+  color: #0265dc;
+}
+
+.table-select-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: #fff;
+  background-image: url('/blocks/edit/img/select-handle.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  z-index: 100;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-select-handle.is-visible {
+  display: flex;
+}
+
+.table-select-handle:hover {
+  background-color: #f0f7ff;
+  border-color: var(--s2-blue-800);
 }

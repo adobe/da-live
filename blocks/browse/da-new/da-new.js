@@ -111,8 +111,8 @@ export default class DaNew extends LitElement {
     const formData = new FormData(e.target);
     const split = this._fileLabel.split('.');
     const ext = split.pop();
-    const name = split.join('.').replaceAll(/\W+/g, '-').toLowerCase();
-    const filename = `${split.join('.').replaceAll(/\W+/g, '-').toLowerCase()}.${ext}`;
+    const name = split.join('.').replaceAll(/[^a-zA-Z0-9.]/g, '-').toLowerCase();
+    const filename = `${name}.${ext}`;
     const path = `${this.fullpath}/${filename}`;
 
     await saveToDa({ path, formData });

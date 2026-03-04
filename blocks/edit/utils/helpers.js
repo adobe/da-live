@@ -1,94 +1,20 @@
+import { DOMSerializer, Y } from 'da-y-wrapper';
+import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { sanitizePathParts } from '../../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch } from '../../shared/utils.js';
 
+export function isURL(text) {
+  try {
+    const url = new URL(text);
+    return url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 const AEM_PERMISSION_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
-
-function getBlockName(block) {
-  const classes = block.className.split(' ');
-  const name = classes.shift();
-  return classes.length > 0 ? `${name} (${classes.join(', ')})` : name;
-}
-
-function handleRow(row, maxCols, table) {
-  const tr = document.createElement('tr');
-  const cells = [...row.children];
-  cells.forEach((cell, idx) => {
-    const td = document.createElement('td');
-    if (cells.length < maxCols && idx === cells.length - 1) {
-      td.setAttribute('colspan', maxCols - idx);
-    }
-    td.innerHTML = cells[idx].innerHTML;
-    tr.append(td);
-  });
-  table.append(tr);
-}
-
-export function getTable(block) {
-  const name = getBlockName(block);
-  const rows = [...block.children];
-  const maxCols = rows.reduce((cols, row) => (
-    row.children.length > cols ? row.children.length : cols), 0);
-  const table = document.createElement('table');
-  const headerRow = document.createElement('tr');
-
-  const td = document.createElement('td');
-  td.setAttribute('colspan', maxCols);
-  td.append(name);
-
-  headerRow.append(td);
-  table.append(headerRow);
-  rows.forEach((row) => { handleRow(row, maxCols, table); });
-  return table;
-}
-
-function para() {
-  return document.createElement('p');
-}
-
-export function aem2prose(doc) {
-  // Fix BRs
-  const brs = doc.querySelectorAll('p br');
-  brs.forEach((br) => { br.remove(); });
-
-  // Fix blocks
-  const blocks = doc.querySelectorAll('main > div > div, da-loc-deleted > div, da-loc-added > div, da-loc-deleted.da-group > div > div, da-loc-added.da-group > div > div');
-  blocks.forEach((block) => {
-    if (block.className?.includes('loc-')) return;
-    const table = getTable(block);
-    block.parentElement.replaceChild(table, block);
-    table.insertAdjacentElement('beforebegin', para());
-    table.insertAdjacentElement('afterend', para());
-  });
-
-  // Fix pictures
-  const imgs = doc.querySelectorAll('picture img');
-  imgs.forEach((img) => {
-    const pic = img.closest('picture');
-    pic.parentElement.replaceChild(img, pic);
-  });
-
-  // Fix three dashes
-  const paras = doc.querySelectorAll('p');
-  paras.forEach((p) => {
-    if (p.textContent.trim() === '---') {
-      const hr = document.createElement('hr');
-      p.parentElement.replaceChild(hr, p);
-    }
-  });
-
-  // Fix sections
-  const sections = doc.body.querySelectorAll('main > div');
-  return [...sections].map((section, idx) => {
-    const fragment = new DocumentFragment();
-    if (idx > 0) {
-      const hr = document.createElement('hr');
-      fragment.append(para(), hr, para());
-    }
-    fragment.append(...section.querySelectorAll(':scope > *'));
-    return fragment;
-  });
-}
 
 /* eslint-disable max-len */
 /**
@@ -113,6 +39,22 @@ function parseAemError(xError) {
     return xError.split(': ').pop().replace('.00', '');
   }
   return xError.replace('[admin] ', '');
+}
+
+export async function getCdnConfig(path) {
+  const [org, site] = sanitizePathParts(path);
+  const resp = await daFetch(`${AEM_ORIGIN}/config/${org}/sites/${site}.json`);
+  if (!resp.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(`Cannot fetch site config. - Status: ${resp.status}`);
+    return { error: 'Cannot fetch site config.', status: resp.status };
+  }
+  const json = await resp.json();
+  if (!json.cdn) return {};
+  return {
+    preview: json.cdn.preview?.host,
+    prod: json.cdn.prod?.host,
+  };
 }
 
 export async function saveToAem(path, action) {
@@ -333,4 +275,89 @@ export async function requestRole(org, site, action) {
 
 export function parse(inital) {
   return new DOMParser().parseFromString(inital, 'text/html');
+}
+
+export function debounce(func, wait) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+export function createElement(tag, className = '', attributes = {}) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  Object.entries(attributes).forEach(([key, value]) => {
+    element.setAttribute(key, value);
+  });
+  return element;
+}
+
+export function createTooltip(text, className) {
+  const tooltip = createElement('span', className);
+  tooltip.textContent = text;
+  return tooltip;
+}
+
+export function createButton(className, type = 'button', attributes = {}) {
+  const button = createElement('button', className, { type, ...attributes });
+  return button;
+}
+
+export const getMetadata = (el) => {
+  if (!el) return {};
+  const metadata = {};
+  [...el.childNodes].forEach((row) => {
+    if (row.children) {
+      const key = row.children[0].textContent.trim().toLowerCase();
+      const content = row.children[1].textContent.trim().toLowerCase();
+      metadata[key] = content;
+    }
+  });
+  return metadata;
+};
+
+let daMdMap = null;
+export function initDaMetadata(map) {
+  daMdMap = map;
+}
+
+export function getDaMetadata(key) {
+  if (!daMdMap) return key ? null : {};
+  if (key) {
+    return daMdMap.get(key) || null;
+  }
+  return Object.fromEntries(daMdMap);
+}
+
+export function setDaMetadata(key, value) {
+  if (!daMdMap) return;
+  if (value === null || value === undefined) {
+    daMdMap.delete(key);
+  } else {
+    daMdMap.set(key, value);
+  }
+}
+
+export function getDiffLabels() {
+  return {
+    local: getDaMetadata('diff-label-local') || 'Local',
+    upstream: getDaMetadata('diff-label-upstream') || 'Upstream',
+  };
+}
+
+export function htmlToProse(html) {
+  const ydoc = new Y.Doc();
+  aem2doc(html, ydoc);
+
+  const schema = getSchema();
+  const pmDoc = yDocToProsemirror(schema, ydoc);
+  const serializer = DOMSerializer.fromSchema(schema);
+  const fragment = serializer.serializeFragment(pmDoc.content);
+
+  const dom = document.createElement('div');
+  dom.append(fragment);
+
+  return { dom, ydoc };
 }

@@ -36,15 +36,14 @@ da-versions {
   height: 0;
   overflow: hidden;
   justify-self: right;
-}
 
-da-preview.show-preview,
-da-versions.show-versions {
-  visibility: unset;
-  position: relative;
-  width: unset;
-  height: unset;
-  overflow: unset;
+  &.is-visible {
+    visibility: unset;
+    position: relative;
+    width: unset;
+    height: unset;
+    overflow: unset;
+  }
 }
 
 .da-editor-tabs {
@@ -89,12 +88,6 @@ da-versions.show-versions {
   background: url("/blocks/edit/img/S2_icon_OpenIn_20_N.svg") center center / 20px no-repeat;
 }
 
-:host(.show-preview) .da-editor-tabs,
-:host(.show-versions) .da-editor-tabs {
-  display: none;
-}
-
-
 .da-preview-menuitem.show-preview:hover {
   background-color: var(--editor-btn-bg-color-hover) !important;
 }
@@ -110,25 +103,21 @@ da-versions.show-versions {
 
   .da-editor-tabs {
     display: unset;
+
+    &.show-pane {
+      display: none;
+    }
   }
 }
 
 @media (min-width: 900px) {
   .editor-wrapper {
-    min-width: 800px;
+    flex: 0 1 800px;
   }
 }
 
 @media (min-width: 1200px) {
   .editor-wrapper {
-    width: 900px;
-  }
-
-  da-editor {
-
-  }
-
-  :host(.show-preview) da-editor {
-
+    flex: 0 1 900px;
   }
 }

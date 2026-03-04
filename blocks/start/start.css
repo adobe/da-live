@@ -128,6 +128,27 @@ div.git-input input {
   background: #434d58;
 }
 
+.go-button.is-loading {
+  background: #004da3;
+  cursor: wait;
+  position: relative;
+}
+
+.go-button .spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Refresh_18_N.svg');
+  filter: brightness(0) invert(1);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 div.git-input input::placeholder {
   font-style: italic;
 }
@@ -139,6 +160,19 @@ div.text-container {
     margin: 0;
     text-align: center;
   }
+}
+
+p.error-text {
+  justify-self: center;
+  color: #fff;
+  font-weight: 700;
+  margin-block: 24px;
+  text-align: center;
+  background: rgb(215 50 32 / 44%);
+  width: 600px;
+  border-radius: 8px;
+  padding: 6px 0;
+  box-sizing: border-box;
 }
 
 div.template-container {
@@ -235,8 +269,8 @@ div.template-container {
 }
 
 .con-button.blue {
-  background: var(--spectrum-blue-800);
-  border-color: var(--spectrum-blue-800);
+  background: var(--s2-blue-900);
+  border-color: var(--s2-blue-900);
   color: #FFF;
 }
 

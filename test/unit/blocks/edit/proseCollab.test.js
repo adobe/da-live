@@ -35,7 +35,7 @@ describe('Prose collab', () => {
     const daTitle = pi.createAwarenessStatusWidget(wsp, win);
     expect(daTitle).to.equal(dat);
 
-    expect(winEventListeners.length).to.equal(2);
+    expect(winEventListeners.length).to.equal(4);
     const el0 = winEventListeners[0];
     const el1 = winEventListeners[1];
     const elOnline = el0.n === 'online' ? el0 : el1;
@@ -46,7 +46,7 @@ describe('Prose collab', () => {
     elOffline.f(); // Call the callback function sent to the listener
     expect(daTitle.collabStatus).to.equal('offline');
 
-    expect(wspOnCalled.length).to.equal(1);
+    expect(wspOnCalled.length).to.equal(2);
     expect(wspOnCalled[0].n).to.equal('status');
     wspOnCalled[0].f({ status: 'connected' });
     expect(daTitle.collabStatus).to.equal('connected');

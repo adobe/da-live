@@ -3,7 +3,7 @@ import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
 import { DA_ORIGIN, CON_ORIGIN } from '../../../shared/constants.js';
 
-const FPO_IMG_URL = 'https://content.da.live/auniverseaway/da/assets/fpo.svg';
+const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 
 function makeHash(string) {
   return Math.abs(string.split('').reduce(

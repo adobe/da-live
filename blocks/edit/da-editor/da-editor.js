@@ -2,7 +2,7 @@ import { DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import { initIms, daFetch } from '../../shared/utils.js';
-import { parse, aem2prose } from '../utils/helpers.js';
+import { setDaMetadata, htmlToProse } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
 
@@ -15,6 +15,7 @@ export default class DaEditor extends LitElement {
     permissions: { state: true },
     _imsLoaded: { state: false },
     _versionDom: { state: true },
+    _daMetadata: { state: true },
   };
 
   connectedCallback() {
@@ -29,17 +30,12 @@ export default class DaEditor extends LitElement {
     const resp = await daFetch(this.version);
     if (!resp.ok) return;
     const text = await resp.text();
-    const doc = parse(text);
-    const proseDom = aem2prose(doc);
-    const flattedDom = document.createElement('div');
-    flattedDom.append(...proseDom);
-    flattedDom.querySelectorAll('table').forEach((table) => {
-      const div = document.createElement('div');
-      div.className = 'tableWrapper';
-      table.insertAdjacentElement('afterend', div);
-      div.append(table);
-    });
-    this._versionDom = flattedDom;
+
+    const { dom, ydoc } = htmlToProse(text);
+
+    const metadataMap = ydoc.getMap('daMetadata');
+    this._daMetadata = Object.fromEntries(metadataMap.entries());
+    this._versionDom = dom;
   }
 
   handleCancel() {
@@ -56,6 +52,12 @@ export default class DaEditor extends LitElement {
 
     const newState = window.view.state.apply(tr);
     window.view.updateState(newState);
+
+    // Restore document metadata to yMap
+    Object.entries(this._daMetadata).forEach(([key, value]) => {
+      setDaMetadata(key, value);
+    });
+
     this.handleCancel();
   }
 

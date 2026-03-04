@@ -225,16 +225,28 @@ input[type="checkbox"] {
   display: none;
   align-items: center;
   justify-content: center;
-  background: no-repeat center / 18px url('/blocks/browse/img/Smock_ChevronRight_18_N.svg');
+  background: no-repeat center / 18px url('/blocks/browse/img/Smock_More_18_N.svg');
+  cursor: pointer;
+  position: relative;
+}
+
+.da-item-list-item-expand-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  border-radius: 3px;
+  transition: background 0.2s ease;
+  z-index: -1;
+}
+
+.da-item-list-item-expand-btn:hover::before {
+  background: #d4e7ff;
 }
 
 .da-item-list-item-expand-btn.is-visible {
   display: flex;
   transition: transform .2s ease-in-out;
-}
-
-:host(.is-expanded) .da-item-list-item-expand-btn.is-visible {
-  transform: rotate(90deg);
 }
 
 .da-item-list-item-expand-btn svg {

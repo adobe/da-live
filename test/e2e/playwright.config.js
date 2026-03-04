@@ -23,6 +23,10 @@ module.exports = defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  /* Default expect timeout. The app relies on Y.js WebSocket sync and may
+     cycle through IMS login redirects, both of which regularly exceed 5s. */
+  expect: { timeout: 15000 },
+
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     // baseURL: 'http://127.0.0.1:3000',

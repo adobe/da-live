@@ -1,4 +1,4 @@
-import { DA_ORIGIN } from './constants.js';
+import { DA_ORIGIN, CON_ORIGIN, getLivePreviewUrl } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
@@ -35,7 +35,7 @@ export const daFetch = async (url, opts = {}) => {
     }
   }
   const resp = await fetch(url, opts);
-  if (resp.status === 401) {
+  if (resp.status === 401 && opts.noRedirect !== true) {
     // Only attempt sign-in if the request is for DA.
     if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
       // If the user has an access token, but are not permitted, redirect them to not found.
@@ -115,3 +115,56 @@ export const getSheetByIndex = (json, index = 0) => {
 };
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
+
+export async function contentLogin(owner, repo) {
+  try {
+    const { accessToken } = await initIms();
+    await fetch(`${CON_ORIGIN}/${owner}/${repo}/.gimme_cookie`, {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${accessToken.token}` },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Content Login failed', e);
+  }
+}
+
+export async function livePreviewLogin(owner, repo) {
+  try {
+    const { accessToken } = await initIms();
+    await fetch(`${getLivePreviewUrl(owner, repo)}/gimme_cookie`, {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${accessToken.token}` },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Live Preview Login failed', e);
+  }
+}
+
+/**
+ * Checks if the lockdownImages flag is enabled for the given owner.
+ * When enabled, images are served through the live preview URL with authentication
+ * instead of the public preview URL, preventing unauthorized access to images.
+ * @param {string} owner - The owner identifier
+ * @returns {Promise<boolean>} True if lockdownImages flag is enabled, false otherwise
+ */
+export async function checkLockdownImages(owner) {
+  try {
+    const resp = await daFetch(`${DA_ORIGIN}/config/${owner}`);
+    if (!resp.ok) return false;
+
+    const config = await resp.json();
+
+    // Check if flags sheet exists and has lockdownImages=true
+    if (config.flags?.data) {
+      const lockdownFlag = config.flags.data.find(
+        (item) => item.key === 'lockdownImages' && item.value === 'true',
+      );
+      return !!lockdownFlag;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}

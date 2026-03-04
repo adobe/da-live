@@ -34,10 +34,10 @@ button {
 
 .da-actions-new-button,
 .da-actions-button {
-  background-color: var(--spectrum-blue-800);
+  background-color: var(--s2-blue-900);
   border-radius: 8px;
-  border: 2px solid var(--spectrum-blue-800);
-  border-color: var(--spectrum-blue-800);
+  border: 2px solid var(--s2-blue-900);
+  border-color: var(--s2-blue-900);
   color: #FFF;
   display: inline-block;
   font-size: 15px;
@@ -47,7 +47,7 @@ button {
   padding: 5px 14px;
   text-decoration: none;
   outline-offset: 0;
-  outline-color: var(--spectrum-blue-800);
+  outline-color: var(--spectrum-blue-900);
   transition: outline-offset .2s;
 }
 

@@ -1,3 +1,4 @@
+/* Do not allow navigation away from page */
 a[href] {
   pointer-events: none !important;
 }

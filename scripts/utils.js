@@ -11,25 +11,60 @@
  */
 export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
 
-export function sanitiseRef(ref) {
-  if (!ref) return null;
+export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
+  if (!name) return null;
 
-  return ref.toLowerCase()
+  if (preserveDots && name.indexOf('.') !== -1) {
+    return name
+      .split('.')
+      .map((part) => sanitizeName(part, true, allowUnderscores))
+      .join('.');
+  }
+
+  const pattern = allowUnderscores ? /[^a-z0-9_]+/g : /[^a-z0-9]+/g;
+
+  return name
+    .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(pattern, '-')
+    .replace(/-$/g, '');
+}
+
+export function sanitizePathParts(path) {
+  const parts = path.slice(1)
+    .toLowerCase()
+    .split('/');
+  return parts
+    .map((name, i) => (name ? sanitizeName(name, true, i < parts.length - 1) : ''))
+    // remove path traversal parts, and empty strings unless at the end
+    .filter((name, i, filtered) => !/^[.]{1,2}$/.test(name) && (name !== '' || i === filtered.length - 1));
+}
+
+export function sanitizePath(path) {
+  return `/${sanitizePathParts(path).join('/')}`;
 }
 
 export const [setNx, getNx] = (() => {
   let nx;
+
   return [
     (nxBase, location) => {
       nx = (() => {
         const { hostname, search } = location || window.location;
-        if (!(hostname.includes('.hlx.') || hostname.includes('.aem.') || hostname.includes('local'))) return nxBase;
-        const branch = sanitiseRef(new URLSearchParams(search).get('nx')) || 'main';
+        const nxBaseParam = sanitizeName(new URLSearchParams(search).get('nx'));
+        const isProd = !(hostname.includes('.aem.') || hostname.includes('local'));
+
+        // If no custom nexter branch & on prod, use the default CDN route
+        if (!nxBaseParam && isProd) return nxBase;
+
+        // Determine set a branch regardless of param
+        const branch = nxBaseParam || 'main';
+
+        // Local is a special key to use nexter from localhost
         if (branch === 'local') return 'http://localhost:6456/nx';
+
+        // Otherwise use a fully qualified branch
         return `https://${branch}--da-nx--adobe.aem.live/nx`;
       })();
       return nx;

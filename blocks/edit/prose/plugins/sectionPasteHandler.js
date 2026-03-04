@@ -114,19 +114,21 @@ export default function sectionPasteHandler(schema) {
           } else {
             const newParaCont = [];
 
-            for (const pc of el.content) {
-              if (pc.type !== 'text') {
-                newParaCont.push(pc);
-              } else if (pc.text.trim() === '---') {
-                closeParagraph(newParaCont, newContent);
+            if (el.content) {
+              for (const pc of el.content) {
+                if (pc.type !== 'text') {
+                  newParaCont.push(pc);
+                } else if (pc.text.trim() === '---') {
+                  closeParagraph(newParaCont, newContent);
 
-                newContent.push({ type: 'horizontal_rule' });
-              } else {
-                newParaCont.push(pc);
+                  newContent.push({ type: 'horizontal_rule' });
+                } else {
+                  newParaCont.push(pc);
+                }
               }
-            }
 
-            closeParagraph(newParaCont, newContent);
+              closeParagraph(newParaCont, newContent);
+            }
           }
         }
 

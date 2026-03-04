@@ -1,4 +1,5 @@
 import { SUPPORTED_FILES, DA_ORIGIN } from '../../../shared/constants.js';
+import { sanitizePath, sanitizePathParts } from '../../../../scripts/utils.js';
 import { daFetch } from '../../../shared/utils.js';
 
 const MAX_DEPTH = 1000;
@@ -81,10 +82,20 @@ export async function getFullEntryList(entries) {
   return files.filter((file) => file);
 }
 
-export function sanitizePath(path) {
-  const pathArray = path.split('/');
-  const sanitizedArray = pathArray.map((element) => element.replaceAll(/[^a-zA-Z0-9.]/g, '-').toLowerCase());
-  return [...sanitizedArray].join('/');
+export function getDropConflicts(list, files) {
+  const existing = new Set(
+    list.map((item) => (item.ext ? `${item.name}.${item.ext}` : item.name)),
+  );
+  const matched = new Set();
+  return files.reduce((conflicts, file) => {
+    const sanitizedPath = sanitizePath(file.path);
+    const [displayName] = sanitizedPath.split('/').slice(1);
+    if (!matched.has(displayName) && existing.has(displayName)) {
+      matched.add(displayName);
+      conflicts.push(displayName);
+    }
+    return conflicts;
+  }, []);
 }
 
 export async function handleUpload(list, fullpath, file) {
@@ -104,11 +115,17 @@ export async function handleUpload(list, fullpath, file) {
     const ext = rest.pop();
     const rejoined = [filename, ...rest].join('.');
 
-    const listHasName = list.some((item) => item.name === rejoined);
+    const existingItem = list.find((item) => {
+      const itemDisplay = item.ext ? `${item.name}.${item.ext}` : item.name;
+      return itemDisplay === displayName;
+    });
 
-    if (listHasName) return null;
+    if (existingItem) {
+      existingItem.lastModified = Date.now();
+      return null;
+    }
 
-    const item = { name: rejoined, path: `${fullpath}/${displayName}` };
+    const item = { name: rejoined, path: `${fullpath}/${displayName}`, lastModified: Date.now() };
     if (ext) item.ext = ext;
 
     return item;
@@ -122,8 +139,7 @@ export async function handleUpload(list, fullpath, file) {
 export function items2Clipboard(items) {
   const aemUrls = items.reduce((acc, item) => {
     if (item.ext) {
-      const path = item.path.replace('.html', '');
-      const [org, repo, ...pathParts] = path.substring(1).split('/');
+      const [org, repo, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));
       const pageName = pathParts.pop();
       pathParts.push(pageName === 'index' ? '' : pageName);
 

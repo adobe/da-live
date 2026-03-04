@@ -99,7 +99,7 @@ class DaSheetPanes extends LitElement {
       </div>
       <div class="da-sheet-panes">
         ${this._showPreview ? html`<da-sheet-preview @close=${this.handlePreviewToggle}></da-sheet-preview>` : nothing}
-        ${this._showVersions ? html`<da-versions path="${this.path}" @preview=${this.handlePreviewVersion} @close=${this.handleHistoryToggle}></da-versions>` : nothing}
+        ${this._showVersions ? html`<da-versions .open=${this._showVersions} path="${this.path}" @preview=${this.handlePreviewVersion} @close=${this.handleHistoryToggle}></da-versions>` : nothing}
       </div>
     `;
   }

@@ -63,7 +63,7 @@ form {
 
 button:hover {
   color: #FFF;
-  background-color: var(--spectrum-blue-800);
+  background-color: var(--s2-blue-900);
 }
 
 li.is-read-only .da-sheet-edit-button {
@@ -103,8 +103,8 @@ button:hover .icon {
 }
 
 .add-sheet:hover {
-  background-color: var(--spectrum-blue-800);
-  border: 2px solid var(--spectrum-blue-800);
+  background-color: var(--s2-blue-900);
+  border: 2px solid var(--s2-blue-900);
 }
 
 .add-sheet.is-read-only:hover {
