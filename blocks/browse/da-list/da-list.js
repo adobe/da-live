@@ -39,6 +39,11 @@ export default class DaList extends LitElement {
     _confirm: { state: true },
     _confirmText: { state: true },
     _unpublish: { state: true },
+    _continuationToken: { state: true },
+    _isLoadingMore: { state: true },
+    _bulkLoading: { state: true },
+    _filterLoading: { state: true },
+    _allPagesLoaded: { state: true },
   };
 
   constructor() {
@@ -50,6 +55,11 @@ export default class DaList extends LitElement {
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
     this._filter = '';
+    this._continuationToken = null;
+    this._isLoadingMore = false;
+    this._observer = null;
+    this._autoCheckTimer = null;
+    this._listItemPaths = new Set();
   }
 
   connectedCallback() {
@@ -61,11 +71,13 @@ export default class DaList extends LitElement {
   async update(props) {
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
+      this.resetListItemPaths(this._listItems);
     }
 
     if (props.has('fullpath') && this.fullpath) {
       this._filter = '';
       this._showFilter = undefined;
+      this._allPagesLoaded = false;
       this._listItems = await this.getList();
     }
 
@@ -79,6 +91,7 @@ export default class DaList extends LitElement {
   async firstUpdated() {
     await import('../../shared/da-dialog/da-dialog.js');
     await import('../da-actionbar/da-actionbar.js');
+    this.setupObserver();
   }
 
   setStatus(text, description, type = 'info') {
@@ -100,18 +113,84 @@ export default class DaList extends LitElement {
 
   async getList() {
     try {
+      this._continuationToken = null;
       const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
-      return json;
+      const items = Array.isArray(json) ? json : json?.items || [];
+      this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+      this._allPagesLoaded = !this._continuationToken;
+      this.resetListItemPaths(items);
+      this.scheduleAutoCheck();
+      return items;
     } catch {
       this._emptyMessage = 'Not permitted';
+      this.resetListItemPaths([]);
       return [];
     }
   }
 
+  async loadMore() {
+    if (this._isLoadingMore || !this._continuationToken || this._allPagesLoaded) {
+      return { added: 0, token: this._continuationToken || null };
+    }
+    const requestToken = this._continuationToken;
+    this._isLoadingMore = true;
+    try {
+      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, { headers: { 'da-continuation-token': requestToken } });
+      if (resp.permissions) this.handlePermissions(resp.permissions);
+      const json = await resp.json();
+      const nextItems = Array.isArray(json) ? json : json?.items || [];
+      const existingItems = this._listItems || [];
+      if (existingItems.length && this._listItemPaths.size === 0) {
+        this.resetListItemPaths(existingItems);
+      }
+      const mergedItems = this.mergeUniqueItemsByPath(
+        existingItems,
+        nextItems,
+        this._listItemPaths,
+      );
+      const uniqueAdded = mergedItems.length - existingItems.length;
+      if (uniqueAdded) this._listItems = mergedItems;
+      const nextToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+
+      if (!nextToken) {
+        this._continuationToken = null;
+        this._allPagesLoaded = true;
+      } else {
+        this._continuationToken = nextToken;
+        this._allPagesLoaded = false;
+      }
+
+      if (!this._bulkLoading && !this._allPagesLoaded) this.scheduleAutoCheck();
+      return { added: uniqueAdded, token: this._continuationToken };
+    } catch {
+      // ignore load-more errors for now
+    } finally {
+      this._isLoadingMore = false;
+    }
+    return { added: 0, token: null };
+  }
+
+  resetListItemPaths(items = []) {
+    this._listItemPaths = new Set(items.map((item) => item?.path).filter(Boolean));
+  }
+
+  mergeUniqueItemsByPath(existingItems = [], incomingItems = [], pathIndex = null) {
+    const seen = pathIndex || new Set(existingItems.map((item) => item?.path).filter(Boolean));
+    const merged = [...existingItems];
+    incomingItems.forEach((item) => {
+      const key = item?.path;
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      merged.push(item);
+    });
+    return merged;
+  }
+
   handleNewItem() {
     // Add it to internal list
+    if (this.newItem?.path) this._listItemPaths.add(this.newItem.path);
     this._listItems.unshift(this.newItem);
     // Clear the public item
     this.newItem = null;
@@ -188,6 +267,8 @@ export default class DaList extends LitElement {
     item.name = name;
     item.lastModified = date;
 
+    this._listItemPaths.delete(oldPath);
+    if (path) this._listItemPaths.add(path);
     this._listItems[index] = item;
   }
 
@@ -198,7 +279,6 @@ export default class DaList extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
-    let continuation = true;
     let continuationToken;
 
     const type2api = {
@@ -213,7 +293,7 @@ export default class DaList extends LitElement {
     const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
     try {
-      while (continuation) {
+      do {
         let body;
 
         if (type !== 'delete') {
@@ -225,24 +305,24 @@ export default class DaList extends LitElement {
         const opts = { method, body };
         const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
         if (resp.status === 204) {
-          continuation = false;
           break;
         }
         const json = await resp.json();
-        ({ continuationToken } = json);
-        if (!continuationToken) continuation = false;
-      }
+        continuationToken = json?.continuationToken;
+      } while (continuationToken);
 
       item.isChecked = false;
 
       // Remove or add the item to the current list
       if (moveToTrash || method === 'DELETE') {
         this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
+        this._listItemPaths.delete(item.path);
       } else {
-        this._listItems = [
-          { ...item, path: item.destination, isChecked: false },
-          ...this._listItems,
-        ];
+        const updatedItem = { ...item, path: item.destination, isChecked: false };
+        if (!this._listItemPaths.has(updatedItem.path)) {
+          this._listItemPaths.add(updatedItem.path);
+          this._listItems = [updatedItem, ...this._listItems];
+        }
       }
     } catch (e) {
       // The assumption here is that the user does not have permission to write to the trash
@@ -259,23 +339,21 @@ export default class DaList extends LitElement {
     const itemsToPaste = this._selectedItems.map((item) => {
       const prefix = item.path.split('/').slice(0, -1).join('/');
 
-      let checkForExisting = true;
       let pasteItem = {
         ...item,
         destination: item.path.replace(prefix, this.fullpath),
       };
 
-      while (checkForExisting) {
+      let existing;
+      do {
         const { destination } = pasteItem;
-        const existing = this._listItems.find(({ path }) => path === destination);
+        existing = this._listItems.find(({ path }) => path === destination);
         if (existing) {
           const name = `${existing.name}-copy`;
           const dest = item.ext ? `${this.fullpath}/${name}.${item.ext}` : `${existing.path}-copy`;
           pasteItem = { ...item, name, destination: dest };
-        } else {
-          checkForExisting = false;
         }
-      }
+      } while (existing);
 
       return pasteItem;
     });
@@ -413,6 +491,7 @@ export default class DaList extends LitElement {
         const item = await handleUpload(this._listItems, this.fullpath, file);
         this.setDropMessage();
         if (item) {
+          if (item.path) this._listItemPaths.add(item.path);
           this._listItems.unshift(item);
         }
         this.requestUpdate();
@@ -435,8 +514,18 @@ export default class DaList extends LitElement {
     this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
   }
 
-  handleCheckAll() {
+  async handleCheckAll() {
     const check = !this.isSelectAll;
+
+    if (check && this._continuationToken && !this._allPagesLoaded) {
+      this._bulkLoading = true;
+      try {
+        await this.loadAllPages();
+      } finally {
+        this._bulkLoading = false;
+      }
+    }
+
     this._listItems.forEach((item) => { item.isChecked = check; });
     this.handleSelectionState();
   }
@@ -462,25 +551,49 @@ export default class DaList extends LitElement {
     this.requestUpdate();
   }
 
-  handleNameSort() {
+  async ensureAllPagesLoadedForSort() {
+    if (!this._continuationToken || this._allPagesLoaded) return;
+    this._forceLoadAll = true;
+    this._bulkLoading = true;
+    try {
+      await this.loadAllPages();
+    } finally {
+      this._bulkLoading = false;
+      this._forceLoadAll = false;
+    }
+  }
+
+  async handleNameSort() {
     this._sortDate = undefined;
     this._sortName = this._sortName === 'old' ? 'new' : 'old';
+    await this.ensureAllPagesLoadedForSort();
     this.handleSort(this._sortName, 'name');
   }
 
-  handleDateSort() {
+  async handleDateSort() {
     this._sortName = undefined;
     this._sortDate = this._sortDate === 'old' ? 'new' : 'old';
+    await this.ensureAllPagesLoadedForSort();
     this.handleSort(this._sortDate, 'lastModified');
   }
 
-  toggleFilterView() {
+  async toggleFilterView() {
     this._filter = '';
+    this._filterLoading = true;
     this._showFilter = !this._showFilter;
     const filterInput = this.shadowRoot?.querySelector('input[name="filter"]');
     filterInput.value = '';
     if (this._showFilter) {
-      this.wait(1).then(() => { filterInput.focus(); });
+      if (this._continuationToken && !this._allPagesLoaded) {
+        this._bulkLoading = true;
+        await this.loadAllPages();
+        this._bulkLoading = false;
+      }
+      await this.wait(1);
+      filterInput.focus();
+      this._filterLoading = false;
+    } else {
+      this._filterLoading = false;
     }
   }
 
@@ -638,6 +751,7 @@ export default class DaList extends LitElement {
   }
 
   renderList(items) {
+    const showSentinel = this._continuationToken && !this._allPagesLoaded;
     return html`
       <div class="da-item-list" role="presentation">
       ${repeat(items, (item) => item.path, (item, idx) => html`
@@ -656,6 +770,7 @@ export default class DaList extends LitElement {
           editor="${this.editor}"
           idx=${idx}>
         </da-list-item>`)}
+        ${showSentinel ? html`<div class="da-list-sentinel" aria-hidden="true"></div>` : nothing}
       </div>
     `;
   }
@@ -667,8 +782,8 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <div class="checkbox-wrapper" role="columnheader">
-        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items">
+      <div class="checkbox-wrapper ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
+        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
         <label class="checkbox-label" for="select-all"></label>
       </div>
       <input type="checkbox" name="select" style="display: none;">
@@ -681,9 +796,11 @@ export default class DaList extends LitElement {
   }
 
   render() {
+    const hasMorePages = this._continuationToken && !this._allPagesLoaded;
     const filteredItems = this._filter
       ? this._listItems.filter((item) => item.name.includes(this._filter))
       : this._listItems;
+    const showList = filteredItems?.length > 0 || hasMorePages;
 
     return html`
       <div class="da-browse-panel-header" role="row">
@@ -692,26 +809,50 @@ export default class DaList extends LitElement {
           <!-- Toggle button is split into 2 buttons (enable/disable) to prevent bug re-toggling on blur event -->
           <div role="columnheader" class="da-browse-sort-filter-container">
             ${!this._showFilter ? html`
-              <button class="da-browse-filter" name="toggle-filter" @click=${() => this.toggleFilterView()} aria-label="Toggle filter">
+              <button
+                class="da-browse-filter ${this._filterLoading ? 'loading' : ''}"
+                name="toggle-filter"
+                @click=${() => this.toggleFilterView()}
+                ?disabled=${this._filterLoading}
+                aria-disabled=${this._filterLoading ? 'true' : 'false'}
+                aria-label="Toggle filter">
                 <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
               </button>
             ` : html`
-              <button class="da-browse-filter selected" name="toggle-filter" @click=${() => this.toggleFilterView()} aria-label="Toggle filter">
+              <button
+                class="da-browse-filter selected ${this._filterLoading ? 'loading' : ''}"
+                name="toggle-filter"
+                @click=${() => this.toggleFilterView()}
+                ?disabled=${this._filterLoading}
+                aria-disabled=${this._filterLoading ? 'true' : 'false'}
+                aria-label="Toggle filter">
                 <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
               </button>
             `}
           </div>
           <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortName) || 'none'}">
             <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter" aria-label="Filter items">
-            <button class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''}" @click=${this.handleNameSort}>Name</button>
+            <button
+              class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''} ${this._bulkLoading ? 'loading' : ''}"
+              @click=${this.handleNameSort}
+              ?disabled=${this._bulkLoading}
+              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+              Name
+            </button>
           </div>
           <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortDate) || 'none'}">
-            <button class="da-browse-header-name ${this._sortDate}" @click=${this.handleDateSort}>Modified</button>
+            <button
+              class="da-browse-header-name ${this._sortDate} ${this._bulkLoading ? 'loading' : ''}"
+              @click=${this.handleDateSort}
+              ?disabled=${this._bulkLoading}
+              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+              Modified
+            </button>
           </div>
         </div>
       </div>
       <div class="da-browse-panel" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
-        ${filteredItems?.length > 0 ? this.renderList(filteredItems, true) : this.renderEmpty()}
+        ${showList ? this.renderList(filteredItems) : this.renderEmpty()}
         ${this.drag ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar
@@ -729,6 +870,108 @@ export default class DaList extends LitElement {
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;
+  }
+
+  setupObserver() {
+    if (this._observer) return;
+    this._observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) this.loadMore();
+      });
+    }, { root: null, rootMargin: '200px' });
+  }
+
+  hasPaginationStateChanges(changedProps = new Map()) {
+    if (
+      changedProps.has('fullpath')
+      || changedProps.has('_continuationToken')
+      || changedProps.has('_allPagesLoaded')
+      || changedProps.has('_bulkLoading')
+      || changedProps.has('_isLoadingMore')
+    ) {
+      return true;
+    }
+
+    if (!changedProps.has('_listItems')) return false;
+    const previousItems = changedProps.get('_listItems');
+    const previousLength = Array.isArray(previousItems) ? previousItems.length : 0;
+    const nextLength = Array.isArray(this._listItems) ? this._listItems.length : 0;
+    return previousLength !== nextLength;
+  }
+
+  updated(changedProps) {
+    super.updated(changedProps);
+    if (!this._observer) this.setupObserver();
+    const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
+    if (this._observer) {
+      this._observer.disconnect();
+      if (sentinel) this._observer.observe(sentinel);
+    }
+    if (this.hasPaginationStateChanges(changedProps)) this.scheduleAutoCheck();
+  }
+
+  checkLoadMore() {
+    if (this._bulkLoading) return;
+    if (this._allPagesLoaded) return;
+    if (!this._continuationToken) return;
+    const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
+    if (!sentinel) return;
+    const panel = this.shadowRoot?.querySelector('.da-browse-panel');
+    if (!panel) return;
+
+    const rootRect = panel.getBoundingClientRect();
+    const rect = sentinel.getBoundingClientRect();
+
+    const rootHeight = rootRect.bottom - rootRect.top;
+    const threshold = rootHeight * 2;
+    if (this._forceLoadAll || rect.top <= rootRect.bottom + threshold) {
+      this.loadMore();
+    }
+  }
+
+  scheduleAutoCheck() {
+    if (this._bulkLoading) return;
+    if (this._allPagesLoaded) return;
+    if (!this._continuationToken) return;
+    if (this._autoCheckTimer) return;
+    this._autoCheckTimer = setTimeout(() => {
+      this._autoCheckTimer = null;
+      this.checkLoadMore();
+    }, 0);
+  }
+
+  disconnectedCallback() {
+    if (this._observer) this._observer.disconnect();
+    if (this._autoCheckTimer) clearTimeout(this._autoCheckTimer);
+    super.disconnectedCallback();
+  }
+
+  async loadAllPages() {
+    if (this._allPagesLoaded) return;
+    let safety = 0;
+    let stalledPages = 0;
+    let previousToken = this._continuationToken;
+    while (safety < 500 && !this._allPagesLoaded) {
+      if (this._isLoadingMore) {
+        // Wait for in-flight pagination requests before continuing.
+        // eslint-disable-next-line no-await-in-loop
+        await this.wait(25);
+        safety += 1;
+      } else {
+        if (!this._continuationToken) break;
+        // eslint-disable-next-line no-await-in-loop
+        const { token, added } = await this.loadMore();
+        if (!token) break;
+        if (token === previousToken && added === 0) {
+          stalledPages += 1;
+        } else {
+          stalledPages = 0;
+        }
+        if (stalledPages >= 2) break;
+        previousToken = token;
+        safety += 1;
+      }
+    }
   }
 }
 
