@@ -138,9 +138,7 @@ describe('getCdnConfig', () => {
   it('Returns object when only previewHost is available', async () => {
     const mockFetch = (url) => {
       if (url === configUrl) {
-        return Promise.resolve(new Response(JSON.stringify({
-          previewHost: 'preview.example.com',
-        }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ previewHost: 'preview.example.com' }), { status: 200 }));
       }
       return Promise.resolve(new Response('', { status: 404 }));
     };
@@ -161,9 +159,7 @@ describe('getCdnConfig', () => {
   it('Returns object when only host is available', async () => {
     const mockFetch = (url) => {
       if (url === configUrl) {
-        return Promise.resolve(new Response(JSON.stringify({
-          host: 'www.example.com',
-        }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ host: 'www.example.com' }), { status: 200 }));
       }
       return Promise.resolve(new Response('', { status: 404 }));
     };
