@@ -19,7 +19,6 @@ export default class DaMore extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
     this.getGroups();
-    this._name = 'testing-123';
   }
 
   async getGroups() {
