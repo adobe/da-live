@@ -54,7 +54,12 @@ export default function imageDrop(schema) {
               if (resp.status === 413) {
                 renderError('Image size exceeds 20MB limit');
               } else {
-                renderError(`Failed to upload image: ${resp.statusText}`);
+                const json = await resp.json();
+                if (json.error) {
+                  renderError(`Failed to upload image: ${json.error}`);
+                } else {
+                  renderError(`Failed to upload image: ${json.message}`);
+                }
               }
 
               return;
