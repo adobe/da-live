@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { DOMParser as proseDOMParser, DOMSerializer, TextSelection } from 'da-y-wrapper';
+import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import {
   LitElement,
   html,
@@ -319,8 +319,10 @@ class DaLibrary extends LitElement {
       }
       if (e.data.action === 'sendHTML') {
         const dom = new DOMParser().parseFromString(e.data.details, 'text/html');
-        const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
-        window.view.dispatch(window.view.state.tr.replaceSelectionWith(nodes));
+        const parsed = proseDOMParser.fromSchema(window.view.state.schema).parse(dom.body);
+        const slice = new Slice(parsed.content, 0, 0);
+        const { from, to } = window.view.state.selection;
+        window.view.dispatch(window.view.state.tr.replaceRange(from, to, slice));
       }
       if (e.data.action === 'setHash') {
         window.location.hash = e.data.details;
