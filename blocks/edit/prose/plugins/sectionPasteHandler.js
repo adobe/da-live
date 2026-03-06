@@ -114,7 +114,9 @@ export default function sectionPasteHandler(schema) {
           } else {
             const newParaCont = [];
 
-            if (el.content) {
+            if (!el.content) {
+              newContent.push({ type: 'paragraph', content: [] });
+            } else {
               for (const pc of el.content) {
                 if (pc.type !== 'text') {
                   newParaCont.push(pc);
