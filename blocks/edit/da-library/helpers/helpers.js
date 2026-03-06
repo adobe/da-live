@@ -20,7 +20,6 @@ const DA_PLUGINS = {
   placeholders: {},
   icons: {},
 };
-const DEF_ICON = '/blocks/edit/img/Smock_Plug_18_N.svg';
 
 const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
@@ -72,6 +71,7 @@ async function getAssetsPlugin(owner, repo) {
     name: 'aem-assets',
     title: 'AEM Assets',
     experience: 'aem-assets',
+    icon: '#S2_Icon_Image',
     callback: openAssets,
   };
 }
@@ -129,22 +129,26 @@ async function fetchLibraryConfig(org, repo) {
 
       if (name === 'blocks') {
         plugin.loadItems = getBlocks(plugin.sources);
+        plugin.icon = '#S2_Icon_Table';
       }
 
       if (name === 'templates') {
         plugin.loadItems = getItems(plugin.sources);
+        plugin.icon = '#S2_Icon_Template';
       }
 
       if (name === 'icons') {
         plugin.loadItems = getItems(plugin.sources, row.format || ':<content>:');
+        plugin.icon = '#S2_Icon_CallCenter';
       }
 
       if (name === 'placeholders') {
         plugin.loadItems = getItems(plugin.sources, row.format || '{{<content>}}');
+        plugin.icon = '#S2_Icon_Placeholder';
       }
 
       // If its not an OOTB plugin, and no provided icon, use the default
-      if (!ootb) plugin.icon = row.icon || DEF_ICON;
+      if (!ootb) plugin.icon = row.icon || '#S2_Icon_Plugin';
       acc.push(plugin);
     }
     return acc;

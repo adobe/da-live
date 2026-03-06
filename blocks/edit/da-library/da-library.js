@@ -1,11 +1,4 @@
-import {
-  LitElement,
-  html,
-  until,
-  createRef,
-  ref,
-  nothing,
-} from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx } from '../../../scripts/utils.js';
@@ -14,16 +7,22 @@ import inlinesvg from '../../shared/inlinesvg.js';
 import { daFetch } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
 import { OOTB_PLUGINS, loadLibrary, getItemDetails, getPreviewStatus } from './helpers/helpers.js';
+import getPathDetails from '../../shared/pathDetails.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
 
 const ICONS = [
-  '/blocks/edit/img/Smock_ExperienceAdd_18_N.svg',
-  '/blocks/browse/img/Smock_ChevronRight_18_N.svg',
-  '/blocks/edit/img/Smock_AddCircle_18_N.svg',
-  '/blocks/edit/img/Smock_Preview_18_N.svg',
+  '/blocks/edit/img/S2_Icon_ExperienceAdd_20_N.svg',
+  '/blocks/edit/img/S2_Icon_ExperiencePreview_20_N.svg',
+  '/blocks/edit/img/S2_Icon_ChevronRight_20_N.svg',
   '/blocks/edit/img/Smock_InfoOutline_18_N.svg',
+  '/blocks/edit/img/S2_Icon_Plugin_20_N.svg',
+  '/blocks/edit/img/S2_Icon_Table_20_N.svg',
+  '/blocks/edit/img/S2_Icon_Template_20_N.svg',
+  '/blocks/edit/img/S2_Icon_CallCenter_20_N.svg',
+  '/blocks/edit/img/S2_Icon_Image_20_N.svg',
+  '/blocks/edit/img/S2_Icon_Placeholder_20_N.svg',
 ];
 
 const searchIndex = {};
@@ -32,17 +31,10 @@ class DaLibrary extends LitElement {
   static properties = {
     config: { attribute: false },
     _active: { state: true },
-    _searchStr: { state: true },
     _preview: { state: true },
+    _searchStr: { state: true },
+    _searchResults: { state: true },
   };
-
-  constructor() {
-    super();
-    this._searchStr = '';
-    this._searchHasFocus = false;
-  }
-
-  searchInputRef = createRef();
 
   connectedCallback() {
     super.connectedCallback();
@@ -61,7 +53,6 @@ class DaLibrary extends LitElement {
   }
 
   firstUpdated() {
-    this.searchInputRef.value.focus();
     import('../../shared/da-dialog/da-dialog.js');
   }
 
@@ -91,17 +82,21 @@ class DaLibrary extends LitElement {
   }
 
   async addToSearchIndex(plugin) {
-    // Check the main index
+    // Return if plugin is already in the index
     if (searchIndex[plugin.name]) return;
 
-    // Check in byo
+    // Return if it's already in BYO
     const foundByo = searchIndex.byoPlugins?.some((byo) => byo.name === plugin.name);
     if (foundByo) return;
 
     // Add a top level out of the box plugin
     const isOotb = OOTB_PLUGINS.some((name) => plugin.name === name);
     if (isOotb) {
-      searchIndex[plugin.name] = plugin.items;
+      // Add the default plugin icon, but allow an item to override it
+      searchIndex[plugin.name] = plugin.items.map((item) => ({
+        icon: plugin.icon,
+        ...item,
+      }));
       return;
     }
 
@@ -114,9 +109,9 @@ class DaLibrary extends LitElement {
     this.remove();
   }
 
-  handleKeydown(e) {
+  handleKeydown = (e) => {
     if (e.key === 'Escape') this.handleClose();
-  }
+  };
 
   async handlePluginClick(plugin) {
     this._active = plugin;
@@ -145,12 +140,13 @@ class DaLibrary extends LitElement {
   }
 
   handleCloseSearch() {
-    this._searchStr = '';
-    this.searchInputRef.value.value = '';
+    this._searchStr = undefined;
+    this._searchResults = undefined;
   }
 
   handleSearch({ target }) {
     this._searchStr = target.value;
+    this._searchResults = searchFor(target.value, searchIndex, this);
   }
 
   handleSearchInputKeydown(e) {
@@ -177,7 +173,7 @@ class DaLibrary extends LitElement {
       if (prevButton) {
         prevButton.focus();
       } else {
-        this.searchInputRef.value.focus();
+        this.shadowRoot.querySelector('#search').focus();
       }
     }
     if (e.key === 'Enter') {
@@ -295,11 +291,10 @@ class DaLibrary extends LitElement {
     setTimeout(() => {
       if (!target.contentWindow) return;
 
-      // const view = 'edit';
-      // const [org, repo, ...path] = sanitizePathParts(window.location.hash.substring(1));
-      // return { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
+      const { view, owner: org, repo, parent, name } = getPathDetails();
 
-      const project = this.getParts();
+      const project = { view, org, repo, ref: 'main', path: `${parent}/${name}` };
+
       const { token } = window.adobeIMS.getAccessToken();
 
       const message = {
@@ -313,10 +308,16 @@ class DaLibrary extends LitElement {
     }, 750);
   }
 
-  handleToolTip(e, item) {
-    e.stopPropagation();
+  handleToolTip(item) {
     item.showToolTip = !item.showToolTip;
     this.requestUpdate();
+  }
+
+  renderIcon(icon = '#S2_Icon_Plugin') {
+    if (icon.startsWith('#')) {
+      return html`<svg class="icon"><use href=${icon}></use></svg>`;
+    }
+    return html`<img class="icon" src="${icon}" />`;
   }
 
   renderPreviewDialog() {
@@ -356,91 +357,85 @@ class DaLibrary extends LitElement {
     `;
   }
 
-  renderBlockItem(item, icon = false) {
+  renderBlockItem(item) {
     const hasDesc = item.description?.trim();
     return html`
-      <li class="da-library-type-group-detail-item" tabindex="1">
-        <button
-          class="${icon ? 'blocks' : ''} ${item.showToolTip ? 'show-tooltip' : ''}"
-          @click=${() => this.handleItemClick('blocks', item, true)}>
-          <div class="da-library-item-button-title">
-            <div>
-              <span class="da-library-group-name">${item.name}</span>
-              <span class="da-library-group-subtitle">${item.variants}</span>
-            </div>
-          </div>
-          <div class="da-library-icons">
-              ${hasDesc ? html`<svg class="icon" @click=${(e) => this.handleToolTip(e, item)}>
-                <use href="#spectrum-InfoOutline"/></svg>` : nothing}
-              <svg class="icon"><use href="#spectrum-ExperienceAdd"/></svg>
-            </div>
-          ${hasDesc ? html`<div class="da-library-item-button-tooltip">${item.description}</div>` : nothing}
-        </button>
-      </li>`;
-  }
-
-  async renderBlockDetail(block) {
-    // Load variants if not already loaded
-    if (!block.variants) {
-      const variants = await block.loadVariants;
-      block.variants = variants;
-    }
-
-    return html`${block.variants.map((variant) => this.renderBlockItem(variant))}`;
-  }
-
-  renderBlockGroup(group) {
-    return html`
-      <li class="da-library-type-group">
-        <div class="da-library-type-group-title">
-          <button class="da-library-type-group-expand" @click=${this.handleGroupOpen}>
-             <span class="name">${group.name}</span>
+      <li class="library-plugin-detail-item" tabindex="1">
+        <div class="library-plugin-detail-item-header">
+          ${item.icon ? this.renderIcon(item.icon) : nothing}
+          <button class="library-plugin-detail-item-title" @click=${() => this.handleItemClick('blocks', item, true)}>
+            <p class="da-library-group-name">${item.name}</p>
+            <p class="da-library-group-subtitle">${item.variants}</p>
           </button>
-          <div class="da-library-type-group-secondary-actions">
-            <button class= "preview" @click=${() => this.handleOpenPreview(group)}>
-              <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
-            </button>
-            <button @click=${this.handleGroupOpen}>
-              <svg class="icon"><use href="#spectrum-chevronRight"/></svg>
-            </button>
+          <div class="library-plugin-detail-item-actions">
+            ${hasDesc ? html`
+              <button
+                class="tooltip"
+                @click=${() => this.handleToolTip(item)}>
+                <svg class="icon"><use href="#spectrum-InfoOutline"/></svg>
+              </button>` : nothing}
+              <button class="add" @click=${() => this.handleItemClick('blocks', item, true)}>
+                <svg class="icon"><use href="#S2_Icon_Experience_Add"/></svg>
+              </button>
           </div>
         </div>
-        <ul class="da-library-type-group-details">
-          ${until(this.renderBlockDetail(group), html`<span>Loading...</span>`)}
-        </ul>
+        ${hasDesc ? html`<div class="da-library-item-description ${item.showToolTip ? 'is-visible' : ''}">${item.description}</div>` : nothing}
       </li>`;
+  }
+
+  renderBlockDetail(block) {
+    return html`${block.variants?.map((variant) => this.renderBlockItem(variant))}`;
   }
 
   renderBlockGroups({ items }) {
     return html`
-      <ul class="da-library-type-list">
-        ${items.map((group) => this.renderBlockGroup(group))}
+      <ul class="library-plugin-list library-plugin-list-group">
+        ${items.map((group) => html`
+          <li class="library-plugin-list-item">
+            <div class="library-plugin-list-item-header">
+              <button class="item-title" @click=${this.handleGroupOpen}>
+                  <span class="name">${group.name}</span>
+              </button>
+              <div class="library-plugin-list-item-actions">
+                <button class="preview" @click=${() => this.handleOpenPreview(group)}>
+                  <svg class="icon preview"><use href="#S2_Icon_ExperiencePreview"/></svg>
+                </button>
+                <button  class="expand" @click=${this.handleGroupOpen}>
+                  <svg class="icon"><use href="#S2_Icon_ChevronRight"/></svg>
+                </button>
+                </div>
+              </div>
+            </div>
+            <ul class="library-plugin-list-item-details">
+              ${this.renderBlockDetail(group)}
+            </ul>
+          </li>`)}
       </ul>`;
   }
 
-  renderItem(pluginName, item) {
+  renderItem(item) {
     const name = item.name || item.key || item.value;
     if (!name) return nothing;
 
-    const previewBtn = pluginName === 'templates'
+    const previewBtn = item.type === 'templates'
       ? html`
-        <button class= "preview" @click=${() => this.handleOpenPreview(item)}>
-          <svg class="icon preview"><use href="#spectrum-Preview"/></svg>
+        <button class="preview" @click=${() => this.handleOpenPreview(item)}>
+          <svg class="icon preview"><use href="#S2_Icon_ExperiencePreview"/></svg>
         </button>`
       : nothing;
 
     return html`
-      <li class="da-library-type-item">
-        <div class="da-library-type-item-btn ${pluginName}">
-          <div class="da-library-type-item-detail">
-            ${item.icon ? html`<img src="${item.icon}" />` : nothing}
-            <button>${name}</button>
-            <div class="da-library-icons">
-              ${previewBtn}
-              <button class="add-item-btn" @click=${() => this.handleItemClick(pluginName, item)}>
-                <svg class="icon"><use href="#spectrum-AddCircle"/></svg>
-              </button>
-            </div>
+      <li class="library-plugin-detail-item" tabindex="1">
+        <div class="library-plugin-detail-item-header">
+          ${item.icon ? this.renderIcon(item.icon) : nothing}
+          <button class="library-plugin-detail-item-title" @click=${() => this.handleItemClick(item.type, item)}>
+            <p class="da-library-group-name">${name}</p>
+          </button>
+          <div class="library-plugin-detail-item-actions">
+            ${previewBtn}
+            <button class="add" @click=${() => this.handleItemClick(item.type, item)}>
+              <svg class="icon"><use href="#S2_Icon_Experience_Add"/></svg>
+            </button>
           </div>
         </div>
       </li>`;
@@ -450,13 +445,22 @@ class DaLibrary extends LitElement {
     const { items } = plugin;
 
     return html`
-      <ul class="da-library-type-list da-library-type-list-${plugin.name}">
-        ${items.map((item) => this.renderItem(plugin.name, item))}
+      <ul class="library-plugin-list">
+        ${items.map((item) => this.renderItem({ type: plugin.name, ...item }))}
       </ul>`;
   }
 
   renderSearch() {
-    return searchFor(this._searchStr, searchIndex, this);
+    if (!this._searchResults?.length) return html`<p>No results</p>`;
+
+    return html`
+      <ul class="library-plugin-list library-search-results" @keydown=${this.handleSearchKeydown}>
+        ${this._searchResults.map((item) => {
+          const { type } = item;
+          if (type === 'blocks') return this.renderBlockItem(item);
+          return this.renderItem(item);
+        })}
+      </ul>`;
   }
 
   renderPlugin(plugin) {
@@ -489,12 +493,13 @@ class DaLibrary extends LitElement {
   renderPluginDialog() {
     // Only render if active plugin is a dialog
     if (!this._active?.experience?.includes('dialog')) return nothing;
+
     const plugin = this._active;
     return html`
       <dialog class="da-dialog-plugin ${plugin.experience}">
         <div class="da-dialog-header">
           <div class="da-dialog-header-title">
-            <img src="${plugin.icon}" />
+            ${this.renderIcon(plugin.icon)}
             <p>${plugin.title || plugin.name}</p>
           </div>
           <button class="primary" @click=${this.handleBack}>Close</button>
@@ -510,14 +515,16 @@ class DaLibrary extends LitElement {
     return filtered.map((plugin) => {
       const isActive = this._active === plugin;
 
+      const isByo = !OOTB_PLUGINS.find((ootb) => plugin.name === ootb);
+
       // If there are items, or it doesn't have items to load (byo plugin), it's ready
       const isReady = plugin.items || !plugin.loadItems;
 
       return html`
-        <div class="palette-pane ${isActive ? '' : 'forward'}" ?inert=${!isActive}>
-          <div class="palette-pane-header">
-            <button class="palette-back" @click=${this.handleBack}>Back</button>
-            <h2>${plugin.name}</h2>
+        <div class="library-pane library-pane-inline ${isByo ? 'plugin-type-byo' : ''} ${isActive ? '' : 'forward'}" ?inert=${!isActive}>
+          <div class="pane-header">
+            <button class="pane-back" @click=${this.handleBack}>Back</button>
+            <p class="pane-title">${plugin.title || plugin.name}</p>
           </div>
           ${isReady ? this.renderPluginDetail(plugin) : html`</p>Loading...</p>`}
         </div>
@@ -527,49 +534,52 @@ class DaLibrary extends LitElement {
 
   renderMainMenuItem(plugin) {
     return html`
-      <li class="da-library-main-menu-plugin">
-        <button
-          class="${plugin.name}"
-          style="${plugin.icon ? `background-image: url(${plugin.icon})` : ''}"
-          @click=${() => this.handlePluginClick(plugin)}>
-          <span class="library-type-name">${plugin.title || plugin.name}</span>
+      <li class="library-main-menu-item">
+        <button class="library-main-menu-btn" @click=${() => this.handlePluginClick(plugin)}>
+          ${this.renderIcon(plugin.icon)}
+          <span class="plugin-title">${plugin.title || plugin.name}</span>
         </button>
       </li>`;
   }
 
   renderMainMenu() {
     return html`
-      <ul class="da-library-item-list da-library-item-list-main">
+      <ul class="library-main-menu-list">
         ${this.config.map((plugin) => this.renderMainMenuItem(plugin))}
       </ul>`;
+  }
+
+  renderSearchInput() {
+    return html`
+      <div class="library-search">
+        <input
+          id="search"
+          name="search"
+          type="text"
+          aria-label="Search library"
+          .value=${this._searchStr || ''}
+          @input=${this.handleSearch}
+          @keydown=${this.handleSearchInputKeydown}
+          placeholder="Search everything" />
+      </div>`;
   }
 
   render() {
     const inlineActive = this._active?.experience === 'inline';
 
     return html`
-      <div class="palette-wrapper">
-      <button class="da-library-close" @click=${this.handleClose}></button>
-        <div class="palette-pane ${inlineActive ? 'backward' : ''}" ?inert=${inlineActive}>
-          <div class="palette-pane-header">
-            ${this._searchStr && html`<button class="palette-back" @click=${this.handleCloseSearch}>Back</button>`}
-            <h2>Library</h2>
-          </div>
-          <div class="da-library-search">
-            <input
-              ${ref(this.searchInputRef)}
-              class="da-library-search-input"
-              id="search"
-              name="search"
-              type="text"
-              @input=${this.handleSearch}
-              @keydown=${this.handleSearchInputKeydown}
-              placeholder="Search everything" />
-          </div>
-          ${this._searchStr ? this.renderSearch() : this.renderMainMenu()}
+      <button id="library-close" @click=${this.handleClose}></button>
+      <div class="library-pane main-menu-pane ${inlineActive ? 'backward' : ''}" ?inert=${inlineActive}>
+        <div class="pane-header">
+          ${this._searchStr
+            ? html`<button class="pane-back" @click=${this.handleCloseSearch}>Back</button>`
+            : nothing}
+          <p class="pane-title">Library</p>
         </div>
-        ${this.renderInlinePlugins()}
+        ${this.renderSearchInput()}
+        ${this._searchStr ? this.renderSearch() : this.renderMainMenu()}
       </div>
+      ${this.renderInlinePlugins()}
       ${this.renderPreviewDialog()}
       ${this.renderPluginDialog()}
     `;
