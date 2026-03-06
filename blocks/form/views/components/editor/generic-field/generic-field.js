@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../../../../scripts/utils.js';
 
 // Import existing sl-* components
-import '../sl-checkbox/sl-checkbox.js';
 import '../sl-input-extended/sl-input-extended.js';
 import '../sl-number-extended/sl-number-extended.js';
 import '../sl-select-extended/sl-select-extended.js';
