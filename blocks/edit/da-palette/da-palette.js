@@ -147,7 +147,7 @@ export default function openPrompt({
   saveOnClose = false,
   useLabelsAbove = false,
 }) {
-  const palettePane = window.view.dom.nextElementSibling;
+  const palettePane = window.view.dom?.parentElement?.querySelector('.da-palettes');
   const palette = document.createElement('da-palette');
   palette.title = title;
   palette.fields = fields;
