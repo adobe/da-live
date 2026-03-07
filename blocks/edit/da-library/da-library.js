@@ -52,10 +52,6 @@ class DaLibrary extends LitElement {
     window.removeEventListener('keydown', this.handleKeydown);
   }
 
-  firstUpdated() {
-    import('../../shared/da-dialog/da-dialog.js');
-  }
-
   updated() {
     this.dialogCheck();
   }
@@ -330,30 +326,27 @@ class DaLibrary extends LitElement {
     // Hide the iframe while fetching OK or if OK is false
     const hideIframe = ok === undefined || ok === false ? 'hide-iframe' : '';
 
-    // Only display an error if we truly know the OK status
+    // Only display an error if the status is known
     const error = ok === false
       ? `It appears ${this._preview.name} has not been previewed.`
       : undefined;
 
-    const action = {
-      style: 'primary outline',
-      label: 'Close',
-      click: handleClose,
-    };
-
     return html`
-      <da-dialog
-        size="auto"
-        emphasis="quiet"
-        title="${this._preview.name} Preview"
-        .action=${action}
-        @close=${handleClose}>
+      <dialog class="da-plugin-dialog">
+        <div class="da-dialog-header">
+          <div class="da-dialog-header-title">
+            <p>${this._preview.name} preview</p>
+          </div>
+          <sl-button class="primary outline" @click=${handleClose}>Close</sl-button>
+        </div>
+        <div class="da-library-type-plugin">
         ${error ? html`<div class="iframe-overlay"><p>${error}</p></div>` : nothing}
         <iframe
+          class="${hideIframe}"
           src=${this._preview.url}
-          class="da-dialog-block-preview-frame ${hideIframe}"
           allow="clipboard-write *"></iframe>
-      </da-dialog>
+        </div>
+      </dialog>
     `;
   }
 
@@ -496,13 +489,13 @@ class DaLibrary extends LitElement {
 
     const plugin = this._active;
     return html`
-      <dialog class="da-dialog-plugin ${plugin.experience}">
+      <dialog class="da-plugin-dialog experience-${plugin.experience}">
         <div class="da-dialog-header">
           <div class="da-dialog-header-title">
             ${this.renderIcon(plugin.icon)}
             <p>${plugin.title || plugin.name}</p>
           </div>
-          <button class="primary" @click=${this.handleBack}>Close</button>
+          <sl-button class="primary outline" @click=${this.handleBack}>Close</sl-button>
         </div>
         ${this.renderPlugin(plugin)}
       </dialog>
