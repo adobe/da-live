@@ -1,13 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import { daFetch } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
 import { OOTB_PLUGINS, loadLibrary, getItemDetails, getPreviewStatus } from './helpers/helpers.js';
-import getPathDetails from '../../shared/pathDetails.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -283,13 +282,16 @@ class DaLibrary extends LitElement {
       }
     };
 
+    const { pathname, hash } = window.location;
+
+    const view = pathname.slice(1);
+    const [org, repo, ...path] = sanitizePathParts(hash.slice(1));
+
     // Wait for iframe to be ready before sending
     setTimeout(() => {
       if (!target.contentWindow) return;
 
-      const { view, owner: org, repo, parent, name } = getPathDetails();
-
-      const project = { view, org, repo, ref: 'main', path: `${parent}/${name}` };
+      const project = { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
 
       const { token } = window.adobeIMS.getAccessToken();
 
