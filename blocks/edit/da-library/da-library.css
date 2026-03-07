@@ -85,7 +85,6 @@
   position: absolute;
   inset: 0;
   transition: transform .2s ease-in-out;
-  overflow-y: scroll;
 
   .pane-header {
     display: flex;
