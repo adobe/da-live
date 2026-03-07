@@ -43,18 +43,15 @@ function parseAemError(xError) {
 
 export async function getCdnConfig(path) {
   const [org, site] = sanitizePathParts(path);
-  const resp = await daFetch(`${AEM_ORIGIN}/config/${org}/sites/${site}.json`);
+  const resp = await daFetch(`${AEM_ORIGIN}/sidekick/${org}/${site}/main/config.json`);
   if (!resp.ok) {
     // eslint-disable-next-line no-console
     console.warn(`Cannot fetch site config. - Status: ${resp.status}`);
     return { error: 'Cannot fetch site config.', status: resp.status };
   }
   const json = await resp.json();
-  if (!json.cdn) return {};
-  return {
-    preview: json.cdn.preview?.host,
-    prod: json.cdn.prod?.host,
-  };
+  if (!(json.previewHost ?? json.host)) return {};
+  return { preview: json.previewHost, prod: json.host };
 }
 
 export async function saveToAem(path, action) {

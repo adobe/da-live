@@ -183,6 +183,32 @@ class DaLibrary extends LitElement {
     target.closest('li').classList.toggle('is-open');
   }
 
+  handleItemClick(item, insertParagraphAfter = false) {
+    const { tr } = window.view.state;
+    const insertPos = tr.selection.from;
+
+    let newTr;
+
+    if (insertParagraphAfter) {
+      const paragraph = window.view.state.schema.nodes.paragraph.create();
+        newTr = tr.insert(insertPos, paragraph);
+    }
+
+    newTr = (newTr || tr).replaceSelectionWith(item.parsed);
+    const finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
+
+    window.view.dispatch(
+      newTr
+        .setSelection(TextSelection.create(newTr.doc, finalPos))
+        .scrollIntoView(),
+    );
+
+    if (finalPos === newTr.doc.content.size - 1) {
+      // only scroll down if we're at the end of the document
+      scrollToSelection();
+    }
+  }
+
   async handleTemplateClick(item) {
     const resp = await daFetch(`${item.value}`);
     if (!resp.ok) return;
@@ -195,40 +221,6 @@ class DaLibrary extends LitElement {
 
     const newNodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
     window.view.dispatch(window.view.state.tr.replaceSelectionWith(newNodes));
-  }
-
-  handleItemClick(pluginName, item, insertParagraphAfter = false) {
-    if (pluginName === 'templates') {
-      this.handleTemplateClick(item);
-      return;
-    }
-
-    const { tr } = window.view.state;
-    const insertPos = tr.selection.from;
-
-    let newTr;
-
-    if (insertParagraphAfter) {
-      const paragraph = window.view.state.schema.nodes.paragraph.create();
-      newTr = tr.insert(insertPos, paragraph);
-    }
-
-    newTr = (newTr || tr).replaceSelectionWith(item.parsed);
-    const finalPos = Math.min(insertPos + item.parsed.nodeSize, newTr.doc.content.size);
-    const $pos = newTr.doc.resolve(finalPos);
-    const sel = TextSelection.between($pos, $pos);
-
-    window.view.dispatch(
-      newTr
-        .setSelection(sel)
-        .scrollIntoView(),
-    );
-
-    if (finalPos === newTr.doc.content.size - 1) {
-      // only scroll down if we're at the end of the document
-      const { node } = window.view.domAtPos(window.view.state.selection.anchor);
-      node?.scrollIntoView?.();
-    }
   }
 
   async handleOpenPreview(item) {
@@ -256,8 +248,10 @@ class DaLibrary extends LitElement {
       }
       if (e.data.action === 'sendHTML') {
         const dom = new DOMParser().parseFromString(e.data.details, 'text/html');
-        const nodes = proseDOMParser.fromSchema(window.view.state.schema).parse(dom);
-        window.view.dispatch(window.view.state.tr.replaceSelectionWith(nodes));
+        const parsed = proseDOMParser.fromSchema(window.view.state.schema).parse(dom.body);
+        const slice = new Slice(parsed.content, 0, 0);
+        const { from, to } = window.view.state.selection;
+        window.view.dispatch(window.view.state.tr.replaceRange(from, to, slice));
       }
       if (e.data.action === 'setHash') {
         window.location.hash = e.data.details;

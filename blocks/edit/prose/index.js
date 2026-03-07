@@ -30,6 +30,7 @@ import { linkItem } from './plugins/menu/linkItem.js';
 import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
 import imageFocalPoint from './plugins/imageFocalPoint.js';
+import tableSelectHandle from './plugins/tableSelectHandle.js';
 import linkConverter from './plugins/linkConverter.js';
 import linkTextSync from './plugins/linkTextSync.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
@@ -266,10 +267,7 @@ function restoreCursorPosition(view) {
     const { from, to } = lastCursorPosition;
     const docSize = view.state.doc.content.size;
     if (from <= docSize && to <= docSize) {
-      const $from = view.state.doc.resolve(from);
-      const $to = view.state.doc.resolve(to);
-      const sel = TextSelection.between($from, $to);
-      const tr = view.state.tr.setSelection(sel);
+      const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
       view.dispatch(tr);
     } else {
       lastCursorPosition = null;
@@ -355,6 +353,7 @@ export default function initProse({ path, permissions }) {
     trackCursorAndChanges(),
     slashMenu(),
     linkMenu(),
+    tableSelectHandle(),
     imageDrop(schema),
     linkConverter(schema),
     linkTextSync(),
@@ -389,7 +388,7 @@ export default function initProse({ path, permissions }) {
       'Shift-Tab': liftListItem(schema.nodes.list_item),
     }),
     gapCursor(),
-    tableEditing(),
+    tableEditing({ allowTableNodeSelection: true }),
   ];
 
   if (canWrite) {

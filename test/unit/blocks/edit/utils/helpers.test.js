@@ -6,6 +6,7 @@ import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import {
   saveToDa,
   convertSheets,
+  getCdnConfig,
   parse,
   createElement,
   createTooltip,
@@ -101,6 +102,115 @@ describe('saveToDa', () => {
       const resp = await saveToDa('/aemsites/test/sheet1', sheets);
       const text = await resp.text();
       expect(text).to.equal('{"sheet1":{"total":1,"limit":1,"offset":0,"data":[{"A":"1","B":"2"}],":colWidths":[10,20]},"sheet2":{"total":1,"limit":1,"offset":0,"data":[{"C":"3","D":"4"}],":colWidths":[5,10]},":names":["sheet1","sheet2"],":version":3,":type":"multi-sheet",":private":{"private-sheet3":{"total":1,"limit":1,"offset":0,"data":[{"E":"5","F":"6"}],":colWidths":[11,12]}}}');
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+});
+
+describe('getCdnConfig', () => {
+  const configUrl = 'https://admin.hlx.page/sidekick/myorg/mysite/main/config.json';
+
+  it('Returns preview and prod when both hosts are available', async () => {
+    const mockFetch = (url) => {
+      if (url === configUrl) {
+        return Promise.resolve(new Response(JSON.stringify({
+          previewHost: 'preview.example.com',
+          host: 'www.example.com',
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      const result = await getCdnConfig('/myorg/mysite');
+      expect(result).to.deep.equal({
+        preview: 'preview.example.com',
+        prod: 'www.example.com',
+      });
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('Returns object when only previewHost is available', async () => {
+    const mockFetch = (url) => {
+      if (url === configUrl) {
+        return Promise.resolve(new Response(JSON.stringify({ previewHost: 'preview.example.com' }), { status: 200 }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      const result = await getCdnConfig('/myorg/mysite');
+      expect(result).to.deep.equal({
+        preview: 'preview.example.com',
+        prod: undefined,
+      });
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('Returns object when only host is available', async () => {
+    const mockFetch = (url) => {
+      if (url === configUrl) {
+        return Promise.resolve(new Response(JSON.stringify({ host: 'www.example.com' }), { status: 200 }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      const result = await getCdnConfig('/myorg/mysite');
+      expect(result).to.deep.equal({
+        preview: undefined,
+        prod: 'www.example.com',
+      });
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('Returns empty object when neither previewHost nor host is available', async () => {
+    const mockFetch = (url) => {
+      if (url === configUrl) {
+        return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      const result = await getCdnConfig('/myorg/mysite');
+      expect(result).to.deep.equal({});
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('Returns error object when fetch fails', async () => {
+    const mockFetch = (url) => {
+      if (url === configUrl) {
+        return Promise.resolve(new Response('', { status: 404 }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      const result = await getCdnConfig('/myorg/mysite');
+      expect(result).to.deep.equal({
+        error: 'Cannot fetch site config.',
+        status: 404,
+      });
     } finally {
       window.fetch = savedFetch;
     }
