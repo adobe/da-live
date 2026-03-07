@@ -130,13 +130,21 @@
   padding: 0 var(--inline-spacing);
   z-index: 100;
 
+  .icon-container {
+    display: flex;
+    align-items: center;
+    height: var(--item-height);
+    margin-left: 3px;
+    position: absolute;
+    top: 0;
+  }
+
   #search {
     width: 100%;
     line-height: var(--item-height);
     font-size: inherit;
     padding: 0 0 0 32px;
     border: none;
-    background: url('/blocks/edit/img/Smock_Search_18_N.svg') 4px center / 18px no-repeat;
     box-sizing: border-box;
     border-bottom: 1px solid #D1D1D1;
 
@@ -146,6 +154,12 @@
     }
 
     &:focus-visible::placeholder {
+      color: var(--s2-blue-900);
+    }
+  }
+
+  &:has(#search:focus-visible) {
+    .icon {
       color: var(--s2-blue-900);
     }
   }
@@ -354,6 +368,10 @@ li.library-plugin-detail-item {
     }
 
     .icon {
+      &.item-type {
+        margin-left: 3px;
+      }
+
       + p {
         margin-left: unset;
       }
@@ -428,6 +446,7 @@ li.library-plugin-detail-item {
       gap: 12px;
       align-items: center;
 
+      /* stylelint-disable-next-line no-descending-specificity */
       p {
         font-weight: 700;
         font-size: 18px;

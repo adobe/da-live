@@ -15,6 +15,7 @@ const ICONS = [
   '/blocks/edit/img/S2_Icon_ExperienceAdd_20_N.svg',
   '/blocks/edit/img/S2_Icon_ExperiencePreview_20_N.svg',
   '/blocks/edit/img/S2_Icon_ChevronRight_20_N.svg',
+  '/blocks/edit/img/S2_Icon_Search_20_N.svg',
   '/blocks/edit/img/Smock_InfoOutline_18_N.svg',
   '/blocks/edit/img/S2_Icon_Plugin_20_N.svg',
   '/blocks/edit/img/S2_Icon_Table_20_N.svg',
@@ -283,7 +284,6 @@ class DaLibrary extends LitElement {
     };
 
     const { pathname, hash } = window.location;
-
     const view = pathname.slice(1);
     const [org, repo, ...path] = sanitizePathParts(hash.slice(1));
 
@@ -311,9 +311,9 @@ class DaLibrary extends LitElement {
     this.requestUpdate();
   }
 
-  renderIcon(icon = '#S2_Icon_Plugin') {
+  renderIcon(icon = '#S2_Icon_Plugin', cls = '') {
     if (icon.startsWith('#')) {
-      return html`<svg class="icon"><use href=${icon}></use></svg>`;
+      return html`<svg class="icon ${cls}"><use href=${icon}></use></svg>`;
     }
     return html`<img class="icon" src="${icon}" />`;
   }
@@ -325,7 +325,7 @@ class DaLibrary extends LitElement {
 
     const { ok } = this._preview;
 
-    // Hide the iframe while fetching OK or if OK is false
+    // Hide the iframe while determining if previewed
     const hideIframe = ok === undefined || ok === false ? 'hide-iframe' : '';
 
     // Only display an error if the status is known
@@ -357,7 +357,7 @@ class DaLibrary extends LitElement {
     return html`
       <li class="library-plugin-detail-item" tabindex="1">
         <div class="library-plugin-detail-item-header">
-          ${item.icon ? this.renderIcon(item.icon) : nothing}
+          ${item.icon ? this.renderIcon(item.icon, 'item-type') : nothing}
           <button class="library-plugin-detail-item-title" @click=${() => this.handleItemClick('blocks', item, true)}>
             <p class="da-library-group-name">${item.name}</p>
             <p class="da-library-group-subtitle">${item.variants}</p>
@@ -409,7 +409,7 @@ class DaLibrary extends LitElement {
   }
 
   renderItem(item) {
-    const name = item.name || item.key || item.value;
+    const name = item.title || item.name || item.key || item.value;
     if (!name) return nothing;
 
     const previewBtn = item.type === 'templates'
@@ -419,18 +419,30 @@ class DaLibrary extends LitElement {
         </button>`
       : nothing;
 
+    const clickHandler = () => {
+      if (item.experience) {
+        this.handlePluginClick(item);
+        return;
+      }
+      this.handleItemClick(item.type, item);
+    };
+
+    // Non-plugins (no experience) get an add button
+    const addBtn = !item.experience ? html`
+      <button class="add" @click=${clickHandler}>
+        <svg class="icon"><use href="#S2_Icon_Experience_Add"/></svg>
+      </button>` : nothing;
+
     return html`
       <li class="library-plugin-detail-item" tabindex="1">
         <div class="library-plugin-detail-item-header">
-          ${item.icon ? this.renderIcon(item.icon) : nothing}
-          <button class="library-plugin-detail-item-title" @click=${() => this.handleItemClick(item.type, item)}>
+          ${item.icon ? this.renderIcon(item.icon, 'item-type') : nothing}
+          <button class="library-plugin-detail-item-title" @click=${clickHandler}>
             <p class="da-library-group-name">${name}</p>
           </button>
           <div class="library-plugin-detail-item-actions">
             ${previewBtn}
-            <button class="add" @click=${() => this.handleItemClick(item.type, item)}>
-              <svg class="icon"><use href="#S2_Icon_Experience_Add"/></svg>
-            </button>
+            ${addBtn}
           </div>
         </div>
       </li>`;
@@ -547,6 +559,9 @@ class DaLibrary extends LitElement {
   renderSearchInput() {
     return html`
       <div class="library-search">
+        <div class="icon-container">
+          ${this.renderIcon('#S2_Icon_Search')}
+        </div>
         <input
           id="search"
           name="search"

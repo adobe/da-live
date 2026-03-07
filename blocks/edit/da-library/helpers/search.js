@@ -49,8 +49,6 @@ export default function search(_searchStr, data) {
   // Templates, Icons, Placeholders
   const kvResults = searchKv(searchStr, data);
 
-  console.log(kvResults);
-
   // BYO Plugins
   const pluginResults = searchByoPlugins(searchStr, data);
 
