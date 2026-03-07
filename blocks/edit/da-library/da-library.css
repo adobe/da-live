@@ -438,6 +438,17 @@ li.library-plugin-detail-item {
       all: unset;
     }
   }
+
+  .iframe-overlay {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 240px;
+  }
+
+  iframe.hide-iframe {
+    display: none;
+  }
 }
 
 @media (min-width: 900px) {
