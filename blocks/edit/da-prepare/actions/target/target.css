@@ -2,14 +2,49 @@
   display: block;
   width: 280px;
   margin: 0 24px 24px;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.content {
+  margin-bottom: 22px;
 }
 
 .footer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 
   p {
     margin: 0;
     font-style: italic;
+    font-size: 14px;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+
+    .target-action-remove {
+      background-color: var(--s2-gray-100);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 16px;
+      flex: 0 0 auto;
+    }
+
+    sl-button {
+      flex: 0 0 auto;
+    }
   }
 }

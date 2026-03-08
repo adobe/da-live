@@ -296,7 +296,9 @@ export default class DaTitle extends LitElement {
               @click=${this.toggleActions}
               class="con-button blue da-title-action-send"
               aria-label="Send">
-              <svg class="da-title-action-send-icon" viewBox="0 0 20 20"><use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish" </span>
+              <svg class="da-title-action-send-icon" viewBox="0 0 20 20">
+                <use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish"/>
+              </svg>
             </button>
           </div>
         </div>

@@ -1,36 +1,120 @@
+import { DOMParser as ProseParser } from 'da-y-wrapper';
 import { DA_ORIGIN } from '../../../../shared/constants.js';
 import { daFetch, aemAdmin, getFirstSheet } from '../../../../shared/utils.js';
+import { corsFetch, deleteOffer, getAccessToken, getOffer, saveOffer } from './api.js';
 
 const TARGET_CONFIG_PATH = '/.da/adobe-target.json';
 
-function corsFetch(href, options) {
-  const url = `https://da-etc.adobeaem.workers.dev/cors?url=${encodeURIComponent(`${href}`)}`;
-  const opts = options || {};
-  return daFetch(url, opts);
+function parseHtml(schema, html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return ProseParser.fromSchema(schema).parse(div);
 }
 
-async function getAccessToken(clientId, clientSecret) {
-  const href = 'https://ims-na1.adobelogin.com/ims/token/v3';
-  const opts = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: 'openid,AdobeID,target_sdk,additional_info.projectedProductContext,read_organizations,additional_info.roles',
-    }),
-  };
-  const resp = await corsFetch(href, opts);
-  if (!resp.ok) {
-    const error = await resp.text();
-    return { error: `Failed to get access token: ${resp.status} - ${error}` };
+function findMetadataTable(doc) {
+  let result = null;
+  doc.descendants((node, pos) => {
+    if (node.type.name === 'table') {
+      const firstCell = node.firstChild?.firstChild;
+      if (firstCell?.textContent.toLowerCase().trim() === 'metadata') {
+        result = { node, pos };
+        return false;
+      }
+    }
+    return true;
+  });
+  return result;
+}
+
+function findMetadataRow(doc, key) {
+  const metadata = findMetadataTable(doc);
+  if (!metadata) return null;
+
+  const { node: table, pos: tablePos } = metadata;
+  let rowOffset = 1; // Start after the table opening
+
+  for (let i = 0; i < table.childCount; i += 1) {
+    const row = table.child(i);
+    const firstCell = row.firstChild;
+    if (firstCell?.textContent.trim() === key) {
+      const secondCell = row.childCount > 1 ? row.child(1) : null;
+      return {
+        row,
+        pos: tablePos + rowOffset,
+        value: secondCell?.textContent.trim() || null,
+      };
+    }
+    rowOffset += row.nodeSize;
+  }
+  return null;
+}
+
+function getOfferId() {
+  const { view } = window;
+  if (!view) return null;
+  const result = findMetadataRow(view.state.doc, 'adobe.target.offerId');
+  return result?.value || null;
+}
+
+function setOfferId(offerId) {
+  const { view } = window;
+  const { state } = view;
+  const { schema, tr } = state;
+
+  const tableHtml = `
+    <table>
+      <tr><td colspan="2"><p>metadata</p></td></tr>
+      <tr>
+        <td><p>adobe.target.offerId</p></td>
+        <td><p>${offerId}</p></td>
+      </tr>
+    </table>
+  `;
+
+  const metadata = findMetadataTable(state.doc);
+  const existingRow = findMetadataRow(state.doc, 'adobe.target.offerId');
+
+  if (existingRow) {
+    // Replace existing row
+    const parsedTable = parseHtml(schema, tableHtml).firstChild;
+    const newRow = parsedTable.child(1);
+    tr.replaceWith(existingRow.pos, existingRow.pos + existingRow.row.nodeSize, newRow);
+  } else if (metadata) {
+    // Add new row to existing metadata table
+    const parsedTable = parseHtml(schema, tableHtml).firstChild;
+    const newRow = parsedTable.child(1);
+    const insertPos = metadata.pos + metadata.node.nodeSize - 1;
+    tr.insert(insertPos, newRow);
+  } else {
+    // Create new metadata table
+    const newTable = parseHtml(schema, tableHtml).firstChild;
+    tr.insert(state.doc.content.size, newTable);
   }
 
-  const data = await resp.json();
-  return { token: data.access_token };
+  view.dispatch(tr);
 }
 
+export function removeOfferId() {
+  const { view } = window;
+  const { state } = view;
+  const { tr } = state;
+
+  const existingRow = findMetadataRow(state.doc, 'adobe.target.offerId');
+  if (!existingRow) return;
+
+  const metadata = findMetadataTable(state.doc);
+  if (metadata && metadata.node.childCount === 2) {
+    // Only header row + this row, delete the entire table
+    tr.delete(metadata.pos, metadata.pos + metadata.node.nodeSize);
+  } else {
+    tr.delete(existingRow.pos, existingRow.pos + existingRow.row.nodeSize);
+  }
+  view.dispatch(tr);
+}
+
+/**
+ * Fetch and cache the Adobe Target DA file config
+ */
 export const fetchTargetConfig = (() => {
   const configCache = {};
 
@@ -41,10 +125,20 @@ export const fetchTargetConfig = (() => {
     const json = await resp.json();
     const data = getFirstSheet(json);
 
-    return data.reduce((acc, row) => {
+    const baseConfig = data.reduce((acc, row) => {
       acc[row.key] = row.value;
       return acc;
     }, {});
+
+    const { clientId, clientSecret } = baseConfig;
+
+    if (!(clientId || clientSecret)) {
+      return { error: 'No clientId or clientSecret available.' };
+    }
+    const { error, token } = await getAccessToken(clientId, clientSecret);
+    if (error) return { error };
+
+    return { ...baseConfig, token };
   };
 
   return (org, site) => {
@@ -54,22 +148,45 @@ export const fetchTargetConfig = (() => {
   };
 })();
 
-export async function authenticate(org, site) {
-  const { tenant, clientId, clientSecret } = await fetchTargetConfig(org, site);
-  if (!(tenant && clientId && clientSecret)) {
-    return { error: 'Missing Target credentials' };
-  }
-  const token = await getAccessToken(clientId, clientSecret);
-  return token;
-}
-
 export async function savePreview(org, site, path) {
   const fullpath = `/${org}/${site}${path}`;
-  const json = await aemAdmin(fullpath, 'preview', 'POST');
+  const json = await aemAdmin(fullpath, 'preview');
   if (!json) return { error: 'Couldn\'t preview.' };
   return json;
 }
 
-export async function sendToTarget(org, site, aemPath, token) {
-  console.log(org, site, aemPath, token);
+export async function sendToTarget(org, site, name, aemPath, displayName, existingOfferId) {
+  const aemResp = await corsFetch(aemPath);
+  if (!aemResp.ok) return { error: 'Could not fetch from AEM.' };
+  const html = await aemResp.text();
+  const dom = new DOMParser().parseFromString(html, 'text/html');
+  const content = dom.querySelector('main').innerHTML;
+  const config = await fetchTargetConfig(org, site);
+  const result = await saveOffer(config, name, content, aemPath, displayName, existingOfferId);
+  if (result.offerId) setOfferId(result.offerId);
+  return result;
+}
+
+export async function deleteFromTarget(org, site, offerId) {
+  const config = await fetchTargetConfig(org, site);
+
+  const result = await deleteOffer(config, offerId);
+  if (result.error && !result.notFound) return result;
+
+  removeOfferId();
+  return result;
+}
+
+export async function getOfferDetails(org, site) {
+  // Get from the page
+  const offerId = getOfferId();
+  if (!offerId) return {};
+
+  const config = await fetchTargetConfig(org, site);
+  if (!config || config.error) return { id: offerId };
+
+  const result = await getOffer(config, offerId);
+  if (result.error) return { id: offerId };
+
+  return { id: result.id, name: result.name };
 }
