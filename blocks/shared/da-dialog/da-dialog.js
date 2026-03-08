@@ -83,8 +83,8 @@ export default class DaDialog extends LitElement {
               <p class="da-dialog-footer-message">${this.message || nothing}</p>
             </div>
             <slot name="footer-right">
-              <sl-button class="${this._action.style}" @click=${this._action.click} ?disabled=${this._action.disabled}>
-                ${this._action.label}
+              <sl-button class="${this.action.style}" @click=${this.action.click} ?disabled=${this.action.disabled}>
+                ${this.action.label}
               </sl-button>
             </slot>
           </div>` : nothing}

@@ -9,7 +9,7 @@
 
 h1 {
   position: relative;
-  margin-top: 0;
+  margin: 0 0 21px;
 }
 
 button {
@@ -92,7 +92,7 @@ da-dialog {
 
 .da-title-collab-actions-wrapper {
   display: flex;
-  margin-bottom: 0.67em;
+  margin: 0 0 21px;
   justify-content: center;
   align-items: center;
   gap: 24px;
@@ -217,9 +217,9 @@ da-dialog {
 .da-title-action-send-icon {
   position: relative;
   display: block;
-  width: 22px;
-  height: 22px;
-  background: url('/blocks/edit/img/Smock_Send_18_N.svg') center/22px no-repeat;
+  width: 20px;
+  height: 20px;
+  margin-right: 2px; /* visually center */
 }
 
 .da-title-action-send-icon.is-sending {
@@ -227,7 +227,6 @@ da-dialog {
 }
 
 .da-title-error {
-  margin: 0 0 0 24px;
   color: #fff;
   background-color: #d73220;
   padding: 4px 8px;

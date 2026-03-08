@@ -7,17 +7,17 @@ const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const OOTB_ACTIONS = [
   {
     title: 'Preflight',
-    render: async (details) => (await import('./actions/preflight.js')).default(details),
+    render: async (details) => (await import('./actions/preflight/preflight.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_FileFold_20_N.svg#S2_Icon_FileFold',
   },
   {
     title: 'Unpublish',
-    render: async (details) => (await import('./actions/unpublish.js')).default(details),
+    render: async (details) => (await import('./actions/unpublish/unpublish.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_PublishNo_20_N.svg#S2_Icon_PublishNo',
   },
   {
     title: 'Send to Adobe Target',
-    render: async (details) => (await import('./actions/adobetarget.js')).default(details),
+    render: async (details) => (await import('./actions/target/target.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_Target_20_N.svg#S2_Icon_Target',
     optional: true,
   },

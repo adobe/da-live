@@ -207,6 +207,10 @@ export default class DaTitle extends LitElement {
     this._actionsVis = hasMatchingPublishConfig ? ['preview'] : ['preview', 'publish'];
   }
 
+  get _canPrepare() {
+    return this.details.view === 'edit' || this.details.view === 'sheet';
+  }
+
   get _readOnly() {
     if (!this.permissions) return false;
     return !this.permissions.some((permission) => permission === 'write');
@@ -284,7 +288,7 @@ export default class DaTitle extends LitElement {
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
-          <da-prepare .details=${this.details}></da-prepare>
+          ${this._canPrepare ? html`<da-prepare .details=${this.details}></da-prepare>` : nothing}
           ${this._status ? this.renderError() : nothing}
           <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis.length > 0 ? 'is-open' : ''}">
             ${this.renderActions()}
@@ -292,7 +296,7 @@ export default class DaTitle extends LitElement {
               @click=${this.toggleActions}
               class="con-button blue da-title-action-send"
               aria-label="Send">
-              <span class="da-title-action-send-icon"></span>
+              <svg class="da-title-action-send-icon" viewBox="0 0 20 20"><use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish" </span>
             </button>
           </div>
         </div>
