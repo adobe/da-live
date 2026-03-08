@@ -168,3 +168,28 @@ export async function checkLockdownImages(owner) {
     return false;
   }
 }
+
+export const fetchDaConfig = (() => {
+  const configCache = {};
+
+  const fetchConfig = async (pathname) => {
+    const resp = await daFetch(`${DA_ORIGIN}/config${pathname}`);
+    if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
+    return resp.json();
+  };
+
+  return ({ path }) => {
+    const [org, site] = path.slice(1).split('/');
+    if (site) {
+      // Set the site config promise if it does not exist
+      configCache[`/${org}/${site}`] ??= fetchConfig(`/${org}/${site}`);
+
+      return configCache[`/${org}/${site}`];
+    }
+
+    // Set the org config promise if it does not exist
+    configCache[`/${org}`] ??= fetchConfig(`/${org}`);
+
+    return configCache[`/${org}`];
+  };
+})();

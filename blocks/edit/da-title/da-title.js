@@ -7,8 +7,7 @@ import {
   saveDaVersion,
   getCdnConfig,
 } from '../utils/helpers.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { getFirstSheet, fetchDaConfig } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -65,6 +64,8 @@ export default class DaTitle extends LitElement {
 
     const element = this.shadowRoot.querySelector('h1');
     if (element) observer.observe(element);
+
+    import('../da-prepare/da-prepare.js');
   }
 
   handleError(json, action, icon) {
@@ -172,20 +173,14 @@ export default class DaTitle extends LitElement {
 
   async fetchConfig() {
     const { owner, repo } = this.details;
-    if (this.config) return this.config;
-
-    const fetchSingleConfig = (path) => daFetch(path)
-      .then((r) => r.json())
-      .then(getFirstSheet)
-      .then((data) => data ?? [])
-      .catch(() => []);
-
-    const [org, site] = await Promise.all([
-      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}`),
-      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}/${repo}`),
+    const loaded = await Promise.all([
+      fetchDaConfig({ path: `/${owner}` }),
+      fetchDaConfig({ path: `/${owner}/${repo}` }),
     ]);
-    this.config = { org, site };
-    return this.config;
+    return {
+      org: getFirstSheet(loaded[0]),
+      site: getFirstSheet(loaded[1]),
+    };
   }
 
   async toggleActions() {
@@ -289,6 +284,7 @@ export default class DaTitle extends LitElement {
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
+          <da-prepare .details=${this.details}></da-prepare>
           ${this._status ? this.renderError() : nothing}
           <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis.length > 0 ? 'is-open' : ''}">
             ${this.renderActions()}

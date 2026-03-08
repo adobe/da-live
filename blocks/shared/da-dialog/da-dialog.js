@@ -49,17 +49,6 @@ export default class DaDialog extends LitElement {
     this.dispatchEvent(event);
   }
 
-  get _action() {
-    if (this.action) return this.action;
-
-    // Build out a default action.
-    return {
-      label: 'OK',
-      style: 'accent',
-      onClick: this.close(),
-    };
-  }
-
   get _dialog() {
     return this.shadowRoot.querySelector('sl-dialog');
   }
@@ -88,7 +77,7 @@ export default class DaDialog extends LitElement {
           <div class="da-dialog-content" part="content">
             <slot></slot>
           </div>
-          <div class="da-dialog-footer" part="footer">
+          ${this.action ? html`<div class="da-dialog-footer" part="footer">
             <div class="da-dialog-footer-left" part="footer-left">
               <slot name="footer-left"></slot>
               <p class="da-dialog-footer-message">${this.message || nothing}</p>
@@ -98,7 +87,7 @@ export default class DaDialog extends LitElement {
                 ${this._action.label}
               </sl-button>
             </slot>
-          </div>
+          </div>` : nothing}
         </div>
       </sl-dialog>
     `;
