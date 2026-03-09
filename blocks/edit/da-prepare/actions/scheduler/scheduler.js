@@ -5,6 +5,7 @@ import { saveToAem } from '../../../utils/helpers.js';
 import { isRegistered, schedulePagePublish } from './utils.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
+const ensureJsonPath = (value) => (value.endsWith('.json') ? value : `${value}.json`);
 
 class DaScheduler extends LitElement {
   static properties = {
@@ -53,7 +54,7 @@ class DaScheduler extends LitElement {
     }
 
     this._statusText = 'Previewing…';
-    const aemPath = view === 'sheet' ? `${pathname}.json` : pathname;
+    const aemPath = view === 'sheet' ? ensureJsonPath(pathname) : pathname;
     const previewJson = await saveToAem(aemPath, 'preview');
     if (previewJson.error) {
       this._statusText = undefined;
@@ -64,20 +65,22 @@ class DaScheduler extends LitElement {
     this._statusText = 'Scheduling…';
     const imsDetails = await initIms();
     const userId = imsDetails?.email;
-    const pagePath = view === 'sheet' ? `${path}.json` : path;
-
+    const pagePath = view === 'sheet'
+      ? ensureJsonPath(path)
+      : path.replace(/\.html$/, '');
     try {
-      this._statusText = undefined;
       const resp = await schedulePagePublish(org, site, pagePath, userId, selected.toISOString());
 
       if (resp?.ok) {
         this._statusText = `Scheduled for ${selected.toLocaleString()}`;
         setTimeout(() => { this.handleClose(); }, 3000);
       } else {
+        this._statusText = undefined;
         const message = resp.headers?.get('X-Error');
         this._errorText = message || 'Failed to schedule publish.';
       }
     } catch (e) {
+      this._statusText = undefined;
       this._errorText = e.message || 'Failed to schedule publish.';
     }
   }
