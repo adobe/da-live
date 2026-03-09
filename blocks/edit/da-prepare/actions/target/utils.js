@@ -156,7 +156,7 @@ export async function savePreview(org, site, path) {
 }
 
 export async function sendToTarget(org, site, name, aemPath, displayName, existingOfferId) {
-  const aemResp = await corsFetch(aemPath);
+  const aemResp = await corsFetch(`${aemPath}?nocache=${Date.now()}`);
   if (!aemResp.ok) return { error: 'Could not fetch from AEM.' };
   const html = await aemResp.text();
   const dom = new DOMParser().parseFromString(html, 'text/html');
