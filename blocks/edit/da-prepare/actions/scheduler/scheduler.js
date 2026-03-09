@@ -32,6 +32,8 @@ class DaScheduler extends LitElement {
 
   async handleSchedule() {
     const { org, site, path, view } = this.details;
+    const { hash } = window.location;
+    const pathname = hash.replace('#', '');
     const fiveMinFromNow = new Date(Date.now() + 5 * 60 * 1000);
     const selected = new Date(this._scheduledTime);
 
@@ -51,7 +53,7 @@ class DaScheduler extends LitElement {
     }
 
     this._statusText = 'Previewing…';
-    const aemPath = view === 'sheet' ? `${path}.json` : path;
+    const aemPath = view === 'sheet' ? `${pathname}.json` : pathname;
     const previewJson = await saveToAem(aemPath, 'preview');
     if (previewJson.error) {
       this._statusText = undefined;
@@ -62,7 +64,8 @@ class DaScheduler extends LitElement {
     this._statusText = 'Scheduling…';
     const imsDetails = await initIms();
     const userId = imsDetails?.email;
-    const resp = await schedulePagePublish(org, site, path, userId, selected.toISOString());
+    const pagePath = view === 'sheet' ? `${path}.json` : path;
+    const resp = await schedulePagePublish(org, site, pagePath, userId, selected.toISOString());
 
     this._statusText = undefined;
     if (resp?.ok) {

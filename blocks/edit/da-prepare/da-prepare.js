@@ -145,7 +145,7 @@ export default class DaPrepare extends LitElement {
       <div class="prepare-menu">
         <ul class=""prepare-menu-list">
           ${this._menuItems.map((item) => html`
-            <li class="prepare-menu-item prepare-preflight">
+            <li class="prepare-menu-item prepare-${item.title.toLowerCase().replaceAll(' ', '-')}">
               <button @click=${() => this.handleItemClick(item)}>
                 <svg class="icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>
                 <span>${item.title}</span>
