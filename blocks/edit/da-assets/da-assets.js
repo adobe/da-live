@@ -140,13 +140,14 @@ export async function openAssets() {
       return `https://${prodOrigin}${asset.path}`;
     }
     const mimeType = asset.mimetype?.toLowerCase();
+    const encodedName = encodeURIComponent(name);
     if (useOriginalMimetypes.includes(mimeType)) {
-      return `${getBaseDmUrl(asset)}/original/as/${name}`;
+      return `${getBaseDmUrl(asset)}/original/as/${encodedName}`;
     }
     if (mimeType?.startsWith('video/')) {
       return `${getBaseDmUrl(asset)}/play`;
     }
-    const baseName = name.replace(/\.[^.]+$/, '');
+    const baseName = encodedName.replace(/\.[^.]+$/, '');
     return `${getBaseDmUrl(asset)}/as/${baseName}.avif`;
   };
 
