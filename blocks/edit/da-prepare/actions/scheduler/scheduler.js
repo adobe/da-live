@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { initIms } from '../../../../shared/utils.js';
 import { saveToAem } from '../../../utils/helpers.js';
-import { isRegistered, schedulePagePublish } from './utils.js';
+import { isRegistered, getExistingSchedule, schedulePagePublish } from './utils.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const ensureJsonPath = (value) => (value.endsWith('.json') ? value : `${value}.json`);
@@ -13,11 +13,25 @@ class DaScheduler extends LitElement {
     _statusText: { state: true },
     _scheduledTime: { state: true },
     _errorText: { state: true },
+    _existingSchedule: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    this.checkExistingSchedule();
+  }
+
+  async checkExistingSchedule() {
+    const { org, site, path, view } = this.details;
+    const pagePath = view === 'sheet'
+      ? ensureJsonPath(path)
+      : path.replace(/\.html$/, '');
+    const schedule = await getExistingSchedule(org, site, pagePath);
+    if (schedule?.scheduledPublish && schedule?.user) {
+      const time = new Date(schedule.scheduledPublish).toLocaleString();
+      this._existingSchedule = `${time} by ${schedule.user}`;
+    }
   }
 
   handleClose() {
@@ -93,6 +107,7 @@ class DaScheduler extends LitElement {
     return html`
       <div class="content">
         <p>Choose when to publish this page.</p>
+        ${this._existingSchedule ? html`<p class="info-text">Already scheduled for ${this._existingSchedule}</p>` : nothing}
         <sl-input
           type="datetime-local"
           @input=${this.handleTimeChange}

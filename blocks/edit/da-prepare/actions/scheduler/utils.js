@@ -1,7 +1,7 @@
 import { daFetch } from '../../../../shared/utils.js';
 import { AEM_ORIGIN } from '../../../../shared/constants.js';
 
-const SNAPSHOT_SCHEDULER_URL = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
+const SNAPSHOT_SCHEDULER_URL = 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev';
 
 export async function isRegistered(org, site) {
   try {
@@ -20,6 +20,16 @@ export async function getUserPublishPermission(org, site, path) {
     return json.live?.permissions?.includes('write') || false;
   } catch {
     return false;
+  }
+}
+
+export async function getExistingSchedule(org, site, path) {
+  try {
+    const resp = await daFetch(`${SNAPSHOT_SCHEDULER_URL}/schedule/${org}/${site}?path=${encodeURIComponent(path)}`);
+    if (!resp.ok) return null;
+    return resp.json();
+  } catch {
+    return null;
   }
 }
 
