@@ -141,12 +141,13 @@ export async function openAssets() {
     }
     const mimeType = asset.mimetype?.toLowerCase();
     if (useOriginalMimetypes.includes(mimeType)) {
-      return `${getBaseDmUrl(asset)}/original`;
+      return `${getBaseDmUrl(asset)}/original/as/${name}`;
     }
     if (mimeType?.startsWith('video/')) {
       return `${getBaseDmUrl(asset)}/play`;
     }
-    return `${getBaseDmUrl(asset)}/as/${name}`;
+    const baseName = name.replace(/\.[^.]+$/, '');
+    return `${getBaseDmUrl(asset)}/as/${baseName}.avif`;
   };
 
   // Determine if images should be links
