@@ -28,9 +28,9 @@ class DaScheduler extends LitElement {
       ? ensureJsonPath(path)
       : path.replace(/\.html$/, '');
     const schedule = await getExistingSchedule(org, site, pagePath);
-    if (schedule?.scheduledPublish && schedule?.user) {
+    if (schedule?.scheduledPublish && schedule?.userId) {
       const time = new Date(schedule.scheduledPublish).toLocaleString();
-      this._existingSchedule = `${time} by ${schedule.user}`;
+      this._existingSchedule = `${time} by ${schedule.userId}`;
     }
   }
 
