@@ -65,14 +65,20 @@ class DaScheduler extends LitElement {
     const imsDetails = await initIms();
     const userId = imsDetails?.email;
     const pagePath = view === 'sheet' ? `${path}.json` : path;
-    const resp = await schedulePagePublish(org, site, pagePath, userId, selected.toISOString());
 
-    this._statusText = undefined;
-    if (resp?.ok) {
-      this._statusText = `Scheduled for ${selected.toLocaleString()}`;
-      setTimeout(() => { this.handleClose(); }, 3000);
-    } else {
-      this._errorText = 'Failed to schedule publish. Please try again.';
+    try {
+      this._statusText = undefined;
+      const resp = await schedulePagePublish(org, site, pagePath, userId, selected.toISOString());
+
+      if (resp?.ok) {
+        this._statusText = `Scheduled for ${selected.toLocaleString()}`;
+        setTimeout(() => { this.handleClose(); }, 3000);
+      } else {
+        const message = resp.headers?.get('X-Error');
+        this._errorText = message || 'Failed to schedule publish.';
+      }
+    } catch (e) {
+      this._errorText = e.message || 'Failed to schedule publish.';
     }
   }
 
