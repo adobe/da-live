@@ -78,10 +78,12 @@ setup('Set up authentication', async ({ page }) => {
   await continueButton.waitFor();
   await continueButton.click();
 
-  const passwordInput = page.getByLabel('Password', { exact: true });
-  await passwordInput.waitFor();
-  await passwordInput.fill(pwd);
-  console.log('Entered password');
+  await setup.step('Enter password (hidden)', async () => {
+    const passwordInput = page.getByLabel('Password', { exact: true });
+    await passwordInput.waitFor();
+    await passwordInput.fill(pwd);
+    console.log('Entered password');
+  }, { box: true });
   await page.locator('button[aria-label="Continue"]').click();
 
   const foundationInternal = page.getByLabel('Foundation Internal');
