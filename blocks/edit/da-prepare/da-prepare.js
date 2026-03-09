@@ -42,6 +42,11 @@ export default class DaPrepare extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
   }
 
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this._onOutsideClick) document.removeEventListener('click', this._onOutsideClick);
+  }
+
   update(props) {
     if (props.has('details')) this.loadMenu();
     super.update();
@@ -86,6 +91,18 @@ export default class DaPrepare extends LitElement {
 
   handleToggle() {
     this._showMenu = !this._showMenu;
+    if (this._showMenu) {
+      requestAnimationFrame(() => {
+        document.addEventListener('click', this._onOutsideClick = (e) => {
+          if (!e.composedPath().includes(this)) {
+            this._showMenu = false;
+            document.removeEventListener('click', this._onOutsideClick);
+          }
+        });
+      });
+    } else {
+      document.removeEventListener('click', this._onOutsideClick);
+    }
   }
 
   async handleItemClick(item) {
