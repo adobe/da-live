@@ -1,7 +1,7 @@
 import { daFetch } from '../../../../shared/utils.js';
 import { AEM_ORIGIN } from '../../../../shared/constants.js';
 
-const SNAPSHOT_SCHEDULER_URL = 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev';
+const SNAPSHOT_SCHEDULER_URL = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
 
 export async function isRegistered(org, site) {
   try {
