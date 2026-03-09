@@ -8,6 +8,7 @@ import {
   getCdnConfig,
 } from '../utils/helpers.js';
 import { getFirstSheet, fetchDaConfig } from '../../shared/utils.js';
+import { getExistingSchedule } from '../da-prepare/actions/scheduler/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -91,7 +92,66 @@ export default class DaTitle extends LitElement {
     return url.href.replace(url.origin, `https://${hostname}`);
   }
 
+  async hasSchedulePublish() {
+    const { org, site } = this.details;
+    const configs = await Promise.all([
+      fetchDaConfig({ path: `/${org}` }),
+      fetchDaConfig({ path: `/${org}/${site}` }),
+    ]);
+    const prepareItems = [
+      ...(configs[0]?.prepare?.data || []),
+      ...(configs[1]?.prepare?.data || []),
+    ];
+    return prepareItems.some((item) => item.title === 'Schedule Publish');
+  }
+
+  async checkScheduleConflict() {
+    const { org, site, path, view } = this.details;
+    if (!org || !site || !path) return true;
+
+    let pagePath = path.replace(/\.html$/, '');
+    if (view === 'sheet' && !path.endsWith('.json')) pagePath = `${path}.json`;
+
+    try {
+      const schedule = await getExistingSchedule(org, site, pagePath);
+      if (!schedule?.scheduledPublish) return true;
+      return this.confirmScheduledPublish(schedule);
+    } catch {
+      return true;
+    }
+  }
+
+  async confirmScheduledPublish(schedule) {
+    await import('../../shared/da-dialog/da-dialog.js');
+
+    return new Promise((resolve) => {
+      const time = new Date(schedule.scheduledPublish).toLocaleString();
+      const user = schedule.userId;
+      const info = user ? `${time} by ${user}` : time;
+
+      const title = 'Page already scheduled';
+      const content = html`
+        <p>This page is already scheduled to publish:</p>
+        <p><strong>${info}</strong></p>
+        <p>Publishing now will override the scheduled publish. Continue?</p>
+      `;
+      const action = {
+        style: 'accent',
+        label: 'Publish anyway',
+        click: () => { this._dialog = undefined; resolve(true); },
+      };
+      const close = () => { this._dialog = undefined; resolve(false); };
+
+      this._dialog = { title, content, action, close };
+    });
+  }
+
   async handleAction(action) {
+    if (action === 'publish' && await this.hasSchedulePublish()) {
+      const shouldContinue = await this.checkScheduleConflict();
+      if (!shouldContinue) return;
+    }
+
     this.toggleActions();
     this._status = null;
     const sendBtn = this.shadowRoot.querySelector('.da-title-action-send-icon');
