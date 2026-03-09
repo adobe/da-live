@@ -1,0 +1,33 @@
+:host {
+  display: block;
+  width: 280px;
+  margin: 0 24px 24px;
+}
+
+.content {
+  margin-bottom: 22px;
+
+  p {
+    margin: 0 0 12px;
+  }
+
+  .error-text {
+    color: var(--s2-red-900, #d73220);
+    font-size: 14px;
+    margin-top: 8px;
+  }
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  p {
+    margin: 0;
+    font-style: italic;
+    font-size: 14px;
+  }
+}

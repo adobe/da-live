@@ -11,6 +11,12 @@ const OOTB_ACTIONS = [
     icon: '/blocks/edit/img/S2_Icon_FileFold_20_N.svg#S2_Icon_FileFold',
   },
   {
+    title: 'Schedule Publish',
+    render: async (details) => (await import('./actions/scheduler/scheduler.js')).default(details),
+    icon: '/blocks/edit/img/S2_Icon_ClockPending_20_N.svg#S2_Icon_ClockPending',
+    optional: true,
+  },
+  {
     title: 'Unpublish',
     render: async (details) => (await import('./actions/unpublish/unpublish.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_PublishNo_20_N.svg#S2_Icon_PublishNo',
