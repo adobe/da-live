@@ -10,6 +10,15 @@ const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 
+// MIME types that use /original rendition instead of web-optimized or /play delivery.
+// Configurable per-project via 'aem.asset.document.mimetypes' (comma-separated).
+const USE_ORIGINAL_DELIVERY_FOR_MIMETYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/csv',
+  'application/zip',
+];
+
 const fullConfJsons = {};
 const CONFS = {};
 
@@ -121,11 +130,23 @@ export async function openAssets() {
 
   const getBaseDmUrl = (asset) => `https://${prodOrigin}${prodOrigin.includes('/') ? '' : '/adobe/assets/'}${asset['repo:id']}`;
 
+  const useOriginalMimetypesConfig = await getConfKey(owner, repo, 'aem.asset.document.mimetypes');
+  const useOriginalMimetypes = useOriginalMimetypesConfig
+    ? useOriginalMimetypesConfig.split(/\s*,\s*/).map((t) => t.toLowerCase().trim())
+    : USE_ORIGINAL_DELIVERY_FOR_MIMETYPES;
+
   const getAssetUrl = (asset, name = asset.name) => {
     if (!dmDeliveryEnabled) {
       return `https://${prodOrigin}${asset.path}`;
     }
-    return `${getBaseDmUrl(asset)}${asset.mimetype?.startsWith('video/') ? '/original' : ''}/as/${name}`;
+    const mimeType = asset.mimetype?.toLowerCase();
+    if (useOriginalMimetypes.includes(mimeType)) {
+      return `${getBaseDmUrl(asset)}/original`;
+    }
+    if (mimeType?.startsWith('video/')) {
+      return `${getBaseDmUrl(asset)}/play`;
+    }
+    return `${getBaseDmUrl(asset)}/as/${name}`;
   };
 
   // Determine if images should be links
