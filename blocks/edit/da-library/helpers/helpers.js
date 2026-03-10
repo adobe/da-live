@@ -110,9 +110,9 @@ function calculateSources(org, repo, sheetPath) {
 
 async function fetchLibraryConfig(org, repo) {
   const resp = await daFetch(`${DA_ORIGIN}/config/${org}/${repo}/`);
-  if (!resp.ok) return null;
+  if (!resp.ok) return [];
   const { library } = await resp.json();
-  if (!library) return null;
+  if (!library) return [];
   return library.data.reduce((acc, row) => {
     // Determine if a plugin should be visible based on query param
     const allowed = getIsPluginAllowed(row.ref);
