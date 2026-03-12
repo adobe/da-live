@@ -140,7 +140,10 @@ export default class DaTitle extends LitElement {
 
       window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
     }
-    if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
+    if (this.details.view === 'edit') {
+      if (action === 'publish') saveDaVersion(pathname);
+      else if (action === 'preview') saveDaVersion(pathname, 'html', 'Previewed');
+    }
     sendBtn.classList.remove('is-sending');
   }
 
