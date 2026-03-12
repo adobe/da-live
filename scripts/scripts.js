@@ -73,13 +73,13 @@ async function loadAiAssistant() {
   
   // Load the AI assistant component
   try {
-    const { default: initAssistant } = await import('/blocks/shared/da-ai-assistant/da-ai-assistant.js');
+    const { default: initAssistant } = await import('/blocks/shared/da-assistant/da-assistant.js');
     const container = document.createElement('div');
     container.className = 'da-ai-assistant-mount';
     document.body.appendChild(container);
     initAssistant(container);
   } catch (error) {
-    console.warn('AI Assistant could not be loaded:', error);
+    console.error('AI Assistant could not be loaded:', error);
   }
 }
 

@@ -4,9 +4,35 @@ import { daFetch } from '../shared/utils.js';
 import './da-title/da-title.js';
 import './da-content/da-content.js';
 
+const DOCUMENT_UPDATED_EVENT = 'da:agent-content-updated';
+
 let prose;
 let proseEl;
 let wsProvider;
+
+function normalizePath(path) {
+  if (typeof path !== 'string') return '';
+  return path
+    .trim()
+    .split('?')[0]
+    .split('#')[0]
+    .replace(/^\/+/, '')
+    .replace(/\.html$/i, '');
+}
+
+function getContextPath(details) {
+  if (!details) return '';
+  const fullPath = details.fullpath || '';
+  const owner = details.owner || '';
+  const repo = details.repo || '';
+  if (!fullPath || !owner || !repo) return '';
+
+  const prefix = `/${owner}/${repo}/`;
+  if (fullPath.startsWith(prefix)) {
+    return normalizePath(fullPath.slice(prefix.length));
+  }
+  return normalizePath(fullPath);
+}
 
 export async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
@@ -72,9 +98,50 @@ async function setUI(el) {
 }
 
 export default async function init(el) {
-  setUI(el);
+  let refreshTimer;
+  let refreshInFlight = false;
+  let refreshQueued = false;
+
+  const refreshEditor = async () => {
+    if (refreshInFlight) {
+      refreshQueued = true;
+      return;
+    }
+
+    refreshInFlight = true;
+    try {
+      await setUI(el);
+    } finally {
+      refreshInFlight = false;
+      if (refreshQueued) {
+        refreshQueued = false;
+        await refreshEditor();
+      }
+    }
+  };
+
+  const scheduleRefresh = (delay = 0) => {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => {
+      refreshTimer = undefined;
+      void refreshEditor();
+    }, delay);
+  };
+
+  void refreshEditor();
 
   window.addEventListener('hashchange', () => {
-    setUI(el);
+    scheduleRefresh(0);
+  });
+
+  window.addEventListener(DOCUMENT_UPDATED_EVENT, (event) => {
+    const details = getPathDetails();
+    if (!details || details.view !== 'edit') return;
+
+    const targetPath = normalizePath(event?.detail?.path || '');
+    const currentPath = getContextPath(details);
+    if (!targetPath || !currentPath || targetPath !== currentPath) return;
+
+    scheduleRefresh(150);
   });
 }
