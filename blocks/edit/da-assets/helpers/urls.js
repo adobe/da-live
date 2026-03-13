@@ -7,7 +7,8 @@ const RENDITION_REL = 'http://ns.adobe.com/adobecloud/rel/rendition';
 export function buildAuthorUrl(asset, publishOrigin) {
   const mimetype = asset.mimetype || asset['dc:format'] || '';
   if (mimetype.startsWith('video/')) {
-    const renditionLinks = asset._links?.[RENDITION_REL]; // eslint-disable-line no-underscore-dangle
+    // eslint-disable-next-line no-underscore-dangle
+    const renditionLinks = asset._links?.[RENDITION_REL];
     const videoLink = renditionLinks?.find((link) => link.href.endsWith('/play'))?.href;
     return videoLink || `https://${publishOrigin}${asset.path}`;
   }

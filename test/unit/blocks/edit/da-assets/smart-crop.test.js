@@ -3,7 +3,8 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/bheuaark/', { hostname: 'localhost' });
 
-const { showSmartCropDialog } = await import('../../../../../blocks/edit/da-assets/helpers/smart-crop.js');
+const smartCropModule = await import('../../../../../blocks/edit/da-assets/helpers/smart-crop.js');
+const showSmartCropDialog = smartCropModule.default;
 
 // ---------------------------------------------------------------------------
 // Fixtures

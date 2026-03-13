@@ -29,9 +29,7 @@ function makeFetch(responses) {
 describe('getConfKey', () => {
   it('returns value from repo-level config', async () => {
     const orgFetch = window.fetch;
-    window.fetch = makeFetch({
-      '/myorg/myrepo/': makeSheet([{ key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' }]),
-    });
+    window.fetch = makeFetch({ '/myorg/myrepo/': makeSheet([{ key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' }]) });
     try {
       // Clear module-level cache by importing fresh; instead exercise with distinct owner/repo
       const val = await getConfKey('myorg', 'myrepo', 'aem.repositoryId');
@@ -185,9 +183,7 @@ describe('getRepositoryConfig', () => {
 
   it('returns null when aem.repositoryId is not configured', async () => {
     const orgFetch = window.fetch;
-    window.fetch = makeFetch({
-      '/rcfg/missing/': makeSheet([]),
-    });
+    window.fetch = makeFetch({ '/rcfg/missing/': makeSheet([]) });
     try {
       const cfg = await getRepositoryConfig('rcfg', 'missing');
       expect(cfg).to.be.null;

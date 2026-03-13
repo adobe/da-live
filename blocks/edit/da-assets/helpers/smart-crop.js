@@ -8,7 +8,9 @@ function buildStructureSelectionHtml(responsiveImageConfig, blockName, smartCrop
     const matchesPosition = blockName
       ? config.position === 'everywhere' || config.position === blockName
       : config.position === 'everywhere' || config.position === 'outside-blocks';
-    const hasAllCrops = config.crops.every((crop) => smartCropItems.find((item) => item.name === crop));
+    const hasAllCrops = config.crops.every(
+      (crop) => smartCropItems.find((item) => item.name === crop),
+    );
     return matchesPosition && hasAllCrops;
   });
 
@@ -42,16 +44,18 @@ function syncCropSelectionToStructure(cropList, structureValue) {
  * @param {object} opts
  * @param {HTMLElement} opts.container - Element to render the crop UI into.
  * @param {object} opts.asset - Selected asset object (author-tier fields: repo:id, name, mimetype).
- * @param {string} opts.assetUrl - Pre-built URL for the original asset (used for "Original" thumbnail).
+ * @param {string} opts.assetUrl - Pre-built URL for the original asset
+ *   (used for "Original" thumbnail).
  * @param {string} opts.dmOrigin - DM delivery origin host (no protocol).
  * @param {string|null} opts.blockName - Current editor block name, or null if outside a block.
  * @param {Promise<Array|false>} opts.responsiveImageConfigPromise - Responsive image configs.
  * @param {function(string[]): void} opts.onInsert - Called with array of src URLs to insert.
  * @param {function(): void} opts.onBack - Called when user clicks Back.
  * @param {function(): void} opts.onCancel - Called when user clicks Cancel.
- * @returns {Promise<boolean>} false if the asset has no smart crops (caller should insert directly).
+ * @returns {Promise<boolean>} false if the asset has no smart crops
+ *   (caller should insert directly).
  */
-export async function showSmartCropDialog({
+export default async function showSmartCropDialog({
   container,
   asset,
   assetUrl,

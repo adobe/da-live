@@ -1,13 +1,9 @@
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
-import {
-  buildAuthorUrl, buildDmUrl, buildDeliveryUrl, getAssetAlt, getDmApprovalStatus,
-} from './helpers/urls.js';
-import {
-  insertImage, insertLink, insertFragment, createImageNode, getBlockName,
-} from './helpers/insert.js';
-import { showSmartCropDialog } from './helpers/smart-crop.js';
+import { buildAuthorUrl, buildDmUrl, buildDeliveryUrl, getAssetAlt, getDmApprovalStatus } from './helpers/urls.js';
+import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
+import showSmartCropDialog from './helpers/smart-crop.js';
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 
@@ -77,7 +73,13 @@ function showAssetPanel(assetPanel, secondaryPanel) {
   assetPanel.style.display = 'block';
 }
 
-export function buildHandleSelection(dialog, assetPanel, secondaryPanel, repoConfig, responsiveImageConfigPromise) {
+export function buildHandleSelection(
+  dialog,
+  assetPanel,
+  secondaryPanel,
+  repoConfig,
+  responsiveImageConfigPromise,
+) {
   return async (assets) => {
     const [asset] = assets;
     if (!asset) return;

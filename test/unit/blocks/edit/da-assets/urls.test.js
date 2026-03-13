@@ -43,11 +43,7 @@ const AUTHOR_VIDEO = {
       { href: 'https://publish-p1-e1.adobeaemcloud.com/videos/clip.mp4/play' },
     ],
   },
-  _embedded: {
-    'http://ns.adobe.com/adobecloud/rel/metadata/asset': {
-      'dam:assetStatus': 'draft',
-    },
-  },
+  _embedded: { 'http://ns.adobe.com/adobecloud/rel/metadata/asset': { 'dam:assetStatus': 'draft' } },
 };
 
 const DELIVERY_IMAGE = {
@@ -230,13 +226,7 @@ describe('getAssetAlt', () => {
   });
 
   it('falls back to dc:title when dc:description is absent', () => {
-    const asset = {
-      _embedded: {
-        'http://ns.adobe.com/adobecloud/rel/metadata/asset': {
-          'dc:title': 'Mountain Title',
-        },
-      },
-    };
+    const asset = { _embedded: { 'http://ns.adobe.com/adobecloud/rel/metadata/asset': { 'dc:title': 'Mountain Title' } } };
     expect(getAssetAlt(asset)).to.equal('Mountain Title');
   });
 

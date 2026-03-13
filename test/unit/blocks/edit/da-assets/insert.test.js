@@ -18,20 +18,14 @@ function makeSchema(nodes) {
 function makeTableNode(cellText) {
   return {
     type: 'table',
-    firstChild: {
-      firstChild: {
-        textContent: cellText,
-      },
-    },
+    firstChild: { firstChild: { textContent: cellText } },
   };
 }
 
 function makeView(ancestorNodes = []) {
   const schema = makeSchema({
     table: 'table',
-    image: {
-      create: (attrs) => ({ type: 'image', attrs }),
-    },
+    image: { create: (attrs) => ({ type: 'image', attrs }) },
   });
 
   const depths = ancestorNodes.length;
@@ -47,14 +41,8 @@ function makeView(ancestorNodes = []) {
       schema,
       selection: { $from, from: 0 },
       tr: {
-        replaceSelectionWith: (node) => ({
-          scrollIntoView: () => ({ node }),
-        }),
-        insert: () => ({
-          deleteSelection: () => ({
-            scrollIntoView: () => ({}),
-          }),
-        }),
+        replaceSelectionWith: (node) => ({ scrollIntoView: () => ({ node }) }),
+        insert: () => ({ deleteSelection: () => ({ scrollIntoView: () => ({}) }) }),
       },
     },
     dispatch: (t) => dispatched.push(t),

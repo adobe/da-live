@@ -18,11 +18,7 @@ const {
 // Minimal mock of a ProseMirror view with a tracked dispatch spy.
 function makeView() {
   const dispatched = [];
-  const schema = {
-    nodes: {
-      image: { create: (attrs) => ({ type: 'image', attrs }) },
-    },
-  };
+  const schema = { nodes: { image: { create: (attrs) => ({ type: 'image', attrs }) } } };
   const tr = {
     replaceSelectionWith: () => tr,
     insert: () => tr,
@@ -199,11 +195,13 @@ describe('buildHandleSelection', () => {
     const assetPanel = makePanel();
     const secondaryPanel = makePanel();
     const handler = buildHandleSelection(
-      dialog, assetPanel, secondaryPanel, repoConfig, Promise.resolve(false),
+      dialog,
+      assetPanel,
+      secondaryPanel,
+      repoConfig,
+      Promise.resolve(false),
     );
-    return {
-      view, dialog, assetPanel, secondaryPanel, handler,
-    };
+    return { view, dialog, assetPanel, secondaryPanel, handler };
   }
 
   const IMAGE_ASSET = {
@@ -238,7 +236,13 @@ describe('buildHandleSelection', () => {
 
   it('does nothing when assets array is empty', async () => {
     const { view, dialog } = setup();
-    await buildHandleSelection(dialog, makePanel(), makePanel(), AUTHOR_PUBLISH_CONFIG, Promise.resolve(false))([]);
+    await buildHandleSelection(
+      dialog,
+      makePanel(),
+      makePanel(),
+      AUTHOR_PUBLISH_CONFIG,
+      Promise.resolve(false),
+    )([]);
     expect(view.dispatched).to.have.length(0);
     expect(dialog.isOpen).to.be.true;
   });
@@ -335,11 +339,13 @@ describe('buildHandleSelection', () => {
       ok: true,
       json: async () => ({ items: [{ name: 'desktop' }, { name: 'mobile' }] }),
     });
-    const {
-      dialog, assetPanel, secondaryPanel,
-    } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: true });
+    const { dialog, assetPanel, secondaryPanel } = setup(
+      { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
+    );
     const handler = buildHandleSelection(
-      dialog, assetPanel, secondaryPanel,
+      dialog,
+      assetPanel,
+      secondaryPanel,
       { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
       Promise.resolve(false),
     );
@@ -358,7 +364,9 @@ describe('buildHandleSelection', () => {
     const assetPanel = makePanel();
     const secondaryPanel = makePanel();
     const handler = buildHandleSelection(
-      dialog, assetPanel, secondaryPanel,
+      dialog,
+      assetPanel,
+      secondaryPanel,
       { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
       Promise.resolve(false),
     );
@@ -380,7 +388,9 @@ describe('buildHandleSelection', () => {
     document.body.append(assetPanel, secondaryPanel);
 
     const handler = buildHandleSelection(
-      dialog, assetPanel, secondaryPanel,
+      dialog,
+      assetPanel,
+      secondaryPanel,
       { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
       Promise.resolve(false),
     );
