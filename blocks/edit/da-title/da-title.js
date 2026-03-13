@@ -144,6 +144,10 @@ export default class DaTitle extends LitElement {
       if (action === 'publish') saveDaVersion(pathname);
       else if (action === 'preview') saveDaVersion(pathname, 'html', 'Previewed');
     }
+    if (this.details.view === 'sheet') {
+      if (action === 'publish') saveDaVersion(pathname, 'json');
+      else if (action === 'preview') saveDaVersion(pathname, 'json', 'Previewed');
+    }
     sendBtn.classList.remove('is-sending');
   }
 
