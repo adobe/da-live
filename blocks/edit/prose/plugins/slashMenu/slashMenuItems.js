@@ -11,7 +11,7 @@ import {
   mergeCells,
   splitCell,
 } from 'da-y-wrapper';
-import openLibrary from '../../../da-library/da-library.js';
+import toggleLibrary from '../menu/toggleLibrary.js';
 import insertTable from '../../table.js';
 import { insertSectionBreak } from '../menu/menu.js';
 import loremIpsum from './loremIpsum.js';
@@ -88,7 +88,7 @@ const items = [
   },
   {
     title: 'Library',
-    command: openLibrary,
+    command: toggleLibrary,
     class: 'open-library',
   },
 ];
