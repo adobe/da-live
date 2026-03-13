@@ -1,7 +1,12 @@
 import { daFetch } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
-import { handleSave } from './utils.js';
 import '../da-sheet-tabs.js';
+import { yToJSheet } from '../../../deps/da-parser/dist/index.js';
+import { setupEventHandlers } from '../collab/events.js';
+import joinCollab, { attachLocalYDoc } from '../collab/index.js';
+import { drawOverlays } from '../collab/overlays.js';
+import { captureSpreadsheetState, restoreSpreadsheetState } from '../collab/position.js';
+import { createAwarenessStatusWidget } from '../../shared/collab-status.js';
 
 const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
@@ -10,6 +15,7 @@ const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
 let permissions;
 let canWrite;
+const listenerContext = { disableListeners: false };
 
 function resetSheets(el) {
   document.querySelector('da-sheet-tabs')?.remove();
@@ -20,19 +26,20 @@ function resetSheets(el) {
 }
 
 function finishSetup(el, data) {
+  const daTitle = document.querySelector('da-title');
+
   // Set the names of each sheet to reference later
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
     sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    sheet.options.onafterchanges = () => {
-      handleSave(el.jexcel, el.details.view);
-    };
   });
 
   // Setup tabs
   const daSheetTabs = document.createElement('da-sheet-tabs');
   daSheetTabs.permissions = permissions;
   el.insertAdjacentElement('beforebegin', daSheetTabs);
+
+  daTitle.sheet = el.jexcel;
 }
 
 function getDefaultSheet() {
@@ -84,6 +91,34 @@ export function getPermissions() {
   return permissions;
 }
 
+async function createSheet(url) {
+  const body = new FormData();
+  // Create default sheet structure
+  const defaultSheet = {
+    ':type': 'sheet',
+    ':sheetname': 'data',
+    total: 0,
+    limit: 0,
+    offset: 0,
+    data: [],
+  };
+  body.append('data', new Blob([JSON.stringify(defaultSheet)], { type: 'application/json' }));
+  const opts = { body, method: 'POST' };
+  return daFetch(url, opts);
+}
+
+async function checkPermissions(url, type) {
+  // config doesn't support HEAD requests
+  let resp = await daFetch(url, { method: type === 'config' ? 'GET' : 'HEAD' });
+  if (resp.status === 404) resp = await createSheet(url);
+
+  const daTitle = document.querySelector('da-title');
+  if (daTitle) daTitle.permissions = resp.permissions;
+
+  permissions = resp.permissions;
+  canWrite = resp.permissions?.some((permission) => permission === 'write');
+}
+
 export async function getData(url) {
   const resp = await daFetch(url);
 
@@ -130,8 +165,108 @@ export async function getData(url) {
   return sheets;
 }
 
-export default async function init(el, data) {
-  const suppliedData = data || await getData(el.details.sourceUrl);
+function checkSheetDimensionsEqual(jExcelData, newDataFromY) {
+  if (!jExcelData || !newDataFromY) return false;
+  const jExcelSheetCount = jExcelData.length;
+  const newSheetCount = newDataFromY.length;
+  // compare number of sheets
+  if (jExcelSheetCount !== newSheetCount) return false;
+  // compare sheet names
+  for (let i = 0; i < jExcelSheetCount; i += 1) {
+    if (jExcelData[i].name !== newDataFromY[i].sheetName) return false;
+  }
+
+  // check col/row count
+  for (let i = 0; i < jExcelSheetCount; i += 1) {
+    const oldData = jExcelData[i].getData();
+    const newData = newDataFromY[i].data;
+    if (oldData.length !== newData.length) return false;
+    for (let j = 0; j < oldData.length; j += 1) {
+      if (oldData[j].length !== newData[j].length) return false;
+    }
+  }
+  return true;
+}
+
+function rerenderSheets(el, ydoc, yUndoManager, wsProvider) {
+  const wrapper = el.closest('.da-sheet-wrapper');
+  const ysheets = ydoc.getArray('sheets');
+  const sheets = yToJSheet(ysheets, canWrite);
+
+  if (sheets.length === 0) {
+    console.error('No sheets found in Yjs document');
+    return;
+  }
+  const savedState = captureSpreadsheetState(wrapper);
+
+  resetSheets(el);
+
+  window.jspreadsheet.tabs(el, sheets);
+  finishSetup(el, sheets);
+
+  restoreSpreadsheetState(wrapper, savedState);
+
+  el.jexcel.forEach((sheet, idx) => {
+    setupEventHandlers(sheet, idx, ydoc, yUndoManager, listenerContext, wsProvider);
+  });
+
+  // Redraw collaboration overlays after rerender
+  if (wsProvider?.awareness) {
+    setTimeout(() => {
+      // Allow spreadsheet to render before drawing overlays
+      drawOverlays(wsProvider);
+    }, 0);
+  }
+}
+
+function updateSheetsInPlace(el, sheets) {
+  listenerContext.disableListeners = true;
+  const tabs = el.closest('.da-sheet-wrapper').querySelector('da-sheet-tabs');
+
+  tabs.jexcel.forEach((sheet, idx) => {
+    const newSheet = sheets[idx];
+
+    newSheet.data.forEach((row, rowIdx) => {
+      row.forEach((cell, colIdx) => {
+        sheet.setValueFromCoords(colIdx, rowIdx, newSheet.data[rowIdx][colIdx]);
+      });
+    });
+  });
+  listenerContext.disableListeners = false;
+}
+
+function updateSheets(el, ydoc, yUndoManager, wsProvider) {
+  const ysheets = ydoc.getArray('sheets');
+  const sheets = yToJSheet(ysheets, canWrite);
+  const longestSheet = sheets.reduce((acc, sheet) => Math.max(acc, sheet.data.length), 0);
+
+  if (sheets.length === 0) {
+    console.error('No sheets found in Yjs document');
+    return;
+  }
+
+  const dimensionsEqual = checkSheetDimensionsEqual(el.jexcel, sheets);
+  const editingCell = el.querySelector('.editor');
+  if (dimensionsEqual && !editingCell && canWrite && longestSheet < 100) {
+    // update in-place. Prevents flickering on update.
+    // - doesn't work if the local user is editing a cell
+    // - doesn't work for read-only sheets (sheet ignores setValue)
+    // - doesn't work for long sheets (bad performance)
+    updateSheetsInPlace(el, sheets);
+  } else {
+    // Re-render to match dimensions, tab names etc.
+    // rerender full sheets after a timeout to allow events
+    // (eg navigate to next cell) to complete before capturing state
+    // if we're currently editing a cell, we also need a full rerender,
+    // as using setData will break the editor if a cell is being edited
+    setTimeout(() => {
+      rerenderSheets(el, ydoc, yUndoManager, wsProvider);
+    }, 0);
+  }
+}
+
+export default async function init(el) {
+  await checkPermissions(el.details.sourceUrl, el.details.view);
 
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');
@@ -139,10 +274,17 @@ export default async function init(el, data) {
 
   resetSheets(el);
 
-  // Initialize the spreadsheet
-  window.jspreadsheet.tabs(el, suppliedData);
-  // Manually fix it to be what we need
-  finishSetup(el, suppliedData);
+  const { ydoc, wsProvider, yUndoManager } = el.details.view === 'config' ? await attachLocalYDoc(el) : joinCollab(el);
 
-  return el.jexcel;
+  createAwarenessStatusWidget(wsProvider, window, el.details.sourceUrl);
+
+  wsProvider?.on('sync', () => {
+    rerenderSheets(el, ydoc, yUndoManager, wsProvider);
+  });
+
+  ydoc.on('update', () => {
+    updateSheets(el, ydoc, yUndoManager, wsProvider);
+  });
+
+  return { ydoc };
 }
