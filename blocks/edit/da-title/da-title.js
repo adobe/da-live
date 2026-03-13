@@ -138,7 +138,13 @@ export default class DaTitle extends LitElement {
         toOpenInAem = `${origin}${path}`;
       }
 
-      window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
+      // Tell AEM Sidekick to bust cache
+      await window.chrome.runtime.sendMessage(
+        'igkmdomcgoebiipaifhmpfjhbjccggml',
+        { action: 'bustCache', host: new URL(toOpenInAem).hostname },
+      );
+
+      window.open(toOpenInAem, toOpenInAem);
     }
     if (this.details.view === 'edit') {
       if (action === 'publish') saveDaVersion(pathname);
