@@ -198,19 +198,19 @@ export function saveDaConfig(pathname, sheet) {
   return saveJson(fullPath, sheet, null, 'config');
 }
 
-export async function saveDaVersion(pathname, ext = 'html') {
+export async function saveDaVersion(pathname, ext = 'html', label = 'Published') {
   const fullPath = `${DA_ORIGIN}/versionsource${pathname}.${ext}`;
 
   const opts = {
     method: 'POST',
-    body: JSON.stringify({ label: 'Published' }),
+    body: JSON.stringify({ label }),
   };
 
   try {
     await daFetch(fullPath, opts);
   } catch {
     // eslint-disable-next-line no-console
-    console.log('Error creating auto version on publish.');
+    console.log(`Error creating auto version (${label}).`);
   }
 }
 
