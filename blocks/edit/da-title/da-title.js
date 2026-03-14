@@ -140,7 +140,7 @@ export default class DaTitle extends LitElement {
 
       try {
         // Tell AEM Sidekick to bust cache
-        await window.chrome.runtime.sendMessage(
+        await window.chrome?.runtime.sendMessage(
           window.localStorage.getItem('aem-sidekick-id') || 'igkmdomcgoebiipaifhmpfjhbjccggml',
           { action: 'bustCache', host: new URL(toOpenInAem).hostname },
         );
