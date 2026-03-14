@@ -44,7 +44,7 @@ export default class DaPrepare extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._onOutsideClick) document.removeEventListener('click', this._onOutsideClick);
+    document.removeEventListener('pointerdown', this.handleOutsideClick);
   }
 
   update(props) {
@@ -93,19 +93,18 @@ export default class DaPrepare extends LitElement {
     // this.handleItemClick(preflight);
   }
 
+  handleOutsideClick = (e) => {
+    if (e.composedPath().includes(this)) return;
+    document.removeEventListener('pointerdown', this.handleOutsideClick);
+    this._showMenu = false;
+  };
+
   handleToggle() {
     this._showMenu = !this._showMenu;
     if (this._showMenu) {
-      requestAnimationFrame(() => {
-        document.addEventListener('click', this._onOutsideClick = (e) => {
-          if (!e.composedPath().includes(this)) {
-            this._showMenu = false;
-            document.removeEventListener('click', this._onOutsideClick);
-          }
-        });
-      });
+      document.addEventListener('pointerdown', this.handleOutsideClick);
     } else {
-      document.removeEventListener('click', this._onOutsideClick);
+      document.removeEventListener('pointerdown', this.handleOutsideClick);
     }
   }
 
