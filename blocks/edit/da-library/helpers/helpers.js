@@ -2,7 +2,7 @@
 import { DOMParser } from 'da-y-wrapper';
 import { getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch, aemAdmin } from '../../../shared/utils.js';
+import { daFetch, aemAdmin, fetchDaConfigs } from '../../../shared/utils.js';
 import { getConfKey, openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { sanitizeName } from '../../../../scripts/utils.js';
@@ -108,10 +108,9 @@ function calculateSources(org, repo, sheetPath) {
   });
 }
 
-async function fetchLibraryConfig(org, repo) {
-  const resp = await daFetch(`${DA_ORIGIN}/config/${org}/${repo}/`);
-  if (!resp.ok) return [];
-  const { library } = await resp.json();
+async function fetchLibraryConfig(org, repo, fullpath) {
+  const configs = await fetchDaConfigs({ path: fullpath });
+  const { library } = await configs[1];
   if (!library) return [];
   return library.data.reduce((acc, row) => {
     // Determine if a plugin should be visible based on query param
@@ -169,12 +168,12 @@ function mergeLibrary(da, assets) {
 }
 
 export async function getLibraryList() {
-  const { owner, repo } = getPathDetails();
-  if (!owner || !repo) return [];
+  const { org, site, fullpath } = getPathDetails();
+  if (!org || !site) return [];
 
   // Fetch in parallel
-  const aemAssets = getAssetsPlugin(owner, repo);
-  const confLibrary = fetchLibraryConfig(owner, repo);
+  const aemAssets = getAssetsPlugin(org, site);
+  const confLibrary = fetchLibraryConfig(org, site, fullpath);
   const [assets, library] = await Promise.all([aemAssets, confLibrary]);
 
   // Order AEM Assets after blocks or templates

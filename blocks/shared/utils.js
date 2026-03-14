@@ -2,10 +2,10 @@ import { DA_ORIGIN, CON_ORIGIN, getLivePreviewUrl } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
-// TODO: INFRA
-const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'https://stage-content.da.live', 'http://localhost:8787'];
+const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev', 'http://localhost:8787'];
 const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
-const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS];
+const ETC_ORIGINS = ['https://stage-content.da.live', 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev'];
+const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS, ...ETC_ORIGINS];
 
 let imsDetails;
 
@@ -31,6 +31,7 @@ export const daFetch = async (url, opts = {}) => {
       opts.headers.Authorization = `Bearer ${accessToken.token}`;
       if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
         opts.headers['x-content-source-authorization'] = `Bearer ${accessToken.token}`;
+        opts.headers.Authorization = `Bearer ${accessToken.token}`;
       }
     }
   }
@@ -167,4 +168,37 @@ export async function checkLockdownImages(owner) {
   } catch {
     return false;
   }
+}
+
+export const fetchDaConfigs = (() => {
+  const configCache = {};
+
+  const fetchConfig = async (pathname) => {
+    const resp = await daFetch(`${DA_ORIGIN}/config${pathname}/`);
+    if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
+    return resp.json();
+  };
+
+  return ({ path }) => {
+    // Normalize full paths to only org and site
+    const [org, site] = path.slice(1).split('/');
+
+    // Set the org config promise if it does not exist
+    configCache[`/${org}`] ??= fetchConfig(`/${org}`);
+
+    if (site) {
+      // Set the site config promise if it does not exist
+      configCache[`/${org}/${site}`] ??= fetchConfig(`/${org}/${site}`);
+    }
+
+    // return array of cached configs (org = 0, site = 1)
+    const configs = [configCache[`/${org}`]];
+    if (site) configs.push(configCache[`/${org}/${site}`]);
+
+    return configs;
+  };
+})();
+
+export function delay(ms) {
+  return new Promise((res) => { setTimeout(res, ms); });
 }
