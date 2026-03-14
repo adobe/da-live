@@ -138,15 +138,21 @@ export default class DaTitle extends LitElement {
         toOpenInAem = `${origin}${path}`;
       }
 
+      let cacheBustedBySidekick = false;
       try {
         // Tell AEM Sidekick to bust cache
-        await window.chrome?.runtime.sendMessage(
+        cacheBustedBySidekick = await window.chrome.runtime.sendMessage(
           window.localStorage.getItem('aem-sidekick-id') || 'igkmdomcgoebiipaifhmpfjhbjccggml',
           { action: 'bustCache', host: new URL(toOpenInAem).hostname },
         );
-      } finally {
-        window.open(toOpenInAem, toOpenInAem);
+      } catch (e) {
+        // Non-chromium browser or AEM Sidekick not found
       }
+      if (!cacheBustedBySidekick) {
+        // Fall back to cache-busting query parameter
+        toOpenInAem = `${toOpenInAem}?nocache=${Date.now()}`;
+      }
+      window.open(toOpenInAem, toOpenInAem);
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
