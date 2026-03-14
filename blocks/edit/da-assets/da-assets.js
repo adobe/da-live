@@ -1,98 +1,24 @@
-import { DOMParser as proseDOMParser, Fragment } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
-
-const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
-const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
+import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
+import { buildAuthorUrl, buildDmUrl, buildDeliveryUrl, getAssetAlt, getDmApprovalStatus } from './helpers/urls.js';
+import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
+import showSmartCropDialog from './helpers/smart-crop.js';
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 
-const fullConfJsons = {};
-const CONFS = {};
-
-async function fetchConf(path) {
-  if (CONFS[path]) return CONFS[path];
-  const resp = await daFetch(`${DA_ORIGIN}/config${path}`);
-  if (!resp.ok) return null;
-
-  fullConfJsons[path] = await resp.json();
-  const data = getFirstSheet(fullConfJsons[path]);
-  if (!data) return null;
-  CONFS[path] = data;
-  return data;
-}
-
-async function fetchValue(path, key) {
-  if (CONFS[path]?.[key]) return CONFS[path][key];
-
-  const data = await fetchConf(path);
-  if (!data) return null;
-
-  const confKey = data.find((conf) => conf.key === key);
-  if (!confKey) return null;
-  return confKey.value;
-}
-
-function constructConfigPaths(owner, repo) {
-  return [`/${owner}/${repo}/`, `/${owner}/`];
-}
-
-// Note: this is called externally to determine if the button should be visible.
-export async function getConfKey(owner, repo, key) {
-  if (!(repo || owner)) return null;
-  for (const path of constructConfigPaths(owner, repo)) {
-    const value = await fetchValue(path, key);
-    if (value) {
-      return value;
-    }
-  }
-  return null;
-}
-
-async function getResponsiveImageConfig(owner, repo) {
-  if (!(repo || owner)) return null;
-  for (const path of constructConfigPaths(owner, repo)) {
-    if (!fullConfJsons[path]) await fetchConf(path);
-    const fullConfigJson = fullConfJsons[path];
-    const responsiveImages = fullConfigJson?.['responsive-images'];
-    if (responsiveImages) {
-      return responsiveImages.data.map((config) => ({
-        ...config,
-        crops: config.crops.split(/\s*,\s*/),
-      }));
-    }
-  }
-  return false;
-}
-
-function findBlockContext() {
-  const { $from } = window.view.state.selection;
-  for (let { depth } = $from; depth > 0; depth -= 1) {
-    const node = $from.node(depth);
-    if (node.type === window.view.state.schema.nodes.table) {
-      return node;
-    }
-  }
-  return [];
-}
-
-function formatExternalBrief(document) {
-  // Find the first H1 title and get the full text of the document
+export function formatExternalBrief(doc) {
   let title = '';
-  document.descendants((node) => {
+  doc.descendants((node) => {
     if (node.type.name === 'heading' && node.attrs.level === 1 && !title) {
       title = node.textContent;
     }
     return !title;
   });
 
-  const contentPlainText = document.textContent;
+  const contentPlainText = doc.textContent;
   if (!contentPlainText) return '';
 
-  // return the external brief prompt with the title and content
   return `The user is looking for assets that match a web page with the following content:
 
   ${title ? `Title: ${title}` : ''}
@@ -102,245 +28,172 @@ function formatExternalBrief(document) {
   Please suggest Assets that are visually appealing and relevant to the subject.`;
 }
 
+export function buildFeatureSet(isDmEnabled) {
+  const features = ['upload', 'collections', 'detail-panel', 'advisor'];
+  if (isDmEnabled) features.push('dynamic-media');
+  return features;
+}
+
+export function resolveAssetUrl(asset, repoConfig) {
+  const { tierType, assetOrigin, isDmEnabled } = repoConfig;
+  if (tierType === 'delivery') {
+    return buildDeliveryUrl(asset);
+  }
+  if (isDmEnabled) {
+    return buildDmUrl(asset, assetOrigin);
+  }
+  return buildAuthorUrl(asset, assetOrigin);
+}
+
+function showErrorPanel(container, onBack, onCancel) {
+  container.innerHTML = '<p class="da-dialog-asset-error">The selected asset is not available because it is not approved for delivery. Please check the status.</p><div class="da-dialog-asset-buttons"><button class="back">Back</button><button class="cancel">Cancel</button></div>';
+  container.querySelector('.cancel').addEventListener('click', onCancel);
+  container.querySelector('.back').addEventListener('click', onBack);
+}
+
+export function createDialogPanels() {
+  const assetPanel = document.createElement('div');
+  assetPanel.className = 'da-dialog-asset-inner';
+
+  const secondaryPanel = document.createElement('div');
+  secondaryPanel.style.display = 'none';
+  secondaryPanel.className = 'da-dialog-asset-inner';
+
+  return { assetPanel, secondaryPanel };
+}
+
+function showSecondaryPanel(assetPanel, secondaryPanel) {
+  assetPanel.style.display = 'none';
+  secondaryPanel.style.display = 'block';
+}
+
+function showAssetPanel(assetPanel, secondaryPanel) {
+  secondaryPanel.style.display = 'none';
+  secondaryPanel.innerHTML = '';
+  assetPanel.style.display = 'block';
+}
+
+export function buildHandleSelection(
+  dialog,
+  assetPanel,
+  secondaryPanel,
+  repoConfig,
+  responsiveImageConfigPromise,
+) {
+  return async (assets) => {
+    const [asset] = assets;
+    if (!asset) return;
+
+    const format = asset['aem:formatName'];
+    if (!format) return;
+
+    const mimetype = asset.mimetype || asset['dc:format'] || '';
+    const isImage = mimetype.toLowerCase().startsWith('image/');
+    const alt = getAssetAlt(asset);
+    const { view } = window;
+
+    const resetToAssetPanel = () => showAssetPanel(assetPanel, secondaryPanel);
+    const closeAndReset = () => { dialog.close(); resetToAssetPanel(); };
+
+    // Author+DM mode: check asset is approved for delivery before inserting
+    if (repoConfig.tierType === 'author' && repoConfig.isDmEnabled) {
+      const { status, activationTarget } = getDmApprovalStatus(asset);
+      if (activationTarget !== 'delivery' || status !== 'approved') {
+        showSecondaryPanel(assetPanel, secondaryPanel);
+        showErrorPanel(secondaryPanel, resetToAssetPanel, closeAndReset);
+        return;
+      }
+    }
+
+    // Smart crop flow (only for images with smart crop enabled)
+    if (isImage && repoConfig.isSmartCrop) {
+      const assetUrl = resolveAssetUrl(asset, repoConfig);
+      showSecondaryPanel(assetPanel, secondaryPanel);
+
+      const hasCrops = await showSmartCropDialog({
+        container: secondaryPanel,
+        asset,
+        assetUrl,
+        dmOrigin: repoConfig.assetOrigin,
+        blockName: getBlockName(view),
+        responsiveImageConfigPromise,
+        onInsert: (srcs) => {
+          closeAndReset();
+          const nodes = srcs.map((src) => createImageNode(view, src, alt));
+          insertFragment(view, nodes);
+        },
+        onBack: resetToAssetPanel,
+        onCancel: closeAndReset,
+      });
+
+      if (!hasCrops) {
+        closeAndReset();
+        insertImage(view, assetUrl, alt);
+      }
+      return;
+    }
+
+    // Standard insertion
+    dialog.close();
+    const src = resolveAssetUrl(asset, repoConfig);
+
+    if (!isImage || repoConfig.insertAsLink) {
+      insertLink(view, src);
+    } else {
+      insertImage(view, src, alt);
+    }
+  };
+}
+
 export async function openAssets() {
+  const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
+  const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+  const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
+
   const details = await loadIms();
   if (details.anonymous) handleSignIn();
-  if (!(details.accessToken)) return;
+  if (!details.accessToken) return;
 
   const { owner, repo } = getPathDetails();
-  const repoId = await getConfKey(owner, repo, 'aem.repositoryId');
-  const isAuthorRepo = repoId?.startsWith('author');
-
-  // Custom publicly available asset origin
-  let prodOrigin = await getConfKey(owner, repo, 'aem.assets.prod.origin');
-
-  const smartCropSelectEnabled = (await getConfKey(owner, repo, 'aem.asset.smartcrop.select')) === 'on';
-  const dmDeliveryEnabled = smartCropSelectEnabled || (await getConfKey(owner, repo, 'aem.asset.dm.delivery')) === 'on' || prodOrigin?.startsWith('delivery-');
-
-  prodOrigin = prodOrigin || `${repoId.replace('author', dmDeliveryEnabled ? 'delivery' : 'publish')}`;
-
-  const getBaseDmUrl = (asset) => `https://${prodOrigin}${prodOrigin.includes('/') ? '' : '/adobe/assets/'}${asset['repo:id']}`;
-
-  const getAssetUrl = (asset, name = asset.name) => {
-    if (!dmDeliveryEnabled) {
-      return `https://${prodOrigin}${asset.path}`;
-    }
-    return `${getBaseDmUrl(asset)}${asset.mimetype?.startsWith('video/') ? '/original' : ''}/as/${name}`;
-  };
-
-  // Determine if images should be links
-  const injectLink = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'link';
+  const repoConfig = await getRepositoryConfig(owner, repo);
+  if (!repoConfig) return;
 
   let dialog = document.querySelector('.da-dialog-asset');
   if (dialog) {
     dialog.showModal();
-  } else {
-    await loadStyle(import.meta.url.replace('.js', '.css'));
-    await loadScript(ASSET_SELECTOR_URL);
-
-    dialog = document.createElement('dialog');
-    dialog.className = 'da-dialog-asset';
-
-    const assetSelectorWrapper = document.createElement('div');
-    assetSelectorWrapper.className = 'da-dialog-asset-inner';
-    dialog.append(assetSelectorWrapper);
-
-    const cropSelectorWrapper = document.createElement('div');
-    cropSelectorWrapper.style.display = 'none';
-    cropSelectorWrapper.className = 'da-dialog-asset-inner';
-    dialog.append(cropSelectorWrapper);
-
-    const resetCropSelector = () => {
-      cropSelectorWrapper.style.display = 'none';
-      cropSelectorWrapper.innerHTML = '';
-      assetSelectorWrapper.style.display = 'block';
-    };
-
-    const main = document.body.querySelector('main');
-    main.insertAdjacentElement('afterend', dialog);
-
-    dialog.showModal();
-
-    const loadResponsiveImageConfig = getResponsiveImageConfig(owner, repo);
-
-    const aemTierType = repoId.includes('delivery') ? 'delivery' : 'author';
-    const featureSet = ['upload', 'collections', 'detail-panel', 'advisor'];
-    if (dmDeliveryEnabled) {
-      featureSet.push('dynamic-media');
-    }
-    const externalBrief = formatExternalBrief(window.view.state.doc);
-
-    const selectorProps = {
-      imsToken: details.accessToken.token,
-      repositoryId: repoId,
-      aemTierType,
-      featureSet,
-      externalBrief,
-      onClose: () => assetSelectorWrapper.style.display !== 'none' && dialog.close(),
-      handleSelection: async (assets) => {
-        const [asset] = assets;
-        if (!asset) return;
-        const format = asset['aem:formatName'];
-        if (!format) return;
-        const mimetype = asset.mimetype || asset['dc:format'];
-        const isImage = mimetype?.toLowerCase().startsWith('image/');
-        // eslint-disable-next-line no-underscore-dangle
-        const status = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dam:assetStatus'];
-        // eslint-disable-next-line no-underscore-dangle
-        const activationTarget = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dam:activationTarget'];
-        const { view } = window;
-        const { state } = view;
-
-        // eslint-disable-next-line no-underscore-dangle
-        const alt = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:description']
-          // eslint-disable-next-line no-underscore-dangle
-          || asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset']?.['dc:title'];
-
-        const createImage = (src) => {
-          const imgObj = { src, style: 'width: 180px' };
-          if (alt) imgObj.alt = alt;
-          return state.schema.nodes.image.create(imgObj);
-        };
-
-        // Only show the error message if the asset is not approved for delivery
-        // and the repository is an author repository
-        if (dmDeliveryEnabled && isAuthorRepo && activationTarget !== 'delivery' && status !== 'approved') {
-          assetSelectorWrapper.style.display = 'none';
-          cropSelectorWrapper.style.display = 'block';
-          cropSelectorWrapper.innerHTML = '<p class="da-dialog-asset-error">The selected asset is not available because it is not approved for delivery. Please check the status.</p><div class="da-dialog-asset-buttons"><button class="back">Back</button><button class="cancel">Cancel</button></div>';
-          cropSelectorWrapper.querySelector('.cancel').addEventListener('click', () => {
-            resetCropSelector();
-            dialog.close();
-          });
-          cropSelectorWrapper.querySelector('.back').addEventListener('click', () => resetCropSelector());
-        } else if (isImage && smartCropSelectEnabled) {
-          assetSelectorWrapper.style.display = 'none';
-          cropSelectorWrapper.style.display = 'block';
-
-          const listSmartCropsResponse = await daFetch(`${getBaseDmUrl(asset)}/smartCrops`);
-          const listSmartCrops = await listSmartCropsResponse.json();
-
-          if (!(listSmartCrops.items?.length > 0)) {
-            dialog.close();
-            const fpo = createImage(getAssetUrl(asset));
-            resetCropSelector();
-            view.dispatch(state.tr.replaceSelectionWith(fpo).scrollIntoView());
-          }
-
-          const parentBlock = findBlockContext();
-          const parentBlockName = (() => {
-            if (!parentBlock || parentBlock.type !== state.schema.nodes.table) return null;
-
-            const firstRow = parentBlock.firstChild;
-            if (!firstRow) return null;
-
-            const firstCell = firstRow.firstChild;
-            if (!firstCell) return null;
-
-            return firstCell.textContent?.toLowerCase().split('(')[0].trim().replaceAll(' ', '-');
-          })();
-
-          const stuctureSelection = await (async () => {
-            const responsiveImageConfig = await loadResponsiveImageConfig;
-
-            if (!responsiveImageConfig) return '';
-
-            const configs = parentBlockName
-              ? responsiveImageConfig.filter((config) => (config.position === 'everywhere' || config.position === parentBlockName) && config.crops.every((crop) => listSmartCrops.items.find((item) => item.name === crop)))
-              : responsiveImageConfig.filter((config) => (config.position === 'everywhere' || config.position === 'outside-blocks') && config.crops.every((crop) => listSmartCrops.items.find((item) => item.name === crop)));
-
-            if (configs.length === 0) return '';
-
-            return `<h2>Insert Type</h2><ul class="da-dialog-asset-structure-select">
-              <li><input checked type="radio" id="single" name="da-dialog-asset-structure-select" value="single"><label for="single">Single, Manual</label></li>
-              <li>${configs.map((config, i) => `<input type="radio" id="da-dialog-asset-structure-select-${i}" name="da-dialog-asset-structure-select" value="${encodeURIComponent(JSON.stringify(config))}"><label for="da-dialog-asset-structure-select-${i}">${config.name}</label>`).join('</li><li>')}</li>
-            </ul>`;
-          })();
-
-          cropSelectorWrapper.innerHTML = `<div class="da-dialog-asset-crops-toolbar"><button class="cancel">Cancel</button><button class="back">Back</button><button class="insert">Insert</button></div>${stuctureSelection}<h2>Smart Crops</h2>`;
-
-          const cropSelectorList = document.createElement('ul');
-          cropSelectorList.classList.add('da-dialog-asset-crops');
-          cropSelectorWrapper.append(cropSelectorList);
-
-          cropSelectorWrapper.querySelector('.cancel').addEventListener('click', () => {
-            resetCropSelector();
-            dialog.close();
-          });
-          cropSelectorWrapper.querySelector('.back').addEventListener('click', () => resetCropSelector());
-          cropSelectorWrapper.querySelector('.insert').addEventListener('click', () => {
-            dialog.close();
-
-            const insertTypeSelection = cropSelectorWrapper.querySelector('.da-dialog-asset-structure-select input:checked');
-            const structureConfig = !insertTypeSelection || insertTypeSelection.value === 'single' ? null : JSON.parse(decodeURIComponent(insertTypeSelection.value));
-            const singleSelectedCropElement = cropSelectorList.querySelector('.selected');
-            const singleSelectedCropElementName = !structureConfig ? singleSelectedCropElement?.dataset.name : 'original';
-            const fragment = Fragment.fromArray((structureConfig?.crops || [singleSelectedCropElementName]).map((crop) => createImage(cropSelectorList.querySelector(`[data-name="${crop}"] img`)?.src)));
-            resetCropSelector();
-            view.dispatch(state.tr.insert(state.selection.from, fragment)
-              .deleteSelection().scrollIntoView());
-          });
-
-          cropSelectorWrapper.querySelector('.da-dialog-asset-structure-select')?.addEventListener('change', (e) => {
-            if (e.target.value === 'single') {
-              cropSelectorList.querySelectorAll('li').forEach((crop) => crop.classList.remove('selected'));
-              cropSelectorList.querySelector('li[data-name="original"]').classList.add('selected');
-            } else {
-              const structure = JSON.parse(decodeURIComponent(e.target.value));
-              cropSelectorList.querySelectorAll('li').forEach((crop) => {
-                if (structure.crops.includes(crop.dataset.name)) {
-                  crop.classList.add('selected');
-                } else {
-                  crop.classList.remove('selected');
-                }
-              });
-            }
-          });
-
-          const cropItems = listSmartCrops.items.map((smartCrop) => `<li data-name="${smartCrop.name}"><p>${smartCrop.name}</p><img src="${getAssetUrl(asset, `${smartCrop.name}-${asset.name}`)}?smartcrop=${smartCrop.name}">`).join('</li>');
-          cropSelectorList.innerHTML = `<li class="selected" data-name="original"><p>Original</p><img src="${getAssetUrl(asset)}"></li>${cropItems}</li>`;
-          cropSelectorList.addEventListener('click', () => {
-            const structure = cropSelectorWrapper.querySelector('.da-dialog-asset-structure-select input:checked');
-            if (structure && structure.value !== 'single') return;
-            const li = cropSelectorList.querySelector('li:hover');
-            if (!li) return;
-            cropSelectorList.querySelector('.selected')?.classList.remove('selected');
-            li.classList.add('selected');
-          });
-        } else {
-          dialog.close();
-
-          // eslint-disable-next-line no-underscore-dangle
-          const renditionLinks = asset._links['http://ns.adobe.com/adobecloud/rel/rendition'];
-          const videoLink = renditionLinks?.find((link) => link.href.endsWith('/play'))?.href;
-
-          let src;
-          if (aemTierType === 'author') {
-            src = getAssetUrl(asset);
-          } else if (mimetype.startsWith('video/')) {
-            src = videoLink;
-          } else {
-            src = renditionLinks?.[0]?.href.split('?')[0];
-          }
-
-          let fpo;
-          // ensure assets not supported by the MediaBus are added as links
-          if (!isImage || injectLink) {
-            const para = document.createElement('p');
-            const link = document.createElement('a');
-            link.href = src;
-            link.innerText = src;
-            para.append(link);
-            fpo = proseDOMParser.fromSchema(window.view.state.schema).parse(para);
-          } else {
-            fpo = createImage(src);
-          }
-
-          view.dispatch(state.tr.replaceSelectionWith(fpo).scrollIntoView());
-        }
-      },
-    };
-
-    window.PureJSSelectors.renderAssetSelector(assetSelectorWrapper, selectorProps);
+    return;
   }
+
+  await loadStyle(import.meta.url.replace('.js', '.css'));
+  await loadScript(ASSET_SELECTOR_URL);
+
+  dialog = document.createElement('dialog');
+  dialog.className = 'da-dialog-asset';
+
+  const { assetPanel, secondaryPanel } = createDialogPanels();
+  dialog.append(assetPanel, secondaryPanel);
+
+  document.body.querySelector('main').insertAdjacentElement('afterend', dialog);
+  dialog.showModal();
+
+  const responsiveImageConfigPromise = getResponsiveImageConfig(owner, repo);
+  const externalBrief = formatExternalBrief(window.view.state.doc);
+
+  const selectorProps = {
+    imsToken: details.accessToken.token,
+    repositoryId: repoConfig.repositoryId,
+    aemTierType: repoConfig.tierType,
+    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
+    externalBrief,
+    onClose: () => assetPanel.style.display !== 'none' && dialog.close(),
+    handleSelection: buildHandleSelection(
+      dialog,
+      assetPanel,
+      secondaryPanel,
+      repoConfig,
+      responsiveImageConfigPromise,
+    ),
+  };
+
+  window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
 }
