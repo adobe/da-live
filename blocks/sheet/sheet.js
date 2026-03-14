@@ -3,11 +3,14 @@ import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
+import { createConfigStaleMonitor, fetchConfigState } from './utils/config-stale.js';
+import { SHEET_DIRTY_EVENT } from './utils/utils.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 
 const style = await getStyle('/blocks/sheet/da-sheet-panes.css');
-
+const DISABLE_MESSAGE = 'Saving is disabled until the config has been refreshed. If you have unsaved changes that you want to preserve, you can copy them and merge them after refreshing the config.';
+const STALE_DIALOG_MESSAGE = 'The config has been updated. Please refresh to get the latest changes, or ignore to keep your existing edits.';
 class DaSheetPanes extends LitElement {
   static properties = {
     data: { type: Object },
@@ -112,6 +115,103 @@ class DaSheetPanes extends LitElement {
 customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
+let configStaleMonitor;
+let staleDialog;
+let staleAbortController;
+
+function removeConfigStaleDialog() {
+  staleDialog?.remove();
+  staleDialog = undefined;
+}
+
+function clearConfigStaleState(daTitle) {
+  daTitle.disableMessage = undefined;
+  removeConfigStaleDialog();
+  staleAbortController?.abort();
+  staleAbortController = undefined;
+}
+
+function stopConfigStaleMonitor() {
+  configStaleMonitor?.stop();
+  configStaleMonitor = undefined;
+}
+
+async function refreshConfigSheet(details, daTitle, daSheet) {
+  const freshData = await getData(details.sourceUrl);
+  daTitle.sheet = await initSheet(daSheet, freshData);
+}
+
+async function showConfigStaleDialog(daTitle, details, daSheet) {
+  removeConfigStaleDialog();
+  await import('../shared/da-dialog/da-dialog.js');
+
+  const dialog = document.createElement('da-dialog');
+  dialog.title = 'Config Updated';
+
+  const content = document.createElement('p');
+  content.textContent = STALE_DIALOG_MESSAGE;
+  dialog.appendChild(content);
+
+  let refreshed = false;
+
+  // treat x, close, escape as ignore
+  dialog.addEventListener('close', () => {
+    if (!refreshed) {
+      daTitle.disableMessage = DISABLE_MESSAGE;
+      configStaleMonitor?.ignore();
+    }
+    removeConfigStaleDialog();
+  });
+
+  const ignoreBtn = document.createElement('sl-button');
+  ignoreBtn.className = 'primary outline';
+  ignoreBtn.textContent = 'Ignore';
+  ignoreBtn.slot = 'footer-right';
+  ignoreBtn.addEventListener('click', () => { dialog.close(); });
+
+  const refreshBtn = document.createElement('sl-button');
+  refreshBtn.className = 'accent';
+  refreshBtn.textContent = 'Refresh';
+  refreshBtn.slot = 'footer-right';
+  refreshBtn.addEventListener('click', async () => {
+    refreshed = true;
+    daTitle.disableMessage = undefined;
+    daTitle.hasChanges = false;
+    await refreshConfigSheet(details, daTitle, daSheet);
+    await configStaleMonitor?.refresh();
+    dialog.close();
+  });
+
+  dialog.appendChild(ignoreBtn);
+  dialog.appendChild(refreshBtn);
+
+  document.body.appendChild(dialog);
+  staleDialog = dialog;
+}
+
+async function configureConfigStaleMonitor(details, daTitle, daSheet) {
+  stopConfigStaleMonitor();
+  clearConfigStaleState(daTitle);
+
+  if (details.view !== 'config') return;
+
+  staleAbortController = new AbortController();
+  const { signal } = staleAbortController;
+
+  const getConfigState = () => fetchConfigState(details.sourceUrl);
+  configStaleMonitor = createConfigStaleMonitor({
+    getConfigState,
+    onStale: () => {
+      showConfigStaleDialog(daTitle, details, daSheet);
+    },
+  });
+
+  daTitle.addEventListener('config-saved', async () => {
+    await configStaleMonitor?.syncBaseline();
+  }, { signal });
+
+  await configStaleMonitor.start();
+}
 
 async function setSheet(details, daTitle, daSheet) {
   daTitle.details = details;
@@ -119,6 +219,7 @@ async function setSheet(details, daTitle, daSheet) {
 
   if (!initSheet) initSheet = (await import('./utils/index.js')).default;
   daTitle.sheet = await initSheet(daSheet);
+  await configureConfigStaleMonitor(details, daTitle, daSheet);
 }
 
 export default async function init(el) {
@@ -148,14 +249,18 @@ export default async function init(el) {
   const versionWrapper = document.createElement('div');
   versionWrapper.classList.add('da-version-wrapper');
   versionWrapper.append(wrapper, daSheetPanes);
+  document.addEventListener(SHEET_DIRTY_EVENT, () => { daTitle.hasChanges = true; });
+  daTitle.addEventListener('config-saved', () => { daTitle.hasChanges = false; });
+
+  el.append(daTitle, versionWrapper);
 
   // Set data against the title & sheet
   setSheet(details, daTitle, daSheet);
 
-  el.append(daTitle, versionWrapper);
-
   window.addEventListener('hashchange', async () => {
+    stopConfigStaleMonitor();
     details = getPathDetails();
+    if (!details) return;
     setSheet(details, daTitle, daSheet);
     daSheetPanes.pathDetails = details;
   });

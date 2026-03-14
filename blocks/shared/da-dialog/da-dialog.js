@@ -56,7 +56,7 @@ export default class DaDialog extends LitElement {
     return {
       label: 'OK',
       style: 'accent',
-      onClick: this.close(),
+      click: () => this.close(),
     };
   }
 
@@ -93,11 +93,13 @@ export default class DaDialog extends LitElement {
               <slot name="footer-left"></slot>
               <p class="da-dialog-footer-message">${this.message || nothing}</p>
             </div>
-            <slot name="footer-right">
-              <sl-button class="${this._action.style}" @click=${this._action.click} ?disabled=${this._action.disabled}>
-                ${this._action.label}
-              </sl-button>
-            </slot>
+            <div class="da-dialog-footer-right" part="footer-right">
+              <slot name="footer-right">
+                <sl-button class="${this._action.style}" @click=${this._action.click} ?disabled=${this._action.disabled}>
+                  ${this._action.label}
+                </sl-button>
+              </slot>
+            </div>
           </div>
         </div>
       </sl-dialog>

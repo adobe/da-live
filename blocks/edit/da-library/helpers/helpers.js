@@ -278,6 +278,7 @@ export async function getPreviewStatus({ org, site, pathname }) {
     const json = await aemAdmin(path, 'status', 'GET');
     return json.preview.status === 200;
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.log(`Could not get preview status for ${path}`, err);
     return null;
   }
