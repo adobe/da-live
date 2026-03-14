@@ -148,11 +148,10 @@ export default class DaTitle extends LitElement {
       } catch (e) {
         // Non-chromium browser or AEM Sidekick not found
       }
-      if (!cacheBustedBySidekick) {
-        // Fall back to cache-busting query parameter
-        toOpenInAem = `${toOpenInAem}?nocache=${Date.now()}`;
-      }
-      window.open(toOpenInAem, toOpenInAem);
+      window.open(
+        cacheBustedBySidekick ? toOpenInAem : `${toOpenInAem}?nocache=${Date.now()}`,
+        toOpenInAem,
+      );
     }
     if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
     sendBtn.classList.remove('is-sending');
