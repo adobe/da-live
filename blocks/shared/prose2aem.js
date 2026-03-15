@@ -82,6 +82,8 @@ function makePictures(editor, live) {
     if (daCursor) setCursor(daCursor, img);
 
     const clone = img.cloneNode(true);
+    clone.setAttribute('loading', 'lazy');
+
     if (live && clone.src) {
       try {
         const source = new URL(clone.src);
@@ -96,9 +98,6 @@ function makePictures(editor, live) {
         // src is not an absolute URL, nothing to rewrite
       }
     }
-
-    clone.setAttribute('loading', 'lazy');
-
     let pic = document.createElement('picture');
 
     const srcMobile = document.createElement('source');
