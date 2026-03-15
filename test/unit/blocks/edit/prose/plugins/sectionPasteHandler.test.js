@@ -144,6 +144,98 @@ describe('Section paste handler', () => {
     expect(result).to.equal(expectedHTML);
   });
 
+  it('HTML paste with div line breaks preserves blank lines', () => {
+    const plugin = sectionPasteHandler();
+    const pasteHandler = plugin.props.transformPastedHTML;
+
+    const inputHTML = `<div class="ewa-rteLine">Line one</div>
+<div class="ewa-rteLine"><br /></div>
+<div class="ewa-rteLine">Line three</div>`;
+
+    const result = normalizeHTML(pasteHandler(inputHTML));
+
+    expect(result).to.contain('<p>Line one</p>');
+    expect(result).to.contain('</p> <p> </p> <p>');
+    expect(result).to.contain('<p>Line three</p>');
+  });
+
+  it('HTML paste with generic divs preserves blank lines', () => {
+    const plugin = sectionPasteHandler();
+    const pasteHandler = plugin.props.transformPastedHTML;
+
+    const inputHTML = `<div>Alpha</div>
+<div><br></div>
+<div>Beta</div>`;
+
+    const result = normalizeHTML(pasteHandler(inputHTML));
+
+    expect(result).to.contain('<p>Alpha</p>');
+    expect(result).to.contain('</p> <p> </p> <p>');
+    expect(result).to.contain('<p>Beta</p>');
+  });
+
+  it('HTML paste with divs but no blank lines is not modified', () => {
+    const plugin = sectionPasteHandler();
+    const pasteHandler = plugin.props.transformPastedHTML;
+
+    const inputHTML = '<div>Just a div</div><div>Another div</div>';
+    const result = pasteHandler(inputHTML);
+    expect(result).to.equal(inputHTML);
+  });
+
+  it('HTML paste with only paragraphs is not modified', () => {
+    const plugin = sectionPasteHandler();
+    const pasteHandler = plugin.props.transformPastedHTML;
+
+    const inputHTML = '<p>Just a paragraph</p>';
+    const result = pasteHandler(inputHTML);
+    expect(result).to.equal(inputHTML);
+  });
+
+  it('Plain text paste preserves blank lines', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const text = 'one\n\ntwo\n\nthree';
+    const slice = textParser(text);
+
+    const json = slice.content.toJSON();
+    expect(json).to.have.lengthOf(5);
+    expect(json[0]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'one' }] });
+    expect(json[1]).to.deep.equal({ type: 'paragraph' });
+    expect(json[2]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'two' }] });
+    expect(json[3]).to.deep.equal({ type: 'paragraph' });
+    expect(json[4]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'three' }] });
+    expect(slice.openStart).to.equal(1);
+    expect(slice.openEnd).to.equal(1);
+  });
+
+  it('Plain text paste with no blank lines', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const text = 'one\ntwo\nthree';
+    const slice = textParser(text);
+
+    const json = slice.content.toJSON();
+    expect(json).to.have.lengthOf(3);
+    expect(json[0]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'one' }] });
+    expect(json[1]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'two' }] });
+    expect(json[2]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'three' }] });
+  });
+
+  it('Plain text paste single line', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const text = 'hello world';
+    const slice = textParser(text);
+
+    const json = slice.content.toJSON();
+    expect(json).to.have.lengthOf(1);
+    expect(json[0]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'hello world' }] });
+  });
+
   it('Test transform pasted dashes', () => {
     const json = {
       content: [{

@@ -172,6 +172,7 @@ export async function getBlockVariants(path) {
 }
 
 const urlCache = new Map();
+
 export async function getBlocks(sources) {
   try {
     const sourcesData = await Promise.all(
@@ -192,17 +193,23 @@ export async function getBlocks(sources) {
       }),
     );
 
-    const blockList = [];
-    sourcesData.forEach((blockData) => {
-      if (!blockData) return;
-      const data = getFirstSheet(blockData);
-      if (!data) return;
-      data.forEach((block) => {
-        if (block.name && block.path) blockList.push(block);
-      });
-    });
+    return sourcesData.reduce((acc, blockData) => {
+      if (blockData) {
+        const data = getFirstSheet(blockData);
+        if (data) {
+          data.forEach((block) => {
+            if (block.name && block.path) {
+              acc.push({
+                ...block,
+                loadVariants: getBlockVariants(block.path),
+              });
+            }
+          });
+        }
+      }
 
-    return blockList;
+      return acc;
+    }, []);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error fetching blocks:', error);

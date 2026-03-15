@@ -80,7 +80,12 @@ setup('Set up authentication', async ({ page }) => {
 
   const passwordInput = page.getByLabel('Password', { exact: true });
   await passwordInput.waitFor();
-  await passwordInput.fill(pwd);
+  await passwordInput.evaluate((el, password) => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    setter.call(el, password);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }, pwd);
   console.log('Entered password');
   await page.locator('button[aria-label="Continue"]').click();
 
