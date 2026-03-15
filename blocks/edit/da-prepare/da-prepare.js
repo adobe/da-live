@@ -88,9 +88,6 @@ export default class DaPrepare extends LitElement {
     this._menuItems = [...merged.values()].map(
       (item) => (item.path || item.render ? item : ootbLookup.get(item.title) || item),
     );
-
-    // const preflight = this._menuItems.find((item) => item.title === 'Preflight');
-    // this.handleItemClick(preflight);
   }
 
   handleOutsideClick = (e) => {
@@ -109,6 +106,7 @@ export default class DaPrepare extends LitElement {
   }
 
   async handleItemClick(item) {
+    this._showMenu = false;
     if (item.render) {
       const cmp = await item.render(this.details);
       this._dialogItem = { ...item, cmp };
@@ -159,15 +157,22 @@ export default class DaPrepare extends LitElement {
     `;
   }
 
+  renderIcon(item) {
+    if (item.icon.includes('.svg')) {
+      return html`<svg class="icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
+    }
+    return html`<img class="icon" src="${item.icon}" />`;
+  }
+
   renderPrepareMenu() {
     if (!this._showMenu) return nothing;
     return html`
       <div class="prepare-menu">
         <ul class=""prepare-menu-list">
           ${this._menuItems.map((item) => html`
-            <li class="prepare-menu-item prepare-${item.title.toLowerCase().replaceAll(' ', '-')}">
+            <li class="prepare-menu-item">
               <button @click=${() => this.handleItemClick(item)}>
-                <svg class="icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>
+                ${this.renderIcon(item)}
                 <span>${item.title}</span>
               </button>
             </li>

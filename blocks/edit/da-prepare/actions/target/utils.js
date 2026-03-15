@@ -1,7 +1,7 @@
 import { DOMParser as ProseParser } from 'da-y-wrapper';
 import { DA_ORIGIN } from '../../../../shared/constants.js';
-import { daFetch, aemAdmin, getFirstSheet } from '../../../../shared/utils.js';
-import { corsFetch, deleteOffer, getAccessToken, getOffer, saveOffer } from './api.js';
+import { daFetch, aemAdmin, etcFetch, getFirstSheet } from '../../../../shared/utils.js';
+import { deleteOffer, getAccessToken, getOffer, saveOffer } from './api.js';
 
 const TARGET_CONFIG_PATH = '/.da/adobe-target.json';
 
@@ -156,7 +156,7 @@ export async function savePreview(org, site, path) {
 }
 
 export async function sendToTarget(org, site, name, aemPath, displayName, existingOfferId) {
-  const aemResp = await corsFetch(`${aemPath}?nocache=${Date.now()}`);
+  const aemResp = await etcFetch(`${aemPath}?nocache=${Date.now()}`, 'cors');
   if (!aemResp.ok) return { error: 'Could not fetch from AEM.' };
   const html = await aemResp.text();
   const dom = new DOMParser().parseFromString(html, 'text/html');

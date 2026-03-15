@@ -1,15 +1,11 @@
+import { etcFetch } from '../../../../shared/utils.js';
+
 function getEditUrl(aemUrl) {
   const parsed = new URL(aemUrl);
   const hostParts = parsed.hostname.split('.')[0].split('--');
   const repo = hostParts[1];
   const org = hostParts[2];
   return `https://da.live/edit#/${org}/${repo}${parsed.pathname}`;
-}
-
-export function corsFetch(href, options) {
-  const url = `https://da-etc.adobeaem.workers.dev/cors?url=${encodeURIComponent(href)}`;
-  const opts = options || {};
-  return fetch(url, opts);
 }
 
 export async function saveOffer(config, name, content, aemUrl, displayName, offerId) {
@@ -31,7 +27,7 @@ export async function saveOffer(config, name, content, aemUrl, displayName, offe
     },
   };
 
-  const resp = await corsFetch(url, {
+  const resp = await etcFetch(url, 'cors', {
     method: isUpdate ? 'PUT' : 'POST',
     headers: {
       Authorization: `Bearer ${config.token}`,
@@ -54,7 +50,7 @@ export async function saveOffer(config, name, content, aemUrl, displayName, offe
 export async function getOffer(config, offerId) {
   const url = `https://mc.adobe.io/${config.tenant}/target/offers/content/${offerId}`;
 
-  const resp = await corsFetch(url, {
+  const resp = await etcFetch(url, 'cors', {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${config.token}`,
@@ -79,7 +75,7 @@ export async function getOffer(config, offerId) {
 export async function deleteOffer(config, offerId) {
   const url = `https://mc.adobe.io/${config.tenant}/target/offers/content/${offerId}`;
 
-  const resp = await corsFetch(url, {
+  const resp = await etcFetch(url, 'cors', {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${config.token}`,
@@ -112,7 +108,7 @@ export async function getAccessToken(clientId, clientSecret) {
       scope: 'openid,AdobeID,target_sdk,additional_info.projectedProductContext,read_organizations,additional_info.roles',
     }),
   };
-  const resp = await corsFetch(href, opts);
+  const resp = await etcFetch(href, 'cors', opts);
   if (!resp.ok) {
     const error = await resp.text();
     return { error: `Failed to get access token: ${resp.status} - ${error}` };

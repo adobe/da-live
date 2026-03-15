@@ -1,4 +1,4 @@
-import { DA_ORIGIN, CON_ORIGIN, getLivePreviewUrl } from './constants.js';
+import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
@@ -76,6 +76,12 @@ export const daFetch = async (url, opts = {}) => {
   resp.permissions = ['read', 'write'];
   return resp;
 };
+
+export function etcFetch(href, api, options) {
+  const url = `${DA_ETC_ORIGIN}/${api}?url=${encodeURIComponent(href)}`;
+  const opts = options || {};
+  return fetch(url, opts);
+}
 
 export async function aemAdmin(path, api, method = 'POST') {
   const [owner, repo, ...parts] = path.slice(1).split('/');
@@ -196,6 +202,24 @@ export const fetchDaConfigs = (() => {
     if (site) configs.push(configCache[`/${org}/${site}`]);
 
     return configs;
+  };
+})();
+
+export const getSidekickConfig = (() => {
+  const configCache = {};
+
+  const fetchConfig = async (org, site) => {
+    const aemPath = `/${org}/${site}/config.json`;
+
+    return aemAdmin(aemPath, 'sidekick', 'GET');
+  };
+
+  return ({ org, site }) => {
+    const path = `/${org}/${site}`;
+    // Fetch a new SK config if it doesn't exit
+    configCache[path] ??= fetchConfig(org, site);
+
+    return configCache[path];
   };
 })();
 

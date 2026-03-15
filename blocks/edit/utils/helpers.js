@@ -1,9 +1,8 @@
 import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { sanitizePathParts } from '../../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { daFetch, getSidekickConfig } from '../../shared/utils.js';
 
 export function isURL(text) {
   try {
@@ -40,26 +39,6 @@ function parseAemError(xError) {
   }
   return xError.replace('[admin] ', '');
 }
-
-const getSidekickConfig = (() => {
-  const configCache = {};
-
-  const fetchConfig = async (org, site) => {
-    const aemPath = `/${org}/${site}/config.json`;
-
-    const two = `/${org}/${site}/config.json`;
-
-    return aemAdmin(two, 'sidekick', 'GET');
-  };
-
-  return ({ org, site }) => {
-    const path = `/${org}/${site}`;
-    // Fetch a new SK config if it doesn't exit
-    configCache[path] ??= fetchConfig(org, site);
-
-    return configCache[path];
-  };
-})();
 
 export async function getAemHrefs({ path }) {
   // Mine the path for different parts
