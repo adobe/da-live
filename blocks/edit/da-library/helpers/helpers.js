@@ -1,8 +1,7 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
-import { getDaAdmin } from '../../../shared/constants.js';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch, aemAdmin } from '../../../shared/utils.js';
+import { daFetch, aemAdmin, fetchDaConfigs } from '../../../shared/utils.js';
 import { getConfKey, openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { sanitizeName } from '../../../../scripts/utils.js';
@@ -11,7 +10,6 @@ import { getBlocks } from './index.js';
 export const OOTB_PLUGINS = ['blocks', 'templates', 'icons', 'placeholders'];
 
 const LIBRARY_CACHE = {};
-const DA_ORIGIN = getDaAdmin();
 const REPLACE_CONTENT = '<content>';
 const DA_PLUGINS = {
   blocks: {},
@@ -108,10 +106,9 @@ function calculateSources(org, repo, sheetPath) {
   });
 }
 
-async function fetchLibraryConfig(org, repo) {
-  const resp = await daFetch(`${DA_ORIGIN}/config/${org}/${repo}/`);
-  if (!resp.ok) return [];
-  const { library } = await resp.json();
+async function fetchLibraryConfig(org, site) {
+  const configs = await fetchDaConfigs({ org, site });
+  const { library } = await configs[1];
   if (!library) return [];
   return library.data.reduce((acc, row) => {
     // Determine if a plugin should be visible based on query param
@@ -122,7 +119,7 @@ async function fetchLibraryConfig(org, repo) {
       const plugin = {
         name,
         title: row.title.trim(),
-        sources: calculateSources(org, repo, row.path),
+        sources: calculateSources(org, site, row.path),
         ref: row.ref || 'main',
         experience: ootb?.experience || row.experience || 'inline',
       };
@@ -169,12 +166,12 @@ function mergeLibrary(da, assets) {
 }
 
 export async function getLibraryList() {
-  const { owner, repo } = getPathDetails();
-  if (!owner || !repo) return [];
+  const { org, site, fullpath } = getPathDetails();
+  if (!org || !site) return [];
 
   // Fetch in parallel
-  const aemAssets = getAssetsPlugin(owner, repo);
-  const confLibrary = fetchLibraryConfig(owner, repo);
+  const aemAssets = getAssetsPlugin(org, site);
+  const confLibrary = fetchLibraryConfig(org, site, fullpath);
   const [assets, library] = await Promise.all([aemAssets, confLibrary]);
 
   // Order AEM Assets after blocks or templates
@@ -278,6 +275,7 @@ export async function getPreviewStatus({ org, site, pathname }) {
     const json = await aemAdmin(path, 'status', 'GET');
     return json.preview.status === 200;
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.log(`Could not get preview status for ${path}`, err);
     return null;
   }
