@@ -158,8 +158,13 @@ function transformBlock(block) {
 }
 
 export async function getBlockVariants(path) {
-  const { origin } = new URL(path);
-  const isAemHosted = AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
+  let isAemHosted = false;
+  try {
+    const { origin } = new URL(path);
+    isAemHosted = AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
+  } catch {
+    // path is relative — not AEM hosted
+  }
 
   const doc = await fetchAndParseHtml(path, isAemHosted);
   if (!doc) return [];

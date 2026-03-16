@@ -1,11 +1,11 @@
-import { DA_ORIGIN, CON_ORIGIN, getLivePreviewUrl } from './constants.js';
+import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
 
 const { getNx } = await import('../../scripts/utils.js');
 
-// TODO: INFRA
-const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'https://stage-content.da.live', 'http://localhost:8787'];
+const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
 const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
-const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS];
+const ETC_ORIGINS = ['https://stage-content.da.live', 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev', 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev'];
+const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS, ...ETC_ORIGINS];
 
 let imsDetails;
 
@@ -31,6 +31,7 @@ export const daFetch = async (url, opts = {}) => {
       opts.headers.Authorization = `Bearer ${accessToken.token}`;
       if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
         opts.headers['x-content-source-authorization'] = `Bearer ${accessToken.token}`;
+        opts.headers.Authorization = `Bearer ${accessToken.token}`;
       }
     }
   }
@@ -75,6 +76,12 @@ export const daFetch = async (url, opts = {}) => {
   resp.permissions = ['read', 'write'];
   return resp;
 };
+
+export function etcFetch(href, api, options) {
+  const url = `${DA_ETC_ORIGIN}/${api}?url=${encodeURIComponent(href)}`;
+  const opts = options || {};
+  return fetch(url, opts);
+}
 
 export async function aemAdmin(path, api, method = 'POST') {
   const [owner, repo, ...parts] = path.slice(1).split('/');
@@ -167,4 +174,77 @@ export async function checkLockdownImages(owner) {
   } catch {
     return false;
   }
+}
+
+export const fetchDaConfigs = (() => {
+  const configCache = {};
+
+  const fetchConfig = async (pathname) => {
+    const resp = await daFetch(`${DA_ORIGIN}/config${pathname}/`);
+    if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
+    return resp.json();
+  };
+
+  return ({ org, site }) => {
+    // Set the org config promise if it does not exist
+    configCache[`/${org}`] ??= fetchConfig(`/${org}`);
+
+    if (site) {
+      // Set the site config promise if it does not exist
+      configCache[`/${org}/${site}`] ??= fetchConfig(`/${org}/${site}`);
+    }
+
+    // return array of cached configs (org = 0, site = 1)
+    const configs = [configCache[`/${org}`]];
+    if (site) configs.push(configCache[`/${org}/${site}`]);
+
+    return configs;
+  };
+})();
+
+export const getSidekickConfig = (() => {
+  const configCache = {};
+
+  const fetchConfig = async (org, site) => {
+    const aemPath = `/${org}/${site}/config.json`;
+
+    return aemAdmin(aemPath, 'sidekick', 'GET');
+  };
+
+  return ({ org, site }) => {
+    if (!site) return {};
+
+    const path = `/${org}/${site}`;
+    // Fetch new SK config if it doesn't exit
+    configCache[path] ??= fetchConfig(org, site);
+
+    return configCache[path];
+  };
+})();
+
+export const getAemSiteToken = (() => {
+  const tokenCache = {};
+
+  const fetchToken = async (org, site) => {
+    const { accessToken } = await initIms();
+    const { token } = accessToken;
+
+    const body = JSON.stringify({ org, site, accessToken: token });
+    const opts = { method: 'POST', body, headers: { 'Content-Type': 'application/json' } };
+    const resp = await fetch(`${AEM_ORIGIN}/auth/adobe/exchange`, opts);
+    if (!resp.ok) return { error: `Error fetch AEM Site Token ${resp.status}` };
+    return resp.json();
+  };
+
+  return ({ org, site }) => {
+    const path = `/${org}/${site}`;
+    // Fetch new token if it doesn't exit
+    tokenCache[path] ??= fetchToken('adobecom', 'da-bacom');
+
+    return tokenCache[path];
+  };
+})();
+
+export function delay(ms) {
+  return new Promise((res) => { setTimeout(res, ms); });
 }
