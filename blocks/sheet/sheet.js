@@ -1,4 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
+import { Y } from 'da-y-wrapper';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
@@ -11,6 +12,7 @@ const style = await getStyle('/blocks/sheet/da-sheet-panes.css');
 class DaSheetPanes extends LitElement {
   static properties = {
     data: { type: Object },
+    ydoc: { type: Object },
     pathDetails: { type: Object },
     _showVersions: { state: true },
     _showPreview: { state: true },
@@ -48,11 +50,8 @@ class DaSheetPanes extends LitElement {
     verReview.data = await getData(e.detail.url);
     verReview.addEventListener('close', () => { verReview.remove(); });
     verReview.addEventListener('restore', async () => {
-      const daTitle = document.querySelector('da-title');
-      const daSheet = document.querySelector('.da-sheet');
-
-      const initSheet = (await import('./utils/index.js')).default;
-      daTitle.sheet = await initSheet(daSheet, verReview.data);
+      const { jSheetToY } = await import('../../deps/da-parser/dist/index.js');
+      jSheetToY(verReview.data, this.ydoc, true, Y);
       verReview.remove();
     });
 
@@ -113,12 +112,14 @@ customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
 
-async function setSheet(details, daTitle, daSheet) {
+async function setSheet(details, daTitle, daSheet, daSheetPanes, wrapper) {
   daTitle.details = details;
   daSheet.details = details;
 
   if (!initSheet) initSheet = (await import('./utils/index.js')).default;
-  daTitle.sheet = await initSheet(daSheet);
+  const { ydoc } = await initSheet(daSheet);
+  daSheetPanes.ydoc = ydoc;
+  wrapper.ydoc = ydoc;
 }
 
 export default async function init(el) {
@@ -150,13 +151,13 @@ export default async function init(el) {
   versionWrapper.append(wrapper, daSheetPanes);
 
   // Set data against the title & sheet
-  setSheet(details, daTitle, daSheet);
+  setSheet(details, daTitle, daSheet, daSheetPanes, wrapper);
 
   el.append(daTitle, versionWrapper);
 
   window.addEventListener('hashchange', async () => {
     details = getPathDetails();
-    setSheet(details, daTitle, daSheet);
+    setSheet(details, daTitle, daSheet, daSheetPanes, wrapper);
     daSheetPanes.pathDetails = details;
   });
 }

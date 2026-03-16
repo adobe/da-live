@@ -1,7 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import {
   requestRole,
-  saveToDa,
   saveToAem,
   saveDaConfig,
   saveDaVersion,
@@ -48,14 +47,6 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._actionsVis = [];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
-    if (this.details.view === 'sheet') {
-      this.collabStatus = window.navigator.onLine
-        ? 'connected'
-        : 'offline';
-
-      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
-      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
-    }
   }
 
   firstUpdated() {
@@ -99,11 +90,7 @@ export default class DaTitle extends LitElement {
     const { hash } = window.location;
     const pathname = hash.replace('#', '');
 
-    // Only save to DA if it is a sheet or config
-    if (this.details.view === 'sheet') {
-      const dasSave = await saveToDa(pathname, this.sheet);
-      if (!dasSave.ok) return;
-    }
+    // Only save to DA if it is a config
     if (this.details.view === 'config') {
       const daConfigResp = await saveDaConfig(pathname, this.sheet);
       if (!daConfigResp.ok) {
