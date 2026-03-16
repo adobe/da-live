@@ -47,8 +47,8 @@ const descCheck = async ({ doc }) => {
   return [REASONS['description.info.para']];
 };
 
-export async function fragmentCheck({ details, doc }) {
-  const links = [...doc.querySelectorAll('a')];
+async function linkCheck({ details, doc }, selector = 'a:not([href*="/fragments/"])') {
+  const links = [...doc.querySelectorAll(selector)];
   return links.map((link) => {
     // Get the basics
     const text = link.textContent;
@@ -62,8 +62,13 @@ export async function fragmentCheck({ details, doc }) {
   });
 }
 
+async function fragmentCheck({ details, doc }) {
+  return linkCheck({ details, doc }, 'a[href*="/fragments/"]');
+}
+
 const categoryChecks = {
   References: [
+    { title: 'Links', fn: linkCheck },
     { title: 'Fragments', fn: fragmentCheck },
   ],
   Content: [

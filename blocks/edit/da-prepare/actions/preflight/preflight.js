@@ -77,7 +77,10 @@ class DaPreflight extends LitElement {
           <li class="sub-category">
             <p class="check-label">${check.title}</p>
             <ul>
-              ${check.results.map((result) => this.renderResultItem(result))}
+              ${check.results.toSorted((a, b) => {
+                const order = ['error', 'warn', 'info', 'success'];
+                return order.indexOf(a.badge) - order.indexOf(b.badge);
+              }).map((result) => this.renderResultItem(result))}
             </ul>
           </li>
         `)}

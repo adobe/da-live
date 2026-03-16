@@ -99,9 +99,10 @@ class PreflightLink extends LitElement {
       }
       const noCacheUrl = `${url.href}?nocache=${Date.now()}`;
       const resp = await etcFetch(noCacheUrl, 'cors', opts);
+      // redirect: manual will return 0 as the status code
       this._status = resp.status || 301;
       if (resp.status === 0) return REASONS['link.warn'];
-      if (resp.ok) return REASONS['link.info'];
+      if (resp.ok) return REASONS['link.success'];
       return REASONS['link.error'];
     } catch {
       return REASONS['link.error'];
@@ -110,7 +111,7 @@ class PreflightLink extends LitElement {
 
   getName() {
     const lastSegment = this._parts.at(-1);
-    if (this.text === this.href) {
+    if (this.text === this.href || this.text.startsWith('https://')) {
       return lastSegment;
     }
     return this.text || this._parts.at(-1);

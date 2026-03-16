@@ -63,6 +63,19 @@
     min-width: 40px;
   }
 
+  &.badge-success {
+    background-color: var(--s2-green-300);
+
+    .more {
+      color: var(--s2-green-900);
+    }
+
+    .filled-icon {
+      color: #fff;
+      background-color: var(--s2-green-700);
+    }
+  }
+
   &.badge-info {
     background-color: var(--s2-blue-400);
 

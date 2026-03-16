@@ -1,6 +1,7 @@
 export const CATEGORIES = ['References', 'Content', 'SEO'];
 
 export const ICONS = new Map([
+  ['success', 'blocks/edit/img/S2_Icon_CheckmarkCircle_20_N.svg#S2_Icon_CheckmarkCircle'],
   ['info', '/blocks/edit/img/S2_Icon_InfoCircle_20_N.svg#S2_Icon_InfoCircle'],
   ['warn', '/blocks/edit/img/S2_Icon_AlertTriangle_20_N.svg#S2_Icon_AlertTriangle'],
   ['error', '/blocks/edit/img/S2_Icon_AlertDiamond_20_N.svg#S2_Icon_AlertDiamond'],
@@ -21,7 +22,7 @@ export const REASONS = {
   'description.info.para': { badge: 'info', reason: 'Description found as first paragraph.' },
   'description.warn': { badge: 'warn', reason: 'Description not found in metadata or first paragraph.' },
   'link.working': { badge: 'info', reason: 'Getting link details' },
-  'link.info': { badge: 'info', reason: 'Link published' },
+  'link.success': { badge: 'success', reason: 'Link published' },
   'link.warn': { badge: 'warn', reason: 'Link redirected' },
   'link.error': { badge: 'error', reason: 'Could not validate link' },
 };
