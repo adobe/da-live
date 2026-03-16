@@ -116,9 +116,9 @@ const AUTHOR_PDF = {
 };
 
 describe('buildDmUrl', () => {
-  it('builds DM image URL from repo:id', () => {
+  it('builds DM image URL from repo:id with .avif extension', () => {
     const url = buildDmUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com');
-    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:abc-123/as/mountain.jpg');
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:abc-123/as/mountain.avif');
   });
 
   it('builds DM video URL with /play endpoint', () => {
@@ -157,9 +157,9 @@ const DELIVERY_CSV = {
 // ---------------------------------------------------------------------------
 
 describe('buildDeliveryUrl', () => {
-  it('builds delivery image URL from repo:assetId and repo:name', () => {
+  it('builds delivery image URL from repo:assetId and repo:name with .avif extension', () => {
     const url = buildDeliveryUrl(DELIVERY_IMAGE);
-    expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-789/as/sunset.jpg');
+    expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-789/as/sunset.avif');
   });
 
   it('builds delivery video URL with /play endpoint', () => {
@@ -167,15 +167,15 @@ describe('buildDeliveryUrl', () => {
     expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-vid-000/play');
   });
 
-  it('uses seo name (strips extension) in URL with correct extension', () => {
+  it('uses seo name (strips extension) in URL with .avif extension', () => {
     const url = buildDeliveryUrl(DELIVERY_IMAGE);
-    // seoName = 'sunset', ext = 'jpg'
-    expect(url).to.include('/as/sunset.jpg');
+    // seoName = 'sunset', original ext stripped, .avif appended
+    expect(url).to.include('/as/sunset.avif');
   });
 
-  it('handles asset name without extension gracefully', () => {
+  it('handles asset name without extension gracefully, appending .avif', () => {
     const url = buildDeliveryUrl(DELIVERY_NO_EXT);
-    expect(url).to.include('/as/logofile');
+    expect(url).to.include('/as/logofile.avif');
   });
 
   it('uses asset repo:repositoryId as host', () => {
@@ -185,7 +185,7 @@ describe('buildDeliveryUrl', () => {
 
   it('uses overrideHost instead of repo:repositoryId when provided', () => {
     const url = buildDeliveryUrl(DELIVERY_IMAGE, 'custom-delivery.example.com');
-    expect(url).to.equal('https://custom-delivery.example.com/adobe/assets/urn:aaid:aem:del-789/as/sunset.jpg');
+    expect(url).to.equal('https://custom-delivery.example.com/adobe/assets/urn:aaid:aem:del-789/as/sunset.avif');
     expect(url).to.not.include('delivery-p99-e99.adobeaemcloud.com');
   });
 
@@ -205,9 +205,9 @@ describe('buildDeliveryUrl', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildSmartCropUrl', () => {
-  it('builds smart crop URL with crop name and query param', () => {
+  it('builds smart crop URL with crop name, query param, and .avif extension', () => {
     const url = buildSmartCropUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com', 'desktop');
-    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:abc-123/as/desktop-mountain.jpg?smartcrop=desktop');
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:abc-123/as/desktop-mountain.avif?smartcrop=desktop');
   });
 });
 

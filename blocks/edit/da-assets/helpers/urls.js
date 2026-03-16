@@ -26,7 +26,10 @@ export function buildDmUrl(asset, dmOrigin) {
   const mimetype = asset.mimetype || asset['dc:format'] || '';
   const base = `https://${dmOrigin}/adobe/assets/${asset['repo:id']}`;
   if (mimetype.startsWith('image/')) {
-    return `${base}/as/${asset.name}`;
+    const seoName = asset.name.includes('.')
+      ? asset.name.split('.').slice(0, -1).join('.')
+      : asset.name;
+    return `${base}/as/${seoName}.avif`;
   }
   if (mimetype.startsWith('video/')) {
     return `${base}/play`;
@@ -63,7 +66,7 @@ export function buildDeliveryUrl(asset, overrideHost) {
   const renditionName = ext ? `${seoName}.${ext}` : seoName;
 
   if (mimetype.startsWith('image/')) {
-    return `https://${host}/adobe/assets/${assetId}/as/${renditionName}`;
+    return `https://${host}/adobe/assets/${assetId}/as/${seoName}.avif`;
   }
 
   // PDFs, CSVs, documents, and any other non-image/non-video formats
@@ -76,7 +79,10 @@ export function buildDeliveryUrl(asset, overrideHost) {
  */
 export function buildSmartCropUrl(asset, dmOrigin, cropName) {
   const base = `https://${dmOrigin}/adobe/assets/${asset['repo:id']}`;
-  return `${base}/as/${cropName}-${asset.name}?smartcrop=${cropName}`;
+  const seoName = asset.name.includes('.')
+    ? asset.name.split('.').slice(0, -1).join('.')
+    : asset.name;
+  return `${base}/as/${cropName}-${seoName}.avif?smartcrop=${cropName}`;
 }
 
 /**
