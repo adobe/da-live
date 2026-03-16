@@ -45,8 +45,8 @@ export function buildDmUrl(asset, dmOrigin) {
  *   Other:   https://<host>/adobe/assets/<id>/original/as/<seo-name>.<ext>
  *            (PDFs, CSVs, documents — use the original rendition path)
  */
-export function buildDeliveryUrl(asset) {
-  const host = asset['repo:repositoryId'];
+export function buildDeliveryUrl(asset, overrideHost) {
+  const host = overrideHost || asset['repo:repositoryId'];
   const assetId = asset['repo:assetId'];
   const fullName = asset['repo:name'] || '';
   const mimetype = asset.mimetype || asset['dc:format'] || '';

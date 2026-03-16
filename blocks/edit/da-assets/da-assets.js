@@ -37,7 +37,7 @@ export function buildFeatureSet(isDmEnabled) {
 export function resolveAssetUrl(asset, repoConfig) {
   const { tierType, assetOrigin, isDmEnabled } = repoConfig;
   if (tierType === 'delivery') {
-    return buildDeliveryUrl(asset);
+    return buildDeliveryUrl(asset, assetOrigin);
   }
   if (isDmEnabled) {
     return buildDmUrl(asset, assetOrigin);

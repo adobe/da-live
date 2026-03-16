@@ -183,6 +183,12 @@ describe('buildDeliveryUrl', () => {
     expect(url).to.include('delivery-p99-e99.adobeaemcloud.com');
   });
 
+  it('uses overrideHost instead of repo:repositoryId when provided', () => {
+    const url = buildDeliveryUrl(DELIVERY_IMAGE, 'custom-delivery.example.com');
+    expect(url).to.equal('https://custom-delivery.example.com/adobe/assets/urn:aaid:aem:del-789/as/sunset.jpg');
+    expect(url).to.not.include('delivery-p99-e99.adobeaemcloud.com');
+  });
+
   it('builds delivery PDF URL using /original/as/ path', () => {
     const url = buildDeliveryUrl(DELIVERY_PDF);
     expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-pdf-111/original/as/whitepaper.pdf');

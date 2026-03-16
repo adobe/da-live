@@ -177,6 +177,13 @@ describe('resolveAssetUrl', () => {
     const url = resolveAssetUrl(DELIVERY_IMAGE, DELIVERY_CONFIG);
     expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-001/as/photo.jpg');
   });
+
+  it('respects custom aem.assets.prod.origin for delivery tier', () => {
+    const customConfig = { ...DELIVERY_CONFIG, assetOrigin: 'custom-delivery.example.com' };
+    const url = resolveAssetUrl(DELIVERY_IMAGE, customConfig);
+    expect(url).to.equal('https://custom-delivery.example.com/adobe/assets/urn:aaid:aem:del-001/as/photo.jpg');
+    expect(url).to.not.include('delivery-p1-e1.adobeaemcloud.com');
+  });
 });
 
 // ---------------------------------------------------------------------------
