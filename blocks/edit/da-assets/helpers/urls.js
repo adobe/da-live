@@ -18,22 +18,27 @@ export function buildAuthorUrl(asset, publishOrigin) {
 /**
  * Author tier + DM delivery enabled.
  * Browses via author but constructs DM-style delivery URLs using repo:id.
- * Images:  /as/${name}
- * Videos:  /play
- * Other:   /original/as/${name}  (PDFs, CSVs, etc.)
+ * URL format per AEM docs:
+ *   Images:  https://<host>/adobe/assets/<id>/as/<seo-name>.<format>
+ *   Video:   https://<host>/adobe/assets/<id>/play
+ *   Other:   https://<host>/adobe/assets/<id>/original/as/<name>
+ *            (PDFs, CSVs, documents — use the original rendition path)
  */
-export function buildDmUrl(asset, dmOrigin) {
+export function buildDmUrl(asset, host) {
   const mimetype = asset.mimetype || asset['dc:format'] || '';
-  const base = `https://${dmOrigin}/adobe/assets/${asset['repo:id']}`;
+  const base = `https://${host}/adobe/assets/${asset['repo:id']}`;
+
   if (mimetype.startsWith('image/')) {
     const seoName = asset.name.includes('.')
       ? asset.name.split('.').slice(0, -1).join('.')
       : asset.name;
     return `${base}/as/${seoName}.avif`;
   }
+
   if (mimetype.startsWith('video/')) {
     return `${base}/play`;
   }
+
   return `${base}/original/as/${asset.name}`;
 }
 
@@ -45,7 +50,7 @@ export function buildDmUrl(asset, dmOrigin) {
  * URL format per AEM docs:
  *   Images:  https://<host>/adobe/assets/<id>/as/<seo-name>.<format>
  *   Video:   https://<host>/adobe/assets/<id>/play
- *   Other:   https://<host>/adobe/assets/<id>/original/as/<seo-name>.<ext>
+ *   Other:   https://<host>/adobe/assets/<id>/original/as/<name>
  *            (PDFs, CSVs, documents — use the original rendition path)
  */
 export function buildDeliveryUrl(asset, overrideHost) {
@@ -53,24 +58,22 @@ export function buildDeliveryUrl(asset, overrideHost) {
   const assetId = asset['repo:assetId'];
   const fullName = asset['repo:name'] || '';
   const mimetype = asset.mimetype || asset['dc:format'] || '';
-
-  if (mimetype.startsWith('video/')) {
-    return `https://${host}/adobe/assets/${assetId}/play`;
-  }
-
-  // seoName is the filename without extension per the AEM Open API spec
-  const seoName = fullName.includes('.')
-    ? fullName.split('.').slice(0, -1).join('.')
-    : fullName;
-  const ext = fullName.includes('.') ? fullName.split('.').pop() : '';
-  const renditionName = ext ? `${seoName}.${ext}` : seoName;
+  const base = `https://${host}/adobe/assets/${assetId}`;
 
   if (mimetype.startsWith('image/')) {
-    return `https://${host}/adobe/assets/${assetId}/as/${seoName}.avif`;
+    // seoName is the filename without extension per the AEM Open API spec
+    const seoName = fullName.includes('.')
+      ? fullName.split('.').slice(0, -1).join('.')
+      : fullName;
+    return `${base}/as/${seoName}.avif`;
+  }
+
+  if (mimetype.startsWith('video/')) {
+    return `${base}/play`;
   }
 
   // PDFs, CSVs, documents, and any other non-image/non-video formats
-  return `https://${host}/adobe/assets/${assetId}/original/as/${renditionName}`;
+  return `${base}/original/as/${fullName}`;
 }
 
 /**
