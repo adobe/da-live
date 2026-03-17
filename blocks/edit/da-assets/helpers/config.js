@@ -1,6 +1,6 @@
 import { DA_ORIGIN } from '../../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
-import { DEFAULT_ASSET_BASE_PATH } from './constants.js';
+import DEFAULT_ASSET_BASE_PATH from './constants.js';
 
 const fullConfJsons = {};
 const CONFS = {};
@@ -30,6 +30,32 @@ async function fetchValue(path, key) {
 
 function constructConfigPaths(owner, repo) {
   return [`/${owner}/${repo}/`, `/${owner}/`];
+}
+
+/**
+ * Parses the value of 'aem.asset.mime.renditions' into a mime-type → rendition-type map.
+ *
+ * Format: comma-separated "mimetype:renditiontype" pairs.
+ * Supports exact mime types and prefix wildcards:
+ *   image/vnd.adobe.photoshop:avif   — exact match (wins over wildcards)
+ *   image/*:original                 — all image/* as original
+ *   video/*:original                 — all video/* as original
+ *
+ * @param {string|null} configValue  Raw config string, or null when not set.
+ * @param {Record<string,string>} [defaults]  Base map to merge on top of; defaults to {}.
+ * @returns {Record<string,string>}
+ */
+export function parseMimeRenditions(configValue, defaults = {}) {
+  const map = { ...defaults };
+  if (!configValue) return map;
+  configValue.split(/\s*,\s*/).forEach((entry) => {
+    const colonIdx = entry.indexOf(':');
+    if (colonIdx === -1) return;
+    const mime = entry.slice(0, colonIdx).trim().toLowerCase();
+    const rendition = entry.slice(colonIdx + 1).trim().toLowerCase();
+    if (mime && rendition) map[mime] = rendition;
+  });
+  return map;
 }
 
 export async function getConfKey(owner, repo, key) {
@@ -72,7 +98,17 @@ export async function getResponsiveImageConfig(owner, repo) {
  *   3. author + DM enabled: replace 'author' with 'delivery' in repositoryId
  *   4. author + no DM: replace 'author' with 'publish' in repositoryId
  *
- * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled, isSmartCrop, insertAsLink }}
+ * rendition behaviour (DM / delivery tiers only):
+ *   aem.asset.mime.renditions — optional comma-separated "mimetype:renditiontype" pairs.
+ *   Supports exact mime types and prefix wildcards:
+ *     image/vnd.adobe.photoshop:avif   — serve PSD as avif
+ *     image/*:original                 — serve all images as original instead of avif
+ *     video/*:original                 — serve all videos as original instead of /play
+ *   When absent (or empty), built-in prefix defaults apply:
+ *     image/* → avif, video/* → /play, everything else → original.
+ *
+ * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled, isSmartCrop,
+ *             insertAsLink, mimeRenditionOverrides }}
  */
 export async function getRepositoryConfig(owner, repo) {
   const repositoryId = await getConfKey(owner, repo, 'aem.repositoryId');
@@ -86,6 +122,8 @@ export async function getRepositoryConfig(owner, repo) {
   const isDmDeliveryFlag = (await getConfKey(owner, repo, 'aem.asset.dm.delivery')) === 'on';
   const isDmEnabled = isSmartCrop || isDmDeliveryFlag || customOrigin?.startsWith('delivery-') || tierType === 'delivery';
   const insertAsLink = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'link';
+  const mimeRenditionsConfig = await getConfKey(owner, repo, 'aem.asset.mime.renditions');
+  const mimeRenditionOverrides = parseMimeRenditions(mimeRenditionsConfig);
 
   let assetOrigin;
   if (customOrigin) {
@@ -108,5 +146,6 @@ export async function getRepositoryConfig(owner, repo) {
     isDmEnabled,
     isSmartCrop,
     insertAsLink,
+    mimeRenditionOverrides,
   };
 }

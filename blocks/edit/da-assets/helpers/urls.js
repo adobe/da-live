@@ -1,10 +1,41 @@
-import { DEFAULT_ASSET_BASE_PATH } from './constants.js';
+import DEFAULT_ASSET_BASE_PATH from './constants.js';
 
 const RENDITION_REL = 'http://ns.adobe.com/adobecloud/rel/rendition';
 
 function resolveAssetBasePath(basePath = DEFAULT_ASSET_BASE_PATH) {
   const normalized = `/${basePath}`.replace(/^\/+/, '/').replace(/\/+$/, '');
   return normalized || DEFAULT_ASSET_BASE_PATH;
+}
+
+/**
+ * Determines the DM rendition type for a given mime type.
+ *
+ * Precedence (highest → lowest):
+ *   1. Exact mime-type entry in mimeRenditionOverrides (e.g. 'image/vnd.adobe.photoshop': 'avif').
+ *   2. Prefix wildcard entry in mimeRenditionOverrides (e.g. 'image/*': 'original').
+ *      Use this in site config to opt entire type groups back to original:
+ *        aem.asset.mime.renditions = image/*:original, video/*:original
+ *   3. Prefix defaults — image/* → 'avif', video/* → 'play'.
+ *   4. Fallback — any unrecognised mime type → 'original'.
+ *
+ * @param {string} mimetype
+ * @param {{ mimeRenditionOverrides?: Record<string,string> }} [options]
+ * @returns {'avif'|'play'|'original'}
+ */
+export function resolveRenditionType(mimetype, { mimeRenditionOverrides = {} } = {}) {
+  const lower = (mimetype || '').toLowerCase();
+
+  // Exact match wins first.
+  if (mimeRenditionOverrides[lower]) return mimeRenditionOverrides[lower];
+
+  // Prefix wildcard (e.g. 'image/*': 'original') wins over the built-in prefix defaults.
+  const prefix = lower.includes('/') ? `${lower.split('/')[0]}/*` : '';
+  if (prefix && mimeRenditionOverrides[prefix]) return mimeRenditionOverrides[prefix];
+
+  if (lower.startsWith('image/')) return 'avif';
+  if (lower.startsWith('video/')) return 'play';
+
+  return 'original';
 }
 
 /**
@@ -25,24 +56,31 @@ export function buildAuthorUrl(asset, publishOrigin) {
 /**
  * Author tier + DM delivery enabled.
  * Browses via author but constructs DM-style delivery URLs using repo:id.
- * URL format per AEM docs:
- *   Images:  https://<host>/<basePath>/<id>/as/<seo-name>.<format>
- *   Video:   https://<host>/<basePath>/<id>/play
- *   Other:   https://<host>/<basePath>/<id>/original/as/<name>
- *            (PDFs, CSVs, documents — use the original rendition path)
+ *
+ * The rendition path is determined by resolveRenditionType() using mimeRenditionOverrides
+ * from site config (aem.asset.mime.renditions). Built-in defaults when no override applies:
+ *   image/* → https://<host>/<basePath>/<id>/as/<seo-name>.avif
+ *   video/* → https://<host>/<basePath>/<id>/play
+ *   other   → https://<host>/<basePath>/<id>/original/as/<name>
+ *
+ * @param {object} asset
+ * @param {string} host
+ * @param {string} [basePath]
+ * @param {{ mimeRenditionOverrides?: Record<string,string> }} [renditionOptions]
  */
-export function buildDmUrl(asset, host, basePath = DEFAULT_ASSET_BASE_PATH) {
+export function buildDmUrl(asset, host, basePath = DEFAULT_ASSET_BASE_PATH, renditionOptions = {}) {
   const mimetype = asset.mimetype || asset['dc:format'] || '';
   const base = `https://${host}${resolveAssetBasePath(basePath)}/${asset['repo:id']}`;
+  const renditionType = resolveRenditionType(mimetype, renditionOptions);
 
-  if (mimetype.startsWith('image/')) {
+  if (renditionType === 'avif') {
     const seoName = asset.name.includes('.')
       ? asset.name.split('.').slice(0, -1).join('.')
       : asset.name;
     return `${base}/as/${seoName}.avif`;
   }
 
-  if (mimetype.startsWith('video/')) {
+  if (renditionType === 'play') {
     return `${base}/play`;
   }
 
@@ -54,20 +92,31 @@ export function buildDmUrl(asset, host, basePath = DEFAULT_ASSET_BASE_PATH) {
  * Asset response uses repo:assetId, repo:repositoryId, repo:name.
  * Folder structure is not available (flat listing).
  *
- * URL format per AEM docs:
- *   Images:  https://<host>/<basePath>/<id>/as/<seo-name>.<format>
- *   Video:   https://<host>/<basePath>/<id>/play
- *   Other:   https://<host>/<basePath>/<id>/original/as/<name>
- *            (PDFs, CSVs, documents — use the original rendition path)
+ * The rendition path is determined by resolveRenditionType() using mimeRenditionOverrides
+ * from site config (aem.asset.mime.renditions). Built-in defaults when no override applies:
+ *   image/* → https://<host>/<basePath>/<id>/as/<seo-name>.avif
+ *   video/* → https://<host>/<basePath>/<id>/play
+ *   other   → https://<host>/<basePath>/<id>/original/as/<name>
+ *
+ * @param {object} asset
+ * @param {string} [overrideHost]
+ * @param {string} [basePath]
+ * @param {{ mimeRenditionOverrides?: Record<string,string> }} [renditionOptions]
  */
-export function buildDeliveryUrl(asset, overrideHost, basePath = DEFAULT_ASSET_BASE_PATH) {
+export function buildDeliveryUrl(
+  asset,
+  overrideHost,
+  basePath = DEFAULT_ASSET_BASE_PATH,
+  renditionOptions = {},
+) {
   const host = overrideHost || asset['repo:repositoryId'];
   const assetId = asset['repo:assetId'];
   const fullName = asset['repo:name'] || '';
   const mimetype = asset.mimetype || asset['dc:format'] || '';
   const base = `https://${host}${resolveAssetBasePath(basePath)}/${assetId}`;
+  const renditionType = resolveRenditionType(mimetype, renditionOptions);
 
-  if (mimetype.startsWith('image/')) {
+  if (renditionType === 'avif') {
     // seoName is the filename without extension per the AEM Open API spec
     const seoName = fullName.includes('.')
       ? fullName.split('.').slice(0, -1).join('.')
@@ -75,11 +124,10 @@ export function buildDeliveryUrl(asset, overrideHost, basePath = DEFAULT_ASSET_B
     return `${base}/as/${seoName}.avif`;
   }
 
-  if (mimetype.startsWith('video/')) {
+  if (renditionType === 'play') {
     return `${base}/play`;
   }
 
-  // PDFs, CSVs, documents, and any other non-image/non-video formats
   return `${base}/original/as/${fullName}`;
 }
 

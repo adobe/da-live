@@ -3,7 +3,7 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/bheuaark/', { hostname: 'localhost' });
 
-const { getConfKey, getRepositoryConfig, getResponsiveImageConfig } = await import('../../../../../blocks/edit/da-assets/helpers/config.js');
+const { getConfKey, getRepositoryConfig, getResponsiveImageConfig, parseMimeRenditions } = await import('../../../../../blocks/edit/da-assets/helpers/config.js');
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -208,6 +208,147 @@ describe('getRepositoryConfig', () => {
     } finally {
       window.fetch = orgFetch;
     }
+  });
+
+  it('sets image/* wildcard in mimeRenditionOverrides when configured via aem.asset.mime.renditions', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/origimg/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p80-e80.adobeaemcloud.com' },
+        { key: 'aem.asset.mime.renditions', value: 'image/*:original' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'origimg');
+      expect(cfg.mimeRenditionOverrides['image/*']).to.equal('original');
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('sets video/* wildcard in mimeRenditionOverrides when configured via aem.asset.mime.renditions', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/origvid/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p90-e90.adobeaemcloud.com' },
+        { key: 'aem.asset.mime.renditions', value: 'video/*:original' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'origvid');
+      expect(cfg.mimeRenditionOverrides['video/*']).to.equal('original');
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('mimeRenditionOverrides has no wildcard entries when aem.asset.mime.renditions is absent', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/norendition/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p95-e95.adobeaemcloud.com' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'norendition');
+      expect(cfg.mimeRenditionOverrides['image/*']).to.be.undefined;
+      expect(cfg.mimeRenditionOverrides['video/*']).to.be.undefined;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('parses aem.asset.mime.renditions and returns mimeRenditionOverrides', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/mimerenditions/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p96-e96.adobeaemcloud.com' },
+        { key: 'aem.asset.mime.renditions', value: 'application/x-photoshop:avif, application/pdf:original' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'mimerenditions');
+      expect(cfg.mimeRenditionOverrides['application/x-photoshop']).to.equal('avif');
+      expect(cfg.mimeRenditionOverrides['application/pdf']).to.equal('original');
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('mimeRenditionOverrides is an empty map when aem.asset.mime.renditions is absent', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/nomimekey/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p97-e97.adobeaemcloud.com' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'nomimekey');
+      expect(cfg.mimeRenditionOverrides).to.deep.equal({});
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseMimeRenditions
+// ---------------------------------------------------------------------------
+
+describe('parseMimeRenditions', () => {
+  it('returns an empty map when configValue is null and no defaults provided', () => {
+    const result = parseMimeRenditions(null);
+    expect(result).to.deep.equal({});
+  });
+
+  it('returns a copy of provided defaults when configValue is null', () => {
+    const result = parseMimeRenditions(null, { 'image/vnd.adobe.photoshop': 'avif' });
+    expect(result).to.deep.equal({ 'image/vnd.adobe.photoshop': 'avif' });
+  });
+
+  it('returns a copy of provided defaults when configValue is empty string', () => {
+    const result = parseMimeRenditions('', { 'application/x-photoshop': 'avif' });
+    expect(result).to.deep.equal({ 'application/x-photoshop': 'avif' });
+  });
+
+  it('parses a single mimetype:renditiontype entry', () => {
+    const result = parseMimeRenditions('application/pdf:original', {});
+    expect(result['application/pdf']).to.equal('original');
+  });
+
+  it('parses multiple comma-separated entries', () => {
+    const result = parseMimeRenditions('image/vnd.adobe.photoshop:avif, application/pdf:original', {});
+    expect(result['image/vnd.adobe.photoshop']).to.equal('avif');
+    expect(result['application/pdf']).to.equal('original');
+  });
+
+  it('merges config entries on top of defaults', () => {
+    const defaults = { 'image/vnd.adobe.photoshop': 'avif', 'application/pdf': 'original' };
+    const result = parseMimeRenditions('image/vnd.adobe.photoshop:original', defaults);
+    expect(result['image/vnd.adobe.photoshop']).to.equal('original');
+    expect(result['application/pdf']).to.equal('original');
+  });
+
+  it('normalises mime types and rendition types to lowercase', () => {
+    const result = parseMimeRenditions('IMAGE/VND.ADOBE.PHOTOSHOP:AVIF', {});
+    expect(result['image/vnd.adobe.photoshop']).to.equal('avif');
+  });
+
+  it('ignores entries that are missing the colon separator', () => {
+    const result = parseMimeRenditions('application/pdf', {});
+    expect(result).to.deep.equal({});
+  });
+
+  it('handles extra whitespace around entries and separators', () => {
+    const result = parseMimeRenditions('  application/zip : original  ,  text/csv : original  ', {});
+    expect(result['application/zip']).to.equal('original');
+    expect(result['text/csv']).to.equal('original');
+  });
+
+  it('does not mutate the defaults object', () => {
+    const defaults = { 'application/pdf': 'original' };
+    parseMimeRenditions('application/pdf:avif', defaults);
+    expect(defaults['application/pdf']).to.equal('original');
   });
 });
 

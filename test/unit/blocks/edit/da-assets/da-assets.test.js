@@ -193,6 +193,52 @@ describe('resolveAssetUrl', () => {
     const url = resolveAssetUrl(DELIVERY_IMAGE, customConfig);
     expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/delivery-assets/urn:aaid:aem:del-001/as/photo.avif');
   });
+
+  it('serves image as original in author+DM mode when image/* wildcard is set to original', () => {
+    const url = resolveAssetUrl(AUTHOR_IMAGE, {
+      ...AUTHOR_DM_CONFIG,
+      mimeRenditionOverrides: { 'image/*': 'original' },
+    });
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:img-001/original/as/photo.jpg');
+  });
+
+  it('serves image as original in delivery tier when image/* wildcard is set to original', () => {
+    const url = resolveAssetUrl(DELIVERY_IMAGE, {
+      ...DELIVERY_CONFIG,
+      mimeRenditionOverrides: { 'image/*': 'original' },
+    });
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-001/original/as/photo.jpg');
+  });
+
+  it('serves PSD as avif even when image/* wildcard is original (exact match wins)', () => {
+    const psdAsset = {
+      name: 'design.psd',
+      path: '/content/dam/design.psd',
+      mimetype: 'application/x-photoshop',
+      'repo:id': 'urn:aaid:aem:psd-001',
+      _links: {},
+    };
+    const url = resolveAssetUrl(psdAsset, {
+      ...AUTHOR_DM_CONFIG,
+      mimeRenditionOverrides: { 'image/*': 'original', 'application/x-photoshop': 'avif' },
+    });
+    expect(url).to.include('/as/design.avif');
+  });
+
+  it('uses mimeRenditionOverrides from repoConfig for specific mime types', () => {
+    const docAsset = {
+      name: 'report.docx',
+      path: '/content/dam/report.docx',
+      mimetype: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'repo:id': 'urn:aaid:aem:docx-001',
+      _links: {},
+    };
+    const url = resolveAssetUrl(docAsset, {
+      ...AUTHOR_DM_CONFIG,
+      mimeRenditionOverrides: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'original' },
+    });
+    expect(url).to.include('/original/as/report.docx');
+  });
 });
 
 // ---------------------------------------------------------------------------

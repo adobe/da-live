@@ -6,6 +6,7 @@ import {
   buildDeliveryUrl,
   buildSmartCropUrl,
   buildSmartCropsListUrl,
+  resolveRenditionType,
   getAssetAlt,
   getDmApprovalStatus,
 } from '../../../../../blocks/edit/da-assets/helpers/urls.js';
@@ -141,6 +142,34 @@ describe('buildDmUrl', () => {
     const url = buildDmUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com', '/custom-assets');
     expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/custom-assets/urn:aaid:aem:abc-123/as/mountain.avif');
   });
+
+  it('serves image as original when image/* wildcard is set to original', () => {
+    const url = buildDmUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com', '/adobe/assets', { mimeRenditionOverrides: { 'image/*': 'original' } });
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:abc-123/original/as/mountain.jpg');
+  });
+
+  it('serves video as original when video/* wildcard is set to original', () => {
+    const url = buildDmUrl(AUTHOR_VIDEO, 'delivery-p1-e1.adobeaemcloud.com', '/adobe/assets', { mimeRenditionOverrides: { 'video/*': 'original' } });
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:vid-456/original/as/clip.mp4');
+  });
+
+  it('serves PSD (image/vnd.adobe.photoshop) as avif even when image/* wildcard is original (exact match wins)', () => {
+    const psdAsset = { name: 'design.psd', mimetype: 'image/vnd.adobe.photoshop', 'repo:id': 'urn:aaid:aem:psd-001' };
+    const url = buildDmUrl(psdAsset, 'delivery-p1-e1.adobeaemcloud.com', '/adobe/assets', { mimeRenditionOverrides: { 'image/*': 'original', 'image/vnd.adobe.photoshop': 'avif' } });
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:psd-001/as/design.avif');
+  });
+
+  it('serves PSD (application/x-photoshop) as original by default (no config override)', () => {
+    const psdAsset = { name: 'layout.psd', mimetype: 'application/x-photoshop', 'repo:id': 'urn:aaid:aem:psd-002' };
+    const url = buildDmUrl(psdAsset, 'delivery-p1-e1.adobeaemcloud.com');
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:psd-002/original/as/layout.psd');
+  });
+
+  it('serves PSD (application/x-photoshop) as avif when configured via mimeRenditionOverrides', () => {
+    const psdAsset = { name: 'layout.psd', mimetype: 'application/x-photoshop', 'repo:id': 'urn:aaid:aem:psd-002' };
+    const url = buildDmUrl(psdAsset, 'delivery-p1-e1.adobeaemcloud.com', '/adobe/assets', { mimeRenditionOverrides: { 'application/x-photoshop': 'avif' } });
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:psd-002/as/layout.avif');
+  });
 });
 
 const DELIVERY_PDF = {
@@ -207,6 +236,93 @@ describe('buildDeliveryUrl', () => {
   it('supports custom base path for delivery URLs', () => {
     const url = buildDeliveryUrl(DELIVERY_IMAGE, undefined, '/my-assets');
     expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/my-assets/urn:aaid:aem:del-789/as/sunset.avif');
+  });
+
+  it('serves image as original when image/* wildcard is set to original', () => {
+    const url = buildDeliveryUrl(DELIVERY_IMAGE, undefined, '/adobe/assets', { mimeRenditionOverrides: { 'image/*': 'original' } });
+    expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-789/original/as/sunset.jpg');
+  });
+
+  it('serves video as original when video/* wildcard is set to original', () => {
+    const url = buildDeliveryUrl(DELIVERY_VIDEO, undefined, '/adobe/assets', { mimeRenditionOverrides: { 'video/*': 'original' } });
+    expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-vid-000/original/as/promo.mp4');
+  });
+
+  it('serves PSD (application/x-photoshop) as original by default for delivery tier', () => {
+    const psdAsset = {
+      'repo:assetId': 'urn:aaid:aem:del-psd-001',
+      'repo:name': 'artwork.psd',
+      'repo:repositoryId': 'delivery-p99-e99.adobeaemcloud.com',
+      'dc:format': 'application/x-photoshop',
+    };
+    const url = buildDeliveryUrl(psdAsset);
+    expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-psd-001/original/as/artwork.psd');
+  });
+
+  it('serves PSD as avif for delivery tier when configured via mimeRenditionOverrides', () => {
+    const psdAsset = {
+      'repo:assetId': 'urn:aaid:aem:del-psd-002',
+      'repo:name': 'banner.psd',
+      'repo:repositoryId': 'delivery-p99-e99.adobeaemcloud.com',
+      'dc:format': 'application/x-photoshop',
+    };
+    const url = buildDeliveryUrl(psdAsset, undefined, '/adobe/assets', { mimeRenditionOverrides: { 'application/x-photoshop': 'avif' } });
+    expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-psd-002/as/banner.avif');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveRenditionType
+// ---------------------------------------------------------------------------
+
+describe('resolveRenditionType', () => {
+  it('returns avif for image/* by default', () => {
+    expect(resolveRenditionType('image/jpeg')).to.equal('avif');
+    expect(resolveRenditionType('image/png')).to.equal('avif');
+    expect(resolveRenditionType('image/webp')).to.equal('avif');
+  });
+
+  it('returns play for video/* by default', () => {
+    expect(resolveRenditionType('video/mp4')).to.equal('play');
+    expect(resolveRenditionType('video/quicktime')).to.equal('play');
+  });
+
+  it('returns original for non-image/video types', () => {
+    expect(resolveRenditionType('application/pdf')).to.equal('original');
+    expect(resolveRenditionType('text/csv')).to.equal('original');
+    expect(resolveRenditionType('application/zip')).to.equal('original');
+    expect(resolveRenditionType('')).to.equal('original');
+  });
+
+  it('returns original for image/* when image/* wildcard is set to original', () => {
+    expect(resolveRenditionType('image/jpeg', { mimeRenditionOverrides: { 'image/*': 'original' } })).to.equal('original');
+    expect(resolveRenditionType('image/png', { mimeRenditionOverrides: { 'image/*': 'original' } })).to.equal('original');
+  });
+
+  it('returns original for video/* when video/* wildcard is set to original', () => {
+    expect(resolveRenditionType('video/mp4', { mimeRenditionOverrides: { 'video/*': 'original' } })).to.equal('original');
+  });
+
+  it('exact mime match wins over prefix wildcard', () => {
+    const overrides = { 'image/*': 'original', 'image/vnd.adobe.photoshop': 'avif' };
+    expect(resolveRenditionType('image/vnd.adobe.photoshop', { mimeRenditionOverrides: overrides })).to.equal('avif');
+    expect(resolveRenditionType('image/png', { mimeRenditionOverrides: overrides })).to.equal('original');
+  });
+
+  it('exact mime entry wins over prefix wildcard (PSD configured as avif despite image/*:original)', () => {
+    const overrides = { 'image/*': 'original', 'image/vnd.adobe.photoshop': 'avif', 'application/x-photoshop': 'avif', 'application/photoshop': 'avif' };
+    expect(resolveRenditionType('image/vnd.adobe.photoshop', { mimeRenditionOverrides: overrides })).to.equal('avif');
+    expect(resolveRenditionType('application/x-photoshop', { mimeRenditionOverrides: overrides })).to.equal('avif');
+  });
+
+  it('respects custom mimeRenditionOverrides map', () => {
+    const overrides = { 'application/msword': 'avif' };
+    expect(resolveRenditionType('application/msword', { mimeRenditionOverrides: overrides })).to.equal('avif');
+  });
+
+  it('is case-insensitive for mime types', () => {
+    expect(resolveRenditionType('IMAGE/JPEG')).to.equal('avif');
+    expect(resolveRenditionType('Video/MP4')).to.equal('play');
   });
 });
 

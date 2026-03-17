@@ -35,14 +35,13 @@ export function buildFeatureSet(isDmEnabled) {
 }
 
 export function resolveAssetUrl(asset, repoConfig) {
-  const {
-    tierType, assetOrigin, assetBasePath, isDmEnabled,
-  } = repoConfig;
+  const { tierType, assetOrigin, assetBasePath, isDmEnabled, mimeRenditionOverrides } = repoConfig;
+  const renditionOptions = { mimeRenditionOverrides };
   if (tierType === 'delivery') {
-    return buildDeliveryUrl(asset, assetOrigin, assetBasePath);
+    return buildDeliveryUrl(asset, assetOrigin, assetBasePath, renditionOptions);
   }
   if (isDmEnabled) {
-    return buildDmUrl(asset, assetOrigin, assetBasePath);
+    return buildDmUrl(asset, assetOrigin, assetBasePath, renditionOptions);
   }
   return buildAuthorUrl(asset, assetOrigin);
 }
