@@ -236,10 +236,10 @@ export default class DaTitle extends LitElement {
       const { url: href } = action === 'publish' ? json.live : json.preview;
       const url = new URL(href);
 
-      // Format snapshot or production URLs
       let aemTier = url.pathname.startsWith('/.snapshots') ? 'review' : action;
       aemTier = action === 'publish' ? 'prod' : 'preview';
-      let toOpen = `${this._aemHrefs[aemTier].origin}${path}`;
+      const openPath = path === '/index' || path === '/index.html' || path === '' || path === '/' ? '/' : path;
+      let toOpen = `${this._aemHrefs[aemTier].origin}${openPath}`;
 
       // Allow BYO editors to pick their own origin
       if (this.previewPrefix || this.livePrefix) {
