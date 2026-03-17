@@ -1,5 +1,6 @@
 import { DA_ORIGIN } from '../../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
+import { DEFAULT_ASSET_BASE_PATH } from './constants.js';
 
 const fullConfJsons = {};
 const CONFS = {};
@@ -71,7 +72,7 @@ export async function getResponsiveImageConfig(owner, repo) {
  *   3. author + DM enabled: replace 'author' with 'delivery' in repositoryId
  *   4. author + no DM: replace 'author' with 'publish' in repositoryId
  *
- * @returns {{ repositoryId, tierType, assetOrigin, isDmEnabled, isSmartCrop, insertAsLink }}
+ * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled, isSmartCrop, insertAsLink }}
  */
 export async function getRepositoryConfig(owner, repo) {
   const repositoryId = await getConfKey(owner, repo, 'aem.repositoryId');
@@ -80,6 +81,7 @@ export async function getRepositoryConfig(owner, repo) {
   const tierType = repositoryId.startsWith('delivery') ? 'delivery' : 'author';
 
   const customOrigin = await getConfKey(owner, repo, 'aem.assets.prod.origin');
+  const customBasePath = await getConfKey(owner, repo, 'aem.assets.prod.basepath');
   const isSmartCrop = (await getConfKey(owner, repo, 'aem.asset.smartcrop.select')) === 'on';
   const isDmDeliveryFlag = (await getConfKey(owner, repo, 'aem.asset.dm.delivery')) === 'on';
   const isDmEnabled = isSmartCrop || isDmDeliveryFlag || customOrigin?.startsWith('delivery-') || tierType === 'delivery';
@@ -96,10 +98,13 @@ export async function getRepositoryConfig(owner, repo) {
     assetOrigin = repositoryId.replace('author', 'publish');
   }
 
+  const assetBasePath = customBasePath || DEFAULT_ASSET_BASE_PATH;
+
   return {
     repositoryId,
     tierType,
     assetOrigin,
+    assetBasePath,
     isDmEnabled,
     isSmartCrop,
     insertAsLink,

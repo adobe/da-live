@@ -47,6 +47,7 @@ function syncCropSelectionToStructure(cropList, structureValue) {
  * @param {string} opts.assetUrl - Pre-built URL for the original asset
  *   (used for "Original" thumbnail).
  * @param {string} opts.dmOrigin - DM delivery origin host (no protocol).
+ * @param {string} opts.dmBasePath - DM delivery base path.
  * @param {string|null} opts.blockName - Current editor block name, or null if outside a block.
  * @param {Promise<Array|false>} opts.responsiveImageConfigPromise - Responsive image configs.
  * @param {function(string[]): void} opts.onInsert - Called with array of src URLs to insert.
@@ -60,13 +61,14 @@ export default async function showSmartCropDialog({
   asset,
   assetUrl,
   dmOrigin,
+  dmBasePath,
   blockName,
   responsiveImageConfigPromise,
   onInsert,
   onBack,
   onCancel,
 }) {
-  const smartCropsResponse = await daFetch(`${buildSmartCropsListUrl(asset, dmOrigin)}`);
+  const smartCropsResponse = await daFetch(`${buildSmartCropsListUrl(asset, dmOrigin, dmBasePath)}`);
   const smartCropsData = await smartCropsResponse.json();
 
   if (!(smartCropsData.items?.length > 0)) {
@@ -95,7 +97,7 @@ export default async function showSmartCropDialog({
   container.append(cropList);
 
   const cropItems = smartCropsData.items
-    .map((crop) => `<li data-name="${crop.name}"><p>${crop.name}</p><img src="${buildSmartCropUrl(asset, dmOrigin, crop.name)}">`)
+    .map((crop) => `<li data-name="${crop.name}"><p>${crop.name}</p><img src="${buildSmartCropUrl(asset, dmOrigin, crop.name, dmBasePath)}">`)
     .join('</li>');
   cropList.innerHTML = `<li class="selected" data-name="original"><p>Original</p><img src="${assetUrl}"></li>${cropItems}</li>`;
 

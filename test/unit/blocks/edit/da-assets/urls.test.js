@@ -136,6 +136,11 @@ describe('buildDmUrl', () => {
     const url = buildDmUrl(csvAsset, 'delivery-p1-e1.adobeaemcloud.com');
     expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:csv-001/original/as/data.csv');
   });
+
+  it('supports custom base path for DM URLs', () => {
+    const url = buildDmUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com', '/custom-assets');
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/custom-assets/urn:aaid:aem:abc-123/as/mountain.avif');
+  });
 });
 
 const DELIVERY_PDF = {
@@ -198,6 +203,11 @@ describe('buildDeliveryUrl', () => {
     const url = buildDeliveryUrl(DELIVERY_CSV);
     expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-csv-222/original/as/report.csv');
   });
+
+  it('supports custom base path for delivery URLs', () => {
+    const url = buildDeliveryUrl(DELIVERY_IMAGE, undefined, '/my-assets');
+    expect(url).to.equal('https://delivery-p99-e99.adobeaemcloud.com/my-assets/urn:aaid:aem:del-789/as/sunset.avif');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -209,6 +219,11 @@ describe('buildSmartCropUrl', () => {
     const url = buildSmartCropUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com', 'desktop');
     expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:abc-123/as/desktop-mountain.avif?smartcrop=desktop');
   });
+
+  it('supports custom base path for smart crop URLs', () => {
+    const url = buildSmartCropUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com', 'desktop', '/dm-assets');
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/dm-assets/urn:aaid:aem:abc-123/as/desktop-mountain.avif?smartcrop=desktop');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -219,6 +234,11 @@ describe('buildSmartCropsListUrl', () => {
   it('builds smart crops list API URL', () => {
     const url = buildSmartCropsListUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com');
     expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:abc-123/smartCrops');
+  });
+
+  it('supports custom base path for smart crops list URL', () => {
+    const url = buildSmartCropsListUrl(AUTHOR_IMAGE, 'delivery-p1-e1.adobeaemcloud.com', '/assets-api');
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/assets-api/urn:aaid:aem:abc-123/smartCrops');
   });
 });
 

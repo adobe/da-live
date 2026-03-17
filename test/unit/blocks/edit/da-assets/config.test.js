@@ -90,6 +90,7 @@ describe('getRepositoryConfig', () => {
       expect(cfg.tierType).to.equal('author');
       expect(cfg.repositoryId).to.equal('author-p10-e10.adobeaemcloud.com');
       expect(cfg.assetOrigin).to.equal('publish-p10-e10.adobeaemcloud.com');
+      expect(cfg.assetBasePath).to.equal('/adobe/assets');
       expect(cfg.isDmEnabled).to.be.false;
       expect(cfg.isSmartCrop).to.be.false;
       expect(cfg.insertAsLink).to.be.false;
@@ -109,6 +110,7 @@ describe('getRepositoryConfig', () => {
       const cfg = await getRepositoryConfig('rcfg', 'delivery');
       expect(cfg.tierType).to.equal('delivery');
       expect(cfg.assetOrigin).to.equal('delivery-p20-e20.adobeaemcloud.com');
+      expect(cfg.assetBasePath).to.equal('/adobe/assets');
       expect(cfg.isDmEnabled).to.be.true;
     } finally {
       window.fetch = orgFetch;
@@ -176,6 +178,22 @@ describe('getRepositoryConfig', () => {
     try {
       const cfg = await getRepositoryConfig('rcfg', 'linktype');
       expect(cfg.insertAsLink).to.be.true;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('uses custom prod basepath when aem.assets.prod.basepath is set', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/prodbasepath/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p70-e70.adobeaemcloud.com' },
+        { key: 'aem.assets.prod.basepath', value: '/my/custom/assets' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'prodbasepath');
+      expect(cfg.assetBasePath).to.equal('/my/custom/assets');
     } finally {
       window.fetch = orgFetch;
     }

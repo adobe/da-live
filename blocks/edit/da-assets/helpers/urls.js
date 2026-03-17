@@ -1,4 +1,11 @@
+import { DEFAULT_ASSET_BASE_PATH } from './constants.js';
+
 const RENDITION_REL = 'http://ns.adobe.com/adobecloud/rel/rendition';
+
+function resolveAssetBasePath(basePath = DEFAULT_ASSET_BASE_PATH) {
+  const normalized = `/${basePath}`.replace(/^\/+/, '/').replace(/\/+$/, '');
+  return normalized || DEFAULT_ASSET_BASE_PATH;
+}
 
 /**
  * Author tier, no DM delivery.
@@ -19,14 +26,14 @@ export function buildAuthorUrl(asset, publishOrigin) {
  * Author tier + DM delivery enabled.
  * Browses via author but constructs DM-style delivery URLs using repo:id.
  * URL format per AEM docs:
- *   Images:  https://<host>/adobe/assets/<id>/as/<seo-name>.<format>
- *   Video:   https://<host>/adobe/assets/<id>/play
- *   Other:   https://<host>/adobe/assets/<id>/original/as/<name>
+ *   Images:  https://<host>/<basePath>/<id>/as/<seo-name>.<format>
+ *   Video:   https://<host>/<basePath>/<id>/play
+ *   Other:   https://<host>/<basePath>/<id>/original/as/<name>
  *            (PDFs, CSVs, documents — use the original rendition path)
  */
-export function buildDmUrl(asset, host) {
+export function buildDmUrl(asset, host, basePath = DEFAULT_ASSET_BASE_PATH) {
   const mimetype = asset.mimetype || asset['dc:format'] || '';
-  const base = `https://${host}/adobe/assets/${asset['repo:id']}`;
+  const base = `https://${host}${resolveAssetBasePath(basePath)}/${asset['repo:id']}`;
 
   if (mimetype.startsWith('image/')) {
     const seoName = asset.name.includes('.')
@@ -48,17 +55,17 @@ export function buildDmUrl(asset, host) {
  * Folder structure is not available (flat listing).
  *
  * URL format per AEM docs:
- *   Images:  https://<host>/adobe/assets/<id>/as/<seo-name>.<format>
- *   Video:   https://<host>/adobe/assets/<id>/play
- *   Other:   https://<host>/adobe/assets/<id>/original/as/<name>
+ *   Images:  https://<host>/<basePath>/<id>/as/<seo-name>.<format>
+ *   Video:   https://<host>/<basePath>/<id>/play
+ *   Other:   https://<host>/<basePath>/<id>/original/as/<name>
  *            (PDFs, CSVs, documents — use the original rendition path)
  */
-export function buildDeliveryUrl(asset, overrideHost) {
+export function buildDeliveryUrl(asset, overrideHost, basePath = DEFAULT_ASSET_BASE_PATH) {
   const host = overrideHost || asset['repo:repositoryId'];
   const assetId = asset['repo:assetId'];
   const fullName = asset['repo:name'] || '';
   const mimetype = asset.mimetype || asset['dc:format'] || '';
-  const base = `https://${host}/adobe/assets/${assetId}`;
+  const base = `https://${host}${resolveAssetBasePath(basePath)}/${assetId}`;
 
   if (mimetype.startsWith('image/')) {
     // seoName is the filename without extension per the AEM Open API spec
@@ -80,8 +87,8 @@ export function buildDeliveryUrl(asset, overrideHost) {
  * Returns the smart crop URL for a given crop name.
  * Used when aem.asset.smartcrop.select is enabled.
  */
-export function buildSmartCropUrl(asset, dmOrigin, cropName) {
-  const base = `https://${dmOrigin}/adobe/assets/${asset['repo:id']}`;
+export function buildSmartCropUrl(asset, dmOrigin, cropName, basePath = DEFAULT_ASSET_BASE_PATH) {
+  const base = `https://${dmOrigin}${resolveAssetBasePath(basePath)}/${asset['repo:id']}`;
   const seoName = asset.name.includes('.')
     ? asset.name.split('.').slice(0, -1).join('.')
     : asset.name;
@@ -91,8 +98,8 @@ export function buildSmartCropUrl(asset, dmOrigin, cropName) {
 /**
  * Returns the base DM URL for fetching smart crops list.
  */
-export function buildSmartCropsListUrl(asset, dmOrigin) {
-  return `https://${dmOrigin}/adobe/assets/${asset['repo:id']}/smartCrops`;
+export function buildSmartCropsListUrl(asset, dmOrigin, basePath = DEFAULT_ASSET_BASE_PATH) {
+  return `https://${dmOrigin}${resolveAssetBasePath(basePath)}/${asset['repo:id']}/smartCrops`;
 }
 
 /**

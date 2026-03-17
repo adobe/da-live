@@ -53,6 +53,7 @@ const AUTHOR_PUBLISH_CONFIG = {
   repositoryId: 'author-p1-e1.adobeaemcloud.com',
   tierType: 'author',
   assetOrigin: 'publish-p1-e1.adobeaemcloud.com',
+  assetBasePath: '/adobe/assets',
   isDmEnabled: false,
   isSmartCrop: false,
   insertAsLink: false,
@@ -62,6 +63,7 @@ const AUTHOR_DM_CONFIG = {
   repositoryId: 'author-p1-e1.adobeaemcloud.com',
   tierType: 'author',
   assetOrigin: 'delivery-p1-e1.adobeaemcloud.com',
+  assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
   insertAsLink: false,
@@ -71,6 +73,7 @@ const DELIVERY_CONFIG = {
   repositoryId: 'delivery-p1-e1.adobeaemcloud.com',
   tierType: 'delivery',
   assetOrigin: 'delivery-p1-e1.adobeaemcloud.com',
+  assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
   insertAsLink: false,
@@ -183,6 +186,12 @@ describe('resolveAssetUrl', () => {
     const url = resolveAssetUrl(DELIVERY_IMAGE, customConfig);
     expect(url).to.equal('https://custom-delivery.example.com/adobe/assets/urn:aaid:aem:del-001/as/photo.avif');
     expect(url).to.not.include('delivery-p1-e1.adobeaemcloud.com');
+  });
+
+  it('respects custom aem.assets.prod.basepath for delivery tier', () => {
+    const customConfig = { ...DELIVERY_CONFIG, assetBasePath: '/delivery-assets' };
+    const url = resolveAssetUrl(DELIVERY_IMAGE, customConfig);
+    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/delivery-assets/urn:aaid:aem:del-001/as/photo.avif');
   });
 });
 

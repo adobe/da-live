@@ -35,12 +35,14 @@ export function buildFeatureSet(isDmEnabled) {
 }
 
 export function resolveAssetUrl(asset, repoConfig) {
-  const { tierType, assetOrigin, isDmEnabled } = repoConfig;
+  const {
+    tierType, assetOrigin, assetBasePath, isDmEnabled,
+  } = repoConfig;
   if (tierType === 'delivery') {
-    return buildDeliveryUrl(asset, assetOrigin);
+    return buildDeliveryUrl(asset, assetOrigin, assetBasePath);
   }
   if (isDmEnabled) {
-    return buildDmUrl(asset, assetOrigin);
+    return buildDmUrl(asset, assetOrigin, assetBasePath);
   }
   return buildAuthorUrl(asset, assetOrigin);
 }
@@ -115,6 +117,7 @@ export function buildHandleSelection(
         asset,
         assetUrl,
         dmOrigin: repoConfig.assetOrigin,
+        dmBasePath: repoConfig.assetBasePath,
         blockName: getBlockName(view),
         responsiveImageConfigPromise,
         onInsert: (srcs) => {
