@@ -216,7 +216,7 @@ export default class DaTitle extends LitElement {
       if (action === 'publish') {
         // If lazy setup has not finished, check the schedule manually
         this._scheduled ??= await this.getSchedule(org, site, path);
-        if (this._scheduled.scheduled) {
+        if (this._scheduled?.scheduled) {
           const shouldContinue = await this.setScheduledDialog(this._scheduled);
           if (!shouldContinue) {
             this._sendButton.classList.remove('is-sending');
