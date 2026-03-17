@@ -238,8 +238,7 @@ export default class DaTitle extends LitElement {
 
       let aemTier = url.pathname.startsWith('/.snapshots') ? 'review' : action;
       aemTier = action === 'publish' ? 'prod' : 'preview';
-      const openPath = path === '/index' || path === '/index.html' || path === '' || path === '/' ? '/' : path;
-      let toOpen = `${this._aemHrefs[aemTier].origin}${openPath}`;
+      let toOpen = `${this._aemHrefs[aemTier].origin}${json.webPath}`;
 
       // Allow BYO editors to pick their own origin
       if (this.previewPrefix || this.livePrefix) {
