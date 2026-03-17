@@ -7,7 +7,7 @@ import {
   saveDaVersion,
   getAemHrefs,
 } from '../utils/helpers.js';
-import { delay, fetchDaConfigs } from '../../shared/utils.js';
+import { delay, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -100,7 +100,8 @@ export default class DaTitle extends LitElement {
     ]);
 
     const { org, site, path, fullpath } = this.details;
-    this._configs = await fetchDaConfigs({ org, site });
+    const configs = await Promise.all(fetchDaConfigs({ org, site }));
+    this._configs = configs.flatMap((config) => getFirstSheet(config) || []);
 
     this._actions.available = await this.getAvailableActions();
     this.requestUpdate();
@@ -236,10 +237,9 @@ export default class DaTitle extends LitElement {
       const { url: href } = action === 'publish' ? json.live : json.preview;
       const url = new URL(href);
 
-      // Format snapshot or production URLs
       let aemTier = url.pathname.startsWith('/.snapshots') ? 'review' : action;
       aemTier = action === 'publish' ? 'prod' : 'preview';
-      let toOpen = `${this._aemHrefs[aemTier].origin}${path}`;
+      let toOpen = `${this._aemHrefs[aemTier].origin}${json.webPath}`;
 
       // Allow BYO editors to pick their own origin
       if (this.previewPrefix || this.livePrefix) {

@@ -62,7 +62,7 @@ async function linkCheck({ details, doc }, selector = 'a:not([href*="/fragments/
   });
 }
 
-async function fragmentCheck({ details, doc }) {
+export async function fragmentCheck({ details, doc }) {
   return linkCheck({ details, doc }, 'a[href*="/fragments/"]');
 }
 
