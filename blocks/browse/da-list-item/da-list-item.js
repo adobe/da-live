@@ -1,16 +1,12 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { daFetch, aemAdmin, delay } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
-
-function delay(ms) {
-  return new Promise((res) => { setTimeout(res, ms); });
-}
 
 export default class DaListItem extends LitElement {
   static properties = {

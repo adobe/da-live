@@ -1,0 +1,137 @@
+:host {
+  display: block;
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+  }
+
+  iframe {
+    border: none;
+    display: block;
+    width: 400px;
+    height: 400px;
+  }
+}
+
+.prepare-wrapper {
+  position: relative;
+
+  .da-prepare-toggle {
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 22px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--s2-gray-100);
+    color: #717171;
+    cursor: pointer;
+    anchor-name: --prepare-toggle;
+
+    .icon {
+      width: 22px;
+      height: 22px;
+      margin-left: 1px; /*  visually center */
+    }
+
+    &:hover {
+      background-color: var(--s2-gray-300);
+      color: #292929;
+    }
+  }
+
+  .prepare-menu {
+    position: absolute;
+    position-anchor: --prepare-toggle;
+    top: anchor(bottom);
+    right: anchor(right);
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 0 5px 0 #b5b5b5;
+    z-index: 200;
+    min-width: 280px;
+    margin-top: 12px;
+
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    button {
+      --inline-spacing: 14px;
+
+      width: 100%;
+      position: relative;
+      display: grid;
+      grid-template-columns: 20px 1fr;
+      background-color: transparent;
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+      text-decoration: none;
+      border: none;
+      margin: -1px 0;
+      padding: 0 var(--inline-spacing);
+      text-align: left;
+      color: inherit;
+      box-sizing: border-box;
+      cursor: pointer;
+
+      &::before {
+        position: absolute;
+        inset: 0 var(--inline-spacing) auto;
+        content: "";
+        height: 1px;
+        background: rgb(209 209 209);
+        transition: 0.2s ease-in-out;
+      }
+
+      &::after {
+        position: absolute;
+        inset: auto var(--inline-spacing) 0;
+        content: "";
+        height: 1px;
+        background: rgb(209 209 209);
+        transition: 0.2s ease-in-out;
+      }
+
+      &:hover {
+        color: rgb(22 122 243);
+        background: rgb(228 240 255);
+        z-index: 105;
+
+        &::before {
+          inset: 0 0 auto;
+          background: rgb(22 122 243);
+        }
+
+        &::after {
+          inset: auto 0 0;
+          background: rgb(22 122 243);
+        }
+      }
+    }
+
+    li:first-child {
+      button::before  {
+        display: none;
+      }
+    }
+
+    li:last-child {
+      button::after {
+        display: none;
+      }
+    }
+
+    .icon {
+      width: 20px;
+      height: 20px;
+      color: inherit;
+    }
+  }
+}

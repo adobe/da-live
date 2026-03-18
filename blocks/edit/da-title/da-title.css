@@ -9,11 +9,16 @@
 
 h1 {
   position: relative;
-  margin-top: 0;
+  margin: 0 0 21px;
 }
 
 button {
   font-family: var(--body-font-family);
+}
+
+da-prepare {
+  width: 44px;
+  height: 44px;
 }
 
 da-dialog {
@@ -92,9 +97,10 @@ da-dialog {
 
 .da-title-collab-actions-wrapper {
   display: flex;
-  margin-bottom: 0.67em;
+  margin: 0 0 21px;
   justify-content: center;
   align-items: center;
+  gap: 24px;
 }
 
 .collab-status {
@@ -134,7 +140,7 @@ da-dialog {
 .collab-icon-user {
   height: 24px;
   border-radius: 12px;
-  background: rgb(171 171 171 / 50%);
+  background-color: rgb(212 212 212 / 50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -143,17 +149,17 @@ da-dialog {
   margin-right: -6px;
   padding: 0 12px;
   user-select: none;
-}
 
-.collab-icon-user:hover {
-  background: rgb(150 150 150 / 50%);
+  &:hover {
+    background-color: rgb(180 180 180 / 50%);
+  }
 }
 
 .collab-status-cloud {
   height: 27px;
   margin-left: -4px;
   margin-bottom: -3px;
-  color: rgb(171 171 171 / 50%);
+  color: rgb(212 212 212 / 50%);
 }
 
 .collab-icon.collab-status-cloud.collab-popup::after {
@@ -166,35 +172,44 @@ da-dialog {
   height: 27px;
 }
 
+.da-title-action {
+  position: relative;
+  display: none;
+}
+
 .da-title-actions {
   position: relative;
-  border: 12px solid transparent;
   border-radius: 100px;
   display: flex;
   gap: 12px;
   height: 44px;
-}
 
-.da-title-actions.is-fixed {
-  position: fixed;
-  right: 18px;
-  bottom: 12px;
-  z-index: 10000;
-}
+  &.is-open {
+    margin-left: 12px;
 
-.da-title-actions.is-open {
-  background: #EFEFEF;
-}
+    .da-title-action {
+      display: unset;
+    }
 
-.da-title-actions.is-open .da-title-action {
-  display: unset;
-}
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -12px;
+      border-radius: 100px;
+      background: #EFEFEF;
+    }
+  }
 
-.da-title-action {
-  display: none;
+  &.is-fixed {
+    position: fixed;
+    right: 18px;
+    bottom: 12px;
+    z-index: 10000;
+  }
 }
 
 .da-title-action-send {
+  position: relative;
   padding: 5px 0;
   width: 44px;
   height: 44px;
@@ -207,9 +222,9 @@ da-dialog {
 .da-title-action-send-icon {
   position: relative;
   display: block;
-  width: 22px;
-  height: 22px;
-  background: url('/blocks/edit/img/Smock_Send_18_N.svg') center/22px no-repeat;
+  width: 20px;
+  height: 20px;
+  margin-right: 2px; /* visually center */
 }
 
 .da-title-action-send-icon.is-sending {
@@ -217,7 +232,6 @@ da-dialog {
 }
 
 .da-title-error {
-  margin: 0 0 0 24px;
   color: #fff;
   background-color: #d73220;
   padding: 4px 8px;
@@ -317,10 +331,6 @@ div.collab-initial p {
 
   .da-title-inner {
     display: flex;
-  }
-
-  .da-title-actions {
-    right: -12px;
   }
 }
 
