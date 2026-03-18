@@ -4,7 +4,7 @@ import { initIms } from '../../../../shared/utils.js';
 import { saveToAem } from '../../../utils/helpers.js';
 import { isRegistered, getExistingSchedule, schedulePagePublish } from './utils.js';
 
-const HELP_PATH = 'https://docs.da.live/about/early-access/request-publish';
+const REGISTER_PATH = 'https://da.live/apps/scheduler';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
@@ -34,7 +34,7 @@ class DaScheduler extends LitElement {
       this._statusText = null;
       this._instructions = html`
         <p>This site is not registered.</p>
-        <p>Please read <a href="${HELP_PATH}">the docs</a>.</p>`;
+        <p>Please register your site in the Scheduler App <a href="${REGISTER_PATH}"></a> first.</p>`;
       return;
     }
 
