@@ -19,9 +19,11 @@ function getOrgDetails({ editor, pathParts, ext }) {
   const daApi = editor === 'config' ? 'config' : 'source';
   let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+  const org = pathParts[0];
 
   return {
-    owner: pathParts[0],
+    org,
+    owner: org,
     name,
     parent,
     parentName,
@@ -41,6 +43,8 @@ function getRepoDetails({ editor, pathParts, ext }) {
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
   return {
+    org,
+    site: repo,
     owner: org,
     repo,
     name,
@@ -70,8 +74,11 @@ function getFullDetails({ editor, pathParts, ext }) {
   const path = ext === 'html' && !fullPath.endsWith('.html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
   return {
-    owner: org,
-    repo,
+    org,
+    site: repo,
+    owner: org, // Backwards compatibility
+    repo, // Backwards compatibility
+    path: pathname,
     name: ext === null ? 'config' : name,
     parent: ext === null ? `${parent}/${name}` : parent,
     parentName: ext === null ? name : parentName,

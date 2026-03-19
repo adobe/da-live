@@ -5,15 +5,16 @@ import {
   saveToAem,
   saveDaConfig,
   saveDaVersion,
-  getCdnConfig,
+  getAemHrefs,
 } from '../utils/helpers.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { delay, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
+const SK_EXT_ID = 'igkmdomcgoebiipaifhmpfjhbjccggml';
+const LAZY_DELAY = 1500;
 const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
   '/blocks/edit/img/Smock_CloudDisconnected_18_N.svg',
@@ -37,17 +38,23 @@ export default class DaTitle extends LitElement {
     collabUsers: { attribute: false },
     previewPrefix: { attribute: false },
     livePrefix: { attribute: false },
-    _actionsVis: { state: true },
+    _lazyMods: { state: true },
+    _configs: { state: true },
+    _actions: { state: true },
     _status: { state: true },
-    _fixedActions: { state: true },
     _dialog: { state: true },
   };
+
+  constructor() {
+    super();
+    this._actions = {};
+  }
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this._actionsVis = [];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
+    this._actionsVis = [];
     if (this.details.view === 'sheet') {
       this.collabStatus = window.navigator.onLine
         ? 'connected'
@@ -58,97 +65,231 @@ export default class DaTitle extends LitElement {
     }
   }
 
+  update(changed) {
+    super.update(changed);
+    if (changed.has('details') && this.details) {
+      this.reset();
+      this.delayedSetup();
+    }
+  }
+
   firstUpdated() {
     const observer = new IntersectionObserver((entries) => {
-      this._fixedActions = !entries[0].isIntersecting;
+      this._actions.fixed = !entries[0].isIntersecting;
+      this.requestUpdate();
     });
 
     const element = this.shadowRoot.querySelector('h1');
     if (element) observer.observe(element);
   }
 
+  reset() {
+    this._scheduled = undefined;
+    this._configs = undefined;
+    this._actions = {};
+  }
+
+  // Run setup after a short delay.
+  async delayedSetup() {
+    await delay(LAZY_DELAY);
+
+    // Only set lazy modules if they do not exist
+    this._lazyMods ??= new Map([
+      ['da-prepare', import('../da-prepare/da-prepare.js')],
+      ['da-dialog', import('../../shared/da-dialog/da-dialog.js')],
+      ['da-schedule', import('../da-prepare/actions/scheduler/utils.js')],
+    ]);
+
+    const { org, site, path, fullpath } = this.details;
+    const configs = await Promise.all(fetchDaConfigs({ org, site }));
+    this._configs = configs.flatMap((config) => getFirstSheet(config) || []);
+
+    this._actions.available = await this.getAvailableActions();
+    this.requestUpdate();
+
+    // Only a valid path gets AEM-bound features
+    if (path) {
+      this._aemHrefs = await getAemHrefs({ path: fullpath });
+      this._scheduled = await this.getSchedule(org, site, path);
+    }
+  }
+
+  async getSchedule(org, site, path) {
+    const { getExistingSchedule } = await this._lazyMods.get('da-schedule');
+    return getExistingSchedule(org, site, path);
+  }
+
+  async getAvailableActions() {
+    const { view, path, fullpath } = this.details;
+
+    // Config only gets save
+    if (view === 'config') return ['save'];
+
+    const availableActions = [];
+
+    if (view === 'sheet') {
+      availableActions.push('save');
+    }
+
+    if (path) {
+      availableActions.push('preview');
+
+      // Check which actions should be allowed for the document based on config
+      const publishConfigs = this._configs.filter((c) => c.key === 'editor.hidePublish');
+      const hidePublish = publishConfigs.some((c) => fullpath.startsWith(c.value));
+
+      if (!hidePublish) availableActions.push('publish');
+    }
+
+    return availableActions;
+  }
+
+  toggleActions() {
+    this._actions.open = !this._actions.open;
+    this.requestUpdate();
+  }
+
   handleError(json, action, icon) {
-    console.log('handleError', json, action, icon);
     this._status = { ...json.error, action };
     icon.classList.remove('is-sending');
     icon.parentElement.classList.add('is-error');
   }
 
-  getSnapshotHref(url, action) {
-    const tldRepl = action === 'publish' ? 'aem.live' : 'aem.page';
-    const pathParts = url.pathname.slice(1).toLowerCase().split('/');
-    const snapName = pathParts.splice(0, 2)[1];
-    const origin = url.origin
-      .replace('https://', `https://${snapName}--`)
-      .replace(tldRepl, 'aem.reviews');
-    return `${origin}/${pathParts.join('/')}`;
+  async setScheduledDialog(schedule) {
+    // Ensure dialog is loaded
+    await this._lazyMods['da-dialog'];
+
+    return new Promise((resolve) => {
+      const time = new Date(schedule.scheduledPublish).toLocaleString();
+      const user = schedule.userId;
+      const info = user ? `${time} by ${user}` : time;
+
+      const title = 'Scheduled content';
+      const content = html`
+        <p>This content is already scheduled to publish:</p>
+        <p><strong>${info}</strong></p>
+        <p>Publishing now will override the scheduled publish. Continue?</p>
+      `;
+      const action = {
+        style: 'accent',
+        label: 'Publish anyway',
+        click: () => { this._dialog = undefined; resolve(true); },
+      };
+      const close = () => { this._dialog = undefined; resolve(false); };
+
+      this._dialog = { title, content, action, close };
+    });
   }
 
-  getCdnHref(url, action, cdn) {
-    const hostname = action === 'publish' ? cdn.prod : cdn.preview;
-    if (!hostname) return url.href;
-    return url.href.replace(url.origin, `https://${hostname}`);
+  /**
+   * Attempt to have Sidekick bust the author's cache
+   * @param {String} toOpen the href to open
+   * @returns {Promise<void>}
+   */
+  async sidekickCacheBust(toOpen) {
+    if (!window.chrome) return;
+    try {
+      const opts = { action: 'bustCache', host: new URL(toOpen).hostname };
+      const extId = window.localStorage.getItem('aem-sidekick-id') || SK_EXT_ID;
+
+      // Tell AEM Sidekick to bust cache
+      await window.chrome.runtime.sendMessage(extId, opts);
+    } catch {
+      // Gracefully die
+    }
   }
 
   async handleAction(action) {
-    this.toggleActions();
     this._status = null;
-    const sendBtn = this.shadowRoot.querySelector('.da-title-action-send-icon');
-    sendBtn.classList.add('is-sending');
+    this._sendButton.classList.add('is-sending');
+    this._actions.open = false;
+    this.requestUpdate();
 
-    const { hash } = window.location;
-    const pathname = hash.replace('#', '');
+    const { org, site, view, fullpath, path } = this.details;
+
+    const aemPath = `/${org}/${site}${path}`;
 
     // Only save to DA if it is a sheet or config
-    if (this.details.view === 'sheet') {
-      const dasSave = await saveToDa(pathname, this.sheet);
+    if (view === 'sheet') {
+      const sheetPath = fullpath.replace('.json', '');
+      const dasSave = await saveToDa(sheetPath, this.sheet);
       if (!dasSave.ok) return;
     }
-    if (this.details.view === 'config') {
-      const daConfigResp = await saveDaConfig(pathname, this.sheet);
+    if (view === 'config') {
+      const daConfigResp = await saveDaConfig(fullpath, this.sheet);
       if (!daConfigResp.ok) {
         // eslint-disable-next-line no-console
         console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
         return;
       }
     }
+    // AEM Actions
     if (action === 'preview' || action === 'publish') {
-      const cdn = await getCdnConfig(pathname);
-
-      const aemPath = this.sheet ? `${pathname}.json` : pathname;
       let json = await saveToAem(aemPath, 'preview');
       if (json.error) {
-        this.handleError(json, 'preview', sendBtn);
+        this.handleError(json, 'preview', this._sendButton);
         return;
       }
-      if (action === 'publish') json = await saveToAem(aemPath, 'live');
+
+      // Anything related to publish
+      if (action === 'publish') {
+        // If lazy setup has not finished, check the schedule manually
+        this._scheduled ??= await this.getSchedule(org, site, path);
+        if (this._scheduled?.scheduled) {
+          const shouldContinue = await this.setScheduledDialog(this._scheduled);
+          if (!shouldContinue) {
+            this._sendButton.classList.remove('is-sending');
+            return;
+          }
+        }
+        // Publish to AEM
+        json = await saveToAem(aemPath, 'live');
+      }
+
+      // Handle all AEM errors
       if (json.error) {
-        this.handleError(json, 'publish', sendBtn);
+        this.handleError(json, 'publish', this._sendButton);
         return;
       }
+
+      // Format the AEM response
       const { url: href } = action === 'publish' ? json.live : json.preview;
       const url = new URL(href);
-      const isSnap = url.pathname.startsWith('/.snapshots');
-      const toOpen = isSnap ? this.getSnapshotHref(url, action) : this.getCdnHref(url, action, cdn);
-      let toOpenInAem = toOpen.replace('.hlx.', '.aem.');
 
+      let aemTier = url.pathname.startsWith('/.snapshots') ? 'review' : action;
+      aemTier = action === 'publish' ? 'prod' : 'preview';
+      let toOpen = `${this._aemHrefs[aemTier].origin}${json.webPath}`;
+
+      // Allow BYO editors to pick their own origin
       if (this.previewPrefix || this.livePrefix) {
-        const { pathname: path } = new URL(toOpenInAem);
+        const { pathname: byoPath } = new URL(toOpen);
         const origin = action === 'publish' ? this.livePrefix : this.previewPrefix;
-        toOpenInAem = `${origin}${path}`;
+        toOpen = `${origin}${byoPath}`;
       }
+      // Attempt a Sidekick cache bust
+      await this.sidekickCacheBust(toOpen);
 
-      window.open(`${toOpenInAem}?nocache=${Date.now()}`, toOpenInAem);
+      window.open(toOpen, toOpen);
     }
-    if (this.details.view === 'edit' && action === 'publish') saveDaVersion(pathname);
-    sendBtn.classList.remove('is-sending');
+
+    if (view === 'edit') {
+      if (action === 'publish') saveDaVersion(fullpath, 'Published');
+      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
+    }
+    if (view === 'sheet') {
+      if (action === 'publish') saveDaVersion(fullpath, 'Published');
+      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
+    }
+    this._sendButton.classList.remove('is-sending');
   }
 
   async handleRoleRequest() {
-    this._dialog = undefined;
-    await import('../../shared/da-dialog/da-dialog.js');
+    // Ensure dialog is loaded
+    await this._lazyMods['da-dialog'];
 
-    const { owner: org, repo: site } = this.details;
+    this._dialog = undefined;
+
+    const { org, site } = this.details;
 
     const title = 'Role request';
 
@@ -170,46 +311,12 @@ export default class DaTitle extends LitElement {
     this._dialog = { title, content, action: closeAction };
   }
 
-  async fetchConfig() {
-    const { owner, repo } = this.details;
-    if (this.config) return this.config;
-
-    const fetchSingleConfig = (path) => daFetch(path)
-      .then((r) => r.json())
-      .then(getFirstSheet)
-      .then((data) => data ?? [])
-      .catch(() => []);
-
-    const [org, site] = await Promise.all([
-      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}`),
-      fetchSingleConfig(`${DA_ORIGIN}/config/${owner}/${repo}`),
-    ]);
-    this.config = { org, site };
-    return this.config;
+  get _sendButton() {
+    return this.shadowRoot.querySelector('.da-title-action-send-icon');
   }
 
-  async toggleActions() {
-    // toggle off if already on
-    if (this._actionsVis.length > 0) {
-      this._actionsVis = [];
-      return;
-    }
-
-    // toggle on for config
-    if (this.details.view === 'config') {
-      this._actionsVis = ['save'];
-      return;
-    }
-
-    // check which actions should be allowed for the document based on config
-    const config = await this.fetchConfig();
-    const { fullpath } = this.details;
-
-    const allConfigs = [...config.org, ...config.site];
-    const publishButtonConfigs = allConfigs.filter((c) => c.key === 'editor.hidePublish');
-    const hasMatchingPublishConfig = publishButtonConfigs.some((c) => fullpath.startsWith(c.value));
-
-    this._actionsVis = hasMatchingPublishConfig ? ['preview'] : ['preview', 'publish'];
+  get _canPrepare() {
+    return !!this.details.path;
   }
 
   get _readOnly() {
@@ -218,7 +325,9 @@ export default class DaTitle extends LitElement {
   }
 
   renderActions() {
-    return html`${this._actionsVis.map((action) => html`
+    if (!this._actions?.available) return nothing;
+
+    return html`${this._actions.available?.map((action) => html`
       <button
         @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
@@ -289,14 +398,14 @@ export default class DaTitle extends LitElement {
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
+          ${this._canPrepare ? html`<da-prepare .details=${this.details}></da-prepare>` : nothing}
           ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._fixedActions ? 'is-fixed' : ''} ${this._actionsVis.length > 0 ? 'is-open' : ''}">
+          <div class="da-title-actions ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
             ${this.renderActions()}
-            <button
-              @click=${this.toggleActions}
-              class="con-button blue da-title-action-send"
-              aria-label="Send">
-              <span class="da-title-action-send-icon"></span>
+            <button @click=${this.toggleActions} class="con-button blue da-title-action-send" aria-label="Send">
+              <svg class="da-title-action-send-icon" viewBox="0 0 20 20">
+                <use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish"/>
+              </svg>
             </button>
           </div>
         </div>

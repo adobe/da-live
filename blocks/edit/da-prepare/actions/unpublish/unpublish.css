@@ -1,0 +1,23 @@
+:host {
+  display: block;
+  width: 280px;
+  margin: 0 24px 24px;
+}
+
+.confirmation {
+  margin-bottom: 22px;
+
+  :first-child {
+    margin-top: 0;
+  }
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+
+  p {
+    margin: 0;
+    font-style: italic;
+  }
+}

@@ -1,4 +1,4 @@
-import { Plugin, Slice } from 'da-y-wrapper';
+import { Fragment, Plugin, Slice } from 'da-y-wrapper';
 
 function closeParagraph(paraContent, newContent) {
   if (paraContent.length > 0) {
@@ -66,10 +66,50 @@ function handleWordOnlineSectionBreaks(doc) {
   return modified;
 }
 
+function isBlankLineDiv(div) {
+  return [...div.childNodes].every(
+    (node) => (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '')
+      || node.nodeName === 'BR',
+  );
+}
+
+/**
+ * Excel Web App represent lines as sibling
+ * <div> elements, with blank lines containing only a <br>.
+ */
+function handleDivLineBreaks(doc) {
+  const divs = doc.querySelectorAll('body > div');
+  if (divs.length === 0) return false;
+
+  const hasBlankLine = [...divs].some(isBlankLineDiv);
+  if (!hasBlankLine) return false;
+
+  divs.forEach((div) => {
+    const p = doc.createElement('p');
+    if (!isBlankLineDiv(div)) {
+      while (div.firstChild) {
+        p.appendChild(div.firstChild);
+      }
+    }
+    div.replaceWith(p);
+  });
+
+  return true;
+}
+
 /* When text is pasted, handle section breaks. */
 export default function sectionPasteHandler(schema) {
   return new Plugin({
     props: {
+      clipboardTextParser: (text) => {
+        const lines = text.split(/\r\n?|\n/);
+        const nodes = lines.map((line) => {
+          if (line.length === 0) return schema.nodes.paragraph.create();
+          return schema.nodes.paragraph.create(null, [schema.text(line)]);
+        });
+        return new Slice(Fragment.from(nodes), 1, 1);
+      },
+
       /* A section break entered in Word is not kept in the text of the document, but
        * buried in the HTML that is pasted. This function uses highly specific ways to find
        * these section breaks and adds a <hr/> element for them.
@@ -82,6 +122,9 @@ export default function sectionPasteHandler(schema) {
           let modified = handleDesktopWordSectionBreaks(doc);
           if (!modified) {
             modified = handleWordOnlineSectionBreaks(doc);
+          }
+          if (!modified) {
+            modified = handleDivLineBreaks(doc);
           }
 
           if (!modified) {

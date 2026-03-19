@@ -37,6 +37,11 @@ const DA_LIVE_PREVIEW_ENVS = {
   prod: 'preview.da.live',
 };
 
+const DA_ETC_ENVS = {
+  prod: 'https://da-etc.adobeaem.workers.dev',
+  local: 'http://localhost:8787',
+};
+
 function getDaEnv(location, key, envs) {
   const { href } = location;
   const query = new URL(href).searchParams.get(key);
@@ -63,6 +68,7 @@ export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_E
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();
 export const CON_ORIGIN = (() => getDaEnv(window.location, 'da-content', DA_CONTENT_ENVS))();
 export const LIVE_PREVIEW_DOMAIN = (() => getDaEnv(window.location, 'da-live-preview', DA_LIVE_PREVIEW_ENVS))();
+export const DA_ETC_ORIGIN = (() => getDaEnv(window.location, 'da-etc', DA_ETC_ENVS))();
 
 export function getLivePreviewUrl(owner, repo) {
   const protocol = LIVE_PREVIEW_DOMAIN.startsWith('localhost') ? 'http' : 'https';

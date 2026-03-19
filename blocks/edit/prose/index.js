@@ -25,6 +25,7 @@ import { getSchema } from 'da-parser';
 
 // DA
 import menu, { getHeadingKeymap } from './plugins/menu/menu.js';
+import toggleLibrary from './plugins/menu/toggleLibrary.js';
 import { linkItem } from './plugins/menu/linkItem.js';
 import codemark from './plugins/codemark.js';
 import imageDrop from './plugins/imageDrop.js';
@@ -35,7 +36,6 @@ import linkTextSync from './plugins/linkTextSync.js';
 import sectionPasteHandler from './plugins/sectionPasteHandler.js';
 import base64Uploader from './plugins/base64uploader.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import toggleLibrary from '../da-library/da-library.js';
 import { checkDoc } from '../edit.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
@@ -151,13 +151,17 @@ function handleProseLoaded(editor, wsProvider) {
   // Wait for the websocket to actually sync before marking as loaded
   const handleSynced = (isSynced) => {
     if (isSynced) {
+      // Preload the library after Prose is finished
+      toggleLibrary({ toggle: false });
+
+      // Only listen to the first sync
+      wsProvider.off('synced', handleSynced);
+
+      // Notify upper components everything is loaded
       const daEditor = editor.getRootNode().host;
       const opts = { bubbles: true, composed: true };
       const event = new CustomEvent('proseloaded', opts);
       daEditor.dispatchEvent(event);
-
-      // Only listen to the first sync
-      wsProvider.off('synced', handleSynced);
     }
   };
 
