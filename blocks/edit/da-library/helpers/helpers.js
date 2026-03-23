@@ -1,9 +1,8 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch, aemAdmin, fetchDaConfigs } from '../../../shared/utils.js';
+import { daFetch, aemAdmin, fetchDaConfigs, getFirstSheet } from '../../../shared/utils.js';
 import { openAssets } from '../../da-assets/da-assets.js';
-import { getConfKey } from '../../da-assets/helpers/config.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { sanitizeName } from '../../../../scripts/utils.js';
 import { getBlocks } from './index.js';
@@ -63,9 +62,10 @@ export async function getItems(sources, format) {
   return items;
 }
 
-async function getAssetsPlugin(owner, repo) {
-  const repoId = await getConfKey(owner, repo, 'aem.repositoryId');
-  if (!repoId) return null;
+async function getAssetsPlugin(org, site) {
+  const configs = await Promise.all(fetchDaConfigs({ org, site }));
+  const entries = configs.reverse().flatMap((config) => getFirstSheet(config) || []);
+  if (!entries.find((conf) => conf.key === 'aem.repositoryId')?.value) return null;
   return {
     name: 'aem-assets',
     title: 'AEM Assets',

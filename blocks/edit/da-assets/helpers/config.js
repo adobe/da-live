@@ -1,36 +1,5 @@
-import { DA_ORIGIN } from '../../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../../shared/utils.js';
+import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
 import DEFAULT_ASSET_BASE_PATH from './constants.js';
-
-const fullConfJsons = {};
-const CONFS = {};
-
-async function fetchConf(path) {
-  if (CONFS[path]) return CONFS[path];
-  const resp = await daFetch(`${DA_ORIGIN}/config${path}`);
-  if (!resp.ok) return null;
-
-  fullConfJsons[path] = await resp.json();
-  const data = getFirstSheet(fullConfJsons[path]);
-  if (!data) return null;
-  CONFS[path] = data;
-  return data;
-}
-
-async function fetchValue(path, key) {
-  if (CONFS[path]?.[key]) return CONFS[path][key];
-
-  const data = await fetchConf(path);
-  if (!data) return null;
-
-  const confKey = data.find((conf) => conf.key === key);
-  if (!confKey) return null;
-  return confKey.value;
-}
-
-function constructConfigPaths(owner, repo) {
-  return [`/${owner}/${repo}/`, `/${owner}/`];
-}
 
 /**
  * Parses the value of 'aem.asset.mime.renditions' into a mime-type → rendition-type map.
@@ -58,31 +27,17 @@ export function parseMimeRenditions(configValue, defaults = {}) {
   return map;
 }
 
-export async function getConfKey(owner, repo, key) {
-  if (!(repo || owner)) return null;
-  for (const path of constructConfigPaths(owner, repo)) {
-    // eslint-disable-next-line no-await-in-loop
-    const value = await fetchValue(path, key);
-    if (value) return value;
-  }
-  return null;
-}
-
 export async function getResponsiveImageConfig(owner, repo) {
   if (!(repo || owner)) return null;
-  for (const path of constructConfigPaths(owner, repo)) {
-    // eslint-disable-next-line no-await-in-loop
-    if (!fullConfJsons[path]) await fetchConf(path);
-    const fullConfigJson = fullConfJsons[path];
-    const responsiveImages = fullConfigJson?.['responsive-images'];
-    if (responsiveImages) {
-      return responsiveImages.data.map((config) => ({
-        ...config,
-        crops: config.crops.split(/\s*,\s*/),
-      }));
-    }
-  }
-  return false;
+  const [orgConfig, siteConfig] = await Promise.all(
+    fetchDaConfigs({ org: owner, site: repo }),
+  );
+  const responsiveImages = siteConfig?.['responsive-images'] || orgConfig?.['responsive-images'];
+  if (!responsiveImages) return false;
+  return responsiveImages.data.map((config) => ({
+    ...config,
+    crops: config.crops.split(/\s*,\s*/),
+  }));
 }
 
 /**
@@ -111,19 +66,22 @@ export async function getResponsiveImageConfig(owner, repo) {
  *             insertAsLink, mimeRenditionOverrides }}
  */
 export async function getRepositoryConfig(owner, repo) {
-  const repositoryId = await getConfKey(owner, repo, 'aem.repositoryId');
+  const configs = await Promise.all(fetchDaConfigs({ org: owner, site: repo }));
+  const entries = configs.reverse().flatMap((config) => getFirstSheet(config) || []);
+  const getValue = (key) => entries.find((conf) => conf.key === key)?.value || null;
+
+  const repositoryId = getValue('aem.repositoryId');
   if (!repositoryId) return null;
 
   const tierType = repositoryId.startsWith('delivery') ? 'delivery' : 'author';
 
-  const customOrigin = await getConfKey(owner, repo, 'aem.assets.prod.origin');
-  const customBasePath = await getConfKey(owner, repo, 'aem.assets.prod.basepath');
-  const isSmartCrop = (await getConfKey(owner, repo, 'aem.asset.smartcrop.select')) === 'on';
-  const isDmDeliveryFlag = (await getConfKey(owner, repo, 'aem.asset.dm.delivery')) === 'on';
+  const customOrigin = getValue('aem.assets.prod.origin');
+  const customBasePath = getValue('aem.assets.prod.basepath');
+  const isSmartCrop = getValue('aem.asset.smartcrop.select') === 'on';
+  const isDmDeliveryFlag = getValue('aem.asset.dm.delivery') === 'on';
   const isDmEnabled = isSmartCrop || isDmDeliveryFlag || customOrigin?.startsWith('delivery-') || tierType === 'delivery';
-  const insertAsLink = (await getConfKey(owner, repo, 'aem.assets.image.type')) === 'link';
-  const mimeRenditionsConfig = await getConfKey(owner, repo, 'aem.asset.mime.renditions');
-  const mimeRenditionOverrides = parseMimeRenditions(mimeRenditionsConfig);
+  const insertAsLink = getValue('aem.assets.image.type') === 'link';
+  const mimeRenditionOverrides = parseMimeRenditions(getValue('aem.asset.mime.renditions'));
 
   let assetOrigin;
   if (customOrigin) {

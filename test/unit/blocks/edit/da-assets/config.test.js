@@ -3,7 +3,7 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/bheuaark/', { hostname: 'localhost' });
 
-const { getConfKey, getRepositoryConfig, getResponsiveImageConfig, parseMimeRenditions } = await import('../../../../../blocks/edit/da-assets/helpers/config.js');
+const { getRepositoryConfig, getResponsiveImageConfig, parseMimeRenditions } = await import('../../../../../blocks/edit/da-assets/helpers/config.js');
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -21,57 +21,6 @@ function makeFetch(responses) {
     return { ok: false };
   };
 }
-
-// ---------------------------------------------------------------------------
-// getConfKey
-// ---------------------------------------------------------------------------
-
-describe('getConfKey', () => {
-  it('returns value from repo-level config', async () => {
-    const orgFetch = window.fetch;
-    window.fetch = makeFetch({ '/myorg/myrepo/': makeSheet([{ key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' }]) });
-    try {
-      // Clear module-level cache by importing fresh; instead exercise with distinct owner/repo
-      const val = await getConfKey('myorg', 'myrepo', 'aem.repositoryId');
-      expect(val).to.equal('author-p1-e1.adobeaemcloud.com');
-    } finally {
-      window.fetch = orgFetch;
-    }
-  });
-
-  it('falls back to org-level config when key is absent in repo config', async () => {
-    const orgFetch = window.fetch;
-    window.fetch = makeFetch({
-      '/orgfallback/norepo/': makeSheet([]), // repo config has no key
-      '/orgfallback/': makeSheet([{ key: 'aem.repositoryId', value: 'author-p2-e2.adobeaemcloud.com' }]),
-    });
-    try {
-      const val = await getConfKey('orgfallback', 'norepo', 'aem.repositoryId');
-      expect(val).to.equal('author-p2-e2.adobeaemcloud.com');
-    } finally {
-      window.fetch = orgFetch;
-    }
-  });
-
-  it('returns null when neither level has the key', async () => {
-    const orgFetch = window.fetch;
-    window.fetch = makeFetch({
-      '/nokey/norepo/': makeSheet([]),
-      '/nokey/': makeSheet([]),
-    });
-    try {
-      const val = await getConfKey('nokey', 'norepo', 'aem.repositoryId');
-      expect(val).to.be.null;
-    } finally {
-      window.fetch = orgFetch;
-    }
-  });
-
-  it('returns null when owner and repo are both absent', async () => {
-    const val = await getConfKey(null, null, 'aem.repositoryId');
-    expect(val).to.be.null;
-  });
-});
 
 // ---------------------------------------------------------------------------
 // getRepositoryConfig
