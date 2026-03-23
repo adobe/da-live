@@ -13,6 +13,7 @@ import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
+const SK_EXT_ID = 'igkmdomcgoebiipaifhmpfjhbjccggml';
 const LAZY_DELAY = 1500;
 const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
@@ -180,6 +181,24 @@ export default class DaTitle extends LitElement {
     });
   }
 
+  /**
+   * Attempt to have Sidekick bust the author's cache
+   * @param {String} toOpen the href to open
+   * @returns {Promise<void>}
+   */
+  async sidekickCacheBust(toOpen) {
+    if (!window.chrome) return;
+    try {
+      const opts = { action: 'bustCache', host: new URL(toOpen).hostname };
+      const extId = window.localStorage.getItem('aem-sidekick-id') || SK_EXT_ID;
+
+      // Tell AEM Sidekick to bust cache
+      await window.chrome.runtime.sendMessage(extId, opts);
+    } catch {
+      // Gracefully die
+    }
+  }
+
   async handleAction(action) {
     this._status = null;
     this._sendButton.classList.add('is-sending');
@@ -216,7 +235,7 @@ export default class DaTitle extends LitElement {
       if (action === 'publish') {
         // If lazy setup has not finished, check the schedule manually
         this._scheduled ??= await this.getSchedule(org, site, path);
-        if (this._scheduled.scheduled) {
+        if (this._scheduled?.scheduled) {
           const shouldContinue = await this.setScheduledDialog(this._scheduled);
           if (!shouldContinue) {
             this._sendButton.classList.remove('is-sending');
@@ -247,10 +266,20 @@ export default class DaTitle extends LitElement {
         const origin = action === 'publish' ? this.livePrefix : this.previewPrefix;
         toOpen = `${origin}${byoPath}`;
       }
+      // Attempt a Sidekick cache bust
+      await this.sidekickCacheBust(toOpen);
 
-      window.open(`${toOpen}?nocache=${Date.now()}`, toOpen);
+      window.open(toOpen, toOpen);
     }
-    if (view === 'edit' && action === 'publish') saveDaVersion(fullpath);
+
+    if (view === 'edit') {
+      if (action === 'publish') saveDaVersion(fullpath, 'Published');
+      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
+    }
+    if (view === 'sheet') {
+      if (action === 'publish') saveDaVersion(fullpath, 'Published');
+      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
+    }
     this._sendButton.classList.remove('is-sending');
   }
 

@@ -280,7 +280,7 @@ describe('Preflight utils', () => {
 
   describe('fragmentCheck', () => {
     it('returns pf-link elements for each link in doc', async () => {
-      const html = '<html><body><a href="/page1">Link 1</a><a href="/page2">Link 2</a></body></html>';
+      const html = '<html><body><a href="/fragments/page1">Link 1</a><a href="/fragments/page2">Link 2</a></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
       const details = { org: 'testorg', site: 'testsite' };
 
@@ -294,14 +294,14 @@ describe('Preflight utils', () => {
     });
 
     it('passes text and href to pf-link components', async () => {
-      const html = '<html><body><a href="/my-page">My Page</a></body></html>';
+      const html = '<html><body><a href="/fragments/my-page">My Page</a></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
       const details = { org: 'testorg', site: 'testsite' };
 
       const results = await fragmentCheck({ details, doc });
 
       expect(results[0].text).to.equal('My Page');
-      expect(results[0].href).to.equal('/my-page');
+      expect(results[0].href).to.equal('/fragments/my-page');
       expect(results[0].details).to.equal(details);
     });
 
