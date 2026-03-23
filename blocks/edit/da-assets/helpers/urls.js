@@ -171,3 +171,11 @@ export function getDmApprovalStatus(asset) {
     activationTarget: meta?.['dam:activationTarget'],
   };
 }
+
+/**
+ * Returns the Scene7 publish status from the top-level asset properties.
+ * "PublishComplete" means the asset is available on the publish tier.
+ */
+export function getScene7PublishStatus(asset) {
+  return asset?.['repo:scene7FileStatus'];
+}

@@ -381,6 +381,48 @@ describe('buildHandleSelection', () => {
     expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.not.exist;
   });
 
+  it('shows error panel for unpublished asset in author+publish mode', async () => {
+    const { dialog, secondaryPanel, handler } = setup(AUTHOR_PUBLISH_CONFIG);
+    const unpublished = {
+      ...IMAGE_ASSET,
+      'repo:scene7FileStatus': 'PublishIncomplete',
+    };
+    await handler([unpublished]);
+    expect(dialog.isOpen).to.be.true;
+    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.exist;
+    expect(secondaryPanel.querySelector('.da-dialog-asset-error').textContent)
+      .to.include('not available on the publish tier');
+  });
+
+  it('allows insertion when scene7FileStatus is PublishComplete in author+publish mode', async () => {
+    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_CONFIG);
+    const published = {
+      ...IMAGE_ASSET,
+      'repo:scene7FileStatus': 'PublishComplete',
+    };
+    await handler([published]);
+    expect(dialog.isOpen).to.be.false;
+    expect(view.dispatched).to.have.length(1);
+  });
+
+  it('allows insertion when scene7FileStatus is absent in author+publish mode', async () => {
+    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_CONFIG);
+    await handler([IMAGE_ASSET]);
+    expect(dialog.isOpen).to.be.false;
+    expect(view.dispatched).to.have.length(1);
+  });
+
+  it('does not check scene7FileStatus for author+DM mode', async () => {
+    window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
+    const { secondaryPanel, handler } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: false });
+    const asset = {
+      ...IMAGE_ASSET,
+      'repo:scene7FileStatus': 'PublishIncomplete',
+    };
+    await handler([asset]);
+    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.not.exist;
+  });
+
   it('does NOT check approval for delivery tier assets', async () => {
     const { dialog, secondaryPanel, handler } = setup(DELIVERY_CONFIG);
     // Delivery tier assets don't have _embedded metadata

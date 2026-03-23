@@ -9,6 +9,7 @@ import {
   resolveRenditionType,
   getAssetAlt,
   getDmApprovalStatus,
+  getScene7PublishStatus,
 } from '../../../../../blocks/edit/da-assets/helpers/urls.js';
 
 // ---------------------------------------------------------------------------
@@ -398,5 +399,30 @@ describe('getDmApprovalStatus', () => {
   it('returns draft status correctly', () => {
     const result = getDmApprovalStatus(AUTHOR_VIDEO);
     expect(result.status).to.equal('draft');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getScene7PublishStatus
+// ---------------------------------------------------------------------------
+
+describe('getScene7PublishStatus', () => {
+  it('returns repo:scene7FileStatus value from asset', () => {
+    const asset = { 'repo:scene7FileStatus': 'PublishComplete' };
+    expect(getScene7PublishStatus(asset)).to.equal('PublishComplete');
+  });
+
+  it('returns PublishIncomplete when asset is not published', () => {
+    const asset = { 'repo:scene7FileStatus': 'PublishIncomplete' };
+    expect(getScene7PublishStatus(asset)).to.equal('PublishIncomplete');
+  });
+
+  it('returns undefined when property is absent', () => {
+    expect(getScene7PublishStatus({})).to.be.undefined;
+  });
+
+  it('returns undefined for null/undefined asset', () => {
+    expect(getScene7PublishStatus(null)).to.be.undefined;
+    expect(getScene7PublishStatus(undefined)).to.be.undefined;
   });
 });

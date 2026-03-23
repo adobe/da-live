@@ -1,11 +1,17 @@
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
-import { buildAuthorUrl, buildDmUrl, buildDeliveryUrl, getAssetAlt, getDmApprovalStatus } from './helpers/urls.js';
+import {
+  buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
+  getAssetAlt, getDmApprovalStatus, getScene7PublishStatus,
+} from './helpers/urls.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
+
+const DM_ERROR_MSG = 'The selected asset is not available because it is not approved for delivery. Please check the status.';
+const PUBLISH_ERROR_MSG = 'The selected asset is not available on the publish tier. Please publish the asset in AEM and try again.';
 
 export function formatExternalBrief(doc) {
   let title = '';
@@ -46,8 +52,8 @@ export function resolveAssetUrl(asset, repoConfig) {
   return buildAuthorUrl(asset, assetOrigin);
 }
 
-function showErrorPanel(container, onBack, onCancel) {
-  container.innerHTML = '<p class="da-dialog-asset-error">The selected asset is not available because it is not approved for delivery. Please check the status.</p><div class="da-dialog-asset-buttons"><button class="back">Back</button><button class="cancel">Cancel</button></div>';
+function showErrorPanel(container, onBack, onCancel, message = DM_ERROR_MSG) {
+  container.innerHTML = `<p class="da-dialog-asset-error">${message}</p><div class="da-dialog-asset-buttons"><button class="back">Back</button><button class="cancel">Cancel</button></div>`;
   container.querySelector('.cancel').addEventListener('click', onCancel);
   container.querySelector('.back').addEventListener('click', onBack);
 }
@@ -102,6 +108,16 @@ export function buildHandleSelection(
       if (activationTarget !== 'delivery' || status !== 'approved') {
         showSecondaryPanel(assetPanel, secondaryPanel);
         showErrorPanel(secondaryPanel, resetToAssetPanel, closeAndReset);
+        return;
+      }
+    }
+
+    // Author+Publish mode: check asset is published to the publish tier
+    if (repoConfig.tierType === 'author' && !repoConfig.isDmEnabled) {
+      const scene7Status = getScene7PublishStatus(asset);
+      if (scene7Status && scene7Status !== 'PublishComplete') {
+        showSecondaryPanel(assetPanel, secondaryPanel);
+        showErrorPanel(secondaryPanel, resetToAssetPanel, closeAndReset, PUBLISH_ERROR_MSG);
         return;
       }
     }
