@@ -105,7 +105,7 @@ export function buildHandleSelection(
     // Author+DM mode: check asset is approved for delivery before inserting
     if (repoConfig.tierType === 'author' && repoConfig.isDmEnabled) {
       const { status, activationTarget } = getDmApprovalStatus(asset);
-      if (activationTarget !== 'delivery' || status !== 'approved') {
+      if (status !== 'approved' || (activationTarget && activationTarget !== 'delivery')) {
         showSecondaryPanel(assetPanel, secondaryPanel);
         showErrorPanel(secondaryPanel, resetToAssetPanel, closeAndReset);
         return;

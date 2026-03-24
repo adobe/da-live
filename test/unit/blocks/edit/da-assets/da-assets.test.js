@@ -374,6 +374,18 @@ describe('buildHandleSelection', () => {
     expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.exist;
   });
 
+  it('allows approved asset with undefined activationTarget in author+DM mode', async () => {
+    window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
+    const { dialog, secondaryPanel, handler } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: false });
+    const noTarget = {
+      ...IMAGE_ASSET,
+      _embedded: { 'http://ns.adobe.com/adobecloud/rel/metadata/asset': { 'dam:assetStatus': 'approved' } },
+    };
+    await handler([noTarget]);
+    expect(dialog.isOpen).to.be.false;
+    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.not.exist;
+  });
+
   it('does NOT show error panel for approved+delivery asset in author+DM mode', async () => {
     window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
     const { secondaryPanel, handler } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: false });
