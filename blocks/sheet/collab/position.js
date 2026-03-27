@@ -85,7 +85,8 @@ export function restoreSpreadsheetState(wrapper, state) {
     if (x <= maxX && y <= maxY) {
       setTimeout(() => {
         // DOM cell may have changed in the meantime, so re-obtain it
-        const updatedSheet = tabs.jexcel[state.sheetIdx];
+        const updatedTabs = wrapper.querySelector('da-sheet-tabs');
+        const updatedSheet = updatedTabs.jexcel[state.sheetIdx];
         const cell = updatedSheet?.records[y][x];
         if (!cell || !updatedSheet) return;
         updatedSheet.openEditor(cell);
