@@ -276,7 +276,7 @@ describe('Section paste handler', () => {
     expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
   });
 
-  it('Test transform pasted dashes 2', async () => {
+  it('Test transform pasted dashes 2', () => {
     const json = {
       content: [
         {
@@ -374,5 +374,128 @@ describe('Section paste handler', () => {
 
     const newJSON = JSON.stringify(newSlice.content.toJSON());
     expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
+  });
+});
+
+describe('Shift-Cmd/Ctrl-V space normalization', () => {
+  // normalizeSpacesOnPaste is module-level, so consume it after tests that set
+  // it without going through the full clipboardTextParser → transformPasted pipeline.
+  function resetNormalizeFlag() {
+    const p = sectionPasteHandler(baseSchema);
+    p.props.transformPasted(Slice.fromJSON(baseSchema, {
+      content: [{ type: 'paragraph' }], openStart: 1, openEnd: 1,
+    }));
+  }
+
+  it('handleKeyDown returns false for Shift-Cmd-V to allow native paste', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: true, metaKey: true });
+    expect(result).to.be.false;
+    resetNormalizeFlag();
+  });
+
+  it('handleKeyDown returns false for Shift-Ctrl-V to allow native paste', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: true, ctrlKey: true });
+    expect(result).to.be.false;
+    resetNormalizeFlag();
+  });
+
+  it('handleKeyDown does not set flag for plain Cmd-V', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: false, metaKey: true });
+    const slice = plugin.props.clipboardTextParser('hello\u00A0world');
+    expect(slice.content.toJSON()[0].content[0].text).to.equal('hello\u00A0world');
+  });
+
+  it('clipboardTextParser normalizes NBSP and narrow no-break space after Shift-Cmd-V', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: true, metaKey: true });
+    const slice = plugin.props.clipboardTextParser('a\u00A0b\u202Fc');
+    expect(slice.content.toJSON()[0].content[0].text).to.equal('a b c');
+    resetNormalizeFlag();
+  });
+
+  it('clipboardTextParser normalizes all non-standard Unicode space types after Shift-Cmd-V', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: true, metaKey: true });
+    // One of each: Ogham, en quad, em quad, en, em, 3/em, 4/em, 6/em, figure, punctuation, thin, hair, medium math, ideographic
+    const input = 'a\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u205F\u3000b';
+    const slice = plugin.props.clipboardTextParser(input);
+    expect(slice.content.toJSON()[0].content[0].text).to.equal('a              b');
+    resetNormalizeFlag();
+  });
+
+  it('clipboardTextParser preserves non-standard spaces on regular Cmd-V', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const slice = plugin.props.clipboardTextParser('hello\u00A0world');
+    expect(slice.content.toJSON()[0].content[0].text).to.equal('hello\u00A0world');
+  });
+
+  it('clipboardTextParser normalizes spaces via Shift-Ctrl-V (Windows)', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: true, ctrlKey: true });
+    const slice = plugin.props.clipboardTextParser('hello\u00A0world');
+    expect(slice.content.toJSON()[0].content[0].text).to.equal('hello world');
+    resetNormalizeFlag();
+  });
+
+  it('transformPastedHTML normalizes non-standard spaces in text content after Shift-Cmd-V', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: true, metaKey: true });
+    const result = plugin.props.transformPastedHTML('<p>hello\u00A0world\u202Ftest</p>');
+    expect(result).to.contain('hello world test');
+    expect(result).not.to.contain('\u00A0');
+    expect(result).not.to.contain('\u202F');
+    resetNormalizeFlag();
+  });
+
+  it('transformPastedHTML preserves non-standard spaces on regular paste', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.transformPastedHTML('<p>hello\u00A0world</p>');
+    expect(result).to.contain('hello\u00A0world');
+  });
+
+  it('transformPasted normalizes non-standard spaces in text nodes after Shift-Cmd-V', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: true, metaKey: true });
+    const slice = Slice.fromJSON(baseSchema, {
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hello\u00A0world\u202Ftest' }] }],
+      openStart: 1,
+      openEnd: 1,
+    });
+    const result = plugin.props.transformPasted(slice);
+    expect(result.content.toJSON()[0].content[0].text).to.equal('hello world test');
+  });
+
+  it('transformPasted preserves non-standard spaces on regular paste', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const slice = Slice.fromJSON(baseSchema, {
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hello\u00A0world' }] }],
+      openStart: 1,
+      openEnd: 1,
+    });
+    const result = plugin.props.transformPasted(slice);
+    expect(result.content.toJSON()[0].content[0].text).to.equal('hello\u00A0world');
+  });
+
+  it('transformPasted resets flag so subsequent paste is not normalized', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    plugin.props.handleKeyDown({}, { code: 'KeyV', shiftKey: true, metaKey: true });
+
+    // First paste consumes the flag
+    plugin.props.transformPasted(Slice.fromJSON(baseSchema, {
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x' }] }],
+      openStart: 1,
+      openEnd: 1,
+    }));
+
+    // Second paste — flag must be reset, spaces must be preserved
+    const result = plugin.props.transformPasted(Slice.fromJSON(baseSchema, {
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hello\u00A0world' }] }],
+      openStart: 1,
+      openEnd: 1,
+    }));
+    expect(result.content.toJSON()[0].content[0].text).to.equal('hello\u00A0world');
   });
 });

@@ -1,5 +1,28 @@
 import { Fragment, Plugin, Slice } from 'da-y-wrapper';
 
+const NONSTANDARD_SPACES_RE = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g;
+
+function normalizeSpaceChars(str) {
+  return str.replace(NONSTANDARD_SPACES_RE, ' ');
+}
+
+function normalizeSpacesInJSON(obj) {
+  if (!obj) return obj;
+  if (Array.isArray(obj)) return obj.map(normalizeSpacesInJSON);
+  if (typeof obj === 'object') {
+    const result = {};
+    for (const key of Object.keys(obj)) {
+      result[key] = (key === 'text' && typeof obj[key] === 'string')
+        ? normalizeSpaceChars(obj[key])
+        : normalizeSpacesInJSON(obj[key]);
+    }
+    return result;
+  }
+  return obj;
+}
+
+let normalizeSpacesOnPaste = false;
+
 function closeParagraph(paraContent, newContent) {
   if (paraContent.length > 0) {
     const newPara = {
@@ -101,8 +124,17 @@ function handleDivLineBreaks(doc) {
 export default function sectionPasteHandler(schema) {
   return new Plugin({
     props: {
+      handleKeyDown: (view, event) => {
+        if (event.code === 'KeyV' && event.shiftKey && (event.metaKey || event.ctrlKey)) {
+          // Shift-Cmd-V is "Paste and Match Style" and will also normalize spaces
+          normalizeSpacesOnPaste = true;
+        }
+        return false;
+      },
+
       clipboardTextParser: (text) => {
-        const lines = text.split(/\r\n?|\n/);
+        const normalized = normalizeSpacesOnPaste ? normalizeSpaceChars(text) : text;
+        const lines = normalized.split(/\r\n?|\n/);
         const nodes = lines.map((line) => {
           if (line.length === 0) return schema.nodes.paragraph.create();
           return schema.nodes.paragraph.create(null, [schema.text(line)]);
@@ -115,9 +147,10 @@ export default function sectionPasteHandler(schema) {
        * these section breaks and adds a <hr/> element for them.
        */
       transformPastedHTML: (html) => {
+        const inputHtml = normalizeSpacesOnPaste ? normalizeSpaceChars(html) : html;
         try {
           const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
+          const doc = parser.parseFromString(inputHtml, 'text/html');
 
           let modified = handleDesktopWordSectionBreaks(doc);
           if (!modified) {
@@ -128,7 +161,7 @@ export default function sectionPasteHandler(schema) {
           }
 
           if (!modified) {
-            return html;
+            return inputHtml;
           }
 
           const serializer = new XMLSerializer();
@@ -136,7 +169,7 @@ export default function sectionPasteHandler(schema) {
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('Error handling Word section breaks:', error);
-          return html;
+          return inputHtml;
         }
       },
 
@@ -144,7 +177,9 @@ export default function sectionPasteHandler(schema) {
        * which is then interpreted as a section break.
        */
       transformPasted: (slice) => {
-        const jslice = slice.toJSON();
+        const rawJson = slice.toJSON();
+        const jslice = normalizeSpacesOnPaste ? normalizeSpacesInJSON(rawJson) : rawJson;
+        normalizeSpacesOnPaste = false;
         if (!jslice) return slice;
         const { content } = jslice;
         if (!content) return slice;
