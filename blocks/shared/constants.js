@@ -11,6 +11,7 @@ export const SUPPORTED_FILES = {
   pdf: 'application/pdf',
   svg: 'image/svg+xml',
   ico: 'image/x-icon',
+  webp: 'image/webp',
 };
 
 const DA_ADMIN_ENVS = {
