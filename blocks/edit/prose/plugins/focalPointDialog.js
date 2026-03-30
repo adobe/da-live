@@ -1,7 +1,7 @@
 import '../../../shared/da-dialog/da-dialog.js';
-import { getNx } from '../../../../scripts/utils.js';
+import { getNx, nxJS } from '../../../../scripts/utils.js';
 
-const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
+const { loadStyle } = await import(`${getNx()}${nxJS}`);
 await loadStyle('/blocks/edit/prose/plugins/focalPointDialog.css');
 
 let currentDialog = null;

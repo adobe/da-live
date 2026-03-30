@@ -6,7 +6,7 @@ import { expect } from '@esm-bundle/chai';
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
 const { setNx } = await import('../../../../../scripts/utils.js');
-setNx('/bheuaark/', { hostname: 'localhost' });
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaBrowse } = await import('../../../../../blocks/browse/da-list/da-list.js');
 const { default: DaBrowseComponent } = await import('../../../../../blocks/browse/da-browse/da-browse.js');

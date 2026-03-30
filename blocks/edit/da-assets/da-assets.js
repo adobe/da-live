@@ -1,4 +1,4 @@
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, nxJS } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
@@ -164,7 +164,7 @@ export function buildHandleSelection(
 }
 
 export async function openAssets() {
-  const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
+  const { loadStyle } = await import(`${getNx()}${nxJS}`);
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 

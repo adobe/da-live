@@ -4,7 +4,7 @@ import { stub, spy } from 'sinon';
 
 // Setup for dynamic imports
 const { setNx } = await import('../../../../../scripts/utils.js');
-setNx('/bheuaark/', { hostname: 'localhost' });
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaSearch } = await import('../../../../../blocks/browse/da-search/da-search.js');
 
