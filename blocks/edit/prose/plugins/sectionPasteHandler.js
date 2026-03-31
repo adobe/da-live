@@ -31,7 +31,7 @@ function showSpaceNormalizationDialog(view, slice, schema) {
     dialog.size = 'small';
 
     const content = document.createElement('p');
-    content.textContent = 'The pasted content contains non-standard space characters (such as non-breaking spaces). Would you like to convert them to regular spaces?';
+    content.textContent = 'The pasted content contains hidden characters (such as non-breaking spaces). Would you like to convert them to regular spaces?';
     dialog.appendChild(content);
 
     dialog.action = {
