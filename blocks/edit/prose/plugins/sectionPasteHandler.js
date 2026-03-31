@@ -27,7 +27,7 @@ function normalizeSpacesInJSON(obj) {
 function showSpaceNormalizationDialog(view, slice, schema) {
   import('../../../shared/da-dialog/da-dialog.js').then(() => {
     const dialog = document.createElement('da-dialog');
-    dialog.title = 'Non-standard spaces detected';
+    dialog.title = 'Hidden characters detected';
     dialog.size = 'small';
 
     const content = document.createElement('p');
