@@ -205,11 +205,11 @@ export function getPreviewUrl(previewUrl) {
     if (url.origin.includes('--')) return url.href;
     if (url.origin.includes('content.da.live')) {
       const [, org, site, ...split] = url.pathname.split('/');
-      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+      return `https://${ref}--${site}--${org}.aem.page/${split.join('/')}`;
     }
     if (url.origin.includes('admin.da.live')) {
       const [, , org, site, ...split] = url.pathname.split('/');
-      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+      return `https://${ref}--${site}--${org}.aem.page/${split.join('/')}`;
     }
   } catch {
     return false;
@@ -257,17 +257,17 @@ export function getItemDetails(item) {
 
   // AEM Flavor
   if (hostname.includes('.aem.')) {
-    const [org, site] = hostname.split('.')[0].split('--').reverse();
-    return { org, site, pathname };
+    const [org, site, urlRef] = hostname.split('.')[0].split('--').reverse();
+    return { org, site, ref: urlRef || ref, pathname };
   }
   // DA Content Flavor
   if (hostname.includes('content.da.live')) {
     const [org, site, ...rest] = pathname.slice(1).split('/');
-    return { org, site, pathname: `/${rest.join('/')}` };
+    return { org, site, ref, pathname: `/${rest.join('/')}` };
   }
   // DA Admin Flavor
   const [, org, site, ...rest] = pathname.slice(1).split('/');
-  return { org, site, pathname: `/${rest.join('/')}` };
+  return { org, site, ref, pathname: `/${rest.join('/')}` };
 }
 
 export async function getPreviewStatus({ org, site, pathname }) {

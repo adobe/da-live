@@ -230,10 +230,10 @@ class DaLibrary extends LitElement {
   }
 
   async handleOpenPreview(item) {
-    const { org, site, pathname } = getItemDetails(item);
+    const { org, site, ref, pathname } = getItemDetails(item);
     this._preview = {
       name: item.name || item.key,
-      url: `https://main--${site}--${org}.aem.page${pathname}`,
+      url: `https://${ref}--${site}--${org}.aem.page${pathname}`,
     };
 
     // Lazily get the preview status
