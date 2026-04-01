@@ -19,7 +19,7 @@ const DA_PLUGINS = {
   icons: {},
 };
 
-const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
+export const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 export function parseDom(dom) {
   const { schema } = window.view.state;
@@ -257,17 +257,17 @@ export function getItemDetails(item) {
 
   // AEM Flavor
   if (hostname.includes('.aem.')) {
-    const [org, site, urlRef] = hostname.split('.')[0].split('--').reverse();
-    return { org, site, ref: urlRef || ref, pathname };
+    const [org, site] = hostname.split('.')[0].split('--').reverse();
+    return { org, site, pathname };
   }
   // DA Content Flavor
   if (hostname.includes('content.da.live')) {
     const [org, site, ...rest] = pathname.slice(1).split('/');
-    return { org, site, ref, pathname: `/${rest.join('/')}` };
+    return { org, site, pathname: `/${rest.join('/')}` };
   }
   // DA Admin Flavor
   const [, org, site, ...rest] = pathname.slice(1).split('/');
-  return { org, site, ref, pathname: `/${rest.join('/')}` };
+  return { org, site, pathname: `/${rest.join('/')}` };
 }
 
 export async function getPreviewStatus({ org, site, pathname }) {

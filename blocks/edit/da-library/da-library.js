@@ -6,7 +6,7 @@ import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import { daFetch } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { OOTB_PLUGINS, loadLibrary, getItemDetails, getPreviewStatus } from './helpers/helpers.js';
+import { OOTB_PLUGINS, loadLibrary, getItemDetails, getPreviewStatus, ref } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
@@ -230,7 +230,7 @@ class DaLibrary extends LitElement {
   }
 
   async handleOpenPreview(item) {
-    const { org, site, ref, pathname } = getItemDetails(item);
+    const { org, site, pathname } = getItemDetails(item);
     this._preview = {
       name: item.name || item.key,
       url: `https://${ref}--${site}--${org}.aem.page${pathname}`,
