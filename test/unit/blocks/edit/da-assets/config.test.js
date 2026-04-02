@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 
 const { setNx } = await import('../../../../../scripts/utils.js');
-setNx('/bheuaark/', { hostname: 'localhost' });
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { getRepositoryConfig, getResponsiveImageConfig, parseMimeRenditions } = await import('../../../../../blocks/edit/da-assets/helpers/config.js');
 

@@ -5,7 +5,7 @@
 }
 
 button {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family);
 }
 
 h2 {
@@ -23,7 +23,7 @@ h2 {
 
 .da-site-container {
   position: relative;
-  max-width: var(--grid-container-width);
+  max-width: var(--se-grid-container-width);
   margin: 0 auto;
 }
 
@@ -40,7 +40,7 @@ h2 {
   place-items: center;
   place-content: center;
   background: #fafafa;
-  border-radius: var(--s2-radius-300);
+  border-radius: var(--s2-corner-radius-800);
   min-height: 320px;
   box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
   margin: 0 0 48px;
@@ -77,7 +77,7 @@ form input {
   border: none;
   background: transparent;
   border-bottom: 1px solid #a2a2a2;
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family);
   font-size: 16px;
   padding: 0 0 4px 4px;
   line-height: 26px;
@@ -159,7 +159,7 @@ form button:hover {
   display: grid;
   gap: 24px;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  margin: 0 0 var(--spacing-700) 0;
+  margin: 0 0 var(--s2-spacing-700) 0;
   padding: 0;
 }
 
@@ -341,7 +341,7 @@ form button:hover {
   flex-flow: column wrap;
   justify-content: end;
   height: 100%;
-  padding: 0 var(--spacing-400) var(--spacing-300);
+  padding: 0 var(--s2-spacing-400) var(--s2-spacing-300);
   box-sizing: border-box;
   grid-area: main;
   color: #fff;
@@ -364,7 +364,7 @@ form button:hover {
 .da-site-card-action-more {
   margin-left: -8px;
   position: absolute;
-  bottom: var(--spacing-300);
+  bottom: var(--s2-spacing-300);
   left: 24px;
 }
 
@@ -372,7 +372,7 @@ form button:hover {
 .da-site-sandbox-new {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-400);
+  gap: var(--s2-spacing-400);
 }
 
 .da-double-card {
@@ -381,7 +381,7 @@ form button:hover {
   align-items: center;
   justify-content: center;
   min-height: 320px;
-  border-radius: var(--s2-radius-300);
+  border-radius: var(--s2-corner-radius-800);
   color: #e6e6e6;
   font-size: 18px;
   text-decoration: none;
