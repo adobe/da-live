@@ -176,7 +176,7 @@ export async function getBlockVariants(path) {
   return groupedBlocks.map(transformBlock);
 }
 
-const urlCache = new Map();
+export const urlCache = new Map();
 
 export async function getBlocks(sources) {
   try {

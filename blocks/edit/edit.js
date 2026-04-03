@@ -8,6 +8,7 @@ const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></foot
 const DOMPARSER = new DOMParser();
 
 let prose;
+let prosePromise;
 
 async function getDoc(path) {
   return daFetch(path);
@@ -38,10 +39,17 @@ async function setUI(el) {
   if (!details) return;
 
   const docPromise = getDoc(details.sourceUrl);
+  prosePromise ??= import('./prose/index.js');
+
+  // Start WebSocket as soon as prose module loads (don't wait for logins/doc)
+  const wsPromise = prosePromise.then(
+    (mod) => mod.createConnection(details.sourceUrl),
+  );
 
   document.title = `Edit ${details.name} - DA`;
 
   const { owner, repo } = details;
+  const lockdownPromise = checkLockdownImages(owner);
   await Promise.all([
     contentLogin(owner, repo),
     livePreviewLogin(owner, repo),
@@ -72,7 +80,7 @@ async function setUI(el) {
 
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
-  daContent.lockdownImages = await checkLockdownImages(owner);
+  daContent.lockdownImages = await lockdownPromise;
 
   const metadataEl = doc.querySelector('main > .metadata');
   // Check if the metadata div has no additional classes (or doesn't exist)
@@ -81,7 +89,7 @@ async function setUI(el) {
     // Load Default ProseMirrorEditor
 
     if (!prose) {
-      prose = await import('./prose/index.js');
+      prose = await prosePromise;
     }
 
     await prose.default({
@@ -89,6 +97,7 @@ async function setUI(el) {
       permissions,
       doc,
       daContent,
+      wsPromise,
     });
   }
   // FUTURE: else load BYO Editor

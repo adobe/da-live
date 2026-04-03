@@ -1,8 +1,7 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import inlinesvg from '../../../shared/inlinesvg.js';
 import { openFocalPointDialog } from './focalPointDialog.js';
-import { getLibraryList } from '../../da-library/helpers/helpers.js';
-import { getBlocks } from '../../da-library/helpers/index.js';
+import { loadLibrary } from '../../da-library/helpers/helpers.js';
 import { getTableInfo, isInTableCell } from './tableUtils.js';
 
 const imageFocalPointKey = new PluginKey('imageFocalPoint');
@@ -13,10 +12,10 @@ async function getBlocksData() {
   if (!blocksDataPromise) {
     blocksDataPromise = (async () => {
       try {
-        const libraryList = await getLibraryList();
+        const libraryList = await loadLibrary();
         const blocksInfo = libraryList.find((l) => l.name === 'blocks');
-        if (!blocksInfo) return [];
-        return await getBlocks(blocksInfo.sources);
+        if (!blocksInfo?.loadItems) return [];
+        return await blocksInfo.loadItems;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('Failed to load blocks data for focal point:', error);

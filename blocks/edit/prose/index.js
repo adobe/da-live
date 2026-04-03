@@ -32,7 +32,7 @@ async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
 }
 
-async function createConnection(path) {
+export async function createConnection(path) {
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
@@ -49,7 +49,6 @@ async function createConnection(path) {
   }
 
   const provider = new WebsocketProvider(server, roomName, ydoc, opts);
-
   // Increase the max backoff time to 30 seconds. If connection error occurs,
   // the socket provider will try to reconnect quickly at the beginning
   // (exponential backoff starting with 100ms) and then every 30s.
@@ -420,14 +419,14 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
 }
 
 // eslint-disable-next-line no-unused-vars
-export default async function initProse({ path, permissions, doc, daContent }) {
+export default async function initProse({ path, permissions, doc, daContent, wsPromise }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) {
     window.view.destroy();
     delete window.view;
   }
 
-  const wsPromise = createConnection(path);
+  const connectionPromise = wsPromise || createConnection(path);
 
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
@@ -435,9 +434,7 @@ export default async function initProse({ path, permissions, doc, daContent }) {
   const schema = getSchema();
   const canWrite = permissions.some((permission) => permission === 'write');
 
-  const pluginsPromise = loadCustomPlugins();
-
-  const { wsProvider, ydoc } = await wsPromise;
+  const { wsProvider, ydoc } = await connectionPromise;
 
   addSyncedListener(wsProvider, canWrite);
   createAwarenessStatusWidget(wsProvider, window, path);
@@ -502,6 +499,7 @@ export default async function initProse({ path, permissions, doc, daContent }) {
 
   handleProseLoaded(editor, wsProvider);
 
+  const pluginsPromise = loadCustomPlugins();
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {
     syncPlugin,
     cursorPlugin,

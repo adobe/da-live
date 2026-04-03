@@ -1,6 +1,5 @@
 import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
-
-const { getNx } = await import('../../scripts/utils.js');
+import { getNx } from '../../scripts/utils.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
 const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
