@@ -10,7 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
-import { setNx, nxJS, nxCSS } from './utils.js';
+import { setNx, getNx, nxJS, nxCSS } from './utils.js';
+import { initIms } from '../blocks/shared/utils.js';
 
 /** Determine where to load NX from */
 const nx = setNx('/nx');
@@ -63,6 +64,7 @@ function loadStyles() {
 
 export default async function loadPage() {
   loadStyles();
+  initIms();
 
   if (!nx2) {
     // pin to light scheme
