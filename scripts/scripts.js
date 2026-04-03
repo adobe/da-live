@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { setNx, getNx, nxJS, nxCSS } from './utils.js';
+import { setNx, nxJS, nxCSS } from './utils.js';
 import { initIms } from '../blocks/shared/utils.js';
 
 /** Determine where to load NX from */
