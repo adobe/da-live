@@ -29,10 +29,13 @@ async function setupExperience(el, e) {
     const oldHash = new URL(e.oldURL).hash;
     const newHash = new URL(e.newURL).hash;
 
-    // Are they already browsing
-    if (oldHash.startsWith('#/') && newHash.startsWith('#/')) {
-      document.querySelector('da-browse').details = details;
-      return;
+    // Are they already browsing (not e.g. IMS hash → real path while da-sites is still mounted)
+    if (details && oldHash.startsWith('#/') && newHash.startsWith('#/')) {
+      const browse = document.querySelector('da-browse');
+      if (browse) {
+        browse.details = details;
+        return;
+      }
     }
   }
   if (!details) {

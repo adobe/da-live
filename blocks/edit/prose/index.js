@@ -15,46 +15,19 @@ import {
   NodeSelection,
   Plugin,
   PluginKey,
-  WebsocketProvider,
   ySyncPlugin,
   yCursorPlugin,
   yUndoPlugin,
-  Y,
 } from 'da-y-wrapper';
 
 import { getSchema } from 'da-parser';
-import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getAuthToken } from '../../shared/utils.js';
+import { daFetch } from '../../shared/utils.js';
+import { createConnection } from '../collab-connection.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 
 async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
-}
-
-export async function createConnection(path) {
-  const ydoc = new Y.Doc();
-
-  const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
-
-  const opts = {
-    protocols: ['yjs'],
-    connect: true,
-  };
-
-  const token = await getAuthToken();
-  if (token) {
-    opts.protocols.push(token);
-  }
-
-  const provider = new WebsocketProvider(server, roomName, ydoc, opts);
-  // Increase the max backoff time to 30 seconds. If connection error occurs,
-  // the socket provider will try to reconnect quickly at the beginning
-  // (exponential backoff starting with 100ms) and then every 30s.
-  provider.maxBackoffTime = 30000;
-
-  return { wsProvider: provider, ydoc };
 }
 
 async function loadCustomPlugins() {

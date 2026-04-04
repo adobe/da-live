@@ -11,6 +11,7 @@
  */
 
 import { setNx, nxJS, nxCSS } from './utils.js';
+import getPathDetails from '../blocks/shared/pathDetails.js';
 import { initIms } from '../blocks/shared/utils.js';
 
 /** Determine where to load NX from */
@@ -55,6 +56,13 @@ const CONFIG = {
 
 const { loadArea, setConfig } = await import(`${nx}${nxJS}`);
 
+async function maybeBootstrapEditCollab() {
+  const details = getPathDetails();
+  if (!details || details.view !== 'edit') return;
+  const { getOrStartEditCollabConnection } = await import('../blocks/edit/collab-session.js');
+  getOrStartEditCollabConnection(details.sourceUrl).catch(() => {});
+}
+
 function loadStyles() {
   const link = document.createElement('link');
   link.setAttribute('rel', 'stylesheet');
@@ -65,6 +73,7 @@ function loadStyles() {
 export default async function loadPage() {
   loadStyles();
   initIms();
+  maybeBootstrapEditCollab().catch(() => {});
 
   if (!nx2) {
     // pin to light scheme

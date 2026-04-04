@@ -1,5 +1,6 @@
 import getPathDetails from '../shared/pathDetails.js';
 import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin } from '../shared/utils.js';
+import { getOrStartEditCollabConnection, invalidateEditCollabSession } from './collab-session.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -36,15 +37,15 @@ function initArea(areaName, details, el) {
 
 async function setUI(el) {
   const details = getPathDetails();
-  if (!details) return;
+  if (!details) {
+    invalidateEditCollabSession('Left edit view');
+    return;
+  }
 
   const docPromise = getDoc(details.sourceUrl);
   prosePromise ??= import('./prose/index.js');
 
-  // Start WebSocket as soon as prose module loads (don't wait for logins/doc)
-  const wsPromise = prosePromise.then(
-    (mod) => mod.createConnection(details.sourceUrl),
-  );
+  const wsPromise = getOrStartEditCollabConnection(details.sourceUrl);
 
   document.title = `Edit ${details.name} - DA`;
 
@@ -58,11 +59,6 @@ async function setUI(el) {
   const daTitle = initArea('da-title', details, el);
 
   const daContent = initArea('da-content', details, el);
-
-  if (daContent.wsProvider) {
-    daContent.wsProvider.disconnect({ data: 'Client navigation' });
-    daContent.wsProvider = undefined;
-  }
 
   const resp = await docPromise;
 
