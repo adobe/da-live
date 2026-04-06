@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { getSatellites, checkOverrides } from '../../../../shared/msm.js';
+import { getSatellites, getBaseSite, isPageLocal, checkOverrides } from '../../../../shared/msm.js';
 import {
   previewSatellite,
   publishSatellite,
@@ -32,6 +32,10 @@ class DaGlobalPublish extends LitElement {
     _confirmAction: { state: true },
     _action: { state: true },
     _syncMode: { state: true },
+    _role: { state: true },
+    _baseSite: { state: true },
+    _hasOverride: { state: true },
+    _satStatus: { state: true },
   };
 
   connectedCallback() {
@@ -46,19 +50,30 @@ class DaGlobalPublish extends LitElement {
 
   async loadSatellites() {
     const { org, site, path } = this.details;
-    this._loading = 'Loading satellites\u2026';
+    this._loading = 'Loading configuration\u2026';
 
     const satellites = await getSatellites(org, site);
 
-    if (!satellites || !Object.keys(satellites).length) {
-      this._satellites = [];
+    if (satellites && Object.keys(satellites).length) {
+      this._role = 'base';
+      this._loading = 'Checking overrides\u2026';
+      const results = await checkOverrides(org, satellites, path);
+      this._satellites = results.map((sat) => ({ ...sat, status: undefined }));
       this._loading = undefined;
       return;
     }
 
-    this._loading = 'Checking overrides\u2026';
-    const results = await checkOverrides(org, satellites, path);
-    this._satellites = results.map((sat) => ({ ...sat, status: undefined }));
+    const baseSite = await getBaseSite(org, site);
+    if (baseSite) {
+      this._role = 'satellite';
+      this._baseSite = baseSite;
+      this._action = 'sync-from-base';
+      this._hasOverride = await isPageLocal(org, site, path);
+      this._loading = undefined;
+      return;
+    }
+
+    this._satellites = [];
     this._loading = undefined;
   }
 
@@ -94,6 +109,11 @@ class DaGlobalPublish extends LitElement {
   }
 
   async apply() {
+    if (this._role === 'satellite') {
+      this.applySatelliteAction();
+      return;
+    }
+
     if (!this._canApply) return;
 
     if (this._action === 'reset') {
@@ -110,8 +130,13 @@ class DaGlobalPublish extends LitElement {
   }
 
   async doConfirmedAction() {
+    const { confirmedAction } = this._confirmAction || {};
     this._confirmAction = undefined;
-    await this.runAction('reset');
+    if (confirmedAction === 'resume-inheritance') {
+      await this.runSatelliteAction('resume-inheritance');
+    } else {
+      await this.runAction('reset');
+    }
   }
 
   async runAction(action) {
@@ -187,6 +212,52 @@ class DaGlobalPublish extends LitElement {
 
       default:
         break;
+    }
+
+    this._busy = false;
+  }
+
+  applySatelliteAction() {
+    if (this._busy) return;
+
+    if (this._action === 'resume-inheritance') {
+      this._confirmAction = {
+        message: 'Resume inheritance? This deletes the local override.',
+        confirmedAction: 'resume-inheritance',
+      };
+      return;
+    }
+
+    this.runSatelliteAction(this._action);
+  }
+
+  async runSatelliteAction(action) {
+    this._busy = true;
+    this._satStatus = STATUS.pending;
+    const { org, site, path } = this.details;
+
+    try {
+      let result;
+      if (action === 'sync-from-base') {
+        result = this._syncMode === SYNC_MODE.merge
+          ? await mergeFromBase(org, this._baseSite, site, path)
+          : await createOverride(org, this._baseSite, site, path);
+      } else if (action === 'resume-inheritance') {
+        result = await deleteOverride(org, site, path);
+      }
+
+      if (result?.error) {
+        this._satStatus = STATUS.error;
+      } else {
+        this._satStatus = STATUS.success;
+        if (action === 'resume-inheritance') {
+          this._hasOverride = false;
+        } else {
+          this._hasOverride = true;
+        }
+      }
+    } catch {
+      this._satStatus = STATUS.error;
     }
 
     this._busy = false;
@@ -305,13 +376,80 @@ class DaGlobalPublish extends LitElement {
       </div>`;
   }
 
+  renderSatelliteStatusIcon() {
+    if (!this._satStatus) return nothing;
+    if (this._satStatus === STATUS.pending) {
+      return html`<svg class="result-icon pending" viewBox="0 0 20 20">
+        <use href="/blocks/edit/img/S2_Icon_ClockPending_20_N.svg#S2_Icon_ClockPending"/>
+      </svg>`;
+    }
+    if (this._satStatus === STATUS.success) {
+      return html`<svg class="result-icon success" viewBox="0 0 20 20">
+        <use href="/blocks/edit/img/S2_Icon_CheckmarkCircle_20_N.svg#S2_Icon_CheckmarkCircle"/>
+      </svg>`;
+    }
+    return html`<svg class="result-icon error" viewBox="0 0 20 20">
+      <use href="/blocks/edit/img/S2_Icon_AlertTriangle_20_N.svg#S2_Icon_AlertTriangle"/>
+    </svg>`;
+  }
+
+  renderSatelliteView() {
+    const canResume = this._action === 'resume-inheritance' && !this._hasOverride;
+
+    return html`
+      <div class="sat-status-line">
+        <span class="sat-status-label">Base site:</span>
+        <span class="sat-status-value">${this._baseSite}</span>
+        ${this.renderSatelliteStatusIcon()}
+      </div>
+      <div class="action-row">
+        <div class="form-row">
+          <label>Action</label>
+          <div class="select-wrapper">
+            <select class="action-select"
+              aria-label="Action"
+              .value=${this._action}
+              ?disabled=${this._busy}
+              @change=${(e) => { this._action = e.target.value; this._satStatus = undefined; }}>
+              <option value="sync-from-base">Sync from Base</option>
+              <option value="resume-inheritance">Resume inheritance</option>
+            </select>
+          </div>
+        </div>
+        ${this._action === 'sync-from-base' ? html`
+          <div class="form-row">
+            <label>Sync mode</label>
+            <div class="select-wrapper">
+              <select class="action-select"
+                aria-label="Sync mode"
+                .value=${this._syncMode}
+                ?disabled=${this._busy}
+                @change=${(e) => { this._syncMode = e.target.value; }}>
+                <option value="merge">Merge</option>
+                <option value="override">Override</option>
+              </select>
+            </div>
+          </div>` : nothing}
+      </div>
+      ${this.renderConfirm()}
+      <div class="form-actions">
+        <sl-button class="accent"
+          @click=${() => this.apply()}
+          ?disabled=${this._busy || canResume}>Apply</sl-button>
+      </div>`;
+  }
+
   render() {
     if (this._loading) {
       return html`<p class="loading">${this._loading}</p>`;
     }
 
+    if (this._role === 'satellite') {
+      return this.renderSatelliteView();
+    }
+
     if (!this._satellites?.length) {
-      return html`<p class="no-satellites">No satellite sites configured for this base.</p>`;
+      return html`<p class="no-satellites">No satellite sites configured.</p>`;
     }
 
     return html`

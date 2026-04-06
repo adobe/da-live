@@ -15,6 +15,24 @@
   color: var(--s2-gray-600, #717171);
 }
 
+/* --- Satellite status line --- */
+
+.sat-status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--s2-gray-800, #292929);
+}
+
+.sat-status-label {
+  color: var(--s2-gray-600, #717171);
+}
+
+.sat-status-value {
+  font-weight: 600;
+}
+
 /* --- Action row (side-by-side dropdowns) --- */
 
 .action-row {

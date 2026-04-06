@@ -8,7 +8,6 @@ import {
   getAemHrefs,
 } from '../utils/helpers.js';
 import { delay, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
-import { getBaseSite, isPageLocal } from '../../shared/msm.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -44,7 +43,6 @@ export default class DaTitle extends LitElement {
     _actions: { state: true },
     _status: { state: true },
     _dialog: { state: true },
-    _msmBadge: { state: true },
   };
 
   constructor() {
@@ -89,7 +87,6 @@ export default class DaTitle extends LitElement {
     this._scheduled = undefined;
     this._configs = undefined;
     this._actions = {};
-    this._msmBadge = undefined;
   }
 
   // Run setup after a short delay.
@@ -114,17 +111,7 @@ export default class DaTitle extends LitElement {
     if (path) {
       this._aemHrefs = await getAemHrefs({ path: fullpath });
       this._scheduled = await this.getSchedule(org, site, path);
-      this.checkMsmStatus(org, site, path);
     }
-  }
-
-  async checkMsmStatus(org, site, pagePath) {
-    const baseSite = await getBaseSite(org, site);
-    if (!baseSite) return;
-    const local = await isPageLocal(org, site, pagePath);
-    this._msmBadge = local
-      ? { type: 'overridden', baseSite }
-      : { type: 'inherited', baseSite };
   }
 
   async getSchedule(org, site, path) {
@@ -337,17 +324,6 @@ export default class DaTitle extends LitElement {
     return !this.permissions.some((permission) => permission === 'write');
   }
 
-  renderMsmBadge() {
-    if (!this._msmBadge) return nothing;
-    const { type, baseSite } = this._msmBadge;
-    const isInherited = type === 'inherited';
-    const label = isInherited ? 'Inherited' : 'Overridden';
-    const title = isInherited
-      ? `This page is inherited from ${baseSite}`
-      : `This page overrides the base (${baseSite})`;
-    return html`<span class="msm-badge msm-badge-${type}" title="${title}">${label}</span>`;
-  }
-
   renderActions() {
     if (!this._actions?.available) return nothing;
 
@@ -418,7 +394,7 @@ export default class DaTitle extends LitElement {
           <a
             href="/#${this.details.parent}"
             class="da-title-name-label">${this.details.parentName}</a>
-          <h1>${this.details.name}${this.renderMsmBadge()}</h1>
+          <h1>${this.details.name}</h1>
         </div>
         <div class="da-title-collab-actions-wrapper">
           ${this.collabStatus ? this.renderCollab() : nothing}
