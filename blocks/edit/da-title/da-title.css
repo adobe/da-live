@@ -10,6 +10,30 @@
 h1 {
   position: relative;
   margin: 0 0 21px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.msm-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: default;
+  vertical-align: middle;
+}
+
+.msm-badge-inherited {
+  color: #147b3a;
+  background: #e6f4ea;
+}
+
+.msm-badge-overridden {
+  color: #0d57af;
+  background: #e8f0fe;
 }
 
 button {

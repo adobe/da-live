@@ -27,6 +27,12 @@ const OOTB_ACTIONS = [
     icon: '/blocks/edit/img/S2_Icon_Target_20_N.svg#S2_Icon_Target',
     optional: true,
   },
+  {
+    title: 'Multi-site Manager',
+    render: async (details) => (await import('./actions/global-publish/global-publish.js')).default(details),
+    icon: '/blocks/edit/img/S2_Icon_GlobeGrid_20_N.svg#S2_Icon_GlobeGrid',
+    optional: true,
+  },
 ];
 
 export default class DaPrepare extends LitElement {
