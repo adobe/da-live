@@ -22,7 +22,7 @@ const ACTIONS = {
   reset: { label: 'Resume inheritance', scope: 'custom' },
 };
 
-class DaGlobalPublish extends LitElement {
+class DaMsm extends LitElement {
   static properties = {
     details: { attribute: false },
     _satellites: { state: true },
@@ -36,16 +36,48 @@ class DaGlobalPublish extends LitElement {
     _baseSite: { state: true },
     _hasOverride: { state: true },
     _satStatus: { state: true },
+    _openPicker: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    this._loading = 'Loading\u2026';
     this._selected = new Set();
     this._action = 'preview';
     this._syncMode = SYNC_MODE.merge;
     this._busy = false;
+    this._openPicker = null;
+    this._handleOutsidePickerClick = this._handleOutsidePickerClick.bind(this);
     this.loadSatellites();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('pointerdown', this._handleOutsidePickerClick);
+  }
+
+  _handleOutsidePickerClick(e) {
+    if (!e.composedPath().includes(this)) {
+      this._openPicker = null;
+      document.removeEventListener('pointerdown', this._handleOutsidePickerClick);
+    }
+  }
+
+  togglePicker(name) {
+    if (this._openPicker === name) {
+      this._openPicker = null;
+      document.removeEventListener('pointerdown', this._handleOutsidePickerClick);
+    } else {
+      this._openPicker = name;
+      document.addEventListener('pointerdown', this._handleOutsidePickerClick);
+    }
+  }
+
+  selectPickerOption(name, value, setter) {
+    setter(value);
+    this._openPicker = null;
+    document.removeEventListener('pointerdown', this._handleOutsidePickerClick);
   }
 
   async loadSatellites() {
@@ -313,43 +345,85 @@ class DaGlobalPublish extends LitElement {
       </div>`;
   }
 
+  renderPicker(name, label, value, options, setter) {
+    const isOpen = this._openPicker === name;
+    const selectedLabel = options
+      .flatMap((o) => o.items || [o])
+      .find((o) => o.value === value)?.label || '';
+
+    return html`
+      <div class="form-row">
+        <label>${label}</label>
+        <div class="picker-wrapper">
+          <button class="picker-trigger ${isOpen ? 'open' : ''}"
+            aria-haspopup="listbox"
+            aria-expanded=${isOpen}
+            ?disabled=${this._busy}
+            @click=${() => this.togglePicker(name)}>
+            <span class="picker-label">${selectedLabel}</span>
+            <svg class="picker-chevron" viewBox="0 0 10 10">
+              <path d="M1 3.5 5 7.5 9 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          ${isOpen ? html`
+            <ul class="picker-menu" role="listbox" aria-label=${label}>
+              ${options.map((group) => {
+    if (group.items) {
+      return html`
+                    <li class="picker-group-header" role="presentation">${group.heading}</li>
+                    ${group.items.map((opt) => html`
+                      <li class="picker-item ${opt.value === value ? 'selected' : ''}"
+                        role="option"
+                        aria-selected=${opt.value === value}
+                        @click=${() => this.selectPickerOption(name, opt.value, setter)}>
+                        <svg class="picker-checkmark" viewBox="0 0 10 10">
+                          <path d="M1.5 5.5 3.5 7.5 8.5 2.5" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>${opt.label}</span>
+                      </li>`)}`;
+    }
+    return html`
+                  <li class="picker-item ${group.value === value ? 'selected' : ''}"
+                    role="option"
+                    aria-selected=${group.value === value}
+                    @click=${() => this.selectPickerOption(name, group.value, setter)}>
+                    <svg class="picker-checkmark" viewBox="0 0 10 10">
+                      <path d="M1.5 5.5 3.5 7.5 8.5 2.5" fill="none" stroke="currentColor"
+                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>${group.label}</span>
+                  </li>`;
+  })}
+            </ul>` : nothing}
+        </div>
+      </div>`;
+  }
+
   renderActionControls() {
+    const actionOptions = [
+      { heading: 'Inherited sites', items: [
+        { value: 'preview', label: 'Preview' },
+        { value: 'publish', label: 'Publish' },
+        { value: 'break', label: 'Cancel inheritance' },
+      ] },
+      { heading: 'Custom sites', items: [
+        { value: 'sync', label: 'Sync to satellite' },
+        { value: 'reset', label: 'Resume inheritance' },
+      ] },
+    ];
+
+    const syncOptions = [
+      { value: 'merge', label: 'Merge' },
+      { value: 'override', label: 'Override' },
+    ];
+
     return html`
       <div class="action-row">
-        <div class="form-row">
-          <label>Action</label>
-          <div class="select-wrapper">
-            <select class="action-select"
-              aria-label="Action"
-              .value=${this._action}
-              ?disabled=${this._busy}
-              @change=${(e) => { this._action = e.target.value; }}>
-              <optgroup label="Inherited sites">
-                <option value="preview">Preview</option>
-                <option value="publish">Publish</option>
-                <option value="break">Cancel inheritance</option>
-              </optgroup>
-              <optgroup label="Custom sites">
-                <option value="sync">Sync to satellite</option>
-                <option value="reset">Resume inheritance</option>
-              </optgroup>
-            </select>
-          </div>
-        </div>
-        ${this._action === 'sync' ? html`
-          <div class="form-row">
-            <label>Sync mode</label>
-            <div class="select-wrapper">
-              <select class="action-select"
-                aria-label="Sync mode"
-                .value=${this._syncMode}
-                ?disabled=${this._busy}
-                @change=${(e) => { this._syncMode = e.target.value; }}>
-                <option value="merge">Merge</option>
-                <option value="override">Override</option>
-              </select>
-            </div>
-          </div>` : nothing}
+        ${this.renderPicker('action', 'Action', this._action, actionOptions,
+    (v) => { this._action = v; })}
+        ${this._action === 'sync' ? this.renderPicker('syncMode', 'Sync mode', this._syncMode, syncOptions,
+    (v) => { this._syncMode = v; }) : nothing}
       </div>`;
   }
 
@@ -396,6 +470,16 @@ class DaGlobalPublish extends LitElement {
   renderSatelliteView() {
     const canResume = this._action === 'resume-inheritance' && !this._hasOverride;
 
+    const satActionOptions = [
+      { value: 'sync-from-base', label: 'Sync from Base' },
+      { value: 'resume-inheritance', label: 'Resume inheritance' },
+    ];
+
+    const syncOptions = [
+      { value: 'merge', label: 'Merge' },
+      { value: 'override', label: 'Override' },
+    ];
+
     return html`
       <div class="sat-status-line">
         <span class="sat-status-label">Base site:</span>
@@ -403,33 +487,10 @@ class DaGlobalPublish extends LitElement {
         ${this.renderSatelliteStatusIcon()}
       </div>
       <div class="action-row">
-        <div class="form-row">
-          <label>Action</label>
-          <div class="select-wrapper">
-            <select class="action-select"
-              aria-label="Action"
-              .value=${this._action}
-              ?disabled=${this._busy}
-              @change=${(e) => { this._action = e.target.value; this._satStatus = undefined; }}>
-              <option value="sync-from-base">Sync from Base</option>
-              <option value="resume-inheritance">Resume inheritance</option>
-            </select>
-          </div>
-        </div>
-        ${this._action === 'sync-from-base' ? html`
-          <div class="form-row">
-            <label>Sync mode</label>
-            <div class="select-wrapper">
-              <select class="action-select"
-                aria-label="Sync mode"
-                .value=${this._syncMode}
-                ?disabled=${this._busy}
-                @change=${(e) => { this._syncMode = e.target.value; }}>
-                <option value="merge">Merge</option>
-                <option value="override">Override</option>
-              </select>
-            </div>
-          </div>` : nothing}
+        ${this.renderPicker('action', 'Action', this._action, satActionOptions,
+    (v) => { this._action = v; this._satStatus = undefined; })}
+        ${this._action === 'sync-from-base' ? this.renderPicker('syncMode', 'Sync mode', this._syncMode, syncOptions,
+    (v) => { this._syncMode = v; }) : nothing}
       </div>
       ${this.renderConfirm()}
       <div class="form-actions">
@@ -464,10 +525,10 @@ class DaGlobalPublish extends LitElement {
   }
 }
 
-customElements.define('da-global-publish', DaGlobalPublish);
+customElements.define('da-msm', DaMsm);
 
 export default function render(details) {
-  const cmp = document.createElement('da-global-publish');
+  const cmp = document.createElement('da-msm');
   cmp.details = details;
   return cmp;
 }

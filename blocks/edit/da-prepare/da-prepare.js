@@ -29,7 +29,7 @@ const OOTB_ACTIONS = [
   },
   {
     title: 'Multi-site Manager',
-    render: async (details) => (await import('./actions/global-publish/global-publish.js')).default(details),
+    render: async (details) => (await import('./actions/msm/msm.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_GlobeGrid_20_N.svg#S2_Icon_GlobeGrid',
     optional: true,
   },
