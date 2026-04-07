@@ -1,20 +1,11 @@
-import { DA_ORIGIN } from './constants.js';
-import { daFetch } from './utils.js';
+import { DA_ORIGIN } from '../../../../shared/constants.js';
+import { daFetch, fetchDaConfigs } from '../../../../shared/utils.js';
 
-const orgCache = {};
 const configCache = {};
 
 async function fetchOrgMsmRows(org) {
-  if (orgCache[org] !== undefined) return orgCache[org];
-
-  const resp = await daFetch(`${DA_ORIGIN}/config/${org}/`);
-  if (!resp.ok) {
-    orgCache[org] = [];
-    return [];
-  }
-  const json = await resp.json();
-  orgCache[org] = json?.msm?.data || [];
-  return orgCache[org];
+  const [orgConfig] = await Promise.all(fetchDaConfigs({ org }));
+  return orgConfig?.msm?.data || [];
 }
 
 function resolveConfig(rows, site) {
@@ -97,6 +88,5 @@ export async function checkOverrides(org, satellites, pagePath) {
 }
 
 export function clearMsmCache() {
-  Object.keys(orgCache).forEach((key) => { delete orgCache[key]; });
   Object.keys(configCache).forEach((key) => { delete configCache[key]; });
 }

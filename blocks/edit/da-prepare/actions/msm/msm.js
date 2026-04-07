@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { getSatellites, getBaseSite, isPageLocal, checkOverrides } from '../../../../shared/msm.js';
+import { getSatellites, getBaseSite, isPageLocal, checkOverrides } from './config.js';
 import {
   previewSatellite,
   publishSatellite,
@@ -135,6 +135,10 @@ class DaMsm extends LitElement {
     this._selected = next;
   }
 
+  clearStatuses() {
+    this._satellites = this._satellites?.map((s) => ({ ...s, status: undefined }));
+  }
+
   updateSatStatus(site, status) {
     this._satellites = this._satellites.map(
       (s) => (s.site === site ? { ...s, status } : s),
@@ -245,7 +249,6 @@ class DaMsm extends LitElement {
                 ? { ...s, hasOverride: false, status: STATUS.success }
                 : s),
             );
-            this._selected = new Set([...this._selected, sat.site]);
           }
         }));
         break;
@@ -254,6 +257,7 @@ class DaMsm extends LitElement {
         break;
     }
 
+    this._selected = new Set();
     this._busy = false;
   }
 
@@ -448,7 +452,7 @@ class DaMsm extends LitElement {
 'Action',
 this._action,
 actionOptions,
-(v) => { this._action = v; },
+(v) => { this._action = v; this.clearStatuses(); },
 )}
         ${this._action === 'sync' ? this.renderPicker(
 'syncMode',
