@@ -7,6 +7,7 @@ import {
   createOverride,
   deleteOverride,
   mergeFromBase,
+  getSatellitePageStatus,
 } from './utils.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
@@ -228,10 +229,17 @@ class DaMsm extends LitElement {
 
       case 'reset':
         await Promise.allSettled(targets.map(async (sat) => {
+          const pageStatus = await getSatellitePageStatus(org, sat.site, path);
           const result = await deleteOverride(org, sat.site, path);
           if (result.error) {
             this.updateSatStatus(sat.site, STATUS.error);
           } else {
+            if (pageStatus.live) {
+              await previewSatellite(org, sat.site, path);
+              await publishSatellite(org, sat.site, path);
+            } else if (pageStatus.preview) {
+              await previewSatellite(org, sat.site, path);
+            }
             this._satellites = this._satellites.map(
               (s) => (s.site === sat.site
                 ? { ...s, hasOverride: false, status: STATUS.success }
@@ -275,7 +283,16 @@ class DaMsm extends LitElement {
           ? await mergeFromBase(org, this._baseSite, site, path)
           : await createOverride(org, this._baseSite, site, path);
       } else if (action === 'resume-inheritance') {
+        const pageStatus = await getSatellitePageStatus(org, site, path);
         result = await deleteOverride(org, site, path);
+        if (!result?.error) {
+          if (pageStatus.live) {
+            await previewSatellite(org, site, path);
+            await publishSatellite(org, site, path);
+          } else if (pageStatus.preview) {
+            await previewSatellite(org, site, path);
+          }
+        }
       }
 
       if (result?.error) {
@@ -402,15 +419,21 @@ class DaMsm extends LitElement {
 
   renderActionControls() {
     const actionOptions = [
-      { heading: 'Inherited sites', items: [
-        { value: 'preview', label: 'Preview' },
-        { value: 'publish', label: 'Publish' },
-        { value: 'break', label: 'Cancel inheritance' },
-      ] },
-      { heading: 'Custom sites', items: [
-        { value: 'sync', label: 'Sync to satellite' },
-        { value: 'reset', label: 'Resume inheritance' },
-      ] },
+      {
+        heading: 'Inherited sites',
+        items: [
+          { value: 'preview', label: 'Preview' },
+          { value: 'publish', label: 'Publish' },
+          { value: 'break', label: 'Cancel inheritance' },
+        ],
+      },
+      {
+        heading: 'Custom sites',
+        items: [
+          { value: 'sync', label: 'Sync to satellite' },
+          { value: 'reset', label: 'Resume inheritance' },
+        ],
+      },
     ];
 
     const syncOptions = [
@@ -420,10 +443,20 @@ class DaMsm extends LitElement {
 
     return html`
       <div class="action-row">
-        ${this.renderPicker('action', 'Action', this._action, actionOptions,
-    (v) => { this._action = v; })}
-        ${this._action === 'sync' ? this.renderPicker('syncMode', 'Sync mode', this._syncMode, syncOptions,
-    (v) => { this._syncMode = v; }) : nothing}
+        ${this.renderPicker(
+'action',
+'Action',
+this._action,
+actionOptions,
+(v) => { this._action = v; },
+)}
+        ${this._action === 'sync' ? this.renderPicker(
+'syncMode',
+'Sync mode',
+this._syncMode,
+syncOptions,
+(v) => { this._syncMode = v; },
+) : nothing}
       </div>`;
   }
 
@@ -487,10 +520,20 @@ class DaMsm extends LitElement {
         ${this.renderSatelliteStatusIcon()}
       </div>
       <div class="action-row">
-        ${this.renderPicker('action', 'Action', this._action, satActionOptions,
-    (v) => { this._action = v; this._satStatus = undefined; })}
-        ${this._action === 'sync-from-base' ? this.renderPicker('syncMode', 'Sync mode', this._syncMode, syncOptions,
-    (v) => { this._syncMode = v; }) : nothing}
+        ${this.renderPicker(
+'action',
+'Action',
+this._action,
+satActionOptions,
+(v) => { this._action = v; this._satStatus = undefined; },
+)}
+        ${this._action === 'sync-from-base' ? this.renderPicker(
+'syncMode',
+'Sync mode',
+this._syncMode,
+syncOptions,
+(v) => { this._syncMode = v; },
+) : nothing}
       </div>
       ${this.renderConfirm()}
       <div class="form-actions">

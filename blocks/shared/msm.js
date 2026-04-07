@@ -1,30 +1,63 @@
 import { DA_ORIGIN } from './constants.js';
 import { daFetch } from './utils.js';
 
+const orgCache = {};
 const configCache = {};
+
+async function fetchOrgMsmRows(org) {
+  if (orgCache[org] !== undefined) return orgCache[org];
+
+  const resp = await daFetch(`${DA_ORIGIN}/config/${org}/`);
+  if (!resp.ok) {
+    orgCache[org] = [];
+    return [];
+  }
+  const json = await resp.json();
+  orgCache[org] = json?.msm?.data || [];
+  return orgCache[org];
+}
+
+function resolveConfig(rows, site) {
+  const hasBaseCol = rows[0].base !== undefined;
+
+  if (hasBaseCol) {
+    const baseRows = rows.filter((row) => row.base === site);
+    const satelliteRows = baseRows.filter((row) => row.satellite);
+    if (satelliteRows.length) {
+      const baseEntry = baseRows.find((row) => !row.satellite);
+      const satellites = satelliteRows.reduce((acc, row) => {
+        acc[row.satellite] = { label: row.title };
+        return acc;
+      }, {});
+      return { role: 'base', baseLabel: baseEntry?.title, satellites };
+    }
+    const satRow = rows.find((row) => row.satellite === site);
+    if (satRow) {
+      const baseEntry = rows.find((row) => row.base === satRow.base && !row.satellite);
+      return { role: 'satellite', base: satRow.base, baseLabel: baseEntry?.title };
+    }
+    return null;
+  }
+
+  const isSatellite = rows.some((row) => row.satellite === site);
+  if (isSatellite) return null;
+
+  const satellites = rows.reduce((acc, row) => {
+    if (row.satellite) acc[row.satellite] = { label: row.title };
+    return acc;
+  }, {});
+  return Object.keys(satellites).length ? { role: 'base', satellites } : null;
+}
 
 async function fetchSiteConfig(org, site) {
   const key = `${org}/${site}`;
   if (configCache[key]) return configCache[key];
 
-  const resp = await daFetch(`${DA_ORIGIN}/source/${org}/${site}/.da/msm.json`);
-  if (!resp.ok) return null;
-  const json = await resp.json();
-  const rows = json.data || [];
+  const rows = await fetchOrgMsmRows(org);
   if (!rows.length) return null;
 
-  let config;
-  if (rows[0].satellite !== undefined) {
-    const satellites = rows.reduce((acc, row) => {
-      acc[row.satellite] = { label: row.satelliteLabel };
-      return acc;
-    }, {});
-    config = { role: 'base', satellites };
-  } else if (rows[0].base !== undefined) {
-    config = { role: 'satellite', base: rows[0].base, baseLabel: rows[0].baseLabel };
-  } else {
-    return null;
-  }
+  const config = resolveConfig(rows, site);
+  if (!config) return null;
 
   configCache[key] = config;
   return config;
@@ -64,5 +97,6 @@ export async function checkOverrides(org, satellites, pagePath) {
 }
 
 export function clearMsmCache() {
+  Object.keys(orgCache).forEach((key) => { delete orgCache[key]; });
   Object.keys(configCache).forEach((key) => { delete configCache[key]; });
 }

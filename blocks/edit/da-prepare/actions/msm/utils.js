@@ -42,6 +42,18 @@ export async function createOverride(org, base, satellite, pagePath) {
   return { ok: true };
 }
 
+export async function getSatellitePageStatus(org, satellite, pagePath) {
+  const aemPath = pagePath.replace('.html', '');
+  const url = `${AEM_ADMIN}/status/${org}/${satellite}/main${aemPath}`;
+  const resp = await daFetch(url);
+  if (!resp.ok) return { preview: false, live: false };
+  const json = await resp.json();
+  return {
+    preview: json.preview?.status === 200,
+    live: json.live?.status === 200,
+  };
+}
+
 export async function deleteOverride(org, satellite, pagePath) {
   const satPath = `${DA_ORIGIN}/source/${org}/${satellite}${pagePath}.html`;
   const resp = await daFetch(satPath, { method: 'DELETE' });
