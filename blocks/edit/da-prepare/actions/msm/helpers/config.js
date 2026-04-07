@@ -1,5 +1,5 @@
-import { DA_ORIGIN } from '../../../../shared/constants.js';
-import { daFetch, fetchDaConfigs } from '../../../../shared/utils.js';
+import { DA_ORIGIN } from '../../../../../shared/constants.js';
+import { daFetch, fetchDaConfigs } from '../../../../../shared/utils.js';
 
 const configCache = {};
 

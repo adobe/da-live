@@ -1,6 +1,6 @@
-import { DA_ORIGIN } from '../../../../shared/constants.js';
-import { daFetch } from '../../../../shared/utils.js';
-import { getNx } from '../../../../../scripts/utils.js';
+import { DA_ORIGIN } from '../../../../../shared/constants.js';
+import { daFetch } from '../../../../../shared/utils.js';
+import { getNx } from '../../../../../../scripts/utils.js';
 
 const AEM_ADMIN = 'https://admin.hlx.page';
 

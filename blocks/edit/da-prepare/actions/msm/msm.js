@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { getSatellites, getBaseSite, isPageLocal, checkOverrides } from './config.js';
+import { getSatellites, getBaseSite, isPageLocal, checkOverrides } from './helpers/config.js';
 import {
   previewSatellite,
   publishSatellite,
@@ -8,19 +8,19 @@ import {
   deleteOverride,
   mergeFromBase,
   getSatellitePageStatus,
-} from './utils.js';
+} from './helpers/utils.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
 const STATUS = { pending: 'pending', success: 'success', error: 'error' };
 const SYNC_MODE = { override: 'override', merge: 'merge' };
 
-const ACTIONS = {
-  preview: { label: 'Preview', scope: 'inherited' },
-  publish: { label: 'Publish', scope: 'inherited' },
-  break: { label: 'Cancel inheritance', scope: 'inherited' },
-  sync: { label: 'Sync to satellite', scope: 'custom' },
-  reset: { label: 'Resume inheritance', scope: 'custom' },
+const ACTION_SCOPE = {
+  preview: 'inherited',
+  publish: 'inherited',
+  break: 'inherited',
+  sync: 'custom',
+  reset: 'custom',
 };
 
 class DaMsm extends LitElement {
@@ -119,7 +119,7 @@ class DaMsm extends LitElement {
   }
 
   get _targets() {
-    const scope = ACTIONS[this._action]?.scope;
+    const scope = ACTION_SCOPE[this._action];
     const pool = scope === 'custom' ? this._custom : this._inherited;
     return pool.filter((s) => this._selected.has(s.site));
   }
@@ -334,7 +334,7 @@ class DaMsm extends LitElement {
   }
 
   renderSatellite(sat) {
-    const scope = ACTIONS[this._action]?.scope;
+    const scope = ACTION_SCOPE[this._action];
     const outOfScope = (scope === 'inherited') === sat.hasOverride;
 
     return html`
@@ -448,19 +448,19 @@ class DaMsm extends LitElement {
     return html`
       <div class="action-row">
         ${this.renderPicker(
-'action',
-'Action',
-this._action,
-actionOptions,
-(v) => { this._action = v; this.clearStatuses(); },
-)}
+          'action',
+          'Action',
+          this._action,
+          actionOptions,
+          (v) => { this._action = v; this.clearStatuses(); },
+        )}
         ${this._action === 'sync' ? this.renderPicker(
-'syncMode',
-'Sync mode',
-this._syncMode,
-syncOptions,
-(v) => { this._syncMode = v; },
-) : nothing}
+          'syncMode',
+          'Sync mode',
+          this._syncMode,
+          syncOptions,
+          (v) => { this._syncMode = v; },
+        ) : nothing}
       </div>`;
   }
 
@@ -525,19 +525,19 @@ syncOptions,
       </div>
       <div class="action-row">
         ${this.renderPicker(
-'action',
-'Action',
-this._action,
-satActionOptions,
-(v) => { this._action = v; this._satStatus = undefined; },
-)}
+          'action',
+          'Action',
+          this._action,
+          satActionOptions,
+          (v) => { this._action = v; this._satStatus = undefined; },
+        )}
         ${this._action === 'sync-from-base' ? this.renderPicker(
-'syncMode',
-'Sync mode',
-this._syncMode,
-syncOptions,
-(v) => { this._syncMode = v; },
-) : nothing}
+          'syncMode',
+          'Sync mode',
+          this._syncMode,
+          syncOptions,
+          (v) => { this._syncMode = v; },
+        ) : nothing}
       </div>
       ${this.renderConfirm()}
       <div class="form-actions">
