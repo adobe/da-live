@@ -1,6 +1,5 @@
 import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
-
-const { getNx } = await import('../../scripts/utils.js');
+import { getNx } from '../../scripts/utils.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
 const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
@@ -21,17 +20,23 @@ export async function initIms() {
   }
 }
 
+export async function getAuthToken() {
+  if (!localStorage.getItem('nx-ims')) {
+    return null;
+  }
+  const ims = await initIms();
+  return ims?.accessToken?.token || null;
+}
+
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
-  let accessToken;
-  if (localStorage.getItem('nx-ims')) {
-    ({ accessToken } = await initIms());
+  const accessToken = await getAuthToken();
+  if (accessToken) {
     const canToken = ALLOWED_TOKEN.some((origin) => new URL(url).origin === origin);
-    if (accessToken && canToken) {
-      opts.headers.Authorization = `Bearer ${accessToken.token}`;
+    if (canToken) {
+      opts.headers.Authorization = `Bearer ${accessToken}`;
       if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
-        opts.headers['x-content-source-authorization'] = `Bearer ${accessToken.token}`;
-        opts.headers.Authorization = `Bearer ${accessToken.token}`;
+        opts.headers['x-content-source-authorization'] = `Bearer ${accessToken}`;
       }
     }
   }

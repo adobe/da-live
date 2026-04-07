@@ -10,51 +10,70 @@
  * governing permissions and limitations under the License.
  */
 
-import { setNx, codeBase, decorateArea } from './utils.js';
+import { setNx, nxJS, nxCSS } from './utils.js';
+import { initIms } from '../blocks/shared/utils.js';
 
+/** Determine where to load NX from */
 const nx = setNx('/nx');
-const STYLES = '/styles/styles.css';
+const nx2 = nx.endsWith('nx2');
+
+/** Default area decoration */
+const decorateArea = ({ area = document }) => {
+  const eagerLoad = (parent, selector) => {
+    const img = parent.querySelector(selector);
+    if (!img) return;
+    img.removeAttribute('loading');
+    img.fetchPriority = 'high';
+  };
+
+  eagerLoad(area, 'img');
+
+  if (!nx2) return;
+  // Prefix DA blocks so NX knows to load from DA
+  // TODO: NX2 forward compatibility, remove after upgrade
+  area.querySelectorAll('div[class]').forEach((block) => {
+    const { className } = block;
+
+    // If its an nx block, remove the prefix, otherwise add 'da-'
+    block.className = className.startsWith('nx-')
+      ? className.replace('nx-', '') : `da-${className}`;
+  });
+};
+
+// Who can provide blocks
+const providers = { da: window.location.origin };
+
+/** Setup the NX config object */
 const CONFIG = {
-  codeBase,
+  providers,
+  hostnames: ['da.live', 'da.page'],
+  codeBase: import.meta.url.replace('/scripts/scripts.js', ''),
   imsClientId: 'darkalley',
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
   decorateArea,
 };
 
-/*
- * ------------------------------------------------------------
- * Edit below at your own risk
- * ------------------------------------------------------------
- */
-
-const { loadArea, setConfig } = await import(`${nx}/scripts/nexter.js`);
-setConfig(CONFIG);
-
-// TODO: Remove this once content is fixed for Nexter
-const headerMeta = document.head.querySelector('[content="aec-shell"]');
-if (headerMeta) headerMeta.remove();
+const { loadArea, setConfig } = await import(`${nx}${nxJS}`);
 
 function loadStyles() {
-  const paths = [`${nx}/styles/nexter.css`];
-  if (STYLES) { paths.push(STYLES); }
-  paths.forEach((path) => {
-    const link = document.createElement('link');
-    link.setAttribute('rel', 'stylesheet');
-    link.setAttribute('href', path);
-    document.head.appendChild(link);
-  });
+  const link = document.createElement('link');
+  link.setAttribute('rel', 'stylesheet');
+  link.setAttribute('href', `${nx}${nxCSS}`);
+  document.head.appendChild(link);
 }
 
 export default async function loadPage() {
+  loadStyles();
+  initIms();
+
+  if (!nx2) {
+    // pin to light scheme
+    document.body.classList.add('light-scheme');
+    // nx2 decorates automatically
+    decorateArea({});
+  }
+  await setConfig(CONFIG);
   await loadArea();
 }
 
-loadStyles();
-decorateArea();
 loadPage();
-
-// Side-effects
-(async function loadDa() {
-  if (!new URL(window.location.href).searchParams.get('dapreview')) return;
-  import('https://da.live/scripts/dapreview.js').then(({ default: daPreview }) => daPreview(loadPage));
-}());

@@ -1,7 +1,9 @@
-import { Plugin } from 'da-y-wrapper';
+import { Plugin, PluginKey } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
 import { DA_ORIGIN, CON_ORIGIN } from '../../../shared/constants.js';
+
+const base64UploaderKey = new PluginKey('base64Uploader');
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 
@@ -19,6 +21,7 @@ function makeHash(string) {
  */
 export default function base64Uploader() {
   return new Plugin({
+    key: base64UploaderKey,
     props: {
       transformPastedHTML: (html) => {
         try {

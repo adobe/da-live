@@ -307,6 +307,11 @@ export default class DaList extends LitElement {
         if (resp.status === 204) {
           break;
         }
+        if (!resp.ok) {
+          const err = new Error(`Unexpected status: ${resp.status}`);
+          err.status = resp.status;
+          throw err;
+        }
         const json = await resp.json();
         continuationToken = json?.continuationToken;
       } while (continuationToken);
@@ -326,8 +331,8 @@ export default class DaList extends LitElement {
       }
     } catch (e) {
       // The assumption here is that the user does not have permission to write to the trash
-      if (moveToTrash) {
-        this.handleItemAction({ item, type: 'delete' });
+      if (moveToTrash && e.status === 403) {
+        await this.handleItemAction({ item, type: 'delete' });
       } else {
         this._itemErrors.push({ ...item, message: `Couldn't ${type} item` });
       }

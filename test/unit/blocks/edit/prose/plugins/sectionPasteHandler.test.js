@@ -276,7 +276,7 @@ describe('Section paste handler', () => {
     expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
   });
 
-  it('Test transform pasted dashes 2', async () => {
+  it('Test transform pasted dashes 2', () => {
     const json = {
       content: [
         {
@@ -374,5 +374,66 @@ describe('Section paste handler', () => {
 
     const newJSON = JSON.stringify(newSlice.content.toJSON());
     expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
+  });
+});
+
+describe('Non-standard space detection on paste', () => {
+  function mockEvent(text = '', html = '') {
+    return {
+      clipboardData: {
+        getData: (type) => {
+          if (type === 'text/plain') return text;
+          if (type === 'text/html') return html;
+          return '';
+        },
+      },
+    };
+  }
+
+  const dummySlice = Slice.fromJSON(baseSchema, {
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'test' }] }],
+    openStart: 1,
+    openEnd: 1,
+  });
+
+  it('handlePaste returns false when no non-standard spaces in text', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handlePaste({}, mockEvent('hello world'), dummySlice);
+    expect(result).to.be.false;
+  });
+
+  it('handlePaste returns true when NBSP found in plain text', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handlePaste({}, mockEvent('hello\u00A0world'), dummySlice);
+    expect(result).to.be.true;
+  });
+
+  it('handlePaste returns true when non-standard space found in HTML', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handlePaste(
+      {},
+      mockEvent('hello world', '<p>hello\u2003world</p>'),
+      dummySlice,
+    );
+    expect(result).to.be.true;
+  });
+
+  it('handlePaste detects all non-standard Unicode space types', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const spaces = [
+      '\u00A0', '\u1680', '\u2000', '\u2001', '\u2002', '\u2003',
+      '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009',
+      '\u200A', '\u202F', '\u205F', '\u3000',
+    ];
+    spaces.forEach((sp) => {
+      const result = plugin.props.handlePaste({}, mockEvent(`a${sp}b`), dummySlice);
+      expect(result).to.be.true;
+    });
+  });
+
+  it('handlePaste returns false when event has no clipboardData', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handlePaste({}, {}, dummySlice);
+    expect(result).to.be.false;
   });
 });
