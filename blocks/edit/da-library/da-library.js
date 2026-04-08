@@ -367,7 +367,7 @@ class DaLibrary extends LitElement {
               <button
                 class="tooltip"
                 @click=${() => this.handleToolTip(item)}>
-                <svg class="icon"><use href="#spectrum-InfoOutline"/></svg>
+                <svg class="icon"><use href="#S2_Icon_InfoCircle"/></svg>
               </button>` : nothing}
               <button class="add" @click=${() => this.handleItemClick('blocks', item, true)}>
                 <svg class="icon"><use href="#S2_Icon_Experience_Add"/></svg>
