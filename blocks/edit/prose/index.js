@@ -24,9 +24,10 @@ import {
 
 import { getSchema } from 'da-parser';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getAuthToken } from '../../shared/utils.js';
+import { daFetch, generateColor, getCurrentUser, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { initCommentsStore } from './plugins/comments/helpers/store.js';
 
 async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
@@ -73,6 +74,7 @@ async function loadCustomPlugins() {
     { default: toggleLibrary },
     { default: slashMenu },
     { default: linkMenu },
+    { default: commentPlugin },
   ] = await Promise.all([
     import('./plugins/keyHandlers.js'),
     import('./plugins/menu/menu.js'),
@@ -88,6 +90,7 @@ async function loadCustomPlugins() {
     import('../da-library/da-library.js'),
     import('./plugins/slashMenu/slashMenu.js'),
     import('./plugins/linkMenu/linkMenu.js'),
+    import('./plugins/comments/commentPlugin.js'),
   ]);
 
   return {
@@ -106,10 +109,12 @@ async function loadCustomPlugins() {
     toggleLibrary,
     slashMenu,
     linkMenu,
+    commentPlugin,
   };
 }
 
 let lastCursorPosition = null;
+let toggleCommentsKeydownHandler = null;
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
@@ -300,26 +305,6 @@ function registerErrorHandler(ydoc) {
   });
 }
 
-function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40, 60]) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i += 1) {
-    // eslint-disable-next-line no-bitwise
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  hash = Math.abs(hash);
-  const normalizeHash = (min, max) => Math.floor((hash % (max - min)) + min);
-  const h = normalizeHash(hRange[0], hRange[1]);
-  const s = normalizeHash(sRange[0], sRange[1]);
-  const l = normalizeHash(lRange[0], lRange[1]) / 100;
-  const a = (s * Math.min(l, 1 - l)) / 100;
-  const f = (n) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
-
 function storeCursorPosition(view) {
   const { from, to } = view.state.selection;
   lastCursorPosition = { from, to };
@@ -350,23 +335,21 @@ function addSyncedListener(wsProvider, canWrite) {
 
 function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
   pluginsPromise.then((plugins) => {
-    const {
-      syncPlugin,
-      cursorPlugin,
-    } = basePlugins;
+    const { syncPlugin, cursorPlugin } = basePlugins;
 
     const undoPlugin = yUndoPlugin();
     const trackPlugin = trackCursorAndChanges();
     const buildKeymapPlugin = keymap(buildKeymap(schema));
     const baseKeymapPlugin = keymap(baseKeymap);
     const gapCursorPlugin = gapCursor();
-    const tableEditingPlugin = tableEditing();
+    const tableEditingPlugin = tableEditing({ allowTableNodeSelection: true });
 
     const pluginList = [
       syncPlugin,
       cursorPlugin,
       undoPlugin,
       trackPlugin,
+      plugins.commentPlugin(),
       plugins.slashMenu(),
       plugins.linkMenu(),
       plugins.tableSelectHandle(),
@@ -418,8 +401,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
   });
 }
 
-// eslint-disable-next-line no-unused-vars
-export default async function initProse({ path, permissions, doc, daContent, wsPromise }) {
+export default async function initProse({ path, permissions, daContent, wsPromise, docId }) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) {
     window.view.destroy();
@@ -442,24 +424,40 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
-  if (window.adobeIMS?.isSignedInUser()) {
-    window.adobeIMS.getProfile().then((profile) => {
-      wsProvider.awareness.setLocalStateField('user', {
-        color: generateColor(profile.email || profile.userId),
-        name: profile.displayName,
-        id: profile.userId,
-      });
-    });
-  } else {
+  getCurrentUser().then((currentUser) => {
     wsProvider.awareness.setLocalStateField('user', {
-      color: generateColor(`${wsProvider.awareness.clientID}`),
-      name: 'Anonymous',
-      id: `anonymous-${wsProvider.awareness.clientID}}`,
+      color: generateColor(currentUser.email || currentUser.id),
+      name: currentUser.name,
+      id: currentUser.id,
     });
-  }
+  });
+
+  const docName = `${DA_ORIGIN}${new URL(path).pathname}`;
+  const whenSynced = new Promise((resolve) => { onWsSync(wsProvider, resolve); });
+  const map = ydoc.getMap('comments');
+  const commentsStore = initCommentsStore(
+    { map, docName, docId, whenSynced, awareness: wsProvider.awareness },
+  );
 
   const syncPlugin = ySyncPlugin(yXmlFragment);
   const cursorPlugin = yCursorPlugin(wsProvider.awareness);
+
+  // the shortcuts in the keymap only work when the editor is editable and focused.
+  // need to do it here for the shortcut to work for read-only users.
+  if (toggleCommentsKeydownHandler) {
+    window.removeEventListener('keydown', toggleCommentsKeydownHandler);
+  }
+
+  toggleCommentsKeydownHandler = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyM') {
+      e.preventDefault();
+      window.view.dom.dispatchEvent(
+        new CustomEvent('togglecomments', { bubbles: true, composed: true }),
+      );
+    }
+  };
+
+  window.addEventListener('keydown', toggleCommentsKeydownHandler);
 
   let state = EditorState.create({ schema, plugins: [syncPlugin, cursorPlugin] });
 
@@ -510,4 +508,5 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   daContent.proseEl = editor;
   daContent.wsProvider = wsProvider;
+  daContent.commentsStore = commentsStore;
 }

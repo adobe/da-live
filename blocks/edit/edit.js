@@ -1,5 +1,5 @@
 import getPathDetails from '../shared/pathDetails.js';
-import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin } from '../shared/utils.js';
+import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin, getCurrentUser } from '../shared/utils.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -56,7 +56,6 @@ async function setUI(el) {
   ]);
 
   const daTitle = initArea('da-title', details, el);
-
   const daContent = initArea('da-content', details, el);
 
   if (daContent.wsProvider) {
@@ -68,15 +67,18 @@ async function setUI(el) {
 
   let permissions;
   let doc;
+  let docResp = resp;
   if (resp.status === 404) {
-    const createResp = await createDoc(details.sourceUrl);
-    permissions = createResp.permissions;
+    docResp = await createDoc(details.sourceUrl);
+    permissions = docResp.permissions;
     doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
   } else {
     permissions = resp.permissions;
     const respText = await resp.text();
     doc = DOMPARSER.parseFromString(respText, 'text/html');
   }
+
+  const docId = docResp.headers?.get('X-da-id') ?? null;
 
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
@@ -86,8 +88,6 @@ async function setUI(el) {
   // Check if the metadata div has no additional classes (or doesn't exist)
   const isDefaultMetadata = !(metadataEl?.classList.length > 1);
   if (isDefaultMetadata) {
-    // Load Default ProseMirrorEditor
-
     if (!prose) {
       prose = await prosePromise;
     }
@@ -98,9 +98,13 @@ async function setUI(el) {
       doc,
       daContent,
       wsPromise,
+      docId,
     });
   }
   // FUTURE: else load BYO Editor
+
+  const currentUser = await getCurrentUser();
+  daContent.currentUser = currentUser;
 }
 
 export default async function init(el) {

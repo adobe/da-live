@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 
 // This is needed to make a dynamic import work that is indirectly referenced
@@ -18,5 +19,24 @@ describe('da-content', () => {
     ed.disconnectWebsocket();
     expect(ed.wsProvider).to.be.undefined;
     expect(called).to.deep.equal(['disconnect']);
+  });
+
+  it('initializes with default state', () => {
+    const ed = new DaContent();
+
+    expect(ed._commentThreadCount).to.be.undefined;
+  });
+
+  it('toggles pane correctly', () => {
+    const ed = new DaContent();
+
+    ed.togglePane({ detail: 'preview' });
+    expect(ed._showPane).to.equal('preview');
+
+    ed.togglePane({ detail: 'versions' });
+    expect(ed._showPane).to.equal('versions');
+
+    ed.togglePane({ detail: 'comments' });
+    expect(ed._showPane).to.equal('comments');
   });
 });

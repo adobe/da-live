@@ -35,7 +35,7 @@ export default class DaList extends LitElement {
     _dropFiles: { state: true },
     _dropMessage: { state: true },
     _dropConflicts: { state: true },
-    _status: { state: true },
+    _toast: { state: true },
     _confirm: { state: true },
     _confirmText: { state: true },
     _unpublish: { state: true },
@@ -90,16 +90,17 @@ export default class DaList extends LitElement {
 
   async firstUpdated() {
     await import('../../shared/da-dialog/da-dialog.js');
+    await import('../../shared/da-toast/da-toast.js');
     await import('../da-actionbar/da-actionbar.js');
     this.setupObserver();
   }
 
   setStatus(text, description, type = 'info') {
     if (!text) {
-      this._status = null;
+      this._toast = null;
       return;
     }
-    this._status = { type, text, description };
+    this._toast = { type, text, description, duration: 0 };
   }
 
   handlePermissions(permissions) {
@@ -363,7 +364,7 @@ export default class DaList extends LitElement {
       return pasteItem;
     });
 
-    const showStatus = setTimeout(() => {
+    const pasteStatusTimer = setTimeout(() => {
       this.setStatus('Pasting', 'Please be patient. Pasting items with many children can take time.');
     }, 2000);
 
@@ -373,7 +374,7 @@ export default class DaList extends LitElement {
       await this.handleItemAction({ item, type });
     }));
 
-    clearTimeout(showStatus);
+    clearTimeout(pasteStatusTimer);
 
     this.setStatus();
     this.handleClear();
@@ -427,8 +428,7 @@ export default class DaList extends LitElement {
   }
 
   handleShare() {
-    this.setStatus('Copied', 'URLs have been copied to the clipboard.');
-    setTimeout(() => { this.setStatus(); }, 3000);
+    this._toast = { text: 'Copied', description: 'URLs have been copied to the clipboard.' };
   }
 
   dragenter(e) {
@@ -676,13 +676,7 @@ export default class DaList extends LitElement {
   }
 
   renderStatus() {
-    return html`
-      <div class="da-list-status">
-        <div class="da-list-status-toast da-list-status-type-${this._status.type}">
-          <p class="da-list-status-title">${this._status.text}</p>
-          ${this._status.description ? html`<p class="da-list-status-description">${this._status.description}</p>` : nothing}
-        </div>
-      </div>`;
+    return html`<da-toast .toast=${this._toast} @close=${() => { this._toast = null; }}></da-toast>`;
   }
 
   renderConfirm() {
@@ -870,7 +864,7 @@ export default class DaList extends LitElement {
         currentPath="${this.fullpath}"
         role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
-      ${this._status ? this.renderStatus() : nothing}
+      ${this._toast ? this.renderStatus() : nothing}
       ${this._confirm ? this.renderConfirm() : nothing}
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}

@@ -7,6 +7,12 @@
 .da-prose-mirror {
   --editor-btn-bg-color: #EFEFEF;
   --editor-btn-bg-color-hover: var(--s2-blue-900);
+  --comment-highlight-bg: #fff8cc; /* spectrum-yellow-100 */
+  --comment-highlight-bg-active: #f5c700; /* spectrum-yellow-400 */
+  --comment-highlight-border: #f5c700; /* spectrum-yellow-400 */
+  --comment-highlight-border-active: #e6af00; /* spectrum-yellow-500 */
+  --comment-pending-bg: #fce4ec;
+  --comment-pending-border: #f48fb1;
 
   position: relative;
   grid-area: editor;
@@ -1008,3 +1014,46 @@ da-diff-deleted, da-diff-added {
   background-color: #f0f7ff;
   border-color: var(--s2-blue-800);
 }
+
+.da-comment-highlight {
+  background-color: var(--comment-highlight-bg);
+  border-bottom: 2px solid var(--comment-highlight-border);
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:has(> img) {
+    padding: 6px;
+  }
+}
+
+.da-comment-highlight-active {
+  background-color: var(--comment-highlight-bg-active);
+  border-bottom-color: var(--comment-highlight-border-active);
+}
+
+.da-comment-highlight-pending {
+  background-color: var(--comment-pending-bg);
+  border-bottom: 2px dashed var(--comment-pending-border);
+}
+
+img.da-comment-highlight {
+  pointer-events: auto;
+  box-shadow:
+    0 0 0 6px var(--comment-highlight-bg),
+    0 2px 0 6px var(--comment-highlight-border);
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+img.da-comment-highlight-active {
+  box-shadow:
+    0 0 0 6px var(--comment-highlight-bg-active),
+    0 2px 0 6px var(--comment-highlight-border-active);
+}
+
+img.da-comment-highlight-pending {
+  box-shadow:
+    0 0 0 6px var(--comment-pending-bg),
+    0 2px 0 6px var(--comment-pending-border);
+}
+

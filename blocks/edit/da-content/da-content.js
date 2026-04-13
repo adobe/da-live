@@ -12,16 +12,26 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
+    commentsStore: { attribute: false },
     lockdownImages: { attribute: false },
+    currentUser: { attribute: false },
     _editorLoaded: { state: true },
     _showPane: { state: true },
     _versionUrl: { state: true },
     _externalUrl: { state: true },
+    _commentThreadCount: { state: true },
+    _canAddComment: { state: true },
+    _hasExplicitSelection: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+  }
+
+  renderCommentBadge() {
+    const label = this._hasExplicitSelection ? '+' : this._commentThreadCount;
+    return label ? html`<span class="da-comment-badge">${label}</span>` : nothing;
   }
 
   disconnectWebsocket() {
@@ -32,12 +42,12 @@ export default class DaContent extends LitElement {
   }
 
   async loadViews() {
-    // Only import the web components once
     if (this._editorLoaded) return;
 
     const preview = import('../da-preview/da-preview.js');
     const versions = import('../da-versions/da-versions.js');
-    await Promise.all([preview, versions]);
+    const comments = import('../da-comments/da-comments.js');
+    await Promise.all([preview, versions, comments]);
     this._editorLoaded = true;
   }
 
@@ -59,6 +69,18 @@ export default class DaContent extends LitElement {
     window.location = this._externalUrl;
   }
 
+  handleToggleComments() {
+    if (this._showPane === 'comments') {
+      if (this._canAddComment) {
+        this.shadowRoot.querySelector('da-comments')?.startAddComment();
+      } else {
+        this.togglePane({ detail: null });
+      }
+      return;
+    }
+    this.togglePane({ detail: 'comments' });
+  }
+
   togglePane({ detail }) {
     this._showPane = detail;
   }
@@ -69,6 +91,12 @@ export default class DaContent extends LitElement {
 
   handleVersionPreview({ detail }) {
     this._versionUrl = detail.url;
+  }
+
+  updated(changedProps) {
+    if (changedProps.has('commentsStore') || changedProps.has('_showPane')) {
+      this.commentsStore?.setCommentsPanelOpen(this._showPane === 'comments');
+    }
   }
 
   render() {
@@ -89,7 +117,8 @@ export default class DaContent extends LitElement {
           .proseEl=${this.proseEl}
           .wsProvider=${this.wsProvider}
           @proseloaded=${this.handleEditorLoaded}
-          @versionreset=${this.handleVersionReset}>
+          @versionreset=${this.handleVersionReset}
+          @togglecomments=${this.handleToggleComments}>
         </da-editor>
         ${this._editorLoaded ? html`
           <div class="da-editor-tabs ${this._showPane ? 'show-pane' : ''}">
@@ -101,6 +130,13 @@ export default class DaContent extends LitElement {
             <div class="da-editor-tabs-quiet">
               <button class="da-editor-tab quiet show-versions" title="Versions" @click=${() => this.togglePane({ detail: 'versions' })}>Versions</button>
               ${this._externalUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
+              <button
+                class="da-editor-tab quiet show-comments ${this._showPane === 'comments' ? 'is-active' : ''}"
+                title="${this._hasExplicitSelection ? 'Add comment' : 'Comments'}"
+                @click=${() => this.togglePane({ detail: 'comments' })}>
+                Comments
+                ${this.renderCommentBadge()}
+              </button>
             </div>
           </div>
         ` : nothing}
@@ -118,6 +154,14 @@ export default class DaContent extends LitElement {
           class="${this._showPane === 'versions' ? 'is-visible' : ''}"
           @preview=${this.handleVersionPreview}
           @close=${this.togglePane}></da-versions>
+        <da-comments
+          class="${this._showPane === 'comments' ? 'is-visible' : ''}"
+          .open=${this._showPane === 'comments'}
+          .currentUser=${this.currentUser}
+          .commentsStore=${this.commentsStore}
+          @close=${this.togglePane}
+          @requestOpen=${() => this.togglePane({ detail: 'comments' })}
+          @statusChanged=${(e) => { this._commentThreadCount = e.detail.count; this._canAddComment = e.detail.canAdd; this._hasExplicitSelection = e.detail.hasExplicitSelection; }}></da-comments>
         ` : nothing}
     `;
   }
