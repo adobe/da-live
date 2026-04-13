@@ -360,7 +360,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     const buildKeymapPlugin = keymap(buildKeymap(schema));
     const baseKeymapPlugin = keymap(baseKeymap);
     const gapCursorPlugin = gapCursor();
-    const tableEditingPlugin = tableEditing();
+    const tableEditingPlugin = tableEditing({ allowTableNodeSelection: true });
 
     const pluginList = [
       syncPlugin,
