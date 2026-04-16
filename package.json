@@ -37,7 +37,7 @@
     "@web/test-runner": "0.20.2",
     "@web/test-runner-commands": "0.9.0",
     "chai": "6.2.2",
-    "eslint": "9.39.2",
+    "eslint": "9.39.4",
     "globals": "^17.3.0",
     "sinon": "21.1.2",
     "stylelint": "17.8.0",
