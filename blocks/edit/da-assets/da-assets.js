@@ -100,7 +100,10 @@ export function buildHandleSelection(
     const { view } = window;
 
     const resetToAssetPanel = () => showAssetPanel(assetPanel, secondaryPanel);
-    const closeAndReset = () => { dialog.close(); resetToAssetPanel(); };
+    const closeAndReset = () => {
+      dialog.close();
+      resetToAssetPanel();
+    };
 
     // Author+DM mode: check asset is approved for delivery before inserting
     if (repoConfig.tierType === 'author' && repoConfig.isDmEnabled) {
