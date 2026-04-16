@@ -49,17 +49,6 @@ export default class DaDialog extends LitElement {
     this.dispatchEvent(event);
   }
 
-  get _action() {
-    if (this.action) return this.action;
-
-    // Build out a default action.
-    return {
-      label: 'OK',
-      style: 'accent',
-      click: () => this.close(),
-    };
-  }
-
   get _dialog() {
     return this.shadowRoot.querySelector('sl-dialog');
   }
@@ -73,7 +62,7 @@ export default class DaDialog extends LitElement {
     const emphasisClass = this.emphasis ? `da-dialog-${this.emphasis}` : '';
 
     return html`
-      <sl-dialog @close=${this.close}>
+      <sl-dialog overflow="hidden" @close=${this.close}>
         <div class="da-dialog-inner ${sizeClass} ${emphasisClass}" part="inner">
           <div class="da-dialog-header" part="header">
             <p class="sl-heading-m">${this.title}</p>
@@ -88,19 +77,17 @@ export default class DaDialog extends LitElement {
           <div class="da-dialog-content" part="content">
             <slot></slot>
           </div>
-          <div class="da-dialog-footer" part="footer">
+          ${this.action ? html`<div class="da-dialog-footer" part="footer">
             <div class="da-dialog-footer-left" part="footer-left">
               <slot name="footer-left"></slot>
               <p class="da-dialog-footer-message">${this.message || nothing}</p>
             </div>
-            <div class="da-dialog-footer-right" part="footer-right">
-              <slot name="footer-right">
-                <sl-button class="${this._action.style}" @click=${this._action.click} ?disabled=${this._action.disabled}>
-                  ${this._action.label}
-                </sl-button>
-              </slot>
-            </div>
-          </div>
+            <slot name="footer-right">
+              <sl-button class="${this.action.style}" @click=${this.action.click} ?disabled=${this.action.disabled}>
+                ${this.action.label}
+              </sl-button>
+            </slot>
+          </div>` : nothing}
         </div>
       </sl-dialog>
     `;

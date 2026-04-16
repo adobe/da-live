@@ -39,6 +39,7 @@ da-loc-added,
   min-height: 100px;
   background: #fff;
   overflow: clip;
+  padding-bottom: 35px;
 }
 
 .diff-tab-pane {

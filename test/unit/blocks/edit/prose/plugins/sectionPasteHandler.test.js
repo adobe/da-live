@@ -144,6 +144,98 @@ describe('Section paste handler', () => {
     expect(result).to.equal(expectedHTML);
   });
 
+  it('HTML paste with div line breaks preserves blank lines', () => {
+    const plugin = sectionPasteHandler();
+    const pasteHandler = plugin.props.transformPastedHTML;
+
+    const inputHTML = `<div class="ewa-rteLine">Line one</div>
+<div class="ewa-rteLine"><br /></div>
+<div class="ewa-rteLine">Line three</div>`;
+
+    const result = normalizeHTML(pasteHandler(inputHTML));
+
+    expect(result).to.contain('<p>Line one</p>');
+    expect(result).to.contain('</p> <p> </p> <p>');
+    expect(result).to.contain('<p>Line three</p>');
+  });
+
+  it('HTML paste with generic divs preserves blank lines', () => {
+    const plugin = sectionPasteHandler();
+    const pasteHandler = plugin.props.transformPastedHTML;
+
+    const inputHTML = `<div>Alpha</div>
+<div><br></div>
+<div>Beta</div>`;
+
+    const result = normalizeHTML(pasteHandler(inputHTML));
+
+    expect(result).to.contain('<p>Alpha</p>');
+    expect(result).to.contain('</p> <p> </p> <p>');
+    expect(result).to.contain('<p>Beta</p>');
+  });
+
+  it('HTML paste with divs but no blank lines is not modified', () => {
+    const plugin = sectionPasteHandler();
+    const pasteHandler = plugin.props.transformPastedHTML;
+
+    const inputHTML = '<div>Just a div</div><div>Another div</div>';
+    const result = pasteHandler(inputHTML);
+    expect(result).to.equal(inputHTML);
+  });
+
+  it('HTML paste with only paragraphs is not modified', () => {
+    const plugin = sectionPasteHandler();
+    const pasteHandler = plugin.props.transformPastedHTML;
+
+    const inputHTML = '<p>Just a paragraph</p>';
+    const result = pasteHandler(inputHTML);
+    expect(result).to.equal(inputHTML);
+  });
+
+  it('Plain text paste preserves blank lines', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const text = 'one\n\ntwo\n\nthree';
+    const slice = textParser(text);
+
+    const json = slice.content.toJSON();
+    expect(json).to.have.lengthOf(5);
+    expect(json[0]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'one' }] });
+    expect(json[1]).to.deep.equal({ type: 'paragraph' });
+    expect(json[2]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'two' }] });
+    expect(json[3]).to.deep.equal({ type: 'paragraph' });
+    expect(json[4]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'three' }] });
+    expect(slice.openStart).to.equal(1);
+    expect(slice.openEnd).to.equal(1);
+  });
+
+  it('Plain text paste with no blank lines', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const text = 'one\ntwo\nthree';
+    const slice = textParser(text);
+
+    const json = slice.content.toJSON();
+    expect(json).to.have.lengthOf(3);
+    expect(json[0]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'one' }] });
+    expect(json[1]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'two' }] });
+    expect(json[2]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'three' }] });
+  });
+
+  it('Plain text paste single line', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const text = 'hello world';
+    const slice = textParser(text);
+
+    const json = slice.content.toJSON();
+    expect(json).to.have.lengthOf(1);
+    expect(json[0]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'hello world' }] });
+  });
+
   it('Test transform pasted dashes', () => {
     const json = {
       content: [{
@@ -184,7 +276,7 @@ describe('Section paste handler', () => {
     expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
   });
 
-  it('Test transform pasted dashes 2', async () => {
+  it('Test transform pasted dashes 2', () => {
     const json = {
       content: [
         {
@@ -282,5 +374,66 @@ describe('Section paste handler', () => {
 
     const newJSON = JSON.stringify(newSlice.content.toJSON());
     expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
+  });
+});
+
+describe('Non-standard space detection on paste', () => {
+  function mockEvent(text = '', html = '') {
+    return {
+      clipboardData: {
+        getData: (type) => {
+          if (type === 'text/plain') return text;
+          if (type === 'text/html') return html;
+          return '';
+        },
+      },
+    };
+  }
+
+  const dummySlice = Slice.fromJSON(baseSchema, {
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'test' }] }],
+    openStart: 1,
+    openEnd: 1,
+  });
+
+  it('handlePaste returns false when no non-standard spaces in text', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handlePaste({}, mockEvent('hello world'), dummySlice);
+    expect(result).to.be.false;
+  });
+
+  it('handlePaste returns true when NBSP found in plain text', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handlePaste({}, mockEvent('hello\u00A0world'), dummySlice);
+    expect(result).to.be.true;
+  });
+
+  it('handlePaste returns true when non-standard space found in HTML', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handlePaste(
+      {},
+      mockEvent('hello world', '<p>hello\u2003world</p>'),
+      dummySlice,
+    );
+    expect(result).to.be.true;
+  });
+
+  it('handlePaste detects all non-standard Unicode space types', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const spaces = [
+      '\u00A0', '\u1680', '\u2000', '\u2001', '\u2002', '\u2003',
+      '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009',
+      '\u200A', '\u202F', '\u205F', '\u3000',
+    ];
+    spaces.forEach((sp) => {
+      const result = plugin.props.handlePaste({}, mockEvent(`a${sp}b`), dummySlice);
+      expect(result).to.be.true;
+    });
+  });
+
+  it('handlePaste returns false when event has no clipboardData', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const result = plugin.props.handlePaste({}, {}, dummySlice);
+    expect(result).to.be.false;
   });
 });

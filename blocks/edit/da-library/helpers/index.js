@@ -71,12 +71,17 @@ function getBlockTableHtml(block) {
 
 async function fetchAndParseHtml(path, isAemHosted) {
   const postfix = isAemHosted ? '.plain.html' : '';
-  const resp = await daFetch(`${path}${postfix}`);
-  if (!resp.ok) return null;
+  try {
+    const resp = await daFetch(`${path}${postfix}`);
+    if (!resp.ok) return null;
 
-  const html = await resp.text();
-  const parser = new DOMParser();
-  return parser.parseFromString(html, 'text/html');
+    const html = await resp.text();
+    const parser = new DOMParser();
+    return parser.parseFromString(html, 'text/html');
+  } catch (e) {
+    console.log(e);
+    return null;
+  }
 }
 
 function getSectionsAndBlocks(doc) {
@@ -158,8 +163,13 @@ function transformBlock(block) {
 }
 
 export async function getBlockVariants(path) {
-  const { origin } = new URL(path);
-  const isAemHosted = AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
+  let isAemHosted = false;
+  try {
+    const { origin } = new URL(path);
+    isAemHosted = AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
+  } catch {
+    // path is relative — not AEM hosted
+  }
 
   const doc = await fetchAndParseHtml(path, isAemHosted);
   if (!doc) return [];
@@ -171,7 +181,7 @@ export async function getBlockVariants(path) {
   return groupedBlocks.map(transformBlock);
 }
 
-const urlCache = new Map();
+export const urlCache = new Map();
 
 export async function getBlocks(sources) {
   try {

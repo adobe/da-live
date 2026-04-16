@@ -993,7 +993,7 @@ da-diff-deleted, da-diff-added {
   background-position: center;
   border: 1px solid #ccc;
   border-radius: 4px;
-  z-index: 100;
+  z-index: 1;
   cursor: pointer;
   display: none;
   align-items: center;

@@ -1,6 +1,8 @@
 // Derived from: https://github.com/curvenote/editor/blob/812893edbf66e7903226ff73ea1c1f3234cd483b/packages/prosemirror-codemark/src/inputRules.ts
 
-import { Plugin, TextSelection } from 'da-y-wrapper';
+import { Plugin, PluginKey, TextSelection } from 'da-y-wrapper';
+
+const codemarkKey = new PluginKey('codemark');
 
 function hasMark(markType, state, from, to) {
   if (!markType) return false;
@@ -25,6 +27,7 @@ function markText(view, match, from, to) {
 
 export default function codemark() {
   return new Plugin({
+    key: codemarkKey,
     props: {
       handleTextInput: (view, from, to, text) => {
         if (text !== '`') return false;

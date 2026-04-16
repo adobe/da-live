@@ -96,7 +96,7 @@ svg.icon {
   }
 
   &.da-dialog-quiet {
-    padding: 22px 0;
+    padding: 22px 0 0;
 
     hr {
       display: none;
@@ -112,6 +112,11 @@ svg.icon {
 
     .da-dialog-footer {
       padding: 12px 24px 0;
+    }
+
+    /* Only padd the bottom if there's a footer */
+    &:has(.da-dialog-footer) {
+      padding: 22px 0;
     }
   }
 }
