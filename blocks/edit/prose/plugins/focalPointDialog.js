@@ -29,7 +29,7 @@ const loadFaceApi = async () => {
       faceDetectorOptions = new window.faceapi.TinyFaceDetectorOptions();
       faceApiLoaded = true;
       return true;
-    } catch (error) {
+    } catch (e) {
       return false;
     }
   })();
@@ -54,7 +54,7 @@ const detectFaceCenter = async (img) => {
       x: Math.max(0, Math.min(100, centerX)),
       y: Math.max(0, Math.min(100, centerY)),
     };
-  } catch (error) {
+  } catch (e) {
     return null;
   }
 };

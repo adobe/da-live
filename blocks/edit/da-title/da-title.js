@@ -173,9 +173,15 @@ export default class DaTitle extends LitElement {
       const action = {
         style: 'accent',
         label: 'Publish anyway',
-        click: () => { this._dialog = undefined; resolve(true); },
+        click: () => {
+          this._dialog = undefined;
+          resolve(true);
+        },
       };
-      const close = () => { this._dialog = undefined; resolve(false); };
+      const close = () => {
+        this._dialog = undefined;
+        resolve(false);
+      };
 
       this._dialog = { title, content, action, close };
     });

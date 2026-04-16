@@ -79,7 +79,6 @@ async function fetchAndParseHtml(path, isAemHosted) {
     const parser = new DOMParser();
     return parser.parseFromString(html, 'text/html');
   } catch (e) {
-    console.log(e);
     return null;
   }
 }
