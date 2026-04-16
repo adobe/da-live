@@ -19,7 +19,7 @@ const DA_PLUGINS = {
   icons: {},
 };
 
-const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
+export const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 export function parseDom(dom) {
   const { schema } = window.view.state;
@@ -205,11 +205,11 @@ export function getPreviewUrl(previewUrl) {
     if (url.origin.includes('--')) return url.href;
     if (url.origin.includes('content.da.live')) {
       const [, org, site, ...split] = url.pathname.split('/');
-      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+      return `https://${ref}--${site}--${org}.aem.page/${split.join('/')}`;
     }
     if (url.origin.includes('admin.da.live')) {
       const [, , org, site, ...split] = url.pathname.split('/');
-      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+      return `https://${ref}--${site}--${org}.aem.page/${split.join('/')}`;
     }
   } catch {
     return false;
