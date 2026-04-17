@@ -63,6 +63,20 @@ export function getTestSheetURL(testIdentifier, workerInfo) {
 }
 
 /**
+ * Returns the Skills Lab URL for the given org and site.
+ * Appends local admin/collab query params when GITHUB_HEAD_REF is "local" or "local-https".
+ * To test against a local da-nx instance add ?nx=local to the URL manually
+ * or append it after calling this helper.
+ *
+ * @param {string} org - DA organisation slug (e.g. "da-sites")
+ * @param {string} site - DA site/repo slug  (e.g. "da-status")
+ * @returns {string} Full Skills Lab URL with hash.
+ */
+export function getSkillsLabURL(org, site) {
+  return `${ENV}/apps/skills${QUERY}#/${org}/${site}`;
+}
+
+/**
  * Return the age of the test file by inspecting the timestamp in the filename.
  * It also checks if the filename matches the pattern of generated file names.
  * @param {String} fileName The file name, as generated in getTestURL()

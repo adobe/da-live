@@ -37,22 +37,23 @@ The configuration in https://da.live/config#/da-testautomation/ should be as fol
 
 // This is executed once to authenticate the user used during the tests.
 setup('Set up authentication', async ({ page }) => {
-  const pwd = process.env.TEST_PASSWORD;
-  if (pwd) {
-    console.log('Password found in environment variable TEST_PASSWORD');
-  } else {
-    throw new Error('Password for authentication needed in environment variable TEST_PASSWORD');
-  }
-
   if (fs.existsSync(AUTH_FILE)) {
     await fs.promises.unlink(AUTH_FILE);
     console.log('Deleted previous storage stage auth file');
   }
 
   if (process.env.SKIP_AUTH) {
+    await fs.promises.mkdir(path.join(__dirname, '../.playwright/.auth'), { recursive: true });
     await fs.promises.writeFile(AUTH_FILE, '{}');
     console.log('Skipping authentication');
     return;
+  }
+
+  const pwd = process.env.TEST_PASSWORD;
+  if (pwd) {
+    console.log('Password found in environment variable TEST_PASSWORD');
+  } else {
+    throw new Error('Password for authentication needed in environment variable TEST_PASSWORD');
   }
 
   const url = ENV;

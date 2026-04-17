@@ -1,4 +1,11 @@
 function getEnv() {
+  const explicit =
+    (typeof process.env.PLAYWRIGHT_BASE_URL === 'string' && process.env.PLAYWRIGHT_BASE_URL.trim())
+    || (typeof process.env.E2E_BASE_URL === 'string' && process.env.E2E_BASE_URL.trim());
+  if (explicit) {
+    return explicit.replace(/\/$/, '');
+  }
+
   let { GITHUB_HEAD_REF: branch } = process.env;
   if (!branch) {
     branch = 'main';
