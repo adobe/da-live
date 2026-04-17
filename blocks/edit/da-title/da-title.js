@@ -92,9 +92,7 @@ export default class DaTitle extends LitElement {
 
   setup() {
     this.reset();
-    this._actions = {
-      available: this.getAvailableActions()
-    }
+    this._actions = { available: this.getAvailableActions() };
     // Lazily filter the actions down
     this.filterActions();
   }
@@ -147,7 +145,7 @@ export default class DaTitle extends LitElement {
     ]);
 
     const { org, site, path, fullpath } = this.details;
-    
+
     // Only a valid path gets AEM-bound features
     if (path) {
       this._aemHrefs = await getAemHrefs({ path: fullpath });
