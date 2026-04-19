@@ -69,21 +69,15 @@ describe('da-sites render', () => {
     expect(el.shadowRoot.querySelector('input.error')).to.exist;
   });
 
-  it('Renders status toast when _status is set', async () => {
+  it('Renders the toast when _toast is set', async () => {
     await fixture([]);
-    el._status = { type: 'info', text: 'Hi', description: 'desc' };
+    const toastData = { type: 'info', text: 'Hi', description: 'desc' };
+    el._toast = toastData;
     el.requestUpdate();
     await nextFrame();
-    expect(el.shadowRoot.querySelector('.da-list-status-toast')).to.exist;
-    expect(el.shadowRoot.textContent).to.contain('Hi');
-  });
-
-  it('Status without description omits the description paragraph', async () => {
-    await fixture([]);
-    el._status = { type: 'success', text: 'Hi' };
-    el.requestUpdate();
-    await nextFrame();
-    expect(el.shadowRoot.querySelector('.da-list-status-description')).to.equal(null);
+    const toast = el.shadowRoot.querySelector('da-toast');
+    expect(toast).to.exist;
+    expect(toast.toast).to.equal(toastData);
   });
 
   it('handleFlip sets is-flipped class on the inner card', async () => {

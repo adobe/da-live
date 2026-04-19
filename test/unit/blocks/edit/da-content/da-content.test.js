@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 
 // This is needed to make a dynamic import work that is indirectly referenced
@@ -32,6 +33,8 @@ describe('da-content', () => {
     expect(ed._showPane).to.equal('preview');
     ed.togglePane({ detail: 'versions' });
     expect(ed._showPane).to.equal('versions');
+    ed.togglePane({ detail: 'comments' });
+    expect(ed._showPane).to.equal('comments');
   });
 
   it('handleVersionReset clears _versionUrl', () => {
@@ -63,5 +66,29 @@ describe('da-content', () => {
     await ed.handleEditorLoaded();
     expect(viewsCalled).to.be.true;
     expect(ueCalled).to.be.true;
+  });
+
+  it('renders comment badge from controller.counts.active', () => {
+    const ed = new DaContent();
+    ed.commentsController = {
+      counts: { active: 3, resolved: 0 },
+      hasSelection: false,
+    };
+    const result = ed.renderCommentBadge();
+    expect(result?.strings?.raw?.[0] || '').to.include('da-comment-badge');
+    expect(result?.values?.[0]).to.equal(3);
+  });
+
+  it('handleToggleComments calls controller.requestCompose', () => {
+    const ed = new DaContent();
+    const calls = [];
+    ed.commentsController = {
+      requestCompose() { calls.push('requestCompose'); },
+      hasSelection: false,
+      counts: { active: 0, resolved: 0 },
+    };
+    ed.handleToggleComments();
+    expect(calls).to.deep.equal(['requestCompose']);
+    expect(ed._showPane).to.equal('comments');
   });
 });

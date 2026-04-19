@@ -92,21 +92,6 @@ describe('DaSites', () => {
     });
   });
 
-  describe('setStatus', () => {
-    it('Sets a status object with text/description/type', () => {
-      const el = new DaSites();
-      el.setStatus('Hi', 'desc', 'success');
-      expect(el._status).to.deep.equal({ text: 'Hi', description: 'desc', type: 'success' });
-    });
-
-    it('Clears the status when text is omitted', () => {
-      const el = new DaSites();
-      el._status = { text: 'x', description: '', type: 'info' };
-      el.setStatus();
-      expect(el._status).to.equal(null);
-    });
-  });
-
   describe('handleGo', () => {
     it('Sets _urlError when the URL cannot be parsed', async () => {
       const el = new DaSites();
@@ -152,7 +137,7 @@ describe('DaSites', () => {
   });
 
   describe('handleShare', () => {
-    it('Writes the share URL to the clipboard and sets a status', async () => {
+    it('Writes the share URL to the clipboard and sets a toast', async () => {
       const el = new DaSites();
       const RealClipboard = navigator.clipboard;
       let captured;
@@ -164,7 +149,7 @@ describe('DaSites', () => {
         el.handleShare('org/site');
         await new Promise((r) => { setTimeout(r, 0); });
         expect(captured).to.exist;
-        expect(el._status.text).to.equal('Copied');
+        expect(el._toast.text).to.equal('Copied');
       } finally {
         Object.defineProperty(navigator, 'clipboard', { configurable: true, value: RealClipboard });
       }
