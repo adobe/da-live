@@ -1,5 +1,5 @@
 import { LitElement, html } from 'da-lit';
-import { saveToDa } from '../../shared/utils.js';
+import { saveToDa, sanitizeName } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 
@@ -48,7 +48,13 @@ export default class DaNew extends LitElement {
   }
 
   handleNameChange(e) {
-    this._createName = e.target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    const normalized = sanitizeName(e.target.value);
+    // Explicitly sync the DOM value: when two invalid chars are typed in a
+    // row, the sanitized result can be identical to the previous value, so
+    // Lit's property binding would not re-render and the raw typed value
+    // would remain in the input.
+    e.target.value = normalized;
+    this._createName = normalized;
     if (e.target.placeholder === 'name') {
       e.target.classList.remove(INPUT_ERROR);
     }
@@ -60,10 +66,12 @@ export default class DaNew extends LitElement {
 
   async handleSave() {
     const nameInput = this.shadowRoot.querySelector('.da-actions-input[placeholder="name"]');
-    if (!this._createName) {
+    const finalName = sanitizeName(this._createName || '', { trimTrailing: true });
+    if (!finalName) {
       if (nameInput) nameInput.classList.add(INPUT_ERROR);
       return;
     }
+    this._createName = finalName;
     if (nameInput) nameInput.classList.remove(INPUT_ERROR);
 
     let ext;
@@ -111,7 +119,7 @@ export default class DaNew extends LitElement {
     const formData = new FormData(e.target);
     const split = this._fileLabel.split('.');
     const ext = split.pop();
-    const name = split.join('.').replaceAll(/[^a-zA-Z0-9.]/g, '-').toLowerCase();
+    const name = sanitizeName(split.join('.'), { allowDot: true, trimTrailing: true });
     const filename = `${name}.${ext}`;
     const path = `${this.fullpath}/${filename}`;
 
