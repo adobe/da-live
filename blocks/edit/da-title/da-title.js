@@ -367,7 +367,7 @@ export default class DaTitle extends LitElement {
         @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
         aria-label="Send"
-        data-popup-content="${this.disabledText ? this.disabledText : nothing}"
+        data-popup-content=${this.disabledText ?? nothing}
         ?disabled=${this.disabledText}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
