@@ -19,37 +19,44 @@ const DA_ADMIN = process.env.DA_ADMIN_ORIGIN || 'https://admin.da.live';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-async function waitForSkillsLabReady(page) {
-  await expect(page.locator('da-skills-lab-view')).toBeVisible({ timeout: 20000 });
-  await expect(page.locator('.skills-lab-loading')).not.toBeVisible({ timeout: 20000 });
+async function waitForReady(page) {
+  await expect(page.locator('nx-skills-editor')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText('Loading capabilities')).not.toBeVisible({ timeout: 20000 });
 }
 
 function uniqueSkillId() {
   return `pw-skill-${Date.now().toString(36)}`;
 }
 
-async function createSkill(page, skillId, body, { draft = false } = {}) {
-  await page.locator('input[placeholder="skill-id"]').fill(skillId);
-  await page.locator('textarea[aria-label="Skill markdown"]').fill(body);
-
-  const variant = draft ? 'secondary' : 'accent';
-  await page.locator(`.skills-lab-save-row sp-button[variant="${variant}"]`).click();
-
-  const card = page.locator('.skills-lab-card-skill').filter({
-    has: page.locator('.skills-lab-card-title', { hasText: skillId }),
+function skillCard(page, skillId) {
+  return page.getByTestId('skill-card').filter({
+    has: page.getByRole('button', { name: `Edit ${skillId}` }),
   });
+}
+
+function promptCard(page, title) {
+  return page.getByTestId('prompt-card').filter({
+    has: page.getByRole('button', { name: `Edit ${title}` }),
+  });
+}
+
+async function createSkill(page, skillId, body, { draft = false } = {}) {
+  await page.getByLabel('Skill ID').fill(skillId);
+  await page.getByLabel('Skill markdown').fill(body);
+
+  const btnName = draft ? 'Save as Draft' : 'Save';
+  await page.getByRole('toolbar', { name: 'Skill actions' }).getByRole('button', { name: btnName, exact: true }).click();
+
+  const card = skillCard(page, skillId);
   await expect(card).toBeVisible({ timeout: 15000 });
   return card;
 }
 
 async function deleteSkillViaUI(page, skillId) {
-  const card = page.locator('.skills-lab-card-skill').filter({
-    has: page.locator('.skills-lab-card-title', { hasText: skillId }),
-  });
-
+  const card = skillCard(page, skillId);
   if (await card.isVisible()) {
-    await card.locator('.skills-lab-skill-edit').click();
-    await page.locator('.skills-lab-save-row sp-button[variant="negative"]').click();
+    await card.getByRole('button', { name: `Edit ${skillId}` }).click();
+    await page.getByRole('toolbar', { name: 'Skill actions' }).getByRole('button', { name: 'Delete' }).click();
     await expect(card).not.toBeVisible({ timeout: 15000 });
   }
 }
@@ -75,49 +82,46 @@ function findSkillRow(config, skillId) {
   }) || null;
 }
 
-// ─── existing tests ─────────────────────────────────────────────────────────
+// ─── page render ────────────────────────────────────────────────────────────
 
-test('Skills Lab page renders', async ({ page }) => {
+test('Skills Editor page renders', async ({ page }) => {
   test.setTimeout(30000);
-
   await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-  await waitForSkillsLabReady(page);
+  await waitForReady(page);
 
-  await expect(page.locator('.skills-lab-section-h').first()).toBeVisible();
+  await expect(page.getByRole('heading').first()).toBeVisible();
 });
 
-test('Skills Lab catalog shows Skills tab by default', async ({ page }) => {
+test('Skills Editor catalog shows Skills tab by default', async ({ page }) => {
   test.setTimeout(30000);
-
   await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-  await waitForSkillsLabReady(page);
+  await waitForReady(page);
 
-  await expect(page.locator('.skills-lab-cat-tab.is-active').first()).toContainText('Skills');
+  const skillsTab = page.getByRole('tab', { name: 'Skills' });
+  await expect(skillsTab).toHaveAttribute('aria-selected', 'true');
 });
 
-test('Skills Lab create and delete a skill', async ({ page }) => {
-  test.skip(!!process.env.SKIP_AUTH, 'Requires authentication — set TEST_PASSWORD or run without SKIP_AUTH');
+test('Skills Editor create and delete a skill', async ({ page }) => {
+  test.skip(!!process.env.SKIP_AUTH, 'Requires authentication');
   test.setTimeout(60000);
 
   const skillId = uniqueSkillId();
   const skillBody = `# ${skillId}\n\nPlaywright test skill — safe to delete.`;
 
   await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-  await waitForSkillsLabReady(page);
+  await waitForReady(page);
 
-  await page.locator('input[placeholder="skill-id"]').fill(skillId);
-  await page.locator('textarea[aria-label="Skill markdown"]').fill(skillBody);
-  await page.locator('.skills-lab-save-row sp-button[variant="accent"]').click();
+  await page.getByLabel('Skill ID').fill(skillId);
+  await page.getByLabel('Skill markdown').fill(skillBody);
+  await page.getByRole('toolbar', { name: 'Skill actions' }).getByRole('button', { name: 'Save', exact: true }).click();
 
-  const skillCard = page.locator('.skills-lab-card-skill').filter({
-    has: page.locator('.skills-lab-card-title', { hasText: skillId }),
-  });
-  await expect(skillCard).toBeVisible({ timeout: 15000 });
+  const card = skillCard(page, skillId);
+  await expect(card).toBeVisible({ timeout: 15000 });
 
-  await skillCard.locator('.skills-lab-skill-edit').click();
-  await expect(page.locator('input[placeholder="skill-id"]')).toHaveAttribute('readonly');
-  await page.locator('.skills-lab-save-row sp-button[variant="negative"]').click();
-  await expect(skillCard).not.toBeVisible({ timeout: 15000 });
+  await card.getByRole('button', { name: `Edit ${skillId}` }).click();
+  await expect(page.getByLabel('Skill ID')).toHaveAttribute('readonly');
+  await page.getByRole('toolbar', { name: 'Skill actions' }).getByRole('button', { name: 'Delete' }).click();
+  await expect(card).not.toBeVisible({ timeout: 15000 });
 });
 
 // ─── Skills CRUD ────────────────────────────────────────────────────────────
@@ -133,16 +137,13 @@ test.describe('Skills CRUD', () => {
     const skillBody = `# ${skillId}\n\nCreated by Playwright — verifies storage.`;
 
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
     await createSkill(page, skillId, skillBody);
 
-    // Verify .md file was written
     const mdResp = await getSkillMdFile(page, skillId);
     expect(mdResp.ok(), '.md file should exist after create').toBeTruthy();
-    const mdText = await mdResp.text();
-    expect(mdText).toContain(skillId);
+    expect(await mdResp.text()).toContain(skillId);
 
-    // Verify config sheet has the row
     const config = await getConfigSheets(page);
     const row = findSkillRow(config, skillId);
     expect(row, 'Config sheet should contain the skill row').toBeTruthy();
@@ -157,7 +158,7 @@ test.describe('Skills CRUD', () => {
     const skillBody = `# ${skillId}\n\nDraft skill from Playwright.`;
 
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
     await createSkill(page, skillId, skillBody, { draft: true });
 
     const config = await getConfigSheets(page);
@@ -174,17 +175,15 @@ test.describe('Skills CRUD', () => {
     const skillBody = `# ${skillId}\n\nOriginal body for edit test.`;
 
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
     const card = await createSkill(page, skillId, skillBody);
 
-    await card.locator('.skills-lab-skill-edit').click();
+    await card.getByRole('button', { name: `Edit ${skillId}` }).click();
 
-    const idInput = page.locator('input[placeholder="skill-id"]');
+    const idInput = page.getByLabel('Skill ID');
     await expect(idInput).toHaveAttribute('readonly');
     await expect(idInput).toHaveValue(skillId);
-
-    const textarea = page.locator('textarea[aria-label="Skill markdown"]');
-    await expect(textarea).toContainText(skillId);
+    await expect(page.getByLabel('Skill markdown')).toContainText(skillId);
 
     await deleteSkillViaUI(page, skillId);
   });
@@ -196,32 +195,24 @@ test.describe('Skills CRUD', () => {
     const updatedBody = `# ${skillId}\n\nUpdated content from Playwright.`;
 
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
     const card = await createSkill(page, skillId, originalBody);
 
-    // Edit the skill
-    await card.locator('.skills-lab-skill-edit').click();
-    await page.locator('textarea[aria-label="Skill markdown"]').fill(updatedBody);
-    await page.locator('.skills-lab-save-row sp-button[variant="accent"]').click();
+    await card.getByRole('button', { name: `Edit ${skillId}` }).click();
+    await page.getByLabel('Skill markdown').fill(updatedBody);
+    await page.getByRole('toolbar', { name: 'Skill actions' }).getByRole('button', { name: 'Save', exact: true }).click();
 
-    // Reload and verify the update persisted
     await page.reload();
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
 
-    const reloadedCard = page.locator('.skills-lab-card-skill').filter({
-      has: page.locator('.skills-lab-card-title', { hasText: skillId }),
-    });
-    await expect(reloadedCard).toBeVisible({ timeout: 15000 });
-    await reloadedCard.locator('.skills-lab-skill-edit').click();
+    const reloaded = skillCard(page, skillId);
+    await expect(reloaded).toBeVisible({ timeout: 15000 });
+    await reloaded.getByRole('button', { name: `Edit ${skillId}` }).click();
+    await expect(page.getByLabel('Skill markdown')).toContainText('Updated content from Playwright');
 
-    const textarea = page.locator('textarea[aria-label="Skill markdown"]');
-    await expect(textarea).toContainText('Updated content from Playwright');
-
-    // Verify .md file has updated content
     const mdResp = await getSkillMdFile(page, skillId);
     expect(mdResp.ok()).toBeTruthy();
-    const mdText = await mdResp.text();
-    expect(mdText).toContain('Updated content from Playwright');
+    expect(await mdResp.text()).toContain('Updated content from Playwright');
 
     await deleteSkillViaUI(page, skillId);
   });
@@ -232,23 +223,19 @@ test.describe('Skills CRUD', () => {
     const skillBody = `# ${skillId}\n\nWill be deleted — verifies cleanup.`;
 
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
     await createSkill(page, skillId, skillBody);
 
-    // Confirm it exists before deleting
     const mdBefore = await getSkillMdFile(page, skillId);
     expect(mdBefore.ok(), '.md should exist before delete').toBeTruthy();
 
     await deleteSkillViaUI(page, skillId);
 
-    // Verify .md file is gone
     const mdAfter = await getSkillMdFile(page, skillId);
     expect(mdAfter.ok(), '.md should be gone after delete').toBeFalsy();
 
-    // Verify config row is gone
     const config = await getConfigSheets(page);
-    const row = findSkillRow(config, skillId);
-    expect(row, 'Config row should be removed after delete').toBeFalsy();
+    expect(findSkillRow(config, skillId), 'Config row should be removed').toBeFalsy();
   });
 });
 
@@ -265,21 +252,17 @@ test.describe('Skills loader', () => {
     const skillBody = `# ${skillId}\n\nPersistence check — should survive reload.`;
 
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
     await createSkill(page, skillId, skillBody);
 
     await page.reload();
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
 
-    const card = page.locator('.skills-lab-card-skill').filter({
-      has: page.locator('.skills-lab-card-title', { hasText: skillId }),
-    });
+    const card = skillCard(page, skillId);
     await expect(card).toBeVisible({ timeout: 15000 });
 
-    // Verify the form loads the correct body from the .md file
-    await card.locator('.skills-lab-skill-edit').click();
-    const textarea = page.locator('textarea[aria-label="Skill markdown"]');
-    await expect(textarea).toContainText('Persistence check');
+    await card.getByRole('button', { name: `Edit ${skillId}` }).click();
+    await expect(page.getByLabel('Skill markdown')).toContainText('Persistence check');
 
     await deleteSkillViaUI(page, skillId);
   });
@@ -290,18 +273,15 @@ test.describe('Skills loader', () => {
 test.describe('Skills editability', () => {
   test('All skill cards have an edit button', async ({ page }) => {
     test.setTimeout(30000);
-
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
 
-    const cards = page.locator('.skills-lab-card-skill');
+    const cards = page.getByTestId('skill-card');
     const count = await cards.count();
-
-    // Only meaningful if there are skills in the catalog
     test.skip(count === 0, 'No skills in catalog — nothing to verify');
 
     for (let i = 0; i < count; i++) {
-      await expect(cards.nth(i).locator('.skills-lab-skill-edit')).toBeVisible();
+      await expect(cards.nth(i).getByRole('button', { name: /^Edit / })).toBeVisible();
     }
   });
 });
@@ -324,15 +304,14 @@ test.describe('Tool references', () => {
     ].join('\n');
 
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
     const card = await createSkill(page, skillId, skillBody);
 
-    await card.locator('.skills-lab-skill-edit').click();
+    await card.getByRole('button', { name: `Edit ${skillId}` }).click();
 
-    // The tools column should reference the da_ tool from the skill body
-    const toolsCol = page.locator('.skills-lab-tools-col');
-    await expect(toolsCol).toBeVisible({ timeout: 10000 });
-    await expect(toolsCol).toContainText('da_get_source');
+    const toolsRegion = page.getByRole('region', { name: 'Tools' });
+    await expect(toolsRegion).toBeVisible({ timeout: 10000 });
+    await expect(toolsRegion).toContainText('da_get_source');
 
     await deleteSkillViaUI(page, skillId);
   });
@@ -350,34 +329,23 @@ test.describe('Prompts', () => {
     const promptTitle = `pw-prompt-${Date.now().toString(36)}`;
 
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
 
-    // Switch to Prompts tab
-    const promptsTab = page.locator('.skills-lab-cat-tab', { hasText: 'Prompts' });
-    await promptsTab.click();
-    await expect(promptsTab).toHaveClass(/is-active/);
+    await page.getByRole('tab', { name: 'Prompts' }).click();
+    await expect(page.getByRole('tab', { name: 'Prompts' })).toHaveAttribute('aria-selected', 'true');
 
-    // Fill prompt form
-    const titleInput = page.locator('input[placeholder="Title"]');
-    const categoryInput = page.locator('input[placeholder="Category"]');
-    const promptTextarea = page.locator('textarea[aria-label="Prompt"]');
+    await page.getByLabel('Prompt title').fill(promptTitle);
+    await page.getByLabel('Prompt category').fill('test');
+    await page.getByLabel('Prompt', { exact: true }).fill(`This is a Playwright test prompt: ${promptTitle}`);
 
-    await titleInput.fill(promptTitle);
-    await categoryInput.fill('test');
-    await promptTextarea.fill(`This is a Playwright test prompt: ${promptTitle}`);
+    await page.getByRole('toolbar', { name: 'Prompt actions' }).getByRole('button', { name: 'Save', exact: true }).click();
 
-    // Save
-    await page.locator('.skills-lab-save-row sp-button[variant="accent"]').click();
+    const card = promptCard(page, promptTitle);
+    await expect(card).toBeVisible({ timeout: 15000 });
 
-    const promptCard = page.locator('.skills-lab-card-prompt').filter({
-      has: page.locator('.skills-lab-card-title', { hasText: promptTitle }),
-    });
-    await expect(promptCard).toBeVisible({ timeout: 15000 });
-
-    // Delete
-    await promptCard.locator('.skills-lab-prompt-edit').click();
-    await page.locator('.skills-lab-save-row sp-button[variant="negative"]').click();
-    await expect(promptCard).not.toBeVisible({ timeout: 15000 });
+    await card.getByRole('button', { name: `Edit ${promptTitle}` }).click();
+    await page.getByRole('toolbar', { name: 'Prompt actions' }).getByRole('button', { name: 'Delete' }).click();
+    await expect(card).not.toBeVisible({ timeout: 15000 });
   });
 });
 
@@ -386,25 +354,21 @@ test.describe('Prompts', () => {
 test.describe('Catalog navigation', () => {
   test('All catalog tabs render and can be activated', async ({ page }) => {
     test.setTimeout(30000);
-
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
-    await waitForSkillsLabReady(page);
+    await waitForReady(page);
 
-    const tabs = page.locator('.skills-lab-cat-tab');
+    const tabs = page.getByRole('region', { name: 'Catalog' }).getByRole('tab');
     const count = await tabs.count();
     expect(count).toBeGreaterThanOrEqual(2);
 
-    // Skills tab is active by default
-    await expect(tabs.first()).toHaveClass(/is-active/);
+    await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
 
-    // Click each tab and verify it becomes active
     for (let i = 1; i < count; i++) {
       await tabs.nth(i).click();
-      await expect(tabs.nth(i)).toHaveClass(/is-active/);
+      await expect(tabs.nth(i)).toHaveAttribute('aria-selected', 'true');
     }
 
-    // Return to Skills tab
     await tabs.first().click();
-    await expect(tabs.first()).toHaveClass(/is-active/);
+    await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
   });
 });
