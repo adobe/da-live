@@ -126,7 +126,7 @@ export function handleTableTab(direction) {
   return (state, dispatch) => {
     if (!isInTable(state)) return false;
     const rect = selectedRect(state);
-    if (isCursorInLastTableCell(rect)) {
+    if (direction === 1 && isCursorInLastTableCell(rect)) {
       addRowAfter(state, dispatch);
       return gtnc(window.view.state, dispatch);
     }
