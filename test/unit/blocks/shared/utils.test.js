@@ -9,6 +9,7 @@ import {
   checkLockdownImages,
   delay,
   getSidekickConfig,
+  sanitizeName,
 } from '../../../../blocks/shared/utils.js';
 
 describe('getSheetByIndex', () => {
@@ -58,6 +59,89 @@ describe('delay', () => {
     const result = delay(0);
     expect(result).to.be.instanceOf(Promise);
     await result;
+  });
+});
+
+describe('sanitizeName', () => {
+  it('Lowercases alphanumeric input unchanged', () => {
+    expect(sanitizeName('AbC123')).to.equal('abc123');
+  });
+
+  it('Replaces a single invalid character with a hyphen', () => {
+    expect(sanitizeName('foo bar')).to.equal('foo-bar');
+  });
+
+  it('Collapses consecutive invalid characters into a single hyphen', () => {
+    expect(sanitizeName('foo!!bar')).to.equal('foo-bar');
+    expect(sanitizeName('foo   bar')).to.equal('foo-bar');
+    expect(sanitizeName('a!@#$%b')).to.equal('a-b');
+  });
+
+  it('Preserves an existing single hyphen between alphanumeric chars', () => {
+    expect(sanitizeName('foo-bar')).to.equal('foo-bar');
+  });
+
+  it('Collapses hyphens adjacent to hyphens produced by substitution', () => {
+    // Simulates: user already has "foo-" and then types an invalid char.
+    expect(sanitizeName('foo-!')).to.equal('foo-');
+    expect(sanitizeName('foo-!bar')).to.equal('foo-bar');
+  });
+
+  it('Preserves a single trailing hyphen by default (typing-time behavior)', () => {
+    expect(sanitizeName('foo!')).to.equal('foo-');
+    expect(sanitizeName('foo-')).to.equal('foo-');
+  });
+
+  it('Removes dots by default', () => {
+    expect(sanitizeName('foo.bar')).to.equal('foo-bar');
+  });
+
+  it('Preserves dots when allowDot is true', () => {
+    expect(sanitizeName('foo.bar', { allowDot: true })).to.equal('foo.bar');
+    expect(sanitizeName('my.file.name', { allowDot: true })).to.equal('my.file.name');
+  });
+
+  it('Does not collapse dots into hyphens in allowDot mode', () => {
+    expect(sanitizeName('foo..bar', { allowDot: true })).to.equal('foo..bar');
+  });
+
+  it('Still collapses invalid chars around dots in allowDot mode', () => {
+    expect(sanitizeName('foo!.bar', { allowDot: true })).to.equal('foo-.bar');
+    expect(sanitizeName('foo.!bar', { allowDot: true })).to.equal('foo.-bar');
+  });
+
+  it('Trims a trailing hyphen when trimTrailing is true', () => {
+    expect(sanitizeName('foo!', { trimTrailing: true })).to.equal('foo');
+    expect(sanitizeName('foo-', { trimTrailing: true })).to.equal('foo');
+  });
+
+  it('Trims multiple trailing non-alphanumeric chars when trimTrailing is true', () => {
+    expect(sanitizeName('foo!!!', { trimTrailing: true })).to.equal('foo');
+  });
+
+  it('Trims trailing hyphens and dots in allowDot + trimTrailing mode', () => {
+    expect(sanitizeName('foo.', { allowDot: true, trimTrailing: true })).to.equal('foo');
+    expect(sanitizeName('foo-', { allowDot: true, trimTrailing: true })).to.equal('foo');
+    expect(sanitizeName('foo.-', { allowDot: true, trimTrailing: true })).to.equal('foo');
+  });
+
+  it('Returns empty string when input is only invalid chars and trimTrailing is true', () => {
+    expect(sanitizeName('!!!', { trimTrailing: true })).to.equal('');
+    expect(sanitizeName('---', { trimTrailing: true })).to.equal('');
+  });
+
+  it('Returns empty string for empty input', () => {
+    expect(sanitizeName('')).to.equal('');
+    expect(sanitizeName('', { trimTrailing: true })).to.equal('');
+  });
+
+  it('Does not trim leading hyphens (only trailing)', () => {
+    expect(sanitizeName('!foo', { trimTrailing: true })).to.equal('-foo');
+  });
+
+  it('Does not affect internal hyphens when trimming trailing', () => {
+    expect(sanitizeName('foo-bar-', { trimTrailing: true })).to.equal('foo-bar');
+    expect(sanitizeName('foo-bar-baz', { trimTrailing: true })).to.equal('foo-bar-baz');
   });
 });
 

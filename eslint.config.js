@@ -8,6 +8,7 @@ export default defineConfig([
     '**/deps',
     'test/e2e',
     'coverage',
+    '.claude',
   ]),
   {
     languageOptions: {
