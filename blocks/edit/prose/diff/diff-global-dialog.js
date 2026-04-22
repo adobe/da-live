@@ -1,7 +1,12 @@
 // Global dialog management - only needed when multiple LOC nodes exist
-import { Slice } from 'da-y-wrapper';
+import { Fragment, Slice } from 'da-y-wrapper';
 import { createElement, createButton, createTooltip, getDiffLabels } from '../../utils/helpers.js';
-import { addToHashMetadata, ACCEPTED_KEY, REJECTED_KEY } from './diff-actions.js';
+import {
+  addToHashMetadata,
+  stripDaDiffAddedAttrs,
+  ACCEPTED_KEY,
+  REJECTED_KEY,
+} from './diff-actions.js';
 
 const KEEP = 'keep';
 const DELETE = 'delete';
@@ -68,9 +73,15 @@ function processLocNode(tr, node, pos, action) {
 
     if (node.content.size === 0) return tr.delete(pos, pos + node.nodeSize);
 
+    // Strip `daDiffAdded` from direct children so accepted content doesn't
+    // serialize with `da-diff-added=""` (no-op for diff_deleted children).
+    const children = [];
+    node.content.forEach((child) => children.push(child));
+    const strippedContent = Fragment.fromArray(stripDaDiffAddedAttrs(children));
+
     const isInListItem = $pos.parent.type.name === 'list_item';
     const openDepth = isInListItem ? 1 : 0;
-    const slice = new Slice(node.content, openDepth, openDepth);
+    const slice = new Slice(strippedContent, openDepth, openDepth);
     return tr.replace(pos, pos + node.nodeSize, slice);
   }
 
