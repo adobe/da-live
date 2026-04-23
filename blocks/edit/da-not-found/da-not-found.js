@@ -20,59 +20,72 @@ async function folderHasContents(folderPath) {
 export default async function showNotFoundDialog(details) {
   const folderPath = details.fullpath.replace(/\.html$/, '');
   const listPath = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+
+  let dialog = null;
+  let resolved = false;
+  let resolveFn;
+  const promise = new Promise((r) => { resolveFn = r; });
+
+  // eslint-disable-next-line no-use-before-define
+  const onHashChange = () => finish('hashchange');
+  function finish(result) {
+    if (resolved) return;
+    resolved = true;
+    window.removeEventListener('hashchange', onHashChange);
+    resolveFn(result);
+    if (dialog) dialog.close();
+  }
+
+  // Attach listener BEFORE the async folder check so a hashchange during the
+  // fetch also cancels this dialog flow — otherwise the old edit URL's dialog
+  // would flash over the editor that the new hash loaded.
+  window.addEventListener('hashchange', onHashChange);
+
   const folderExists = await folderHasContents(listPath);
+  if (resolved) return promise;
 
-  return new Promise((resolve) => {
-    const dialog = document.createElement('da-dialog');
-    dialog.title = 'Document not found';
-    dialog.classList.add('da-not-found-dialog');
+  dialog = document.createElement('da-dialog');
+  dialog.title = 'Document not found';
+  dialog.classList.add('da-not-found-dialog');
 
-    const docName = details.name.replace(/\.html$/, '');
-    const intro = document.createElement('p');
-    intro.innerHTML = folderExists
-      ? `There is no document named <b><em>${docName}</em></b> at this path, but there is a folder with that name.`
-      : `There is no document named <b><em>${docName}</em></b> at this path.`;
-    dialog.appendChild(intro);
+  const docName = details.name.replace(/\.html$/, '');
+  const intro = document.createElement('p');
+  intro.innerHTML = folderExists
+    ? `There is no document named <b><em>${docName}</em></b> at this path, but there is a folder with that name.`
+    : `There is no document named <b><em>${docName}</em></b> at this path.`;
+  dialog.appendChild(intro);
 
-    const prompt = document.createElement('p');
-    prompt.textContent = 'What would you like to do?';
-    dialog.appendChild(prompt);
+  const prompt = document.createElement('p');
+  prompt.textContent = 'What would you like to do?';
+  dialog.appendChild(prompt);
 
-    let resolved = false;
-    const finish = (result) => {
-      if (resolved) return;
-      resolved = true;
-      resolve(result);
-      dialog.close();
-    };
+  dialog.action = {
+    label: 'Create document',
+    style: 'accent',
+    click: () => finish('create'),
+  };
 
-    dialog.action = {
-      label: 'Create document',
-      style: 'accent',
-      click: () => finish('create'),
-    };
+  const cancelBtn = document.createElement('sl-button');
+  cancelBtn.className = 'primary outline';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.slot = 'footer-left';
+  cancelBtn.addEventListener('click', () => finish('cancel'));
+  dialog.appendChild(cancelBtn);
 
-    const cancelBtn = document.createElement('sl-button');
-    cancelBtn.className = 'primary outline';
-    cancelBtn.textContent = 'Cancel';
-    cancelBtn.slot = 'footer-left';
-    cancelBtn.addEventListener('click', () => finish('cancel'));
-    dialog.appendChild(cancelBtn);
+  if (folderExists) {
+    const folderBtn = document.createElement('sl-button');
+    folderBtn.className = 'primary outline';
+    folderBtn.textContent = 'Open folder';
+    folderBtn.slot = 'footer-left';
+    folderBtn.addEventListener('click', () => finish('folder'));
+    dialog.appendChild(folderBtn);
+  }
 
-    if (folderExists) {
-      const folderBtn = document.createElement('sl-button');
-      folderBtn.className = 'primary outline';
-      folderBtn.textContent = 'Open folder';
-      folderBtn.slot = 'footer-left';
-      folderBtn.addEventListener('click', () => finish('folder'));
-      dialog.appendChild(folderBtn);
-    }
-
-    dialog.addEventListener('close', () => {
-      finish('cancel');
-      dialog.remove();
-    });
-
-    document.body.appendChild(dialog);
+  dialog.addEventListener('close', () => {
+    finish('cancel');
+    dialog.remove();
   });
+
+  document.body.appendChild(dialog);
+  return promise;
 }

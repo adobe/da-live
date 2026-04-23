@@ -126,7 +126,7 @@ describe('showNotFoundDialog', () => {
     const dialog = document.querySelector('da-dialog');
     const intro = dialog.querySelector('p');
     expect(intro.textContent).to.equal(
-      'There is no document named "missing-doc" at this path, but there is a folder with that name.',
+      'There is no document named missing-doc at this path, but there is a folder with that name.',
     );
 
     dialog.querySelector('sl-button[slot="footer-left"]').click();
@@ -141,11 +141,49 @@ describe('showNotFoundDialog', () => {
     const dialog = document.querySelector('da-dialog');
     const intro = dialog.querySelector('p');
     expect(intro.textContent).to.equal(
-      'There is no document named "missing-doc" at this path.',
+      'There is no document named missing-doc at this path.',
     );
 
     dialog.querySelector('sl-button[slot="footer-left"]').click();
     await promise;
+  });
+
+  it('closes the dialog and resolves "hashchange" on hashchange', async () => {
+    mockFetch([]);
+    const promise = showNotFoundDialog(details);
+    await waitForDialog();
+    expect(document.querySelector('da-dialog')).to.exist;
+
+    window.dispatchEvent(new Event('hashchange'));
+
+    expect(await promise).to.equal('hashchange');
+  });
+
+  it('resolves "hashchange" without showing the dialog if hash changes during the folder check', async () => {
+    let resolveFetch;
+    window.fetch = (url) => {
+      fetchCalls.push(url);
+      return new Promise((r) => { resolveFetch = r; });
+    };
+
+    const promise = showNotFoundDialog(details);
+    // daFetch has its own async prelude (token lookup) before it reaches
+    // window.fetch, so yield the event loop until our mock is actually invoked.
+    await new Promise((r) => { setTimeout(r, 10); });
+    expect(resolveFetch, 'fetch mock should have been called').to.be.a('function');
+
+    // Fire hashchange while the folder-check fetch is still pending.
+    window.dispatchEvent(new Event('hashchange'));
+    // Let the fetch complete afterwards — dialog code must short-circuit.
+    resolveFetch({
+      ok: true,
+      status: 200,
+      json: async () => [],
+      headers: { get: () => null },
+    });
+
+    expect(await promise).to.equal('hashchange');
+    expect(document.querySelector('da-dialog')).to.be.null;
   });
 
   it('resolves "cancel" when the folder existence check fails', async () => {

@@ -71,6 +71,9 @@ async function setUI(el) {
   if (resp.status === 404) {
     const { default: showNotFoundDialog } = await import('./da-not-found/da-not-found.js');
     const choice = await showNotFoundDialog(details);
+    // A hashchange spawns a parallel setUI for the new path — bail out of
+    // this one so the two don't race over window.location / editor state.
+    if (choice === 'hashchange') return;
     if (choice === 'folder') {
       const folderPath = details.fullpath.replace(/\.html$/, '');
       const hashPath = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
