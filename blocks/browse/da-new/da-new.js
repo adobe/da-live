@@ -7,6 +7,7 @@ import getEditPath from '../shared.js';
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
 const INPUT_ERROR = 'da-input-error';
 
 export default class DaNew extends LitElement {
@@ -79,6 +80,11 @@ export default class DaNew extends LitElement {
     switch (this._createType) {
       case 'document':
         ext = 'html';
+        formData = new FormData();
+        formData.append(
+          'data',
+          new Blob([EMPTY_DOC], { type: 'text/html' }),
+        );
         break;
       case 'sheet':
         ext = 'json';
@@ -97,7 +103,10 @@ export default class DaNew extends LitElement {
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
     const editPath = getEditPath({ path, ext, editor: this.editor });
-    if (ext && ext !== 'link') {
+    if (ext === 'html') {
+      await saveToDa({ path, formData });
+      window.location = editPath;
+    } else if (ext && ext !== 'link') {
       window.location = editPath;
     } else {
       await saveToDa({ path, formData });

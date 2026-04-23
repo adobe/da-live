@@ -69,6 +69,18 @@ async function setUI(el) {
   let permissions;
   let doc;
   if (resp.status === 404) {
+    const { default: showNotFoundDialog } = await import('./da-not-found/da-not-found.js');
+    const choice = await showNotFoundDialog(details);
+    if (choice === 'folder') {
+      const folderPath = details.fullpath.replace(/\.html$/, '');
+      const hashPath = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+      window.location = `/#${hashPath}`;
+      return;
+    }
+    if (choice !== 'create') {
+      window.location = `/#${details.parent}`;
+      return;
+    }
     const createResp = await createDoc(details.sourceUrl);
     permissions = createResp.permissions;
     doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
