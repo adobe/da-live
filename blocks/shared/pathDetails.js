@@ -105,13 +105,16 @@ export default function getPathDetails(loc) {
   const { pathname, hash: tmpHash } = loc || window.location;
   if (!pathname || !tmpHash) return undefined;
 
+  // config, edit, sheet
+  const editor = getView(pathname);
+
   // There can be non-ideal pieces in the hash (old_hash, access_token)
   const parts = tmpHash.split('#');
   const hashPath = parts.find((part) => part.startsWith('/'));
 
   // If there's not a hash path, return undefined
   if (!hashPath) return undefined;
-  const hash = `#${hashPath}`;
+  const hash = `#${hashPath}${editor === 'config' && !hashPath.endsWith('/') ? '/' : ''}`;
 
   // Use cached details if the hash has not changed
   if (currhash === hash && currpath === pathname && details) return details;
@@ -119,9 +122,6 @@ export default function getPathDetails(loc) {
 
   const fullpath = hash.replace('#', '');
   window.name = fullpath;
-
-  // config, edit, sheet
-  const editor = getView(pathname);
 
   // IMS will redirect and there's a small window where old_hash exists
   if (!fullpath || fullpath.startsWith('old_hash') || fullpath.startsWith('access_token')) return null;
