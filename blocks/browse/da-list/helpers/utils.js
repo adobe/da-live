@@ -136,17 +136,75 @@ export async function handleUpload(list, fullpath, file) {
   return null;
 }
 
+export function item2AemUrl(item) {
+  if (!item.ext) return null;
+  const [org, repo, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));
+  const pageName = pathParts.pop();
+  pathParts.push(pageName === 'index' ? '' : pageName);
+  return `https://main--${repo}--${org}.aem.page/${pathParts.join('/')}`;
+}
+
+export function items2AemUrls(items) {
+  return items.reduce((acc, item) => {
+    const url = item2AemUrl(item);
+    if (url) acc.push(url);
+    return acc;
+  }, []);
+}
+
+// Matches the trailing datetime stamp applied when items are moved to .trash.
+// The stamp format comes from handleConfirmDelete:
+//   new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')
+// e.g. "2026-04-22T19-39-14-488Z" (server may lowercase, so we use /i).
+// We also accept 1 or 2 preceding dashes so names that originally ended in '-' are handled.
+const DATE_SUFFIX_RE = /-{1,2}\d{4}-\d{2}-\d{2}t\d{2}-\d{2}-\d{2}-\d{3}z$/i;
+
+export function stripDateSuffix(name) {
+  if (!name) return name;
+  return name.replace(DATE_SUFFIX_RE, '');
+}
+
+// Strip date suffix from a single path segment (handles optional extension).
+// "folder-DATE" -> "folder", "file-DATE.html" -> "file.html"
+export function stripDateFromSegment(segment) {
+  if (!segment) return segment;
+  const lastDot = segment.lastIndexOf('.');
+  // No dot, or leading dot (e.g. ".trash") -> treat the whole thing as a name
+  if (lastDot <= 0) return stripDateSuffix(segment);
+  const base = segment.slice(0, lastDot);
+  const ext = segment.slice(lastDot);
+  return `${stripDateSuffix(base)}${ext}`;
+}
+
+// Remove the first "/.trash/" segment from a path.
+// "/org/site/.trash/a/b" -> "/org/site/a/b"
+// "/org/site/.trash" -> "/org/site"
+export function removeTrashSegment(path) {
+  if (!path) return path;
+  if (path.includes('/.trash/')) return path.replace('/.trash/', '/');
+  if (path.endsWith('/.trash')) return path.slice(0, -'/.trash'.length);
+  return path;
+}
+
+// Given a set of existing "name.ext" (or "name" for folders) strings,
+// return a unique variant by appending -1, -2, ... if needed.
+// Returns { name, fullName } where fullName includes the extension.
+export function findUniqueRestoreName(existingNames, baseName, ext) {
+  const makeFull = (n) => (ext ? `${n}.${ext}` : n);
+  if (!existingNames.has(makeFull(baseName))) {
+    return { name: baseName, fullName: makeFull(baseName) };
+  }
+  let i = 1;
+  while (existingNames.has(makeFull(`${baseName}-${i}`))) i += 1;
+  const name = `${baseName}-${i}`;
+  return { name, fullName: makeFull(name) };
+}
+
 export function items2Clipboard(items) {
   const aemUrls = items.reduce((acc, item) => {
-    if (item.ext) {
-      const [org, repo, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));
-      const pageName = pathParts.pop();
-      pathParts.push(pageName === 'index' ? '' : pageName);
-
-      const url = `https://main--${repo}--${org}.aem.page/${pathParts.join('/')}`;
-      const toPush = item.message ? `${url} - ${item.message}` : url;
-
-      acc.push(toPush);
+    const url = item2AemUrl(item);
+    if (url) {
+      acc.push(item.message ? `${url} - ${item.message}` : url);
     }
     return acc;
   }, []);

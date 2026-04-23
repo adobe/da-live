@@ -290,7 +290,12 @@ export default class DaList extends LitElement {
     const { api, method } = type2api[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
-    const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const sourceInTrash = item.path?.includes('/.trash/');
+    const destInTrash = item.destination?.includes('/.trash/');
+    const moveToTrash = api === 'move' && !sourceInTrash && destInTrash;
+    // Restore (moving out of trash) should also drop the item from the current view,
+    // since we're currently viewing the trash folder.
+    const moveFromTrash = api === 'move' && sourceInTrash && !destInTrash;
 
     try {
       do {
@@ -319,7 +324,7 @@ export default class DaList extends LitElement {
       item.isChecked = false;
 
       // Remove or add the item to the current list
-      if (moveToTrash || method === 'DELETE') {
+      if (moveToTrash || moveFromTrash || method === 'DELETE') {
         this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
         this._listItemPaths.delete(item.path);
       } else {
@@ -429,6 +434,143 @@ export default class DaList extends LitElement {
   handleShare() {
     this.setStatus('Copied', 'URLs have been copied to the clipboard.');
     setTimeout(() => { this.setStatus(); }, 3000);
+  }
+
+  async handleRestore() {
+    if (!this._selectedItems?.length) return;
+
+    const {
+      stripDateSuffix,
+      stripDateFromSegment,
+      removeTrashSegment,
+      findUniqueRestoreName,
+    } = await import('./helpers/utils.js');
+    const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
+
+    const topLevelItems = [...this._selectedItems];
+
+    // All selections share the same parent (enforced by the selection model),
+    // so the destination parent directory is the same for every top-level item.
+    const destParentDir = removeTrashSegment(this.fullpath);
+
+    // Fetch existing names in the destination directory once so collision checks
+    // don't race when we rename items in parallel.
+    let existingNames = new Set();
+    try {
+      const resp = await daFetch(`${DA_ORIGIN}/list${destParentDir}`);
+      if (resp.ok) {
+        const json = await resp.json();
+        const items = Array.isArray(json) ? json : json?.items || [];
+        existingNames = new Set(items.map((i) => (i.ext ? `${i.name}.${i.ext}` : i.name)));
+      }
+      // If the destination doesn't exist (404) existingNames stays empty — there
+      // can't be any collisions, and the move API auto-creates parent folders.
+    } catch {
+      // Network failure — proceed without collision info; callers can retry.
+    }
+
+    // Build a flat list of file-level moves. For folders we crawl the trash
+    // source and map each inner file to a path where every segment has any
+    // datetime suffix stripped.
+    const plan = [];
+    // Track per-top-level-item "files dispatched" so we know which folder shells
+    // to clean up after their contents have moved out.
+    const folderShellsToDelete = [];
+
+    for (const item of topLevelItems) {
+      const restoredBase = stripDateSuffix(item.name);
+      const { name: uniqueName, fullName } = findUniqueRestoreName(
+        existingNames,
+        restoredBase,
+        item.ext,
+      );
+      // Reserve the chosen name so two sibling items with the same stripped
+      // name don't end up colliding with each other in the destination.
+      existingNames.add(fullName);
+
+      if (item.ext) {
+        plan.push({
+          source: item,
+          sourcePath: item.path,
+          destPath: `${destParentDir}/${fullName}`,
+        });
+      } else {
+        // Folder: crawl the trash source to discover every inner file.
+        // eslint-disable-next-line no-await-in-loop
+        const { results } = crawl({ path: item.path, concurrent: 5 });
+        // eslint-disable-next-line no-await-in-loop
+        const innerFiles = await results;
+        const destPrefix = `${destParentDir}/${uniqueName}`;
+
+        if (innerFiles.length === 0) {
+          // Empty folder — move the folder itself (server handles it as a
+          // zero-child recursive move). No shell cleanup needed.
+          plan.push({ source: item, sourcePath: item.path, destPath: destPrefix });
+        } else {
+          const sourcePrefix = item.path;
+          innerFiles.forEach((file) => {
+            const relative = file.path.startsWith(sourcePrefix)
+              ? file.path.slice(sourcePrefix.length)
+              : file.path;
+            // Strip datetime from every path segment (handles nested folders
+            // that happen to carry their own stamps).
+            const cleanedRelative = relative
+              .split('/')
+              .map((seg) => (seg ? stripDateFromSegment(seg) : seg))
+              .join('/');
+            plan.push({
+              source: file,
+              sourcePath: file.path,
+              destPath: `${destPrefix}${cleanedRelative}`,
+            });
+          });
+
+          // Non-empty folder: contents will be moved out file-by-file, leaving
+          // the source folder shell empty in trash. Schedule it for cleanup.
+          folderShellsToDelete.push(item);
+        }
+      }
+    }
+
+    this.setStatus(
+      'Restoring',
+      `Moving ${plan.length} ${plan.length === 1 ? 'item' : 'items'} out of trash…`,
+    );
+
+    const moveCallback = async (op) => {
+      const moveItem = {
+        ...op.source,
+        path: op.sourcePath,
+        destination: op.destPath,
+      };
+      await this.handleItemAction({ item: moveItem, type: 'move' });
+    };
+
+    const queue = new Queue(moveCallback, 5, (_op, err) => {
+      // handleItemAction already records failures into _itemErrors;
+      // swallow here so one failure doesn't cancel the whole batch.
+      // eslint-disable-next-line no-console
+      console.warn('Restore move failed', err);
+    });
+    await Promise.all(plan.map((op) => queue.push(op)));
+
+    // Clean up empty folder shells left behind in trash.
+    await Promise.all(folderShellsToDelete.map((folder) => this.handleItemAction({
+      item: folder,
+      type: 'delete',
+    })));
+
+    this.setStatus();
+    if (this._itemErrors.length === 0) {
+      const n = plan.length;
+      this.setStatus(
+        'Restored',
+        `${n} ${n === 1 ? 'item' : 'items'} restored from trash.`,
+        'info',
+      );
+      setTimeout(() => { this.setStatus(); }, 3000);
+    }
+    this.handleClear();
   }
 
   dragenter(e) {
@@ -676,8 +818,14 @@ export default class DaList extends LitElement {
   }
 
   renderStatus() {
+    const dismissable = this._status.type === 'error';
+    const onDismiss = dismissable ? () => this.setStatus() : nothing;
     return html`
-      <div class="da-list-status">
+      <div
+        class="da-list-status ${dismissable ? 'is-dismissable' : ''}"
+        @click=${onDismiss}
+        role=${dismissable ? 'button' : nothing}
+        aria-label=${dismissable ? 'Dismiss' : nothing}>
         <div class="da-list-status-toast da-list-status-type-${this._status.type}">
           <p class="da-list-status-title">${this._status.text}</p>
           ${this._status.description ? html`<p class="da-list-status-description">${this._status.description}</p>` : nothing}
@@ -867,6 +1015,8 @@ export default class DaList extends LitElement {
         @onpaste=${this.handlePaste}
         @ondelete=${this.handleDelete}
         @onshare=${this.handleShare}
+        @onrestore=${this.handleRestore}
+        @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
         currentPath="${this.fullpath}"
         role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>

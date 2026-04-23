@@ -295,6 +295,20 @@ da-list-item.is-expanded::after {
   background: var(--s2-blue-800) url("/blocks/browse/img/Smock_InfoOutline_18_N.svg") 12px 50% no-repeat;
 }
 
+.da-list-status.is-dismissable {
+  cursor: pointer;
+}
+
+.da-list-status-dismiss-hint {
+  line-height: 1.4;
+  padding: 6px 12px;
+  margin: 0;
+  background: rgb(0 0 0 / 15%);
+  font-size: 12px;
+  opacity: 0.85;
+  text-align: center;
+}
+
 /* Checkbox */
 
 .checkbox-wrapper {

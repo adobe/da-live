@@ -42,6 +42,11 @@ button {
   height: 18px;
 }
 
+.da-action-bar .bulk-button img,
+.da-action-bar .restore-button img {
+  filter: brightness(0) invert(1);
+}
+
 .da-action-bar-left-rail {
   margin-left: 14px;
   display: flex;

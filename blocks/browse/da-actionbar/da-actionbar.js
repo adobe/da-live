@@ -5,6 +5,8 @@ import { getNx } from '../../../scripts/utils.js';
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
 
+const MAX_BULK_URLS = 1000;
+
 export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
@@ -12,6 +14,7 @@ export default class DaActionBar extends LitElement {
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
+    _isBulkLoading: { state: true },
     currentPath: { type: String },
   };
 
@@ -33,16 +36,35 @@ export default class DaActionBar extends LitElement {
         this._isCopying = false;
         this._isMoving = false;
         this._isDeleting = false;
+        this.cancelBulkCrawl();
       }
     }
 
     super.update(props);
   }
 
+  cancelBulkCrawl() {
+    if (this._bulkCrawl) {
+      this._bulkCrawl.cancelCrawl();
+      this._bulkCrawl = null;
+    }
+    this._isBulkLoading = false;
+  }
+
+  emitStatus(text, description, type = 'info') {
+    const event = new CustomEvent('onstatus', {
+      detail: { text, description, type },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+
   handleClear() {
     this._isCopying = false;
     this._isMoving = false;
     this._isDeleting = false;
+    this.cancelBulkCrawl();
     const opts = { detail: true, bubbles: true, composed: true };
     const event = new CustomEvent('clearselection', opts);
     this.dispatchEvent(event);
@@ -88,6 +110,58 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handleRestore() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onrestore', opts);
+    this.dispatchEvent(event);
+  }
+
+  async handleBulk() {
+    if (this._isBulkLoading) return;
+
+    const folders = this.items.filter((item) => !item.ext);
+    const files = this.items.filter((item) => item.ext);
+
+    let allFiles = files;
+    if (folders.length > 0) {
+      this._isBulkLoading = true;
+      try {
+        const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
+        const crawlInstance = crawl({
+          path: folders.map((folder) => folder.path),
+          files,
+          concurrent: 5,
+        });
+        this._bulkCrawl = crawlInstance;
+        allFiles = await crawlInstance.results;
+        // If cancelled (selection cleared, etc.), bail
+        if (this._bulkCrawl !== crawlInstance) return;
+      } catch (e) {
+        this.emitStatus('Bulk failed', 'Unable to crawl the selected folders.', 'error');
+        return;
+      } finally {
+        this._isBulkLoading = false;
+        this._bulkCrawl = null;
+      }
+    }
+
+    const { items2AemUrls } = await import('../da-list/helpers/utils.js');
+    const urls = items2AemUrls(allFiles);
+    if (urls.length === 0) return;
+
+    if (urls.length > MAX_BULK_URLS) {
+      this.emitStatus(
+        'Too many URLs for bulk',
+        `This selection expands to ${urls.length} URLs. Bulk supports up to ${MAX_BULK_URLS}.`,
+        'error',
+      );
+      return;
+    }
+
+    const list = urls.join(',');
+    window.open(`/apps/bulk?nx=local&urls=${encodeURIComponent(list)}`);
+  }
+
   inNewDir() {
     // items can only be selected from the same directory
     const itemPath = this.items?.[0]?.path;
@@ -103,6 +177,33 @@ export default class DaActionBar extends LitElement {
   get _canShare() {
     const isFile = this.items.some((item) => item.ext && item.ext !== 'link');
     return isFile && !this._isCopying;
+  }
+
+  get _inTrash() {
+    // When the current directory is inside the trash, we swap the Bulk button
+    // for a Restore button. Match `/.trash` as a complete segment so we don't
+    // false-positive on sibling names like `.trash-backup`.
+    const p = this.currentPath;
+    if (!p) return false;
+    return p.endsWith('/.trash') || p.includes('/.trash/');
+  }
+
+  get _canBulk() {
+    if (this._inTrash) return false;
+    // Bulk accepts files and folders (folders are crawled). Exclude 'link' items
+    // and anything that's copy/move in-flight.
+    const hasBulkable = this.items.some((item) => {
+      if (!item.ext) return true;
+      return item.ext !== 'link';
+    });
+    return hasBulkable && !this._isCopying;
+  }
+
+  get _canRestore() {
+    if (!this._inTrash) return false;
+    // Restore any selected item that has a real path (folders allowed). Exclude
+    // nothing special for now.
+    return this.items.length > 0 && !this._isCopying;
   }
 
   get currentAction() {
@@ -162,6 +263,19 @@ export default class DaActionBar extends LitElement {
             class="share-button ${this._canShare ? '' : 'hide'}">
             <img src="/blocks/browse/img/Smock_Share_18_N.svg" alt="" aria-hidden="true"/>
             <span>Share</span>
+          </button>
+          <button
+            @click=${this.handleBulk}
+            ?disabled=${this._isBulkLoading}
+            class="bulk-button ${this._canBulk ? '' : 'hide'} ${this._isBulkLoading ? 'is-loading' : ''}">
+            <img src="/blocks/browse/img/Smock_LinkOut_18_N.svg" alt="" aria-hidden="true"/>
+            <span>${this._isBulkLoading ? 'Loading…' : 'Bulk'}</span>
+          </button>
+          <button
+            @click=${this.handleRestore}
+            class="restore-button ${this._canRestore ? '' : 'hide'}">
+            <img src="/blocks/edit/img/Smock_Refresh_18_N.svg" alt="" aria-hidden="true"/>
+            <span>Restore</span>
           </button>
         </div>
       </div>`;
