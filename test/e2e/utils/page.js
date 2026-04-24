@@ -64,16 +64,19 @@ export function getTestSheetURL(testIdentifier, workerInfo) {
 
 /**
  * Returns the Skills Lab URL for the given org and site.
- * Appends local admin/collab query params when GITHUB_HEAD_REF is "local" or "local-https".
- * To test against a local da-nx instance add ?nx=local to the URL manually
- * or append it after calling this helper.
+ * Automatically appends ?nx=local&nxver=2 when the base URL is localhost
+ * so tests always load the local da-nx instance in development.
  *
  * @param {string} org - DA organisation slug (e.g. "da-sites")
  * @param {string} site - DA site/repo slug  (e.g. "da-status")
  * @returns {string} Full Skills Lab URL with hash.
  */
 export function getSkillsLabURL(org, site) {
-  return `${ENV}/apps/skills${QUERY}#/${org}/${site}`;
+  const isLocal = ENV.startsWith('http://localhost') || ENV.startsWith('https://localhost');
+  const nxParams = isLocal
+    ? (QUERY ? '&nx=local&nxver=2' : '?nx=local&nxver=2')
+    : '';
+  return `${ENV}/apps/skills${QUERY}${nxParams}#/${org}/${site}`;
 }
 
 /**
