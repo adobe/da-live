@@ -257,13 +257,19 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
 
+  let docDeletedHandled = false;
   wsProvider.on('connection-close', async () => {
+    if (docDeletedHandled) return;
     const resp = await checkDoc(path);
     if (resp.status === 404) {
+      if (docDeletedHandled) return;
+      docDeletedHandled = true;
       const split = window.location.hash.slice(2).split('/');
       split.pop();
-      // Navigate to the parent folder
-      window.location.replace(`/#/${split.join('/')}`);
+      const parentHash = `/#/${split.join('/')}`;
+      const { default: showDocDeletedDialog } = await import('../da-deleted/da-deleted.js');
+      await showDocDeletedDialog();
+      window.location.replace(parentHash);
     }
   });
   win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
