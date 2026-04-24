@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { deleteFromTarget, fetchTargetConfig, getOfferDetails, savePreview, sendToTarget } from './utils.js';
+import { I18nController, t } from '../../../../shared/i18n.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
@@ -13,6 +14,9 @@ class DaTarget extends LitElement {
     _statusText: { state: true },
   };
 
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
@@ -21,10 +25,10 @@ class DaTarget extends LitElement {
 
   async loadTargetConfig() {
     const { org, site } = this.details;
-    this._statusText = 'Fetching Target config';
+    this._statusText = t('edit.target.fetching');
     const config = await fetchTargetConfig(org, site);
     if (!config) {
-      this._statusText = 'Could not authenticate.';
+      this._statusText = t('edit.target.auth.failed');
       return;
     }
 
@@ -37,7 +41,7 @@ class DaTarget extends LitElement {
 
   async handleSend() {
     const { org, site, path } = this.details;
-    this._statusText = 'Previewing...';
+    this._statusText = t('edit.target.previewing');
     const prevResult = await savePreview(org, site, path);
     if (prevResult.error) {
       this._statusText = prevResult.error;
@@ -45,7 +49,7 @@ class DaTarget extends LitElement {
     }
 
     const { url: aemPath } = prevResult.preview;
-    this._statusText = 'Sending to Target...';
+    this._statusText = t('edit.target.sending');
     const { displayName } = await window.adobeIMS.getProfile();
 
     const result = await sendToTarget(org, site, this._name, aemPath, displayName, this._offerId);
@@ -69,7 +73,7 @@ class DaTarget extends LitElement {
 
   async handleRemove() {
     const { org, site } = this.details;
-    this._statusText = 'Deleting offer...';
+    this._statusText = t('edit.target.deleting');
 
     const result = await deleteFromTarget(org, site, this._offerId);
     if (result.error) {
@@ -85,11 +89,11 @@ class DaTarget extends LitElement {
   }
 
   get _buttonText() {
-    return this._offerId ? 'Update offer' : 'Create offer';
+    return this._offerId ? t('edit.target.updateOffer') : t('edit.target.createOffer');
   }
 
   get _placeholder() {
-    return `${new Date().getFullYear()} promotion`;
+    return t('edit.target.offerNamePlaceholder', { year: new Date().getFullYear() });
   }
 
   get _disabled() {
@@ -101,17 +105,17 @@ class DaTarget extends LitElement {
       <div class="content">
         <sl-input
           type="text"
-          label="Target offer name"
+          label="${t('edit.target.offerName')}"
           placeholder=${this._placeholder}
           @input=${({ target }) => { this._name = target.value; }}
-          aria-label="Target Offer name"
+          aria-label="${t('edit.target.offerName')}"
           value=${this._name}></sl-input>
       </div>
       <div class="footer">
         <p class="status-text">${this._statusText}</p>
         <div class="actions">
           ${this._offerId ? html`
-            <button class="target-action-remove" aria-label="Delete offer" ?disabled=${this._statusText} @click=${this.handleRemove}>
+            <button class="target-action-remove" aria-label="${t('edit.target.deleteOffer')}" ?disabled=${this._statusText} @click=${this.handleRemove}>
               <svg viewBox="0 0 20 20">
                 <use href="/blocks/edit/img/S2_Icon_Delete_20_N.svg#S2_Icon_Delete"/>
               </svg>

@@ -1,6 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { loadDoc, loadResults } from './utils/utils.js';
+import { I18nController, t } from '../../../../shared/i18n.js';
+import { CATEGORY_LABEL_KEYS, CHECK_LABEL_KEYS } from './utils/constants.js';
 
 // Components
 import './views/label.js';
@@ -14,6 +16,9 @@ class DaPreflight extends LitElement {
     _categories: { state: true },
     _status: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -75,7 +80,7 @@ class DaPreflight extends LitElement {
       <ul class="category-details">
         ${checks.map((check) => html`
           <li class="sub-category">
-            <p class="check-label">${check.title}</p>
+            <p class="check-label">${CHECK_LABEL_KEYS[check.title] ? t(CHECK_LABEL_KEYS[check.title]) : check.title}</p>
             <ul>
               ${check.results.toSorted((a, b) => {
                 const order = ['error', 'warn', 'info', 'success'];
@@ -91,10 +96,12 @@ class DaPreflight extends LitElement {
     const { title, checks, open } = category;
     const expand = () => this.expandCategory(category);
 
+    const displayTitle = CATEGORY_LABEL_KEYS[title] ? t(CATEGORY_LABEL_KEYS[title]) : title;
+
     return html`
       <li class="category ${open ? 'is-open' : ''}">
         <div class="category-header">
-          <button class="category-title" @click=${expand}>${title}</button>
+          <button class="category-title" @click=${expand}>${displayTitle}</button>
           <div class="category-labels">
             ${this.renderLabels(checks, expand)}
           </div>

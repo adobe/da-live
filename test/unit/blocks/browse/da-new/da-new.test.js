@@ -14,7 +14,7 @@ describe('DaNew', () => {
   describe('handleNameChange', () => {
     it('lowercases and replaces invalid chars with hyphens', () => {
       const el = new DaNew();
-      const target = { value: 'Foo Bar', placeholder: 'name', classList: { remove: () => {} } };
+      const target = { value: 'Foo Bar', dataset: { input: 'name' }, classList: { remove: () => {} } };
       el.handleNameChange({ target });
       expect(el._createName).to.equal('foo-bar');
       expect(target.value).to.equal('foo-bar');
@@ -22,7 +22,7 @@ describe('DaNew', () => {
 
     it('collapses consecutive invalid chars into a single hyphen', () => {
       const el = new DaNew();
-      const target = { value: 'foo!!bar', placeholder: 'name', classList: { remove: () => {} } };
+      const target = { value: 'foo!!bar', dataset: { input: 'name' }, classList: { remove: () => {} } };
       el.handleNameChange({ target });
       expect(el._createName).to.equal('foo-bar');
       expect(target.value).to.equal('foo-bar');
@@ -32,7 +32,7 @@ describe('DaNew', () => {
       // Simulates the DOM state after a prior keystroke: input value is "foo-",
       // user types another invalid character making it "foo-!".
       const el = new DaNew();
-      const target = { value: 'foo-!', placeholder: 'name', classList: { remove: () => {} } };
+      const target = { value: 'foo-!', dataset: { input: 'name' }, classList: { remove: () => {} } };
       el.handleNameChange({ target });
       expect(el._createName).to.equal('foo-');
       // Explicit DOM sync is required here: without it, Lit's property binding
@@ -42,7 +42,7 @@ describe('DaNew', () => {
 
     it('preserves a single trailing hyphen during typing', () => {
       const el = new DaNew();
-      const target = { value: 'foo!', placeholder: 'name', classList: { remove: () => {} } };
+      const target = { value: 'foo!', dataset: { input: 'name' }, classList: { remove: () => {} } };
       el.handleNameChange({ target });
       expect(el._createName).to.equal('foo-');
       expect(target.value).to.equal('foo-');
@@ -53,7 +53,7 @@ describe('DaNew', () => {
       let removed = false;
       const target = {
         value: 'abc',
-        placeholder: 'name',
+        dataset: { input: 'name' },
         classList: { remove: (cls) => { if (cls === 'da-input-error') removed = true; } },
       };
       el.handleNameChange({ target });
@@ -65,7 +65,7 @@ describe('DaNew', () => {
       let removed = false;
       const target = {
         value: 'abc',
-        placeholder: 'url',
+        dataset: { input: 'url' },
         classList: { remove: () => { removed = true; } },
       };
       el.handleNameChange({ target });
@@ -90,7 +90,7 @@ describe('DaNew', () => {
     it('does not save and flags the input when _createName is empty', async () => {
       const el = new DaNew();
       const input = makeNameInput();
-      stubShadowRoot(el, { '.da-actions-input[placeholder="name"]': input });
+      stubShadowRoot(el, { '.da-actions-input[data-input="name"]': input });
       el._createName = '';
       let reset = false;
       el.resetCreate = () => { reset = true; };
@@ -103,7 +103,7 @@ describe('DaNew', () => {
     it('flags the input when the finalized name becomes empty after trimming', async () => {
       const el = new DaNew();
       const input = makeNameInput();
-      stubShadowRoot(el, { '.da-actions-input[placeholder="name"]': input });
+      stubShadowRoot(el, { '.da-actions-input[data-input="name"]': input });
       // Only hyphens -> trims to empty string.
       el._createName = '---';
       let reset = false;
@@ -117,7 +117,7 @@ describe('DaNew', () => {
     it('strips a trailing hyphen from _createName before saving (link type)', async () => {
       const el = new DaNew();
       const input = makeNameInput();
-      stubShadowRoot(el, { '.da-actions-input[placeholder="name"]': input });
+      stubShadowRoot(el, { '.da-actions-input[data-input="name"]': input });
       el._createName = 'foo-';
       el._createType = 'link';
       el._externalUrl = 'https://example.com';
@@ -154,8 +154,8 @@ describe('DaNew', () => {
   describe('handleUpload', () => {
     it('returns false when no file has been selected', async () => {
       const el = new DaNew();
-      el._fileLabel = 'Select file';
-      const label = { classList: { added: [], add(c) { this.added.push(c); } } };
+      el._fileLabel = '';
+      const label = { classList: { added: [], add(c) { this.added.push(c); }, remove() {} } };
       Object.defineProperty(el, 'shadowRoot', {
         configurable: true,
         value: { querySelector: () => label },

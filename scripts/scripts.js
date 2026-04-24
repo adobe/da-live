@@ -12,6 +12,7 @@
 
 import { setNx, nxJS, nxCSS } from './utils.js';
 import { initIms } from '../blocks/shared/utils.js';
+import { initI18n } from '../blocks/shared/i18n.js';
 
 /** Determine where to load NX from */
 const nx = setNx('/nx');
@@ -65,6 +66,7 @@ function loadStyles() {
 export default async function loadPage() {
   loadStyles();
   initIms();
+  await initI18n();
 
   if (!nx2) {
     // pin to light scheme

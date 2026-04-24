@@ -1,6 +1,7 @@
 import { DA_ORIGIN } from '../../../../../shared/constants.js';
 import { daFetch } from '../../../../../shared/utils.js';
 import getPathDetails from '../../../../../shared/pathDetails.js';
+import { t } from '../../../../../shared/i18n.js';
 import { CATEGORIES, REASONS } from './constants.js';
 
 const getMetadata = (el) => {
@@ -109,7 +110,7 @@ export function loadResults(doc, requestUpdate) {
 export async function loadDoc({ fullpath }) {
   const href = `${DA_ORIGIN}/source${fullpath}?no-cache=${Date.now()}`;
   const resp = await daFetch(href);
-  if (!resp.ok) return { error: `Could not fetch document. Status: ${resp.status}` };
+  if (!resp.ok) return { error: t('edit.preflight.fetch.failed', { status: resp.status }) };
   const html = await resp.text();
   const doc = new DOMParser().parseFromString(html, 'text/html');
   return { doc };

@@ -1,0 +1,39 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: inherit;
+}
+
+.da-locale-label {
+  opacity: 0.7;
+  user-select: none;
+}
+
+.da-locale-select {
+  appearance: none;
+  background-color: transparent;
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 2px 22px 2px 6px;
+  background-image: linear-gradient(45deg, transparent 50%, currentcolor 50%), linear-gradient(135deg, currentcolor 50%, transparent 50%);
+  background-position: calc(100% - 10px) 50%, calc(100% - 6px) 50%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.da-locale-select:focus-visible {
+  outline: 2px solid #1473e6;
+  outline-offset: 1px;
+}
+
+.da-locale-select option {
+  color: #2c2c2c;
+  background: #fff;
+}

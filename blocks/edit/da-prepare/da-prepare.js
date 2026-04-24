@@ -1,28 +1,33 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { fetchDaConfigs } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
 const OOTB_ACTIONS = [
   {
     title: 'Preflight',
+    labelKey: 'edit.prepare.action.preflight',
     render: async (details) => (await import('./actions/preflight/preflight.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_FileFold_20_N.svg#S2_Icon_FileFold',
   },
   {
     title: 'Schedule Publish',
+    labelKey: 'edit.prepare.action.schedule',
     render: async (details) => (await import('./actions/scheduler/scheduler.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_ClockPending_20_N.svg#S2_Icon_ClockPending',
     optional: true,
   },
   {
     title: 'Unpublish',
+    labelKey: 'edit.prepare.action.unpublish',
     render: async (details) => (await import('./actions/unpublish/unpublish.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_PublishNo_20_N.svg#S2_Icon_PublishNo',
   },
   {
     title: 'Send to Adobe Target',
+    labelKey: 'edit.prepare.action.target',
     render: async (details) => (await import('./actions/target/target.js')).default(details),
     icon: '/blocks/edit/img/S2_Icon_Target_20_N.svg#S2_Icon_Target',
     optional: true,
@@ -36,6 +41,9 @@ export default class DaPrepare extends LitElement {
     _menuItems: { state: true },
     _dialogItem: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -142,12 +150,15 @@ export default class DaPrepare extends LitElement {
     // OOTB will have a rendered component
     const { cmp } = this._dialogItem;
 
+    const { labelKey, title } = this._dialogItem;
+    const dialogTitle = labelKey ? t(labelKey) : title;
+
     return html`
       <da-dialog
         class="da-dialog-block-preview"
         size="auto"
         emphasis="quiet"
-        title=${this._dialogItem.title}
+        title=${dialogTitle}
         @close=${this.handleCloseDialog}>
         ${cmp || html`<iframe
           src=${this._dialogItem.path}
@@ -173,7 +184,7 @@ export default class DaPrepare extends LitElement {
             <li class="prepare-menu-item">
               <button @click=${() => this.handleItemClick(item)}>
                 ${this.renderIcon(item)}
-                <span>${item.title}</span>
+                <span>${item.labelKey ? t(item.labelKey) : item.title}</span>
               </button>
             </li>
           `)}

@@ -2,6 +2,7 @@ import { LitElement, html, nothing, until } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
 
@@ -26,6 +27,9 @@ export default class DaListItem extends LitElement {
     _version: { state: true },
     _lastModifedBy: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -129,7 +133,7 @@ export default class DaListItem extends LitElement {
     if (e.submitter.value === 'cancel' || this.name === newName) {
       this.handleChecked();
     } else if (!newName) {
-      this.setStatus('A name is required.', 'Please enter a valid name.');
+      this.setStatus(t('browse.listItem.nameRequired'), t('browse.listItem.nameRequired.desc'));
       await delay(2000);
       this.setStatus();
     } else {
@@ -139,7 +143,7 @@ export default class DaListItem extends LitElement {
 
       const fileExists = await this.doesFileExist(newPath);
       if (fileExists) {
-        this.setStatus('A file with this name already exists.', 'Please choose a different name.');
+        this.setStatus(t('browse.listItem.nameExists'), t('browse.listItem.nameExists.desc'));
         await delay(2000);
         this.setStatus();
         return;
@@ -158,7 +162,7 @@ export default class DaListItem extends LitElement {
       this._isRenaming = true;
       this.date = Date.now();
 
-      const showStatus = setTimeout(() => { this.setStatus('Renaming', 'Please be patient. Renaming items with many children can take time.'); }, 5000);
+      const showStatus = setTimeout(() => { this.setStatus(t('browse.listItem.renaming'), t('browse.listItem.renaming.desc')); }, 5000);
       const resp = await daFetch(`${DA_ORIGIN}/move${oldPath}`, opts);
 
       if (resp.status === 204) {
@@ -170,7 +174,7 @@ export default class DaListItem extends LitElement {
         this.updateAEMStatus();
         this.notifyRenamed(oldPath);
       } else {
-        this.setStatus('There was an error. Refresh and try again.', 'error');
+        this.setStatus(t('browse.listItem.renameError'), 'error');
       }
     }
   }
@@ -203,12 +207,12 @@ export default class DaListItem extends LitElement {
       <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
         <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
         </span>
-        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="Rename item">
+        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="${t('browse.listItem.renameInput.aria')}">
         <div class="da-item-list-item-rename-actions">
-          <button aria-label="Confirm" value="confirm">
+          <button aria-label="${t('common.confirm')}" value="confirm">
             <div class="icon checkmark-icon"></div>
           </button>
-          <button aria-label="Cancel" value="cancel">
+          <button aria-label="${t('common.cancel')}" value="cancel">
             <div class="icon cancel-icon"></div>
           </button>
         </div>
@@ -243,7 +247,7 @@ export default class DaListItem extends LitElement {
   renderCheckBox() {
     return html`
       <div class="checkbox-wrapper">
-        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${(e) => { this.handleChecked(e); }}" aria-label="Select item">
+        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${(e) => { this.handleChecked(e); }}" aria-label="${t('browse.listItem.select.aria')}">
         <label class="checkbox-label" for="item-selected-${this.idx}"></label>
       </div>
       <input type="checkbox" name="select" style="display: none;">
@@ -254,24 +258,24 @@ export default class DaListItem extends LitElement {
     return html`
       <span class="da-item-list-item-type da-item-list-item-type-file-version"></span>
       <div class="da-list-item-da-details-version">
-        <p class="da-list-item-details-title">Version</p>
-        <p>${this._version || this._version === 0 ? this._version : 'Checking'}</p>
+        <p class="da-list-item-details-title">${t('browse.listItem.version')}</p>
+        <p>${this._version || this._version === 0 ? this._version : t('browse.listItem.checking')}</p>
       </div>
       <div class="da-list-item-da-details-modified">
-        <p class="da-list-item-details-title">Last Modified By</p>
-        <p>${this._lastModifedBy ? this._lastModifedBy : 'Checking'}</p>
+        <p class="da-list-item-details-title">${t('browse.listItem.lastModifiedBy')}</p>
+        <p>${this._lastModifedBy ? this._lastModifedBy : t('browse.listItem.checking')}</p>
       </div>
     `;
   }
 
   renderAemDate(env) {
     if (!this[env]) {
-      return 'Checking';
+      return t('browse.listItem.checking');
     }
     if (this[env].lastModified) {
       return `${this[env].lastModified.date} ${this[env].lastModified.time}`;
     }
-    return 'Never';
+    return t('common.never');
   }
 
   render() {
@@ -280,7 +284,7 @@ export default class DaListItem extends LitElement {
         ${this.allowselect ? this.renderCheckBox() : nothing}
         ${this.rename ? this.renderRename() : this.renderItem()}
         <button
-          aria-label="Open"
+          aria-label="${t('browse.listItem.open.aria')}"
           @click=${this.toggleExpand}
           class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
         </button>
@@ -290,25 +294,25 @@ export default class DaListItem extends LitElement {
         <a
           href=${this._preview?.url}
           target="_blank"
-          aria-label="Open preview"
+          aria-label="${t('browse.listItem.openPreview.aria')}"
           @click=${this.showPreview}
           class="da-item-list-item-aem-btn">
           <div class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">Previewed</p>
-            <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
+            <p class="da-list-item-details-title">${t('browse.listItem.previewed')}</p>
+            <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? t('browse.listItem.notAuthorized') : this.renderAemDate('_preview')}</p>
           </div>
         </a>
         <a
           href=${this._live?.url}
           target="_blank"
-          aria-label="Open preview"
+          aria-label="${t('browse.listItem.openPreview.aria')}"
           @click=${this.showPreview}
           class="da-item-list-item-aem-btn">
           <div class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">Published</p>
-            <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
+            <p class="da-list-item-details-title">${t('browse.listItem.published')}</p>
+            <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? t('browse.listItem.notAuthorized') : this.renderAemDate('_live')}</p>
           </div>
         </a>
       </div>

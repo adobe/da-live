@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { I18nController, t } from '../i18n.js';
 
 const nx = getNx();
 
@@ -20,6 +21,9 @@ export default class DaDialog extends LitElement {
     size: { type: String }, // 'small', 'medium', 'large', 'auto'
     _showLazyModal: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -69,7 +73,7 @@ export default class DaDialog extends LitElement {
             <button
               class="da-dialog-close-btn"
               @click=${this.close}
-              aria-label="Close dialog">
+              aria-label=${t('dialog.close')}>
               <svg class="icon"><use href="/blocks/browse/img/S2IconClose20N-icon.svg#S2IconClose20N-icon"></use></svg>
             </button>
           </div>

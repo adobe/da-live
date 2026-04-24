@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../../../../scripts/utils.js';
 import getSheet from '../../../../../shared/sheet.js';
 import { etcFetch, getAemSiteToken, getSidekickConfig } from '../../../../../shared/utils.js';
+import { I18nController, t } from '../../../../../shared/i18n.js';
 import { ICONS, REASONS } from '../utils/constants.js';
 
 await import(`${getNx()}/blocks/loc/views/url-details/url-details.js`);
@@ -21,6 +22,9 @@ class PreflightLink extends LitElement {
     _aemPath: { state: true },
     _open: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   constructor() {
     super();
@@ -142,7 +146,7 @@ class PreflightLink extends LitElement {
   renderExpand() {
     if (!this._aemPath) return nothing;
     return html`
-      <button aria-label="expand" class="expand-link" @click=${this.handleOpen}>
+      <button aria-label="${t('edit.preflight.link.expand')}" class="expand-link" @click=${this.handleOpen}>
         <svg class="icon" viewBox="0 0 20 20"><use href="${ICONS.get('more')}"/></svg>
       </button>`;
   }

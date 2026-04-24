@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
+import { I18nController, t } from '../shared/i18n.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
 
@@ -15,6 +16,9 @@ class DaSheetPanes extends LitElement {
     _showVersions: { state: true },
     _showPreview: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -93,11 +97,11 @@ class DaSheetPanes extends LitElement {
     return html`
       <div class="da-sheet-pane-tabs is-visible">
         <div class="da-editor-tabs-full">
-          <button class="da-editor-tab show-preview" @click=${this.handlePreviewToggle}>Preview</button>
+          <button class="da-editor-tab show-preview" @click=${this.handlePreviewToggle}>${t('sheet.preview')}</button>
         </div>
         ${showHistory ? html`
         <div class="da-editor-tabs-quiet">
-          <button class="da-editor-tab quiet show-versions" @click=${this.handleHistoryToggle}>View history</button>
+          <button class="da-editor-tab quiet show-versions" @click=${this.handleHistoryToggle}>${t('sheet.viewHistory')}</button>
         </div>
         ` : nothing}
       </div>
@@ -124,11 +128,11 @@ async function setSheet(details, daTitle, daSheet) {
 export default async function init(el) {
   let details = getPathDetails();
   if (!details) {
-    el.innerHTML = '<h1>Please edit a sheet.</h1>';
+    el.innerHTML = `<h1>${t('sheet.please.edit')}</h1>`;
     return;
   }
 
-  document.title = `Edit sheet ${details.name} - DA`;
+  document.title = t('sheet.title', { name: details.name });
 
   // Base Elements
   const daTitle = document.createElement('da-title');

@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import { sanitizeName } from '../../../scripts/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 const sheet = await getSheet('/blocks/browse/da-sites/da-sites.css');
 
@@ -16,6 +17,9 @@ export default class DaSites extends LitElement {
     _status: { state: true },
     _urlError: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   constructor() {
     super();
@@ -119,7 +123,7 @@ export default class DaSites extends LitElement {
     const data = [new ClipboardItem({ [blob.type]: blob })];
     navigator.clipboard.write(data);
 
-    this.setStatus('Copied', 'The link was copied to the clipboard.');
+    this.setStatus(t('browse.sites.copied'), t('browse.sites.copiedBody'));
     setTimeout(() => { this.setStatus(); }, 3000);
   }
 
@@ -136,16 +140,16 @@ export default class DaSites extends LitElement {
   renderGo() {
     return html`
       <form @submit=${this.handleGo}>
-        <input 
+        <input
             @keydown="${() => { this._urlError = false; }}"
-            @change="${() => { this._urlError = false; }}" 
-            type="text" name="siteUrl" 
-            aria-label="Site URL"
-            placeholder="https://main--site--org.aem.page" 
-            class="${this._urlError ? 'error' : nothing}" 
+            @change="${() => { this._urlError = false; }}"
+            type="text" name="siteUrl"
+            aria-label="${t('browse.sites.siteUrl.aria')}"
+            placeholder="https://main--site--org.aem.page"
+            class="${this._urlError ? 'error' : nothing}"
         />
         <div class="da-form-btn-offset">
-          <button aria-label="Go to site">
+          <button aria-label="${t('browse.sites.goToSite.aria')}">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">
               <path fill="currentColor"
                 d="M23.09,13.67c.14-.35.14-.74,0-1.08-.07-.17-.18-.33-.31-.46l-6.62-6.62c-.55-.55-1.45-.55-2,0-.55.55-.55,1.45,0,2l4.21,4.21H4.61c-.78,0-1.41.63-1.41,1.42s.63,1.42,1.41,1.42h13.76l-4.21,4.21c-.55.55-.55,1.45,0,2,.28.28.64.41,1,.41s.72-.14,1-.41l6.62-6.62c.13-.13.23-.29.31-.46Z" />
@@ -179,14 +183,14 @@ export default class DaSites extends LitElement {
           <div class="da-site-back">
             <button class="da-back-action" @click=${() => this.handleShare(site.name)}>
               <img src="/blocks/browse/da-sites/img/s2-share.svg" loading="lazy"/>
-              <span>Share</span>
+              <span>${t('common.share')}</span>
             </button>
             <button class="da-back-action" @click=${() => this.handleRemove(site)}>
               <img src="/blocks/browse/da-sites/img/s2-visibility-off.svg" loading="lazy"/>
-              <span>Hide</span>
+              <span>${t('browse.sites.hide')}</span>
             </button>
           </div>
-          <button class="da-site-card-action da-site-card-action-more" @click=${(e) => this.handleFlip(e, site)} aria-label="More options">
+          <button class="da-site-card-action da-site-card-action-more" @click=${(e) => this.handleFlip(e, site)} aria-label="${t('browse.sites.more')}">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                 <path fill="currentColor" d="M16,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
                 <path fill="currentColor" d="M10,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
@@ -209,8 +213,8 @@ export default class DaSites extends LitElement {
       <div class="da-no-site-well">
         <img src="/blocks/browse/da-sites/img/site-icon-color.svg" width="78" height="60" alt=""/>
         <div class="da-no-site-text">
-          <h3>You don’t have any recent sites.</h3>
-          <p>Enter the URL for your site to get started.</p>
+          <h3>${t('browse.sites.empty')}</h3>
+          <p>${t('browse.sites.emptyCta')}</p>
         </div>
         ${this.renderGo()}
       </div>
@@ -222,11 +226,11 @@ export default class DaSites extends LitElement {
       <img src="/blocks/browse/da-sites/img/bg-gradient-org.avif" class="da-site-bg" alt="" />
       <div class="da-site-container">
         <div class="da-site-header">
-          <h2>Recents</h2>
+          <h2>${t('browse.sites.recents')}</h2>
         </div>
         ${this._recents && this._recents.length > 0 ? this.renderSites(this._recents) : this.renderEmpty()}
         <div class="da-site-header">
-          <h2>Sites</h2>
+          <h2>${t('browse.sites.sites')}</h2>
           ${this._recents && this._recents.length > 0 ? this.renderGo() : nothing}
         </div>
         <div class="da-site-sandbox-new">
@@ -236,7 +240,7 @@ export default class DaSites extends LitElement {
             </picture>
             <div class="da-double-card-fg">
               <img src="/blocks/browse/da-sites/img/sandbox-icon-gray.svg" width="80" height="60" alt=""/>
-              <h3>Sandbox</h3>
+              <h3>${t('browse.sites.sandbox')}</h3>
             </div>
           </a>
           <a class="da-double-card da-double-card-add-new" href="/start">
@@ -245,7 +249,7 @@ export default class DaSites extends LitElement {
             </picture>
             <div class="da-double-card-fg">
               <img src="/blocks/browse/da-sites/img/add-new-icon-gray.svg" width="80" height="60" alt=""/>
-              <h3>Add new</h3>
+              <h3>${t('browse.sites.addNew')}</h3>
             </div>
           </a>
         </div>

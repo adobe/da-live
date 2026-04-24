@@ -1,6 +1,7 @@
 import { LitElement, html } from 'da-lit';
 import { saveToDa, sanitizeName } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 import getEditPath from '../shared.js';
 
 // Styles & Icons
@@ -22,8 +23,11 @@ export default class DaNew extends LitElement {
     _externalUrl: { attribute: false },
   };
 
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
+
   connectedCallback() {
-    this._fileLabel = 'Select file';
+    this._fileLabel = '';
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
   }
@@ -55,7 +59,7 @@ export default class DaNew extends LitElement {
     // would remain in the input.
     e.target.value = normalized;
     this._createName = normalized;
-    if (e.target.placeholder === 'name') {
+    if (e.target.dataset.input === 'name') {
       e.target.classList.remove(INPUT_ERROR);
     }
   }
@@ -65,7 +69,7 @@ export default class DaNew extends LitElement {
   }
 
   async handleSave() {
-    const nameInput = this.shadowRoot.querySelector('.da-actions-input[placeholder="name"]');
+    const nameInput = this.shadowRoot.querySelector('.da-actions-input[data-input="name"]');
     const finalName = sanitizeName(this._createName || '', { trimTrailing: true });
     if (!finalName) {
       if (nameInput) nameInput.classList.add(INPUT_ERROR);
@@ -109,7 +113,7 @@ export default class DaNew extends LitElement {
   }
 
   async handleUpload(e) {
-    if (this._fileLabel === 'Select file') {
+    if (!this._fileLabel) {
       const label = this.shadowRoot.querySelector('.da-actions-file-label');
       label.classList.add(INPUT_ERROR);
       return false;
@@ -153,7 +157,7 @@ export default class DaNew extends LitElement {
     this._createName = '';
     this._createType = '';
     this._createFile = '';
-    this._fileLabel = 'Select file';
+    this._fileLabel = '';
     this._externalUrl = '';
     const input = this.shadowRoot.querySelector('.da-actions-input.da-input-error');
     if (input) input.classList.remove(INPUT_ERROR);
@@ -165,37 +169,39 @@ export default class DaNew extends LitElement {
   }
 
   render() {
+    const typeName = this._createType ? t(`browse.new.type.${this._createType}`) : '';
+    const fileLabel = this._fileLabel || t('browse.new.file.select');
     return html`
       <div class="da-actions-create ${this._createShow}">
-        <button class="da-actions-new-button" @click=${this.handleCreateMenu} ?disabled=${this._disabled}>New</button>
+        <button class="da-actions-new-button" @click=${this.handleCreateMenu} ?disabled=${this._disabled}>${t('browse.new.button')}</button>
         <ul class="da-actions-menu">
           <li class=da-actions-menu-item>
-            <button data-type=folder @click=${this.handleNewType}>Folder</button>
+            <button data-type=folder @click=${this.handleNewType}>${t('browse.new.type.folder')}</button>
           </li>
           <li class=da-actions-menu-item>
-            <button data-type=document @click=${this.handleNewType}>Document</button>
+            <button data-type=document @click=${this.handleNewType}>${t('browse.new.type.document')}</button>
           </li>
           <li class=da-actions-menu-item>
-            <button data-type=sheet @click=${this.handleNewType}>Sheet</button>
+            <button data-type=sheet @click=${this.handleNewType}>${t('browse.new.type.sheet')}</button>
           </li>
           <li class=da-actions-menu-item>
-            <button data-type=media @click=${this.handleNewType}>Media</button>
+            <button data-type=media @click=${this.handleNewType}>${t('browse.new.type.media')}</button>
           </li>
           <li class=da-actions-menu-item>
-            <button data-type=link @click=${this.handleNewType}>Link</button>
+            <button data-type=link @click=${this.handleNewType}>${t('browse.new.type.link')}</button>
           </li>
         </ul>
         <div class="da-actions-input-container">
-          <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
-          ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="url" @input=${this.handleUrlChange} .value=${this._externalUrl || ''} />` : ''}
-          <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
-          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
+          <input type="text" class="da-actions-input" data-input="name" placeholder=${t('browse.new.input.name')} @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
+          ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" data-input="url" placeholder=${t('browse.new.input.url')} @input=${this.handleUrlChange} .value=${this._externalUrl || ''} />` : ''}
+          <button class="da-actions-button" @click=${this.handleSave}>${t('browse.new.create', { type: typeName })}</button>
+          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>${t('common.cancel')}</button>
         </div>
         <form enctype="multipart/form-data" class="da-actions-file-container" @submit=${this.handleUpload}>
-          <label for="da-actions-file" class="da-actions-file-label">${this._fileLabel}</label>
+          <label for="da-actions-file" class="da-actions-file-label">${fileLabel}</label>
           <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} name="data" />
-          <button class="da-actions-button">Upload</button>
-          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
+          <button class="da-actions-button">${t('common.upload')}</button>
+          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>${t('common.cancel')}</button>
         </form>
       </div>`;
   }

@@ -16,6 +16,7 @@ import insertTable from '../../table.js';
 import { insertSectionBreak } from '../menu/menu.js';
 import loremIpsum from './loremIpsum.js';
 import { SUPPORTED_IMAGE_TYPES, uploadImageFile } from '../imageDrop.js';
+import { t } from '../../../../shared/i18n.js';
 
 const setHeading = (state, dispatch, level) => {
   const type = state.schema.nodes.heading;
@@ -48,44 +49,44 @@ const insertImage = (state, dispatch, argument, view) => {
   return true;
 };
 
-const items = [
+const items = () => [
   {
-    title: 'Heading 1',
+    title: t('edit.prose.slash.heading1'),
     command: (state, dispatch) => setHeading(state, dispatch, 1),
     class: 'menu-item-h1',
   },
   {
-    title: 'Heading 2',
+    title: t('edit.prose.slash.heading2'),
     command: (state, dispatch) => setHeading(state, dispatch, 2),
     class: 'menu-item-h2',
   },
   {
-    title: 'Heading 3',
+    title: t('edit.prose.slash.heading3'),
     command: (state, dispatch) => setHeading(state, dispatch, 3),
     class: 'menu-item-h3',
   },
   {
-    title: 'Blockquote',
+    title: t('edit.prose.slash.blockquote'),
     command: wrapInBlockquote,
     class: 'menu-item-blockquote',
   },
   {
-    title: 'Code block',
+    title: t('edit.prose.slash.codeBlock'),
     command: wrapInCodeBlock,
     class: 'menu-item-codeblock',
   },
   {
-    title: 'Bullet list',
+    title: t('edit.prose.slash.bulletList'),
     command: (state, dispatch) => wrapInList(state.schema.nodes.bullet_list)(state, dispatch),
     class: 'bullet-list',
   },
   {
-    title: 'Numbered list',
+    title: t('edit.prose.slash.orderedList'),
     command: (state, dispatch) => wrapInList(state.schema.nodes.ordered_list)(state, dispatch),
     class: 'ordered-list',
   },
   {
-    title: 'Section break',
+    title: t('edit.prose.slash.sectionBreak'),
     command: insertSectionBreak,
     class: 'edit-hr',
     excludeFromTable: true,
@@ -97,56 +98,56 @@ const items = [
     argument: true,
   },
   {
-    title: 'Block',
+    title: t('edit.prose.menu.block.label'),
     command: insertTable,
     class: 'insert-table',
     excludeFromTable: true,
   },
   {
-    title: 'Library',
+    title: t('edit.prose.menu.library.label'),
     command: toggleLibrary,
     class: 'open-library',
   },
   {
-    title: 'Insert image',
+    title: t('edit.prose.slash.insertImage'),
     command: insertImage,
     class: 'insert-image',
   },
 ];
 
-const tableItems = [
+const tableItems = () => [
   {
-    title: 'Add Column After',
+    title: t('edit.prose.slash.table.insertColumnAfter'),
     command: addColumnAfter,
     class: 'insert-column-right',
   },
   {
-    title: 'Add Column Before',
+    title: t('edit.prose.slash.table.insertColumnBefore'),
     command: addColumnBefore,
     class: 'insert-column-left',
   },
   {
-    title: 'Add Row After',
+    title: t('edit.prose.slash.table.insertRowAfter'),
     command: addRowAfter,
     class: 'insert-row-after',
   },
   {
-    title: 'Add Row Before',
+    title: t('edit.prose.slash.table.insertRowBefore'),
     command: addRowBefore,
     class: 'insert-row-before',
   },
   {
-    title: 'Delete Row',
+    title: t('edit.prose.slash.table.deleteRow'),
     command: deleteRow,
     class: 'delete-row',
   },
   {
-    title: 'Delete Column',
+    title: t('edit.prose.slash.table.deleteColumn'),
     command: deleteColumn,
     class: 'delete-column',
   },
   {
-    title: 'Split Cell',
+    title: t('edit.prose.slash.table.splitCell'),
     command: splitCell,
     class: 'split-cell',
   },
@@ -154,22 +155,22 @@ const tableItems = [
 
 export const getTableItems = (state) => ([
   {
-    title: 'Edit Block',
+    title: t('edit.prose.slash.editBlock'),
     // prevent showing unavailable options.
     // item.command(state) does not commit the command, but returns whether it's available.
-    submenu: tableItems.filter((item) => item.command(state)),
+    submenu: tableItems().filter((item) => item.command(state)),
     class: 'table-options',
   },
-  ...items.filter((item) => !item.excludeFromTable),
+  ...items().filter((item) => !item.excludeFromTable),
 ]);
 
 export const getTableCellItems = (state) => ([
   {
-    title: 'Merge Cells',
+    title: t('edit.prose.slash.mergeCells'),
     command: mergeCells,
     class: 'merge-cells',
     enabled: mergeCells(state),
   },
 ].filter((x) => x.enabled !== false));
 
-export const getDefaultItems = () => items;
+export const getDefaultItems = () => items();

@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getFirstSheet } from '../../shared/utils.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 // Components
 import '../da-breadcrumbs/da-breadcrumbs.js';
@@ -20,19 +21,14 @@ export default class DaBrowse extends LitElement {
     _searchItems: { state: true },
   };
 
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
+
   constructor() {
     super();
     this._tabItems = [
-      {
-        id: 'browse',
-        title: 'Browse',
-        selected: true,
-      },
-      {
-        id: 'search',
-        title: 'Search',
-        selected: false,
-      },
+      { id: 'browse', selected: true },
+      { id: 'search', selected: false },
     ];
   }
 
@@ -170,7 +166,7 @@ export default class DaBrowse extends LitElement {
 
   render() {
     return html`
-      <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
+      <div class="da-tablist" role="tablist" aria-label=${t('browse.tablist.label')}>
         ${this._tabItems.map((tab, idx) => {
           if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
             return nothing;
@@ -183,7 +179,7 @@ export default class DaBrowse extends LitElement {
               aria-selected="${tab.selected}"
               aria-controls="tabpanel-${tab.id}"
               @click=${() => { this.handleTabClick(idx); }}>
-              <span class="focus">${tab.title}</span>
+              <span class="focus">${t(`browse.tab.${tab.id}`)}</span>
             </button>`;
         })}
       </div>

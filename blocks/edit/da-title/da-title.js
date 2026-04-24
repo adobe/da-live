@@ -10,6 +10,7 @@ import {
 import { delay, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
@@ -44,6 +45,9 @@ export default class DaTitle extends LitElement {
     _status: { state: true },
     _dialog: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   constructor() {
     super();
@@ -164,15 +168,15 @@ export default class DaTitle extends LitElement {
       const user = schedule.userId;
       const info = user ? `${time} by ${user}` : time;
 
-      const title = 'Scheduled content';
+      const title = t('edit.title.scheduledContent');
       const content = html`
-        <p>This content is already scheduled to publish:</p>
+        <p>${t('edit.title.schedule.line1')}</p>
         <p><strong>${info}</strong></p>
-        <p>Publishing now will override the scheduled publish. Continue?</p>
+        <p>${t('edit.title.schedule.line2')}</p>
       `;
       const action = {
         style: 'accent',
-        label: 'Publish anyway',
+        label: t('edit.title.publishAnyway'),
         click: () => {
           this._dialog = undefined;
           resolve(true);
@@ -297,16 +301,16 @@ export default class DaTitle extends LitElement {
 
     const { org, site } = this.details;
 
-    const title = 'Role request';
+    const title = t('edit.title.roleRequest');
 
     const action = {
       style: 'accent',
-      label: 'OK',
+      label: t('edit.title.ok'),
       click: async () => { this._dialog = undefined; },
       disabled: true,
     };
 
-    let content = html`<p>Requesting ${this._status.action} permissions...</p>`;
+    let content = html`<p>${t('edit.title.requestingPermissions', { action: this._status.action })}</p>`;
     this._dialog = { title, content, action };
 
     const { message } = await requestRole(org, site, this._status.action);
@@ -337,8 +341,8 @@ export default class DaTitle extends LitElement {
       <button
         @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
-        aria-label="Send">
-        ${action.charAt(0).toUpperCase() + action.slice(1)}
+        aria-label="${t('edit.title.send.aria')}">
+        ${t(`edit.title.action.${action}`)}
       </button>
     `)}`;
   }
@@ -389,7 +393,7 @@ export default class DaTitle extends LitElement {
       <div class="da-title-error">
         <p><strong>${this._status.message}</strong></p>
         ${this._status.details ? html`<p>${this._status.details}</p>` : nothing}
-        ${this._status.status === 403 ? html`<button @click=${this.handleRoleRequest}>Request access</button>` : nothing}
+        ${this._status.status === 403 ? html`<button @click=${this.handleRoleRequest}>${t('edit.title.requestAccess')}</button>` : nothing}
       </div>`;
   }
 
@@ -408,7 +412,7 @@ export default class DaTitle extends LitElement {
           ${this._status ? this.renderError() : nothing}
           <div class="da-title-actions ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
             ${this.renderActions()}
-            <button @click=${this.toggleActions} class="con-button blue da-title-action-send" aria-label="Send">
+            <button @click=${this.toggleActions} class="con-button blue da-title-action-send" aria-label="${t('edit.title.send.aria')}">
               <svg class="da-title-action-send-icon" viewBox="0 0 20 20">
                 <use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish"/>
               </svg>

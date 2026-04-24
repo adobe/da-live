@@ -1,5 +1,6 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 // Styles & Icons
 const getStyle = (await import(`${getNx()}/public/utils/styles.js`)).default;
@@ -14,6 +15,9 @@ export default class DaBreadcrumbs extends LitElement {
     depth: { type: Number },
     _breadcrumbs: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -39,7 +43,7 @@ export default class DaBreadcrumbs extends LitElement {
       return html`
         <a class="da-breadcrumb-list-item-config"
            href="/config${crumb.path}/"
-           aria-label="Config">
+           aria-label=${t('browse.breadcrumbs.config')}>
            <svg class="da-breadcrumb-list-item-icon"><use href="#spectrum-settings"/></svg>
         </a>`;
     }

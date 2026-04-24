@@ -1,4 +1,19 @@
+import { t } from '../../../../../shared/i18n.js';
+
 export const CATEGORIES = ['References', 'Content', 'SEO'];
+export const CATEGORY_LABEL_KEYS = {
+  References: 'edit.preflight.category.references',
+  Content: 'edit.preflight.category.content',
+  SEO: 'edit.preflight.category.seo',
+};
+export const CHECK_LABEL_KEYS = {
+  Links: 'edit.preflight.check.links',
+  Fragments: 'edit.preflight.check.fragments',
+  'H1 count': 'edit.preflight.check.h1',
+  'Lorem ipsum': 'edit.preflight.check.lorem',
+  Title: 'edit.preflight.check.title',
+  Description: 'edit.preflight.check.description',
+};
 
 export const ICONS = new Map([
   ['success', 'blocks/edit/img/S2_Icon_CheckmarkCircle_20_N.svg#S2_Icon_CheckmarkCircle'],
@@ -9,20 +24,20 @@ export const ICONS = new Map([
 ]);
 
 export const REASONS = {
-  'h1.info': { badge: 'info', reason: 'Found exactly one H1 heading.' },
-  'h1.warn': { badge: 'warn', reason: 'Found found more than one H1 heading.' },
-  'h1.error': { badge: 'error', reason: 'No H1 Elements found.' },
-  'lorem.info': { badge: 'info', reason: 'This document appears to be free of lorem ipsum.' },
-  'lorem.error': { badge: 'error', reason: 'This document appears to have lorem ipsum.' },
-  'title.info.meta': { badge: 'info', reason: 'Title found in metadata.' },
-  'title.info.h1': { badge: 'info', reason: 'Document using H1 as title.' },
-  'title.error': { badge: 'error', reason: 'No title found in metadata or H1 fallback.' },
-  'title.warn': { badge: 'warn', reason: 'No title found in metadata or H1 fallback.' },
-  'description.info.meta': { badge: 'info', reason: 'Description found in metadata.' },
-  'description.info.para': { badge: 'info', reason: 'Description found as first paragraph.' },
-  'description.warn': { badge: 'warn', reason: 'Description not found in metadata or first paragraph.' },
-  'link.working': { badge: 'info', reason: 'Getting link details' },
-  'link.success': { badge: 'success', reason: 'Link published' },
-  'link.warn': { badge: 'warn', reason: 'Link redirected' },
-  'link.error': { badge: 'error', reason: 'Could not validate link' },
+  'h1.info': { badge: 'info', get reason() { return t('edit.preflight.reason.h1.one'); } },
+  'h1.warn': { badge: 'warn', get reason() { return t('edit.preflight.reason.h1.many'); } },
+  'h1.error': { badge: 'error', get reason() { return t('edit.preflight.reason.h1.none'); } },
+  'lorem.info': { badge: 'info', get reason() { return t('edit.preflight.reason.lorem.clean'); } },
+  'lorem.error': { badge: 'error', get reason() { return t('edit.preflight.reason.lorem.found'); } },
+  'title.info.meta': { badge: 'info', get reason() { return t('edit.preflight.reason.title.present'); } },
+  'title.info.h1': { badge: 'info', get reason() { return t('edit.preflight.reason.title.present'); } },
+  'title.error': { badge: 'error', get reason() { return t('edit.preflight.reason.title.missing'); } },
+  'title.warn': { badge: 'warn', get reason() { return t('edit.preflight.reason.title.missing'); } },
+  'description.info.meta': { badge: 'info', get reason() { return t('edit.preflight.reason.description.present'); } },
+  'description.info.para': { badge: 'info', get reason() { return t('edit.preflight.reason.description.present'); } },
+  'description.warn': { badge: 'warn', get reason() { return t('edit.preflight.reason.description.missing'); } },
+  'link.working': { badge: 'info', get reason() { return t('edit.preflight.reason.links.ok'); } },
+  'link.success': { badge: 'success', get reason() { return t('edit.preflight.reason.links.ok'); } },
+  'link.warn': { badge: 'warn', get reason() { return t('edit.preflight.reason.links.broken'); } },
+  'link.error': { badge: 'error', get reason() { return t('edit.preflight.reason.links.broken'); } },
 };

@@ -31,6 +31,7 @@ import { handleUndo, handleRedo } from '../keyHandlers.js';
 import insertTable from '../../table.js';
 import { linkItem, removeLinkItem } from './linkItem.js';
 import { markActive } from './menuUtils.js';
+import { t } from '../../../../shared/i18n.js';
 
 function canInsert(state, nodeType) {
   const { $from } = state.selection;
@@ -59,7 +60,7 @@ function cmdItem(cmd, options) {
 
 function imgAltTextItem() {
   let altTextPalette = { isOpen: () => false };
-  const title = 'Alt text';
+  const title = t('edit.prose.menu.altText');
   return new MenuItem({
     title,
     label: title,
@@ -102,7 +103,7 @@ function imgAltTextItem() {
 }
 
 function codeMarkItem(markType) {
-  const title = 'Toggle inline code';
+  const title = t('edit.prose.menu.inlineCode.title');
   const cmd = toggleMark(markType);
 
   return new MenuItem({
@@ -123,8 +124,8 @@ function codeBlockItem(codeBlockNode) {
   const cmd = setBlockType(codeBlockNode);
 
   return new MenuItem({
-    title: 'Change to code block',
-    label: 'Code',
+    title: t('edit.prose.menu.codeBlock.title'),
+    label: t('edit.prose.menu.codeBlock.label'),
     column: 2,
     class: 'menu-item-codeblock',
     enable(state) {
@@ -140,8 +141,8 @@ function codeBlockItem(codeBlockNode) {
 
 function blockquoteItem(codeBlockNode) {
   return wrapItem(codeBlockNode, {
-    title: 'Change to blockquote',
-    label: 'Blockquote',
+    title: t('edit.prose.menu.blockquote.title'),
+    label: t('edit.prose.menu.blockquote.label'),
     column: 2,
     class: 'menu-item-blockquote',
   });
@@ -187,8 +188,8 @@ export function getHeadingKeymap(schema) {
     'Mod-Alt-0': (state, dispatch) => {
       const menuItem = createBlockMenuItem(paragraphNode, {
         type: 'paragraph',
-        title: 'Change to paragraph',
-        label: 'P',
+        title: t('edit.prose.menu.paragraph.title'),
+        label: t('edit.prose.menu.paragraph.label'),
       });
       return menuItem.spec.run(state, dispatch);
     },
@@ -200,7 +201,7 @@ export function getHeadingKeymap(schema) {
       const menuItem = createBlockMenuItem(headingNode, {
         type: 'heading',
         level,
-        title: `Change to heading ${level}`,
+        title: t('edit.prose.menu.heading.title', { level }),
         label: `H${level}`,
       });
       return menuItem.spec.run(state, dispatch);
@@ -229,15 +230,15 @@ function tableItem(label, cmd, css) {
 
 function getTableMenu() {
   return [
-    tableItem('Insert column before', addColumnBefore, 'addColBefore'),
-    tableItem('Insert column after', addColumnAfter, 'addColumnAfter'),
-    tableItem('Delete column', deleteColumn, 'deleteColumn'),
-    tableItem('Insert row before', addRowBefore, 'addRowBefore'),
-    tableItem('Insert row after', addRowAfter, 'addRowAfter'),
-    tableItem('Delete row', deleteRow, 'deleteRow'),
-    tableItem('Merge cells', mergeCells, 'mergeCells'),
-    tableItem('Split cell', splitCell, 'splitCell'),
-    tableItem('Delete block', deleteTable, 'deleteTable'),
+    tableItem(t('edit.prose.slash.table.insertColumnBefore'), addColumnBefore, 'addColBefore'),
+    tableItem(t('edit.prose.slash.table.insertColumnAfter'), addColumnAfter, 'addColumnAfter'),
+    tableItem(t('edit.prose.slash.table.deleteColumn'), deleteColumn, 'deleteColumn'),
+    tableItem(t('edit.prose.slash.table.insertRowBefore'), addRowBefore, 'addRowBefore'),
+    tableItem(t('edit.prose.slash.table.insertRowAfter'), addRowAfter, 'addRowAfter'),
+    tableItem(t('edit.prose.slash.table.deleteRow'), deleteRow, 'deleteRow'),
+    tableItem(t('edit.prose.slash.mergeCells'), mergeCells, 'mergeCells'),
+    tableItem(t('edit.prose.slash.table.splitCell'), splitCell, 'splitCell'),
+    tableItem(t('edit.prose.slash.table.deleteTable'), deleteTable, 'deleteTable'),
   ];
 }
 
@@ -245,7 +246,7 @@ function getTextBlocks(marks, nodes) {
   const headingItems = [1, 2, 3, 4, 5, 6].map((i) => createBlockMenuItem(nodes.heading, {
     type: 'heading',
     level: i,
-    title: `Change to H${i}`,
+    title: t('edit.prose.menu.heading.title', { level: i }),
     label: `H${i}`,
     column: 2,
     class: `menu-item-h${i}`,
@@ -254,39 +255,39 @@ function getTextBlocks(marks, nodes) {
   return [
     createBlockMenuItem(nodes.paragraph, {
       type: 'paragraph',
-      title: 'Change to paragraph',
-      label: 'P',
+      title: t('edit.prose.menu.paragraph.title'),
+      label: t('edit.prose.menu.paragraph.label'),
       column: 2,
       class: 'menu-item-para',
     }),
     markItem(marks.strong, {
-      title: 'Toggle bold',
-      label: 'B',
+      title: t('edit.prose.menu.bold.title'),
+      label: t('edit.prose.menu.bold.label'),
       class: 'edit-bold',
     }),
     markItem(marks.em, {
-      title: 'Toggle italic',
-      label: 'I',
+      title: t('edit.prose.menu.italic.title'),
+      label: t('edit.prose.menu.italic.label'),
       class: 'edit-italic',
     }),
     markItem(marks.u, {
-      title: 'Toggle underline',
-      label: 'U',
+      title: t('edit.prose.menu.underline.title'),
+      label: t('edit.prose.menu.underline.label'),
       class: 'edit-underline',
     }),
     markItem(marks.s, {
-      title: 'Toggle strikethrough',
-      label: 'S',
+      title: t('edit.prose.menu.strike.title'),
+      label: t('edit.prose.menu.strike.label'),
       class: 'edit-strikethrough',
     }),
     markItem(marks.sup, {
-      title: 'Toggle superscript',
-      label: 'SUP',
+      title: t('edit.prose.menu.sup.title'),
+      label: t('edit.prose.menu.sup.label'),
       class: 'edit-sup',
     }),
     markItem(marks.sub, {
-      title: 'Toggle subscript',
-      label: 'SUB',
+      title: t('edit.prose.menu.sub.title'),
+      label: t('edit.prose.menu.sub.label'),
       class: 'edit-sub',
     }),
     codeMarkItem(marks.code),
@@ -305,24 +306,24 @@ function shouldEnableIndentOutdentIcon(state, listType) {
 function getListMenu(nodes) {
   return [
     new MenuItem({
-      title: 'Bullet List',
-      label: 'Bullet List',
+      title: t('edit.prose.menu.bulletList'),
+      label: t('edit.prose.menu.bulletList'),
       class: 'bullet-list',
       run(initialState, dispatch) {
         wrapInList(nodes.bullet_list)(initialState, dispatch);
       },
     }),
     new MenuItem({
-      title: 'Ordered List',
-      label: 'Ordered List',
+      title: t('edit.prose.menu.orderedList'),
+      label: t('edit.prose.menu.orderedList'),
       class: 'ordered-list',
       run(state, dispatch) {
         wrapInList(nodes.ordered_list)(state, dispatch);
       },
     }),
     new MenuItem({
-      title: 'Indent List',
-      label: 'Indent List',
+      title: t('edit.prose.menu.indentList'),
+      label: t('edit.prose.menu.indentList'),
       class: 'indent-list',
       enable(state) { return shouldEnableIndentOutdentIcon(state, nodes.list_item); },
       run(state, dispatch) {
@@ -330,8 +331,8 @@ function getListMenu(nodes) {
       },
     }),
     new MenuItem({
-      title: 'Outdent List',
-      label: 'Outdent List',
+      title: t('edit.prose.menu.outdentList'),
+      label: t('edit.prose.menu.outdentList'),
       class: 'outdent-list',
       enable(state) { return shouldEnableIndentOutdentIcon(state, nodes.list_item); },
       run: liftListItem(nodes.list_item),
@@ -356,8 +357,8 @@ function getMenu(view) {
 
   const textMenu = [
     new Dropdown(textBlocks, {
-      title: 'Edit text',
-      label: 'Edit text',
+      title: t('edit.prose.menu.editText'),
+      label: t('edit.prose.menu.editText'),
       class: 'edit-text',
     }),
     linkItem(marks.link),
@@ -367,16 +368,16 @@ function getMenu(view) {
 
   const listMenu = [
     new Dropdown(getListMenu(nodes), {
-      title: 'List menu',
-      label: 'List',
+      title: t('edit.prose.menu.list.title'),
+      label: t('edit.prose.menu.list.label'),
       class: 'list-menu',
     }),
   ];
 
   const blockMenu = [
     new MenuItem({
-      title: 'Open library',
-      label: 'Library',
+      title: t('edit.prose.menu.library.title'),
+      label: t('edit.prose.menu.library.label'),
       enable() { return true; },
       run() {
         toggleLibrary();
@@ -384,19 +385,19 @@ function getMenu(view) {
       class: 'open-library',
     }),
     new Dropdown(editTable, {
-      title: 'Edit block',
-      label: 'Edit block',
+      title: t('edit.prose.menu.editBlock'),
+      label: t('edit.prose.menu.editBlock'),
       class: 'edit-table',
     }),
     new MenuItem({
-      title: 'Insert block',
-      label: 'Block',
+      title: t('edit.prose.menu.block.title'),
+      label: t('edit.prose.menu.block.label'),
       run: insertTable,
       class: 'insert-table',
     }),
     new MenuItem({
-      title: 'Insert section break',
-      label: 'Section',
+      title: t('edit.prose.menu.section.title'),
+      label: t('edit.prose.menu.section.label'),
       enable(state) { return canInsert(state, nodes.horizontal_rule); },
       run: insertSectionBreak,
       class: 'edit-hr',
@@ -405,15 +406,15 @@ function getMenu(view) {
 
   const undoMenu = [
     new MenuItem({
-      title: 'Undo last change',
-      label: 'Undo',
+      title: t('edit.prose.menu.undo.title'),
+      label: t('edit.prose.menu.undo.label'),
       run: handleUndo,
       enable: (state) => yUndoPluginKey.getState(state)?.hasUndoOps,
       class: 'edit-undo',
     }),
     new MenuItem({
-      title: 'Redo last undone change',
-      label: 'Redo',
+      title: t('edit.prose.menu.redo.title'),
+      label: t('edit.prose.menu.redo.label'),
       run: handleRedo,
       enable: (state) => yUndoPluginKey.getState(state)?.hasRedoOps,
       class: 'edit-redo',

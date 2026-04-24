@@ -3,6 +3,7 @@ import getSheet from '../../shared/sheet.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { formatDate, formatVersions } from './helpers.js';
 import { daFetch } from '../../shared/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
 
@@ -14,6 +15,9 @@ export default class DaVersions extends LitElement {
     _newVersion: { state: true },
     _loading: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -94,7 +98,7 @@ export default class DaVersions extends LitElement {
   renderAudits(entry) {
     return html`
       <li class="da-version-entry is-audit" @click=${this.handleExpand}>
-        <button class="da-version-btn">View</button>
+        <button class="da-version-btn">${t('edit.versions.view')}</button>
         <p class="da-version-date">${entry.date}</p>
         <ul class="da-version-audit-entries">
           ${entry.audits.map((auEntry) => html`
@@ -115,11 +119,11 @@ export default class DaVersions extends LitElement {
     return html`
       <li class="da-version-entry is-new">
         <form @submit=${this.handleNewSubmit}>
-          <button class="da-version-btn" click=${this.handleSave}>Save</button>
+          <button class="da-version-btn" click=${this.handleSave}>${t('common.save')}</button>
           <p class="da-version-date">${entry.date}</p>
-          <input type="text" name="label" placeholder="Label" class="da-version-new-input" />
+          <input type="text" name="label" placeholder=${t('edit.versions.labelPlaceholder')} class="da-version-new-input" />
         </form>
-        <button class="da-version-btn da-version-btn-cancel" @click=${this.handleCancel}>Save</button>
+        <button class="da-version-btn da-version-btn-cancel" @click=${this.handleCancel}>${t('common.save')}</button>
       </li>
     `;
   }
@@ -127,7 +131,7 @@ export default class DaVersions extends LitElement {
   renderVersion(entry) {
     return html`
       <li class="da-version-entry is-version" @click=${this.handleExpand}>
-        <button class="da-version-btn" @click=${(e) => this.handlePreview(e, entry)}>Restore</button>
+        <button class="da-version-btn" @click=${(e) => this.handlePreview(e, entry)}>${t('edit.versions.restore')}</button>
         <p class="da-version-date">${entry.date}</p>
         ${entry.label ? html`<p class="da-version-label">${entry.label}</p>` : nothing}
         <ul class="da-version-audit-entries">
@@ -145,8 +149,8 @@ export default class DaVersions extends LitElement {
   renderNow() {
     return html`
       <li class="da-version-entry is-now">
-        <button class="da-version-btn" @click=${this.handleNew}>Create</button>
-        <p class="da-version-date">Now</p>
+        <button class="da-version-btn" @click=${this.handleNew}>${t('edit.versions.create')}</button>
+        <p class="da-version-date">${t('edit.versions.now')}</p>
       </li>
     `;
   }
@@ -159,7 +163,7 @@ export default class DaVersions extends LitElement {
     return html`
       <li class="da-version-entry is-loading">
         <div class="da-version-loading-dot"></div>
-        <p class="da-version-date">Loading...</p>
+        <p class="da-version-date">${t('edit.versions.loading')}</p>
       </li>
     `;
   }
@@ -168,7 +172,7 @@ export default class DaVersions extends LitElement {
     return html`
       <div class="da-versions-panel">
         <p class="da-versions-title">
-          <button class="da-versions-close-btn" @click=${this.handleClose} aria-label="Close history pane">History</button>
+          <button class="da-versions-close-btn" @click=${this.handleClose} aria-label=${t('edit.versions.close')}>${t('edit.versions.history')}</button>
         </p>
         <ul class="da-version-list">
           ${this._newVersion ? this.renderNewVersion() : this.renderNow()}

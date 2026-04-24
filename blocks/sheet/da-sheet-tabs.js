@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 import { handleSave } from './utils/utils.js';
+import { I18nController, t } from '../shared/i18n.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -27,6 +28,9 @@ class DaSheetTabs extends LitElement {
     _active: { attribute: false },
     _edit: { attribute: false },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -127,13 +131,13 @@ class DaSheetTabs extends LitElement {
     if (e.submitter.value === 'confirm') {
       const name = Object.fromEntries(new FormData(e.target))?.name?.trim();
       const inputEl = e.target.querySelector('input');
-      const cancelEl = e.target.querySelector('button[aria-label="Cancel"]');
+      const cancelEl = e.target.querySelector('button[value="cancel"]');
 
       const sheetNames = this.getNames();
       sheetNames.splice(idx, 1); // remove current sheet
 
       if (sheetNames.includes(name)) {
-        setCustomValidity(inputEl, 'Sheet name already exists');
+        setCustomValidity(inputEl, t('sheet.tab.nameExists'));
 
         inputEl.addEventListener('input', () => {
           setCustomValidity(inputEl, '');
@@ -171,25 +175,25 @@ class DaSheetTabs extends LitElement {
               `}
               ${idx === this._edit ? html`
                 <div class="action-container">
-                  <button aria-label="Confirm" value="confirm">
+                  <button aria-label=${t('common.confirm')} value="confirm">
                     <svg class="icon"><use href="#spectrum-Checkmark"/></svg>
                   </button>
-                  <button aria-label="Cancel" value="cancel">
+                  <button aria-label=${t('common.cancel')} value="cancel">
                     <svg class="icon"><use href="#spectrum-Cancel"/></svg>
                   </button>
-                  <button aria-label="Remove" value="remove">
+                  <button aria-label=${t('common.remove')} value="remove">
                     <svg class="icon"><use href="#spectrum-Delete"/></svg>
                   </button>
                 </div>
               ` : html`
-                <button class="da-sheet-edit-button" aria-label="Edit" value="edit">
+                <button class="da-sheet-edit-button" aria-label=${t('common.edit')} value="edit">
                   <svg class="icon"><use href="#spectrum-Edit"/></svg>
                 </button>
               `}
             </form>
           </li>`)}
       </ul>
-      <button class="add-sheet ${this._canWrite ? '' : 'is-read-only'}" @click=${this.handleAdd}>Add sheet</button>
+      <button class="add-sheet ${this._canWrite ? '' : 'is-read-only'}" @click=${this.handleAdd}>${t('sheet.tab.add')}</button>
     `;
   }
 }

@@ -4,6 +4,7 @@ import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
+import { I18nController, t } from '../shared/i18n.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -12,22 +13,22 @@ const DA_ORIGIN = getDaAdmin();
 const AEM_TEMPLATES = [
   {
     title: 'AEM Boilerplate',
-    demoTitle: 'None',
-    description: 'A basic project.',
-    demo: 'No sample content.',
+    demoTitleKey: 'start.template.aemBoilerplate.demoTitle',
+    descriptionKey: 'start.template.aemBoilerplate.description',
+    demoKey: 'start.template.aemBoilerplate.demo',
     code: 'https://github.com/adobe/aem-boilerplate',
   },
   {
     title: 'AEM Block Collection',
-    description: 'A project with pre-made blocks.',
-    demo: 'Sample content with library.',
+    descriptionKey: 'start.template.aemBlockCollection.description',
+    demoKey: 'start.template.aemBlockCollection.demo',
     code: 'https://github.com/aemsites/da-block-collection',
     content: '/da-sites/da-start-demo-content',
   },
   {
     title: 'Author Kit',
-    description: 'A project for flexible authoring.',
-    demo: 'Sample content with library.',
+    descriptionKey: 'start.template.authorKit.description',
+    demoKey: 'start.template.authorKit.demo',
     code: 'https://github.com/aemsites/author-kit',
     content: '/da-sites/author-kit-starter',
   },
@@ -81,7 +82,7 @@ export async function loadConfig(org) {
 
   if (!resp.ok) {
     if (resp.status === 403 && resp.status === 401) {
-      result.message = 'You are not authorized to change this organization.';
+      result.message = t('start.error.notAuthorizedOrg');
     }
   } else {
     const json = await resp.json();
@@ -115,13 +116,16 @@ class DaStart extends LitElement {
     url: { state: true },
     showOpen: { state: true },
     showDone: { state: true },
-    _goText: { state: true },
+    _goingToSite: { state: true },
     _statusText: { state: true },
     _errorText: { state: true },
     _templates: { state: true },
     _loading: { state: true },
     _disableCreate: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   constructor() {
     super();
@@ -133,7 +137,6 @@ class DaStart extends LitElement {
     this.url = this.autoSubmit ? `https://github.com/${this.org}/${this.site}` : '';
     this.goEnabled = this.autoSubmit;
     this._demoContent = false;
-    this._goText = 'Make something wonderful';
   }
 
   connectedCallback() {
@@ -173,7 +176,7 @@ class DaStart extends LitElement {
       const resp = await daFetch(`${DA_ORIGIN}/list/${this.org}/${this.site}`);
       const json = await resp.json();
       if (json.length > 0) {
-        this._errorText = 'The target site is not empty. Choose no demo content or a different site.';
+        this._errorText = t('start.error.targetNotEmpty');
         this._disableCreate = undefined;
         return;
       }
@@ -182,25 +185,25 @@ class DaStart extends LitElement {
 
       const list = await copyContent(content, this.org, this.site, setStatus);
       if (list.some((file) => !file.ok)) {
-        this._statusText = 'There was an error copying demo content.';
+        this._statusText = t('start.error.copyContent');
         return;
       }
 
-      setStatus('Copying library config');
+      setStatus(t('start.copying.config'));
       const config = await copyConfig(content, this.org, this.site);
       if (!config.ok) {
-        this._statusText = 'There was an error copying the library config.';
+        this._statusText = t('start.error.copyConfig');
         return;
       }
 
       const previewResult = await previewContent(this.org, this.site, setStatus);
       if (previewResult.type === 'error') {
-        setStatus('Could not preview all content. Permissions? AEM Code Sync? fstab?');
+        setStatus(t('start.error.preview'));
         return;
       }
 
       delete e.target.disabled;
-      this._goText = 'Opening site';
+      this._goingToSite = true;
       this._statusText = '';
     }
     window.location = `${window.location.origin}/#/${this.org}/${this.site}`;
@@ -230,7 +233,7 @@ class DaStart extends LitElement {
 
     // Check if user is signed in
     if (!window.adobeIMS?.isSignedInUser()) {
-      this._errorText = 'You need to sign in first.';
+      this._errorText = t('start.error.signIn');
       return;
     }
 
@@ -241,7 +244,7 @@ class DaStart extends LitElement {
       // Check if user has an email address
       const { email } = await window.adobeIMS.getProfile();
       if (!email) {
-        this._errorText = 'Make sure your profile contains an email address.';
+        this._errorText = t('start.error.noEmail');
         this._loading = false;
         return;
       }
@@ -249,9 +252,9 @@ class DaStart extends LitElement {
       const { status: orgSaveStatus } = await saveConfig(this.org, email);
       if (orgSaveStatus !== 201) {
         if (orgSaveStatus === 401 || orgSaveStatus === 403) {
-          this._errorText = 'You are not authorized to create this DA organization. Check your permissions.';
+          this._errorText = t('start.error.createOrgUnauthorized');
         } else {
-          this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
+          this._errorText = t('start.error.createOrgFailed');
         }
         this._loading = false;
         return;
@@ -262,9 +265,9 @@ class DaStart extends LitElement {
     this._loading = false;
     if (!resp.ok) {
       if (resp.status === 401 || resp.status === 403) {
-        this._errorText = 'You are not authorized to create this site in the corresponding DA organization. Check with the organization administrator.';
+        this._errorText = t('start.error.createSiteUnauthorized');
       } else {
-        this._errorText = 'The site could not be created. Check the console logs or contact an administrator.';
+        this._errorText = t('start.error.createSiteFailed');
       }
       return;
     }
@@ -293,17 +296,17 @@ class DaStart extends LitElement {
       <div class="step-1-panel">
         <form class="actions" action="${DA_ORIGIN}/source/${this.org}/${this.site}" @submit=${this.submitForm}>
           <div class="git-input">
-            <label for="fname">AEM codebase</label>
+            <label for="fname">${t('start.label.codebase')}</label>
             <input type="text" name="site" value="${this.url}" @input=${this.onInputChange} placeholder="https://github.com/adobe/geometrixx" />
           </div>
           <button class="go-button ${this._loading ? 'is-loading' : ''}" ?disabled=${!this.goEnabled || this._loading}>
-            ${this._loading ? html`<span class="spinner"></span>` : 'Go'}
+            ${this._loading ? html`<span class="spinner"></span>` : t('start.button.go')}
           </button>
         </form>
         ${this._errorText ? html`<p class="error-text">${this._errorText}</p>` : nothing}
         <div class="text-container">
-          <p>Paste your AEM codebase URL above.</p>
-          <p>Don't have one, yet? Pick a template below.</p>
+          <p>${t('start.cta.line1')}</p>
+          <p>${t('start.cta.line2')}</p>
         </div>
         <div class="template-container">
           <ul>
@@ -315,23 +318,24 @@ class DaStart extends LitElement {
                   class="${tpl.selected === true ? 'is-selected' : ''}"
                   @click=${this.handleTemplateClick}>
                   <p class="template-card-title">${tpl.title}</p>
-                  <p>${tpl.description}</p>
+                  <p>${t(tpl.descriptionKey)}</p>
                 </a>
               </li>
             `)}
           </ul>
         </div>
         <div class="text-container">
-          <p>Don't forget to add the <a href="https://da.live/bot">AEM Code Sync App</a> to your repository.</p>
+          <p>${t('start.codeSyncApp.before')}<a href="https://da.live/bot">${t('start.codeSyncApp.linkText')}</a>${t('start.codeSyncApp.after')}</p>
         </div>
       </div>
     `;
   }
 
   renderTwo() {
+    const goLabel = this._goingToSite ? t('start.openingSite') : t('start.title');
     return html`
       <div class="step-2-panel">
-        <h2>Demo content</h2>
+        <h2>${t('start.demoContent')}</h2>
         <div class="template-container">
           <ul>
             ${this._templates.map((tpl) => html`
@@ -340,8 +344,8 @@ class DaStart extends LitElement {
                   data-url=${tpl.code}
                   class="${tpl.selected === true ? 'is-selected' : ''}"
                   @click=${this.handleDemoClick}>
-                  <p class="template-card-title">${tpl.demoTitle || tpl.title}</p>
-                  <p>${tpl.demo}</p>
+                  <p class="template-card-title">${tpl.demoTitleKey ? t(tpl.demoTitleKey) : tpl.title}</p>
+                  <p>${t(tpl.demoKey)}</p>
                 </button>
               </li>
             `)}
@@ -349,7 +353,7 @@ class DaStart extends LitElement {
         </div>
         ${this._errorText ? html`<p class="error-text">${this._errorText}</p>` : nothing}
         <div class="step-3-actions">
-          <button class="da-login-button con-button blue button-xl" @click=${this.goToSite} ?disabled=${this._disableCreate}>${this._goText}</button>
+          <button class="da-login-button con-button blue button-xl" @click=${this.goToSite} ?disabled=${this._disableCreate}>${goLabel}</button>
           <p>${this._statusText ? this._statusText : nothing}</p>
         </div>
       </div>

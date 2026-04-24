@@ -1,20 +1,21 @@
 import { MenuItem, TextSelection } from 'da-y-wrapper';
 import openPrompt from '../../../da-palette/da-palette.js';
 import { markActive } from './menuUtils.js';
+import { t } from '../../../../shared/i18n.js';
 
 function defaultLinkFields() {
   return {
     href: {
       placeholder: 'https://...',
-      label: 'URL',
+      label: t('edit.prose.link.url'),
     },
     text: {
-      placeholder: 'Enter display text',
-      label: 'Display text',
+      placeholder: t('edit.prose.link.enterDisplay'),
+      label: t('edit.prose.link.displayLabel'),
     },
     title: {
-      placeholder: 'title',
-      label: 'Title',
+      placeholder: t('edit.prose.link.titlePlaceholder'),
+      label: t('edit.prose.link.titleLabel'),
     },
   };
 }
@@ -57,10 +58,10 @@ function hasImageNode(contentArr) {
 const linkPromptState = { lastPrompt: { isOpen: () => false } };
 
 export function linkItem(linkMarkType) {
-  const label = 'Edit link';
+  const label = t('edit.prose.link.edit');
 
   return new MenuItem({
-    title: 'Add or Edit link',
+    title: t('edit.prose.link.addOrEdit'),
     label,
     class: 'edit-link',
     active(state) {
@@ -262,8 +263,8 @@ export function linkItem(linkMarkType) {
 
 export function removeLinkItem(linkMarkType) {
   return new MenuItem({
-    title: 'Remove link',
-    label: 'Remove',
+    title: t('edit.prose.link.remove.title'),
+    label: t('edit.prose.link.remove.label'),
     class: 'edit-unlink',
     isImage: false,
     active(state) {

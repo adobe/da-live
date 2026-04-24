@@ -2,6 +2,7 @@ import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -46,13 +47,16 @@ export default class DaList extends LitElement {
     _allPagesLoaded: { state: true },
   };
 
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
+
   constructor() {
     super();
     this._itemsRemaining = 0;
     this._itemErrors = [];
     this._dropFiles = [];
-    this._emptyMessage = 'Empty';
-    this._dropMessage = 'Drop content here';
+    this._emptyKey = 'browse.list.empty';
+    this._dropKey = 'browse.list.drop';
     this._lastCheckedIndex = null;
     this._filter = '';
     this._continuationToken = null;
@@ -124,7 +128,7 @@ export default class DaList extends LitElement {
       this.scheduleAutoCheck();
       return items;
     } catch {
-      this._emptyMessage = 'Not permitted';
+      this._emptyKey = 'browse.list.notPermitted';
       this.resetListItemPaths([]);
       return [];
     }
@@ -334,7 +338,7 @@ export default class DaList extends LitElement {
       if (moveToTrash && e.status === 403) {
         await this.handleItemAction({ item, type: 'delete' });
       } else {
-        this._itemErrors.push({ ...item, message: `Couldn't ${type} item` });
+        this._itemErrors.push({ ...item, message: t(`browse.list.errors.item.${type}`) });
       }
     }
   }
@@ -364,7 +368,7 @@ export default class DaList extends LitElement {
     });
 
     const showStatus = setTimeout(() => {
-      this.setStatus('Pasting', 'Please be patient. Pasting items with many children can take time.');
+      this.setStatus(t('browse.list.pasting'), t('browse.list.pasting.description'));
     }, 2000);
 
     const type = e.detail?.move ? 'move' : 'copy';
@@ -408,10 +412,10 @@ export default class DaList extends LitElement {
 
       if (this._unpublish && this._confirmText === 'YES') {
         const previewJson = await aemAdmin(item.path, 'preview', 'DELETE');
-        if (!previewJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
+        if (!previewJson) this._itemErrors.push({ ...item, message: t('browse.list.errors.unpublishPreview') });
 
         const liveJson = await aemAdmin(item.path, 'live', 'DELETE');
-        if (!liveJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
+        if (!liveJson) this._itemErrors.push({ ...item, message: t('browse.list.errors.unpublishProd') });
       }
       this._itemsRemaining -= 1;
 
@@ -427,7 +431,7 @@ export default class DaList extends LitElement {
   }
 
   handleShare() {
-    this.setStatus('Copied', 'URLs have been copied to the clipboard.');
+    this.setStatus(t('browse.list.copied.title'), t('browse.list.copied.urls'));
     setTimeout(() => { this.setStatus(); }, 3000);
   }
 
@@ -450,12 +454,14 @@ export default class DaList extends LitElement {
   setDropMessage() {
     const { length } = this._dropFiles.filter((file) => !file.imported);
     if (length === 0) {
-      this._dropMessage = 'Drop content here';
+      this._dropKey = 'browse.list.drop';
+      this._dropCount = 0;
+      this.requestUpdate();
       return;
     }
-    const prefix = `Importing - ${length} `;
-    const suffix = length === 1 ? 'item' : 'items';
-    this._dropMessage = `${prefix} ${suffix}`;
+    this._dropKey = 'browse.list.importing';
+    this._dropCount = length;
+    this.requestUpdate();
   }
 
   async drop(e) {
@@ -623,17 +629,13 @@ export default class DaList extends LitElement {
     return this.shadowRoot?.querySelector('da-actionbar');
   }
 
-  get _itemString() {
-    return this._selectedItems.length > 1 ? 'items' : 'item';
-  }
-
   get _confirmContent() {
     const noUnpub = this._selectedItems.some((item) => !item.ext || item.ext === 'link' || item.path.includes('/.trash/'));
     const inTrash = this._selectedItems.some((item) => item.path.includes('/.trash/'));
     const linkOnly = this._selectedItems.length === 1 && this._selectedItems[0].ext === 'link';
 
     if (noUnpub) {
-      return html`<p>Are you sure you want to delete this content?${inTrash || linkOnly ? '' : ' Published items will remain live.'}</p>`;
+      return html`<p>${t('browse.list.delete.are.you.sure')}${inTrash || linkOnly ? '' : ` ${t('browse.list.delete.suffix.remain')}`}</p>`;
     }
 
     const checkbox = html`
@@ -646,7 +648,7 @@ export default class DaList extends LitElement {
         <label
           for="confirm-unpublish"
           @click=${() => { this._unpublish = !this._unpublish; }}>
-          Unpublish ${this._itemString}
+          ${t('browse.list.delete.unpublish')}
         </label>
       </div>
     `;
@@ -658,21 +660,21 @@ export default class DaList extends LitElement {
     return html`
       ${checkbox}
       <div class="da-actionbar-modal-confirmation">
-        <p class="sl-heading-m">Are you sure you want to unpublish?</p>
-        <p>Type <strong>YES</strong> to confirm.</p>
+        <p class="sl-heading-m">${t('browse.list.delete.unpublishConfirmHeading')}</p>
+        <p>${t('browse.list.delete.typeYesConfirm', { yes: 'YES' })}</p>
         <sl-input
           type="text"
           placeholder="YES"
           autofocus=""
           @input=${({ target }) => { this._confirmText = target.value; }}
-          aria-label="Type yes to confirm unpublish"
+          aria-label=${t('browse.list.delete.unpublishTypeAria')}
           value=${this._confirmText}></sl-input>
       </div>
     `;
   }
 
   renderEmpty() {
-    return html`<div class="empty-list"><h3>${this._emptyMessage}</h3></div>`;
+    return html`<div class="empty-list"><h3>${t(this._emptyKey)}</h3></div>`;
   }
 
   renderStatus() {
@@ -686,14 +688,14 @@ export default class DaList extends LitElement {
   }
 
   renderConfirm() {
-    const title = `Deleting ${this._selectedItems.length} ${this._itemString}`;
+    const title = t('browse.list.delete.deleting', { count: this._selectedItems.length });
     const hasRemaining = this._itemsRemaining !== 0;
-    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
+    const message = hasRemaining ? t('browse.list.delete.remaining', { count: this._itemsRemaining }) : nothing;
     const unpublishConfirmed = this._unpublish && this._confirmText !== 'YES';
 
     const action = {
       style: 'negative',
-      label: this._unpublish ? 'Unpublish & delete' : 'Delete',
+      label: this._unpublish ? t('browse.list.delete.unpublishAndDelete') : t('common.delete'),
       click: async () => this.handleConfirmDelete(),
       disabled: unpublishConfirmed || hasRemaining,
     };
@@ -711,20 +713,19 @@ export default class DaList extends LitElement {
 
   renderDropConfirm() {
     const count = this._dropConflicts.length;
-    const itemWord = count === 1 ? 'item' : 'items';
 
     const action = {
       style: 'negative',
-      label: 'Replace',
+      label: t('browse.list.drop.replace'),
       click: async () => this.handleDropConfirm(),
     };
 
     return html`
       <da-dialog
-        title="Replace ${count} existing ${itemWord}"
+        title=${t('browse.list.drop.replaceTitle', { count })}
         .action=${action}
         @close=${this.handleDropCancel}>
-        <p>The following ${count === 1 ? 'item already exists' : 'items already exist'} and will be replaced:</p>
+        <p>${t('browse.list.drop.replaceBody', { count })}</p>
         <ul class="da-drop-conflicts">
           ${this._dropConflicts.map((name) => html`<li>${name}</li>`)}
         </ul>
@@ -735,7 +736,7 @@ export default class DaList extends LitElement {
   renderErrors() {
     const action = {
       style: 'accent',
-      label: 'Copy errors to clipboard',
+      label: t('browse.list.errors.copy'),
       click: async () => {
         const { items2Clipboard } = await import('./helpers/utils.js');
         items2Clipboard(this._itemErrors);
@@ -744,7 +745,7 @@ export default class DaList extends LitElement {
 
     return html`
       <da-dialog
-        title="Errors"
+        title=${t('browse.list.errors.title')}
         .action=${action}
         @close=${this.handleErrorClose}>
         ${this._itemErrors.map((item) => html`
@@ -781,14 +782,17 @@ export default class DaList extends LitElement {
   }
 
   renderDropArea() {
+    const dropMessage = this._dropCount
+      ? t(this._dropKey, { count: this._dropCount })
+      : t(this._dropKey);
     return html`
-      <div class="da-drop-area" data-message=${this._dropMessage} @dragover=${this.dragover} @drop=${this.drop}></div>`;
+      <div class="da-drop-area" data-message=${dropMessage} @dragover=${this.dragover} @drop=${this.drop}></div>`;
   }
 
   renderCheckBox() {
     return html`
       <div class="checkbox-wrapper ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
-        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+        <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label=${t('browse.list.selectAll')} ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
         <label class="checkbox-label" for="select-all"></label>
       </div>
       <input type="checkbox" name="select" style="display: none;">
@@ -820,7 +824,7 @@ export default class DaList extends LitElement {
                 @click=${() => this.toggleFilterView()}
                 ?disabled=${this._filterLoading}
                 aria-disabled=${this._filterLoading ? 'true' : 'false'}
-                aria-label="Toggle filter">
+                aria-label=${t('browse.list.filter.toggle')}>
                 <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
               </button>
             ` : html`
@@ -830,19 +834,19 @@ export default class DaList extends LitElement {
                 @click=${() => this.toggleFilterView()}
                 ?disabled=${this._filterLoading}
                 aria-disabled=${this._filterLoading ? 'true' : 'false'}
-                aria-label="Toggle filter">
+                aria-label=${t('browse.list.filter.toggle')}>
                 <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
               </button>
             `}
           </div>
           <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortName) || 'none'}">
-            <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter" aria-label="Filter items">
+            <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder=${t('browse.list.filter.placeholder')} aria-label=${t('browse.list.filter.aria')}>
             <button
               class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''} ${this._bulkLoading ? 'loading' : ''}"
               @click=${this.handleNameSort}
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-              Name
+              ${t('browse.list.sort.name')}
             </button>
           </div>
           <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortDate) || 'none'}">
@@ -851,12 +855,12 @@ export default class DaList extends LitElement {
               @click=${this.handleDateSort}
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-              Modified
+              ${t('browse.list.sort.modified')}
             </button>
           </div>
         </div>
       </div>
-      <div class="da-browse-panel" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
+      <div class="da-browse-panel" role="rowgroup" aria-label=${t('browse.list.fileList.aria')} @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
         ${showList ? this.renderList(filteredItems) : this.renderEmpty()}
         ${this.drag ? this.renderDropArea() : nothing}
       </div>

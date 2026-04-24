@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
 
@@ -39,6 +40,9 @@ export default class DaSearch extends LitElement {
     showReplace: { state: true },
     _caseSensitive: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   constructor() {
     super();
@@ -165,7 +169,7 @@ export default class DaSearch extends LitElement {
 
   async search(startPath, term) {
     this._term = term;
-    this._action = 'Found';
+    this._action = 'found';
     performance.mark('start-search');
     await this.getMatches(startPath, term);
     performance.mark('end-search');
@@ -207,7 +211,7 @@ export default class DaSearch extends LitElement {
     if (!replace.value) return;
 
     this._time = null;
-    this._action = 'Replaced';
+    this._action = 'replaced';
     this._total = this._matches;
     this._matches = 0;
     performance.mark('start-replace');
@@ -258,11 +262,12 @@ export default class DaSearch extends LitElement {
   }
 
   get matchText() {
-    return html`${this._action} ${this._matches} of ${this._total}`;
+    const key = this._action === 'replaced' ? 'browse.search.replaced' : 'browse.search.found';
+    return html`${t(key, { count: this._matches, total: this._total })}`;
   }
 
   get timeText() {
-    return html`${this._time ? html` in ${this._time} seconds.` : nothing}`;
+    return html`${this._time ? html` ${t('browse.search.inSeconds', { seconds: this._time })}.` : nothing}`;
   }
 
   async toggleReplace() {
@@ -277,27 +282,27 @@ export default class DaSearch extends LitElement {
     return html`
       <form @submit=${this.handleSearch} role="search">
         <div class="search-input-wrapper">
-          <input type="text" placeholder="Enter search" name="term" aria-label="Search term"/>
+          <input type="text" placeholder=${t('browse.search.enter')} name="term" aria-label=${t('browse.search.searchTerm.aria')}/>
           <button
             type="button"
             class="case-toggle${this._caseSensitive ? ' active' : ''}"
             @click=${this.toggleCaseSensitive}
-            aria-label="Toggle case sensitivity"
-            title="${this._caseSensitive ? 'Case sensitive (click for case insensitive)' : 'Case insensitive (click for case sensitive)'}">
+            aria-label=${t('browse.search.caseSensitive')}
+            title=${this._caseSensitive ? t('browse.search.caseSensitive.on') : t('browse.search.caseSensitive.off')}>
             Aa
           </button>
         </div>
-        <input type="submit" value="Search" />
+        <input type="submit" value=${t('browse.search.submit')} />
       </form>
       <p>${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>
       <div class="replace-pane">
         <form class="da-replace-form${this.showReplace ? nothing : ' hide'}" @submit=${this.handleReplace}>
-          <input type="text" placeholder="Enter replace text" name="replace" aria-label="Replacement text"/>
-          <input type="submit" value="Replace" />
+          <input type="text" placeholder=${t('browse.search.enterReplace')} name="replace" aria-label=${t('browse.search.replaceText.aria')}/>
+          <input type="submit" value=${t('browse.search.replace')} />
         </form>
         <div class="checkbox-wrapper">
-          <input id="show-replace" type="checkbox" name="item-selected" @click="${this.toggleReplace}" aria-label="Enable replace mode">
-          <label for="show-replace" class="checkbox-label"><span class="${this.showReplace ? 'hide' : nothing}">Replace</span></label>
+          <input id="show-replace" type="checkbox" name="item-selected" @click="${this.toggleReplace}" aria-label=${t('browse.search.enableReplace')}>
+          <label for="show-replace" class="checkbox-label"><span class="${this.showReplace ? 'hide' : nothing}">${t('browse.search.replace')}</span></label>
         </div>
         <input type="checkbox" name="select" style="display: none;">
       </div>

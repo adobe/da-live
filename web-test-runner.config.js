@@ -90,6 +90,10 @@ export default {
         </script>
       </head>
       <body>
+        <script type='module'>
+          const i18n = await import('/blocks/shared/i18n.js');
+          await i18n.initI18n('en');
+        </script>
         <script type='module' src='${testFramework}'></script>
       </body>
     </html>`,

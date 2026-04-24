@@ -509,10 +509,10 @@ describe('DaSearch', () => {
       stub(daSearch, 'getMatches').resolves();
     });
 
-    it('sets action to "Found"', async () => {
+    it('sets action to "found"', async () => {
       await daSearch.search('/org/site/folder', 'test');
 
-      expect(daSearch._action).to.equal('Found');
+      expect(daSearch._action).to.equal('found');
     });
 
     it('sets term', async () => {
@@ -578,7 +578,7 @@ describe('DaSearch', () => {
       expect(fetchStub.called).to.be.false;
     });
 
-    it('sets action to "Replaced"', async () => {
+    it('sets action to "replaced"', async () => {
       const event = {
         preventDefault: () => {},
         target: { elements: [{ value: 'newtext' }] },
@@ -587,7 +587,7 @@ describe('DaSearch', () => {
 
       await daSearch.handleReplace(event);
 
-      expect(daSearch._action).to.equal('Replaced');
+      expect(daSearch._action).to.equal('replaced');
     });
 
     it('resets time before replace operation', async () => {
@@ -652,17 +652,16 @@ describe('DaSearch', () => {
 
     describe('matchText', () => {
       it('returns template result with action and counts', () => {
-        daSearch._action = 'Found';
+        daSearch._action = 'found';
         daSearch._matches = 3;
         daSearch._total = 10;
 
         const result = daSearch.matchText;
 
-        // matchText returns a lit html template result
+        // matchText interpolates the localized message into a single Lit value.
         expect(result).to.be.an('object');
-        expect(result.values).to.deep.include('Found');
-        expect(result.values).to.deep.include(3);
-        expect(result.values).to.deep.include(10);
+        expect(result.values).to.have.length(1);
+        expect(result.values[0]).to.equal('Found 3 of 10');
       });
     });
 
@@ -734,7 +733,7 @@ describe('DaSearch', () => {
       await daSearch.search('/org/site', 'test');
 
       expect(daSearch._term).to.equal('test');
-      expect(daSearch._action).to.equal('Found');
+      expect(daSearch._action).to.equal('found');
       expect(daSearch._total).to.equal(10);
       expect(daSearch._matches).to.equal(3);
       expect(daSearch._items.length).to.equal(3);

@@ -1,5 +1,6 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { I18nController, t } from '../../shared/i18n.js';
 
 // Styles
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -14,6 +15,9 @@ export default class DaActionBar extends LitElement {
     _isMoving: { state: true },
     currentPath: { type: String },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   constructor() {
     super();
@@ -106,12 +110,12 @@ export default class DaActionBar extends LitElement {
   }
 
   get currentAction() {
-    const itemStr = this.items.length > 1 ? 'items' : 'item';
+    const count = this.items.length;
     if (this._isCopying && this._canWrite) {
-      const folderName = this.currentPath.split('/').pop();
-      return `Paste ${this.items.length} ${itemStr} into ${folderName}`;
+      const folder = this.currentPath.split('/').pop();
+      return t('browse.actionbar.pasteInto', { count, folder });
     }
-    return `${this.items.length} ${itemStr} selected`;
+    return t('browse.actionbar.selected', { count });
   }
 
   render() {
@@ -121,7 +125,7 @@ export default class DaActionBar extends LitElement {
           <button
             class="close-circle"
             @click=${this.handleClear}
-            aria-label="Unselect items">
+            aria-label=${t('browse.actionbar.unselect')}>
             <img src="/blocks/browse/da-browse/img/CrossSize200.svg" alt="" />
           </button>
           <span>${this.currentAction}</span>
@@ -131,37 +135,37 @@ export default class DaActionBar extends LitElement {
             @click=${this.handleRename}
             class="rename-button ${this._canWrite ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_TextEdit_18_N.svg" alt="" aria-hidden="true"/>
-            <span>Rename</span>
+            <span>${t('common.rename')}</span>
           </button>
           <button
             @click=${this.handleCopy}
             class="copy-button ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" alt="" aria-hidden="true"/>
-            <span>Copy</span>
+            <span>${t('common.copy')}</span>
           </button>
           <button
             @click=${this.handleMove}
             class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_Cut_18_N.svg" alt="" aria-hidden="true"/>
-            <span>Cut</span>
+            <span>${t('common.cut')}</span>
           </button>
           <button
             @click=${this.handlePaste}
             class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? '' : 'hide'}">
             <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" alt="" aria-hidden="true"/>
-            <span>Paste</span>
+            <span>${t('common.paste')}</span>
           </button>
           <button
             @click=${this.handleDelete}
             class="delete-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" alt="" aria-hidden="true"/>
-            <span>Delete</span>
+            <span>${t('common.delete')}</span>
           </button>
           <button
             @click=${this.handleShare}
             class="share-button ${this._canShare ? '' : 'hide'}">
             <img src="/blocks/browse/img/Smock_Share_18_N.svg" alt="" aria-hidden="true"/>
-            <span>Share</span>
+            <span>${t('common.share')}</span>
           </button>
         </div>
       </div>`;

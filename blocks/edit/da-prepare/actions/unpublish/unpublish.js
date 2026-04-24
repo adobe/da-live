@@ -1,6 +1,7 @@
 import { LitElement, html } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { aemAdmin } from '../../../../shared/utils.js';
+import { I18nController, t } from '../../../../shared/i18n.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
@@ -11,6 +12,9 @@ class DaUnpublish extends LitElement {
     _statusText: { state: true },
     _results: { state: true },
   };
+
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
 
   connectedCallback() {
     super.connectedCallback();
@@ -26,23 +30,23 @@ class DaUnpublish extends LitElement {
 
   async handleUnpublish() {
     this._results = [];
-    this._statusText = 'Removing preview';
+    this._statusText = t('edit.unpublish.removingPreview');
 
     const { org, site, path } = this.details;
     const fullpath = `/${org}/${site}${path}`;
 
     const previewJson = await aemAdmin(fullpath, 'preview', 'DELETE');
-    if (!previewJson) this._results.push('Couldn\'t remove preview.');
+    if (!previewJson) this._results.push(t('edit.unpublish.couldNotRemovePreview'));
 
-    this._statusText = 'Unpublishing';
+    this._statusText = t('edit.unpublish.unpublishing');
 
     const liveJson = await aemAdmin(fullpath, 'live', 'DELETE');
     if (!liveJson) {
-      this._results.push('Couldn\'t unpublish from production.');
+      this._results.push(t('edit.unpublish.couldNotUnpublish'));
     }
 
     if (this._results.length) {
-      this._statusText = 'There was an error';
+      this._statusText = t('common.error');
       return;
     }
     // Otherwise, close the dialog
@@ -59,13 +63,13 @@ class DaUnpublish extends LitElement {
 
   renderInput() {
     return html`
-      <p class="sl-heading-m">Are you sure you want to unpublish?</p>
-      <p>Type <strong>YES</strong> to confirm.</p>
+      <p class="sl-heading-m">${t('edit.unpublish.confirm')}</p>
+      <p>${t('edit.unpublish.typeYes')}</p>
       <sl-input
         type="text"
         placeholder="YES"
         @input=${({ target }) => { this._confirmText = target.value; }}
-        aria-label="Type yes to confirm unpublish"
+        aria-label="${t('browse.list.delete.unpublishTypeAria')}"
         value=${this._confirmText}></sl-input>`;
   }
 
@@ -75,8 +79,8 @@ class DaUnpublish extends LitElement {
         ${this._results?.length ? this.renderResults() : this.renderInput()}
       </div>
       <div class="footer">
-        <p class="status-text">${this._statusText}</p> 
-        <sl-button class="negative" @click=${this.handleUnpublish} ?disabled=${this._disabled}>Unpublish</sl-button>
+        <p class="status-text">${this._statusText}</p>
+        <sl-button class="negative" @click=${this.handleUnpublish} ?disabled=${this._disabled}>${t('edit.unpublish.button')}</sl-button>
       </div>`;
   }
 }

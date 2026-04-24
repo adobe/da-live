@@ -3,6 +3,7 @@ import getSheet from '../../../../shared/sheet.js';
 import { initIms } from '../../../../shared/utils.js';
 import { saveToAem } from '../../../utils/helpers.js';
 import { isRegistered, getExistingSchedule, schedulePagePublish } from './utils.js';
+import { I18nController, t } from '../../../../shared/i18n.js';
 
 const REGISTER_PATH = 'https://da.live/apps/scheduler';
 
@@ -18,6 +19,9 @@ class DaScheduler extends LitElement {
     _scheduledTime: { state: true },
   };
 
+  // eslint-disable-next-line no-unused-private-class-members
+  #i18n = new I18nController(this);
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
@@ -28,18 +32,18 @@ class DaScheduler extends LitElement {
     const { org, site, path } = this.details;
 
     // Check registration
-    this._statusText = 'Checking registration…';
+    this._statusText = t('edit.scheduler.checkingRegistration');
     this._registered = await isRegistered(org, site);
     if (!this._registered) {
       this._statusText = null;
       this._instructions = html`
-        <p>This site is not registered.</p>
-        <p>Please register your site in the Scheduler App <a href="${REGISTER_PATH}"></a> first.</p>`;
+        <p>${t('edit.scheduler.notRegistered')}</p>
+        <p>${t('edit.scheduler.pleaseRegister')} <a href="${REGISTER_PATH}"></a></p>`;
       return;
     }
 
     // Check existing schedule
-    this._statusText = 'Checking for schedule…';
+    this._statusText = t('edit.scheduler.checkingSchedule');
     const schedule = await getExistingSchedule(org, site, path);
     if (schedule?.scheduled) {
       this._statusText = null;
@@ -47,12 +51,12 @@ class DaScheduler extends LitElement {
       const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
       this._scheduledTime = local.toISOString().slice(0, 16);
       const user = schedule.userId || 'Unknown';
-      this._instructions = html`<p>Scheduled by ${user}. Reschedule?</p>`;
+      this._instructions = html`<p>${t('edit.scheduler.reschedule', { user })}</p>`;
       return;
     }
 
     this._statusText = null;
-    this._instructions = html`<p>Please select a publish time.</p>`;
+    this._instructions = html`<p>${t('edit.scheduler.selectTime')}</p>`;
   }
 
   handleClose() {
@@ -74,35 +78,35 @@ class DaScheduler extends LitElement {
     const selected = new Date(this._scheduledTime);
 
     if (!this._scheduledTime || selected < fiveMinFromNow) {
-      this._errorText = 'Please select a date and time at least 5 minutes in the future.';
+      this._errorText = t('edit.scheduler.selectFuture');
       return;
     }
 
-    this._statusText = 'Previewing…';
+    this._statusText = t('edit.scheduler.previewing');
     const previewJson = await saveToAem(aemPath, 'preview');
     if (previewJson.error) {
       this._statusText = undefined;
-      this._errorText = previewJson.error.message || 'Preview failed. Please try again.';
+      this._errorText = previewJson.error.message || t('edit.scheduler.failed');
       return;
     }
 
-    this._statusText = 'Scheduling…';
+    this._statusText = t('edit.scheduler.scheduling');
     const imsDetails = await initIms();
     const userId = imsDetails?.email;
     try {
       const resp = await schedulePagePublish(org, site, shortPath, userId, selected.toISOString());
 
       if (resp?.ok) {
-        this._statusText = `Scheduled for ${selected.toLocaleString()}`;
+        this._statusText = t('edit.scheduler.scheduled', { time: selected.toLocaleString() });
         setTimeout(() => { this.handleClose(); }, 3000);
       } else {
         this._statusText = undefined;
         const message = resp.headers?.get('X-Error');
-        this._errorText = message || 'Failed to schedule publish.';
+        this._errorText = message || t('edit.scheduler.failed');
       }
     } catch (e) {
       this._statusText = undefined;
-      this._errorText = e.message || 'Failed to schedule publish.';
+      this._errorText = e.message || t('edit.scheduler.failed');
     }
   }
 
@@ -127,14 +131,14 @@ class DaScheduler extends LitElement {
       <div class="date-footer">
         <sl-input
           type="datetime-local"
-          label="Schedule (${this._timeZone})"
+          label="${t('edit.scheduler.scheduleTz', { tz: this._timeZone })}"
           .value=${this._scheduledTime}
           @input=${this.handleTimeChange}
-          aria-label="Schedule date and time"></sl-input>
+          aria-label="${t('edit.scheduler.scheduleTz', { tz: this._timeZone })}"></sl-input>
         <div class="footer">
           ${this.renderStatus()}
           <div class="actions">
-            <sl-button @click=${this.handleSchedule} ?disabled=${this._disabled}>Schedule</sl-button>
+            <sl-button @click=${this.handleSchedule} ?disabled=${this._disabled}>${t('edit.scheduler.schedule')}</sl-button>
           </div>
         </div>
       </div>`;
