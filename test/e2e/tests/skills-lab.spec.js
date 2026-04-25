@@ -570,8 +570,12 @@ test.describe('Prompts', () => {
     await page.getByRole('tab', { name: 'Prompts' }).click();
     await page.getByRole('button', { name: '+ New Prompt' }).click();
 
-    // The "Associated Tools" heading must not be present in the editor
-    await expect(page.getByText('Associated Tools')).not.toBeVisible();
+    // Verify the editor panel is actually open before asserting absence of tools section.
+    await expect(page.getByLabel('Prompt title')).toBeVisible({ timeout: 5000 });
+
+    // The "Associated Tools" heading must not be present inside the open editor
+    const editor = page.locator('.col-editor');
+    await expect(editor.getByText('Associated Tools')).not.toBeVisible();
   });
 
   // ── write tests (require real IMS session) ─────────────────────────────────
