@@ -24,7 +24,8 @@ const DA_ADMIN = process.env.DA_ADMIN_ORIGIN || 'https://admin.da.live';
 const HAS_AUTH = process.env.DA_AUTH_OK === '1';
 
 /**
- * Expected catalog tabs — must match CATALOG_TABS in nx-skills-editor.js.
+ * Expected catalog tabs — must stay in sync with the CATALOG_TABS constant
+ * in nx-skills-editor.js. If you add or remove a tab there, update this list too.
  * The 'generated' (Tools) tab has been removed.
  */
 const CATALOG_TAB_NAMES = ['Skills', 'Agents', 'Prompts', 'MCPs', 'Memory'];
@@ -537,35 +538,28 @@ test.describe('Prompts', () => {
   test('Prompt row buttons are always visible — not hover-only', async ({ page }) => {
     test.setTimeout(30000);
 
-    // Seed one prompt via the stub so there is something to render.
-    const stubs = await page.evaluate(() => null); // stubs already wired in beforeEach
-    void stubs;
-
     await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
     await waitForReady(page);
     await page.getByRole('tab', { name: 'Prompts' }).click();
 
-    // Create a prompt so we have at least one row
+    // Create and save a prompt so there is at least one row in the list.
     await page.getByRole('button', { name: '+ New Prompt' }).click();
     await page.getByLabel('Prompt title').fill('btn-visibility-test');
     await page.getByLabel('Prompt body').fill('testing button visibility');
-    // Save via the editor footer — this is a stub run so the call won't persist
-    // but the component will re-render and we can inspect the row.
-    // We only need to verify the DOM structure, not actual persistence.
-    // Close the drawer and check the row.
-    await page.keyboard.press('Escape');
-    // After closing, if the stub list is empty the row won't render.
-    // Skip rather than fail — structural intent is already covered by
-    // the always-visible CSS rule removal (no opacity:0 on .prompt-row-actions).
+    await page.getByRole('toolbar', { name: 'Prompt actions' })
+      .getByRole('button', { name: 'Save', exact: true }).click();
+
+    // After save the list re-renders; the row must be visible.
     const firstRow = page.locator('.prompt-row').first();
-    const hasRow = await firstRow.isVisible({ timeout: 2000 }).catch(() => false);
-    if (hasRow) {
-      const actions = firstRow.locator('.prompt-row-actions');
-      await expect(actions).toBeVisible();
-      // CSS opacity must not hide the buttons — check computed style
-      const opacity = await actions.evaluate((el) => window.getComputedStyle(el).opacity);
-      expect(parseFloat(opacity)).toBeGreaterThan(0);
-    }
+    await expect(firstRow).toBeVisible({ timeout: 10000 });
+
+    // Actions must be visible unconditionally — no hover required.
+    const actions = firstRow.locator('.prompt-row-actions');
+    await expect(actions).toBeVisible();
+
+    // Computed opacity must be > 0 (guards against opacity:0 regressions).
+    const opacity = await actions.evaluate((el) => window.getComputedStyle(el).opacity);
+    expect(parseFloat(opacity)).toBeGreaterThan(0);
   });
 
   test('Prompt editor does not contain an Associated Tools section', async ({ page }) => {
@@ -603,8 +597,8 @@ test.describe('Prompts', () => {
     await expect(card).toBeVisible({ timeout: 15000 });
 
     // Delete via the row-level delete button (🗑) — no ⋮ menu on prompt rows
-    await card.getByRole('button', { name: `Delete ${promptTitle}` }).click();
     page.once('dialog', (d) => d.accept());
+    await card.getByRole('button', { name: `Delete ${promptTitle}` }).click();
     await expect(card).not.toBeVisible({ timeout: 15000 });
   });
 

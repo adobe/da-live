@@ -25,6 +25,7 @@ const DA_ORIGINS = [
 
 /**
  * DA Agent origins that the component may call for MCP tool listings.
+ * Keep in sync with getAgentOrigin() in skills-editor-api.js.
  */
 const AGENT_ORIGINS = [
   'https://da-agent.adobeaem.workers.dev',
@@ -108,7 +109,11 @@ export async function stubDaApi(page, { org, site }) {
           const raw = route.request().postData() || '';
           const json = extractFormField(raw, 'config');
           if (json) configStore = JSON.parse(json);
-        } catch { /* keep previous state on parse failure */ }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn('[da-api-stubs] Failed to parse config POST body:', err.message);
+          /* keep previous state */
+        }
         await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
         return;
       }
