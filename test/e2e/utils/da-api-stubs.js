@@ -53,19 +53,49 @@ function freshConfig() {
 
 /**
  * Extract a named field's value from a multipart/form-data string body.
- * The browser sends FormData as multipart; Playwright's postData() gives us
- * the raw string.
+ * Playwright's postData() gives us the raw multipart string.
+ *
+ * The parser finds the boundary from the first line, then scans for the named
+ * part and extracts the body between the blank line and the next boundary.
+ * More robust than the previous regex approach with look-around edge cases.
  *
  * @param {string} rawBody
  * @param {string} fieldName
  * @returns {string|null}
  */
 function extractFormField(rawBody, fieldName) {
-  const re = new RegExp(
-    `Content-Disposition:\\s*form-data;\\s*name="${fieldName}"\\r?\\n\\r?\\n([\\s\\S]*?)(?:\\r?\\n--|--)`,
-  );
-  const m = rawBody.match(re);
-  return m ? m[1] : null;
+  if (!rawBody) return null;
+  const lines = rawBody.split(/\r?\n/);
+  const boundary = lines[0]?.trim();
+  if (!boundary || !boundary.startsWith('--')) return null;
+
+  let inPart = false;
+  let foundField = false;
+  let afterBlank = false;
+  const bodyLines = [];
+
+  for (const line of lines) {
+    if (line.trim() === boundary || line.trim() === `${boundary}--`) {
+      if (foundField && afterBlank) break;
+      inPart = true;
+      foundField = false;
+      afterBlank = false;
+      bodyLines.length = 0;
+      continue;
+    }
+    if (inPart && !foundField) {
+      if (line.includes(`name="${fieldName}"`)) foundField = true;
+      continue;
+    }
+    if (foundField && !afterBlank) {
+      if (line.trim() === '') { afterBlank = true; continue; }
+      continue;
+    }
+    if (foundField && afterBlank) {
+      bodyLines.push(line);
+    }
+  }
+  return foundField ? bodyLines.join('\n') : null;
 }
 
 // ─── main export ──────────────────────────────────────────────────────────────
