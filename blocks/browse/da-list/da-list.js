@@ -16,6 +16,7 @@ const ICONS = [
 ];
 
 const MAX_DELETE_COUNT = 1000;
+const DELETE_CONFIRM_THRESHOLD = 10;
 
 export default class DaList extends LitElement {
   static properties = {
@@ -673,8 +674,39 @@ export default class DaList extends LitElement {
     const inTrash = this._selectedItems.some((item) => item.path.includes('/.trash/'));
     const linkOnly = this._selectedItems.length === 1 && this._selectedItems[0].ext === 'link';
 
+    const requireTypedDelete = this._deleteCount != null
+      && this._deleteCount >= DELETE_CONFIRM_THRESHOLD
+      && this._deleteCount <= MAX_DELETE_COUNT;
+
+    const buildYesInput = (heading) => html`
+      <div class="da-actionbar-modal-confirmation">
+        ${heading ? html`<p class="sl-heading-m">${heading}</p>` : nothing}
+        <p>Type <strong>YES</strong> to confirm.</p>
+        <sl-input
+          type="text"
+          placeholder="YES"
+          autofocus=""
+          @input=${(e) => {
+            const upper = e.target.value.toUpperCase();
+            if (e.target.value !== upper) e.target.value = upper;
+            this._confirmText = upper;
+          }}
+          aria-label="Type YES to confirm"
+          value=${this._confirmText ?? ''}></sl-input>
+      </div>
+    `;
+
     if (noUnpub) {
-      return html`<p>Are you sure you want to delete this content?${inTrash || linkOnly ? '' : ' Published items will remain live.'}</p>`;
+      const subject = requireTypedDelete
+        ? `${this._deleteCount} ${this._itemString}`
+        : 'this content';
+      const suffix = inTrash || linkOnly ? '' : ' Published items will remain live.';
+      const lead = html`<p>Are you sure you want to delete ${subject}?${suffix}</p>`;
+      if (!requireTypedDelete) return lead;
+      return html`
+        ${lead}
+        ${buildYesInput()}
+      `;
     }
 
     const checkbox = html`
@@ -692,23 +724,20 @@ export default class DaList extends LitElement {
       </div>
     `;
 
-    // If checkbox checked, only return the checkbox
-    if (!this._unpublish) return checkbox;
+    if (!this._unpublish && !requireTypedDelete) return checkbox;
 
-    // Return checkbox and confirm text
+    let heading;
+    if (this._unpublish && requireTypedDelete) {
+      heading = `Are you sure you want to unpublish and delete ${this._deleteCount} ${this._itemString}?`;
+    } else if (this._unpublish) {
+      heading = 'Are you sure you want to unpublish?';
+    } else {
+      heading = `Are you sure you want to delete ${this._deleteCount} ${this._itemString}?`;
+    }
+
     return html`
       ${checkbox}
-      <div class="da-actionbar-modal-confirmation">
-        <p class="sl-heading-m">Are you sure you want to unpublish?</p>
-        <p>Type <strong>YES</strong> to confirm.</p>
-        <sl-input
-          type="text"
-          placeholder="YES"
-          autofocus=""
-          @input=${({ target }) => { this._confirmText = target.value; }}
-          aria-label="Type yes to confirm unpublish"
-          value=${this._confirmText}></sl-input>
-      </div>
+      ${buildYesInput(heading)}
     `;
   }
 
@@ -731,15 +760,17 @@ export default class DaList extends LitElement {
     const count = this._deleteCount;
     const exceedsMax = !loading && count > MAX_DELETE_COUNT;
 
-    let title;
-    if (loading) {
-      title = 'Calculating items to delete…';
-    } else {
-      title = `Deleting ${count} ${this._itemString}`;
-    }
+    const title = loading
+      ? 'Calculating items to delete…'
+      : `Deleting ${count} ${this._itemString}`;
 
     const hasRemaining = this._itemsRemaining !== 0;
-    const unpublishConfirmed = this._unpublish && this._confirmText !== 'YES';
+    const requireTypedDelete = !loading
+      && count != null
+      && count >= DELETE_CONFIRM_THRESHOLD
+      && count <= MAX_DELETE_COUNT;
+    const requireYes = this._unpublish || requireTypedDelete;
+    const yesUnconfirmed = requireYes && this._confirmText !== 'YES';
 
     let message = nothing;
     if (hasRemaining) {
@@ -752,12 +783,17 @@ export default class DaList extends LitElement {
       style: 'negative',
       label: this._unpublish ? 'Unpublish & delete' : 'Delete',
       click: async () => this.handleConfirmDelete(),
-      disabled: unpublishConfirmed || hasRemaining || loading || exceedsMax,
+      disabled: yesUnconfirmed || hasRemaining || loading || exceedsMax,
     };
 
-    const body = exceedsMax
-      ? html`<p>This selection contains more than ${MAX_DELETE_COUNT} items. Bulk deletions of this size aren't supported here — please contact your administrator to proceed.</p>`
-      : this._confirmContent;
+    let body;
+    if (loading) {
+      body = nothing;
+    } else if (exceedsMax) {
+      body = html`<p>This selection contains more than ${MAX_DELETE_COUNT} items. Bulk deletions of this size aren't supported here — please contact your administrator to proceed.</p>`;
+    } else {
+      body = this._confirmContent;
+    }
 
     return html`
       <da-dialog
