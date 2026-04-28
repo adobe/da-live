@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 
 // Setup Nx
 const { setNx } = await import('../../../../../../scripts/utils.js');
-setNx('/bheuaark/', { hostname: 'localhost' });
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const SINGLE_SHEET = {
   data: [

@@ -1,9 +1,9 @@
 import { daFetch } from '../../shared/utils.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, nxJS } from '../../../scripts/utils.js';
 import { handleSave } from './utils.js';
 import '../da-sheet-tabs.js';
 
-const { loadStyle } = await import(`${getNx()}/scripts/nexter.js`);
+const { loadStyle } = await import(`${getNx()}${nxJS}`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
 
 const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };

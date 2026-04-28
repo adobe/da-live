@@ -6,7 +6,7 @@ import { expect } from '@esm-bundle/chai';
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
 const { setNx } = await import('../../../../../scripts/utils.js');
-setNx('/bheuaark/', { hostname: 'localhost' });
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaBrowse } = await import('../../../../../blocks/browse/da-list/da-list.js');
 const { default: DaBrowseComponent } = await import('../../../../../blocks/browse/da-browse/da-browse.js');
@@ -214,6 +214,130 @@ describe('Browse', () => {
     const changedProps = new Map([['_listItems', [{ path: '/a', name: 'a' }]]]);
 
     expect(daBrowse.hasPaginationStateChanges(changedProps)).to.be.true;
+  });
+
+  describe('handleItemAction move-to-trash error handling', () => {
+    it('throws on non-OK non-204 response instead of calling resp.json()', async () => {
+      const daBrowse = new DaBrowse();
+      daBrowse._listItems = [{ path: '/myorg/mysite/file.html', name: 'file', ext: 'html' }];
+      daBrowse._listItemPaths = new Set(['/myorg/mysite/file.html']);
+      daBrowse._itemErrors = [];
+
+      const item = {
+        path: '/myorg/mysite/file.html',
+        destination: '/myorg/mysite/.trash/file.html',
+        ext: 'html',
+        name: 'file',
+        isChecked: true,
+      };
+
+      const mockFetch = async () => ({
+        ok: false,
+        status: 500,
+        json: async () => { throw new Error('json should not be called'); },
+        headers: { get: () => null },
+      });
+
+      const orgFetch = window.fetch;
+      try {
+        window.fetch = mockFetch;
+        await daBrowse.handleItemAction({ item, type: 'move' });
+
+        expect(daBrowse._itemErrors.length).to.equal(1);
+        expect(daBrowse._itemErrors[0].message).to.equal("Couldn't move item");
+      } finally {
+        window.fetch = orgFetch;
+      }
+    });
+
+    it('does not fall back to delete on non-403 errors for move-to-trash', async () => {
+      const daBrowse = new DaBrowse();
+      daBrowse._listItems = [{ path: '/myorg/mysite/file.html', name: 'file', ext: 'html' }];
+      daBrowse._listItemPaths = new Set(['/myorg/mysite/file.html']);
+      daBrowse._itemErrors = [];
+
+      const item = {
+        path: '/myorg/mysite/file.html',
+        destination: '/myorg/mysite/.trash/file.html',
+        ext: 'html',
+        name: 'file',
+        isChecked: true,
+      };
+
+      let deleteCalled = false;
+      const origHandleItemAction = daBrowse.handleItemAction.bind(daBrowse);
+      daBrowse.handleItemAction = async (opts) => {
+        if (opts.type === 'delete') {
+          deleteCalled = true;
+        } else {
+          await origHandleItemAction(opts);
+        }
+      };
+
+      const mockFetch = async () => ({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+        headers: { get: () => null },
+      });
+
+      const orgFetch = window.fetch;
+      try {
+        window.fetch = mockFetch;
+        await daBrowse.handleItemAction({ item, type: 'move' });
+
+        expect(deleteCalled).to.be.false;
+        expect(daBrowse._itemErrors.length).to.equal(1);
+        expect(daBrowse._itemErrors[0].message).to.equal("Couldn't move item");
+      } finally {
+        window.fetch = orgFetch;
+      }
+    });
+
+    it('falls back to delete only on 403 for move-to-trash', async () => {
+      const daBrowse = new DaBrowse();
+      daBrowse._listItems = [{ path: '/myorg/mysite/file.html', name: 'file', ext: 'html' }];
+      daBrowse._listItemPaths = new Set(['/myorg/mysite/file.html']);
+      daBrowse._itemErrors = [];
+
+      const item = {
+        path: '/myorg/mysite/file.html',
+        destination: '/myorg/mysite/.trash/file.html',
+        ext: 'html',
+        name: 'file',
+        isChecked: true,
+      };
+
+      let deleteCalledWith = null;
+      const origHandleItemAction = daBrowse.handleItemAction.bind(daBrowse);
+      daBrowse.handleItemAction = async (opts) => {
+        if (opts.type === 'delete') {
+          deleteCalledWith = opts;
+        } else {
+          await origHandleItemAction(opts);
+        }
+      };
+
+      const mockFetch = async () => ({
+        ok: false,
+        status: 403,
+        json: async () => ({}),
+        headers: { get: () => null },
+      });
+
+      const orgFetch = window.fetch;
+      try {
+        window.fetch = mockFetch;
+        await daBrowse.handleItemAction({ item, type: 'move' });
+
+        expect(deleteCalledWith).to.not.be.null;
+        expect(deleteCalledWith.item.path).to.equal('/myorg/mysite/file.html');
+        expect(deleteCalledWith.type).to.equal('delete');
+        expect(daBrowse._itemErrors.length).to.equal(0);
+      } finally {
+        window.fetch = orgFetch;
+      }
+    });
   });
 });
 

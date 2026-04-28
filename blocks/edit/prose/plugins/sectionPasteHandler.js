@@ -1,4 +1,70 @@
-import { Fragment, Plugin, Slice } from 'da-y-wrapper';
+import { Fragment, Plugin, PluginKey, Slice } from 'da-y-wrapper';
+
+const sectionPasteKey = new PluginKey('sectionPaste');
+
+// Non-global regex for detection only
+const NONSTANDARD_SPACE_DETECT = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/;
+// Global regex for replacement
+const NONSTANDARD_SPACES_RE = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g;
+
+function normalizeSpaceChars(str) {
+  return str.replace(NONSTANDARD_SPACES_RE, ' ');
+}
+
+function normalizeSpacesInJSON(obj) {
+  if (!obj) return obj;
+  if (Array.isArray(obj)) return obj.map(normalizeSpacesInJSON);
+  if (typeof obj === 'object') {
+    const result = {};
+    for (const key of Object.keys(obj)) {
+      result[key] = (key === 'text' && typeof obj[key] === 'string')
+        ? normalizeSpaceChars(obj[key])
+        : normalizeSpacesInJSON(obj[key]);
+    }
+    return result;
+  }
+  return obj;
+}
+
+function showSpaceNormalizationDialog(view, slice, schema) {
+  import('../../../shared/da-dialog/da-dialog.js').then(() => {
+    const dialog = document.createElement('da-dialog');
+    dialog.title = 'Hidden characters detected';
+    dialog.size = 'small';
+
+    const content = document.createElement('p');
+    content.textContent = 'The pasted content contains hidden characters (such as non-breaking spaces). Would you like to convert them to regular spaces?';
+    dialog.appendChild(content);
+
+    dialog.action = {
+      label: 'Normalize spaces',
+      style: 'accent',
+      click: () => {
+        const rawJson = slice.toJSON();
+        const normalized = normalizeSpacesInJSON(rawJson);
+        const normalizedSlice = Slice.fromJSON(schema, normalized);
+        view.dispatch(view.state.tr.replaceSelection(normalizedSlice));
+        dialog.close();
+      },
+    };
+
+    const pasteAsIsBtn = document.createElement('sl-button');
+    pasteAsIsBtn.className = 'primary outline';
+    pasteAsIsBtn.textContent = 'Paste as-is';
+    pasteAsIsBtn.slot = 'footer-left';
+    pasteAsIsBtn.addEventListener('click', () => {
+      view.dispatch(view.state.tr.replaceSelection(slice));
+      dialog.close();
+    });
+    dialog.appendChild(pasteAsIsBtn);
+
+    dialog.addEventListener('close', () => {
+      dialog.remove();
+    });
+
+    document.body.appendChild(dialog);
+  });
+}
 
 function closeParagraph(paraContent, newContent) {
   if (paraContent.length > 0) {
@@ -100,7 +166,18 @@ function handleDivLineBreaks(doc) {
 /* When text is pasted, handle section breaks. */
 export default function sectionPasteHandler(schema) {
   return new Plugin({
+    key: sectionPasteKey,
     props: {
+      handlePaste: (view, event, slice) => {
+        const text = event.clipboardData?.getData('text/plain') || '';
+        const html = event.clipboardData?.getData('text/html') || '';
+        if (NONSTANDARD_SPACE_DETECT.test(text) || NONSTANDARD_SPACE_DETECT.test(html)) {
+          showSpaceNormalizationDialog(view, slice, schema);
+          return true;
+        }
+        return false;
+      },
+
       clipboardTextParser: (text) => {
         const lines = text.split(/\r\n?|\n/);
         const nodes = lines.map((line) => {
@@ -114,10 +191,10 @@ export default function sectionPasteHandler(schema) {
        * buried in the HTML that is pasted. This function uses highly specific ways to find
        * these section breaks and adds a <hr/> element for them.
        */
-      transformPastedHTML: (html) => {
+      transformPastedHTML: (pastedHtml) => {
         try {
           const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
+          const doc = parser.parseFromString(pastedHtml, 'text/html');
 
           let modified = handleDesktopWordSectionBreaks(doc);
           if (!modified) {
@@ -128,7 +205,7 @@ export default function sectionPasteHandler(schema) {
           }
 
           if (!modified) {
-            return html;
+            return pastedHtml;
           }
 
           const serializer = new XMLSerializer();
@@ -136,7 +213,7 @@ export default function sectionPasteHandler(schema) {
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('Error handling Word section breaks:', error);
-          return html;
+          return pastedHtml;
         }
       },
 

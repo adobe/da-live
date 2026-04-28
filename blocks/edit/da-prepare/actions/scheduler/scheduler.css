@@ -1,0 +1,41 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 22px;
+  width: 280px;
+  min-height: 170px; /* Enough space for two lines of instructions w/o CLS */
+  margin: 0 24px 24px;
+  position: relative;
+
+  p {
+    margin: 0;
+  }
+}
+
+.date-footer {
+  .footer {
+    margin-top: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .status-text {
+      font-style: italic;
+      font-size: 14px;
+
+      &.is-error {
+        color: var(--s2-red-900);
+      }
+    }
+  }
+
+  .actions {
+    display: flex;
+    justify-content: end;
+    flex: 1 1 auto;
+  }
+}
+

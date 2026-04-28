@@ -1,16 +1,12 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { daFetch, aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
 const STYLE = await getStyle(import.meta.url);
-
-function delay(ms) {
-  return new Promise((res) => { setTimeout(res, ms); });
-}
 
 export default class DaListItem extends LitElement {
   static properties = {
@@ -128,10 +124,14 @@ export default class DaListItem extends LitElement {
   async handleRenameSubmit(e) {
     e.preventDefault();
 
-    const newName = e.target.elements['new-name'].value;
+    const newName = sanitizeName(e.target.elements['new-name'].value, { trimTrailing: true });
 
     if (e.submitter.value === 'cancel' || this.name === newName) {
       this.handleChecked();
+    } else if (!newName) {
+      this.setStatus('A name is required.', 'Please enter a valid name.');
+      await delay(2000);
+      this.setStatus();
     } else {
       const idx = this.path.lastIndexOf(this.name);
       const oldPath = this.path;
@@ -176,7 +176,7 @@ export default class DaListItem extends LitElement {
   }
 
   handleRename({ target }) {
-    target.value = target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    target.value = sanitizeName(target.value);
   }
 
   toggleExpand() {
