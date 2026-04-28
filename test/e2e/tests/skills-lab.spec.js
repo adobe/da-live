@@ -10,8 +10,19 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { getSkillsLabURL } from '../utils/page.js';
+import { getSkillsLabURL, getQuery } from '../utils/page.js';
 import { stubDaApi } from '../utils/da-api-stubs.js';
+import ENV from '../utils/env.js';
+
+/**
+ * Skills editor URL without a hash — shows the org/site entry gate form.
+ */
+function getSkillsLabGateURL() {
+  const isLocal = ENV.startsWith('http://localhost') || ENV.startsWith('https://localhost');
+  const query = getQuery();
+  const nxParams = isLocal ? (query ? '&nx=local&nxver=2' : '?nx=local&nxver=2') : '';
+  return `${ENV}/apps/skills${query}${nxParams}`;
+}
 
 const TEST_ORG = process.env.E2E_SKILLS_ORG || 'da-sites';
 const TEST_SITE = process.env.E2E_SKILLS_SITE || 'da-status';
@@ -1152,6 +1163,101 @@ test.describe('Tools tab removed', () => {
   });
 });
 
+// ─── Gate form ───────────────────────────────────────────────────────────────
+
+test.describe('Gate form — no org/site context', () => {
+  test('Shows gate form when no hash is set', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabGateURL());
+    await expect(page.locator('nx-skills-editor')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('heading', { name: 'Skills Editor' })).toBeVisible();
+    await expect(page.getByLabel('Organization')).toBeVisible();
+    await expect(page.getByLabel('Site')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+
+  test('Continue button stays disabled until both fields are filled', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabGateURL());
+    await expect(page.locator('nx-skills-editor')).toBeVisible({ timeout: 20000 });
+
+    await page.getByLabel('Organization').fill('test-org');
+    await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
+
+    await page.getByLabel('Site').fill('test-site');
+    await expect(page.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  test('Submitting gate form sets URL hash and transitions to the editor', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabGateURL());
+    await expect(page.locator('nx-skills-editor')).toBeVisible({ timeout: 20000 });
+
+    await page.getByLabel('Organization').fill(TEST_ORG);
+    await page.getByLabel('Site').fill(TEST_SITE);
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`#/${TEST_ORG}/${TEST_SITE}`), { timeout: 5000 });
+    await waitForReady(page);
+  });
+
+  test('Gate form does not show when org/site hash is already set', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    await expect(page.getByRole('heading', { name: 'Skills Editor' })).not.toBeVisible();
+    await expect(page.getByLabel('Organization')).not.toBeVisible();
+  });
+});
+
+// ─── Chat menu navigation ─────────────────────────────────────────────────────
+
+test.describe('Chat menu navigation', () => {
+  async function openChatAndAddMenu(page) {
+    const toggleBtn = page.getByRole('button', { name: /Open chat/ });
+    await expect(toggleBtn).toBeVisible({ timeout: 10000 });
+    await toggleBtn.click();
+    await expect(page.locator('nx-chat')).toBeVisible({ timeout: 5000 });
+
+    const addBtn = page.locator('nx-chat').getByRole('button', { name: 'Add' });
+    await expect(addBtn).toBeVisible({ timeout: 5000 });
+    await addBtn.click();
+  }
+
+  test('"Manage Skills" menu item opens skills editor with skills tab', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+    await openChatAndAddMenu(page);
+
+    const [newPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      page.getByRole('menuitem', { name: 'Manage Skills' }).click(),
+    ]);
+    await newPage.waitForLoadState('domcontentloaded');
+    expect(newPage.url()).toContain('/apps/skills');
+    expect(newPage.url()).toContain(`#/${TEST_ORG}/${TEST_SITE}`);
+    await newPage.close();
+  });
+
+  test('"Manage Prompts" menu item opens skills editor with prompts tab', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+    await openChatAndAddMenu(page);
+
+    const [newPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      page.getByRole('menuitem', { name: 'Manage Prompts' }).click(),
+    ]);
+    await newPage.waitForLoadState('domcontentloaded');
+    expect(newPage.url()).toContain('/apps/skills');
+    expect(newPage.url()).toContain(`#/${TEST_ORG}/${TEST_SITE}`);
+    await newPage.close();
+  });
+});
+
 // ─── Cross-tab regression ──────────────────────────────────────────────────
 
 test.describe('Cross-tab regression', () => {
@@ -1178,6 +1284,176 @@ test.describe('Cross-tab regression', () => {
     await page.getByRole('button', { name: '+ New Skill' }).click();
     await expect(page.getByLabel('Skill ID')).toBeVisible({ timeout: 5000 });
     await expect(page.getByLabel('Skill markdown')).toBeVisible();
+  });
+});
+
+// ─── Skill suggestion rendering ──────────────────────────────────────────────
+//
+// These tests cover the fix for: "The skill suggestion renderer is broken — it
+// presented the skill suggestion as text." The agent can output a
+// [SKILL_SUGGESTION] block; the chat controller must strip that block from the
+// visible message and fire the skills-editor handoff event instead.
+
+const SUGGESTION_EVENT = 'da-skills-editor-suggestion-handoff';
+const SUGGEST_SESSION_KEY = 'da-skills-editor-suggestion';
+
+/** Build a minimal SSE body that represents an agent reply containing a
+ *  [SKILL_SUGGESTION] block. The intro sentence is the visible text; the block
+ *  must be stripped from the chat message and handed off to the editor. */
+function buildSuggestionSseBody({ intro = 'I noticed a recurring pattern.', id = 'e2e-suggestion-skill', body = '# E2E Suggestion Skill\n\nAuto-suggested skill.' } = {}) {
+  const block = `\n\n[SKILL_SUGGESTION]\n\nSKILL_ID: ${id}\n\n---SKILL_CONTENT_START---\n${body}\n---SKILL_CONTENT_END---\n`;
+  const events = [
+    JSON.stringify({ type: 'text-delta', delta: intro }),
+    JSON.stringify({ type: 'text-delta', delta: block }),
+    JSON.stringify({ type: 'text-end' }),
+    JSON.stringify({ type: 'finish-message' }),
+  ];
+  return events.map((e) => `data: ${e}`).join('\n') + '\n';
+}
+
+test.describe('Skill suggestion rendering', () => {
+  /** Open the chat drawer (skills-editor toggle button) */
+  async function openChat(page) {
+    const toggleBtn = page.getByRole('button', { name: /Open chat/ });
+    await expect(toggleBtn).toBeVisible({ timeout: 10000 });
+    await toggleBtn.click();
+    await expect(page.locator('nx-chat')).toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Register a route that intercepts a POST to the da-agent /chat endpoint and
+   * returns a mocked SSE stream containing a [SKILL_SUGGESTION] block.
+   * Registered AFTER stubDaApi so Playwright's LIFO order gives it priority.
+   */
+  async function stubChatWithSuggestion(page, opts = {}) {
+    for (const agentOrigin of ['https://da-agent.adobeaem.workers.dev', 'http://localhost:4200']) {
+      // eslint-disable-next-line no-await-in-loop
+      await page.route(`${agentOrigin}/chat`, async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.fallback();
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' },
+          body: buildSuggestionSseBody(opts),
+        });
+      });
+    }
+  }
+
+  /** Send a message through the chat UI. The textarea is inside the nx-chat
+   *  shadow root; Playwright's getByPlaceholder pierces shadow roots. */
+  async function sendChatMessage(page, text) {
+    const chatInput = page.locator('nx-chat').getByPlaceholder('Ask anything');
+    await expect(chatInput).toBeEnabled({ timeout: 8000 });
+    await chatInput.fill(text);
+    await page.locator('nx-chat').getByRole('button', { name: 'Send' }).click();
+  }
+
+  test('[SKILL_SUGGESTION] block never appears as raw text in the chat', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    // Register chat stub AFTER stubDaApi so it takes LIFO priority.
+    await stubChatWithSuggestion(page, { id: 'e2e-raw-text-guard' });
+    await openChat(page);
+    await sendChatMessage(page, 'Can you suggest a skill?');
+
+    // Wait for the agent reply to arrive (streaming ends when thinking stops).
+    await expect(page.locator('nx-chat').getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 15000 });
+
+    // The raw [SKILL_SUGGESTION] token must NEVER be visible in any chat bubble.
+    const messages = page.locator('nx-chat .message-content');
+    const count = await messages.count();
+    for (let i = 0; i < count; i++) {
+      await expect(messages.nth(i)).not.toContainText('[SKILL_SUGGESTION]');
+      await expect(messages.nth(i)).not.toContainText('---SKILL_CONTENT_START---');
+      await expect(messages.nth(i)).not.toContainText('SKILL_ID:');
+    }
+  });
+
+  test('Intro sentence before the block IS shown in the chat', async ({ page }) => {
+    test.setTimeout(30000);
+    const intro = 'I noticed a recurring pattern in your requests.';
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    await stubChatWithSuggestion(page, { intro, id: 'e2e-intro-visible' });
+    await openChat(page);
+    await sendChatMessage(page, 'Help me automate this.');
+
+    await expect(page.locator('nx-chat').getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 15000 });
+
+    // The human-readable intro must appear as the visible message content.
+    await expect(page.locator('nx-chat .message-content').last()).toContainText(intro, { timeout: 5000 });
+  });
+
+  test('[SKILL_SUGGESTION] block fires handoff and opens suggestion form in skills editor', async ({ page }) => {
+    test.setTimeout(30000);
+    const skillId = 'e2e-handoff-skill';
+    const skillBody = '# E2E Handoff Skill\n\nTriggered by agent.';
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    await stubChatWithSuggestion(page, { id: skillId, body: skillBody });
+    await openChat(page);
+    await sendChatMessage(page, 'Suggest a skill for me.');
+
+    await expect(page.locator('nx-chat').getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 15000 });
+
+    // The skills editor must open the suggestion form with the pre-filled data.
+    const toolbar = page.getByRole('toolbar', { name: 'Skill actions' });
+    await expect(toolbar.getByRole('button', { name: 'Dismiss' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Skill ID')).toHaveValue(skillId, { timeout: 5000 });
+    await expect(page.getByLabel('Skill markdown')).toContainText('E2E Handoff Skill', { timeout: 5000 });
+  });
+
+  test('Dismissing suggestion clears the form', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    await stubChatWithSuggestion(page, { id: 'e2e-dismiss-skill' });
+    await openChat(page);
+    await sendChatMessage(page, 'Suggest a skill.');
+
+    const toolbar = page.getByRole('toolbar', { name: 'Skill actions' });
+    await expect(toolbar.getByRole('button', { name: 'Dismiss' })).toBeVisible({ timeout: 10000 });
+
+    await toolbar.getByRole('button', { name: 'Dismiss' }).click();
+
+    // After dismiss the Dismiss button must disappear and form must be cleared.
+    await expect(toolbar.getByRole('button', { name: 'Dismiss' })).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Skill ID')).not.toBeVisible();
+  });
+
+  test('sessionStorage is populated with suggestion payload from agent', async ({ page }) => {
+    test.setTimeout(30000);
+    const skillId = 'e2e-storage-skill';
+    const skillBody = '# E2E Storage Skill\n\nStorage verification.';
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    await stubChatWithSuggestion(page, { id: skillId, body: skillBody });
+    await openChat(page);
+    await sendChatMessage(page, 'Suggest a skill for storage test.');
+
+    await expect(page.locator('nx-chat').getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 15000 });
+
+    const stored = await page.evaluate((key) => {
+      try { return JSON.parse(window.sessionStorage.getItem(key)); } catch { return null; }
+    }, SUGGEST_SESSION_KEY);
+
+    // The payload may have been consumed by the editor already; if not, verify it.
+    // Either path means the flow worked — consumed = editor showed it, present = pending.
+    if (stored) {
+      expect(stored.id).toBe(skillId);
+    } else {
+      // Already consumed — the editor must be showing the suggestion form.
+      await expect(page.getByRole('toolbar', { name: 'Skill actions' }).getByRole('button', { name: 'Dismiss' })).toBeVisible({ timeout: 5000 });
+    }
   });
 });
 
