@@ -40,13 +40,12 @@ function emptySheet() {
 
 function freshConfig() {
   return {
-    ':names': ['skills', 'prompts', 'mcp-servers', 'agents', 'generated-tools', 'memory'],
+    ':names': ['skills', 'prompts', 'mcp-servers', 'agents', 'memory'],
     ':type': 'multi-sheet',
     skills: emptySheet(),
     prompts: emptySheet(),
     'mcp-servers': emptySheet(),
     agents: emptySheet(),
-    'generated-tools': emptySheet(),
     memory: emptySheet(),
   };
 }
