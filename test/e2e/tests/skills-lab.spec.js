@@ -996,6 +996,107 @@ test.describe('Accessibility — keyboard primary actions', () => {
   });
 });
 
+// ─── Performance UX ──────────────────────────────────────────────────────────
+
+test.describe('Performance UX', () => {
+  test('Restores cached snapshot immediately and refreshes in background', async ({ page }) => {
+    test.setTimeout(30000);
+    const skillId = 'pw-snapshot-skill';
+    const cfg = stubs.getConfig();
+    cfg.skills.data.push({
+      key: skillId,
+      content: `# ${skillId}\n\nSnapshot restore test.`,
+      status: 'approved',
+    });
+    cfg.skills.total = cfg.skills.data.length;
+
+    await page.addInitScript(({ org, site, id }) => {
+      const key = `da-skills-editor-data:${org}/${site}`;
+      const snapshot = {
+        skills: { [id]: `# ${id}\n\nSnapshot restore test.` },
+        skillStatuses: { [id]: 'approved' },
+        prompts: [],
+        agentRows: [],
+        mcpRows: [],
+        generatedTools: [],
+        configuredMcpServers: {},
+        configuredMcpServerHeaders: {},
+        toolOverrides: {},
+        agents: [],
+      };
+      window.sessionStorage.setItem(key, JSON.stringify(snapshot));
+    }, { org: TEST_ORG, site: TEST_SITE, id: skillId });
+
+    await page.route(`${DA_ADMIN}/config/${TEST_ORG}/${TEST_SITE}/`, async (route) => {
+      await new Promise((resolve) => { setTimeout(resolve, 1200); });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(stubs.getConfig()),
+      });
+    });
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    const card = skillCard(page, skillId);
+    await expect(card).toBeVisible({ timeout: 500 });
+    await expect(page.locator('.refresh-indicator')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('Loads agents lazily on Agents tab activation', async ({ page }) => {
+    test.setTimeout(30000);
+    let agentListCalls = 0;
+    await page.route(`**/list/${TEST_ORG}/${TEST_SITE}/.da/agents**`, async (route) => {
+      agentListCalls += 1;
+      await new Promise((resolve) => { setTimeout(resolve, 500); });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      });
+    });
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+    expect(agentListCalls).toBe(0);
+
+    await page.getByRole('tab', { name: 'Agents' }).click();
+    await expect.poll(() => agentListCalls).toBeGreaterThan(0);
+  });
+
+  test('Loads MCP tools lazily on MCP tab activation', async ({ page }) => {
+    test.setTimeout(30000);
+    const cfg = stubs.getConfig();
+    cfg['mcp-servers'].data.push({
+      key: 'pw-lazy-mcp',
+      url: 'https://example.invalid/mcp',
+      status: 'approved',
+      enabled: true,
+    });
+    cfg['mcp-servers'].total = cfg['mcp-servers'].data.length;
+
+    let mcpToolsCalls = 0;
+    await page.route('**/mcp-tools', async (route) => {
+      mcpToolsCalls += 1;
+      await new Promise((resolve) => { setTimeout(resolve, 600); });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          servers: [{ id: 'pw-lazy-mcp', tools: [{ name: 'ping', description: 'Ping test tool' }] }],
+        }),
+      });
+    });
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+    expect(mcpToolsCalls).toBe(0);
+
+    await page.getByRole('tab', { name: 'MCPs' }).click();
+    await expect(page.locator('.refresh-indicator')).toBeVisible({ timeout: 5000 });
+    await expect.poll(() => mcpToolsCalls).toBeGreaterThan(0);
+  });
+});
+
 // ─── Memory ──────────────────────────────────────────────────────────────────
 
 test.describe('Memory', () => {
