@@ -257,7 +257,7 @@ input[type="checkbox"] {
 /* Details */
 .da-item-list-item-details {
   display: none;
-  grid-template-columns: 32px 80px 1fr 180px 180px;
+  grid-template-columns: 32px 80px 1fr 182px 182px;
   padding: 24px 32px 24px 0;
   gap: 24px;
   border-top: 1px solid rgb(165 199 240);

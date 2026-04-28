@@ -297,7 +297,7 @@ export default class DaListItem extends LitElement {
           class="da-item-list-item-aem-btn">
           <div class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">${this._live?.redirect ? 'Preview Redirect' : 'Previewed'}</p>
+            <p class="da-list-item-details-title">Previewed${this._live?.redirect ? ' Redirect' : ''}</p>
             <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
           </div>
         </a>
@@ -309,7 +309,7 @@ export default class DaListItem extends LitElement {
           class="da-item-list-item-aem-btn">
           <div class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">${this._live?.redirect ? 'Publish Redirect' : 'Published'}</p>
+            <p class="da-list-item-details-title">Published${this._live?.redirect ? ' Redirect' : ''}</p>
             <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
           </div>
         </a>

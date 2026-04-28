@@ -277,7 +277,7 @@ describe('DaListItem', () => {
 
       const titles = [...el.shadowRoot.querySelectorAll('.da-aem-icon-details .da-list-item-details-title')]
         .map((t) => t.textContent);
-      expect(titles).to.deep.equal(['Preview Redirect', 'Publish Redirect']);
+      expect(titles).to.deep.equal(['Previewed Redirect', 'Published Redirect']);
 
       const anchors = el.shadowRoot.querySelectorAll('a.da-item-list-item-aem-btn');
       expect(anchors[0].getAttribute('href')).to.equal('/redirected');
