@@ -349,6 +349,62 @@ describe('DaBrowse Component', () => {
     daBrowseComp.details = { fullpath: '/myorg/mysite/folder', owner: 'myorg', depth: 3 };
   });
 
+  describe('getEditor', () => {
+    const UE_CONF = '/myorg/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live';
+    const FORM_CONF = '/myorg/mysite/dealers=https://da.live/form#';
+
+    function mockConfig(rows) {
+      window.fetch = async () => ({
+        ok: true,
+        json: async () => ({ data: rows }),
+      });
+    }
+
+    afterEach(() => { window.fetch = undefined; });
+
+    it('returns default edit path when no editor.path rows exist', async () => {
+      mockConfig([]);
+      const url = await daBrowseComp.getEditor(true);
+      expect(url).to.equal('/edit#');
+    });
+
+    it('matches a single editor.path row by prefix', async () => {
+      daBrowseComp.details = { fullpath: '/myorg/mysite/some-doc', owner: 'myorg', depth: 3 };
+      mockConfig([{ key: 'editor.path', value: UE_CONF }]);
+      const url = await daBrowseComp.getEditor(true);
+      expect(url).to.equal('https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live');
+    });
+
+    it('prefers the more specific (longer prefix) match over a shorter one', async () => {
+      daBrowseComp.details = { fullpath: '/myorg/mysite/dealers/acme', owner: 'myorg', depth: 4 };
+      mockConfig([
+        { key: 'editor.path', value: UE_CONF },
+        { key: 'editor.path', value: FORM_CONF },
+      ]);
+      const url = await daBrowseComp.getEditor(true);
+      // /myorg/mysite/dealers is more specific than /myorg/mysite even though
+      // UE_CONF has a longer total string length
+      expect(url).to.equal('https://da.live/form#');
+    });
+
+    it('falls back to the broader match when path is outside the specific folder', async () => {
+      daBrowseComp.details = { fullpath: '/myorg/mysite/other/page', owner: 'myorg', depth: 4 };
+      mockConfig([
+        { key: 'editor.path', value: UE_CONF },
+        { key: 'editor.path', value: FORM_CONF },
+      ]);
+      const url = await daBrowseComp.getEditor(true);
+      expect(url).to.equal('https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live');
+    });
+
+    it('returns default edit path when no prefix matches the current path', async () => {
+      daBrowseComp.details = { fullpath: '/otherorg/othersite/page', owner: 'otherorg', depth: 3 };
+      mockConfig([{ key: 'editor.path', value: UE_CONF }]);
+      const url = await daBrowseComp.getEditor(true);
+      expect(url).to.equal('/edit#');
+    });
+  });
+
   describe('isRootFolder', () => {
     it('returns true for root path (org only)', () => {
       expect(daBrowseComp.isRootFolder('/myorg')).to.be.true;
