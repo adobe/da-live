@@ -147,13 +147,11 @@ describe('DaTitle', () => {
       el = await fixture();
       el._scheduled = 'something';
       el._configs = ['config'];
-      el._actions = { open: true };
 
       el.reset();
 
       expect(el._scheduled).to.be.undefined;
       expect(el._configs).to.be.undefined;
-      expect(el._actions).to.deep.equal({});
     });
   });
 
@@ -171,22 +169,17 @@ describe('DaTitle', () => {
   });
 
   describe('handleError', () => {
-    it('sets status and updates icon classes', async () => {
+    it('sets status and clears sending state', async () => {
       el = await fixture();
-
-      const icon = document.createElement('div');
-      icon.classList.add('is-sending');
-      const parent = document.createElement('div');
-      parent.appendChild(icon);
+      el._isSending = true;
 
       const json = { error: { message: 'Not authorized', status: 403 } };
-      el.handleError(json, 'preview', icon);
+      el.handleError(json, 'preview');
 
       expect(el._status.message).to.equal('Not authorized');
       expect(el._status.status).to.equal(403);
       expect(el._status.action).to.equal('preview');
-      expect(icon.classList.contains('is-sending')).to.be.false;
-      expect(parent.classList.contains('is-error')).to.be.true;
+      expect(el._isSending).to.be.false;
     });
   });
 
@@ -219,26 +212,66 @@ describe('DaTitle', () => {
       expect(actions).to.include('publish');
     });
 
-    it('excludes publish when hidePublish config matches path', async () => {
-      el = await fixture({
-        details: createDetails({
-          view: 'edit',
-          path: '/test/page',
-          fullpath: '/testorg/testsite/test/page',
-        }),
-      });
-      el._configs = [{ key: 'editor.hidePublish', value: '/testorg/testsite/test' }];
-      const actions = await el.getAvailableActions();
-      expect(actions).to.not.include('publish');
-      expect(actions).to.include('preview');
-    });
-
     it('returns no preview/publish when no path', async () => {
       el = await fixture({ details: createDetails({ view: 'edit', path: '' }) });
       el._configs = [];
       const actions = await el.getAvailableActions();
       expect(actions).to.not.include('preview');
       expect(actions).to.not.include('publish');
+    });
+  });
+
+  describe('filterActions', () => {
+    it('removes publish when hidePublish config matches path', async () => {
+      const configResp = { data: [{ key: 'editor.hidePublish', value: '/filterorg/filtersite/test' }] };
+      const origFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.includes('/config/filterorg')) {
+          return new Response(JSON.stringify(configResp), { status: 200 });
+        }
+        return origFetch(url, opts);
+      };
+
+      el = await fixture({
+        details: createDetails({
+          org: 'filterorg',
+          site: 'filtersite',
+          path: '/test/page',
+          fullpath: '/filterorg/filtersite/test/page',
+        }),
+      });
+      el._actions = { available: ['preview', 'publish'] };
+      await el.filterActions();
+
+      expect(el._actions.available).to.include('preview');
+      expect(el._actions.available).to.not.include('publish');
+      window.fetch = origFetch;
+    });
+
+    it('keeps publish when hidePublish config does not match path', async () => {
+      const configResp = { data: [{ key: 'editor.hidePublish', value: '/filterorg2/filtersite2/other' }] };
+      const origFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.includes('/config/filterorg2')) {
+          return new Response(JSON.stringify(configResp), { status: 200 });
+        }
+        return origFetch(url, opts);
+      };
+
+      el = await fixture({
+        details: createDetails({
+          org: 'filterorg2',
+          site: 'filtersite2',
+          path: '/test/page',
+          fullpath: '/filterorg2/filtersite2/test/page',
+        }),
+      });
+      el._actions = { available: ['preview', 'publish'] };
+      await el.filterActions();
+
+      expect(el._actions.available).to.include('preview');
+      expect(el._actions.available).to.include('publish');
+      window.fetch = origFetch;
     });
   });
 

@@ -271,7 +271,7 @@ export default class DaListItem extends LitElement {
     if (this[env].lastModified) {
       return `${this[env].lastModified.date} ${this[env].lastModified.time}`;
     }
-    return 'Never';
+    return env === '_preview' ? 'Not previewed' : 'Not published';
   }
 
   render() {

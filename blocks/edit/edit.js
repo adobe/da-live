@@ -1,5 +1,5 @@
 import getPathDetails from '../shared/pathDetails.js';
-import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin } from '../shared/utils.js';
+import { daFetch, contentLogin, livePreviewLogin } from '../shared/utils.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -49,7 +49,6 @@ async function setUI(el) {
   document.title = `Edit ${details.name} - DA`;
 
   const { owner, repo } = details;
-  const lockdownPromise = checkLockdownImages(owner);
   await Promise.all([
     contentLogin(owner, repo),
     livePreviewLogin(owner, repo),
@@ -80,7 +79,6 @@ async function setUI(el) {
 
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
-  daContent.lockdownImages = await lockdownPromise;
 
   const metadataEl = doc.querySelector('main > .metadata');
   // Check if the metadata div has no additional classes (or doesn't exist)
