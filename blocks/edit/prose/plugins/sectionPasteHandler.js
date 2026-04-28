@@ -6,6 +6,32 @@ const sectionPasteKey = new PluginKey('sectionPaste');
 const NONSTANDARD_SPACE_DETECT = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/;
 // Global regex for replacement
 const NONSTANDARD_SPACES_RE = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g;
+// Match http(s) URLs; trailing punctuation is trimmed below so it doesn't get
+// pulled into the link (e.g. "see https://a.com." or "(https://a.com)").
+const URL_RE = /https?:\/\/[^\s<>"'`]+/g;
+const URL_TRAIL_PUNCT = /[.,;:!?)\]}'"`]+$/;
+
+function splitLineByUrls(line, schema) {
+  const linkMark = schema.marks.link;
+  if (!linkMark) return [schema.text(line)];
+
+  const nodes = [];
+  let lastIndex = 0;
+  for (const match of line.matchAll(URL_RE)) {
+    let url = match[0];
+    const trail = url.match(URL_TRAIL_PUNCT);
+    if (trail) url = url.slice(0, -trail[0].length);
+    if (match.index > lastIndex) {
+      nodes.push(schema.text(line.slice(lastIndex, match.index)));
+    }
+    nodes.push(schema.text(url, [linkMark.create({ href: url })]));
+    lastIndex = match.index + url.length;
+  }
+  if (lastIndex < line.length) {
+    nodes.push(schema.text(line.slice(lastIndex)));
+  }
+  return nodes;
+}
 
 function normalizeSpaceChars(str) {
   return str.replace(NONSTANDARD_SPACES_RE, ' ');
@@ -182,7 +208,7 @@ export default function sectionPasteHandler(schema) {
         const lines = text.split(/\r\n?|\n/);
         const nodes = lines.map((line) => {
           if (line.length === 0) return schema.nodes.paragraph.create();
-          return schema.nodes.paragraph.create(null, [schema.text(line)]);
+          return schema.nodes.paragraph.create(null, splitLineByUrls(line, schema));
         });
         return new Slice(Fragment.from(nodes), 1, 1);
       },
