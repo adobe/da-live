@@ -71,4 +71,59 @@ describe('da-dialog', () => {
 
     expect(closed).to.be.true;
   });
+
+  it('applies emphasis class when set', async () => {
+    el = await fixture('<da-dialog emphasis="quiet"></da-dialog>');
+    await nextFrame();
+    const inner = el.shadowRoot.querySelector('.da-dialog-inner');
+    expect(inner.classList.contains('da-dialog-quiet')).to.be.true;
+  });
+
+  it('renders the title in the header', async () => {
+    el = await fixture('<da-dialog title="Hello"></da-dialog>');
+    await nextFrame();
+    const heading = el.shadowRoot.querySelector('.da-dialog-header p');
+    expect(heading.textContent.trim()).to.equal('Hello');
+  });
+
+  it('does not render footer when no action is set', async () => {
+    el = await fixture('<da-dialog></da-dialog>');
+    await nextFrame();
+    expect(el.shadowRoot.querySelector('.da-dialog-footer')).to.equal(null);
+  });
+
+  it('renders footer when an action is provided and dispatches click', async () => {
+    el = await fixture('<da-dialog></da-dialog>');
+    await nextFrame();
+    let clicked = 0;
+    el.action = { label: 'OK', style: 'primary', click: () => { clicked += 1; } };
+    el.message = 'A message';
+    await el.updateComplete;
+    const footer = el.shadowRoot.querySelector('.da-dialog-footer');
+    expect(footer).to.exist;
+    expect(footer.textContent).to.contain('A message');
+    const button = el.shadowRoot.querySelector('sl-button');
+    expect(button).to.exist;
+    button.click();
+    expect(clicked).to.equal(1);
+  });
+
+  it('respects disabled flag on the action button', async () => {
+    el = await fixture('<da-dialog></da-dialog>');
+    await nextFrame();
+    el.action = { label: 'OK', style: 'primary', click: () => {}, disabled: true };
+    await el.updateComplete;
+    const button = el.shadowRoot.querySelector('sl-button');
+    expect(button.hasAttribute('disabled')).to.be.true;
+  });
+
+  it('triggers a deferred showModal once the dialog mounts', async () => {
+    el = await fixture('<da-dialog></da-dialog>');
+    // Force fall-through to lazy path by clearing internal _dialog reference path:
+    // call showModal before any sl-dialog has rendered (re-call is harmless).
+    el._showLazyModal = true;
+    await el.requestUpdate();
+    await el.updateComplete;
+    expect(el._showLazyModal).to.equal(undefined);
+  });
 });
