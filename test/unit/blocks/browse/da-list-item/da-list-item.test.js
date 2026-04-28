@@ -167,4 +167,143 @@ describe('DaListItem', () => {
       expect(checkedCalled).to.be.true;
     });
   });
+
+  describe('updateAEMStatus', () => {
+    let savedFetch;
+    let savedIms;
+
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      savedIms = window.localStorage.getItem('nx-ims');
+      window.localStorage.removeItem('nx-ims');
+    });
+
+    afterEach(() => {
+      window.fetch = savedFetch;
+      if (savedIms) window.localStorage.setItem('nx-ims', savedIms);
+    });
+
+    it('stores the live redirectLocation on both _preview and _live', async () => {
+      const json = {
+        preview: { status: 200, url: 'https://preview.example.com/page', lastModified: 1700000000000 },
+        live: { status: 200, url: 'https://live.example.com/page', lastModified: 1700000000000, redirectLocation: '/redirected' },
+      };
+      window.fetch = () => Promise.resolve(new Response(JSON.stringify(json), { status: 200 }));
+
+      const el = new DaListItem();
+      el.path = '/org/repo/folder/page';
+      await el.updateAEMStatus();
+
+      expect(el._preview.redirect).to.equal('/redirected');
+      expect(el._live.redirect).to.equal('/redirected');
+      expect(el._preview.status).to.equal(200);
+      expect(el._live.status).to.equal(200);
+      expect(el._preview.url).to.equal('https://preview.example.com/page');
+      expect(el._live.url).to.equal('https://live.example.com/page');
+    });
+
+    it('leaves redirect undefined when the live response has no redirectLocation', async () => {
+      const json = {
+        preview: { status: 200, url: 'https://preview.example.com/page', lastModified: null },
+        live: { status: 200, url: 'https://live.example.com/page', lastModified: null },
+      };
+      window.fetch = () => Promise.resolve(new Response(JSON.stringify(json), { status: 200 }));
+
+      const el = new DaListItem();
+      el.path = '/org/repo/folder/page';
+      await el.updateAEMStatus();
+
+      expect(el._preview.redirect).to.equal(undefined);
+      expect(el._live.redirect).to.equal(undefined);
+    });
+
+    it('falls back to status 401 on _preview and _live when aemAdmin returns undefined', async () => {
+      window.fetch = () => Promise.resolve(new Response(null, { status: 500 }));
+
+      const el = new DaListItem();
+      el.path = '/org/repo/folder/page';
+      await el.updateAEMStatus();
+
+      expect(el._preview).to.deep.equal({ status: 401 });
+      expect(el._live).to.deep.equal({ status: 401 });
+    });
+  });
+
+  describe('renderAemDate', () => {
+    it('returns "Checking" when the env state is not yet populated', () => {
+      const el = new DaListItem();
+      expect(el.renderAemDate('_preview')).to.equal('Checking');
+      expect(el.renderAemDate('_live')).to.equal('Checking');
+    });
+
+    it('returns "Not previewed" for _preview without lastModified', () => {
+      const el = new DaListItem();
+      el._preview = { status: 200, url: 'x', lastModified: null };
+      expect(el.renderAemDate('_preview')).to.equal('Not previewed');
+    });
+
+    it('returns "Not published" for _live without lastModified', () => {
+      const el = new DaListItem();
+      el._live = { status: 200, url: 'x', lastModified: null };
+      expect(el.renderAemDate('_live')).to.equal('Not published');
+    });
+
+    it('returns the formatted date+time when lastModified is set', () => {
+      const el = new DaListItem();
+      el._preview = { status: 200, url: 'x', lastModified: { date: 'Jan 1, 2026', time: '12:00 PM' } };
+      expect(el.renderAemDate('_preview')).to.equal('Jan 1, 2026 12:00 PM');
+    });
+  });
+
+  describe('render', () => {
+    let el;
+
+    afterEach(() => {
+      if (el?.isConnected) el.remove();
+    });
+
+    it('uses redirect titles and redirect hrefs when _live.redirect is set', async () => {
+      el = document.createElement('da-list-item');
+      el.ext = 'html';
+      el.editor = '/edit#';
+      el.path = '/org/repo/folder/page.html';
+      el.name = 'page';
+      document.body.appendChild(el);
+      await el.updateComplete;
+
+      el._preview = { status: 200, url: 'https://preview.example.com/page', lastModified: null, redirect: '/redirected' };
+      el._live = { status: 200, url: 'https://live.example.com/page', lastModified: null, redirect: '/redirected' };
+      await el.updateComplete;
+
+      const titles = [...el.shadowRoot.querySelectorAll('.da-aem-icon-details .da-list-item-details-title')]
+        .map((t) => t.textContent);
+      expect(titles).to.deep.equal(['Preview Redirect', 'Publish Redirect']);
+
+      const anchors = el.shadowRoot.querySelectorAll('a.da-item-list-item-aem-btn');
+      expect(anchors[0].getAttribute('href')).to.equal('/redirected');
+      expect(anchors[1].getAttribute('href')).to.equal('/redirected');
+    });
+
+    it('uses default titles and url hrefs when redirect is absent', async () => {
+      el = document.createElement('da-list-item');
+      el.ext = 'html';
+      el.editor = '/edit#';
+      el.path = '/org/repo/folder/page.html';
+      el.name = 'page';
+      document.body.appendChild(el);
+      await el.updateComplete;
+
+      el._preview = { status: 200, url: 'https://preview.example.com/page', lastModified: null };
+      el._live = { status: 200, url: 'https://live.example.com/page', lastModified: null };
+      await el.updateComplete;
+
+      const titles = [...el.shadowRoot.querySelectorAll('.da-aem-icon-details .da-list-item-details-title')]
+        .map((t) => t.textContent);
+      expect(titles).to.deep.equal(['Previewed', 'Published']);
+
+      const anchors = el.shadowRoot.querySelectorAll('a.da-item-list-item-aem-btn');
+      expect(anchors[0].getAttribute('href')).to.equal('https://preview.example.com/page');
+      expect(anchors[1].getAttribute('href')).to.equal('https://live.example.com/page');
+    });
+  });
 });
