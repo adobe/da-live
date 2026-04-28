@@ -68,6 +68,21 @@ async function setUI(el) {
   let permissions;
   let doc;
   if (resp.status === 404) {
+    const { default: showNotFoundDialog } = await import('./da-not-found/da-not-found.js');
+    const choice = await showNotFoundDialog(details);
+    // A hashchange spawns a parallel setUI for the new path — bail out of
+    // this one so the two don't race over window.location / editor state.
+    if (choice === 'hashchange') return;
+    if (choice === 'folder') {
+      const folderPath = details.fullpath.replace(/\.html$/, '');
+      const hashPath = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+      window.location = `/#${hashPath}`;
+      return;
+    }
+    if (choice !== 'create') {
+      window.location = `/#${details.parent}`;
+      return;
+    }
     const createResp = await createDoc(details.sourceUrl);
     permissions = createResp.permissions;
     doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
