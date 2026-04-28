@@ -104,7 +104,7 @@ export default class DaBrowse extends LitElement {
     if (matchedConfs.length === 0) return DEF_EDIT;
 
     // Sort by length in descending order (longest first)
-    const matchedConf = matchedConfs.sort((a, b) => b.length - a.length)[0];
+    const matchedConf = matchedConfs.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length)[0];
 
     return matchedConf.split('=')[1];
   }
