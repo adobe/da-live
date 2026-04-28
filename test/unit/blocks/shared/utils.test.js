@@ -6,7 +6,6 @@ import {
   saveToDa,
   getSheetByIndex,
   getFirstSheet,
-  checkLockdownImages,
   delay,
   getSidekickConfig,
   sanitizeName,
@@ -364,71 +363,6 @@ describe('saveToDa', () => {
     expect(capturedBody).to.be.instanceOf(FormData);
     expect(capturedBody.get('data')).to.be.instanceOf(Blob);
     expect(capturedBody.get('props')).to.equal(JSON.stringify(props));
-  });
-});
-
-describe('checkLockdownImages', () => {
-  let savedFetch;
-  let savedLocalStorage;
-
-  beforeEach(() => {
-    savedFetch = window.fetch;
-    savedLocalStorage = window.localStorage.getItem('nx-ims');
-    window.localStorage.removeItem('nx-ims');
-  });
-
-  afterEach(() => {
-    window.fetch = savedFetch;
-    if (savedLocalStorage) {
-      window.localStorage.setItem('nx-ims', savedLocalStorage);
-    } else {
-      window.localStorage.removeItem('nx-ims');
-    }
-  });
-
-  it('Returns true when lockdownImages flag is enabled', async () => {
-    const body = JSON.stringify({ flags: { data: [{ key: 'lockdownImages', value: 'true' }] } });
-    window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
-
-    const result = await checkLockdownImages('testowner');
-    expect(result).to.be.true;
-  });
-
-  it('Returns false when lockdownImages flag is not present', async () => {
-    const body = JSON.stringify({ flags: { data: [{ key: 'otherFlag', value: 'true' }] } });
-    window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
-
-    const result = await checkLockdownImages('testowner');
-    expect(result).to.be.false;
-  });
-
-  it('Returns false when lockdownImages value is not true', async () => {
-    const body = JSON.stringify({ flags: { data: [{ key: 'lockdownImages', value: 'false' }] } });
-    window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
-
-    const result = await checkLockdownImages('testowner');
-    expect(result).to.be.false;
-  });
-
-  it('Returns false when flags sheet does not exist', async () => {
-    window.fetch = () => Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
-
-    const result = await checkLockdownImages('testowner');
-    expect(result).to.be.false;
-  });
-
-  it('Returns false when config fetch fails', async () => {
-    window.fetch = () => Promise.resolve(new Response('error', { status: 500 }));
-
-    const result = await checkLockdownImages('testowner');
-    expect(result).to.be.false;
-  });
-
-  it('Returns false when fetch throws', async () => {
-    window.fetch = () => Promise.reject(new Error('network error'));
-
-    const result = await checkLockdownImages('testowner');
-    expect(result).to.be.false;
   });
 });
 

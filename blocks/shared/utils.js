@@ -160,6 +160,7 @@ export async function livePreviewLogin(owner, repo) {
  * instead of the public preview URL, preventing unauthorized access to images.
  * @param {string} owner - The owner identifier
  * @returns {Promise<boolean>} True if lockdownImages flag is enabled, false otherwise
+ * @deprecated
  */
 export async function checkLockdownImages(owner) {
   try {
