@@ -60,11 +60,13 @@ export default class DaListItem extends LitElement {
         status: json.preview.status,
         url: json.preview.url,
         lastModified: json.preview.lastModified ? formatDate(json.preview.lastModified) : null,
+        redirect: json.live.redirectLocation,
       };
       this._live = {
         status: json.live.status,
         url: json.live.url,
         lastModified: json.live.lastModified ? formatDate(json.live.lastModified) : null,
+        redirect: json.live.redirectLocation,
       };
       return;
     }
@@ -288,26 +290,26 @@ export default class DaListItem extends LitElement {
       <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}" role="gridcell">
         ${this.renderDaDetails()}
         <a
-          href=${this._preview?.url}
+          href=${this._preview?.redirect || this._preview?.url}
           target="_blank"
           aria-label="Open preview"
           @click=${this.showPreview}
           class="da-item-list-item-aem-btn">
           <div class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">Previewed</p>
+            <p class="da-list-item-details-title">${this._live?.redirect ? 'Preview Redirect' : 'Previewed'}</p>
             <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
           </div>
         </a>
         <a
-          href=${this._live?.url}
+          href=${this._live?.redirect || this._live?.url}
           target="_blank"
           aria-label="Open preview"
           @click=${this.showPreview}
           class="da-item-list-item-aem-btn">
           <div class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">Published</p>
+            <p class="da-list-item-details-title">${this._live?.redirect ? 'Publish Redirect' : 'Published'}</p>
             <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
           </div>
         </a>
