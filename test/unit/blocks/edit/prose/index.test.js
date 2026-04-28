@@ -1,13 +1,11 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { Y } from 'da-y-wrapper';
-import {
+import initProse, {
   createConnection,
   createAwarenessStatusWidget,
 } from '../../../../../blocks/edit/prose/index.js';
-import initProse from '../../../../../blocks/edit/prose/index.js';
 
-const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 function buildFakeWsProvider({ withSynced = false } = {}) {

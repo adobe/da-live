@@ -58,7 +58,10 @@ describe('linkMenuItems behaviors against an editor', () => {
     const openItem = items.find((i) => i.title === 'Open link');
     const savedOpen = window.open;
     let captured;
-    window.open = (url, target) => { captured = { url, target }; return null; };
+    window.open = (url, target) => {
+      captured = { url, target };
+      return null;
+    };
     try {
       const result = openItem.command(editor.view.state);
       expect(result).to.be.true;

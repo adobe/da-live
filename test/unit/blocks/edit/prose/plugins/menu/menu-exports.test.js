@@ -154,7 +154,9 @@ describe('menu/linkItem exports', () => {
         ),
       );
       editor.view.dispatch(tr);
-      const tr2 = editor.view.state.tr.setSelection(TextSelection.create(editor.view.state.doc, 2, 4));
+      const tr2 = editor.view.state.tr.setSelection(
+        TextSelection.create(editor.view.state.doc, 2, 4),
+      );
       editor.view.dispatch(tr2);
       const item = removeLinkItem(linkMark);
       expect(item.spec.active(editor.view.state)).to.be.true;
@@ -169,7 +171,9 @@ describe('menu/linkItem exports', () => {
         state.schema.nodes.paragraph.create(null, state.schema.text('plain')),
       );
       editor.view.dispatch(tr);
-      const tr2 = editor.view.state.tr.setSelection(TextSelection.create(editor.view.state.doc, 1, 4));
+      const tr2 = editor.view.state.tr.setSelection(
+        TextSelection.create(editor.view.state.doc, 1, 4),
+      );
       editor.view.dispatch(tr2);
       const item = removeLinkItem(linkMark);
       expect(item.spec.active(editor.view.state)).to.be.false;
@@ -188,7 +192,9 @@ describe('menu/linkItem exports', () => {
         ),
       );
       editor.view.dispatch(tr);
-      const tr2 = editor.view.state.tr.setSelection(TextSelection.create(editor.view.state.doc, 2, 4));
+      const tr2 = editor.view.state.tr.setSelection(
+        TextSelection.create(editor.view.state.doc, 2, 4),
+      );
       editor.view.dispatch(tr2);
       const item = removeLinkItem(linkMark);
       // active() must run first to set isImage

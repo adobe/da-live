@@ -237,7 +237,10 @@ describe('diff-utils getDiffClass — paired node views', () => {
 
     const dispatched = [];
     const realDispatch = editor.view.dispatch.bind(editor.view);
-    editor.view.dispatch = (tr) => { dispatched.push(tr); realDispatch(tr); };
+    editor.view.dispatch = (tr) => {
+      dispatched.push(tr);
+      realDispatch(tr);
+    };
     instance.dispatchContentTransaction(deletedPos, deletedPos + node.nodeSize, []);
     expect(dispatched.length).to.equal(1);
   });

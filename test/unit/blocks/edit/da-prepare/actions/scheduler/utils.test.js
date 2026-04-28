@@ -97,9 +97,7 @@ describe('scheduler/utils', () => {
       expect(captured.opts.method).to.equal('POST');
       expect(captured.opts.headers['content-type']).to.equal('application/json');
       const body = JSON.parse(captured.opts.body);
-      expect(body).to.deep.equal({
-        org: 'o', site: 's', path: '/p', userId: 'user-1', scheduledPublish: '2026-01-01',
-      });
+      expect(body).to.deep.equal({ org: 'o', site: 's', path: '/p', userId: 'user-1', scheduledPublish: '2026-01-01' });
       expect(resp.ok).to.be.true;
     });
   });

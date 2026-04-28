@@ -670,9 +670,7 @@ describe('saveToAem', () => {
   it('Parses an x-error PDF detail on a non-auth failure', async () => {
     window.fetch = () => Promise.resolve(new Response('', {
       status: 500,
-      headers: {
-        'x-error': "[admin] Unable to preview '.../doc.pdf': PDF is larger than 10MB: 24.0MB",
-      },
+      headers: { 'x-error': "[admin] Unable to preview '.../doc.pdf': PDF is larger than 10MB: 24.0MB" },
     }));
     const result = await saveToAem('/o/r/page', 'preview');
     expect(result.error.details).to.equal('PDF is larger than 10MB: 24.0MB');
@@ -681,9 +679,7 @@ describe('saveToAem', () => {
   it('Parses an x-error MP4 detail', async () => {
     window.fetch = () => Promise.resolve(new Response('', {
       status: 500,
-      headers: {
-        'x-error': "[admin] Unable to preview '.../v.mp4': MP4 is longer than 2 minutes: 2m 44s",
-      },
+      headers: { 'x-error': "[admin] Unable to preview '.../v.mp4': MP4 is longer than 2 minutes: 2m 44s" },
     }));
     const result = await saveToAem('/o/r/page', 'preview');
     expect(result.error.details).to.equal('MP4 is longer than 2 minutes');
@@ -692,9 +688,7 @@ describe('saveToAem', () => {
   it('Parses an x-error Image detail and strips the .00', async () => {
     window.fetch = () => Promise.resolve(new Response('', {
       status: 500,
-      headers: {
-        'x-error': "[admin] Unable to preview '.../page.md': source contains large image: error: Image 1 exceeds allowed limit of 10.00MB",
-      },
+      headers: { 'x-error': "[admin] Unable to preview '.../page.md': source contains large image: error: Image 1 exceeds allowed limit of 10.00MB" },
     }));
     const result = await saveToAem('/o/r/page', 'preview');
     expect(result.error.details).to.equal('Image 1 exceeds allowed limit of 10MB');

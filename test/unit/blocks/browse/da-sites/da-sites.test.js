@@ -130,7 +130,11 @@ describe('DaSites', () => {
       };
       // Stub FormData to read our pseudo-target
       const RealFormData = window.FormData;
-      window.FormData = class { constructor() { this.entries = [['siteUrl', target.siteUrl]]; } *[Symbol.iterator]() { yield* this.entries; } };
+      window.FormData = class {
+        constructor() { this.entries = [['siteUrl', target.siteUrl]]; }
+
+        * [Symbol.iterator]() { yield* this.entries; }
+      };
       try {
         await el.handleGo(e);
       } finally {
@@ -143,7 +147,11 @@ describe('DaSites', () => {
       const el = new DaSites();
       // Constructor sets _urlError = false; an early return should leave it false.
       const RealFormData = window.FormData;
-      window.FormData = class { constructor() { this.entries = [['siteUrl', '']]; } *[Symbol.iterator]() { yield* this.entries; } };
+      window.FormData = class {
+        constructor() { this.entries = [['siteUrl', '']]; }
+
+        * [Symbol.iterator]() { yield* this.entries; }
+      };
       try {
         await el.handleGo({ preventDefault: () => {}, target: {} });
       } finally {

@@ -9,7 +9,10 @@ function buildTable(view, rows) {
   const tableNode = schema.nodes.table;
   const rowNode = schema.nodes.table_row;
   const cellNode = schema.nodes.table_cell;
-  const para = (text, attrs) => schema.nodes.paragraph.create(attrs || null, text ? schema.text(text) : null);
+  const para = (text, attrs) => schema.nodes.paragraph.create(
+    attrs || null,
+    text ? schema.text(text) : null,
+  );
 
   const tableRows = rows.map((row) => rowNode.create(
     null,
@@ -92,7 +95,9 @@ describe('tableUtils', () => {
     editor.view.state.doc.descendants((node, pos) => {
       if (firstCellPos === -1 && node.type.name === 'paragraph') firstCellPos = pos + 1;
     });
-    const tr = editor.view.state.tr.setSelection(TextSelection.create(editor.view.state.doc, firstCellPos));
+    const tr = editor.view.state.tr.setSelection(
+      TextSelection.create(editor.view.state.doc, firstCellPos),
+    );
     editor.view.dispatch(tr);
     expect(isInTableCell(editor.view.state, firstCellPos)).to.be.true;
   });

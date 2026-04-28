@@ -20,7 +20,12 @@ describe('diff-actions stripDaDiffAddedAttrs', () => {
       attrs: { daDiffAdded: '', other: 'x' },
       content: 'c',
       marks: ['m'],
-      type: { create: (attrs, content, marks) => { created.push({ attrs, content, marks }); return { attrs }; } },
+      type: {
+        create: (attrs, content, marks) => {
+          created.push({ attrs, content, marks });
+          return { attrs };
+        },
+      },
     };
     const result = stripDaDiffAddedAttrs([node]);
     expect(created).to.have.length(1);
@@ -76,13 +81,7 @@ describe('diff-actions getPairRange', () => {
 
 describe('diff-actions getCurrentLocNodePair', () => {
   function buildContext({ pos, parent, nodeSize = 4 }) {
-    const view = {
-      state: {
-        doc: {
-          resolve: () => ({ parent, index: () => parent.indexAt }),
-        },
-      },
-    };
+    const view = { state: { doc: { resolve: () => ({ parent, index: () => parent.indexAt }) } } };
     const getPos = () => pos;
     const isValidPosition = (p) => p !== null && p !== undefined;
     const isLocNode = (n) => n?.type?.name === 'diff_deleted' || n?.type?.name === 'diff_added';
@@ -97,9 +96,8 @@ describe('diff-actions getCurrentLocNodePair', () => {
       pos: null,
       parent: { indexAt: 0, child: () => null, childCount: 0 },
     });
-    const result = getCurrentLocNodePair(
-      ctx.view, ctx.getPos, ctx.isValidPosition, ctx.isLocNode, ctx.canFormLocPair,
-    );
+    const { view, getPos, isValidPosition, isLocNode, canFormLocPair } = ctx;
+    const result = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
     expect(result).to.equal(null);
   });
 
@@ -112,9 +110,8 @@ describe('diff-actions getCurrentLocNodePair', () => {
         childCount: 2,
       },
     });
-    const result = getCurrentLocNodePair(
-      ctx.view, ctx.getPos, ctx.isValidPosition, ctx.isLocNode, ctx.canFormLocPair,
-    );
+    const { view, getPos, isValidPosition, isLocNode, canFormLocPair } = ctx;
+    const result = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
     expect(result).to.equal(null);
   });
 
@@ -127,9 +124,8 @@ describe('diff-actions getCurrentLocNodePair', () => {
       childCount: 2,
     };
     const ctx = buildContext({ pos: 10, parent });
-    const result = getCurrentLocNodePair(
-      ctx.view, ctx.getPos, ctx.isValidPosition, ctx.isLocNode, ctx.canFormLocPair,
-    );
+    const { view, getPos, isValidPosition, isLocNode, canFormLocPair } = ctx;
+    const result = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
     expect(result).to.deep.equal({
       deletedPos: 10,
       addedPos: 14,
@@ -147,9 +143,8 @@ describe('diff-actions getCurrentLocNodePair', () => {
       childCount: 2,
     };
     const ctx = buildContext({ pos: 10, parent });
-    const result = getCurrentLocNodePair(
-      ctx.view, ctx.getPos, ctx.isValidPosition, ctx.isLocNode, ctx.canFormLocPair,
-    );
+    const { view, getPos, isValidPosition, isLocNode, canFormLocPair } = ctx;
+    const result = getCurrentLocNodePair(view, getPos, isValidPosition, isLocNode, canFormLocPair);
     expect(result).to.deep.equal({
       addedPos: 10,
       deletedPos: 14,
@@ -159,16 +154,8 @@ describe('diff-actions getCurrentLocNodePair', () => {
   });
 
   it('Returns null on resolve errors (caught)', () => {
-    const view = {
-      state: {
-        doc: {
-          resolve: () => { throw new Error('boom'); },
-        },
-      },
-    };
-    const result = getCurrentLocNodePair(
-      view, () => 0, () => true, () => true, () => true,
-    );
+    const view = { state: { doc: { resolve: () => { throw new Error('boom'); } } } };
+    const result = getCurrentLocNodePair(view, () => 0, () => true, () => true, () => true);
     expect(result).to.equal(null);
   });
 });
@@ -176,7 +163,13 @@ describe('diff-actions getCurrentLocNodePair', () => {
 describe('diff-actions handleDeleteSingleNode', () => {
   it('Logs and returns when getPos is invalid', () => {
     let dispatched = false;
-    const view = { state: { tr: { delete: () => { dispatched = true; } }, doc: { resolve: () => null } }, dispatch: () => {} };
+    const view = {
+      state: {
+        tr: { delete: () => { dispatched = true; } },
+        doc: { resolve: () => null },
+      },
+      dispatch: () => {},
+    };
     handleDeleteSingleNode(view, () => null, (p) => p !== null && p !== undefined, () => true);
     expect(dispatched).to.be.false;
   });
@@ -186,8 +179,20 @@ describe('diff-actions handleDeleteSingleNode', () => {
     const node = { type: { name: 'paragraph' }, nodeSize: 1 };
     const view = {
       state: {
-        tr: { delete: () => { dispatched = true; return {}; } },
-        doc: { resolve: () => ({ index: () => 0, parent: { type: { name: 'doc' }, child: () => node }, depth: 1, before: () => 0 }) },
+        tr: {
+          delete: () => {
+            dispatched = true;
+            return {};
+          },
+        },
+        doc: {
+          resolve: () => ({
+            index: () => 0,
+            parent: { type: { name: 'doc' }, child: () => node },
+            depth: 1,
+            before: () => 0,
+          }),
+        },
       },
       dispatch: () => {},
     };
@@ -218,7 +223,16 @@ describe('diff-actions handleKeepDeleted/Added/Both', () => {
       view: {
         state: {
           tr: {},
-          doc: { resolve: () => ({ index: () => 0, parent: { type: { name: 'doc' }, child: () => ({ type: { name: 'paragraph' } }), childCount: 0 } }) },
+          doc: {
+            resolve: () => ({
+              index: () => 0,
+              parent: {
+                type: { name: 'doc' },
+                child: () => ({ type: { name: 'paragraph' } }),
+                childCount: 0,
+              },
+            }),
+          },
         },
         dispatch: () => {},
       },

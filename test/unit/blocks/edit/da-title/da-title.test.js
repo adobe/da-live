@@ -410,7 +410,6 @@ describe('DaTitle', () => {
 
   describe('handleAction (preview/publish)', () => {
     let savedAdminFetch;
-    let savedDaFetch;
 
     beforeEach(() => {
       savedAdminFetch = window.fetch;
@@ -443,8 +442,11 @@ describe('DaTitle', () => {
       const opens = [];
       const savedOpen = window.open;
       window.open = (...args) => { opens.push(args); };
-      window.fetch = (url) => Promise.resolve(new Response(
-        JSON.stringify({ preview: { url: 'https://main--site--org.aem.page/test/page' }, webPath: '/test/page' }),
+      window.fetch = () => Promise.resolve(new Response(
+        JSON.stringify({
+          preview: { url: 'https://main--site--org.aem.page/test/page' },
+          webPath: '/test/page',
+        }),
         { status: 200 },
       ));
       try {
@@ -472,14 +474,20 @@ describe('DaTitle', () => {
         ['da-schedule', Promise.resolve({ getExistingSchedule: async () => null })],
       ]);
       let calls = 0;
-      window.fetch = (url) => {
+      window.fetch = () => {
         calls += 1;
         if (calls === 1) {
           // preview call
-          return Promise.resolve(new Response(JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }), { status: 200 }));
+          return Promise.resolve(new Response(
+            JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
+            { status: 200 },
+          ));
         }
         // publish (live) call
-        return Promise.resolve(new Response(JSON.stringify({ live: { url: 'https://y' }, webPath: '/test/page' }), { status: 200 }));
+        return Promise.resolve(new Response(
+          JSON.stringify({ live: { url: 'https://y' }, webPath: '/test/page' }),
+          { status: 200 },
+        ));
       };
       const opens = [];
       const savedOpen = window.open;
@@ -502,11 +510,14 @@ describe('DaTitle', () => {
       element._scheduled = { scheduled: true, scheduledPublish: '2026-12-31', userId: 'u1' };
       let dialogShown = false;
       const origSetScheduledDialog = element.setScheduledDialog;
-      element.setScheduledDialog = async (sch) => {
+      element.setScheduledDialog = async () => {
         dialogShown = true;
         return false; // user cancels
       };
-      window.fetch = () => Promise.resolve(new Response(JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }), { status: 200 }));
+      window.fetch = () => Promise.resolve(new Response(
+        JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
+        { status: 200 },
+      ));
       const opens = [];
       const savedOpen = window.open;
       window.open = (...args) => { opens.push(args); };
@@ -531,7 +542,10 @@ describe('DaTitle', () => {
       const calls = [];
       window.fetch = (url, opts) => {
         calls.push({ url, method: opts?.method });
-        return Promise.resolve(new Response(JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }), { status: 200 }));
+        return Promise.resolve(new Response(
+          JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
+          { status: 200 },
+        ));
       };
       const opens = [];
       const savedOpen = window.open;
@@ -582,7 +596,10 @@ describe('DaTitle', () => {
       let captured;
       window.chrome = {
         runtime: {
-          sendMessage: (extId, opts) => { captured = { extId, opts }; return Promise.resolve(); },
+          sendMessage: (extId, opts) => {
+            captured = { extId, opts };
+            return Promise.resolve();
+          },
         },
       };
       const element = new DaTitle();
@@ -596,7 +613,10 @@ describe('DaTitle', () => {
       let captured;
       window.chrome = {
         runtime: {
-          sendMessage: (extId) => { captured = extId; return Promise.resolve(); },
+          sendMessage: (extId) => {
+            captured = extId;
+            return Promise.resolve();
+          },
         },
       };
       try {
@@ -609,9 +629,7 @@ describe('DaTitle', () => {
     });
 
     it('Swallows errors from sendMessage', async () => {
-      window.chrome = {
-        runtime: { sendMessage: () => Promise.reject(new Error('boom')) },
-      };
+      window.chrome = { runtime: { sendMessage: () => Promise.reject(new Error('boom')) } };
       const element = new DaTitle();
       await element.sidekickCacheBust('https://main--site--org.aem.live/page');
     });

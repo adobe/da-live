@@ -431,35 +431,27 @@ describe('DaBrowse Component', () => {
 
     it('Inserts /.trash/ when not already in trash', () => {
       daBrowseComp.details = { fullpath: '/org/site/folder' };
-      daBrowseComp.handleShortcuts({
-        metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {},
-      });
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
       expect(window.location.hash).to.equal('#/org/site/.trash/folder');
     });
 
     it('Removes /.trash/ when already in trash', () => {
       daBrowseComp.details = { fullpath: '/org/site/.trash/folder' };
-      daBrowseComp.handleShortcuts({
-        ctrlKey: true, altKey: true, code: 'KeyT', preventDefault: () => {},
-      });
+      daBrowseComp.handleShortcuts({ ctrlKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
       expect(window.location.hash).to.equal('#/org/site/folder');
     });
 
     it('Does nothing when path is too shallow (< 2 segments)', () => {
       daBrowseComp.details = { fullpath: '/org' };
       const before = window.location.hash;
-      daBrowseComp.handleShortcuts({
-        metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {},
-      });
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
       expect(window.location.hash).to.equal(before);
     });
 
     it('Ignores keys without alt or meta/ctrl modifiers', () => {
       daBrowseComp.details = { fullpath: '/org/site' };
       const before = window.location.hash;
-      daBrowseComp.handleShortcuts({
-        metaKey: false, altKey: false, code: 'KeyT', preventDefault: () => {},
-      });
+      daBrowseComp.handleShortcuts({ metaKey: false, altKey: false, code: 'KeyT', preventDefault: () => {} });
       expect(window.location.hash).to.equal(before);
     });
   });
@@ -470,7 +462,9 @@ describe('DaBrowse Component', () => {
     afterEach(() => { window.fetch = savedFetch; });
 
     it('Returns the default editor when no editor.path config exists', async () => {
-      window.fetch = () => Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+      window.fetch = () => Promise.resolve(
+        new Response(JSON.stringify({ data: [] }), { status: 200 }),
+      );
       daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
       const editor = await daBrowseComp.getEditor(true);
       expect(editor).to.equal('/edit#');

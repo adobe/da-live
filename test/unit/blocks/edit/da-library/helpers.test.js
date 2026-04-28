@@ -165,7 +165,9 @@ describe('da-library/helpers exports', () => {
         '/a.json': [{ k: 'one' }],
         '/b.json': [{ k: 'two' }],
       };
-      window.fetch = (url) => Promise.resolve(new Response(JSON.stringify(responses[url]), { status: 200 }));
+      window.fetch = (url) => Promise.resolve(
+        new Response(JSON.stringify(responses[url]), { status: 200 }),
+      );
       const result = await getItems(['/a.json', '/b.json']);
       expect(result.map((i) => i.k)).to.deep.equal(['one', 'two']);
     });
@@ -205,17 +207,18 @@ describe('da-library/helpers exports', () => {
 describe('da-library/helpers/index getBlocks', () => {
   let savedFetch;
   let getBlocks;
-  let getBlockVariants;
   let urlCache;
 
   before(async () => {
     const mod = await import('../../../../../blocks/edit/da-library/helpers/index.js');
     getBlocks = mod.getBlocks;
-    getBlockVariants = mod.getBlockVariants;
     urlCache = mod.urlCache;
   });
 
-  beforeEach(() => { savedFetch = window.fetch; urlCache.clear(); });
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    urlCache.clear();
+  });
   afterEach(() => { window.fetch = savedFetch; });
 
   it('Returns an empty array when source data has no items', async () => {

@@ -8,7 +8,10 @@ const { copyConfig, copyContent, previewContent } = await import('../../../../bl
 describe('start/index copyConfig', () => {
   let savedFetch;
   beforeEach(() => { savedFetch = window.fetch; });
-  afterEach(() => { window.fetch = savedFetch; globalThis.__crawlMock = undefined; });
+  afterEach(() => {
+    window.fetch = savedFetch;
+    globalThis.__crawlMock = undefined;
+  });
 
   it('Replaces sourcePath in config text and PUTs to dest config', async () => {
     let getCalled = false;

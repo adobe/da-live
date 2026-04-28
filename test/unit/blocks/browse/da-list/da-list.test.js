@@ -594,7 +594,10 @@ describe('DaList helpers', () => {
       const items = [{ webkitGetAsEntry: () => goodEntry }];
       let uploaded = false;
       const savedFetch = window.fetch;
-      window.fetch = () => { uploaded = true; return Promise.resolve(new Response('', { status: 200 })); };
+      window.fetch = () => {
+        uploaded = true;
+        return Promise.resolve(new Response('', { status: 200 }));
+      };
       try {
         await el.drop({ preventDefault: () => {}, dataTransfer: { items } });
       } finally {

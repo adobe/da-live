@@ -93,11 +93,7 @@ describe('da-library element', () => {
     await fixture([]);
     let focused = false;
     const fakeButton = { focus: () => { focused = true; } };
-    const target = {
-      parentElement: {
-        nextElementSibling: { querySelector: () => fakeButton },
-      },
-    };
+    const target = { parentElement: { nextElementSibling: { querySelector: () => fakeButton } } };
     el.handleSearchInputKeydown({ key: 'ArrowDown', preventDefault: () => {}, target });
     expect(focused).to.be.true;
   });
@@ -106,9 +102,7 @@ describe('da-library element', () => {
     await fixture([]);
     let clicked = false;
     const fakeButton = { click: () => { clicked = true; }, focus: () => {} };
-    const target = {
-      parentElement: { nextElementSibling: { querySelector: () => fakeButton } },
-    };
+    const target = { parentElement: { nextElementSibling: { querySelector: () => fakeButton } } };
     el.searchInputRef = { value: { select: () => {} } };
     el.handleSearchInputKeydown({ key: 'Enter', preventDefault: () => {}, target });
     expect(clicked).to.be.true;
@@ -118,11 +112,7 @@ describe('da-library element', () => {
     await fixture([]);
     let focused = false;
     const fakeButton = { focus: () => { focused = true; } };
-    const target = {
-      parentElement: {
-        nextElementSibling: { querySelector: () => fakeButton },
-      },
-    };
+    const target = { parentElement: { nextElementSibling: { querySelector: () => fakeButton } } };
     el.handleSearchKeydown({ key: 'ArrowDown', preventDefault: () => {}, target });
     expect(focused).to.be.true;
   });
@@ -131,11 +121,8 @@ describe('da-library element', () => {
     await fixture([]);
     let focused = false;
     const fakeButton = { focus: () => { focused = true; } };
-    const target = {
-      parentElement: {
-        previousElementSibling: { querySelector: () => fakeButton },
-      },
-    };
+    const previousElementSibling = { querySelector: () => fakeButton };
+    const target = { parentElement: { previousElementSibling } };
     el.handleSearchKeydown({ key: 'ArrowUp', preventDefault: () => {}, target });
     expect(focused).to.be.true;
   });
@@ -148,11 +135,7 @@ describe('da-library element', () => {
       configurable: true,
       value: { querySelector: () => searchInput },
     });
-    const target = {
-      parentElement: {
-        previousElementSibling: { querySelector: () => null },
-      },
-    };
+    const target = { parentElement: { previousElementSibling: { querySelector: () => null } } };
     el.handleSearchKeydown({ key: 'ArrowUp', preventDefault: () => {}, target });
     expect(focused).to.be.true;
   });
@@ -171,7 +154,10 @@ describe('da-library element', () => {
     await fixture([]);
     let opened;
     const savedOpen = window.open;
-    window.open = (url) => { opened = url; return null; };
+    window.open = (url) => {
+      opened = url;
+      return null;
+    };
     try {
       el.handlePluginClick({ name: 'plug', experience: 'window', sources: ['https://x'] });
       expect(opened).to.equal('https://x');
@@ -409,14 +395,14 @@ describe('da-library render flows', () => {
 
 describe('da-library handleOpenPreview', () => {
   let el;
-  let savedFetch;
+  let priorFetch;
 
   beforeEach(() => {
-    savedFetch = window.fetch;
+    priorFetch = window.fetch;
   });
 
   afterEach(() => {
-    window.fetch = savedFetch;
+    window.fetch = priorFetch;
     if (el && el.parentElement) el.remove();
     el = null;
   });

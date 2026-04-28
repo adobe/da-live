@@ -136,11 +136,7 @@ describe('prose menu plugin (mount)', () => {
     // We simulate this by querying the actual selector against a fake DOM
     // and invoking the focus handler directly.
     const focusHandler = menuPlugin.props.handleDOMEvents.focus;
-    const fakeView = {
-      root: {
-        querySelectorAll: (sel) => (sel === 'da-palette' ? [{ updateSelection: () => { called += 1; } }] : []),
-      },
-    };
+    const fakeView = { root: { querySelectorAll: (sel) => (sel === 'da-palette' ? [{ updateSelection: () => { called += 1; } }] : []) } };
     focusHandler(fakeView);
     expect(called).to.equal(1);
     // Sanity: real palettes container exists from mount

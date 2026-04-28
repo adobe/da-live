@@ -55,7 +55,10 @@ describe('sheet/utils utils', () => {
     it('Skips saving when view is "config"', () => {
       // No fetch call means handleSave didn't dispatch saveSheets
       let calls = 0;
-      window.fetch = () => { calls += 1; return Promise.resolve(new Response('', { status: 200 })); };
+      window.fetch = () => {
+        calls += 1;
+        return Promise.resolve(new Response('', { status: 200 }));
+      };
       handleSave([buildSheet('a', [['x']])], 'config');
       // debounced save would be queued; verify no immediate fetch
       expect(calls).to.equal(0);

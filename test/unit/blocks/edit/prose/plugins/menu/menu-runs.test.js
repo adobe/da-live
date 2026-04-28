@@ -22,7 +22,7 @@ describe('menu/linkItem.run flows', () => {
   });
 
   function setLinkedParagraph(view, text) {
-    const state = view.state;
+    const { state } = view;
     const { schema } = state;
     const dispatch = view.dispatch.bind(view);
     const linkMark = schema.marks.link;
@@ -43,7 +43,7 @@ describe('menu/linkItem.run flows', () => {
   }
 
   it('Opens a palette prompt for a new (no link mark) selection', async () => {
-    const state = editor.view.state;
+    const { state } = editor.view;
     const { schema } = state;
     // Replace doc with a plain paragraph "hello"
     const tr = state.tr.replaceWith(
@@ -80,7 +80,7 @@ describe('menu/linkItem.run flows', () => {
   });
 
   it('Auto-fills href when selection is a URL-looking string', async () => {
-    const state = editor.view.state;
+    const { state } = editor.view;
     const { schema } = state;
     const tr = state.tr.replaceWith(
       0,
@@ -99,7 +99,7 @@ describe('menu/linkItem.run flows', () => {
   });
 
   it('Closes an open palette on second run', async () => {
-    const state = editor.view.state;
+    const { state } = editor.view;
     const { schema } = state;
     const tr = state.tr.replaceWith(
       0,
@@ -121,7 +121,7 @@ describe('menu/linkItem.run flows', () => {
   });
 
   it('Opens a palette for an image selection (no text field)', async () => {
-    const state = editor.view.state;
+    const { state } = editor.view;
     const { schema } = state;
     const para = schema.nodes.paragraph.create(null, schema.nodes.image.create({ src: '/x.png', href: 'https://i' }));
     const tr = state.tr.replaceWith(0, state.doc.content.size, para);
@@ -161,7 +161,7 @@ describe('menu/removeLinkItem.run on image', () => {
   });
 
   it('Clears href/title attributes when the selection is a linked image', async () => {
-    const state = editor.view.state;
+    const { state } = editor.view;
     const { schema } = state;
     const para = schema.nodes.paragraph.create(
       null,

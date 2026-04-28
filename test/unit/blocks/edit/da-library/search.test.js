@@ -35,9 +35,7 @@ describe('da-library/helpers/search', () => {
   it('Matches a block variant by tag and decorates with block fields', () => {
     const results = search('hero', data);
     expect(results).to.have.length(1);
-    expect(results[0]).to.include({
-      blockName: 'Marquee', blockPath: '/path/marquee', icon: '#m', type: 'blocks',
-    });
+    expect(results[0]).to.include({ blockName: 'Marquee', blockPath: '/path/marquee', icon: '#m', type: 'blocks' });
   });
 
   it('Matches a block variant by name', () => {

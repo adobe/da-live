@@ -12,9 +12,7 @@ describe('inContextMenu', () => {
   beforeEach(async () => {
     host = document.createElement('div');
     host.className = 'da-prose-mirror';
-    Object.assign(host.style, {
-      position: 'absolute', left: '0', top: '0', width: '500px', height: '400px',
-    });
+    Object.assign(host.style, { position: 'absolute', left: '0', top: '0', width: '500px', height: '400px' });
     document.body.append(host);
     el = document.createElement('test-incontext-menu');
     el.items = [{ title: 'a' }, { title: 'b' }, { title: 'c' }];
