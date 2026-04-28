@@ -15,6 +15,8 @@ const ICONS = [
   '/blocks/edit/img/Smock_Refresh_18_N.svg',
 ];
 
+const MAX_DELETE_COUNT = 1000;
+
 export default class DaList extends LitElement {
   static properties = {
     listtype: { type: String },
@@ -39,6 +41,8 @@ export default class DaList extends LitElement {
     _confirm: { state: true },
     _confirmText: { state: true },
     _unpublish: { state: true },
+    _deleteCount: { state: true },
+    _deleteCountLoading: { state: true },
     _continuationToken: { state: true },
     _isLoadingMore: { state: true },
     _bulkLoading: { state: true },
@@ -216,6 +220,12 @@ export default class DaList extends LitElement {
     this._confirm = null;
     this._confirmText = null;
     this._unpublish = null;
+    if (this._deleteCrawl) {
+      this._deleteCrawl.cancelCrawl();
+      this._deleteCrawl = null;
+    }
+    this._deleteCount = null;
+    this._deleteCountLoading = false;
   }
 
   handleSelectionState() {
@@ -381,6 +391,36 @@ export default class DaList extends LitElement {
 
   async handleDelete() {
     this._confirm = 'delete';
+    this._deleteCount = null;
+    this._deleteCountLoading = false;
+
+    const folders = this._selectedItems.filter((item) => !item.ext);
+    const files = this._selectedItems.filter((item) => item.ext);
+
+    if (folders.length === 0) {
+      this._deleteCount = files.length;
+      return;
+    }
+
+    this._deleteCountLoading = true;
+    try {
+      const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
+      const crawlInstance = crawl({
+        path: folders.map((folder) => folder.path),
+        files,
+        concurrent: 5,
+      });
+      this._deleteCrawl = crawlInstance;
+      const allFiles = await crawlInstance.results;
+      // If the user cancelled/closed the dialog while we were crawling, bail out
+      if (this._confirm !== 'delete' || this._deleteCrawl !== crawlInstance) return;
+      this._deleteCount = allFiles.length;
+    } finally {
+      if (this._confirm === 'delete') {
+        this._deleteCountLoading = false;
+      }
+      this._deleteCrawl = null;
+    }
   }
 
   async handleConfirmDelete() {
@@ -624,7 +664,8 @@ export default class DaList extends LitElement {
   }
 
   get _itemString() {
-    return this._selectedItems.length > 1 ? 'items' : 'item';
+    const count = this._deleteCount ?? this._selectedItems.length;
+    return count > 1 ? 'items' : 'item';
   }
 
   get _confirmContent() {
@@ -686,17 +727,37 @@ export default class DaList extends LitElement {
   }
 
   renderConfirm() {
-    const title = `Deleting ${this._selectedItems.length} ${this._itemString}`;
+    const loading = this._deleteCountLoading;
+    const count = this._deleteCount;
+    const exceedsMax = !loading && count > MAX_DELETE_COUNT;
+
+    let title;
+    if (loading) {
+      title = 'Calculating items to delete…';
+    } else {
+      title = `Deleting ${count} ${this._itemString}`;
+    }
+
     const hasRemaining = this._itemsRemaining !== 0;
-    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
     const unpublishConfirmed = this._unpublish && this._confirmText !== 'YES';
+
+    let message = nothing;
+    if (hasRemaining) {
+      message = `${this._itemsRemaining} remaining`;
+    } else if (loading) {
+      message = 'Crawling selected folders…';
+    }
 
     const action = {
       style: 'negative',
       label: this._unpublish ? 'Unpublish & delete' : 'Delete',
       click: async () => this.handleConfirmDelete(),
-      disabled: unpublishConfirmed || hasRemaining,
+      disabled: unpublishConfirmed || hasRemaining || loading || exceedsMax,
     };
+
+    const body = exceedsMax
+      ? html`<p>This selection contains more than ${MAX_DELETE_COUNT} items. Bulk deletions of this size aren't supported here — please contact your administrator to proceed.</p>`
+      : this._confirmContent;
 
     return html`
       <da-dialog
@@ -704,7 +765,7 @@ export default class DaList extends LitElement {
         .message=${message}
         .action=${action}
         @close=${this.handleConfirmClose}>
-        ${this._confirmContent}
+        ${body}
       </da-dialog>
     `;
   }
