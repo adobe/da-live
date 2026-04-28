@@ -785,6 +785,217 @@ test.describe('MCPs', () => {
   });
 });
 
+// ─── Accessibility / keyboard navigation ────────────────────────────────────
+
+test.describe('Accessibility — keyboard primary actions', () => {
+  test('Built-in MCP card opens tools panel on Enter', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    await page.getByRole('tab', { name: 'MCPs' }).click();
+    const builtinCard = page.getByTestId('mcp-builtin-card').first();
+    await expect(builtinCard).toBeVisible({ timeout: 10000 });
+
+    await builtinCard.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page.locator('.col-editor')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.mcp-tools-section')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('Built-in MCP card opens tools panel on Space', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    await page.getByRole('tab', { name: 'MCPs' }).click();
+    const builtinCard = page.getByTestId('mcp-builtin-card').first();
+    await expect(builtinCard).toBeVisible({ timeout: 10000 });
+
+    await builtinCard.focus();
+    await page.keyboard.press('Space');
+
+    await expect(page.locator('.col-editor')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.mcp-tools-section')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('MCP nested more-actions button Enter does not trigger card open', async ({ page }) => {
+    test.setTimeout(30000);
+
+    // Seed one custom MCP row in stubbed config so menu interactions are testable
+    const cfg = stubs.getConfig();
+    cfg['mcp-servers'].data.push({
+      key: 'pw-ecommerce',
+      url: 'https://example.invalid/mcp',
+      status: 'approved',
+      enabled: true,
+    });
+    cfg['mcp-servers'].total = cfg['mcp-servers'].data.length;
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+    await page.getByRole('tab', { name: 'MCPs' }).click();
+
+    const customCard = page.getByTestId('mcp-card').first();
+    await expect(customCard).toBeVisible({ timeout: 10000 });
+
+    const moreButton = customCard.getByRole('button', { name: /^More actions for / });
+    await moreButton.focus();
+    await page.keyboard.press('Enter');
+
+    // Menu opens, but editor should still be closed.
+    await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.col-editor')).not.toBeVisible();
+  });
+
+  test('MCP menu supports keyboard navigation and Enter activation', async ({ page }) => {
+    test.setTimeout(30000);
+
+    const cfg = stubs.getConfig();
+    cfg['mcp-servers'].data.push({
+      key: 'pw-kbd-menu-mcp',
+      url: 'https://example.invalid/mcp',
+      status: 'approved',
+      enabled: true,
+    });
+    cfg['mcp-servers'].total = cfg['mcp-servers'].data.length;
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+    await page.getByRole('tab', { name: 'MCPs' }).click();
+
+    const customCard = page.getByTestId('mcp-card').first();
+    const moreButton = customCard.getByRole('button', { name: /^More actions for / });
+    await moreButton.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeVisible({ timeout: 5000 });
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('MCP server key')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('MCP server key')).toHaveValue('pw-kbd-menu-mcp');
+  });
+
+  test('Skill card opens editor on Enter', async ({ page }) => {
+    test.setTimeout(30000);
+
+    const cfg = stubs.getConfig();
+    cfg.skills.data.push({
+      key: 'pw-keyboard-skill',
+      content: '# pw-keyboard-skill\n\nKeyboard open test.',
+      status: 'approved',
+    });
+    cfg.skills.total = cfg.skills.data.length;
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    const card = skillCard(page, 'pw-keyboard-skill');
+    await expect(card).toBeVisible({ timeout: 10000 });
+    await card.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByLabel('Skill ID')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Skill ID')).toHaveValue('pw-keyboard-skill');
+  });
+
+  test('Skill nested more-actions button Enter does not trigger row open', async ({ page }) => {
+    test.setTimeout(30000);
+
+    const cfg = stubs.getConfig();
+    cfg.skills.data.push({
+      key: 'pw-skill-nested-control',
+      content: '# pw-skill-nested-control\n\nNested control guard test.',
+      status: 'approved',
+    });
+    cfg.skills.total = cfg.skills.data.length;
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    const card = skillCard(page, 'pw-skill-nested-control');
+    await expect(card).toBeVisible({ timeout: 10000 });
+    await expect(page.getByLabel('Skill ID')).not.toBeVisible();
+
+    const moreButton = card.getByRole('button', { name: /^More actions for / });
+    await moreButton.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Skill ID')).not.toBeVisible();
+  });
+
+  test('Agent card opens drawer on Enter', async ({ page }) => {
+    test.setTimeout(30000);
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+
+    await page.getByRole('tab', { name: 'Agents' }).click();
+    const agentCard = page.getByTestId('agent-builtin-card').first();
+    await expect(agentCard).toBeVisible({ timeout: 10000 });
+
+    await agentCard.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.col-editor')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.tool-item.is-active').first()).toBeVisible({ timeout: 5000 });
+  });
+
+  test('Prompt row opens editor on Enter', async ({ page }) => {
+    test.setTimeout(30000);
+
+    const cfg = stubs.getConfig();
+    cfg.prompts.data.push({
+      title: 'pw-keyboard-prompt',
+      prompt: 'Keyboard prompt open test.',
+      category: 'test',
+      status: 'approved',
+    });
+    cfg.prompts.total = cfg.prompts.data.length;
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+    await page.getByRole('tab', { name: 'Prompts' }).click();
+
+    const row = page.locator('.prompt-row[role="button"]').first();
+    await expect(row).toBeVisible({ timeout: 10000 });
+    await row.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByLabel('Prompt title')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Prompt title')).toHaveValue('pw-keyboard-prompt');
+  });
+
+  test('Prompt nested delete button Enter does not open prompt editor', async ({ page }) => {
+    test.setTimeout(30000);
+
+    const cfg = stubs.getConfig();
+    cfg.prompts.data.push({
+      title: 'pw-prompt-nested-control',
+      prompt: 'Nested prompt control guard test.',
+      category: 'test',
+      status: 'approved',
+    });
+    cfg.prompts.total = cfg.prompts.data.length;
+
+    await page.goto(getSkillsLabURL(TEST_ORG, TEST_SITE));
+    await waitForReady(page);
+    await page.getByRole('tab', { name: 'Prompts' }).click();
+
+    const card = promptCard(page, 'pw-prompt-nested-control');
+    await expect(card).toBeVisible({ timeout: 10000 });
+    await expect(page.getByLabel('Prompt title')).not.toBeVisible();
+
+    page.once('dialog', (d) => d.accept());
+    const deleteButton = card.getByRole('button', { name: 'Delete pw-prompt-nested-control' });
+    await deleteButton.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(card).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Prompt title')).not.toBeVisible();
+  });
+});
+
 // ─── Memory ──────────────────────────────────────────────────────────────────
 
 test.describe('Memory', () => {
