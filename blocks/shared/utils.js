@@ -245,7 +245,7 @@ export const getAemSiteToken = (() => {
   return ({ org, site }) => {
     const path = `/${org}/${site}`;
     // Fetch new token if it doesn't exit
-    tokenCache[path] ??= fetchToken('adobecom', 'da-bacom');
+    tokenCache[path] ??= fetchToken(org, site);
 
     return tokenCache[path];
   };
