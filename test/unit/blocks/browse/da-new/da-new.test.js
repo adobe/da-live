@@ -149,6 +149,50 @@ describe('DaNew', () => {
       expect(sendEvents[0].path).to.equal('/org/repo/foo.link');
       expect(sendEvents[0].name).to.equal('foo');
     });
+
+    it('creates an empty HTML document via saveToDa before navigating (document type)', async () => {
+      const el = new DaNew();
+      const input = makeNameInput();
+      stubShadowRoot(el, { '.da-actions-input[placeholder="name"]': input });
+      el._createName = 'my-doc';
+      el._createType = 'document';
+      el.fullpath = '/org/repo';
+      el.editor = '/edit#';
+
+      const fetchCalls = [];
+      const savedFetch = window.fetch;
+      // Intercept the saveToDa PUT so we can verify it ran *before* the
+      // window.location navigation. Throw so handleSave rejects before it
+      // reaches the navigation line — letting the assertion run reliably.
+      const NAV_SENTINEL = new Error('stop-before-nav');
+      window.fetch = async (url, opts) => {
+        const body = opts?.body instanceof FormData ? opts.body.get('data') : null;
+        const bodyText = body && typeof body.text === 'function' ? await body.text() : null;
+        fetchCalls.push({ url, method: opts?.method, bodyText });
+        throw NAV_SENTINEL;
+      };
+
+      el.sendNewItem = () => {};
+      el.resetCreate = () => {};
+
+      let caught;
+      try {
+        await el.handleSave();
+      } catch (e) {
+        caught = e;
+      } finally {
+        window.fetch = savedFetch;
+      }
+
+      // saveToDa's daFetch does not catch the raw throw, so it surfaces here.
+      expect(caught).to.equal(NAV_SENTINEL);
+      expect(fetchCalls).to.have.length(1);
+      expect(fetchCalls[0].url).to.equal('https://admin.da.live/source/org/repo/my-doc.html');
+      expect(fetchCalls[0].method).to.equal('PUT');
+      expect(fetchCalls[0].bodyText).to.equal(
+        '<body><header></header><main><div></div></main><footer></footer></body>',
+      );
+    });
   });
 
   describe('handleUpload', () => {
