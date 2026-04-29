@@ -4,11 +4,11 @@ button {
 
 .da-action-bar {
   bottom: 12px;
-  position: fixed;
-  background: #BC1C74;
+  position: absolute;
+  background-color: rgb(188 28 116);
   min-height: 48px;
-  border-radius: 6px;
-  width: var(--grid-container-width);
+  border-radius: var(--s2-corner-radius-700);
+  width: var(--se-grid-container-width);
   z-index: 400;
   filter: drop-shadow(rgb(0 0 0 / 15%) 0 1px 4px);
   display: flex;
@@ -25,7 +25,7 @@ button {
   height: 32px;
   color: #FFF;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--s2-corner-radius-500);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -43,14 +43,14 @@ button {
 }
 
 .da-action-bar-left-rail {
-  margin-left: 14px;
+  margin-left: 3px;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 .da-action-bar-right-rail {
-  margin: 0 3px;
+  margin-right: 3px;
   display: flex;
   gap: 8px;
 }

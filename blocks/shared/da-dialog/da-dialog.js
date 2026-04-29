@@ -7,9 +7,8 @@ const nx = getNx();
 await import(`${nx}/public/sl/components.js`);
 
 // Styles
-const { default: getStyle } = await import(`${nx}/utils/styles.js`);
-const SL = await getStyle(`${nx}/public/sl/styles.css`);
-const STYLE = await getStyle(import.meta.url);
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 
 export default class DaDialog extends LitElement {
   static properties = {
@@ -23,7 +22,7 @@ export default class DaDialog extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [SL, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [STYLE];
     setTimeout(() => { this.showModal(); }, 20);
   }
 

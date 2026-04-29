@@ -1,6 +1,6 @@
 :host {
   display: block;
-  max-width: var(--grid-container-width);
+  max-width: var(--se-grid-container-width);
   margin: 0 auto;
   padding: 80px 0;
 }
@@ -19,7 +19,7 @@
     padding: 0 0 6px;
     margin: 0;
     box-sizing: border-box;
-    color: rgb(143 143 143);
+    color: var(--s2-gray-700);
     text-transform: uppercase;
     font-size: 22px;
     font-weight: 700;
@@ -34,12 +34,12 @@
     width: 100%;
     opacity: 0;
     transition: opacity 0.2s ease-in-out 0s;
-    background: rgb(19 19 19);
+    background: var(--s2-gray-900);
     border-radius: 3px;
   }
 
   button[aria-selected="true"] {
-    color: rgb(19 19 19);
+    color: var(--s2-gray-900);
   }
 
   button[aria-selected="true"]::after {
@@ -51,7 +51,7 @@
   display: none;
 }
 
-@media (min-width: 900px) {
+@media (width >= 900px) {
   .da-list-header.context-browse {
     display: flex;
     flex-wrap: wrap;

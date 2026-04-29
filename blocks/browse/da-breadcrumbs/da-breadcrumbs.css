@@ -29,7 +29,7 @@ button {
 
 .da-breadcrumb-list-item-link-wrapper {
   padding: 0 10px;
-  background: #dcdcdc;
+  background: var(--s2-gray-200);
   border-radius: 6px;
   line-height: 32px;
   display: flex;
@@ -38,7 +38,7 @@ button {
 
 .da-breadcrumb-list-item a {
   text-decoration: none;
-  color: rgb(44 44 44);
+  color: var(--s2-gray-800);
 }
 
 .da-breadcrumb-list-item-config {
@@ -54,7 +54,7 @@ button {
 }
 
 .da-breadcrumb-list-item-config:hover {
-  background-color: #147af3;
+  background-color: var(--s2-blue-900);
   color: #FFF;
 }
 
@@ -90,7 +90,7 @@ button {
   }
 }
 
-@media (min-width: 900px) {
+@media (width >= 900px) {
   .da-breadcrumb {
     margin-bottom: 12px;
     display: flex;

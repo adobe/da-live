@@ -4,8 +4,8 @@ import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 
 // Styles & Icons
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const STYLE = await getStyle(import.meta.url);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 
 const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
 const INPUT_ERROR = 'da-input-error';
@@ -15,12 +15,12 @@ export default class DaNew extends LitElement {
     fullpath: { type: String },
     editor: { type: String },
     permissions: { attribute: false },
-    _createShow: { attribute: false },
-    _createType: { attribute: false },
-    _createFile: { attribute: false },
-    _createName: { attribute: false },
-    _fileLabel: { attribute: false },
-    _externalUrl: { attribute: false },
+    _createShow: { state: true },
+    _createType: { state: true },
+    _createFile: { state: true },
+    _createName: { state: true },
+    _fileLabel: { state: true },
+    _externalUrl: { state: true },
   };
 
   connectedCallback() {
