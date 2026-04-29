@@ -404,10 +404,10 @@ describe('DaListItem', () => {
       expect(el.renderAemDate('_preview')).to.equal('Checking');
     });
 
-    it('Returns "Never" when lastModified is null', () => {
+    it('Returns "Not previewed" when lastModified is null', () => {
       const el = new DaListItem();
       el._preview = { status: 200 };
-      expect(el.renderAemDate('_preview')).to.equal('Never');
+      expect(el.renderAemDate('_preview')).to.equal('Not previewed');
     });
 
     it('Returns formatted date+time when lastModified is set', () => {

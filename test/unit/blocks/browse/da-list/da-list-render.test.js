@@ -190,15 +190,24 @@ describe('da-list render', () => {
 
 describe('da-list pagination observer', () => {
   let el;
+  let savedFetch;
 
   beforeEach(async () => {
+    // Setting _continuationToken in tests below renders the sentinel, which
+    // the IntersectionObserver may immediately consider intersecting and
+    // trigger loadMore() → fetch. Stub fetch so it stays in-process.
+    savedFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response('[]', { status: 200 }));
     el = document.createElement('da-list');
+    // Initialize so renderCheckBox()/isSelectAll don't throw on first render
+    el._listItems = [];
     document.body.appendChild(el);
     await nextFrame();
   });
 
   afterEach(() => {
     if (el.parentElement) el.remove();
+    window.fetch = savedFetch;
   });
 
   it('setupObserver creates an IntersectionObserver only once', () => {

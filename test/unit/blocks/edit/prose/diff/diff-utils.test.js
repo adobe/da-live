@@ -255,12 +255,19 @@ describe('diff-utils getDiffClass — paired node views', () => {
     // handleDeleteSingleNode calls user action; with a mismatched parent we
     // should hit the "current node is not a loc node" warn branch and return
     // safely. The point is to verify the lazy-load + invocation path.
-    await instance.handleDeleteSingleNode();
-    await instance.handleKeepSingleNode();
-    await instance.handleKeepDeleted();
-    await instance.handleKeepAdded();
-    await instance.handleKeepBoth();
-    // No throws ⇒ pass
+    // Silence the expected console.warn output from those branches.
+    const savedWarn = console.warn;
+    console.warn = () => {};
+    try {
+      await instance.handleDeleteSingleNode();
+      await instance.handleKeepSingleNode();
+      await instance.handleKeepDeleted();
+      await instance.handleKeepAdded();
+      await instance.handleKeepBoth();
+      // No throws ⇒ pass
+    } finally {
+      console.warn = savedWarn;
+    }
   });
 
   it('Tabbed container loads real actions asynchronously', async () => {
@@ -353,10 +360,18 @@ describe('diff-utils single-node async overlay loading', () => {
     const deleteBtn = cover.querySelector('.diff-delete');
     expect(acceptBtn).to.exist;
     expect(deleteBtn).to.exist;
-    // Click both — should not throw (just walks the user action path)
-    acceptBtn.click();
-    deleteBtn.click();
-    await waitFor(20);
+    // Click both — should not throw (just walks the user action path).
+    // Without a valid getPos/parent context the action handlers hit their
+    // "current node is not a loc node" warn branch; that's expected here.
+    const savedWarn = console.warn;
+    console.warn = () => {};
+    try {
+      acceptBtn.click();
+      deleteBtn.click();
+      await waitFor(20);
+    } finally {
+      console.warn = savedWarn;
+    }
   });
 });
 

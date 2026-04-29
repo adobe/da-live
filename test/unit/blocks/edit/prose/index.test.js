@@ -1,10 +1,21 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { Y } from 'da-y-wrapper';
+import { setNx } from '../../../../../scripts/utils.js';
 import initProse, {
   createConnection,
   createAwarenessStatusWidget,
 } from '../../../../../blocks/edit/prose/index.js';
+
+// initProse lazily imports da-library.js, which (a) builds URLs from
+// `${getNx()}/...` and (b) calls loadLibrary() at module import time.
+// Without a configured nx base and a path-like hash, both produce
+// "error was thrown outside a promise" warnings on the first initProse
+// run. Set them once for the test file.
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+if (!window.location.hash.startsWith('#/')) {
+  window.location.hash = '#/org/repo';
+}
 
 const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -170,6 +181,7 @@ describe('prose/index initProse default export', () => {
   let fakeContent;
   let fakeTitle;
   let savedQuery;
+  let savedFetch;
 
   beforeEach(async () => {
     // Clean up window.view from a previous test
@@ -185,6 +197,11 @@ describe('prose/index initProse default export', () => {
       if (sel === 'da-content') return null; // setPreviewBody short-circuits
       return savedQuery(sel);
     };
+    // Stub fetch — initProse lazily imports da-library.js which fetches
+    // a stylesheet on first import and triggers loadLibrary() → fetchConfig.
+    // fetchConfig parses the body as JSON, so return an empty JSON object.
+    savedFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response('{}', { status: 200 }));
   });
 
   afterEach(() => {
@@ -193,6 +210,7 @@ describe('prose/index initProse default export', () => {
       delete window.view;
     }
     document.querySelector = savedQuery;
+    window.fetch = savedFetch;
   });
 
   it('Mounts a ProseMirror view, calls handleProseLoaded, and assigns daContent.proseEl/wsProvider', async () => {

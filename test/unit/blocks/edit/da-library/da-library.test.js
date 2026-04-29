@@ -6,18 +6,20 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
-// Stub fetch for stylesheets the module loads on import
+// loadLibrary() runs at module import time and calls getPathDetails(),
+// which requires window.location.hash to be a path-like value.
+const savedHash = window.location.hash;
+window.location.hash = '#/org/repo';
+
+// Stub fetch for stylesheets and config requests the module loads on import.
+// Return an empty JSON object so resp.json() in fetchConfig doesn't reject.
 const savedFetch = window.fetch;
-window.fetch = (url) => {
-  if (typeof url === 'string' && url.endsWith('.css')) {
-    return Promise.resolve(new Response('', { status: 200 }));
-  }
-  return Promise.resolve(new Response('', { status: 200 }));
-};
+window.fetch = () => Promise.resolve(new Response('{}', { status: 200 }));
 
 const toggleLibrary = (await import('../../../../../blocks/edit/da-library/da-library.js')).default;
 
 window.fetch = savedFetch;
+window.location.hash = savedHash;
 
 describe('da-library element', () => {
   let el;
@@ -451,7 +453,7 @@ describe('da-library toggleLibrary', () => {
     window.view = { dom: document.createElement('div') }; // no parentElement
     // toggleLibrary calls loadLibrary() unconditionally; that hits getPathDetails
     // and would crash without a hash. Set a hash so it returns valid details.
-    const savedHash = window.location.hash;
+    const ogHash = window.location.hash;
     window.location.hash = '#/org/repo/page';
     try {
       await toggleLibrary();
@@ -460,7 +462,7 @@ describe('da-library toggleLibrary', () => {
       // to walk the early-return branch when pane is null. Both outcomes
       // satisfy the test as long as no test-level throw escapes this block.
     } finally {
-      window.location.hash = savedHash;
+      window.location.hash = ogHash;
     }
   });
 
@@ -470,6 +472,7 @@ describe('da-library toggleLibrary', () => {
     const palettes = document.createElement('div');
     palettes.className = 'da-palettes';
     const lib = document.createElement('da-library');
+    lib.config = [];
     palettes.append(lib);
     root.append(editorDom);
     root.append(palettes);

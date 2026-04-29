@@ -552,7 +552,7 @@ describe('DaTitle', () => {
       window.open = (...args) => { opens.push(args); };
       try {
         await element.handleAction('preview');
-        const sourceCall = calls.find((c) => c.url.includes('/source'));
+        const sourceCall = calls.find((c) => c.url?.includes('/source'));
         expect(sourceCall).to.exist;
         expect(sourceCall.method).to.equal('PUT');
       } finally {
