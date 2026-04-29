@@ -1,8 +1,7 @@
-import { DA_ORIGIN } from '../../../shared/constants.js';
-import { daFetch } from '../../../shared/utils.js';
+import { daApi } from '../../../shared/da-api.js';
 
 async function getConfSheet(org) {
-  const resp = await daFetch(`${DA_ORIGIN}/config/${org}/`);
+  const resp = await daApi.getConfig(`/${org}/`);
   if (!resp.ok) return null;
   const json = await resp.json();
   return json?.data?.data || json?.data;

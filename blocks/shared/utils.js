@@ -1,4 +1,4 @@
-import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
+import { CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
 import { getNx } from '../../scripts/utils.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
@@ -103,18 +103,15 @@ export async function aemAdmin(path, api, method = 'POST') {
   }
 }
 
-export async function saveToDa({ path, formData, blob, props, preview = false }) {
-  const opts = { method: 'PUT' };
-
-  const form = formData || new FormData();
-  if (blob || props) {
-    if (blob) form.append('data', blob);
-    if (props) form.append('props', JSON.stringify(props));
-  }
-  if ([...form.keys()].length) opts.body = form;
-
-  const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
-  if (!daResp.ok) return undefined;
+export async function saveToDa({
+  path, formData, blob, props, preview = false, method = 'PUT',
+}) {
+  // Lazy-imported to avoid a circular dep: da-api.js → da-nx → ims (which the
+  // bridge resolves at module load) is fine, but utils.js is also the home of
+  // aemAdmin which other da-api consumers depend on.
+  const { daApi } = await import('./da-api.js');
+  const daResp = await daApi.saveSource(path, { formData, blob, props, method });
+  if (!daResp || !daResp.ok) return undefined;
   if (!preview) return undefined;
   return aemAdmin(path, 'preview');
 }
@@ -164,7 +161,8 @@ export async function livePreviewLogin(owner, repo) {
  */
 export async function checkLockdownImages(owner) {
   try {
-    const resp = await daFetch(`${DA_ORIGIN}/config/${owner}`);
+    const { daApi } = await import('./da-api.js');
+    const resp = await daApi.getConfig(`/${owner}`);
     if (!resp.ok) return false;
 
     const config = await resp.json();
@@ -186,7 +184,8 @@ export const fetchDaConfigs = (() => {
   const configCache = {};
 
   const fetchConfig = async (pathname) => {
-    const resp = await daFetch(`${DA_ORIGIN}/config${pathname}/`);
+    const { daApi } = await import('./da-api.js');
+    const resp = await daApi.getConfig(`${pathname}/`);
     if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
     return resp.json();
   };

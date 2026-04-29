@@ -1,5 +1,6 @@
-import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
+import { CON_ORIGIN } from './constants.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
+import { daApi } from './da-api.js';
 
 let currpath;
 let currhash;
@@ -16,7 +17,7 @@ function getOrgDetails({ editor, pathParts, ext }) {
   const parent = ext === null ? `/${fullPath}` : '/';
   const parentName = ext === null ? pathParts[0] : 'Root';
   const name = editor === 'config' && ext === null ? 'config' : pathParts[0];
-  const daApi = editor === 'config' ? 'config' : 'source';
+  const apiKind = editor === 'config' ? 'config' : 'source';
   let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
   const org = pathParts[0];
@@ -27,7 +28,7 @@ function getOrgDetails({ editor, pathParts, ext }) {
     name,
     parent,
     parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    sourceUrl: apiKind === 'config' ? daApi.getConfigUrl(`/${path}`) : daApi.getSourceUrl(`/${path}`),
   };
 }
 
@@ -38,7 +39,7 @@ function getRepoDetails({ editor, pathParts, ext }) {
   const parent = ext === null ? `/${org}/${repo}` : `/${org}`;
   const parentName = ext === null ? repo : org;
   const name = editor === 'config' ? `${repo} config` : repo;
-  const daApi = editor === 'config' ? 'config' : 'source';
+  const apiKind = editor === 'config' ? 'config' : 'source';
   let path = ext === 'html' && !fullPath.endsWith('.html') ? `${fullPath}.html` : fullPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
@@ -50,7 +51,7 @@ function getRepoDetails({ editor, pathParts, ext }) {
     name,
     parent,
     parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    sourceUrl: apiKind === 'config' ? daApi.getConfigUrl(`/${path}`) : daApi.getSourceUrl(`/${path}`),
     previewUrl: `https://main--${repo}--${org}.aem.live`,
     contentUrl: `${CON_ORIGIN}/${fullPath}`,
   };
@@ -70,7 +71,7 @@ function getFullDetails({ editor, pathParts, ext }) {
   const parent = `/${pathParts.join('/')}`;
   const parentName = pathParts.pop();
 
-  const daApi = editor === 'config' ? 'config' : 'source';
+  const apiKind = editor === 'config' ? 'config' : 'source';
   const path = ext === 'html' && !fullPath.endsWith('.html') && editor !== 'sheet' ? `${fullPath}.html` : fullPath;
 
   return {
@@ -82,7 +83,7 @@ function getFullDetails({ editor, pathParts, ext }) {
     name: ext === null ? 'config' : name,
     parent: ext === null ? `${parent}/${name}` : parent,
     parentName: ext === null ? name : parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    sourceUrl: apiKind === 'config' ? daApi.getConfigUrl(`/${path}`) : daApi.getSourceUrl(`/${path}`),
     previewUrl: `https://main--${repo}--${org}.aem.live${pathname}`,
     contentUrl: `${CON_ORIGIN}/${fullPath}`,
   };
@@ -156,7 +157,7 @@ export default function getPathDetails(loc) {
   let path = ext === 'html' && !fullpath.endsWith('.html') ? `${fullpath}.html` : fullpath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
 
-  details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
+  details = { ...details, origin: daApi.origin(`/${path}`), fullpath: path, depth, view: editor };
 
   return details;
 }

@@ -1,6 +1,6 @@
 import { DOMParser as ProseParser } from 'da-y-wrapper';
-import { DA_ORIGIN } from '../../../../shared/constants.js';
-import { daFetch, aemAdmin, etcFetch, getFirstSheet } from '../../../../shared/utils.js';
+import { aemAdmin, etcFetch, getFirstSheet } from '../../../../shared/utils.js';
+import { daApi } from '../../../../shared/da-api.js';
 import { deleteOffer, getAccessToken, getOffer, saveOffer } from './api.js';
 
 const TARGET_CONFIG_PATH = '/.da/adobe-target.json';
@@ -119,8 +119,7 @@ export const fetchTargetConfig = (() => {
   const configCache = {};
 
   const fetchConfig = async (location) => {
-    const path = `${DA_ORIGIN}/source${location}${TARGET_CONFIG_PATH}`;
-    const resp = await daFetch(path);
+    const resp = await daApi.getSource(`${location}${TARGET_CONFIG_PATH}`);
     if (!resp.ok) return { error: 'Couldn\'t fetch Adobe Target config.' };
     const json = await resp.json();
     const data = getFirstSheet(json);

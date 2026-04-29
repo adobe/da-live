@@ -1,5 +1,4 @@
-import { DA_ORIGIN } from '../../../../../shared/constants.js';
-import { daFetch } from '../../../../../shared/utils.js';
+import { daApi } from '../../../../../shared/da-api.js';
 import getPathDetails from '../../../../../shared/pathDetails.js';
 import { CATEGORIES, REASONS } from './constants.js';
 
@@ -107,8 +106,8 @@ export function loadResults(doc, requestUpdate) {
 }
 
 export async function loadDoc({ fullpath }) {
-  const href = `${DA_ORIGIN}/source${fullpath}?no-cache=${Date.now()}`;
-  const resp = await daFetch(href);
+  const path = `${fullpath}?no-cache=${Date.now()}`;
+  const resp = await daApi.getSource(path);
   if (!resp.ok) return { error: `Could not fetch document. Status: ${resp.status}` };
   const html = await resp.text();
   const doc = new DOMParser().parseFromString(html, 'text/html');

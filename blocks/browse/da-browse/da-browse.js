@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { getFirstSheet } from '../../shared/utils.js';
+import { daApi, resolveDaApi } from '../../shared/da-api.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
@@ -74,6 +74,10 @@ export default class DaBrowse extends LitElement {
       // Only re-fetch if the orgs are different
       const reFetch = props.get('details')?.owner !== this.details.owner;
       this.editor = await this.getEditor(reFetch);
+      // Pre-resolve which backend (legacy vs helix6) handles this (org, site)
+      // so children's daApi calls hit the right one immediately. Cached.
+      const { org, site } = this.details;
+      if (org) await resolveDaApi(org, site);
     }
 
     super.update(props);
@@ -83,7 +87,7 @@ export default class DaBrowse extends LitElement {
     const DEF_EDIT = '/edit#';
 
     if (reFetch) {
-      const resp = await daFetch(`${DA_ORIGIN}/config/${this.details.owner}/`);
+      const resp = await daApi.getConfig(`/${this.details.owner}/`);
       if (!resp.ok) return DEF_EDIT;
       const json = await resp.json();
 

@@ -23,7 +23,7 @@ import {
 } from 'da-y-wrapper';
 
 import { getSchema } from 'da-parser';
-import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { COLLAB_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
@@ -36,7 +36,9 @@ export async function createConnection(path) {
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+  // The room name is just an identifier — using the source URL keeps it
+  // unique per document and stable across sessions (legacy or helix6).
+  const roomName = path;
 
   const opts = {
     protocols: ['yjs'],

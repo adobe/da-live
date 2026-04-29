@@ -1,7 +1,7 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { aemAdmin } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -118,11 +118,10 @@ export default class DaList extends LitElement {
   async getList() {
     try {
       this._continuationToken = null;
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
+      const resp = await daApi.getList(this.fullpath);
       if (resp.permissions) this.handlePermissions(resp.permissions);
-      const json = await resp.json();
-      const items = Array.isArray(json) ? json : json?.items || [];
-      this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+      const items = resp.items || [];
+      this._continuationToken = resp.continuationToken || null;
       this._allPagesLoaded = !this._continuationToken;
       this.resetListItemPaths(items);
       this.scheduleAutoCheck();
@@ -141,10 +140,9 @@ export default class DaList extends LitElement {
     const requestToken = this._continuationToken;
     this._isLoadingMore = true;
     try {
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, { headers: { 'da-continuation-token': requestToken } });
+      const resp = await daApi.getList(this.fullpath, { continuationToken: requestToken });
       if (resp.permissions) this.handlePermissions(resp.permissions);
-      const json = await resp.json();
-      const nextItems = Array.isArray(json) ? json : json?.items || [];
+      const nextItems = resp.items || [];
       const existingItems = this._listItems || [];
       if (existingItems.length && this._listItemPaths.size === 0) {
         this.resetListItemPaths(existingItems);
@@ -156,7 +154,7 @@ export default class DaList extends LitElement {
       );
       const uniqueAdded = mergedItems.length - existingItems.length;
       if (uniqueAdded) this._listItems = mergedItems;
-      const nextToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+      const nextToken = resp.continuationToken || null;
 
       if (!nextToken) {
         this._continuationToken = null;
@@ -291,29 +289,19 @@ export default class DaList extends LitElement {
   async handleItemAction({ item, type = 'copy' }) {
     let continuationToken;
 
-    const type2api = {
-      copy: { api: 'copy', method: 'POST' },
-      delete: { api: 'source', method: 'DELETE' },
-      move: { api: 'move', method: 'POST' },
-    };
-
-    const { api, method } = type2api[type];
-
     // If source and dest are in the trash it's a proper move within the trash.
-    const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
     try {
       do {
-        let body;
-
-        if (type !== 'delete') {
-          body = new FormData();
-          body.append('destination', item.destination);
-          if (continuationToken) body.append('continuation-token', continuationToken);
+        let resp;
+        if (type === 'delete') {
+          resp = await daApi.deleteSource(item.path);
+        } else if (type === 'move') {
+          resp = await daApi.move(item.path, item.destination, continuationToken);
+        } else {
+          resp = await daApi.copy(item.path, item.destination, continuationToken);
         }
-
-        const opts = { method, body };
-        const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
         if (resp.status === 204) {
           break;
         }
@@ -329,7 +317,7 @@ export default class DaList extends LitElement {
       item.isChecked = false;
 
       // Remove or add the item to the current list
-      if (moveToTrash || method === 'DELETE') {
+      if (moveToTrash || type === 'delete') {
         this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
         this._listItemPaths.delete(item.path);
       } else {

@@ -49,6 +49,14 @@ export default {
     <html>
       <head>
         <script type='module'>
+          // Default the nx base to the fixture path for every test. Individual
+          // tests may still call setNx() to override. This must run before any
+          // test module loads, since production code (e.g. da-api.js) reads
+          // getNx() at module load time.
+          const { setNx } = await import('/scripts/utils.js');
+          setNx('/test/fixtures/nx', { hostname: 'example.com' });
+        </script>
+        <script type='module'>
           const oldFetch = window.fetch;
           window.fetch = async (resource, options) => {
             if (!resource.startsWith('/') && !resource.startsWith('http://localhost')) {

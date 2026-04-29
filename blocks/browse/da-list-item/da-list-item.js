@@ -1,6 +1,6 @@
 import { LitElement, html, nothing, until } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
+import { aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
+import { daApi } from '../../shared/da-api.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
@@ -75,24 +75,29 @@ export default class DaListItem extends LitElement {
   }
 
   async updateDAStatus() {
-    const resp = await daFetch(`${DA_ORIGIN}/versionlist${this.path}`);
+    const resp = await daApi.getVersionList(this.path);
     if (!resp.ok) return;
-    const json = await resp.json();
-    if (json.length === 0) {
+    const items = resp.items || [];
+    if (items.length === 0) {
       this._lastModifedBy = 'anonymous';
       this._version = 0;
       return;
     }
 
-    json.sort((a, b) => a.timestamp - b.timestamp);
-    const { length: count } = json.reduce((acc, entry) => {
-      if (entry.url?.startsWith('/versionsource')) acc.push(entry);
-      return acc;
-    }, []);
-    this._version = count;
-    this._lastModifedBy = json.pop().users.map(
-      (user) => user.email.split('@')[0],
-    ).join(', ').toLowerCase();
+    const sorted = [...items].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    // "Version count" = labeled snapshots. Legacy: entries pointing at /versionsource.
+    // helix6: entries with version-operation === 'version'.
+    this._version = sorted.filter((entry) => {
+      const r = entry.raw || {};
+      return r.url?.startsWith('/versionsource') || r['version-operation'] === 'version';
+    }).length;
+    const last = sorted[sorted.length - 1];
+    const users = last.raw?.users;
+    if (users?.length) {
+      this._lastModifedBy = users.map((u) => u.email.split('@')[0]).join(', ').toLowerCase();
+    } else {
+      this._lastModifedBy = (last.author || 'anonymous').split('@')[0].toLowerCase();
+    }
   }
 
   handleChecked(e) {
@@ -119,7 +124,7 @@ export default class DaListItem extends LitElement {
   }
 
   async doesFileExist(path) {
-    const resp = await daFetch(`${DA_ORIGIN}/source${path}`, { method: 'HEAD' });
+    const resp = await daApi.getSource(path, { method: 'HEAD' });
     return resp.status === 200;
   }
 
@@ -150,10 +155,6 @@ export default class DaListItem extends LitElement {
       this._preview = null;
       this._live = null;
 
-      const formData = new FormData();
-      formData.append('destination', newPath);
-      const opts = { body: formData, method: 'POST' };
-
       this.name = newName;
       this.path = newPath;
       this.rename = false;
@@ -161,7 +162,7 @@ export default class DaListItem extends LitElement {
       this.date = Date.now();
 
       const showStatus = setTimeout(() => { this.setStatus('Renaming', 'Please be patient. Renaming items with many children can take time.'); }, 5000);
-      const resp = await daFetch(`${DA_ORIGIN}/move${oldPath}`, opts);
+      const resp = await daApi.move(oldPath, newPath);
 
       if (resp.status === 204) {
         clearTimeout(showStatus);
@@ -223,7 +224,7 @@ export default class DaListItem extends LitElement {
     let externalUrlPromise;
     if (this.ext === 'link') {
       path = nothing;
-      externalUrlPromise = daFetch(`${DA_ORIGIN}/source${this.path}`)
+      externalUrlPromise = daApi.getSource(this.path)
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }
