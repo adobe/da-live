@@ -10,28 +10,6 @@
  * governing permissions and limitations under the License.
  */
 
-/** @deprecated Moved to scripts.js */
-export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
-
-/** @deprecated Moved to scripts.js */
-export function decorateArea(area = document) {
-  const eagerLoad = (parent, selector) => {
-    const img = parent.querySelector(selector);
-    img?.removeAttribute('loading');
-  };
-
-  (async function loadLCPImage() {
-    const hero = area.querySelector('.nx-hero, .hero');
-    if (!hero) {
-      eagerLoad(area, 'img');
-      return;
-    }
-
-    eagerLoad(hero, 'div:first-child img');
-    eagerLoad(hero, 'div:last-child > div:last-child img');
-  }());
-}
-
 export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
   if (!name) return null;
 
@@ -66,7 +44,9 @@ export function sanitizePath(path) {
   return `/${sanitizePathParts(path).join('/')}`;
 }
 
-const nxVer = sanitizeName(new URLSearchParams(window.location.search).get('nxver'));
+// Determine what version of NX to load
+let nxVer = document.head.querySelector('[name="nxver"]')?.getAttribute('content');
+if (!nxVer) nxVer = sanitizeName(new URLSearchParams(window.location.search).get('nxver'));
 
 /** Determine NX filenames */
 export const nxJS = nxVer ? '/scripts/nx.js' : '/scripts/nexter.js';

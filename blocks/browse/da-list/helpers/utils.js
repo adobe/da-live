@@ -139,11 +139,11 @@ export async function handleUpload(list, fullpath, file) {
 export function items2Clipboard(items) {
   const aemUrls = items.reduce((acc, item) => {
     if (item.ext) {
-      const [org, repo, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));
+      const [org, site, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));
       const pageName = pathParts.pop();
       pathParts.push(pageName === 'index' ? '' : pageName);
 
-      const url = `https://main--${repo}--${org}.aem.page/${pathParts.join('/')}`;
+      const url = `https://main--${site}--${org}.aem.page/${pathParts.join('/')}`;
       const toPush = item.message ? `${url} - ${item.message}` : url;
 
       acc.push(toPush);

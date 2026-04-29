@@ -6,8 +6,8 @@ import { daFetch } from '../../shared/utils.js';
 const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
 
 // Styles
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const STYLE = await getStyle(import.meta.url);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 
 const DEFAULT_LOCALES = ['langstore'];
 

@@ -1,54 +1,43 @@
-import getPathDetails from '../shared/pathDetails.js';
+import { getNx } from '../../scripts/utils.js';
 
-// Preload Lit
-import('../../deps/lit/dist/index.js');
+const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-async function loadComponent(el, cmpName, details) {
-  el.innerHTML = '';
+const styles = await loadStyle(import.meta.url);
+document.adoptedStyleSheets.push(styles);
+
+async function loadComponent(el, cmpName, pathDetails) {
+  const existing = el.querySelector(cmpName);
+  if (existing && pathDetails) {
+    existing.details = pathDetails;
+    return;
+  }
+  // Swapping views — remove whichever component is currently mounted.
+  el.querySelector('da-sites, da-browse')?.remove();
   await import(`./${cmpName}/${cmpName}.js`);
   const cmp = document.createElement(cmpName);
-  if (details) cmp.details = details;
+  cmp.details = pathDetails;
   el.append(cmp);
 }
 
 function setRecentSite(details) {
-  if (!details.repo) return;
-  if (details.repo.startsWith('.')) return;
+  if (!details.site) return;
+  // .trash, .da, .helix, .versions
+  if (details.site.startsWith('.')) return;
   const currentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
-  const siteString = `${details.owner}/${details.repo}`;
+  const siteString = `${details.org}/${details.site}`;
   const foundIdx = currentSites.indexOf(siteString);
   if (foundIdx === 0) return;
   if (foundIdx !== -1) currentSites.splice(foundIdx, 1);
   localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
 }
 
-async function setupExperience(el, e) {
-  const details = getPathDetails();
-  if (details) setRecentSite(details);
-  if (e) {
-    const oldHash = new URL(e.oldURL).hash;
-    const newHash = new URL(e.newURL).hash;
-
-    // Are they already browsing
-    if (oldHash.startsWith('#/') && newHash.startsWith('#/')) {
-      document.querySelector('da-browse').details = details;
-      return;
-    }
-  }
-  if (!details) {
-    await loadComponent(el, 'da-sites');
-  } else {
-    await loadComponent(el, 'da-browse', details);
-  }
-}
-
-export default async function init(el) {
-  await setupExperience(el);
+export default function init(el) {
+  hashChange.subscribe((pathDetails) => {
+    const cmpName = pathDetails ? 'da-browse' : 'da-sites';
+    loadComponent(el, cmpName, pathDetails);
+    if (pathDetails) setRecentSite(pathDetails);
+  });
 
   // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
-
-  window.addEventListener('hashchange', async (e) => {
-    await setupExperience(el, e);
-  });
 }
