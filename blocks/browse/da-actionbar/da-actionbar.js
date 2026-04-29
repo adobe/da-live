@@ -2,8 +2,8 @@ import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
 // Styles
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const STYLE = await getStyle(import.meta.url);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 
 export default class DaActionBar extends LitElement {
   static properties = {

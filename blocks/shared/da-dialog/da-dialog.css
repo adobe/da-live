@@ -22,7 +22,14 @@ svg.icon {
   overflow: auto;
 
   hr {
+    background: var(--s2-gray-200);
+    height: 2px;
     margin: 0 0 20px;
+    border-radius: 1px;
+    border-width: medium;
+    border-style: none;
+    border-color: currentcolor;
+    border-image: initial;
   }
 
   .da-dialog-header {
@@ -33,6 +40,8 @@ svg.icon {
     p {
       line-height: 1;
       padding: 0 0 20px;
+      margin: 0;
+      font-weight: 700;
     }
 
     .da-dialog-close-btn {

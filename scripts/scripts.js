@@ -11,56 +11,50 @@
  */
 
 import { setNx, nxJS, nxCSS } from './utils.js';
-import { initIms } from '../blocks/shared/utils.js';
 
-/** Determine where to load NX from */
+export function decorateArea({ area = document } = {}) {
+  // Find all dark & light images
+  const lcpImgs = [...area.querySelectorAll('[alt="light"], [alt="dark"]')].filter((img) => {
+    const pic = img.parentElement;
+    const parent = img.alt === 'light' ? img.closest('.light-scheme') : img.closest('.dark-scheme');
+    pic.dataset.scheme = img.alt;
+    img.alt = '';
+    return !!parent;
+  });
+
+  // If browsing with a hash, skip LCP detection
+  if (window.location.hash && area.querySelector('.browse')) return;
+
+  // Only pick the first image from all found
+  const img = lcpImgs[0] || area.querySelector('img');
+  if (!img) return;
+
+  img.removeAttribute('loading');
+  img.fetchPriority = 'high';
+}
+
+// Where to load NX
 const nx = setNx('/nx');
 const nx2 = nx.endsWith('nx2');
+const { loadArea, setConfig, getColorScheme } = await import(`${nx}${nxJS}`);
 
-/** Default area decoration */
-const decorateArea = ({ area = document }) => {
-  const eagerLoad = (parent, selector) => {
-    const img = parent.querySelector(selector);
-    if (!img) return;
-    img.removeAttribute('loading');
-    img.fetchPriority = 'high';
-  };
+// Set color scheme once
+document.body.classList.add(getColorScheme());
 
-  eagerLoad(area, 'img');
+// Load NX styles
+const link = document.createElement('link');
+link.setAttribute('rel', 'stylesheet');
+link.setAttribute('href', `${nx}${nxCSS}`);
+document.head.appendChild(link);
 
-  if (!nx2) return;
-  // Prefix DA blocks so NX knows to load from DA
-  // TODO: NX2 forward compatibility, remove after upgrade
-  area.querySelectorAll('div[class]').forEach((block) => {
-    const { className } = block;
-
-    // If its an nx block, remove the prefix, otherwise add 'da-'
-    block.className = className.startsWith('nx-')
-      ? className.replace('nx-', '') : `da-${className}`;
-  });
-};
-
-// Who can provide blocks
-const providers = { da: window.location.origin };
-
-/** Setup the NX config object */
 const CONFIG = {
-  providers,
   hostnames: ['da.live', 'da.page'],
   codeBase: import.meta.url.replace('/scripts/scripts.js', ''),
+  providers: { da: window.location.origin },
+  decorateArea,
   imsClientId: 'darkalley',
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
-  decorateArea,
 };
-
-const { loadArea, setConfig } = await import(`${nx}${nxJS}`);
-
-function loadStyles() {
-  const link = document.createElement('link');
-  link.setAttribute('rel', 'stylesheet');
-  link.setAttribute('href', `${nx}${nxCSS}`);
-  document.head.appendChild(link);
-}
 
 export default async function loadPage() {
   loadStyles();
@@ -68,9 +62,8 @@ export default async function loadPage() {
 
   if (!nx2) {
     // pin to light scheme
+    document.body.classList.remove('light-scheme', 'dark-scheme');
     document.body.classList.add('light-scheme');
-    // nx2 decorates automatically
-    decorateArea({});
   }
   await setConfig(CONFIG);
   // Only block on IMS for OAuth-callback loads

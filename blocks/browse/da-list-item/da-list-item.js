@@ -5,8 +5,27 @@ import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const STYLE = await getStyle(import.meta.url);
+// Styles
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
+
+const ICONS = {
+  folder: '/img/icons/s2-icon-folder-20-n.svg',
+  file: '/img/icons/s2-icon-file-20-n.svg',
+  json: '/img/icons/s2-icon-data-20-n.svg',
+  link: '/img/icons/s2-icon-link-20-n.svg',
+  jpg: '/img/icons/s2-icon-image-20-n.svg',
+  jpeg: '/img/icons/s2-icon-image-20-n.svg',
+  png: '/img/icons/s2-icon-image-20-n.svg',
+  svg: '/img/icons/s2-icon-image-20-n.svg',
+  gif: '/img/icons/s2-icon-image-20-n.svg',
+  avif: '/img/icons/s2-icon-image-20-n.svg',
+  webp: '/img/icons/s2-icon-image-20-n.svg',
+  mp4: '/img/icons/s2-icon-video-20-n.svg',
+  media: '/img/icons/s2-icon-image-20-n.svg',
+  pdf: '/img/icons/s2-icon-acrobatsolid-20-n.svg',
+  folderClock: '/img/icons/s2-icon-folderclock-20-n.svg',
+};
 
 export default class DaListItem extends LitElement {
   static properties = {
@@ -218,6 +237,13 @@ export default class DaListItem extends LitElement {
     `;
   }
 
+  renderIcon() {
+    // determine base type
+    const type = !this.ext ? 'folder' : this.ext;
+    const iconPath = ICONS[type] || ICONS.file;
+    return html`<svg viewBox="0 0 20 20"><use href="${iconPath}#icon"</svg>`;
+  }
+
   renderItem() {
     let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
     let externalUrlPromise;
@@ -229,14 +255,10 @@ export default class DaListItem extends LitElement {
     }
     return html`
       <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
-        ${this._isRenaming ? html`
-          <span class="da-item-list-item-type">
-            <div class="icon rename-icon"></div>
-          </span>
+        ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
         ` : html`
-          <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
+          <span class="da-item-list-item-type">${this.renderIcon()}</span>
         `}
-        </span>
         <div class="da-item-list-item-name">${this.name}</div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
@@ -254,7 +276,9 @@ export default class DaListItem extends LitElement {
 
   renderDaDetails() {
     return html`
-      <span class="da-item-list-item-type da-item-list-item-type-file-version"></span>
+      <span class="da-item-list-item-type da-item-list-item-type-file-version">
+        <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filetext-20-n.svg#icon"</svg>
+      </span>
       <div class="da-list-item-da-details-version">
         <p class="da-list-item-details-title">Version</p>
         <p>${this._version || this._version === 0 ? this._version : 'Checking'}</p>

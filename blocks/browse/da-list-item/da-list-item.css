@@ -11,7 +11,7 @@
 :host(:hover),
 :host(.is-expanded) {
   z-index: 1;
-  background: rgb(228 240 255);
+  background: var(--s2-blue-200);
 }
 
 button {
@@ -41,7 +41,7 @@ button {
   justify-content: space-between;
   align-items: center;
   text-decoration: none;
-  color: rgb(46 46 46);
+  color: var(--s2-gray-900);
   padding: 24px 0;
 }
 
@@ -51,37 +51,6 @@ button {
   align-items: center;
   width: 32px;
   height: 32px;
-}
-
-.da-item-list-item-type-file {
-    background: url('/blocks/browse/img/Smock_Document_18_N.svg') center / cover no-repeat;
-}
-
-.da-item-list-item-type-file-version {
-  background: url('/blocks/browse/img/Smock_FileTemplate_18_N.svg') center / cover no-repeat;
-}
-
-.da-item-list-item-type-folder {
-    background: url('/blocks/browse/img/Smock_Folder_18_N.svg') center / cover no-repeat;
-}
-
-.da-item-list-item-icon-html {
-  background: url('/blocks/browse/img/Smock_FileHTML_18_N.svg') center / cover no-repeat;
-}
-
-.da-item-list-item-icon-link {
-  background: url('/blocks/browse/img/Smock_LinkOut_18_N.svg') center / cover no-repeat;
-}
-
-.da-item-list-item-icon-jpg,
-.da-item-list-item-icon-jpeg,
-.da-item-list-item-icon-png,
-.da-item-list-item-icon-svg {
-  background: url('/blocks/browse/img/Smock_Image_18_N.svg') center / cover no-repeat;
-}
-
-.da-item-list-item-icon-json {
-  background: url('/blocks/browse/img/Smock_FileData_18_N.svg') center / cover no-repeat;
 }
 
 .da-item-list-item-date {
@@ -150,7 +119,7 @@ input[type="checkbox"] {
   height:  18px;
   width:  18px;
   border-radius: 2px;
-  background: rgb(221 221 221);
+  background: var(--s2-gray-400);
 }
 
 .checkbox-label::after {
@@ -195,7 +164,7 @@ input[type="checkbox"] {
 .da-item-list-item-rename input:focus-visible {
   outline: none;
   border: none;
-  border-bottom: 1px dotted rgb(20 122 243);
+  border-bottom: 1px dotted var(--s2-blue-900);
 }
 
 .da-item-list-item-rename-actions {
@@ -241,7 +210,7 @@ input[type="checkbox"] {
 }
 
 .da-item-list-item-expand-btn:hover::before {
-  background: #d4e7ff;
+  background: var(--s2-blue-300);
 }
 
 .da-item-list-item-expand-btn.is-visible {
@@ -275,7 +244,7 @@ input[type="checkbox"] {
 
 .da-item-list-item-aem-btn {
   text-decoration: none;
-  color: #000;
+  color: var(--s2-gray-900);
   display: flex;
   background: none;
   gap: 12px;
