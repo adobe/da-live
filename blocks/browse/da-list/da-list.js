@@ -5,10 +5,9 @@ import { daFetch, aemAdmin } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
-// Styles & Icons
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
-const STYLE = await getStyle(import.meta.url);
 const ICONS = [
   '/blocks/edit/img/Smock_Cancel_18_N.svg',
   '/blocks/edit/img/Smock_Checkmark_18_N.svg',
