@@ -18,6 +18,7 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
 
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
@@ -84,6 +85,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   const urlB = `${url}B`;
 
   await page.goto(urlA);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
@@ -108,6 +110,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.waitForTimeout(5000);
 
   await page.goto(urlB);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
@@ -134,6 +137,7 @@ test('Add code mark', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
   const url = getTestPageURL('edit5', workerInfo);
   await page.goto(url);
+  await page.getByText('Create document', { exact: true }).click();
   const proseMirror = page.locator('div.ProseMirror');
   await proseMirror.waitFor();
   await expect(proseMirror).toBeVisible();

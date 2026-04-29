@@ -21,6 +21,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   const pageURL = getTestPageURL('copyrename', workerInfo);
   const orgPageName = pageURL.split('/').pop();
   await page.goto(pageURL);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing

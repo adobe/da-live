@@ -20,6 +20,9 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
 
   const pageURL = getTestPageURL('collab', workerInfo);
   await page.goto(pageURL);
+  await page.waitForTimeout(2000);
+  await page.getByText('Create document', { exact: true }).click();
+
   await expect(page.getByLabel('Open profile menu')).toBeVisible();
   // Wait a little bit so that the collab awareness has caught up and knows that we are logged in as
   // 'DA Testuser'
