@@ -150,14 +150,14 @@ describe('DaNew', () => {
       expect(sendEvents[0].name).to.equal('foo');
     });
 
-    it('creates an empty HTML document via saveToDa before navigating (document type)', async () => {
+    it('creates an empty HTML document via saveToDa before navigating (document type, no external editor)', async () => {
       const el = new DaNew();
       const input = makeNameInput();
       stubShadowRoot(el, { '.da-actions-input[placeholder="name"]': input });
       el._createName = 'my-doc';
       el._createType = 'document';
       el.fullpath = '/org/repo';
-      el.editor = '/edit#';
+      el.editor = '';
 
       const fetchCalls = [];
       const savedFetch = window.fetch;
@@ -192,6 +192,34 @@ describe('DaNew', () => {
       expect(fetchCalls[0].bodyText).to.equal(
         '<body><header></header><main><div></div></main><footer></footer></body>',
       );
+    });
+
+    it('does NOT pre-create document when an external editor is configured (form/UE)', async () => {
+      const el = new DaNew();
+      const input = makeNameInput();
+      stubShadowRoot(el, { '.da-actions-input[placeholder="name"]': input });
+      el._createName = 'my-form-doc';
+      el._createType = 'document';
+      el.fullpath = '/org/repo';
+      el.editor = 'https://da.live/form#';
+
+      const fetchCalls = [];
+      const savedFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        fetchCalls.push({ url, method: opts?.method });
+        return Promise.resolve(new Response('ok', { status: 200 }));
+      };
+
+      el.sendNewItem = () => {};
+      el.resetCreate = () => {};
+
+      try {
+        await el.handleSave();
+      } finally {
+        window.fetch = savedFetch;
+      }
+
+      expect(fetchCalls).to.have.length(0);
     });
   });
 

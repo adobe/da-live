@@ -103,7 +103,7 @@ export default class DaNew extends LitElement {
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
     const editPath = getEditPath({ path, ext, editor: this.editor });
-    if (ext === 'html') {
+    if (ext === 'html' && !this.editor) {
       await saveToDa({ path, formData });
       window.location = editPath;
     } else if (ext && ext !== 'link') {
