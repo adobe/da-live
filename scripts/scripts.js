@@ -64,7 +64,7 @@ function loadStyles() {
 
 export default async function loadPage() {
   loadStyles();
-  initIms();
+  const imsReady = initIms();
 
   if (!nx2) {
     // pin to light scheme
@@ -73,6 +73,11 @@ export default async function loadPage() {
     decorateArea({});
   }
   await setConfig(CONFIG);
+  // Only block on IMS for OAuth-callback loads
+  const { hash } = window.location;
+  if (hash.includes('access_token=') || hash.includes('old_hash=')) {
+    await imsReady;
+  }
   await loadArea();
 }
 
