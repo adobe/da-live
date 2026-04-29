@@ -4,7 +4,7 @@ button {
 
 .da-action-bar {
   bottom: 12px;
-  position: absolute;
+  position: fixed;
   background-color: rgb(188 28 116);
   min-height: 48px;
   border-radius: var(--s2-corner-radius-700);
