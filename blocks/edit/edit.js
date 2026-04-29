@@ -49,10 +49,7 @@ async function setUI(el) {
   document.title = `Edit ${details.name} - DA`;
 
   const { owner, repo } = details;
-  await Promise.all([
-    contentLogin(owner, repo),
-    livePreviewLogin(owner, repo),
-  ]);
+  const contentCookiePromise = contentLogin(owner, repo);
 
   const daTitle = initArea('da-title', details, el);
 
@@ -95,6 +92,9 @@ async function setUI(el) {
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
 
+  // If content cookie hasn't loaded yet, wait for it
+  await contentCookiePromise;
+
   const metadataEl = doc.querySelector('main > .metadata');
   // Check if the metadata div has no additional classes (or doesn't exist)
   const isDefaultMetadata = !(metadataEl?.classList.length > 1);
@@ -112,7 +112,11 @@ async function setUI(el) {
       daContent,
       wsPromise,
     });
+
+    // set the live preview cookie async
+    livePreviewLogin(owner, repo);
   }
+
   // FUTURE: else load BYO Editor
 }
 
