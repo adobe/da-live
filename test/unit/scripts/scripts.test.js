@@ -86,13 +86,13 @@ describe('decorateArea', () => {
   it('prefers light-background over generic img', () => {
     container.classList.add('light-scheme');
     container.innerHTML = `
-      <img src="generic.jpg" loading="lazy" />
-      <img alt="light-background" loading="lazy" />
+      <picture><img src="generic.jpg" loading="lazy" /></picture>
+      <picture><img alt="light" loading="lazy" /></picture>
     `;
     decorateArea({ area: container });
 
     const generic = container.querySelector('img[src="generic.jpg"]');
-    const light = container.querySelector('img[alt="light-background"]');
+    const light = container.querySelector('picture[data-scheme="light"] img');
     expect(generic.getAttribute('loading')).to.equal('lazy');
     expect(light.hasAttribute('loading')).to.be.false;
     expect(light.fetchPriority).to.equal('high');
