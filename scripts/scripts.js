@@ -66,13 +66,15 @@ export default async function loadPage() {
   const imsReady = initIms();
   await setConfig(CONFIG);
 
+  const areaPromise = loadArea();
+
   // Only block on IMS for OAuth-callback loads
   const { hash } = window.location;
   if (hash.includes('access_token=') || hash.includes('old_hash=')) {
     await imsReady;
   }
 
-  await loadArea();
+  await areaPromise;
 }
 
 loadPage();

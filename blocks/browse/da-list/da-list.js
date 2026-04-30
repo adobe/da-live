@@ -47,6 +47,7 @@ export default class DaList extends LitElement {
     _bulkLoading: { state: true },
     _filterLoading: { state: true },
     _allPagesLoaded: { state: true },
+    _loading: { state: true },
   };
 
   constructor() {
@@ -71,7 +72,7 @@ export default class DaList extends LitElement {
     getSvg({ parent: this.shadowRoot, paths: ICONS });
   }
 
-  async update(props) {
+  update(props) {
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
       this.resetListItemPaths(this._listItems);
@@ -81,7 +82,7 @@ export default class DaList extends LitElement {
       this._filter = '';
       this._showFilter = undefined;
       this._allPagesLoaded = false;
-      this._listItems = await this.getList();
+      this.refreshList();
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -89,6 +90,16 @@ export default class DaList extends LitElement {
     }
 
     super.update(props);
+  }
+
+  async refreshList() {
+    this._loading = true;
+    this._listItems = [];
+    try {
+      this._listItems = await this.getList();
+    } finally {
+      this._loading = false;
+    }
   }
 
   async firstUpdated() {
@@ -712,7 +723,7 @@ export default class DaList extends LitElement {
   }
 
   renderEmpty() {
-    return html`<div class="empty-list"><h3>${this._emptyMessage}</h3></div>`;
+    return html`<div class="empty-list"><h3>${this._loading ? '' : this._emptyMessage}</h3></div>`;
   }
 
   renderStatus() {
