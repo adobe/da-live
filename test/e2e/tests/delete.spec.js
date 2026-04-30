@@ -89,6 +89,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   const pageName = url.split('/').pop();
 
   await page.goto(url);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
