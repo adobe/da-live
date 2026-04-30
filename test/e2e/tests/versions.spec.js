@@ -18,6 +18,7 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   test.setTimeout(60000);
 
   await page.goto(getTestPageURL('versions', workerInfo));
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
