@@ -311,14 +311,11 @@ export default class DaTitle extends LitElement {
       window.open(toOpen, toOpen);
     }
 
-    if (view === 'edit') {
+    if (view === 'edit' || view === 'sheet' || view === 'form') {
       if (action === 'publish') saveDaVersion(fullpath, 'Published');
       else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
     }
-    if (view === 'sheet') {
-      if (action === 'publish') saveDaVersion(fullpath, 'Published');
-      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
-    }
+
     this._isSending = false;
   }
 
