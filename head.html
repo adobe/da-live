@@ -15,7 +15,12 @@
 }
 </script>
 <script>
-  console.log(window.location.hash);
+  function logHash() {
+    console.log(window.location.hash);
+  }
+
+  logHash();
+  window.addEventListener('hashchange', logHash);
 </script>
 <script nonce="aem" src="/scripts/utils.js" type="module"></script>
 <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
