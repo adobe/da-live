@@ -257,6 +257,10 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
 
+  // Seed from current provider state in case 'status' fired before subscribe.
+  if (wsProvider.wsconnected) daTitle.collabStatus = 'connected';
+  else daTitle.collabStatus = 'connecting';
+
   wsProvider.on('connection-close', async () => {
     const resp = await checkDoc(path);
     if (resp.status === 404) {
