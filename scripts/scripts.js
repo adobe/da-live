@@ -10,6 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
+import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS } from './utils.js';
 
 export function decorateArea({ area = document } = {}) {
@@ -62,7 +63,15 @@ export default async function loadPage() {
     document.body.classList.remove('light-scheme', 'dark-scheme');
     document.body.classList.add('light-scheme');
   }
+  const imsReady = initIms();
   await setConfig(CONFIG);
+
+  // Only block on IMS for OAuth-callback loads
+  const { hash } = window.location;
+  if (hash.includes('access_token=') || hash.includes('old_hash=')) {
+    await imsReady;
+  }
+
   await loadArea();
 }
 
