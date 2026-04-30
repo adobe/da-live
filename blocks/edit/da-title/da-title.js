@@ -315,7 +315,6 @@ export default class DaTitle extends LitElement {
       if (action === 'publish') saveDaVersion(fullpath, 'Published');
       else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
     }
-
     this._isSending = false;
   }
 
