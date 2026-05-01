@@ -14,6 +14,13 @@ import {
   initDaMetadata,
   getDaMetadata,
   setDaMetadata,
+  isURL,
+  saveToAem,
+  saveDaConfig,
+  saveDaVersion,
+  debounce,
+  getDiffLabels,
+  htmlToProse,
 } from '../../../../../blocks/edit/utils/helpers.js';
 
 const bodyHtml = await readFile({ path: './mocks/body.html' });
@@ -614,5 +621,191 @@ describe('daMetadata functions', () => {
       expect(getDaMetadata('key2')).to.be.null;
       expect(getDaMetadata('key3')).to.equal('value3');
     });
+  });
+});
+
+describe('isURL', () => {
+  it('Returns true for an https URL', () => {
+    expect(isURL('https://example.com/foo')).to.be.true;
+  });
+
+  it('Returns false for non-https protocols', () => {
+    expect(isURL('http://example.com/')).to.be.false;
+    expect(isURL('ftp://example.com/')).to.be.false;
+  });
+
+  it('Returns false for non-URL strings', () => {
+    expect(isURL('not-a-url')).to.be.false;
+    expect(isURL('')).to.be.false;
+  });
+});
+
+describe('saveToAem', () => {
+  let savedFetch;
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  it('Returns the parsed JSON on success', async () => {
+    let captured;
+    window.fetch = (url, opts) => {
+      captured = { url, opts };
+      return Promise.resolve(new Response(JSON.stringify({ status: 'ok' }), { status: 200 }));
+    };
+    const result = await saveToAem('/owner/repo/path/page', 'preview');
+    expect(captured.opts.method).to.equal('POST');
+    expect(captured.url).to.contain('/preview/owner/repo/main/path/page');
+    expect(result).to.deep.equal({ status: 'ok' });
+  });
+
+  it('Returns a not-authorized error for 401', async () => {
+    window.fetch = () => Promise.resolve(new Response('', {
+      status: 401,
+      headers: {},
+    }));
+    const result = await saveToAem('/owner/repo/page', 'publish');
+    expect(result.error).to.include({ status: 401, action: 'publish' });
+    expect(result.error.message).to.equal('Not authorized to publish');
+  });
+
+  it('Parses an x-error PDF detail on a non-auth failure', async () => {
+    window.fetch = () => Promise.resolve(new Response('', {
+      status: 500,
+      headers: { 'x-error': "[admin] Unable to preview '.../doc.pdf': PDF is larger than 10MB: 24.0MB" },
+    }));
+    const result = await saveToAem('/o/r/page', 'preview');
+    expect(result.error.details).to.equal('PDF is larger than 10MB: 24.0MB');
+  });
+
+  it('Parses an x-error MP4 detail', async () => {
+    window.fetch = () => Promise.resolve(new Response('', {
+      status: 500,
+      headers: { 'x-error': "[admin] Unable to preview '.../v.mp4': MP4 is longer than 2 minutes: 2m 44s" },
+    }));
+    const result = await saveToAem('/o/r/page', 'preview');
+    expect(result.error.details).to.equal('MP4 is longer than 2 minutes');
+  });
+
+  it('Parses an x-error Image detail and strips the .00', async () => {
+    window.fetch = () => Promise.resolve(new Response('', {
+      status: 500,
+      headers: { 'x-error': "[admin] Unable to preview '.../page.md': source contains large image: error: Image 1 exceeds allowed limit of 10.00MB" },
+    }));
+    const result = await saveToAem('/o/r/page', 'preview');
+    expect(result.error.details).to.equal('Image 1 exceeds allowed limit of 10MB');
+  });
+
+  it('Falls back to stripping [admin] prefix for other x-error', async () => {
+    window.fetch = () => Promise.resolve(new Response('', {
+      status: 500,
+      headers: { 'x-error': '[admin] something else' },
+    }));
+    const result = await saveToAem('/o/r/page', 'preview');
+    expect(result.error.details).to.equal('something else');
+  });
+});
+
+describe('saveDaConfig', () => {
+  let savedFetch;
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  it('PUTs to the config endpoint with the json under the config form key', async () => {
+    let captured;
+    window.fetch = (url, opts) => {
+      captured = { url, opts };
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    };
+    const sheets = [{
+      name: 'config',
+      getData: () => [['k', 'v'], ['a', '1']],
+      getConfig: () => ({ columns: [{ width: '10' }, { width: '20' }] }),
+    }];
+    await saveDaConfig('/org/site', sheets);
+    expect(captured.url).to.contain('/config/org/site');
+    expect(captured.opts.method).to.equal('PUT');
+    const config = captured.opts.body.get('config');
+    expect(typeof config).to.equal('string');
+    const parsed = JSON.parse(config);
+    expect(parsed.data).to.deep.equal([{ k: 'a', v: '1' }]);
+  });
+});
+
+describe('saveDaVersion', () => {
+  let savedFetch;
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  it('POSTs the label as a JSON body and swallows errors', async () => {
+    let captured;
+    window.fetch = (url, opts) => {
+      captured = { url, opts };
+      return Promise.resolve(new Response('', { status: 200 }));
+    };
+    await saveDaVersion('/org/site/page', 'My Label');
+    expect(captured.url).to.contain('/versionsource/org/site/page');
+    expect(captured.opts.method).to.equal('POST');
+    expect(captured.opts.body).to.equal(JSON.stringify({ label: 'My Label' }));
+  });
+
+  it('Defaults the label to "Published"', async () => {
+    let captured;
+    window.fetch = (url, opts) => {
+      captured = { url, opts };
+      return Promise.resolve(new Response('', { status: 200 }));
+    };
+    await saveDaVersion('/org/site/page');
+    expect(captured.opts.body).to.equal(JSON.stringify({ label: 'Published' }));
+  });
+});
+
+describe('debounce', () => {
+  it('Calls the function only once within the wait window', async () => {
+    let calls = 0;
+    const fn = debounce(() => { calls += 1; }, 20);
+    fn();
+    fn();
+    fn();
+    await new Promise((r) => { setTimeout(r, 60); });
+    expect(calls).to.equal(1);
+  });
+
+  it('Passes arguments through to the underlying function', async () => {
+    let received;
+    const fn = debounce((...args) => { received = args; }, 10);
+    fn('a', 1);
+    await new Promise((r) => { setTimeout(r, 30); });
+    expect(received).to.deep.equal(['a', 1]);
+  });
+});
+
+describe('getDiffLabels', () => {
+  beforeEach(() => {
+    const storage = new Map();
+    initDaMetadata({
+      get: (key) => storage.get(key) || null,
+      set: (key, value) => storage.set(key, value),
+      delete: (key) => storage.delete(key),
+      entries: () => storage.entries(),
+      [Symbol.iterator]: () => storage.entries(),
+    });
+  });
+
+  it('Defaults to Local/Upstream when no metadata is set', () => {
+    expect(getDiffLabels()).to.deep.equal({ local: 'Local', upstream: 'Upstream' });
+  });
+
+  it('Returns the configured labels', () => {
+    setDaMetadata('diff-label-local', 'Mine');
+    setDaMetadata('diff-label-upstream', 'Theirs');
+    expect(getDiffLabels()).to.deep.equal({ local: 'Mine', upstream: 'Theirs' });
+  });
+});
+
+describe('htmlToProse', () => {
+  it('Returns a DOM fragment and a Y.Doc for valid input', () => {
+    const result = htmlToProse('<body><main><div><p>Hello</p></div></main></body>');
+    expect(result.dom).to.be.instanceOf(HTMLElement);
+    expect(result.dom.textContent).to.contain('Hello');
+    expect(result.ydoc).to.exist;
   });
 });

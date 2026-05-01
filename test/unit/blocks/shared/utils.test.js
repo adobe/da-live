@@ -162,6 +162,18 @@ describe('daFetch', () => {
     }
   });
 
+  it('Defaults headers when none are provided', async () => {
+    window.localStorage.removeItem('nx-ims');
+    let capturedOpts;
+    window.fetch = (url, opts) => {
+      capturedOpts = opts;
+      return Promise.resolve(new Response('ok', { status: 200 }));
+    };
+
+    await daFetch('https://example.com/test');
+    expect(capturedOpts.headers).to.deep.equal({});
+  });
+
   it('Fetches without auth when nx-ims is not set', async () => {
     window.localStorage.removeItem('nx-ims');
     let capturedOpts;
