@@ -360,7 +360,9 @@ describe('DaBrowse Component', () => {
       });
     }
 
-    afterEach(() => { window.fetch = undefined; });
+    let origFetch;
+    beforeEach(() => { origFetch = window.fetch; });
+    afterEach(() => { window.fetch = origFetch; });
 
     it('returns default edit path when no editor.path rows exist', async () => {
       mockConfig([]);
@@ -430,7 +432,14 @@ describe('DaBrowse Component', () => {
   });
 
   describe('browseListItems getter', () => {
+    let origFetch;
+
     beforeEach(async () => {
+      // Stub fetch so the update() lifecycle's getEditor() call doesn't fire
+      // an external request and trip the "fetch external resource" warning.
+      origFetch = window.fetch;
+      window.fetch = async () => ({ ok: true, json: async () => ({ data: [] }) });
+
       // Properly initialize the component by adding to DOM
       document.body.innerHTML = '<div id="container"></div>';
       const container = document.getElementById('container');
@@ -439,6 +448,7 @@ describe('DaBrowse Component', () => {
     });
 
     afterEach(() => {
+      window.fetch = origFetch;
       document.body.innerHTML = '';
     });
 
