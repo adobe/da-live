@@ -45,8 +45,7 @@ describe('da-list-item render', () => {
     await fixture({ ext: '' });
     const link = el.shadowRoot.querySelector('a.da-item-list-item-title');
     expect(link.getAttribute('href')).to.equal('#/org/repo/page');
-    const type = el.shadowRoot.querySelector('.da-item-list-item-type-folder');
-    expect(type).to.exist;
+    expect(el.shadowRoot.querySelector('span.da-item-list-item-type svg')).to.exist;
   });
 
   it('Renders rename form when rename property is true', async () => {
@@ -83,7 +82,8 @@ describe('da-list-item render', () => {
 
   it('Adds the file icon class for the configured ext', async () => {
     await fixture({ ext: 'json' });
-    expect(el.shadowRoot.querySelector('.da-item-list-item-icon-json')).to.exist;
+    const use = el.shadowRoot.querySelector('span.da-item-list-item-type svg use');
+    expect(use.getAttribute('href')).to.contain('s2-icon-data-20-n.svg');
   });
 
   it('Renders details panel with version "Checking" by default', async () => {

@@ -757,6 +757,9 @@ describe('DaList helpers', () => {
       await el.handlePaste({ detail: { move: true } });
       expect(calls[0].type).to.equal('move');
     });
+  });
+});
+
 const fileItem = (name = 'doc') => ({ name, ext: 'html', path: `/org/site/${name}.html` });
 const folderItem = (name = 'folder') => ({ name, path: `/org/site/${name}` });
 

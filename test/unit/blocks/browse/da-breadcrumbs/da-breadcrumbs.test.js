@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { nothing } from 'da-lit';
 import { setNx } from '../../../../../scripts/utils.js';
 
 describe('DaBreadcrumbs', () => {
@@ -14,7 +15,7 @@ describe('DaBreadcrumbs', () => {
   describe('getBreadcrumbs', () => {
     it('Splits a 3-segment path into ordered crumbs', () => {
       const el = new DaBreadcrumbs();
-      el.fullpath = '/org/site/folder';
+      el.details = { fullpath: '/org/site/folder' };
       el.getBreadcrumbs();
       expect(el._breadcrumbs).to.deep.equal([
         { name: 'org', path: '#/org' },
@@ -25,39 +26,32 @@ describe('DaBreadcrumbs', () => {
 
     it('Filters empty parts from leading/trailing slashes', () => {
       const el = new DaBreadcrumbs();
-      el.fullpath = '/org/site/';
+      el.details = { fullpath: '/org/site/' };
       el.getBreadcrumbs();
       expect(el._breadcrumbs.map((c) => c.name)).to.deep.equal(['org', 'site']);
     });
 
     it('Returns empty list for root', () => {
       const el = new DaBreadcrumbs();
-      el.fullpath = '/';
+      el.details = { fullpath: '/' };
       el.getBreadcrumbs();
       expect(el._breadcrumbs).to.deep.equal([]);
     });
   });
 
   describe('renderConfig', () => {
-    it('Returns a config link for the last crumb when depth <= 2', () => {
+    it('Returns a config link when details has no path', () => {
       const el = new DaBreadcrumbs();
-      el.depth = 2;
-      const result = el.renderConfig(2, { path: '#/org/site' }, 1);
-      expect(result).to.not.equal(null);
+      el.details = {};
+      const result = el.renderConfig({ path: '#/org/site' });
+      expect(result).to.not.equal(nothing);
     });
 
-    it('Returns null when depth > 2', () => {
+    it('Returns nothing when details.path is set', () => {
       const el = new DaBreadcrumbs();
-      el.depth = 3;
-      const result = el.renderConfig(3, { path: '#/org/site/page' }, 2);
-      expect(result).to.equal(null);
-    });
-
-    it('Returns null when not on the last crumb', () => {
-      const el = new DaBreadcrumbs();
-      el.depth = 2;
-      const result = el.renderConfig(2, { path: '#/org' }, 0);
-      expect(result).to.equal(null);
+      el.details = { path: '/org/site' };
+      const result = el.renderConfig({ path: '#/org/site' });
+      expect(result).to.equal(nothing);
     });
   });
 });

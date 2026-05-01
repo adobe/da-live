@@ -51,29 +51,19 @@ describe('DaSites', () => {
   });
 
   describe('getRecents', () => {
-    it('Maps localStorage da-sites to _recents and clears da-orgs', () => {
+    it('Maps localStorage da-sites to _recents', () => {
       localStorage.setItem('da-sites', JSON.stringify(['org/site1', 'org/site2']));
-      localStorage.setItem('da-orgs', JSON.stringify(['oldorg']));
       const el = new DaSites();
-      el.getRecents();
+      el._recents = el.getRecents();
       expect(el._recents).to.have.length(2);
       expect(el._recents[0].name).to.equal('org/site1');
       expect(el._recents[0].img).to.match(/^\/blocks\/browse\/da-sites\/img\/cards\/da-\d+\.jpg$/);
-      expect(localStorage.getItem('da-orgs')).to.equal(null);
     });
 
-    it('Falls back to da-orgs when da-sites is empty', () => {
-      localStorage.setItem('da-orgs', JSON.stringify(['acme', 'globex']));
+    it('Returns null when da-sites is empty', () => {
       const el = new DaSites();
-      el.getRecents();
-      expect(el._recents).to.have.length(2);
-      expect(el._recents.map((r) => r.name)).to.deep.equal(['acme', 'globex']);
-    });
-
-    it('Leaves _recents undefined when both stores are empty', () => {
-      const el = new DaSites();
-      el.getRecents();
-      expect(el._recents).to.equal(undefined);
+      const result = el.getRecents();
+      expect(result).to.equal(null);
     });
   });
 
@@ -81,7 +71,7 @@ describe('DaSites', () => {
     it('Splices from _recents and updates localStorage', () => {
       localStorage.setItem('da-sites', JSON.stringify(['org/a', 'org/b']));
       const el = new DaSites();
-      el.getRecents();
+      el._recents = el.getRecents();
       el.requestUpdate = () => {};
       el.handleRemove(el._recents[0]);
       expect(el._recents).to.have.length(1);
@@ -181,20 +171,22 @@ describe('DaSites', () => {
     });
   });
 
-  describe('mapRecentSites / mapRecentOrgs', () => {
-    it('mapRecentSites builds the expected card shape', () => {
+  describe('getRecents card shape', () => {
+    it('Builds the expected card shape for each site', () => {
+      localStorage.setItem('da-sites', JSON.stringify(['acme/site1']));
       const el = new DaSites();
-      el.mapRecentSites(['acme/site1']);
+      el._recents = el.getRecents();
       expect(el._recents).to.have.length(1);
       expect(el._recents[0].name).to.equal('acme/site1');
       expect(el._recents[0].img).to.match(/\/blocks\/browse\/da-sites\/img\/cards\/da-\d+\.jpg/);
       expect(el._recents[0].style).to.match(/^da-card-style-\d+$/);
     });
 
-    it('mapRecentOrgs builds the expected card shape', () => {
+    it('Builds cards for multiple sites', () => {
+      localStorage.setItem('da-sites', JSON.stringify(['acme/site1', 'globex/site2']));
       const el = new DaSites();
-      el.mapRecentOrgs(['acme', 'globex']);
-      expect(el._recents.map((r) => r.name)).to.deep.equal(['acme', 'globex']);
+      el._recents = el.getRecents();
+      expect(el._recents.map((r) => r.name)).to.deep.equal(['acme/site1', 'globex/site2']);
     });
   });
 });
