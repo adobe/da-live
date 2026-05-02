@@ -360,7 +360,9 @@ describe('DaBrowse Component', () => {
       });
     }
 
-    afterEach(() => { window.fetch = undefined; });
+    let origFetch;
+    beforeEach(() => { origFetch = window.fetch; });
+    afterEach(() => { window.fetch = origFetch; });
 
     it('returns default edit path when no editor.path rows exist', async () => {
       mockConfig([]);
@@ -430,7 +432,14 @@ describe('DaBrowse Component', () => {
   });
 
   describe('browseListItems getter', () => {
+    let origFetch;
+
     beforeEach(async () => {
+      // Stub fetch so the update() lifecycle's getEditor() call doesn't fire
+      // an external request and trip the "fetch external resource" warning.
+      origFetch = window.fetch;
+      window.fetch = async () => ({ ok: true, json: async () => ({ data: [] }) });
+
       // Properly initialize the component by adding to DOM
       document.body.innerHTML = '<div id="container"></div>';
       const container = document.getElementById('container');
@@ -439,6 +448,7 @@ describe('DaBrowse Component', () => {
     });
 
     afterEach(() => {
+      window.fetch = origFetch;
       document.body.innerHTML = '';
     });
 
@@ -448,6 +458,115 @@ describe('DaBrowse Component', () => {
 
     it('returns empty array when browse list has no _listItems', () => {
       expect(daBrowseComp.browseListItems).to.deep.equal([]);
+    });
+  });
+
+  describe('handleTabClick', () => {
+    it('Marks the clicked tab as selected and others as not', () => {
+      daBrowseComp.handleTabClick(1);
+      expect(daBrowseComp._tabItems[0].selected).to.be.false;
+      expect(daBrowseComp._tabItems[1].selected).to.be.true;
+    });
+  });
+
+  describe('context getter', () => {
+    it('Reads the id of the selected tab', () => {
+      daBrowseComp.handleTabClick(1);
+      expect(daBrowseComp.context).to.equal('search');
+    });
+  });
+
+  describe('handlePermissions', () => {
+    it('Forwards permissions to the new component if present', () => {
+      const newCmp = { permissions: undefined };
+      Object.defineProperty(daBrowseComp, 'newCmp', { configurable: true, get: () => newCmp });
+      daBrowseComp.handlePermissions({ detail: ['read', 'write'] });
+      expect(newCmp.permissions).to.deep.equal(['read', 'write']);
+    });
+
+    it('Is a no-op when no new component is rendered', () => {
+      Object.defineProperty(daBrowseComp, 'newCmp', { configurable: true, get: () => null });
+      expect(() => daBrowseComp.handlePermissions({ detail: ['read'] })).not.to.throw();
+    });
+  });
+
+  describe('handleShortcuts (Cmd/Ctrl+Alt+T)', () => {
+    let savedHash;
+    beforeEach(() => { savedHash = window.location.hash; });
+    afterEach(() => { window.location.hash = savedHash; });
+
+    it('Inserts /.trash/ when not already in trash', () => {
+      daBrowseComp.details = { fullpath: '/org/site/folder' };
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      expect(window.location.hash).to.equal('#/org/site/.trash/folder');
+    });
+
+    it('Removes /.trash/ when already in trash', () => {
+      daBrowseComp.details = { fullpath: '/org/site/.trash/folder' };
+      daBrowseComp.handleShortcuts({ ctrlKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      expect(window.location.hash).to.equal('#/org/site/folder');
+    });
+
+    it('Does nothing when path is too shallow (< 2 segments)', () => {
+      daBrowseComp.details = { fullpath: '/org' };
+      const before = window.location.hash;
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      expect(window.location.hash).to.equal(before);
+    });
+
+    it('Ignores keys without alt or meta/ctrl modifiers', () => {
+      daBrowseComp.details = { fullpath: '/org/site' };
+      const before = window.location.hash;
+      daBrowseComp.handleShortcuts({ metaKey: false, altKey: false, code: 'KeyT', preventDefault: () => {} });
+      expect(window.location.hash).to.equal(before);
+    });
+  });
+
+  describe('getEditor', () => {
+    let savedFetch;
+    beforeEach(() => { savedFetch = window.fetch; });
+    afterEach(() => { window.fetch = savedFetch; });
+
+    it('Returns the default editor when no editor.path config exists', async () => {
+      window.fetch = () => Promise.resolve(
+        new Response(JSON.stringify({ data: [] }), { status: 200 }),
+      );
+      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('/edit#');
+    });
+
+    it('Returns the default editor when fetching the org config fails', async () => {
+      window.fetch = () => Promise.resolve(new Response('boom', { status: 500 }));
+      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('/edit#');
+    });
+
+    it('Picks the longest matching editor.path config', async () => {
+      const body = JSON.stringify({
+        data: [
+          { key: 'editor.path', value: '/org=https://short' },
+          { key: 'editor.path', value: '/org/site=https://long-match' },
+        ],
+      });
+      window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
+      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('https://long-match');
+    });
+
+    it('Reuses cached editorConfs when reFetch is false', async () => {
+      let calls = 0;
+      window.fetch = () => {
+        calls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+      };
+      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      await daBrowseComp.getEditor(true);
+      const before = calls;
+      await daBrowseComp.getEditor(false);
+      expect(calls).to.equal(before);
     });
   });
 });

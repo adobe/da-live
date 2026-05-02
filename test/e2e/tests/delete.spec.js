@@ -42,7 +42,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   for (let i = 0; i < await items.count(); i += 1) {
     const item = items.nth(i);
     const fileName = await item.innerText();
-    console.log('Item', i, fileName, '-', getTestResourceAge(fileName));
+    // console.log('Item', i, fileName, '-', getTestResourceAge(fileName));
 
     // This method checks if the page is a generated test page. If it is, it returns its age in ms.
     const age = getTestResourceAge(fileName);
@@ -52,7 +52,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     }
     const day = 1000 * 60 * 60 * MIN_HOURS;
     if (Date.now() - day < age) {
-      console.log('Too new:', fileName);
+      // console.log('Too new:', fileName);
       // eslint-disable-next-line no-continue
       continue;
     }
@@ -61,7 +61,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     const checkbox = page
       .locator('div.da-item-list-item-inner').filter({ hasText: fileName, exact: true })
       .locator('input[type="checkbox"][name="item-selected"]').first();
-    console.log('To be deleted, checked box:', await checkbox.count());
+    // console.log('To be deleted, checked box:', await checkbox.count());
     await checkbox.focus();
     await page.keyboard.press(' ');
     itemsToDelete = true;
@@ -74,6 +74,9 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 
   // Hit the delete button
   await page.locator('button.delete-button').locator('visible=true').click();
+
+  // Type in YES to delete > 10 items
+  await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
 
   // Hit the delete confirmation button
   await page.locator('sl-button.negative').locator('visible=true').click();
