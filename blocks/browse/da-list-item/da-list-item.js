@@ -11,7 +11,7 @@ const STYLE = await loadStyle(import.meta.url);
 
 const ICONS = {
   folder: '/img/icons/s2-icon-folder-20-n.svg',
-  file: '/img/icons/s2-icon-file-20-n.svg',
+  file: '/img/icons/s2-icon-filetext-20-n.svg',
   json: '/img/icons/s2-icon-data-20-n.svg',
   link: '/img/icons/s2-icon-link-20-n.svg',
   jpg: '/img/icons/s2-icon-image-20-n.svg',
@@ -277,7 +277,7 @@ export default class DaListItem extends LitElement {
   renderDaDetails() {
     return html`
       <span class="da-item-list-item-type da-item-list-item-type-file-version">
-        <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filetext-20-n.svg#icon"</svg>
+        <svg viewBox="0 0 20 20"><use href="${ICONS.file}#icon"</svg>
       </span>
       <div class="da-list-item-da-details-version">
         <p class="da-list-item-details-title">Version</p>
