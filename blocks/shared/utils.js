@@ -77,8 +77,6 @@ export const daFetch = async (url, opts = {}) => {
     return resp;
   }
 
-  // Support legacy admin.role.all
-  resp.permissions = ['read', 'write'];
   return resp;
 };
 

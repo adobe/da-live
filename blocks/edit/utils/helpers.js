@@ -3,6 +3,11 @@ import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch, getSidekickConfig } from '../../shared/utils.js';
+import { getNx } from '../../../scripts/utils.js';
+
+let nxPath = getNx();
+nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
+const { putSource, putVersion } = await import(`${nxPath}/utils/api.js`);
 
 export function isURL(text) {
   try {
@@ -96,8 +101,8 @@ async function saveHtml(fullPath) {
   const formData = new FormData();
   formData.append('data', blob);
 
-  const opts = { method: 'PUT', body: formData };
-  return daFetch(fullPath, opts);
+  const [org, site, ...parts] = fullPath.split('source/').pop().split('/');
+  return putSource({ org, site, daPath: parts.join('/'), body: formData });
 }
 
 function formatSheetData(jData) {
@@ -183,18 +188,18 @@ export function convertSheets(sheets) {
 async function saveJson(fullPath, sheets, jsonToSave, dataType = 'blob') {
   const json = jsonToSave || convertSheets(sheets);
 
-  const formData = new FormData();
+  const [org, site, ...parts] = fullPath.split('source/').pop().split('/');
 
   if (dataType === 'blob') {
-    const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
-    formData.append('data', blob);
+    const body = new Blob([JSON.stringify(json)], { type: 'application/json' });
+    return putSource({ org, site, daPath: `/${parts.join('/')}`, body });
   }
 
-  if (dataType === 'config') {
-    formData.append('config', JSON.stringify(json));
-  }
+  // DA Config
+  const formData = new FormData();
+  formData.append('config', JSON.stringify(json));
 
-  const opts = { method: 'PUT', body: formData };
+  const opts = { method: 'POST', body: formData };
   return daFetch(fullPath, opts);
 }
 
@@ -211,19 +216,14 @@ export function saveDaConfig(pathname, sheet) {
   return saveJson(fullPath, sheet, null, 'config');
 }
 
-export async function saveDaVersion(pathname, label = 'Published') {
-  const fullPath = `${DA_ORIGIN}/versionsource${pathname}`;
-
-  const opts = {
-    method: 'POST',
-    body: JSON.stringify({ label }),
-  };
+export async function saveDaVersion(pathname, operation, comment) {
+  const [org, site, ...parts] = pathname.slice(1).split('/');
 
   try {
-    await daFetch(fullPath, opts);
+    await putVersion({ org, site, daPath: `/${parts.join('/')}`, operation, comment });
   } catch {
     // eslint-disable-next-line no-console
-    console.log(`Error creating auto version (${label}).`);
+    console.log(`Error creating version - ${pathname}.`);
   }
 }
 
