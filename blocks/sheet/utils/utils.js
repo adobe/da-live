@@ -3,7 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 
 let nxPath = getNx();
 nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
-const { getSource } = await import(`${nxPath}/utils/api.js`);
+const { getSource, getConfig } = await import(`${nxPath}/utils/api.js`);
 
 const DEBOUNCE_TIME = 1000;
 const POLL_INTERVAL = 30000;
@@ -59,8 +59,10 @@ class StaleCheck {
   async checkForDrift() {
     if (this._saveBlocked) return true;
     try {
-      const [org, site, ...parts] = this._sourceUrl.split('source/').pop().split('/');
-      const resp = await getSource({ org, site, daPath: `/${parts.join('/')}` });
+      const { pathname } = new URL(this._sourceUrl);
+      const [api, org, site, ...parts] = pathname.slice(1).split('/');
+      const getFn = api === 'source' ? getSource : getConfig;
+      const resp = await getFn({ org, site, daPath: `/${parts.join('/')}` });
       if (!resp.ok) return false;
       const json = await resp.json();
       const text = JSON.stringify(json);

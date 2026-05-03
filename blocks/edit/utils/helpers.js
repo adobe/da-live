@@ -7,7 +7,7 @@ import { getNx } from '../../../scripts/utils.js';
 
 let nxPath = getNx();
 nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
-const { putSource, putVersion } = await import(`${nxPath}/utils/api.js`);
+const { putSource, putVersion, putConfig } = await import(`${nxPath}/utils/api.js`);
 
 export function isURL(text) {
   try {
@@ -188,19 +188,16 @@ export function convertSheets(sheets) {
 async function saveJson(fullPath, sheets, jsonToSave, dataType = 'blob') {
   const json = jsonToSave || convertSheets(sheets);
 
-  const [org, site, ...parts] = fullPath.split('source/').pop().split('/');
+  const { pathname } = new URL(fullPath);
+  const [api, org, site, ...parts] = pathname.slice(1).split('/');
+  const putFn = api === 'source' ? putSource : putConfig;
 
   if (dataType === 'blob') {
     const body = new Blob([JSON.stringify(json)], { type: 'application/json' });
-    return putSource({ org, site, daPath: `/${parts.join('/')}`, body });
+    return putFn({ org, site, daPath: `/${parts.join('/')}`, body });
   }
 
-  // DA Config
-  const formData = new FormData();
-  formData.append('config', JSON.stringify(json));
-
-  const opts = { method: 'POST', body: formData };
-  return daFetch(fullPath, opts);
+  return putFn({ org, site, body: JSON.stringify(json) });
 }
 
 export function saveToDa(pathname, sheet) {

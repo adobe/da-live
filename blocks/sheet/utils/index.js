@@ -4,7 +4,7 @@ import '../da-sheet-tabs.js';
 
 let nxPath = getNx();
 nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
-const { getSource } = await import(`${nxPath}/utils/api.js`);
+const { getSource, getConfig } = await import(`${nxPath}/utils/api.js`);
 
 const { loadStyle } = await import(`${getNx()}${nxJS}`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
@@ -87,9 +87,11 @@ export function getPermissions() {
   return permissions;
 }
 
-export async function getData(url) {
-  const [org, site, ...parts] = url.split('source/').pop().split('/');
-  const resp = await getSource({ org, site, daPath: `/${parts.join('/')}` });
+export async function getData(href) {
+  const { pathname } = new URL(href);
+  const [api, org, site, ...parts] = pathname.slice(1).split('/');
+  const getFn = api === 'source' ? getSource : getConfig;
+  const resp = await getFn({ org, site, daPath: `/${parts.join('/')}` });
 
   // Set permissions even if the file is a 404
   const daTitle = document.querySelector('da-title');
@@ -105,7 +107,7 @@ export async function getData(url) {
   // Get base data
   const json = await resp.json();
 
-  if (!url.includes('/versionsource')) {
+  if (api !== 'versionsource') {
     staleCheck.markSynced(json);
     const sheetPanes = document.querySelector('da-sheet-panes');
     if (sheetPanes) sheetPanes.data = json;
