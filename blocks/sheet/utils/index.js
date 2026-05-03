@@ -1,7 +1,10 @@
-import { daFetch } from '../../shared/utils.js';
 import { getNx, nxJS } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
 import '../da-sheet-tabs.js';
+
+let nxPath = getNx();
+nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
+const { getSource } = await import(`${nxPath}/utils/api.js`);
 
 const { loadStyle } = await import(`${getNx()}${nxJS}`);
 const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
@@ -85,7 +88,8 @@ export function getPermissions() {
 }
 
 export async function getData(url) {
-  const resp = await daFetch(url);
+  const [org, site, ...parts] = url.split('source/').pop().split('/');
+  const resp = await getSource({ org, site, daPath: `/${parts.join('/')}` });
 
   // Set permissions even if the file is a 404
   const daTitle = document.querySelector('da-title');
