@@ -71,12 +71,16 @@ function getBlockTableHtml(block) {
 
 async function fetchAndParseHtml(path, isAemHosted) {
   const postfix = isAemHosted ? '.plain.html' : '';
-  const resp = await daFetch(`${path}${postfix}`);
-  if (!resp.ok) return null;
+  try {
+    const resp = await daFetch(`${path}${postfix}`);
+    if (!resp.ok) return null;
 
-  const html = await resp.text();
-  const parser = new DOMParser();
-  return parser.parseFromString(html, 'text/html');
+    const html = await resp.text();
+    const parser = new DOMParser();
+    return parser.parseFromString(html, 'text/html');
+  } catch (e) {
+    return null;
+  }
 }
 
 function getSectionsAndBlocks(doc) {

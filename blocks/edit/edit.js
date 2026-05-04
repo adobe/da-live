@@ -1,5 +1,5 @@
 import getPathDetails from '../shared/pathDetails.js';
-import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin } from '../shared/utils.js';
+import { daFetch, contentLogin, livePreviewLogin } from '../shared/utils.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -49,11 +49,7 @@ async function setUI(el) {
   document.title = `Edit ${details.name} - DA`;
 
   const { owner, repo } = details;
-  const lockdownPromise = checkLockdownImages(owner);
-  await Promise.all([
-    contentLogin(owner, repo),
-    livePreviewLogin(owner, repo),
-  ]);
+  const contentCookiePromise = contentLogin(owner, repo);
 
   const daTitle = initArea('da-title', details, el);
 
@@ -69,6 +65,21 @@ async function setUI(el) {
   let permissions;
   let doc;
   if (resp.status === 404) {
+    const { default: showNotFoundDialog } = await import('./da-not-found/da-not-found.js');
+    const choice = await showNotFoundDialog(details);
+    // A hashchange spawns a parallel setUI for the new path — bail out of
+    // this one so the two don't race over window.location / editor state.
+    if (choice === 'hashchange') return;
+    if (choice === 'folder') {
+      const folderPath = details.fullpath.replace(/\.html$/, '');
+      const hashPath = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+      window.location = `/#${hashPath}`;
+      return;
+    }
+    if (choice !== 'create') {
+      window.location = `/#${details.parent}`;
+      return;
+    }
     const createResp = await createDoc(details.sourceUrl);
     permissions = createResp.permissions;
     doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
@@ -80,7 +91,9 @@ async function setUI(el) {
 
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
-  daContent.lockdownImages = await lockdownPromise;
+
+  // If content cookie hasn't loaded yet, wait for it
+  await contentCookiePromise;
 
   const metadataEl = doc.querySelector('main > .metadata');
   // Check if the metadata div has no additional classes (or doesn't exist)
@@ -99,7 +112,11 @@ async function setUI(el) {
       daContent,
       wsPromise,
     });
+
+    // set the live preview cookie async
+    livePreviewLogin(owner, repo);
   }
+
   // FUTURE: else load BYO Editor
 }
 

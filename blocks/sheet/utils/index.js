@@ -1,6 +1,6 @@
 import { daFetch } from '../../shared/utils.js';
 import { getNx, nxJS } from '../../../scripts/utils.js';
-import { handleSave } from './utils.js';
+import { handleSave, staleCheck } from './utils.js';
 import '../da-sheet-tabs.js';
 
 const { loadStyle } = await import(`${getNx()}${nxJS}`);
@@ -101,10 +101,10 @@ export async function getData(url) {
   // Get base data
   const json = await resp.json();
 
-  const sheetPanes = document.querySelector('da-sheet-panes');
-  if (sheetPanes && !url.includes('/versionsource')) {
-    // Set AEM-formatted JSON for real-time preview
-    sheetPanes.data = json;
+  if (!url.includes('/versionsource')) {
+    staleCheck.markSynced(json);
+    const sheetPanes = document.querySelector('da-sheet-panes');
+    if (sheetPanes) sheetPanes.data = json;
   }
 
   // Single sheet

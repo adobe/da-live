@@ -145,7 +145,7 @@ class SlashMenuView {
     const argument = extractArgument(item.title, this.menu.command);
 
     dispatch(tr);
-    item.command(newState, dispatch, argument);
+    item.command(newState, dispatch, argument, this.view);
 
     this.hide();
   }

@@ -160,6 +160,7 @@ export async function livePreviewLogin(owner, repo) {
  * instead of the public preview URL, preventing unauthorized access to images.
  * @param {string} owner - The owner identifier
  * @returns {Promise<boolean>} True if lockdownImages flag is enabled, false otherwise
+ * @deprecated
  */
 export async function checkLockdownImages(owner) {
   try {
@@ -244,7 +245,7 @@ export const getAemSiteToken = (() => {
   return ({ org, site }) => {
     const path = `/${org}/${site}`;
     // Fetch new token if it doesn't exit
-    tokenCache[path] ??= fetchToken('adobecom', 'da-bacom');
+    tokenCache[path] ??= fetchToken(org, site);
 
     return tokenCache[path];
   };
@@ -252,4 +253,21 @@ export const getAemSiteToken = (() => {
 
 export function delay(ms) {
   return new Promise((res) => { setTimeout(res, ms); });
+}
+
+// Replaces every character not in `allowed` with '-', then collapses any run
+// of hyphens into a single '-'. Ensures a typed (or substituted) invalid
+// character next to an existing hyphen does not produce a double hyphen.
+// When `trimTrailing` is true, also strips any trailing non-alphanumeric
+// characters so the name ends with an alphanumeric char. Use at finalization
+// time (save/upload/rename submit), not on every keystroke, or the user will
+// be unable to type a hyphen mid-name.
+export function sanitizeName(value, { allowDot = false, trimTrailing = false } = {}) {
+  const pattern = allowDot ? /[^a-zA-Z0-9.]/g : /[^a-zA-Z0-9]/g;
+  let result = value
+    .replaceAll(pattern, '-')
+    .replaceAll(/-+/g, '-')
+    .toLowerCase();
+  if (trimTrailing) result = result.replace(/[^a-zA-Z0-9]+$/, '');
+  return result;
 }

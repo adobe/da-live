@@ -257,10 +257,18 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
 
+  // Seed from current provider state in case 'status' fired before subscribe.
+  if (wsProvider.wsconnected) daTitle.collabStatus = 'connected';
+  else daTitle.collabStatus = 'connecting';
+
   wsProvider.on('connection-close', async () => {
     const resp = await checkDoc(path);
     if (resp.status === 404) {
-      const split = window.location.hash.slice(2).split('/');
+      const { hash } = window.location;
+      // Guard: hash must start with '#/' — during an IMS redirect the hash is '#access_token=...'
+      // and slice(2) would remove '#a', writing 'ccess_token=...' into the URL as an org name.
+      if (!hash.startsWith('#/')) return;
+      const split = hash.slice(2).split('/');
       split.pop();
       // Navigate to the parent folder
       window.location.replace(`/#/${split.join('/')}`);
@@ -360,7 +368,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     const buildKeymapPlugin = keymap(buildKeymap(schema));
     const baseKeymapPlugin = keymap(baseKeymap);
     const gapCursorPlugin = gapCursor();
-    const tableEditingPlugin = tableEditing();
+    const tableEditingPlugin = tableEditing({ allowTableNodeSelection: true });
 
     const pluginList = [
       syncPlugin,

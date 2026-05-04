@@ -1,12 +1,31 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemAdmin, delay } from '../../shared/utils.js';
+import { daFetch, aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const STYLE = await getStyle(import.meta.url);
+// Styles
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
+
+const ICONS = {
+  folder: '/img/icons/s2-icon-folder-20-n.svg',
+  file: '/img/icons/s2-icon-filetext-20-n.svg',
+  json: '/img/icons/s2-icon-data-20-n.svg',
+  link: '/img/icons/s2-icon-link-20-n.svg',
+  jpg: '/img/icons/s2-icon-image-20-n.svg',
+  jpeg: '/img/icons/s2-icon-image-20-n.svg',
+  png: '/img/icons/s2-icon-image-20-n.svg',
+  svg: '/img/icons/s2-icon-image-20-n.svg',
+  gif: '/img/icons/s2-icon-image-20-n.svg',
+  avif: '/img/icons/s2-icon-image-20-n.svg',
+  webp: '/img/icons/s2-icon-image-20-n.svg',
+  mp4: '/img/icons/s2-icon-video-20-n.svg',
+  media: '/img/icons/s2-icon-image-20-n.svg',
+  pdf: '/img/icons/s2-icon-acrobatsolid-20-n.svg',
+  folderClock: '/img/icons/s2-icon-folderclock-20-n.svg',
+};
 
 export default class DaListItem extends LitElement {
   static properties = {
@@ -60,11 +79,13 @@ export default class DaListItem extends LitElement {
         status: json.preview.status,
         url: json.preview.url,
         lastModified: json.preview.lastModified ? formatDate(json.preview.lastModified) : null,
+        redirect: json.live.redirectLocation,
       };
       this._live = {
         status: json.live.status,
         url: json.live.url,
         lastModified: json.live.lastModified ? formatDate(json.live.lastModified) : null,
+        redirect: json.live.redirectLocation,
       };
       return;
     }
@@ -124,10 +145,14 @@ export default class DaListItem extends LitElement {
   async handleRenameSubmit(e) {
     e.preventDefault();
 
-    const newName = e.target.elements['new-name'].value;
+    const newName = sanitizeName(e.target.elements['new-name'].value, { trimTrailing: true });
 
     if (e.submitter.value === 'cancel' || this.name === newName) {
       this.handleChecked();
+    } else if (!newName) {
+      this.setStatus('A name is required.', 'Please enter a valid name.');
+      await delay(2000);
+      this.setStatus();
     } else {
       const idx = this.path.lastIndexOf(this.name);
       const oldPath = this.path;
@@ -172,7 +197,7 @@ export default class DaListItem extends LitElement {
   }
 
   handleRename({ target }) {
-    target.value = target.value.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    target.value = sanitizeName(target.value);
   }
 
   toggleExpand() {
@@ -212,6 +237,13 @@ export default class DaListItem extends LitElement {
     `;
   }
 
+  renderIcon() {
+    // determine base type
+    const type = !this.ext ? 'folder' : this.ext;
+    const iconPath = ICONS[type] || ICONS.file;
+    return html`<svg viewBox="0 0 20 20"><use href="${iconPath}#icon"</svg>`;
+  }
+
   renderItem() {
     let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
     let externalUrlPromise;
@@ -223,14 +255,10 @@ export default class DaListItem extends LitElement {
     }
     return html`
       <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
-        ${this._isRenaming ? html`
-          <span class="da-item-list-item-type">
-            <div class="icon rename-icon"></div>
-          </span>
+        ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
         ` : html`
-          <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
+          <span class="da-item-list-item-type">${this.renderIcon()}</span>
         `}
-        </span>
         <div class="da-item-list-item-name">${this.name}</div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
@@ -248,7 +276,9 @@ export default class DaListItem extends LitElement {
 
   renderDaDetails() {
     return html`
-      <span class="da-item-list-item-type da-item-list-item-type-file-version"></span>
+      <span class="da-item-list-item-type da-item-list-item-type-file-version">
+        <svg viewBox="0 0 20 20"><use href="${ICONS.file}#icon"</svg>
+      </span>
       <div class="da-list-item-da-details-version">
         <p class="da-list-item-details-title">Version</p>
         <p>${this._version || this._version === 0 ? this._version : 'Checking'}</p>
@@ -267,7 +297,7 @@ export default class DaListItem extends LitElement {
     if (this[env].lastModified) {
       return `${this[env].lastModified.date} ${this[env].lastModified.time}`;
     }
-    return 'Never';
+    return env === '_preview' ? 'Not previewed' : 'Not published';
   }
 
   render() {
@@ -284,26 +314,26 @@ export default class DaListItem extends LitElement {
       <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}" role="gridcell">
         ${this.renderDaDetails()}
         <a
-          href=${this._preview?.url}
+          href=${this._preview?.redirect || this._preview?.url}
           target="_blank"
           aria-label="Open preview"
           @click=${this.showPreview}
           class="da-item-list-item-aem-btn">
           <div class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">Previewed</p>
+            <p class="da-list-item-details-title">Previewed${this._live?.redirect ? ' Redirect' : ''}</p>
             <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
           </div>
         </a>
         <a
-          href=${this._live?.url}
+          href=${this._live?.redirect || this._live?.url}
           target="_blank"
           aria-label="Open preview"
           @click=${this.showPreview}
           class="da-item-list-item-aem-btn">
           <div class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"></div>
           <div class="da-aem-icon-details">
-            <p class="da-list-item-details-title">Published</p>
+            <p class="da-list-item-details-title">Published${this._live?.redirect ? ' Redirect' : ''}</p>
             <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
           </div>
         </a>
