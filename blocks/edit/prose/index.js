@@ -281,7 +281,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   win.addEventListener('focus', () => {
     // cancel any pending disconnect
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
-    wsProvider.connect();
+    if (!wsProvider.wsconnected) wsProvider.connect();
   });
   win.addEventListener('blur', () => {
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
