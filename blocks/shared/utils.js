@@ -104,6 +104,8 @@ export async function aemAdmin(path, api, method = 'POST') {
 }
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
+  if (!path || !path.startsWith('/') || path.includes('://')) return undefined;
+
   const opts = { method: 'PUT' };
 
   const form = formData || new FormData();
@@ -192,6 +194,8 @@ export const fetchDaConfigs = (() => {
   };
 
   return ({ org, site }) => {
+    if (!org) return [Promise.resolve(null)];
+
     // Set the org config promise if it does not exist
     configCache[`/${org}`] ??= fetchConfig(`/${org}`);
 

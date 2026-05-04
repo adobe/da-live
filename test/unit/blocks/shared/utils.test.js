@@ -9,6 +9,7 @@ import {
   delay,
   getSidekickConfig,
   sanitizeName,
+  fetchDaConfigs,
 } from '../../../../blocks/shared/utils.js';
 
 describe('getSheetByIndex', () => {
@@ -493,5 +494,120 @@ describe('getSidekickConfig', () => {
     } finally {
       window.fetch = savedFetch;
     }
+  });
+});
+
+describe('fetchDaConfigs', () => {
+  let savedFetch;
+  let savedLocalStorage;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    savedLocalStorage = window.localStorage.getItem('nx-ims');
+    window.localStorage.removeItem('nx-ims');
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+    if (savedLocalStorage) {
+      window.localStorage.setItem('nx-ims', savedLocalStorage);
+    } else {
+      window.localStorage.removeItem('nx-ims');
+    }
+  });
+
+  it('Returns early without calling fetch when org is empty', async () => {
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response('ok', { status: 200 }));
+    };
+
+    const results = fetchDaConfigs({ org: '', site: 'something' });
+    expect(results).to.be.an('array').with.lengthOf(1);
+    const resolved = await results[0];
+    expect(resolved).to.equal(null);
+    expect(fetchCalled).to.be.false;
+  });
+
+  it('Returns early without calling fetch when org is undefined', async () => {
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response('ok', { status: 200 }));
+    };
+
+    const results = fetchDaConfigs({ org: undefined, site: 'something' });
+    expect(results).to.be.an('array').with.lengthOf(1);
+    const resolved = await results[0];
+    expect(resolved).to.equal(null);
+    expect(fetchCalled).to.be.false;
+  });
+});
+
+describe('saveToDa — malformed path guard', () => {
+  let savedFetch;
+  let savedLocalStorage;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    savedLocalStorage = window.localStorage.getItem('nx-ims');
+    window.localStorage.removeItem('nx-ims');
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+    if (savedLocalStorage) {
+      window.localStorage.setItem('nx-ims', savedLocalStorage);
+    } else {
+      window.localStorage.removeItem('nx-ims');
+    }
+  });
+
+  it('Returns undefined without calling fetch when path is a full URL', async () => {
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response('ok', { status: 200 }));
+    };
+
+    const result = await saveToDa({ path: 'https://da.live' });
+    expect(result).to.equal(undefined);
+    expect(fetchCalled).to.be.false;
+  });
+
+  it('Returns undefined without calling fetch when path does not start with /', async () => {
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response('ok', { status: 200 }));
+    };
+
+    const result = await saveToDa({ path: 'org/repo/page' });
+    expect(result).to.equal(undefined);
+    expect(fetchCalled).to.be.false;
+  });
+
+  it('Returns undefined without calling fetch when path is falsy', async () => {
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response('ok', { status: 200 }));
+    };
+
+    const result = await saveToDa({ path: null });
+    expect(result).to.equal(undefined);
+    expect(fetchCalled).to.be.false;
+  });
+
+  it('Proceeds normally when path is a valid relative path', async () => {
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response('ok', { status: 200 }));
+    };
+
+    await saveToDa({ path: '/org/repo/page' });
+    expect(fetchCalled).to.be.true;
   });
 });

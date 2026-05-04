@@ -264,4 +264,27 @@ describe('Path details', () => {
       expect(details.depth).to.equal(3);
     });
   });
+
+  describe('Double slashes in hash', () => {
+    it('Strips double slashes from fullpath for org+repo+path edit', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/geometrixx//page' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.not.include('//');
+      expect(details.fullpath).to.equal('/adobe/geometrixx/page.html');
+    });
+
+    it('Strips double slashes from fullpath for org+repo browse', () => {
+      const loc = { pathname: '/', hash: '#/adobe//geometrixx/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.not.include('//');
+      expect(details.fullpath).to.equal('/adobe/geometrixx/');
+    });
+
+    it('Strips double slashes from fullpath for sheet view', () => {
+      const loc = { pathname: '/sheet', hash: '#/adobe/geometrixx//page' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.not.include('//');
+      expect(details.fullpath).to.equal('/adobe/geometrixx/page.json');
+    });
+  });
 });
