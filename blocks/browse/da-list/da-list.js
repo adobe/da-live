@@ -5,6 +5,10 @@ import { daFetch, aemAdmin } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
+let nxPath = getNx();
+nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
+const { listSource, hlx6ToDaList } = await import(`${nxPath}/utils/api.js`);
+
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
@@ -73,6 +77,7 @@ export default class DaList extends LitElement {
   }
 
   async update(props) {
+    // List Items can be provided externally (via search)
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
       this.resetListItemPaths(this._listItems);
@@ -118,10 +123,12 @@ export default class DaList extends LitElement {
   async getList() {
     try {
       this._continuationToken = null;
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
+      const [org, site, ...parts] = this.fullpath.slice(1).split('/');
+      const resp = await listSource({ org, site, daPath: parts.join('/') });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
-      const items = Array.isArray(json) ? json : json?.items || [];
+      let items = Array.isArray(json) ? json : json?.items || [];
+      items = hlx6ToDaList(this.fullpath, items);
       this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
       this._allPagesLoaded = !this._continuationToken;
       this.resetListItemPaths(items);
@@ -141,7 +148,9 @@ export default class DaList extends LitElement {
     const requestToken = this._continuationToken;
     this._isLoadingMore = true;
     try {
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, { headers: { 'da-continuation-token': requestToken } });
+      const [org, site, ...parts] = this.fullpath.slice(1).split('/');
+      const opts = { headers: { 'da-continuation-token': requestToken } };
+      const resp = await listSource({ org, site, daPath: parts.join('/'), opts });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       const nextItems = Array.isArray(json) ? json : json?.items || [];
