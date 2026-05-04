@@ -107,4 +107,68 @@ describe('imageDrop plugin', () => {
     });
     expect(prevented).to.be.true;
   });
+
+  it('uploadImageFile gives FPO a unique src containing the upload URL', async () => {
+    const savedFetch = window.fetch;
+    window.fetch = () => new Promise(() => {}); // never resolves — FPO stays in doc
+    try {
+      const file = new File(['x'], 'my-photo.png', { type: 'image/png' });
+      uploadImageFile(editor.view, file); // intentionally not awaited
+      await nextFrame();
+      let fpoSrc = null;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') fpoSrc = node.attrs.src;
+      });
+      expect(fpoSrc).to.be.a('string');
+      expect(fpoSrc).to.include('/blocks/edit/img/fpo.svg#');
+      expect(fpoSrc).to.include('my-photo.png');
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('concurrent uploads use distinct FPO srcs so they can be replaced independently', async () => {
+    const savedFetch = window.fetch;
+    window.fetch = () => new Promise(() => {}); // never resolves — both FPOs stay
+    try {
+      const file1 = new File(['a'], 'alpha.png', { type: 'image/png' });
+      const file2 = new File(['b'], 'beta.gif', { type: 'image/gif' });
+      uploadImageFile(editor.view, file1);
+      uploadImageFile(editor.view, file2);
+      await nextFrame();
+      const fpoSrcs = [];
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') fpoSrcs.push(node.attrs.src);
+      });
+      expect(fpoSrcs).to.have.length(2);
+      expect(fpoSrcs[0]).to.not.equal(fpoSrcs[1]);
+      expect(fpoSrcs[0]).to.include('alpha.png');
+      expect(fpoSrcs[1]).to.include('beta.gif');
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('uploadImageFile replaces FPO with the real image URL after upload completes', async () => {
+    // Use a data URL so the browser fires the img load event in the test environment.
+    const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const savedFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ source: { contentUrl: dataUrl } }),
+      { status: 200 },
+    ));
+    try {
+      const file = new File(['x'], 'pic.png', { type: 'image/png' });
+      await uploadImageFile(editor.view, file);
+      // Give the img load event time to fire and dispatch the replacement transaction.
+      await new Promise((resolve) => { setTimeout(resolve, 200); });
+      let finalSrc = null;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') finalSrc = node.attrs.src;
+      });
+      expect(finalSrc).to.equal(dataUrl);
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
 });
