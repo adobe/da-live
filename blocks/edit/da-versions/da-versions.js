@@ -49,7 +49,7 @@ export default class DaVersions extends LitElement {
     if (!entryEl.classList.contains('is-open')) {
       entryEl.classList.toggle('is-open');
     }
-    const detail = { url: `${DA_ORIGIN}${entry.url}` };
+    const detail = { url: `${DA_ORIGIN}${entry.url}`, label: entry.label, date: entry.date };
     const opts = { detail, bubbles: true, composed: true };
     const event = new CustomEvent('preview', opts);
     this.dispatchEvent(event);
