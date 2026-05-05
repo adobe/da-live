@@ -86,7 +86,6 @@ export default class DaContent extends LitElement {
           .permissions=${this.permissions}
           .proseEl=${this.proseEl}
           .wsProvider=${this.wsProvider}
-          @proseloaded=${this.handleEditorLoaded}
           @versionreset=${this.handleVersionReset}>
         </da-editor>
         ${this._editorLoaded ? html`

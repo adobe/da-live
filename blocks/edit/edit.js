@@ -113,6 +113,9 @@ async function setUI(el) {
       wsPromise,
     });
 
+    // Load editor tabs (live preview, versions, etc.)
+    setTimeout(() => daContent.handleEditorLoaded(), 1000);
+
     // set the live preview cookie async
     livePreviewLogin(owner, repo);
   }
