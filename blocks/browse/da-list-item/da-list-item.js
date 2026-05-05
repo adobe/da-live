@@ -38,6 +38,7 @@ export default class DaListItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
+    isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { type: Boolean },
     _isExpanded: { type: Boolean, state: true },
     _preview: { state: true },
@@ -259,7 +260,16 @@ export default class DaListItem extends LitElement {
         ` : html`
           <span class="da-item-list-item-type">${this.renderIcon()}</span>
         `}
-        <div class="da-item-list-item-name">${this.name}</div>
+        <div class="da-item-list-item-name">
+          <span class="da-item-list-item-name-text">${this.name}</span>
+          ${this.isFavorited ? html`
+            <span class="da-item-list-item-favorite" aria-label="Favorited">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M10 1.667l2.575 5.215 5.758.836-4.166 4.06.983 5.733L10 14.81l-5.15 2.701.983-5.733-4.166-4.06 5.758-.836z"/>
+              </svg>
+            </span>
+          ` : nothing}
+        </div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
   }

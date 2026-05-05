@@ -38,7 +38,7 @@ describe('da-list-item render', () => {
     const link = el.shadowRoot.querySelector('a.da-item-list-item-title');
     expect(link).to.exist;
     expect(link.getAttribute('href')).to.contain('/edit#/org/repo/page');
-    expect(el.shadowRoot.querySelector('.da-item-list-item-name').textContent).to.equal('page');
+    expect(el.shadowRoot.querySelector('.da-item-list-item-name-text').textContent).to.equal('page');
   });
 
   it('Renders a folder item with hash href when ext is empty', async () => {

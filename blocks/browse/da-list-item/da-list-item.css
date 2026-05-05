@@ -57,6 +57,37 @@ button {
   min-width: 160px;
 }
 
+.da-item-list-item-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.da-item-list-item-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.da-item-list-item-favorite {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.da-item-list-item-favorite svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
 .icon.rename-icon {
   width: 18px;
   height: 18px;
