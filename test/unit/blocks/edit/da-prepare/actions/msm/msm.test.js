@@ -200,12 +200,13 @@ describe('DaMsm component', () => {
       expect(outOfScope.length).to.be.greaterThan(0);
     });
 
-    it('renders action picker', async () => {
+    it('renders action select', async () => {
       const mock = createFetchMock({});
       await fixtureWithState(mock);
 
-      const picker = el.shadowRoot.querySelector('.picker-trigger');
-      expect(picker).to.exist;
+      const select = el.shadowRoot.querySelector('sl-select[name="action"]');
+      expect(select).to.exist;
+      expect(select.value).to.equal('preview');
     });
   });
 
@@ -359,7 +360,10 @@ describe('DaMsm component', () => {
 
     it('merges from base in merge mode', async () => {
       let mergeCalled = false;
-      setMergeCopy(async () => { mergeCalled = true; return { ok: true }; });
+      setMergeCopy(async () => {
+        mergeCalled = true;
+        return { ok: true };
+      });
 
       const mock = createFetchMock({});
       await fixtureWithState(mock, {
@@ -416,9 +420,8 @@ describe('DaMsm component', () => {
 
     it('only previews when page was not published', async () => {
       const calls = [];
-      const base = createFetchMock({
-        aemStatus: { preview: { status: 200 }, live: { status: 404 } },
-      });
+      const aemStatus = { preview: { status: 200 }, live: { status: 404 } };
+      const base = createFetchMock({ aemStatus });
       const mock = async (url, opts) => {
         calls.push({ url, method: opts?.method });
         return base(url, opts);
@@ -508,48 +511,31 @@ describe('DaMsm component', () => {
     });
   });
 
-  describe('picker', () => {
-    it('toggles picker open and closed', async () => {
+  describe('action select', () => {
+    it('updates _action and clears statuses on change', async () => {
       const mock = createFetchMock({});
-      await fixtureWithState(mock);
+      await fixtureWithState(mock, { satellites: makeSatellites(['san-diego']) });
+      el._satellites = el._satellites.map((s) => ({ ...s, status: 'success' }));
 
-      el.togglePicker('action');
-      expect(el._openPicker).to.equal('action');
+      const select = el.shadowRoot.querySelector('sl-select[name="action"]');
+      select.value = 'publish';
+      select.dispatchEvent(new Event('change'));
+      await nextFrame();
 
-      el.togglePicker('action');
-      expect(el._openPicker).to.be.null;
+      expect(el._action).to.equal('publish');
+      expect(el._satellites.every((s) => s.status === undefined)).to.be.true;
     });
 
-    it('selectPickerOption sets value and closes picker', async () => {
+    it('shows sync mode select only when action is sync', async () => {
       const mock = createFetchMock({});
       await fixtureWithState(mock);
 
-      el._openPicker = 'action';
-      let captured;
-      el.selectPickerOption('action', 'publish', (v) => { captured = v; });
+      expect(el.shadowRoot.querySelector('sl-select[name="syncMode"]')).to.not.exist;
 
-      expect(captured).to.equal('publish');
-      expect(el._openPicker).to.be.null;
-    });
+      el._action = 'sync';
+      await nextFrame();
 
-    it('closes picker on outside click', async () => {
-      const mock = createFetchMock({});
-      await fixtureWithState(mock);
-
-      el.togglePicker('action');
-      expect(el._openPicker).to.equal('action');
-
-      el._handleOutsidePickerClick({ composedPath: () => [] });
-      expect(el._openPicker).to.be.null;
-    });
-
-    it('does not close picker on inside click', async () => {
-      const mock = createFetchMock({});
-      await fixtureWithState(mock);
-
-      el.togglePicker('action');
-      el._handleOutsidePickerClick({ composedPath: () => [el] });
-      expect(el._openPicker).to.equal('action');
+      expect(el.shadowRoot.querySelector('sl-select[name="syncMode"]')).to.exist;
     });
   });
 
@@ -577,7 +563,10 @@ describe('DaMsm component', () => {
 
     it('sync-from-base with merge mode calls mergeCopy', async () => {
       let mergeCalled = false;
-      setMergeCopy(async () => { mergeCalled = true; return { ok: true }; });
+      setMergeCopy(async () => {
+        mergeCalled = true;
+        return { ok: true };
+      });
 
       const mock = createFetchMock({});
       await fixtureWithState(mock, {
