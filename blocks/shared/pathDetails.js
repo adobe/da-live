@@ -148,6 +148,7 @@ export default function getPathDetails(loc) {
   const ext = getExtension(editor, pathParts.slice(-1)[0], isFolder);
 
   const depth = pathParts.length;
+  const cleanParts = [...pathParts];
 
   if (depth === 1) details = getOrgDetails({ editor, pathParts, ext });
 
@@ -155,8 +156,10 @@ export default function getPathDetails(loc) {
 
   if (depth >= 3) details = getFullDetails({ editor, pathParts, ext });
 
-  let path = ext === 'html' && !fullpath.endsWith('.html') ? `${fullpath}.html` : fullpath;
+  const cleanPath = `/${cleanParts.join('/')}`;
+  let path = ext === 'html' && !cleanPath.endsWith('.html') && editor !== 'sheet' ? `${cleanPath}.html` : cleanPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+  if (isFolder && !path.endsWith('/')) path = `${path}/`;
 
   details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
 
