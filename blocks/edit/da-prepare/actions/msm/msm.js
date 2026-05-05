@@ -9,6 +9,13 @@ import {
   mergeFromBase,
   getSatellitePageStatus,
 } from './helpers/utils.js';
+import { getNx } from '../../../../../scripts/utils.js';
+
+let nxPath = getNx();
+nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
+
+// SE Components from NX2
+await import(`${nxPath}/public/se/components.js`);
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
@@ -337,7 +344,7 @@ class DaMsm extends LitElement {
 
   renderSyncModeSelect(onChange) {
     return html`
-      <sl-select
+      <se-select
         label="Sync mode"
         name="syncMode"
         .value=${this._syncMode}
@@ -345,13 +352,13 @@ class DaMsm extends LitElement {
         @change=${(e) => onChange(e.target.value)}>
         <option value="merge">Merge</option>
         <option value="override">Override</option>
-      </sl-select>`;
+      </se-select>`;
   }
 
   renderActionControls() {
     return html`
       <div class="action-row">
-        <sl-select
+        <se-select
           label="Action"
           name="action"
           .value=${this._action}
@@ -366,7 +373,7 @@ class DaMsm extends LitElement {
             <option value="sync">Sync to satellite</option>
             <option value="reset">Resume inheritance</option>
           </optgroup>
-        </sl-select>
+        </se-select>
         ${this._action === 'sync'
           ? this.renderSyncModeSelect((v) => { this._syncMode = v; })
           : nothing}
@@ -423,7 +430,7 @@ class DaMsm extends LitElement {
         ${this.renderSatelliteStatusIcon()}
       </div>
       <div class="action-row">
-        <sl-select
+        <se-select
           label="Action"
           name="action"
           .value=${this._action}
@@ -431,16 +438,16 @@ class DaMsm extends LitElement {
           @change=${(e) => { this._action = e.target.value; this._satStatus = undefined; }}>
           <option value="sync-from-base">Sync from Base</option>
           <option value="resume-inheritance">Resume inheritance</option>
-        </sl-select>
+        </se-select>
         ${this._action === 'sync-from-base'
           ? this.renderSyncModeSelect((v) => { this._syncMode = v; })
           : nothing}
       </div>
       ${this.renderConfirm()}
       <div class="form-actions">
-        <sl-button class="accent"
+        <se-button class="accent"
           @click=${() => this.apply()}
-          ?disabled=${this._busy || canResume}>Apply</sl-button>
+          ?disabled=${this._busy || canResume}>Apply</se-button>
       </div>`;
   }
 
@@ -462,9 +469,9 @@ class DaMsm extends LitElement {
       ${this.renderList()}
       ${this.renderConfirm()}
       <div class="form-actions">
-        <sl-button class="accent"
+        <se-button class="accent"
           @click=${() => this.apply()}
-          ?disabled=${!this._canApply}>Apply</sl-button>
+          ?disabled=${!this._canApply}>Apply</se-button>
       </div>`;
   }
 }

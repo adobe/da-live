@@ -1,6 +1,9 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { setNx } from '../../../../../../../scripts/utils.js';
 import { setMergeCopy } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/utils.js';
+
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 const waitForLoad = () => new Promise((resolve) => { setTimeout(resolve, 100); });
@@ -204,7 +207,7 @@ describe('DaMsm component', () => {
       const mock = createFetchMock({});
       await fixtureWithState(mock);
 
-      const select = el.shadowRoot.querySelector('sl-select[name="action"]');
+      const select = el.shadowRoot.querySelector('se-select[name="action"]');
       expect(select).to.exist;
       expect(select.value).to.equal('preview');
     });
@@ -235,7 +238,7 @@ describe('DaMsm component', () => {
         details: { org: 'test', site: 'san-diego', path: '/about' },
       });
 
-      const btn = el.shadowRoot.querySelector('sl-button');
+      const btn = el.shadowRoot.querySelector('se-button');
       expect(btn.hasAttribute('disabled')).to.be.true;
     });
   });
@@ -517,7 +520,7 @@ describe('DaMsm component', () => {
       await fixtureWithState(mock, { satellites: makeSatellites(['san-diego']) });
       el._satellites = el._satellites.map((s) => ({ ...s, status: 'success' }));
 
-      const select = el.shadowRoot.querySelector('sl-select[name="action"]');
+      const select = el.shadowRoot.querySelector('se-select[name="action"]');
       select.value = 'publish';
       select.dispatchEvent(new Event('change'));
       await nextFrame();
@@ -530,12 +533,12 @@ describe('DaMsm component', () => {
       const mock = createFetchMock({});
       await fixtureWithState(mock);
 
-      expect(el.shadowRoot.querySelector('sl-select[name="syncMode"]')).to.not.exist;
+      expect(el.shadowRoot.querySelector('se-select[name="syncMode"]')).to.not.exist;
 
       el._action = 'sync';
       await nextFrame();
 
-      expect(el.shadowRoot.querySelector('sl-select[name="syncMode"]')).to.exist;
+      expect(el.shadowRoot.querySelector('se-select[name="syncMode"]')).to.exist;
     });
   });
 

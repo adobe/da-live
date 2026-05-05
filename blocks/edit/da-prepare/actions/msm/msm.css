@@ -41,7 +41,7 @@
   align-items: flex-start;
   gap: 16px;
 
-  sl-select {
+  se-select {
     flex: 0 0 calc(50% - 8px);
     min-width: 0;
   }
