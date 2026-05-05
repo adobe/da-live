@@ -222,15 +222,6 @@ function onWsSync(wsProvider, callback) {
   wsProvider.on('synced', handleSynced);
 }
 
-function handleProseLoaded(editor, wsProvider) {
-  onWsSync(wsProvider, () => {
-    const daEditor = editor.getRootNode().host;
-    const opts = { bubbles: true, composed: true };
-    const event = new CustomEvent('proseloaded', opts);
-    daEditor.dispatchEvent(event);
-  });
-}
-
 function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   const users = new Set();
 
@@ -504,8 +495,6 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
-
-  handleProseLoaded(editor, wsProvider);
 
   const pluginsPromise = loadCustomPlugins();
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {
