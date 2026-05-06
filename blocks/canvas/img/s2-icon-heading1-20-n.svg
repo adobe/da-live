@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+  <text transform="translate(13.37 15.75)" font-size="12.5" font-weight="700" font-family="AdobeClean-BoldCond, 'Adobe Clean', system-ui, sans-serif"><tspan x="0" y="0">1</tspan></text>
+  <path fill="currentColor" d="m11.5,3.75c.14,0,.25-.11.25-.25v-1c0-.14-.11-.25-.25-.25h-3c-.14,0-.25.11-.25.25v1c0,.14.11.25.25.25h.75v4.5H2.75V3.75h.75c.14,0,.25-.11.25-.25v-1c0-.14-.11-.25-.25-.25H.5c-.14,0-.25.11-.25.25v1c0,.14.11.25.25.25h.75v10.5h-.75c-.14,0-.25.11-.25.25v1c0,.14.11.25.25.25h3c.14,0,.25-.11.25-.25v-1c0-.14-.11-.25-.25-.25h-.75v-4.5h6.5v4.5h-.75c-.14,0-.25.11-.25.25v1c0,.14.11.25.25.25h3c.14,0,.25-.11.25-.25v-1c0-.14-.11-.25-.25-.25h-.75V3.75h.75Z"/>
+</svg>

@@ -1,0 +1,43 @@
+.nx-canvas-editor-mount.nx-canvas-editor-mount-split {
+  flex-flow: row nowrap;
+  align-items: stretch;
+
+  --nx-canvas-split-ratio: 0.5;
+}
+
+.nx-canvas-split-gutter {
+  display: none;
+  flex: 0 0 2px;
+  width: 2px;
+  min-width: 2px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  background-color: var(--s2-gray-200);
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.nx-canvas-editor-mount-split .nx-canvas-split-gutter {
+  display: block;
+}
+
+/* Split: preview left, gutter, doc right; ratio = left / (100% − 2px) */
+.nx-canvas-editor-mount-split nx-editor-wysiwyg {
+  --nx-canvas-wysiwyg-split-width: calc((100% - 2px) * var(--nx-canvas-split-ratio, 0.5));
+
+  flex: 0 0 var(--nx-canvas-wysiwyg-split-width);
+  width: var(--nx-canvas-wysiwyg-split-width);
+  min-width: var(--nx-canvas-wysiwyg-split-width);
+  max-width: none;
+  flex-shrink: 0;
+  max-height: none;
+}
+
+.nx-canvas-editor-mount-split nx-editor-doc {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  max-height: none;
+}

@@ -1,0 +1,37 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.nx-editor-wysiwyg-surface {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.nx-editor-wysiwyg-surface[hidden] {
+  display: none !important;
+}
+
+.nx-editor-wysiwyg-iframe {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+}
+
+.nx-editor-wysiwyg-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 120px;
+  padding: 1rem;
+  color: light-dark(#555, #aaa);
+  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+  text-align: center;
+}

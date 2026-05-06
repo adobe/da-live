@@ -1,0 +1,224 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--s2-gray-25);
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
+  color: var(--s2-gray-900);
+
+  .scroll {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+    pointer-events: none;
+  }
+}
+
+.sheet {
+  --rule: var(--s2-gray-200);
+
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--browse-sheet-max-width, 1024px);
+  margin-inline: auto;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+  font-weight: var(--s2-component-m-medium-font-weight);
+
+  & thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--s2-gray-25);
+  }
+
+  & :is(th, td) {
+    box-sizing: border-box;
+    vertical-align: middle;
+  }
+
+  & th {
+    text-align: left;
+    white-space: nowrap;
+    color: var(--s2-gray-700);
+  }
+
+  & thead th {
+    height: var(--s2-spacing-500);
+    font-weight: var(--s2-component-m-medium-font-weight);
+
+    /* Row-group borders are unreliable with `border-collapse: separate`. Inset
+       shadow draws the rule inside the cell so `height` is not grown by 1px like
+       `border-bottom` on table cells. */
+    background-color: var(--s2-gray-25);
+    box-shadow: inset 0 -1px 0 0 var(--rule);
+  }
+
+  & tbody td {
+    height: var(--s2-spacing-700);
+    padding: 0;
+  }
+
+  & tbody {
+    & td {
+      box-shadow: inset 0 -1px 0 0 var(--rule);
+    }
+
+    & td.column-modified {
+      white-space: nowrap;
+    }
+
+    & tr:last-child td {
+      border-bottom: none;
+    }
+
+    & tr.row {
+      &[aria-selected="true"] {
+        background-color: var(--s2-blue-100);
+      }
+
+      &:hover {
+        background-color: var(--s2-gray-75);
+      }
+
+      &[aria-selected="true"]:hover {
+        background-color: var(--s2-blue-100);
+      }
+    }
+
+    & tr.row-dir,
+    & tr.row-file {
+      cursor: pointer;
+    }
+  }
+
+  & :is(th, td).column-selection {
+    box-sizing: border-box;
+    width: 40px;
+    max-width: 44px;
+    text-align: center;
+  }
+
+  & :is(th, td).column-entry-type {
+    box-sizing: border-box;
+    width: 32px;
+    max-width: 32px;
+    padding-inline: var(--s2-spacing-75);
+    text-align: end;
+  }
+
+  & :is(th, td).column-file-name {
+    width: auto;
+    min-width: 0;
+    padding: 0 var(--s2-spacing-200) 0 var(--s2-spacing-75);
+  }
+
+  & :is(th, td).column-modified {
+    box-sizing: border-box;
+    width: 12.5rem;
+    max-width: 12.5rem;
+    padding: 0 var(--s2-spacing-200) 0 var(--s2-spacing-75);
+  }
+
+  .check {
+    margin: 0;
+    cursor: pointer;
+    vertical-align: middle;
+
+    & input {
+      appearance: none;
+      box-sizing: border-box;
+      width: var(--s2-body-size-s);
+      height: var(--s2-body-size-s);
+      margin: 0;
+      flex-shrink: 0;
+      border: 2px solid var(--s2-gray-900);
+      border-radius: var(--s2-corner-radius-75);
+      background-color: var(--s2-gray-25);
+      cursor: pointer;
+    }
+
+    & input:checked {
+      border-color: var(--s2-blue-900);
+      background-color: var(--s2-blue-900);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2.5 6l2.5 3 4.5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 9px 9px;
+    }
+
+    & input:indeterminate {
+      background-color: var(--s2-gray-25);
+      border-color: var(--s2-gray-900);
+      background-image: linear-gradient(var(--s2-gray-900), var(--s2-gray-900));
+      background-size: 7px 2px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    & input:focus-visible {
+      outline: 2px solid var(--s2-blue-900);
+      outline-offset: 2px;
+    }
+  }
+
+  /* Fill the select column so the whole hit area toggles the checkbox (label wraps input). */
+  & :is(th, td).column-selection .check {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-height: var(--s2-spacing-700);
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    cursor: pointer;
+    vertical-align: middle;
+  }
+
+  & thead th.column-selection .check {
+    min-height: var(--s2-spacing-500);
+  }
+
+  .column-entry-type img {
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin-inline-start: auto;
+  }
+
+  & .filename {
+    display: block;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--s2-gray-900);
+    font-weight: var(--s2-component-m-bold-font-weight);
+  }
+}

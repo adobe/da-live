@@ -1,0 +1,118 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--s2-font-family);
+}
+
+.nx-page-outline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+}
+
+
+.nx-page-outline-list-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s2-spacing-75) 0;
+}
+
+.nx-page-outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nx-page-outline-section {
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--s2-gray-200);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.nx-page-outline-section-header {
+  background: var(--s2-gray-75);
+}
+
+.nx-page-outline-section-label {
+  display: block;
+  padding: var(--s2-spacing-200) var(--s2-spacing-100);
+  font-size: var(--s2-body-size-s);
+  font-weight: 600;
+  color: var(--s2-gray-800);
+}
+
+.nx-page-outline-block-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nx-page-outline-block {
+  display: block;
+  padding: var(--s2-spacing-75) var(--s2-spacing-100);
+  padding-inline-start: var(--s2-spacing-300);
+  cursor: pointer;
+  font-size: var(--s2-body-size-s);
+  font-weight: 500;
+  color: var(--s2-gray-800);
+  min-height: 32px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--s2-gray-100);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--s2-gray-75);
+  }
+
+  &:focus-visible {
+    background: var(--s2-gray-75);
+  }
+
+  &[aria-selected="true"] {
+    background: var(--s2-blue-100);
+    color: var(--s2-blue-900);
+  }
+}
+
+[role="treeitem"]:focus-visible {
+  outline: 2px solid var(--s2-blue-700);
+  outline-offset: -2px;
+  border-radius: var(--s2-corner-radius-75);
+}
+
+.nx-page-outline-block-empty {
+  cursor: default;
+}
+
+.nx-page-outline-empty-label {
+  font-style: italic;
+  color: var(--s2-gray-600);
+  font-weight: 400;
+}
+
+.nx-page-outline-placeholder {
+  padding: var(--s2-spacing-300) var(--s2-spacing-100);
+  font-size: var(--s2-body-size-s);
+  color: var(--s2-gray-600);
+  text-align: center;
+
+  code {
+    font-family: ui-monospace, monospace;
+    background: var(--s2-gray-100);
+    padding: 0.1em 0.3em;
+    border-radius: var(--s2-corner-radius-75);
+  }
+}
