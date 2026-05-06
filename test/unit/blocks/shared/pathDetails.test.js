@@ -5,6 +5,62 @@ import '../../milo.js';
 const { default: getPathDetails } = await import('../../../../blocks/shared/pathDetails.js');
 
 describe('Path details', () => {
+  describe('Edit with trailing slash', () => {
+    it('Strips trailing slash from org-only path and treats as HTML', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe.html');
+      expect(details.depth).to.equal(1);
+      expect(details.view).to.equal('edit');
+    });
+
+    it('Strips trailing slash from org+repo path and treats as HTML', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx.html');
+      expect(details.depth).to.equal(2);
+    });
+
+    it('Strips trailing slash from org+repo+path and treats as HTML', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/testing-123/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
+      expect(details.depth).to.equal(3);
+    });
+
+    it('Does not strip trailing slash in browse view at org+repo depth', () => {
+      const loc = { pathname: '/', hash: '#/adobe/geometrixx/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx/');
+    });
+
+    it('Does not strip trailing slash in browse view at org+repo+path depth', () => {
+      const loc = { pathname: '/', hash: '#/adobe/geometrixx/testing-123/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123/');
+    });
+
+    it('Calls history.replaceState to remove trailing slash when no loc provided', () => {
+      const originalUrl = window.location.href;
+      const replaceStateCalls = [];
+      const originalReplaceState = history.replaceState;
+      history.replaceState = (...args) => { replaceStateCalls.push(args); };
+
+      // Use pushState to set pathname to /edit with a unique trailing-slash hash
+      history.pushState(null, '', '/edit#/adobe/geometrixx/replacestate-trail-test/');
+
+      try {
+        getPathDetails();
+        expect(replaceStateCalls.length).to.equal(1);
+        expect(replaceStateCalls[0][2]).to.include('#/adobe/geometrixx/replacestate-trail-test');
+        expect(replaceStateCalls[0][2]).to.not.include('#/adobe/geometrixx/replacestate-trail-test/');
+      } finally {
+        history.replaceState = originalReplaceState;
+        history.pushState(null, '', originalUrl);
+      }
+    });
+  });
+
   describe('Org only', () => {
     describe('Config', () => {
       it('Handles folder config (/)', () => {
