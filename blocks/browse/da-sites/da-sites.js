@@ -13,7 +13,7 @@ function getRandom() {
 export default class DaSites extends LitElement {
   static properties = {
     _recents: { state: true },
-    _status: { state: true },
+    _toast: { state: true },
     _urlError: { state: true },
   };
 
@@ -26,6 +26,7 @@ export default class DaSites extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
     this._recents = this.getRecents();
+    import('../../shared/da-toast/da-toast.js');
   }
 
   getRecents() {
@@ -40,10 +41,6 @@ export default class DaSites extends LitElement {
       ));
     }
     return null;
-  }
-
-  setStatus(text, description, type = 'info') {
-    this._status = text ? { type, text, description } : null;
   }
 
   handleRemove(site) {
@@ -100,18 +97,7 @@ export default class DaSites extends LitElement {
     const data = [new ClipboardItem({ [blob.type]: blob })];
     navigator.clipboard.write(data);
 
-    this.setStatus('Copied', 'The link was copied to the clipboard.');
-    setTimeout(() => { this.setStatus(); }, 3000);
-  }
-
-  renderStatus() {
-    return html`
-      <div class="da-list-status">
-        <div class="da-list-status-toast da-list-status-type-${this._status.type}">
-          <p class="da-list-status-title">${this._status.text}</p>
-          ${this._status.description ? html`<p class="da-list-status-description">${this._status.description}</p>` : nothing}
-        </div>
-      </div>`;
+    this._toast = { text: 'Copied', description: 'The link was copied to the clipboard.' };
   }
 
   renderGo() {
@@ -230,7 +216,7 @@ export default class DaSites extends LitElement {
           </a>
         </div>
       </div>
-      ${this._status ? this.renderStatus() : nothing}
+      <da-toast .toast=${this._toast} @close=${() => { this._toast = null; }}></da-toast>
     `;
   }
 }

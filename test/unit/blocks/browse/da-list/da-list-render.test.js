@@ -88,15 +88,15 @@ describe('da-list render', () => {
     expect(items[0].getAttribute('name')).to.equal('alpha');
   });
 
-  it('Renders the status toast when _status is set', async () => {
+  it('Renders the toast when _toast is set', async () => {
     await fixture({ fullpath: '/o/r' });
-    el._status = { type: 'success', text: 'Hello', description: 'desc' };
+    const toastData = { type: 'success', text: 'Hello', description: 'desc' };
+    el._toast = toastData;
     el.requestUpdate();
     await nextFrame();
-    const toast = el.shadowRoot.querySelector('.da-list-status');
+    const toast = el.shadowRoot.querySelector('da-toast');
     expect(toast).to.exist;
-    expect(toast.textContent).to.contain('Hello');
-    expect(toast.textContent).to.contain('desc');
+    expect(toast.toast).to.equal(toastData);
   });
 
   it('Renders the drop-conflicts dialog when _dropConflicts is set', async () => {

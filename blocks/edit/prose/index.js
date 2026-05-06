@@ -24,9 +24,10 @@ import {
 
 import { getSchema } from 'da-parser';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getAuthToken } from '../../shared/utils.js';
+import { daFetch, generateColor, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { createCommentsController } from './plugins/comments/helpers/controller.js';
 
 async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
@@ -73,6 +74,7 @@ async function loadCustomPlugins() {
     { default: toggleLibrary },
     { default: slashMenu },
     { default: linkMenu },
+    { default: commentPlugin },
   ] = await Promise.all([
     import('./plugins/keyHandlers.js'),
     import('./plugins/menu/menu.js'),
@@ -88,6 +90,7 @@ async function loadCustomPlugins() {
     import('../da-library/da-library.js'),
     import('./plugins/slashMenu/slashMenu.js'),
     import('./plugins/linkMenu/linkMenu.js'),
+    import('./plugins/comments/commentPlugin.js'),
   ]);
 
   return {
@@ -106,6 +109,7 @@ async function loadCustomPlugins() {
     toggleLibrary,
     slashMenu,
     linkMenu,
+    commentPlugin,
   };
 }
 
@@ -299,26 +303,6 @@ function registerErrorHandler(ydoc) {
   });
 }
 
-function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40, 60]) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i += 1) {
-    // eslint-disable-next-line no-bitwise
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  hash = Math.abs(hash);
-  const normalizeHash = (min, max) => Math.floor((hash % (max - min)) + min);
-  const h = normalizeHash(hRange[0], hRange[1]);
-  const s = normalizeHash(sRange[0], sRange[1]);
-  const l = normalizeHash(lRange[0], lRange[1]) / 100;
-  const a = (s * Math.min(l, 1 - l)) / 100;
-  const f = (n) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
-
 function storeCursorPosition(view) {
   const { from, to } = view.state.selection;
   lastCursorPosition = { from, to };
@@ -347,12 +331,9 @@ function addSyncedListener(wsProvider, canWrite) {
   });
 }
 
-function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
+function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins, commentsController) {
   pluginsPromise.then((plugins) => {
-    const {
-      syncPlugin,
-      cursorPlugin,
-    } = basePlugins;
+    const { syncPlugin, cursorPlugin } = basePlugins;
 
     const undoPlugin = yUndoPlugin();
     const trackPlugin = trackCursorAndChanges();
@@ -366,6 +347,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
       cursorPlugin,
       undoPlugin,
       trackPlugin,
+      plugins.commentPlugin(commentsController),
       plugins.slashMenu(),
       plugins.linkMenu(),
       plugins.tableSelectHandle(),
@@ -457,6 +439,9 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
     });
   }
 
+  const ymap = ydoc.getMap('comments');
+  const commentsController = createCommentsController({ ymap, ydoc, wsProvider });
+
   const syncPlugin = ySyncPlugin(yXmlFragment);
   const cursorPlugin = yCursorPlugin(wsProvider.awareness);
 
@@ -492,6 +477,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   });
 
   addActiveView(window.view);
+  commentsController.bindView(window.view);
 
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
@@ -500,11 +486,12 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {
     syncPlugin,
     cursorPlugin,
-  });
+  }, commentsController);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
   daContent.proseEl = editor;
   daContent.wsProvider = wsProvider;
+  daContent.commentsController = commentsController;
 }

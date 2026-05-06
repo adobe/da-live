@@ -58,17 +58,17 @@ describe('DaList helpers', () => {
   });
 
   describe('setStatus', () => {
-    it('Sets a status object with type/text/description', () => {
+    it('Sets a toast object with type/text/description', () => {
       const el = makeList();
       el.setStatus('Hi', 'desc', 'success');
-      expect(el._status).to.deep.equal({ type: 'success', text: 'Hi', description: 'desc' });
+      expect(el._toast).to.deep.equal({ type: 'success', text: 'Hi', description: 'desc', duration: 0 });
     });
 
-    it('Clears the status when text is omitted', () => {
+    it('Clears the toast when text is omitted', () => {
       const el = makeList();
-      el._status = { type: 'info', text: 'x', description: '' };
+      el._toast = { type: 'info', text: 'x', description: '' };
       el.setStatus();
-      expect(el._status).to.equal(null);
+      expect(el._toast).to.equal(null);
     });
   });
 
@@ -504,11 +504,10 @@ describe('DaList helpers', () => {
   });
 
   describe('handleShare', () => {
-    it('Sets a copied status and clears it after 3s', async () => {
+    it('Sets a copied toast', () => {
       const el = makeList();
       el.handleShare();
-      expect(el._status.text).to.equal('Copied');
-      // We don't wait the full 3s, but verify the function ran without error.
+      expect(el._toast.text).to.equal('Copied');
     });
   });
 

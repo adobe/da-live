@@ -7,6 +7,12 @@
 .da-prose-mirror {
   --editor-btn-bg-color: #EFEFEF;
   --editor-btn-bg-color-hover: var(--s2-blue-900);
+  --comment-highlight-bg: #fbf198; /* spectrum-yellow-100 */
+  --comment-highlight-bg-active: #f8d904; /* spectrum-yellow-300 */
+  --comment-highlight-border: #f8d904; /* spectrum-yellow-300 */
+  --comment-highlight-border-active: #e8c600; /* spectrum-yellow-400 */
+  --comment-pending-bg: #ffe9fc; /* spectrum-fuchsia-100 */
+  --comment-pending-border: #ed74ed; /* spectrum-fuchsia-600 */
 
   position: relative;
   grid-area: editor;
@@ -1027,3 +1033,42 @@ da-diff-deleted, da-diff-added {
   background-color: #f0f7ff;
   border-color: var(--s2-blue-800);
 }
+
+.da-comment-highlight {
+  --da-comment-bg: var(--comment-highlight-bg);
+  --da-comment-border-color: var(--comment-highlight-border);
+  --da-comment-border-style: solid;
+
+  background-color: var(--da-comment-bg);
+  border-bottom: 2px var(--da-comment-border-style) var(--da-comment-border-color);
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+
+  &:has(> img) {
+    padding: 6px;
+  }
+}
+
+.da-comment-highlight-active {
+  --da-comment-bg: var(--comment-highlight-bg-active);
+  --da-comment-border-color: var(--comment-highlight-border-active);
+}
+
+.da-comment-highlight-pending {
+  --da-comment-bg: var(--comment-pending-bg);
+  --da-comment-border-color: var(--comment-pending-border);
+  --da-comment-border-style: dashed;
+}
+
+.ProseMirror .da-comment-highlight tr:first-child td,
+.ProseMirror .da-comment-highlight tr:first-child th {
+  background-color: var(--da-comment-bg);
+}
+
+img.da-comment-highlight {
+  pointer-events: auto;
+  box-shadow:
+    0 0 0 6px var(--da-comment-bg),
+    0 2px 0 6px var(--da-comment-border-color);
+}
+
