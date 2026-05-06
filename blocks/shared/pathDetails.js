@@ -123,8 +123,10 @@ export default function getPathDetails(loc) {
   const fullpath = hash.replace('#', '');
   window.name = fullpath;
 
-  // IMS will redirect and there's a small window where old_hash exists
-  if (!fullpath || fullpath.startsWith('old_hash') || fullpath.startsWith('access_token')) return null;
+  // IMS redirect fragments appear as '/ld_hash=', '/old_hash=', '/access_token=' in the path.
+  // fullpath always starts with '/' here, so strip it before the prefix check.
+  const pathContent = fullpath.slice(1);
+  if (!pathContent || pathContent.startsWith('old_hash') || pathContent.startsWith('access_token') || pathContent.startsWith('ld_hash')) return null;
 
   // Split everything up so it can be later used for both DA & AEM
   const pathParts = sanitizePathParts(fullpath);
@@ -146,6 +148,7 @@ export default function getPathDetails(loc) {
   const ext = getExtension(editor, pathParts.slice(-1)[0], isFolder);
 
   const depth = pathParts.length;
+  const cleanParts = [...pathParts];
 
   if (depth === 1) details = getOrgDetails({ editor, pathParts, ext });
 
@@ -153,8 +156,10 @@ export default function getPathDetails(loc) {
 
   if (depth >= 3) details = getFullDetails({ editor, pathParts, ext });
 
-  let path = ext === 'html' && !fullpath.endsWith('.html') ? `${fullpath}.html` : fullpath;
+  const cleanPath = `/${cleanParts.join('/')}`;
+  let path = ext === 'html' && !cleanPath.endsWith('.html') && editor !== 'sheet' ? `${cleanPath}.html` : cleanPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+  if (isFolder && !path.endsWith('/')) path = `${path}/`;
 
   details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
 

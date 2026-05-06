@@ -149,6 +149,50 @@ describe('DaNew', () => {
       expect(sendEvents[0].path).to.equal('/org/repo/foo.link');
       expect(sendEvents[0].name).to.equal('foo');
     });
+
+    it('creates an empty HTML document via saveToDa before navigating (document type)', async () => {
+      const el = new DaNew();
+      const input = makeNameInput();
+      stubShadowRoot(el, { '.da-actions-input[placeholder="name"]': input });
+      el._createName = 'my-doc';
+      el._createType = 'document';
+      el.fullpath = '/org/repo';
+      el.editor = '/edit#';
+
+      const fetchCalls = [];
+      const savedFetch = window.fetch;
+      // Intercept the saveToDa PUT so we can verify it ran *before* the
+      // window.location navigation. Throw so handleSave rejects before it
+      // reaches the navigation line — letting the assertion run reliably.
+      const NAV_SENTINEL = new Error('stop-before-nav');
+      window.fetch = async (url, opts) => {
+        const body = opts?.body instanceof FormData ? opts.body.get('data') : null;
+        const bodyText = body && typeof body.text === 'function' ? await body.text() : null;
+        fetchCalls.push({ url, method: opts?.method, bodyText });
+        throw NAV_SENTINEL;
+      };
+
+      el.sendNewItem = () => {};
+      el.resetCreate = () => {};
+
+      let caught;
+      try {
+        await el.handleSave();
+      } catch (e) {
+        caught = e;
+      } finally {
+        window.fetch = savedFetch;
+      }
+
+      // saveToDa's daFetch does not catch the raw throw, so it surfaces here.
+      expect(caught).to.equal(NAV_SENTINEL);
+      expect(fetchCalls).to.have.length(1);
+      expect(fetchCalls[0].url).to.equal('https://admin.da.live/source/org/repo/my-doc.html');
+      expect(fetchCalls[0].method).to.equal('PUT');
+      expect(fetchCalls[0].bodyText).to.equal(
+        '<body><header></header><main><div></div></main><footer></footer></body>',
+      );
+    });
   });
 
   describe('handleUpload', () => {
@@ -242,6 +286,176 @@ describe('DaNew', () => {
       // Base before ext is "my.file name!" -> "my.file-name-" -> "my.file-name".
       expect(sendEvents[0].name).to.equal('my.file-name');
       expect(sendEvents[0].path).to.equal('/org/repo/my.file-name.html');
+    });
+  });
+
+  describe('sendNewItem', () => {
+    it('Dispatches a newitem event with the item detail', () => {
+      const el = new DaNew();
+      let detail;
+      el.dispatchEvent = (e) => { detail = e.detail; };
+      el.sendNewItem({ name: 'foo', path: '/x', ext: 'html' });
+      expect(detail).to.deep.equal({ item: { name: 'foo', path: '/x', ext: 'html' } });
+    });
+  });
+
+  describe('handleCreateMenu', () => {
+    it('Toggles the menu open and closed', () => {
+      const el = new DaNew();
+      el.handleCreateMenu();
+      expect(el._createShow).to.equal('menu');
+      el.handleCreateMenu();
+      expect(el._createShow).to.equal('');
+    });
+  });
+
+  describe('handleNewType', () => {
+    it('Sets _createShow to "upload" for media', () => {
+      const el = new DaNew();
+      Object.defineProperty(el, 'shadowRoot', {
+        configurable: true,
+        value: { querySelector: () => ({ focus: () => {} }) },
+      });
+      el.handleNewType({ target: { dataset: { type: 'media' } } });
+      expect(el._createShow).to.equal('upload');
+      expect(el._createType).to.equal('media');
+    });
+
+    it('Sets _createShow to "input" for non-media', () => {
+      const el = new DaNew();
+      Object.defineProperty(el, 'shadowRoot', {
+        configurable: true,
+        value: { querySelector: () => ({ focus: () => {} }) },
+      });
+      el.handleNewType({ target: { dataset: { type: 'document' } } });
+      expect(el._createShow).to.equal('input');
+      expect(el._createType).to.equal('document');
+    });
+  });
+
+  describe('handleUrlChange', () => {
+    it('Stores the new value into _externalUrl', () => {
+      const el = new DaNew();
+      el.handleUrlChange({ target: { value: 'https://x' } });
+      expect(el._externalUrl).to.equal('https://x');
+    });
+  });
+
+  describe('handleAddFile', () => {
+    it('Sets _fileLabel from the selected file and clears the error class', () => {
+      const el = new DaNew();
+      const errorEl = { classList: { remove: (c) => { errorEl.removed = c; } } };
+      const target = {
+        files: [{ name: 'pic.jpg' }],
+        parentElement: { querySelector: (sel) => (sel.includes('da-input-error') ? errorEl : null) },
+      };
+      el.handleAddFile({ target });
+      expect(el._fileLabel).to.equal('pic.jpg');
+      expect(errorEl.removed).to.equal('da-input-error');
+    });
+
+    it('Skips the error reset when no error label is present', () => {
+      const el = new DaNew();
+      el.handleAddFile({
+        target: {
+          files: [{ name: 'doc.html' }],
+          parentElement: { querySelector: () => null },
+        },
+      });
+      expect(el._fileLabel).to.equal('doc.html');
+    });
+  });
+
+  describe('resetCreate', () => {
+    it('Clears every create-related state value', () => {
+      const el = new DaNew();
+      el._createShow = 'menu';
+      el._createName = 'x';
+      el._createType = 'document';
+      el._createFile = 'f';
+      el._fileLabel = 'pic.jpg';
+      el._externalUrl = 'https://x';
+      Object.defineProperty(el, 'shadowRoot', {
+        configurable: true,
+        value: { querySelector: () => null },
+      });
+      el.resetCreate();
+      expect(el._createShow).to.equal('');
+      expect(el._createName).to.equal('');
+      expect(el._createType).to.equal('');
+      expect(el._createFile).to.equal('');
+      expect(el._fileLabel).to.equal('Select file');
+      expect(el._externalUrl).to.equal('');
+    });
+
+    it('preventDefaults the event when one is supplied', () => {
+      const el = new DaNew();
+      Object.defineProperty(el, 'shadowRoot', {
+        configurable: true,
+        value: { querySelector: () => null },
+      });
+      let prevented = false;
+      el.resetCreate({ preventDefault: () => { prevented = true; } });
+      expect(prevented).to.be.true;
+    });
+
+    it('Removes the input-error class when the input is in error', () => {
+      const el = new DaNew();
+      const errorInput = { classList: { remove: (c) => { errorInput.removed = c; } } };
+      Object.defineProperty(el, 'shadowRoot', {
+        configurable: true,
+        value: { querySelector: () => errorInput },
+      });
+      el.resetCreate();
+      expect(errorInput.removed).to.equal('da-input-error');
+    });
+  });
+
+  describe('handleKeyCommands', () => {
+    it('Submits on Enter', () => {
+      const el = new DaNew();
+      let saved = false;
+      el.handleSave = () => { saved = true; };
+      el.handleKeyCommands({ key: 'Enter', preventDefault: () => {} });
+      expect(saved).to.be.true;
+    });
+
+    it('Resets on Escape', () => {
+      const el = new DaNew();
+      let reset = false;
+      el.resetCreate = () => { reset = true; };
+      el.handleKeyCommands({ key: 'Escape' });
+      expect(reset).to.be.true;
+    });
+
+    it('Does nothing on other keys', () => {
+      const el = new DaNew();
+      let saved = false;
+      let reset = false;
+      el.handleSave = () => { saved = true; };
+      el.resetCreate = () => { reset = true; };
+      el.handleKeyCommands({ key: 'a', preventDefault: () => {} });
+      expect(saved).to.be.false;
+      expect(reset).to.be.false;
+    });
+  });
+
+  describe('_disabled getter', () => {
+    it('Disabled when no permissions provided', () => {
+      const el = new DaNew();
+      expect(el._disabled).to.be.true;
+    });
+
+    it('Disabled when only read permission', () => {
+      const el = new DaNew();
+      el.permissions = ['read'];
+      expect(el._disabled).to.be.true;
+    });
+
+    it('Enabled when write permission is included', () => {
+      const el = new DaNew();
+      el.permissions = ['read', 'write'];
+      expect(el._disabled).to.be.false;
     });
   });
 });

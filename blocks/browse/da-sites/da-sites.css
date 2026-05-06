@@ -14,11 +14,17 @@ h2 {
 }
 
 .da-site-bg {
-  width: 100%;
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    mask-image: linear-gradient(to top, transparent, rgb(0 0 0) 99%);
+  }
 }
 
 .da-site-container {
@@ -39,7 +45,7 @@ h2 {
   display: grid;
   place-items: center;
   place-content: center;
-  background: #fafafa;
+  background: var(--s2-gray-25);
   border-radius: var(--s2-corner-radius-800);
   min-height: 320px;
   box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
@@ -76,17 +82,26 @@ form {
 form input {
   border: none;
   background: transparent;
-  border-bottom: 1px solid #a2a2a2;
+  border-bottom: 1px solid var(--s2-gray-900);
   font-family: var(--s2-font-family);
   font-size: 16px;
   padding: 0 0 4px 4px;
   line-height: 26px;
   width: 100%;
+
+  &::placeholder {
+    font-style: italic;
+    color: var(--s2-gray-800);
+  }
+
+  &:focus::placeholder {
+    opacity: 0.5;
+  }
 }
 
 form input:focus-visible {
   padding: 0 0 3px 4px;
-  border-bottom: 2px solid #808080;
+  border-bottom: 2px solid var(--s2-gray-1000);
   outline: none;
   outline-offset: 0;
 }
@@ -120,11 +135,6 @@ form input.error {
 
 .da-no-site-well form {
   width: 100%;
-}
-
-form input::placeholder {
-  font-style: italic;
-  color: #888;
 }
 
 form button {
@@ -172,7 +182,7 @@ form button:hover {
   width: 100%;
   height: 100%;
   position: relative;
-  background-color: rgb(255 255 255);
+  background-color: rgb(0 0 0);
   border-radius: 12px;
   transition: all 0.5s ease-in-out;
   transform-style: preserve-3d;
@@ -180,8 +190,8 @@ form button:hover {
 }
 
 .da-site-front img {
-  height: 100%;
   width: 100%;
+  height: auto;
   object-fit: cover;
   transform: scale(1);
   transition: transform .25s ease-in-out;
@@ -346,12 +356,12 @@ form button:hover {
   grid-area: main;
   color: #fff;
   font-weight: 700;
-  font-size: var(--s2-heading-size-300);
+  font-size: var(--s2-body-size-s);
   text-decoration: none;
 
   span:nth-child(2) {
-    font-size: 16px;
-    font-weight: 500;
+    font-size: var(--s2-body-size-l);
+    font-weight: 400;
   }
 }
 

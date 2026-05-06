@@ -222,15 +222,6 @@ function onWsSync(wsProvider, callback) {
   wsProvider.on('synced', handleSynced);
 }
 
-function handleProseLoaded(editor, wsProvider) {
-  onWsSync(wsProvider, () => {
-    const daEditor = editor.getRootNode().host;
-    const opts = { bubbles: true, composed: true };
-    const event = new CustomEvent('proseloaded', opts);
-    daEditor.dispatchEvent(event);
-  });
-}
-
 function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   const users = new Set();
 
@@ -257,10 +248,18 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
 
+  // Seed from current provider state in case 'status' fired before subscribe.
+  if (wsProvider.wsconnected) daTitle.collabStatus = 'connected';
+  else daTitle.collabStatus = 'connecting';
+
   wsProvider.on('connection-close', async () => {
     const resp = await checkDoc(path);
     if (resp.status === 404) {
-      const split = window.location.hash.slice(2).split('/');
+      const { hash } = window.location;
+      // Guard: hash must start with '#/' — during an IMS redirect the hash is '#access_token=...'
+      // and slice(2) would remove '#a', writing 'ccess_token=...' into the URL as an org name.
+      if (!hash.startsWith('#/')) return;
+      const split = hash.slice(2).split('/');
       split.pop();
       // Navigate to the parent folder
       window.location.replace(`/#/${split.join('/')}`);
@@ -273,7 +272,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   win.addEventListener('focus', () => {
     // cancel any pending disconnect
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
-    wsProvider.connect();
+    if (!wsProvider.wsconnected) wsProvider.connect();
   });
   win.addEventListener('blur', () => {
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
@@ -496,8 +495,6 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
-
-  handleProseLoaded(editor, wsProvider);
 
   const pluginsPromise = loadCustomPlugins();
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {

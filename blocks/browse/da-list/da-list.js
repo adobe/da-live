@@ -5,15 +5,17 @@ import { daFetch, aemAdmin } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
-// Styles & Icons
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
-const STYLE = await getStyle(import.meta.url);
 const ICONS = [
   '/blocks/edit/img/Smock_Cancel_18_N.svg',
   '/blocks/edit/img/Smock_Checkmark_18_N.svg',
   '/blocks/edit/img/Smock_Refresh_18_N.svg',
 ];
+
+const MAX_DELETE_COUNT = 1000;
+const DELETE_CONFIRM_THRESHOLD = 10;
 
 export default class DaList extends LitElement {
   static properties = {
@@ -39,6 +41,8 @@ export default class DaList extends LitElement {
     _confirm: { state: true },
     _confirmText: { state: true },
     _unpublish: { state: true },
+    _deleteCount: { state: true },
+    _deleteCountLoading: { state: true },
     _continuationToken: { state: true },
     _isLoadingMore: { state: true },
     _bulkLoading: { state: true },
@@ -216,6 +220,12 @@ export default class DaList extends LitElement {
     this._confirm = null;
     this._confirmText = null;
     this._unpublish = null;
+    if (this._deleteCrawl) {
+      this._deleteCrawl.cancelCrawl();
+      this._deleteCrawl = null;
+    }
+    this._deleteCount = null;
+    this._deleteCountLoading = false;
   }
 
   handleSelectionState() {
@@ -381,6 +391,36 @@ export default class DaList extends LitElement {
 
   async handleDelete() {
     this._confirm = 'delete';
+    this._deleteCount = null;
+    this._deleteCountLoading = false;
+
+    const folders = this._selectedItems.filter((item) => !item.ext);
+    const files = this._selectedItems.filter((item) => item.ext);
+
+    if (folders.length === 0) {
+      this._deleteCount = files.length;
+      return;
+    }
+
+    this._deleteCountLoading = true;
+    try {
+      const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
+      const crawlInstance = crawl({
+        path: folders.map((folder) => folder.path),
+        files,
+        concurrent: 5,
+      });
+      this._deleteCrawl = crawlInstance;
+      const allFiles = await crawlInstance.results;
+      // If the user cancelled/closed the dialog while we were crawling, bail out
+      if (this._confirm !== 'delete' || this._deleteCrawl !== crawlInstance) return;
+      this._deleteCount = allFiles.length;
+    } finally {
+      if (this._confirm === 'delete') {
+        this._deleteCountLoading = false;
+      }
+      this._deleteCrawl = null;
+    }
   }
 
   async handleConfirmDelete() {
@@ -624,7 +664,8 @@ export default class DaList extends LitElement {
   }
 
   get _itemString() {
-    return this._selectedItems.length > 1 ? 'items' : 'item';
+    const count = this._deleteCount ?? this._selectedItems.length;
+    return count > 1 ? 'items' : 'item';
   }
 
   get _confirmContent() {
@@ -632,8 +673,39 @@ export default class DaList extends LitElement {
     const inTrash = this._selectedItems.some((item) => item.path.includes('/.trash/'));
     const linkOnly = this._selectedItems.length === 1 && this._selectedItems[0].ext === 'link';
 
+    const requireTypedDelete = this._deleteCount != null
+      && this._deleteCount >= DELETE_CONFIRM_THRESHOLD
+      && this._deleteCount <= MAX_DELETE_COUNT;
+
+    const buildYesInput = (heading) => html`
+      <div class="da-actionbar-modal-confirmation">
+        ${heading ? html`<p class="sl-heading-m">${heading}</p>` : nothing}
+        <p>Type <strong>YES</strong> to confirm.</p>
+        <sl-input
+          type="text"
+          placeholder="YES"
+          autofocus=""
+          @input=${(e) => {
+            const upper = e.target.value.toUpperCase();
+            if (e.target.value !== upper) e.target.value = upper;
+            this._confirmText = upper;
+          }}
+          aria-label="Type YES to confirm"
+          value=${this._confirmText ?? ''}></sl-input>
+      </div>
+    `;
+
     if (noUnpub) {
-      return html`<p>Are you sure you want to delete this content?${inTrash || linkOnly ? '' : ' Published items will remain live.'}</p>`;
+      const subject = requireTypedDelete
+        ? `${this._deleteCount} ${this._itemString}`
+        : 'this content';
+      const suffix = inTrash || linkOnly ? '' : ' Published items will remain live.';
+      const lead = html`<p>Are you sure you want to delete ${subject}?${suffix}</p>`;
+      if (!requireTypedDelete) return lead;
+      return html`
+        ${lead}
+        ${buildYesInput()}
+      `;
     }
 
     const checkbox = html`
@@ -651,23 +723,20 @@ export default class DaList extends LitElement {
       </div>
     `;
 
-    // If checkbox checked, only return the checkbox
-    if (!this._unpublish) return checkbox;
+    if (!this._unpublish && !requireTypedDelete) return checkbox;
 
-    // Return checkbox and confirm text
+    let heading;
+    if (this._unpublish && requireTypedDelete) {
+      heading = `Are you sure you want to unpublish and delete ${this._deleteCount} ${this._itemString}?`;
+    } else if (this._unpublish) {
+      heading = 'Are you sure you want to unpublish?';
+    } else {
+      heading = `Are you sure you want to delete ${this._deleteCount} ${this._itemString}?`;
+    }
+
     return html`
       ${checkbox}
-      <div class="da-actionbar-modal-confirmation">
-        <p class="sl-heading-m">Are you sure you want to unpublish?</p>
-        <p>Type <strong>YES</strong> to confirm.</p>
-        <sl-input
-          type="text"
-          placeholder="YES"
-          autofocus=""
-          @input=${({ target }) => { this._confirmText = target.value; }}
-          aria-label="Type yes to confirm unpublish"
-          value=${this._confirmText}></sl-input>
-      </div>
+      ${buildYesInput(heading)}
     `;
   }
 
@@ -686,17 +755,44 @@ export default class DaList extends LitElement {
   }
 
   renderConfirm() {
-    const title = `Deleting ${this._selectedItems.length} ${this._itemString}`;
+    const loading = this._deleteCountLoading;
+    const count = this._deleteCount;
+    const exceedsMax = !loading && count > MAX_DELETE_COUNT;
+
+    const title = loading
+      ? 'Calculating items to delete…'
+      : `Deleting ${count} ${this._itemString}`;
+
     const hasRemaining = this._itemsRemaining !== 0;
-    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
-    const unpublishConfirmed = this._unpublish && this._confirmText !== 'YES';
+    const requireTypedDelete = !loading
+      && count != null
+      && count >= DELETE_CONFIRM_THRESHOLD
+      && count <= MAX_DELETE_COUNT;
+    const requireYes = this._unpublish || requireTypedDelete;
+    const yesUnconfirmed = requireYes && this._confirmText !== 'YES';
+
+    let message = nothing;
+    if (hasRemaining) {
+      message = `${this._itemsRemaining} remaining`;
+    } else if (loading) {
+      message = 'Crawling selected folders…';
+    }
 
     const action = {
       style: 'negative',
       label: this._unpublish ? 'Unpublish & delete' : 'Delete',
       click: async () => this.handleConfirmDelete(),
-      disabled: unpublishConfirmed || hasRemaining,
+      disabled: yesUnconfirmed || hasRemaining || loading || exceedsMax,
     };
+
+    let body;
+    if (loading) {
+      body = nothing;
+    } else if (exceedsMax) {
+      body = html`<p>This selection contains more than ${MAX_DELETE_COUNT} items. Bulk deletions of this size aren't supported here — please contact your administrator to proceed.</p>`;
+    } else {
+      body = this._confirmContent;
+    }
 
     return html`
       <da-dialog
@@ -704,7 +800,7 @@ export default class DaList extends LitElement {
         .message=${message}
         .action=${action}
         @close=${this.handleConfirmClose}>
-        ${this._confirmContent}
+        ${body}
       </da-dialog>
     `;
   }

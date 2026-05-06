@@ -1,6 +1,13 @@
 import { expect } from '@esm-bundle/chai';
 import { baseSchema, Slice } from 'da-y-wrapper';
-import sectionPasteHandler from '../../../../../../blocks/edit/prose/plugins/sectionPasteHandler.js';
+import { setNx } from '../../../../../../scripts/utils.js';
+
+// Seed nx so the dynamic import inside showSpaceNormalizationDialog (triggered
+// by the non-standard-space tests) resolves against the test fixture instead
+// of failing with "Failed to resolve module specifier 'undefined/...'".
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const { default: sectionPasteHandler } = await import('../../../../../../blocks/edit/prose/plugins/sectionPasteHandler.js');
 
 function normalizeHTML(html) {
   return html.replace(/[\n\s]+/g, ' ').replace(/></g, '> <').trim();
@@ -234,6 +241,55 @@ describe('Section paste handler', () => {
     const json = slice.content.toJSON();
     expect(json).to.have.lengthOf(1);
     expect(json[0]).to.deep.equal({ type: 'paragraph', content: [{ type: 'text', text: 'hello world' }] });
+  });
+
+  it('Plain text paste linkifies a bare URL', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const slice = textParser('https://example.com/foo');
+    const json = slice.content.toJSON();
+    expect(json).to.have.lengthOf(1);
+    expect(json[0].content).to.have.lengthOf(1);
+    expect(json[0].content[0].text).to.equal('https://example.com/foo');
+    expect(json[0].content[0].marks[0].type).to.equal('link');
+    expect(json[0].content[0].marks[0].attrs.href).to.equal('https://example.com/foo');
+  });
+
+  it('Plain text paste linkifies a URL embedded in text', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const slice = textParser('see https://example.com here');
+    const json = slice.content.toJSON();
+    expect(json[0].content).to.have.lengthOf(3);
+    expect(json[0].content[0]).to.deep.equal({ type: 'text', text: 'see ' });
+    expect(json[0].content[1].text).to.equal('https://example.com');
+    expect(json[0].content[1].marks[0].attrs.href).to.equal('https://example.com');
+    expect(json[0].content[2]).to.deep.equal({ type: 'text', text: ' here' });
+  });
+
+  it('Plain text paste trims trailing punctuation from URLs', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const slice = textParser('visit https://example.com.');
+    const json = slice.content.toJSON();
+    expect(json[0].content).to.have.lengthOf(3);
+    expect(json[0].content[1].text).to.equal('https://example.com');
+    expect(json[0].content[1].marks[0].attrs.href).to.equal('https://example.com');
+    expect(json[0].content[2]).to.deep.equal({ type: 'text', text: '.' });
+  });
+
+  it('Plain text paste linkifies multiple URLs on one line', () => {
+    const plugin = sectionPasteHandler(baseSchema);
+    const textParser = plugin.props.clipboardTextParser;
+
+    const slice = textParser('a https://one.com b https://two.com c');
+    const json = slice.content.toJSON();
+    expect(json[0].content).to.have.lengthOf(5);
+    expect(json[0].content[1].marks[0].attrs.href).to.equal('https://one.com');
+    expect(json[0].content[3].marks[0].attrs.href).to.equal('https://two.com');
   });
 
   it('Test transform pasted dashes', () => {

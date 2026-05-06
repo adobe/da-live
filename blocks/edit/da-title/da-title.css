@@ -44,6 +44,11 @@ da-dialog {
   background: var(--s2-blue-900);
   border-color: var(--s2-blue-900);
   color: #FFF;
+
+  &:disabled {
+    background: var(--s2-gray-500);
+    border-color: var(--s2-gray-500);
+  }
 }
 
 .da-title-inner {
@@ -121,13 +126,16 @@ da-dialog {
   z-index: 2;
 }
 
-.collab-icon.collab-popup::after {
+.collab-icon.collab-popup::after,
+.da-title-action::after {
   display: block;
   content: attr(data-popup-content);
   position: absolute;
   bottom: -32px;
   left: 50%;
   transform: translateX(-50%);
+  font-size: 12px;
+  line-height: 1.6;
   text-align: center;
   text-transform: capitalize;
   background: #676767;
@@ -135,6 +143,21 @@ da-dialog {
   white-space: nowrap;
   padding: 0 8px;
   border-radius: 4px;
+}
+
+.da-title-action {
+  position: relative;
+  display: none;
+
+  &::after {
+    display: none;
+    bottom: -22px;
+    text-transform: unset;
+  }
+
+  &:hover::after {
+    display: unset;
+  }
 }
 
 .collab-icon-user {
@@ -172,9 +195,15 @@ da-dialog {
   height: 27px;
 }
 
-.da-title-action {
+.da-title-action-send {
   position: relative;
-  display: none;
+  padding: 5px 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
 }
 
 .da-title-actions {
@@ -184,7 +213,8 @@ da-dialog {
   gap: 12px;
   height: 44px;
 
-  &.is-open {
+  &.is-open,
+  &.has-one-action {
     margin-left: 12px;
 
     .da-title-action {
@@ -200,23 +230,24 @@ da-dialog {
     }
   }
 
+  &.has-one-action {
+    margin-left: 0;
+
+    .da-title-action-send {
+      display: none;
+    }
+
+    &::before {
+      background: transparent;
+    }
+  }
+
   &.is-fixed {
     position: fixed;
     right: 18px;
     bottom: 12px;
     z-index: 10000;
   }
-}
-
-.da-title-action-send {
-  position: relative;
-  padding: 5px 0;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
 }
 
 .da-title-action-send-icon {

@@ -16,9 +16,9 @@ button {
   top: 40px;
   margin: 0 0 0 6px;
   list-style: none;
-  background: #FFF;
-  box-shadow: 0 0 5px 0 #b5b5b5;
-  border-radius: 4px;
+  background: var(--s2-gray-25);
+  box-shadow: 0 0 5px 0 var(--s2-gray-500);
+  border-radius: 10px;
   padding: 6px;
   z-index: 100;
 }
@@ -111,12 +111,12 @@ button {
   line-height: 28px;
   border: none;
   padding: 0 10px;
-  border-radius: 2px;
+  border-radius: 6px;
   background: transparent;
 }
 
 li.da-actions-menu-item button:hover {
-  background: #EFEFEF;
+  background: var(--s2-gray-100);
 }
 
 .da-input-error {

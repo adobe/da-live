@@ -1,0 +1,30 @@
+.light-scheme {
+  .browse:has(da-sites) {
+    [data-scheme="light"] {
+      display: block;
+    }
+  }
+}
+
+.dark-scheme {
+  .browse:has(da-sites) {
+    [data-scheme="dark"] {
+      display: block;
+    }
+  }
+}
+
+picture {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+img {
+  display: block;
+  width: 100%;
+  height: auto;
+  mask-image: linear-gradient(to bottom, rgb(0 0 0) 50%, transparent 100%);
+}

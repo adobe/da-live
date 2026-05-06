@@ -104,6 +104,8 @@ export async function aemAdmin(path, api, method = 'POST') {
 }
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
+  if (!path || !path.startsWith('/') || path.includes('://')) return undefined;
+
   const opts = { method: 'PUT' };
 
   const form = formData || new FormData();
@@ -160,6 +162,7 @@ export async function livePreviewLogin(owner, repo) {
  * instead of the public preview URL, preventing unauthorized access to images.
  * @param {string} owner - The owner identifier
  * @returns {Promise<boolean>} True if lockdownImages flag is enabled, false otherwise
+ * @deprecated
  */
 export async function checkLockdownImages(owner) {
   try {
@@ -191,6 +194,8 @@ export const fetchDaConfigs = (() => {
   };
 
   return ({ org, site }) => {
+    if (!org) return [Promise.resolve(null)];
+
     // Set the org config promise if it does not exist
     configCache[`/${org}`] ??= fetchConfig(`/${org}`);
 
@@ -244,7 +249,7 @@ export const getAemSiteToken = (() => {
   return ({ org, site }) => {
     const path = `/${org}/${site}`;
     // Fetch new token if it doesn't exit
-    tokenCache[path] ??= fetchToken('adobecom', 'da-bacom');
+    tokenCache[path] ??= fetchToken(org, site);
 
     return tokenCache[path];
   };

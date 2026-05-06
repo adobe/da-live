@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/no-unresolved
-import { Plugin, PluginKey, TextSelection } from 'da-y-wrapper';
+import { Plugin, PluginKey } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
 
@@ -12,13 +12,14 @@ export async function uploadImageFile(view, file) {
   if (!SUPPORTED_IMAGE_TYPES.some((type) => type === file.type)) return;
 
   const { schema } = view.state;
-  const fpo = schema.nodes.image.create({ src: FPO_IMG_URL, style: 'width: 180px' });
-  view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
-
-  const { $from } = view.state.selection;
-
   const details = getPathDetails();
   const url = `${details.origin}/source${details.parent}/.${details.name}/${file.name}`;
+
+  // Use the upload URL as a unique FPO identifier so concurrent uploads can
+  // each find their own placeholder by content rather than by stale position.
+  const fpoSrc = `${FPO_IMG_URL}#${url}`;
+  const fpo = schema.nodes.image.create({ src: fpoSrc, style: 'width: 180px' });
+  view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
 
   const formData = new FormData();
   formData.append('data', file);
@@ -30,11 +31,17 @@ export async function uploadImageFile(view, file) {
   // Create a doc image to pre-download the image before showing it.
   const docImg = document.createElement('img');
   docImg.addEventListener('load', () => {
-    const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
-    const ts = view.state.tr.setSelection(fpoSelection);
-    const img = schema.nodes.image.create({ src: json.source.contentUrl });
-    const tr = ts.replaceSelectionWith(img).scrollIntoView();
-    view.dispatch(tr);
+    // Find the placeholder by its unique src rather than a stale position so
+    // concurrent uploads and collab updates cannot cause the wrong node to be
+    // replaced.
+    let replaced = false;
+    view.state.doc.descendants((node, pos) => {
+      if (!replaced && node.type.name === 'image' && node.attrs.src === fpoSrc) {
+        replaced = true;
+        const img = schema.nodes.image.create({ src: json.source.contentUrl });
+        view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, img).scrollIntoView());
+      }
+    });
   });
   docImg.src = json.source.contentUrl;
 }
