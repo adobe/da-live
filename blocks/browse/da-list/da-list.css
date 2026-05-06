@@ -4,10 +4,10 @@
 
 /* Item List */
 .da-item-list {
-  border: 1px solid rgb(209 209 209);
+  border: 1px solid var(--s2-gray-200);
   border-radius: 6px;
   overflow: hidden;
-  background: #f8f8f8;
+  background: var(--s2-gray-75);
 }
 
 .da-list-sentinel {
@@ -20,7 +20,7 @@ da-list-item::before {
   display: block;
   content: "";
   height: 1px;
-  background: #e5e5e5;
+  background: var(--s2-gray-400);
   margin: 0 18px;
 }
 
@@ -28,20 +28,20 @@ da-list-item::after {
   display: block;
   content: "";
   height: 1px;
-  background: #e5e5e5;
+  background: var(--s2-gray-400);
   margin: 0 18px;
 }
 
 da-list-item:hover::before,
 da-list-item.is-expanded::before {
   margin: 0;
-  background: rgb(20 122 243);
+  background: var(--s2-blue-900);
 }
 
 da-list-item:hover::after,
 da-list-item.is-expanded::after {
   margin: 0;
-  background: rgb(20 122 243);
+  background: var(--s2-blue-900);
 }
 
 /* Empty list */
@@ -56,8 +56,8 @@ da-list-item.is-expanded::after {
 }
 
 .da-browse-panel-header {
-  margin: var(--spacing-75) 1px var(--spacing-300) 1px;
-  padding: 0 var(--spacing-400);
+  margin: var(--s2-spacing-100) 1px var(--s2-spacing-300) 1px;
+  padding: 0 var(--s2-spacing-400);
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -83,7 +83,7 @@ da-list-item.is-expanded::after {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2px;
+  width: 32px;
   height: 18px;
   position: relative;
 }
@@ -174,7 +174,7 @@ da-list-item.is-expanded::after {
   right: 0;
   bottom: -3px;
   height: 2px;
-  background: var(--s2-gray-700);
+  background: var(--s2-gray-200);
   border-radius: 1.5px;
 }
 

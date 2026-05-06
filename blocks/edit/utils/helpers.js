@@ -1,9 +1,8 @@
 import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { sanitizePathParts } from '../../../../scripts/utils.js';
 import prose2aem from '../../shared/prose2aem.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, getSidekickConfig } from '../../shared/utils.js';
 
 export function isURL(text) {
   try {
@@ -41,20 +40,31 @@ function parseAemError(xError) {
   return xError.replace('[admin] ', '');
 }
 
-export async function getCdnConfig(path) {
-  const [org, site] = sanitizePathParts(path);
-  const resp = await daFetch(`${AEM_ORIGIN}/config/${org}/sites/${site}.json`);
-  if (!resp.ok) {
-    // eslint-disable-next-line no-console
-    console.warn(`Cannot fetch site config. - Status: ${resp.status}`);
-    return { error: 'Cannot fetch site config.', status: resp.status };
-  }
-  const json = await resp.json();
-  if (!json.cdn) return {};
-  return {
-    preview: json.cdn.preview?.host,
-    prod: json.cdn.prod?.host,
+export async function getAemHrefs({ path }) {
+  // Mine the path for different parts
+  const [org, site, ...parts] = path.slice(1).split('/');
+
+  // The pathname as supplied (may include snapshot prefix)
+  const pathname = `/${parts.join('/')}`;
+
+  // If a snapshot, remove both parts, but keep the name
+  const snapshot = parts[0] === '.snapshots' && parts.splice(0, 2)[1];
+
+  // Normalize SK props to be more "Config Bus" like
+  const { host, liveHost, previewHost: preview } = await getSidekickConfig({ org, site });
+  const prod = host || liveHost;
+
+  const hrefs = {
+    preview: new URL(pathname, `https://${preview}`),
+    prod: new URL(pathname, `https://${prod}`),
   };
+
+  if (snapshot) {
+    const snapPath = `/${parts.join('/')}`;
+    hrefs.review = new URL(snapPath, `https://${snapshot}--main--${site}--${org}.aem.reviews`);
+  }
+
+  return hrefs;
 }
 
 export async function saveToAem(path, action) {
@@ -201,19 +211,19 @@ export function saveDaConfig(pathname, sheet) {
   return saveJson(fullPath, sheet, null, 'config');
 }
 
-export async function saveDaVersion(pathname, ext = 'html') {
-  const fullPath = `${DA_ORIGIN}/versionsource${pathname}.${ext}`;
+export async function saveDaVersion(pathname, label = 'Published') {
+  const fullPath = `${DA_ORIGIN}/versionsource${pathname}`;
 
   const opts = {
     method: 'POST',
-    body: JSON.stringify({ label: 'Published' }),
+    body: JSON.stringify({ label }),
   };
 
   try {
     await daFetch(fullPath, opts);
   } catch {
     // eslint-disable-next-line no-console
-    console.log('Error creating auto version on publish.');
+    console.log(`Error creating auto version (${label}).`);
   }
 }
 

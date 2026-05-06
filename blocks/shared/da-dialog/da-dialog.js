@@ -7,9 +7,8 @@ const nx = getNx();
 await import(`${nx}/public/sl/components.js`);
 
 // Styles
-const { default: getStyle } = await import(`${nx}/utils/styles.js`);
-const SL = await getStyle(`${nx}/public/sl/styles.css`);
-const STYLE = await getStyle(import.meta.url);
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 
 export default class DaDialog extends LitElement {
   static properties = {
@@ -23,7 +22,7 @@ export default class DaDialog extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [SL, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [STYLE];
     setTimeout(() => { this.showModal(); }, 20);
   }
 
@@ -49,17 +48,6 @@ export default class DaDialog extends LitElement {
     this.dispatchEvent(event);
   }
 
-  get _action() {
-    if (this.action) return this.action;
-
-    // Build out a default action.
-    return {
-      label: 'OK',
-      style: 'accent',
-      onClick: this.close(),
-    };
-  }
-
   get _dialog() {
     return this.shadowRoot.querySelector('sl-dialog');
   }
@@ -73,7 +61,7 @@ export default class DaDialog extends LitElement {
     const emphasisClass = this.emphasis ? `da-dialog-${this.emphasis}` : '';
 
     return html`
-      <sl-dialog @close=${this.close}>
+      <sl-dialog overflow="hidden" @close=${this.close}>
         <div class="da-dialog-inner ${sizeClass} ${emphasisClass}" part="inner">
           <div class="da-dialog-header" part="header">
             <p class="sl-heading-m">${this.title}</p>
@@ -88,17 +76,17 @@ export default class DaDialog extends LitElement {
           <div class="da-dialog-content" part="content">
             <slot></slot>
           </div>
-          <div class="da-dialog-footer" part="footer">
+          ${this.action ? html`<div class="da-dialog-footer" part="footer">
             <div class="da-dialog-footer-left" part="footer-left">
               <slot name="footer-left"></slot>
               <p class="da-dialog-footer-message">${this.message || nothing}</p>
             </div>
             <slot name="footer-right">
-              <sl-button class="${this._action.style}" @click=${this._action.click} ?disabled=${this._action.disabled}>
-                ${this._action.label}
+              <sl-button class="${this.action.style}" @click=${this.action.click} ?disabled=${this.action.disabled}>
+                ${this.action.label}
               </sl-button>
             </slot>
-          </div>
+          </div>` : nothing}
         </div>
       </sl-dialog>
     `;

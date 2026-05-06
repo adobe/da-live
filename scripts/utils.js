@@ -9,7 +9,6 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-export const codeBase = `${import.meta.url.replace('/scripts/utils.js', '')}`;
 
 export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
   if (!name) return null;
@@ -45,47 +44,40 @@ export function sanitizePath(path) {
   return `/${sanitizePathParts(path).join('/')}`;
 }
 
+// Determine what version of NX to load
+let nxVer = document.head.querySelector('[name="nxver"]')?.getAttribute('content');
+if (!nxVer) nxVer = sanitizeName(new URLSearchParams(window.location.search).get('nxver'));
+
+/** Determine NX filenames */
+export const nxJS = nxVer ? '/scripts/nx.js' : '/scripts/nexter.js';
+export const nxCSS = nxVer ? '/styles/styles.css' : '/styles/nexter.css';
+
 export const [setNx, getNx] = (() => {
   let nx;
 
   return [
     (nxBase, location) => {
+      // Version nxBase if supplied from query param
+      const nxVerBase = nxVer ? `${nxBase}2` : nxBase;
+
       nx = (() => {
         const { hostname, search } = location || window.location;
         const nxBaseParam = sanitizeName(new URLSearchParams(search).get('nx'));
         const isProd = !(hostname.includes('.aem.') || hostname.includes('local'));
 
         // If no custom nexter branch & on prod, use the default CDN route
-        if (!nxBaseParam && isProd) return nxBase;
+        if (!nxBaseParam && isProd) return nxVerBase;
 
         // Determine set a branch regardless of param
         const branch = nxBaseParam || 'main';
 
         // Local is a special key to use nexter from localhost
-        if (branch === 'local') return 'http://localhost:6456/nx';
+        if (branch === 'local') return `http://localhost:6456${nxVerBase}`;
 
         // Otherwise use a fully qualified branch
-        return `https://${branch}--da-nx--adobe.aem.live/nx`;
+        return `https://${branch}--da-nx--adobe.aem.live${nxVerBase}`;
       })();
       return nx;
     }, () => nx,
   ];
 })();
-
-export function decorateArea(area = document) {
-  const eagerLoad = (parent, selector) => {
-    const img = parent.querySelector(selector);
-    img?.removeAttribute('loading');
-  };
-
-  (async function loadLCPImage() {
-    const hero = area.querySelector('.nx-hero, .hero');
-    if (!hero) {
-      eagerLoad(area, 'img');
-      return;
-    }
-
-    eagerLoad(hero, 'div:first-child img');
-    eagerLoad(hero, 'div:last-child > div:last-child img');
-  }());
-}

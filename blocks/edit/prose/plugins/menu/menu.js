@@ -1,6 +1,7 @@
 import {
   DOMParser,
   Plugin,
+  PluginKey,
   addColumnAfter,
   addColumnBefore,
   deleteColumn,
@@ -25,7 +26,7 @@ import {
 } from 'da-y-wrapper';
 
 import openPrompt from '../../../da-palette/da-palette.js';
-import openLibrary from '../../../da-library/da-library.js';
+import toggleLibrary from './toggleLibrary.js';
 import { handleUndo, handleRedo } from '../keyHandlers.js';
 import insertTable from '../../table.js';
 import { linkItem, removeLinkItem } from './linkItem.js';
@@ -378,7 +379,7 @@ function getMenu(view) {
       label: 'Library',
       enable() { return true; },
       run() {
-        openLibrary();
+        toggleLibrary();
       },
       class: 'open-library',
     }),
@@ -428,7 +429,10 @@ function getMenu(view) {
   return { menu, update };
 }
 
+const menuKey = new PluginKey('menu');
+
 export default new Plugin({
+  key: menuKey,
   props: {
     handleDOMEvents: {
       focus: (view) => {

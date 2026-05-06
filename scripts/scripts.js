@@ -10,51 +10,69 @@
  * governing permissions and limitations under the License.
  */
 
-import { setNx, codeBase, decorateArea } from './utils.js';
+import { initIms } from '../blocks/shared/utils.js';
+import { setNx, nxJS, nxCSS } from './utils.js';
 
-const nx = setNx('/nx');
-const STYLES = '/styles/styles.css';
-const CONFIG = {
-  codeBase,
-  imsClientId: 'darkalley',
-  imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
-  decorateArea,
-};
-
-/*
- * ------------------------------------------------------------
- * Edit below at your own risk
- * ------------------------------------------------------------
- */
-
-const { loadArea, setConfig } = await import(`${nx}/scripts/nexter.js`);
-setConfig(CONFIG);
-
-// TODO: Remove this once content is fixed for Nexter
-const headerMeta = document.head.querySelector('[content="aec-shell"]');
-if (headerMeta) headerMeta.remove();
-
-function loadStyles() {
-  const paths = [`${nx}/styles/nexter.css`];
-  if (STYLES) { paths.push(STYLES); }
-  paths.forEach((path) => {
-    const link = document.createElement('link');
-    link.setAttribute('rel', 'stylesheet');
-    link.setAttribute('href', path);
-    document.head.appendChild(link);
+export function decorateArea({ area = document } = {}) {
+  // Find all dark & light images
+  const lcpImgs = [...area.querySelectorAll('[alt="light"], [alt="dark"]')].filter((img) => {
+    const pic = img.parentElement;
+    const parent = img.alt === 'light' ? img.closest('.light-scheme') : img.closest('.dark-scheme');
+    pic.dataset.scheme = img.alt;
+    img.alt = '';
+    return !!parent;
   });
+
+  // If browsing with a hash, skip LCP detection
+  if (window.location.hash && area.querySelector('.browse')) return;
+
+  // Only pick the first image from all found
+  const img = lcpImgs[0] || area.querySelector('img');
+  if (!img) return;
+
+  img.removeAttribute('loading');
+  img.fetchPriority = 'high';
 }
 
+// Where to load NX
+const nx = setNx('/nx');
+const nx2 = nx.endsWith('nx2');
+const { loadArea, setConfig, getColorScheme } = await import(`${nx}${nxJS}`);
+
+// Set color scheme once
+document.body.classList.add(getColorScheme());
+
+// Load NX styles
+const link = document.createElement('link');
+link.setAttribute('rel', 'stylesheet');
+link.setAttribute('href', `${nx}${nxCSS}`);
+document.head.appendChild(link);
+
+const CONFIG = {
+  hostnames: ['da.live', 'da.page'],
+  codeBase: import.meta.url.replace('/scripts/scripts.js', ''),
+  providers: { da: window.location.origin },
+  decorateArea,
+  imsClientId: 'darkalley',
+  imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
+};
+
 export default async function loadPage() {
+  if (!nx2) {
+    // pin to light scheme
+    document.body.classList.remove('light-scheme', 'dark-scheme');
+    document.body.classList.add('light-scheme');
+  }
+  const imsReady = initIms();
+  await setConfig(CONFIG);
+
+  // Only block on IMS for OAuth-callback loads
+  const { hash } = window.location;
+  if (hash.includes('access_token=') || hash.includes('old_hash=')) {
+    await imsReady;
+  }
+
   await loadArea();
 }
 
-loadStyles();
-decorateArea();
 loadPage();
-
-// Side-effects
-(async function loadDa() {
-  if (!new URL(window.location.href).searchParams.get('dapreview')) return;
-  import('https://da.live/scripts/dapreview.js').then(({ default: daPreview }) => daPreview(loadPage));
-}());

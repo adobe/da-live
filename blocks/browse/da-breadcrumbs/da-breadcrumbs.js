@@ -1,24 +1,18 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
-// Styles & Icons
-const getStyle = (await import(`${getNx()}/public/utils/styles.js`)).default;
-const getSvg = (await import(`${getNx()}/public/utils/svg.js`)).default;
-
-const STYLE = await getStyle(import.meta.url);
-const ICONS = await getSvg({ paths: ['/blocks/browse/da-browse/img/Smock_Settings_18_N.svg'] });
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const style = await loadStyle(import.meta.url);
 
 export default class DaBreadcrumbs extends LitElement {
   static properties = {
-    fullpath: { type: String },
-    depth: { type: Number },
+    details: { attribute: false },
     _breadcrumbs: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
-    this.shadowRoot.append(...ICONS);
+    this.shadowRoot.adoptedStyleSheets = [style];
   }
 
   update(props) {
@@ -27,23 +21,23 @@ export default class DaBreadcrumbs extends LitElement {
   }
 
   getBreadcrumbs() {
-    const pathSplit = this.fullpath.split('/').filter((part) => part !== '');
+    const pathSplit = this.details.fullpath.split('/').filter((part) => part !== '');
     this._breadcrumbs = pathSplit.map((part, idx) => ({
       name: part,
       path: `#/${pathSplit.slice(0, idx + 1).join('/')}`,
     }));
   }
 
-  renderConfig(length, crumb, idx) {
-    if (this.depth <= 2 && idx + 1 === length) {
-      return html`
-        <a class="da-breadcrumb-list-item-config"
-           href="/config${crumb.path}/"
-           aria-label="Config">
-           <svg class="da-breadcrumb-list-item-icon"><use href="#spectrum-settings"/></svg>
-        </a>`;
-    }
-    return null;
+  renderConfig(crumb) {
+    if (this.details.path) return nothing;
+    return html`
+      <a class="da-breadcrumb-list-item-config"
+        href="/config${crumb.path}/"
+        aria-label="Config">
+        <svg class="da-breadcrumb-list-item-icon" viewBox="0 0 20 20">
+          <use href="/img/icons/s2-icon-settings-20-n.svg#icon"/>
+        </svg>
+      </a>`;
   }
 
   render() {
@@ -54,7 +48,7 @@ export default class DaBreadcrumbs extends LitElement {
             <li class="da-breadcrumb-list-item">
               <div class=da-breadcrumb-list-item-link-wrapper>
                 <a href="${crumb.path}">${crumb.name}</a>
-                ${this.renderConfig(this._breadcrumbs.length, crumb, idx)}
+                ${this._breadcrumbs.length === idx + 1 ? this.renderConfig(crumb) : nothing}
                 </a>
             </li>
           `)}

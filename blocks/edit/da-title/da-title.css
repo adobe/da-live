@@ -9,11 +9,16 @@
 
 h1 {
   position: relative;
-  margin-top: 0;
+  margin: 0 0 21px;
 }
 
 button {
   font-family: var(--body-font-family);
+}
+
+da-prepare {
+  width: 44px;
+  height: 44px;
 }
 
 da-dialog {
@@ -39,6 +44,11 @@ da-dialog {
   background: var(--s2-blue-900);
   border-color: var(--s2-blue-900);
   color: #FFF;
+
+  &:disabled {
+    background: var(--s2-gray-500);
+    border-color: var(--s2-gray-500);
+  }
 }
 
 .da-title-inner {
@@ -92,9 +102,10 @@ da-dialog {
 
 .da-title-collab-actions-wrapper {
   display: flex;
-  margin-bottom: 0.67em;
+  margin: 0 0 21px;
   justify-content: center;
   align-items: center;
+  gap: 24px;
 }
 
 .collab-status {
@@ -115,13 +126,16 @@ da-dialog {
   z-index: 2;
 }
 
-.collab-icon.collab-popup::after {
+.collab-icon.collab-popup::after,
+.da-title-action::after {
   display: block;
   content: attr(data-popup-content);
   position: absolute;
   bottom: -32px;
   left: 50%;
   transform: translateX(-50%);
+  font-size: 12px;
+  line-height: 1.6;
   text-align: center;
   text-transform: capitalize;
   background: #676767;
@@ -131,10 +145,25 @@ da-dialog {
   border-radius: 4px;
 }
 
+.da-title-action {
+  position: relative;
+  display: none;
+
+  &::after {
+    display: none;
+    bottom: -22px;
+    text-transform: unset;
+  }
+
+  &:hover::after {
+    display: unset;
+  }
+}
+
 .collab-icon-user {
   height: 24px;
   border-radius: 12px;
-  background: rgb(171 171 171 / 50%);
+  background-color: rgb(212 212 212 / 50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -143,17 +172,17 @@ da-dialog {
   margin-right: -6px;
   padding: 0 12px;
   user-select: none;
-}
 
-.collab-icon-user:hover {
-  background: rgb(150 150 150 / 50%);
+  &:hover {
+    background-color: rgb(180 180 180 / 50%);
+  }
 }
 
 .collab-status-cloud {
   height: 27px;
   margin-left: -4px;
   margin-bottom: -3px;
-  color: rgb(171 171 171 / 50%);
+  color: rgb(212 212 212 / 50%);
 }
 
 .collab-icon.collab-status-cloud.collab-popup::after {
@@ -166,35 +195,8 @@ da-dialog {
   height: 27px;
 }
 
-.da-title-actions {
-  position: relative;
-  border: 12px solid transparent;
-  border-radius: 100px;
-  display: flex;
-  gap: 12px;
-  height: 44px;
-}
-
-.da-title-actions.is-fixed {
-  position: fixed;
-  right: 18px;
-  bottom: 12px;
-  z-index: 10000;
-}
-
-.da-title-actions.is-open {
-  background: #EFEFEF;
-}
-
-.da-title-actions.is-open .da-title-action {
-  display: unset;
-}
-
-.da-title-action {
-  display: none;
-}
-
 .da-title-action-send {
+  position: relative;
   padding: 5px 0;
   width: 44px;
   height: 44px;
@@ -204,12 +206,56 @@ da-dialog {
   overflow: hidden;
 }
 
+.da-title-actions {
+  position: relative;
+  border-radius: 100px;
+  display: flex;
+  gap: 12px;
+  height: 44px;
+
+  &.is-open,
+  &.has-one-action {
+    margin-left: 12px;
+
+    .da-title-action {
+      display: unset;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -12px;
+      border-radius: 100px;
+      background: #EFEFEF;
+    }
+  }
+
+  &.has-one-action {
+    margin-left: 0;
+
+    .da-title-action-send {
+      display: none;
+    }
+
+    &::before {
+      background: transparent;
+    }
+  }
+
+  &.is-fixed {
+    position: fixed;
+    right: 18px;
+    bottom: 12px;
+    z-index: 10000;
+  }
+}
+
 .da-title-action-send-icon {
   position: relative;
   display: block;
-  width: 22px;
-  height: 22px;
-  background: url('/blocks/edit/img/Smock_Send_18_N.svg') center/22px no-repeat;
+  width: 20px;
+  height: 20px;
+  margin-right: 2px; /* visually center */
 }
 
 .da-title-action-send-icon.is-sending {
@@ -217,7 +263,6 @@ da-dialog {
 }
 
 .da-title-error {
-  margin: 0 0 0 24px;
   color: #fff;
   background-color: #d73220;
   padding: 4px 8px;
@@ -317,10 +362,6 @@ div.collab-initial p {
 
   .da-title-inner {
     display: flex;
-  }
-
-  .da-title-actions {
-    right: -12px;
   }
 }
 

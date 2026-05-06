@@ -1,10 +1,12 @@
 // eslint-disable-next-line import/no-unresolved
-import { Plugin, TextSelection } from 'da-y-wrapper';
+import { Plugin, PluginKey } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch } from '../../../shared/utils.js';
 
+const imageDropKey = new PluginKey('imageDrop');
+
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
-const SUPPORTED_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
+export const SUPPORTED_IMAGE_TYPES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
 async function renderError(message) {
   await import('../../../shared/da-dialog/da-dialog.js');
@@ -21,8 +23,67 @@ async function renderError(message) {
   dialog.showModal();
 }
 
-export default function imageDrop(schema) {
+export async function uploadImageFile(view, file) {
+  if (!SUPPORTED_IMAGE_TYPES.some((type) => type === file.type)) return;
+
+  const { schema } = view.state;
+  const details = getPathDetails();
+  const url = `${details.origin}/media${details.parent}/${file.name}`;
+
+  // Use the upload URL as a unique FPO identifier so concurrent uploads can
+  // each find their own placeholder by content rather than by stale position.
+  const fpoSrc = `${FPO_IMG_URL}#${url}`;
+  const fpo = schema.nodes.image.create({ src: fpoSrc, style: 'width: 180px' });
+  view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
+
+  const formData = new FormData();
+  formData.append('data', file);
+  const opts = { method: 'POST', body: formData };
+  const resp = await daFetch(url, opts);
+  if (!resp.ok) {
+    let removed = false;
+    view.state.doc.descendants((node, pos) => {
+      if (!removed && node.type.name === 'image' && node.attrs.src === fpoSrc) {
+        removed = true;
+        view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize).scrollIntoView());
+      }
+    });
+
+    if (resp.status === 413) {
+      renderError('Image size exceeds 20MB limit');
+    } else {
+      const json = await resp.json();
+      if (json.error) {
+        renderError(`Failed to upload image: ${json.error}`);
+      } else {
+        renderError(`Failed to upload image: ${json.message}`);
+      }
+    }
+    return;
+  }
+  const json = await resp.json();
+
+  // Create a doc image to pre-download the image before showing it.
+  const docImg = document.createElement('img');
+  docImg.addEventListener('load', () => {
+    // Find the placeholder by its unique src rather than a stale position so
+    // concurrent uploads and collab updates cannot cause the wrong node to be
+    // replaced.
+    let replaced = false;
+    view.state.doc.descendants((node, pos) => {
+      if (!replaced && node.type.name === 'image' && node.attrs.src === fpoSrc) {
+        replaced = true;
+        const img = schema.nodes.image.create({ src: json.uri });
+        view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, img).scrollIntoView());
+      }
+    });
+  });
+  docImg.src = json.uri;
+}
+
+export default function imageDrop() {
   return new Plugin({
+    key: imageDropKey,
     props: {
       handleDOMEvents: {
         drop: (view, event) => {
@@ -31,51 +92,8 @@ export default function imageDrop(schema) {
           const { files } = event.dataTransfer;
           if (files.length === 0) return;
 
-          ([...files]).forEach(async (file) => {
-            if (!SUPPORTED_FILES.some((type) => type === file.type)) return;
-
-            const fpo = schema.nodes.image.create({ src: FPO_IMG_URL, style: 'width: 180px' });
-            view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
-
-            const { $from } = view.state.selection;
-
-            const details = getPathDetails();
-            const url = `${details.origin}/media${details.parent}/${file.name}`;
-
-            const formData = new FormData();
-            formData.append('data', file);
-            const opts = { method: 'POST', body: formData };
-            const resp = await daFetch(url, opts);
-            if (!resp.ok) {
-              const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
-              const ts = view.state.tr.setSelection(fpoSelection);
-              view.dispatch(ts.deleteSelection().scrollIntoView());
-
-              if (resp.status === 413) {
-                renderError('Image size exceeds 20MB limit');
-              } else {
-                const json = await resp.json();
-                if (json.error) {
-                  renderError(`Failed to upload image: ${json.error}`);
-                } else {
-                  renderError(`Failed to upload image: ${json.message}`);
-                }
-              }
-
-              return;
-            }
-            const json = await resp.json();
-
-            // Create a doc image to pre-download the image before showing it.
-            const docImg = document.createElement('img');
-            docImg.addEventListener('load', () => {
-              const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
-              const ts = view.state.tr.setSelection(fpoSelection);
-              const img = schema.nodes.image.create({ src: json.uri });
-              const tr = ts.replaceSelectionWith(img).scrollIntoView();
-              view.dispatch(tr);
-            });
-            docImg.src = json.uri;
+          ([...files]).forEach((file) => {
+            uploadImageFile(view, file);
           });
         },
       },

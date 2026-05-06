@@ -6,7 +6,7 @@ import { expect } from '@esm-bundle/chai';
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
 const { setNx } = await import('../../../../../scripts/utils.js');
-setNx('/bheuaark/', { hostname: 'localhost' });
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaBrowse } = await import('../../../../../blocks/browse/da-list/da-list.js');
 const { default: DaBrowseComponent } = await import('../../../../../blocks/browse/da-browse/da-browse.js');
@@ -215,6 +215,130 @@ describe('Browse', () => {
 
     expect(daBrowse.hasPaginationStateChanges(changedProps)).to.be.true;
   });
+
+  describe('handleItemAction move-to-trash error handling', () => {
+    it('throws on non-OK non-204 response instead of calling resp.json()', async () => {
+      const daBrowse = new DaBrowse();
+      daBrowse._listItems = [{ path: '/myorg/mysite/file.html', name: 'file', ext: 'html' }];
+      daBrowse._listItemPaths = new Set(['/myorg/mysite/file.html']);
+      daBrowse._itemErrors = [];
+
+      const item = {
+        path: '/myorg/mysite/file.html',
+        destination: '/myorg/mysite/.trash/file.html',
+        ext: 'html',
+        name: 'file',
+        isChecked: true,
+      };
+
+      const mockFetch = async () => ({
+        ok: false,
+        status: 500,
+        json: async () => { throw new Error('json should not be called'); },
+        headers: { get: () => null },
+      });
+
+      const orgFetch = window.fetch;
+      try {
+        window.fetch = mockFetch;
+        await daBrowse.handleItemAction({ item, type: 'move' });
+
+        expect(daBrowse._itemErrors.length).to.equal(1);
+        expect(daBrowse._itemErrors[0].message).to.equal("Couldn't move item");
+      } finally {
+        window.fetch = orgFetch;
+      }
+    });
+
+    it('does not fall back to delete on non-403 errors for move-to-trash', async () => {
+      const daBrowse = new DaBrowse();
+      daBrowse._listItems = [{ path: '/myorg/mysite/file.html', name: 'file', ext: 'html' }];
+      daBrowse._listItemPaths = new Set(['/myorg/mysite/file.html']);
+      daBrowse._itemErrors = [];
+
+      const item = {
+        path: '/myorg/mysite/file.html',
+        destination: '/myorg/mysite/.trash/file.html',
+        ext: 'html',
+        name: 'file',
+        isChecked: true,
+      };
+
+      let deleteCalled = false;
+      const origHandleItemAction = daBrowse.handleItemAction.bind(daBrowse);
+      daBrowse.handleItemAction = async (opts) => {
+        if (opts.type === 'delete') {
+          deleteCalled = true;
+        } else {
+          await origHandleItemAction(opts);
+        }
+      };
+
+      const mockFetch = async () => ({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+        headers: { get: () => null },
+      });
+
+      const orgFetch = window.fetch;
+      try {
+        window.fetch = mockFetch;
+        await daBrowse.handleItemAction({ item, type: 'move' });
+
+        expect(deleteCalled).to.be.false;
+        expect(daBrowse._itemErrors.length).to.equal(1);
+        expect(daBrowse._itemErrors[0].message).to.equal("Couldn't move item");
+      } finally {
+        window.fetch = orgFetch;
+      }
+    });
+
+    it('falls back to delete only on 403 for move-to-trash', async () => {
+      const daBrowse = new DaBrowse();
+      daBrowse._listItems = [{ path: '/myorg/mysite/file.html', name: 'file', ext: 'html' }];
+      daBrowse._listItemPaths = new Set(['/myorg/mysite/file.html']);
+      daBrowse._itemErrors = [];
+
+      const item = {
+        path: '/myorg/mysite/file.html',
+        destination: '/myorg/mysite/.trash/file.html',
+        ext: 'html',
+        name: 'file',
+        isChecked: true,
+      };
+
+      let deleteCalledWith = null;
+      const origHandleItemAction = daBrowse.handleItemAction.bind(daBrowse);
+      daBrowse.handleItemAction = async (opts) => {
+        if (opts.type === 'delete') {
+          deleteCalledWith = opts;
+        } else {
+          await origHandleItemAction(opts);
+        }
+      };
+
+      const mockFetch = async () => ({
+        ok: false,
+        status: 403,
+        json: async () => ({}),
+        headers: { get: () => null },
+      });
+
+      const orgFetch = window.fetch;
+      try {
+        window.fetch = mockFetch;
+        await daBrowse.handleItemAction({ item, type: 'move' });
+
+        expect(deleteCalledWith).to.not.be.null;
+        expect(deleteCalledWith.item.path).to.equal('/myorg/mysite/file.html');
+        expect(deleteCalledWith.type).to.equal('delete');
+        expect(daBrowse._itemErrors.length).to.equal(0);
+      } finally {
+        window.fetch = orgFetch;
+      }
+    });
+  });
 });
 
 describe('DaBrowse Component', () => {
@@ -223,6 +347,64 @@ describe('DaBrowse Component', () => {
   beforeEach(() => {
     daBrowseComp = new DaBrowseComponent();
     daBrowseComp.details = { fullpath: '/myorg/mysite/folder', owner: 'myorg', depth: 3 };
+  });
+
+  describe('getEditor', () => {
+    const UE_CONF = '/myorg/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live';
+    const FORM_CONF = '/myorg/mysite/dealers=https://da.live/form#';
+
+    function mockConfig(rows) {
+      window.fetch = async () => ({
+        ok: true,
+        json: async () => ({ data: rows }),
+      });
+    }
+
+    let origFetch;
+    beforeEach(() => { origFetch = window.fetch; });
+    afterEach(() => { window.fetch = origFetch; });
+
+    it('returns default edit path when no editor.path rows exist', async () => {
+      mockConfig([]);
+      const url = await daBrowseComp.getEditor(true);
+      expect(url).to.equal('/edit#');
+    });
+
+    it('matches a single editor.path row by prefix', async () => {
+      daBrowseComp.details = { fullpath: '/myorg/mysite/some-doc', owner: 'myorg', depth: 3 };
+      mockConfig([{ key: 'editor.path', value: UE_CONF }]);
+      const url = await daBrowseComp.getEditor(true);
+      expect(url).to.equal('https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live');
+    });
+
+    it('prefers the more specific (longer prefix) match over a shorter one', async () => {
+      daBrowseComp.details = { fullpath: '/myorg/mysite/dealers/acme', owner: 'myorg', depth: 4 };
+      mockConfig([
+        { key: 'editor.path', value: UE_CONF },
+        { key: 'editor.path', value: FORM_CONF },
+      ]);
+      const url = await daBrowseComp.getEditor(true);
+      // /myorg/mysite/dealers is more specific than /myorg/mysite even though
+      // UE_CONF has a longer total string length
+      expect(url).to.equal('https://da.live/form#');
+    });
+
+    it('falls back to the broader match when path is outside the specific folder', async () => {
+      daBrowseComp.details = { fullpath: '/myorg/mysite/other/page', owner: 'myorg', depth: 4 };
+      mockConfig([
+        { key: 'editor.path', value: UE_CONF },
+        { key: 'editor.path', value: FORM_CONF },
+      ]);
+      const url = await daBrowseComp.getEditor(true);
+      expect(url).to.equal('https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live');
+    });
+
+    it('returns default edit path when no prefix matches the current path', async () => {
+      daBrowseComp.details = { fullpath: '/otherorg/othersite/page', owner: 'otherorg', depth: 3 };
+      mockConfig([{ key: 'editor.path', value: UE_CONF }]);
+      const url = await daBrowseComp.getEditor(true);
+      expect(url).to.equal('/edit#');
+    });
   });
 
   describe('isRootFolder', () => {
@@ -250,7 +432,14 @@ describe('DaBrowse Component', () => {
   });
 
   describe('browseListItems getter', () => {
+    let origFetch;
+
     beforeEach(async () => {
+      // Stub fetch so the update() lifecycle's getEditor() call doesn't fire
+      // an external request and trip the "fetch external resource" warning.
+      origFetch = window.fetch;
+      window.fetch = async () => ({ ok: true, json: async () => ({ data: [] }) });
+
       // Properly initialize the component by adding to DOM
       document.body.innerHTML = '<div id="container"></div>';
       const container = document.getElementById('container');
@@ -259,6 +448,7 @@ describe('DaBrowse Component', () => {
     });
 
     afterEach(() => {
+      window.fetch = origFetch;
       document.body.innerHTML = '';
     });
 
@@ -268,6 +458,115 @@ describe('DaBrowse Component', () => {
 
     it('returns empty array when browse list has no _listItems', () => {
       expect(daBrowseComp.browseListItems).to.deep.equal([]);
+    });
+  });
+
+  describe('handleTabClick', () => {
+    it('Marks the clicked tab as selected and others as not', () => {
+      daBrowseComp.handleTabClick(1);
+      expect(daBrowseComp._tabItems[0].selected).to.be.false;
+      expect(daBrowseComp._tabItems[1].selected).to.be.true;
+    });
+  });
+
+  describe('context getter', () => {
+    it('Reads the id of the selected tab', () => {
+      daBrowseComp.handleTabClick(1);
+      expect(daBrowseComp.context).to.equal('search');
+    });
+  });
+
+  describe('handlePermissions', () => {
+    it('Forwards permissions to the new component if present', () => {
+      const newCmp = { permissions: undefined };
+      Object.defineProperty(daBrowseComp, 'newCmp', { configurable: true, get: () => newCmp });
+      daBrowseComp.handlePermissions({ detail: ['read', 'write'] });
+      expect(newCmp.permissions).to.deep.equal(['read', 'write']);
+    });
+
+    it('Is a no-op when no new component is rendered', () => {
+      Object.defineProperty(daBrowseComp, 'newCmp', { configurable: true, get: () => null });
+      expect(() => daBrowseComp.handlePermissions({ detail: ['read'] })).not.to.throw();
+    });
+  });
+
+  describe('handleShortcuts (Cmd/Ctrl+Alt+T)', () => {
+    let savedHash;
+    beforeEach(() => { savedHash = window.location.hash; });
+    afterEach(() => { window.location.hash = savedHash; });
+
+    it('Inserts /.trash/ when not already in trash', () => {
+      daBrowseComp.details = { fullpath: '/org/site/folder' };
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      expect(window.location.hash).to.equal('#/org/site/.trash/folder');
+    });
+
+    it('Removes /.trash/ when already in trash', () => {
+      daBrowseComp.details = { fullpath: '/org/site/.trash/folder' };
+      daBrowseComp.handleShortcuts({ ctrlKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      expect(window.location.hash).to.equal('#/org/site/folder');
+    });
+
+    it('Does nothing when path is too shallow (< 2 segments)', () => {
+      daBrowseComp.details = { fullpath: '/org' };
+      const before = window.location.hash;
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      expect(window.location.hash).to.equal(before);
+    });
+
+    it('Ignores keys without alt or meta/ctrl modifiers', () => {
+      daBrowseComp.details = { fullpath: '/org/site' };
+      const before = window.location.hash;
+      daBrowseComp.handleShortcuts({ metaKey: false, altKey: false, code: 'KeyT', preventDefault: () => {} });
+      expect(window.location.hash).to.equal(before);
+    });
+  });
+
+  describe('getEditor', () => {
+    let savedFetch;
+    beforeEach(() => { savedFetch = window.fetch; });
+    afterEach(() => { window.fetch = savedFetch; });
+
+    it('Returns the default editor when no editor.path config exists', async () => {
+      window.fetch = () => Promise.resolve(
+        new Response(JSON.stringify({ data: [] }), { status: 200 }),
+      );
+      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('/edit#');
+    });
+
+    it('Returns the default editor when fetching the org config fails', async () => {
+      window.fetch = () => Promise.resolve(new Response('boom', { status: 500 }));
+      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('/edit#');
+    });
+
+    it('Picks the longest matching editor.path config', async () => {
+      const body = JSON.stringify({
+        data: [
+          { key: 'editor.path', value: '/org=https://short' },
+          { key: 'editor.path', value: '/org/site=https://long-match' },
+        ],
+      });
+      window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
+      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('https://long-match');
+    });
+
+    it('Reuses cached editorConfs when reFetch is false', async () => {
+      let calls = 0;
+      window.fetch = () => {
+        calls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+      };
+      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      await daBrowseComp.getEditor(true);
+      const before = calls;
+      await daBrowseComp.getEditor(false);
+      expect(calls).to.equal(before);
     });
   });
 });

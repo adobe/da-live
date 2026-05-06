@@ -4,7 +4,7 @@ import { getEnterInputRulesPlugin, getDashesInputRule } from '../../../../blocks
 // This is needed to make a dynamic import work that is indirectly referenced
 // from edit/prose/index.js
 const { setNx } = await import('../../../../scripts/utils.js');
-setNx('/bheuaark/', { hostname: 'localhost' });
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const pi = await import('../../../../blocks/edit/prose/index.js');
 

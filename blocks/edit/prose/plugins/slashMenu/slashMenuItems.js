@@ -11,10 +11,11 @@ import {
   mergeCells,
   splitCell,
 } from 'da-y-wrapper';
-import openLibrary from '../../../da-library/da-library.js';
+import toggleLibrary from '../menu/toggleLibrary.js';
 import insertTable from '../../table.js';
 import { insertSectionBreak } from '../menu/menu.js';
 import loremIpsum from './loremIpsum.js';
+import { SUPPORTED_IMAGE_TYPES, uploadImageFile } from '../imageDrop.js';
 
 const setHeading = (state, dispatch, level) => {
   const type = state.schema.nodes.heading;
@@ -30,6 +31,21 @@ const wrapInCodeBlock = (state, dispatch) => {
   // eslint-disable-next-line camelcase
   const { code_block } = state.schema.nodes;
   return setBlockType(code_block)(state, dispatch);
+};
+
+const insertImage = (state, dispatch, argument, view) => {
+  if (!view) return false;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = SUPPORTED_IMAGE_TYPES.join(',');
+  input.addEventListener('change', () => {
+    const [file] = input.files || [];
+    if (!file) return;
+    view.focus();
+    uploadImageFile(view, file);
+  });
+  input.click();
+  return true;
 };
 
 const items = [
@@ -88,8 +104,13 @@ const items = [
   },
   {
     title: 'Library',
-    command: openLibrary,
+    command: toggleLibrary,
     class: 'open-library',
+  },
+  {
+    title: 'Insert image',
+    command: insertImage,
+    class: 'insert-image',
   },
 ];
 
