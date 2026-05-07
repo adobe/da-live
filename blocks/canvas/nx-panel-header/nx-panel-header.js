@@ -1,4 +1,5 @@
-import { loadStyle } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 

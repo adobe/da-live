@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import {
-  getNx, loadStyle, hashChange, getPanelStore, openPanel,
-} from '../shared/nxutils.js';
+import { getNx } from '../../scripts/utils.js';
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 import { listFolder } from './browse-api.js';
 import {
   contextToPathContext,

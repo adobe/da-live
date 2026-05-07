@@ -1,5 +1,6 @@
 import { LitElement, html } from 'da-lit';
-import { loadStyle, HashController } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
+const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
 import { editorHtmlChange, editorSelectChange } from '../editor-utils/document.js';
 
 const style = await loadStyle(import.meta.url);

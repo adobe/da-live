@@ -1,9 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 
-import {
-  getNx, loadStyle, HashController,
-  buildAemPathFromHashState, formatAemPreviewPublishError, runAemPreviewOrPublish,
-} from '../shared/nxutils.js';
+import { getNx } from '../../scripts/utils.js';
+const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
+const { buildAemPathFromHashState, formatAemPreviewPublishError, runAemPreviewOrPublish } = await import(`${getNx()}/utils/aem-preview-publish.js`);
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 

@@ -4,7 +4,8 @@ import { renderMessage, renderApprovalCard } from './renderers.js';
 import './welcome/welcome.js';
 import './prompts/prompts.js';
 import './pills/pills.js';
-import { loadStyle, hashChange, getNx } from '../shared/nxutils.js';
+import { getNx } from '../../scripts/utils.js';
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 import { loadPrompts } from './api.js';
 import { ADD_MENU_ITEMS, MENU_OPTIONS, ROLE, TOOL_STATE } from './constants.js';
 

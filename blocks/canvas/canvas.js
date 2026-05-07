@@ -1,4 +1,6 @@
-import { loadStyle, hashChange, getPanelStore, openPanel } from '../shared/nxutils.js';
+import { getNx } from '../../scripts/utils.js';
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 import './nx-canvas-header/nx-canvas-header.js';
 import './nx-editor-doc/nx-editor-doc.js';
 import './nx-editor-wysiwyg/nx-editor-wysiwyg.js';

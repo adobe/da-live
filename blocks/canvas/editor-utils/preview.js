@@ -1,4 +1,5 @@
-import { DA_CONTENT } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
+const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 import { daFetch } from '../../shared/utils.js';
 
 export function getPreviewOrigin(org, repo) {

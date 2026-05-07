@@ -1,4 +1,5 @@
-import { DA_ADMIN } from '../shared/nxutils.js';
+import { getNx } from '../../scripts/utils.js';
+const { DA_ADMIN } = await import(`${getNx()}/utils/utils.js`);
 import { daFetch } from '../shared/utils.js';
 
 /**

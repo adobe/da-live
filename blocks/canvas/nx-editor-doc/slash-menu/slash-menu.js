@@ -1,6 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin } from 'da-y-wrapper';
-import { getNx } from '../../../shared/nxutils.js';
+import { getNx } from '../../../../scripts/utils.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 import { slashMenuItemsForQuery, COMMAND_BY_ID } from '../../editor-utils/command-defs.js';

@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { loadStyle } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 import { formatColumnLastModified } from './format.js';
 import {
   getIconByExtension,

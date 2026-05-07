@@ -1,5 +1,5 @@
 import { checkDoc } from './source.js';
-import { getNx } from '../../../shared/nxutils.js';
+import { getNx } from '../../../../scripts/utils.js';
 
 export async function resolveEditorDocSession(sourceUrl) {
   const { loadIms } = await import(`${getNx()}/utils/ims.js`);

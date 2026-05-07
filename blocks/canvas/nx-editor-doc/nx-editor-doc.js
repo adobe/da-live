@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
-import { loadStyle } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 import { updateDocument, updateCursors, getInstrumentedHTML, editorHtmlChange, editorSelectChange } from '../editor-utils/document.js';
 import { getActiveBlockFlatIndex, getBlockPositions } from '../nx-editor-wysiwyg/utils/blocks.js';
 import { getEditor } from '../editor-utils/state.js';

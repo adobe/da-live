@@ -2,7 +2,8 @@
  * Copyright 2026 Adobe. All rights reserved.
  * Derives upload parent/name from a DA source document URL (same shape as da.live getPathDetails).
  */
-import { DA_ADMIN } from '../../../shared/nxutils.js';
+import { getNx } from '../../../../scripts/utils.js';
+const { DA_ADMIN } = await import(`${getNx()}/utils/utils.js`);
 
 /**
  * @param {string} sourceUrl - e.g. https://admin.da.live/source/org/repo/path/doc.html

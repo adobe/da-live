@@ -1,5 +1,5 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
-import { getNx } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.

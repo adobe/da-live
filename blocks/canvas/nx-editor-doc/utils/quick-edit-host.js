@@ -1,5 +1,5 @@
 import { createControllerOnMessage } from '../../nx-editor-wysiwyg/quick-edit-controller.js';
-import { getNx } from '../../../shared/nxutils.js';
+import { getNx } from '../../../../scripts/utils.js';
 import { updateDocument, updateCursors } from '../../editor-utils/document.js';
 import { fetchWysiwygCookie } from '../../editor-utils/preview.js';
 

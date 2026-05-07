@@ -1,6 +1,6 @@
 import { html, nothing } from 'da-lit';
 import { AGENT_EVENT, ROLE, TOOL_INPUT, TOOL_STATE } from './constants.js';
-import { getNx } from '../shared/nxutils.js';
+import { getNx } from '../../scripts/utils.js';
 
 const { unified, remarkParse } = await import(`${getNx()}/deps/mdast/dist/index.js`);
 

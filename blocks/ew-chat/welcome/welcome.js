@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { loadStyle } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 import { initIms as loadIms } from '../../shared/utils.js';
 
 const styles = await loadStyle(import.meta.url);

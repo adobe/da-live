@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { loadStyle, HashController } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
+const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
 import {
   fetchBlocks,
   fetchItems,

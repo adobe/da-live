@@ -37,7 +37,8 @@ import imageDrop from './prose-plugins/imageDrop.js';
 import imageFocalPoint from './prose-plugins/imageFocalPoint.js';
 import sectionPasteHandler from './prose-plugins/sectionPasteHandler.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
-import { DA_ADMIN, DA_COLLAB } from '../../shared/nxutils.js';
+import { getNx } from '../../../scripts/utils.js';
+const { DA_ADMIN, DA_COLLAB } = await import(`${getNx()}/utils/utils.js`);
 import { generateColor, getCollabIdentity } from './utils/collab.js';
 
 function registerErrorHandler(ydoc) {
