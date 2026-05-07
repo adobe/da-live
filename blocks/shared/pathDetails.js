@@ -117,7 +117,7 @@ export default function getPathDetails(loc) {
   if (currhash === hash && currpath === pathname && details) return details;
   currhash = hash;
 
-  const fullpath = hash.replace('#', '');
+  let fullpath = hash.replace('#', '');
   window.name = fullpath;
 
   // config, edit, sheet
@@ -131,10 +131,21 @@ export default function getPathDetails(loc) {
   // Split everything up so it can be later used for both DA & AEM
   const pathParts = sanitizePathParts(fullpath);
 
-  // Redirect JSON files from edit view to sheet view
-  if (editor === 'edit' && fullpath.endsWith('.json')) {
-    window.location.href = `/sheet#${fullpath.slice(0, -5)}`;
-    return null;
+  if (editor === 'edit') {
+    // Redirect JSON files from edit view to sheet view
+    if (fullpath.endsWith('.json')) {
+      window.location.href = `/sheet#${fullpath.slice(0, -5)}`;
+      return null;
+    }
+
+    if (fullpath.endsWith('/')) {
+      // Remove trailing slash from pathParts and fullpath
+      pathParts.pop();
+      fullpath = fullpath.slice(0, -1);
+      if (!loc) {
+        history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${fullpath}`);
+      }
+    }
   }
 
   // Determine if folder (trailing slash split to empty string)
