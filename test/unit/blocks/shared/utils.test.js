@@ -5,6 +5,7 @@ import {
   aemAdmin,
   saveToDa,
   getSheetByIndex,
+  getSheetByName,
   getFirstSheet,
   delay,
   getSidekickConfig,
@@ -38,6 +39,38 @@ describe('getSheetByIndex', () => {
     // index 0 is ':type' which has no .data, so returns undefined
     const json = { ':type': 'multi-sheet', sheet1: { data: [{ x: 99 }] } };
     expect(getSheetByIndex(json)).to.equal(undefined);
+  });
+});
+
+describe('getSheetByName', () => {
+  it('Returns data for the named sheet in a multi-sheet config', () => {
+    const json = { ':type': 'multi-sheet', library: { data: [{ title: 'Blocks', path: '/blocks' }] }, settings: { data: [{ key: 'x' }] } };
+    expect(getSheetByName(json, 'library')).to.deep.equal([{ title: 'Blocks', path: '/blocks' }]);
+  });
+
+  it('Returns undefined when the named sheet does not exist in a multi-sheet config', () => {
+    const json = { ':type': 'multi-sheet', settings: { data: [{ key: 'x' }] } };
+    expect(getSheetByName(json, 'library')).to.equal(undefined);
+  });
+
+  it('Returns data for a single-sheet config when :sheetname matches', () => {
+    const json = { ':type': 'sheet', ':sheetname': 'library', data: [{ title: 'Blocks', path: '/blocks' }] };
+    expect(getSheetByName(json, 'library')).to.deep.equal([{ title: 'Blocks', path: '/blocks' }]);
+  });
+
+  it('Returns undefined for a single-sheet config when :sheetname does not match', () => {
+    const json = { ':type': 'sheet', ':sheetname': 'settings', data: [{ title: 'Blocks', path: '/blocks' }] };
+    expect(getSheetByName(json, 'library')).to.equal(undefined);
+  });
+
+  it('Returns undefined for a single-sheet config with no :sheetname', () => {
+    const json = { ':type': 'sheet', data: [{ title: 'Blocks', path: '/blocks' }] };
+    expect(getSheetByName(json, 'library')).to.equal(undefined);
+  });
+
+  it('Returns undefined for a single-sheet config with matching :sheetname but no data', () => {
+    const json = { ':type': 'sheet', ':sheetname': 'library' };
+    expect(getSheetByName(json, 'library')).to.equal(undefined);
   });
 });
 

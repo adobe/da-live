@@ -1,7 +1,7 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch, aemAdmin, fetchDaConfigs, getFirstSheet } from '../../../shared/utils.js';
+import { daFetch, aemAdmin, fetchDaConfigs, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
 import { openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { sanitizeName } from '../../../../scripts/utils.js';
@@ -109,9 +109,11 @@ function calculateSources(org, repo, sheetPath) {
 
 async function fetchLibraryConfig(org, site) {
   const configs = await fetchDaConfigs({ org, site });
-  const { library } = await configs[1];
-  if (!library) return [];
-  return library.data.reduce((acc, row) => {
+  const config = await configs[1];
+  if (!config) return [];
+  const libraryData = getSheetByName(config, 'library');
+  if (!libraryData) return [];
+  return libraryData.reduce((acc, row) => {
     // Determine if a plugin should be visible based on query param
     const allowed = getIsPluginAllowed(row.ref);
     if (allowed) {
