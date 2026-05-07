@@ -69,7 +69,7 @@ function decorateImages(element, path) {
 
 async function fetchAndParseHtml(path, isAemHosted) {
   try {
-    const resp = await daFetch(`${path}${isAemHosted ? '.plain.html' : ''}`);
+    const resp = await daFetch(`${path}${isAemHosted ? '.plain.html' : ''}`, { noRedirect: true });
     if (!resp.ok) return null;
     return new window.DOMParser().parseFromString(await resp.text(), 'text/html');
   } catch { return null; }
@@ -221,7 +221,7 @@ export async function fetchExtensions(org, site) {
   if (!Array.isArray(rows)) return [];
 
   const extensions = rows.reduce((acc, row) => {
-    if (!getIsPluginAllowed(row.ref)) return acc;
+    if (!row.title || !getIsPluginAllowed(row.ref)) return acc;
     const name = row.title.trim().toLowerCase().replaceAll(' ', '-');
     acc.push({
       name,
@@ -255,7 +255,7 @@ export async function fetchBlocks(sources) {
   const blocks = [];
   for (const url of sources) {
     try {
-      const resp = await daFetch(url);
+      const resp = await daFetch(url, { noRedirect: true });
       if (resp.ok) {
         const json = await resp.json();
         const data = getFirstSheet(json) ?? (Array.isArray(json) ? json : []);
@@ -274,7 +274,7 @@ export async function fetchItems(sources, format) {
   const items = [];
   for (const source of sources) {
     try {
-      const resp = await daFetch(source);
+      const resp = await daFetch(source, { noRedirect: true });
       if (resp.ok) {
         const json = await resp.json();
         const data = getFirstSheet(json) ?? (Array.isArray(json) ? json : []);

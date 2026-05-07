@@ -4,7 +4,7 @@ const { DA_ADMIN, DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 import { daFetch } from '../../../shared/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
 
-const FPO_IMG_URL = 'https://da.live/blocks/edit/img/fpo.svg';
+const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 
 function makeHash(string) {
   return Math.abs(string.split('').reduce((hash, char) => (

@@ -1,6 +1,4 @@
-/* eslint-disable import/no-unresolved -- prose2aem from da.live */
-import prose2aem from 'https://da.live/blocks/shared/prose2aem.js';
-/* eslint-enable import/no-unresolved */
+import prose2aem from '../../shared/prose2aem.js';
 
 const EDITABLES = [
   { selector: 'h1', nodeName: 'H1' },

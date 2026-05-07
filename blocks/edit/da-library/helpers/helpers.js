@@ -48,7 +48,7 @@ export async function getItems(sources, format) {
   const items = [];
   for (const source of sources) {
     try {
-      const resp = await daFetch(source);
+      const resp = await daFetch(source, { noRedirect: true });
       const json = await resp.json();
       if (json.data) {
         items.push(...formatData(json.data, format));

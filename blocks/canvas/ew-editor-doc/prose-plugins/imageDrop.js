@@ -2,7 +2,7 @@ import { Plugin, TextSelection } from 'da-y-wrapper';
 import { daFetch } from '../../../shared/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
 
-const FPO_IMG_URL = 'https://da.live/blocks/edit/img/fpo.svg';
+const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 const SUPPORTED_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
 /**

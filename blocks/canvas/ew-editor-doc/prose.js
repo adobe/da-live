@@ -26,16 +26,16 @@ import {
   getListInputRulesPlugin,
   handleTableBackspace,
   handleTableTab,
-} from 'https://da.live/blocks/edit/prose/plugins/keyHandlers.js';
-import { getHeadingKeymap } from 'https://da.live/blocks/edit/prose/plugins/menu/menu.js';
+} from '../../edit/prose/plugins/keyHandlers.js';
+import { getHeadingKeymap } from '../../edit/prose/plugins/menu/menu.js';
 import { getSchema } from 'da-parser';
 import { createSlashMenuPlugin } from './slash-menu/slash-menu.js';
 import { createSelectionToolbarPlugin } from '../editor-utils/selection-toolbar.js';
-import codemark from './prose-plugins/codemark.js';
-import tableSelectHandle from './prose-plugins/tableSelectHandle.js';
+import codemark from '../../edit/prose/plugins/codemark.js';
+import tableSelectHandle from '../../edit/prose/plugins/tableSelectHandle.js';
 import imageDrop from './prose-plugins/imageDrop.js';
-import imageFocalPoint from './prose-plugins/imageFocalPoint.js';
-import sectionPasteHandler from './prose-plugins/sectionPasteHandler.js';
+import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
+import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
 import { getNx } from '../../../scripts/utils.js';
 const { DA_ADMIN, DA_COLLAB } = await import(`${getNx()}/utils/utils.js`);
