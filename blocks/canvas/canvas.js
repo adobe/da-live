@@ -1,4 +1,4 @@
-import { getNx, loadStyle, hashChange, getPanelStore, openPanel } from '../shared/nxutils.js';
+import { loadStyle, hashChange, getPanelStore, openPanel } from '../shared/nxutils.js';
 import './nx-canvas-header/nx-canvas-header.js';
 import './nx-editor-doc/nx-editor-doc.js';
 import './nx-editor-wysiwyg/nx-editor-wysiwyg.js';
@@ -124,15 +124,15 @@ const CANVAS_PANELS = {
   before: {
     width: '400px',
     getContent: async () => {
-      await import(`${getNx()}/blocks/chat/chat.js`);
-      return document.createElement('nx-chat');
+      await import('../ew-chat/chat.js');
+      return document.createElement('ew-chat');
     },
   },
   after: {
     width: '400px',
     getContent: async () => {
-      await import(`${getNx()}/blocks/tool-panel/tool-panel.js`);
-      return document.createElement('nx-tool-panel');
+      await import('../ew-tool-panel/tool-panel.js');
+      return document.createElement('ew-tool-panel');
     },
   },
 };
@@ -149,7 +149,7 @@ async function openCanvasPanel(position, { preferredViewId } = {}) {
   const width = store[position]?.width ?? config.width;
   const aside = await openPanel({ position, width, getContent: config.getContent });
   if (position === 'after') {
-    const toolPanel = aside?.querySelector('nx-tool-panel');
+    const toolPanel = aside?.querySelector('ew-tool-panel');
     if (toolPanel) {
       await syncToolPanelViews(toolPanel, hashState());
       await toolPanel.updateComplete;
@@ -198,7 +198,7 @@ export default async function decorate(block) {
 
   hashChange.subscribe((state) => {
     syncCanvasEditorsToHash({ mountRoot, header, state });
-    const toolPanel = document.querySelector('aside.panel[data-position="after"] nx-tool-panel');
+    const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);
   });
 

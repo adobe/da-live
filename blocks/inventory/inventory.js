@@ -195,8 +195,8 @@ export default function decorate(block) {
       position: 'before',
       width,
       getContent: async () => {
-        await import(`${getNx()}/blocks/chat/chat.js`);
-        return document.createElement('nx-chat');
+        await import('../ew-chat/chat.js');
+        return document.createElement('ew-chat');
       },
     });
   };

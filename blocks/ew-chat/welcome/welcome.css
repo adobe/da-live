@@ -1,0 +1,80 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-body-size-s);
+
+  button {
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--s2-gray-800);
+  }
+}
+
+.chat-welcome-message {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  h3 {
+    color: var(--s2-gray-900);
+    font-size: var(--s2-heading-size-m);
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.prompt-cards {
+  gap: var(--s2-spacing-75);
+  margin-top: var(--s2-spacing-200);
+  padding: 0 var(--s2-spacing-75);
+}
+
+.prompt-card {
+  display: flex;
+  margin-bottom: var(--s2-spacing-100);
+  gap: var(--s2-spacing-300);
+  padding: var(--s2-spacing-100) var(--s2-spacing-300);
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-700);
+  background: var(--s2-gray-25);
+  background-color: var(--s2-gray-50);
+  align-items: center;
+  text-align: left;
+
+  span {
+    line-height: 20px;
+  }
+
+  &:hover {
+    background: var(--s2-gray-100);
+    border-color: var(--s2-gray-300);
+  }
+
+  &::before {
+    content: "";
+    display: block;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    background-color: currentcolor;
+    mask-image: url("/img/icons/s2-icon-aichat-20-n.svg");
+    mask-size: contain;
+    mask-repeat: no-repeat;
+  }
+}
+
+.prompt-more {
+  border: none;
+  background: none;
+  margin-top: var(--s2-spacing-100);
+  text-align: left;
+  width: fit-content;
+  padding: var(--s2-spacing-75) var(--s2-spacing-200);
+}
