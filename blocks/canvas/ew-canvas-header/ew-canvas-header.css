@@ -124,7 +124,7 @@
   justify-content: space-between;
   gap: 12px;
   box-sizing: border-box;
-  height: var(--nx-canvas-header-height);
+  height: var(--ew-canvas-header-height);
   padding: 0 12px;
   background-color: light-dark(#fff, var(--s2-gray-25));
   border-bottom: 1px solid var(--s2-gray-200);

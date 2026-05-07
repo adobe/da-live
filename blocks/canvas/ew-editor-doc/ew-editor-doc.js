@@ -3,7 +3,7 @@ import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 import { updateDocument, updateCursors, getInstrumentedHTML, editorHtmlChange, editorSelectChange } from '../editor-utils/document.js';
-import { getActiveBlockFlatIndex, getBlockPositions } from '../nx-editor-wysiwyg/utils/blocks.js';
+import { getActiveBlockFlatIndex, getBlockPositions } from '../ew-editor-wysiwyg/utils/blocks.js';
 import { getEditor } from '../editor-utils/state.js';
 import {
   editorDocCanLoad,
@@ -27,7 +27,7 @@ import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.
 
 const style = await loadStyle(import.meta.url);
 
-export class NxEditorDoc extends LitElement {
+export class EwEditorDoc extends LitElement {
   static properties = {
     ctx: { type: Object },
     quickEditPort: { type: Object },
@@ -154,7 +154,7 @@ export class NxEditorDoc extends LitElement {
   _setEditable(editable) {
     this.requestUpdate();
     afterNextPaint(() => {
-      const pm = this.shadowRoot?.querySelector('.nx-editor-doc-mount .ProseMirror');
+      const pm = this.shadowRoot?.querySelector('.ew-editor-doc-mount .ProseMirror');
       if (pm) pm.contentEditable = editable ? 'true' : 'false';
     });
   }
@@ -286,8 +286,8 @@ export class NxEditorDoc extends LitElement {
     });
     if (phase === 'incomplete') {
       return html`
-        <div class="nx-editor-doc">
-          <div class="nx-editor-doc-placeholder">
+        <div class="ew-editor-doc">
+          <div class="ew-editor-doc-placeholder">
             Set hash to <code>#/org/site</code> and open an HTML file to edit.
           </div>
         </div>
@@ -295,8 +295,8 @@ export class NxEditorDoc extends LitElement {
     }
     if (phase === 'error') {
       return html`
-        <div class="nx-editor-doc">
-          <div class="nx-editor-doc-error">${this._error}</div>
+        <div class="ew-editor-doc">
+          <div class="ew-editor-doc-error">${this._error}</div>
         </div>
       `;
     }
@@ -304,11 +304,11 @@ export class NxEditorDoc extends LitElement {
       return nothing;
     }
     return html`
-      <div class="nx-editor-doc">
-        <div class="nx-editor-doc-mount"></div>
+      <div class="ew-editor-doc">
+        <div class="ew-editor-doc-mount"></div>
       </div>
     `;
   }
 }
 
-customElements.define('nx-editor-doc', NxEditorDoc);
+customElements.define('ew-editor-doc', EwEditorDoc);

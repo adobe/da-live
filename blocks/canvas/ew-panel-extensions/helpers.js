@@ -388,8 +388,8 @@ function createOutlineView() {
     section: 'Editor',
     firstParty: true,
     load: async () => {
-      await import('../nx-page-outline/nx-page-outline.js');
-      return document.createElement('nx-page-outline');
+      await import('../ew-page-outline/ew-page-outline.js');
+      return document.createElement('ew-page-outline');
     },
   };
 }
@@ -403,8 +403,8 @@ function extensionToPanelView(ext, section) {
     experience: ext.experience,
     sources: ext.sources,
     load: async () => {
-      await import('./nx-panel-extensions.js');
-      const el = document.createElement('nx-panel-extension');
+      await import('./ew-panel-extensions.js');
+      const el = document.createElement('ew-panel-extension');
       el.extension = ext;
       return el;
     },

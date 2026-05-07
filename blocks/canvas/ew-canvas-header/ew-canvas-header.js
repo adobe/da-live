@@ -15,7 +15,7 @@ const ICONS = {
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
 
-class NXCanvasHeader extends LitElement {
+class EWCanvasHeader extends LitElement {
   static properties = {
     /** `'layout'` / `'content'` = single pane; `'split'` = doc + WYSIWYG side by side */
     editorView: { type: String, reflect: true },
@@ -131,4 +131,4 @@ class NXCanvasHeader extends LitElement {
   }
 }
 
-customElements.define('nx-canvas-header', NXCanvasHeader);
+customElements.define('ew-canvas-header', EWCanvasHeader);

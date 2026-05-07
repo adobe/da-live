@@ -69,7 +69,7 @@
   min-height: 120px;
 }
 
-/* Full-size experience dialog (same shell as nx-panel-extension preview). */
+/* Full-size experience dialog (same shell as ew-panel-extension preview). */
 .tool-panel-fullsize-dialog {
   position: fixed;
   inset: 0;

@@ -4,14 +4,14 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
-import { commandsFor, COMMAND_BY_ID } from './command-defs.js';
+import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
   getBlockTypePickerValue,
   selectionHasLink,
   getLinkInfoInSelection,
   applyLink,
   removeLink,
-} from './command-helpers.js';
+} from '../editor-utils/command-helpers.js';
 
 const styles = await loadStyle(import.meta.url);
 
@@ -42,7 +42,7 @@ function blockTypeLabelForRaw(raw) {
     ?? raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-class NxSelectionToolbar extends LitElement {
+class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
     _linkDialogOpen: { state: true },
@@ -302,6 +302,6 @@ class NxSelectionToolbar extends LitElement {
   }
 }
 
-customElements.define('nx-selection-toolbar', NxSelectionToolbar);
+customElements.define('ew-selection-toolbar', EwSelectionToolbar);
 
-export default NxSelectionToolbar;
+export default EwSelectionToolbar;

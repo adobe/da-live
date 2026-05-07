@@ -22,8 +22,8 @@ let componentLoaded;
 
 export function getSelectionToolbar() {
   if (toolbar) return toolbar;
-  componentLoaded ??= import('./nx-selection-toolbar.js');
-  toolbar = document.createElement('nx-selection-toolbar');
+  componentLoaded ??= import('../ew-selection-toolbar/ew-selection-toolbar.js');
+  toolbar = document.createElement('ew-selection-toolbar');
   document.body.append(toolbar);
   return toolbar;
 }
@@ -75,10 +75,10 @@ export function createSelectionToolbarPlugin() {
       return {
         update(view) {
           if (!scrollEl) {
-            scrollEl = view.dom.closest('.nx-editor-doc');
+            scrollEl = view.dom.closest('.ew-editor-doc');
             scrollEl?.addEventListener('scroll', onScroll, { passive: true });
           }
-          const header = document.querySelector('nx-canvas-header');
+          const header = document.querySelector('ew-canvas-header');
           const ev = header?.editorView;
           if (ev !== 'content' && ev !== 'split') return;
           if (getSelectionOriginFromIframe(view.state)) return;

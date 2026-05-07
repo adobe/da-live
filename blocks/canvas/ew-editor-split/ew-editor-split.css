@@ -23,7 +23,7 @@
 }
 
 /* Split: preview left, gutter, doc right; ratio = left / (100% − 2px) */
-.nx-canvas-editor-mount-split nx-editor-wysiwyg {
+.nx-canvas-editor-mount-split ew-editor-wysiwyg {
   --nx-canvas-wysiwyg-split-width: calc((100% - 2px) * var(--nx-canvas-split-ratio, 0.5));
 
   flex: 0 0 var(--nx-canvas-wysiwyg-split-width);
@@ -34,7 +34,7 @@
   max-height: none;
 }
 
-.nx-canvas-editor-mount-split nx-editor-doc {
+.nx-canvas-editor-mount-split ew-editor-doc {
   flex: 1 1 0;
   min-width: 0;
   width: auto;

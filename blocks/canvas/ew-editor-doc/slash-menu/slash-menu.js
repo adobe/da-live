@@ -63,7 +63,7 @@ function setup(container, view) {
     view.focus();
   });
 
-  const scrollEl = container.closest('.nx-editor-doc');
+  const scrollEl = container.closest('.ew-editor-doc');
   const onScroll = () => { if (menu.open) menu.reposition(); };
   scrollEl?.addEventListener('scroll', onScroll, { passive: true });
 

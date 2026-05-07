@@ -219,7 +219,7 @@ export const COMMANDS = [
         composed: true,
         detail: { position: 'after', viewId: 'blocks' },
       });
-      document.querySelector('nx-canvas-header')?.dispatchEvent(evt);
+      document.querySelector('ew-canvas-header')?.dispatchEvent(evt);
     },
   },
   {

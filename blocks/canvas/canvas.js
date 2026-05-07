@@ -1,15 +1,15 @@
 import { getNx } from '../../scripts/utils.js';
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
-import './nx-canvas-header/nx-canvas-header.js';
-import './nx-editor-doc/nx-editor-doc.js';
-import './nx-editor-wysiwyg/nx-editor-wysiwyg.js';
+import './ew-canvas-header/ew-canvas-header.js';
+import './ew-editor-doc/ew-editor-doc.js';
+import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
 import {
   syncEditorSplitLayout,
   finalizeSplitEditorMountOrder,
   installEditorSplitDrag,
   removeSplitGutter,
-} from './nx-editor-split/nx-editor-split.js';
+} from './ew-editor-split/ew-editor-split.js';
 
 const style = await loadStyle(import.meta.url);
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, style];
@@ -64,23 +64,23 @@ function canvasHeaderApplyTarget(block) {
 
 function removeCanvasEditors(mountRoot) {
   removeSplitGutter(mountRoot);
-  mountRoot.querySelector('nx-editor-doc')?.remove();
-  mountRoot.querySelector('nx-editor-wysiwyg')?.remove();
+  mountRoot.querySelector('ew-editor-doc')?.remove();
+  mountRoot.querySelector('ew-editor-wysiwyg')?.remove();
 }
 
 function ensureNxEditorDoc(mountRoot) {
-  let el = mountRoot.querySelector('nx-editor-doc');
+  let el = mountRoot.querySelector('ew-editor-doc');
   if (!el) {
-    el = document.createElement('nx-editor-doc');
+    el = document.createElement('ew-editor-doc');
     mountRoot.append(el);
   }
   return el;
 }
 
 function ensureNxEditorWysiwyg(mountRoot) {
-  let frame = mountRoot.querySelector('nx-editor-wysiwyg');
+  let frame = mountRoot.querySelector('ew-editor-wysiwyg');
   if (!frame) {
-    frame = document.createElement('nx-editor-wysiwyg');
+    frame = document.createElement('ew-editor-wysiwyg');
     mountRoot.append(frame);
   }
   return frame;
@@ -116,7 +116,7 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
     return;
   }
 
-  const { getCanvasToolPanelViews } = await import('./nx-panel-extensions/helpers.js');
+  const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
   const views = await getCanvasToolPanelViews({ org, site });
   if (toolPanel.dataset.extKey !== key) return;
   toolPanel.views = views;
@@ -163,7 +163,7 @@ async function openCanvasPanel(position, { preferredViewId } = {}) {
 }
 
 function installCanvasHeader(block) {
-  const header = document.createElement('nx-canvas-header');
+  const header = document.createElement('ew-canvas-header');
   header.editorView = readPersistedCanvasEditorView();
   header.addEventListener('nx-canvas-open-panel', (e) => {
     openCanvasPanel(e.detail.position, { preferredViewId: e.detail.viewId });
@@ -176,10 +176,10 @@ function installCanvasHeader(block) {
     syncEditorSplitLayout({ mountRoot: canvasEditorMountRoot(block), view });
   });
   header.addEventListener('nx-canvas-undo', () => {
-    canvasEditorMountRoot(block).querySelector('nx-editor-doc')?.undo();
+    canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.undo();
   });
   header.addEventListener('nx-canvas-redo', () => {
-    canvasEditorMountRoot(block).querySelector('nx-editor-doc')?.redo();
+    canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.redo();
   });
   block.before(header);
   return header;

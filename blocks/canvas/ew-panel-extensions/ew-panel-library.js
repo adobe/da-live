@@ -19,7 +19,7 @@ const iconPreview = () => html`<img class="ext-icon" src="/blocks/edit/img/S2_Ic
 /**
  * First-party library panel: blocks, templates, icons, placeholders (OOTB sheet-driven tools).
  */
-class NxPanelLibrary extends LitElement {
+class EwPanelLibrary extends LitElement {
   static properties = {
     extension: { attribute: false },
     _items: { state: true },
@@ -265,4 +265,4 @@ class NxPanelLibrary extends LitElement {
   }
 }
 
-customElements.define('nx-panel-library', NxPanelLibrary);
+customElements.define('ew-panel-library', EwPanelLibrary);

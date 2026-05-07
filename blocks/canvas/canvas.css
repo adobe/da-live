@@ -1,12 +1,12 @@
 :root {
-  --nx-canvas-header-height: 48px;
+  --ew-canvas-header-height: 48px;
 }
 
-html:has(aside.panel[data-position="before"]:not([hidden])) nx-canvas-header::part(toggle-before) {
+html:has(aside.panel[data-position="before"]:not([hidden])) ew-canvas-header::part(toggle-before) {
   display: none;
 }
 
-html:has(aside.panel[data-position="after"]:not([hidden])) nx-canvas-header::part(toggle-after) {
+html:has(aside.panel[data-position="after"]:not([hidden])) ew-canvas-header::part(toggle-after) {
   display: none;
 }
 
@@ -33,25 +33,25 @@ nx-chat {
   flex: 1;
   min-height: 0;
   gap: 0;
-  height: calc(100vh - var(--nx-canvas-header-height) - var(--s2-nav-height));
+  height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height));
 }
 
-nx-editor-doc {
+ew-editor-doc {
   display: block;
   flex: 1;
   min-height: 0;
-  max-height: calc(100vh - var(--nx-canvas-header-height) - var(--s2-nav-height));
+  max-height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height));
   overflow-y: auto;
 }
 
-nx-editor-wysiwyg,
-nx-editor-doc {
+ew-editor-wysiwyg,
+ew-editor-doc {
   contain: layout;
   overflow: hidden;
 }
 
-nx-editor-doc[hidden],
-nx-editor-wysiwyg[hidden] {
+ew-editor-doc[hidden],
+ew-editor-wysiwyg[hidden] {
   display: none !important;
 }
 

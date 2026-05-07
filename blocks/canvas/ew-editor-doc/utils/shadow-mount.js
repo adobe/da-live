@@ -5,7 +5,7 @@ export function afterNextPaint(cb) {
 export function ensureProseMountedInShadow({
   shadowRoot,
   proseEl,
-  mountSelector = '.nx-editor-doc-mount',
+  mountSelector = '.ew-editor-doc-mount',
 }) {
   const mount = shadowRoot?.querySelector(mountSelector);
   if (!mount || mount.contains(proseEl)) return;

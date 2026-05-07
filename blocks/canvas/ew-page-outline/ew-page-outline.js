@@ -31,7 +31,7 @@ function sectionsEqual(a, b) {
   });
 }
 
-class NxPageOutline extends LitElement {
+class EwPageOutline extends LitElement {
   static properties = {
     _sections: { state: true },
     _selectedBlockFlatIndex: { state: true },
@@ -109,19 +109,19 @@ class NxPageOutline extends LitElement {
 
   _renderSection(sec, isFirstSection) {
     return html`
-      <li class="nx-page-outline-section" role="none">
-        <div class="nx-page-outline-section-header">
-          <span class="nx-page-outline-section-label">Section ${sec.sectionIndex + 1}</span>
+      <li class="ew-page-outline-section" role="none">
+        <div class="ew-page-outline-section-header">
+          <span class="ew-page-outline-section-label">Section ${sec.sectionIndex + 1}</span>
         </div>
-        <ul class="nx-page-outline-block-list" role="group"
+        <ul class="ew-page-outline-block-list" role="group"
             aria-label="Blocks in section ${sec.sectionIndex + 1}">
           ${sec.blocks.length === 0
-        ? html`<li class="nx-page-outline-block nx-page-outline-block-empty"
+        ? html`<li class="ew-page-outline-block ew-page-outline-block-empty"
                     role="treeitem" tabindex="-1">
-                <span class="nx-page-outline-empty-label">No blocks</span>
+                <span class="ew-page-outline-empty-label">No blocks</span>
               </li>`
         : sec.blocks.map(({ name, blockFlatIndex }, blockIdx) => html`
-      <li class="nx-page-outline-block" role="treeitem"
+      <li class="ew-page-outline-block" role="treeitem"
           tabindex="${isFirstSection && blockIdx === 0 ? '0' : '-1'}"
           aria-selected="${this._selectedBlockFlatIndex === blockFlatIndex}"
           @click=${() => this._select(blockFlatIndex)}>${name}</li>`)}
@@ -131,17 +131,17 @@ class NxPageOutline extends LitElement {
 
   render() {
     if (!this._selectedPath) {
-      return html`<div class="nx-page-outline">
-        <p class="nx-page-outline-placeholder">Select a page to see its outline.</p>
+      return html`<div class="ew-page-outline">
+        <p class="ew-page-outline-placeholder">Select a page to see its outline.</p>
       </div>`;
     }
 
     return html`
-    <section class="nx-page-outline">
-      <div class="nx-page-outline-list-wrap">
+    <section class="ew-page-outline">
+      <div class="ew-page-outline-list-wrap">
         ${!this._sections
-        ? html`<p class="nx-page-outline-placeholder">No blocks found.</p>`
-        : html`<ul class="nx-page-outline-list" role="tree" aria-label="Page outline"
+        ? html`<p class="ew-page-outline-placeholder">No blocks found.</p>`
+        : html`<ul class="ew-page-outline-list" role="tree" aria-label="Page outline"
                 @keydown=${this._onTreeKeydown}>
               ${this._sections.map((sec, i) => this._renderSection(sec, i === 0))}
             </ul>`}
@@ -150,4 +150,4 @@ class NxPageOutline extends LitElement {
   }
 }
 
-customElements.define('nx-page-outline', NxPageOutline);
+customElements.define('ew-page-outline', EwPageOutline);

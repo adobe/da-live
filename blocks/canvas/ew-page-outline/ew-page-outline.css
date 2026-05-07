@@ -5,7 +5,7 @@
   font-family: var(--s2-font-family);
 }
 
-.nx-page-outline {
+.ew-page-outline {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -14,19 +14,19 @@
 }
 
 
-.nx-page-outline-list-wrap {
+.ew-page-outline-list-wrap {
   flex: 1;
   overflow-y: auto;
   padding: var(--s2-spacing-75) 0;
 }
 
-.nx-page-outline-list {
+.ew-page-outline-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.nx-page-outline-section {
+.ew-page-outline-section {
   margin: 0;
   padding: 0;
   border-bottom: 1px solid var(--s2-gray-200);
@@ -36,11 +36,11 @@
   }
 }
 
-.nx-page-outline-section-header {
+.ew-page-outline-section-header {
   background: var(--s2-gray-75);
 }
 
-.nx-page-outline-section-label {
+.ew-page-outline-section-label {
   display: block;
   padding: var(--s2-spacing-200) var(--s2-spacing-100);
   font-size: var(--s2-body-size-s);
@@ -48,13 +48,13 @@
   color: var(--s2-gray-800);
 }
 
-.nx-page-outline-block-list {
+.ew-page-outline-block-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.nx-page-outline-block {
+.ew-page-outline-block {
   display: block;
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
   padding-inline-start: var(--s2-spacing-300);
@@ -93,17 +93,17 @@
   border-radius: var(--s2-corner-radius-75);
 }
 
-.nx-page-outline-block-empty {
+.ew-page-outline-block-empty {
   cursor: default;
 }
 
-.nx-page-outline-empty-label {
+.ew-page-outline-empty-label {
   font-style: italic;
   color: var(--s2-gray-600);
   font-weight: 400;
 }
 
-.nx-page-outline-placeholder {
+.ew-page-outline-placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-100);
   font-size: var(--s2-body-size-s);
   color: var(--s2-gray-600);

@@ -28,22 +28,22 @@ async function tryLoadWysiwygPreviewCookies({ org, repo, path, getCurrentCtx }) 
     const token = (await loadIms())?.accessToken?.token;
     if (!token) {
       // eslint-disable-next-line no-console
-      console.warn('[nx-editor-wysiwyg] Preview cookies: no auth token, proceeding without cookies');
+      console.warn('[ew-editor-wysiwyg] Preview cookies: no auth token, proceeding without cookies');
     } else {
       await fetchWysiwygCookie({ org, repo, token }).catch((e) => {
         // eslint-disable-next-line no-console
-        console.warn('[nx-editor-wysiwyg] Preview cookies failed, proceeding without cookies', e);
+        console.warn('[ew-editor-wysiwyg] Preview cookies failed, proceeding without cookies', e);
       });
     }
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[nx-editor-wysiwyg] Preview cookie setup failed, proceeding without cookies', e);
+    console.warn('[ew-editor-wysiwyg] Preview cookie setup failed, proceeding without cookies', e);
   }
   const cur = getCurrentCtx();
   return cur?.org === org && cur?.repo === repo && cur?.path === path;
 }
 
-export class NxEditorWysiwyg extends LitElement {
+export class EwEditorWysiwyg extends LitElement {
   static properties = {
     ctx: { type: Object },
     _cookieReady: { state: true },
@@ -171,7 +171,7 @@ export class NxEditorWysiwyg extends LitElement {
     } catch (err) {
       this._disposeQuickEditLocalPort();
       // eslint-disable-next-line no-console
-      console.error('[nx-editor-wysiwyg] Error posting init to iframe', err);
+      console.error('[ew-editor-wysiwyg] Error posting init to iframe', err);
     }
   }
 
@@ -206,10 +206,10 @@ export class NxEditorWysiwyg extends LitElement {
     let body;
     if (!hasPath) {
       body = html`
-        <div class="nx-editor-wysiwyg-placeholder">Select an HTML file for WYSIWYG preview.</div>
+        <div class="ew-editor-wysiwyg-placeholder">Select an HTML file for WYSIWYG preview.</div>
       `;
     } else if (!this._cookieReady) {
-      body = html`<div class="nx-editor-wysiwyg-placeholder">Loading preview…</div>`;
+      body = html`<div class="ew-editor-wysiwyg-placeholder">Loading preview…</div>`;
     } else {
       const src = this._iframeSrc;
       body = html`
@@ -217,18 +217,18 @@ export class NxEditorWysiwyg extends LitElement {
           title="WYSIWYG preview"
           src="${src}"
           allow="local-network-access"
-          class="nx-editor-wysiwyg-iframe"
+          class="ew-editor-wysiwyg-iframe"
           @load=${this._onIframeLoad}
           @blur=${this._onIframeBlur}
         ></iframe>
       `;
     }
     return html`
-      <div class="nx-editor-wysiwyg-surface" ?hidden=${this._loading}>
+      <div class="ew-editor-wysiwyg-surface" ?hidden=${this._loading}>
         ${body}
       </div>
     `;
   }
 }
 
-customElements.define('nx-editor-wysiwyg', NxEditorWysiwyg);
+customElements.define('ew-editor-wysiwyg', EwEditorWysiwyg);

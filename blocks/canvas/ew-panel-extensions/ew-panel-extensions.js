@@ -2,11 +2,11 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import './nx-panel-library.js';
+import './ew-panel-library.js';
 
 const style = await loadStyle(import.meta.url);
 
-class NxPanelExtension extends LitElement {
+class EwPanelExtension extends LitElement {
   static properties = {
     extension: { attribute: false },
   };
@@ -42,7 +42,7 @@ class NxPanelExtension extends LitElement {
     if (!ext) return nothing;
 
     if (ext.ootb) {
-      return html`<nx-panel-library .extension=${ext}></nx-panel-library>`;
+      return html`<ew-panel-library .extension=${ext}></ew-panel-library>`;
     }
 
     return html`<iframe
@@ -55,4 +55,4 @@ class NxPanelExtension extends LitElement {
   }
 }
 
-customElements.define('nx-panel-extension', NxPanelExtension);
+customElements.define('ew-panel-extension', EwPanelExtension);

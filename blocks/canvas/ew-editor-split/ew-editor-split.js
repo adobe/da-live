@@ -65,8 +65,8 @@ function ensureSplitGutter(mountRoot) {
 
 /** WYSIWYG (left), 2px gutter, doc (right) — safe if other nodes exist in the mount. */
 export function finalizeSplitEditorMountOrder(mountRoot) {
-  const doc = mountRoot.querySelector('nx-editor-doc');
-  const wyg = mountRoot.querySelector('nx-editor-wysiwyg');
+  const doc = mountRoot.querySelector('ew-editor-doc');
+  const wyg = mountRoot.querySelector('ew-editor-wysiwyg');
   if (!doc || !wyg) return;
   const g = ensureSplitGutter(mountRoot);
   mountRoot.append(wyg);
