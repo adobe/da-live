@@ -176,6 +176,38 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.equal('');
   });
 
+  it('Preserves all images in each column when a column block has 3 columns with multiple images per column', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <div class="tableWrapper">
+        <table>
+          <tr><td>columns</td></tr>
+          <tr>
+            <td><p><img src="col1-img1.jpg"><img src="col1-img2.jpg"><img src="col1-img3.jpg"></p></td>
+            <td><p><img src="col2-img1.jpg"><img src="col2-img2.jpg"><img src="col2-img3.jpg"></p></td>
+            <td><p><img src="col3-img1.jpg"><img src="col3-img2.jpg"><img src="col3-img3.jpg"></p></td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    const container = document.createElement('div');
+    container.innerHTML = result;
+
+    const block = container.querySelector('.columns');
+    expect(block).to.exist;
+
+    const colDivs = block.querySelectorAll(':scope > div > div');
+    expect(colDivs.length).to.equal(3);
+
+    colDivs.forEach((col, i) => {
+      const pictures = col.querySelectorAll('picture');
+      expect(pictures.length, `column ${i + 1} should have 3 pictures`).to.equal(3);
+    });
+  });
+
   it('Preserves pictures in fragment mode', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `
