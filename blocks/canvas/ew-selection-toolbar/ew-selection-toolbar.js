@@ -27,15 +27,8 @@ const BLOCK_TYPE_PICKER_ITEMS = [
   ...PICKER_DEFS.map(({ id, label }) => ({ value: id, label })),
 ];
 
-const LOCAL_ICONS = new Set([
-  'BlockCode', 'BlockQuote', 'Heading1', 'Heading2', 'Heading3', 'Heading4', 'Heading5', 'Heading6',
-  'Rail', 'Separator', 'TableAdd', 'TextIndentIncrease', 'TextIndentDecrease',
-]);
-
-function iconSrc(name) {
-  const file = `s2-icon-${name.toLowerCase()}-20-n.svg`;
-  return LOCAL_ICONS.has(name) ? `/blocks/canvas/img/${file}` : `/img/icons/${file}`;
-}
+const LINK_ICON = new URL('../img/s2-icon-link-20-n.svg', import.meta.url).href;
+const UNLINK_ICON = new URL('../img/s2-icon-unlink-20-n.svg', import.meta.url).href;
 
 function blockTypeLabelForRaw(raw) {
   if (raw === 'mixed') return 'Mixed';
@@ -71,8 +64,8 @@ class EwSelectionToolbar extends LitElement {
     return this._popover?.open ?? false;
   }
 
-  _icon(name) {
-    return html`<img src="${iconSrc(name)}" aria-hidden="true">`;
+  _icon(url) {
+    return html`<img src="${url}" aria-hidden="true">`;
   }
 
   /* ---- Block-type picker ---- */
@@ -226,11 +219,11 @@ class EwSelectionToolbar extends LitElement {
     const hasLink = this._hasLink();
     return html`
       <button type="button" class="toolbar-btn" aria-label="Create link" title="Create link"
-        data-link="create" ?hidden=${hasLink}>${this._icon('Link')}</button>
+        data-link="create" ?hidden=${hasLink}>${this._icon(LINK_ICON)}</button>
       <button type="button" class="toolbar-btn" aria-label="Edit link" title="Edit link"
-        data-link="edit" ?hidden=${!hasLink}>${this._icon('Link')}</button>
+        data-link="edit" ?hidden=${!hasLink}>${this._icon(LINK_ICON)}</button>
       <button type="button" class="toolbar-btn" aria-label="Remove link" title="Remove link"
-        data-link="remove" ?hidden=${!hasLink}>${this._icon('Unlink')}</button>
+        data-link="remove" ?hidden=${!hasLink}>${this._icon(UNLINK_ICON)}</button>
     `;
   }
 

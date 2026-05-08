@@ -127,8 +127,8 @@ const CANVAS_PANELS = {
   before: {
     width: '400px',
     getContent: async () => {
-      await import('../ew-chat/chat.js');
-      return document.createElement('ew-chat');
+      await import(`${getNx()}/blocks/chat/chat.js`);
+      return document.createElement('nx-chat');
     },
   },
   after: {
