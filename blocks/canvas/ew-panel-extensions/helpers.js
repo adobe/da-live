@@ -1,10 +1,11 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-const { HLX_ADMIN, hashChange } = await import(`${getNx()}/utils/utils.js`);
 import { daFetch } from '../../shared/utils.js';
-const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+
+const { HLX_ADMIN, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
 
 const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
 

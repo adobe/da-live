@@ -1,8 +1,9 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+
+const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 const DEFAULT_BASE_PATH = '/adobe/assets';

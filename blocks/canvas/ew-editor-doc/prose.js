@@ -20,6 +20,7 @@ import {
   liftListItem,
   sinkListItem,
 } from 'da-y-wrapper';
+import { getSchema } from 'da-parser';
 import {
   getEnterInputRulesPlugin,
   getURLInputRulesPlugin,
@@ -28,7 +29,6 @@ import {
   handleTableTab,
 } from '../../edit/prose/plugins/keyHandlers.js';
 import { getHeadingKeymap } from '../../edit/prose/plugins/menu/menu.js';
-import { getSchema } from 'da-parser';
 import { createSlashMenuPlugin } from './slash-menu/slash-menu.js';
 import { createSelectionToolbarPlugin } from '../editor-utils/selection-toolbar.js';
 import codemark from '../../edit/prose/plugins/codemark.js';
@@ -38,8 +38,9 @@ import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
 import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
 import { getNx } from '../../../scripts/utils.js';
-const { DA_ADMIN, DA_COLLAB } = await import(`${getNx()}/utils/utils.js`);
 import { generateColor, getCollabIdentity } from './utils/collab.js';
+
+const { DA_ADMIN, DA_COLLAB } = await import(`${getNx()}/utils/utils.js`);
 
 function registerErrorHandler(ydoc) {
   ydoc.on('update', () => {

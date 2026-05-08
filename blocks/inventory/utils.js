@@ -1,4 +1,3 @@
-
 export function parseRepoPath(fullpath) {
   const trimmed = (fullpath || '').trim();
   const normalized = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
@@ -83,4 +82,3 @@ export function getIconByExtension(ext) {
       return 'fileText';
   }
 }
-

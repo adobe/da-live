@@ -1,14 +1,13 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 import { initIms as loadIms } from '../../shared/utils.js';
+
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const styles = await loadStyle(import.meta.url);
 
 class NxChatWelcome extends LitElement {
-  static properties = {
-    prompts: { attribute: false },
-  };
+  static properties = { prompts: { attribute: false } };
 
   connectedCallback() {
     super.connectedCallback();

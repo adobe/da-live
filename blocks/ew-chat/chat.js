@@ -5,9 +5,10 @@ import './welcome/welcome.js';
 import './prompts/prompts.js';
 import './pills/pills.js';
 import { getNx } from '../../scripts/utils.js';
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 import { loadPrompts } from './api.js';
 import { ADD_MENU_ITEMS, MENU_OPTIONS, ROLE, TOOL_STATE } from './constants.js';
+
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 
@@ -82,9 +83,7 @@ class EwChat extends LitElement {
       onToolDone: () => {
         this.dispatchEvent(new CustomEvent('nx-agent-change', { bubbles: true, composed: true }));
       },
-      onUpdate: ({
-        messages, thinking, streamingText, connected, toolCards,
-      }) => {
+      onUpdate: ({ messages, thinking, streamingText, connected, toolCards }) => {
         this.messages = streamingText
           ? [...(messages ?? []), { role: ROLE.ASSISTANT, content: streamingText, streaming: true }]
           : messages;

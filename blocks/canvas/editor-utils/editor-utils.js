@@ -1,8 +1,9 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
-const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 import { daFetch } from '../../shared/utils.js';
+
+const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
 // --- state.js ---
 

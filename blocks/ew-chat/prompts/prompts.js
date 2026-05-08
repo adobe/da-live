@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);

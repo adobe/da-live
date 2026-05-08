@@ -1,6 +1,7 @@
 import { getNx } from '../../scripts/utils.js';
-const { DA_ADMIN } = await import(`${getNx()}/utils/utils.js`);
 import { daFetch } from '../shared/utils.js';
+
+const { DA_ADMIN } = await import(`${getNx()}/utils/utils.js`);
 
 export async function loadPrompts(org, site) {
   try {

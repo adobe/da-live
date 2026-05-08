@@ -1,15 +1,14 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import './ew-panel-library.js';
+
+const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
 class EwPanelExtension extends LitElement {
-  static properties = {
-    extension: { attribute: false },
-  };
+  static properties = { extension: { attribute: false } };
 
   connectedCallback() {
     super.connectedCallback();

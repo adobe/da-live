@@ -1,9 +1,9 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin } from 'da-y-wrapper';
 import { getNx } from '../../../../scripts/utils.js';
+import { slashMenuItemsForQuery, COMMAND_BY_ID } from '../../editor-utils/command-defs.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
-import { slashMenuItemsForQuery, COMMAND_BY_ID } from '../../editor-utils/command-defs.js';
 
 function inTopLevelParagraph($from) {
   if ($from.parent.type.name !== 'paragraph') return false;

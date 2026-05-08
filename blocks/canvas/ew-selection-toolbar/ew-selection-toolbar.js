@@ -1,9 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-
-await import(`${getNx()}/blocks/shared/popover/popover.js`);
-await import(`${getNx()}/blocks/shared/picker/picker.js`);
 import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
   getBlockTypePickerValue,
@@ -12,6 +8,11 @@ import {
   applyLink,
   removeLink,
 } from '../editor-utils/command-helpers.js';
+
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+
+await import(`${getNx()}/blocks/shared/popover/popover.js`);
+await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
 const styles = await loadStyle(import.meta.url);
 

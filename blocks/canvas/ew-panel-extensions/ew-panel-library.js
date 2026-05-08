@@ -1,6 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
 import {
   fetchBlocks,
   fetchItems,
@@ -11,6 +10,8 @@ import {
   getItemPreviewUrl,
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+
+const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
 const iconAdd = () => html`<img class="ext-icon" src="/blocks/edit/img/S2_Icon_ExperienceAdd_20_N.svg" aria-hidden="true">`;

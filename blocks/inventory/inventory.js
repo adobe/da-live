@@ -1,7 +1,5 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 import { listFolder } from './browse-api.js';
 import {
   contextToPathContext,
@@ -9,9 +7,12 @@ import {
   isFolder,
   RESOURCE_TYPE,
 } from './utils.js';
+import './list/list.js';
+
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
-import './list/list.js';
 
 const styles = await loadStyle(import.meta.url);
 const PANEL_ICON_SRC = '/blocks/canvas/img/s2-icon-splitleft-20-n.svg';

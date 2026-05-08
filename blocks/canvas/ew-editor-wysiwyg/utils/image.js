@@ -1,4 +1,5 @@
 import { getNx } from '../../../../scripts/utils.js';
+
 const { DA_ADMIN, DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
 function updateImageInDocument(view, originalSrc, newSrc) {

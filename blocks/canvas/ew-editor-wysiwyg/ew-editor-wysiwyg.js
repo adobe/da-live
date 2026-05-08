@@ -1,9 +1,10 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -16,9 +17,7 @@ function buildQuickEditInitPayload({ org, repo, path }) {
   const pathWithoutOrgRepo = path.split('/').slice(2).join('/');
   const pathname = pathWithoutOrgRepo ? `/${pathWithoutOrgRepo}` : '/';
   return {
-    config: {
-      mountpoint: `${getPreviewOrigin(org, repo)}/${org}/${repo}`,
-    },
+    config: { mountpoint: `${getPreviewOrigin(org, repo)}/${org}/${repo}` },
     location: { pathname },
   };
 }

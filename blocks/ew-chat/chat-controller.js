@@ -52,9 +52,8 @@ export default class ChatController {
       if (msg.role === ROLE.ASSISTANT && Array.isArray(msg.content)) {
         const call = msg.content.find((p) => p.type === AGENT_EVENT.TOOL_CALL);
         if (call) {
-          this._toolCards.set(call.toolCallId, {
-            toolName: call.toolName, input: call.input, state: TOOL_STATE.DONE,
-          });
+          const { toolCallId, toolName, input } = call;
+          this._toolCards.set(toolCallId, { toolName, input, state: TOOL_STATE.DONE });
         }
       }
     }
@@ -183,13 +182,12 @@ export default class ChatController {
     next.set(toolCallId, { ...card, state: approved ? TOOL_STATE.APPROVED : TOOL_STATE.REJECTED });
     this._toolCards = next;
 
+    const { approvalId } = card;
     this._messages = [
       ...this._messages,
       {
         role: ROLE.TOOL,
-        content: [{
-          type: AGENT_EVENT.TOOL_APPROVAL_RESPONSE, approvalId: card.approvalId, approved,
-        }],
+        content: [{ type: AGENT_EVENT.TOOL_APPROVAL_RESPONSE, approvalId, approved }],
       },
     ];
     this._thinking = approved;

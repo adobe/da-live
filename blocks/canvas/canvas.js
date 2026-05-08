@@ -1,6 +1,4 @@
 import { getNx } from '../../scripts/utils.js';
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -10,6 +8,9 @@ import {
   installEditorSplitDrag,
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
+
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, style];

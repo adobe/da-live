@@ -1,3 +1,15 @@
+.chat-actions img {
+  width: 16px;
+  height: 16px;
+}
+
+.chat-header .chat-header-btn img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 :host {
   display: flex;
   flex-direction: column;
@@ -67,11 +79,6 @@
   }
 }
 
-.chat-actions img {
-  width: 16px;
-  height: 16px;
-}
-
 .chat-header {
   display: flex;
   align-items: center;
@@ -98,13 +105,6 @@
 
     &.clear-btn {
       padding: 0 var(--s2-spacing-100);
-    }
-
-    img {
-      display: block;
-      width: 16px;
-      height: 16px;
-      flex-shrink: 0;
     }
 
     &:hover {

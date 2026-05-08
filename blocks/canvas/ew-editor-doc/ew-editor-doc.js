@@ -1,8 +1,10 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-import { updateDocument, updateCursors, getInstrumentedHTML, editorHtmlChange, editorSelectChange, getEditor } from '../editor-utils/editor-utils.js';
+import {
+  updateDocument, updateCursors, getInstrumentedHTML,
+  editorHtmlChange, editorSelectChange, getEditor,
+} from '../editor-utils/editor-utils.js';
 import { getActiveBlockFlatIndex, getBlockPositions } from '../ew-editor-wysiwyg/utils/blocks.js';
 import {
   editorDocCanLoad,
@@ -23,6 +25,8 @@ import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
+
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 

@@ -1,6 +1,7 @@
 import { getNx } from '../../../../scripts/utils.js';
-const { DA_ADMIN } = await import(`${getNx()}/utils/utils.js`);
 import { daFetch } from '../../../shared/utils.js';
+
+const { DA_ADMIN } = await import(`${getNx()}/utils/utils.js`);
 
 export function buildSourceUrl(path) {
   if (!path || typeof path !== 'string') return null;

@@ -1,8 +1,9 @@
 import { Plugin } from 'da-y-wrapper';
 import { getNx } from '../../../../scripts/utils.js';
-const { DA_ADMIN, DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 import { daFetch } from '../../../shared/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
+
+const { DA_ADMIN, DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 
