@@ -1,5 +1,4 @@
-import { updateDocument } from '../editor-utils/document.js';
-import { updateState, getEditor } from '../editor-utils/state.js';
+import { updateDocument, updateState, getEditor } from '../editor-utils/editor-utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { handleImageReplace } from './utils/image.js';
 import {

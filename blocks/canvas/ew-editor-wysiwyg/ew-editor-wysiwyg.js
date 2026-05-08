@@ -1,7 +1,7 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/preview.js';
+import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 

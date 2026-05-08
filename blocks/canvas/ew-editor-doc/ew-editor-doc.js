@@ -2,9 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-import { updateDocument, updateCursors, getInstrumentedHTML, editorHtmlChange, editorSelectChange } from '../editor-utils/document.js';
+import { updateDocument, updateCursors, getInstrumentedHTML, editorHtmlChange, editorSelectChange, getEditor } from '../editor-utils/editor-utils.js';
 import { getActiveBlockFlatIndex, getBlockPositions } from '../ew-editor-wysiwyg/utils/blocks.js';
-import { getEditor } from '../editor-utils/state.js';
 import {
   editorDocCanLoad,
   sourceUrlFromEditorCtx,
