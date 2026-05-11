@@ -124,7 +124,7 @@ function makePictures(editor, live) {
     // Determine what to replace
     const imgParent = img.parentElement;
     const imgGrandparent = imgParent.parentElement;
-    if (imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1) {
+    if (imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1 && imgParent.childElementCount === 1) {
       imgGrandparent.replaceChild(pic, imgParent);
     } else {
       imgParent.replaceChild(pic, img);
