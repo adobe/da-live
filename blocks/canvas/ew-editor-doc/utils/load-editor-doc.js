@@ -1,9 +1,8 @@
 import { checkDoc } from './source.js';
-import { getNx } from '../../../../scripts/utils.js';
+import { initIms } from '../../../shared/utils.js';
 
 export async function resolveEditorDocSession(sourceUrl) {
-  const { loadIms } = await import(`${getNx()}/utils/ims.js`);
-  const ims = await loadIms();
+  const ims = await initIms();
   const token = ims?.accessToken?.token ?? null;
   if (ims?.anonymous || !token) {
     return { ok: false, error: 'Sign in required' };
