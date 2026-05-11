@@ -1,14 +1,10 @@
 :host {
   --browse-sheet-max-width: 1024px;
 
-  /* Fill the .browse wrapper; max-height none drops a fixed sheet cap */
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  flex: 1 1 auto;
-  height: 100%;
-  min-height: 0;
-  max-height: none;
+  height: calc(100dvh - var(--s2-nav-height));
   min-width: 0;
   padding: var(--s2-spacing-200) var(--s2-spacing-300);
   overflow: hidden;
@@ -20,10 +16,7 @@
   overscroll-behavior: contain;
 
   nx-browse-list {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    flex-grow: 1;
+    flex: 1 1 0;
     min-height: 0;
     min-width: 0;
   }
