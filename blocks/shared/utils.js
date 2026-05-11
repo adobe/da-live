@@ -128,6 +128,13 @@ export const getSheetByIndex = (json, index = 0) => {
   return json[Object.keys(json)[index]]?.data;
 };
 
+export const getSheetByName = (json, name) => {
+  if (json[':type'] !== 'multi-sheet') {
+    return json[':sheetname'] === name ? json.data : undefined;
+  }
+  return json[name]?.data;
+};
+
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
 export async function contentLogin(owner, repo) {

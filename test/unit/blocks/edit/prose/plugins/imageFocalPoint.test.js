@@ -33,6 +33,7 @@ describe('imageFocalPoint Plugin', () => {
         return {
           ok: true,
           json: async () => ({
+            ':type': 'multi-sheet',
             library: {
               data: [
                 { title: 'Blocks', path: '/blocks.json', ref: 'main' },
