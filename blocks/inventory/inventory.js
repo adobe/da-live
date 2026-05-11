@@ -1,6 +1,6 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
-import { listFolder } from './browse-api.js';
+import { listFolder, itemHashPath } from '../shared/daFiles.js';
 import {
   contextToPathContext,
   entryTypeFromExtension,
@@ -93,24 +93,31 @@ class NxBrowse extends LitElement {
 
   _onBrowseActivate(event) {
     const { pathKey, item } = event.detail || {};
-    if (entryTypeFromExtension(item.ext) === RESOURCE_TYPE.document) {
-      const url = new URL(window.location.href);
+    if (!item) return;
+
+    if (isFolder(item)) {
+      window.location.hash = `#/${pathKey}`;
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    const entryType = entryTypeFromExtension(item.ext);
+
+    if (entryType === RESOURCE_TYPE.document) {
       url.pathname = '/canvas';
-      url.hash = `#/${item.path.slice(1, -(item.ext.length + 1))}`;
+      url.hash = `#/${itemHashPath(item)}`;
       window.location.assign(url.href);
       return;
-    }
-    if (entryTypeFromExtension(item.ext) === RESOURCE_TYPE.sheet) {
-      const url = new URL(window.location.href);
+    } else if (entryType === RESOURCE_TYPE.sheet) {
       url.pathname = '/sheet';
-      url.search = '';
       url.hash = `#/${item.path.slice(1, -(item.ext.length + 1))}`;
-      window.open(url.href, '_blank', 'noopener,noreferrer');
-      return;
+    } else {
+      url.pathname = '/media';
+      url.hash = `#${item.path}`;
     }
-    if (item && isFolder(item)) {
-      window.location.hash = `#/${pathKey}`;
-    }
+
+    url.search = '';
+    window.open(url.href, '_blank', 'noopener,noreferrer');
   }
 
   render() {
@@ -204,6 +211,32 @@ export default function decorate(block) {
 
   browse.addEventListener('nx-browse-open-panel', (e) => {
     if (e.detail.position === 'before') openBrowseChatPanel();
+  });
+
+  let prevKeys = new Set();
+  browse.addEventListener('nx-browse-selection-change', ({ detail }) => {
+    const selected = detail?.selected ?? [];
+    const nextKeys = new Set(selected.map(({ key }) => key));
+    for (const key of prevKeys) {
+      if (!nextKeys.has(key)) {
+        document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key: `browse-${key}` } }));
+      }
+    }
+    for (const { key, item } of selected) {
+      if (!prevKeys.has(key)) {
+        const label = item.ext ? `${item.name}.${item.ext}` : item.name;
+        document.dispatchEvent(new CustomEvent('nx-add-to-chat', {
+          detail: {
+            key: `browse-${key}`,
+            id: key,
+            label,
+            blockName: label,
+            innerText: `Selected repository path: ${key}`,
+          },
+        }));
+      }
+    }
+    prevKeys = nextKeys;
   });
 
   const store = getPanelStore();

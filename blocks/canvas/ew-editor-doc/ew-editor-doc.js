@@ -5,7 +5,7 @@ import {
   updateDocument, updateCursors, getInstrumentedHTML,
   editorHtmlChange, editorSelectChange, getEditor,
 } from '../editor-utils/editor-utils.js';
-import { getActiveBlockFlatIndex, getBlockPositions } from '../ew-editor-wysiwyg/utils/blocks.js';
+import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
   sourceUrlFromEditorCtx,
@@ -43,7 +43,7 @@ export class EwEditorDoc extends LitElement {
       this.quickEditPort = undefined;
       this._teardown();
       this._error = undefined;
-      this._lastDocBlockFlatIndex = undefined;
+      this._lastDocBlockIndex = undefined;
       editorHtmlChange.emit('');
     }
   }
@@ -98,14 +98,14 @@ export class EwEditorDoc extends LitElement {
     this._undoStackHandler = undefined;
   }
 
-  _scrollDocToBlock(blockFlatIndex) {
-    if (blockFlatIndex < 0) return;
+  _scrollDocToBlock(blockIndex) {
+    if (blockIndex < 0) return;
     const { view } = this._proseContext ?? {};
     if (!view) return;
     const positions = getBlockPositions(view);
-    const pos = positions[blockFlatIndex];
+    const pos = positions[blockIndex];
     if (pos == null) return;
-    this._lastDocBlockFlatIndex = blockFlatIndex;
+    this._lastDocBlockIndex = blockIndex;
     const sel = NodeSelection.create(view.state.doc, pos);
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
@@ -135,7 +135,7 @@ export class EwEditorDoc extends LitElement {
       port: this.quickEditPort,
       iframe: this._wysiwygIframe,
       suppressRerender: false,
-      lastBlockFlatIndex: undefined,
+      lastBlockIndex: undefined,
       owner: org,
       repo,
       path: controllerPathnameFromEditorCtx(this.ctx),
@@ -209,10 +209,10 @@ export class EwEditorDoc extends LitElement {
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
             (pmView) => {
-              const flatIndex = getActiveBlockFlatIndex(pmView);
-              if (flatIndex === this._lastDocBlockFlatIndex) return;
-              this._lastDocBlockFlatIndex = flatIndex;
-              editorSelectChange.emit({ blockFlatIndex: flatIndex, source: 'doc' });
+              const blockIndex = getActiveBlockIndex(pmView);
+              if (blockIndex === this._lastDocBlockIndex) return;
+              this._lastDocBlockIndex = blockIndex;
+              editorSelectChange.emit({ blockIndex, source: 'doc' });
             },
           ),
         ],
@@ -251,8 +251,8 @@ export class EwEditorDoc extends LitElement {
     };
     this.parentElement?.addEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
     this._unsubscribeSelect = editorSelectChange
-      .subscribe(({ blockFlatIndex, source }) => {
-        if (source !== 'doc') this._scrollDocToBlock(blockFlatIndex);
+      .subscribe(({ blockIndex, source }) => {
+        if (source !== 'doc') this._scrollDocToBlock(blockIndex);
       });
   }
 

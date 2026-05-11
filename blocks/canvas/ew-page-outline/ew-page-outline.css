@@ -13,34 +13,38 @@
   margin: 0;
 }
 
-
-.ew-page-outline-list-wrap {
+.list-wrap {
   flex: 1;
   overflow-y: auto;
   padding: var(--s2-spacing-75) 0;
 }
 
-.ew-page-outline-list {
+.outline-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.ew-page-outline-section {
+.outline-section {
   margin: 0;
   padding: 0;
   border-bottom: 1px solid var(--s2-gray-200);
 
-  &:last-child {
+  &:last-child:not([data-drop-position="after"]) {
     border-bottom: none;
   }
 }
 
-.ew-page-outline-section-header {
+.section-header {
   background: var(--s2-gray-75);
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
 }
 
-.ew-page-outline-section-label {
+.section-label {
   display: block;
   padding: var(--s2-spacing-200) var(--s2-spacing-100);
   font-size: var(--s2-body-size-s);
@@ -48,17 +52,17 @@
   color: var(--s2-gray-800);
 }
 
-.ew-page-outline-block-list {
+.block-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.ew-page-outline-block {
+.block-item {
   display: block;
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
   padding-inline-start: var(--s2-spacing-300);
-  cursor: pointer;
+  cursor: grab;
   font-size: var(--s2-body-size-s);
   font-weight: 500;
   color: var(--s2-gray-800);
@@ -69,16 +73,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  &:last-child {
-    border-bottom: none;
-  }
-
   &:hover {
     background: var(--s2-gray-75);
   }
 
   &:focus-visible {
     background: var(--s2-gray-75);
+  }
+
+  &:last-child:not([data-drop-position="after"]) {
+    border-bottom: none;
   }
 
   &[aria-selected="true"] {
@@ -93,17 +97,30 @@
   border-radius: var(--s2-corner-radius-75);
 }
 
-.ew-page-outline-block-empty {
+.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+[data-drop-position="before"] {
+  border-top: 2px solid var(--s2-blue-600, #147af3);
+}
+
+[data-drop-position="after"] {
+  border-bottom: 2px solid var(--s2-blue-600, #147af3);
+}
+
+.block-empty {
   cursor: default;
 }
 
-.ew-page-outline-empty-label {
+.empty-label {
   font-style: italic;
   color: var(--s2-gray-600);
   font-weight: 400;
 }
 
-.ew-page-outline-placeholder {
+.placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-100);
   font-size: var(--s2-body-size-s);
   color: var(--s2-gray-600);

@@ -1,4 +1,5 @@
 import { getNx } from '../../scripts/utils.js';
+import { editorSelectChange } from './editor-utils/editor-utils.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -134,7 +135,7 @@ const CANVAS_PANELS = {
   after: {
     width: '400px',
     getContent: async () => {
-      await import('../ew-tool-panel/tool-panel.js');
+      await import('./ew-tool-panel/tool-panel.js');
       return document.createElement('ew-tool-panel');
     },
   },
@@ -208,4 +209,24 @@ export default async function decorate(block) {
   const store = getPanelStore();
   if (store.before && !store.before.fragment) openCanvasPanel('before');
   if (store.after && !store.after.fragment) openCanvasPanel('after');
+
+  // Only NodeSelection (explicit block handle click) in doc mode qualifies as intentional context.
+  // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.
+  const CANVAS_CHAT_KEY = 'canvas-selection';
+  editorSelectChange.subscribe(({
+    blockIndex, blockName, proseIndex, innerText, source, explicit,
+  }) => {
+    if (source !== 'doc' || !explicit) return;
+    const detail = blockIndex >= 0 && blockName
+      ? {
+        key: CANVAS_CHAT_KEY,
+        id: CANVAS_CHAT_KEY,
+        label: blockName,
+        blockName,
+        proseIndex,
+        innerText,
+      }
+      : { key: CANVAS_CHAT_KEY };
+    document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail }));
+  });
 }

@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -9,6 +9,7 @@ const style = await loadStyle(import.meta.url);
 
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
+const ACTIVE_VIEW_KEY = 'nx-tool-panel-active-view';
 
 class EwToolPanel extends LitElement {
   static properties = {
@@ -65,15 +66,12 @@ class EwToolPanel extends LitElement {
     });
   }
 
-  async firstUpdated() {
-    if (this.views?.length && !this.activeId) {
-      await this.showView(this.views[0].id);
-    }
-  }
-
   async updated(changed) {
     if (changed.has('views')) await this._onViewsChange();
     if (changed.has('activeId')) {
+      if (this.activeId) {
+        try { sessionStorage.setItem(ACTIVE_VIEW_KEY, this.activeId); } catch { /* ignore */ }
+      }
       this._syncContent();
       this._syncHeaderActions();
     }
@@ -99,7 +97,8 @@ class EwToolPanel extends LitElement {
     }
 
     if (!this.activeId || !ids.has(this.activeId)) {
-      await this.showView(this.views[0].id);
+      const stored = sessionStorage.getItem(ACTIVE_VIEW_KEY);
+      await this.showView(stored && ids.has(stored) ? stored : this.views[0].id);
     }
   }
 

@@ -76,9 +76,13 @@ export class NxBrowseList extends LitElement {
   }
 
   _emitSelectionChange() {
+    const selectedKeys = [...(this._selectedKeys ?? [])];
+    const selected = (this.items ?? [])
+      .map((item) => ({ key: itemRowPathKey(this.currentPathKey, item), item }))
+      .filter(({ key }) => selectedKeys.includes(key));
     this.dispatchEvent(
       new CustomEvent('nx-browse-selection-change', {
-        detail: { selectedKeys: [...(this._selectedKeys ?? [])] },
+        detail: { selected },
         bubbles: true,
         composed: true,
       }),

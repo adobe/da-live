@@ -395,6 +395,19 @@ function createOutlineView() {
   };
 }
 
+function createFileExplorerView() {
+  return {
+    id: 'files',
+    label: 'Files',
+    section: 'Editor',
+    firstParty: true,
+    load: async () => {
+      await import('../ew-file-explorer/ew-file-explorer.js');
+      return document.createElement('ew-file-explorer');
+    },
+  };
+}
+
 function extensionToPanelView(ext, section) {
   const view = {
     id: ext.name,
@@ -459,6 +472,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
 
   return [
     createOutlineView(),
+    createFileExplorerView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

@@ -211,6 +211,27 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
+const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'block-marker']);
+
+export function parseSections(htmlText) {
+  const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+  const container = doc.querySelector('main') ?? doc.body;
+  let flatIndex = 0;
+  return Array.from(container.querySelectorAll(':scope > div'), (section, sectionIndex) => {
+    const blocks = [];
+    Array.from(section.querySelectorAll(':scope > div[class]')).forEach((el) => {
+      const name = el.classList[0];
+      if (!name || SKIP_BLOCK_CLASSES.has(name)) return;
+      const rawProseIndex = el.getAttribute('data-block-index');
+      const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
+      const innerText = el.textContent?.trim() ?? '';
+      blocks.push({ name, blockIndex: flatIndex, proseIndex, innerText });
+      flatIndex += 1;
+    });
+    return { sectionIndex, blocks };
+  });
+}
+
 // State observable — replays last value on subscribe. See docs/canvas-events.md.
 export const editorHtmlChange = (() => {
   const listeners = new Set();
@@ -229,10 +250,33 @@ export const editorHtmlChange = (() => {
 })();
 
 // Event observable — no replay on subscribe. See docs/canvas-events.md.
+// emit() enriches the detail with blockName/proseIndex/innerText from the last parsed HTML.
 export const editorSelectChange = (() => {
   const listeners = new Set();
+  let blockMeta = new Map();
+
+  editorHtmlChange.subscribe((html) => {
+    if (!html.trim()) {
+      blockMeta = new Map();
+      return;
+    }
+    const next = new Map();
+    for (const { blocks } of parseSections(html)) {
+      for (const { name, blockIndex, proseIndex, innerText } of blocks) {
+        next.set(blockIndex, { name, proseIndex, innerText });
+      }
+    }
+    blockMeta = next;
+  });
+
   return {
-    emit(detail) { listeners.forEach((fn) => fn(detail)); },
+    emit(detail) {
+      const meta = blockMeta.get(detail.blockIndex);
+      const enriched = meta
+        ? { ...detail, blockName: meta.name, proseIndex: meta.proseIndex, innerText: meta.innerText }
+        : detail;
+      listeners.forEach((fn) => fn(enriched));
+    },
     subscribe(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
