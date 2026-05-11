@@ -8,12 +8,27 @@ const imageDropKey = new PluginKey('imageDrop');
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 export const SUPPORTED_IMAGE_TYPES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
+async function renderError(message) {
+  await import('../../../shared/da-dialog/da-dialog.js');
+  const dialog = document.createElement('da-dialog');
+  dialog.title = 'Error';
+  dialog.message = message;
+  dialog.action = {
+    style: 'accent',
+    label: 'OK',
+    click: async () => { dialog.close(); },
+  };
+  const main = document.body.querySelector('main');
+  main.insertAdjacentElement('afterend', dialog);
+  dialog.showModal();
+}
+
 export async function uploadImageFile(view, file) {
   if (!SUPPORTED_IMAGE_TYPES.some((type) => type === file.type)) return;
 
   const { schema } = view.state;
   const details = getPathDetails();
-  const url = `${details.origin}/source${details.parent}/.${details.name}/${file.name}`;
+  const url = `${details.origin}/media${details.parent}/${file.name}`;
 
   // Use the upload URL as a unique FPO identifier so concurrent uploads can
   // each find their own placeholder by content rather than by stale position.
@@ -23,9 +38,29 @@ export async function uploadImageFile(view, file) {
 
   const formData = new FormData();
   formData.append('data', file);
-  const opts = { method: 'PUT', body: formData };
+  const opts = { method: 'POST', body: formData };
   const resp = await daFetch(url, opts);
-  if (!resp.ok) return;
+  if (!resp.ok) {
+    let removed = false;
+    view.state.doc.descendants((node, pos) => {
+      if (!removed && node.type.name === 'image' && node.attrs.src === fpoSrc) {
+        removed = true;
+        view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize).scrollIntoView());
+      }
+    });
+
+    if (resp.status === 413) {
+      renderError('Image size exceeds 20MB limit');
+    } else {
+      const json = await resp.json();
+      if (json.error) {
+        renderError(`Failed to upload image: ${json.error}`);
+      } else {
+        renderError(`Failed to upload image: ${json.message}`);
+      }
+    }
+    return;
+  }
   const json = await resp.json();
 
   // Create a doc image to pre-download the image before showing it.
@@ -38,12 +73,12 @@ export async function uploadImageFile(view, file) {
     view.state.doc.descendants((node, pos) => {
       if (!replaced && node.type.name === 'image' && node.attrs.src === fpoSrc) {
         replaced = true;
-        const img = schema.nodes.image.create({ src: json.source.contentUrl });
+        const img = schema.nodes.image.create({ src: json.uri });
         view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, img).scrollIntoView());
       }
     });
   });
-  docImg.src = json.source.contentUrl;
+  docImg.src = json.uri;
 }
 
 export default function imageDrop() {
