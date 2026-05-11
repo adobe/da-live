@@ -272,8 +272,9 @@ export const editorSelectChange = (() => {
   return {
     emit(detail) {
       const meta = blockMeta.get(detail.blockIndex);
+      const { name: blockName, proseIndex, innerText } = meta || {};
       const enriched = meta
-        ? { ...detail, blockName: meta.name, proseIndex: meta.proseIndex, innerText: meta.innerText }
+        ? { ...detail, blockName, proseIndex, innerText }
         : detail;
       listeners.forEach((fn) => fn(enriched));
     },

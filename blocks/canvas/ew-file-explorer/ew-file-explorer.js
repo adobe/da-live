@@ -135,9 +135,7 @@ class EwFileExplorer extends LitElement {
   }
 
   _renderNode(item, depth) {
-    const {
-      type, pathKey, name, children, path,
-    } = item;
+    const { type, pathKey, name, children, path } = item;
     const isDir = type === 'directory';
     const expanded = isDir && this._expanded?.has(pathKey);
     const hashPath = itemHashPath(item);
