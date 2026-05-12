@@ -1,6 +1,6 @@
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getMetadata } from '../../utils/helpers.js';
-import { parseDom } from './helpers.js';
+import { parseDom, aemToContentUrl } from './helpers.js';
 
 const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 
@@ -191,7 +191,7 @@ export async function getBlocks(sources) {
         }
 
         try {
-          const resp = await daFetch(url, { noRedirect: true });
+          const resp = await daFetch(aemToContentUrl(url), { noRedirect: true });
           if (!resp.ok) throw new Error('Something went wrong.');
           const data = await resp.json();
           urlCache.set(url, data);
@@ -210,7 +210,7 @@ export async function getBlocks(sources) {
             if (block.name && block.path) {
               acc.push({
                 ...block,
-                loadVariants: getBlockVariants(block.path),
+                loadVariants: getBlockVariants(aemToContentUrl(block.path)),
               });
             }
           });

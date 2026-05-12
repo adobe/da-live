@@ -8,6 +8,7 @@ const {
   getMetadata,
   getPreviewUrl,
   getAemUrlVars,
+  aemToContentUrl,
   getItemDetails,
   getItems,
   getPreviewStatus,
@@ -115,6 +116,35 @@ describe('da-library/helpers exports', () => {
 
     it('Returns false for a non-URL string', () => {
       expect(getAemUrlVars('not a url')).to.be.false;
+    });
+  });
+
+  describe('aemToContentUrl', () => {
+    it('Rewrites aem.page preview URLs to content.da.live', () => {
+      expect(aemToContentUrl('https://main--site--org.aem.page/blocks/cards'))
+        .to.equal('https://content.da.live/org/site/blocks/cards');
+    });
+
+    it('Rewrites aem.live, hlx.page and hlx.live URLs the same way', () => {
+      expect(aemToContentUrl('https://main--site--org.aem.live/blocks/cards'))
+        .to.equal('https://content.da.live/org/site/blocks/cards');
+      expect(aemToContentUrl('https://main--site--org.hlx.page/blocks/cards'))
+        .to.equal('https://content.da.live/org/site/blocks/cards');
+      expect(aemToContentUrl('https://feature--site--org.hlx.live/deep/nested/path'))
+        .to.equal('https://content.da.live/org/site/deep/nested/path');
+    });
+
+    it('Leaves content.da.live and admin.da.live URLs unchanged', () => {
+      const con = 'https://content.da.live/org/site/blocks/cards';
+      expect(aemToContentUrl(con)).to.equal(con);
+      const admin = 'https://admin.da.live/source/org/site/blocks/cards';
+      expect(aemToContentUrl(admin)).to.equal(admin);
+    });
+
+    it('Leaves unrelated origins, relative paths and non-URL strings unchanged', () => {
+      expect(aemToContentUrl('https://example.com/blocks/cards')).to.equal('https://example.com/blocks/cards');
+      expect(aemToContentUrl('/blocks/cards.json')).to.equal('/blocks/cards.json');
+      expect(aemToContentUrl('not a url')).to.equal('not a url');
     });
   });
 
@@ -234,6 +264,19 @@ describe('da-library/helpers/index getBlocks', () => {
     window.fetch = () => Promise.resolve(new Response('boom', { status: 500 }));
     const result = await getBlocks(['/blocks.json']);
     expect(result).to.deep.equal([]);
+  });
+
+  it('Rewrites an AEM source URL to content.da.live before fetching', async () => {
+    let captured;
+    window.fetch = (url) => {
+      captured = url;
+      return Promise.resolve(new Response(
+        JSON.stringify({ ':type': 'sheet', data: [] }),
+        { status: 200 },
+      ));
+    };
+    await getBlocks(['https://main--repo--org.aem.page/blocks.json']);
+    expect(captured).to.equal('https://content.da.live/org/repo/blocks.json');
   });
 
   it('Caches fetched source data so subsequent calls do not refetch', async () => {
