@@ -212,7 +212,8 @@ export class EwEditorDoc extends LitElement {
               const blockIndex = getActiveBlockIndex(pmView);
               if (blockIndex === this._lastDocBlockIndex) return;
               this._lastDocBlockIndex = blockIndex;
-              editorSelectChange.emit({ blockIndex, source: 'doc' });
+              const explicit = pmView.state.selection instanceof NodeSelection;
+              editorSelectChange.emit({ blockIndex, source: 'doc', explicit });
             },
           ),
         ],
