@@ -19,7 +19,7 @@ export async function uploadImageFile(view, file) {
   // each find their own placeholder by content rather than by stale position.
   const fpoSrc = `${FPO_IMG_URL}#${url}`;
   const fpo = schema.nodes.image.create({ src: fpoSrc, style: 'width: 180px' });
-  view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
+  view.dispatch(view.state.tr.replaceSelectionWith(fpo));
 
   const formData = new FormData();
   formData.append('data', file);
@@ -39,7 +39,7 @@ export async function uploadImageFile(view, file) {
       if (!replaced && node.type.name === 'image' && node.attrs.src === fpoSrc) {
         replaced = true;
         const img = schema.nodes.image.create({ src: json.source.contentUrl });
-        view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, img).scrollIntoView());
+        view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, img));
       }
     });
   });
