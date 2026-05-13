@@ -337,17 +337,25 @@ function restoreCursorPosition(view) {
   }
 }
 
+function rewriteAemHost(urlStr) {
+  try {
+    const url = new URL(urlStr);
+    if (url.host.endsWith('.aem.page') || url.host.endsWith('.aem.live')) {
+      url.host = url.host.replace(/\.aem\.(page|live)$/, '.preview.da.live');
+      return url.toString();
+    }
+  } catch {
+    // relative or malformed — leave unchanged
+  }
+  return urlStr;
+}
+
 function rewriteImageSrcs(pm) {
   pm.querySelectorAll('img[src]').forEach((img) => {
-    try {
-      const url = new URL(img.src);
-      if (url.host.endsWith('.aem.page') || url.host.endsWith('.aem.live')) {
-        url.host = url.host.replace(/\.aem\.(page|live)$/, '.preview.da.live');
-        img.src = url.toString();
-      }
-    } catch {
-      // relative or malformed src — skip
-    }
+    img.src = rewriteAemHost(img.src);
+  });
+  pm.querySelectorAll('source[srcset]').forEach((source) => {
+    source.srcset = rewriteAemHost(source.srcset);
   });
 }
 
