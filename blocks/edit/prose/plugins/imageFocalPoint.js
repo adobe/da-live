@@ -1,23 +1,11 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
+import { rewriteImageSrcForEditor } from '../image-utils.js';
 import inlinesvg from '../../../shared/inlinesvg.js';
 import { openFocalPointDialog } from './focalPointDialog.js';
 import { loadLibrary } from '../../da-library/helpers/helpers.js';
 import { getTableInfo, isInTableCell } from './tableUtils.js';
 
 const imageFocalPointKey = new PluginKey('imageFocalPoint');
-
-function rewriteAemHost(urlStr) {
-  try {
-    const url = new URL(urlStr);
-    if (url.host.endsWith('.aem.page') || url.host.endsWith('.aem.live')) {
-      url.host = url.host.replace(/\.aem\.(page|live)$/, '.preview.da.live');
-      return url.toString();
-    }
-  } catch {
-    // relative or malformed — leave unchanged
-  }
-  return urlStr;
-}
 
 // Cache blocks data at module level
 let blocksDataPromise = null;
@@ -53,7 +41,7 @@ function shouldShowFocalPoint(tableName, blocks) {
 }
 
 function updateImageAttributes(img, attrs) {
-  img.src = rewriteAemHost(attrs.src);
+  img.src = rewriteImageSrcForEditor(attrs.src);
   ['alt', 'title', 'width', 'height'].forEach((attr) => {
     if (attrs[attr]) {
       img[attr] = attrs[attr];

@@ -27,6 +27,7 @@ import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { rewriteImageSrcForEditor } from './image-utils.js';
 
 async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
@@ -337,18 +338,6 @@ function restoreCursorPosition(view) {
   }
 }
 
-function rewriteAemHost(urlStr) {
-  try {
-    const url = new URL(urlStr);
-    if (url.host.endsWith('.aem.page') || url.host.endsWith('.aem.live')) {
-      url.host = url.host.replace(/\.aem\.(page|live)$/, '.preview.da.live');
-      return url.toString();
-    }
-  } catch {
-    // relative or malformed — leave unchanged
-  }
-  return urlStr;
-}
 
 function addSyncedListener(wsProvider, canWrite) {
   onWsSync(wsProvider, () => {
@@ -484,13 +473,13 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
     nodeViews: {
       image(node) {
         const img = document.createElement('img');
-        img.src = rewriteAemHost(node.attrs.src);
+        img.src = rewriteImageSrcForEditor(node.attrs.src);
         if (node.attrs.alt) img.alt = node.attrs.alt;
         return {
           dom: img,
           update(updated) {
             if (updated.type.name !== 'image') return false;
-            img.src = rewriteAemHost(updated.attrs.src);
+            img.src = rewriteImageSrcForEditor(updated.attrs.src);
             if (updated.attrs.alt) img.alt = updated.attrs.alt;
             return true;
           },
