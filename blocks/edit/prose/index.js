@@ -361,12 +361,12 @@ function rewriteImageSrcs(pm) {
 
 function addSyncedListener(wsProvider, canWrite) {
   onWsSync(wsProvider, () => {
-    const pm = document.querySelector('da-content')?.shadowRoot
-      .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
-    if (pm) {
-      if (canWrite) pm.contentEditable = 'true';
-      rewriteImageSrcs(pm);
+    if (canWrite) {
+      const pm = document.querySelector('da-content')?.shadowRoot
+        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+      if (pm) pm.contentEditable = 'true';
     }
+    rewriteImageSrcs(window.view.dom);
   });
 }
 
@@ -437,6 +437,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     // Reconfigure the view with the full plugin list
     const newState = window.view.state.reconfigure({ plugins: pluginList });
     window.view.updateState(newState);
+    rewriteImageSrcs(window.view.dom);
   });
 }
 
