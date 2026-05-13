@@ -4,14 +4,13 @@ import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
-import { daFetch } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
 import {
   OOTB_PLUGINS,
   loadLibrary,
   getItemDetails,
   getPreviewStatus,
-  aemToContentUrl,
+  daFetchLibrary,
   ref,
 } from './helpers/helpers.js';
 
@@ -191,7 +190,7 @@ class DaLibrary extends LitElement {
   }
 
   async handleTemplateClick(item) {
-    const resp = await daFetch(aemToContentUrl(item.value));
+    const { resp } = await daFetchLibrary(item.value, { skipRewrite: item.usedFallback });
     if (!resp.ok) return;
     let text = await resp.text();
 
