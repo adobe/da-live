@@ -6,6 +6,19 @@ import { getTableInfo, isInTableCell } from './tableUtils.js';
 
 const imageFocalPointKey = new PluginKey('imageFocalPoint');
 
+function rewriteAemHost(urlStr) {
+  try {
+    const url = new URL(urlStr);
+    if (url.host.endsWith('.aem.page') || url.host.endsWith('.aem.live')) {
+      url.host = url.host.replace(/\.aem\.(page|live)$/, '.preview.da.live');
+      return url.toString();
+    }
+  } catch {
+    // relative or malformed — leave unchanged
+  }
+  return urlStr;
+}
+
 // Cache blocks data at module level
 let blocksDataPromise = null;
 async function getBlocksData() {
@@ -40,7 +53,7 @@ function shouldShowFocalPoint(tableName, blocks) {
 }
 
 function updateImageAttributes(img, attrs) {
-  img.src = attrs.src;
+  img.src = rewriteAemHost(attrs.src);
   ['alt', 'title', 'width', 'height'].forEach((attr) => {
     if (attrs[attr]) {
       img[attr] = attrs[attr];
@@ -150,7 +163,16 @@ export default function imageFocalPoint() {
           if (isInTableCell(view.state, getPos())) {
             return new ImageWithFocalPointView(node, view, getPos);
           }
-          return null;
+          const img = document.createElement('img');
+          updateImageAttributes(img, node.attrs);
+          return {
+            dom: img,
+            update(updated) {
+              if (updated.type.name !== 'image') return false;
+              updateImageAttributes(img, updated.attrs);
+              return true;
+            },
+          };
         },
       },
     },
