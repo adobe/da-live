@@ -337,12 +337,27 @@ function restoreCursorPosition(view) {
   }
 }
 
+function rewriteImageSrcs(pm) {
+  pm.querySelectorAll('img[src]').forEach((img) => {
+    try {
+      const url = new URL(img.src);
+      if (url.host.endsWith('.aem.page') || url.host.endsWith('.aem.live')) {
+        url.host = url.host.replace(/\.aem\.(page|live)$/, '.preview.da.live');
+        img.src = url.toString();
+      }
+    } catch {
+      // relative or malformed src — skip
+    }
+  });
+}
+
 function addSyncedListener(wsProvider, canWrite) {
   onWsSync(wsProvider, () => {
-    if (canWrite) {
-      const pm = document.querySelector('da-content')?.shadowRoot
-        .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
-      if (pm) pm.contentEditable = 'true';
+    const pm = document.querySelector('da-content')?.shadowRoot
+      .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
+    if (pm) {
+      if (canWrite) pm.contentEditable = 'true';
+      rewriteImageSrcs(pm);
     }
   });
 }
