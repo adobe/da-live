@@ -61,11 +61,25 @@ export function aemToContentUrl(url) {
   }
 }
 
+/**
+ * Library fetch wrapper: tries the content.da.live rewrite first so authors can
+ * paste aem.TLD URLs without CORS, then falls back to the original URL on 404
+ * for the edge case where the resource genuinely lives outside DA (rare, but valid).
+ * Non-404 failures (auth, network, 5xx) propagate as-is so they're not masked.
+ */
+export async function daFetchLibrary(url, opts) {
+  const rewritten = aemToContentUrl(url);
+  if (rewritten === url) return daFetch(url, opts);
+  const resp = await daFetch(rewritten, opts);
+  if (resp.status === 404) return daFetch(url, opts);
+  return resp;
+}
+
 export async function getItems(sources, format) {
   const items = [];
   for (const source of sources) {
     try {
-      const resp = await daFetch(aemToContentUrl(source));
+      const resp = await daFetchLibrary(source);
       const json = await resp.json();
       if (json.data) {
         items.push(...formatData(json.data, format));

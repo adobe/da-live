@@ -1,6 +1,6 @@
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getMetadata } from '../../utils/helpers.js';
-import { parseDom, aemToContentUrl } from './helpers.js';
+import { parseDom, aemToContentUrl, daFetchLibrary } from './helpers.js';
 
 const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 
@@ -73,13 +73,13 @@ async function fetchAndParseHtml(path, isAemHosted) {
   const postfix = isAemHosted ? '.plain.html' : '';
   try {
     const resp = await daFetch(`${path}${postfix}`);
-    if (!resp.ok) return null;
+    if (!resp.ok) return { doc: null, notFound: resp.status === 404 };
 
     const html = await resp.text();
     const parser = new DOMParser();
-    return parser.parseFromString(html, 'text/html');
+    return { doc: parser.parseFromString(html, 'text/html') };
   } catch (e) {
-    return null;
+    return { doc: null };
   }
 }
 
@@ -161,7 +161,7 @@ function transformBlock(block) {
   return item;
 }
 
-export async function getBlockVariants(path) {
+async function extractVariants(path) {
   let isAemHosted = false;
   try {
     const { origin } = new URL(path);
@@ -170,14 +170,24 @@ export async function getBlockVariants(path) {
     // path is relative — not AEM hosted
   }
 
-  const doc = await fetchAndParseHtml(path, isAemHosted);
-  if (!doc) return [];
+  const { doc, notFound } = await fetchAndParseHtml(path, isAemHosted);
+  if (!doc) return { variants: [], notFound };
 
   decorateImages(doc.body, path);
 
   const blocks = getSectionsAndBlocks(doc);
   const groupedBlocks = groupBlocks(blocks);
-  return groupedBlocks.map(transformBlock);
+  return { variants: groupedBlocks.map(transformBlock) };
+}
+
+export async function getBlockVariants(originalPath) {
+  const rewritten = aemToContentUrl(originalPath);
+  const first = await extractVariants(rewritten);
+  if (rewritten !== originalPath && first.notFound) {
+    const fallback = await extractVariants(originalPath);
+    return fallback.variants;
+  }
+  return first.variants;
 }
 
 export const urlCache = new Map();
@@ -191,7 +201,7 @@ export async function getBlocks(sources) {
         }
 
         try {
-          const resp = await daFetch(aemToContentUrl(url), { noRedirect: true });
+          const resp = await daFetchLibrary(url, { noRedirect: true });
           if (!resp.ok) throw new Error('Something went wrong.');
           const data = await resp.json();
           urlCache.set(url, data);
@@ -210,7 +220,7 @@ export async function getBlocks(sources) {
             if (block.name && block.path) {
               acc.push({
                 ...block,
-                loadVariants: getBlockVariants(aemToContentUrl(block.path)),
+                loadVariants: getBlockVariants(block.path),
               });
             }
           });

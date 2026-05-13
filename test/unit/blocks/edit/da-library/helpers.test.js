@@ -279,6 +279,35 @@ describe('da-library/helpers/index getBlocks', () => {
     expect(captured).to.equal('https://content.da.live/org/repo/blocks.json');
   });
 
+  it('Falls back to the original AEM URL when content.da.live 404s', async () => {
+    const calls = [];
+    window.fetch = (url) => {
+      calls.push(url);
+      if (url.startsWith('https://content.da.live/')) {
+        return Promise.resolve(new Response('not found', { status: 404 }));
+      }
+      return Promise.resolve(new Response(
+        JSON.stringify({ ':type': 'sheet', data: [] }),
+        { status: 200 },
+      ));
+    };
+    await getBlocks(['https://main--repo--org.aem.page/blocks.json']);
+    expect(calls).to.deep.equal([
+      'https://content.da.live/org/repo/blocks.json',
+      'https://main--repo--org.aem.page/blocks.json',
+    ]);
+  });
+
+  it('Does not fall back on non-404 failures', async () => {
+    const calls = [];
+    window.fetch = (url) => {
+      calls.push(url);
+      return Promise.resolve(new Response('boom', { status: 500 }));
+    };
+    await getBlocks(['https://main--repo--org.aem.page/blocks.json']);
+    expect(calls).to.deep.equal(['https://content.da.live/org/repo/blocks.json']);
+  });
+
   it('Caches fetched source data so subsequent calls do not refetch', async () => {
     let calls = 0;
     window.fetch = () => {
@@ -322,13 +351,26 @@ describe('da-library/helpers/index getBlockVariants', () => {
     expect(captured).to.equal('https://example.com/page');
   });
 
-  it('Adds the .plain.html suffix for known AEM origins', async () => {
-    let captured;
+  it('Tries content.da.live first, then falls back to original AEM URL with .plain.html on 404', async () => {
+    const calls = [];
     window.fetch = (url) => {
-      captured = url;
-      return Promise.resolve(new Response('boom', { status: 500 }));
+      calls.push(url);
+      const status = url.startsWith('https://content.da.live/') ? 404 : 500;
+      return Promise.resolve(new Response('', { status }));
     };
     await getBlockVariants('https://main--repo--org.aem.live/page');
-    expect(captured).to.contain('.plain.html');
+    expect(calls[0]).to.equal('https://content.da.live/org/repo/page');
+    expect(calls[1]).to.equal('https://main--repo--org.aem.live/page.plain.html');
+  });
+
+  it('Does not fall back when content.da.live returns non-404', async () => {
+    const calls = [];
+    window.fetch = (url) => {
+      calls.push(url);
+      return Promise.resolve(new Response('boom', { status: 500 }));
+    };
+    const result = await getBlockVariants('https://main--repo--org.aem.live/page');
+    expect(result).to.deep.equal([]);
+    expect(calls).to.deep.equal(['https://content.da.live/org/repo/page']);
   });
 });
