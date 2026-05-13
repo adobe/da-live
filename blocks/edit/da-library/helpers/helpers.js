@@ -61,17 +61,28 @@ export function aemToContentUrl(url) {
   }
 }
 
+// Try the content.da.live rewrite first; fall back to the original URL on 404
+export async function daFetchLibrary(url, { skipRewrite = false } = {}) {
+  if (skipRewrite) {
+    return { resp: await daFetch(url, { noRedirect: true }), usedFallback: true };
+  }
+  const contentUrl = aemToContentUrl(url);
+  const resp = await daFetch(contentUrl, { noRedirect: true });
+  if (resp.status === 404 && contentUrl !== url) {
+    return { resp: await daFetch(url, { noRedirect: true }), usedFallback: true };
+  }
+  return { resp, usedFallback: false };
+}
+
 export async function getItems(sources, format) {
   const items = [];
   for (const source of sources) {
     try {
-      const resp = await daFetch(aemToContentUrl(source));
+      const { resp, usedFallback } = await daFetchLibrary(source);
       const json = await resp.json();
-      if (json.data) {
-        items.push(...formatData(json.data, format));
-      } else {
-        items.push(...json);
-      }
+      const sheet = json[':type'] === 'multi-sheet' ? json[json[':names']?.[0]] : json;
+      const formatted = sheet?.data ? formatData(sheet.data, format) : json;
+      items.push(...formatted.map((item) => ({ ...item, usedFallback })));
     } catch {
       // couldn't fetch source
     }
