@@ -65,20 +65,13 @@ describe('Versions helper', () => {
     const formatted = formatVersions(versions);
 
     const expected = [{
+      // Audit AFTER the version (newer, same day)
       date: new Date(1715766906908).toLocaleDateString([], DATE_OPTS),
       audits: [{
         date: new Date(1715766906908).toLocaleDateString([], DATE_OPTS),
         time: new Date(1715766906908).toLocaleTimeString([], TIME_OPTS),
         users: [{ email: 'furb@acme.com' }, { email: 'anonymous' }],
         timestamp: 1715766906908,
-        path: 'da-aem-boilerplate/blah7.html',
-        isVersion: false,
-      },
-      {
-        date: new Date(1715766405165).toLocaleDateString([], DATE_OPTS),
-        time: new Date(1715766405165).toLocaleTimeString([], TIME_OPTS),
-        users: [{ email: 'joe@acme.com' }],
-        timestamp: 1715766405165,
         path: 'da-aem-boilerplate/blah7.html',
         isVersion: false,
       }],
@@ -91,6 +84,17 @@ describe('Versions helper', () => {
       path: 'da-aem-boilerplate/blah7.html',
       label: 'hello',
       isVersion: true,
+    }, {
+      // Audit BEFORE the version (older, same day — separate group)
+      date: new Date(1715766405165).toLocaleDateString([], DATE_OPTS),
+      audits: [{
+        date: new Date(1715766405165).toLocaleDateString([], DATE_OPTS),
+        time: new Date(1715766405165).toLocaleTimeString([], TIME_OPTS),
+        users: [{ email: 'joe@acme.com' }],
+        timestamp: 1715766405165,
+        path: 'da-aem-boilerplate/blah7.html',
+        isVersion: false,
+      }],
     }, {
       date: new Date(1715701875589).toLocaleDateString([], DATE_OPTS),
       audits: [{
@@ -120,5 +124,47 @@ describe('Versions helper', () => {
     }];
 
     expect(formatted).to.deep.equal(expected);
+  });
+
+  it('Does not group audit entries across a labelled version on the same day', () => {
+    // All three entries are on 2024-05-18 UTC, but the version sits between the two audits:
+    // ts_after (12:00) | ts_version (11:00, labelled) | ts_before (10:00)
+    const TS_AFTER = 1716033600000;
+    const TS_VERSION = 1716030000000;
+    const TS_BEFORE = 1716026400000;
+
+    const versions = [{
+      users: [{ email: 'after@acme.com' }],
+      timestamp: TS_AFTER,
+      path: 'org/repo/doc.html',
+    }, {
+      url: '/versionsource/org/v1.html',
+      users: [{ email: 'tagger@acme.com' }],
+      timestamp: TS_VERSION,
+      path: 'org/repo/doc.html',
+      label: 'v1',
+    }, {
+      users: [{ email: 'before@acme.com' }],
+      timestamp: TS_BEFORE,
+      path: 'org/repo/doc.html',
+    }];
+
+    const formatted = formatVersions(versions);
+
+    expect(formatted).to.have.length(3);
+
+    // First block: audit group AFTER the version
+    expect(formatted[0].isVersion).to.be.undefined;
+    expect(formatted[0].audits).to.have.length(1);
+    expect(formatted[0].audits[0].users[0].email).to.equal('after@acme.com');
+
+    // Second block: the labelled version
+    expect(formatted[1].isVersion).to.be.true;
+    expect(formatted[1].label).to.equal('v1');
+
+    // Third block: audit group BEFORE the version (same date, but separate group)
+    expect(formatted[2].isVersion).to.be.undefined;
+    expect(formatted[2].audits).to.have.length(1);
+    expect(formatted[2].audits[0].users[0].email).to.equal('before@acme.com');
   });
 });
