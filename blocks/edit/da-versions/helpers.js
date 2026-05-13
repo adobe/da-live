@@ -20,20 +20,16 @@ export function formatVersions(json) {
     };
   });
 
-  // Group everything by date
+  // Group consecutive audit entries by date, but never across a version boundary
   return ungrouped.reduce((acc, entry) => {
-    // Elevate versions to the top
     if (entry.isVersion) {
       acc.push(entry);
     } else {
-      // Group audits by date
-      const notVerSameDate = acc.find(
-        (accEntry) => !accEntry.isVersion && accEntry.date === entry.date,
-      );
-      if (!notVerSameDate) {
-        acc.push({ date: entry.date, audits: [entry] });
+      const last = acc[acc.length - 1];
+      if (last && !last.isVersion && last.date === entry.date) {
+        last.audits.push(entry);
       } else {
-        notVerSameDate.audits.push(entry);
+        acc.push({ date: entry.date, audits: [entry] });
       }
     }
     return acc;
