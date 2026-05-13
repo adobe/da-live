@@ -128,7 +128,7 @@ describe('imageFocalPoint Plugin', () => {
     expect(icon.classList.contains('focal-point-icon-active')).to.be.true;
   });
 
-  it('does not create node view for images outside table cells', () => {
+  it('creates a plain image node view for images outside table cells', () => {
     const plugin = imageFocalPoint();
     const createNodeView = plugin.props.nodeViews.image;
 
@@ -144,8 +144,9 @@ describe('imageFocalPoint Plugin', () => {
     const mockView = { state: mockState, dom: document.createElement('div') };
     const getPos = () => 10;
 
-    const nodeView = createNodeView({}, mockView, getPos);
-    expect(nodeView).to.be.null;
+    const nodeView = createNodeView({ attrs: { src: 'https://example.com/img.jpg' } }, mockView, getPos);
+    expect(nodeView).to.not.be.null;
+    expect(nodeView.dom.tagName).to.equal('IMG');
   });
 
   it('updates node view correctly', async () => {
