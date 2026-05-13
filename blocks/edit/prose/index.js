@@ -350,15 +350,6 @@ function rewriteAemHost(urlStr) {
   return urlStr;
 }
 
-function rewriteImageSrcs(pm) {
-  pm.querySelectorAll('img[src]').forEach((img) => {
-    img.src = rewriteAemHost(img.src);
-  });
-  pm.querySelectorAll('source[srcset]').forEach((source) => {
-    source.srcset = rewriteAemHost(source.srcset);
-  });
-}
-
 function addSyncedListener(wsProvider, canWrite) {
   onWsSync(wsProvider, () => {
     if (canWrite) {
@@ -366,7 +357,6 @@ function addSyncedListener(wsProvider, canWrite) {
         .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
       if (pm) pm.contentEditable = 'true';
     }
-    rewriteImageSrcs(window.view.dom);
   });
 }
 
@@ -437,7 +427,6 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     // Reconfigure the view with the full plugin list
     const newState = window.view.state.reconfigure({ plugins: pluginList });
     window.view.updateState(newState);
-    rewriteImageSrcs(window.view.dom);
   });
 }
 
@@ -493,6 +482,20 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
     state,
     dispatchTransaction,
     nodeViews: {
+      image(node) {
+        const img = document.createElement('img');
+        img.src = rewriteAemHost(node.attrs.src);
+        if (node.attrs.alt) img.alt = node.attrs.alt;
+        return {
+          dom: img,
+          update(updated) {
+            if (updated.type.name !== 'image') return false;
+            img.src = rewriteAemHost(updated.attrs.src);
+            if (updated.attrs.alt) img.alt = updated.attrs.alt;
+            return true;
+          },
+        };
+      },
       diff_added(node, view, getPos) {
         const LocAddedView = getDiffClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false });
         return new LocAddedView(node, view, getPos);
