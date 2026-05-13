@@ -338,7 +338,6 @@ function restoreCursorPosition(view) {
   }
 }
 
-
 function addSyncedListener(wsProvider, canWrite) {
   onWsSync(wsProvider, () => {
     if (canWrite) {
