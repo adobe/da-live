@@ -345,9 +345,18 @@ export function setDaMetadata(key, value) {
   if (!daMdMap) return;
   if (value === null || value === undefined) {
     daMdMap.delete(key);
-  } else {
-    daMdMap.set(key, value);
+    return;
   }
+  // The Y.Map serializes to a <div class="da-metadata"> block where values are
+  // interpolated as text. Non-strings (objects, Y types) would render as
+  // "[object Object]" in the saved HTML, so coerce at the boundary.
+  let stringValue = value;
+  if (typeof stringValue !== 'string') {
+    // eslint-disable-next-line no-console
+    console.warn(`setDaMetadata: non-string value for "${key}"`, value);
+    stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  }
+  daMdMap.set(key, stringValue);
 }
 
 export function getDiffLabels() {
