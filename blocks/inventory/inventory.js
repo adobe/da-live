@@ -9,9 +9,10 @@ import {
 } from './utils.js';
 import './list/list.js';
 import './action-bar/action-bar.js';
-import { deploy } from './browse-api.js';
-
+import './delete/delete.js';
+import { deploy, getItemPreviewUrl, renameItem } from './browse-api.js';
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { showToast, VARIANT_ERROR } = await import(`${getNx()}/blocks/shared/toast/toast.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
@@ -30,6 +31,7 @@ class NxBrowse extends LitElement {
     _listError: { state: true },
     _selectedItems: { state: true },
     _pendingAction: { state: true },
+    _activeAction: { state: true },
   };
 
   set context(value) {
@@ -103,9 +105,57 @@ class NxBrowse extends LitElement {
     this.shadowRoot.querySelector('nx-browse-list')?.clearSelection();
   }
 
-  async _onSelectionAction(event) {
+  _onSelectionAction(event) {
     const { action } = event.detail || {};
-    if (!action || this._pendingAction) return;
+    if (!action) return;
+    if (action === 'rename') {
+      const { key, item } = this._selectedItems[0];
+      this._activeAction = { type: 'rename', key, item };
+      return;
+    }
+    if (action === 'delete') {
+      this._activeAction = { type: 'delete', selectedRows: this._selectedItems.map(({ item }) => item) };
+      return;
+    }
+    if (action === 'copyLink') {
+      this._onCopyLink();
+      return;
+    }
+    this._onDeploy(action);
+  }
+
+  async _onRename(event) {
+    const { item, newName } = event.detail;
+    this._activeAction = null;
+    const { ok, error } = await renameItem(item, newName);
+    if (ok) {
+      this._clearSelection();
+      this._syncList();
+    } else {
+      showToast({ text: error ?? 'Rename failed', variant: VARIANT_ERROR });
+    }
+  }
+
+  _onRenameCancel() {
+    this._activeAction = null;
+  }
+
+  async _onCopyLink() {
+    const urls = (this._selectedItems ?? [])
+      .map(({ item }) => getItemPreviewUrl(item))
+      .filter(Boolean);
+    if (!urls.length) return;
+    try {
+      await navigator.clipboard.writeText(urls.join('\n'));
+      const count = urls.length;
+      showToast({ text: count === 1 ? 'Link copied' : `${count} links copied` });
+    } catch {
+      showToast({ text: 'Could not copy to clipboard', variant: VARIANT_ERROR });
+    }
+  }
+
+  async _onDeploy(action) {
+    if (this._pendingAction) return;
     this._pendingAction = action;
     const { item } = this._selectedItems[0];
     const { ok, openedUrls } = await deploy(item.path, action);
@@ -113,8 +163,17 @@ class NxBrowse extends LitElement {
     if (ok) openedUrls.forEach((url) => window.open(url, url));
   }
 
+  _onActionComplete(event) {
+    const { success } = event.detail || {};
+    this._activeAction = null;
+    if (success) {
+      this._clearSelection();
+      this._syncList();
+    }
+  }
+
   _onBrowseActivate(event) {
-    const { pathKey, item } = event.detail || {};
+    const { pathKey, item, shiftKey, ctrlKey } = event.detail || {};
     if (!item) return;
 
     if (isFolder(item)) {
@@ -128,7 +187,13 @@ class NxBrowse extends LitElement {
     if (entryType === RESOURCE_TYPE.document) {
       url.pathname = '/canvas';
       url.hash = `#/${itemHashPath(item)}`;
-      window.location.assign(url.href);
+      if (ctrlKey) {
+        window.open(url.href, '_blank');
+      } else if (shiftKey) {
+        window.open(url.href, '_blank', 'noopener,noreferrer');
+      } else {
+        window.location.assign(url.href);
+      }
       return;
     } else if (entryType === RESOURCE_TYPE.sheet) {
       url.pathname = '/sheet';
@@ -211,9 +276,18 @@ class NxBrowse extends LitElement {
       <nx-browse-list
         .items=${this._items}
         .currentPathKey=${currentPathKey}
+        .renamingKey=${this._activeAction?.type === 'rename' ? this._activeAction.key : null}
         @nx-browse-activate=${this._onBrowseActivate}
         @nx-browse-selection-change=${this._onSelectionChange}
+        @nx-browse-rename=${this._onRename}
+        @nx-browse-rename-cancel=${this._onRenameCancel}
       ></nx-browse-list>
+      ${this._activeAction?.type === 'delete' ? html`
+        <nx-inventory-delete-dialog
+          .selectedRows=${this._activeAction.selectedRows}
+          @nx-browse-action-complete=${this._onActionComplete}
+        ></nx-inventory-delete-dialog>
+      ` : nothing}
     `;
   }
 }

@@ -5,11 +5,15 @@ import { isFolder } from '../utils.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { loadHrefSvg, ICONS_BASE } = await import(`${getNx()}/utils/svg.js`);
 
+const ICON_BASE = new URL('../../../img/icons/', import.meta.url).href;
 const styles = await loadStyle(import.meta.url);
-const [closeIcon, previewIcon, publishIcon] = await Promise.all([
-  loadHrefSvg(`${ICONS_BASE}S2_Icon_Close_20_N.svg`),
-  loadHrefSvg(`${ICONS_BASE}S2_Icon_Preview_20_N.svg`),
-  loadHrefSvg(`${ICONS_BASE}S2_Icon_Publish_20_N.svg`),
+const [closeIcon, previewIcon, publishIcon, shareIcon, deleteIcon, renameIcon] = await Promise.all([
+  loadHrefSvg(`${ICON_BASE}s2-icon-close-20-n.svg`),
+  loadHrefSvg(`${ICON_BASE}s2-icon-preview-20-n.svg`),
+  loadHrefSvg(`${ICON_BASE}s2-icon-publish-20-n.svg`),
+  loadHrefSvg(`${ICON_BASE}s2-icon-share-20-n.svg`),
+  loadHrefSvg(`${ICON_BASE}s2-icon-delete-20-n.svg`),
+  loadHrefSvg(`${ICONS_BASE}S2_Icon_Edit_20_N.svg`),
 ]);
 
 class NxBrowseActionBar extends LitElement {
@@ -59,6 +63,15 @@ class NxBrowseActionBar extends LitElement {
         </span>
       </div>
       <div class="actions">
+        ${count === 1 ? html`
+          <button
+            type="button"
+            class="action-btn"
+            aria-label="Rename"
+            ?disabled=${this.isDisabled}
+            @click=${() => this._onAction('rename')}
+          >${renameIcon?.cloneNode(true) ?? nothing}<span>Rename</span></button>
+        ` : nothing}
         ${singleFile ? html`
           <button
             type="button"
@@ -75,6 +88,20 @@ class NxBrowseActionBar extends LitElement {
             @click=${() => this._onAction('publish')}
           >${publishIcon?.cloneNode(true) ?? nothing}<span>Publish</span></button>
         ` : nothing}
+        <button
+          type="button"
+          class="action-btn"
+          aria-label="Share"
+          ?disabled=${this.isDisabled}
+          @click=${() => this._onAction('copyLink')}
+        >${shareIcon?.cloneNode(true) ?? nothing}<span>Share</span></button>
+        <button
+          type="button"
+          class="action-btn"
+          aria-label="Delete"
+          ?disabled=${this.isDisabled}
+          @click=${() => this._onAction('delete')}
+        >${deleteIcon?.cloneNode(true) ?? nothing}<span>Delete</span></button>
       </div>
     `;
   }

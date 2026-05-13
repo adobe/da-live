@@ -24,6 +24,7 @@ export class NxBrowseList extends LitElement {
   static properties = {
     items: { type: Array },
     currentPathKey: { type: String, attribute: 'current-path-key' },
+    renamingKey: { attribute: false },
     _selectedKeys: { state: true },
     _sort: { state: true },
   };
@@ -35,7 +36,11 @@ export class NxBrowseList extends LitElement {
     }
   }
 
-  updated() {
+  updated(changed) {
+    if (changed.has('renamingKey') && this.renamingKey) {
+      const input = this.shadowRoot?.querySelector('.rename-input');
+      if (input) { input.focus(); input.select(); }
+    }
     const input = this.shadowRoot?.getElementById('select-all');
     if (!(input instanceof HTMLInputElement)) {
       return;
@@ -98,6 +103,8 @@ export class NxBrowseList extends LitElement {
         detail: {
           pathKey: itemRowPathKey(this.currentPathKey, item),
           item,
+          shiftKey: event.shiftKey,
+          ctrlKey: event.ctrlKey || event.metaKey,
         },
         bubbles: true,
         composed: true,
@@ -122,6 +129,28 @@ export class NxBrowseList extends LitElement {
   clearSelection() {
     this._selectedKeys = [];
     this._emitSelectionChange();
+  }
+
+  _onRenameKeydown(e, item) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newName = e.target.value.trim();
+      if (newName && newName !== item.name) {
+        this.dispatchEvent(new CustomEvent('nx-browse-rename', {
+          detail: { item, newName },
+          bubbles: true,
+          composed: true,
+        }));
+      } else {
+        this._onRenameBlur();
+      }
+    } else if (e.key === 'Escape') {
+      this._onRenameBlur();
+    }
+  }
+
+  _onRenameBlur() {
+    this.dispatchEvent(new CustomEvent('nx-browse-rename-cancel', { bubbles: true, composed: true }));
   }
 
   _isRowSelected(key) {
@@ -225,8 +254,19 @@ export class NxBrowseList extends LitElement {
                   </label>
                 </td>
                 <td class="column-entry-type">${this._renderIcon(getIconByExtension(item?.ext))}</td>
-                <td class="column-file-name">
-                  <span class="filename" title=${item.name || ''}>${item.name}</span>
+                <td class="column-file-name" @click=${key === this.renamingKey ? (e) => e.stopPropagation() : nothing}>
+                  ${key === this.renamingKey ? html`
+                    <input
+                      class="rename-input"
+                      type="text"
+                      .value=${item.name}
+                      autocomplete="off"
+                      @keydown=${(e) => this._onRenameKeydown(e, item)}
+                      @blur=${() => this._onRenameBlur()}
+                    >
+                  ` : html`
+                    <span class="filename" title=${item.name || ''}>${item.name}</span>
+                  `}
                 </td>
                 <td class="column-modified" title=${modified.title || nothing}>
                   ${browseCellText(modified.label)}

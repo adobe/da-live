@@ -257,4 +257,20 @@
     color: var(--s2-gray-900);
     font-weight: var(--s2-component-m-bold-font-weight);
   }
+
+  & .rename-input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    font: inherit;
+    font-weight: var(--s2-component-m-bold-font-weight);
+    color: var(--s2-gray-900);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--s2-blue-900);
+    border-radius: 0;
+    outline: none;
+    padding: 0;
+    white-space: nowrap;
+  }
 }

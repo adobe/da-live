@@ -19,7 +19,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--s2-spacing-100);
+  gap: var(--s2-spacing-200);
   margin-inline-start: auto;
 }
 
@@ -36,15 +36,11 @@
   padding: 0 var(--s2-spacing-150);
   border: none;
   border-radius: var(--s2-corner-radius-400);
-  background: rgb(255 255 255 / 15%);
+  background: inherit;
   color: inherit;
   font-family: var(--s2-font-family);
   font-size: var(--s2-component-s-bold-font-size);
   cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background-color: rgb(255 255 255 / 25%);
-  }
 
   &:disabled {
     opacity: 0.6;
@@ -58,7 +54,7 @@
     flex-shrink: 0;
   }
 
-  & :is(path, circle, rect, ellipse, line, polyline, polygon) {
+  & :is(path, circle, ellipse, line, polyline, polygon) {
     fill: currentcolor;
   }
 }
