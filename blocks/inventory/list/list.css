@@ -201,6 +201,53 @@
     margin-inline-start: auto;
   }
 
+  & .sort-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2-spacing-75);
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover {
+      color: var(--s2-gray-900);
+    }
+  }
+
+  & .sort-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    opacity: 0;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    flex-shrink: 0;
+
+    & svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    & :is(path, circle, rect, ellipse, line, polyline, polygon) {
+      fill: currentcolor;
+    }
+  }
+
+  & th[aria-sort="ascending"] .sort-indicator,
+  & th[aria-sort="descending"] .sort-indicator {
+    opacity: 1;
+  }
+
+  & .sort-indicator-desc {
+    transform: rotate(180deg);
+  }
+
   & .filename {
     display: block;
     min-width: 0;

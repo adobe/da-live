@@ -1,0 +1,92 @@
+:host {
+  display: flex;
+  align-items: center;
+  min-height: var(--browse-title-bar-height, var(--s2-spacing-500));
+  padding: 0 var(--s2-spacing-200);
+  box-sizing: border-box;
+  border-radius: var(--s2-corner-radius-500);
+  background-color: var(--s2-blue-900);
+  color: light-dark(var(--s2-gray-25), #fff);
+  font-family: var(--s2-font-family);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  margin-inline-start: auto;
+}
+
+.label {
+  font-size: var(--s2-component-s-bold-font-size);
+  white-space: nowrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  height: 24px;
+  padding: 0 var(--s2-spacing-150);
+  border: none;
+  border-radius: var(--s2-corner-radius-400);
+  background: rgb(255 255 255 / 15%);
+  color: inherit;
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-component-s-bold-font-size);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: rgb(255 255 255 / 25%);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  & svg {
+    display: block;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  & :is(path, circle, rect, ellipse, line, polyline, polygon) {
+    fill: currentcolor;
+  }
+}
+
+.close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-400);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgb(255 255 255 / 15%);
+  }
+
+  & svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+
+  & :is(path, circle, rect, ellipse, line, polyline, polygon) {
+    fill: currentcolor;
+  }
+}

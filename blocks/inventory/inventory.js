@@ -1,4 +1,4 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 import { listFolder, itemHashPath } from '../shared/daFiles.js';
 import {
@@ -8,6 +8,8 @@ import {
   RESOURCE_TYPE,
 } from './utils.js';
 import './list/list.js';
+import './action-bar/action-bar.js';
+import { deploy } from './browse-api.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
@@ -26,6 +28,8 @@ class NxBrowse extends LitElement {
   static properties = {
     _items: { state: true },
     _listError: { state: true },
+    _selectedItems: { state: true },
+    _pendingAction: { state: true },
   };
 
   set context(value) {
@@ -91,6 +95,24 @@ class NxBrowse extends LitElement {
     this.requestUpdate();
   }
 
+  _onSelectionChange(event) {
+    this._selectedItems = event.detail?.selected ?? [];
+  }
+
+  _clearSelection() {
+    this.shadowRoot.querySelector('nx-browse-list')?.clearSelection();
+  }
+
+  async _onSelectionAction(event) {
+    const { action } = event.detail || {};
+    if (!action || this._pendingAction) return;
+    this._pendingAction = action;
+    const { item } = this._selectedItems[0];
+    const { ok, openedUrls } = await deploy(item.path, action);
+    this._pendingAction = null;
+    if (ok) openedUrls.forEach((url) => window.open(url, url));
+  }
+
   _onBrowseActivate(event) {
     const { pathKey, item } = event.detail || {};
     if (!item) return;
@@ -147,7 +169,7 @@ class NxBrowse extends LitElement {
       `;
     }
 
-    const title = ctx.pathSegments.at(-1) ?? '';
+    const title = (ctx.pathSegments.at(-1) ?? '').split(/[?#]/)[0];
 
     if (!this._listError && this._items === undefined) {
       return bar;
@@ -159,6 +181,14 @@ class NxBrowse extends LitElement {
           <h1 class="browse-title">${title}</h1>
         </div>
         <nx-breadcrumb .pathSegments=${ctx.pathSegments}></nx-breadcrumb>
+        ${this._selectedItems?.length > 0 ? html`
+          <nx-browse-action-bar
+            .selected=${this._selectedItems}
+            .isDisabled=${!!this._pendingAction}
+            @nx-action-bar-clear=${this._clearSelection}
+            @nx-browse-selection-action=${this._onSelectionAction}
+          ></nx-browse-action-bar>
+        ` : nothing}
       </div>
     `;
 
@@ -182,6 +212,7 @@ class NxBrowse extends LitElement {
         .items=${this._items}
         .currentPathKey=${currentPathKey}
         @nx-browse-activate=${this._onBrowseActivate}
+        @nx-browse-selection-change=${this._onSelectionChange}
       ></nx-browse-list>
     `;
   }

@@ -9,8 +9,10 @@ import {
 } from '../utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { loadHrefSvg, ICONS_BASE } = await import(`${getNx()}/utils/svg.js`);
 
 const styles = await loadStyle(import.meta.url);
+const sortArrowSvg = await loadHrefSvg(`${ICONS_BASE}S2_Icon_ArrowUpSend_20_N.svg`);
 
 /** `''` stays empty (e.g. folders); `null` / `undefined` → em dash for missing data. */
 function browseCellText(label) {
@@ -23,6 +25,7 @@ export class NxBrowseList extends LitElement {
     items: { type: Array },
     currentPathKey: { type: String, attribute: 'current-path-key' },
     _selectedKeys: { state: true },
+    _sort: { state: true },
   };
 
   willUpdate(changedProperties) {
@@ -51,9 +54,36 @@ export class NxBrowseList extends LitElement {
     }
   }
 
+  get _sortedItems() {
+    if (!this.items || !this._sort) return this.items;
+    const { col, dir } = this._sort;
+    return [...this.items].sort((a, b) => {
+      const av = a[col] ?? '';
+      const bv = b[col] ?? '';
+      if (av > bv) return dir === 'asc' ? 1 : -1;
+      if (av < bv) return dir === 'asc' ? -1 : 1;
+      return 0;
+    });
+  }
+
+  _onSortColumn(col) {
+    const dir = this._sort?.col === col && this._sort.dir === 'asc' ? 'desc' : 'asc';
+    this._sort = { col, dir };
+  }
+
+  _ariaSort(col) {
+    if (this._sort?.col !== col) return nothing;
+    return this._sort.dir === 'asc' ? 'ascending' : 'descending';
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
+  }
+
+  _renderSortIcon(col) {
+    const dirClass = this._sort?.col === col ? this._sort.dir : 'none';
+    return html`<span class="sort-indicator sort-indicator-${dirClass}" aria-hidden="true">${sortArrowSvg?.cloneNode(true) ?? nothing}</span>`;
   }
 
   _renderIcon(iconKey) {
@@ -87,6 +117,11 @@ export class NxBrowseList extends LitElement {
         composed: true,
       }),
     );
+  }
+
+  clearSelection() {
+    this._selectedKeys = [];
+    this._emitSelectionChange();
   }
 
   _isRowSelected(key) {
@@ -130,7 +165,7 @@ export class NxBrowseList extends LitElement {
     if (this.items === undefined) {
       return nothing;
     }
-    const { items } = this;
+    const items = this._sortedItems;
     const selectedKeys = this._selectedKeys ?? [];
     const rowKeys = items.map((item) => itemRowPathKey(this.currentPathKey, item));
     const selectedCount = rowKeys.filter((rowKey) => selectedKeys.includes(rowKey)).length;
@@ -152,8 +187,16 @@ export class NxBrowseList extends LitElement {
               </label>
             </th>
             <th class="column-entry-type" scope="col"><span class="sr-only">Type</span></th>
-            <th class="column-file-name" scope="col">Name</th>
-            <th class="column-modified" scope="col">Last modified</th>
+            <th class="column-file-name" scope="col" aria-sort=${this._ariaSort('name')}>
+              <button type="button" class="sort-btn" @click=${() => this._onSortColumn('name')}>
+                Name${this._renderSortIcon('name')}
+              </button>
+            </th>
+            <th class="column-modified" scope="col" aria-sort=${this._ariaSort('lastModified')}>
+              <button type="button" class="sort-btn" @click=${() => this._onSortColumn('lastModified')}>
+                Last modified${this._renderSortIcon('lastModified')}
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
