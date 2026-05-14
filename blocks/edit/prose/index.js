@@ -57,13 +57,28 @@ export async function createConnection(path) {
   // y-websocket re-reads provider.protocols on each reconnect, so swapping in a
   // fresh IMS token here is enough; no provider rebuild needed.
   // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
+  let lastSentToken = token || null;
   provider.on('connection-close', async (event) => {
     if (event?.code === 4403) {
       provider.shouldConnect = false;
       return;
     }
+    if (event?.code === 4401) {
+      // Force imslib to attempt a refresh before deciding to give up.
+      try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
+      const fresh = await getAuthToken();
+      if (!fresh || fresh === lastSentToken) {
+        // No new token to try — retrying would loop on the same 4401 forever.
+        provider.shouldConnect = false;
+        return;
+      }
+      provider.protocols = ['yjs', fresh];
+      lastSentToken = fresh;
+      return;
+    }
     const fresh = await getAuthToken();
     provider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
+    lastSentToken = fresh;
   });
 
   return { wsProvider: provider, ydoc };

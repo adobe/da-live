@@ -141,6 +141,85 @@ describe('prose/index createConnection', () => {
       if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
     }
   });
+
+  it('Stops reconnecting on 4401 when imslib cannot produce a token', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let refreshCalls = 0;
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-initial' }),
+      refreshToken: async () => { refreshCalls += 1; },
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+
+      // After construction, simulate imslib losing the token (SSO expired)
+      window.adobeIMS.getAccessToken = () => null;
+
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(refreshCalls).to.equal(1);
+      expect(wsProvider.shouldConnect).to.equal(false);
+
+      wsProvider.disconnect();
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Stops reconnecting on 4401 when imslib hands back the same stale token', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-same' }),
+      refreshToken: async () => {},
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-same']);
+
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      // No new token to try — don't loop.
+      expect(wsProvider.shouldConnect).to.equal(false);
+
+      wsProvider.disconnect();
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Non-auth close with no token reconnects as anonymous', async () => {
+    window.localStorage.removeItem('nx-ims');
+    const savedIMS = window.adobeIMS;
+    delete window.adobeIMS;
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs']);
+
+      // Simulate a generic network drop — no custom code
+      wsProvider.emit('connection-close', [{ code: 1006 }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(wsProvider.protocols).to.deep.equal(['yjs']);
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.disconnect();
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
 });
 
 describe('prose/index createAwarenessStatusWidget', () => {
