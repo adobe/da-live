@@ -54,6 +54,18 @@ export async function createConnection(path) {
   // (exponential backoff starting with 100ms) and then every 30s.
   provider.maxBackoffTime = 30000;
 
+  // y-websocket re-reads provider.protocols on each reconnect, so swapping in a
+  // fresh IMS token here is enough; no provider rebuild needed.
+  // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
+  provider.on('connection-close', async (event) => {
+    if (event?.code === 4403) {
+      provider.shouldConnect = false;
+      return;
+    }
+    const fresh = await getAuthToken();
+    provider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
+  });
+
   return { wsProvider: provider, ydoc };
 }
 

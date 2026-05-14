@@ -87,6 +87,60 @@ describe('prose/index createConnection', () => {
     result.wsProvider.destroy?.();
     result.ydoc.destroy();
   });
+
+  it('Refreshes protocols with the live IMS token on connection-close', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let tokenIndex = 0;
+    const tokens = ['T-initial', 'T-rotated'];
+    window.adobeIMS = {
+      getAccessToken: () => {
+        const t = tokens[tokenIndex];
+        tokenIndex += 1;
+        return { token: t };
+      },
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-initial']);
+
+      // Simulate a server-signalled auth failure
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-rotated']);
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.disconnect();
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Stops reconnecting on a 4403 forbidden close', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T-initial' }) };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.emit('connection-close', [{ code: 4403, reason: 'forbidden' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(wsProvider.shouldConnect).to.equal(false);
+
+      wsProvider.disconnect();
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
 });
 
 describe('prose/index createAwarenessStatusWidget', () => {

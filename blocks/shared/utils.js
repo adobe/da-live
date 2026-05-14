@@ -24,6 +24,11 @@ export async function getAuthToken() {
   if (!localStorage.getItem('nx-ims')) {
     return null;
   }
+  // imslib auto-refreshes its internal token; reading it live avoids returning the
+  // page-load snapshot that nx's loadIms() captured once in its onReady handler.
+  if (window.adobeIMS?.getAccessToken) {
+    return window.adobeIMS.getAccessToken()?.token || null;
+  }
   const ims = await initIms();
   return ims?.accessToken?.token || null;
 }
