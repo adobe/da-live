@@ -74,7 +74,11 @@ describe('prose/index createConnection', () => {
     window.localStorage.removeItem('nx-ims');
   });
   afterEach(() => {
-    if (savedNxIms) window.localStorage.setItem('nx-ims', savedNxIms);
+    if (savedNxIms) {
+      window.localStorage.setItem('nx-ims', savedNxIms);
+    } else {
+      window.localStorage.removeItem('nx-ims');
+    }
   });
 
   it('Returns a wsProvider and a Y.Doc with maxBackoffTime configured', async () => {
