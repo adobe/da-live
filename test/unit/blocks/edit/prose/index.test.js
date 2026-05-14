@@ -142,13 +142,15 @@ describe('prose/index createConnection', () => {
     }
   });
 
-  it('Stops reconnecting on 4401 when imslib cannot produce a token', async () => {
+  it('Stops reconnecting on 4401 when imslib cannot produce a token, triggers sign-in', async () => {
     window.localStorage.setItem('nx-ims', 'true');
     const savedIMS = window.adobeIMS;
     let refreshCalls = 0;
+    let signInCalls = 0;
     window.adobeIMS = {
       getAccessToken: () => ({ token: 'T-initial' }),
       refreshToken: async () => { refreshCalls += 1; },
+      signIn: () => { signInCalls += 1; },
     };
 
     try {
@@ -158,10 +160,40 @@ describe('prose/index createConnection', () => {
       window.adobeIMS.getAccessToken = () => null;
 
       wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
-      await new Promise((r) => { setTimeout(r, 0); });
+      // Allow the dynamic import + signIn call to settle
+      await new Promise((r) => { setTimeout(r, 50); });
 
       expect(refreshCalls).to.equal(1);
       expect(wsProvider.shouldConnect).to.equal(false);
+      expect(signInCalls).to.equal(1);
+
+      wsProvider.disconnect();
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Anonymous user hitting a private doc bails on 4401 without sign-in redirect', async () => {
+    window.localStorage.removeItem('nx-ims');
+    const savedIMS = window.adobeIMS;
+    let signInCalls = 0;
+    window.adobeIMS = {
+      getAccessToken: () => null,
+      refreshToken: async () => {},
+      signIn: () => { signInCalls += 1; },
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs']);
+
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 50); });
+
+      expect(wsProvider.shouldConnect).to.equal(false);
+      expect(signInCalls).to.equal(0);
 
       wsProvider.disconnect();
       wsProvider.destroy?.();

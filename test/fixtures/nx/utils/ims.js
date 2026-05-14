@@ -5,6 +5,8 @@ export async function loadIms() {
 }
 
 export function handleSignIn() {
-  // Mock implementation
-  return Promise.resolve();
+  // Mirrors the real nx handleSignIn so tests can observe the effect via
+  // window.adobeIMS.signIn().
+  localStorage.setItem('nx-ims', true);
+  if (window.adobeIMS?.signIn) window.adobeIMS.signIn();
 }

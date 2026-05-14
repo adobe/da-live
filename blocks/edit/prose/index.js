@@ -23,6 +23,7 @@ import {
 } from 'da-y-wrapper';
 
 import { getSchema } from 'da-parser';
+import { getNx } from '../../../scripts/utils.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
@@ -70,6 +71,15 @@ export async function createConnection(path) {
       if (!fresh || fresh === lastSentToken) {
         // No new token to try — retrying would loop on the same 4401 forever.
         provider.shouldConnect = false;
+        // If the user expected to be signed in, route them through IMS sign-in
+        // so collab can recover. Matches daFetch's 401 handling. Anonymous users
+        // (no nx-ims flag) hitting a private doc are left disconnected.
+        if (localStorage.getItem('nx-ims')) {
+          try {
+            const { handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+            handleSignIn();
+          } catch { /* nothing to do */ }
+        }
         return;
       }
       provider.protocols = ['yjs', fresh];
