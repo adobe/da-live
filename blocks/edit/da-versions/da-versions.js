@@ -1,6 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
-import { DA_ORIGIN } from '../../shared/constants.js';
 import { formatDate, formatVersions } from './helpers.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 
@@ -50,7 +49,14 @@ export default class DaVersions extends LitElement {
     if (!entryEl.classList.contains('is-open')) {
       entryEl.classList.toggle('is-open');
     }
-    const detail = { url: `${DA_ORIGIN}${entry.url}`, label: entry.label, date: entry.date };
+    const [, org, site, ...parts] = this.path.split('/');
+    const path = `${parts.join('/')}`;
+    const versionId = entry.url.replace(`/versionsource/${org}/`, '');
+    const detail = {
+      version: { org, site, path, versionId },
+      label: entry.label,
+      date: entry.date,
+    };
     const opts = { detail, bubbles: true, composed: true };
     const event = new CustomEvent('preview', opts);
     this.dispatchEvent(event);

@@ -1,7 +1,8 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
-import { initIms, daFetch } from '../../shared/utils.js';
+import { initIms } from '../../shared/utils.js';
+import { getNx2Api } from '../../../scripts/utils.js';
 import { setDaMetadata, htmlToProse } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
@@ -25,7 +26,7 @@ async function loadDaCompare() {
 export default class DaEditor extends LitElement {
   static properties = {
     path: { type: String },
-    version: { type: String },
+    version: { attribute: false },
     versionLabel: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
@@ -45,7 +46,8 @@ export default class DaEditor extends LitElement {
 
   async fetchVersion() {
     this._versionDom = null;
-    const resp = await daFetch(this.version);
+    const { versions } = await getNx2Api();
+    const resp = await versions.get(this.version);
     if (!resp.ok) return;
     const text = await resp.text();
 
