@@ -1,7 +1,6 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { aemAdmin } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -296,31 +295,20 @@ export default class DaList extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
-    let continuationToken;
-
-    const type2endpoint = {
-      copy: { endpoint: 'copy', method: 'POST' },
-      delete: { endpoint: 'source', method: 'DELETE' },
-      move: { endpoint: 'move', method: 'POST' },
-    };
-
-    const { endpoint, method } = type2endpoint[type];
+    const { source } = await getNx2Api();
+    const type2fn = { copy: source.copy, delete: source.delete, move: source.move };
+    const fn = type2fn[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
-    const moveToTrash = endpoint === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
+    let continuationToken;
     try {
       do {
-        let body;
-
-        if (type !== 'delete') {
-          body = new FormData();
-          body.append('destination', item.destination);
-          if (continuationToken) body.append('continuation-token', continuationToken);
-        }
-
-        const opts = { method, body };
-        const resp = await daFetch(`${DA_ORIGIN}/${endpoint}${item.path}`, opts);
+        const args = type === 'delete'
+          ? { continuationToken }
+          : { destination: item.destination, continuationToken };
+        const resp = await fn(item.path, args);
         if (resp.status === 204) {
           break;
         }
@@ -336,7 +324,7 @@ export default class DaList extends LitElement {
       item.isChecked = false;
 
       // Remove or add the item to the current list
-      if (moveToTrash || method === 'DELETE') {
+      if (moveToTrash || type === 'delete') {
         this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
         this._listItemPaths.delete(item.path);
       } else {

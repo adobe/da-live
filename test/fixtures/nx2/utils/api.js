@@ -238,33 +238,37 @@ export const source = {
     return daFetch({ url, opts: { method: 'DELETE' } });
   }),
 
-  copy: withArgs(async ({ org, site, path, destination, collision }) => {
+  copy: withArgs(async ({ org, site, path, destination, collision, continuationToken }) => {
     const hlx6 = await isHlx6(org, site);
     if (hlx6) {
       const url = new URL(await getDaApiPath(SOURCE, org, site, destination));
       url.searchParams.set('source', path);
       if (collision) url.searchParams.set('collision', collision);
+      if (continuationToken) url.searchParams.set('continuation-token', continuationToken);
       return daFetch({ url: url.toString(), opts: { method: 'PUT' } });
     }
     const formData = new FormData();
     formData.append('destination', destination);
+    if (continuationToken) formData.append('continuation-token', continuationToken);
     return daFetch({
       url: `${DA_ADMIN}/copy/${org}/${site}${path}`,
       opts: { method: 'POST', body: formData },
     });
   }),
 
-  move: withArgs(async ({ org, site, path, destination, collision }) => {
+  move: withArgs(async ({ org, site, path, destination, collision, continuationToken }) => {
     const hlx6 = await isHlx6(org, site);
     if (hlx6) {
       const url = new URL(await getDaApiPath(SOURCE, org, site, destination));
       url.searchParams.set('source', path);
       url.searchParams.set('move', 'true');
       if (collision) url.searchParams.set('collision', collision);
+      if (continuationToken) url.searchParams.set('continuation-token', continuationToken);
       return daFetch({ url: url.toString(), opts: { method: 'PUT' } });
     }
     const formData = new FormData();
     formData.append('destination', destination);
+    if (continuationToken) formData.append('continuation-token', continuationToken);
     return daFetch({
       url: `${DA_ADMIN}/move/${org}/${site}${path}`,
       opts: { method: 'POST', body: formData },

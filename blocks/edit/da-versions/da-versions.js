@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { formatDate, formatVersions } from './helpers.js';
-import { daFetch } from '../../shared/utils.js';
+import { getNx2Api } from '../../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-versions/da-versions.css');
 
@@ -23,7 +23,8 @@ export default class DaVersions extends LitElement {
   async getVersions() {
     this._loading = true;
     this._versions = null;
-    const resp = await daFetch(`${DA_ORIGIN}/versionlist${this.path}`);
+    const { versions } = await getNx2Api();
+    const resp = await versions.list(this.path);
     if (!resp.ok) {
       this._loading = false;
       return;
@@ -64,10 +65,8 @@ export default class DaVersions extends LitElement {
     const entry = { ...this._newVersion };
     if (e.target.elements.label?.value) entry.label = e.target.elements.label.value;
 
-    const opts = { method: 'POST' };
-    if (entry.label) opts.body = JSON.stringify({ label: entry.label });
-
-    const res = await daFetch(`${DA_ORIGIN}/versionsource${this.path}`, opts);
+    const { versions } = await getNx2Api();
+    const res = await versions.create(this.path, { comment: entry.label });
     if (res.status !== 201) return;
 
     this._newVersion = null;
