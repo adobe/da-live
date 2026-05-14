@@ -81,3 +81,12 @@ export const [setNx, getNx] = (() => {
     }, () => nx,
   ];
 })();
+
+export const getNx2 = () => (getNx().endsWith('/nx') ? `${getNx()}2` : getNx());
+
+// Memoized dynamic import of the nx2 api module.
+let nx2ApiPromise;
+export const getNx2Api = () => {
+  if (!nx2ApiPromise) nx2ApiPromise = import(`${getNx2()}/utils/api.js`);
+  return nx2ApiPromise;
+};

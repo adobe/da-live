@@ -1,7 +1,7 @@
 // eslint-disable-next-line import/no-unresolved
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch } from '../../../shared/utils.js';
+import { getNx2Api } from '../../../../scripts/utils.js';
 
 const imageDropKey = new PluginKey('imageDrop');
 
@@ -25,6 +25,11 @@ export async function uploadImageFile(view, file) {
   formData.append('data', file);
   const opts = { method: 'PUT', body: formData };
   const resp = await daFetch(url, opts);
+
+  const fullPath = `${details.parent}/.${details.name}/${file.name}`;
+  const { source } = await getNx2Api();
+  const resp = await source.put(fullPath, { body: file });
+
   if (!resp.ok) return;
   const json = await resp.json();
 

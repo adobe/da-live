@@ -3,11 +3,7 @@ import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch, getSidekickConfig } from '../../shared/utils.js';
-import { getNx } from '../../../scripts/utils.js';
-
-let nxPath = getNx();
-nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
-const { putSource, putVersion, putConfig } = await import(`${nxPath}/utils/api.js`);
+import { getNx2Api } from '../../../scripts/utils.js';
 
 export function isURL(text) {
   try {
@@ -102,7 +98,8 @@ async function saveHtml(fullPath) {
   formData.append('data', blob);
 
   const [org, site, ...parts] = fullPath.split('source/').pop().split('/');
-  return putSource({ org, site, daPath: parts.join('/'), body: formData });
+  const { source } = await getNx2Api();
+  return source.put({ org, site, path: parts.join('/'), body: formData });
 }
 
 function formatSheetData(jData) {
@@ -190,11 +187,12 @@ async function saveJson(fullPath, sheets, jsonToSave, dataType = 'blob') {
 
   const { pathname } = new URL(fullPath);
   const [api, org, site, ...parts] = pathname.slice(1).split('/');
-  const putFn = api === 'source' ? putSource : putConfig;
+  const { source, config } = await getNx2Api();
+  const putFn = api === 'source' ? source.put : config.put;
 
   if (dataType === 'blob') {
     const body = new Blob([JSON.stringify(json)], { type: 'application/json' });
-    return putFn({ org, site, daPath: `/${parts.join('/')}`, body });
+    return putFn({ org, site, path: `/${parts.join('/')}`, body });
   }
 
   return putFn({ org, site, body: JSON.stringify(json) });
@@ -217,7 +215,8 @@ export async function saveDaVersion(pathname, operation, comment) {
   const [org, site, ...parts] = pathname.slice(1).split('/');
 
   try {
-    await putVersion({ org, site, daPath: `/${parts.join('/')}`, operation, comment });
+    const { versions } = await getNx2Api();
+    await versions.create({ org, site, path: `/${parts.join('/')}`, operation, comment });
   } catch {
     // eslint-disable-next-line no-console
     console.log(`Error creating version - ${pathname}.`);

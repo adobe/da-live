@@ -7,6 +7,7 @@ export default defineConfig([
     'eslint.config.js',
     '**/deps',
     'test/e2e',
+    'test/fixtures/nx2',
     'coverage',
     '.claude',
   ]),

@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getFirstSheet } from '../../shared/utils.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
 import '../da-breadcrumbs/da-breadcrumbs.js';
@@ -8,7 +8,7 @@ import '../da-new/da-new.js';
 import '../da-search/da-search.js';
 import '../da-list/da-list.js';
 
-const { DA_ADMIN, loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -82,7 +82,8 @@ export default class DaBrowse extends LitElement {
     const DEF_EDIT = '/edit#';
 
     if (reFetch) {
-      const resp = await daFetch(`${DA_ADMIN}/config/${this.details.org}/`);
+      const { config } = await getNx2Api();
+      const resp = await config.get({ org: this.details.org });
       if (!resp.ok) return DEF_EDIT;
       const json = await resp.json();
 

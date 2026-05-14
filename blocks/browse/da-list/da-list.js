@@ -1,13 +1,9 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import { daFetch, aemAdmin } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
-
-let nxPath = getNx();
-nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
-const { listSource, hlx6ToDaList } = await import(`${nxPath}/utils/api.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
@@ -124,7 +120,8 @@ export default class DaList extends LitElement {
     try {
       this._continuationToken = null;
       const [org, site, ...parts] = this.fullpath.slice(1).split('/');
-      const resp = await listSource({ org, site, daPath: parts.join('/') });
+      const { source, hlx6ToDaList } = await getNx2Api();
+      const resp = await source.list({ org, site, path: parts.join('/') });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       let items = Array.isArray(json) ? json : json?.items || [];
@@ -150,7 +147,8 @@ export default class DaList extends LitElement {
     try {
       const [org, site, ...parts] = this.fullpath.slice(1).split('/');
       const opts = { headers: { 'da-continuation-token': requestToken } };
-      const resp = await listSource({ org, site, daPath: parts.join('/'), opts });
+      const { source } = await getNx2Api();
+      const resp = await source.list({ org, site, path: parts.join('/'), opts });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       const nextItems = Array.isArray(json) ? json : json?.items || [];
@@ -300,16 +298,16 @@ export default class DaList extends LitElement {
   async handleItemAction({ item, type = 'copy' }) {
     let continuationToken;
 
-    const type2api = {
-      copy: { api: 'copy', method: 'POST' },
-      delete: { api: 'source', method: 'DELETE' },
-      move: { api: 'move', method: 'POST' },
+    const type2endpoint = {
+      copy: { endpoint: 'copy', method: 'POST' },
+      delete: { endpoint: 'source', method: 'DELETE' },
+      move: { endpoint: 'move', method: 'POST' },
     };
 
-    const { api, method } = type2api[type];
+    const { endpoint, method } = type2endpoint[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
-    const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const moveToTrash = endpoint === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
     try {
       do {
@@ -322,7 +320,7 @@ export default class DaList extends LitElement {
         }
 
         const opts = { method, body };
-        const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
+        const resp = await daFetch(`${DA_ORIGIN}/${endpoint}${item.path}`, opts);
         if (resp.status === 204) {
           break;
         }

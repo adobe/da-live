@@ -49,6 +49,9 @@ export default {
     <html>
       <head>
         <script type='module'>
+          const { setNx } = await import('/scripts/utils.js');
+          setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
           const oldFetch = window.fetch;
           window.fetch = async (resource, options) => {
             if (!resource.startsWith('/') && !resource.startsWith('http://localhost')) {

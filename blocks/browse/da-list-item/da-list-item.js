@@ -1,7 +1,6 @@
 import { LitElement, html, nothing, until } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
-import { getNx } from '../../../scripts/utils.js';
+import { aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
 
@@ -94,7 +93,8 @@ export default class DaListItem extends LitElement {
   }
 
   async updateDAStatus() {
-    const resp = await daFetch(`${DA_ORIGIN}/versionlist${this.path}`);
+    const { versions } = await getNx2Api();
+    const resp = await versions.list(this.path);
     if (!resp.ok) return;
     const json = await resp.json();
     if (json.length === 0) {
@@ -138,7 +138,8 @@ export default class DaListItem extends LitElement {
   }
 
   async doesFileExist(path) {
-    const resp = await daFetch(`${DA_ORIGIN}/source${path}`, { method: 'HEAD' });
+    const { source } = await getNx2Api();
+    const resp = await source.getMetadata(path);
     return resp.status === 200;
   }
 
@@ -169,10 +170,6 @@ export default class DaListItem extends LitElement {
       this._preview = null;
       this._live = null;
 
-      const formData = new FormData();
-      formData.append('destination', newPath);
-      const opts = { body: formData, method: 'POST' };
-
       this.name = newName;
       this.path = newPath;
       this.rename = false;
@@ -180,7 +177,8 @@ export default class DaListItem extends LitElement {
       this.date = Date.now();
 
       const showStatus = setTimeout(() => { this.setStatus('Renaming', 'Please be patient. Renaming items with many children can take time.'); }, 5000);
-      const resp = await daFetch(`${DA_ORIGIN}/move${oldPath}`, opts);
+      const { source } = await getNx2Api();
+      const resp = await source.move(oldPath, { destination: newPath });
 
       if (resp.status === 204) {
         clearTimeout(showStatus);
@@ -249,7 +247,8 @@ export default class DaListItem extends LitElement {
     let externalUrlPromise;
     if (this.ext === 'link') {
       path = nothing;
-      externalUrlPromise = daFetch(`${DA_ORIGIN}/source${this.path}`)
+      externalUrlPromise = getNx2Api()
+        .then(({ source }) => source.get(this.path))
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }

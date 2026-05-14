@@ -3,7 +3,10 @@ import { expect } from '@esm-bundle/chai';
 import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 
-import {
+const { setNx } = await import('../../../../../scripts/utils.js');
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const {
   saveToDa,
   convertSheets,
   parse,
@@ -21,7 +24,7 @@ import {
   debounce,
   getDiffLabels,
   htmlToProse,
-} from '../../../../../blocks/edit/utils/helpers.js';
+} = await import('../../../../../blocks/edit/utils/helpers.js');
 
 const bodyHtml = await readFile({ path: './mocks/body.html' });
 

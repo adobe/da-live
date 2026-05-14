@@ -1,9 +1,5 @@
 import { convertSheets, debounce, saveToDa } from '../../edit/utils/helpers.js';
-import { getNx } from '../../../scripts/utils.js';
-
-let nxPath = getNx();
-nxPath = nxPath.endsWith('/nx') ? `${nxPath}2` : nxPath;
-const { getSource, getConfig } = await import(`${nxPath}/utils/api.js`);
+import { getNx2Api } from '../../../scripts/utils.js';
 
 const DEBOUNCE_TIME = 1000;
 const POLL_INTERVAL = 30000;
@@ -61,8 +57,9 @@ class StaleCheck {
     try {
       const { pathname } = new URL(this._sourceUrl);
       const [api, org, site, ...parts] = pathname.slice(1).split('/');
-      const getFn = api === 'source' ? getSource : getConfig;
-      const resp = await getFn({ org, site, daPath: `/${parts.join('/')}` });
+      const { source, config } = await getNx2Api();
+      const getFn = api === 'source' ? source.get : config.get;
+      const resp = await getFn({ org, site, path: `/${parts.join('/')}` });
       if (!resp.ok) return false;
       const json = await resp.json();
       const text = JSON.stringify(json);
