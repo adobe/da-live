@@ -11,6 +11,7 @@ import {
   getSidekickConfig,
   sanitizeName,
   fetchDaConfigs,
+  getAuthToken,
 } from '../../../../blocks/shared/utils.js';
 
 describe('getSheetByIndex', () => {
@@ -175,6 +176,57 @@ describe('sanitizeName', () => {
   it('Does not affect internal hyphens when trimming trailing', () => {
     expect(sanitizeName('foo-bar-', { trimTrailing: true })).to.equal('foo-bar');
     expect(sanitizeName('foo-bar-baz', { trimTrailing: true })).to.equal('foo-bar-baz');
+  });
+});
+
+describe('getAuthToken', () => {
+  let savedLocalStorage;
+  let savedAdobeIMS;
+
+  beforeEach(() => {
+    savedLocalStorage = window.localStorage.getItem('nx-ims');
+    savedAdobeIMS = window.adobeIMS;
+  });
+
+  afterEach(() => {
+    if (savedLocalStorage) {
+      window.localStorage.setItem('nx-ims', savedLocalStorage);
+    } else {
+      window.localStorage.removeItem('nx-ims');
+    }
+    if (savedAdobeIMS === undefined) {
+      delete window.adobeIMS;
+    } else {
+      window.adobeIMS = savedAdobeIMS;
+    }
+  });
+
+  it('Returns null when nx-ims is not set', async () => {
+    window.localStorage.removeItem('nx-ims');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'should-not-see' }) };
+    expect(await getAuthToken()).to.be.null;
+  });
+
+  it('Reads the live token from window.adobeIMS.getAccessToken when present', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    let calls = 0;
+    const tokens = ['T1', 'T2'];
+    window.adobeIMS = {
+      getAccessToken: () => {
+        const t = tokens[calls];
+        calls += 1;
+        return { token: t };
+      },
+    };
+
+    expect(await getAuthToken()).to.equal('T1');
+    expect(await getAuthToken()).to.equal('T2');
+  });
+
+  it('Returns null when getAccessToken returns null (signed out)', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => null };
+    expect(await getAuthToken()).to.be.null;
   });
 });
 
