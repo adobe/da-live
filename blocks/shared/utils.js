@@ -22,6 +22,9 @@ function attachAuthMonitor() {
     if (wasAuthed && !isAuthed) {
       const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
       showAuthBanner();
+      // Drop any open collab WS so the stale auth cached on the server side
+      // can't keep authorizing persistence after the user signed out elsewhere.
+      document.querySelector('da-content')?.wsProvider?.disconnect();
     } else if (!wasAuthed && isAuthed) {
       // Another tab signed back in — reload to pick up the fresh session.
       window.location.reload();
