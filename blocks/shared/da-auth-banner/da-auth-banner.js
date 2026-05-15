@@ -1,6 +1,9 @@
 import { getNx } from '../../../scripts/utils.js';
 import '../da-dialog/da-dialog.js';
 
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
+
 let mountedInstance = null;
 
 async function triggerSignIn() {
@@ -33,5 +36,13 @@ export function showAuthBanner() {
 
   document.body.appendChild(dialog);
   mountedInstance = dialog;
+
+  // Inject our stylesheet into the dialog's shadow root so the close button
+  // CSS reaches inside the encapsulation boundary.
+  dialog.updateComplete.then(() => {
+    if (!dialog.shadowRoot) return;
+    dialog.shadowRoot.adoptedStyleSheets = [...dialog.shadowRoot.adoptedStyleSheets, STYLE];
+  });
+
   return dialog;
 }
