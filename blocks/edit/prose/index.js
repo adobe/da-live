@@ -91,6 +91,37 @@ export async function createConnection(path) {
     lastSentToken = fresh;
   });
 
+  // Cross-tab sign-in/out propagation. The storage event fires only in OTHER
+  // tabs, so this lets a disconnected tab recover when the user signs back in
+  // elsewhere — and proactively drops the connection when another tab signs out.
+  const handleAuthStorage = async (event) => {
+    if (event.key !== 'nx-ims') return;
+    if (event.newValue && !event.oldValue) {
+      try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
+      const fresh = await getAuthToken();
+      if (fresh) {
+        provider.protocols = ['yjs', fresh];
+        lastSentToken = fresh;
+      }
+      provider.connect();
+    } else if (!event.newValue && event.oldValue) {
+      provider.disconnect();
+    }
+  };
+  window.addEventListener('storage', handleAuthStorage);
+
+  // Detach the storage listener when callers tear down the provider for
+  // navigation (edit.js / da-content.js pass { data: 'Client navigation' }).
+  // The focus/blur 10-minute disconnect passes no data hint, so the listener
+  // survives idle disconnects and can still recover on cross-tab sign-in.
+  const origDisconnect = provider.disconnect.bind(provider);
+  provider.disconnect = (disconnectOpts) => {
+    if (disconnectOpts?.data === 'Client navigation') {
+      window.removeEventListener('storage', handleAuthStorage);
+    }
+    return origDisconnect();
+  };
+
   return { wsProvider: provider, ydoc };
 }
 

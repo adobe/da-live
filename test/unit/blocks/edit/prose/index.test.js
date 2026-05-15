@@ -87,7 +87,7 @@ describe('prose/index createConnection', () => {
     expect(result.ydoc).to.exist;
     expect(result.wsProvider.maxBackoffTime).to.equal(30000);
     // Clean up the underlying WS connection
-    result.wsProvider.disconnect();
+    result.wsProvider.disconnect({ data: 'Client navigation' });
     result.wsProvider.destroy?.();
     result.ydoc.destroy();
   });
@@ -116,7 +116,7 @@ describe('prose/index createConnection', () => {
       expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-rotated']);
       expect(wsProvider.shouldConnect).to.equal(true);
 
-      wsProvider.disconnect();
+      wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
       ydoc.destroy();
     } finally {
@@ -138,7 +138,7 @@ describe('prose/index createConnection', () => {
 
       expect(wsProvider.shouldConnect).to.equal(false);
 
-      wsProvider.disconnect();
+      wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
       ydoc.destroy();
     } finally {
@@ -171,7 +171,7 @@ describe('prose/index createConnection', () => {
       expect(wsProvider.shouldConnect).to.equal(false);
       expect(signInCalls).to.equal(1);
 
-      wsProvider.disconnect();
+      wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
       ydoc.destroy();
     } finally {
@@ -199,7 +199,7 @@ describe('prose/index createConnection', () => {
       expect(wsProvider.shouldConnect).to.equal(false);
       expect(signInCalls).to.equal(0);
 
-      wsProvider.disconnect();
+      wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
       ydoc.destroy();
     } finally {
@@ -225,7 +225,7 @@ describe('prose/index createConnection', () => {
       // No new token to try — don't loop.
       expect(wsProvider.shouldConnect).to.equal(false);
 
-      wsProvider.disconnect();
+      wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
       ydoc.destroy();
     } finally {
@@ -249,7 +249,100 @@ describe('prose/index createConnection', () => {
       expect(wsProvider.protocols).to.deep.equal(['yjs']);
       expect(wsProvider.shouldConnect).to.equal(true);
 
-      wsProvider.disconnect();
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Storage event for nx-ims sign-in elsewhere refreshes token and reconnects', async () => {
+    window.localStorage.removeItem('nx-ims');
+    const savedIMS = window.adobeIMS;
+    let refreshCalls = 0;
+    window.adobeIMS = {
+      // During createConnection, nx-ims is unset so getAuthToken short-circuits
+      // and never calls getAccessToken. Only the storage handler reaches it.
+      getAccessToken: () => ({ token: 'T-after-signin' }),
+      refreshToken: async () => { refreshCalls += 1; },
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs']);
+
+      window.localStorage.setItem('nx-ims', 'true');
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'nx-ims',
+        newValue: 'true',
+        oldValue: null,
+      }));
+      await new Promise((r) => { setTimeout(r, 50); });
+
+      expect(refreshCalls).to.equal(1);
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-after-signin']);
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Storage event for nx-ims sign-out elsewhere disconnects', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-initial' }),
+      refreshToken: async () => {},
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'nx-ims',
+        newValue: null,
+        oldValue: 'true',
+      }));
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(wsProvider.shouldConnect).to.equal(false);
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Navigation disconnect detaches the storage listener', async () => {
+    window.localStorage.removeItem('nx-ims');
+    const savedIMS = window.adobeIMS;
+    let refreshCalls = 0;
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-x' }),
+      refreshToken: async () => { refreshCalls += 1; },
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      wsProvider.disconnect({ data: 'Client navigation' });
+
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'nx-ims',
+        newValue: 'true',
+        oldValue: null,
+      }));
+      await new Promise((r) => { setTimeout(r, 20); });
+
+      expect(refreshCalls).to.equal(0);
+
       wsProvider.destroy?.();
       ydoc.destroy();
     } finally {
