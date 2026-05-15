@@ -11,6 +11,7 @@ import './list/list.js';
 import './action-bar/action-bar.js';
 import './delete/delete.js';
 import { deploy, getItemPreviewUrl, renameItem } from './browse-api.js';
+
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { showToast, VARIANT_ERROR } = await import(`${getNx()}/blocks/shared/toast/toast.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);

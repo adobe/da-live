@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { deleteSourcePath } from '../browse-api.js';
+
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const styles = await loadStyle(import.meta.url);
@@ -30,7 +31,11 @@ class NxInventoryDeleteDialog extends LitElement {
 
   _handleConfirm = async () => {
     const { selectedRows } = this;
-    if (!selectedRows?.length) { this._emitComplete(); return; }
+    if (!selectedRows?.length) {
+      this._emitComplete();
+      return;
+    }
+
     this._isPending = true;
     try {
       for (const item of selectedRows) {
@@ -61,7 +66,6 @@ class NxInventoryDeleteDialog extends LitElement {
       <nx-dialog
         .title=${`Delete ${count} ${itemWord}`}
         .busy=${this._isPending}
-        .persistent=${this._isPending}
         @close=${this._handleClose}
       >
         <div>

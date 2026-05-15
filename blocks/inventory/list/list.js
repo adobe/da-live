@@ -39,7 +39,10 @@ export class NxBrowseList extends LitElement {
   updated(changed) {
     if (changed.has('renamingKey') && this.renamingKey) {
       const input = this.shadowRoot?.querySelector('.rename-input');
-      if (input) { input.focus(); input.select(); }
+      if (input) {
+        input.focus();
+        input.select();
+      }
     }
     const input = this.shadowRoot?.getElementById('select-all');
     if (!(input instanceof HTMLInputElement)) {
