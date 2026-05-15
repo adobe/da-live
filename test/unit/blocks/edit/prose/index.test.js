@@ -79,6 +79,7 @@ describe('prose/index createConnection', () => {
     } else {
       window.localStorage.removeItem('nx-ims');
     }
+    document.querySelectorAll('da-auth-banner').forEach((el) => el.remove());
   });
 
   it('Returns a wsProvider and a Y.Doc with maxBackoffTime configured', async () => {
@@ -146,15 +147,14 @@ describe('prose/index createConnection', () => {
     }
   });
 
-  it('Stops reconnecting on 4401 when imslib cannot produce a token, triggers sign-in', async () => {
+  it('Stops reconnecting on 4401 when imslib cannot produce a token, shows banner', async () => {
     window.localStorage.setItem('nx-ims', 'true');
     const savedIMS = window.adobeIMS;
     let refreshCalls = 0;
-    let signInCalls = 0;
     window.adobeIMS = {
       getAccessToken: () => ({ token: 'T-initial' }),
       refreshToken: async () => { refreshCalls += 1; },
-      signIn: () => { signInCalls += 1; },
+      signIn: () => {},
     };
 
     try {
@@ -164,13 +164,14 @@ describe('prose/index createConnection', () => {
       window.adobeIMS.getAccessToken = () => null;
 
       wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
-      // Allow the dynamic import + signIn call to settle
-      await new Promise((r) => { setTimeout(r, 50); });
+      // Allow the dynamic banner import + mount to settle
+      await new Promise((r) => { setTimeout(r, 80); });
 
       expect(refreshCalls).to.equal(1);
       expect(wsProvider.shouldConnect).to.equal(false);
-      expect(signInCalls).to.equal(1);
+      expect(document.querySelector('da-auth-banner')).to.exist;
 
+      document.querySelector('da-auth-banner')?.remove();
       wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
       ydoc.destroy();
@@ -179,14 +180,13 @@ describe('prose/index createConnection', () => {
     }
   });
 
-  it('Anonymous user hitting a private doc bails on 4401 without sign-in redirect', async () => {
+  it('Anonymous user hitting a private doc bails on 4401 without showing banner', async () => {
     window.localStorage.removeItem('nx-ims');
     const savedIMS = window.adobeIMS;
-    let signInCalls = 0;
     window.adobeIMS = {
       getAccessToken: () => null,
       refreshToken: async () => {},
-      signIn: () => { signInCalls += 1; },
+      signIn: () => {},
     };
 
     try {
@@ -194,10 +194,10 @@ describe('prose/index createConnection', () => {
       expect(wsProvider.protocols).to.deep.equal(['yjs']);
 
       wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
-      await new Promise((r) => { setTimeout(r, 50); });
+      await new Promise((r) => { setTimeout(r, 80); });
 
       expect(wsProvider.shouldConnect).to.equal(false);
-      expect(signInCalls).to.equal(0);
+      expect(document.querySelector('da-auth-banner')).to.not.exist;
 
       wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
