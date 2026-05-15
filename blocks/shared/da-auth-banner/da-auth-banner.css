@@ -1,5 +1,0 @@
-/* Hide da-dialog's built-in close button — the auth modal is intentionally
-   blocking, the only escape is to sign in. */
-.da-dialog-close-btn {
-  display: none;
-}

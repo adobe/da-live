@@ -1,8 +1,10 @@
 import { getNx } from '../../../scripts/utils.js';
 import '../da-dialog/da-dialog.js';
 
-const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const STYLE = await loadStyle(import.meta.url);
+// Hide da-dialog's close button — the auth modal is intentionally blocking,
+// the only escape is to sign in (or cross-tab auth monitor reload).
+const HIDE_CLOSE = new CSSStyleSheet();
+HIDE_CLOSE.replaceSync('.da-dialog-close-btn { display: none; }');
 
 let mountedInstance = null;
 
@@ -41,7 +43,7 @@ export function showAuthBanner() {
   // CSS reaches inside the encapsulation boundary.
   dialog.updateComplete.then(() => {
     if (!dialog.shadowRoot) return;
-    dialog.shadowRoot.adoptedStyleSheets = [...dialog.shadowRoot.adoptedStyleSheets, STYLE];
+    dialog.shadowRoot.adoptedStyleSheets = [...dialog.shadowRoot.adoptedStyleSheets, HIDE_CLOSE];
   });
 
   return dialog;
