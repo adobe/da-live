@@ -63,10 +63,7 @@ export default async function loadPage() {
     document.body.classList.remove('light-scheme', 'dark-scheme');
     document.body.classList.add('light-scheme');
   }
-  // Capture the hash BEFORE imsReady processes it. A sign-in callback
-  // includes access_token=...; a sign-out callback comes back with old_hash
-  // but no access_token. That distinction is the most reliable signal — no
-  // reliance on which nx version manages the nx-ims flag.
+
   const { hash } = window.location;
   const hadAccessToken = hash.includes('access_token=');
   const isImsCallback = hadAccessToken || hash.includes('old_hash=');
@@ -77,8 +74,7 @@ export default async function loadPage() {
   if (isImsCallback) {
     await imsReady;
     if (!hadAccessToken) {
-      // Sign-out callback — land on home rather than the page they signed
-      // out from, which would just show the session-expired dialog.
+      // User explicitly signed out — redirect to home
       window.location.replace('/');
       return;
     }

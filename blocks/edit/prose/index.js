@@ -54,11 +54,9 @@ export async function createConnection(path) {
   // (exponential backoff starting with 100ms) and then every 30s.
   provider.maxBackoffTime = 30000;
 
-  // y-websocket re-reads provider.protocols on each reconnect, so swapping in a
-  // fresh IMS token here is enough; no provider rebuild needed.
-  // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
   let lastSentToken = token || null;
   provider.on('connection-close', async (event) => {
+    // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
     if (event?.code === 4403) {
       provider.shouldConnect = false;
       return;
@@ -69,15 +67,13 @@ export async function createConnection(path) {
       const fresh = await getAuthToken();
       if (!fresh || fresh === lastSentToken) {
         // No new token to try — retrying would loop on the same 4401. Stop
-        // the reconnect loop, and surface the modal if the user had a token
-        // when collab started (i.e. they expected to be signed in). The
-        // cross-tab monitor in scripts.js handles cross-tab sign-in/out.
+        // the reconnect loop, and surface the modal if the user was signed in.
         provider.shouldConnect = false;
         if (lastSentToken) {
           try {
             const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
             showAuthBanner();
-          } catch { /* nothing to do */ }
+          } catch { /* ignore */ }
         }
         return;
       }
