@@ -1,6 +1,5 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { getAuthToken } from '../utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
@@ -21,12 +20,31 @@ export class DaAuthBanner extends LitElement {
     if (mountedInstance === this) mountedInstance = null;
   }
 
-  async _onStorage(event) {
-    if (event.key !== 'nx-ims' || !event.newValue || event.oldValue) return;
-    // Another tab signed in. Pull the new token and dismiss.
-    try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
-    if (await getAuthToken()) this._recover();
+  firstUpdated() {
+    if (!this.isConnected) return;
+    try { this.shadowRoot.querySelector('dialog')?.showModal(); } catch { /* detached */ }
   }
+
+  _onStorage(event) {
+    if (event.key !== 'nx-ims') return;
+    if (event.newValue && !event.oldValue) {
+      // Another tab signed in. imslib state in this tab may not pick up the
+      // new session in place reliably, so reload — that re-runs init and
+      // restores everything cleanly.
+      this._reload();
+    } else if (!event.newValue && event.oldValue) {
+      // Another tab signed out — the global handler in scripts.js will
+      // navigate home; this is just a defensive secondary path.
+      this._goHome();
+    }
+  }
+
+  // Indirected for testability.
+  // eslint-disable-next-line class-methods-use-this
+  _reload() { window.location.reload(); }
+
+  // eslint-disable-next-line class-methods-use-this
+  _goHome() { window.location = '/'; }
 
   async _signIn() {
     const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
@@ -34,22 +52,24 @@ export class DaAuthBanner extends LitElement {
     handleSignIn();
   }
 
-  _recover() {
-    window.dispatchEvent(new CustomEvent('da-auth-recovered'));
-    this._dismiss();
-  }
-
   _dismiss() {
+    const dlg = this.shadowRoot?.querySelector('dialog');
+    if (dlg?.open) dlg.close();
     if (mountedInstance === this) mountedInstance = null;
     this.remove();
   }
 
   render() {
     return html`
-      <div class="da-auth-banner" role="alert">
-        <span class="da-auth-banner-msg">Your session has expired.</span>
-        <button class="da-auth-banner-action" @click=${this._signIn}>Sign in</button>
-      </div>
+      <dialog role="alertdialog"
+              aria-labelledby="da-auth-title"
+              @cancel=${(e) => e.preventDefault()}>
+        <h2 id="da-auth-title" class="da-auth-title">Your session has expired</h2>
+        <p class="da-auth-msg">Sign in again to continue.</p>
+        <div class="da-auth-actions">
+          <button class="da-auth-action" @click=${this._signIn}>Sign in</button>
+        </div>
+      </dialog>
     `;
   }
 }

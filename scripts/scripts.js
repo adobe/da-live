@@ -57,6 +57,15 @@ const CONFIG = {
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
 };
 
+// Cross-tab sign-out propagation: when any tab signs out (handleSignOut removes
+// the nx-ims flag), every other tab navigates to the home screen instead of
+// sitting in a half-authed state or showing the session-expired dialog.
+window.addEventListener('storage', (event) => {
+  if (event.key === 'nx-ims' && !event.newValue && event.oldValue) {
+    window.location = '/';
+  }
+});
+
 export default async function loadPage() {
   if (!nx2) {
     // pin to light scheme

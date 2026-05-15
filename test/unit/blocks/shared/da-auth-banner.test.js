@@ -46,44 +46,55 @@ describe('da-auth-banner', () => {
 
     const banner = showAuthBanner();
     await banner.updateComplete;
-    banner.shadowRoot.querySelector('.da-auth-banner-action').click();
+    banner.shadowRoot.querySelector('.da-auth-action').click();
     await wait(50);
     expect(signInCalls).to.equal(1);
   });
 
-  it('Auto-dismisses on cross-tab sign-in (nx-ims storage event)', async () => {
-    let refreshCalls = 0;
-    window.adobeIMS = {
-      getAccessToken: () => ({ token: 'T-new' }),
-      refreshToken: async () => { refreshCalls += 1; },
-    };
-    window.localStorage.setItem('nx-ims', 'true');
-
-    showAuthBanner();
-    let recovered = false;
-    const onRecovered = () => { recovered = true; };
-    window.addEventListener('da-auth-recovered', onRecovered);
+  it('Reloads on cross-tab sign-in (nx-ims storage event)', async () => {
+    const banner = showAuthBanner();
+    let reloadCalls = 0;
+    banner._reload = () => { reloadCalls += 1; };
 
     window.dispatchEvent(new StorageEvent('storage', {
       key: 'nx-ims',
       newValue: 'true',
       oldValue: null,
     }));
-    await wait(50);
+    await wait(20);
 
-    window.removeEventListener('da-auth-recovered', onRecovered);
-    expect(refreshCalls).to.equal(1);
-    expect(recovered).to.equal(true);
-    expect(document.querySelector('da-auth-banner')).to.not.exist;
+    expect(reloadCalls).to.equal(1);
+  });
+
+  it('Navigates home on cross-tab sign-out (nx-ims removed)', async () => {
+    const banner = showAuthBanner();
+    let goHomeCalls = 0;
+    banner._goHome = () => { goHomeCalls += 1; };
+
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'nx-ims',
+      newValue: null,
+      oldValue: 'true',
+    }));
+    await wait(20);
+
+    expect(goHomeCalls).to.equal(1);
+  });
+
+  it('Renders as a modal that blocks the page', async () => {
+    const banner = showAuthBanner();
+    await banner.updateComplete;
+    const dlg = banner.shadowRoot.querySelector('dialog');
+    expect(dlg).to.exist;
+    expect(dlg.open).to.equal(true);
   });
 
   it('Ignores storage events for other keys', async () => {
-    window.adobeIMS = {
-      getAccessToken: () => ({ token: 'T' }),
-      refreshToken: async () => {},
-    };
-    window.localStorage.setItem('nx-ims', 'true');
-    showAuthBanner();
+    const banner = showAuthBanner();
+    let reloadCalls = 0;
+    let goHomeCalls = 0;
+    banner._reload = () => { reloadCalls += 1; };
+    banner._goHome = () => { goHomeCalls += 1; };
 
     window.dispatchEvent(new StorageEvent('storage', {
       key: 'unrelated',
@@ -91,6 +102,9 @@ describe('da-auth-banner', () => {
       oldValue: null,
     }));
     await wait(20);
+
+    expect(reloadCalls).to.equal(0);
+    expect(goHomeCalls).to.equal(0);
     expect(document.querySelector('da-auth-banner')).to.exist;
   });
 });
