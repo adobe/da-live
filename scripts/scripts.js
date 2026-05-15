@@ -57,15 +57,6 @@ const CONFIG = {
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
 };
 
-// Cross-tab sign-out propagation: when any tab signs out (handleSignOut removes
-// the nx-ims flag), every other tab navigates to the home screen instead of
-// sitting in a half-authed state or showing the session-expired dialog.
-window.addEventListener('storage', (event) => {
-  if (event.key === 'nx-ims' && !event.newValue && event.oldValue) {
-    window.location = '/';
-  }
-});
-
 export default async function loadPage() {
   if (!nx2) {
     // pin to light scheme
@@ -77,8 +68,17 @@ export default async function loadPage() {
 
   // Only block on IMS for OAuth-callback loads
   const { hash } = window.location;
-  if (hash.includes('access_token=') || hash.includes('old_hash=')) {
+  const isImsCallback = hash.includes('access_token=') || hash.includes('old_hash=');
+  if (isImsCallback) {
     await imsReady;
+    // Returning from IMS without a session means the round-trip was a
+    // sign-OUT (sign-in would have populated nx-ims). Land the user on home
+    // instead of whatever page they signed out from — that page would just
+    // show the session-expired dialog otherwise.
+    if (!localStorage.getItem('nx-ims')) {
+      window.location.replace('/');
+      return;
+    }
   }
 
   await loadArea();
