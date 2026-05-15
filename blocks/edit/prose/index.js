@@ -23,7 +23,6 @@ import {
 } from 'da-y-wrapper';
 
 import { getSchema } from 'da-parser';
-import { getNx } from '../../../scripts/utils.js';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
@@ -55,11 +54,9 @@ export async function createConnection(path) {
   // (exponential backoff starting with 100ms) and then every 30s.
   provider.maxBackoffTime = 30000;
 
-  // y-websocket re-reads provider.protocols on each reconnect, so swapping in a
-  // fresh IMS token here is enough; no provider rebuild needed.
-  // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
   let lastSentToken = token || null;
   provider.on('connection-close', async (event) => {
+    // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
     if (event?.code === 4403) {
       provider.shouldConnect = false;
       return;
@@ -69,16 +66,14 @@ export async function createConnection(path) {
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
       const fresh = await getAuthToken();
       if (!fresh || fresh === lastSentToken) {
-        // No new token to try — retrying would loop on the same 4401 forever.
+        // No new token to try — retrying would loop on the same 4401. Stop
+        // the reconnect loop, and surface the modal if the user was signed in.
         provider.shouldConnect = false;
-        // If the user expected to be signed in, route them through IMS sign-in
-        // so collab can recover. Matches daFetch's 401 handling. Anonymous users
-        // (no nx-ims flag) hitting a private doc are left disconnected.
-        if (localStorage.getItem('nx-ims')) {
+        if (lastSentToken) {
           try {
-            const { handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-            handleSignIn();
-          } catch { /* nothing to do */ }
+            const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
+            showAuthBanner();
+          } catch { /* ignore */ }
         }
         return;
       }

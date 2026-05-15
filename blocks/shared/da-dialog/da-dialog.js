@@ -17,8 +17,14 @@ export default class DaDialog extends LitElement {
     action: { state: true },
     emphasis: { type: String }, // quiet
     size: { type: String }, // 'small', 'medium', 'large', 'auto'
+    showCloseButton: { type: Boolean, attribute: 'show-close-button' },
     _showLazyModal: { state: true },
   };
+
+  constructor() {
+    super();
+    this.showCloseButton = true;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -65,12 +71,12 @@ export default class DaDialog extends LitElement {
         <div class="da-dialog-inner ${sizeClass} ${emphasisClass}" part="inner">
           <div class="da-dialog-header" part="header">
             <p class="sl-heading-m">${this.title}</p>
-            <button
+            ${this.showCloseButton ? html`<button
               class="da-dialog-close-btn"
               @click=${this.close}
               aria-label="Close dialog">
               <svg class="icon"><use href="/blocks/browse/img/S2IconClose20N-icon.svg#S2IconClose20N-icon"></use></svg>
-            </button>
+            </button>` : nothing}
           </div>
           <hr/>
           <div class="da-dialog-content" part="content">

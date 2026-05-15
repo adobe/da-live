@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { setNx } from '../../../../scripts/utils.js';
 import {
   daFetch,
   etcFetch,
@@ -13,6 +14,11 @@ import {
   fetchDaConfigs,
   getAuthToken,
 } from '../../../../blocks/shared/utils.js';
+
+// daFetch's 401-no-token path lazy-loads the banner module, which resolves
+// `${getNx()}/utils/utils.js`. Configure nx for the test environment so that
+// import works.
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 describe('getSheetByIndex', () => {
   it('Returns data directly for non-multi-sheet', () => {
@@ -180,20 +186,17 @@ describe('sanitizeName', () => {
 });
 
 describe('getAuthToken', () => {
-  let savedLocalStorage;
   let savedAdobeIMS;
 
   beforeEach(() => {
-    savedLocalStorage = window.localStorage.getItem('nx-ims');
     savedAdobeIMS = window.adobeIMS;
+    window.localStorage.removeItem('nx-ims');
   });
 
   afterEach(() => {
-    if (savedLocalStorage) {
-      window.localStorage.setItem('nx-ims', savedLocalStorage);
-    } else {
-      window.localStorage.removeItem('nx-ims');
-    }
+    // Always remove rather than restoring — preserving a leaked value would
+    // propagate it to later tests/files whose getAuthToken can't survive it.
+    window.localStorage.removeItem('nx-ims');
     if (savedAdobeIMS === undefined) {
       delete window.adobeIMS;
     } else {
@@ -232,20 +235,15 @@ describe('getAuthToken', () => {
 
 describe('daFetch', () => {
   let savedFetch;
-  let savedLocalStorage;
 
   beforeEach(() => {
     savedFetch = window.fetch;
-    savedLocalStorage = window.localStorage.getItem('nx-ims');
+    window.localStorage.removeItem('nx-ims');
   });
 
   afterEach(() => {
     window.fetch = savedFetch;
-    if (savedLocalStorage) {
-      window.localStorage.setItem('nx-ims', savedLocalStorage);
-    } else {
-      window.localStorage.removeItem('nx-ims');
-    }
+    window.localStorage.removeItem('nx-ims');
   });
 
   it('Defaults headers when none are provided', async () => {
@@ -301,6 +299,61 @@ describe('daFetch', () => {
 
     const resp = await daFetch('https://example.com/test');
     expect(resp.permissions).to.deep.equal(['read', 'write']);
+  });
+
+  it('On 401 with no token, dispatches banner instead of redirecting to IMS', async () => {
+    window.localStorage.removeItem('nx-ims');
+    const savedIMS = window.adobeIMS;
+    delete window.adobeIMS;
+
+    window.fetch = () => Promise.resolve(new Response('nope', { status: 401 }));
+
+    try {
+      // DA_ORIGINS in utils.js includes http://localhost:8787 — use that so the
+      // 401 path triggers without us needing to monkey-patch the origin list.
+      const resp = await daFetch('http://localhost:8787/source/o/r/p.html');
+      // Wait for the dynamic banner import to settle.
+      await new Promise((r) => { setTimeout(r, 80); });
+
+      expect(resp.ok).to.equal(false);
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.exist;
+    } finally {
+      document.querySelector('da-dialog.da-auth-banner')?.remove();
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('On 401 with a token, refreshToken-and-retry recovers without redirect', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let getCalls = 0;
+    const tokens = ['stale', 'fresh'];
+    window.adobeIMS = {
+      getAccessToken: () => {
+        const t = tokens[Math.min(getCalls, tokens.length - 1)];
+        getCalls += 1;
+        return { token: t };
+      },
+      refreshToken: async () => {},
+    };
+
+    let fetchCalls = 0;
+    const capturedAuth = [];
+    window.fetch = (url, opts) => {
+      fetchCalls += 1;
+      capturedAuth.push(opts?.headers?.Authorization);
+      // First call returns 401; second returns 200.
+      return Promise.resolve(new Response('ok', { status: fetchCalls === 1 ? 401 : 200 }));
+    };
+
+    try {
+      const resp = await daFetch('http://localhost:8787/source/o/r/p.html');
+      expect(resp.ok).to.equal(true);
+      expect(fetchCalls).to.equal(2);
+      expect(capturedAuth).to.deep.equal(['Bearer stale', 'Bearer fresh']);
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
   });
 
   it('Returns 403 response directly', async () => {
