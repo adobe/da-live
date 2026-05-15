@@ -7,6 +7,28 @@ const ETC_ORIGINS = ['https://stage-content.da.live', 'https://helix-snapshot-sc
 const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS, ...ETC_ORIGINS];
 
 let imsDetails;
+let authMonitorAttached = false;
+
+// Watch imslib's session for cross-tab sign-in/out. imslib persists its
+// token in localStorage and other tabs' writes fire storage events here;
+// re-check the live auth state on every storage change so we react
+// regardless of which keys (nx-ims, imslib's own) flipped.
+function attachAuthMonitor() {
+  if (authMonitorAttached) return;
+  authMonitorAttached = true;
+  let wasAuthed = !!window.adobeIMS?.getAccessToken();
+  window.addEventListener('storage', async () => {
+    const isAuthed = !!window.adobeIMS?.getAccessToken();
+    if (wasAuthed && !isAuthed) {
+      const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+      showAuthBanner();
+    } else if (!wasAuthed && isAuthed) {
+      // Another tab signed back in — reload to pick up the fresh session.
+      window.location.reload();
+    }
+    wasAuthed = isAuthed;
+  });
+}
 
 export async function initIms() {
   if (imsDetails) return imsDetails;
@@ -14,6 +36,7 @@ export async function initIms() {
 
   try {
     imsDetails = await loadIms();
+    attachAuthMonitor();
     return imsDetails;
   } catch {
     return null;

@@ -32,6 +32,8 @@ export class DaAuthBanner extends LitElement {
     return html`
       <dialog role="alertdialog"
               aria-labelledby="da-auth-title"
+              autofocus
+              tabindex="-1"
               @cancel=${(e) => e.preventDefault()}>
         <h2 id="da-auth-title" class="da-auth-title">Your session has expired</h2>
         <p class="da-auth-msg">Sign in again to continue.</p>
