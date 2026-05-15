@@ -1,6 +1,6 @@
 import { daFetch, getFirstSheet } from '../../../shared/utils.js';
 import { getMetadata } from '../../utils/helpers.js';
-import { parseDom, aemToContentUrl } from './helpers.js';
+import { parseDom, aemToContentUrl, daFetchLibrary } from './helpers.js';
 
 const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 
@@ -69,17 +69,24 @@ function getBlockTableHtml(block) {
   return table;
 }
 
-async function fetchAndParseHtml(path, isAemHosted) {
-  const postfix = isAemHosted ? '.plain.html' : '';
+function isAemHosted(path) {
   try {
-    const resp = await daFetch(`${path}${postfix}`);
-    if (!resp.ok) return null;
+    const { origin } = new URL(path);
+    return AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
+  } catch {
+    return false;
+  }
+}
 
+async function fetchAndParseHtml(path) {
+  const url = isAemHosted(path) ? `${path}.plain.html` : path;
+  try {
+    const resp = await daFetch(url);
+    if (!resp.ok) return { doc: null, notFound: resp.status === 404 };
     const html = await resp.text();
-    const parser = new DOMParser();
-    return parser.parseFromString(html, 'text/html');
-  } catch (e) {
-    return null;
+    return { doc: new DOMParser().parseFromString(html, 'text/html') };
+  } catch {
+    return { doc: null };
   }
 }
 
@@ -161,23 +168,21 @@ function transformBlock(block) {
   return item;
 }
 
-export async function getBlockVariants(path) {
-  let isAemHosted = false;
-  try {
-    const { origin } = new URL(path);
-    isAemHosted = AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
-  } catch {
-    // path is relative — not AEM hosted
-  }
-
-  const doc = await fetchAndParseHtml(path, isAemHosted);
-  if (!doc) return [];
-
+function buildVariants(doc, path) {
   decorateImages(doc.body, path);
-
   const blocks = getSectionsAndBlocks(doc);
-  const groupedBlocks = groupBlocks(blocks);
-  return groupedBlocks.map(transformBlock);
+  return groupBlocks(blocks).map(transformBlock);
+}
+
+export async function getBlockVariants(originalPath, { skipRewrite = false } = {}) {
+  const contentUrl = skipRewrite ? originalPath : aemToContentUrl(originalPath);
+  const { doc, notFound } = await fetchAndParseHtml(contentUrl);
+  if (doc) return buildVariants(doc, contentUrl);
+  if (notFound && contentUrl !== originalPath) {
+    const { doc: fallbackDoc } = await fetchAndParseHtml(originalPath);
+    if (fallbackDoc) return buildVariants(fallbackDoc, originalPath);
+  }
+  return [];
 }
 
 export const urlCache = new Map();
@@ -191,26 +196,26 @@ export async function getBlocks(sources) {
         }
 
         try {
-          const resp = await daFetch(aemToContentUrl(url), { noRedirect: true });
+          const { resp, usedFallback } = await daFetchLibrary(url);
           if (!resp.ok) throw new Error('Something went wrong.');
-          const data = await resp.json();
-          urlCache.set(url, data);
-          return data;
+          const entry = { data: await resp.json(), usedFallback };
+          urlCache.set(url, entry);
+          return entry;
         } catch {
           return null;
         }
       }),
     );
 
-    return sourcesData.reduce((acc, blockData) => {
-      if (blockData) {
-        const data = getFirstSheet(blockData);
+    return sourcesData.reduce((acc, entry) => {
+      if (entry) {
+        const data = getFirstSheet(entry.data);
         if (data) {
           data.forEach((block) => {
             if (block.name && block.path) {
               acc.push({
                 ...block,
-                loadVariants: getBlockVariants(aemToContentUrl(block.path)),
+                loadVariants: getBlockVariants(block.path, { skipRewrite: entry.usedFallback }),
               });
             }
           });

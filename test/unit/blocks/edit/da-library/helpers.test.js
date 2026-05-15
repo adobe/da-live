@@ -9,6 +9,7 @@ const {
   getPreviewUrl,
   getAemUrlVars,
   aemToContentUrl,
+  daFetchLibrary,
   getItemDetails,
   getItems,
   getPreviewStatus,
@@ -170,6 +171,91 @@ describe('da-library/helpers exports', () => {
     });
   });
 
+  describe('daFetchLibrary', () => {
+    let savedFetch;
+    beforeEach(() => { savedFetch = window.fetch; });
+    afterEach(() => { window.fetch = savedFetch; });
+
+    it('Skips the rewrite-and-retry when the URL is not an AEM host', async () => {
+      const calls = [];
+      window.fetch = (url) => {
+        calls.push(url);
+        return Promise.resolve(new Response('nope', { status: 404 }));
+      };
+      const { resp, usedFallback } = await daFetchLibrary('https://example.com/page');
+      expect(resp.status).to.equal(404);
+      expect(usedFallback).to.be.false;
+      expect(calls).to.deep.equal(['https://example.com/page']);
+    });
+
+    it('Returns the rewritten response when it succeeds (no fallback)', async () => {
+      const calls = [];
+      window.fetch = (url) => {
+        calls.push(url);
+        return Promise.resolve(new Response('ok', { status: 200 }));
+      };
+      const { resp, usedFallback } = await daFetchLibrary('https://main--repo--org.aem.live/page');
+      expect(resp.status).to.equal(200);
+      expect(usedFallback).to.be.false;
+      expect(calls).to.deep.equal(['https://content.da.live/org/repo/page']);
+    });
+
+    it('Falls back to the original URL on 404 from the rewrite', async () => {
+      const calls = [];
+      window.fetch = (url) => {
+        calls.push(url);
+        const status = url.startsWith('https://content.da.live/') ? 404 : 200;
+        return Promise.resolve(new Response('', { status }));
+      };
+      const { resp, usedFallback } = await daFetchLibrary('https://main--repo--org.aem.live/page');
+      expect(resp.status).to.equal(200);
+      expect(usedFallback).to.be.true;
+      expect(calls).to.deep.equal([
+        'https://content.da.live/org/repo/page',
+        'https://main--repo--org.aem.live/page',
+      ]);
+    });
+
+    it('Does not fall back on non-404 failures from the rewrite', async () => {
+      const calls = [];
+      window.fetch = (url) => {
+        calls.push(url);
+        return Promise.resolve(new Response('boom', { status: 500 }));
+      };
+      const { resp, usedFallback } = await daFetchLibrary('https://main--repo--org.aem.live/page');
+      expect(resp.status).to.equal(500);
+      expect(usedFallback).to.be.false;
+      expect(calls).to.deep.equal(['https://content.da.live/org/repo/page']);
+    });
+
+    it('With skipRewrite, goes straight to the original URL and reports usedFallback', async () => {
+      const calls = [];
+      window.fetch = (url) => {
+        calls.push(url);
+        return Promise.resolve(new Response('ok', { status: 200 }));
+      };
+      const { resp, usedFallback } = await daFetchLibrary(
+        'https://main--repo--org.aem.live/page',
+        { skipRewrite: true },
+      );
+      expect(resp.status).to.equal(200);
+      expect(usedFallback).to.be.true;
+      expect(calls).to.deep.equal(['https://main--repo--org.aem.live/page']);
+    });
+
+    it('Forwards opts to daFetch on both attempts', async () => {
+      const optsSeen = [];
+      window.fetch = (url, opts) => {
+        optsSeen.push(opts);
+        return Promise.resolve(new Response('', { status: 404 }));
+      };
+      await daFetchLibrary('https://main--repo--org.aem.live/page');
+      expect(optsSeen.length).to.equal(2);
+      expect(optsSeen[0]?.noRedirect).to.be.true;
+      expect(optsSeen[1]?.noRedirect).to.be.true;
+    });
+  });
+
   describe('getItems', () => {
     let savedFetch;
     beforeEach(() => { savedFetch = window.fetch; });
@@ -182,6 +268,25 @@ describe('da-library/helpers exports', () => {
       ));
       const result = await getItems(['/source.json']);
       expect(result.length).to.equal(2);
+    });
+
+    it('Handles multi-sheet responses by reading the first sheet', async () => {
+      const savedView = window.view;
+      window.view = { state: { schema: { text: (s) => ({ text: s }) } } };
+      try {
+        window.fetch = () => Promise.resolve(new Response(
+          JSON.stringify({
+            ':type': 'multi-sheet',
+            ':names': ['default'],
+            default: { data: [{ key: 'one' }, { key: 'two' }] },
+          }),
+          { status: 200 },
+        ));
+        const result = await getItems(['/source.json']);
+        expect(result.map((i) => i.key)).to.deep.equal(['one', 'two']);
+      } finally {
+        window.view = savedView;
+      }
     });
 
     it('Skips a source whose fetch fails (catch branch)', async () => {
@@ -279,6 +384,62 @@ describe('da-library/helpers/index getBlocks', () => {
     expect(captured).to.equal('https://content.da.live/org/repo/blocks.json');
   });
 
+  it('Falls back to the original AEM URL when content.da.live 404s', async () => {
+    const calls = [];
+    window.fetch = (url) => {
+      calls.push(url);
+      if (url.startsWith('https://content.da.live/')) {
+        return Promise.resolve(new Response('not found', { status: 404 }));
+      }
+      return Promise.resolve(new Response(
+        JSON.stringify({ ':type': 'sheet', data: [] }),
+        { status: 200 },
+      ));
+    };
+    await getBlocks(['https://main--repo--org.aem.page/blocks.json']);
+    expect(calls).to.deep.equal([
+      'https://content.da.live/org/repo/blocks.json',
+      'https://main--repo--org.aem.page/blocks.json',
+    ]);
+  });
+
+  it('Does not fall back on non-404 failures', async () => {
+    const calls = [];
+    window.fetch = (url) => {
+      calls.push(url);
+      return Promise.resolve(new Response('boom', { status: 500 }));
+    };
+    await getBlocks(['https://main--repo--org.aem.page/blocks.json']);
+    expect(calls).to.deep.equal(['https://content.da.live/org/repo/blocks.json']);
+  });
+
+  it('When the source falls back, variants skip the content.da.live attempt', async () => {
+    const calls = [];
+    window.fetch = (url) => {
+      calls.push(url);
+      if (url === 'https://content.da.live/org/repo/blocks.json') {
+        return Promise.resolve(new Response('not found', { status: 404 }));
+      }
+      if (url === 'https://main--repo--org.aem.page/blocks.json') {
+        return Promise.resolve(new Response(
+          JSON.stringify({
+            ':type': 'sheet',
+            data: [{ name: 'hero', path: 'https://main--repo--org.aem.page/blocks/hero' }],
+          }),
+          { status: 200 },
+        ));
+      }
+      return Promise.resolve(new Response('', { status: 500 }));
+    };
+    const result = await getBlocks(['https://main--repo--org.aem.page/blocks.json']);
+    await Promise.all(result.map((b) => b.loadVariants));
+    expect(calls).to.deep.equal([
+      'https://content.da.live/org/repo/blocks.json',
+      'https://main--repo--org.aem.page/blocks.json',
+      'https://main--repo--org.aem.page/blocks/hero.plain.html',
+    ]);
+  });
+
   it('Caches fetched source data so subsequent calls do not refetch', async () => {
     let calls = 0;
     window.fetch = () => {
@@ -322,13 +483,26 @@ describe('da-library/helpers/index getBlockVariants', () => {
     expect(captured).to.equal('https://example.com/page');
   });
 
-  it('Adds the .plain.html suffix for known AEM origins', async () => {
-    let captured;
+  it('Tries content.da.live first, then falls back to original AEM URL with .plain.html on 404', async () => {
+    const calls = [];
     window.fetch = (url) => {
-      captured = url;
-      return Promise.resolve(new Response('boom', { status: 500 }));
+      calls.push(url);
+      const status = url.startsWith('https://content.da.live/') ? 404 : 500;
+      return Promise.resolve(new Response('', { status }));
     };
     await getBlockVariants('https://main--repo--org.aem.live/page');
-    expect(captured).to.contain('.plain.html');
+    expect(calls[0]).to.equal('https://content.da.live/org/repo/page');
+    expect(calls[1]).to.equal('https://main--repo--org.aem.live/page.plain.html');
+  });
+
+  it('Does not fall back when content.da.live returns non-404', async () => {
+    const calls = [];
+    window.fetch = (url) => {
+      calls.push(url);
+      return Promise.resolve(new Response('boom', { status: 500 }));
+    };
+    const result = await getBlockVariants('https://main--repo--org.aem.live/page');
+    expect(result).to.deep.equal([]);
+    expect(calls).to.deep.equal(['https://content.da.live/org/repo/page']);
   });
 });
