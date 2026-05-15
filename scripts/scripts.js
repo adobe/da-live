@@ -63,6 +63,10 @@ export default async function loadPage() {
     document.body.classList.remove('light-scheme', 'dark-scheme');
     document.body.classList.add('light-scheme');
   }
+  // Snapshot the auth flag BEFORE imsReady touches it. handleSignIn sets it
+  // and handleSignOut clears it synchronously before navigating to IMS, so
+  // this captures the user's intent across the IMS round-trip.
+  const wasSignedIn = !!localStorage.getItem('nx-ims');
   const imsReady = initIms();
   await setConfig(CONFIG);
 
@@ -71,11 +75,13 @@ export default async function loadPage() {
   const isImsCallback = hash.includes('access_token=') || hash.includes('old_hash=');
   if (isImsCallback) {
     await imsReady;
-    // Returning from IMS without a session means the round-trip was a
-    // sign-OUT (sign-in would have populated nx-ims). Land the user on home
-    // instead of whatever page they signed out from — that page would just
-    // show the session-expired dialog otherwise.
-    if (!localStorage.getItem('nx-ims')) {
+    // No token after the round-trip AND we weren't expecting a sign-in
+    // (nx-ims was already empty when this page loaded) means the user just
+    // signed out. Land them on home rather than the page they signed out
+    // from, which would just show the session-expired dialog.
+    // A failed sign-in attempt (wasSignedIn=true, no token) falls through
+    // to loadArea so the modal can offer the user a retry.
+    if (!localStorage.getItem('nx-ims') && !wasSignedIn) {
       window.location.replace('/');
       return;
     }
