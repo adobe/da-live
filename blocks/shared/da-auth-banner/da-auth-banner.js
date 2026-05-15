@@ -67,7 +67,7 @@ export class DaAuthBanner extends LitElement {
         <h2 id="da-auth-title" class="da-auth-title">Your session has expired</h2>
         <p class="da-auth-msg">Sign in again to continue.</p>
         <div class="da-auth-actions">
-          <button class="da-auth-action" @click=${this._signIn}>Sign in</button>
+          <button type="button" class="da-auth-action" @click=${this._signIn}>Sign in</button>
         </div>
       </dialog>
     `;

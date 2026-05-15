@@ -63,25 +63,22 @@ export default async function loadPage() {
     document.body.classList.remove('light-scheme', 'dark-scheme');
     document.body.classList.add('light-scheme');
   }
-  // Snapshot the auth flag BEFORE imsReady touches it. handleSignIn sets it
-  // and handleSignOut clears it synchronously before navigating to IMS, so
-  // this captures the user's intent across the IMS round-trip.
-  const wasSignedIn = !!localStorage.getItem('nx-ims');
+  // Capture the hash BEFORE imsReady processes it. A sign-in callback
+  // includes access_token=...; a sign-out callback comes back with old_hash
+  // but no access_token. That distinction is the most reliable signal — no
+  // reliance on which nx version manages the nx-ims flag.
+  const { hash } = window.location;
+  const hadAccessToken = hash.includes('access_token=');
+  const isImsCallback = hadAccessToken || hash.includes('old_hash=');
+
   const imsReady = initIms();
   await setConfig(CONFIG);
 
-  // Only block on IMS for OAuth-callback loads
-  const { hash } = window.location;
-  const isImsCallback = hash.includes('access_token=') || hash.includes('old_hash=');
   if (isImsCallback) {
     await imsReady;
-    // No token after the round-trip AND we weren't expecting a sign-in
-    // (nx-ims was already empty when this page loaded) means the user just
-    // signed out. Land them on home rather than the page they signed out
-    // from, which would just show the session-expired dialog.
-    // A failed sign-in attempt (wasSignedIn=true, no token) falls through
-    // to loadArea so the modal can offer the user a retry.
-    if (!localStorage.getItem('nx-ims') && !wasSignedIn) {
+    if (!hadAccessToken) {
+      // Sign-out callback — land on home rather than the page they signed
+      // out from, which would just show the session-expired dialog.
       window.location.replace('/');
       return;
     }
