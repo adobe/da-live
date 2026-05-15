@@ -90,14 +90,6 @@ export async function createConnection(path) {
     lastSentToken = fresh;
   });
 
-  // Cross-tab sign-out: the auth monitor in utils.js has already shown the
-  // modal; cycle our WS so the server's 4401 handshake response drives the
-  // connection-close handler above (idempotent with the modal).
-  window.addEventListener('da-auth-lost', () => {
-    provider.disconnect();
-    provider.connect();
-  });
-
   return { wsProvider: provider, ydoc };
 }
 

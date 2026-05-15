@@ -22,9 +22,6 @@ function attachAuthMonitor() {
     if (wasAuthed && !isAuthed) {
       const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
       showAuthBanner();
-      // Notify any open collab WS to cycle so the server's 4401 handshake
-      // response can run the connection-close handler in prose/index.js.
-      window.dispatchEvent(new CustomEvent('da-auth-lost'));
     } else if (!wasAuthed && isAuthed) {
       // Another tab signed back in — reload to pick up the fresh session.
       window.location.reload();
