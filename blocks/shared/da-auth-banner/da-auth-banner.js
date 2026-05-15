@@ -1,55 +1,37 @@
-import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-
-const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const STYLE = await loadStyle(import.meta.url);
+import '../da-dialog/da-dialog.js';
 
 let mountedInstance = null;
 
-export class DaAuthBanner extends LitElement {
-  connectedCallback() {
-    super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    if (mountedInstance === this) mountedInstance = null;
-  }
-
-  firstUpdated() {
-    if (!this.isConnected) return;
-    try { this.shadowRoot.querySelector('dialog')?.showModal(); } catch { /* detached */ }
-  }
-
-  async _signIn() {
-    const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-    await loadIms();
-    handleSignIn();
-  }
-
-  render() {
-    return html`
-      <dialog role="alertdialog"
-              aria-labelledby="da-auth-title"
-              autofocus
-              tabindex="-1"
-              @cancel=${(e) => e.preventDefault()}>
-        <h2 id="da-auth-title" class="da-auth-title">Your session has expired</h2>
-        <p class="da-auth-msg">Sign in again to continue.</p>
-        <div class="da-auth-actions">
-          <button type="button" class="da-auth-action" @click=${this._signIn}>Sign in</button>
-        </div>
-      </dialog>
-    `;
-  }
+async function triggerSignIn() {
+  const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+  await loadIms();
+  handleSignIn();
 }
-
-customElements.define('da-auth-banner', DaAuthBanner);
 
 export function showAuthBanner() {
   if (mountedInstance?.isConnected) return mountedInstance;
-  mountedInstance = document.createElement('da-auth-banner');
-  document.body.appendChild(mountedInstance);
-  return mountedInstance;
+
+  const dialog = document.createElement('da-dialog');
+  dialog.title = 'Your session has expired';
+  dialog.classList.add('da-auth-banner');
+
+  const msg = document.createElement('p');
+  msg.textContent = 'Sign in again to continue.';
+  dialog.appendChild(msg);
+
+  dialog.action = {
+    label: 'Sign in',
+    style: 'accent',
+    click: triggerSignIn,
+  };
+
+  dialog.addEventListener('close', () => {
+    if (mountedInstance === dialog) mountedInstance = null;
+    dialog.remove();
+  });
+
+  document.body.appendChild(dialog);
+  mountedInstance = dialog;
+  return dialog;
 }

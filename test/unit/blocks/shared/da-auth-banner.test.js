@@ -13,7 +13,7 @@ describe('da-auth-banner', () => {
   beforeEach(() => {
     savedIMS = window.adobeIMS;
     window.localStorage.removeItem('nx-ims');
-    document.querySelectorAll('da-auth-banner').forEach((el) => el.remove());
+    document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
   });
 
   afterEach(() => {
@@ -21,31 +21,30 @@ describe('da-auth-banner', () => {
     // The Sign-in button calls handleSignIn which sets nx-ims; always remove
     // it so the leaked flag doesn't trip later tests that don't configure setNx.
     window.localStorage.removeItem('nx-ims');
-    document.querySelectorAll('da-auth-banner').forEach((el) => el.remove());
+    document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
   });
 
   it('showAuthBanner mounts a single banner element', () => {
     const a = showAuthBanner();
     const b = showAuthBanner();
     expect(a).to.equal(b);
-    expect(document.querySelectorAll('da-auth-banner').length).to.equal(1);
+    expect(document.querySelectorAll('da-dialog.da-auth-banner').length).to.equal(1);
   });
 
-  it('Renders as a modal that blocks the page', async () => {
+  it('Mounts a da-dialog with the expected title and action label', async () => {
     const banner = showAuthBanner();
     await banner.updateComplete;
-    const dlg = banner.shadowRoot.querySelector('dialog');
-    expect(dlg).to.exist;
-    expect(dlg.open).to.equal(true);
+    expect(banner.title).to.equal('Your session has expired');
+    expect(banner.action?.label).to.equal('Sign in');
   });
 
-  it('Sign-in button calls handleSignIn which invokes adobeIMS.signIn', async () => {
+  it('Sign-in action calls handleSignIn which invokes adobeIMS.signIn', async () => {
     let signInCalls = 0;
     window.adobeIMS = { signIn: () => { signInCalls += 1; } };
 
     const banner = showAuthBanner();
     await banner.updateComplete;
-    banner.shadowRoot.querySelector('.da-auth-action').click();
+    await banner.action.click();
     await wait(50);
     expect(signInCalls).to.equal(1);
   });

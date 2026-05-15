@@ -35,9 +35,8 @@ function attachAuthMonitor() {
 
 export async function initIms() {
   if (imsDetails) return imsDetails;
-  const { loadIms } = await import(`${getNx()}/utils/ims.js`);
-
   try {
+    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
     imsDetails = await loadIms();
     attachAuthMonitor();
     return imsDetails;

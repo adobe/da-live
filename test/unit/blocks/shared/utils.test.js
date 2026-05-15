@@ -316,9 +316,9 @@ describe('daFetch', () => {
       await new Promise((r) => { setTimeout(r, 80); });
 
       expect(resp.ok).to.equal(false);
-      expect(document.querySelector('da-auth-banner')).to.exist;
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.exist;
     } finally {
-      document.querySelector('da-auth-banner')?.remove();
+      document.querySelector('da-dialog.da-auth-banner')?.remove();
       if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
     }
   });

@@ -75,7 +75,7 @@ describe('prose/index createConnection', () => {
     // Always remove rather than restoring a prior value — if a leak entered
     // this block, restoring it would propagate the leak to later test files.
     window.localStorage.removeItem('nx-ims');
-    document.querySelectorAll('da-auth-banner').forEach((el) => el.remove());
+    document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
   });
 
   it('Returns a wsProvider and a Y.Doc with maxBackoffTime configured', async () => {
@@ -165,9 +165,9 @@ describe('prose/index createConnection', () => {
 
       expect(refreshCalls).to.equal(1);
       expect(wsProvider.shouldConnect).to.equal(false);
-      expect(document.querySelector('da-auth-banner')).to.exist;
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.exist;
 
-      document.querySelector('da-auth-banner')?.remove();
+      document.querySelector('da-dialog.da-auth-banner')?.remove();
       wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
       ydoc.destroy();
@@ -193,7 +193,7 @@ describe('prose/index createConnection', () => {
       await new Promise((r) => { setTimeout(r, 80); });
 
       expect(wsProvider.shouldConnect).to.equal(false);
-      expect(document.querySelector('da-auth-banner')).to.not.exist;
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.not.exist;
 
       wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
