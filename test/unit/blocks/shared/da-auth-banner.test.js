@@ -12,11 +12,15 @@ describe('da-auth-banner', () => {
 
   beforeEach(() => {
     savedIMS = window.adobeIMS;
+    window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-auth-banner').forEach((el) => el.remove());
   });
 
   afterEach(() => {
     if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    // The Sign-in button calls handleSignIn which sets nx-ims; always remove
+    // it so the leaked flag doesn't trip later tests that don't configure setNx.
+    window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-auth-banner').forEach((el) => el.remove());
   });
 

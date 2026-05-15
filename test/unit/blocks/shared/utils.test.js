@@ -186,20 +186,17 @@ describe('sanitizeName', () => {
 });
 
 describe('getAuthToken', () => {
-  let savedLocalStorage;
   let savedAdobeIMS;
 
   beforeEach(() => {
-    savedLocalStorage = window.localStorage.getItem('nx-ims');
     savedAdobeIMS = window.adobeIMS;
+    window.localStorage.removeItem('nx-ims');
   });
 
   afterEach(() => {
-    if (savedLocalStorage) {
-      window.localStorage.setItem('nx-ims', savedLocalStorage);
-    } else {
-      window.localStorage.removeItem('nx-ims');
-    }
+    // Always remove rather than restoring — preserving a leaked value would
+    // propagate it to later tests/files whose getAuthToken can't survive it.
+    window.localStorage.removeItem('nx-ims');
     if (savedAdobeIMS === undefined) {
       delete window.adobeIMS;
     } else {
@@ -238,20 +235,15 @@ describe('getAuthToken', () => {
 
 describe('daFetch', () => {
   let savedFetch;
-  let savedLocalStorage;
 
   beforeEach(() => {
     savedFetch = window.fetch;
-    savedLocalStorage = window.localStorage.getItem('nx-ims');
+    window.localStorage.removeItem('nx-ims');
   });
 
   afterEach(() => {
     window.fetch = savedFetch;
-    if (savedLocalStorage) {
-      window.localStorage.setItem('nx-ims', savedLocalStorage);
-    } else {
-      window.localStorage.removeItem('nx-ims');
-    }
+    window.localStorage.removeItem('nx-ims');
   });
 
   it('Defaults headers when none are provided', async () => {

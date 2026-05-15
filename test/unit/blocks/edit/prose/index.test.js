@@ -68,17 +68,13 @@ function buildFakeWsProvider({ withSynced = false } = {}) {
 }
 
 describe('prose/index createConnection', () => {
-  let savedNxIms;
   beforeEach(() => {
-    savedNxIms = window.localStorage.getItem('nx-ims');
     window.localStorage.removeItem('nx-ims');
   });
   afterEach(() => {
-    if (savedNxIms) {
-      window.localStorage.setItem('nx-ims', savedNxIms);
-    } else {
-      window.localStorage.removeItem('nx-ims');
-    }
+    // Always remove rather than restoring a prior value — if a leak entered
+    // this block, restoring it would propagate the leak to later test files.
+    window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-auth-banner').forEach((el) => el.remove());
   });
 
