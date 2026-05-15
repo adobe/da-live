@@ -68,12 +68,12 @@ export async function createConnection(path) {
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
       const fresh = await getAuthToken();
       if (!fresh || fresh === lastSentToken) {
-        // No new token to try — retrying would loop on the same 4401 forever.
+        // No new token to try — retrying would loop on the same 4401. Stop
+        // the reconnect loop, and surface the modal if the user had a token
+        // when collab started (i.e. they expected to be signed in). The
+        // cross-tab monitor in scripts.js handles cross-tab sign-in/out.
         provider.shouldConnect = false;
-        // If the user expected to be signed in, surface an in-page banner instead
-        // of navigating away — preserves the editor state and lets the user sign
-        // back in (or wait for a cross-tab sign-in) without losing context.
-        if (localStorage.getItem('nx-ims')) {
+        if (lastSentToken) {
           try {
             const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
             showAuthBanner();
@@ -89,37 +89,6 @@ export async function createConnection(path) {
     provider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
     lastSentToken = fresh;
   });
-
-  // Cross-tab sign-in/out propagation. The storage event fires only in OTHER
-  // tabs, so this lets a disconnected tab recover when the user signs back in
-  // elsewhere — and proactively drops the connection when another tab signs out.
-  const handleAuthStorage = async (event) => {
-    if (event.key !== 'nx-ims') return;
-    if (event.newValue && !event.oldValue) {
-      try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
-      const fresh = await getAuthToken();
-      if (fresh) {
-        provider.protocols = ['yjs', fresh];
-        lastSentToken = fresh;
-      }
-      provider.connect();
-    } else if (!event.newValue && event.oldValue) {
-      provider.disconnect();
-    }
-  };
-  window.addEventListener('storage', handleAuthStorage);
-
-  // Detach the storage listener when callers tear down the provider for
-  // navigation (edit.js / da-content.js pass { data: 'Client navigation' }).
-  // The focus/blur 10-minute disconnect passes no data hint, so the listener
-  // survives idle disconnects and can still recover on cross-tab sign-in.
-  const origDisconnect = provider.disconnect.bind(provider);
-  provider.disconnect = (disconnectOpts) => {
-    if (disconnectOpts?.data === 'Client navigation') {
-      window.removeEventListener('storage', handleAuthStorage);
-    }
-    return origDisconnect();
-  };
 
   return { wsProvider: provider, ydoc };
 }
