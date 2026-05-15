@@ -84,6 +84,26 @@ export default async function loadPage() {
     }
   }
 
+  // Cross-tab auth monitor: imslib persists its session in localStorage, so
+  // when another tab signs in/out, storage events fire for imslib's keys (not
+  // necessarily nx-ims — nx2's handleSignOut leaves that flag alone). Re-check
+  // the live auth state on every storage change so we react regardless of
+  // which keys flipped.
+  imsReady.then(() => {
+    let wasAuthed = !!window.adobeIMS?.getAccessToken();
+    window.addEventListener('storage', async () => {
+      const isAuthed = !!window.adobeIMS?.getAccessToken();
+      if (wasAuthed && !isAuthed) {
+        const { showAuthBanner } = await import('../blocks/shared/da-auth-banner/da-auth-banner.js');
+        showAuthBanner();
+      } else if (!wasAuthed && isAuthed) {
+        // Another tab signed back in — reload to pick up the fresh session.
+        window.location.reload();
+      }
+      wasAuthed = isAuthed;
+    });
+  });
+
   await loadArea();
 }
 
