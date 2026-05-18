@@ -9,9 +9,9 @@ const style = await loadStyle(import.meta.url);
 const ICONS = {
   undo: '/img/icons/s2-icon-undo-20-n.svg',
   redo: '/img/icons/s2-icon-redo-20-n.svg',
-  splitLeft: '/blocks/canvas/img/s2-icon-splitleft-20-n.svg',
-  splitRight: '/blocks/canvas/img/s2-icon-splitright-20-n.svg',
-  gridCompare: '/blocks/canvas/img/s2-icon-gridcompare-20-n.svg',
+  splitLeft: '/img/icons/s2-icon-splitleft-20-n.svg',
+  splitRight: '/img/icons/s2-icon-splitright-20-n.svg',
+  gridCompare: '/img/icons/s2-icon-gridcompare-20-n.svg',
 };
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);

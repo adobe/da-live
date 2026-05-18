@@ -14,8 +14,8 @@ import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
-const iconAdd = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/blocks/canvas/img/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
-const iconPreview = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/blocks/canvas/img/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
+const iconAdd = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
+const iconPreview = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
 
 /**
  * First-party library panel: blocks, templates, icons, placeholders (OOTB sheet-driven tools).

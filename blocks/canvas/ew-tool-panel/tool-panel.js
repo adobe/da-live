@@ -7,7 +7,7 @@ await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const CLOSE_ICON_SRC = '/blocks/canvas/img/s2-icon-splitright-20-n.svg';
+const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
 const ACTIVE_VIEW_KEY = 'nx-tool-panel-active-view';
 
