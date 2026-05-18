@@ -27,8 +27,8 @@ const BLOCK_TYPE_PICKER_ITEMS = [
   ...PICKER_DEFS.map(({ id, label }) => ({ value: id, label })),
 ];
 
-const LINK_ICON = new URL('../img/s2-icon-link-20-n.svg', import.meta.url).href;
-const UNLINK_ICON = new URL('../img/s2-icon-unlink-20-n.svg', import.meta.url).href;
+const LINK_ICON = 'link';
+const UNLINK_ICON = 'unlink';
 
 function blockTypeLabelForRaw(raw) {
   if (raw === 'mixed') return 'Mixed';
@@ -64,8 +64,8 @@ class EwSelectionToolbar extends LitElement {
     return this._popover?.open ?? false;
   }
 
-  _icon(url) {
-    return html`<img src="${url}" aria-hidden="true">`;
+  _icon(name) {
+    return html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
   }
 
   /* ---- Block-type picker ---- */

@@ -71,7 +71,7 @@ class EWCanvasHeader extends LitElement {
   }
 
   _renderIcon(name) {
-    return html`<img src="${ICONS[name]}" aria-hidden="true">`;
+    return html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${ICONS[name]}#icon"></use></svg>`;
   }
 
   render() {

@@ -7,7 +7,7 @@ await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
+const CLOSE_ICON_SRC = '/blocks/canvas/img/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
 const ACTIVE_VIEW_KEY = 'nx-tool-panel-active-view';
 
@@ -177,7 +177,7 @@ class EwToolPanel extends LitElement {
     return html`
       <div class="tool-panel-header">
         <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
-          <img src="${CLOSE_ICON_SRC}" aria-hidden="true">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
         <nx-picker
           .items=${items}

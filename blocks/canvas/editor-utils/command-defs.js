@@ -16,7 +16,7 @@ import {
   LOREM_SENTENCES,
 } from './command-helpers.js';
 
-const iconUrl = (name) => new URL(`../img/s2-icon-${name.toLowerCase()}-20-n.svg`, import.meta.url).href;
+const iconName = (name) => name.toLowerCase();
 
 export const COMMANDS = [
   // Toolbar: inline mark buttons
@@ -24,7 +24,7 @@ export const COMMANDS = [
     id: 'strong',
     label: 'Bold',
     schema: 'strong',
-    icon: iconUrl('TagBold'),
+    icon: iconName('TagBold'),
     showIn: ['toolbar-marks'],
     active: (state) => markIsActive(state, 'strong'),
     apply: inlineMark('strong'),
@@ -33,7 +33,7 @@ export const COMMANDS = [
     id: 'em',
     label: 'Italic',
     schema: 'em',
-    icon: iconUrl('TagItalic'),
+    icon: iconName('TagItalic'),
     showIn: ['toolbar-marks'],
     active: (state) => markIsActive(state, 'em'),
     apply: inlineMark('em'),
@@ -42,7 +42,7 @@ export const COMMANDS = [
     id: 'code',
     label: 'Inline code',
     schema: 'code',
-    icon: iconUrl('Code'),
+    icon: iconName('Code'),
     showIn: ['toolbar-marks'],
     active: (state) => markIsActive(state, 'code'),
     apply: inlineMark('code'),
@@ -51,7 +51,7 @@ export const COMMANDS = [
     id: 'underline',
     label: 'Underline',
     schema: 'u',
-    icon: iconUrl('TagUnderline'),
+    icon: iconName('TagUnderline'),
     showIn: ['toolbar-marks'],
     active: (state) => markIsActive(state, 'u'),
     apply: inlineMark('u'),
@@ -60,7 +60,7 @@ export const COMMANDS = [
     id: 'strikethrough',
     label: 'Strikethrough',
     schema: 's',
-    icon: iconUrl('TagStrikeThrough'),
+    icon: iconName('TagStrikeThrough'),
     showIn: ['toolbar-marks'],
     active: (state) => markIsActive(state, 's'),
     apply: inlineMark('s'),
@@ -77,7 +77,7 @@ export const COMMANDS = [
   {
     id: 'heading-1',
     label: 'Heading 1',
-    icon: iconUrl('Heading1'),
+    icon: iconName('Heading1'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
     apply: blockType('heading', { level: 1 }),
@@ -85,7 +85,7 @@ export const COMMANDS = [
   {
     id: 'heading-2',
     label: 'Heading 2',
-    icon: iconUrl('Heading2'),
+    icon: iconName('Heading2'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
     apply: blockType('heading', { level: 2 }),
@@ -93,7 +93,7 @@ export const COMMANDS = [
   {
     id: 'heading-3',
     label: 'Heading 3',
-    icon: iconUrl('Heading3'),
+    icon: iconName('Heading3'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
     apply: blockType('heading', { level: 3 }),
@@ -101,7 +101,7 @@ export const COMMANDS = [
   {
     id: 'heading-4',
     label: 'Heading 4',
-    icon: iconUrl('Heading4'),
+    icon: iconName('Heading4'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
     apply: blockType('heading', { level: 4 }),
@@ -109,7 +109,7 @@ export const COMMANDS = [
   {
     id: 'heading-5',
     label: 'Heading 5',
-    icon: iconUrl('Heading5'),
+    icon: iconName('Heading5'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
     apply: blockType('heading', { level: 5 }),
@@ -117,7 +117,7 @@ export const COMMANDS = [
   {
     id: 'heading-6',
     label: 'Heading 6',
-    icon: iconUrl('Heading6'),
+    icon: iconName('Heading6'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
     apply: blockType('heading', { level: 6 }),
@@ -125,7 +125,7 @@ export const COMMANDS = [
   {
     id: 'code-block',
     label: 'Code block',
-    icon: iconUrl('BlockCode'),
+    icon: iconName('BlockCode'),
     schema: 'code_block',
     showIn: ['toolbar-picker', 'slash-text'],
     disabled: (state) => state.selection.$from.parent.type.name === 'code_block',
@@ -136,7 +136,7 @@ export const COMMANDS = [
   {
     id: 'blockquote',
     label: 'Blockquote',
-    icon: iconUrl('BlockQuote'),
+    icon: iconName('BlockQuote'),
     schema: 'blockquote',
     showIn: ['toolbar-structure', 'slash-text'],
     apply: wrap('blockquote'),
@@ -144,7 +144,7 @@ export const COMMANDS = [
   {
     id: 'bullet-list',
     label: 'Bullet list',
-    icon: iconUrl('ListBulleted'),
+    icon: iconName('ListBulleted'),
     schema: 'bullet_list',
     showIn: ['toolbar-structure', 'slash-text'],
     visible: ({ selection: { $from } }) => !inList($from),
@@ -153,7 +153,7 @@ export const COMMANDS = [
   {
     id: 'numbered-list',
     label: 'Numbered list',
-    icon: iconUrl('ListNumbered'),
+    icon: iconName('ListNumbered'),
     schema: 'ordered_list',
     showIn: ['toolbar-structure', 'slash-text'],
     visible: ({ selection: { $from } }) => !inList($from),
@@ -162,7 +162,7 @@ export const COMMANDS = [
   {
     id: 'list-indent',
     label: 'Indent list',
-    icon: iconUrl('TextIndentIncrease'),
+    icon: iconName('TextIndentIncrease'),
     showIn: ['toolbar-structure'],
     visible: ({ selection: { $from } }) => inList($from),
     disabled: (state) => !canSinkList(state),
@@ -171,7 +171,7 @@ export const COMMANDS = [
   {
     id: 'list-outdent',
     label: 'Outdent list',
-    icon: iconUrl('TextIndentDecrease'),
+    icon: iconName('TextIndentDecrease'),
     showIn: ['toolbar-structure'],
     visible: ({ selection: { $from } }) => inList($from),
     disabled: (state) => !canLiftList(state),
@@ -182,7 +182,7 @@ export const COMMANDS = [
   {
     id: 'section-break',
     label: 'Section break',
-    icon: iconUrl('Separator'),
+    icon: iconName('Separator'),
     showIn: ['slash-text'],
     apply: (view) => {
       const div = document.createElement('div');
@@ -194,7 +194,7 @@ export const COMMANDS = [
   {
     id: 'lorem-ipsum',
     label: 'Lorem ipsum',
-    icon: iconUrl('Rail'),
+    icon: iconName('Rail'),
     showIn: ['slash-text'],
     apply: (view) => {
       const { $cursor } = view.state.selection;
@@ -213,7 +213,7 @@ export const COMMANDS = [
   {
     id: 'open-library',
     label: 'Open library',
-    icon: iconUrl('CCLibrary'),
+    icon: iconName('CCLibrary'),
     showIn: ['slash-blocks'],
     apply: () => {
       const evt = new CustomEvent('nx-canvas-open-panel', {
@@ -227,7 +227,7 @@ export const COMMANDS = [
   {
     id: 'insert-block',
     label: 'Insert block',
-    icon: iconUrl('TableAdd'),
+    icon: iconName('TableAdd'),
     showIn: ['slash-blocks'],
     apply: (view) => {
       const { state } = view;

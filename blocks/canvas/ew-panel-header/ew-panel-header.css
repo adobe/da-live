@@ -36,10 +36,11 @@
   gap: var(--s2-spacing-75);
   font-size: var(--s2-body-size-s);
 
-  img {
+  svg.icon {
     display: block;
     width: 16px;
     height: 16px;
+    overflow: hidden;
   }
 
   &:focus-visible {

@@ -37,10 +37,11 @@
   color: var(--s2-gray-800);
   cursor: pointer;
 
-  img {
+  svg.icon {
     display: block;
     width: 16px;
     height: 16px;
+    overflow: hidden;
   }
 
   &:hover {

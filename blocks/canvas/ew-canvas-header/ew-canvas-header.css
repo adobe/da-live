@@ -30,11 +30,12 @@
   cursor: pointer;
 }
 
-.icon-btn img {
+.icon-btn svg.icon {
   display: block;
   flex-shrink: 0;
   width: 16px;
   height: 16px;
+  overflow: hidden;
 }
 
 .icon-btn:focus-visible {
@@ -51,7 +52,7 @@
   background-color: var(--s2-gray-75);
 }
 
-.icon-btn:disabled img {
+.icon-btn:disabled svg.icon {
   opacity: 0.45;
 }
 
@@ -110,11 +111,12 @@
     min-width: 28px;
   }
 
-  &.segment-icon img {
+  &.segment-icon svg.icon {
     display: block;
     width: 16px;
     height: 16px;
     flex-shrink: 0;
+    overflow: hidden;
   }
 }
 

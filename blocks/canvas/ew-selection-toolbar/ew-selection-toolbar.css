@@ -63,10 +63,11 @@
   display: none;
 }
 
-.toolbar-btn img {
+.toolbar-btn svg.icon {
+  display: block;
   width: 16px;
   height: 16px;
-  display: block;
+  overflow: hidden;
 }
 
 .toolbar-sep {

@@ -21,10 +21,14 @@ export default function createPanelHeader({ position, onClose }) {
   toggleBtn.className = 'panel-header-toggle';
   toggleBtn.setAttribute('aria-label', `Toggle ${position} panel`);
 
-  const img = document.createElement('img');
-  img.src = `/blocks/canvas/img/s2-icon-split${side}-20-n.svg`;
-  img.setAttribute('aria-hidden', 'true');
-  toggleBtn.append(img);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('viewBox', '0 0 20 20');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', `/blocks/canvas/img/s2-icon-split${side}-20-n.svg#icon`);
+  svg.append(use);
+  toggleBtn.append(svg);
 
   toggleBtn.addEventListener('click', onClose);
 
