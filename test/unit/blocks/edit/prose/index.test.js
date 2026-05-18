@@ -229,6 +229,53 @@ describe('prose/index createConnection', () => {
     }
   });
 
+  it('Blocks y-websocket auto-reconnect during the in-flight refresh on 4401', async () => {
+    // Regression: y-websocket's onclose schedules setTimeout(setupWS, 100ms)
+    // synchronously; if shouldConnect stays true through the await
+    // refreshToken() round-trip the auto-reconnect fires with the stale token
+    // and burns a HEAD 401 on da-admin. shouldConnect must flip to false
+    // synchronously before the first await.
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let refreshResolve;
+    const refreshPromise = new Promise((r) => { refreshResolve = r; });
+    let tokenIndex = 0;
+    const tokens = ['T-old', 'T-new'];
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: tokens[tokenIndex] }),
+      refreshToken: () => refreshPromise,
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      // Fire 4401 — handler runs sync up to first await, then yields.
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      // Microtask boundary: handler has hit `await refreshToken()` and yielded.
+      await Promise.resolve();
+
+      // During the in-flight refresh, shouldConnect MUST be false so a stale
+      // y-websocket reconnect timer fires as a no-op.
+      expect(wsProvider.shouldConnect).to.equal(false);
+
+      // Resolve the refresh; rotate the token so getAuthToken() returns T-new.
+      tokenIndex = 1;
+      refreshResolve();
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      // After refresh: fresh token applied and reconnect explicitly re-enabled.
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-new']);
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
   it('Non-auth close with no token reconnects as anonymous', async () => {
     window.localStorage.removeItem('nx-ims');
     const savedIMS = window.adobeIMS;
@@ -304,6 +351,38 @@ describe('prose/index createAwarenessStatusWidget', () => {
     expect(fakeTitle.collabStatus).to.equal('connected');
     provider._emit('status', { status: 'disconnected' });
     expect(fakeTitle.collabStatus).to.equal('disconnected');
+  });
+
+  it('Skips checkDoc HEAD on auth-close codes (4401/4403)', async () => {
+    // checkDoc is intended to detect doc-deleted-externally (404). On 4401/4403
+    // the doc is fine — da-collab signalled an auth failure. Firing checkDoc
+    // here just doubles the HEAD 401 traffic to da-admin via daFetch's
+    // refresh-and-retry, so it must be skipped.
+    const provider = buildFakeWsProvider();
+    const fakeWin = { document, addEventListener: () => {} };
+    const fetchCalls = [];
+    const savedFetch = window.fetch;
+    window.fetch = (...args) => {
+      fetchCalls.push(args);
+      return Promise.resolve(new Response('', { status: 200, headers: {} }));
+    };
+    try {
+      createAwarenessStatusWidget(provider, fakeWin, 'https://admin.da.live/source/o/r/p.html');
+
+      provider._emit('connection-close', { code: 4401, reason: 'auth' }, provider);
+      provider._emit('connection-close', { code: 4403, reason: 'forbidden' }, provider);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(fetchCalls.filter(([, o]) => o?.method === 'HEAD'))
+        .to.have.lengthOf(0);
+
+      // Sanity: a non-auth close still does fire checkDoc.
+      provider._emit('connection-close', { code: 1006 }, provider);
+      await new Promise((r) => { setTimeout(r, 0); });
+      expect(fetchCalls.some(([, o]) => o?.method === 'HEAD')).to.equal(true);
+    } finally {
+      window.fetch = savedFetch;
+    }
   });
 
   it('On focus reconnects, on blur schedules disconnect', async () => {
