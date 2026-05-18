@@ -7,13 +7,38 @@ const ETC_ORIGINS = ['https://stage-content.da.live', 'https://helix-snapshot-sc
 const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS, ...ETC_ORIGINS];
 
 let imsDetails;
+let authMonitorAttached = false;
+
+// Watch imslib's session for cross-tab sign-in/out. imslib persists its
+// token in localStorage and other tabs' writes fire storage events here;
+// re-check the live auth state on every storage change so we react
+// regardless of which keys (nx-ims, imslib's own) flipped.
+function attachAuthMonitor() {
+  if (authMonitorAttached) return;
+  authMonitorAttached = true;
+  let wasAuthed = !!window.adobeIMS?.getAccessToken();
+  window.addEventListener('storage', async () => {
+    const isAuthed = !!window.adobeIMS?.getAccessToken();
+    if (wasAuthed && !isAuthed) {
+      const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+      showAuthBanner();
+      // Drop any open collab WS so the stale auth cached on the server side
+      // can't keep authorizing persistence after the user signed out elsewhere.
+      document.querySelector('da-content')?.wsProvider?.disconnect();
+    } else if (!wasAuthed && isAuthed) {
+      // Another tab signed back in — reload to pick up the fresh session.
+      window.location.reload();
+    }
+    wasAuthed = isAuthed;
+  });
+}
 
 export async function initIms() {
   if (imsDetails) return imsDetails;
-  const { loadIms } = await import(`${getNx()}/utils/ims.js`);
-
   try {
+    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
     imsDetails = await loadIms();
+    attachAuthMonitor();
     return imsDetails;
   } catch {
     return null;
@@ -24,28 +49,44 @@ export async function getAuthToken() {
   if (!localStorage.getItem('nx-ims')) {
     return null;
   }
+  // imslib auto-refreshes its internal token; reading it live avoids returning the
+  // page-load snapshot that nx's loadIms() captured once in its onReady handler.
+  if (window.adobeIMS?.getAccessToken) {
+    return window.adobeIMS.getAccessToken()?.token || null;
+  }
   const ims = await initIms();
   return ims?.accessToken?.token || null;
 }
 
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
-  const accessToken = await getAuthToken();
-  if (accessToken) {
+  const setBearer = (tok) => {
     const canToken = ALLOWED_TOKEN.some((origin) => new URL(url).origin === origin);
-    if (canToken) {
-      opts.headers.Authorization = `Bearer ${accessToken}`;
-      if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
-        opts.headers['x-content-source-authorization'] = `Bearer ${accessToken}`;
-      }
+    if (!canToken) return;
+    opts.headers.Authorization = `Bearer ${tok}`;
+    if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
+      opts.headers['x-content-source-authorization'] = `Bearer ${tok}`;
     }
-  }
-  const resp = await fetch(url, opts);
-  if (resp.status === 401 && opts.noRedirect !== true) {
-    // Only attempt sign-in if the request is for DA.
-    if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
-      // If the user has an access token, but are not permitted, redirect them to not found.
-      if (accessToken) {
+  };
+
+  const accessToken = await getAuthToken();
+  if (accessToken) setBearer(accessToken);
+
+  let resp = await fetch(url, opts);
+
+  if (resp.status === 401 && opts.noRedirect !== true
+      && DA_ORIGINS.some((origin) => url.startsWith(origin))) {
+    // Silent recovery: another tab may have just refreshed/signed in. Ask imslib
+    // for a fresh token and retry once before any user-visible disruption.
+    let refreshed = null;
+    try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
+    refreshed = await getAuthToken();
+    if (refreshed && refreshed !== accessToken) {
+      setBearer(refreshed);
+      resp = await fetch(url, opts);
+    }
+    if (resp.status === 401) {
+      if (refreshed || accessToken) {
         // eslint-disable-next-line no-console
         console.warn('You see the 404 page because you have no access to this page', url);
         window.location = `${window.location.origin}/not-found`;
@@ -53,9 +94,8 @@ export const daFetch = async (url, opts = {}) => {
       }
       // eslint-disable-next-line no-console
       console.warn('You need to sign in because you are not authorized to access this page', url);
-      const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-      await loadIms();
-      handleSignIn();
+      const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+      showAuthBanner();
     }
   }
 

@@ -68,13 +68,14 @@ function buildFakeWsProvider({ withSynced = false } = {}) {
 }
 
 describe('prose/index createConnection', () => {
-  let savedNxIms;
   beforeEach(() => {
-    savedNxIms = window.localStorage.getItem('nx-ims');
     window.localStorage.removeItem('nx-ims');
   });
   afterEach(() => {
-    if (savedNxIms) window.localStorage.setItem('nx-ims', savedNxIms);
+    // Always remove rather than restoring a prior value — if a leak entered
+    // this block, restoring it would propagate the leak to later test files.
+    window.localStorage.removeItem('nx-ims');
+    document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
   });
 
   it('Returns a wsProvider and a Y.Doc with maxBackoffTime configured', async () => {
@@ -83,9 +84,173 @@ describe('prose/index createConnection', () => {
     expect(result.ydoc).to.exist;
     expect(result.wsProvider.maxBackoffTime).to.equal(30000);
     // Clean up the underlying WS connection
-    result.wsProvider.disconnect();
+    result.wsProvider.disconnect({ data: 'Client navigation' });
     result.wsProvider.destroy?.();
     result.ydoc.destroy();
+  });
+
+  it('Refreshes protocols with the live IMS token on connection-close', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let tokenIndex = 0;
+    const tokens = ['T-initial', 'T-rotated'];
+    window.adobeIMS = {
+      getAccessToken: () => {
+        const t = tokens[tokenIndex];
+        tokenIndex += 1;
+        return { token: t };
+      },
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-initial']);
+
+      // Simulate a server-signalled auth failure
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-rotated']);
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Stops reconnecting on a 4403 forbidden close', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T-initial' }) };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.emit('connection-close', [{ code: 4403, reason: 'forbidden' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(wsProvider.shouldConnect).to.equal(false);
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Stops reconnecting on 4401 when imslib cannot produce a token, shows banner', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let refreshCalls = 0;
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-initial' }),
+      refreshToken: async () => { refreshCalls += 1; },
+      signIn: () => {},
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+
+      // After construction, simulate imslib losing the token (SSO expired)
+      window.adobeIMS.getAccessToken = () => null;
+
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      // Allow the dynamic banner import + mount to settle
+      await new Promise((r) => { setTimeout(r, 80); });
+
+      expect(refreshCalls).to.equal(1);
+      expect(wsProvider.shouldConnect).to.equal(false);
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.exist;
+
+      document.querySelector('da-dialog.da-auth-banner')?.remove();
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Anonymous user hitting a private doc bails on 4401 without showing banner', async () => {
+    window.localStorage.removeItem('nx-ims');
+    const savedIMS = window.adobeIMS;
+    window.adobeIMS = {
+      getAccessToken: () => null,
+      refreshToken: async () => {},
+      signIn: () => {},
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs']);
+
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 80); });
+
+      expect(wsProvider.shouldConnect).to.equal(false);
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.not.exist;
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Stops reconnecting on 4401 when imslib hands back the same stale token', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-same' }),
+      refreshToken: async () => {},
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-same']);
+
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      // No new token to try — don't loop.
+      expect(wsProvider.shouldConnect).to.equal(false);
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Non-auth close with no token reconnects as anonymous', async () => {
+    window.localStorage.removeItem('nx-ims');
+    const savedIMS = window.adobeIMS;
+    delete window.adobeIMS;
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.protocols).to.deep.equal(['yjs']);
+
+      // Simulate a generic network drop — no custom code
+      wsProvider.emit('connection-close', [{ code: 1006 }, wsProvider]);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(wsProvider.protocols).to.deep.equal(['yjs']);
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
   });
 });
 
