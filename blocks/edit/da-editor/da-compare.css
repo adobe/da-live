@@ -1,0 +1,173 @@
+/* stylelint-disable selector-class-pattern */
+.da-compare-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.da-compare-modal {
+  background: #FFF;
+  border-radius: 10px;
+  box-shadow: rgb(0 0 0 / 25%) 0 4px 24px;
+  width: min(960px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.da-compare-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #DDD;
+  flex: 0 0 auto;
+}
+
+.da-compare-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.da-compare-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: var(--body-font-family);
+}
+
+.da-compare-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 8px;
+  color: #000;
+}
+
+.da-compare-close:hover {
+  color: var(--s2-blue-800);
+}
+
+.da-compare-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--body-font-family);
+  font-size: 14px;
+}
+
+.da-compare-key del.diffdel,
+.da-compare-key ins.diffins {
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid;
+}
+
+.da-compare-key del.diffdel {
+  background-color: #ffebee;
+  color: #c62828;
+  text-decoration: line-through;
+  border-color: #ef9a9a;
+}
+
+.da-compare-key ins.diffins {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  text-decoration: none;
+  border-color: #a5d6a7;
+}
+
+.da-compare-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 24px;
+}
+
+.da-compare-modal .da-compare-body .ProseMirror {
+  min-height: auto;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.da-compare-body ins.diffins,
+.da-compare-body ins.diffmod {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #a5d6a7;
+}
+
+.da-compare-body del.diffdel,
+.da-compare-body del.diffmod {
+  background-color: #ffebee;
+  color: #c62828;
+  text-decoration: line-through;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #ef9a9a;
+}
+
+.da-compare-body del.diffmod {
+  background-color: #fff3e0;
+  color: #ef6c00;
+  border-color: #ffcc02;
+}
+
+/* When ins/del wraps block content (tables, table wrappers, paragraphs),
+   render as a block with a colored side bar instead of an inline pill. */
+.da-compare-body ins.diffins:has(table),
+.da-compare-body ins.diffmod:has(table),
+.da-compare-body del.diffdel:has(table),
+.da-compare-body del.diffmod:has(table) {
+  display: block;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0 0 0 12px;
+  margin: 4px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.da-compare-body ins.diffins:has(table) {
+  border-left: 4px solid #2e7d32;
+}
+
+.da-compare-body del.diffdel:has(table) {
+  border-left: 4px solid #c62828;
+}
+
+.da-compare-body del.diffmod:has(table) {
+  border-left: 4px solid #ef6c00;
+}
+
+.da-compare-body ins.diffins:has(table) .tableWrapper {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 1px #a5d6a7;
+}
+
+.da-compare-body del.diffdel:has(table) .tableWrapper {
+  border-color: #c62828;
+  box-shadow: 0 0 0 1px #ef9a9a;
+}
+
+.da-compare-body del.diffdel:has(table) table,
+.da-compare-body del.diffdel:has(table) td,
+.da-compare-body del.diffdel:has(table) th {
+  text-decoration: line-through;
+  color: #8a3a3a;
+}

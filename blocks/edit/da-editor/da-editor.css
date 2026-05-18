@@ -20,7 +20,8 @@
 
 .da-version-action-area {
   display: flex;
-  justify-content: end;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
   position: absolute;
   top: 0;
@@ -30,6 +31,24 @@
   background: #EFEFEF;
   box-sizing: border-box;
   border-radius: 10px 10px 0 0;
+}
+
+.da-version-title {
+  margin: 0;
+  font-family: var(--body-font-family);
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.da-version-action-buttons {
+  display: flex;
+  gap: 12px;
+  flex: 0 0 auto;
 }
 
 .da-version-action-area button {

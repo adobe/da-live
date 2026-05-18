@@ -469,6 +469,9 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       try {
         const { overlay, deleteBtn, keepBtn } = await getLangOverlay(upstream);
 
+        // Bail out if destroy() detached the placeholder before this resolved.
+        if (this.langOverlay?.parentNode !== coverDiv) return;
+
         deleteBtn.addEventListener('click', () => {
           this.handleDeleteSingleNode();
         });

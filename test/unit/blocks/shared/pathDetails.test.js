@@ -5,6 +5,62 @@ import '../../milo.js';
 const { default: getPathDetails } = await import('../../../../blocks/shared/pathDetails.js');
 
 describe('Path details', () => {
+  describe('Edit with trailing slash', () => {
+    it('Strips trailing slash from org-only path and treats as HTML', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe.html');
+      expect(details.depth).to.equal(1);
+      expect(details.view).to.equal('edit');
+    });
+
+    it('Strips trailing slash from org+repo path and treats as HTML', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx.html');
+      expect(details.depth).to.equal(2);
+    });
+
+    it('Strips trailing slash from org+repo+path and treats as HTML', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/testing-123/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
+      expect(details.depth).to.equal(3);
+    });
+
+    it('Does not strip trailing slash in browse view at org+repo depth', () => {
+      const loc = { pathname: '/', hash: '#/adobe/geometrixx/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx/');
+    });
+
+    it('Does not strip trailing slash in browse view at org+repo+path depth', () => {
+      const loc = { pathname: '/', hash: '#/adobe/geometrixx/testing-123/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123/');
+    });
+
+    it('Calls history.replaceState to remove trailing slash when no loc provided', () => {
+      const originalUrl = window.location.href;
+      const replaceStateCalls = [];
+      const originalReplaceState = history.replaceState;
+      history.replaceState = (...args) => { replaceStateCalls.push(args); };
+
+      // Use pushState to set pathname to /edit with a unique trailing-slash hash
+      history.pushState(null, '', '/edit#/adobe/geometrixx/replacestate-trail-test/');
+
+      try {
+        getPathDetails();
+        expect(replaceStateCalls.length).to.equal(1);
+        expect(replaceStateCalls[0][2]).to.include('#/adobe/geometrixx/replacestate-trail-test');
+        expect(replaceStateCalls[0][2]).to.not.include('#/adobe/geometrixx/replacestate-trail-test/');
+      } finally {
+        history.replaceState = originalReplaceState;
+        history.pushState(null, '', originalUrl);
+      }
+    });
+  });
+
   describe('Org only', () => {
     describe('Config', () => {
       it('Handles folder config (/)', () => {
@@ -201,6 +257,90 @@ describe('Path details', () => {
       const loc = { pathname: '/', hash: '#old_hash' };
       const details = getPathDetails(loc);
       expect(details).to.equal(undefined);
+    });
+
+    it('Returns undefined when pathname is missing', () => {
+      const details = getPathDetails({ hash: '#/adobe' });
+      expect(details).to.equal(undefined);
+    });
+
+    it('Returns undefined when hash is missing', () => {
+      const details = getPathDetails({ pathname: '/edit' });
+      expect(details).to.equal(undefined);
+    });
+
+    it('Strips leading old_hash/access_token segments and uses path that follows', () => {
+      const loc = {
+        pathname: '/edit',
+        hash: '#old_hash=abc#access_token=xyz#/adobe/geometrixx/page',
+      };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.equal('/adobe/geometrixx/page.html');
+      expect(details.org).to.equal('adobe');
+      expect(details.repo).to.equal('geometrixx');
+    });
+  });
+
+  describe('View detection', () => {
+    it('Reports view as edit', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe' };
+      const details = getPathDetails(loc);
+      expect(details.view).to.equal('edit');
+    });
+
+    it('Reports view as sheet', () => {
+      const loc = { pathname: '/sheet', hash: '#/adobe' };
+      const details = getPathDetails(loc);
+      expect(details.view).to.equal('sheet');
+    });
+
+    it('Reports view as browse for empty pathname', () => {
+      const loc = { pathname: '/', hash: '#/adobe' };
+      const details = getPathDetails(loc);
+      expect(details.view).to.equal('browse');
+    });
+  });
+
+  describe('Depth metadata', () => {
+    it('Org-only path has depth 1', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe' };
+      const details = getPathDetails(loc);
+      expect(details.depth).to.equal(1);
+    });
+
+    it('Org+repo path has depth 2', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/geometrixx' };
+      const details = getPathDetails(loc);
+      expect(details.depth).to.equal(2);
+    });
+
+    it('Org+repo+page path has depth 3', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/geometrixx/page' };
+      const details = getPathDetails(loc);
+      expect(details.depth).to.equal(3);
+    });
+  });
+
+  describe('Double slashes in hash', () => {
+    it('Strips double slashes from fullpath for org+repo+path edit', () => {
+      const loc = { pathname: '/edit', hash: '#/adobe/geometrixx//page' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.not.include('//');
+      expect(details.fullpath).to.equal('/adobe/geometrixx/page.html');
+    });
+
+    it('Strips double slashes from fullpath for org+repo browse', () => {
+      const loc = { pathname: '/', hash: '#/adobe//geometrixx/' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.not.include('//');
+      expect(details.fullpath).to.equal('/adobe/geometrixx/');
+    });
+
+    it('Strips double slashes from fullpath for sheet view', () => {
+      const loc = { pathname: '/sheet', hash: '#/adobe/geometrixx//page' };
+      const details = getPathDetails(loc);
+      expect(details.fullpath).to.not.include('//');
+      expect(details.fullpath).to.equal('/adobe/geometrixx/page.json');
     });
   });
 });

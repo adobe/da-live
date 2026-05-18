@@ -1,7 +1,8 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch, aemAdmin, fetchDaConfigs, getFirstSheet } from '../../../shared/utils.js';
+import { daFetch, aemAdmin, fetchDaConfigs, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
+import { CON_ORIGIN } from '../../../shared/constants.js';
 import { openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { sanitizeName } from '../../../../scripts/utils.js';
@@ -44,17 +45,44 @@ function setupBlockOptions(library) {
   if (blockJsonUrl) fetchKeyAutocompleteData(blockJsonUrl);
 }
 
+const AEM_CONTENT_HOST = /\.(aem|hlx)\.(page|live)$/;
+
+export function aemToContentUrl(url) {
+  try {
+    const { hostname, pathname, search } = new URL(url);
+    if (!AEM_CONTENT_HOST.test(hostname)) return url;
+    const parts = hostname.split('--');
+    if (parts.length !== 3) return url;
+    const [, site, orgWithTld] = parts;
+    const [org] = orgWithTld.split('.');
+    return `${CON_ORIGIN}/${org}/${site}${pathname}${search}`;
+  } catch {
+    return url;
+  }
+}
+
+// Try the content.da.live rewrite first; fall back to the original URL on 404
+export async function daFetchLibrary(url, { skipRewrite = false } = {}) {
+  if (skipRewrite) {
+    return { resp: await daFetch(url, { noRedirect: true }), usedFallback: true };
+  }
+  const contentUrl = aemToContentUrl(url);
+  const resp = await daFetch(contentUrl, { noRedirect: true });
+  if (resp.status === 404 && contentUrl !== url) {
+    return { resp: await daFetch(url, { noRedirect: true }), usedFallback: true };
+  }
+  return { resp, usedFallback: false };
+}
+
 export async function getItems(sources, format) {
   const items = [];
   for (const source of sources) {
     try {
-      const resp = await daFetch(source, { noRedirect: true });
+      const { resp, usedFallback } = await daFetchLibrary(source);
       const json = await resp.json();
-      if (json.data) {
-        items.push(...formatData(json.data, format));
-      } else {
-        items.push(...json);
-      }
+      const sheet = json[':type'] === 'multi-sheet' ? json[json[':names']?.[0]] : json;
+      const formatted = sheet?.data ? formatData(sheet.data, format) : json;
+      items.push(...formatted.map((item) => ({ ...item, usedFallback })));
     } catch {
       // couldn't fetch source
     }
@@ -109,9 +137,11 @@ function calculateSources(org, repo, sheetPath) {
 
 async function fetchLibraryConfig(org, site) {
   const configs = await fetchDaConfigs({ org, site });
-  const { library } = await configs[1];
-  if (!library) return [];
-  return library.data.reduce((acc, row) => {
+  const config = await configs[1];
+  if (!config) return [];
+  const libraryData = getSheetByName(config, 'library');
+  if (!libraryData) return [];
+  return libraryData.reduce((acc, row) => {
     // Determine if a plugin should be visible based on query param
     const allowed = getIsPluginAllowed(row.ref);
     if (allowed) {

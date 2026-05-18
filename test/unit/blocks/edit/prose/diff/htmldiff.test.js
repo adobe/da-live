@@ -34,14 +34,16 @@ describe('HTML Diff', () => {
       const oldHtml = '<p>Hello world</p>';
       const newHtml = '<p>Hello <strong>world</strong></p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<p>Hello <ins class="diffins"><strong></ins>world<ins class="diffins"></strong></ins></p>');
+      // Wrap-around insertion: <strong> opened around equal content "world" and closed
+      // again all in one logical change, so it renders as one wrapper instead of two.
+      expect(result).to.equal('<p>Hello <ins class="diffins"><strong>world</strong></ins></p>');
     });
 
     it('should handle HTML tag removals', () => {
       const oldHtml = '<p>Hello <strong>world</strong></p>';
       const newHtml = '<p>Hello world</p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<p>Hello <del class="diffdel"><strong></del>world<del class="diffdel"></strong></del></p>');
+      expect(result).to.equal('<p>Hello <del class="diffdel"><strong>world</strong></del></p>');
     });
 
     it('should handle complex HTML structures', () => {
@@ -68,18 +70,21 @@ describe('HTML Diff', () => {
       expect(result).to.equal('<del class="diffdel"><p>Hello</p></del>');
     });
 
-    it('should handle whitespace changes', () => {
+    it('should treat whitespace-only changes as no-op', () => {
+      // Whitespace runs are equality-tolerant (any run of whitespace == any other), so
+      // pretty-printing differences round-trip silently instead of polluting the diff.
       const oldHtml = '<p>Hello world</p>';
       const newHtml = '<p>Hello  world</p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<p>Hello<del class="diffdel"> </del><ins class="diffins">  </ins>world</p>');
+      expect(result).to.equal('<p>Hello  world</p>');
     });
 
     it('should handle multiple word changes', () => {
       const oldHtml = '<p>The quick brown fox</p>';
       const newHtml = '<p>The slow red fox</p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<p>The <del class="diffdel">quick</del><ins class="diffins">slow</ins> <del class="diffdel">brown</del><ins class="diffins">red</ins> fox</p>');
+      // Adjacent edits separated only by whitespace are coalesced into a single change.
+      expect(result).to.equal('<p>The <del class="diffdel">quick brown</del><ins class="diffins">slow red</ins> fox</p>');
     });
 
     it('should handle nested HTML tags', () => {
@@ -114,7 +119,7 @@ describe('HTML Diff', () => {
       const oldHtml = '<p>one two three</p>';
       const newHtml = '<p>alpha beta gamma</p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<p><del class="diffdel">one</del><ins class="diffins">alpha</ins> <del class="diffdel">two</del><ins class="diffins">beta</ins> <del class="diffdel">three</del><ins class="diffins">gamma</ins></p>');
+      expect(result).to.equal('<p><del class="diffdel">one two three</del><ins class="diffins">alpha beta gamma</ins></p>');
     });
 
     it('should handle word reordering', () => {
@@ -169,7 +174,7 @@ describe('HTML Diff', () => {
       const oldHtml = '<p>Hello     world</p>';
       const newHtml = '<p>Hello world</p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<p>Hello<del class="diffdel">     </del><ins class="diffins"> </ins>world</p>');
+      expect(result).to.equal('<p>Hello world</p>');
     });
 
     it('should handle tag attribute changes (tags treated as different)', () => {
@@ -183,7 +188,9 @@ describe('HTML Diff', () => {
       const oldHtml = '<div><p>Hello</p></div>';
       const newHtml = '<section><h1>Hello</h1></section>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<del class="diffdel"><div></del><ins class="diffins"><section></ins><del class="diffdel"><p></del><ins class="diffins"><h1></ins>Hello<del class="diffdel"></p></del><ins class="diffins"></h1></ins><del class="diffdel"></div></del><ins class="diffins"></section></ins>');
+      // Deletes are emitted as one run, then inserts as one run, instead of token-by-token
+      // interleaving.
+      expect(result).to.equal('<del class="diffdel"><div></del><del class="diffdel"><p></del><ins class="diffins"><section></ins><ins class="diffins"><h1></ins>Hello<del class="diffdel"></p></del><del class="diffdel"></div></del><ins class="diffins"></h1></ins><ins class="diffins"></section></ins>');
     });
 
     it('should handle insertion at the beginning', () => {
@@ -204,7 +211,69 @@ describe('HTML Diff', () => {
       const oldHtml = '<p>The quick brown fox jumps</p>';
       const newHtml = '<p>A slow red cat walks</p>';
       const result = htmlDiff(oldHtml, newHtml);
-      expect(result).to.equal('<p><del class="diffdel">The</del><ins class="diffins">A</ins> <del class="diffdel">quick</del><ins class="diffins">slow</ins> <del class="diffdel">brown</del><ins class="diffins">red</ins> <del class="diffdel">fox</del><ins class="diffins">cat</ins> <del class="diffdel">jumps</del><ins class="diffins">walks</ins></p>');
+      // No words match so the whole run collapses into one delete + one insert rather than
+      // five interleaved word-pair markers.
+      expect(result).to.equal('<p><del class="diffdel">The quick brown fox jumps</del><ins class="diffins">A slow red cat walks</ins></p>');
+    });
+  });
+
+  describe('block-level segmentation', () => {
+    it('isolates per-paragraph changes so neighbours stay untouched', () => {
+      const oldHtml = '<p>One</p><p>Two</p><p>Three</p>';
+      const newHtml = '<p>One</p><p>Two changed</p><p>Three</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      expect(result).to.equal('<p>One</p><p>Two<ins class="diffins"> changed</ins></p><p>Three</p>');
+    });
+
+    it('marks an inserted paragraph as a single ins block', () => {
+      const oldHtml = '<p>One</p><p>Three</p>';
+      const newHtml = '<p>One</p><p>Two</p><p>Three</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      expect(result).to.equal('<p>One</p><ins class="diffins"><p>Two</p></ins><p>Three</p>');
+    });
+
+    it('marks a deleted paragraph as a single del block', () => {
+      const oldHtml = '<p>One</p><p>Two</p><p>Three</p>';
+      const newHtml = '<p>One</p><p>Three</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      expect(result).to.equal('<p>One</p><del class="diffdel"><p>Two</p></del><p>Three</p>');
+    });
+
+    it('pairs siblings of the same tag even with no shared words', () => {
+      const oldHtml = '<h1>Original Title</h1><p>Body content here</p>';
+      const newHtml = '<h1>Brand New Heading</h1><p>Body content here</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      // h1 paired with h1 by tag-name signal, body paragraph stays as-is.
+      expect(result).to.equal('<h1><del class="diffdel">Original Title</del><ins class="diffins">Brand New Heading</ins></h1><p>Body content here</p>');
+    });
+  });
+
+  describe('attribute normalization', () => {
+    it('treats reordered attributes as equal', () => {
+      const oldHtml = '<p class="a" id="x">Hello</p>';
+      const newHtml = '<p id="x" class="a">Hello</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      // Different string, same attribute set — no diff is emitted; the new-side string is
+      // returned verbatim because that's the current state of the document.
+      expect(result).to.equal(newHtml);
+    });
+  });
+
+  describe('semantic cleanup', () => {
+    it('coalesces edits separated only by trivial whitespace', () => {
+      const oldHtml = '<p>foo bar baz</p>';
+      const newHtml = '<p>FOO BAR baz</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      // foo→FOO and bar→BAR are merged across the single space anchor.
+      expect(result).to.equal('<p><del class="diffdel">foo bar</del><ins class="diffins">FOO BAR</ins> baz</p>');
+    });
+
+    it('keeps anchor words between unrelated edits', () => {
+      const oldHtml = '<p>alpha SHARED beta</p>';
+      const newHtml = '<p>gamma SHARED delta</p>';
+      const result = htmlDiff(oldHtml, newHtml);
+      // SHARED is a real word equal between two edits — it must anchor and split them.
+      expect(result).to.equal('<p><del class="diffdel">alpha</del><ins class="diffins">gamma</ins> SHARED <del class="diffdel">beta</del><ins class="diffins">delta</ins></p>');
     });
   });
 });

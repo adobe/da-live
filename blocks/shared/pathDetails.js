@@ -117,22 +117,35 @@ export default function getPathDetails(loc) {
   if (currhash === hash && currpath === pathname && details) return details;
   currhash = hash;
 
-  const fullpath = hash.replace('#', '');
+  let fullpath = hash.replace('#', '');
   window.name = fullpath;
 
   // config, edit, sheet
   const editor = getView(pathname);
 
-  // IMS will redirect and there's a small window where old_hash exists
-  if (!fullpath || fullpath.startsWith('old_hash') || fullpath.startsWith('access_token')) return null;
+  // IMS redirect fragments appear as '/ld_hash=', '/old_hash=', '/access_token=' in the path.
+  // fullpath always starts with '/' here, so strip it before the prefix check.
+  const pathContent = fullpath.slice(1);
+  if (!pathContent || pathContent.startsWith('old_hash') || pathContent.startsWith('access_token') || pathContent.startsWith('ld_hash')) return null;
 
   // Split everything up so it can be later used for both DA & AEM
   const pathParts = sanitizePathParts(fullpath);
 
-  // Redirect JSON files from edit view to sheet view
-  if (editor === 'edit' && fullpath.endsWith('.json')) {
-    window.location.href = `/sheet#${fullpath.slice(0, -5)}`;
-    return null;
+  if (editor === 'edit') {
+    // Redirect JSON files from edit view to sheet view
+    if (fullpath.endsWith('.json')) {
+      window.location.href = `/sheet#${fullpath.slice(0, -5)}`;
+      return null;
+    }
+
+    if (fullpath.endsWith('/')) {
+      // Remove trailing slash from pathParts and fullpath
+      pathParts.pop();
+      fullpath = fullpath.slice(0, -1);
+      if (!loc) {
+        history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${fullpath}`);
+      }
+    }
   }
 
   // Determine if folder (trailing slash split to empty string)
@@ -146,6 +159,7 @@ export default function getPathDetails(loc) {
   const ext = getExtension(editor, pathParts.slice(-1)[0], isFolder);
 
   const depth = pathParts.length;
+  const cleanParts = [...pathParts];
 
   if (depth === 1) details = getOrgDetails({ editor, pathParts, ext });
 
@@ -153,8 +167,10 @@ export default function getPathDetails(loc) {
 
   if (depth >= 3) details = getFullDetails({ editor, pathParts, ext });
 
-  let path = ext === 'html' && !fullpath.endsWith('.html') ? `${fullpath}.html` : fullpath;
+  const cleanPath = `/${cleanParts.join('/')}`;
+  let path = ext === 'html' && !cleanPath.endsWith('.html') && editor !== 'sheet' ? `${cleanPath}.html` : cleanPath;
   if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+  if (isFolder && !path.endsWith('/')) path = `${path}/`;
 
   details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
 

@@ -10,6 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
+import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS } from './utils.js';
 
 export function decorateArea({ area = document } = {}) {
@@ -62,7 +63,23 @@ export default async function loadPage() {
     document.body.classList.remove('light-scheme', 'dark-scheme');
     document.body.classList.add('light-scheme');
   }
+
+  const { hash } = window.location;
+  const hadAccessToken = hash.includes('access_token=');
+  const isImsCallback = hadAccessToken || hash.includes('old_hash=');
+
+  const imsReady = initIms();
   await setConfig(CONFIG);
+
+  if (isImsCallback) {
+    await imsReady;
+    if (!hadAccessToken) {
+      // User explicitly signed out — redirect to home
+      window.location.replace('/');
+      return;
+    }
+  }
+
   await loadArea();
 }
 

@@ -1,6 +1,13 @@
 import { expect } from '@esm-bundle/chai';
 import { baseSchema, Slice } from 'da-y-wrapper';
-import sectionPasteHandler from '../../../../../../blocks/edit/prose/plugins/sectionPasteHandler.js';
+import { setNx } from '../../../../../../scripts/utils.js';
+
+// Seed nx so the dynamic import inside showSpaceNormalizationDialog (triggered
+// by the non-standard-space tests) resolves against the test fixture instead
+// of failing with "Failed to resolve module specifier 'undefined/...'".
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const { default: sectionPasteHandler } = await import('../../../../../../blocks/edit/prose/plugins/sectionPasteHandler.js');
 
 function normalizeHTML(html) {
   return html.replace(/[\n\s]+/g, ' ').replace(/></g, '> <').trim();

@@ -71,7 +71,7 @@ test('Text formatting and links persist after reload', async ({ page }, workerIn
   const url = getTestPageURL('formatting', workerInfo);
   console.log(url);
   await page.goto(url);
-
+  await page.getByText('Create document', { exact: true }).click();
   const proseMirror = page.locator('div.ProseMirror');
   await expect(proseMirror).toBeVisible();
   await expect(proseMirror).toHaveAttribute('contenteditable', 'true');
