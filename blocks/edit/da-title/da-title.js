@@ -264,6 +264,22 @@ export default class DaTitle extends LitElement {
 
     // AEM Actions
     if (action === 'preview' || action === 'publish') {
+      // Force-flush pending collab saves to da-admin before writing to AEM.
+      // This ensures that what the user sees in the editor matches what AEM gets.
+      // Only applies to the prose editor (edit view) — sheets/configs save synchronously above.
+      if (view === 'edit') {
+        const daContent = document.querySelector('da-content');
+        if (daContent?.forceSave) {
+          const flushResult = await daContent.forceSave();
+          if (!flushResult.ok) {
+            const msg = flushResult.error || 'Unable to confirm save. Please retry or reload the editor.';
+            this._status = { message: msg };
+            this._isSending = false;
+            return;
+          }
+        }
+      }
+
       let json = await saveToAem(aemPath, 'preview');
       if (json.error) {
         this.handleError(json, 'preview');
