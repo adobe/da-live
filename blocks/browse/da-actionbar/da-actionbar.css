@@ -59,3 +59,16 @@ button {
 .da-action-bar .hide {
   display: none;
 }
+
+.da-action-bar .favorite-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.da-action-bar .favorite-button.is-favorited .favorite-icon {
+  fill: currentcolor;
+}

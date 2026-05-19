@@ -9,6 +9,7 @@ export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
     permissions: { attribute: false },
+    isFavorite: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -19,6 +20,7 @@ export default class DaActionBar extends LitElement {
     super();
     this.items = [];
     this.currentPath = '';
+    this.isFavorite = false;
   }
 
   connectedCallback() {
@@ -51,6 +53,12 @@ export default class DaActionBar extends LitElement {
   handleRename() {
     const opts = { detail: true, bubbles: true, composed: true };
     const event = new CustomEvent('rename', opts);
+    this.dispatchEvent(event);
+  }
+
+  handleFavorite() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onfavorite', opts);
     this.dispatchEvent(event);
   }
 
@@ -132,6 +140,15 @@ export default class DaActionBar extends LitElement {
             class="rename-button ${this._canWrite ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_TextEdit_18_N.svg" alt="" aria-hidden="true"/>
             <span>Rename</span>
+          </button>
+          <button
+            @click=${this.handleFavorite}
+            aria-pressed=${this.isFavorite ? 'true' : 'false'}
+            class="favorite-button ${this.isFavorite ? 'is-favorited' : ''} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            <svg class="favorite-icon" viewBox="0 0 18 18" aria-hidden="true">
+              <path d="M9 1.5l2.317 4.694 5.183.753-3.75 3.654.885 5.16L9 13.318l-4.635 2.443.885-5.16-3.75-3.654 5.183-.753z"/>
+            </svg>
+            <span>Favorite</span>
           </button>
           <button
             @click=${this.handleCopy}
