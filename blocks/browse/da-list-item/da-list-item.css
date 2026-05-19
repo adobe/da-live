@@ -79,13 +79,12 @@ button {
   height: 32px;
 }
 
-.da-item-list-item-favorite svg {
+.da-item-list-item-favorite img {
+  display: block;
   width: 20px;
   height: 20px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.5;
-  stroke-linejoin: round;
+  /* SVG ships with a white fill; invert to black for the list view. */
+  filter: brightness(0);
 }
 
 .icon.rename-icon {

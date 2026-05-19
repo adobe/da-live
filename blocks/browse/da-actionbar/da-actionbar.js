@@ -145,9 +145,7 @@ export default class DaActionBar extends LitElement {
             @click=${this.handleFavorite}
             aria-pressed=${this.isFavorite ? 'true' : 'false'}
             class="favorite-button ${this.isFavorite ? 'is-favorited' : ''} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
-            <svg class="favorite-icon" viewBox="0 0 18 18" aria-hidden="true">
-              <path d="M9 1.5l2.317 4.694 5.183.753-3.75 3.654.885 5.16L9 13.318l-4.635 2.443.885-5.16-3.75-3.654 5.183-.753z"/>
-            </svg>
+            <img src="/blocks/browse/da-browse/img/S2_Icon_Star_20_N.svg" alt="" aria-hidden="true"/>
             <span>Favorite</span>
           </button>
           <button

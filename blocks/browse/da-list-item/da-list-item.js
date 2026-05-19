@@ -264,9 +264,7 @@ export default class DaListItem extends LitElement {
           <span class="da-item-list-item-name-text">${this.name}</span>
           ${this.isFavorited ? html`
             <span class="da-item-list-item-favorite" aria-label="Favorited">
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path d="M10 1.667l2.575 5.215 5.758.836-4.166 4.06.983 5.733L10 14.81l-5.15 2.701.983-5.733-4.166-4.06 5.758-.836z"/>
-              </svg>
+              <img src="/blocks/browse/da-browse/img/S2_Icon_Star_20_N.svg" alt="" aria-hidden="true"/>
             </span>
           ` : nothing}
         </div>
