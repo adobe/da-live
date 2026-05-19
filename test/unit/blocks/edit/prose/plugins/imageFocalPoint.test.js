@@ -128,7 +128,35 @@ describe('imageFocalPoint Plugin', () => {
     expect(icon.classList.contains('focal-point-icon-active')).to.be.true;
   });
 
-  it('does not create node view for images outside table cells', () => {
+  it('rewrites aem.page and aem.live srcs to preview.da.live for table cell images', () => {
+    const plugin = imageFocalPoint();
+    const createNodeView = plugin.props.nodeViews.image;
+
+    const mockState = {
+      doc: {
+        resolve: () => ({
+          depth: 3,
+          node: (d) => {
+            if (d === 3) return { type: { name: 'table_cell' } };
+            if (d === 2) return { childCount: 1 };
+            if (d === 1) return { child: () => ({ child: () => ({ textContent: 'hero' }) }) };
+            return { type: { name: 'doc' } };
+          },
+          index: () => 0,
+        }),
+      },
+    };
+    const mockView = { state: mockState, dom: document.createElement('div') };
+    const getPos = () => 10;
+
+    const nodeView = createNodeView({ type: { name: 'image' }, attrs: { src: 'https://main--site--org.aem.page/img.jpg' } }, mockView, getPos);
+    expect(nodeView.dom.querySelector('img').src).to.equal('https://main--site--org.preview.da.live/img.jpg');
+
+    const nodeView2 = createNodeView({ type: { name: 'image' }, attrs: { src: 'https://main--site--org.aem.live/img.jpg' } }, mockView, getPos);
+    expect(nodeView2.dom.querySelector('img').src).to.equal('https://main--site--org.preview.da.live/img.jpg');
+  });
+
+  it('creates a plain image node view for images outside table cells', () => {
     const plugin = imageFocalPoint();
     const createNodeView = plugin.props.nodeViews.image;
 
@@ -144,8 +172,9 @@ describe('imageFocalPoint Plugin', () => {
     const mockView = { state: mockState, dom: document.createElement('div') };
     const getPos = () => 10;
 
-    const nodeView = createNodeView({}, mockView, getPos);
-    expect(nodeView).to.be.null;
+    const nodeView = createNodeView({ attrs: { src: 'https://example.com/img.jpg' } }, mockView, getPos);
+    expect(nodeView).to.not.be.null;
+    expect(nodeView.dom.tagName).to.equal('IMG');
   });
 
   it('updates node view correctly', async () => {

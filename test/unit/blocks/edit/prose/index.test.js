@@ -555,6 +555,32 @@ describe('prose/index initProse default export', () => {
     }
   });
 
+  it('Image nodeView rewrites aem.page and aem.live srcs to preview.da.live', async () => {
+    const ydoc = new Y.Doc();
+    const provider = buildFakeWsProvider({ withSynced: false });
+    const wsPromise = Promise.resolve({ wsProvider: provider, ydoc });
+    Object.defineProperty(fakeContent, 'proseEl', {
+      configurable: true,
+      set(v) {
+        v.getRootNode = () => ({ host: document.createElement('div') });
+        this._proseEl = v;
+      },
+      get() { return this._proseEl; },
+    });
+    await initProse({ path: 'https://admin.da.live/source/o/r/p.html', permissions: ['read', 'write'], doc: null, daContent: fakeContent, wsPromise });
+
+    const { image: imageNodeView } = window.view.props.nodeViews;
+
+    const aemPage = imageNodeView({ attrs: { src: 'https://main--site--org.aem.page/img.jpg' } });
+    expect(aemPage.dom.src).to.equal('https://main--site--org.preview.da.live/img.jpg');
+
+    const aemLive = imageNodeView({ attrs: { src: 'https://main--site--org.aem.live/img.jpg' } });
+    expect(aemLive.dom.src).to.equal('https://main--site--org.preview.da.live/img.jpg');
+
+    const other = imageNodeView({ attrs: { src: 'https://example.com/img.jpg' } });
+    expect(other.dom.src).to.equal('https://example.com/img.jpg');
+  });
+
   it('Destroys an existing window.view before creating a new one', async () => {
     let destroyed = 0;
     window.view = { destroy: () => { destroyed += 1; } };

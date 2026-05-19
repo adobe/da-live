@@ -1,4 +1,5 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
+import { rewriteImageSrcForEditor } from '../image-utils.js';
 import inlinesvg from '../../../shared/inlinesvg.js';
 import { openFocalPointDialog } from './focalPointDialog.js';
 import { loadLibrary } from '../../da-library/helpers/helpers.js';
@@ -40,7 +41,7 @@ function shouldShowFocalPoint(tableName, blocks) {
 }
 
 function updateImageAttributes(img, attrs) {
-  img.src = attrs.src;
+  img.src = rewriteImageSrcForEditor(attrs.src);
   ['alt', 'title', 'width', 'height'].forEach((attr) => {
     if (attrs[attr]) {
       img[attr] = attrs[attr];
@@ -150,7 +151,16 @@ export default function imageFocalPoint() {
           if (isInTableCell(view.state, getPos())) {
             return new ImageWithFocalPointView(node, view, getPos);
           }
-          return null;
+          const img = document.createElement('img');
+          updateImageAttributes(img, node.attrs);
+          return {
+            dom: img,
+            update(updated) {
+              if (updated.type.name !== 'image') return false;
+              updateImageAttributes(img, updated.attrs);
+              return true;
+            },
+          };
         },
       },
     },

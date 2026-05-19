@@ -27,6 +27,7 @@ import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { rewriteImageSrcForEditor } from './image-utils.js';
 
 async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
@@ -503,6 +504,20 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
     state,
     dispatchTransaction,
     nodeViews: {
+      image(node) {
+        const img = document.createElement('img');
+        img.src = rewriteImageSrcForEditor(node.attrs.src);
+        if (node.attrs.alt) img.alt = node.attrs.alt;
+        return {
+          dom: img,
+          update(updated) {
+            if (updated.type.name !== 'image') return false;
+            img.src = rewriteImageSrcForEditor(updated.attrs.src);
+            if (updated.attrs.alt) img.alt = updated.attrs.alt;
+            return true;
+          },
+        };
+      },
       diff_added(node, view, getPos) {
         const LocAddedView = getDiffClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false });
         return new LocAddedView(node, view, getPos);
