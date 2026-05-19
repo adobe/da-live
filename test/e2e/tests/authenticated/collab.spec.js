@@ -52,6 +52,9 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await page2.mouse.click(editBox.x + 10, editBox.y + 10);
   await page2.keyboard.type('From user 2');
 
+  // Wait for page2's edit to reach page1 — confirms YJS sync before checking collab state
+  await expect(page.locator('div.ProseMirror')).toContainText('From user 2');
+
   // Check the little cloud icon for collaborators
   // as we use the same user for both pages, the cloud icon should be visible on both pages
   await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
@@ -60,6 +63,9 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   // Check the cursor for collaborator
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
+  // Wait for user 1's cursor awareness to settle at the end of text so the two
+  // text pieces are adjacent in innerText (cursor span between them breaks indexOf)
+  await expect(page2.locator('div.ProseMirror')).toContainText('From user 2Entered by user 1');
   const text2 = await page2.locator('div.ProseMirror').innerText();
   const text2Idx = text2.indexOf('From user 2Entered by user 1');
   const cursor2Idx = text2.indexOf('DA Testuser');

@@ -63,13 +63,13 @@ export async function createConnection(path) {
       return;
     }
     if (event?.code === 4401) {
+      provider.shouldConnect = false;
       // Force imslib to attempt a refresh before deciding to give up.
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
       const fresh = await getAuthToken();
       if (!fresh || fresh === lastSentToken) {
         // No new token to try — retrying would loop on the same 4401. Stop
         // the reconnect loop, and surface the modal if the user was signed in.
-        provider.shouldConnect = false;
         if (lastSentToken) {
           try {
             const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
@@ -80,6 +80,7 @@ export async function createConnection(path) {
       }
       provider.protocols = ['yjs', fresh];
       lastSentToken = fresh;
+      provider.connect();
       return;
     }
     const fresh = await getAuthToken();
@@ -285,7 +286,8 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   if (wsProvider.wsconnected) daTitle.collabStatus = 'connected';
   else daTitle.collabStatus = 'connecting';
 
-  wsProvider.on('connection-close', async () => {
+  wsProvider.on('connection-close', async (event) => {
+    if (event?.code === 4401 || event?.code === 4403) return;
     const resp = await checkDoc(path);
     if (resp.status === 404) {
       const { hash } = window.location;

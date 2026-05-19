@@ -145,6 +145,9 @@ test('Add code mark', async ({ page }, workerInfo) => {
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
   await fill(page, 'This is a line that will contain a code mark.');
+  // Wait for text to commit to the editor before navigating
+  await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
+  await page.keyboard.press('End');
 
   // Forward
   for (let i = 0; i < 10; i += 1) {
@@ -164,6 +167,9 @@ test('Add code mark', async ({ page }, workerInfo) => {
 
   // Backward
   await fill(page, 'This is a line that will contain a code mark.');
+  // Wait for text to commit to the editor before navigating
+  await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
+  await page.keyboard.press('End');
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(100);
