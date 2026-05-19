@@ -21,15 +21,9 @@ export async function uploadImageFile(view, file) {
   const fpo = schema.nodes.image.create({ src: fpoSrc, style: 'width: 180px' });
   view.dispatch(view.state.tr.replaceSelectionWith(fpo));
 
-  const formData = new FormData();
-  formData.append('data', file);
-  const opts = { method: 'PUT', body: formData };
-  const resp = await daFetch(url, opts);
-
   const fullPath = `${details.parent}/.${details.name}/${file.name}`;
   const { source } = await getNx2Api();
   const resp = await source.put(fullPath, { body: file });
-
   if (!resp.ok) return;
   const json = await resp.json();
 
