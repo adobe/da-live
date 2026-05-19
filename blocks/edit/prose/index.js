@@ -27,6 +27,7 @@ import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { forceSave } from './forcesave.js';
 
 async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
@@ -541,4 +542,5 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   daContent.proseEl = editor;
   daContent.wsProvider = wsProvider;
+  daContent.forceSave = () => forceSave(wsProvider);
 }
