@@ -38,6 +38,7 @@ import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
 import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
 import { getNx } from '../../../scripts/utils.js';
+import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, getCollabIdentity } from './utils/collab.js';
 
 const { DA_ADMIN, DA_COLLAB } = await import(`${getNx()}/utils/utils.js`);
@@ -81,15 +82,51 @@ export default async function initProse({
   const roomName = `${DA_ADMIN}${new URL(path).pathname}`;
 
   const wsOpts = { protocols: ['yjs'] };
+  let lastSentToken = null;
   if (typeof getToken === 'function') {
     const t = getToken();
-    if (t) wsOpts.params = { Authorization: `Bearer ${t}` };
+    if (t) {
+      wsOpts.params = { Authorization: `Bearer ${t}` };
+      lastSentToken = t;
+    }
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, wsOpts);
   wsProvider.maxBackoffTime = 30000;
+
+  wsProvider.on('connection-close', async (event) => {
+    // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
+    if (event?.code === 4403) {
+      wsProvider.shouldConnect = false;
+      return;
+    }
+    if (event?.code === 4401) {
+      try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
+      const fresh = await getAuthToken();
+      if (!fresh || fresh === lastSentToken) {
+        wsProvider.shouldConnect = false;
+        if (lastSentToken) {
+          try {
+            const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
+            showAuthBanner();
+          } catch { /* ignore */ }
+        }
+        return;
+      }
+      wsProvider.params = { Authorization: `Bearer ${fresh}` };
+      lastSentToken = fresh;
+      return;
+    }
+    const fresh = await getAuthToken();
+    if (fresh) {
+      wsProvider.params = { Authorization: `Bearer ${fresh}` };
+    } else {
+      wsProvider.params = {};
+    }
+    lastSentToken = fresh;
+  });
 
   addSyncedListener(wsProvider, canWrite, setEditable);
   registerErrorHandler(ydoc);
