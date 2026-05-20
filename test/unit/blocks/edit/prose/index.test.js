@@ -6,6 +6,7 @@ import initProse, {
   createConnection,
   createAwarenessStatusWidget,
 } from '../../../../../blocks/edit/prose/index.js';
+import { forceSave } from '../../../../../blocks/edit/prose/forcesave.js';
 
 // initProse lazily imports da-library.js, which (a) builds URLs from
 // `${getNx()}/...` and (b) calls loadLibrary() at module import time.
@@ -570,5 +571,255 @@ describe('prose/index initProse default export', () => {
     });
     await initProse({ path: 'https://admin.da.live/source/o/r/p.html', permissions: ['read'], doc: null, daContent: fakeContent, wsPromise: Promise.resolve({ wsProvider: provider, ydoc }) });
     expect(destroyed).to.equal(1);
+  });
+});
+
+// ---- registerErrorHandler tests ----
+
+describe('prose/index registerErrorHandler', () => {
+  let fakeContent;
+  let fakeTitle;
+  let savedQuery;
+  let savedFetch;
+
+  function setupFakeContent() {
+    Object.defineProperty(fakeContent, 'proseEl', {
+      configurable: true,
+      set(v) {
+        v.getRootNode = () => ({ host: document.createElement('div') });
+        this._proseEl = v;
+      },
+      get() { return this._proseEl; },
+    });
+  }
+
+  async function initAndGetYDoc() {
+    const ydoc = new Y.Doc();
+    const provider = buildFakeWsProvider({ withSynced: false });
+    setupFakeContent();
+    await initProse({
+      path: 'https://admin.da.live/source/o/r/p.html',
+      permissions: ['read'],
+      doc: null,
+      daContent: fakeContent,
+      wsPromise: Promise.resolve({ wsProvider: provider, ydoc }),
+    });
+    return ydoc;
+  }
+
+  beforeEach(() => {
+    if (window.view) {
+      try { window.view.destroy(); } catch { /* */ }
+      delete window.view;
+    }
+    fakeContent = { proseEl: null, wsProvider: null };
+    fakeTitle = { collabUsers: undefined, collabStatus: undefined };
+    savedQuery = document.querySelector.bind(document);
+    document.querySelector = (sel) => {
+      if (sel === 'da-title') return fakeTitle;
+      if (sel === 'da-content') return null;
+      return savedQuery(sel);
+    };
+    savedFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response('{}', { status: 200 }));
+  });
+
+  afterEach(() => {
+    if (window.view) {
+      try { window.view.destroy(); } catch { /* */ }
+      delete window.view;
+    }
+    document.querySelector = savedQuery;
+    window.fetch = savedFetch;
+  });
+
+  it('Routes 401 messages to console.warn', async () => {
+    const ydoc = await initAndGetYDoc();
+    const calls = [];
+    const saved = console.warn;
+    console.warn = (...args) => calls.push(args);
+    try {
+      ydoc.getMap('error').set('message', '401 Unauthorized');
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0][0]).to.equal('Message from collab: 401 Unauthorized');
+    } finally {
+      console.warn = saved;
+    }
+  });
+
+  it('Routes 403 messages to console.log', async () => {
+    const ydoc = await initAndGetYDoc();
+    const calls = [];
+    const saved = console.log;
+    console.log = (...args) => calls.push(args);
+    try {
+      ydoc.getMap('error').set('message', '403 Forbidden');
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0][0]).to.equal('Message from collab: 403 Forbidden');
+    } finally {
+      console.log = saved;
+    }
+  });
+
+  it('Routes other messages to console.error with toJSON payload', async () => {
+    const ydoc = await initAndGetYDoc();
+    const calls = [];
+    const saved = console.error;
+    console.error = (...args) => calls.push(args);
+    try {
+      ydoc.getMap('error').set('message', '500 Internal Server Error');
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0][0]).to.equal('Error message from collab: 500 Internal Server Error');
+      expect(calls[0][1]).to.deep.equal({ message: '500 Internal Server Error' });
+    } finally {
+      console.error = saved;
+    }
+  });
+
+  it('Clears the error map after logging', async () => {
+    const ydoc = await initAndGetYDoc();
+    const saved = console.warn;
+    console.warn = () => {};
+    try {
+      const errorMap = ydoc.getMap('error');
+      errorMap.set('message', '401 Unauthorized');
+      expect(errorMap.size).to.equal(0);
+    } finally {
+      console.warn = saved;
+    }
+  });
+
+  it('Falls back to JSON when no message key is set', async () => {
+    const ydoc = await initAndGetYDoc();
+    const calls = [];
+    const saved = console.error;
+    console.error = (...args) => calls.push(args);
+    try {
+      ydoc.getMap('error').set('code', 'UNKNOWN');
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0][0]).to.equal('Error message from collab: {"code":"UNKNOWN"}');
+      expect(calls[0][1]).to.deep.equal({ code: 'UNKNOWN' });
+    } finally {
+      console.error = saved;
+    }
+  });
+});
+
+// ---- forceSave tests ----
+
+function buildFakeWs({ connected = true, responseOk = true, responseError = '', delayMs = 0 } = {}) {
+  const listeners = [];
+  const sent = [];
+
+  const ws = {
+    sent,
+    addEventListener(type, cb) { if (type === 'message') listeners.push(cb); },
+    removeEventListener(type, cb) {
+      if (type !== 'message') return;
+      const i = listeners.indexOf(cb);
+      if (i > -1) listeners.splice(i, 1);
+    },
+    send(data) {
+      sent.push(data);
+      if (!connected) return;
+      // Simulate server response after optional delay
+      setTimeout(() => {
+        // Build MSG_FLUSH_RESPONSE (3) + ok flag + optional error string
+        let resp;
+        if (responseOk) {
+          resp = new Uint8Array([3, 1]);
+        } else {
+          const errBytes = new TextEncoder().encode(responseError);
+          resp = new Uint8Array([3, 0, errBytes.length, ...errBytes]);
+        }
+        listeners.forEach((cb) => cb({ data: resp.buffer }));
+      }, delayMs);
+    },
+  };
+  return ws;
+}
+
+function buildFakeProvider({ wsconnected = true, ws = null } = {}) {
+  const listeners = new Map();
+  return {
+    wsconnected,
+    ws,
+    on(event, cb) {
+      if (!listeners.has(event)) listeners.set(event, []);
+      listeners.get(event).push(cb);
+    },
+    off(event, cb) {
+      const arr = listeners.get(event);
+      if (!arr) return;
+      const i = arr.indexOf(cb);
+      if (i > -1) arr.splice(i, 1);
+    },
+    _emit(event, ...args) {
+      (listeners.get(event) || []).forEach((cb) => cb(...args));
+    },
+  };
+}
+
+describe('forceSave', () => {
+  it('returns ok:true when server acks the flush', async () => {
+    const ws = buildFakeWs({ responseOk: true });
+    const provider = buildFakeProvider({ wsconnected: true, ws });
+
+    const result = await forceSave(provider);
+    expect(result.ok).to.be.true;
+    expect(ws.sent).to.have.length(1);
+    expect(ws.sent[0][0]).to.equal(2); // MSG_FLUSH_REQUEST
+  });
+
+  it('returns ok:false with error message when server reports failure', async () => {
+    const ws = buildFakeWs({ responseOk: false, responseError: 'save failed' });
+    const provider = buildFakeProvider({ wsconnected: true, ws });
+
+    const result = await forceSave(provider);
+    expect(result.ok).to.be.false;
+    expect(result.error).to.equal('save failed');
+  });
+
+  it('waits for connection then sends flush when initially disconnected', async () => {
+    const ws = buildFakeWs({ responseOk: true });
+    const provider = buildFakeProvider({ wsconnected: false, ws });
+
+    // Simulate reconnect after a tick
+    setTimeout(() => {
+      provider.wsconnected = true;
+      provider._emit('status', { status: 'connected' });
+    }, 5);
+
+    const result = await forceSave(provider);
+    expect(result.ok).to.be.true;
+    expect(ws.sent).to.have.length(1);
+  });
+
+  it('ignores unrelated message types while waiting for ack', async () => {
+    const listeners = [];
+    const sent = [];
+
+    const ws = {
+      sent,
+      addEventListener(type, cb) { if (type === 'message') listeners.push(cb); },
+      removeEventListener(type, cb) {
+        if (type !== 'message') return;
+        const i = listeners.indexOf(cb);
+        if (i > -1) listeners.splice(i, 1);
+      },
+      send(data) {
+        sent.push(data);
+        // Send a yjs sync message (type 0) first, then the real ack
+        setTimeout(() => {
+          listeners.forEach((cb) => cb({ data: new Uint8Array([0, 0]).buffer }));
+        }, 5);
+        setTimeout(() => {
+          listeners.forEach((cb) => cb({ data: new Uint8Array([3, 1]).buffer }));
+        }, 10);
+      },
+    };
+    const provider = buildFakeProvider({ wsconnected: true, ws });
+    const result = await forceSave(provider);
+    expect(result.ok).to.be.true;
   });
 });
