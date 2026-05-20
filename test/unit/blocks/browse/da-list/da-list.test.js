@@ -503,6 +503,14 @@ describe('DaList helpers', () => {
     });
   });
 
+  describe('handlePreview', () => {
+    it('Sets _confirm to preview type with null results', () => {
+      const el = makeList();
+      el.handlePreview();
+      expect(el._confirm).to.deep.equal({ type: 'preview', results: null });
+    });
+  });
+
   describe('handleShare', () => {
     it('Sets a copied status and clears it after 3s', async () => {
       const el = makeList();

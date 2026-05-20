@@ -197,6 +197,16 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('handlePreview', () => {
+    it('Dispatches an onpreview event', () => {
+      const el = new DaActionBar();
+      let dispatched;
+      el.dispatchEvent = (e) => { dispatched = e; };
+      el.handlePreview();
+      expect(dispatched.type).to.equal('onpreview');
+    });
+  });
+
   describe('handleShare', () => {
     it('Imports the helper module, runs items2Clipboard, and dispatches onshare', async () => {
       const el = new DaActionBar();
