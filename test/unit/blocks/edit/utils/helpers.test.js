@@ -83,7 +83,17 @@ function createSheet(name, data, columnWidths) {
 describe('saveToDa', () => {
   it('Saves sheets', async () => {
     const mockFetch = async (url, opts) => {
-      const payload = [...opts.body.entries()][0][1];
+      if (url.includes('/ping')) {
+        return new Response('', { status: 200 });
+      }
+      let payload;
+      if (opts.body instanceof FormData) {
+        payload = opts.body.get('data');
+      } else if (opts.body?.text) {
+        payload = await opts.body.text();
+      } else {
+        payload = opts.body;
+      }
       return new Response(payload, { status: 200 });
     };
 
@@ -712,9 +722,12 @@ describe('saveDaConfig', () => {
   beforeEach(() => { savedFetch = window.fetch; });
   afterEach(() => { window.fetch = savedFetch; });
 
-  it('PUTs to the config endpoint with the json under the config form key', async () => {
+  it('POSTs to the config endpoint with the json under the config form key', async () => {
     let captured;
     window.fetch = (url, opts) => {
+      if (url.includes('/ping')) {
+        return Promise.resolve(new Response('', { status: 200 }));
+      }
       captured = { url, opts };
       return Promise.resolve(new Response('{}', { status: 200 }));
     };
@@ -725,7 +738,7 @@ describe('saveDaConfig', () => {
     }];
     await saveDaConfig('/org/site', sheets);
     expect(captured.url).to.contain('/config/org/site');
-    expect(captured.opts.method).to.equal('PUT');
+    expect(captured.opts.method).to.equal('POST');
     const config = captured.opts.body.get('config');
     expect(typeof config).to.equal('string');
     const parsed = JSON.parse(config);
@@ -741,10 +754,13 @@ describe('saveDaVersion', () => {
   it('POSTs the label as a JSON body and swallows errors', async () => {
     let captured;
     window.fetch = (url, opts) => {
+      if (url.includes('/ping')) {
+        return Promise.resolve(new Response('', { status: 200 }));
+      }
       captured = { url, opts };
       return Promise.resolve(new Response('', { status: 200 }));
     };
-    await saveDaVersion('/org/site/page', 'My Label');
+    await saveDaVersion('/org/site/page', undefined, 'My Label');
     expect(captured.url).to.contain('/versionsource/org/site/page');
     expect(captured.opts.method).to.equal('POST');
     expect(captured.opts.body).to.equal(JSON.stringify({ label: 'My Label' }));
@@ -753,10 +769,13 @@ describe('saveDaVersion', () => {
   it('Defaults the label to "Published"', async () => {
     let captured;
     window.fetch = (url, opts) => {
+      if (url.includes('/ping')) {
+        return Promise.resolve(new Response('', { status: 200 }));
+      }
       captured = { url, opts };
       return Promise.resolve(new Response('', { status: 200 }));
     };
-    await saveDaVersion('/org/site/page');
+    await saveDaVersion('/org/site/page', undefined, 'Published');
     expect(captured.opts.body).to.equal(JSON.stringify({ label: 'Published' }));
   });
 });

@@ -7,6 +7,17 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const sh = await import('../../../../blocks/sheet/utils/index.js');
 
+const SHEET_HREF = 'http://example.com/source/testorg/testsite/sheet.json';
+
+const makeSheetFetchMock = (json) => async (url) => {
+  if (url.includes('/ping')) {
+    return new Response('', { status: 200 });
+  }
+  const headers = new Headers();
+  headers.append('x-da-actions', '/=read,write');
+  return new Response(json, { status: 200, headers });
+};
+
 describe('Sheets', () => {
   it('Test single sheet getData', async () => {
     const json = `
@@ -22,20 +33,11 @@ describe('Sheets', () => {
       ":type": "sheet"
     }`;
 
-    const mockFetch = async (url) => {
-      if (url === 'http://example.com') {
-        const headers = new Headers();
-        headers.append('x-da-actions', '/=read,write');
-        return new Response(json, { status: 200, headers });
-      }
-      return undefined;
-    };
-
     const savedFetch = window.fetch;
     try {
-      window.fetch = mockFetch;
+      window.fetch = makeSheetFetchMock(json);
 
-      const sheet = await sh.getData('http://example.com');
+      const sheet = await sh.getData(SHEET_HREF);
       expect(sheet.length).to.equal(1);
       expect(sheet[0].sheetName).to.equal('data');
       expect(sheet[0].data).to.deep.equal([['Value'], ['A'], ['B'], ['C']]);
@@ -71,20 +73,11 @@ describe('Sheets', () => {
       ":type": "multi-sheet"
     }`;
 
-    const mockFetch = async (url) => {
-      if (url === 'http://example.com') {
-        const headers = new Headers();
-        headers.append('x-da-actions', '/=read,write');
-        return new Response(json, { status: 200, headers });
-      }
-      return undefined;
-    };
-
     const savedFetch = window.fetch;
     try {
-      window.fetch = mockFetch;
+      window.fetch = makeSheetFetchMock(json);
 
-      const sheet = await sh.getData('http://example.com');
+      const sheet = await sh.getData(SHEET_HREF);
       expect(sheet.length).to.equal(2);
       expect(sheet[0].sheetName).to.equal('data');
       expect(sheet[0].data).to.deep.equal([['Tag'], ['red'], ['blue'], ['orange']]);
@@ -129,20 +122,11 @@ describe('Sheets', () => {
     }
     `;
 
-    const mockFetch = async (url) => {
-      if (url === 'http://example.com') {
-        const headers = new Headers();
-        headers.append('x-da-actions', '/=read,write');
-        return new Response(json, { status: 200, headers });
-      }
-      return undefined;
-    };
-
     const savedFetch = window.fetch;
     try {
-      window.fetch = mockFetch;
+      window.fetch = makeSheetFetchMock(json);
 
-      const sheet = await sh.getData('http://example.com');
+      const sheet = await sh.getData(SHEET_HREF);
       expect(sheet.length).to.equal(2);
       expect(sheet[0].sheetName).to.equal('single-sheet');
       expect(sheet[1].sheetName).to.equal('private-sheet');
@@ -204,20 +188,11 @@ describe('Sheets', () => {
 
     `;
 
-    const mockFetch = async (url) => {
-      if (url === 'http://example.com') {
-        const headers = new Headers();
-        headers.append('x-da-actions', '/=read,write');
-        return new Response(json, { status: 200, headers });
-      }
-      return undefined;
-    };
-
     const savedFetch = window.fetch;
     try {
-      window.fetch = mockFetch;
+      window.fetch = makeSheetFetchMock(json);
 
-      const sheet = await sh.getData('http://example.com');
+      const sheet = await sh.getData(SHEET_HREF);
       expect(sheet.length).to.equal(3);
       expect(sheet[0].sheetName).to.equal('sheet1');
       expect(sheet[1].sheetName).to.equal('sheet2');

@@ -63,6 +63,7 @@ export default class DaList extends LitElement {
     this._observer = null;
     this._autoCheckTimer = null;
     this._listItemPaths = new Set();
+    this._selectedItems = [];
   }
 
   connectedCallback() {

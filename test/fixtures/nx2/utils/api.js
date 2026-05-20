@@ -92,10 +92,11 @@ const getDaApiPath = async (api, org, site, path = '') => {
   }
 
   if (api === CONFIG) {
-    if (hlx6) {
-      if (!site) return `${AEM_API}/${org}/config.json`;
-      return `${AEM_API}/${org}/sites/${site}/config.json`;
-    }
+    // TODO: For now config is only supported on DA_ADMIN
+    // if (hlx6) {
+    //   if (!site) return `${AEM_API}/${org}/config.json`;
+    //   return `${AEM_API}/${org}/sites/${site}/config.json`;
+    // }
     if (!site) return `${DA_ADMIN}/config/${org}/`;
     return `${DA_ADMIN}/config/${org}/${site}/`;
   }
@@ -150,6 +151,9 @@ const withArgs = (fn) => (arg = {}, extras = {}) => {
     // eslint-disable-next-line no-console
     console.error('api: invalid args - pass /org/site/... string or { org, site, path }', arg);
   }
+  if (typeof args.path === 'string' && !args.path.startsWith('/')) {
+    args.path = `/${args.path}`;
+  }
   return fn(args);
 };
 
@@ -161,8 +165,7 @@ const jsonOpts = (method, payload) => ({
 
 // Dispatcher for AEM ops that accept path as string or array.
 // Array of length >= 2 routes to the bulk /* endpoint with { paths, delete? }.
-// `forceUpdate`/`forceSync` are folded into the bulk JSON body, or added
-// as query params on the single-path URL.
+// `forceUpdate`/`forceSync` are bulk-only (server ignores them on single-path).
 const callPath = async ({
   api, org, site, path, method, includeDelete = false, forceUpdate, forceSync,
 }) => {
@@ -175,10 +178,8 @@ const callPath = async ({
     return daFetch({ url, opts: jsonOpts('POST', payload) });
   }
   const single = Array.isArray(path) ? path[0] : path;
-  const url = new URL(await getAemApiPath(api, org, site, single));
-  if (forceUpdate) url.searchParams.set('forceUpdate', 'true');
-  if (forceSync) url.searchParams.set('forceSync', 'true');
-  return daFetch({ url: url.toString(), opts: { method } });
+  const url = await getAemApiPath(api, org, site, single);
+  return daFetch({ url, opts: { method } });
 };
 
 export const signout = () => {
@@ -194,24 +195,24 @@ export const source = {
     return daFetch({ url });
   }),
 
-  list: withArgs(async ({ org, site, path }) => {
+  list: withArgs(async ({ org, site, path, opts }) => {
     // Org-only list (no site) is DA-legacy only; hlx6 has no equivalent.
     if (site) {
       const hlx6 = await isHlx6(org, site);
       if (hlx6) {
-        const slashed = path ? `${path}/` : '/';
+        const slashed = path?.endsWith('/') ? path : `${path ?? ''}/`;
         const url = await getDaApiPath(SOURCE, org, site, slashed);
-        return daFetch({ url });
+        return daFetch({ url, opts });
       }
     }
     const url = await getDaApiPath(LIST, org, site, path);
-    return daFetch({ url });
+    return daFetch({ url, opts });
   }),
 
   put: withArgs(async ({ org, site, path, body }) => {
     const hlx6 = await isHlx6(org, site);
     const url = await getDaApiPath(SOURCE, org, site, path);
-    const opts = { method: 'PUT' };
+    const opts = { method: 'POST' };
     if (hlx6) {
       const textExt = Object.keys(TEXT_TYPES).find((e) => path.endsWith(e));
       if (textExt) {
@@ -238,7 +239,9 @@ export const source = {
     return daFetch({ url, opts: { method: 'DELETE' } });
   }),
 
-  copy: withArgs(async ({ org, site, path, destination, collision, continuationToken }) => {
+  copy: withArgs(async ({
+    org, site, path, destination, collision, continuationToken,
+  }) => {
     const hlx6 = await isHlx6(org, site);
     if (hlx6) {
       const url = new URL(await getDaApiPath(SOURCE, org, site, destination));
@@ -256,7 +259,9 @@ export const source = {
     });
   }),
 
-  move: withArgs(async ({ org, site, path, destination, collision, continuationToken }) => {
+  move: withArgs(async ({
+    org, site, path, destination, collision, continuationToken,
+  }) => {
     const hlx6 = await isHlx6(org, site);
     if (hlx6) {
       const url = new URL(await getDaApiPath(SOURCE, org, site, destination));
@@ -289,8 +294,12 @@ export const source = {
 // versions: list/get/create document versions.
 export const versions = {
   list: withArgs(async ({ org, site, path }) => {
-    const url = await getDaApiPath(VERSIONS, org, site, path);
-    return daFetch({ url });
+    const hlx6 = await isHlx6(org, site);
+    if (hlx6) {
+      return daFetch({ url: `${AEM_API}/${org}/sites/${site}/source${path}/.versions` });
+    }
+    // Legacy DA uses a separate /versionlist endpoint for listing.
+    return daFetch({ url: `${DA_ADMIN}/versionlist/${org}/${site}${path}` });
   }),
 
   // versionId on hlx6 is the ULID returned by versions.list; on legacy it is
@@ -359,12 +368,12 @@ const orgNs = {
 };
 export { orgNs as org };
 
-// status: `path` may be a string, an array (2+ -> bulk), or a full
-// `/org/site/path` (single only).
+// status: single-path only. H6 has no bulk status endpoint.
 export const status = {
-  get: withArgs(({ org, site, path }) => callPath({
-    api: 'status', org, site, path, method: 'GET',
-  })),
+  get: withArgs(async ({ org, site, path }) => {
+    const url = await getAemApiPath('status', org, site, path);
+    return daFetch({ url });
+  }),
 };
 
 // aem: combined preview + live operations.
