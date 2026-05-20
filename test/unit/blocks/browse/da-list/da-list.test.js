@@ -412,17 +412,6 @@ describe('DaList helpers', () => {
       expect(el._emptyMessage).to.equal('Not permitted');
     });
 
-    it('Reads items from a structured json.items response', async () => {
-      window.fetch = () => Promise.resolve(new Response(
-        JSON.stringify({ items: [{ path: '/a' }], continuationToken: 'next' }),
-        { status: 200 },
-      ));
-      const el = makeList();
-      el.fullpath = '/org/repo';
-      const items = await el.getList();
-      expect(items).to.have.length(1);
-      expect(el._continuationToken).to.equal('next');
-    });
   });
 
   describe('loadMore', () => {

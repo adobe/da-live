@@ -1,6 +1,5 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
-import { aemAdmin } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -64,6 +63,7 @@ export default class DaList extends LitElement {
     this._autoCheckTimer = null;
     this._listItemPaths = new Set();
     this._selectedItems = [];
+    this._listItems = [];
   }
 
   connectedCallback() {
@@ -120,14 +120,16 @@ export default class DaList extends LitElement {
     try {
       this._continuationToken = null;
       const [org, site, ...parts] = this.fullpath.slice(1).split('/');
-      const { source, hlx6ToDaList } = await getNx2Api();
-      const resp = await source.list({ org, site, path: parts.join('/') });
-      if (resp.permissions) this.handlePermissions(resp.permissions);
-      const json = await resp.json();
-      let items = Array.isArray(json) ? json : json?.items || [];
-      items = hlx6ToDaList(this.fullpath, items);
-      this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
-      this._allPagesLoaded = !this._continuationToken;
+      const { source } = await getNx2Api();
+      const { ok, items, continuationToken, permissions } = await source.list({ org, site, path: parts.join('/') });
+      if (!ok) {
+        this._emptyMessage = 'Not permitted';
+        this.resetListItemPaths([]);
+        return [];
+      }
+      if (permissions) this.handlePermissions(permissions);
+      this._continuationToken = continuationToken;
+      this._allPagesLoaded = !continuationToken;
       this.resetListItemPaths(items);
       this.scheduleAutoCheck();
       return items;
@@ -148,10 +150,9 @@ export default class DaList extends LitElement {
       const [org, site, ...parts] = this.fullpath.slice(1).split('/');
       const opts = { headers: { 'da-continuation-token': requestToken } };
       const { source } = await getNx2Api();
-      const resp = await source.list({ org, site, path: parts.join('/'), opts });
-      if (resp.permissions) this.handlePermissions(resp.permissions);
-      const json = await resp.json();
-      const nextItems = Array.isArray(json) ? json : json?.items || [];
+      const { ok, items: nextItems, continuationToken: nextToken, permissions } = await source.list({ org, site, path: parts.join('/'), opts });
+      if (!ok) return { added: 0, token: null };
+      if (permissions) this.handlePermissions(permissions);
       const existingItems = this._listItems || [];
       if (existingItems.length && this._listItemPaths.size === 0) {
         this.resetListItemPaths(existingItems);
@@ -163,7 +164,6 @@ export default class DaList extends LitElement {
       );
       const uniqueAdded = mergedItems.length - existingItems.length;
       if (uniqueAdded) this._listItems = mergedItems;
-      const nextToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
 
       if (!nextToken) {
         this._continuationToken = null;
@@ -309,17 +309,13 @@ export default class DaList extends LitElement {
         const args = type === 'delete'
           ? { continuationToken }
           : { destination: item.destination, continuationToken };
-        const resp = await fn(item.path, args);
-        if (resp.status === 204) {
-          break;
-        }
-        if (!resp.ok) {
-          const err = new Error(`Unexpected status: ${resp.status}`);
-          err.status = resp.status;
+        const { ok, status, continuationToken: nextToken } = await fn(item.path, args);
+        if (!ok) {
+          const err = new Error(`Unexpected status: ${status}`);
+          err.status = status;
           throw err;
         }
-        const json = await resp.json();
-        continuationToken = json?.continuationToken;
+        continuationToken = nextToken;
       } while (continuationToken);
 
       item.isChecked = false;
@@ -443,10 +439,11 @@ export default class DaList extends LitElement {
       await this.handleItemAction({ item, type });
 
       if (this._unpublish && this._confirmText === 'YES') {
-        const previewJson = await aemAdmin(item.path, 'preview', 'DELETE');
+        const { aem } = await getNx2Api();
+        const previewJson = await aem.unPreview(item.path);
         if (!previewJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
 
-        const liveJson = await aemAdmin(item.path, 'live', 'DELETE');
+        const liveJson = await aem.unPublish(item.path);
         if (!liveJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
       }
       this._itemsRemaining -= 1;

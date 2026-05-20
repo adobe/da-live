@@ -1,5 +1,5 @@
 import { LitElement, html, nothing, until } from 'da-lit';
-import { aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
+import { delay, sanitizeName } from '../../shared/utils.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import { formatDate } from '../../edit/da-versions/helpers.js';
@@ -72,7 +72,9 @@ export default class DaListItem extends LitElement {
   }
 
   async updateAEMStatus() {
-    const json = await aemAdmin(this.path, 'status', 'GET');
+    const { status } = await getNx2Api();
+    const json = await status.get(this.path);
+
     if (json) {
       this._preview = {
         status: json.preview.status,
@@ -139,8 +141,8 @@ export default class DaListItem extends LitElement {
 
   async doesFileExist(path) {
     const { source } = await getNx2Api();
-    const resp = await source.getMetadata(path);
-    return resp.status === 200;
+    const { status } = await source.getMetadata(path);
+    return status === 200;
   }
 
   async handleRenameSubmit(e) {
@@ -178,9 +180,9 @@ export default class DaListItem extends LitElement {
 
       const showStatus = setTimeout(() => { this.setStatus('Renaming', 'Please be patient. Renaming items with many children can take time.'); }, 5000);
       const { source } = await getNx2Api();
-      const resp = await source.move(oldPath, { destination: newPath });
+      const { status } = await source.move(oldPath, { destination: newPath });
 
-      if (resp.status === 204) {
+      if (status === 204) {
         clearTimeout(showStatus);
         this.setStatus();
         this._isRenaming = false;
@@ -248,7 +250,7 @@ export default class DaListItem extends LitElement {
     if (this.ext === 'link') {
       path = nothing;
       externalUrlPromise = getNx2Api()
-        .then(({ source }) => source.get(this.path))
+        .then(({ source }) => source.load(this.path))
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }

@@ -1,6 +1,5 @@
-import { SUPPORTED_FILES, DA_ORIGIN } from '../../../shared/constants.js';
-import { sanitizePath, sanitizePathParts } from '../../../../scripts/utils.js';
-import { daFetch } from '../../../shared/utils.js';
+import { SUPPORTED_FILES } from '../../../shared/constants.js';
+import { getNx2Api, sanitizePath, sanitizePathParts } from '../../../../scripts/utils.js';
 
 const MAX_DEPTH = 1000;
 
@@ -100,14 +99,14 @@ export function getDropConflicts(list, files) {
 
 export async function handleUpload(list, fullpath, file) {
   const { data, path } = file;
-  const formData = new FormData();
-  formData.append('data', data);
-  const opts = { method: 'POST', body: formData };
   const sanitizedPath = sanitizePath(path);
   const postpath = `${fullpath}${sanitizedPath}`;
 
   try {
-    await daFetch(`${DA_ORIGIN}/source${postpath}`, opts);
+    const { source } = await getNx2Api();
+    // TODO: Error handling
+    await source.save(postpath, { data });
+
     file.imported = true;
 
     const [displayName] = sanitizedPath.split('/').slice(1);
