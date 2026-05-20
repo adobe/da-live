@@ -4,6 +4,8 @@ import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
+import { getUniversalEditorUrl, pagePathFromSourceUrl } from '../editor-utils/universal-editor.js';
+import { getCanvasBranch } from '../utils/branch.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
@@ -55,11 +57,13 @@ class EwBlockToolbar extends LitElement {
     view: { attribute: false },
     org: { type: String },
     site: { type: String },
+    sourceUrl: { type: String },
     _blockName: { state: true },
     _currentVariant: { state: true },
     _variantOptions: { state: true },
     _hasBlockLibrary: { state: true },
     _multiTemplateRow: { state: true },
+    _universalEditorUrl: { state: true },
     _pendingDelete: { state: true },
   };
 
@@ -133,6 +137,21 @@ class EwBlockToolbar extends LitElement {
     this._multiTemplateRow = (multi && row) ? row : null;
   }
 
+  async _loadUniversalEditor(blockName) {
+    this._universalEditorUrl = null;
+    const path = pagePathFromSourceUrl(this.sourceUrl);
+    if (!this.org || !this.site || !blockName || !path) return;
+    const branch = getCanvasBranch({ org: this.org, site: this.site });
+    const url = await getUniversalEditorUrl(this.org, this.site, blockName, { branch, path });
+    if (this._blockName !== blockName) return;
+    this._universalEditorUrl = url;
+  }
+
+  _onOpenUniversalEditor() {
+    if (!this._universalEditorUrl) return;
+    window.open(this._universalEditorUrl, '_blank', 'noopener');
+  }
+
   _onAddItem() {
     if (!this.view || !this._multiTemplateRow) return;
     const { from } = this.view.state.selection;
@@ -188,6 +207,7 @@ class EwBlockToolbar extends LitElement {
     if (!sameBlock) {
       this._loadVariants(blockName);
       this._loadMultiBlock(blockName);
+      this._loadUniversalEditor(blockName);
     }
     this.classList.add('open');
     this.requestUpdate();
@@ -322,6 +342,15 @@ class EwBlockToolbar extends LitElement {
           title="Edit block"
           @click=${() => this._onEditBlock()}
         >${this._icon('edit')}</button>
+        ${this._universalEditorUrl ? html`
+          <span class="toolbar-sep" aria-hidden="true"></span>
+          <button
+            type="button"
+            class="toolbar-btn block-universal-editor icon-only"
+            aria-label="Edit in Universal Editor"
+            title="Edit in Universal Editor (close this page here first, so its edits are not overwritten)"
+            @click=${() => this._onOpenUniversalEditor()}
+          >${this._icon('openin')}</button>` : nothing}
         <span class="toolbar-sep" aria-hidden="true"></span>
         <button
           type="button"
