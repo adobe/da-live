@@ -574,6 +574,137 @@ describe('prose/index initProse default export', () => {
   });
 });
 
+// ---- registerErrorHandler tests ----
+
+describe('prose/index registerErrorHandler', () => {
+  let fakeContent;
+  let fakeTitle;
+  let savedQuery;
+  let savedFetch;
+
+  function setupFakeContent() {
+    Object.defineProperty(fakeContent, 'proseEl', {
+      configurable: true,
+      set(v) {
+        v.getRootNode = () => ({ host: document.createElement('div') });
+        this._proseEl = v;
+      },
+      get() { return this._proseEl; },
+    });
+  }
+
+  async function initAndGetYDoc() {
+    const ydoc = new Y.Doc();
+    const provider = buildFakeWsProvider({ withSynced: false });
+    setupFakeContent();
+    await initProse({
+      path: 'https://admin.da.live/source/o/r/p.html',
+      permissions: ['read'],
+      doc: null,
+      daContent: fakeContent,
+      wsPromise: Promise.resolve({ wsProvider: provider, ydoc }),
+    });
+    return ydoc;
+  }
+
+  beforeEach(() => {
+    if (window.view) {
+      try { window.view.destroy(); } catch { /* */ }
+      delete window.view;
+    }
+    fakeContent = { proseEl: null, wsProvider: null };
+    fakeTitle = { collabUsers: undefined, collabStatus: undefined };
+    savedQuery = document.querySelector.bind(document);
+    document.querySelector = (sel) => {
+      if (sel === 'da-title') return fakeTitle;
+      if (sel === 'da-content') return null;
+      return savedQuery(sel);
+    };
+    savedFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response('{}', { status: 200 }));
+  });
+
+  afterEach(() => {
+    if (window.view) {
+      try { window.view.destroy(); } catch { /* */ }
+      delete window.view;
+    }
+    document.querySelector = savedQuery;
+    window.fetch = savedFetch;
+  });
+
+  it('Routes 401 messages to console.warn', async () => {
+    const ydoc = await initAndGetYDoc();
+    const calls = [];
+    const saved = console.warn;
+    console.warn = (...args) => calls.push(args);
+    try {
+      ydoc.getMap('error').set('message', '401 Unauthorized');
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0][0]).to.equal('Message from collab: 401 Unauthorized');
+    } finally {
+      console.warn = saved;
+    }
+  });
+
+  it('Routes 403 messages to console.log', async () => {
+    const ydoc = await initAndGetYDoc();
+    const calls = [];
+    const saved = console.log;
+    console.log = (...args) => calls.push(args);
+    try {
+      ydoc.getMap('error').set('message', '403 Forbidden');
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0][0]).to.equal('Message from collab: 403 Forbidden');
+    } finally {
+      console.log = saved;
+    }
+  });
+
+  it('Routes other messages to console.error with toJSON payload', async () => {
+    const ydoc = await initAndGetYDoc();
+    const calls = [];
+    const saved = console.error;
+    console.error = (...args) => calls.push(args);
+    try {
+      ydoc.getMap('error').set('message', '500 Internal Server Error');
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0][0]).to.equal('Error message from collab: 500 Internal Server Error');
+      expect(calls[0][1]).to.deep.equal({ message: '500 Internal Server Error' });
+    } finally {
+      console.error = saved;
+    }
+  });
+
+  it('Clears the error map after logging', async () => {
+    const ydoc = await initAndGetYDoc();
+    const saved = console.warn;
+    console.warn = () => {};
+    try {
+      const errorMap = ydoc.getMap('error');
+      errorMap.set('message', '401 Unauthorized');
+      expect(errorMap.size).to.equal(0);
+    } finally {
+      console.warn = saved;
+    }
+  });
+
+  it('Falls back to JSON when no message key is set', async () => {
+    const ydoc = await initAndGetYDoc();
+    const calls = [];
+    const saved = console.error;
+    console.error = (...args) => calls.push(args);
+    try {
+      ydoc.getMap('error').set('code', 'UNKNOWN');
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0][0]).to.equal('Error message from collab: {"code":"UNKNOWN"}');
+      expect(calls[0][1]).to.deep.equal({ code: 'UNKNOWN' });
+    } finally {
+      console.error = saved;
+    }
+  });
+});
+
 // ---- forceSave tests ----
 
 function buildFakeWs({ connected = true, responseOk = true, responseError = '', delayMs = 0 } = {}) {
