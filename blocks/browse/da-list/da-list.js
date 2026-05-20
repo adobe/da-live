@@ -1,7 +1,6 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
+import { aemAdmin } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -64,6 +63,7 @@ export default class DaList extends LitElement {
     this._observer = null;
     this._autoCheckTimer = null;
     this._listItemPaths = new Set();
+    this._selectedItems = [];
   }
 
   connectedCallback() {
@@ -73,6 +73,7 @@ export default class DaList extends LitElement {
   }
 
   async update(props) {
+    // List Items can be provided externally (via search)
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
       this.resetListItemPaths(this._listItems);
@@ -118,10 +119,13 @@ export default class DaList extends LitElement {
   async getList() {
     try {
       this._continuationToken = null;
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
+      const [org, site, ...parts] = this.fullpath.slice(1).split('/');
+      const { source, hlx6ToDaList } = await getNx2Api();
+      const resp = await source.list({ org, site, path: parts.join('/') });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
-      const items = Array.isArray(json) ? json : json?.items || [];
+      let items = Array.isArray(json) ? json : json?.items || [];
+      items = hlx6ToDaList(this.fullpath, items);
       this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
       this._allPagesLoaded = !this._continuationToken;
       this.resetListItemPaths(items);
@@ -141,7 +145,10 @@ export default class DaList extends LitElement {
     const requestToken = this._continuationToken;
     this._isLoadingMore = true;
     try {
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, { headers: { 'da-continuation-token': requestToken } });
+      const [org, site, ...parts] = this.fullpath.slice(1).split('/');
+      const opts = { headers: { 'da-continuation-token': requestToken } };
+      const { source } = await getNx2Api();
+      const resp = await source.list({ org, site, path: parts.join('/'), opts });
       if (resp.permissions) this.handlePermissions(resp.permissions);
       const json = await resp.json();
       const nextItems = Array.isArray(json) ? json : json?.items || [];
@@ -289,31 +296,20 @@ export default class DaList extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
-    let continuationToken;
-
-    const type2api = {
-      copy: { api: 'copy', method: 'POST' },
-      delete: { api: 'source', method: 'DELETE' },
-      move: { api: 'move', method: 'POST' },
-    };
-
-    const { api, method } = type2api[type];
+    const { source } = await getNx2Api();
+    const type2fn = { copy: source.copy, delete: source.delete, move: source.move };
+    const fn = type2fn[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
-    const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
+    let continuationToken;
     try {
       do {
-        let body;
-
-        if (type !== 'delete') {
-          body = new FormData();
-          body.append('destination', item.destination);
-          if (continuationToken) body.append('continuation-token', continuationToken);
-        }
-
-        const opts = { method, body };
-        const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
+        const args = type === 'delete'
+          ? { continuationToken }
+          : { destination: item.destination, continuationToken };
+        const resp = await fn(item.path, args);
         if (resp.status === 204) {
           break;
         }
@@ -329,7 +325,7 @@ export default class DaList extends LitElement {
       item.isChecked = false;
 
       // Remove or add the item to the current list
-      if (moveToTrash || method === 'DELETE') {
+      if (moveToTrash || type === 'delete') {
         this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
         this._listItemPaths.delete(item.path);
       } else {
