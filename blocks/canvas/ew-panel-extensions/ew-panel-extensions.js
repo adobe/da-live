@@ -3,26 +3,30 @@ import { getNx } from '../../../scripts/utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import './ew-panel-library.js';
 
-const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
 class EwPanelExtension extends LitElement {
-  static properties = { extension: { attribute: false } };
+  static properties = {
+    extension: { attribute: false },
+    _hashState: { state: true },
+  };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._hash = new HashController(this);
+    this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this._unsubHash?.();
     this._destroyChannel?.();
   }
 
   async _handlePluginLoad({ target }) {
-    const hashState = this._hash.value || {};
+    const hashState = this._hashState || {};
     const { setupIframeChannel } = await import('./iframe-protocol.js');
     this._destroyChannel?.();
     const { destroy } = await setupIframeChannel({
