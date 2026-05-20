@@ -1,7 +1,7 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { daFetch, aemAdmin, aemAction, saveDaVersion } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -471,6 +471,39 @@ export default class DaList extends LitElement {
     setTimeout(() => { this.setStatus(); }, 3000);
   }
 
+  handlePreview() {
+    this._confirm = { type: 'preview', results: null };
+  }
+
+  async handleConfirmPreview() {
+    const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
+
+    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+    this._itemsRemaining = items.length;
+    const results = [];
+
+    const callback = async (item) => {
+      const json = await aemAction(item.path, 'preview');
+      if (json.error) {
+        this._itemErrors.push({ ...item, message: json.error.message || "Couldn't preview item" });
+      } else {
+        saveDaVersion(item.path, 'Previewed');
+        results.push({ name: item.name, url: json.preview?.url });
+      }
+      this._itemsRemaining -= 1;
+      if (this._itemsRemaining === 0) {
+        if (results.length > 0) {
+          this._confirm = { type: 'preview', results };
+        } else {
+          this.handleConfirmClose();
+        }
+      }
+    };
+
+    const queue = new Queue(callback, 5);
+    await Promise.all(items.map((item) => queue.push(item)));
+  }
+
   dragenter(e) {
     e.stopPropagation();
     e.target.closest('.da-browse-panel').classList.add('is-dragged-over');
@@ -686,10 +719,10 @@ export default class DaList extends LitElement {
           placeholder="YES"
           autofocus=""
           @input=${(e) => {
-            const upper = e.target.value.toUpperCase();
-            if (e.target.value !== upper) e.target.value = upper;
-            this._confirmText = upper;
-          }}
+        const upper = e.target.value.toUpperCase();
+        if (e.target.value !== upper) e.target.value = upper;
+        this._confirmText = upper;
+      }}
           aria-label="Type YES to confirm"
           value=${this._confirmText ?? ''}></sl-input>
       </div>
@@ -828,6 +861,43 @@ export default class DaList extends LitElement {
     `;
   }
 
+  renderPreviewConfirm() {
+    const { results } = this._confirm;
+    const hasResults = results !== null;
+    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+    const count = items.length;
+    const hasRemaining = this._itemsRemaining !== 0;
+
+    const title = hasResults ? 'Preview complete' : 'Preview';
+    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
+    const closeHandler = hasResults ? this.handleClear : this.handleConfirmClose;
+
+    const action = hasResults
+      ? { style: 'accent', label: 'Close', click: () => this.handleClear() }
+      : {
+        style: 'accent',
+        label: 'Preview',
+        click: async () => this.handleConfirmPreview(),
+        disabled: hasRemaining,
+      };
+
+    const body = hasResults
+      ? html`<ul>${results.map(({ name, url }) => html`
+          <li><a href="${url}" target="_blank">${name}</a></li>
+        `)}</ul>`
+      : html`<p>Preview the selected ${count} ${count === 1 ? 'item' : 'items'}?</p>`;
+
+    return html`
+      <da-dialog
+        title=${title}
+        .message=${message}
+        .action=${action}
+        @close=${closeHandler}>
+        ${body}
+      </da-dialog>
+    `;
+  }
+
   renderErrors() {
     const action = {
       style: 'accent',
@@ -962,12 +1032,14 @@ export default class DaList extends LitElement {
         @rename=${this.handleRename}
         @onpaste=${this.handlePaste}
         @ondelete=${this.handleDelete}
+        @onpreview=${this.handlePreview}
         @onshare=${this.handleShare}
         currentPath="${this.fullpath}"
         role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
-      ${this._confirm ? this.renderConfirm() : nothing}
+      ${this._confirm === 'delete' ? this.renderConfirm() : nothing}
+      ${this._confirm?.type === 'preview' ? this.renderPreviewConfirm() : nothing}
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;

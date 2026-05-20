@@ -2,12 +2,10 @@ import { LitElement, html, nothing } from 'da-lit';
 import {
   requestRole,
   saveToDa,
-  saveToAem,
   saveDaConfig,
-  saveDaVersion,
   getAemHrefs,
 } from '../utils/helpers.js';
-import { delay, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
+import { delay, fetchDaConfigs, getFirstSheet, aemAction, saveDaVersion } from '../../shared/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -280,30 +278,14 @@ export default class DaTitle extends LitElement {
         }
       }
 
-      let json = await saveToAem(aemPath, 'preview');
-      if (json.error) {
-        this.handleError(json, 'preview');
+      const onScheduled = (schedule) => this.setScheduledDialog(schedule);
+      const json = await aemAction(aemPath, action, { onScheduled });
+      if (json.cancelled) {
+        this._isSending = false;
         return;
       }
-
-      // Anything related to publish
-      if (action === 'publish') {
-        // If lazy setup has not finished, check the schedule manually
-        this._scheduled ??= await this.getSchedule(org, site, path);
-        if (this._scheduled?.scheduled) {
-          const shouldContinue = await this.setScheduledDialog(this._scheduled);
-          if (!shouldContinue) {
-            this._isSending = false;
-            return;
-          }
-        }
-        // Publish to AEM
-        json = await saveToAem(aemPath, 'live');
-      }
-
-      // Handle all AEM errors
       if (json.error) {
-        this.handleError(json, 'publish');
+        this.handleError(json, json.error.action);
         return;
       }
 

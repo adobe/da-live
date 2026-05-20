@@ -1,8 +1,10 @@
 import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
-import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { DA_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch, getSidekickConfig } from '../../shared/utils.js';
+
+export { saveToAem, saveDaVersion } from '../../shared/utils.js';
 
 export function isURL(text) {
   try {
@@ -14,31 +16,6 @@ export function isURL(text) {
 }
 
 const AEM_PERMISSION_TPL = '{"users":{"total":1,"limit":1,"offset":0,"data":[]},"data":{"total":1,"limit":1,"offset":0,"data":[{}]},":names":["users","data"],":version":3,":type":"multi-sheet"}';
-
-/* eslint-disable max-len */
-/**
- * [admin] Unable to preview '.../page.md': source contains large image: error fetching resource at http.../hello: Image 1 exceeds allowed limit of 10.00MB
- * [admin] Unable to preview '.../doc.pdf': PDF is larger than 10MB: 24.0MB
- * [admin] Unable to preview '.../video.mp4': MP4 is longer than 2 minutes: 2m 44s
- * [admin] Unable to preview '.../video.mp4': MP4 has a higher bitrate than 300 KB/s: 494 kilobytes
- * [admin] not authenticated
- * [admin] not authorized
- */
-/* eslint-enable max-len */
-function parseAemError(xError) {
-  if (xError.includes('PDF')) {
-    const [seg1, seg2] = xError.split(': ').slice(-2);
-    return `${seg1}: ${seg2}`;
-  }
-  if (xError.includes('MP4')) {
-    const [seg1] = xError.split(': ').slice(-2);
-    return seg1;
-  }
-  if (xError.includes('Image')) {
-    return xError.split(': ').pop().replace('.00', '');
-  }
-  return xError.replace('[admin] ', '');
-}
 
 export async function getAemHrefs({ path }) {
   // Mine the path for different parts
@@ -65,27 +42,6 @@ export async function getAemHrefs({ path }) {
   }
 
   return hrefs;
-}
-
-export async function saveToAem(path, action) {
-  const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
-  const aemPath = parts.join('/');
-
-  const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`;
-  const resp = await daFetch(url, { method: 'POST' });
-  // eslint-disable-next-line no-console
-  if (!resp.ok) {
-    const { status, headers } = resp;
-    const authErr = [401, 403].some((s) => s === status);
-    const message = authErr ? `Not authorized to ${action}` : `Error during ${action}`;
-    const xerror = headers.get('x-error');
-
-    const error = { action, status, type: 'error', message };
-    if (xerror && !authErr) error.details = parseAemError(xerror);
-
-    return { error };
-  }
-  return resp.json();
 }
 
 async function saveHtml(fullPath) {
@@ -209,22 +165,6 @@ export function saveToDa(pathname, sheet) {
 export function saveDaConfig(pathname, sheet) {
   const fullPath = `${DA_ORIGIN}/config${pathname}`;
   return saveJson(fullPath, sheet, null, 'config');
-}
-
-export async function saveDaVersion(pathname, label = 'Published') {
-  const fullPath = `${DA_ORIGIN}/versionsource${pathname}`;
-
-  const opts = {
-    method: 'POST',
-    body: JSON.stringify({ label }),
-  };
-
-  try {
-    await daFetch(fullPath, opts);
-  } catch {
-    // eslint-disable-next-line no-console
-    console.log(`Error creating auto version (${label}).`);
-  }
 }
 
 async function getRoleRequestDetails(action) {

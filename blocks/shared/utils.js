@@ -143,6 +143,87 @@ export async function aemAdmin(path, api, method = 'POST') {
   }
 }
 
+/* eslint-disable max-len */
+/**
+ * [admin] Unable to preview '.../page.md': source contains large image: error fetching resource at http.../hello: Image 1 exceeds allowed limit of 10.00MB
+ * [admin] Unable to preview '.../doc.pdf': PDF is larger than 10MB: 24.0MB
+ * [admin] Unable to preview '.../video.mp4': MP4 is longer than 2 minutes: 2m 44s
+ * [admin] Unable to preview '.../video.mp4': MP4 has a higher bitrate than 300 KB/s: 494 kilobytes
+ * [admin] not authenticated
+ * [admin] not authorized
+ */
+/* eslint-enable max-len */
+function parseAemError(xError) {
+  if (xError.includes('PDF')) {
+    const [seg1, seg2] = xError.split(': ').slice(-2);
+    return `${seg1}: ${seg2}`;
+  }
+  if (xError.includes('MP4')) {
+    const [seg1] = xError.split(': ').slice(-2);
+    return seg1;
+  }
+  if (xError.includes('Image')) {
+    return xError.split(': ').pop().replace('.00', '');
+  }
+  return xError.replace('[admin] ', '');
+}
+
+export async function saveToAem(path, action) {
+  const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
+  const aemPath = parts.join('/');
+  const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`;
+  const resp = await daFetch(url, { method: 'POST' });
+  if (!resp.ok) {
+    const { status, headers } = resp;
+    const authErr = [401, 403].some((s) => s === status);
+    const message = authErr ? `Not authorized to ${action}` : `Error during ${action}`;
+    const xerror = headers.get('x-error');
+    const error = { action, status, type: 'error', message };
+    if (xerror && !authErr) error.details = parseAemError(xerror);
+    return { error };
+  }
+  return resp.json();
+}
+
+const SNAPSHOT_SCHEDULER_URL = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
+
+export async function getExistingSchedule(org, site, path) {
+  try {
+    const resp = await daFetch(`${SNAPSHOT_SCHEDULER_URL}/schedule/${org}/${site}?path=${encodeURIComponent(path)}`);
+    if (!resp.ok) return null;
+    return resp.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function saveDaVersion(pathname, label = 'Published') {
+  const fullPath = `${DA_ORIGIN}/versionsource${pathname}`;
+  const opts = { method: 'POST', body: JSON.stringify({ label }) };
+  try {
+    await daFetch(fullPath, opts);
+  } catch {
+    // eslint-disable-next-line no-console
+    console.log(`Error creating auto version (${label}).`);
+  }
+}
+
+export async function aemAction(path, action, opts = {}) {
+  const previewJson = await saveToAem(path, 'preview');
+  if (previewJson.error) return previewJson;
+  if (action === 'preview') return previewJson;
+
+  const [, org, site, ...rest] = path.toLowerCase().split('/');
+  const pagePath = `/${rest.join('/')}`.replace(/\.html$/, '');
+  const schedule = await getExistingSchedule(org, site, pagePath);
+  if (schedule?.scheduled) {
+    const proceed = opts.onScheduled ? await opts.onScheduled(schedule) : false;
+    if (!proceed) return { cancelled: true };
+  }
+
+  return saveToAem(path, 'live');
+}
+
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
   if (!path || !path.startsWith('/') || path.includes('://')) return undefined;
 

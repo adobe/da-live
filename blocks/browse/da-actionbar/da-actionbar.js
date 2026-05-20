@@ -80,6 +80,12 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handlePreview() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpreview', opts);
+    this.dispatchEvent(event);
+  }
+
   async handleShare() {
     const { items2Clipboard } = await import('../da-list/helpers/utils.js');
     items2Clipboard(this.items);
@@ -98,6 +104,11 @@ export default class DaActionBar extends LitElement {
   get _canWrite() {
     if (!this.permissions) return false;
     return this.permissions.some((permission) => permission === 'write');
+  }
+
+  get _canPreview() {
+    const hasFile = this.items.some((item) => item.ext && item.ext !== 'link');
+    return hasFile && !this._isCopying;
   }
 
   get _canShare() {
@@ -156,6 +167,12 @@ export default class DaActionBar extends LitElement {
             class="delete-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" alt="" aria-hidden="true"/>
             <span>Delete</span>
+          </button>
+          <button
+            @click=${this.handlePreview}
+            class="preview-button ${this._canPreview ? '' : 'hide'}">
+            <img src="/blocks/edit/img/S2_Icon_Preview_20_N.svg" alt="" aria-hidden="true"/>
+            <span>Preview</span>
           </button>
           <button
             @click=${this.handleShare}
