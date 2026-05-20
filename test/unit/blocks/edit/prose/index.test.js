@@ -6,6 +6,7 @@ import initProse, {
   createConnection,
   createAwarenessStatusWidget,
 } from '../../../../../blocks/edit/prose/index.js';
+import { forceSave } from '../../../../../blocks/edit/prose/forcesave.js';
 
 // initProse lazily imports da-library.js, which (a) builds URLs from
 // `${getNx()}/...` and (b) calls loadLibrary() at module import time.
@@ -229,6 +230,53 @@ describe('prose/index createConnection', () => {
     }
   });
 
+  it('Blocks y-websocket auto-reconnect during the in-flight refresh on 4401', async () => {
+    // Regression: y-websocket's onclose schedules setTimeout(setupWS, 100ms)
+    // synchronously; if shouldConnect stays true through the await
+    // refreshToken() round-trip the auto-reconnect fires with the stale token
+    // and burns a HEAD 401 on da-admin. shouldConnect must flip to false
+    // synchronously before the first await.
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let refreshResolve;
+    const refreshPromise = new Promise((r) => { refreshResolve = r; });
+    let tokenIndex = 0;
+    const tokens = ['T-old', 'T-new'];
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: tokens[tokenIndex] }),
+      refreshToken: () => refreshPromise,
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/org/repo/page.html');
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      // Fire 4401 — handler runs sync up to first await, then yields.
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      // Microtask boundary: handler has hit `await refreshToken()` and yielded.
+      await Promise.resolve();
+
+      // During the in-flight refresh, shouldConnect MUST be false so a stale
+      // y-websocket reconnect timer fires as a no-op.
+      expect(wsProvider.shouldConnect).to.equal(false);
+
+      // Resolve the refresh; rotate the token so getAuthToken() returns T-new.
+      tokenIndex = 1;
+      refreshResolve();
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      // After refresh: fresh token applied and reconnect explicitly re-enabled.
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-new']);
+      expect(wsProvider.shouldConnect).to.equal(true);
+
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
   it('Non-auth close with no token reconnects as anonymous', async () => {
     window.localStorage.removeItem('nx-ims');
     const savedIMS = window.adobeIMS;
@@ -304,6 +352,38 @@ describe('prose/index createAwarenessStatusWidget', () => {
     expect(fakeTitle.collabStatus).to.equal('connected');
     provider._emit('status', { status: 'disconnected' });
     expect(fakeTitle.collabStatus).to.equal('disconnected');
+  });
+
+  it('Skips checkDoc HEAD on auth-close codes (4401/4403)', async () => {
+    // checkDoc is intended to detect doc-deleted-externally (404). On 4401/4403
+    // the doc is fine — da-collab signalled an auth failure. Firing checkDoc
+    // here just doubles the HEAD 401 traffic to da-admin via daFetch's
+    // refresh-and-retry, so it must be skipped.
+    const provider = buildFakeWsProvider();
+    const fakeWin = { document, addEventListener: () => {} };
+    const fetchCalls = [];
+    const savedFetch = window.fetch;
+    window.fetch = (...args) => {
+      fetchCalls.push(args);
+      return Promise.resolve(new Response('', { status: 200, headers: {} }));
+    };
+    try {
+      createAwarenessStatusWidget(provider, fakeWin, 'https://admin.da.live/source/o/r/p.html');
+
+      provider._emit('connection-close', { code: 4401, reason: 'auth' }, provider);
+      provider._emit('connection-close', { code: 4403, reason: 'forbidden' }, provider);
+      await new Promise((r) => { setTimeout(r, 0); });
+
+      expect(fetchCalls.filter(([, o]) => o?.method === 'HEAD'))
+        .to.have.lengthOf(0);
+
+      // Sanity: a non-auth close still does fire checkDoc.
+      provider._emit('connection-close', { code: 1006 }, provider);
+      await new Promise((r) => { setTimeout(r, 0); });
+      expect(fetchCalls.some(([, o]) => o?.method === 'HEAD')).to.equal(true);
+    } finally {
+      window.fetch = savedFetch;
+    }
   });
 
   it('On focus reconnects, on blur schedules disconnect', async () => {
@@ -491,5 +571,124 @@ describe('prose/index initProse default export', () => {
     });
     await initProse({ path: 'https://admin.da.live/source/o/r/p.html', permissions: ['read'], doc: null, daContent: fakeContent, wsPromise: Promise.resolve({ wsProvider: provider, ydoc }) });
     expect(destroyed).to.equal(1);
+  });
+});
+
+// ---- forceSave tests ----
+
+function buildFakeWs({ connected = true, responseOk = true, responseError = '', delayMs = 0 } = {}) {
+  const listeners = [];
+  const sent = [];
+
+  const ws = {
+    sent,
+    addEventListener(type, cb) { if (type === 'message') listeners.push(cb); },
+    removeEventListener(type, cb) {
+      if (type !== 'message') return;
+      const i = listeners.indexOf(cb);
+      if (i > -1) listeners.splice(i, 1);
+    },
+    send(data) {
+      sent.push(data);
+      if (!connected) return;
+      // Simulate server response after optional delay
+      setTimeout(() => {
+        // Build MSG_FLUSH_RESPONSE (3) + ok flag + optional error string
+        let resp;
+        if (responseOk) {
+          resp = new Uint8Array([3, 1]);
+        } else {
+          const errBytes = new TextEncoder().encode(responseError);
+          resp = new Uint8Array([3, 0, errBytes.length, ...errBytes]);
+        }
+        listeners.forEach((cb) => cb({ data: resp.buffer }));
+      }, delayMs);
+    },
+  };
+  return ws;
+}
+
+function buildFakeProvider({ wsconnected = true, ws = null } = {}) {
+  const listeners = new Map();
+  return {
+    wsconnected,
+    ws,
+    on(event, cb) {
+      if (!listeners.has(event)) listeners.set(event, []);
+      listeners.get(event).push(cb);
+    },
+    off(event, cb) {
+      const arr = listeners.get(event);
+      if (!arr) return;
+      const i = arr.indexOf(cb);
+      if (i > -1) arr.splice(i, 1);
+    },
+    _emit(event, ...args) {
+      (listeners.get(event) || []).forEach((cb) => cb(...args));
+    },
+  };
+}
+
+describe('forceSave', () => {
+  it('returns ok:true when server acks the flush', async () => {
+    const ws = buildFakeWs({ responseOk: true });
+    const provider = buildFakeProvider({ wsconnected: true, ws });
+
+    const result = await forceSave(provider);
+    expect(result.ok).to.be.true;
+    expect(ws.sent).to.have.length(1);
+    expect(ws.sent[0][0]).to.equal(2); // MSG_FLUSH_REQUEST
+  });
+
+  it('returns ok:false with error message when server reports failure', async () => {
+    const ws = buildFakeWs({ responseOk: false, responseError: 'save failed' });
+    const provider = buildFakeProvider({ wsconnected: true, ws });
+
+    const result = await forceSave(provider);
+    expect(result.ok).to.be.false;
+    expect(result.error).to.equal('save failed');
+  });
+
+  it('waits for connection then sends flush when initially disconnected', async () => {
+    const ws = buildFakeWs({ responseOk: true });
+    const provider = buildFakeProvider({ wsconnected: false, ws });
+
+    // Simulate reconnect after a tick
+    setTimeout(() => {
+      provider.wsconnected = true;
+      provider._emit('status', { status: 'connected' });
+    }, 5);
+
+    const result = await forceSave(provider);
+    expect(result.ok).to.be.true;
+    expect(ws.sent).to.have.length(1);
+  });
+
+  it('ignores unrelated message types while waiting for ack', async () => {
+    const listeners = [];
+    const sent = [];
+
+    const ws = {
+      sent,
+      addEventListener(type, cb) { if (type === 'message') listeners.push(cb); },
+      removeEventListener(type, cb) {
+        if (type !== 'message') return;
+        const i = listeners.indexOf(cb);
+        if (i > -1) listeners.splice(i, 1);
+      },
+      send(data) {
+        sent.push(data);
+        // Send a yjs sync message (type 0) first, then the real ack
+        setTimeout(() => {
+          listeners.forEach((cb) => cb({ data: new Uint8Array([0, 0]).buffer }));
+        }, 5);
+        setTimeout(() => {
+          listeners.forEach((cb) => cb({ data: new Uint8Array([3, 1]).buffer }));
+        }, 10);
+      },
+    };
+    const provider = buildFakeProvider({ wsconnected: true, ws });
+    const result = await forceSave(provider);
+    expect(result.ok).to.be.true;
   });
 });
