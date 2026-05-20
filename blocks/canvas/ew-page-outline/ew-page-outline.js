@@ -5,7 +5,7 @@ import { editorHtmlChange, editorSelectChange, parseSections } from '../editor-u
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { moveBlock, moveSection } from '../editor-utils/blocks.js';
 
-const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -33,13 +33,13 @@ class EwPageOutline extends LitElement {
   static properties = {
     _sections: { state: true },
     _selectedBlockIndex: { state: true },
+    _hashState: { state: true },
   };
-
-  _hashCtrl = new HashController(this);
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubscribeHtml = editorHtmlChange.subscribe((aemHtml) => {
       if (aemHtml.trim()) {
         const next = parseSections(aemHtml);
@@ -58,12 +58,13 @@ class EwPageOutline extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this._unsubHash?.();
     this._unsubscribeHtml?.();
     this._unsubscribeSelect?.();
   }
 
   get _selectedPath() {
-    const { org, site, path } = this._hashCtrl.value ?? {};
+    const { org, site, path } = this._hashState ?? {};
     return org && site && path ? `${org}/${site}/${path}` : '';
   }
 

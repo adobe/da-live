@@ -11,7 +11,7 @@ import {
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
-const { loadStyle, HashController } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
 const iconAdd = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
@@ -28,12 +28,18 @@ class EwPanelLibrary extends LitElement {
     _expandedBlock: { state: true },
     _preview: { state: true },
     _tooltipOpen: { state: true },
+    _hashState: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._hash = new HashController(this);
+    this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubHash?.();
   }
 
   willUpdate(changed) {
@@ -102,7 +108,7 @@ class EwPanelLibrary extends LitElement {
   }
 
   async _openPreview(item) {
-    const { org, site } = this._hash.value || {};
+    const { org, site } = this._hashState || {};
     if (!org || !site) return;
     const details = getItemPreviewUrl(item, { org, site });
     this._preview = {
