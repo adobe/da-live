@@ -885,7 +885,7 @@ export default class DaList extends LitElement {
       ? html`<ul>${results.map(({ name, url }) => html`
           <li><a href="${url}" target="_blank">${name}</a></li>
         `)}</ul>`
-      : html`<p>Preview the selected ${count} ${count === 1 ? 'item' : 'items'}?</p>`;
+      : html`<p>Preview the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>`;
 
     return html`
       <da-dialog
