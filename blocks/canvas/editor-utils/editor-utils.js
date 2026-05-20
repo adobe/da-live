@@ -320,7 +320,7 @@ export async function fetchWysiwygCookie({ org, repo, token }) {
   }
 
   try {
-    const contentResp = await fetch(contentUrl, { method: 'GET', credentials: 'include' });
+    const contentResp = await fetch(contentUrl, { method: 'GET', credentials: 'include', headers: { Authorization: `Bearer ${token}` } });
     if (!contentResp.ok) {
       // eslint-disable-next-line no-console
       console.warn('[canvas:wysiwyg] content gimme_cookie non-ok (non-fatal)', contentResp.status);
