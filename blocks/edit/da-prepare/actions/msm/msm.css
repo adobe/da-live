@@ -1,13 +1,18 @@
 :host {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: 500px;
-  min-height: 280px;
+  gap: 14px;
+  width: 420px;
+  /* Tall enough that the action picker's dropdown fits below the picker
+     without the dialog needing to scroll. The direction switch filters the
+     picker to one direction at a time, so 5 rows max + 2 group labels. */
+  min-height: 340px;
   margin: 0 24px 24px;
 
   p { margin: 0; }
 }
+
+/* --- Loading / empty states --- */
 
 .loading,
 .no-satellites {
@@ -16,78 +21,204 @@
   color: var(--s2-gray-600, #717171);
 }
 
-/* --- Satellite status line --- */
+/* --- Inheritance breadcrumb (static) --- */
 
-.sat-status-line {
+.crumb-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--s2-gray-700, #4b4b4b);
+}
+
+.crumb-label {
+  color: var(--s2-gray-600, #717171);
+  margin-right: 4px;
+}
+
+.crumb-node {
   color: var(--s2-gray-800, #292929);
 }
 
-.sat-status-label {
-  color: var(--s2-gray-600, #717171);
-}
-
-.sat-status-value {
+.crumb-node.current {
+  color: var(--s2-blue-700, #393dba);
   font-weight: 600;
 }
 
-/* --- Action row (side-by-side dropdowns) --- */
-
-.action-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-
-  se-select {
-    flex: 0 0 calc(50% - 8px);
-    min-width: 0;
-  }
+.crumb-sep {
+  color: var(--s2-gray-400, #b1b1b1);
 }
 
-/* --- Two-column grid --- */
+/* --- Direction switch (Spectrum 2 Switch, size M) --- */
+
+.direction-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--s2-gray-900, #292929);
+  cursor: pointer;
+  user-select: none;
+  width: max-content;
+}
+
+.direction-switch input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  margin: 0;
+  width: 26px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--s2-gray-300, #d4d4d4);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.direction-switch input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  transition: transform 0.15s ease-in-out;
+}
+
+.direction-switch input[type="checkbox"]:checked {
+  background: var(--s2-blue-700, #393dba);
+}
+
+.direction-switch input[type="checkbox"]:checked::after {
+  transform: translateX(12px);
+}
+
+.direction-switch input[type="checkbox"]:hover:not(:disabled) {
+  background: var(--s2-gray-400, #b1b1b1);
+}
+
+.direction-switch input[type="checkbox"]:checked:hover:not(:disabled) {
+  background: var(--s2-blue-800, #2c3093);
+}
+
+.direction-switch input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--s2-blue-700, #393dba);
+  outline-offset: 2px;
+}
+
+.direction-switch input[type="checkbox"]:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.descendant-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--s2-gray-700, #4b4b4b);
+  background: var(--s2-gray-200, #e1e1e1);
+  border-radius: 8px;
+  vertical-align: middle;
+}
+
+/* --- Action row --- */
+
+.action-row {
+  display: grid;
+  /* Always two equal columns — the action picker stays at 50% width whether or
+     not the sync-mode picker is visible, so the layout stays stable. */
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.action-row se-select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* --- Upward summary (Source / Target / Override status) --- */
+
+.upward-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.upward-summary .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 20px;
+}
+
+.upward-summary .label {
+  color: var(--s2-gray-600, #717171);
+}
+
+.upward-summary .value {
+  font-weight: 600;
+  color: var(--s2-gray-900, #292929);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.upward-summary .value.muted {
+  font-weight: 500;
+  color: var(--s2-gray-600, #717171);
+}
+
+/* --- Children list (two-column: Inherited | Custom) ---
+   Hidden entirely when the Sync-from-parent switch is on; the parent
+   render function (renderChildrenList) returns `nothing` in upward mode. */
 
 .satellite-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
-  margin-top: 16px;
 }
 
 .satellite-column {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .column-heading {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--s2-gray-500, #929292);
+  letter-spacing: 0.05em;
+  color: var(--s2-gray-600, #717171);
   padding-bottom: 4px;
   border-bottom: 1px solid var(--s2-gray-200, #e1e1e1);
-  margin-bottom: 2px;
+  margin: 0 0 4px;
 }
-
-/* --- Satellite list --- */
 
 .satellite-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 260px;
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
   overflow-y: auto;
 
   &::-webkit-scrollbar { width: 5px; }
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb {
-    background: var(--s2-gray-300, #d1d1d1);
+    background: var(--s2-gray-300, #d4d4d4);
     border-radius: 3px;
-    &:hover { background: var(--s2-gray-500, #999); }
+    &:hover { background: var(--s2-gray-500, #929292); }
   }
 }
 
@@ -99,7 +230,7 @@
   border-radius: 4px;
   transition: background-color 0.1s;
 
-  &:hover:not(.out-of-scope) { background: var(--s2-gray-100, #f5f5f5); }
+  &:hover:not(.out-of-scope) { background: var(--s2-gray-50, #f8f8f8); }
 
   &.out-of-scope {
     opacity: 0.38;
@@ -123,9 +254,10 @@
   }
 }
 
-/* --- S2 checkbox (matches spectrum-two.css tokens) --- */
+/* --- S2 checkbox (matches spectrum-two tokens) --- */
 
-.sat-row input[type="checkbox"] {
+.sat-row input[type="checkbox"],
+.footer-cascade input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   width: 14px;
@@ -149,7 +281,6 @@
       inset: 0;
       top: -2px;
       left: -3px;
-      /* checkmark: 2px white strokes */
       width: 4px;
       height: 8px;
       margin: auto;
@@ -160,14 +291,14 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--s2-blue-900, #3b63fb);
+    outline: 2px solid var(--s2-blue-700, #393dba);
     outline-offset: 2px;
   }
 
   &:disabled { opacity: 0.4; cursor: default; }
 
   &:hover:not(:disabled) {
-    border-color: var(--s2-gray-700, #505050);
+    border-color: var(--s2-gray-700, #4b4b4b);
   }
 
   &:checked:hover:not(:disabled) {
@@ -220,19 +351,32 @@
   }
 }
 
-/* --- Footer actions --- */
+/* --- Footer (single, shared) --- */
 
 .form-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
 }
 
-/* --- Confirm dialog --- */
+.footer-cascade {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--s2-gray-800, #292929);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* --- Confirm dialog (yellow caution box) --- */
 
 .confirm-box {
   padding: 12px;
-  background: #fef9ee;
-  border: 1px solid #f0dca0;
+  background: var(--s2-yellow-100, #fef9ee);
+  border: 1px solid var(--s2-yellow-300, #f0dca0);
   border-radius: 8px;
   font-size: 14px;
   color: var(--s2-gray-900, #292929);
@@ -266,7 +410,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--s2-blue-900, #1473e6);
+    outline: 2px solid var(--s2-blue-700, #393dba);
     outline-offset: 2px;
   }
 

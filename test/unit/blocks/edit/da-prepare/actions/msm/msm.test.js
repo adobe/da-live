@@ -213,6 +213,125 @@ describe('DaMsm component', () => {
     });
   });
 
+  describe('rendering — direction switch', () => {
+    const DUAL_ROLE_CONFIG = {
+      msm: {
+        data: [
+          { base: 'global', satellite: '', title: 'Global' },
+          { base: 'global', satellite: 'regional', title: 'Regional' },
+          { base: 'regional', satellite: 'local', title: 'Local' },
+        ],
+      },
+    };
+
+    it('hides switch on base-only pages', async () => {
+      const mock = createFetchMock({ orgConfigs: { 'msm-base-only': BASE_CONFIG } });
+      await fixture({ org: 'msm-base-only', site: 'mccs', path: '/about' }, mock);
+      await nextFrame();
+
+      expect(el.shadowRoot.querySelector('.direction-switch')).to.not.exist;
+    });
+
+    it('hides switch on satellite-only pages', async () => {
+      const mock = createFetchMock({ orgConfigs: { 'msm-sat-only': BASE_CONFIG } });
+      await fixture({ org: 'msm-sat-only', site: 'san-diego', path: '/about' }, mock);
+      await nextFrame();
+
+      expect(el.shadowRoot.querySelector('.direction-switch')).to.not.exist;
+    });
+
+    it('shows switch on dual-role pages (default off, downward mode)', async () => {
+      const mock = createFetchMock({ orgConfigs: { 'msm-dual': DUAL_ROLE_CONFIG } });
+      await fixture({ org: 'msm-dual', site: 'regional', path: '/about' }, mock);
+      await nextFrame();
+
+      const sw = el.shadowRoot.querySelector('.direction-switch');
+      expect(sw).to.exist;
+      const input = sw.querySelector('input[type="checkbox"]');
+      expect(input.checked).to.be.false;
+      expect(el._isUpwardMode).to.be.false;
+    });
+
+    it('toggling switch on flips action to sync-from-base (upward)', async () => {
+      const mock = createFetchMock({ orgConfigs: { 'msm-dual-toggle': DUAL_ROLE_CONFIG } });
+      await fixture({ org: 'msm-dual-toggle', site: 'regional', path: '/about' }, mock);
+      await nextFrame();
+
+      expect(el._isUpwardMode).to.be.false;
+
+      el.onDirectionToggle(true);
+      await nextFrame();
+
+      expect(el._isUpwardMode).to.be.true;
+      expect(el._action).to.equal('sync-from-base');
+    });
+
+    it('toggling switch off restores downward action', async () => {
+      const mock = createFetchMock({ orgConfigs: { 'msm-dual-off': DUAL_ROLE_CONFIG } });
+      await fixture({ org: 'msm-dual-off', site: 'regional', path: '/about' }, mock);
+      await nextFrame();
+
+      el.onDirectionToggle(true);
+      await nextFrame();
+      expect(el._isUpwardMode).to.be.true;
+
+      el.onDirectionToggle(false);
+      await nextFrame();
+
+      expect(el._isUpwardMode).to.be.false;
+      expect(el._action).to.equal('preview');
+    });
+
+    it('hides children list when switch is on (dual-role)', async () => {
+      const mock = createFetchMock({ orgConfigs: { 'msm-dual-hide': DUAL_ROLE_CONFIG } });
+      await fixture({ org: 'msm-dual-hide', site: 'regional', path: '/about' }, mock);
+      await nextFrame();
+
+      expect(el.shadowRoot.querySelector('.satellite-grid')).to.exist;
+
+      el.onDirectionToggle(true);
+      await nextFrame();
+
+      expect(el.shadowRoot.querySelector('.satellite-grid')).to.not.exist;
+    });
+  });
+
+  describe('cascade descendant scoping', () => {
+    // Tests the _totalDescendants getter directly without mounting, so
+    // loadConfig can't overwrite the satellites we set.
+    function makeStandalone(action, satellites) {
+      el = document.createElement('da-msm');
+      el._satellites = satellites;
+      el._action = action;
+      return el;
+    }
+
+    const MIXED = [
+      // Inherited site, no descendants.
+      { site: 'plain', label: 'Plain', hasOverride: false, descendantCount: 0, status: undefined },
+      // Custom site (out of scope for inherited actions) with 3 descendants.
+      { site: 'custom-with-kids', label: 'Custom With Kids', hasOverride: true, descendantCount: 3, status: undefined },
+    ];
+
+    it('excludes out-of-scope custom descendants for an inherited action', () => {
+      // 'preview' scope is 'inherited'; the only inherited site has no
+      // descendants, so the cascade total must be 0.
+      makeStandalone('preview', MIXED);
+      expect(el._totalDescendants).to.equal(0);
+    });
+
+    it('includes custom descendants when action scope is custom', () => {
+      // 'sync' scope is 'custom'; the custom site contributes its descendants.
+      makeStandalone('sync', MIXED);
+      expect(el._totalDescendants).to.equal(3);
+    });
+
+    it('returns 0 for upward actions (no downward scope)', () => {
+      makeStandalone('sync-from-base', MIXED);
+      expect(el._totalDescendants).to.equal(0);
+    });
+  });
+
   describe('rendering — satellite view', () => {
     it('shows base site name and action pickers', async () => {
       const mock = createFetchMock({});
