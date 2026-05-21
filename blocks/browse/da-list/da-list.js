@@ -921,8 +921,8 @@ export default class DaList extends LitElement {
         .action=${action}
         @close=${this.handleErrorClose}>
         ${this._itemErrors.map((item) => html`
-          <p class="dialog-item-label">${item.message}</p>
-          <p class="dialog-item-name">${item.name}</p>
+          <p class="error-item-message">${item.message}</p>
+          <p class="error-item-name">${item.name}</p>
         `)}
       </da-dialog>
     `;
