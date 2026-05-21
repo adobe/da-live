@@ -55,7 +55,8 @@ button {
   gap: 8px;
 }
 
-.da-action-bar .preview-button img {
+.da-action-bar .preview-button img,
+.da-action-bar .publish-button img {
   filter: brightness(0) invert(1);
 }
 

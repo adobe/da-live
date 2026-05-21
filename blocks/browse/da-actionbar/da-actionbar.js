@@ -86,6 +86,12 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handlePublish() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpublish', opts);
+    this.dispatchEvent(event);
+  }
+
   async handleShare() {
     const { items2Clipboard } = await import('../da-list/helpers/utils.js');
     items2Clipboard(this.items);
@@ -107,13 +113,15 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canPreview() {
-    const hasFile = this.items.some((item) => item.ext && item.ext !== 'link');
-    return hasFile && !this._isCopying;
+    return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
+  }
+
+  get _canPublish() {
+    return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
   get _canShare() {
-    const isFile = this.items.some((item) => item.ext && item.ext !== 'link');
-    return isFile && !this._isCopying;
+    return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
   get currentAction() {
@@ -173,6 +181,12 @@ export default class DaActionBar extends LitElement {
             class="preview-button ${this._canPreview ? '' : 'hide'}">
             <img src="/blocks/edit/img/S2_Icon_Preview_20_N.svg" alt="" aria-hidden="true"/>
             <span>Preview</span>
+          </button>
+          <button
+            @click=${this.handlePublish}
+            class="publish-button ${this._canPublish ? '' : 'hide'}">
+            <img src="/blocks/edit/img/S2_Icon_Publish_20_N.svg" alt="" aria-hidden="true"/>
+            <span>Publish</span>
           </button>
           <button
             @click=${this.handleShare}

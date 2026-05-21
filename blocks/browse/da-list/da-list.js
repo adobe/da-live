@@ -1,7 +1,7 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { daFetch, aemAdmin, aemAction, saveDaVersion } from '../../shared/utils.js';
+import { daFetch, aemAdmin, aemAction, saveDaVersion, getExistingSchedule } from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -475,28 +475,55 @@ export default class DaList extends LitElement {
     this._confirm = { type: 'preview', results: null };
   }
 
-  async handleConfirmPreview() {
-    const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
+  handlePublish() {
+    this._confirm = { type: 'publish', results: null };
+  }
 
+  async handleConfirmPublish() {
+    this._confirm = { type: 'publish', results: null, checking: true };
     const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+
+    const scheduleChecks = await Promise.all(items.map(async (item) => {
+      const [, org, site, ...rest] = item.path.toLowerCase().split('/');
+      const pagePath = `/${rest.join('/')}`.replace(/\.html$/, '');
+      const schedule = await getExistingSchedule(org, site, pagePath);
+      if (!schedule?.scheduled) return null;
+      return { ...item, scheduledPublish: schedule.scheduledPublish, userId: schedule.userId };
+    }));
+
+    const scheduled = scheduleChecks.filter(Boolean);
+    if (scheduled.length > 0) {
+      this._confirm = { type: 'publish', results: null, scheduled };
+      return;
+    }
+
+    await this.runAemQueue('publish');
+  }
+
+  async handleConfirmPreview() {
+    await this.runAemQueue('preview');
+  }
+
+  async runAemQueue(action) {
+    const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
+    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+    this._confirm = { type: action, results: null };
     this._itemsRemaining = items.length;
     const results = [];
 
+    const label = action === 'publish' ? 'Published' : 'Previewed';
     const callback = async (item) => {
-      const json = await aemAction(item.path, 'preview');
+      const json = await aemAction(item.path, action);
       if (json.error) {
-        this._itemErrors.push({ ...item, message: json.error.message || "Couldn't preview item" });
+        this._itemErrors.push({ ...item, message: json.error.message || `Couldn't ${action} item` });
       } else {
-        saveDaVersion(item.path, 'Previewed');
-        results.push({ name: item.name, url: json.preview?.url });
+        saveDaVersion(item.path, label);
+        results.push({ name: item.name, url: json[action]?.url });
       }
       this._itemsRemaining -= 1;
       if (this._itemsRemaining === 0) {
-        if (results.length > 0) {
-          this._confirm = { type: 'preview', results };
-        } else {
-          this.handleConfirmClose();
-        }
+        if (results.length > 0) this._confirm = { type: action, results };
+        else this.handleConfirmClose();
       }
     };
 
@@ -861,38 +888,66 @@ export default class DaList extends LitElement {
     `;
   }
 
-  renderPreviewConfirm() {
-    const { results } = this._confirm;
+  renderAemConfirm() {
+    const { type, results, scheduled, checking } = this._confirm;
     const hasResults = results !== null;
-    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
-    const count = items.length;
+    const hasScheduled = scheduled?.length > 0;
+    const count = this._selectedItems.filter((item) => item.ext && item.ext !== 'link').length;
     const hasRemaining = this._itemsRemaining !== 0;
+    const label = type === 'publish' ? 'Publish' : 'Preview';
 
-    const title = hasResults ? 'Preview complete' : 'Preview';
-    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
-    const closeHandler = hasResults ? this.handleClear : this.handleConfirmClose;
+    let title;
+    let closeHandler;
+    let action;
+    let body;
 
-    const action = hasResults
-      ? {
+    if (hasResults) {
+      title = `${label} complete`;
+      closeHandler = this.handleClear;
+      action = {
         style: 'accent',
         label: 'Copy URLs',
         click: () => {
           const text = results.map(({ url }) => url).join('\n');
           navigator.clipboard.writeText(text);
         },
-      }
-      : {
-        style: 'accent',
-        label: 'Preview',
-        click: async () => this.handleConfirmPreview(),
-        disabled: hasRemaining,
       };
+      body = html`${results.map(({ name, url }) => html`
+        <p class="dialog-item-name"><a href="${url}" target="_blank">${name}</a></p>
+      `)}`;
+    } else if (hasScheduled) {
+      title = 'Scheduled content';
+      closeHandler = this.handleConfirmClose;
+      action = {
+        style: 'accent',
+        label: 'Confirm Publish',
+        click: async () => this.runAemQueue('publish'),
+      };
+      const overrideCount = scheduled.length === 1 ? 'This item has' : `${scheduled.length} items have`;
+      body = html`
+        <p>${overrideCount} a scheduled publish - publishing now will override:</p>
+        ${scheduled.map(({ name, scheduledPublish, userId }) => {
+        const time = new Date(scheduledPublish).toLocaleString();
+        return html`
+            <strong class="dialog-item-label">${name}</strong>
+            <p class="dialog-item-name">${userId ? `${time} by ${userId}` : time}</p>
+          `;
+      })}
+      `;
+    } else {
+      title = label;
+      closeHandler = this.handleConfirmClose;
+      const handler = type === 'publish' ? this.handleConfirmPublish : this.handleConfirmPreview;
+      action = {
+        style: 'accent',
+        label: checking ? 'Checking...' : label,
+        click: async () => handler.call(this),
+        disabled: checking || hasRemaining,
+      };
+      body = html`<p>${label} the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>`;
+    }
 
-    const body = hasResults
-      ? html`${results.map(({ name, url }) => html`
-          <p><a href="${url}" target="_blank">${name}</a></p>
-        `)}`
-      : html`<p>Preview the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>`;
+    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
 
     return html`
       <da-dialog
@@ -1040,13 +1095,14 @@ export default class DaList extends LitElement {
         @onpaste=${this.handlePaste}
         @ondelete=${this.handleDelete}
         @onpreview=${this.handlePreview}
+        @onpublish=${this.handlePublish}
         @onshare=${this.handleShare}
         currentPath="${this.fullpath}"
         role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
       ${this._confirm === 'delete' ? this.renderConfirm() : nothing}
-      ${this._confirm?.type === 'preview' ? this.renderPreviewConfirm() : nothing}
+      ${this._confirm?.type ? this.renderAemConfirm() : nothing}
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;
