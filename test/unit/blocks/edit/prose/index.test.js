@@ -489,6 +489,28 @@ describe('prose/index createConnection rapid-reconnect guard (COR-44)', () => {
     ydoc.destroy();
   });
 
+  it('Second close without a reconnect open is treated as a short session', async () => {
+    const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/o/r/p.html');
+    clearTimers();
+
+    // Healthy first session: open, live > 5s, close — no backoff, counter reset.
+    wsProvider.emit('status', [{ status: 'connected' }]);
+    advance(6000);
+    wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+    await flushMicrotasks();
+    expect(lastManualBackoff()).to.equal(undefined);
+
+    // Reconnect attempt fails before 'connected' fires — second close arrives
+    // with no new lastOpenAt. Without the reset the stale timestamp from 6s ago
+    // would make sessionMs look healthy and suppress the backoff.
+    wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+    await flushMicrotasks();
+    expect(lastManualBackoff()).to.exist;
+    expect(lastManualBackoff().delay).to.equal(1000);
+
+    ydoc.destroy();
+  });
+
   it('Auth-close (4401) does NOT engage rapid-reconnect guard', async () => {
     window.localStorage.setItem('nx-ims', 'true');
     const savedIMS = window.adobeIMS;
