@@ -82,7 +82,10 @@ export const [setNx, getNx] = (() => {
   ];
 })();
 
-export const getNx2 = () => (getNx().endsWith('/nx') ? `${getNx()}2` : getNx());
+export const getNx2 = () => {
+  const nx = getNx();
+  return nx.endsWith('/nx') ? `${nx}2` : nx;
+};
 
 let nx2ApiPromise;
 export const getNx2Api = () => {

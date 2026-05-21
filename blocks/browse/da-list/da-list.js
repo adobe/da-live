@@ -119,9 +119,8 @@ export default class DaList extends LitElement {
   async getList() {
     try {
       this._continuationToken = null;
-      const [org, site, ...parts] = this.fullpath.slice(1).split('/');
       const { source } = await getNx2Api();
-      const { ok, items, continuationToken, permissions } = await source.list({ org, site, path: parts.join('/') });
+      const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
       if (!ok) {
         this._emptyMessage = 'Not permitted';
         this.resetListItemPaths([]);
@@ -147,11 +146,13 @@ export default class DaList extends LitElement {
     const requestToken = this._continuationToken;
     this._isLoadingMore = true;
     try {
-      const [org, site, ...parts] = this.fullpath.slice(1).split('/');
       const opts = { headers: { 'da-continuation-token': requestToken } };
       const { source } = await getNx2Api();
-      const { ok, items: nextItems, continuationToken: nextToken, permissions } = await source.list({ org, site, path: parts.join('/'), opts });
-      if (!ok) return { added: 0, token: null };
+      const { ok, items: nextItems, continuationToken: nextToken, permissions } = await source.list(this.fullpath, { opts });
+      if (!ok) {
+        this._emptyMessage = 'Not permitted';
+        return { added: 0, token: null };
+      }
       if (permissions) this.handlePermissions(permissions);
       const existingItems = this._listItems || [];
       if (existingItems.length && this._listItemPaths.size === 0) {

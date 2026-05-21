@@ -94,20 +94,17 @@ export default class DaNew extends LitElement {
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
-    const editPath = getEditPath({ path, ext, editor: this.editor });
     const { source } = await getNx2Api();
     if (this._createType === 'folder') {
       await source.createFolder(path);
-    } else if (ext !== 'json') {
-      // Sheet skips the save — the editor creates it on first load.
+      this.sendNewItem({ name: this._createName, path });
+    } else if (ext === 'link') {
       await source.save(path, { data });
-    }
-    if (ext === 'html' || ext === 'json') {
-      window.location = editPath;
+      this.sendNewItem({ name: this._createName, path, ext });
     } else {
-      const item = { name: this._createName, path };
-      if (ext) item.ext = ext;
-      this.sendNewItem(item);
+      // Sheet skips the save — the editor creates it on first load.
+      if (ext === 'html') await source.save(path, { data });
+      window.location = getEditPath({ path, ext, editor: this.editor });
     }
     this.resetCreate();
   }

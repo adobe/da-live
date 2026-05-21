@@ -220,7 +220,8 @@ export default class DaSearch extends LitElement {
         const getResp = await source.load(file.path);
         const text = await getResp.text();
         const replacedText = text.replaceAll(this._term, replace.value);
-        const postResp = await source.save(file.path, { data: replacedText });
+        const blob = new Blob([replacedText], { type: 'text/html' });
+        const postResp = await source.save(file.path, { data: blob });
         if (!postResp.ok) return { error: 'Error saving file' };
         this._matches += 1;
         return file;
