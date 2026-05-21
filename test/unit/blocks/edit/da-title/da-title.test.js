@@ -514,10 +514,18 @@ describe('DaTitle', () => {
         dialogShown = true;
         return false; // user cancels
       };
-      window.fetch = () => Promise.resolve(new Response(
-        JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
-        { status: 200 },
-      ));
+      window.fetch = (url) => {
+        if (url.includes('snapshot-scheduler')) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ scheduled: true, scheduledPublish: '2026-12-31' }),
+            { status: 200 },
+          ));
+        }
+        return Promise.resolve(new Response(
+          JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
+          { status: 200 },
+        ));
+      };
       const opens = [];
       const savedOpen = window.open;
       window.open = (...args) => { opens.push(args); };

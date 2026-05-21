@@ -873,7 +873,14 @@ export default class DaList extends LitElement {
     const closeHandler = hasResults ? this.handleClear : this.handleConfirmClose;
 
     const action = hasResults
-      ? { style: 'accent', label: 'Close', click: () => this.handleClear() }
+      ? {
+        style: 'accent',
+        label: 'Copy URLs',
+        click: () => {
+          const text = results.map(({ url }) => url).join('\n');
+          navigator.clipboard.writeText(text);
+        },
+      }
       : {
         style: 'accent',
         label: 'Preview',
@@ -882,9 +889,9 @@ export default class DaList extends LitElement {
       };
 
     const body = hasResults
-      ? html`<ul>${results.map(({ name, url }) => html`
-          <li><a href="${url}" target="_blank">${name}</a></li>
-        `)}</ul>`
+      ? html`${results.map(({ name, url }) => html`
+          <p><a href="${url}" target="_blank">${name}</a></p>
+        `)}`
       : html`<p>Preview the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>`;
 
     return html`
@@ -914,8 +921,8 @@ export default class DaList extends LitElement {
         .action=${action}
         @close=${this.handleErrorClose}>
         ${this._itemErrors.map((item) => html`
-          <p class="error-item-message">${item.message}</p>
-          <p class="error-item-name">${item.name}</p>
+          <p class="dialog-item-label">${item.message}</p>
+          <p class="dialog-item-name">${item.name}</p>
         `)}
       </da-dialog>
     `;
