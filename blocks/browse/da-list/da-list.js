@@ -504,7 +504,7 @@ export default class DaList extends LitElement {
     await this.runAemQueue('preview');
   }
 
-  async runAemQueue(action) {
+  async runAemQueue(action, { override = false } = {}) {
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
     const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
     this._confirm = { type: action, results: null };
@@ -512,13 +512,15 @@ export default class DaList extends LitElement {
     const results = [];
 
     const label = action === 'publish' ? 'Published' : 'Previewed';
+    const urlKey = action === 'publish' ? 'live' : 'preview';
+    const aemOpts = override ? { onScheduled: () => true } : {};
     const callback = async (item) => {
-      const json = await aemAction(item.path, action);
-      if (json.error) {
-        this._itemErrors.push({ ...item, message: json.error.message || `Couldn't ${action} item` });
+      const json = await aemAction(item.path, action, aemOpts);
+      if (json.error || json.cancelled) {
+        this._itemErrors.push({ ...item, message: json.error?.message || `Couldn't ${action} item` });
       } else {
         saveDaVersion(item.path, label);
-        results.push({ name: item.name, url: json[action]?.url });
+        results.push({ name: item.name, url: json[urlKey]?.url });
       }
       this._itemsRemaining -= 1;
       if (this._itemsRemaining === 0) {
@@ -921,7 +923,7 @@ export default class DaList extends LitElement {
       action = {
         style: 'accent',
         label: 'Confirm Publish',
-        click: async () => this.runAemQueue('publish'),
+        click: async () => this.runAemQueue('publish', { override: true }),
       };
       const overrideCount = scheduled.length === 1 ? 'This item has' : `${scheduled.length} items have`;
       body = html`
