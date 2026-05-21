@@ -154,7 +154,9 @@ async function wrapActionResp(resp) {
   const status = resp?.status ?? 0;
   if (!ok || status === 204) return { ok, status, continuationToken: null };
   let body;
-  try { body = await resp.json(); } catch { body = null; }
+  try {
+    body = await resp.json();
+  } catch { body = null; }
   return { ok, status, continuationToken: body?.continuationToken || null };
 }
 
@@ -457,9 +459,7 @@ export const config = {
 
 // org: organization-level operations. New-API only; no hlx6 detection
 // (no site to probe). The endpoint will 404 on non-migrated orgs.
-const orgNs = {
-  listSites: async ({ org }) => daFetch({ url: `${AEM_API}/${org}/sites` }),
-};
+const orgNs = { listSites: async ({ org }) => daFetch({ url: `${AEM_API}/${org}/sites` }) };
 export { orgNs as org };
 
 // status: single-path only. H6 has no bulk status endpoint.

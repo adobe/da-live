@@ -411,7 +411,6 @@ describe('DaList helpers', () => {
       expect(items).to.deep.equal([]);
       expect(el._emptyMessage).to.equal('Not permitted');
     });
-
   });
 
   describe('loadMore', () => {
