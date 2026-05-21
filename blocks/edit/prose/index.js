@@ -29,6 +29,16 @@ import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { forceSave } from './forcesave.js';
 
+// Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
+// every successful onopen, so a close that follows a brief successful
+// handshake reschedules at 100ms. Single users behind corporate proxies can
+// sustain thousands of WS upgrades/sec/IP through this path. The guard below
+// detects open-then-close cycles shorter than MIN_HEALTHY_SESSION_MS and
+// applies a manual exponential backoff before letting the provider reconnect.
+const MIN_HEALTHY_SESSION_MS = 5000;
+const SHORT_SESSION_BASE_MS = 1000;
+const SHORT_SESSION_MAX_MS = 30000;
+
 async function checkDoc(path) {
   return daFetch(path, { method: 'HEAD' });
 }
@@ -56,6 +66,13 @@ export async function createConnection(path) {
   provider.maxBackoffTime = 30000;
 
   let lastSentToken = token || null;
+  let lastOpenAt = 0;
+  let failedShortSessions = 0;
+
+  provider.on('status', (st) => {
+    if (st?.status === 'connected') lastOpenAt = Date.now();
+  });
+
   provider.on('connection-close', async (event) => {
     if (event?.code === 4401 || event?.code === 4403) {
       provider.shouldConnect = false;
@@ -78,6 +95,28 @@ export async function createConnection(path) {
       provider.connect();
       return;
     }
+
+    // Non-auth close: rapid-reconnect guard. y-websocket's own 100ms
+    // setTimeout(setupWS) still fires from onclose, but provider.disconnect()
+    // flips shouldConnect=false so that timer's setupWS call no-ops. The
+    // manual setTimeout below is what re-arms the connection.
+    const sessionMs = lastOpenAt ? Date.now() - lastOpenAt : 0;
+    if (sessionMs >= MIN_HEALTHY_SESSION_MS) {
+      failedShortSessions = 0;
+    } else {
+      const delay = Math.min(
+        2 ** failedShortSessions * SHORT_SESSION_BASE_MS,
+        SHORT_SESSION_MAX_MS,
+      );
+      failedShortSessions += 1;
+      provider.shouldConnect = false;
+      provider.disconnect();
+      setTimeout(() => {
+        provider.shouldConnect = true;
+        provider.connect();
+      }, delay);
+    }
+
     const fresh = await getAuthToken();
     provider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
     lastSentToken = fresh;

@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { Y } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import initProse, {
@@ -277,7 +278,7 @@ describe('prose/index createConnection', () => {
     }
   });
 
-  it('Non-auth close with no token reconnects as anonymous', async () => {
+  it('Non-auth close with no token keeps anonymous protocols and engages rapid-reconnect guard', async () => {
     window.localStorage.removeItem('nx-ims');
     const savedIMS = window.adobeIMS;
     delete window.adobeIMS;
@@ -290,11 +291,259 @@ describe('prose/index createConnection', () => {
       wsProvider.emit('connection-close', [{ code: 1006 }, wsProvider]);
       await new Promise((r) => { setTimeout(r, 0); });
 
+      // Protocols stay anonymous (no IMS token in this scenario).
       expect(wsProvider.protocols).to.deep.equal(['yjs']);
-      expect(wsProvider.shouldConnect).to.equal(true);
+      // COR-44 rapid-reconnect guard: this close was not preceded by a
+      // long-lived 'status' connected event, so the guard treats
+      // it as a short session and parks the provider in manual-reconnect
+      // mode.
+      expect(wsProvider.shouldConnect).to.equal(false);
 
       wsProvider.disconnect({ data: 'Client navigation' });
       wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+});
+
+describe('prose/index createConnection rapid-reconnect guard (COR-44)', () => {
+  let originalSetTimeout;
+  let originalClearTimeout;
+  let originalDateNow;
+  let originalWebSocket;
+  let timers;
+  let now;
+
+  function installFakes() {
+    now = 1000000;
+    timers = [];
+    originalDateNow = Date.now;
+    Date.now = () => now;
+    originalSetTimeout = window.setTimeout;
+    originalClearTimeout = window.clearTimeout;
+    window.setTimeout = (fn, delay) => {
+      const id = timers.length + 1;
+      timers.push({ id, fn, delay: delay || 0, cancelled: false });
+      return id;
+    };
+    window.clearTimeout = (id) => {
+      const t = timers.find((x) => x.id === id);
+      if (t) t.cancelled = true;
+    };
+    originalWebSocket = window.WebSocket;
+    window.WebSocket = function FakeWebSocket() {
+      this.readyState = 0;
+      this.close = () => {};
+      this.send = () => {};
+    };
+  }
+
+  function uninstallFakes() {
+    if (originalSetTimeout) window.setTimeout = originalSetTimeout;
+    if (originalClearTimeout) window.clearTimeout = originalClearTimeout;
+    if (originalDateNow) Date.now = originalDateNow;
+    if (originalWebSocket) window.WebSocket = originalWebSocket;
+  }
+
+  function advance(ms) { now += ms; }
+  function clearTimers() { timers = []; }
+  function lastManualBackoff() {
+    return [...timers].reverse().find((t) => !t.cancelled && t.delay >= 1000);
+  }
+
+  function flushMicrotasks() {
+    return new Promise((resolve) => { originalSetTimeout.call(window, resolve, 0); });
+  }
+
+  beforeEach(() => {
+    installFakes();
+    window.localStorage.removeItem('nx-ims');
+  });
+
+  afterEach(() => {
+    uninstallFakes();
+    window.localStorage.removeItem('nx-ims');
+    document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
+  });
+
+  it('Healthy reconnect: long-lived session does not trigger manual backoff', async () => {
+    const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/o/r/p.html');
+    clearTimers();
+    const disconnectSpy = sinon.spy(wsProvider, 'disconnect');
+
+    wsProvider.emit('status', [{ status: 'connected' }]);
+    advance(6000);
+    wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+    await flushMicrotasks();
+
+    expect(disconnectSpy.called).to.equal(false);
+    expect(lastManualBackoff()).to.equal(undefined);
+
+    disconnectSpy.restore();
+    ydoc.destroy();
+  });
+
+  it('Single short session arms a 1s manual backoff and reconnects', async () => {
+    const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/o/r/p.html');
+    clearTimers();
+    const disconnectSpy = sinon.spy(wsProvider, 'disconnect');
+    const connectSpy = sinon.spy(wsProvider, 'connect');
+
+    wsProvider.emit('status', [{ status: 'connected' }]);
+    advance(200);
+    wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+    await flushMicrotasks();
+
+    expect(disconnectSpy.called).to.equal(true);
+    expect(wsProvider.shouldConnect).to.equal(false);
+    const t = lastManualBackoff();
+    expect(t).to.exist;
+    expect(t.delay).to.equal(1000);
+
+    t.fn();
+    expect(wsProvider.shouldConnect).to.equal(true);
+    expect(connectSpy.called).to.equal(true);
+
+    disconnectSpy.restore();
+    connectSpy.restore();
+    ydoc.destroy();
+  });
+
+  it('Repeated short sessions back off exponentially: 1s, 2s, 4s', async () => {
+    const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/o/r/p.html');
+    clearTimers();
+    const delays = [];
+
+    for (let i = 0; i < 3; i += 1) {
+      wsProvider.emit('status', [{ status: 'connected' }]);
+      advance(200);
+      wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+      // eslint-disable-next-line no-await-in-loop
+      await flushMicrotasks();
+      const t = lastManualBackoff();
+      delays.push(t.delay);
+      t.cancelled = true;
+    }
+
+    expect(delays).to.deep.equal([1000, 2000, 4000]);
+
+    ydoc.destroy();
+  });
+
+  it('Backoff caps at 30s after many short sessions', async () => {
+    const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/o/r/p.html');
+    clearTimers();
+
+    for (let i = 0; i < 6; i += 1) {
+      wsProvider.emit('status', [{ status: 'connected' }]);
+      advance(200);
+      wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+      // eslint-disable-next-line no-await-in-loop
+      await flushMicrotasks();
+      const t = lastManualBackoff();
+      if (t) t.cancelled = true;
+    }
+
+    // 7th short close: pre-increment value is 6, so 2 ** 6 * 1000 = 64000,
+    // capped at SHORT_SESSION_MAX_MS = 30000.
+    wsProvider.emit('status', [{ status: 'connected' }]);
+    advance(200);
+    wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+    await flushMicrotasks();
+    const last = lastManualBackoff();
+    expect(last.delay).to.equal(30000);
+
+    ydoc.destroy();
+  });
+
+  it('Long-lived session resets the counter so next short close is 1s again', async () => {
+    const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/o/r/p.html');
+    clearTimers();
+
+    for (let i = 0; i < 2; i += 1) {
+      wsProvider.emit('status', [{ status: 'connected' }]);
+      advance(200);
+      wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+      // eslint-disable-next-line no-await-in-loop
+      await flushMicrotasks();
+      const t = lastManualBackoff();
+      if (t) t.cancelled = true;
+    }
+
+    // One healthy session: open, live > 5s, then close. No manual backoff.
+    wsProvider.emit('status', [{ status: 'connected' }]);
+    advance(6000);
+    wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+    await flushMicrotasks();
+    expect(lastManualBackoff()).to.equal(undefined);
+
+    // Next short close should use the base delay again.
+    wsProvider.emit('status', [{ status: 'connected' }]);
+    advance(200);
+    wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+    await flushMicrotasks();
+    expect(lastManualBackoff().delay).to.equal(1000);
+
+    ydoc.destroy();
+  });
+
+  it('Auth-close (4401) does NOT engage rapid-reconnect guard', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let tokenIndex = 0;
+    const tokens = ['T-old', 'T-new'];
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: tokens[tokenIndex] }),
+      refreshToken: async () => { tokenIndex = 1; },
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/o/r/p.html');
+      clearTimers();
+      const disconnectSpy = sinon.spy(wsProvider, 'disconnect');
+
+      wsProvider.emit('status', [{ status: 'connected' }]);
+      advance(200);
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await flushMicrotasks();
+      await flushMicrotasks();
+
+      expect(wsProvider.protocols).to.deep.equal(['yjs', 'T-new']);
+      expect(disconnectSpy.called).to.equal(false);
+      expect(lastManualBackoff()).to.equal(undefined);
+
+      disconnectSpy.restore();
+      ydoc.destroy();
+    } finally {
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('Auth-close (4401) with stale token still stops the loop and shows the banner', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-same' }),
+      refreshToken: async () => {},
+    };
+
+    try {
+      const { wsProvider, ydoc } = await createConnection('https://admin.da.live/source/o/r/p.html');
+      clearTimers();
+      const connectSpy = sinon.spy(wsProvider, 'connect');
+
+      wsProvider.emit('status', [{ status: 'connected' }]);
+      advance(200);
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await new Promise((r) => { originalSetTimeout.call(window, r, 100); });
+
+      expect(wsProvider.shouldConnect).to.equal(false);
+      expect(connectSpy.called).to.equal(false);
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.exist;
+
+      connectSpy.restore();
       ydoc.destroy();
     } finally {
       if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
