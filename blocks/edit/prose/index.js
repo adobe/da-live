@@ -101,6 +101,7 @@ export async function createConnection(path) {
     // flips shouldConnect=false so that timer's setupWS call no-ops. The
     // manual setTimeout below is what re-arms the connection.
     const sessionMs = lastOpenAt ? Date.now() - lastOpenAt : 0;
+    lastOpenAt = 0;
     if (sessionMs >= MIN_HEALTHY_SESSION_MS) {
       failedShortSessions = 0;
     } else {
