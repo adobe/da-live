@@ -148,7 +148,12 @@ export default class DaList extends LitElement {
     try {
       const opts = { headers: { 'da-continuation-token': requestToken } };
       const { source } = await getNx2Api();
-      const { ok, items: nextItems, continuationToken: nextToken, permissions } = await source.list(this.fullpath, { opts });
+      const {
+        ok,
+        items: nextItems,
+        continuationToken: nextToken,
+        permissions,
+      } = await source.list(this.fullpath, { opts });
       if (!ok) {
         this._emptyMessage = 'Not permitted';
         return { added: 0, token: null };
