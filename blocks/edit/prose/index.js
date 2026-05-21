@@ -57,12 +57,7 @@ export async function createConnection(path) {
 
   let lastSentToken = token || null;
   provider.on('connection-close', async (event) => {
-    // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
-    if (event?.code === 4403) {
-      provider.shouldConnect = false;
-      return;
-    }
-    if (event?.code === 4401) {
+    if (event?.code === 4401 || event?.code === 4403) {
       provider.shouldConnect = false;
       // Force imslib to attempt a refresh before deciding to give up.
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
@@ -327,8 +322,17 @@ function registerErrorHandler(ydoc) {
   ydoc.on('update', () => {
     const errorMap = ydoc.getMap('error');
     if (errorMap && errorMap.size > 0) {
-      // eslint-disable-next-line no-console
-      console.log('Error from server', JSON.stringify(errorMap));
+      const message = errorMap.get('message') || JSON.stringify(errorMap.toJSON());
+      if (message.startsWith('401')) {
+        // eslint-disable-next-line no-console
+        console.warn(`Message from collab: ${message}`);
+      } else if (message.startsWith('403 ')) {
+        // eslint-disable-next-line no-console
+        console.log(`Message from collab: ${message}`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(`Error message from collab: ${message}`, errorMap.toJSON());
+      }
       errorMap.clear();
     }
   });
