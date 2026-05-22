@@ -56,15 +56,32 @@ describe('da-auth-banner', () => {
     expect(banner.modal).to.equal(false);
   });
 
-  it('Action click calls handleSignOut which invokes adobeIMS.signOut', async () => {
+  it('Action click calls handleSignOut when signed inwhich invokes adobeIMS.signOut', async () => {
     let signOutCalls = 0;
-    window.adobeIMS = { signOut: () => { signOutCalls += 1; } };
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-initial' }),
+      signOut: () => { signOutCalls += 1; },
+    };
 
     const banner = showAuthBanner();
     await banner.updateComplete;
     await banner.action.click();
     await wait(50);
     expect(signOutCalls).to.equal(1);
+  });
+
+  it('Action click calls handleSignIn when signed out which invokes adobeIMS.signIn', async () => {
+    let signInCalls = 0;
+    window.adobeIMS = {
+      getAccessToken: () => null,
+      signIn: () => { signInCalls += 1; },
+    };
+
+    const banner = showAuthBanner();
+    await banner.updateComplete;
+    await banner.action.click();
+    await wait(50);
+    expect(signInCalls).to.equal(1);
   });
 
   it('Marks da-content and the collab actions wrapper inert while shown', async () => {
