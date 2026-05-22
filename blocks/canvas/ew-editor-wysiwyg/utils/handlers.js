@@ -1,7 +1,6 @@
 import { TextSelection, yUndo, yRedo } from 'da-y-wrapper';
 import {
   getSelectionToolbar,
-  hideSelectionToolbar,
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
@@ -15,7 +14,6 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   if (cursorOffset == null || textCursorOffset == null) {
     delete view.hasFocus;
     wsProvider.awareness.setLocalStateField('cursor', null);
-    hideSelectionToolbar();
     return;
   }
 
