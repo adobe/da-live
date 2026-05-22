@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { saveSheets, handleSave } from '../../../../blocks/sheet/utils/utils.js';
+import { saveSheets, handleSave, staleCheck } from '../../../../blocks/sheet/utils/utils.js';
 
 describe('sheet/utils utils', () => {
   let savedFetch;
@@ -48,6 +48,48 @@ describe('sheet/utils utils', () => {
       const sheets = [buildSheet('one', [['k'], ['v']])];
       const result = await saveSheets(sheets);
       expect(result).to.be.false;
+    });
+  });
+
+  describe('staleCheck after restore', () => {
+    const SOURCE_URL = 'http://example.com/source/org/repo/sheet';
+    const serverJson = { ':type': 'sheet', ':sheetname': 'data', data: [{ key: 'a' }] };
+
+    beforeEach(() => {
+      staleCheck.start({ url: SOURCE_URL, onStale: () => {} });
+      staleCheck.markSynced(serverJson);
+    });
+
+    afterEach(() => {
+      staleCheck.stop();
+    });
+
+    it('markSynced with jspreadsheet-format array causes saveSheets to falsely bail', async () => {
+      // Simulates the old (buggy) restore handler calling markSynced with wrong-format data
+      const jspsheetData = [{ sheetName: 'data', data: [['key'], ['a']], columns: [] }];
+      staleCheck.markSynced(jspsheetData);
+
+      window.location.hash = '#/org/repo/sheet';
+      window.fetch = async () => new Response(JSON.stringify(serverJson), { status: 200 });
+
+      const sheets = [buildSheet('data', [['key'], ['a']])];
+      const result = await saveSheets(sheets);
+      expect(result).to.be.false; // drift falsely detected — save bailed
+    });
+
+    it('markEdited preserves correct baseline so saveSheets proceeds when server is unchanged', async () => {
+      // Simulates the fixed restore handler calling markEdited instead
+      staleCheck.markEdited();
+
+      window.location.hash = '#/org/repo/sheet';
+      window.fetch = async (url, opts) => {
+        if (opts?.method === 'PUT') return new Response('', { status: 200 });
+        return new Response(JSON.stringify(serverJson), { status: 200 });
+      };
+
+      const sheets = [buildSheet('data', [['key'], ['a']])];
+      const result = await saveSheets(sheets);
+      expect(result).to.be.true; // no false drift — save went through
     });
   });
 

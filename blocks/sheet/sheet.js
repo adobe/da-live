@@ -55,7 +55,13 @@ class DaSheetPanes extends LitElement {
 
       const initSheet = (await import('./utils/index.js')).default;
       daTitle.sheet = await initSheet(daSheet, verReview.data);
-      staleCheck.markSynced(verReview.data);
+      // Keep the original server baseline so drift detection works correctly on
+      // the first save after restore. Mark as edited so concurrent changes show
+      // the dialog instead of silently reloading.
+      staleCheck.markEdited();
+      // Sync the preview pane so Preview reflects the restored content.
+      const sheetPanes = document.querySelector('da-sheet-panes');
+      if (sheetPanes) sheetPanes.data = convertSheets(daTitle.sheet);
       verReview.remove();
     });
 

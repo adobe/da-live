@@ -7,6 +7,77 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const sh = await import('../../../../blocks/sheet/utils/index.js');
 
+function mockJspreadsheetTabs(container, data) {
+  // Mirrors real jspreadsheet.tabs: if jexcel_tabs is present it tries to
+  // reuse e.children[0] / e.children[1], which are undefined after innerHTML='',
+  // causing "Cannot read properties of undefined (reading 'appendChild')".
+  if (container.classList.contains('jexcel_tabs')) {
+    const first = container.children[0];
+    first.appendChild(document.createElement('div')); // throws if first is undefined
+  }
+  const innerContainers = data.map(() => '<div class="jexcel_container"></div>').join('');
+  container.innerHTML = `<div></div><div>${innerContainers}</div>`;
+  container.classList.add('jexcel_tabs');
+  container.jexcel = data.map((d) => ({ name: d.sheetName, options: {} }));
+}
+
+describe('init - double restore', () => {
+  let el;
+  let daTitle;
+  let savedJspreadsheet;
+
+  beforeEach(() => {
+    el = document.createElement('div');
+    el.className = 'da-sheet';
+    document.body.appendChild(el);
+
+    daTitle = document.createElement('da-title');
+    daTitle.permissions = [];
+    document.body.appendChild(daTitle);
+
+    savedJspreadsheet = window.jspreadsheet;
+    window.jspreadsheet = { tabs: mockJspreadsheetTabs };
+  });
+
+  afterEach(() => {
+    el.remove();
+    daTitle.remove();
+    window.jspreadsheet = savedJspreadsheet;
+    document.querySelectorAll('da-sheet-tabs').forEach((t) => t.remove());
+  });
+
+  it('preserves da-sheet class after second init so restore handler can re-query it', async () => {
+    const data = [{ sheetName: 'data', minDimensions: [20, 20], data: [['Key'], ['A']], columns: [{ width: '300' }] }];
+
+    await sh.default(el, data);
+    await sh.default(el, data);
+
+    expect(el.classList.contains('da-sheet')).to.be.true;
+  });
+
+  it('document.querySelector .da-sheet returns non-null after second init', async () => {
+    const data = [{ sheetName: 'data', minDimensions: [20, 20], data: [['Key'], ['A']], columns: [{ width: '300' }] }];
+
+    await sh.default(el, data);
+    await sh.default(el, data);
+
+    expect(document.querySelector('.da-sheet')).to.not.be.null;
+  });
+
+  it('does not crash on third init call (page load + two restores)', async () => {
+    const data = [{ sheetName: 'data', minDimensions: [20, 20], data: [['Key'], ['A']], columns: [{ width: '300' }] }];
+
+    // Simulates: page load, then first restore, then second restore
+    await sh.default(el, data);
+    await sh.default(el, data);
+
+    // The restore handler always queries .da-sheet at restore time
+    const daSheet = document.querySelector('.da-sheet');
+    expect(daSheet).to.not.be.null;
+    await sh.default(daSheet, data);
+  });
+});
+
 describe('Sheets', () => {
   it('Test single sheet getData', async () => {
     const json = `
