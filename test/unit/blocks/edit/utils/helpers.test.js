@@ -15,13 +15,15 @@ import {
   getDaMetadata,
   setDaMetadata,
   isURL,
-  saveToAem,
   saveDaConfig,
-  saveDaVersion,
   debounce,
   getDiffLabels,
   htmlToProse,
 } from '../../../../../blocks/edit/utils/helpers.js';
+import {
+  saveToAem,
+  saveDaVersion,
+} from '../../../../../blocks/shared/utils.js';
 
 const bodyHtml = await readFile({ path: './mocks/body.html' });
 

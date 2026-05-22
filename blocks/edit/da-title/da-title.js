@@ -84,7 +84,6 @@ export default class DaTitle extends LitElement {
   }
 
   reset() {
-    this._scheduled = undefined;
     this._configs = undefined;
   }
 
@@ -142,18 +141,12 @@ export default class DaTitle extends LitElement {
       ['da-schedule', import('../da-prepare/actions/scheduler/utils.js')],
     ]);
 
-    const { org, site, path, fullpath } = this.details;
+    const { path, fullpath } = this.details;
 
     // Only a valid path gets AEM-bound features
     if (path) {
       this._aemHrefs = await getAemHrefs({ path: fullpath });
-      this._scheduled = await this.getSchedule(org, site, path);
     }
-  }
-
-  async getSchedule(org, site, path) {
-    const { getExistingSchedule } = await this._lazyMods.get('da-schedule');
-    return getExistingSchedule(org, site, path);
   }
 
   toggleActions() {
@@ -285,7 +278,7 @@ export default class DaTitle extends LitElement {
         return;
       }
       if (json.error) {
-        this.handleError(json, json.error.action);
+        this.handleError(json, action);
         return;
       }
 

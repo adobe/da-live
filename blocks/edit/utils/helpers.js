@@ -4,8 +4,6 @@ import { DA_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
 import { daFetch, getSidekickConfig } from '../../shared/utils.js';
 
-export { saveToAem, saveDaVersion } from '../../shared/utils.js';
-
 export function isURL(text) {
   try {
     const url = new URL(text);
