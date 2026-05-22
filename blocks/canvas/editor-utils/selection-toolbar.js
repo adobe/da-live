@@ -64,16 +64,10 @@ export function createSelectionToolbarPlugin() {
     },
     view() {
       let scrollEl;
-      let editorDom;
       const tb = getSelectionToolbar();
       const onScroll = () => {
         if (tb.view && getSelectionOriginFromIframe(tb.view.state)) return;
         syncToolbar(tb.view);
-      };
-      const onPointerDown = (e) => {
-        if (!tb.open) return;
-        const path = e.composedPath();
-        if (!path.includes(tb) && !path.includes(editorDom)) hideSelectionToolbar();
       };
 
       return {
@@ -81,8 +75,6 @@ export function createSelectionToolbarPlugin() {
           if (!scrollEl) {
             scrollEl = view.dom.closest('.ew-editor-doc');
             scrollEl?.addEventListener('scroll', onScroll, { passive: true });
-            editorDom = view.dom;
-            document.addEventListener('pointerdown', onPointerDown);
           }
           const header = document.querySelector('ew-canvas-header');
           const ev = header?.editorView;
@@ -92,7 +84,6 @@ export function createSelectionToolbarPlugin() {
         },
         destroy() {
           scrollEl?.removeEventListener('scroll', onScroll);
-          document.removeEventListener('pointerdown', onPointerDown);
           hideSelectionToolbar();
         },
       };

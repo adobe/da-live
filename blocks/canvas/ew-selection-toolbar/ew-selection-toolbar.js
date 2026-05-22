@@ -45,6 +45,20 @@ class EwSelectionToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
+    this._onOutsidePointerDown = (e) => {
+      if (!this.open) return;
+      const path = e.composedPath();
+      if (path.includes(this)) return;
+      const editorDom = this.view?.dom;
+      if (editorDom && path.includes(editorDom)) return;
+      this.hide();
+    };
+    document.addEventListener('pointerdown', this._onOutsidePointerDown);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('pointerdown', this._onOutsidePointerDown);
   }
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
