@@ -46,7 +46,6 @@ export class EwEditorWysiwyg extends LitElement {
   static properties = {
     ctx: { type: Object },
     _cookieReady: { state: true },
-    _loading: { state: true },
   };
 
   connectedCallback() {
@@ -98,10 +97,8 @@ export class EwEditorWysiwyg extends LitElement {
 
   _syncCanvasVisibility() {
     const view = this._canvasActiveView ?? 'layout';
-    const portReady = this.hasAttribute(WYSIWYG_PORT_READY_ATTR);
     const showWysiwyg = view === 'layout' || view === 'split';
     this.hidden = !showWysiwyg;
-    this._loading = showWysiwyg && !portReady;
     hideSelectionToolbar();
   }
 
@@ -223,7 +220,7 @@ export class EwEditorWysiwyg extends LitElement {
       `;
     }
     return html`
-      <div class="ew-editor-wysiwyg-surface" ?hidden=${this._loading}>
+      <div class="ew-editor-wysiwyg-surface">
         ${body}
       </div>
     `;
