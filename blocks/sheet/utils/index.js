@@ -16,7 +16,7 @@ function resetSheets(el) {
   if (!el.jexcel) return;
   delete el.jexcel;
   el.innerHTML = '';
-  el.className = '';
+  el.classList.remove('jexcel_tabs');
 }
 
 function finishSetup(el, data) {
