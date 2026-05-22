@@ -93,6 +93,12 @@ export const saveSheets = async (sheets) => {
 
 const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
 
+export async function restoreVersion(daTitle, daSheet, versionData) {
+  const initSheet = (await import('./index.js')).default;
+  daTitle.sheet = await initSheet(daSheet, versionData);
+  return saveSheets(daSheet.jexcel);
+}
+
 export function handleSave(jexcel, view) {
   // markEdited must precede the config bail so config edits still mark dirty for stale-detection.
   staleCheck.markEdited();
