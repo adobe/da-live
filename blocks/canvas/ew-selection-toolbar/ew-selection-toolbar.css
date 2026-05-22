@@ -2,6 +2,25 @@
   display: contents;
 }
 
+.toolbar-wrap {
+  display: none;
+  position: fixed;
+  bottom: 40px;
+  left: var(--toolbar-anchor-x, 50vw);
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 6px 8px;
+  background: var(--s2-gray-25);
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-500);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 16%);
+}
+
+:host(.open) .toolbar-wrap {
+  display: flex;
+  align-items: center;
+}
+
 .toolbar-actions {
   display: flex;
   flex-wrap: wrap;

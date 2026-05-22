@@ -15,8 +15,6 @@ function getSelectionOriginFromIframe(state) {
   return selectionToolbarOriginKey.getState(state)?.fromIframe ?? false;
 }
 
-export const TOOLBAR_PADDING_GAP = 64;
-
 let toolbar;
 let componentLoaded;
 
@@ -40,14 +38,14 @@ function isNonTextSelection({ selection }) {
 function syncToolbar(view) {
   if (!view) return;
   const tb = getSelectionToolbar();
-  if (tb.linkDialogOpen) return;
-  if (view.state.selection.empty || isNonTextSelection(view.state)) {
+  if (tb.linkDialogOpen || tb.isInteracting) return;
+  if (isNonTextSelection(view.state)) {
     hideSelectionToolbar();
     return;
   }
-  const start = view.coordsAtPos(view.state.selection.from);
+  if (!view.hasFocus()) return;
   tb.view = view;
-  tb.show({ x: start.left, y: start.top - TOOLBAR_PADDING_GAP });
+  tb.show();
 }
 
 export function createSelectionToolbarPlugin() {
@@ -66,6 +64,7 @@ export function createSelectionToolbarPlugin() {
     },
     view() {
       let scrollEl;
+      let blurTarget;
       const tb = getSelectionToolbar();
       const onScroll = () => {
         if (tb.view && getSelectionOriginFromIframe(tb.view.state)) return;
@@ -77,6 +76,8 @@ export function createSelectionToolbarPlugin() {
           if (!scrollEl) {
             scrollEl = view.dom.closest('.ew-editor-doc');
             scrollEl?.addEventListener('scroll', onScroll, { passive: true });
+            blurTarget = view.dom;
+            blurTarget.addEventListener('focusout', hideSelectionToolbar);
           }
           const header = document.querySelector('ew-canvas-header');
           const ev = header?.editorView;
@@ -86,6 +87,7 @@ export function createSelectionToolbarPlugin() {
         },
         destroy() {
           scrollEl?.removeEventListener('scroll', onScroll);
+          blurTarget?.removeEventListener('focusout', hideSelectionToolbar);
           hideSelectionToolbar();
         },
       };

@@ -47,21 +47,27 @@ class EwSelectionToolbar extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [styles];
   }
 
-  get _popover() { return this.shadowRoot?.querySelector('nx-popover'); }
-
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
 
-  show({ x, y }) {
-    this._popover?.show({ x, y, placement: 'above' });
-    this.requestUpdate();
+  show() {
+    const main = document.querySelector('main');
+    if (main) {
+      const { left, width } = main.getBoundingClientRect();
+      this.style.setProperty('--toolbar-anchor-x', `${left + width / 2}px`);
+    }
+    this.classList.add('open');
   }
 
   hide() {
-    this._popover?.close();
+    this.classList.remove('open');
   }
 
   get open() {
-    return this._popover?.open ?? false;
+    return this.classList.contains('open');
+  }
+
+  get isInteracting() {
+    return this._picker?.open ?? false;
   }
 
   _icon(name) {
@@ -269,14 +275,14 @@ class EwSelectionToolbar extends LitElement {
   render() {
     const disabled = !this.view;
     return html`
-      <nx-popover placement="above">
+      <div class="toolbar-wrap"
+        @mousedown=${(e) => e.preventDefault()}>
         <div class="toolbar-actions" ?data-disabled=${disabled}
-          @mousedown=${(e) => { e.preventDefault(); e.stopPropagation(); }}
           @click=${(e) => this._onToolbarClick(e)}>
           <span class="toolbar-block-type-wrap">
             <nx-picker
               class="toolbar-block-type"
-              placement="below"
+              placement="above"
               ignoreFocus
               .items=${BLOCK_TYPE_PICKER_ITEMS}
               value="paragraph"
@@ -290,7 +296,7 @@ class EwSelectionToolbar extends LitElement {
           <span class="toolbar-sep" aria-hidden="true"></span>
           ${this._renderLinkButtons()}
         </div>
-      </nx-popover>
+      </div>
       ${this._renderLinkDialog()}
     `;
   }

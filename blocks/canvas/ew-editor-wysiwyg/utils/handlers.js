@@ -1,8 +1,6 @@
 import { TextSelection, yUndo, yRedo } from 'da-y-wrapper';
 import {
   getSelectionToolbar,
-  hideSelectionToolbar,
-  TOOLBAR_PADDING_GAP,
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
@@ -126,25 +124,19 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
   }
 }
 
-function positionSelectionToolbarFromIframe(data, ctx) {
+function positionSelectionToolbarFromIframe(ctx) {
   const { view } = ctx;
-  const { anchorX, anchorY } = data;
-  const { iframe } = ctx;
-  if (!iframe) return;
-
-  const iframeRect = iframe.getBoundingClientRect();
-  const x = iframeRect.left + anchorX;
-  const y = iframeRect.top + anchorY - TOOLBAR_PADDING_GAP;
   const tb = getSelectionToolbar();
   tb.view = view;
-  tb.show({ x, y });
+  tb.show();
 }
 
 /** PostMessage `selection-change` from wysiwyg iframe: sync PM selection and toolbar. */
 export function handleIframeSelectionChange(data, ctx) {
   const { anchor, head } = data;
   if (anchor === head) {
-    hideSelectionToolbar();
+    const tb = getSelectionToolbar();
+    if (tb.isInteracting) return;
     const { view } = ctx;
     if (view) {
       const tr = view.state.tr
@@ -157,5 +149,5 @@ export function handleIframeSelectionChange(data, ctx) {
     return;
   }
   if (!handleSelectionChange(data, ctx, { fromQuickEditIframe: true })) return;
-  positionSelectionToolbarFromIframe(data, ctx);
+  positionSelectionToolbarFromIframe(ctx);
 }
