@@ -499,7 +499,7 @@ describe('DaList helpers', () => {
     it('Sets _confirm to "delete"', () => {
       const el = makeList();
       el.handleDelete();
-      expect(el._confirm).to.equal('delete');
+      expect(el._confirm).to.deep.equal({ type: 'delete' });
     });
   });
 
@@ -852,7 +852,7 @@ async function mountWithSelection(items, opts = {}) {
   // which fetches /list/{fullpath} and would hang in a test environment.
   el._listItems = items;
   el._selectedItems = items;
-  el._confirm = 'delete';
+  el._confirm = { type: 'delete' };
   el._deleteCount = deleteCount;
   el._deleteCountLoading = deleteCountLoading;
   el._unpublish = unpublish;
