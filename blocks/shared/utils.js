@@ -75,7 +75,7 @@ export const daFetch = async (url, opts = {}) => {
   let resp = await fetch(url, opts);
 
   if (resp.status === 401 && opts.noRedirect !== true
-      && DA_ORIGINS.some((origin) => url.startsWith(origin))) {
+    && DA_ORIGINS.some((origin) => url.startsWith(origin))) {
     // Silent recovery: another tab may have just refreshed/signed in. Ask imslib
     // for a fresh token and retry once before any user-visible disruption.
     let refreshed = null;
@@ -213,12 +213,14 @@ export async function aemAction(path, action, opts = {}) {
   if (previewJson.error) return previewJson;
   if (action === 'preview') return previewJson;
 
-  const [, org, site, ...rest] = path.toLowerCase().split('/');
-  const pagePath = `/${rest.join('/')}`.replace(/\.html$/, '');
-  const schedule = await getExistingSchedule(org, site, pagePath);
-  if (schedule?.scheduled) {
-    const proceed = opts.onScheduled ? await opts.onScheduled(schedule) : false;
-    if (!proceed) return { cancelled: true };
+  if (!opts.skipSchedule) {
+    const [, org, site, ...rest] = path.toLowerCase().split('/');
+    const pagePath = `/${rest.join('/')}`.replace(/\.html$/, '');
+    const schedule = await getExistingSchedule(org, site, pagePath);
+    if (schedule?.scheduled) {
+      const proceed = opts.onScheduled ? await opts.onScheduled(schedule) : false;
+      if (!proceed) return { cancelled: true };
+    }
   }
 
   return saveToAem(path, 'live');

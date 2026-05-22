@@ -48,6 +48,7 @@ export default class DaList extends LitElement {
     _bulkLoading: { state: true },
     _filterLoading: { state: true },
     _allPagesLoaded: { state: true },
+    _aemActionState: { state: true },
   };
 
   constructor() {
@@ -390,7 +391,7 @@ export default class DaList extends LitElement {
   }
 
   async handleDelete() {
-    this._confirm = 'delete';
+    this._confirm = { type: 'delete' };
     this._deleteCount = null;
     this._deleteCountLoading = false;
 
@@ -413,10 +414,10 @@ export default class DaList extends LitElement {
       this._deleteCrawl = crawlInstance;
       const allFiles = await crawlInstance.results;
       // If the user cancelled/closed the dialog while we were crawling, bail out
-      if (this._confirm !== 'delete' || this._deleteCrawl !== crawlInstance) return;
+      if (this._confirm?.type !== 'delete' || this._deleteCrawl !== crawlInstance) return;
       this._deleteCount = allFiles.length;
     } finally {
-      if (this._confirm === 'delete') {
+      if (this._confirm?.type === 'delete') {
         this._deleteCountLoading = false;
       }
       this._deleteCrawl = null;
@@ -472,15 +473,15 @@ export default class DaList extends LitElement {
   }
 
   handlePreview() {
-    this._confirm = { type: 'preview', results: null };
+    this._confirm = { type: 'preview' };
   }
 
   handlePublish() {
-    this._confirm = { type: 'publish', results: null };
+    this._confirm = { type: 'publish' };
   }
 
   async handleConfirmPublish() {
-    this._confirm = { type: 'publish', results: null, checking: true };
+    this._confirm = { type: 'publish', checking: true };
     const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
 
     const scheduleChecks = await Promise.all(items.map(async (item) => {
@@ -493,39 +494,57 @@ export default class DaList extends LitElement {
 
     const scheduled = scheduleChecks.filter(Boolean);
     if (scheduled.length > 0) {
-      this._confirm = { type: 'publish', results: null, scheduled };
+      this._confirm = { type: 'publish', scheduled };
       return;
     }
 
-    await this.runAemQueue('publish');
+    this.handleConfirmClose();
+    await this.runAemQueue('publish', { skipSchedule: true });
   }
 
   async handleConfirmPreview() {
+    this.handleConfirmClose();
     await this.runAemQueue('preview');
   }
 
-  async runAemQueue(action, { override = false } = {}) {
+  async runAemQueue(action, { skipSchedule = false } = {}) {
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
     const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
-    this._confirm = { type: action, results: null };
-    this._itemsRemaining = items.length;
+    const verb = action === 'publish' ? 'Publish' : 'Preview';
+    const urlKey = action === 'publish' ? 'live' : 'preview';
+    const aemOpts = skipSchedule ? { skipSchedule: true } : {};
+
+    this._aemActionState = action;
+    this._itemErrors = [];
+    if (!items.length) {
+      this._aemActionState = null;
+      return;
+    }
+    let remaining = items.length;
     const results = [];
 
-    const label = action === 'publish' ? 'Published' : 'Previewed';
-    const urlKey = action === 'publish' ? 'live' : 'preview';
-    const aemOpts = override ? { onScheduled: () => true } : {};
     const callback = async (item) => {
       const json = await aemAction(item.path, action, aemOpts);
-      if (json.error || json.cancelled) {
+      if (json.cancelled) {
+        this._itemErrors.push({ ...item, message: 'Has a scheduled publish — not overridden' });
+      } else if (json.error) {
         this._itemErrors.push({ ...item, message: json.error?.message || `Couldn't ${action} item` });
       } else {
-        saveDaVersion(item.path, label);
+        saveDaVersion(item.path, `${verb}ed`);
         results.push({ name: item.name, url: json[urlKey]?.url });
       }
-      this._itemsRemaining -= 1;
-      if (this._itemsRemaining === 0) {
-        if (results.length > 0) this._confirm = { type: action, results };
-        else this.handleConfirmClose();
+      remaining -= 1;
+      if (remaining === 0) {
+        if (results.length > 0) {
+          this._aemActionState = { verb, results };
+          setTimeout(() => {
+            this._aemActionState = null;
+            if (this._confirm?.type === 'results') this._confirm = null;
+          }, 8000);
+          this.handleClear();
+        } else {
+          this._aemActionState = null;
+        }
       }
     };
 
@@ -748,10 +767,10 @@ export default class DaList extends LitElement {
           placeholder="YES"
           autofocus=""
           @input=${(e) => {
-        const upper = e.target.value.toUpperCase();
-        if (e.target.value !== upper) e.target.value = upper;
-        this._confirmText = upper;
-      }}
+            const upper = e.target.value.toUpperCase();
+            if (e.target.value !== upper) e.target.value = upper;
+            this._confirmText = upper;
+          }}
           aria-label="Type YES to confirm"
           value=${this._confirmText ?? ''}></sl-input>
       </div>
@@ -814,6 +833,23 @@ export default class DaList extends LitElement {
           ${this._status.description ? html`<p class="da-list-status-description">${this._status.description}</p>` : nothing}
         </div>
       </div>`;
+  }
+
+  renderAemResults() {
+    return html`
+      <button
+        class="da-aem-results-btn"
+        aria-haspopup="dialog"
+        @click=${() => { this._confirm = { type: 'results' }; }}>
+        ${this._aemActionState.verb}ed ${this._aemActionState.results.length} ${this._aemActionState.results.length === 1 ? 'item' : 'items'}
+      </button>
+    `;
+  }
+
+  renderConfirmDialog() {
+    if (!this._confirm?.type) return nothing;
+    if (this._confirm.type === 'delete') return this.renderConfirm();
+    return this.renderAemConfirm();
   }
 
   renderConfirm() {
@@ -891,11 +927,9 @@ export default class DaList extends LitElement {
   }
 
   renderAemConfirm() {
-    const { type, results, scheduled, checking } = this._confirm;
-    const hasResults = results !== null;
+    const { type, scheduled, checking } = this._confirm;
     const hasScheduled = scheduled?.length > 0;
     const count = this._selectedItems.filter((item) => item.ext && item.ext !== 'link').length;
-    const hasRemaining = this._itemsRemaining !== 0;
     const label = type === 'publish' ? 'Publish' : 'Preview';
 
     let title;
@@ -903,15 +937,22 @@ export default class DaList extends LitElement {
     let action;
     let body;
 
-    if (hasResults) {
-      title = `${label} complete`;
-      closeHandler = this.handleClear;
+    if (type === 'results') {
+      const { verb, results } = this._aemActionState;
+      title = `${verb} results`;
+      closeHandler = () => {
+        this._confirm = null;
+        this._aemActionState = null;
+      };
       action = {
         style: 'accent',
         label: 'Copy URLs',
-        click: () => {
-          const text = results.map(({ url }) => url).join('\n');
-          navigator.clipboard.writeText(text);
+        click: async () => {
+          try {
+            await navigator.clipboard.writeText(results.map(({ url }) => url).filter(Boolean).join('\n'));
+            this.setStatus('Copied', 'URLs copied to clipboard.');
+            setTimeout(() => { this.setStatus(); }, 3000);
+          } catch { /* clipboard not accessible */ }
         },
       };
       body = html`${results.map(({ name, url }) => html`
@@ -923,18 +964,21 @@ export default class DaList extends LitElement {
       action = {
         style: 'accent',
         label: 'Confirm Publish',
-        click: async () => this.runAemQueue('publish', { override: true }),
+        click: async () => {
+          this.handleConfirmClose();
+          await this.runAemQueue('publish', { skipSchedule: true });
+        },
       };
       const overrideCount = scheduled.length === 1 ? 'This item has' : `${scheduled.length} items have`;
       body = html`
         <p>${overrideCount} a scheduled publish - publishing now will override:</p>
         ${scheduled.map(({ name, scheduledPublish, userId }) => {
-        const time = new Date(scheduledPublish).toLocaleString();
-        return html`
+          const time = new Date(scheduledPublish).toLocaleString();
+          return html`
             <strong class="dialog-item-label">${name}</strong>
             <p class="dialog-item-name">${userId ? `${time} by ${userId}` : time}</p>
           `;
-      })}
+        })}
       `;
     } else {
       title = label;
@@ -944,17 +988,14 @@ export default class DaList extends LitElement {
         style: 'accent',
         label: checking ? 'Checking...' : label,
         click: async () => handler.call(this),
-        disabled: checking || hasRemaining,
+        disabled: !!checking,
       };
       body = html`<p>${label} the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>`;
     }
 
-    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
-
     return html`
       <da-dialog
         title=${title}
-        .message=${message}
         .action=${action}
         @close=${closeHandler}>
         ${body}
@@ -1099,12 +1140,13 @@ export default class DaList extends LitElement {
         @onpreview=${this.handlePreview}
         @onpublish=${this.handlePublish}
         @onshare=${this.handleShare}
+        .loading=${typeof this._aemActionState === 'string' ? this._aemActionState : null}
         currentPath="${this.fullpath}"
         role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
-      ${this._confirm === 'delete' ? this.renderConfirm() : nothing}
-      ${this._confirm?.type ? this.renderAemConfirm() : nothing}
+      ${this._aemActionState?.results ? this.renderAemResults() : nothing}
+      ${this.renderConfirmDialog()}
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;

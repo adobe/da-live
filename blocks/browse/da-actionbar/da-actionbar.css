@@ -60,6 +60,28 @@ button {
   filter: brightness(0) invert(1);
 }
 
+.da-action-bar .preview-button.loading img,
+.da-action-bar .publish-button.loading img {
+  display: none;
+}
+
+.da-action-bar .preview-button.loading::before,
+.da-action-bar .publish-button.loading::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgb(255 255 255 / 40%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ab-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ab-spin {
+  to { transform: rotate(360deg); }
+}
+
 .da-action-bar.hide,
 .da-action-bar .hide {
   display: none;

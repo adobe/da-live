@@ -9,6 +9,7 @@ export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
     permissions: { attribute: false },
+    loading: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -112,12 +113,8 @@ export default class DaActionBar extends LitElement {
     return this.permissions.some((permission) => permission === 'write');
   }
 
-  get _canPreview() {
-    return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
-  }
-
-  get _canPublish() {
-    return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
+  get _canAemAction() {
+    return this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
   get _canShare() {
@@ -178,13 +175,15 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handlePreview}
-            class="preview-button ${this._canPreview ? '' : 'hide'}">
+            ?disabled=${!!this.loading}
+            class="preview-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'preview' ? 'loading' : ''}">
             <img src="/blocks/edit/img/S2_Icon_Preview_20_N.svg" alt="" aria-hidden="true"/>
             <span>Preview</span>
           </button>
           <button
             @click=${this.handlePublish}
-            class="publish-button ${this._canPublish ? '' : 'hide'}">
+            ?disabled=${!!this.loading}
+            class="publish-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             <img src="/blocks/edit/img/S2_Icon_Publish_20_N.svg" alt="" aria-hidden="true"/>
             <span>Publish</span>
           </button>

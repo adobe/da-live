@@ -504,18 +504,18 @@ describe('DaList helpers', () => {
   });
 
   describe('handlePreview', () => {
-    it('Sets _confirm to preview type with null results', () => {
+    it('Sets _confirm to preview type', () => {
       const el = makeList();
       el.handlePreview();
-      expect(el._confirm).to.deep.equal({ type: 'preview', results: null });
+      expect(el._confirm).to.deep.equal({ type: 'preview' });
     });
   });
 
   describe('handlePublish', () => {
-    it('Sets _confirm to publish type with null results', () => {
+    it('Sets _confirm to publish type', () => {
       const el = makeList();
       el.handlePublish();
-      expect(el._confirm).to.deep.equal({ type: 'publish', results: null });
+      expect(el._confirm).to.deep.equal({ type: 'publish' });
     });
   });
 
@@ -544,7 +544,7 @@ describe('DaList helpers', () => {
       expect(el._confirm.scheduled[0].userId).to.equal('user@example.com');
     });
 
-    it('Proceeds to runAemQueue when no items have a scheduled publish', async () => {
+    it('Closes the dialog and starts the queue when no items have a scheduled publish', async () => {
       window.fetch = (url) => {
         if (url.includes('snapshot-scheduler')) {
           return Promise.resolve(new Response(
@@ -557,8 +557,7 @@ describe('DaList helpers', () => {
       const el = makeList();
       el._selectedItems = [{ name: 'doc', ext: 'html', path: '/org/site/doc.html' }];
       await el.handleConfirmPublish();
-      expect(el._confirm).to.deep.equal({ type: 'publish', results: null });
-      expect(el._itemsRemaining).to.equal(1);
+      expect(el._confirm).to.equal(null);
     });
 
     it('Skips folders and link items when checking schedules', async () => {

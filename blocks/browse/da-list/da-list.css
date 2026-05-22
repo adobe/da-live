@@ -295,6 +295,28 @@ da-list-item.is-expanded::after {
   background: var(--s2-blue-800) url("/blocks/browse/img/Smock_InfoOutline_18_N.svg") 12px 50% no-repeat;
 }
 
+.da-aem-results-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  z-index: 400;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: none;
+  background: var(--s2-blue-800);
+  color: #fff;
+  font-size: 14px;
+  font-family: var(--body-font-family);
+  cursor: pointer;
+  filter: drop-shadow(rgb(0 0 0 / 20%) 0 2px 6px);
+  white-space: nowrap;
+}
+
+.da-aem-results-btn:hover {
+  background: var(--s2-blue-900);
+}
+
 /* Checkbox */
 
 .checkbox-wrapper {
