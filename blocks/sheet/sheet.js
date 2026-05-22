@@ -3,7 +3,7 @@ import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
-import { staleCheck, showDaDialog } from './utils/utils.js';
+import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
 import { convertSheets } from '../edit/utils/helpers.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -52,16 +52,7 @@ class DaSheetPanes extends LitElement {
     verReview.addEventListener('restore', async () => {
       const daTitle = document.querySelector('da-title');
       const daSheet = document.querySelector('.da-sheet');
-
-      const initSheet = (await import('./utils/index.js')).default;
-      daTitle.sheet = await initSheet(daSheet, verReview.data);
-      // Keep the original server baseline so drift detection works correctly on
-      // the first save after restore. Mark as edited so concurrent changes show
-      // the dialog instead of silently reloading.
-      staleCheck.markEdited();
-      // Sync the preview pane so Preview reflects the restored content.
-      const sheetPanes = document.querySelector('da-sheet-panes');
-      if (sheetPanes) sheetPanes.data = convertSheets(daTitle.sheet);
+      await restoreVersion(daTitle, daSheet, verReview.data);
       verReview.remove();
     });
 

@@ -77,9 +77,8 @@ describe('sheet/utils utils', () => {
       expect(result).to.be.false; // drift falsely detected — save bailed
     });
 
-    it('markEdited preserves correct baseline so saveSheets proceeds when server is unchanged', async () => {
-      // Simulates the fixed restore handler calling markEdited instead
-      staleCheck.markEdited();
+    it('Preserves correct baseline so saveSheets proceeds when server is unchanged', async () => {
+      // Restore handler does NOT call markSynced with wrong-format data — baseline stays intact.
 
       window.location.hash = '#/org/repo/sheet';
       window.fetch = async (url, opts) => {
