@@ -540,7 +540,7 @@ export default class DaList extends LitElement {
           setTimeout(() => {
             this._aemActionState = null;
             if (this._confirm?.type === 'results') this._confirm = null;
-          }, 8000);
+          }, 5000);
           this.handleClear();
         } else {
           this._aemActionState = null;
@@ -767,10 +767,10 @@ export default class DaList extends LitElement {
           placeholder="YES"
           autofocus=""
           @input=${(e) => {
-            const upper = e.target.value.toUpperCase();
-            if (e.target.value !== upper) e.target.value = upper;
-            this._confirmText = upper;
-          }}
+        const upper = e.target.value.toUpperCase();
+        if (e.target.value !== upper) e.target.value = upper;
+        this._confirmText = upper;
+      }}
           aria-label="Type YES to confirm"
           value=${this._confirmText ?? ''}></sl-input>
       </div>
@@ -973,12 +973,12 @@ export default class DaList extends LitElement {
       body = html`
         <p>${overrideCount} a scheduled publish - publishing now will override:</p>
         ${scheduled.map(({ name, scheduledPublish, userId }) => {
-          const time = new Date(scheduledPublish).toLocaleString();
-          return html`
+        const time = new Date(scheduledPublish).toLocaleString();
+        return html`
             <strong class="dialog-item-label">${name}</strong>
             <p class="dialog-item-name">${userId ? `${time} by ${userId}` : time}</p>
           `;
-        })}
+      })}
       `;
     } else {
       title = label;
