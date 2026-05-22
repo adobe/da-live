@@ -14,14 +14,14 @@ describe('da-auth-banner', () => {
     savedIMS = window.adobeIMS;
     window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
+    document.querySelectorAll('da-title, da-content').forEach((el) => el.remove());
   });
 
   afterEach(() => {
     if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
-    // The Sign-in button calls handleSignIn which sets nx-ims; always remove
-    // it so the leaked flag doesn't trip later tests that don't configure setNx.
     window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
+    document.querySelectorAll('da-title, da-content').forEach((el) => el.remove());
   });
 
   it('showAuthBanner mounts a single banner element', () => {
@@ -31,21 +31,62 @@ describe('da-auth-banner', () => {
     expect(document.querySelectorAll('da-dialog.da-auth-banner').length).to.equal(1);
   });
 
-  it('Mounts a da-dialog with the expected title and action label', async () => {
+  it('Mounts a da-dialog with the expected default title and action label', async () => {
     const banner = showAuthBanner();
     await banner.updateComplete;
     expect(banner.title).to.equal('Your session has expired');
     expect(banner.action?.label).to.equal('Sign in');
   });
 
-  it('Sign-in action calls handleSignIn which invokes adobeIMS.signIn', async () => {
-    let signInCalls = 0;
-    window.adobeIMS = { signIn: () => { signInCalls += 1; } };
+  it('Honors custom title, message, and buttonLabel', async () => {
+    const banner = showAuthBanner({
+      title: 'Not Permitted',
+      message: 'No access for you.',
+      buttonLabel: 'Sign out',
+    });
+    await banner.updateComplete;
+    expect(banner.title).to.equal('Not Permitted');
+    expect(banner.action?.label).to.equal('Sign out');
+    expect(banner.querySelector('p')?.textContent).to.equal('No access for you.');
+  });
+
+  it('Defaults to non-modal so the page behind it stays interactive', async () => {
+    const banner = showAuthBanner();
+    await banner.updateComplete;
+    expect(banner.modal).to.equal(false);
+  });
+
+  it('Action click calls handleSignOut which invokes adobeIMS.signOut', async () => {
+    let signOutCalls = 0;
+    window.adobeIMS = { signOut: () => { signOutCalls += 1; } };
 
     const banner = showAuthBanner();
     await banner.updateComplete;
     await banner.action.click();
     await wait(50);
-    expect(signInCalls).to.equal(1);
+    expect(signOutCalls).to.equal(1);
+  });
+
+  it('Marks da-content and the collab actions wrapper inert while shown', async () => {
+    // Set up the page chrome the banner reaches into.
+    const daTitle = document.createElement('da-title');
+    daTitle.attachShadow({ mode: 'open' });
+    const collabActions = document.createElement('div');
+    collabActions.classList.add('da-title-collab-actions-wrapper');
+    daTitle.shadowRoot.appendChild(collabActions);
+    const daContent = document.createElement('da-content');
+    document.body.appendChild(daTitle);
+    document.body.appendChild(daContent);
+
+    const banner = showAuthBanner();
+    await banner.updateComplete;
+    expect(collabActions.inert).to.equal(true);
+    expect(daContent.inert).to.equal(true);
+
+    // Closing the banner restores interactivity.
+    banner.close();
+    await wait(0);
+    expect(collabActions.inert).to.equal(false);
+    expect(daContent.inert).to.equal(false);
   });
 });

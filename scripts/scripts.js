@@ -64,20 +64,13 @@ export default async function loadPage() {
     document.body.classList.add('light-scheme');
   }
 
-  const { hash } = window.location;
-  const hadAccessToken = hash.includes('access_token=');
-  const isImsCallback = hadAccessToken || hash.includes('old_hash=');
-
   const imsReady = initIms();
   await setConfig(CONFIG);
 
-  if (isImsCallback) {
+  // Only block on IMS for OAuth-callback loads
+  const { hash } = window.location;
+  if (hash.includes('access_token=') || hash.includes('old_hash=')) {
     await imsReady;
-    if (!hadAccessToken) {
-      // User explicitly signed out — redirect to home
-      window.location.replace('/');
-      return;
-    }
   }
 
   await loadArea();

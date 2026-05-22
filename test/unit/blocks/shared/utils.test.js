@@ -363,6 +363,43 @@ describe('daFetch', () => {
     const resp = await daFetch('https://example.com/test');
     expect(resp.status).to.equal(403);
   });
+
+  it('On 401 after cross-tab sign-out (nx-ims gone), surfaces banner instead of the /not-found redirect', async () => {
+    // Start the request with nx-ims set so an access token is captured;
+    // clear it mid-flight (in refreshToken) to simulate another tab signing
+    // out before the 401 arrives. The new guard in daFetch should treat the
+    // captured token as stale and fall through to the banner branch instead
+    // of the redirect-to-/not-found branch.
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    let getCalls = 0;
+    window.adobeIMS = {
+      getAccessToken: () => {
+        getCalls += 1;
+        if (getCalls === 1) return { token: 'stale' };
+        return null;
+      },
+      refreshToken: async () => {
+        window.localStorage.removeItem('nx-ims');
+      },
+    };
+
+    window.fetch = () => Promise.resolve(new Response('nope', { status: 401 }));
+
+    try {
+      const resp = await daFetch('http://localhost:8787/source/o/r/p.html');
+      await new Promise((r) => { setTimeout(r, 80); });
+      // Banner branch lets the original 401 Response fall through and adds
+      // a default `permissions` field; the redirect branch returns the bare
+      // `{ ok: false }` placeholder before reaching that code.
+      expect(resp).to.be.instanceOf(Response);
+      expect(resp.status).to.equal(401);
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.exist;
+    } finally {
+      document.querySelector('da-dialog.da-auth-banner')?.remove();
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
 });
 
 describe('etcFetch', () => {

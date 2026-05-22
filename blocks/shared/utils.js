@@ -22,9 +22,14 @@ function attachAuthMonitor() {
     if (wasAuthed && !isAuthed) {
       const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
       showAuthBanner();
-      // Drop any open collab WS so the stale auth cached on the server side
-      // can't keep authorizing persistence after the user signed out elsewhere.
       document.querySelector('da-content')?.wsProvider?.disconnect();
+      // nx-profile caches signed-in state from its initial connectedCallback
+      // and has no built-in cross-tab sync; flip it manually so the gnav
+      // avatar collapses to the "Sign in" button.
+      const nxProfile = document.querySelector('nx-nav')
+        ?.shadowRoot?.querySelector('nx-profile');
+      // eslint-disable-next-line no-underscore-dangle
+      if (nxProfile) nxProfile._signedIn = false;
     } else if (!wasAuthed && isAuthed) {
       // Another tab signed back in — reload to pick up the fresh session.
       window.location.reload();
@@ -86,7 +91,11 @@ export const daFetch = async (url, opts = {}) => {
       resp = await fetch(url, opts);
     }
     if (resp.status === 401) {
-      if (refreshed || accessToken) {
+      // Cross-tab sign-out clears nx-ims; treat any token we'd captured before
+      // that as stale and surface the banner instead of redirecting to
+      // /not-found (which itself bounces to IMS sign-in).
+      const stillSignedIn = !!localStorage.getItem('nx-ims');
+      if (stillSignedIn && (refreshed || accessToken)) {
         // eslint-disable-next-line no-console
         console.warn('You see the 404 page because you have no access to this page', url);
         window.location = `${window.location.origin}/not-found`;

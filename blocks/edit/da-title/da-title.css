@@ -108,6 +108,10 @@ da-dialog {
   gap: 24px;
 }
 
+.da-title-collab-actions-wrapper[inert] {
+  opacity: 0.4;
+}
+
 .collab-status {
   display: flex;
   align-items: center;

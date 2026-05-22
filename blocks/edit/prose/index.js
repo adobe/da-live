@@ -74,7 +74,13 @@ export async function createConnection(path) {
   });
 
   provider.on('connection-close', async (event) => {
-    if (event?.code === 4401 || event?.code === 4403) {
+    if (event?.code === 4403) {
+      // Permissions UI is owned by the HTTP 403 path in edit.js. Just stop
+      // the reconnect loop here so a mid-session revoke doesn't spin.
+      provider.shouldConnect = false;
+      return;
+    }
+    if (event?.code === 4401) {
       provider.shouldConnect = false;
       // Force imslib to attempt a refresh before deciding to give up.
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
