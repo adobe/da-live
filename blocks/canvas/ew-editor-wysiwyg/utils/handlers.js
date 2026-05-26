@@ -75,11 +75,19 @@ export function handleUndoRedo(data, ctx) {
   const { action } = data;
   const view = ctx?.view;
   if (!view) return;
+  // hasFocus may be overridden to () => true by the cursor-move hack; temporarily
+  // restore the prototype so ProseMirror skips _isDomSelectionInView during the
+  // undo dispatch (the editor may be in a hidden or unfocused state).
+  const hadHasFocus = Object.hasOwn(view, 'hasFocus');
+  delete view.hasFocus;
+
   if (action === 'undo') {
     yUndo(view.state);
   } else if (action === 'redo') {
     yRedo(view.state);
   }
+
+  if (hadHasFocus) view.hasFocus = () => true;
 }
 
 export function handleStoredMarks({ marks }, ctx) {
