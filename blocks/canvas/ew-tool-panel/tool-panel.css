@@ -79,7 +79,6 @@
   height: 80vh;
   margin: auto;
   padding: 0;
-  color-scheme: light dark;
   border: 1px solid light-dark(var(--s2-gray-300), var(--s2-gray-600));
   border-radius: 8px;
   background: light-dark(var(--s2-gray-50), var(--s2-gray-800));
