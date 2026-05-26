@@ -70,6 +70,7 @@ class EwSelectionToolbar extends LitElement {
       this.style.setProperty('--toolbar-anchor-x', `${left + width / 2}px`);
     }
     this.classList.add('open');
+    this.requestUpdate();
   }
 
   hide() {
