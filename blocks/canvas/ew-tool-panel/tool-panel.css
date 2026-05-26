@@ -98,6 +98,7 @@
   justify-content: space-between;
   padding: 12px 16px;
   border-bottom: 1px solid light-dark(var(--s2-gray-200), var(--s2-gray-600));
+  color: light-dark(var(--s2-gray-800), var(--s2-gray-200));
   flex-shrink: 0;
 }
 
