@@ -169,6 +169,13 @@ export function getInstrumentedHTML(view) {
   const originalTables = view.dom.querySelectorAll('table');
   const clonedTables = editorClone.querySelectorAll('table');
   clonedTables.forEach((table, index) => {
+    // for metadata table skip marker instrumentation and hide the table
+    const firstRow = table.querySelector('tr');
+    const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
+    if (firstCellText === 'metadata') {
+      table.style.display = 'none';
+      return;
+    }
     const div = table.parentElement;
     const blockMarker = document.createElement('div');
     blockMarker.className = 'block-marker';
