@@ -171,19 +171,18 @@ export function getInstrumentedHTML(view) {
   clonedTables.forEach((table, index) => {
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
-    if (firstCellText !== 'metadata') {
-      const div = table.parentElement;
-      const blockMarker = document.createElement('div');
-      blockMarker.className = 'block-marker';
-      try {
-        const position = view.posAtDOM(originalTables[index], 0);
-        blockMarker.setAttribute('data-prose-index', position);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('Could not find position for table block:', e);
-      }
-      div.insertAdjacentElement('beforebegin', blockMarker);
+    if (firstCellText === 'metadata') return;
+    const div = table.parentElement;
+    const blockMarker = document.createElement('div');
+    blockMarker.className = 'block-marker';
+    try {
+      const position = view.posAtDOM(originalTables[index], 0);
+      blockMarker.setAttribute('data-prose-index', position);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Could not find position for table block:', e);
     }
+    div.insertAdjacentElement('beforebegin', blockMarker);
   });
 
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
