@@ -162,6 +162,12 @@ class EwToolPanel extends LitElement {
     if (actions) zone.append(actions);
   }
 
+  _renderDialogIcon(icon) {
+    if (!icon) return nothing;
+    if (icon.startsWith('#')) return html`<svg class="tool-panel-dialog-icon" aria-hidden="true"><use href="${icon}"></use></svg>`;
+    return html`<img class="tool-panel-dialog-icon" src="${icon}" alt="">`;
+  }
+
   _close() {
     this.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
   }
@@ -173,6 +179,7 @@ class EwToolPanel extends LitElement {
   render() {
     const items = this._pickerItemsFromViews();
     const dialogTitle = this._fullsizeDialogView?.label ?? 'Extension';
+    const dialogIcon = this._fullsizeDialogView?.icon;
 
     return html`
       <div class="tool-panel-header">
@@ -194,7 +201,10 @@ class EwToolPanel extends LitElement {
           @close=${this._onFullsizeDialogClose}
         >
           <div class="tool-panel-fullsize-dialog-header">
-            <p class="tool-panel-fullsize-dialog-title">${dialogTitle}</p>
+            <div class="tool-panel-fullsize-dialog-title">
+              ${this._renderDialogIcon(dialogIcon)}
+              <p>${dialogTitle}</p>
+            </div>
             <button type="button" class="tool-panel-fullsize-dialog-close" aria-label="Close"
               @click=${(e) => e.target.closest('dialog').close()}>✕</button>
           </div>
