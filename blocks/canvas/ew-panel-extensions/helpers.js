@@ -230,6 +230,7 @@ export async function fetchExtensions(org, site) {
       sources: calculateSources(org, site, row.path),
       experience: row.experience || 'inline',
       format: row.format || '',
+      icon: row.icon || '',
       ootb: OOTB_PLUGINS.has(name),
     });
     return acc;
@@ -416,6 +417,7 @@ function extensionToPanelView(ext, section) {
     firstParty: ext.ootb,
     experience: ext.experience,
     sources: ext.sources,
+    icon: ext.icon,
     load: async () => {
       await import('./ew-panel-extensions.js');
       const el = document.createElement('ew-panel-extension');
