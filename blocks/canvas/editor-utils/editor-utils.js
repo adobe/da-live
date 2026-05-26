@@ -169,24 +169,21 @@ export function getInstrumentedHTML(view) {
   const originalTables = view.dom.querySelectorAll('table');
   const clonedTables = editorClone.querySelectorAll('table');
   clonedTables.forEach((table, index) => {
-    // for metadata table skip marker instrumentation and hide the table
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
-    if (firstCellText === 'metadata') {
-      table.style.display = 'none';
-      return;
+    if (firstCellText !== 'metadata') {
+      const div = table.parentElement;
+      const blockMarker = document.createElement('div');
+      blockMarker.className = 'block-marker';
+      try {
+        const position = view.posAtDOM(originalTables[index], 0);
+        blockMarker.setAttribute('data-prose-index', position);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not find position for table block:', e);
+      }
+      div.insertAdjacentElement('beforebegin', blockMarker);
     }
-    const div = table.parentElement;
-    const blockMarker = document.createElement('div');
-    blockMarker.className = 'block-marker';
-    try {
-      const position = view.posAtDOM(originalTables[index], 0);
-      blockMarker.setAttribute('data-prose-index', position);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('Could not find position for table block:', e);
-    }
-    div.insertAdjacentElement('beforebegin', blockMarker);
   });
 
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
