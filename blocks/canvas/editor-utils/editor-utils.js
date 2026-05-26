@@ -2,7 +2,6 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
-
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
 // --- state.js ---
@@ -113,6 +112,11 @@ const EDITABLES = [
 ];
 const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
 
+export function isOutermostWysiwygEditable(el) {
+  if (!el?.matches?.(EDITABLE_SELECTORS)) return false;
+  return !el.parentElement?.closest(EDITABLE_SELECTORS);
+}
+
 export function extractCursors(view) {
   const remoteCursors = view.dom.querySelectorAll('.ProseMirror-yjs-cursor');
   const cursorMap = new Map();
@@ -153,6 +157,7 @@ export function getInstrumentedHTML(view) {
   const clonedElements = editorClone.querySelectorAll(EDITABLE_SELECTORS);
 
   originalElements.forEach((originalElement, index) => {
+    if (!isOutermostWysiwygEditable(originalElement)) return;
     if (clonedElements[index]) {
       try {
         const editableElementStartPos = view.posAtDOM(originalElement, 0);
