@@ -173,6 +173,7 @@ class EwToolPanel extends LitElement {
   render() {
     const items = this._pickerItemsFromViews();
     const dialogTitle = this._fullsizeDialogView?.label ?? 'Extension';
+    const dialogIcon = this._fullsizeDialogView?.icon;
 
     return html`
       <div class="tool-panel-header">
@@ -194,7 +195,13 @@ class EwToolPanel extends LitElement {
           @close=${this._onFullsizeDialogClose}
         >
           <div class="tool-panel-fullsize-dialog-header">
-            <p class="tool-panel-fullsize-dialog-title">${dialogTitle}</p>
+            <div class="tool-panel-fullsize-dialog-title">
+              ${dialogIcon ? (dialogIcon.startsWith('#')
+                ? html`<svg class="tool-panel-dialog-icon" aria-hidden="true"><use href="${dialogIcon}"></use></svg>`
+                : html`<img class="tool-panel-dialog-icon" src="${dialogIcon}" alt="">`)
+                : nothing}
+              <p>${dialogTitle}</p>
+            </div>
             <button type="button" class="tool-panel-fullsize-dialog-close" aria-label="Close"
               @click=${(e) => e.target.closest('dialog').close()}>✕</button>
           </div>

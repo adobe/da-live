@@ -102,9 +102,22 @@
 }
 
 .tool-panel-fullsize-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+
+  p {
+    margin: 0;
+  }
+}
+
+.tool-panel-dialog-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .tool-panel-fullsize-dialog-close {
@@ -131,4 +144,10 @@
   position: relative;
   min-height: 0;
   overflow: hidden;
+
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
 }
