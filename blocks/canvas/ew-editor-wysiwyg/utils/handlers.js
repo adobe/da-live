@@ -131,7 +131,7 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
   }
 }
 
-function positionSelectionToolbarFromIframe(ctx) {
+function showToolbarInIFrame(ctx) {
   const { view } = ctx;
   const tb = getSelectionToolbar();
   tb.view = view;
@@ -155,6 +155,8 @@ export function handleIframeSelectionChange(data, ctx) {
     }
     return;
   }
+
   if (!handleSelectionChange(data, ctx, { fromQuickEditIframe: true })) return;
-  positionSelectionToolbarFromIframe(ctx);
+
+  showToolbarInIFrame(ctx);
 }

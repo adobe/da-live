@@ -63,19 +63,8 @@ export function createSelectionToolbarPlugin() {
       },
     },
     view() {
-      let scrollEl;
-      const tb = getSelectionToolbar();
-      const onScroll = () => {
-        if (tb.view && getSelectionOriginFromIframe(tb.view.state)) return;
-        syncToolbar(tb.view);
-      };
-
       return {
         update(view) {
-          if (!scrollEl) {
-            scrollEl = view.dom.closest('.ew-editor-doc');
-            scrollEl?.addEventListener('scroll', onScroll, { passive: true });
-          }
           const header = document.querySelector('ew-canvas-header');
           const ev = header?.editorView;
           if (ev !== 'content' && ev !== 'split') return;
@@ -83,7 +72,6 @@ export function createSelectionToolbarPlugin() {
           syncToolbar(view);
         },
         destroy() {
-          scrollEl?.removeEventListener('scroll', onScroll);
           hideSelectionToolbar();
         },
       };
