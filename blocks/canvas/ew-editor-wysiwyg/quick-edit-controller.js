@@ -1,5 +1,4 @@
 import { updateDocument, updateState, getEditor } from '../editor-utils/editor-utils.js';
-import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { handleImageReplace } from './utils/image.js';
 import {
   handleCursorMove,
@@ -10,7 +9,6 @@ import {
 export function createControllerOnMessage(ctx) {
   return function onMessage(e) {
     if (e.data.type === 'cursor-move') {
-      hideSelectionToolbar();
       handleCursorMove(e.data, ctx);
     } else if (e.data.type === 'reload') {
       updateDocument(ctx);
