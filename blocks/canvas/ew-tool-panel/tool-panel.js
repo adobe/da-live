@@ -162,6 +162,12 @@ class EwToolPanel extends LitElement {
     if (actions) zone.append(actions);
   }
 
+  _renderDialogIcon(icon) {
+    if (!icon) return nothing;
+    if (icon.startsWith('#')) return html`<svg class="tool-panel-dialog-icon" aria-hidden="true"><use href="${icon}"></use></svg>`;
+    return html`<img class="tool-panel-dialog-icon" src="${icon}" alt="">`;
+  }
+
   _close() {
     this.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
   }
@@ -196,10 +202,7 @@ class EwToolPanel extends LitElement {
         >
           <div class="tool-panel-fullsize-dialog-header">
             <div class="tool-panel-fullsize-dialog-title">
-              ${dialogIcon ? (dialogIcon.startsWith('#')
-                ? html`<svg class="tool-panel-dialog-icon" aria-hidden="true"><use href="${dialogIcon}"></use></svg>`
-                : html`<img class="tool-panel-dialog-icon" src="${dialogIcon}" alt="">`)
-                : nothing}
+              ${this._renderDialogIcon(dialogIcon)}
               <p>${dialogTitle}</p>
             </div>
             <button type="button" class="tool-panel-fullsize-dialog-close" aria-label="Close"
