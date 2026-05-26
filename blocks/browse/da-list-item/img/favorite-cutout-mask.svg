@@ -1,0 +1,20 @@
+<!--
+  Mask used to punch a star-shaped hole out of the file/folder icon.
+  Tweak the polygon transform to change the cutout:
+    translate(<cx> <cy>) — center of the cutout in the 24x24 viewBox (matches the visible badge center)
+    scale(<size>)        — cutout edge length in viewBox units (currently 21 = 13px star + ~4px halo each side)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <mask id="cut" maskUnits="userSpaceOnUse">
+    <rect width="24" height="24" fill="white"/>
+    <polygon
+      transform="translate(2 20) scale(21) translate(-0.5 -0.5)"
+      points="0.5,0.075 0.63,0.36 0.94,0.395 0.71,0.605 0.775,0.91 0.5,0.755 0.225,0.91 0.29,0.605 0.06,0.395 0.37,0.36"
+      fill="black"
+      stroke="black"
+      stroke-width="1.95"
+      stroke-linejoin="round"
+      vector-effect="non-scaling-stroke"/>
+  </mask>
+  <rect width="24" height="24" fill="white" mask="url(#cut)"/>
+</svg>

@@ -258,15 +258,13 @@ export default class DaListItem extends LitElement {
       <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
         ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
         ` : html`
-          <span class="da-item-list-item-type">${this.renderIcon()}</span>
+          <span class="da-item-list-item-type ${this.isFavorited ? 'is-favorited' : ''}">
+            ${this.renderIcon()}
+            ${this.isFavorited ? html`<span class="da-item-list-item-favorite-badge" aria-label="Favorited"></span>` : nothing}
+          </span>
         `}
         <div class="da-item-list-item-name">
           <span class="da-item-list-item-name-text">${this.name}</span>
-          ${this.isFavorited ? html`
-            <span class="da-item-list-item-favorite" aria-label="Favorited">
-              <img src="/blocks/browse/da-browse/img/S2_Icon_Star_20_N.svg" alt="" aria-hidden="true"/>
-            </span>
-          ` : nothing}
         </div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;

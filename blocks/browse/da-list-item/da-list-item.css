@@ -46,6 +46,7 @@ button {
 }
 
 .da-item-list-item-type {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -70,21 +71,25 @@ button {
   white-space: nowrap;
 }
 
-.da-item-list-item-favorite {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+.da-item-list-item-type > svg:first-child {
+  width: 24px;
+  height: 24px;
 }
 
-.da-item-list-item-favorite img {
-  display: block;
-  width: 20px;
-  height: 20px;
-  /* SVG ships with a white fill; invert to black for the list view. */
-  filter: brightness(0);
+.da-item-list-item-type.is-favorited > svg:first-child {
+  mask: url('/blocks/browse/da-list-item/img/favorite-cutout-mask.svg') center / 24px 24px no-repeat;
+  -webkit-mask: url('/blocks/browse/da-list-item/img/favorite-cutout-mask.svg') center / 24px 24px no-repeat;
+}
+
+.da-item-list-item-favorite-badge {
+  position: absolute;
+  bottom: 1.5px;
+  left: -0.5px;
+  width: 13px;
+  height: 13px;
+  background-color: #F5C518;
+  mask: url('/blocks/browse/da-list-item/img/star-filled.svg') center / contain no-repeat;
+  -webkit-mask: url('/blocks/browse/da-list-item/img/star-filled.svg') center / contain no-repeat;
 }
 
 .icon.rename-icon {
