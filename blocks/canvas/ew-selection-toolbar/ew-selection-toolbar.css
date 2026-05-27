@@ -26,7 +26,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  max-width: min(92vw, 500px);
+  max-width: min(96vw, 720px);
 }
 
 .toolbar-actions[data-disabled] {
