@@ -1,5 +1,5 @@
 import { convertSheets, debounce, saveToDa } from '../../edit/utils/helpers.js';
-import { daFetch } from '../../shared/utils.js';
+import { getNx2Api } from '../../../scripts/utils.js';
 
 const DEBOUNCE_TIME = 1000;
 const POLL_INTERVAL = 30000;
@@ -55,7 +55,13 @@ class StaleCheck {
   async checkForDrift() {
     if (this._saveBlocked) return true;
     try {
-      const resp = await daFetch(this._sourceUrl);
+      const { config, source } = await getNx2Api();
+      const { pathname } = new URL(this._sourceUrl);
+
+      const [api, org, site, ...parts] = pathname.slice(1).split('/');
+      const getFn = api === 'source' ? source.load : config.get;
+
+      const resp = await getFn({ org, site, path: parts.join('/') });
       if (!resp.ok) return false;
       const json = await resp.json();
       const text = JSON.stringify(json);
