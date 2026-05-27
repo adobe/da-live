@@ -18,6 +18,7 @@ const styles = await loadStyle(import.meta.url);
 
 const MARK_ITEMS = commandsFor('toolbar-marks');
 const STRUCTURE_ITEMS = commandsFor('toolbar-structure');
+const TABLE_ITEMS = commandsFor('toolbar-table');
 const PICKER_DEFS = commandsFor('toolbar-picker');
 
 const BLOCK_TYPE_LABELS = new Map(PICKER_DEFS.map(({ id, label }) => [id, label]));
@@ -155,6 +156,26 @@ class EwSelectionToolbar extends LitElement {
     if (!this.view) return false;
     const cmd = COMMAND_BY_ID.get(id);
     return cmd?.disabled ? cmd.disabled(this.view.state) : false;
+  }
+
+  _hasVisibleCommands(items) {
+    return items.some(({ id }) => this._isCommandVisible(id));
+  }
+
+  _renderToolbarSep() {
+    return html`<span class="toolbar-sep" aria-hidden="true"></span>`;
+  }
+
+  _renderBlockStructure() {
+    const hasStructure = this._hasVisibleCommands(STRUCTURE_ITEMS);
+    const hasTable = this._hasVisibleCommands(TABLE_ITEMS);
+    if (!hasStructure && !hasTable) return nothing;
+    return html`
+      ${this._renderToolbarSep()}
+      ${hasStructure ? STRUCTURE_ITEMS.map((s) => this._renderStructureButton(s)) : nothing}
+      ${hasStructure && hasTable ? this._renderToolbarSep() : nothing}
+      ${hasTable ? TABLE_ITEMS.map((s) => this._renderStructureButton(s)) : nothing}
+    `;
   }
 
   _hasLink() {
@@ -306,8 +327,7 @@ class EwSelectionToolbar extends LitElement {
           </span>
           <span class="toolbar-sep" aria-hidden="true"></span>
           ${MARK_ITEMS.map((m) => this._renderMarkButton(m))}
-          <span class="toolbar-sep" aria-hidden="true"></span>
-          ${STRUCTURE_ITEMS.map((s) => this._renderStructureButton(s))}
+          ${this._renderBlockStructure()}
           <span class="toolbar-sep" aria-hidden="true"></span>
           ${this._renderLinkButtons()}
         </div>

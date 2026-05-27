@@ -8,6 +8,15 @@ import {
   toggleMark,
   wrapIn,
   wrapInList,
+  addColumnBefore,
+  addColumnAfter,
+  addRowBefore,
+  addRowAfter,
+  deleteColumn,
+  deleteRow,
+  mergeCells,
+  splitCell,
+  isInTable,
 } from 'da-y-wrapper';
 
 /* ---- Apply factories ---- */
@@ -79,6 +88,33 @@ export function canSinkList(state) {
 
 export function canLiftList(state) {
   return liftListItem(state.schema.nodes.list_item)(state);
+}
+
+/* ---- Table commands ---- */
+
+export const tableCommand = (cmd) => (view) => {
+  cmd(view.state, view.dispatch.bind(view));
+};
+
+export const addTableColumnLeft = tableCommand(addColumnBefore);
+export const addTableColumnRight = tableCommand(addColumnAfter);
+export const addTableRowAbove = tableCommand(addRowBefore);
+export const addTableRowBelow = tableCommand(addRowAfter);
+export const deleteTableColumn = tableCommand(deleteColumn);
+export const deleteTableRow = tableCommand(deleteRow);
+export const mergeTableCells = tableCommand(mergeCells);
+export const splitTableCell = tableCommand(splitCell);
+
+export function inTable(state) {
+  return isInTable(state);
+}
+
+export function canMergeCells(state) {
+  return mergeCells(state);
+}
+
+export function canSplitCell(state) {
+  return splitCell(state);
 }
 
 /* ---- Slash-only action helpers ---- */
