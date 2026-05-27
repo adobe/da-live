@@ -14,9 +14,21 @@ import {
   getTableHeading,
   getTableBody,
   LOREM_SENTENCES,
+  addTableColumnLeft,
+  addTableColumnRight,
+  addTableRowAbove,
+  addTableRowBelow,
+  deleteTableColumn,
+  deleteTableRow,
+  mergeTableCells,
+  splitTableCell,
+  inTable,
+  canMergeCells,
+  canSplitCell,
 } from './command-helpers.js';
 
-const iconName = (name) => name.toLowerCase();
+/** Spectrum icon stem for `/img/icons/s2-icon-{stem}-20-n.svg` */
+const iconName = (name) => name.replace(/-/g, '').toLowerCase();
 
 export const COMMANDS = [
   // Toolbar: inline mark buttons
@@ -176,6 +188,72 @@ export const COMMANDS = [
     visible: ({ selection: { $from } }) => inList($from),
     disabled: (state) => !canLiftList(state),
     apply: liftListLevel,
+  },
+
+  // Toolbar: table block structure (visible inside tables only)
+  {
+    id: 'table-add-column-left',
+    label: 'Add column left',
+    icon: iconName('tablecolumnaddleft'),
+    showIn: ['toolbar-table'],
+    visible: inTable,
+    apply: addTableColumnLeft,
+  },
+  {
+    id: 'table-add-column-right',
+    label: 'Add column right',
+    icon: iconName('tablecolumnaddright'),
+    showIn: ['toolbar-table'],
+    visible: inTable,
+    apply: addTableColumnRight,
+  },
+  {
+    id: 'table-add-row-above',
+    label: 'Add row above',
+    icon: iconName('tablerowaddtop'),
+    showIn: ['toolbar-table'],
+    visible: inTable,
+    apply: addTableRowAbove,
+  },
+  {
+    id: 'table-add-row-below',
+    label: 'Add row below',
+    icon: iconName('tablerowaddbottom'),
+    showIn: ['toolbar-table'],
+    visible: inTable,
+    apply: addTableRowBelow,
+  },
+  {
+    id: 'table-delete-column',
+    label: 'Delete column',
+    icon: iconName('tablecolumnremove'),
+    showIn: ['toolbar-table'],
+    visible: inTable,
+    apply: deleteTableColumn,
+  },
+  {
+    id: 'table-delete-row',
+    label: 'Delete row',
+    icon: iconName('tablerowremove'),
+    showIn: ['toolbar-table'],
+    visible: inTable,
+    apply: deleteTableRow,
+  },
+  {
+    id: 'table-merge-cells',
+    label: 'Merge cells',
+    icon: iconName('tablemergecells'),
+    showIn: ['toolbar-table'],
+    visible: canMergeCells,
+    apply: mergeTableCells,
+  },
+  {
+    id: 'table-split-cell',
+    label: 'Split cell',
+    icon: iconName('tablesplitcell'),
+    showIn: ['toolbar-table'],
+    visible: canSplitCell,
+    apply: splitTableCell,
   },
 
   // Slash menu: text section only
