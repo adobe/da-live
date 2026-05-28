@@ -76,20 +76,13 @@ button {
   height: 24px;
 }
 
-.da-item-list-item-type.is-favorited > svg:first-child {
-  mask: url('/blocks/browse/da-list-item/img/favorite-cutout-mask.svg') center / 24px 24px no-repeat;
-  -webkit-mask: url('/blocks/browse/da-list-item/img/favorite-cutout-mask.svg') center / 24px 24px no-repeat;
-}
-
-.da-item-list-item-favorite-badge {
+.da-item-list-item-favorite {
   position: absolute;
-  bottom: 1.5px;
-  left: -0.5px;
-  width: 13px;
-  height: 13px;
-  background-color: #F5C518;
-  mask: url('/blocks/browse/da-list-item/img/star-filled.svg') center / contain no-repeat;
-  -webkit-mask: url('/blocks/browse/da-list-item/img/star-filled.svg') center / contain no-repeat;
+  bottom: 1px;
+  left: -1px;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
 }
 
 .icon.rename-icon {
