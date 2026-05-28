@@ -2,9 +2,9 @@ import { expect } from '@esm-bundle/chai';
 import {
   isRegistered,
   getUserPublishPermission,
-  getExistingSchedule,
   schedulePagePublish,
 } from '../../../../../../../blocks/edit/da-prepare/actions/scheduler/utils.js';
+import { getExistingSchedule } from '../../../../../../../blocks/shared/utils.js';
 
 describe('scheduler/utils', () => {
   let savedFetch;

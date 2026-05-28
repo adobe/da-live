@@ -223,7 +223,9 @@ export async function aemAction(path, action, opts = {}) {
     }
   }
 
-  return saveToAem(path, 'live');
+  const liveJson = await saveToAem(path, 'live');
+  if (liveJson.error) return { ...liveJson, error: { ...liveJson.error, action: 'publish' } };
+  return liveJson;
 }
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
