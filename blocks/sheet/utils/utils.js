@@ -59,7 +59,7 @@ class StaleCheck {
       const { pathname } = new URL(this._sourceUrl);
 
       const [api, org, site, ...parts] = pathname.slice(1).split('/');
-      const getFn = api === 'source' ? source.load : config.get;
+      const getFn = api === 'source' ? source.get : config.get;
 
       const resp = await getFn({ org, site, path: parts.join('/') });
       if (!resp.ok) return false;

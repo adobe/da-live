@@ -89,6 +89,6 @@ export const getNx2 = () => {
 
 let nx2ApiPromise;
 export const getNx2Api = () => {
-  if (!nx2ApiPromise) nx2ApiPromise = import(`${getNx2()}/utils/api.js`);
+  nx2ApiPromise ??= import(`${getNx2()}/utils/api.js`);
   return nx2ApiPromise;
 };

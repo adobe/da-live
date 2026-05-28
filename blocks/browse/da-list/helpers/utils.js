@@ -105,7 +105,7 @@ export async function handleUpload(list, fullpath, file) {
   try {
     const { source } = await getNx2Api();
     // TODO: Error handling
-    await source.save(postpath, { data });
+    await source.save(postpath, { body: data });
 
     file.imported = true;
 

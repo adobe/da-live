@@ -94,7 +94,7 @@ async function saveHtml(fullPath) {
   const html = prose2aem(editor, false);
 
   const { source } = await getNx2Api();
-  return source.save(fullPath, { data: html });
+  return source.save(fullPath, { body: html });
 }
 
 function formatSheetData(jData) {
@@ -177,18 +177,18 @@ export function convertSheets(sheets) {
   return json;
 }
 
-async function saveJson(fullPath, sheets, jsonToSave, type = 'sheet') {
+async function saveJson(path, sheets, jsonToSave, type = 'sheet') {
   const json = jsonToSave || convertSheets(sheets);
-  const data = new Blob([JSON.stringify(json)], { type: 'application/json' });
+  const body = JSON.stringify(json);
 
   const { source, config } = await getNx2Api();
 
   if (type === 'config') {
-    return config.save(fullPath, { data });
+    return config.save(path, { body });
   }
 
   // type === 'sheet'
-  return source.save(fullPath, { data });
+  return source.save(path, { body });
 }
 
 export async function saveToDa(pathname, sheet) {
@@ -200,8 +200,7 @@ export async function saveToDa(pathname, sheet) {
 }
 
 export function saveDaConfig(pathname, sheet) {
-  const fullPath = `${DA_ORIGIN}/config${pathname}`;
-  return saveJson(fullPath, sheet, null, 'config');
+  return saveJson(pathname, sheet, null, 'config');
 }
 
 export async function saveDaVersion(pathname, label = 'Published') {

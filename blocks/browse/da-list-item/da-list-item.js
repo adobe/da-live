@@ -72,8 +72,8 @@ export default class DaListItem extends LitElement {
   }
 
   async updateAEMStatus() {
-    const { status } = await getNx2Api();
-    const json = await status.get(this.path);
+    const { status, asJson } = await getNx2Api();
+    const { data: json } = await asJson(status.get(this.path));
 
     if (json) {
       this._preview = {
@@ -250,7 +250,7 @@ export default class DaListItem extends LitElement {
     if (this.ext === 'link') {
       path = nothing;
       externalUrlPromise = getNx2Api()
-        .then(({ source }) => source.load(this.path))
+        .then(({ source }) => source.get(this.path))
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }

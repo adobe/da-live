@@ -99,11 +99,11 @@ export default class DaNew extends LitElement {
       await source.createFolder(path);
       this.sendNewItem({ name: this._createName, path });
     } else if (ext === 'link') {
-      await source.save(path, { data });
+      await source.save(path, { body: data });
       this.sendNewItem({ name: this._createName, path, ext });
     } else {
       // Sheet skips the save — the editor creates it on first load.
-      if (ext === 'html') await source.save(path, { data });
+      if (ext === 'html') await source.save(path, { body: data });
       window.location = getEditPath({ path, ext, editor: this.editor });
     }
     this.resetCreate();
@@ -125,7 +125,7 @@ export default class DaNew extends LitElement {
     const path = `${this.fullpath}/${filename}`;
 
     const { source } = await getNx2Api();
-    await source.save(path, { data: file });
+    await source.save(path, { body: file });
 
     const item = { name, path, ext };
     this.sendNewItem(item);

@@ -445,11 +445,11 @@ export default class DaList extends LitElement {
 
       if (this._unpublish && this._confirmText === 'YES') {
         const { aem } = await getNx2Api();
-        const previewJson = await aem.unPreview(item.path);
-        if (!previewJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
+        const previewResp = await aem.unPreview(item.path);
+        if (!previewResp.ok) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
 
-        const liveJson = await aem.unPublish(item.path);
-        if (!liveJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
+        const liveResp = await aem.unPublish(item.path);
+        if (!liveResp.ok) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
       }
       this._itemsRemaining -= 1;
 

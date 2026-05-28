@@ -79,7 +79,7 @@ export default class DaSearch extends LitElement {
     }
 
     const { source } = await getNx2Api();
-    const resp = await source.load(`${startPath}/.da/translate.json`);
+    const resp = await source.get(`${startPath}/.da/translate.json`);
     if (!resp.ok) {
       return { paths: [startPath], files: [] };
     }
@@ -121,7 +121,7 @@ export default class DaSearch extends LitElement {
 
         try {
           const { source } = await getNx2Api();
-          const resp = await source.load(file.path);
+          const resp = await source.get(file.path);
           const text = await resp.text();
           // Log empty files
           // eslint-disable-next-line no-console
@@ -217,11 +217,11 @@ export default class DaSearch extends LitElement {
 
       const getFile = async () => {
         const { source } = await getNx2Api();
-        const getResp = await source.load(file.path);
+        const getResp = await source.get(file.path);
         const text = await getResp.text();
         const replacedText = text.replaceAll(this._term, replace.value);
         const blob = new Blob([replacedText], { type: 'text/html' });
-        const postResp = await source.save(file.path, { data: blob });
+        const postResp = await source.save(file.path, { body: blob });
         if (!postResp.ok) return { error: 'Error saving file' };
         this._matches += 1;
         return file;
