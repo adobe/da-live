@@ -113,6 +113,11 @@ const EDITABLES = [
 ];
 const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
 
+export function isOutermostWysiwygEditable(el) {
+  if (!el?.matches?.(EDITABLE_SELECTORS)) return false;
+  return !el.parentElement?.closest(EDITABLE_SELECTORS);
+}
+
 export function extractCursors(view) {
   const remoteCursors = view.dom.querySelectorAll('.ProseMirror-yjs-cursor');
   const cursorMap = new Map();
@@ -153,6 +158,7 @@ export function getInstrumentedHTML(view) {
   const clonedElements = editorClone.querySelectorAll(EDITABLE_SELECTORS);
 
   originalElements.forEach((originalElement, index) => {
+    if (!isOutermostWysiwygEditable(originalElement)) return;
     if (clonedElements[index]) {
       try {
         const editableElementStartPos = view.posAtDOM(originalElement, 0);
@@ -169,6 +175,9 @@ export function getInstrumentedHTML(view) {
   const originalTables = view.dom.querySelectorAll('table');
   const clonedTables = editorClone.querySelectorAll('table');
   clonedTables.forEach((table, index) => {
+    const firstRow = table.querySelector('tr');
+    const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
+    if (firstCellText === 'metadata') return;
     const div = table.parentElement;
     const blockMarker = document.createElement('div');
     blockMarker.className = 'block-marker';

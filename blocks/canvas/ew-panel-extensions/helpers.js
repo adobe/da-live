@@ -1,10 +1,10 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
+import { aemAdmin, daFetch } from '../../shared/utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
-const { HLX_ADMIN, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
 
 const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
@@ -230,6 +230,7 @@ export async function fetchExtensions(org, site) {
       sources: calculateSources(org, site, row.path),
       experience: row.experience || 'inline',
       format: row.format || '',
+      icon: row.icon || '',
       ootb: OOTB_PLUGINS.has(name),
     });
     return acc;
@@ -343,10 +344,10 @@ export async function insertTemplate(view, url) {
 // ---------------------------------------------------------------------------
 
 export async function getPreviewStatus({ org, site, pathname }) {
+  const path = `/${org}/${site}${pathname}`;
   try {
-    const resp = await daFetch(`${HLX_ADMIN}/status/${org}/${site}${pathname}`);
-    if (!resp.ok) return null;
-    const json = await resp.json();
+    const json = await aemAdmin(path, 'status', 'GET');
+    if (!json) return null;
     return json.preview?.status === 200;
   } catch {
     return null;
@@ -416,6 +417,7 @@ function extensionToPanelView(ext, section) {
     firstParty: ext.ootb,
     experience: ext.experience,
     sources: ext.sources,
+    icon: ext.icon,
     load: async () => {
       await import('./ew-panel-extensions.js');
       const el = document.createElement('ew-panel-extension');
