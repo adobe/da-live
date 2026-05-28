@@ -4,7 +4,7 @@ import getSheet from '../../../../../shared/sheet.js';
 import { etcFetch, getAemSiteToken, getSidekickConfig } from '../../../../../shared/utils.js';
 import { ICONS, REASONS } from '../utils/constants.js';
 
-await import(`${getNx('/nx')}/blocks/loc/views/url-details/url-details.js`);
+await import(`${getNx(1)}/blocks/loc/views/url-details/url-details.js`);
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 

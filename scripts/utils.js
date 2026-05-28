@@ -54,12 +54,17 @@ export const nxCSS = nxVer ? '/styles/styles.css' : '/styles/nexter.css';
 
 export const [setNx, getNx] = (() => {
   let nx;
-  let nxVerBase;
+  let nxBase;
+
+  const getNxVer = (forcedVer) => {
+    if (forcedVer && forcedVer > 1) return `${nxBase}2`;
+    if (forcedVer && forcedVer === 1) return nxBase;
+    return nxVer ? `${nxBase}2` : nxBase;
+  };
 
   return [
-    (nxBase, location) => {
-      // Version nxBase if supplied from query param
-      nxVerBase = nxVer ? `${nxBase}2` : nxBase;
+    (base, location) => {
+      nxBase = base;
 
       nx = (() => {
         const { hostname, search } = location || window.location;
@@ -78,7 +83,7 @@ export const [setNx, getNx] = (() => {
         // Otherwise use a fully qualified branch
         return `https://${branch}--da-nx--adobe.aem.live`;
       })();
-      return `${nx}${nxVerBase}`;
-    }, (forcedVer) => `${nx}${forcedVer ?? nxVerBase}`,
+      return `${nx}${getNxVer()}`;
+    }, (forcedVer) => `${nx}${getNxVer(forcedVer)}`,
   ];
 })();
