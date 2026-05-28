@@ -48,11 +48,24 @@ class EwFileExplorer extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
+    this._onAgentChange = async ({ detail }) => {
+      if (detail?.scope !== 'file') return;
+      const toRefresh = (detail.paths ?? []).filter((p) => this._cache?.[p]);
+      if (!toRefresh.length) return;
+      const updates = await Promise.all(toRefresh.map(async (p) => {
+        const result = await listFolder(p);
+        return Array.isArray(result) ? [p, result] : null;
+      }));
+      const patched = Object.fromEntries(updates.filter(Boolean));
+      if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
+    };
+    document.addEventListener('nx-agent-change', this._onAgentChange);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    document.removeEventListener('nx-agent-change', this._onAgentChange);
   }
 
   updated() {
