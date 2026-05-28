@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { initIms, saveToAem } from '../../../../shared/utils.js';
-import { isRegistered, getExistingSchedule, schedulePagePublish } from './utils.js';
+import { initIms, saveToAem, getExistingSchedule } from '../../../../shared/utils.js';
+import { isRegistered, schedulePagePublish } from './utils.js';
 
 const REGISTER_PATH = 'https://da.live/apps/scheduler';
 

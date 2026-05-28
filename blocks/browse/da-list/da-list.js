@@ -541,6 +541,7 @@ export default class DaList extends LitElement {
             this._aemActionState = null;
             if (this._confirm?.type === 'results') this._confirm = null;
           }, 5000);
+          this.handleErrorClose();
           this.handleClear();
         } else {
           this._aemActionState = null;

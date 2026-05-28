@@ -161,7 +161,7 @@ export default class DaTitle extends LitElement {
   }
 
   handleError(json, action) {
-    this._status = { ...json.error, action };
+    this._status = { ...json.error, action: json.error.action ?? action };
     this._isSending = false;
   }
 
