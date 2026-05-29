@@ -135,9 +135,11 @@ function getLibraryMetadata(el) {
 
 function transformBlock(block) {
   const prevSib = block.previousElementSibling;
-  const item = isHeading(prevSib) && prevSib.textContent
-    ? { name: prevSib.textContent }
-    : getBlockName(block.className || '');
+  const item = block.dataset.groupheading
+    ? { name: block.dataset.groupheading }
+    : isHeading(prevSib) && prevSib.textContent
+      ? { name: prevSib.textContent }
+      : getBlockName(block.className || '');
   item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
 
   const metaEl = block.nextElementSibling?.classList.contains('library-metadata')

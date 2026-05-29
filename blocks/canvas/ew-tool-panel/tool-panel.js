@@ -161,7 +161,7 @@ class EwToolPanel extends LitElement {
     const actions = this._loaded[this.activeId]?.getHeaderActions?.();
     if (actions) zone.append(actions);
   }
-
+^
   _renderDialogIcon(icon) {
     if (!icon) return nothing;
     if (icon.startsWith('#')) return html`<svg class="tool-panel-dialog-icon" aria-hidden="true"><use href="${icon}"></use></svg>`;
