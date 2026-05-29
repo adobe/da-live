@@ -96,6 +96,8 @@ function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   header.undoAvailable = false;
   header.redoAvailable = false;
   const fullPath = buildCanvasDocPath(state);
+  const name = state?.path?.split('/').pop();
+  document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
     removeCanvasEditors(mountRoot);
     return;
