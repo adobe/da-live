@@ -1,4 +1,4 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 
 import { getNx } from '../../../scripts/utils.js';
 import { fetchDaConfigs } from '../../shared/utils.js';
@@ -112,7 +112,7 @@ class EWCanvasHeader extends LitElement {
     return html`
       <header class="bar" part="bar">
         <div class="group group-start" part="group-start">
-          ${this._chatDisabled ? '' : html`
+          ${this._chatDisabled ? nothing : html`
           <button type="button" class="icon-btn" part="btn toggle-before" data-action="open-panel-before" aria-label="Open before panel" @click=${() => this._openPanel('before')}>
             ${this._renderIcon('splitLeft')}
           </button>
