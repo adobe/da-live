@@ -81,3 +81,14 @@ export const [setNx, getNx] = (() => {
     }, () => nx,
   ];
 })();
+
+export const getNx2 = () => {
+  const nx = getNx();
+  return nx.endsWith('/nx') ? `${nx}2` : nx;
+};
+
+let nx2ApiPromise;
+export const getNx2Api = () => {
+  nx2ApiPromise ??= import(`${getNx2()}/utils/api.js`);
+  return nx2ApiPromise;
+};

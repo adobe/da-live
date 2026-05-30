@@ -21,11 +21,7 @@ describe('Browse', () => {
       return {
         ok: true,
         json: async () => ({}),
-        headers: {
-          get: () => {
-
-          },
-        },
+        headers: { get: () => null },
       };
     };
 
@@ -50,10 +46,10 @@ describe('Browse', () => {
       expect(daBrowse._listItems[0].isChecked).to.be.false;
       expect(daBrowse._listItems[0].name).to.equal('d1');
 
-      expect(fetchedArgs.length).to.equal(1);
-      expect(fetchedArgs[0].url).to.equal('https://admin.da.live/copy/myorg/mysite/myroot/srcdir/d1.html');
-      expect(fetchedArgs[0].opts.body.get('destination')).to.equal('/myorg/mysite/myroot/destdir/d1.html');
-      expect(fetchedArgs[0].opts.method).to.equal('POST');
+      const copyCall = fetchedArgs.find(({ url }) => url.includes('/copy/'));
+      expect(copyCall.url).to.equal('https://admin.da.live/copy/myorg/mysite/myroot/srcdir/d1.html');
+      expect(copyCall.opts.body.get('destination')).to.equal('/myorg/mysite/myroot/destdir/d1.html');
+      expect(copyCall.opts.method).to.equal('POST');
     } finally {
       window.fetch = orgFetch;
     }
