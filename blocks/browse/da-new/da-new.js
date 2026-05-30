@@ -1,6 +1,6 @@
 import { LitElement, html } from 'da-lit';
-import { saveToDa, sanitizeName } from '../../shared/utils.js';
-import { getNx } from '../../../scripts/utils.js';
+import { sanitizeName } from '../../shared/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 
 // Styles & Icons
@@ -76,43 +76,35 @@ export default class DaNew extends LitElement {
     if (nameInput) nameInput.classList.remove(INPUT_ERROR);
 
     let ext;
-    let formData;
+    let data;
     switch (this._createType) {
       case 'document':
         ext = 'html';
-        formData = new FormData();
-        formData.append(
-          'data',
-          new Blob([EMPTY_DOC], { type: 'text/html' }),
-        );
+        data = EMPTY_DOC;
         break;
       case 'sheet':
         ext = 'json';
         break;
       case 'link':
         ext = 'link';
-        formData = new FormData();
-        formData.append(
-          'data',
-          new Blob([JSON.stringify({ externalUrl: this._externalUrl })], { type: 'application/json' }),
-        );
+        data = JSON.stringify({ externalUrl: this._externalUrl });
         break;
       default:
         break;
     }
     let path = `${this.fullpath}/${this._createName}`;
     if (ext) path += `.${ext}`;
-    const editPath = getEditPath({ path, ext, editor: this.editor });
-    if (ext === 'html') {
-      await saveToDa({ path, formData });
-      window.location = editPath;
-    } else if (ext && ext !== 'link') {
-      window.location = editPath;
+    const { source } = await getNx2Api();
+    if (this._createType === 'folder') {
+      await source.createFolder(path);
+      this.sendNewItem({ name: this._createName, path });
+    } else if (ext === 'link') {
+      await source.save(path, { body: data });
+      this.sendNewItem({ name: this._createName, path, ext });
     } else {
-      await saveToDa({ path, formData });
-      const item = { name: this._createName, path };
-      if (ext) item.ext = ext;
-      this.sendNewItem(item);
+      // Sheet skips the save — the editor creates it on first load.
+      if (ext === 'html') await source.save(path, { body: data });
+      window.location = getEditPath({ path, ext, editor: this.editor });
     }
     this.resetCreate();
   }
@@ -125,14 +117,15 @@ export default class DaNew extends LitElement {
     }
 
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const file = new FormData(e.target).get('data');
     const split = this._fileLabel.split('.');
     const ext = split.pop();
     const name = sanitizeName(split.join('.'), { allowDot: true, trimTrailing: true });
     const filename = `${name}.${ext}`;
     const path = `${this.fullpath}/${filename}`;
 
-    await saveToDa({ path, formData });
+    const { source } = await getNx2Api();
+    await source.save(path, { body: file });
 
     const item = { name, path, ext };
     this.sendNewItem(item);
