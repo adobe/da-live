@@ -992,7 +992,7 @@ export default class DaList extends LitElement {
       const hasFolders = this._selectedItems.some((item) => !item.ext);
       body = html`
         <p>${label} the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>
-        ${hasFolders ? html`<p>Folders are not ${label.toLowerCase()}ed — only files will be included.</p>` : nothing}
+        ${hasFolders ? html`<em>Note: Folders are not ${label.toLowerCase()}ed, only files will be included.</em>` : nothing}
       `;
     }
 
