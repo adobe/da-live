@@ -32,38 +32,53 @@ function attachAuthMonitor() {
   let wasAuthed = !!window.adobeIMS?.getAccessToken();
   let lastToken = window.adobeIMS?.getAccessToken()?.token || null;
   let debounceTimer;
-  window.addEventListener('storage', () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(async () => {
-      const access = window.adobeIMS?.getAccessToken();
-      const isAuthed = !!access;
-      const token = access?.token || null;
-      if (wasAuthed && !isAuthed) {
-        // Sign-out: drop the WS and collapse the gnav in every tab/view.
-        document.querySelector('da-content')?.wsProvider?.disconnect();
-        // nx-profile has no cross-tab sync; flip it so the avatar shows "Sign in".
-        const nxProfile = document.querySelector('nx-nav')
-          ?.shadowRoot?.querySelector('nx-profile');
-        // eslint-disable-next-line no-underscore-dangle
-        if (nxProfile) nxProfile._signedIn = false;
-        if (isModalView()) {
-          const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
-          showAuthBanner();
-        }
-      } else if (!wasAuthed && isAuthed) {
-        // Signed back in elsewhere: reload to pick up the session, except under
-        // /apps/ where a long-running task may be running.
-        if (!window.location.pathname.startsWith('/apps/')) window.location.reload();
-      } else if (wasAuthed && isAuthed && token !== lastToken) {
-        // Token rotated (e.g. an org switch): re-validate only in Edit/Browse.
-        const view = getAuthView();
-        // eslint-disable-next-line no-use-before-define
-        if (view === 'edit' || view === 'browse') recheckPermissions(view);
+
+  const evaluate = async () => {
+    const access = window.adobeIMS?.getAccessToken();
+    const isAuthed = !!access;
+    const token = access?.token || null;
+    if (isAuthed === wasAuthed && token === lastToken) return;
+    if (wasAuthed && !isAuthed) {
+      // Sign-out: drop the WS and collapse the gnav in every tab/view.
+      document.querySelector('da-content')?.wsProvider?.disconnect();
+      // nx-profile has no cross-tab sync; flip it so the avatar shows "Sign in".
+      const nxProfile = document.querySelector('nx-nav')
+        ?.shadowRoot?.querySelector('nx-profile');
+      // eslint-disable-next-line no-underscore-dangle
+      if (nxProfile) nxProfile._signedIn = false;
+      if (isModalView()) {
+        const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+        showAuthBanner();
       }
-      wasAuthed = isAuthed;
-      lastToken = token;
-    }, 250);
-  });
+    } else if (!wasAuthed && isAuthed) {
+      // Signed back in elsewhere: reload to pick up the session, except under
+      // /apps/ where a long-running task may be running.
+      if (!window.location.pathname.startsWith('/apps/')) window.location.reload();
+    } else if (wasAuthed && isAuthed && token !== lastToken) {
+      // Token rotated (e.g. an org switch): re-validate only in Edit/Browse.
+      const view = getAuthView();
+      // eslint-disable-next-line no-use-before-define
+      if (view === 'edit' || view === 'browse') recheckPermissions(view);
+    }
+    wasAuthed = isAuthed;
+    lastToken = token;
+  };
+
+  const schedule = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(evaluate, 250);
+  };
+
+  // Other tabs' token writes arrive as storage events.
+  window.addEventListener('storage', schedule);
+
+  // A same-tab org switch writes the new token to localStorage but fires no
+  // storage event in this tab, so observe writes directly (no polling).
+  const setItem = window.localStorage.setItem.bind(window.localStorage);
+  window.localStorage.setItem = (...args) => {
+    setItem(...args);
+    schedule();
+  };
 }
 
 export async function initIms() {
@@ -178,6 +193,9 @@ async function recheckPermissions(view) {
         title: 'Not Permitted',
         message: 'You do not have permission to edit this file. Please change your Org or Sign In again.',
       });
+    } else if (resp.ok && document.querySelector('da-dialog.da-auth-banner')) {
+      // Access restored after a denial — reload to reinitialize the editor.
+      window.location.reload();
     }
     return;
   }

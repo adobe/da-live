@@ -5,6 +5,10 @@
   padding: 80px 0;
 }
 
+:host([inert]) {
+  opacity: 0.4;
+}
+
 .da-tablist {
   display: flex;
   gap: 18px;

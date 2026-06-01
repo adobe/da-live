@@ -14,14 +14,14 @@ describe('da-auth-banner', () => {
     savedIMS = window.adobeIMS;
     window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
-    document.querySelectorAll('da-title, da-content').forEach((el) => el.remove());
+    document.querySelectorAll('da-title, da-content, da-browse').forEach((el) => el.remove());
   });
 
   afterEach(() => {
     if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
     window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
-    document.querySelectorAll('da-title, da-content').forEach((el) => el.remove());
+    document.querySelectorAll('da-title, da-content, da-browse').forEach((el) => el.remove());
   });
 
   it('showAuthBanner mounts a single banner element', () => {
@@ -105,5 +105,18 @@ describe('da-auth-banner', () => {
     await wait(0);
     expect(collabActions.inert).to.equal(false);
     expect(daContent.inert).to.equal(false);
+  });
+
+  it('Marks da-browse inert while shown and restores it on close', async () => {
+    const daBrowse = document.createElement('da-browse');
+    document.body.appendChild(daBrowse);
+
+    const banner = showAuthBanner();
+    await banner.updateComplete;
+    expect(daBrowse.inert).to.equal(true);
+
+    banner.close();
+    await wait(0);
+    expect(daBrowse.inert).to.equal(false);
   });
 });

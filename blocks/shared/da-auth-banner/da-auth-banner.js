@@ -42,16 +42,19 @@ export function showAuthBanner({
     dialog.remove();
   });
 
-  // Disable actions and content
+  // Disable actions and content behind the banner.
   const collabActions = document.querySelector('da-title')
     ?.shadowRoot?.querySelector('.da-title-collab-actions-wrapper');
   const daContent = document.querySelector('da-content');
+  const daBrowse = document.querySelector('da-browse');
   if (collabActions) collabActions.inert = true;
   if (daContent) daContent.inert = true;
+  if (daBrowse) daBrowse.inert = true;
 
   dialog.addEventListener('close', () => {
     if (collabActions) collabActions.inert = false;
     if (daContent) daContent.inert = false;
+    if (daBrowse) daBrowse.inert = false;
   }, { once: true });
 
   document.body.appendChild(dialog);
