@@ -537,8 +537,7 @@ export default class DaList extends LitElement {
         if (results.length > 0) {
           this._aemActionState = { verb, results };
           setTimeout(() => {
-            this._aemActionState = null;
-            if (this._confirm?.type === 'results') this._confirm = null;
+            if (this._confirm?.type !== 'results') this._aemActionState = null;
           }, 5000);
           this.handleErrorClose();
           this.handleClear();
@@ -990,7 +989,11 @@ export default class DaList extends LitElement {
         click: async () => handler.call(this),
         disabled: !!checking,
       };
-      body = html`<p>${label} the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>`;
+      const hasFolders = this._selectedItems.some((item) => !item.ext);
+      body = html`
+        <p>${label} the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>
+        ${hasFolders ? html`<p>Folders are not ${label.toLowerCase()}ed — only files will be included.</p>` : nothing}
+      `;
     }
 
     return html`
