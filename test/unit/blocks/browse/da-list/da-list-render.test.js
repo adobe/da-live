@@ -8,6 +8,14 @@ await import('../../../../../blocks/browse/da-list/da-list.js');
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
+async function waitForRender(listEl) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    if (listEl.shadowRoot?.querySelector('.da-browse-panel-header')) return;
+    await nextFrame();
+  }
+}
+
 describe('da-list render', () => {
   let el;
   let savedFetch;
@@ -28,20 +36,22 @@ describe('da-list render', () => {
     el = document.createElement('da-list');
     Object.assign(el, props);
     document.body.appendChild(el);
-    // Wait for getList + firstUpdated dynamic imports
-    await nextFrame();
-    await nextFrame();
-    await nextFrame();
+    await waitForRender(el);
     return el;
+  }
+
+  async function rerender() {
+    el.requestUpdate();
+    await waitForRender(el);
   }
 
   it('Renders an empty list message when no items', async () => {
     await fixture({ fullpath: '/o/r' });
     el._listItems = [];
     el._continuationToken = null;
+    el._allPagesLoaded = true;
     el._emptyMessage = 'Nothing here';
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     expect(el.shadowRoot.querySelector('.empty-list')).to.exist;
     expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Nothing here');
   });
@@ -53,9 +63,7 @@ describe('da-list render', () => {
       { path: '/o/r/img.png', name: 'img', ext: 'png', lastModified: 1704067200000 },
     ];
     el.select = true;
-    el.requestUpdate();
-    await nextFrame();
-    await nextFrame();
+    await rerender();
     const items = el.shadowRoot.querySelectorAll('da-list-item');
     expect(items.length).to.equal(2);
   });
@@ -68,9 +76,7 @@ describe('da-list render', () => {
     }));
     await fixture({ fullpath: '/o/r' });
     el._listItems = [{ path: '/o/r/a', name: 'a', ext: 'html' }];
-    el.requestUpdate();
-    await nextFrame();
-    await nextFrame();
+    await rerender();
     expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
   });
 
@@ -81,8 +87,7 @@ describe('da-list render', () => {
       { path: '/o/r/beta', name: 'beta', ext: 'html' },
     ];
     el._filter = 'alph';
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     const items = el.shadowRoot.querySelectorAll('da-list-item');
     expect(items.length).to.equal(1);
     expect(items[0].getAttribute('name')).to.equal('alpha');
@@ -91,8 +96,7 @@ describe('da-list render', () => {
   it('Renders the status toast when _status is set', async () => {
     await fixture({ fullpath: '/o/r' });
     el._status = { type: 'success', text: 'Hello', description: 'desc' };
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     const toast = el.shadowRoot.querySelector('.da-list-status');
     expect(toast).to.exist;
     expect(toast.textContent).to.contain('Hello');
@@ -102,8 +106,7 @@ describe('da-list render', () => {
   it('Renders the drop-conflicts dialog when _dropConflicts is set', async () => {
     await fixture({ fullpath: '/o/r' });
     el._dropConflicts = ['a.html', 'b.html'];
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     const dialog = el.shadowRoot.querySelector('da-dialog');
     expect(dialog).to.exist;
     expect(dialog.title).to.contain('Replace 2');
@@ -114,8 +117,7 @@ describe('da-list render', () => {
   it('Renders singular text when there is exactly 1 conflict', async () => {
     await fixture({ fullpath: '/o/r' });
     el._dropConflicts = ['a.html'];
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     const dialog = el.shadowRoot.querySelector('da-dialog');
     expect(dialog.title).to.contain('1 existing item');
   });
@@ -123,8 +125,7 @@ describe('da-list render', () => {
   it('Renders the errors dialog when _itemErrors has entries', async () => {
     await fixture({ fullpath: '/o/r' });
     el._itemErrors = [{ name: 'a', message: 'Failed' }];
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     const dialog = el.shadowRoot.querySelector('da-dialog');
     expect(dialog).to.exist;
     expect(dialog.textContent).to.contain('Failed');
@@ -136,8 +137,7 @@ describe('da-list render', () => {
     el._selectedItems = [{ path: '/o/r/x.html', ext: 'html' }];
     el._confirm = { type: 'delete' };
     el._itemsRemaining = 0;
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     const dialog = el.shadowRoot.querySelector('da-dialog');
     expect(dialog).to.exist;
     expect(dialog.title).to.contain('Deleting');
@@ -149,16 +149,14 @@ describe('da-list render', () => {
     el._continuationToken = null;
     el.drag = true;
     el._dropMessage = 'Drop here';
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     expect(el.shadowRoot.querySelector('.da-drop-area')).to.exist;
   });
 
   it('Renders the filter input toggle button', async () => {
     await fixture({ fullpath: '/o/r' });
     el._listItems = [];
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     expect(el.shadowRoot.querySelector('button.da-browse-filter')).to.exist;
   });
 
@@ -172,8 +170,7 @@ describe('da-list render', () => {
   it('Hides the action bar when no items are selected', async () => {
     await fixture({ fullpath: '/o/r' });
     el._selectedItems = [];
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     const bar = el.shadowRoot.querySelector('da-actionbar');
     expect(bar.getAttribute('data-visible')).to.equal('false');
   });
@@ -181,8 +178,7 @@ describe('da-list render', () => {
   it('Shows the action bar when items are selected', async () => {
     await fixture({ fullpath: '/o/r' });
     el._selectedItems = [{ path: '/x' }];
-    el.requestUpdate();
-    await nextFrame();
+    await rerender();
     const bar = el.shadowRoot.querySelector('da-actionbar');
     expect(bar.getAttribute('data-visible')).to.equal('true');
   });

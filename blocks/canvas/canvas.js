@@ -96,6 +96,8 @@ function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   header.undoAvailable = false;
   header.redoAvailable = false;
   const fullPath = buildCanvasDocPath(state);
+  const name = state?.path?.split('/').pop();
+  document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
     removeCanvasEditors(mountRoot);
     return;
@@ -213,11 +215,21 @@ export default async function decorate(block) {
   // Only NodeSelection (explicit block handle click) in doc mode qualifies as intentional context.
   // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.
   const CANVAS_CHAT_KEY = 'canvas-selection';
+  let hasExplicitBlock = false;
   editorSelectChange.subscribe(({
     blockIndex, blockName, proseIndex, innerText, source, explicit,
   }) => {
-    if (source !== 'doc' || !explicit) return;
-    const detail = blockIndex >= 0 && blockName
+    if (source !== 'doc') return;
+    if (!explicit) {
+      if (hasExplicitBlock) {
+        hasExplicitBlock = false;
+        document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key: CANVAS_CHAT_KEY } }));
+      }
+      return;
+    }
+    const hasBlock = blockIndex >= 0 && !!blockName;
+    hasExplicitBlock = hasBlock;
+    const detail = hasBlock
       ? {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
