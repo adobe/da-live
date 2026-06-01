@@ -210,7 +210,12 @@ async function recheckPermissions(view) {
     return;
   }
   if (resp.ok) {
-    // Refresh the listing so it reflects the new context.
+    if (document.querySelector('da-dialog.da-auth-banner')) {
+      // Access restored after a denial — reload to clear the banner and view.
+      window.location.reload();
+      return;
+    }
+    // Otherwise just refresh the listing so it reflects the new context.
     const list = document.querySelector('da-browse')
       ?.shadowRoot?.querySelector('.da-list-type-browse');
     if (list?.getList) {
