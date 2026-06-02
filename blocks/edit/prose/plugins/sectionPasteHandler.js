@@ -1,4 +1,5 @@
 import { Fragment, Plugin, PluginKey, Slice } from 'da-y-wrapper';
+import WordCleaner from './sectionPasteHandler/paste-from-word.js';
 
 const sectionPasteKey = new PluginKey('sectionPaste');
 
@@ -219,8 +220,14 @@ export default function sectionPasteHandler(schema) {
        */
       transformPastedHTML: (pastedHtml) => {
         try {
+          let html = pastedHtml;
+          const wc = new WordCleaner();
+          if (wc.isWordContent(pastedHtml)) {
+            html = wc.clean(pastedHtml);
+          }
+
           const parser = new DOMParser();
-          const doc = parser.parseFromString(pastedHtml, 'text/html');
+          const doc = parser.parseFromString(html, 'text/html');
 
           let modified = handleDesktopWordSectionBreaks(doc);
           if (!modified) {
@@ -231,14 +238,14 @@ export default function sectionPasteHandler(schema) {
           }
 
           if (!modified) {
-            return pastedHtml;
+            return html;
           }
 
           const serializer = new XMLSerializer();
           return serializer.serializeToString(doc);
         } catch (error) {
           // eslint-disable-next-line no-console
-          console.error('Error handling Word section breaks:', error);
+          console.error('Error handling Word paste:', error);
           return pastedHtml;
         }
       },
