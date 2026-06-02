@@ -4,6 +4,8 @@ import { daFetch, formatDate } from '../utils.js';
 import { formatVersions } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
 
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+
 export default class DaVersionsBase extends LitElement {
   static properties = {
     open: { attribute: false },
@@ -19,11 +21,10 @@ export default class DaVersionsBase extends LitElement {
     this._setupHashSubscription();
   }
 
-  async _setupHashSubscription() {
-    const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+  _setupHashSubscription() {
     this._unsubHash = hashChange.subscribe((state) => {
       const { org, site, path } = state ?? {};
-      this._hashPath = org && site && path ? `/${org}/${site}/${path}` : null;
+      this._hashPath = org && site && path ? `/${org}/${site}/${path}.html` : null;
     });
   }
 

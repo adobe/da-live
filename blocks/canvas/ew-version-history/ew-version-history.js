@@ -2,12 +2,26 @@ import { html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { DA_ORIGIN } from '../../shared/constants.js';
 import DaVersionsBase from '../../shared/version/da-versions-base.js';
+import { docToHtml, fetchVersionDom, buildCompareDom, renderCompareModal } from '../../shared/version/compare.js';
 import { versionPreviewChange } from '../editor-utils/editor-utils.js';
+import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import getSheet from '../../shared/sheet.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
+let compareSheetPromise;
+function loadCompareSheet() {
+  compareSheetPromise ??= getSheet('/blocks/shared/version/compare.css');
+  return compareSheetPromise;
+}
+
 class EwVersionHistory extends DaVersionsBase {
+  static properties = {
+    _compareDom: { state: true },
+    _compareLabel: { state: true },
+  };
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
@@ -19,6 +33,40 @@ class EwVersionHistory extends DaVersionsBase {
     versionPreviewChange.emit({ url: `${DA_ORIGIN}${entry.url}`, label: entry.label, date: entry.date });
   }
 
+  async handleCompare(e, entry) {
+    e.stopPropagation();
+
+    const { view } = getExtensionsBridge();
+    if (!view) return;
+
+    const [versionEl, compareSheet] = await Promise.all([
+      fetchVersionDom(`${DA_ORIGIN}${entry.url}`),
+      loadCompareSheet(),
+    ]);
+    if (!versionEl) return;
+
+    if (!this.shadowRoot.adoptedStyleSheets.includes(compareSheet)) {
+      this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, compareSheet];
+    }
+
+    this.handleCloseCompare();
+    const { dom, cleanup } = buildCompareDom({
+      htmlA: docToHtml(view),
+      htmlB: versionEl.innerHTML,
+      onClose: () => this.handleCloseCompare(),
+    });
+    this._compareDom = dom;
+    this._compareCleanup = cleanup;
+    this._compareLabel = entry.label || entry.date || 'Version';
+  }
+
+  handleCloseCompare() {
+    this._compareCleanup?.();
+    this._compareCleanup = null;
+    this._compareDom = null;
+    this._compareLabel = null;
+  }
+
   renderVersionItem(entry) {
     const users = entry.users?.map((u) => u.email).join(', ');
     return html`
@@ -28,7 +76,10 @@ class EwVersionHistory extends DaVersionsBase {
           ${entry.label ? html`<span class="version-label">${entry.label}</span>` : nothing}
           <span class="version-secondary">${entry.time}${users ? html` · ${users}` : nothing}</span>
         </div>
-        <button class="restore-btn" @click=${(e) => this.handlePreview(e, entry)}>Restore</button>
+        <div class="version-actions">
+          <button class="compare-btn" @click=${(e) => this.handleCompare(e, entry)}>Compare</button>
+          <button class="restore-btn" @click=${(e) => this.handlePreview(e, entry)}>Restore</button>
+        </div>
       </li>
     `;
   }
@@ -87,6 +138,12 @@ class EwVersionHistory extends DaVersionsBase {
               : this.renderAuditGroup(entry)))}
           </ul>
         </div>
+        ${this._compareDom ? renderCompareModal({
+          labelA: 'Current document',
+          labelB: this._compareLabel,
+          compareDom: this._compareDom,
+          onClose: () => this.handleCloseCompare(),
+        }) : nothing}
       </div>
     `;
   }

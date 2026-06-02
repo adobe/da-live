@@ -145,6 +145,14 @@
   white-space: nowrap;
 }
 
+.version-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.compare-btn,
 .restore-btn {
   flex-shrink: 0;
   background: none;
@@ -156,11 +164,16 @@
   font-size: var(--s2-body-size-xs, 11px);
   color: var(--s2-gray-800);
   white-space: nowrap;
+}
 
-  &:hover {
-    border-color: var(--s2-blue-700);
-    color: var(--s2-blue-700);
-  }
+.restore-btn:hover {
+  border-color: var(--s2-blue-700);
+  color: var(--s2-blue-700);
+}
+
+.compare-btn:hover {
+  border-color: var(--s2-gray-600);
+  color: var(--s2-gray-800);
 }
 
 /* ── Audit group ────────────────────────────────── */

@@ -17,7 +17,8 @@ import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
-import { initIms as loadIms, daFetch } from '../../shared/utils.js';
+import { initIms as loadIms } from '../../shared/utils.js';
+import { fetchVersionDom } from '../../shared/version/compare.js';
 import initProse from './prose.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
@@ -123,21 +124,10 @@ export class EwEditorDoc extends LitElement {
   async _restoreVersion({ url }) {
     const { view } = this._proseContext ?? {};
     if (!view) return;
-    const resp = await daFetch(url);
-    if (!resp.ok) return;
-    const rawHtml = await resp.text();
-    const { aem2doc, getSchema, yDocToProsemirror } = await import('da-parser');
-    const { Y, DOMSerializer } = await import('da-y-wrapper');
-    const ydoc = new Y.Doc();
-    aem2doc(rawHtml, ydoc);
-    const schema = getSchema();
-    const pmDoc = yDocToProsemirror(schema, ydoc);
-    const frag = DOMSerializer.fromSchema(schema).serializeFragment(pmDoc.content);
-    const dom = document.createElement('div');
-    dom.append(frag);
+    const dom = await fetchVersionDom(url);
+    if (!dom) return;
     const newDoc = proseDOMParser.fromSchema(view.state.schema).parse(dom);
-    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
-    view.dispatch(tr);
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, newDoc.content));
   }
 
   _setupController() {
