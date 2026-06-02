@@ -159,6 +159,19 @@ function handleWordOnlineSectionBreaks(doc) {
   return modified;
 }
 
+function handleTableSpacing(doc) {
+  const tables = doc.querySelectorAll('body table');
+  if (tables.length === 0) return false;
+
+  tables.forEach((table) => {
+    if (table.nextElementSibling?.nodeName === 'P') return;
+    const p = doc.createElement('p');
+    table.after(p);
+  });
+
+  return true;
+}
+
 function isBlankLineDiv(div) {
   return [...div.childNodes].every(
     (node) => (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '')
@@ -237,7 +250,9 @@ export default function sectionPasteHandler(schema) {
             modified = handleDivLineBreaks(doc);
           }
 
-          if (!modified) {
+          const tableModified = handleTableSpacing(doc);
+
+          if (!modified && !tableModified) {
             return html;
           }
 
