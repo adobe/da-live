@@ -13,7 +13,7 @@ body {
 .da-version-wrapper {
   display: flex;
   justify-content: center;
-  max-width: var(--grid-container-width);
+  max-width: 83.4%;
   margin: 0 auto var(--spacing-600) auto;
 }
 
@@ -74,6 +74,7 @@ button.new-sheet {
 /* jspreadsheets overwrites */
 /* stylelint-disable-next-line selector-class-pattern */
 .da-sheet-wrapper .jexcel_content {
+  background: #fff;
   border: 1px solid #ccc;
   border-radius: 12px;
   display: block;
