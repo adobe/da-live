@@ -41,6 +41,10 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       onClose();
     }
 
+    if (action === 'setPrompt') {
+      document.dispatchEvent(new CustomEvent('nx-set-prompt', { detail: { text: details } }));
+    }
+
     if (action === 'getSelection') {
       if (!editorView) {
         channel.port1.postMessage({ action: 'error', details: 'No editor view' });
