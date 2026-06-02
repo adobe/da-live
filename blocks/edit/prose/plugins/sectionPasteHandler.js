@@ -1,4 +1,5 @@
 import { Fragment, Plugin, PluginKey, Slice } from 'da-y-wrapper';
+import WordCleaner from './sectionPasteHandler/paste-from-word.js';
 
 const sectionPasteKey = new PluginKey('sectionPaste');
 
@@ -158,6 +159,19 @@ function handleWordOnlineSectionBreaks(doc) {
   return modified;
 }
 
+function handleTableSpacing(doc) {
+  const tables = doc.querySelectorAll('body table');
+  if (tables.length === 0) return false;
+
+  tables.forEach((table) => {
+    if (table.nextElementSibling?.nodeName === 'P') return;
+    const p = doc.createElement('p');
+    table.after(p);
+  });
+
+  return true;
+}
+
 function isBlankLineDiv(div) {
   return [...div.childNodes].every(
     (node) => (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '')
@@ -219,8 +233,14 @@ export default function sectionPasteHandler(schema) {
        */
       transformPastedHTML: (pastedHtml) => {
         try {
+          let html = pastedHtml;
+          const wc = new WordCleaner();
+          if (wc.isWordContent(pastedHtml)) {
+            html = wc.clean(pastedHtml);
+          }
+
           const parser = new DOMParser();
-          const doc = parser.parseFromString(pastedHtml, 'text/html');
+          const doc = parser.parseFromString(html, 'text/html');
 
           let modified = handleDesktopWordSectionBreaks(doc);
           if (!modified) {
@@ -230,15 +250,17 @@ export default function sectionPasteHandler(schema) {
             modified = handleDivLineBreaks(doc);
           }
 
-          if (!modified) {
-            return pastedHtml;
+          const tableModified = handleTableSpacing(doc);
+
+          if (!modified && !tableModified) {
+            return html;
           }
 
           const serializer = new XMLSerializer();
           return serializer.serializeToString(doc);
         } catch (error) {
           // eslint-disable-next-line no-console
-          console.error('Error handling Word section breaks:', error);
+          console.error('Error handling Word paste:', error);
           return pastedHtml;
         }
       },
