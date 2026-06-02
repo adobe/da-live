@@ -1,9 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
+import { yUndo, yRedo, NodeSelection, DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import {
   updateDocument, updateCursors, getInstrumentedHTML,
-  editorHtmlChange, editorSelectChange, getEditor,
+  editorHtmlChange, editorSelectChange, getEditor, versionPreviewChange,
 } from '../editor-utils/editor-utils.js';
 import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
 import {
@@ -17,7 +17,7 @@ import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
-import { initIms as loadIms } from '../../shared/utils.js';
+import { initIms as loadIms, daFetch } from '../../shared/utils.js';
 import initProse from './prose.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
@@ -118,6 +118,26 @@ export class EwEditorDoc extends LitElement {
   redo() {
     const { view } = this._proseContext ?? {};
     if (view) yRedo(view.state, view.dispatch);
+  }
+
+  async _restoreVersion({ url }) {
+    const { view } = this._proseContext ?? {};
+    if (!view) return;
+    const resp = await daFetch(url);
+    if (!resp.ok) return;
+    const rawHtml = await resp.text();
+    const { aem2doc, getSchema, yDocToProsemirror } = await import('da-parser');
+    const { Y, DOMSerializer } = await import('da-y-wrapper');
+    const ydoc = new Y.Doc();
+    aem2doc(rawHtml, ydoc);
+    const schema = getSchema();
+    const pmDoc = yDocToProsemirror(schema, ydoc);
+    const frag = DOMSerializer.fromSchema(schema).serializeFragment(pmDoc.content);
+    const dom = document.createElement('div');
+    dom.append(frag);
+    const newDoc = proseDOMParser.fromSchema(view.state.schema).parse(dom);
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
+    view.dispatch(tr);
   }
 
   _setupController() {
@@ -256,12 +276,15 @@ export class EwEditorDoc extends LitElement {
       .subscribe(({ blockIndex, source }) => {
         if (source !== 'doc') this._scrollDocToBlock(blockIndex);
       });
+    this._unsubscribeVersionPreview = versionPreviewChange
+      .subscribe((detail) => this._restoreVersion(detail));
   }
 
   disconnectedCallback() {
     this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
     this._unsubscribeSelect?.();
+    this._unsubscribeVersionPreview?.();
     this._teardown();
     super.disconnectedCallback();
   }

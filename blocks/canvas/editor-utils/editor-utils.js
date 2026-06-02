@@ -306,6 +306,18 @@ export function updateCursors(ctx) {
   ctx.port.postMessage({ type: 'set-cursors', cursors });
 }
 
+// Event observable — no replay. Emits { url, label, date } when a version entry is activated.
+export const versionPreviewChange = (() => {
+  const listeners = new Set();
+  return {
+    emit(detail) { listeners.forEach((fn) => fn(detail)); },
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+})();
+
 // --- preview.js ---
 
 export function getPreviewOrigin(org, repo) {
