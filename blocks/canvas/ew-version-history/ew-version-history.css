@@ -40,7 +40,9 @@
     font-weight: 600;
     padding: 0;
 
-    &:hover { text-decoration: underline; }
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }
 
@@ -90,10 +92,14 @@
   color: #fff;
   border-color: var(--s2-blue-700);
 
-  &:hover { background: var(--s2-blue-800, #0d66d0); }
+  &:hover {
+    background: var(--s2-blue-800, #0d66d0);
+  }
 }
 
-.btn-cancel:hover { background: var(--s2-gray-75); }
+.btn-cancel:hover {
+  background: var(--s2-gray-75);
+}
 
 /* ── Version item ───────────────────────────────── */
 
@@ -105,8 +111,12 @@
   padding: var(--s2-spacing-100);
   border-bottom: 1px solid var(--s2-gray-100);
 
-  &:hover { background: var(--s2-gray-75); }
-  &:last-child { border-bottom: none; }
+  &:hover {
+    background: var(--s2-gray-75);
+  }
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .version-meta {
@@ -171,7 +181,9 @@
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
   border-bottom: 1px solid var(--s2-gray-100);
 
-  &:last-child { border-bottom: none; }
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .audit-date {
@@ -219,4 +231,11 @@
   color: var(--s2-gray-600);
   text-align: center;
   list-style: none;
+}
+
+.da-compare-modal {
+  position: fixed;
+  left: 2.5%;
+  max-width: 95%;
+  right: 2.5%;
 }

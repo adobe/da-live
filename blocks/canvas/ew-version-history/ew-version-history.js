@@ -39,7 +39,7 @@ class EwVersionHistory extends DaVersionsBase {
   // Trigger fetch when path changes (panel never uses the open prop)
   update(changedProps) {
     if (changedProps.has('path') && this.path) this.getVersions();
-    super.update();
+    super.update(changedProps);
   }
 
   // Override: emit to signal instead of bubbling a DOM event
@@ -141,6 +141,7 @@ class EwVersionHistory extends DaVersionsBase {
         <p class="placeholder">Select a page to see its history.</p>
       </div>`;
     }
+    console.log('this._versions', this._versions);
     return html`
       <div class="ew-version-history">
         <div class="list-wrap">

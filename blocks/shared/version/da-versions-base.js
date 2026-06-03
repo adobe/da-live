@@ -78,7 +78,7 @@ export default class DaVersionsBase extends LitElement {
 
   update(changedProps) {
     if (changedProps.has('open') && this.open) this.getVersions();
-    super.update();
+    super.update(changedProps);
   }
 
   // --- render helpers (available to subclasses) ---
