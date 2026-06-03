@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
-import { formatDate, formatVersions } from '../../../../../blocks/edit/da-versions/helpers.js';
+import { formatDate } from '../../../../../blocks/shared/utils.js';
+import { formatVersions } from '../../../../../blocks/shared/version/helpers.js';
 
 const TIME_OPTS = { hour: 'numeric', minute: '2-digit' };
 const DATE_OPTS = { year: 'numeric', month: 'short', day: 'numeric' };
