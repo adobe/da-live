@@ -42,7 +42,9 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
 
     if (action === 'setPrompt') {
-      document.dispatchEvent(new CustomEvent('nx-set-prompt', { detail: { text: details } }));
+      const text = typeof details === 'string' ? details : details.text;
+      const autoSend = typeof details === 'object' && details.autoSend;
+      document.dispatchEvent(new CustomEvent('nx-set-prompt', { detail: { text, autoSend } }));
     }
 
     if (action === 'getSelection') {
@@ -86,7 +88,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     );
   }, 750);
 
+  const onAgentChange = ({ detail }) => {
+    if (!iframe.contentWindow) return;
+    iframe.contentWindow.postMessage({ action: 'agentChange', detail }, '*');
+  };
+  document.addEventListener('nx-agent-change', onAgentChange);
+
   const destroy = () => {
+    document.removeEventListener('nx-agent-change', onAgentChange);
     channel.port1.close();
   };
 
