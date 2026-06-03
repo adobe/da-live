@@ -294,6 +294,18 @@ export const editorSelectChange = (() => {
   };
 })();
 
+// Event observable — no replay. Emits { url, label, date } when a version restore is requested.
+export const versionPreviewChange = (() => {
+  const listeners = new Set();
+  return {
+    emit(detail) { listeners.forEach((fn) => fn(detail)); },
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+})();
+
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
