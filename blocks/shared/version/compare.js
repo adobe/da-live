@@ -1,5 +1,6 @@
 import { html } from 'da-lit';
 import { DOMSerializer } from 'da-y-wrapper';
+import { daFetch } from '../utils.js';
 
 export function wrapTablesInWrappers(root) {
   root.querySelectorAll('table').forEach((table) => {
@@ -33,6 +34,23 @@ export function domToHtml(el) {
   const clone = el.cloneNode(true);
   stripEmptyTopLevelBlocks(clone);
   return clone.innerHTML;
+}
+
+export async function fetchVersionDom(url) {
+  const resp = await daFetch(url);
+  if (!resp.ok) return null;
+  const rawHtml = await resp.text();
+  const { Y } = await import('da-y-wrapper');
+  const { aem2doc, getSchema, yDocToProsemirror } = await import('da-parser');
+  const ydoc = new Y.Doc();
+  aem2doc(rawHtml, ydoc);
+  const schema = getSchema();
+  const pmDoc = yDocToProsemirror(schema, ydoc);
+  const frag = DOMSerializer.fromSchema(schema).serializeFragment(pmDoc.content);
+  const el = document.createElement('div');
+  el.append(frag);
+  stripEmptyTopLevelBlocks(el);
+  return el;
 }
 
 export async function buildCompareDom({ htmlA, htmlB, onClose }) {
