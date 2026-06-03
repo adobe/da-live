@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { htmlDiff } from '../../../../../../blocks/edit/prose/diff/htmldiff.js';
+import { htmlDiff } from '../../../../../blocks/shared/version/htmldiff.js';
 
 describe('HTML Diff', () => {
   describe('htmlDiff main function', () => {
