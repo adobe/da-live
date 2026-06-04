@@ -1,6 +1,7 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getLivePreviewUrl } from '../../shared/constants.js';
+import { livePreviewLogin } from '../../shared/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
@@ -15,12 +16,14 @@ class EwDraftPreview extends LitElement {
     org: { attribute: false },
     site: { attribute: false },
     _activeTab: { state: true },
+    _cookieReady: { state: true },
   };
 
   constructor() {
     super();
     this.items = [];
     this._activeTab = 0;
+    this._cookieReady = false;
   }
 
   connectedCallback() {
@@ -34,6 +37,7 @@ class EwDraftPreview extends LitElement {
       this.site = data.site;
       this._activeTab = 0;
     };
+    livePreviewLogin(this.org, this.site).then(() => { this._cookieReady = true; });
   }
 
   disconnectedCallback() {
@@ -77,7 +81,7 @@ class EwDraftPreview extends LitElement {
         ${this.items.map((item, i) => html`
           <div class="dp-panel ${i === this._activeTab ? 'dp-panel--active' : ''}">
             <div class="dp-panel-inner">
-              <iframe class="dp-frame" src=${this._previewUrl(item)} title=${item.name}></iframe>
+              <iframe class="dp-frame" src=${this._cookieReady ? this._previewUrl(item) : ''} title=${item.name}></iframe>
               <div class="dp-actions">
                 <button class="dp-edit-btn" @click=${() => this._openInCanvas(item)}>
                   Edit in Canvas
