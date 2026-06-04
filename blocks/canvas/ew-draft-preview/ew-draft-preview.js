@@ -56,7 +56,7 @@ class EwDraftPreview extends LitElement {
     const prefix = `/${this.org}/${this.site}`;
     const rel = item.path.startsWith(prefix) ? item.path.slice(prefix.length) : item.path;
     const withoutExt = item.ext ? rel.slice(0, -(item.ext.length + 1)) : rel;
-    return `${getPreviewOrigin(this.org, this.site)}${withoutExt}`;
+    return `${getPreviewOrigin(this.org, this.site)}${withoutExt}?quick-edit=on`;
   }
 
   _openInCanvas(item) {
