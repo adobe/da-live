@@ -38,6 +38,26 @@ class EwObsDetails extends LitElement {
       </div>`;
   }
 
+  _badge(label, value, mod) {
+    if (!value) return nothing;
+    return html`
+      <div class="od-field">
+        <p class="od-label">${label}</p>
+        <span class="od-badge od-badge--${mod ?? value.toLowerCase()}">${value}</span>
+      </div>`;
+  }
+
+  _confidence(value) {
+    if (!value) return nothing;
+    return html`
+      <div class="od-field">
+        <p class="od-label">Confidence</p>
+        <div class="od-confidence-bar">
+          <div class="od-confidence-fill od-confidence-fill--${value.toLowerCase()}"></div>
+        </div>
+      </div>`;
+  }
+
   render() {
     const o = this.obs;
     if (!o) return html`<p class="od-empty">No observation data.</p>`;
@@ -46,9 +66,9 @@ class EwObsDetails extends LitElement {
         ${this._field('Description', o.description)}
         ${this._field('Summary', o.summary)}
         ${this._field('Classification', o.classification)}
-        ${this._field('Status', o.status)}
-        ${this._field('Priority', o.priority)}
-        ${this._field('Confidence', o.confidence)}
+        ${this._badge('Status', o.status)}
+        ${this._badge('Priority', o.priority)}
+        ${this._confidence(o.confidence)}
         ${this._field('Recommended action', o.recommendedAction)}
         ${this._field('Rationale', o.recommendedActionRationale)}
         ${o.businessImpact ? html`
