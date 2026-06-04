@@ -208,6 +208,22 @@ export default async function decorate(block) {
     if (toolPanel) syncToolPanelViews(toolPanel, state);
   });
 
+  window.addEventListener('message', async ({ data }) => {
+    if (data?.type !== 'nx-show-draft-preview') return;
+    await Promise.all([
+      import(`${getNx()}/blocks/shared/dialog/dialog.js`),
+      import(`${getNx()}/blocks/draft-preview/draft-preview.js`),
+    ]);
+    const nxDialog = document.createElement('nx-dialog');
+    nxDialog.title = 'Preview';
+    nxDialog.addEventListener('close', () => nxDialog.remove());
+    const el = document.createElement('nx-draft-preview');
+    el.obsId = data.obsId;
+    el.onClose = () => nxDialog.close();
+    nxDialog.append(el);
+    document.body.append(nxDialog);
+  });
+
   const store = getPanelStore();
   if (store.before && !store.before.fragment) openCanvasPanel('before');
   if (store.after && !store.after.fragment) openCanvasPanel('after');

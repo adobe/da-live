@@ -427,21 +427,6 @@ function createVersionsView() {
   };
 }
 
-function createDraftPreviewView() {
-  return {
-    id: 'draft-preview',
-    label: 'Preview',
-    section: 'Editor',
-    firstParty: true,
-    experience: 'fullsize-dialog',
-    loadModal: async (container, onClose) => {
-      await import('../ew-draft-preview/ew-draft-preview.js');
-      const el = document.createElement('ew-draft-preview');
-      el.onClose = onClose;
-      container.append(el);
-    },
-  };
-}
 
 function extensionToPanelView(ext, section) {
   const view = {
@@ -506,11 +491,13 @@ export async function getCanvasToolPanelViews({ org, site }) {
   const library = sortLibraryExtensions(extensions.filter(isLibraryExtension));
   const thirdParty = extensions.filter((ext) => !isLibraryExtension(ext));
 
+  const { getDraftPreviewView } = await import(`${getNx()}/blocks/draft-preview/view.js`);
+
   return [
     createOutlineView(),
     createFileExplorerView(),
     createVersionsView(),
-    createDraftPreviewView(),
+    getDraftPreviewView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];
