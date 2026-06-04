@@ -148,7 +148,7 @@ function hashState() {
   return { org: org || undefined, site: site || undefined };
 }
 
-async function openCanvasPanel(position, { preferredViewId } = {}) {
+async function openCanvasPanel(position, { panelName } = {}) {
   const config = CANVAS_PANELS[position];
   if (!config) return;
   const store = getPanelStore();
@@ -159,8 +159,8 @@ async function openCanvasPanel(position, { preferredViewId } = {}) {
     if (toolPanel) {
       await syncToolPanelViews(toolPanel, hashState());
       await toolPanel.updateComplete;
-      if (preferredViewId && toolPanel.views?.some((v) => v.id === preferredViewId)) {
-        await toolPanel.showView(preferredViewId);
+      if (panelName && toolPanel.views?.some((v) => v.id === panelName)) {
+        await toolPanel.showPanel(panelName);
       }
     }
   }
@@ -170,7 +170,7 @@ function installCanvasHeader(block) {
   const header = document.createElement('ew-canvas-header');
   header.editorView = readPersistedCanvasEditorView();
   header.addEventListener('nx-canvas-open-panel', (e) => {
-    openCanvasPanel(e.detail.position, { preferredViewId: e.detail.viewId });
+    openCanvasPanel(e.detail.position, { panelName: e.detail.panelName });
   });
   header.addEventListener('nx-canvas-editor-view', (e) => {
     const view = normalizeCanvasEditorView(e.detail?.view);
