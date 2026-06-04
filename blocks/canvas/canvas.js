@@ -211,17 +211,17 @@ export default async function decorate(block) {
   window.addEventListener('message', async ({ data }) => {
     if (data?.type !== 'nx-show-draft-preview') return;
     await Promise.all([
-      import(`${getNx()}/blocks/shared/dialog/dialog.js`),
-      import(`${getNx()}/blocks/draft-preview/draft-preview.js`),
+      import('../shared/da-dialog/da-dialog.js'),
+      import('./ew-draft-preview/ew-draft-preview.js'),
     ]);
-    const nxDialog = document.createElement('nx-dialog');
-    nxDialog.title = 'Preview';
-    nxDialog.addEventListener('close', () => nxDialog.remove());
-    const el = document.createElement('nx-draft-preview');
+    const daDialog = document.createElement('da-dialog');
+    daDialog.title = 'Preview';
+    daDialog.addEventListener('close', () => daDialog.remove());
+    const el = document.createElement('ew-draft-preview');
     el.obsId = data.obsId;
-    el.onClose = () => nxDialog.close();
-    nxDialog.append(el);
-    document.body.append(nxDialog);
+    el.onClose = () => daDialog.close();
+    daDialog.append(el);
+    document.body.append(daDialog);
   });
 
   const store = getPanelStore();

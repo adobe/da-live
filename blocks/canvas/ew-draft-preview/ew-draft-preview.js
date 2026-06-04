@@ -1,15 +1,15 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getLivePreviewUrl } from '../../shared/constants.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
-const STORAGE_KEY = 'da-drafts-preview';
 const CHANNEL_NAME = 'da-drafts-preview';
 
 class EwDraftPreview extends LitElement {
   static properties = {
+    obsId: { attribute: false },
     onClose: { attribute: false },
     _items: { state: true },
     _activeTab: { state: true },
@@ -26,18 +26,9 @@ class EwDraftPreview extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
-      if (stored?.items?.length) {
-        this._items = stored.items;
-        this._org = stored.org;
-        this._site = stored.site;
-      }
-    } catch { /* ignore */ }
-
     this._channel = new BroadcastChannel(CHANNEL_NAME);
     this._channel.onmessage = ({ data }) => {
+      if (this.obsId && data.obsId !== this.obsId) return;
       this._items = data.items ?? [];
       this._org = data.org;
       this._site = data.site;
