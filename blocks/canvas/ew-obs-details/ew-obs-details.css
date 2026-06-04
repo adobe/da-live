@@ -5,6 +5,10 @@
   ul {
     margin: 0;
   }
+
+  br {
+    display: none;
+  }
 }
 
 .od-empty {
