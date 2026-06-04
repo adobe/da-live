@@ -11,15 +11,15 @@ class EwDraftPreview extends LitElement {
   static properties = {
     obsId: { attribute: false },
     onClose: { attribute: false },
-    _items: { state: true },
+    items: { attribute: false },
+    org: { attribute: false },
+    site: { attribute: false },
     _activeTab: { state: true },
-    _org: { state: true },
-    _site: { state: true },
   };
 
   constructor() {
     super();
-    this._items = [];
+    this.items = [];
     this._activeTab = 0;
   }
 
@@ -29,9 +29,9 @@ class EwDraftPreview extends LitElement {
     this._channel = new BroadcastChannel(CHANNEL_NAME);
     this._channel.onmessage = ({ data }) => {
       if (this.obsId && data.obsId !== this.obsId) return;
-      this._items = data.items ?? [];
-      this._org = data.org;
-      this._site = data.site;
+      this.items = data.items ?? [];
+      this.org = data.org;
+      this.site = data.site;
       this._activeTab = 0;
     };
   }
@@ -42,11 +42,11 @@ class EwDraftPreview extends LitElement {
   }
 
   _previewUrl(item) {
-    if (!this._org || !this._site) return '';
-    const prefix = `/${this._org}/${this._site}`;
+    if (!this.org || !this.site) return '';
+    const prefix = `/${this.org}/${this.site}`;
     const rel = item.path.startsWith(prefix) ? item.path.slice(prefix.length) : item.path;
     const withoutExt = item.ext ? rel.slice(0, -(item.ext.length + 1)) : rel;
-    return `${getLivePreviewUrl(this._org, this._site)}${withoutExt}`;
+    return `${getLivePreviewUrl(this.org, this.site)}${withoutExt}`;
   }
 
   _openInCanvas(item) {
@@ -58,12 +58,12 @@ class EwDraftPreview extends LitElement {
   }
 
   render() {
-    if (!this._items.length) {
+    if (!this.items.length) {
       return html`<p class="dp-empty">Select "Preview drafts" in Nerve Center to preview content here.</p>`;
     }
     return html`
       <div class="dp-tabs" role="tablist">
-        ${this._items.map((item, i) => html`
+        ${this.items.map((item, i) => html`
           <button role="tab" class="dp-tab ${i === this._activeTab ? 'dp-tab--active' : ''}"
             @click=${() => { this._activeTab = i; }}>
             ${item.name}
@@ -71,7 +71,7 @@ class EwDraftPreview extends LitElement {
         `)}
       </div>
       <div class="dp-panels">
-        ${this._items.map((item, i) => html`
+        ${this.items.map((item, i) => html`
           <div class="dp-panel ${i === this._activeTab ? 'dp-panel--active' : ''}">
             <div class="dp-panel-inner">
               <iframe class="dp-frame" src=${this._previewUrl(item)} title=${item.name}></iframe>

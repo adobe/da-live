@@ -219,6 +219,9 @@ export default async function decorate(block) {
     daDialog.addEventListener('close', () => daDialog.remove());
     const el = document.createElement('ew-draft-preview');
     el.obsId = data.obsId;
+    el.items = data.items;
+    el.org = data.org;
+    el.site = data.site;
     el.onClose = () => daDialog.close();
     daDialog.append(el);
     document.body.append(daDialog);
