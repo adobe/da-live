@@ -4,6 +4,7 @@ import {
   handleCursorMove,
   handleUndoRedo,
   handleIframeSelectionChange,
+  emitBlockSelectIfChanged,
 } from './utils/handlers.js';
 
 export function createControllerOnMessage(ctx) {
@@ -16,6 +17,7 @@ export function createControllerOnMessage(ctx) {
       handleImageReplace(e.data, ctx);
     } else if (e.data.type === 'get-editor') {
       getEditor(e.data, ctx);
+      emitBlockSelectIfChanged(ctx, e.data.cursorOffset);
     } else if (e.data.type === 'node-update') {
       updateState(e.data, ctx);
     } else if (e.data.type === 'history') {

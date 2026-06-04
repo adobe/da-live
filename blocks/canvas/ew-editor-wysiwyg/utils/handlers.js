@@ -5,15 +5,30 @@ import {
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
 import { editorSelectChange } from '../../editor-utils/editor-utils.js';
-import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
+import { getActiveBlockIndex, getBlockPositions } from '../../editor-utils/blocks.js';
 
-function _emitSelectIfBlockChanged(ctx) {
-  const blockIndex = getActiveBlockIndex(ctx.view);
+function _blockIndexAtPos(view, pos) {
+  if (!view?.state) return -1;
+  const positions = getBlockPositions(view);
+  for (let i = 0; i < positions.length; i += 1) {
+    const start = positions[i];
+    const node = view.state.doc.nodeAt(start);
+    if (node && pos >= start && pos < start + node.nodeSize) return i;
+  }
+  return -1;
+}
+
+export function emitBlockSelectIfChanged(ctx, pos) {
+  const blockIndex = pos !== undefined
+    ? _blockIndexAtPos(ctx.view, pos)
+    : getActiveBlockIndex(ctx.view);
   if (blockIndex !== ctx.lastBlockIndex) {
     ctx.lastBlockIndex = blockIndex;
     editorSelectChange.emit({ blockIndex, source: 'wysiwyg' });
   }
 }
+
+const _emitSelectIfBlockChanged = (ctx) => emitBlockSelectIfChanged(ctx);
 
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
