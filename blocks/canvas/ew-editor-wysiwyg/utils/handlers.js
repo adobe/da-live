@@ -7,6 +7,14 @@ import {
 import { editorSelectChange } from '../../editor-utils/editor-utils.js';
 import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
 
+function _emitSelectIfBlockChanged(ctx) {
+  const blockIndex = getActiveBlockIndex(ctx.view);
+  if (blockIndex !== ctx.lastBlockIndex) {
+    ctx.lastBlockIndex = blockIndex;
+    editorSelectChange.emit({ blockIndex, source: 'wysiwyg' });
+  }
+}
+
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
   if (!view || !wsProvider) return;
@@ -65,11 +73,7 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
       tb.view = view;
       tb.show();
     }
-    const blockIndex = getActiveBlockIndex(view);
-    if (blockIndex !== ctx.lastBlockIndex) {
-      ctx.lastBlockIndex = blockIndex;
-      editorSelectChange.emit({ blockIndex, source: 'wysiwyg' });
-    }
+    _emitSelectIfBlockChanged(ctx);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error moving cursor:', error);
@@ -166,5 +170,6 @@ export function handleIframeSelectionChange(data, ctx) {
 
   if (!handleSelectionChange(data, ctx, { fromQuickEditIframe: true })) return;
 
+  _emitSelectIfBlockChanged(ctx);
   showToolbarInIFrame(ctx);
 }
