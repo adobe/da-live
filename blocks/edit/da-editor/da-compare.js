@@ -10,20 +10,23 @@ function loadCompareSheet() {
 }
 
 export async function compare({ shadowRoot, versionDom, onClose, onResult }) {
-  const compareSheet = await loadCompareSheet();
+  const [{ dom, cleanup }, compareSheet] = await Promise.all([
+    buildCompareDom({
+      htmlA: docToHtml(window.view),
+      htmlB: versionDom ? domToHtml(versionDom) : '',
+      onClose,
+    }),
+    loadCompareSheet(),
+  ]);
   if (!shadowRoot.adoptedStyleSheets.includes(compareSheet)) {
     shadowRoot.adoptedStyleSheets = [...shadowRoot.adoptedStyleSheets, compareSheet];
   }
-  const { dom, cleanup } = buildCompareDom({
-    htmlA: docToHtml(window.view),
-    htmlB: versionDom ? domToHtml(versionDom) : '',
-    onClose,
-  });
   onResult(dom, cleanup);
 }
 
 export function renderModal(versionLabel, compareDom, onClose) {
   return renderCompareModal({
+    title: 'Compare with current document',
     labelA: 'Current Document',
     labelB: `Version: ${versionLabel || ''}`,
     compareDom,

@@ -1,7 +1,6 @@
 import { html } from 'da-lit';
 import { DOMSerializer } from 'da-y-wrapper';
 import { daFetch } from '../utils.js';
-import { htmlDiff } from './htmldiff.js';
 
 export function wrapTablesInWrappers(root) {
   root.querySelectorAll('table').forEach((table) => {
@@ -21,16 +20,6 @@ export function stripEmptyTopLevelBlocks(root) {
   });
 }
 
-/**
- * Produce a diff DOM element from two HTML strings.
- *
- * @param {object} opts
- * @param {string} opts.htmlA - "before" HTML (shown as deleted)
- * @param {string} opts.htmlB - "after" HTML (shown as inserted)
- * @param {Function} opts.onClose - called when user clicks outside the modal
- * @returns {{ dom: HTMLElement, cleanup: Function }}
- */
-/** Serialize a ProseMirror view's current document to a normalized HTML string. */
 export function docToHtml(view) {
   const { schema, doc } = view.state;
   const frag = DOMSerializer.fromSchema(schema).serializeFragment(doc.content);
@@ -41,7 +30,6 @@ export function docToHtml(view) {
   return el.innerHTML;
 }
 
-/** Serialize an already-normalized DOM element to an HTML string. */
 export function domToHtml(el) {
   const clone = el.cloneNode(true);
   stripEmptyTopLevelBlocks(clone);
@@ -69,7 +57,8 @@ export async function fetchVersionDom(url) {
   return el;
 }
 
-export function buildCompareDom({ htmlA, htmlB, onClose }) {
+export async function buildCompareDom({ htmlA, htmlB, onClose }) {
+  const { htmlDiff } = await import('./htmldiff.js');
   const dom = document.createElement('div');
   dom.className = 'ProseMirror';
   dom.innerHTML = htmlDiff(htmlA, htmlB);
@@ -85,24 +74,13 @@ export function buildCompareDom({ htmlA, htmlB, onClose }) {
   return { dom, cleanup };
 }
 
-/**
- * Lit template for the compare modal.
- *
- * @param {object} opts
- * @param {string} opts.labelA - label for the "before" side (shown as deleted)
- * @param {string} opts.labelB - label for the "after" side (shown as inserted)
- * @param {HTMLElement} opts.compareDom - diff DOM from buildCompareDom
- * @param {Function} opts.onClose
- */
-export function renderCompareModal({
-  labelA, labelB, compareDom, onClose,
-}) {
+export function renderCompareModal({ title = 'Compare', labelA, labelB, compareDom, onClose }) {
   return html`
     <div class="da-compare-backdrop">
-      <div class="da-compare-modal" role="dialog" aria-label="Compare documents">
+      <div class="da-compare-modal" role="dialog" aria-label="${title}">
         <div class="da-compare-header">
           <div class="da-compare-header-text">
-            <h2 class="da-compare-title">Compare</h2>
+            <h2 class="da-compare-title">${title}</h2>
             <div class="da-compare-key">
               <del class="diffdel">${labelA}</del>
               <ins class="diffins">${labelB}</ins>
