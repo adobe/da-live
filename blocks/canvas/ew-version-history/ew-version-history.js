@@ -50,7 +50,7 @@ class EwVersionHistory extends DaVersionsBase {
     }
 
     this.handleCloseCompare();
-    const { dom, cleanup } = buildCompareDom({
+    const { dom, cleanup } = await buildCompareDom({
       htmlA: docToHtml(view),
       htmlB: versionEl.innerHTML,
       onClose: () => this.handleCloseCompare(),
