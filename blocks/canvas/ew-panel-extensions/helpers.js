@@ -427,22 +427,6 @@ function createVersionsView() {
   };
 }
 
-function createDraftPreviewView() {
-  return {
-    id: 'draft-preview',
-    label: 'Preview',
-    section: 'Editor',
-    firstParty: true,
-    experience: 'fullsize-dialog',
-    loadModal: async (container, onClose) => {
-      await import('../ew-draft-preview/ew-draft-preview.js');
-      const el = document.createElement('ew-draft-preview');
-      el.onClose = onClose;
-      container.append(el);
-    },
-  };
-}
-
 function extensionToPanelView(ext, section) {
   const view = {
     id: ext.name,
@@ -465,7 +449,7 @@ function extensionToPanelView(ext, section) {
       if (ext.name === 'aem-assets') {
         const { renderAssets } = await import('./aem-assets.js');
         await renderAssets({ container, org: ext.org, site: ext.site, onClose });
-        return () => {};
+        return () => { };
       }
 
       const iframe = document.createElement('iframe');
@@ -475,7 +459,7 @@ function extensionToPanelView(ext, section) {
       iframe.allow = 'clipboard-write *';
       container.append(iframe);
 
-      let destroyChannel = () => {};
+      let destroyChannel = () => { };
       iframe.addEventListener('load', async () => {
         let hashState;
         const unsub = hashChange.subscribe((s) => { hashState = s; });
@@ -510,7 +494,6 @@ export async function getCanvasToolPanelViews({ org, site }) {
     createOutlineView(),
     createFileExplorerView(),
     createVersionsView(),
-    createDraftPreviewView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

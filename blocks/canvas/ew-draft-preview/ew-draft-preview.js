@@ -54,6 +54,9 @@ class EwDraftPreview extends LitElement {
       ? item.path.slice(1, -(item.ext.length + 1))
       : item.path.replace(/^\//, '');
     window.location.hash = `/${hash}`;
+    document.querySelector('ew-canvas-header')?.dispatchEvent(
+      new CustomEvent('nx-canvas-open-panel', { detail: { position: 'after', panelName: 'versions' } }),
+    );
     this.onClose?.();
   }
 
