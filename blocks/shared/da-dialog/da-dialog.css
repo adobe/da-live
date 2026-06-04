@@ -16,7 +16,6 @@ svg.icon {
 
 .da-dialog-inner {
   padding: 22px 24px 24px;
-  width: 350px;
   box-sizing: border-box;
   max-height: 85vh;
   overflow: auto;
