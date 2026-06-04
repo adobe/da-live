@@ -1,6 +1,10 @@
 :host {
   display: block;
   font-family: var(--s2-font-family);
+
+  ul {
+    margin: 0;
+  }
 }
 
 .od-empty {
