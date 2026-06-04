@@ -1,0 +1,38 @@
+:host {
+  display: block;
+  font-family: var(--s2-font-family);
+}
+
+.od-empty {
+  color: var(--s2-gray-500);
+  font-size: 13px;
+  margin: 0;
+}
+
+.od-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.od-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.od-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--s2-gray-500);
+  margin: 0;
+}
+
+.od-value {
+  font-size: 13px;
+  color: var(--s2-gray-800);
+  margin: 0;
+  line-height: 1.5;
+}

@@ -209,6 +209,20 @@ export default async function decorate(block) {
   });
 
   window.addEventListener('message', async ({ data }) => {
+    if (data?.type === 'nx-show-obs-details') {
+      await Promise.all([
+        import('../shared/da-dialog/da-dialog.js'),
+        import('./ew-obs-details/ew-obs-details.js'),
+      ]);
+      const daDialog = document.createElement('da-dialog');
+      daDialog.title = data.obs?.name ?? 'Observation';
+      daDialog.addEventListener('close', () => daDialog.remove());
+      const el = document.createElement('ew-obs-details');
+      el.obs = data.obs;
+      daDialog.append(el);
+      document.body.append(daDialog);
+      return;
+    }
     if (data?.type !== 'nx-show-draft-preview') return;
     await Promise.all([
       import('../shared/da-dialog/da-dialog.js'),
