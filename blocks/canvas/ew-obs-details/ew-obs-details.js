@@ -4,6 +4,16 @@ import { getNx } from '../../../scripts/utils.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
+function md2html(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/gs, '<em>$1</em>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
+    .replace(/\n/g, '<br>');
+}
+
 class EwObsDetails extends LitElement {
   static properties = {
     obs: { attribute: false },
@@ -14,12 +24,17 @@ class EwObsDetails extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
   }
 
+  updated() {
+    const el = this.shadowRoot.querySelector('.od-markdown');
+    if (el) el.innerHTML = md2html(this.obs?.businessImpact ?? '');
+  }
+
   _field(label, value) {
     if (!value) return nothing;
     return html`
       <div class="od-field">
         <p class="od-label">${label}</p>
-        <p class="od-value">${value}</p>
+        <p class="od-value">${value.replace(/_/g, ' ')}</p>
       </div>`;
   }
 
@@ -36,7 +51,11 @@ class EwObsDetails extends LitElement {
         ${this._field('Confidence', o.confidence)}
         ${this._field('Recommended action', o.recommendedAction)}
         ${this._field('Rationale', o.recommendedActionRationale)}
-        ${this._field('Business impact', o.businessImpact)}
+        ${o.businessImpact ? html`
+          <div class="od-field">
+            <p class="od-label">Business impact</p>
+            <div class="od-markdown od-value"></div>
+          </div>` : nothing}
       </div>`;
   }
 }
