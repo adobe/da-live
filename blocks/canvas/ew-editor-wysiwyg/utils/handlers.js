@@ -158,13 +158,17 @@ export function handleIframeSelectionChange(data, ctx) {
     if (tb.isInteracting) return;
     const { view } = ctx;
     if (view) {
-      const tr = view.state.tr
+      const { state } = view;
+      const a = Math.max(0, Math.min(anchor, state.doc.content.size));
+      const { tr } = state;
+      tr.setSelection(TextSelection.create(state.doc, a))
         .setMeta(NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META, true)
         .setMeta('addToHistory', false);
       ctx.suppressRerender = true;
       view.dispatch(tr);
       ctx.suppressRerender = false;
     }
+    _emitSelectIfBlockChanged(ctx);
     return;
   }
 
