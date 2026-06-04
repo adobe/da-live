@@ -51,6 +51,7 @@
   text-transform: capitalize;
   background: var(--s2-gray-200);
   color: var(--s2-gray-800);
+  max-width: fit-content;
 }
 
 .od-badge--confirmed,
