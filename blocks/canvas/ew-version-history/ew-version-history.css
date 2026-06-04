@@ -10,6 +10,14 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+
+  .da-compare-backdrop {
+    position: fixed;
+    top: 2%;
+    left: 2.5%;
+    width: 95%;
+    bottom: 2%;
+  }
 }
 
 .list-wrap {

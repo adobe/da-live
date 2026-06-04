@@ -1,0 +1,99 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--s2-font-family);
+  overflow: hidden;
+}
+
+.dp-empty {
+  padding: 24px;
+  color: var(--s2-gray-500);
+  font-size: 13px;
+  margin: 0;
+}
+
+.dp-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--s2-gray-200);
+  padding: 0 16px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dp-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--s2-gray-600);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.dp-tab:hover {
+  color: var(--s2-gray-900);
+}
+
+.dp-tab--active {
+  color: var(--s2-blue-900);
+  border-bottom-color: var(--s2-blue-900);
+  font-weight: 600;
+}
+
+.dp-panels {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dp-panel {
+  display: none;
+}
+
+.dp-panel--active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.dp-panel-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  box-sizing: border-box;
+  gap: 12px;
+}
+
+.dp-frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 1px solid var(--s2-gray-200);
+  border-radius: 6px;
+  background: var(--s2-gray-50);
+}
+
+.dp-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.dp-edit-btn {
+  background: var(--s2-blue-900);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+
+.dp-edit-btn:hover {
+  background: var(--s2-blue-1000);
+}

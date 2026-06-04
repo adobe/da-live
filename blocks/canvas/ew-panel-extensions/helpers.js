@@ -427,6 +427,22 @@ function createVersionsView() {
   };
 }
 
+function createDraftPreviewView() {
+  return {
+    id: 'draft-preview',
+    label: 'Preview',
+    section: 'Editor',
+    firstParty: true,
+    experience: 'fullsize-dialog',
+    loadModal: async (container, onClose) => {
+      await import('../ew-draft-preview/ew-draft-preview.js');
+      const el = document.createElement('ew-draft-preview');
+      el.onClose = onClose;
+      container.append(el);
+    },
+  };
+}
+
 function extensionToPanelView(ext, section) {
   const view = {
     id: ext.name,
@@ -494,6 +510,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
     createOutlineView(),
     createFileExplorerView(),
     createVersionsView(),
+    createDraftPreviewView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];
