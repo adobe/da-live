@@ -23,6 +23,13 @@ class EwToolPanel extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this._onShowPanel = ({ detail }) => this.showPanel(detail?.panelName);
+    document.addEventListener('nx-show-panel', this._onShowPanel);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('nx-show-panel', this._onShowPanel);
   }
 
   get _fullsizeDialogView() {
@@ -98,7 +105,7 @@ class EwToolPanel extends LitElement {
 
     if (!this.activeId || !ids.has(this.activeId)) {
       const stored = sessionStorage.getItem(ACTIVE_VIEW_KEY);
-      await this.showView(stored && ids.has(stored) ? stored : this.views[0].id);
+      await this.showPanel(stored && ids.has(stored) ? stored : this.views[0].id);
     }
   }
 
@@ -124,8 +131,8 @@ class EwToolPanel extends LitElement {
     }
   }
 
-  async showView(id) {
-    const consumer = this.views.find((c) => c.id === id);
+  async showPanel(name) {
+    const consumer = this.views.find((c) => c.id === name);
     if (!consumer) return;
     if (consumer.experience === 'window') {
       window.open(
@@ -136,13 +143,13 @@ class EwToolPanel extends LitElement {
       return;
     }
     if (consumer.experience === 'fullsize-dialog') {
-      this._fullsizeDialogViewId = id;
+      this._fullsizeDialogViewId = name;
       return;
     }
-    if (!this._loaded[id]) {
-      this._loaded[id] = await consumer.load();
+    if (!this._loaded[name]) {
+      this._loaded[name] = await consumer.load();
     }
-    this.activeId = id;
+    this.activeId = name;
   }
 
   _syncContent() {
@@ -190,7 +197,7 @@ class EwToolPanel extends LitElement {
           .items=${items}
           .value=${this.activeId}
           placement="below-start"
-          @change=${(e) => this.showView(e.detail.value)}
+          @change=${(e) => this.showPanel(e.detail.value)}
         ></nx-picker>
         <div class="tool-panel-header-actions"></div>
       </div>

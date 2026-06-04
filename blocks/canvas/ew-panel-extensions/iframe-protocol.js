@@ -13,7 +13,7 @@ import { getNx } from '../../../scripts/utils.js';
  */
 export async function setupIframeChannel({ iframe, hashState, getView, onClose }) {
   const { org, site, path, view } = hashState;
-  if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() {} };
+  if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
 
   const channel = new MessageChannel();
 
@@ -39,6 +39,10 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
     if (action === 'closeLibrary') {
       onClose();
+    }
+
+    if (action === 'showPanel') {
+      document.dispatchEvent(new CustomEvent('nx-show-panel', { detail: { panelName: details } }));
     }
 
     if (action === 'setPrompt') {
