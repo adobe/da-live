@@ -93,9 +93,6 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   }, 750);
 
   const onAgentChange = ({ detail }) => {
-    // eslint-disable-next-line no-console
-    console.log('[iframe-protocol] nx-agent-change', detail, 'iframe ok:', !!iframe.contentWindow);
-
     if (!iframe.contentWindow) return;
     iframe.contentWindow.postMessage({ action: 'agentChange', detail }, '*');
   };
