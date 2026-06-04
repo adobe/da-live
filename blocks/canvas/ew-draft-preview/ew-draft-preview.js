@@ -1,7 +1,7 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { getLivePreviewUrl } from '../../shared/constants.js';
-import { livePreviewLogin } from '../../shared/utils.js';
+import { initIms } from '../../shared/utils.js';
+import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
@@ -37,7 +37,13 @@ class EwDraftPreview extends LitElement {
       this.site = data.site;
       this._activeTab = 0;
     };
-    livePreviewLogin(this.org, this.site).then(() => { this._cookieReady = true; });
+    initIms().then(async (ims) => {
+      const token = ims?.accessToken?.token;
+      if (token) {
+        await fetchWysiwygCookie({ org: this.org, repo: this.site, token }).catch(() => {});
+      }
+      this._cookieReady = true;
+    });
   }
 
   disconnectedCallback() {
@@ -50,7 +56,7 @@ class EwDraftPreview extends LitElement {
     const prefix = `/${this.org}/${this.site}`;
     const rel = item.path.startsWith(prefix) ? item.path.slice(prefix.length) : item.path;
     const withoutExt = item.ext ? rel.slice(0, -(item.ext.length + 1)) : rel;
-    return `${getLivePreviewUrl(this.org, this.site)}${withoutExt}`;
+    return `${getPreviewOrigin(this.org, this.site)}${withoutExt}`;
   }
 
   _openInCanvas(item) {
