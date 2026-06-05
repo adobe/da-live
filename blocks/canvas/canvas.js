@@ -9,6 +9,7 @@ import {
   installEditorSplitDrag,
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
+import { initIms } from '../shared/utils.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
@@ -189,6 +190,63 @@ function installCanvasHeader(block) {
   return header;
 }
 
+async function exchangeSiteToken(org, site, accessToken) {
+  try {
+    const response = await fetch('https://admin.hlx.page/auth/adobe/exchange', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        org,
+        site,
+        accessToken,
+      }),
+    });
+
+    if (!response.ok) {
+      // 401/403 error cases
+      return null;
+    }
+
+    const data = await response.json();
+
+    // If site doesn't require auth, data will be empty object
+    if (!data.siteToken) {
+      return null;
+    }
+
+    return {
+      siteToken: data.siteToken,
+      siteTokenExpiry: data.siteTokenExpiry,
+    };
+  } catch (error) {
+    console.error('Error exchanging site token:', error);
+    return null;
+  }
+}
+
+async function broadcastArticleIndex(org, site) {
+  try {
+    const token = (await initIms())?.accessToken?.token;
+    if (!token) return;
+    const siteToken = await exchangeSiteToken(org, site, token);
+    if (!siteToken) return;
+    const url = `https://main--${site}--${org}.aem.live/blog/article-index.json`;
+    const resp = await fetch(url, { method: 'GET', headers: { Authorization: `token ${siteToken.siteToken}` } });
+
+    if (!resp.ok) return;
+    const json = await resp.json();
+    const ids = (json.data ?? []).map((r) => r.observationid).filter(Boolean);
+    if (!ids.length) return;
+    const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
+    toolPanel?.shadowRoot?.querySelectorAll('ew-panel-extension').forEach((ext) => {
+      const iframe = ext.shadowRoot?.querySelector('iframe') ?? ext.querySelector('iframe');
+      iframe?.contentWindow?.postMessage({ type: 'nx-completed-obs', ids }, '*');
+    });
+  } catch { /* ignore */ }
+}
+
 export default async function decorate(block) {
   const header = installCanvasHeader(block);
 
@@ -206,6 +264,7 @@ export default async function decorate(block) {
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);
+    if (state?.org && state?.site) broadcastArticleIndex(state.org, state.site);
   });
 
   window.addEventListener('message', async ({ data }) => {
