@@ -18,6 +18,7 @@ svg.icon {
   padding: 22px 24px 24px;
   box-sizing: border-box;
   max-height: 85vh;
+  min-width: 80vw;
   overflow: auto;
 
   hr {

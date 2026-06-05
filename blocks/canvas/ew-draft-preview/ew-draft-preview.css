@@ -80,8 +80,22 @@
 .dp-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   flex-shrink: 0;
 }
+
+.dp-promote-btn {
+  background: transparent;
+  border: 1px solid var(--s2-blue-900);
+  border-radius: 4px;
+  color: var(--s2-blue-900);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+
+.dp-promote-btn:hover { background: var(--s2-blue-100); }
 
 .dp-edit-btn {
   background: var(--s2-blue-900);

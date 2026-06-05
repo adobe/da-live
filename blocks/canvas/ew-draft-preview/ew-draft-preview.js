@@ -40,7 +40,7 @@ class EwDraftPreview extends LitElement {
     initIms().then(async (ims) => {
       const token = ims?.accessToken?.token;
       if (token) {
-        await fetchWysiwygCookie({ org: this.org, repo: this.site, token }).catch(() => {});
+        await fetchWysiwygCookie({ org: this.org, repo: this.site, token }).catch(() => { });
       }
       this._cookieReady = true;
     });
@@ -57,6 +57,17 @@ class EwDraftPreview extends LitElement {
     const rel = item.path.startsWith(prefix) ? item.path.slice(prefix.length) : item.path;
     const withoutExt = item.ext ? rel.slice(0, -(item.ext.length + 1)) : rel;
     return `${getPreviewOrigin(this.org, this.site)}${withoutExt}?quick-edit=on`;
+  }
+
+  _promotePost(item) {
+    const prefix = `/${this.org}/${this.site}`;
+    const rel = item.path.startsWith(prefix) ? item.path.slice(prefix.length) : item.path;
+    const path = item.ext ? rel.slice(0, -(item.ext.length + 1)) : rel;
+    document.querySelector('ew-canvas-header')?.dispatchEvent(
+      new CustomEvent('nx-canvas-open-panel', { detail: { position: 'before' } }),
+    );
+    document.dispatchEvent(new CustomEvent('nx-set-prompt', { detail: { text: `use promote-post skill with ${path} page`, autoSend: true } }));
+    this.onClose?.();
   }
 
   _openInCanvas(item) {
@@ -89,6 +100,9 @@ class EwDraftPreview extends LitElement {
             <div class="dp-panel-inner">
               <iframe class="dp-frame" src=${this._cookieReady ? this._previewUrl(item) : ''} title=${item.name}></iframe>
               <div class="dp-actions">
+                <button class="dp-promote-btn" @click=${() => this._promotePost(item)}>
+                  Promote post
+                </button>
                 <button class="dp-edit-btn" @click=${() => this._openInCanvas(item)}>
                   Edit in Canvas
                 </button>

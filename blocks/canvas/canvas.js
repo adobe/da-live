@@ -209,6 +209,10 @@ export default async function decorate(block) {
   });
 
   window.addEventListener('message', async ({ data }) => {
+    if (data?.type === 'nx-open-chat') {
+      openCanvasPanel('before');
+      return;
+    }
     if (data?.type === 'nx-show-obs-details') {
       await Promise.all([
         import('../shared/da-dialog/da-dialog.js'),
