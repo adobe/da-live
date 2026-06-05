@@ -131,9 +131,7 @@ async function exchangeSiteToken(org, site, accessToken) {
   try {
     const response = await fetch('https://admin.hlx.page/auth/adobe/exchange', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         org,
         site,
@@ -157,8 +155,7 @@ async function exchangeSiteToken(org, site, accessToken) {
       siteToken: data.siteToken,
       siteTokenExpiry: data.siteTokenExpiry,
     };
-  } catch (error) {
-    console.error('Error exchanging site token:', error);
+  } catch {
     return null;
   }
 }
@@ -221,7 +218,7 @@ async function openCanvasPanel(position, { panelName } = {}) {
       if (panelName && toolPanel.views?.some((v) => v.id === panelName)) {
         await toolPanel.showPanel(panelName);
       }
-      if (org && site) broadcastArticleIndex(org, site);
+      if (org && site) setTimeout(() => broadcastArticleIndex(org, site), 2000);
     }
   }
 }
