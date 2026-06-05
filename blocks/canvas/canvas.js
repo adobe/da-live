@@ -233,7 +233,7 @@ async function broadcastArticleIndex(org, site) {
     const siteToken = await exchangeSiteToken(org, site, token);
     if (!siteToken) return;
     const url = `https://main--${site}--${org}.aem.live/blog/article-index.json`;
-    const resp = await fetch(url, { method: 'GET', headers: { Authorization: `token ${siteToken.siteToken}` } });
+    const resp = await fetch(url, { method: 'GET', headers: { Authorization: `token ${siteToken.siteToken}`, 'Content-Type': 'application/json' } });
 
     if (!resp.ok) return;
     const json = await resp.json();
