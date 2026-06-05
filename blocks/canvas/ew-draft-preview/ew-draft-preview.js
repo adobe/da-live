@@ -63,9 +63,13 @@ class EwDraftPreview extends LitElement {
     const prefix = `/${this.org}/${this.site}`;
     const rel = item.path.startsWith(prefix) ? item.path.slice(prefix.length) : item.path;
     const path = item.ext ? rel.slice(0, -(item.ext.length + 1)) : rel;
-    document.querySelector('ew-canvas-header')?.dispatchEvent(
-      new CustomEvent('nx-canvas-open-panel', { detail: { position: 'before' } }),
-    );
+    window.postMessage({ type: 'nx-open-chat' }, '*');
+    if (this.obsId) {
+      try {
+        const stored = JSON.parse(sessionStorage.getItem('nc-completed') ?? '[]');
+        sessionStorage.setItem('nc-completed', JSON.stringify([...new Set([...stored, this.obsId])]));
+      } catch { /* ignore */ }
+    }
     document.dispatchEvent(new CustomEvent('nx-set-prompt', { detail: { text: `use promote-post skill with ${path} page`, autoSend: true } }));
     this.onClose?.();
   }
