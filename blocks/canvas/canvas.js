@@ -127,69 +127,6 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
   toolPanel.views = views;
 }
 
-const CANVAS_PANELS = {
-  before: {
-    width: '400px',
-    getContent: async () => {
-      await import(`${getNx()}/blocks/chat/chat.js`);
-      return document.createElement('nx-chat');
-    },
-  },
-  after: {
-    width: '400px',
-    getContent: async () => {
-      await import('./ew-tool-panel/tool-panel.js');
-      return document.createElement('ew-tool-panel');
-    },
-  },
-};
-
-function hashState() {
-  const [org, site] = window.location.hash.slice(2).split('/');
-  return { org: org || undefined, site: site || undefined };
-}
-
-async function openCanvasPanel(position, { panelName } = {}) {
-  const config = CANVAS_PANELS[position];
-  if (!config) return;
-  const store = getPanelStore();
-  const width = store[position]?.width ?? config.width;
-  const aside = await openPanel({ position, width, getContent: config.getContent });
-  if (position === 'after') {
-    const toolPanel = aside?.querySelector('ew-tool-panel');
-    if (toolPanel) {
-      await syncToolPanelViews(toolPanel, hashState());
-      await toolPanel.updateComplete;
-      if (panelName && toolPanel.views?.some((v) => v.id === panelName)) {
-        await toolPanel.showPanel(panelName);
-      }
-    }
-  }
-}
-
-function installCanvasHeader(block) {
-  const header = document.createElement('ew-canvas-header');
-  header.editorView = readPersistedCanvasEditorView();
-  header.addEventListener('nx-canvas-open-panel', (e) => {
-    openCanvasPanel(e.detail.position, { panelName: e.detail.panelName });
-  });
-  header.addEventListener('nx-canvas-editor-view', (e) => {
-    const view = normalizeCanvasEditorView(e.detail?.view);
-    persistCanvasEditorView(view);
-    const applyTarget = canvasHeaderApplyTarget(block);
-    notifyCanvasEditorActive(applyTarget, view);
-    syncEditorSplitLayout({ mountRoot: canvasEditorMountRoot(block), view });
-  });
-  header.addEventListener('nx-canvas-undo', () => {
-    canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.undo();
-  });
-  header.addEventListener('nx-canvas-redo', () => {
-    canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.redo();
-  });
-  block.before(header);
-  return header;
-}
-
 async function exchangeSiteToken(org, site, accessToken) {
   try {
     const response = await fetch('https://admin.hlx.page/auth/adobe/exchange', {
@@ -245,6 +182,71 @@ async function broadcastArticleIndex(org, site) {
       iframe?.contentWindow?.postMessage({ type: 'nx-completed-obs', ids }, '*');
     });
   } catch { /* ignore */ }
+}
+
+const CANVAS_PANELS = {
+  before: {
+    width: '400px',
+    getContent: async () => {
+      await import(`${getNx()}/blocks/chat/chat.js`);
+      return document.createElement('nx-chat');
+    },
+  },
+  after: {
+    width: '400px',
+    getContent: async () => {
+      await import('./ew-tool-panel/tool-panel.js');
+      return document.createElement('ew-tool-panel');
+    },
+  },
+};
+
+function hashState() {
+  const [org, site] = window.location.hash.slice(2).split('/');
+  return { org: org || undefined, site: site || undefined };
+}
+
+async function openCanvasPanel(position, { panelName } = {}) {
+  const config = CANVAS_PANELS[position];
+  if (!config) return;
+  const store = getPanelStore();
+  const width = store[position]?.width ?? config.width;
+  const aside = await openPanel({ position, width, getContent: config.getContent });
+  if (position === 'after') {
+    const toolPanel = aside?.querySelector('ew-tool-panel');
+    if (toolPanel) {
+      const { org, site } = hashState();
+      await syncToolPanelViews(toolPanel, { org, site });
+      await toolPanel.updateComplete;
+      if (panelName && toolPanel.views?.some((v) => v.id === panelName)) {
+        await toolPanel.showPanel(panelName);
+      }
+      if (org && site) broadcastArticleIndex(org, site);
+    }
+  }
+}
+
+function installCanvasHeader(block) {
+  const header = document.createElement('ew-canvas-header');
+  header.editorView = readPersistedCanvasEditorView();
+  header.addEventListener('nx-canvas-open-panel', (e) => {
+    openCanvasPanel(e.detail.position, { panelName: e.detail.panelName });
+  });
+  header.addEventListener('nx-canvas-editor-view', (e) => {
+    const view = normalizeCanvasEditorView(e.detail?.view);
+    persistCanvasEditorView(view);
+    const applyTarget = canvasHeaderApplyTarget(block);
+    notifyCanvasEditorActive(applyTarget, view);
+    syncEditorSplitLayout({ mountRoot: canvasEditorMountRoot(block), view });
+  });
+  header.addEventListener('nx-canvas-undo', () => {
+    canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.undo();
+  });
+  header.addEventListener('nx-canvas-redo', () => {
+    canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.redo();
+  });
+  block.before(header);
+  return header;
 }
 
 export default async function decorate(block) {
