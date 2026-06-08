@@ -97,4 +97,24 @@ describe('da-link-dialog', () => {
     backdrop.dispatchEvent(clickEvent);
     expect(cancelled).to.be.true;
   });
+
+  it('does not emit da-link-submit when href is empty', async () => {
+    await mount({ open: true });
+    let fired = false;
+    el.addEventListener('da-link-submit', () => { fired = true; });
+    // leave href input empty, submit the form
+    el.shadowRoot.querySelector('.link-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await nextFrame();
+    expect(fired).to.be.false;
+  });
+
+  it('focuses the URL input when opened', async () => {
+    await mount({ open: false });
+    el.open = true;
+    await el.updateComplete;
+    await nextFrame();
+    await nextFrame(); // updateComplete.then() schedules one more microtask
+    const hrefInput = el.shadowRoot.querySelector('input[name="link-href"]');
+    expect(el.shadowRoot.activeElement).to.equal(hrefInput);
+  });
 });

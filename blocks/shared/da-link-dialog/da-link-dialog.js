@@ -30,11 +30,18 @@ class DaLinkDialog extends LitElement {
     const href = form.elements['link-href'].value.trim();
     if (!href) return;
     const text = form.elements['link-text'].value;
-    this.dispatchEvent(new CustomEvent('da-link-submit', { detail: { href, text } }));
+    this.dispatchEvent(new CustomEvent('da-link-submit', {
+      detail: { href, text },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   _onCancel() {
-    this.dispatchEvent(new CustomEvent('da-link-cancel'));
+    this.dispatchEvent(new CustomEvent('da-link-cancel', {
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   _onBackdropClick(e) {
