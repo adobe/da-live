@@ -149,6 +149,26 @@ export const LOREM_SENTENCES = [
 function findLinkInRange(state) {
   const { from, to } = state.selection;
   const linkType = state.schema.marks.link;
+
+  if (from === to) {
+    // Empty selection: scan parent node children to find a link that contains the cursor.
+    const $pos = state.doc.resolve(from);
+    const parent = $pos.parent;
+    const parentStart = $pos.start();
+    let result = null;
+    parent.forEach((node, offset) => {
+      if (result) return;
+      const mark = linkType.isInSet(node.marks);
+      if (!mark) return;
+      const nodeFrom = parentStart + offset;
+      const nodeTo = nodeFrom + node.nodeSize;
+      if (nodeFrom <= from && from <= nodeTo) {
+        result = { node, mark, from: nodeFrom, to: nodeTo };
+      }
+    });
+    return result;
+  }
+
   let found;
   state.doc.nodesBetween(from, to, (node, pos) => {
     if (found) return false;
