@@ -1,26 +1,7 @@
-/* Link dialog */
-
-.link-dialog {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgb(0 0 0 / 40%);
-}
-
 .link-form {
   display: flex;
   flex-direction: column;
   gap: var(--s2-spacing-100);
-  padding: var(--s2-spacing-200);
-  min-width: 340px;
-  max-width: min(90vw, 420px);
-  background: var(--s2-gray-25);
-  border: 1px solid var(--s2-gray-200);
-  border-radius: var(--s2-corner-radius-500);
-  box-shadow: 0 8px 32px rgb(0 0 0 / 18%);
 }
 
 .link-form-field {
@@ -49,14 +30,7 @@
   border-color: transparent;
 }
 
-.link-form-actions {
-  display: flex;
-  gap: var(--s2-spacing-75);
-  justify-content: flex-end;
-  margin-top: var(--s2-spacing-50);
-}
-
-.link-form-actions button {
+.link-form-cancel {
   height: 32px;
   padding: 0 16px;
   border: none;
@@ -65,9 +39,6 @@
   font-size: var(--s2-body-size-s, 0.875rem);
   font-weight: 600;
   cursor: pointer;
-}
-
-.link-form-cancel {
   background: var(--s2-gray-200);
   color: var(--s2-gray-800);
 }
@@ -77,6 +48,14 @@
 }
 
 .link-form-save {
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--s2-corner-radius-800);
+  font: inherit;
+  font-size: var(--s2-body-size-s, 0.875rem);
+  font-weight: 600;
+  cursor: pointer;
   background: var(--s2-blue-900);
   color: light-dark(var(--s2-gray-25), #fff);
 }

@@ -1,7 +1,10 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
-const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const nx = getNx();
+await import(`${nx}/blocks/shared/dialog/dialog.js`);
+
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
 
 class DaLinkDialog extends LitElement {
@@ -14,14 +17,6 @@ class DaLinkDialog extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
-  }
-
-  updated(changed) {
-    if (changed.has('open') && this.open) {
-      this.updateComplete.then(() => {
-        this.shadowRoot?.querySelector('input[name="link-href"]')?.focus();
-      });
-    }
   }
 
   _onSubmit(e) {
@@ -38,33 +33,24 @@ class DaLinkDialog extends LitElement {
   }
 
   _onCancel() {
+    this.shadowRoot.querySelector('nx-dialog').close();
+  }
+
+  _onClose() {
     this.dispatchEvent(new CustomEvent('da-link-cancel', {
       bubbles: true,
       composed: true,
     }));
   }
 
-  _onBackdropClick(e) {
-    if (e.target === e.currentTarget) this._onCancel();
-  }
-
-  _onBackdropKeydown(e) {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      this._onCancel();
-    }
-  }
-
   render() {
     if (!this.open) return nothing;
     return html`
-      <div class="link-dialog"
-        @click=${this._onBackdropClick}
-        @keydown=${this._onBackdropKeydown}>
+      <nx-dialog title="Edit link" @close=${this._onClose}>
         <form class="link-form" @submit=${this._onSubmit}>
           <label class="link-form-field">
             <span>URL</span>
-            <input name="link-href" type="url" placeholder="https://…"
+            <input name="link-href" type="text" autofocus placeholder="https://…"
                    required autocomplete="off" .value=${this.href ?? ''} />
           </label>
           <label class="link-form-field">
@@ -72,13 +58,12 @@ class DaLinkDialog extends LitElement {
             <input name="link-text" type="text" placeholder="Link text"
                    autocomplete="off" .value=${this.text ?? ''} />
           </label>
-          <div class="link-form-actions">
-            <button type="button" class="link-form-cancel"
-              @click=${this._onCancel}>Cancel</button>
-            <button type="submit" class="link-form-save">Save</button>
-          </div>
         </form>
-      </div>
+        <button slot="actions" class="link-form-cancel"
+          @click=${this._onCancel}>Cancel</button>
+        <button slot="actions" class="link-form-save"
+          @click=${() => this.shadowRoot.querySelector('.link-form').requestSubmit()}>Save</button>
+      </nx-dialog>
     `;
   }
 }

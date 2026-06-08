@@ -32,7 +32,7 @@ describe('da-link-dialog', () => {
 
   it('renders nothing when open is false (default)', async () => {
     await mount({ open: false });
-    expect(el.shadowRoot.querySelector('.link-dialog')).to.be.null;
+    expect(el.shadowRoot.querySelector('nx-dialog')).to.be.null;
   });
 
   it('renders the form when open is true', async () => {
@@ -66,6 +66,15 @@ describe('da-link-dialog', () => {
     expect(detail).to.deep.equal({ href: 'https://test.com', text: 'Test' });
   });
 
+  it('does not emit da-link-submit when href is empty', async () => {
+    await mount({ open: true });
+    let fired = false;
+    el.addEventListener('da-link-submit', () => { fired = true; });
+    el.shadowRoot.querySelector('.link-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await nextFrame();
+    expect(fired).to.be.false;
+  });
+
   it('emits da-link-cancel when Cancel button is clicked', async () => {
     await mount({ open: true });
     let cancelled = false;
@@ -74,44 +83,11 @@ describe('da-link-dialog', () => {
     expect(cancelled).to.be.true;
   });
 
-  it('emits da-link-cancel on Escape keydown in backdrop', async () => {
+  it('emits da-link-cancel when nx-dialog emits a close event', async () => {
     await mount({ open: true });
     let cancelled = false;
     el.addEventListener('da-link-cancel', () => { cancelled = true; });
-    const backdrop = el.shadowRoot.querySelector('.link-dialog');
-    backdrop.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    el.shadowRoot.querySelector('nx-dialog').dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
     expect(cancelled).to.be.true;
-  });
-
-  it('emits da-link-cancel when backdrop is clicked directly', async () => {
-    await mount({ open: true });
-    let cancelled = false;
-    el.addEventListener('da-link-cancel', () => { cancelled = true; });
-    const backdrop = el.shadowRoot.querySelector('.link-dialog');
-    const clickEvent = new MouseEvent('click', { bubbles: true });
-    Object.defineProperty(clickEvent, 'target', { value: backdrop });
-    Object.defineProperty(clickEvent, 'currentTarget', { value: backdrop });
-    backdrop.dispatchEvent(clickEvent);
-    expect(cancelled).to.be.true;
-  });
-
-  it('does not emit da-link-submit when href is empty', async () => {
-    await mount({ open: true });
-    let fired = false;
-    el.addEventListener('da-link-submit', () => { fired = true; });
-    // leave href input empty, submit the form
-    el.shadowRoot.querySelector('.link-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await nextFrame();
-    expect(fired).to.be.false;
-  });
-
-  it('focuses the URL input when opened', async () => {
-    await mount({ open: false });
-    el.open = true;
-    await el.updateComplete;
-    await nextFrame();
-    await nextFrame(); // updateComplete.then() schedules one more microtask
-    const hrefInput = el.shadowRoot.querySelector('input[name="link-href"]');
-    expect(el.shadowRoot.activeElement).to.equal(hrefInput);
   });
 });
