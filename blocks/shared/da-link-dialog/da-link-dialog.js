@@ -47,7 +47,7 @@ class DaLinkDialog extends LitElement {
     if (!this.open) return nothing;
     return html`
       <nx-dialog title="Edit link" @close=${this._onClose}>
-        <form class="link-form" @submit=${this._onSubmit}>
+        <form id="link-form" class="link-form" @submit=${this._onSubmit}>
           <label class="link-form-field">
             <span>URL</span>
             <input name="link-href" type="text" autofocus placeholder="https://…"
@@ -61,7 +61,7 @@ class DaLinkDialog extends LitElement {
         </form>
         <button slot="actions" class="link-form-cancel"
           @click=${this._onCancel}>Cancel</button>
-        <button slot="actions" class="link-form-save"
+        <button slot="actions" class="link-form-save" form="link-form"
           @click=${() => this.shadowRoot.querySelector('.link-form').requestSubmit()}>Save</button>
       </nx-dialog>
     `;
