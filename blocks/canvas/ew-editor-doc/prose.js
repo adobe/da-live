@@ -174,7 +174,11 @@ export default async function initProse({
       'Mod-z': (state) => yUndo(state) || false,
       'Mod-y': (state) => yRedo(state) || false,
       'Mod-Shift-z': (state) => yRedo(state) || false,
-      'Mod-k': (_state, _dispatch, view) => { openLinkDialog(view); return true; },
+      'Mod-k': (_state, _dispatch, view) => {
+        if (!view.editable) return false;
+        openLinkDialog(view);
+        return true;
+      },
       ...getHeadingKeymap(schema),
     }),
     keymap({

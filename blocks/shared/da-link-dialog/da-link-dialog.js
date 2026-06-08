@@ -64,7 +64,7 @@ class DaLinkDialog extends LitElement {
         <form class="link-form" @submit=${this._onSubmit}>
           <label class="link-form-field">
             <span>URL</span>
-            <input name="link-href" type="url" placeholder="https://…"
+            <input name="link-href" type="text" placeholder="https://…"
                    required autocomplete="off" .value=${this.href ?? ''} />
           </label>
           <label class="link-form-field">
