@@ -1,8 +1,7 @@
 import { LitElement, html, nothing, until } from 'da-lit';
-import { delay, sanitizeName } from '../../shared/utils.js';
+import { delay, sanitizeName, formatDate } from '../../shared/utils.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
-import { formatDate } from '../../edit/da-versions/helpers.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
