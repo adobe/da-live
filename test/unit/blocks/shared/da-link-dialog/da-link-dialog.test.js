@@ -4,12 +4,9 @@ import { setNx } from '../../../../../scripts/utils.js';
 const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
 
 describe('da-link-dialog', () => {
-  let DaLinkDialog;
-
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    const mod = await import('../../../../../blocks/shared/da-link-dialog/da-link-dialog.js');
-    DaLinkDialog = mod.default;
+    await import('../../../../../blocks/shared/da-link-dialog/da-link-dialog.js');
   });
 
   let el;
