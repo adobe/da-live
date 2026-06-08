@@ -56,4 +56,10 @@ describe('getLinkInfoInSelection — empty selection inside link', () => {
     const state = stateWithPlainText({ cursorPos: 2 });
     expect(selectionHasLink(state)).to.be.false;
   });
+
+  it('returns null when cursor is immediately after the link', () => {
+    // "hello" has 5 chars, paragraph opens at pos 0, text occupies [1,6), pos 6 is outside
+    const state = stateWithLink({ text: 'hello', cursorPos: 6 });
+    expect(getLinkInfoInSelection(state)).to.be.null;
+  });
 });

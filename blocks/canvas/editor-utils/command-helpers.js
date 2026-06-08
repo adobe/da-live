@@ -162,7 +162,7 @@ function findLinkInRange(state) {
       if (!mark) return;
       const nodeFrom = parentStart + offset;
       const nodeTo = nodeFrom + node.nodeSize;
-      if (nodeFrom <= from && from <= nodeTo) {
+      if (nodeFrom <= from && from < nodeTo) {
         result = { node, mark, from: nodeFrom, to: nodeTo };
       }
     });
