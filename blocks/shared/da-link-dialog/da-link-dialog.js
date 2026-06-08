@@ -24,6 +24,7 @@ class DaLinkDialog extends LitElement {
     const form = e.target;
     const href = form.elements['link-href'].value.trim();
     if (!href) return;
+    if (/^(javascript|data|vbscript):/i.test(href)) return;
     const text = form.elements['link-text'].value;
     this.dispatchEvent(new CustomEvent('da-link-submit', {
       detail: { href, text },
