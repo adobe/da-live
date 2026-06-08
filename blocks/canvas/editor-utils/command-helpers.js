@@ -153,7 +153,7 @@ function findLinkInRange(state) {
   if (from === to) {
     // Empty selection: scan parent node children to find a link that contains the cursor.
     const $pos = state.doc.resolve(from);
-    const parent = $pos.parent;
+    const { parent } = $pos;
     const parentStart = $pos.start();
     let result = null;
     parent.forEach((node, offset) => {
