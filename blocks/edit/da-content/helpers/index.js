@@ -1,8 +1,8 @@
-import { DA_ORIGIN } from '../../../shared/constants.js';
-import { daFetch } from '../../../shared/utils.js';
+import { getNx2Api } from '../../../../scripts/utils.js';
 
 async function getConfSheet(org) {
-  const resp = await daFetch(`${DA_ORIGIN}/config/${org}/`);
+  const { config } = await getNx2Api();
+  const resp = await config.get({ org });
   if (!resp.ok) return null;
   const json = await resp.json();
   return json?.data?.data || json?.data;

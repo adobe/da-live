@@ -180,9 +180,14 @@ export const snapshot = {
 // { org, site, path, ...extras } or a `/org/site/file/path` string.
 // `extras` (second arg) merges with parsed args when arg is a string.
 export const source = {
-  get: withArgs(async ({ org, site, path }) => {
+  get: withArgs(async ({
+    org, site, path, cachebust,
+  }) => {
     const url = await getDaApiPath(SOURCE, org, site, path);
-    return daFetch({ url });
+    const finalUrl = cachebust
+      ? `${url}${url.includes('?') ? '&' : '?'}nocache=${Date.now()}`
+      : url;
+    return daFetch({ url: finalUrl });
   }),
 
   // Returns `{ ok, items, continuationToken, permissions }`. Pagination

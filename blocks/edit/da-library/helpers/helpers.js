@@ -1,11 +1,11 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch, aemAdmin, fetchDaConfigs, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
+import { daFetch, fetchDaConfigs, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
 import { CON_ORIGIN } from '../../../shared/constants.js';
 import { openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
-import { sanitizeName } from '../../../../scripts/utils.js';
+import { getNx2Api, sanitizeName } from '../../../../scripts/utils.js';
 import { getBlocks } from './index.js';
 
 export const OOTB_PLUGINS = ['blocks', 'templates', 'icons', 'placeholders'];
@@ -303,7 +303,9 @@ export function getItemDetails(item) {
 export async function getPreviewStatus({ org, site, pathname }) {
   const path = `/${org}/${site}${pathname}`;
   try {
-    const json = await aemAdmin(path, 'status', 'GET');
+    const { status } = await getNx2Api();
+    const resp = await status.get(path);
+    const json = await resp.json();
     return json.preview.status === 200;
   } catch (err) {
     // eslint-disable-next-line no-console
