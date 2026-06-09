@@ -1,6 +1,7 @@
 import { LitElement, html } from 'da-lit';
 
 import { getNx } from '../../../scripts/utils.js';
+
 import '../../shared/ew-canvas-header-base/ew-canvas-header-base.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
