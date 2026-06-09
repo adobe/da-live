@@ -220,10 +220,10 @@ function mergePlugin(list, plugin) {
 
 export async function fetchExtensions(org, site) {
   const configs = await Promise.all(fetchDaConfigs({ org, site }));
-  const validConfigs = configs.filter((c) => !c?.error).reverse();
+  const validConfigs = configs.filter((conf) => !conf?.error).reverse();
   if (!validConfigs.length) return [];
 
-  const rows = validConfigs.flatMap((c) => c?.library?.data || []);
+  const rows = validConfigs.flatMap((conf) => conf?.library?.data || []);
   if (!rows.length) return [];
 
   const seen = new Set();
@@ -245,7 +245,7 @@ export async function fetchExtensions(org, site) {
   }, []);
 
   try {
-    const entries = validConfigs.flatMap((c) => getFirstSheet(c) || []);
+    const entries = validConfigs.flatMap((conf) => getFirstSheet(conf) || []);
     const hasRepo = entries.find((e) => e.key === 'aem.repositoryId')?.value;
     if (hasRepo) {
       const { getAssetsPlugin } = await import('./aem-assets.js');
