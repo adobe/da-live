@@ -4,8 +4,8 @@
   font-family: var(
     --s2-font-family,
     adobe-clean,
-    "Source Sans Pro",
-    "Trebuchet MS",
+    'Source Sans Pro',
+    'Trebuchet MS',
     sans-serif
   );
   font-size: var(--s2-body-size-s, 0.875rem);
@@ -117,50 +117,5 @@
     height: 16px;
     flex-shrink: 0;
     overflow: hidden;
-  }
-}
-
-.bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  box-sizing: border-box;
-  height: var(--ew-canvas-header-height);
-  padding: 0 12px;
-  background-color: light-dark(#fff, var(--s2-gray-25));
-  border-bottom: 1px solid var(--s2-gray-200);
-}
-
-.group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.group-center {
-  flex: 1;
-  justify-content: center;
-  min-width: 0;
-}
-
-@media (width < 480px) {
-  .bar {
-    flex-wrap: wrap;
-    justify-content: center;
-    padding-block: 8px;
-    row-gap: 8px;
-  }
-
-  .group-center {
-    order: 0;
-    flex: 1 1 100%;
-    justify-content: center;
-  }
-
-  .group-start,
-  .group-end {
-    order: 1;
   }
 }
