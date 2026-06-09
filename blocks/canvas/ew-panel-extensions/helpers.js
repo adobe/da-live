@@ -246,7 +246,7 @@ export async function fetchExtensions(org, site) {
 
   try {
     const entries = validConfigs.flatMap((conf) => getFirstSheet(conf) || []);
-    const hasRepo = entries.find((e) => e.key === 'aem.repositoryId')?.value;
+    const hasRepo = entries.find((entry) => entry.key === 'aem.repositoryId')?.value;
     if (hasRepo) {
       const { getAssetsPlugin } = await import('./aem-assets.js');
       const plugin = getAssetsPlugin({ org, site });
