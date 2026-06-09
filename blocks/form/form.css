@@ -1,0 +1,30 @@
+/* Form workspace: the nx2 form fills main; nx-chat is docked on the left. */
+
+:root {
+  --canvas-header-height: 48px;
+  --form-content-top: 32px;
+
+  /* Top gap for scrolled-to groups + the sticky nav. The header is outside the
+     scroll region, so this only covers the gap, not the header. Apply it here
+     only — padding the .form scroll container would misalign the two. */
+  --nx-scroll-offset-top: var(--form-content-top);
+}
+
+/* Nested scroll (like /canvas): the form scrolls inside a fixed-height region,
+   so the header — a sibling above .form — stays put without `sticky`. */
+.form {
+  box-sizing: border-box;
+  height: calc(100vh - var(--s2-nav-height) - var(--canvas-header-height));
+  overflow-y: auto;
+}
+
+/* Never override the chat's `display` here, or its flex layout collapses. */
+aside.panel[data-position='before'] nx-chat {
+  height: 100%;
+}
+
+/* Hide the chat toggle while the chat is open (it has its own close). */
+html:has(aside.panel[data-position='before']:not([hidden]))
+  canvas-header::part(toggle-before) {
+  display: none;
+}

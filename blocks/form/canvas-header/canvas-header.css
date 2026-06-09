@@ -1,0 +1,63 @@
+:host {
+  display: block;
+  box-sizing: border-box;
+  font-family: var(
+    --s2-font-family,
+    adobe-clean,
+    'Source Sans Pro',
+    'Trebuchet MS',
+    sans-serif
+  );
+  color: var(--s2-gray-800);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  height: var(--canvas-header-height, 48px);
+  padding: 0 12px;
+  background-color: light-dark(#fff, var(--s2-gray-25));
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 4px;
+  margin: 0;
+  border: none;
+  border-radius: 8px;
+  color: var(--s2-gray-800);
+  background: transparent;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background-color: var(--s2-gray-75);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}
+
+.icon-btn svg.icon {
+  display: block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  overflow: hidden;
+}
