@@ -1,6 +1,11 @@
 import { getNx } from '../../scripts/utils.js';
-import { fetchDaConfigs } from '../shared/utils.js';
 import { editorSelectChange } from './editor-utils/editor-utils.js';
+import {
+  CANVAS_EDITOR_VIEW_KEY,
+  normalizeCanvasEditorView,
+  readInitialCanvasEditorView,
+  persistCanvasEditorView,
+} from './utils/view.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -23,43 +28,12 @@ function buildCanvasDocPath(state) {
   return `${org}/${site}/${path}`;
 }
 
-const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
-
-function normalizeCanvasEditorView(view) {
-  if (view === 'content') return 'content';
-  if (view === 'split') return 'split';
-  return 'layout';
-}
-
 function notifyCanvasEditorActive(mountRoot, view) {
   const v = normalizeCanvasEditorView(view);
   mountRoot.dispatchEvent(new CustomEvent('nx-canvas-editor-active', {
     bubbles: false,
     detail: { view: v },
   }));
-}
-
-async function readInitialCanvasEditorView({ org, site }) {
-  try {
-    const persisted = sessionStorage.getItem(CANVAS_EDITOR_VIEW_KEY);
-    if (persisted) return normalizeCanvasEditorView(persisted);
-  } catch { /* ignore if browser disallows session storage */ }
-
-  try {
-    const siteConfig = await fetchDaConfigs({ org, site })[1];
-    const flag = siteConfig?.flags?.data?.find((f) => f.key === 'ew.canvasDefaultView');
-    if (flag) return normalizeCanvasEditorView(flag.value);
-  } catch { /* ignore config fetch errors */ }
-
-  return 'layout';
-}
-
-function persistCanvasEditorView(view) {
-  try {
-    sessionStorage.setItem(CANVAS_EDITOR_VIEW_KEY, normalizeCanvasEditorView(view));
-  } catch {
-    /* ignore if browser disallows session storage */
-  }
 }
 
 function canvasEditorMountRoot(block) {
