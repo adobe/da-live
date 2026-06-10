@@ -46,8 +46,7 @@ async function readInitialCanvasEditorView({ org, site }) {
   } catch { /* ignore if browser disallows session storage */ }
 
   try {
-    const [, siteConfigPromise] = fetchDaConfigs({ org, site });
-    const siteConfig = await siteConfigPromise;
+    const siteConfig = await fetchDaConfigs({ org, site })[1];
     const flag = siteConfig?.flags?.data?.find((f) => f.key === 'ew.canvasDefaultView');
     if (flag) return normalizeCanvasEditorView(flag.value);
   } catch { /* ignore config fetch errors */ }
