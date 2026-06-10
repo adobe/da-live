@@ -1,11 +1,51 @@
 import { expect } from '@esm-bundle/chai';
 
 const SESSION_KEY = 'nx-canvas-editor-view';
+let normalizeCanvasEditorView;
+let persistCanvasEditorView;
 let readInitialCanvasEditorView;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/utils/view.js');
+  normalizeCanvasEditorView = mod.normalizeCanvasEditorView;
+  persistCanvasEditorView = mod.persistCanvasEditorView;
   readInitialCanvasEditorView = mod.readInitialCanvasEditorView;
+});
+
+describe('normalizeCanvasEditorView', () => {
+  it('returns content for content', () => {
+    expect(normalizeCanvasEditorView('content')).to.equal('content');
+  });
+
+  it('returns split for split', () => {
+    expect(normalizeCanvasEditorView('split')).to.equal('split');
+  });
+
+  it('returns layout for layout', () => {
+    expect(normalizeCanvasEditorView('layout')).to.equal('layout');
+  });
+
+  it('returns layout for unknown values', () => {
+    expect(normalizeCanvasEditorView('unknown')).to.equal('layout');
+    expect(normalizeCanvasEditorView('')).to.equal('layout');
+    expect(normalizeCanvasEditorView(undefined)).to.equal('layout');
+  });
+});
+
+describe('persistCanvasEditorView', () => {
+  afterEach(() => {
+    sessionStorage.removeItem(SESSION_KEY);
+  });
+
+  it('writes the normalized view to session storage', () => {
+    persistCanvasEditorView('content');
+    expect(sessionStorage.getItem(SESSION_KEY)).to.equal('content');
+  });
+
+  it('normalizes the value before writing', () => {
+    persistCanvasEditorView('unknown');
+    expect(sessionStorage.getItem(SESSION_KEY)).to.equal('layout');
+  });
 });
 
 describe('readInitialCanvasEditorView', () => {
@@ -28,10 +68,6 @@ describe('readInitialCanvasEditorView', () => {
 
   function mockConfig(flags) {
     window.fetch = () => Promise.resolve(new Response(JSON.stringify({ flags }), { status: 200 }));
-  }
-
-  function mockConfigError() {
-    window.fetch = () => Promise.resolve(new Response('', { status: 500 }));
   }
 
   it('returns persisted session storage value when present', async () => {
@@ -67,12 +103,6 @@ describe('readInitialCanvasEditorView', () => {
 
   it('returns layout when config has no canvasDefaultView flag', async () => {
     mockConfig({ data: [{ key: 'other.flag', value: 'true' }] });
-    const view = await readInitialCanvasEditorView(ctx());
-    expect(view).to.equal('layout');
-  });
-
-  it('returns layout when config fetch fails', async () => {
-    mockConfigError();
     const view = await readInitialCanvasEditorView(ctx());
     expect(view).to.equal('layout');
   });

@@ -15,10 +15,12 @@ export async function readInitialCanvasEditorView({ org, site }) {
   } catch { /* ignore if browser disallows session storage */ }
 
   try {
-    const siteConfig = await fetchDaConfigs({ org, site })[1];
+    const [, siteConfig] = await Promise.all(fetchDaConfigs({ org, site }));
     const flag = siteConfig?.flags?.data?.find((f) => f.key === 'ew.canvasDefaultView');
     if (flag) return normalizeCanvasEditorView(flag.value);
-  } catch { /* ignore config fetch errors */ }
+  } catch (e) {
+    if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
+  }
 
   return 'layout';
 }
