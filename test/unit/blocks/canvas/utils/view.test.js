@@ -1,12 +1,11 @@
 import { expect } from '@esm-bundle/chai';
 
+const SESSION_KEY = 'nx-canvas-editor-view';
 let readInitialCanvasEditorView;
-let CANVAS_EDITOR_VIEW_KEY;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/utils/view.js');
   readInitialCanvasEditorView = mod.readInitialCanvasEditorView;
-  CANVAS_EDITOR_VIEW_KEY = mod.CANVAS_EDITOR_VIEW_KEY;
 });
 
 describe('readInitialCanvasEditorView', () => {
@@ -15,13 +14,13 @@ describe('readInitialCanvasEditorView', () => {
 
   beforeEach(() => {
     savedFetch = window.fetch;
-    sessionStorage.removeItem(CANVAS_EDITOR_VIEW_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
     testIndex += 1;
   });
 
   afterEach(() => {
     window.fetch = savedFetch;
-    sessionStorage.removeItem(CANVAS_EDITOR_VIEW_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
   });
 
   // fetchDaConfigs caches by org/site — use a unique pair per test to avoid cache hits.
@@ -36,13 +35,13 @@ describe('readInitialCanvasEditorView', () => {
   }
 
   it('returns persisted session storage value when present', async () => {
-    sessionStorage.setItem(CANVAS_EDITOR_VIEW_KEY, 'content');
+    sessionStorage.setItem(SESSION_KEY, 'content');
     const view = await readInitialCanvasEditorView(ctx());
     expect(view).to.equal('content');
   });
 
   it('session storage value wins over config flag', async () => {
-    sessionStorage.setItem(CANVAS_EDITOR_VIEW_KEY, 'split');
+    sessionStorage.setItem(SESSION_KEY, 'split');
     mockConfig({ data: [{ key: 'ew.canvasDefaultView', value: 'content' }] });
     const view = await readInitialCanvasEditorView(ctx());
     expect(view).to.equal('split');

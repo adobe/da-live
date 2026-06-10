@@ -1,6 +1,6 @@
 import { fetchDaConfigs } from '../../shared/utils.js';
 
-export const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
+const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
 
 export function normalizeCanvasEditorView(view) {
   if (view === 'content') return 'content';
