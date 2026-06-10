@@ -1,7 +1,6 @@
 import { getNx } from '../../scripts/utils.js';
 import { editorSelectChange } from './editor-utils/editor-utils.js';
 import {
-  CANVAS_EDITOR_VIEW_KEY,
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
   persistCanvasEditorView,
