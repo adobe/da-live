@@ -1,5 +1,5 @@
 import { getNx } from '../../scripts/utils.js';
-import { fetchDaConfigs } from '../../shared/utils.js';
+import { fetchDaConfigs } from '../shared/utils.js';
 import { editorSelectChange } from './editor-utils/editor-utils.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
