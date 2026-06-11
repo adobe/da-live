@@ -2,6 +2,8 @@ import { LitElement, html } from 'da-lit';
 
 import { getNx } from '../../../scripts/utils.js';
 
+import '../../shared/ew-canvas-header-base/ew-canvas-header-base.js';
+
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
@@ -9,7 +11,6 @@ const style = await loadStyle(import.meta.url);
 const ICONS = {
   undo: '/img/icons/s2-icon-undo-20-n.svg',
   redo: '/img/icons/s2-icon-redo-20-n.svg',
-  splitLeft: '/img/icons/s2-icon-splitleft-20-n.svg',
   splitRight: '/img/icons/s2-icon-splitright-20-n.svg',
   gridCompare: '/img/icons/s2-icon-gridcompare-20-n.svg',
 };
@@ -76,58 +77,44 @@ class EWCanvasHeader extends LitElement {
 
   render() {
     return html`
-      <header class="bar" part="bar">
-        <div class="group group-start" part="group-start">
-          <button type="button" class="icon-btn" part="btn toggle-before" data-action="open-panel-before" aria-label="Open before panel" @click=${() => this._openPanel('before')}>
-            ${this._renderIcon('splitLeft')}
-          </button>
-          <button type="button" class="icon-btn" part="btn" data-action="undo" aria-label="Undo" ?disabled=${!this.undoAvailable} @click=${this._undo}>
-            ${this._renderIcon('undo')}
-          </button>
+      <ew-canvas-header-base
+        exportparts="bar, group-start, group-center, group-end, toggle-before"
+        @header-toggle-before=${() => this._openPanel('before')}
+      >
+        <button slot="start" type="button" class="icon-btn" part="btn" data-action="undo" aria-label="Undo" ?disabled=${!this.undoAvailable} @click=${this._undo}>
+          ${this._renderIcon('undo')}
+        </button>
+        <button slot="start" type="button" class="icon-btn" part="btn" data-action="redo" aria-label="Redo" ?disabled=${!this.redoAvailable} @click=${this._redo}>
+          ${this._renderIcon('redo')}
+        </button>
+
+        <div slot="center" class="segmented" role="group" aria-label="Editor view" part="editor-view-toggle">
           <button
             type="button"
-            class="icon-btn"
-            part="btn"
-            data-action="redo"
-            aria-label="Redo"
-            ?disabled=${!this.redoAvailable}
-            @click=${this._redo}
-          >
-            ${this._renderIcon('redo')}
-          </button>
+            class="segment ${this.editorView === 'layout' ? 'is-selected' : ''}"
+            aria-pressed=${this.editorView === 'layout'}
+            @click=${() => this._setEditorView('layout')}
+          >Layout</button>
+          <button
+            type="button"
+            class="segment ${this.editorView === 'content' ? 'is-selected' : ''}"
+            aria-pressed=${this.editorView === 'content'}
+            @click=${() => this._setEditorView('content')}
+          >Content</button>
+          <button
+            type="button"
+            class="segment segment-icon ${this.editorView === 'split' ? 'is-selected' : ''}"
+            aria-pressed=${this.editorView === 'split'}
+            aria-label="Split view"
+            title="Split view"
+            @click=${() => this._setEditorView('split')}
+          >${this._renderIcon('gridCompare')}</button>
         </div>
 
-        <div class="group group-center" part="group-center">
-          <div class="segmented" role="group" aria-label="Editor view" part="editor-view-toggle">
-            <button
-              type="button"
-              class="segment ${this.editorView === 'layout' ? 'is-selected' : ''}"
-              aria-pressed=${this.editorView === 'layout'}
-              @click=${() => this._setEditorView('layout')}
-            >Layout</button>
-            <button
-              type="button"
-              class="segment ${this.editorView === 'content' ? 'is-selected' : ''}"
-              aria-pressed=${this.editorView === 'content'}
-              @click=${() => this._setEditorView('content')}
-            >Content</button>
-            <button
-              type="button"
-              class="segment segment-icon ${this.editorView === 'split' ? 'is-selected' : ''}"
-              aria-pressed=${this.editorView === 'split'}
-              aria-label="Split view"
-              title="Split view"
-              @click=${() => this._setEditorView('split')}
-            >${this._renderIcon('gridCompare')}</button>
-          </div>
-        </div>
-
-        <div class="group group-end" part="group-end">
-          <button type="button" class="icon-btn" part="btn toggle-after" data-action="open-panel-after" aria-label="Open after panel" @click=${() => this._openPanel('after')}>
-            ${this._renderIcon('splitRight')}
-          </button>
-        </div>
-      </header>
+        <button slot="end" type="button" class="icon-btn" part="btn toggle-after" data-action="open-panel-after" aria-label="Open after panel" @click=${() => this._openPanel('after')}>
+          ${this._renderIcon('splitRight')}
+        </button>
+      </ew-canvas-header-base>
     `;
   }
 }
