@@ -1,5 +1,10 @@
 import { getNx } from '../../scripts/utils.js';
 import { editorSelectChange } from './editor-utils/editor-utils.js';
+import {
+  normalizeCanvasEditorView,
+  readInitialCanvasEditorView,
+  persistCanvasEditorView,
+} from './utils/view.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -22,36 +27,12 @@ function buildCanvasDocPath(state) {
   return `${org}/${site}/${path}`;
 }
 
-const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
-
-function normalizeCanvasEditorView(view) {
-  if (view === 'content') return 'content';
-  if (view === 'split') return 'split';
-  return 'layout';
-}
-
 function notifyCanvasEditorActive(mountRoot, view) {
   const v = normalizeCanvasEditorView(view);
   mountRoot.dispatchEvent(new CustomEvent('nx-canvas-editor-active', {
     bubbles: false,
     detail: { view: v },
   }));
-}
-
-function readPersistedCanvasEditorView() {
-  try {
-    return normalizeCanvasEditorView(sessionStorage.getItem(CANVAS_EDITOR_VIEW_KEY));
-  } catch {
-    return 'layout';
-  }
-}
-
-function persistCanvasEditorView(view) {
-  try {
-    sessionStorage.setItem(CANVAS_EDITOR_VIEW_KEY, normalizeCanvasEditorView(view));
-  } catch {
-    /* ignore if browser disallows session storage */
-  }
 }
 
 function canvasEditorMountRoot(block) {
@@ -96,6 +77,8 @@ function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   header.undoAvailable = false;
   header.redoAvailable = false;
   const fullPath = buildCanvasDocPath(state);
+  const name = state?.path?.split('/').pop();
+  document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
     removeCanvasEditors(mountRoot);
     return;
@@ -146,7 +129,7 @@ function hashState() {
   return { org: org || undefined, site: site || undefined };
 }
 
-async function openCanvasPanel(position, { preferredViewId } = {}) {
+async function openCanvasPanel(position, { panelName } = {}) {
   const config = CANVAS_PANELS[position];
   if (!config) return;
   const store = getPanelStore();
@@ -157,18 +140,18 @@ async function openCanvasPanel(position, { preferredViewId } = {}) {
     if (toolPanel) {
       await syncToolPanelViews(toolPanel, hashState());
       await toolPanel.updateComplete;
-      if (preferredViewId && toolPanel.views?.some((v) => v.id === preferredViewId)) {
-        await toolPanel.showView(preferredViewId);
+      if (panelName && toolPanel.views?.some((v) => v.id === panelName)) {
+        await toolPanel.showPanel(panelName);
       }
     }
   }
 }
 
-function installCanvasHeader(block) {
+async function installCanvasHeader(block, { org, site }) {
   const header = document.createElement('ew-canvas-header');
-  header.editorView = readPersistedCanvasEditorView();
+  header.editorView = await readInitialCanvasEditorView({ org, site });
   header.addEventListener('nx-canvas-open-panel', (e) => {
-    openCanvasPanel(e.detail.position, { preferredViewId: e.detail.viewId });
+    openCanvasPanel(e.detail.position, { panelName: e.detail.panelName });
   });
   header.addEventListener('nx-canvas-editor-view', (e) => {
     const view = normalizeCanvasEditorView(e.detail?.view);
@@ -188,7 +171,8 @@ function installCanvasHeader(block) {
 }
 
 export default async function decorate(block) {
-  const header = installCanvasHeader(block);
+  const { org, site } = hashState();
+  const header = await installCanvasHeader(block, { org, site });
 
   const mountRoot = canvasEditorMountRoot(block);
   mountRoot.classList.add('nx-canvas-editor-mount');
@@ -213,11 +197,21 @@ export default async function decorate(block) {
   // Only NodeSelection (explicit block handle click) in doc mode qualifies as intentional context.
   // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.
   const CANVAS_CHAT_KEY = 'canvas-selection';
+  let hasExplicitBlock = false;
   editorSelectChange.subscribe(({
     blockIndex, blockName, proseIndex, innerText, source, explicit,
   }) => {
-    if (source !== 'doc' || !explicit) return;
-    const detail = blockIndex >= 0 && blockName
+    if (source !== 'doc') return;
+    if (!explicit) {
+      if (hasExplicitBlock) {
+        hasExplicitBlock = false;
+        document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key: CANVAS_CHAT_KEY } }));
+      }
+      return;
+    }
+    const hasBlock = blockIndex >= 0 && !!blockName;
+    hasExplicitBlock = hasBlock;
+    const detail = hasBlock
       ? {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
