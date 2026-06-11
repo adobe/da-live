@@ -238,6 +238,37 @@ describe('getRepositoryConfig', () => {
       window.fetch = orgFetch;
     }
   });
+
+  it('siteImageModifiers is null when aem.asset.image.modifiers is absent', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/nomod/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p98-e98.adobeaemcloud.com' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'nomod');
+      expect(cfg.siteImageModifiers).to.equal(null);
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('parses aem.asset.image.modifiers into siteImageModifiers (trimmed, no leading ?)', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/withmod/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p99-e99.adobeaemcloud.com' },
+        { key: 'aem.asset.image.modifiers', value: '  ?width=1920&quality=85  ' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'withmod');
+      expect(cfg.siteImageModifiers).to.equal('width=1920&quality=85');
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -239,6 +239,21 @@ describe('resolveAssetUrl', () => {
     });
     expect(url).to.include('/original/as/report.docx');
   });
+
+  it('appends siteImageModifiers to AEM Assets Open API image URLs', () => {
+    const url = resolveAssetUrl(DELIVERY_IMAGE, {
+      ...DELIVERY_CONFIG,
+      siteImageModifiers: 'width=1920&quality=85',
+    });
+    const params = new URL(url).searchParams;
+    expect(params.get('width')).to.equal('1920');
+    expect(params.get('quality')).to.equal('85');
+  });
+
+  it('does not modify URLs when siteImageModifiers is null/absent', () => {
+    const url = resolveAssetUrl(DELIVERY_IMAGE, DELIVERY_CONFIG);
+    expect(new URL(url).searchParams.has('width')).to.equal(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
