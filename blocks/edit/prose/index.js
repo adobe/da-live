@@ -51,7 +51,16 @@ export async function createConnection(path) {
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+
+  const { pathname } = new URL(path);
+  const [, , org, site, ...parts] = pathname.split('/');
+
+  const { AEM_API, isHlx6 } = await getNx2Api();
+  const hlx6 = await isHlx6(org, site);
+
+  const roomName = hlx6
+    ? `${AEM_API}/${org}/sites/${site}/source/${parts.join('/')}`
+    : `${DA_ORIGIN}${pathname}`;
 
   const opts = {
     protocols: ['yjs'],
