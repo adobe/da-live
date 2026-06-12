@@ -14,6 +14,11 @@ import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS } from './utils.js';
 
 export function decorateArea({ area = document } = {}) {
+  // Render any `nx-form` block as the `form` workspace (the nx2 form in the
+  // center with nx-chat docked on the left). Runs before sections/blocks are
+  // collected, so NX loads the rewritten block.
+  area.querySelectorAll('.nx-form').forEach((el) => el.classList.replace('nx-form', 'form'));
+
   // Find all dark & light images
   const lcpImgs = [...area.querySelectorAll('[alt="light"], [alt="dark"]')].filter((img) => {
     const pic = img.parentElement;
