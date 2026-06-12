@@ -256,8 +256,7 @@ export default function sectionPasteHandler(schema) {
             return html;
           }
 
-          const serializer = new XMLSerializer();
-          return serializer.serializeToString(doc);
+          return doc.body.innerHTML;
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('Error handling Word paste:', error);
