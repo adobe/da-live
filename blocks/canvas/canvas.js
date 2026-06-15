@@ -5,6 +5,7 @@ import {
   readInitialCanvasEditorView,
   persistCanvasEditorView,
 } from './utils/view.js';
+import { shouldAutoOpenAfterPanel } from './utils/panel.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -196,7 +197,13 @@ export default async function decorate(block) {
 
   const store = getPanelStore();
   if (store.before && !store.before.fragment) openCanvasPanel('before');
-  if (store.after && !store.after.fragment) openCanvasPanel('after');
+  if (store.after && !store.after.fragment) {
+    openCanvasPanel('after');
+  } else {
+    shouldAutoOpenAfterPanel({ org, site }).then((open) => {
+      if (open) openCanvasPanel('after');
+    });
+  }
 
   // Only NodeSelection (explicit block handle click) in doc mode qualifies as intentional context.
   // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.

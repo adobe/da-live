@@ -45,3 +45,15 @@ export async function resolveInitialToolPanelView({ org, site, availableIds }) {
 
   return undefined;
 }
+
+/**
+ * Auto-open the right panel when a site default tab is configured and the user
+ * has not selected a tab yet this session (no session-storage tab preference).
+ */
+export async function shouldAutoOpenAfterPanel({ org, site }) {
+  if (!org || !site) return false;
+  const configured = await readConfiguredToolPanelView({ org, site });
+  if (!configured) return false;
+  if (readPersistedToolPanelView()) return false;
+  return true;
+}

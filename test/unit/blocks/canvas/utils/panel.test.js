@@ -5,6 +5,7 @@ let persistToolPanelView;
 let readConfiguredToolPanelView;
 let readPersistedToolPanelView;
 let resolveInitialToolPanelView;
+let shouldAutoOpenAfterPanel;
 
 const IDS = new Set(['outline', 'files', 'blocks']);
 
@@ -14,6 +15,7 @@ before(async () => {
   readConfiguredToolPanelView = mod.readConfiguredToolPanelView;
   readPersistedToolPanelView = mod.readPersistedToolPanelView;
   resolveInitialToolPanelView = mod.resolveInitialToolPanelView;
+  shouldAutoOpenAfterPanel = mod.shouldAutoOpenAfterPanel;
 });
 
 describe('persistToolPanelView', () => {
@@ -123,5 +125,46 @@ describe('resolveInitialToolPanelView', () => {
   it('readPersistedToolPanelView returns session value', () => {
     sessionStorage.setItem(SESSION_KEY, 'outline');
     expect(readPersistedToolPanelView()).to.equal('outline');
+  });
+});
+
+describe('shouldAutoOpenAfterPanel', () => {
+  let savedFetch;
+  let testIndex = 0;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    sessionStorage.removeItem(SESSION_KEY);
+    testIndex += 1;
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+    sessionStorage.removeItem(SESSION_KEY);
+  });
+
+  function ctx() { return { org: `auto-open-org-${testIndex}`, site: `auto-open-site-${testIndex}` }; }
+
+  function mockConfig(flags) {
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({ flags }), { status: 200 }));
+  }
+
+  it('returns false when no config default is set', async () => {
+    mockConfig({ data: [] });
+    const open = await shouldAutoOpenAfterPanel(ctx());
+    expect(open).to.equal(false);
+  });
+
+  it('returns true when config is set and no tab preference exists yet', async () => {
+    mockConfig({ data: [{ key: 'ew.canvasDefaultPanel', value: 'blocks' }] });
+    const open = await shouldAutoOpenAfterPanel(ctx());
+    expect(open).to.equal(true);
+  });
+
+  it('returns false when config is set but a tab preference already exists', async () => {
+    mockConfig({ data: [{ key: 'ew.canvasDefaultPanel', value: 'blocks' }] });
+    sessionStorage.setItem(SESSION_KEY, 'outline');
+    const open = await shouldAutoOpenAfterPanel(ctx());
+    expect(open).to.equal(false);
   });
 });
