@@ -97,6 +97,8 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
   toolPanel.dataset.extKey = key ?? '';
 
   if (!key) {
+    toolPanel.org = undefined;
+    toolPanel.site = undefined;
     toolPanel.views = [];
     return;
   }
@@ -104,6 +106,8 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
   const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
   const views = await getCanvasToolPanelViews({ org, site });
   if (toolPanel.dataset.extKey !== key) return;
+  toolPanel.org = org;
+  toolPanel.site = site;
   toolPanel.views = views;
 }
 
