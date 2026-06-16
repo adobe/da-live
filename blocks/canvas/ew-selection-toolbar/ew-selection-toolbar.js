@@ -41,6 +41,7 @@ class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
     _linkDialogOpen: { state: true },
+    _altDialogOpen: { state: true },
   };
 
   connectedCallback() {
@@ -64,6 +65,11 @@ class EwSelectionToolbar extends LitElement {
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
 
+  _isImageSelection() {
+    const sel = this.view?.state?.selection;
+    return sel?.node?.type.name === 'image';
+  }
+
   show() {
     const main = document.querySelector('main');
     if (main) {
@@ -83,7 +89,7 @@ class EwSelectionToolbar extends LitElement {
   }
 
   get isInteracting() {
-    return this._picker?.open ?? false;
+    return (this._picker?.open ?? false) || (this._altDialogOpen ?? false);
   }
 
   _icon(name) {
@@ -221,6 +227,42 @@ class EwSelectionToolbar extends LitElement {
 
   get linkDialogOpen() { return this._linkDialogOpen ?? false; }
 
+  /* ---- Alt text dialog ---- */
+
+  _showAltDialog() {
+    if (!this.view) return;
+    this.hide();
+    this._altDialogOpen = true;
+  }
+
+  _closeAltDialog() {
+    this._altDialogOpen = false;
+    this.view?.focus();
+  }
+
+  _onAltDialogSubmit(e) {
+    e.preventDefault();
+    if (!this.view) return;
+    const alt = e.target.elements['alt-text'].value.trim();
+    const { pos } = this.view.state.selection.$anchor;
+    this._closeAltDialog();
+    this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, 'alt', alt));
+    this.view.focus();
+  }
+
+  _onAltBackdropMousedown(e) {
+    if (e.target === e.currentTarget) this._closeAltDialog();
+  }
+
+  _onAltBackdropKeydown(e) {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      this._closeAltDialog();
+    }
+  }
+
+  get altDialogOpen() { return this._altDialogOpen ?? false; }
+
   /* ---- Rendering ---- */
 
   updated() {
@@ -269,6 +311,29 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
+  _renderAltDialog() {
+    if (!this._altDialogOpen) return nothing;
+    const currentAlt = this.view?.state.selection.node?.attrs?.alt ?? '';
+    return html`
+      <div class="link-dialog"
+        @mousedown=${this._onAltBackdropMousedown}
+        @keydown=${this._onAltBackdropKeydown}>
+        <form class="link-form" @submit=${this._onAltDialogSubmit}>
+          <label class="link-form-field">
+            <span>Alt text</span>
+            <input name="alt-text" type="text" placeholder="Describe the image"
+                   autocomplete="off" .value=${currentAlt} />
+          </label>
+          <div class="link-form-actions">
+            <button type="button" class="link-form-cancel"
+              @click=${() => this._closeAltDialog()}>Cancel</button>
+            <button type="submit" class="link-form-save">Save</button>
+          </div>
+        </form>
+      </div>
+    `;
+  }
+
   _renderLinkDialog() {
     if (!this._linkDialogOpen) return nothing;
     const info = this.view ? getLinkInfoInSelection(this.view.state) : null;
@@ -310,6 +375,20 @@ class EwSelectionToolbar extends LitElement {
 
   render() {
     const disabled = !this.view;
+    if (this._isImageSelection()) {
+      return html`
+        <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
+          <div class="toolbar-actions" ?data-disabled=${disabled}>
+            <button type="button" class="toolbar-btn"
+              aria-label="Edit alt text" title="Edit alt text"
+              @click=${() => this._showAltDialog()}>
+              ${this._icon('imagetext')}
+            </button>
+          </div>
+        </div>
+        ${this._renderAltDialog()}
+      `;
+    }
     return html`
       <div class="toolbar-wrap"
         @mousedown=${(e) => e.preventDefault()}>

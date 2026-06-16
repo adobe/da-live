@@ -1,7 +1,7 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin, PluginKey, NodeSelection } from 'da-y-wrapper';
 
-const NON_TEXT_NODES = new Set(['table', 'image']);
+const NON_TEXT_NODES = new Set(['table']);
 
 /** Set on transactions that mirror WYSIWYG iframe text selection into ProseMirror. */
 export const NX_QUICK_EDIT_IFRAME_SELECTION_META = 'nxQuickEditIframeSelection';
@@ -38,7 +38,7 @@ function isNonTextSelection({ selection }) {
 function syncToolbar(view) {
   if (!view) return;
   const tb = getSelectionToolbar();
-  if (tb.linkDialogOpen || tb.isInteracting) return;
+  if (tb.linkDialogOpen || tb.altDialogOpen || tb.isInteracting) return;
   if (isNonTextSelection(view.state)) {
     hideSelectionToolbar();
     return;
