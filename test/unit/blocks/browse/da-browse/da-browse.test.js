@@ -342,13 +342,10 @@ describe('DaBrowse Component', () => {
 
   beforeEach(() => {
     daBrowseComp = new DaBrowseComponent();
-    daBrowseComp.details = { fullpath: '/myorg/mysite/folder', owner: 'myorg', depth: 3 };
+    daBrowseComp.details = { fullpath: '/myorg/mysite/folder', org: 'myorg', site: 'mysite', owner: 'myorg', depth: 3 };
   });
 
   describe('getEditor', () => {
-    const UE_CONF = '/myorg/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live';
-    const FORM_CONF = '/myorg/mysite/dealers=https://da.live/form#';
-
     function mockConfig(rows) {
       window.fetch = async () => ({
         ok: true,
@@ -367,37 +364,37 @@ describe('DaBrowse Component', () => {
     });
 
     it('matches a single editor.path row by prefix', async () => {
-      daBrowseComp.details = { fullpath: '/myorg/mysite/some-doc', owner: 'myorg', depth: 3 };
-      mockConfig([{ key: 'editor.path', value: UE_CONF }]);
+      daBrowseComp.details = { fullpath: '/myorg-a/mysite/some-doc', org: 'myorg-a', site: 'mysite', owner: 'myorg-a', depth: 3 };
+      mockConfig([{ key: 'editor.path', value: '/myorg-a/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live' }]);
       const url = await daBrowseComp.getEditor(true);
       expect(url).to.equal('https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live');
     });
 
     it('prefers the more specific (longer prefix) match over a shorter one', async () => {
-      daBrowseComp.details = { fullpath: '/myorg/mysite/dealers/acme', owner: 'myorg', depth: 4 };
+      daBrowseComp.details = { fullpath: '/myorg-b/mysite/dealers/acme', org: 'myorg-b', site: 'mysite', owner: 'myorg-b', depth: 4 };
       mockConfig([
-        { key: 'editor.path', value: UE_CONF },
-        { key: 'editor.path', value: FORM_CONF },
+        { key: 'editor.path', value: '/myorg-b/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live' },
+        { key: 'editor.path', value: '/myorg-b/mysite/dealers=https://da.live/form#' },
       ]);
       const url = await daBrowseComp.getEditor(true);
-      // /myorg/mysite/dealers is more specific than /myorg/mysite even though
+      // /myorg-b/mysite/dealers is more specific than /myorg-b/mysite even though
       // UE_CONF has a longer total string length
       expect(url).to.equal('https://da.live/form#');
     });
 
     it('falls back to the broader match when path is outside the specific folder', async () => {
-      daBrowseComp.details = { fullpath: '/myorg/mysite/other/page', owner: 'myorg', depth: 4 };
+      daBrowseComp.details = { fullpath: '/myorg-c/mysite/other/page', org: 'myorg-c', site: 'mysite', owner: 'myorg-c', depth: 4 };
       mockConfig([
-        { key: 'editor.path', value: UE_CONF },
-        { key: 'editor.path', value: FORM_CONF },
+        { key: 'editor.path', value: '/myorg-c/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live' },
+        { key: 'editor.path', value: '/myorg-c/mysite/dealers=https://da.live/form#' },
       ]);
       const url = await daBrowseComp.getEditor(true);
       expect(url).to.equal('https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live');
     });
 
     it('returns default edit path when no prefix matches the current path', async () => {
-      daBrowseComp.details = { fullpath: '/otherorg/othersite/page', owner: 'otherorg', depth: 3 };
-      mockConfig([{ key: 'editor.path', value: UE_CONF }]);
+      daBrowseComp.details = { fullpath: '/otherorg/othersite/page', org: 'otherorg', site: 'othersite', owner: 'otherorg', depth: 3 };
+      mockConfig([{ key: 'editor.path', value: '/myorg/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live' }]);
       const url = await daBrowseComp.getEditor(true);
       expect(url).to.equal('/edit#');
     });
@@ -547,7 +544,7 @@ describe('DaBrowse Component', () => {
         ],
       });
       window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
-      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      daBrowseComp.details = { owner: 'org', org: 'org', site: 'site', fullpath: '/org/site/folder' };
       const editor = await daBrowseComp.getEditor(true);
       expect(editor).to.equal('https://long-match');
     });
