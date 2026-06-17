@@ -1,7 +1,7 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
-import { daFetch, fetchDaConfigs } from '../../shared/utils.js';
+import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -319,12 +319,13 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
   try {
-    const [, siteConfig] = await Promise.all(fetchDaConfigs({ org, site }));
-    const rows = siteConfig?.flags?.data?.filter((f) => f.key === 'ew.wysiwygBranch') ?? [];
-    if (!rows.length) return 'main';
+    const configs = await Promise.all(fetchDaConfigs({ org, site }));
+    const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
+    const branchRows = rows.filter((r) => r.key === 'ew.wysiwygBranch');
+    if (!branchRows.length) return 'main';
 
     const fullPath = path ? `/${path}` : `/${org}/${site}`;
-    const matched = rows
+    const matched = branchRows
       .map((row) => {
         const eqIdx = row.value.indexOf('=');
         if (eqIdx === -1) return null;
