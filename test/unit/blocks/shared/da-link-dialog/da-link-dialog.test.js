@@ -50,7 +50,7 @@ describe('da-link-dialog', () => {
     expect(textInput.value).to.equal('Example');
   });
 
-  it('emits da-link-submit with href and text on form submit', async () => {
+  it('emits da-link-submit with href and text when Save is clicked', async () => {
     await mount({ open: true });
     let detail = null;
     el.addEventListener('da-link-submit', (e) => { detail = e.detail; });
@@ -60,19 +60,44 @@ describe('da-link-dialog', () => {
     hrefInput.value = 'https://test.com';
     textInput.value = 'Test';
 
-    el.shadowRoot.querySelector('.link-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    el.shadowRoot.querySelector('.link-form-save').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ href: 'https://test.com', text: 'Test' });
+  });
+
+  it('emits da-link-submit with a relative path', async () => {
+    await mount({ open: true });
+    let detail = null;
+    el.addEventListener('da-link-submit', (e) => { detail = e.detail; });
+
+    el.shadowRoot.querySelector('input[name="link-href"]').value = '/about';
+    el.shadowRoot.querySelector('.link-form-save').click();
+    await nextFrame();
+
+    expect(detail).to.deep.equal({ href: '/about', text: '' });
   });
 
   it('does not emit da-link-submit when href is empty', async () => {
     await mount({ open: true });
     let fired = false;
     el.addEventListener('da-link-submit', () => { fired = true; });
-    el.shadowRoot.querySelector('.link-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    el.shadowRoot.querySelector('.link-form-save').click();
     await nextFrame();
     expect(fired).to.be.false;
+  });
+
+  it('does not emit da-link-submit and shows error for dangerous URL protocols', async () => {
+    await mount({ open: true });
+    let fired = false;
+    el.addEventListener('da-link-submit', () => { fired = true; });
+
+    el.shadowRoot.querySelector('input[name="link-href"]').value = 'javascript:alert(1)';
+    el.shadowRoot.querySelector('.link-form-save').click();
+    await el.updateComplete;
+
+    expect(fired).to.be.false;
+    expect(el.shadowRoot.querySelector('.link-form-error')).to.exist;
   });
 
   it('emits da-link-cancel when Cancel button is clicked', async () => {

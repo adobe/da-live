@@ -20,9 +20,8 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [styles];
   }
 
-  _onSubmit(e) {
-    e.preventDefault();
-    const form = e.target;
+  _onSave() {
+    const form = this.shadowRoot.querySelector('.link-form');
     const href = form.elements['link-href'].value.trim();
     if (!href) return;
     if (/^(javascript|data|vbscript):/i.test(href)) {
@@ -52,24 +51,26 @@ class DaLinkDialog extends LitElement {
     if (!this.open) return nothing;
     return html`
       <nx-dialog title="Edit link" @close=${this._onClose}>
-        <form id="link-form" class="link-form" @submit=${this._onSubmit}>
+        <form class="link-form">
           <label class="link-form-field">
             <span>URL</span>
             <input name="link-href" type="text" autofocus placeholder="https://…"
-                   required autocomplete="off" .value=${this.href ?? ''}
-                   @input=${() => { this._hrefError = ''; }} />
+                   autocomplete="off" .value=${this.href ?? ''}
+                   @input=${() => { this._hrefError = ''; }}
+                   @keydown=${(e) => { if (e.key === 'Enter') this._onSave(); }} />
             ${this._hrefError ? html`<span class="link-form-error">${this._hrefError}</span>` : nothing}
           </label>
           <label class="link-form-field">
             <span>Display text</span>
             <input name="link-text" type="text" placeholder="Link text"
-                   autocomplete="off" .value=${this.text ?? ''} />
+                   autocomplete="off" .value=${this.text ?? ''}
+                   @keydown=${(e) => { if (e.key === 'Enter') this._onSave(); }} />
           </label>
         </form>
-        <button slot="actions" class="link-form-cancel"
+        <button type="button" slot="actions" class="link-form-cancel"
           @click=${this._onCancel}>Cancel</button>
-        <button slot="actions" class="link-form-save" form="link-form"
-          @click=${() => this.shadowRoot.querySelector('.link-form').requestSubmit()}>Save</button>
+        <button type="button" slot="actions" class="link-form-save"
+          @click=${this._onSave}>Save</button>
       </nx-dialog>
     `;
   }
