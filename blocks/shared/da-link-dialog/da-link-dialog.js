@@ -29,13 +29,16 @@ class DaLinkDialog extends LitElement {
       hrefInput.reportValidity();
       return;
     }
-    hrefInput.setCustomValidity('');
     const text = form.elements['link-text'].value;
     this.dispatchEvent(new CustomEvent('da-link-submit', {
       detail: { href, text },
       bubbles: true,
       composed: true,
     }));
+  }
+
+  _onHrefInput(e) {
+    e.target.setCustomValidity('');
   }
 
   _onCancel() {
@@ -57,7 +60,8 @@ class DaLinkDialog extends LitElement {
           <label class="link-form-field">
             <span>URL</span>
             <input name="link-href" type="text" autofocus placeholder="https://…"
-                   required autocomplete="off" .value=${this.href ?? ''} />
+                   required autocomplete="off" .value=${this.href ?? ''}
+                   @input=${this._onHrefInput} />
           </label>
           <label class="link-form-field">
             <span>Display text</span>
