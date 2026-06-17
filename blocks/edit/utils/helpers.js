@@ -51,18 +51,23 @@ export async function getAemHrefs({ path }) {
   // If a snapshot, remove both parts, but keep the name
   const snapshot = parts[0] === '.snapshots' && parts.splice(0, 2)[1];
 
-  // Normalize SK props to be more "Config Bus" like
-  const { host, liveHost, previewHost: preview } = await getSidekickConfig({ org, site });
-  const prod = host || liveHost;
+  const aemHostBase = `main--${site}--${org}.aem`;
 
-  const hrefs = {
-    preview: new URL(pathname, `https://${preview}`),
-    prod: new URL(pathname, `https://${prod}`),
-  };
+  const hrefs = {};
+
+  try {
+    const { host, liveHost, previewHost: preview } = await getSidekickConfig({ org, site });
+    const prod = host || liveHost;
+    hrefs.preview = new URL(pathname, `https://${preview}`);
+    hrefs.prod = new URL(pathname, `https://${prod}`);
+  } catch {
+    hrefs.preview = new URL(pathname, `https://${aemHostBase}.page`);
+    hrefs.prod = new URL(pathname, `https://${aemHostBase}.live`);
+  }
 
   if (snapshot) {
     const snapPath = `/${parts.join('/')}`;
-    hrefs.review = new URL(snapPath, `https://${snapshot}--main--${site}--${org}.aem.reviews`);
+    hrefs.review = new URL(snapPath, `https://${snapshot}--${aemHostBase}.reviews`);
   }
 
   return hrefs;
