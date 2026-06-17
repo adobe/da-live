@@ -22,9 +22,14 @@ class DaLinkDialog extends LitElement {
   _onSubmit(e) {
     e.preventDefault();
     const form = e.target;
-    const href = form.elements['link-href'].value.trim();
-    if (!href) return;
-    if (/^(javascript|data|vbscript):/i.test(href)) return;
+    const hrefInput = form.elements['link-href'];
+    const href = hrefInput.value.trim();
+    if (/^(javascript|data|vbscript):/i.test(href)) {
+      hrefInput.setCustomValidity('Invalid URL protocol');
+      hrefInput.reportValidity();
+      return;
+    }
+    hrefInput.setCustomValidity('');
     const text = form.elements['link-text'].value;
     this.dispatchEvent(new CustomEvent('da-link-submit', {
       detail: { href, text },
