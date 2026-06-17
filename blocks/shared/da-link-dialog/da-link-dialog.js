@@ -20,6 +20,10 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [styles];
   }
 
+  willUpdate(changed) {
+    if (changed.has('open') && this.open) this._hrefError = '';
+  }
+
   _onSubmit(e) {
     e.preventDefault();
     const form = e.target;
