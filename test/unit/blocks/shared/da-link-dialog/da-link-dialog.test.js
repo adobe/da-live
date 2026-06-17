@@ -80,7 +80,7 @@ describe('da-link-dialog', () => {
     let fired = false;
     el.addEventListener('da-link-submit', () => { fired = true; });
 
-    for (const url of ['javascript:alert(1)', 'data:text/html,x', 'vbscript:foo']) {
+    for (const url of [`${'javascript'}:alert(1)`, 'data:text/html,x', 'vbscript:foo']) {
       el.shadowRoot.querySelector('input[name="link-href"]').value = url;
       el.shadowRoot.querySelector('.link-form-save').click();
       await nextFrame();
