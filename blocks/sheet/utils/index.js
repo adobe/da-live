@@ -83,30 +83,21 @@ export function getPermissions() {
   return permissions;
 }
 
-// Accepts either a pathDetails object ({ org, site, path, view }) for the
-// initial document load, or an absolute URL string for an externally-built
-// reference (e.g. a version-restore event), which is parsed for its api segment.
+// Takes a pathDetails object ({ org, site, path, view }). For a version restore,
+// pass the same doc details plus a `versionId` and it routes through versions.get.
 export async function getData(input) {
   const { config, source, versions } = await getNx2Api();
+  const { org, site, path, view, versionId } = input;
 
   let resp;
   let isVersion = false;
-  if (typeof input === 'string') {
-    const { pathname } = new URL(input);
-    const [api, org, site, ...parts] = pathname.slice(1).split('/');
-    if (api === 'versionsource') {
-      isVersion = true;
-      resp = await versions.get({ org, site, versionId: parts.join('/') });
-    } else if (api === 'config') {
-      resp = await config.get({ org, site, path: parts.join('/') });
-    } else {
-      resp = await source.get({ org, site, path: parts.join('/') });
-    }
+  if (versionId) {
+    isVersion = true;
+    resp = await versions.get({ org, site, path, versionId });
+  } else if (view === 'config') {
+    resp = await config.get({ org, site });
   } else {
-    const { org, site, path, view } = input;
-    resp = view === 'config'
-      ? await config.get({ org, site })
-      : await source.get({ org, site, path });
+    resp = await source.get({ org, site, path });
   }
 
   // Set permissions even if the file is a 404

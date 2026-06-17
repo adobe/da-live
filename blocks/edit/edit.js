@@ -37,6 +37,10 @@ async function setUI(el) {
   const details = getPathDetails();
   if (!details) return;
 
+  // Warm the hlx6 probe cache up front so createConnection's `await isHlx6(...)`
+  // resolves from cache instead of gating the WebSocket on a network round-trip.
+  getNx2Api().then(({ isHlx6 }) => isHlx6(details.org, details.site)).catch(() => {});
+
   const docPromise = getDoc(details.fullpath);
   prosePromise ??= import('./prose/index.js');
 

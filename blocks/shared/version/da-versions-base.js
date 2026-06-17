@@ -1,5 +1,4 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../constants.js';
 import { formatDate } from '../utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 import { formatVersions } from './helpers.js';
@@ -37,13 +36,21 @@ export default class DaVersionsBase extends LitElement {
     this.dispatchEvent(new CustomEvent('close', opts));
   }
 
-  async handlePreview(e, entry) {
+  handlePreview(e, entry) {
     e.stopPropagation();
     const entryEl = e.target.closest('.da-version-entry');
     if (!entryEl.classList.contains('is-open')) {
       entryEl.classList.toggle('is-open');
     }
-    const detail = { url: `${DA_ORIGIN}${entry.url}`, label: entry.label, date: entry.date };
+    // A version is always a version of the open doc, so restore only needs the
+    // version id — org/site/path come from the doc on the consumer side, which
+    // lets the fetch go through api.js's versions.get for both backends. hlx5's
+    // id is the /versionsource tail; hlx6's is the entry's ULID.
+    const [, org, site] = this.path.split('/');
+    const versionId = entry.url
+      ? entry.url.replace(`/versionsource/${org}/${site}/`, '')
+      : entry.versionId;
+    const detail = { versionId, label: entry.label, date: entry.date };
     this.dispatchEvent(new CustomEvent('preview', { detail, bubbles: true, composed: true }));
   }
 
