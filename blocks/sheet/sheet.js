@@ -47,7 +47,7 @@ class DaSheetPanes extends LitElement {
       this._verReviewCmpLoaded = true;
     }
     const verReview = document.createElement('da-version-review');
-    verReview.data = await getData(e.detail.url);
+    verReview.data = await getData({ ...getPathDetails(), versionId: e.detail.versionId });
     verReview.addEventListener('close', () => { verReview.remove(); });
     verReview.addEventListener('restore', async () => {
       const daTitle = document.querySelector('da-title');

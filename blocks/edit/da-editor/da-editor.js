@@ -26,7 +26,7 @@ async function loadDaCompare() {
 export default class DaEditor extends LitElement {
   static properties = {
     path: { type: String },
-    version: { type: String },
+    versionId: { attribute: false },
     versionLabel: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
@@ -46,10 +46,12 @@ export default class DaEditor extends LitElement {
 
   async fetchVersion() {
     this._versionDom = null;
+    // A version belongs to the open doc, so derive org/site/path from this.path
+    // and let versions.get build the right URL for either backend.
     const { versions } = await getNx2Api();
-    const { pathname } = new URL(this.version);
-    const [, org, site, ...parts] = pathname.slice(1).split('/');
-    const resp = await versions.get({ org, site, versionId: parts.join('/') });
+    const { pathname } = new URL(this.path);
+    const [, , org, site, ...parts] = pathname.split('/');
+    const resp = await versions.get({ org, site, path: `/${parts.join('/')}`, versionId: this.versionId });
     if (!resp.ok) return;
     const text = await resp.text();
 
@@ -134,7 +136,7 @@ export default class DaEditor extends LitElement {
   }
 
   async updated(props) {
-    if (props.has('version') && this.version) {
+    if (props.has('versionId') && this.versionId) {
       this.fetchVersion();
     }
 

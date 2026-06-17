@@ -46,7 +46,7 @@ async function bulkAemAdmin(org, site, files) {
   });
 
   const { aem } = await getNx2Api();
-  const resp = await aem.preview({ org, site, path: paths, forceUpdate: true, forceSync: true });
+  const resp = await aem.preview({ org, site, path: paths, forceUpdate: true });
   if (!resp.ok) return { type: 'error', message: 'Error previewing', status: resp.status };
 
   return { type: 'success', message: 'Success previewing.', status: resp.status };
