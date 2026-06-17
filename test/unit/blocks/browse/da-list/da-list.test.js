@@ -552,6 +552,42 @@ describe('DaList helpers', () => {
         source.move = origMove;
       }
     });
+
+    it('Unpublishes non-HTML items with their extension intact', async () => {
+      const { aem, source } = await getNx2Api();
+      const origUnPreview = aem.unPreview;
+      const origUnPublish = aem.unPublish;
+      const origMove = source.move;
+      const unpublished = [];
+      aem.unPreview = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      aem.unPublish = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      source.move = () => ({ ok: true });
+
+      try {
+        const el = makeList();
+        el._itemErrors = [];
+        el._listItems = [];
+        el._listItemPaths = new Set();
+        el._unpublish = true;
+        el._confirmText = 'YES';
+        el._selectedItems = [{ name: 'data', ext: 'json', path: '/org/site/data.json' }];
+
+        await el.handleConfirmDelete();
+
+        expect(unpublished).to.deep.equal(['/org/site/data.json', '/org/site/data.json']);
+        expect(el._itemErrors).to.deep.equal([]);
+      } finally {
+        aem.unPreview = origUnPreview;
+        aem.unPublish = origUnPublish;
+        source.move = origMove;
+      }
+    });
   });
 
   describe('drop flow', () => {

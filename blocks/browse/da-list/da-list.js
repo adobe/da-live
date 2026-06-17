@@ -446,7 +446,7 @@ export default class DaList extends LitElement {
       if (this._unpublish && this._confirmText === 'YES') {
         const { aem } = await getNx2Api();
         // AEM resolves HTML pages by their extensionless path
-        const aemPath = item.path.endsWith('.html') ? item.path.slice(0, -5) : item.path;
+        const aemPath = item.ext === 'html' ? item.path.slice(0, -5) : item.path;
         const previewResp = await aem.unPreview(aemPath);
         if (!previewResp.ok) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
 
