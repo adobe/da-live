@@ -118,7 +118,7 @@ export class EwEditorWysiwyg extends LitElement {
     const { org, repo, path } = this.ctx ?? {};
     if (!org || !repo || !path) return;
 
-    fetchWysiwygBranch({ org, site: repo }).then((branch) => {
+    fetchWysiwygBranch({ org, site: repo, path }).then((branch) => {
       this._wysiwygBranch = branch;
       return tryLoadWysiwygPreviewCookies({
         org,

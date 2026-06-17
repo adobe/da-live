@@ -316,13 +316,24 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
   return `https://${branch}--${repo}--${org}.${domain}`;
 }
 
-export async function fetchWysiwygBranch({ org, site }) {
+export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
   try {
     const [, siteConfig] = await Promise.all(fetchDaConfigs({ org, site }));
-    const flag = siteConfig?.flags?.data?.find((f) => f.key === 'ew.wysiwygBranch');
-    const value = flag?.value?.trim();
-    return value || 'main';
+    const rows = siteConfig?.flags?.data?.filter((f) => f.key === 'ew.wysiwygBranch') ?? [];
+    if (!rows.length) return 'main';
+
+    const fullPath = path ? `/${path}` : `/${org}/${site}`;
+    const matched = rows
+      .map((row) => {
+        const eqIdx = row.value.indexOf('=');
+        if (eqIdx === -1) return null;
+        return { prefix: row.value.slice(0, eqIdx), branch: row.value.slice(eqIdx + 1).trim() };
+      })
+      .filter((entry) => entry?.branch && fullPath.startsWith(entry.prefix))
+      .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+
+    return matched?.branch || 'main';
   } catch (e) {
     if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
   }

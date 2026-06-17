@@ -42,7 +42,9 @@ describe('fetchWysiwygBranch', () => {
     window.fetch = savedFetch;
   });
 
-  function ctx() { return { org: `org-wbr-${testIndex}`, site: `site-wbr-${testIndex}` }; }
+  function ctx(extra = {}) {
+    return { org: `org-wbr-${testIndex}`, site: `site-wbr-${testIndex}`, ...extra };
+  }
 
   function mockConfig(flags) {
     window.fetch = () => Promise.resolve(new Response(JSON.stringify({ flags }), { status: 200 }));
@@ -58,33 +60,66 @@ describe('fetchWysiwygBranch', () => {
     expect(branch).to.equal('main');
   });
 
-  it('returns the configured branch from site flags', async () => {
-    mockConfig({ data: [{ key: 'ew.wysiwygBranch', value: 'feature' }] });
-    const branch = await fetchWysiwygBranch(ctx());
+  it('returns the configured branch when path matches the prefix', async () => {
+    mockConfig({ data: [{ key: 'ew.wysiwygBranch', value: '/org-wbr-3/site-wbr-3=feature' }] });
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-3/site-wbr-3/some/doc' }));
     expect(branch).to.equal('feature');
   });
 
-  it('trims whitespace from the configured branch value', async () => {
-    mockConfig({ data: [{ key: 'ew.wysiwygBranch', value: '  staging  ' }] });
-    const branch = await fetchWysiwygBranch(ctx());
+  it('picks the longest prefix when multiple entries match', async () => {
+    mockConfig({
+      data: [
+        { key: 'ew.wysiwygBranch', value: '/org-wbr-4/site-wbr-4=main' },
+        { key: 'ew.wysiwygBranch', value: '/org-wbr-4/site-wbr-4/docs=develop' },
+      ],
+    });
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-4/site-wbr-4/docs/page' }));
+    expect(branch).to.equal('develop');
+  });
+
+  it('falls back to the shorter prefix when path is outside the longer one', async () => {
+    mockConfig({
+      data: [
+        { key: 'ew.wysiwygBranch', value: '/org-wbr-5/site-wbr-5=main' },
+        { key: 'ew.wysiwygBranch', value: '/org-wbr-5/site-wbr-5/docs=develop' },
+      ],
+    });
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-5/site-wbr-5/blog/post' }));
+    expect(branch).to.equal('main');
+  });
+
+  it('trims whitespace from the branch value', async () => {
+    mockConfig({ data: [{ key: 'ew.wysiwygBranch', value: '/org-wbr-6/site-wbr-6=  staging  ' }] });
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-6/site-wbr-6/page' }));
     expect(branch).to.equal('staging');
+  });
+
+  it('returns main when no prefix matches the path', async () => {
+    mockConfig({ data: [{ key: 'ew.wysiwygBranch', value: '/other-org/other-site=feature' }] });
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-7/site-wbr-7/page' }));
+    expect(branch).to.equal('main');
   });
 
   it('returns main when ew.wysiwygBranch flag is absent', async () => {
     mockConfig({ data: [{ key: 'other.flag', value: 'true' }] });
-    const branch = await fetchWysiwygBranch(ctx());
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-8/site-wbr-8/page' }));
     expect(branch).to.equal('main');
   });
 
   it('returns main when flags sheet is missing', async () => {
     mockConfig(undefined);
-    const branch = await fetchWysiwygBranch(ctx());
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-9/site-wbr-9/page' }));
     expect(branch).to.equal('main');
   });
 
-  it('returns main when flag value is empty string', async () => {
-    mockConfig({ data: [{ key: 'ew.wysiwygBranch', value: '' }] });
-    const branch = await fetchWysiwygBranch(ctx());
-    expect(branch).to.equal('main');
+  it('skips entries with no = separator', async () => {
+    mockConfig({
+      data: [
+        { key: 'ew.wysiwygBranch', value: 'malformed-no-equals' },
+        { key: 'ew.wysiwygBranch', value: '/org-wbr-10/site-wbr-10=valid' },
+      ],
+    });
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-10/site-wbr-10/page' }));
+    expect(branch).to.equal('valid');
   });
 });
