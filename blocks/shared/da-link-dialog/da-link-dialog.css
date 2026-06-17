@@ -30,6 +30,11 @@
   border-color: transparent;
 }
 
+.link-form-error {
+  font-size: 0.75rem;
+  color: var(--s2-red-900, #b91c1c);
+}
+
 .link-form-cancel {
   height: 32px;
   padding: 0 16px;

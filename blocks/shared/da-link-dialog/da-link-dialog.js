@@ -12,6 +12,7 @@ class DaLinkDialog extends LitElement {
     open: { type: Boolean, reflect: true },
     href: { type: String },
     text: { type: String },
+    _hrefError: { type: String, state: true },
   };
 
   connectedCallback() {
@@ -24,7 +25,10 @@ class DaLinkDialog extends LitElement {
     const form = e.target;
     const href = form.elements['link-href'].value.trim();
     if (!href) return;
-    if (/^(javascript|data|vbscript):/i.test(href)) return;
+    if (/^(javascript|data|vbscript):/i.test(href)) {
+      this._hrefError = 'Invalid URL protocol';
+      return;
+    }
     const text = form.elements['link-text'].value;
     this.dispatchEvent(new CustomEvent('da-link-submit', {
       detail: { href, text },
@@ -52,7 +56,9 @@ class DaLinkDialog extends LitElement {
           <label class="link-form-field">
             <span>URL</span>
             <input name="link-href" type="text" autofocus placeholder="https://…"
-                   required autocomplete="off" .value=${this.href ?? ''} />
+                   required autocomplete="off" .value=${this.href ?? ''}
+                   @input=${() => { this._hrefError = ''; }} />
+            ${this._hrefError ? html`<span class="link-form-error">${this._hrefError}</span>` : nothing}
           </label>
           <label class="link-form-field">
             <span>Display text</span>
