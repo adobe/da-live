@@ -50,28 +50,42 @@ describe('da-link-dialog', () => {
     expect(textInput.value).to.equal('Example');
   });
 
-  it('emits da-link-submit with href and text on form submit', async () => {
+  it('emits da-link-submit with href and text when Save is clicked', async () => {
     await mount({ open: true });
     let detail = null;
     el.addEventListener('da-link-submit', (e) => { detail = e.detail; });
 
-    const hrefInput = el.shadowRoot.querySelector('input[name="link-href"]');
-    const textInput = el.shadowRoot.querySelector('input[name="link-text"]');
-    hrefInput.value = 'https://test.com';
-    textInput.value = 'Test';
-
-    el.shadowRoot.querySelector('.link-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    el.shadowRoot.querySelector('input[name="link-href"]').value = 'https://test.com';
+    el.shadowRoot.querySelector('input[name="link-text"]').value = 'Test';
+    el.shadowRoot.querySelector('.link-form-save').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ href: 'https://test.com', text: 'Test' });
   });
 
-  it('does not emit da-link-submit when href is empty', async () => {
+  it('emits da-link-submit with a relative path', async () => {
+    await mount({ open: true });
+    let detail = null;
+    el.addEventListener('da-link-submit', (e) => { detail = e.detail; });
+
+    el.shadowRoot.querySelector('input[name="link-href"]').value = '/about';
+    el.shadowRoot.querySelector('.link-form-save').click();
+    await nextFrame();
+
+    expect(detail).to.deep.equal({ href: '/about', text: '' });
+  });
+
+  it('does not emit da-link-submit for dangerous URL protocols', async () => {
     await mount({ open: true });
     let fired = false;
     el.addEventListener('da-link-submit', () => { fired = true; });
-    el.shadowRoot.querySelector('.link-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await nextFrame();
+
+    for (const url of ['javascript:alert(1)', 'data:text/html,x', 'vbscript:foo']) {
+      el.shadowRoot.querySelector('input[name="link-href"]').value = url;
+      el.shadowRoot.querySelector('.link-form-save').click();
+      await nextFrame();
+    }
+
     expect(fired).to.be.false;
   });
 

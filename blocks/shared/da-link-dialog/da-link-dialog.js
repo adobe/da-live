@@ -12,7 +12,6 @@ class DaLinkDialog extends LitElement {
     open: { type: Boolean, reflect: true },
     href: { type: String },
     text: { type: String },
-    _hrefError: { type: String, state: true },
   };
 
   connectedCallback() {
@@ -20,19 +19,23 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [styles];
   }
 
-  willUpdate(changed) {
-    if (changed.has('open') && this.open) this._hrefError = '';
+  _onSave() {
+    const form = this.shadowRoot.querySelector('.link-form');
+    const hrefInput = form.elements['link-href'];
+    const href = hrefInput.value.trim();
+    if (/^(javascript|data|vbscript):/i.test(href)) {
+      hrefInput.setCustomValidity('Invalid URL protocol');
+      hrefInput.reportValidity();
+      return;
+    }
+    hrefInput.setCustomValidity('');
+    form.requestSubmit();
   }
 
   _onSubmit(e) {
     e.preventDefault();
     const form = e.target;
     const href = form.elements['link-href'].value.trim();
-    if (!href) return;
-    if (/^(javascript|data|vbscript):/i.test(href)) {
-      this._hrefError = 'Invalid URL protocol';
-      return;
-    }
     const text = form.elements['link-text'].value;
     this.dispatchEvent(new CustomEvent('da-link-submit', {
       detail: { href, text },
@@ -61,8 +64,7 @@ class DaLinkDialog extends LitElement {
             <span>URL</span>
             <input name="link-href" type="text" autofocus placeholder="https://…"
                    required autocomplete="off" .value=${this.href ?? ''}
-                   @input=${() => { this._hrefError = ''; }} />
-            ${this._hrefError ? html`<span class="link-form-error">${this._hrefError}</span>` : nothing}
+                   @input=${(e) => e.target.setCustomValidity('')} />
           </label>
           <label class="link-form-field">
             <span>Display text</span>
@@ -70,10 +72,10 @@ class DaLinkDialog extends LitElement {
                    autocomplete="off" .value=${this.text ?? ''} />
           </label>
         </form>
-        <button slot="actions" class="link-form-cancel"
+        <button type="button" slot="actions" class="link-form-cancel"
           @click=${this._onCancel}>Cancel</button>
-        <button slot="actions" class="link-form-save" form="link-form"
-          @click=${() => this.shadowRoot.querySelector('.link-form').requestSubmit()}>Save</button>
+        <button type="button" slot="actions" class="link-form-save"
+          @click=${this._onSave}>Save</button>
       </nx-dialog>
     `;
   }
