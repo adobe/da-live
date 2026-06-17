@@ -162,8 +162,7 @@ export class EwEditorWysiwyg extends LitElement {
       onReady(port1);
     };
     try {
-      const targetOrigin = new URL(iframe.src).origin;
-      iframe.contentWindow.postMessage({ init: config, location }, targetOrigin, [port2]);
+      iframe.contentWindow.postMessage({ init: config, location }, '*', [port2]);
     } catch (err) {
       this._disposeQuickEditLocalPort();
       // eslint-disable-next-line no-console

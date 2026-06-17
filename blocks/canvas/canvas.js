@@ -1,5 +1,11 @@
 import { getNx } from '../../scripts/utils.js';
 import { editorSelectChange } from './editor-utils/editor-utils.js';
+import {
+  normalizeCanvasEditorView,
+  readInitialCanvasEditorView,
+  persistCanvasEditorView,
+} from './utils/view.js';
+import { shouldAutoOpenAfterPanel } from './utils/panel.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -22,36 +28,12 @@ function buildCanvasDocPath(state) {
   return `${org}/${site}/${path}`;
 }
 
-const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
-
-function normalizeCanvasEditorView(view) {
-  if (view === 'content') return 'content';
-  if (view === 'split') return 'split';
-  return 'layout';
-}
-
 function notifyCanvasEditorActive(mountRoot, view) {
   const v = normalizeCanvasEditorView(view);
   mountRoot.dispatchEvent(new CustomEvent('nx-canvas-editor-active', {
     bubbles: false,
     detail: { view: v },
   }));
-}
-
-function readPersistedCanvasEditorView() {
-  try {
-    return normalizeCanvasEditorView(sessionStorage.getItem(CANVAS_EDITOR_VIEW_KEY));
-  } catch {
-    return 'layout';
-  }
-}
-
-function persistCanvasEditorView(view) {
-  try {
-    sessionStorage.setItem(CANVAS_EDITOR_VIEW_KEY, normalizeCanvasEditorView(view));
-  } catch {
-    /* ignore if browser disallows session storage */
-  }
 }
 
 function canvasEditorMountRoot(block) {
@@ -116,6 +98,8 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
   toolPanel.dataset.extKey = key ?? '';
 
   if (!key) {
+    toolPanel.org = undefined;
+    toolPanel.site = undefined;
     toolPanel.views = [];
     return;
   }
@@ -123,6 +107,8 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
   const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
   const views = await getCanvasToolPanelViews({ org, site });
   if (toolPanel.dataset.extKey !== key) return;
+  toolPanel.org = org;
+  toolPanel.site = site;
   toolPanel.views = views;
 }
 
@@ -166,9 +152,9 @@ async function openCanvasPanel(position, { panelName } = {}) {
   }
 }
 
-function installCanvasHeader(block) {
+async function installCanvasHeader(block, { org, site }) {
   const header = document.createElement('ew-canvas-header');
-  header.editorView = readPersistedCanvasEditorView();
+  header.editorView = await readInitialCanvasEditorView({ org, site });
   header.addEventListener('nx-canvas-open-panel', (e) => {
     openCanvasPanel(e.detail.position, { panelName: e.detail.panelName });
   });
@@ -190,7 +176,8 @@ function installCanvasHeader(block) {
 }
 
 export default async function decorate(block) {
-  const header = installCanvasHeader(block);
+  const { org, site } = hashState();
+  const header = await installCanvasHeader(block, { org, site });
 
   const mountRoot = canvasEditorMountRoot(block);
   mountRoot.classList.add('nx-canvas-editor-mount');
@@ -210,7 +197,13 @@ export default async function decorate(block) {
 
   const store = getPanelStore();
   if (store.before && !store.before.fragment) openCanvasPanel('before');
-  if (store.after && !store.after.fragment) openCanvasPanel('after');
+  if (store.after && !store.after.fragment) {
+    openCanvasPanel('after');
+  } else {
+    shouldAutoOpenAfterPanel({ org, site }).then((open) => {
+      if (open) openCanvasPanel('after');
+    });
+  }
 
   // Only NodeSelection (explicit block handle click) in doc mode qualifies as intentional context.
   // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.

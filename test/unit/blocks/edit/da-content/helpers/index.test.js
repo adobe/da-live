@@ -50,7 +50,7 @@ describe('UE URLs', () => {
 
     try {
       window.fetch = mockFetch;
-      const ueUrl = await ueUrlHelper('aabsites', 'gov', 'https://main--gov--geometrixx.aem.page/query-builder');
+      const ueUrl = await ueUrlHelper('aabsites-gone', 'gov', 'https://main--gov--geometrixx.aem.page/query-builder');
       expect(ueUrl).to.be.null;
     } finally {
       window.fetch = orgFetch;
@@ -75,7 +75,7 @@ describe('UE URLs', () => {
         ok: true,
         json: async () => ({ data: [{ key: 'quick-edit', value: 'repo' }] }),
       });
-      const url = await ueUrlHelper('org', 'repo', 'https://main--repo--org.aem.live/page');
+      const url = await ueUrlHelper('org-qe', 'repo', 'https://main--repo--org.aem.live/page');
       expect(url).to.equal('https://main--repo--org.aem.page/page?quick-edit=on');
     } finally {
       window.fetch = orgFetch;
@@ -89,7 +89,7 @@ describe('UE URLs', () => {
         ok: true,
         json: async () => ({ data: [{ key: 'quick-edit', value: 'repo' }] }),
       });
-      const url = await ueUrlHelper('org', 'repo', 'https://main--repo--org.aem.live/folder/index');
+      const url = await ueUrlHelper('org-qe-strip', 'repo', 'https://main--repo--org.aem.live/folder/index');
       expect(url).to.equal('https://main--repo--org.aem.page/folder/?quick-edit=on');
     } finally {
       window.fetch = orgFetch;
