@@ -22,9 +22,7 @@ function buildQuickEditInitPayload({ org, repo, path, branch = 'main' }) {
   };
 }
 
-async function tryLoadWysiwygPreviewCookies({
-  org, repo, path, branch, getCurrentCtx,
-}) {
+async function tryLoadWysiwygPreviewCookies({ org, repo, path, branch, getCurrentCtx }) {
   try {
     const token = (await loadIms())?.accessToken?.token;
     if (!token) {
