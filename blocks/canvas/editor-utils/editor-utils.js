@@ -1,7 +1,7 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, fetchDaConfigs } from '../../shared/utils.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -308,19 +308,32 @@ export function updateCursors(ctx) {
 
 // --- preview.js ---
 
-export function getPreviewOrigin(org, repo) {
+export function getPreviewOrigin(org, repo, branch = 'main') {
   const hostname = window?.location?.hostname ?? '';
   const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
     ? 'stage-preview.da.live'
     : 'preview.da.live';
-  return `https://main--${repo}--${org}.${domain}`;
+  return `https://${branch}--${repo}--${org}.${domain}`;
 }
 
-export async function fetchWysiwygCookie({ org, repo, token }) {
+export async function fetchWysiwygBranch({ org, site }) {
+  if (!org || !site) return 'main';
+  try {
+    const [, siteConfig] = await Promise.all(fetchDaConfigs({ org, site }));
+    const flag = siteConfig?.flags?.data?.find((f) => f.key === 'ew.wysiwygBranch');
+    const value = flag?.value?.trim();
+    return value || 'main';
+  } catch (e) {
+    if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
+  }
+  return 'main';
+}
+
+export async function fetchWysiwygCookie({ org, repo, token, branch = 'main' }) {
   if (!org || !repo || !token) {
     throw new Error('fetchWysiwygCookie: org, repo, and token required');
   }
-  const previewUrl = `${getPreviewOrigin(org, repo)}/gimme_cookie`;
+  const previewUrl = `${getPreviewOrigin(org, repo, branch)}/gimme_cookie`;
   const contentUrl = `${DA_CONTENT}/${org}/${repo}/.gimme_cookie`;
 
   const previewResp = await daFetch(previewUrl, { method: 'GET', credentials: 'include', headers: { Authorization: `Bearer ${token}` } });
