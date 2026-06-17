@@ -199,9 +199,7 @@ export default async function decorate(block) {
   document.addEventListener('nx-open-chat-panel', async ({ detail }) => {
     const aside = await openCanvasPanel('before');
     if (!detail?.text) return;
-    const chat = aside?.querySelector('nx-chat');
-    if (chat) await chat.updateComplete;
-    document.dispatchEvent(new CustomEvent('nx-set-prompt', { detail }));
+    aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
   });
 
   const store = getPanelStore();
