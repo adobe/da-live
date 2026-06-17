@@ -3,6 +3,8 @@
 import { HLX_ADMIN, AEM_API, DA_ADMIN, ALLOWED_TOKEN } from './utils.js';
 import { loadIms, handleSignIn } from './ims.js';
 
+export { AEM_API };
+
 // ============================================================================
 // Public API
 // ----------------------------------------------------------------------------

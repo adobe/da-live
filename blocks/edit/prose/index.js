@@ -54,7 +54,6 @@ export async function createConnection(path) {
 
   const { pathname } = new URL(path);
   const [, , org, site, ...parts] = pathname.split('/');
-
   const { AEM_API, isHlx6 } = await getNx2Api();
   const hlx6 = await isHlx6(org, site);
 

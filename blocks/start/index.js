@@ -1,6 +1,5 @@
-import { getNx, sanitizePathParts } from '../../scripts/utils.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 import { DA_ORIGIN } from '../shared/constants.js';
-import { daFetch } from '../shared/utils.js';
 
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 
@@ -17,15 +16,25 @@ const MIME_TYPES = {
   svg: 'image/svg+xml',
 };
 
+// Reads a DA resource from a full DA_ORIGIN URL, dispatching to the right
+// api.js namespace based on the URL's api segment (/config vs /source).
+async function getResource(fullUrl) {
+  const { config, source } = await getNx2Api();
+  const { pathname } = new URL(fullUrl);
+  const [api, org, site, ...parts] = pathname.slice(1).split('/');
+  const getFn = api === 'config' ? config.get : source.get;
+  return getFn({ org, site, path: `/${parts.join('/')}` });
+}
+
 async function getText(sourcePath, org, site, path) {
-  const getResp = await daFetch(path);
+  const getResp = await getResource(path);
   if (!getResp.ok) return null;
   const text = await getResp.text();
   return text.replaceAll(sourcePath, `/${org}/${site}`);
 }
 
 async function getBlob(path) {
-  const getResp = await daFetch(path);
+  const getResp = await getResource(path);
   if (!getResp.ok) return null;
   return getResp.blob();
 }
@@ -36,11 +45,8 @@ async function bulkAemAdmin(org, site, files) {
     return `/${parts.join('/')}`.replace('.html', '');
   });
 
-  const body = JSON.stringify({ paths, forceUpdate: true, forceSync: true });
-  const opts = { body, method: 'POST', headers: { 'Content-Type': 'application/json' } };
-
-  const aemUrl = `https://admin.hlx.page/preview/${org}/${site}/main/*`;
-  const resp = await daFetch(aemUrl, opts);
+  const { aem } = await getNx2Api();
+  const resp = await aem.preview({ org, site, path: paths, forceUpdate: true, forceSync: true });
   if (!resp.ok) return { type: 'error', message: 'Error previewing', status: resp.status };
 
   return { type: 'success', message: 'Success previewing.', status: resp.status };
@@ -50,10 +56,8 @@ export async function copyConfig(sourcePath, org, site) {
   const destText = await getText(sourcePath, org, site, `${DA_ORIGIN}/config${sourcePath}/`);
   if (!destText) return { ok: false };
 
-  const body = new FormData();
-  body.append('config', destText);
-  const opts = { method: 'PUT', body };
-  return daFetch(`${DA_ORIGIN}/config/${org}/${site}/`, opts);
+  const { config } = await getNx2Api();
+  return config.save({ org, site, body: destText });
 }
 
 export async function copyContent(sourcePath, org, site, setStatus) {
@@ -87,11 +91,8 @@ export async function copyContent(sourcePath, org, site, setStatus) {
     // Save the file
     const savePath = path.replace(sourcePath, `/${org}/${site}`);
 
-    const body = new FormData();
-
-    body.append('data', blob);
-    const opts = { method: 'POST', body };
-    const putResp = await daFetch(`${DA_ORIGIN}/source${savePath}`, opts);
+    const { source } = await getNx2Api();
+    const putResp = await source.save(savePath, { body: blob });
     file.ok = putResp.ok;
   };
 

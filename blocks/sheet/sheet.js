@@ -150,7 +150,7 @@ async function setSheet(details, daTitle, daSheet) {
     }
   };
 
-  staleCheck.start({ url: details.sourceUrl, onStale });
+  staleCheck.start({ details, onStale });
 }
 
 export default async function init(el) {

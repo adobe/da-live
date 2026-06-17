@@ -83,20 +83,30 @@ export function getPermissions() {
   return permissions;
 }
 
-export async function getData(url) {
+// Accepts either a pathDetails object ({ org, site, path, view }) for the
+// initial document load, or an absolute URL string for an externally-built
+// reference (e.g. a version-restore event), which is parsed for its api segment.
+export async function getData(input) {
   const { config, source, versions } = await getNx2Api();
-  const { pathname } = new URL(url);
-
-  const [api, org, site, ...parts] = pathname.slice(1).split('/');
-  let getFn = source.get;
-  if (api === 'config') getFn = config.get;
 
   let resp;
-  if (api === 'versionsource') {
-    getFn = versions.get;
-    resp = await getFn({ org, site, versionId: parts.join('/') });
+  let isVersion = false;
+  if (typeof input === 'string') {
+    const { pathname } = new URL(input);
+    const [api, org, site, ...parts] = pathname.slice(1).split('/');
+    if (api === 'versionsource') {
+      isVersion = true;
+      resp = await versions.get({ org, site, versionId: parts.join('/') });
+    } else if (api === 'config') {
+      resp = await config.get({ org, site, path: parts.join('/') });
+    } else {
+      resp = await source.get({ org, site, path: parts.join('/') });
+    }
   } else {
-    resp = await getFn({ org, site, path: parts.join('/') });
+    const { org, site, path, view } = input;
+    resp = view === 'config'
+      ? await config.get({ org, site })
+      : await source.get({ org, site, path });
   }
 
   // Set permissions even if the file is a 404
@@ -113,7 +123,7 @@ export async function getData(url) {
   // Get base data
   const json = await resp.json();
 
-  if (!url.includes('/versionsource')) {
+  if (!isVersion) {
     staleCheck.markSynced(json);
     const sheetPanes = document.querySelector('da-sheet-panes');
     if (sheetPanes) sheetPanes.data = json;
@@ -143,7 +153,7 @@ export async function getData(url) {
 }
 
 export default async function init(el, data) {
-  const suppliedData = data || await getData(el.details.sourceUrl);
+  const suppliedData = data || await getData(el.details);
 
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');
