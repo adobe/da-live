@@ -48,12 +48,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     if (action === 'setPrompt') {
       const text = typeof details === 'string' ? details : details.text;
       const autoSend = typeof details === 'object' && details.autoSend;
-      const openChatPanel = typeof details === 'object' && details.openChatPanel !== false;
-      if (openChatPanel) {
-        document.dispatchEvent(new CustomEvent('nx-open-chat-panel', { detail: { text, autoSend } }));
-      } else {
-        document.dispatchEvent(new CustomEvent('nx-set-prompt', { detail: { text, autoSend } }));
-      }
+      document.dispatchEvent(new CustomEvent('nx-open-chat-panel', { detail: { text, autoSend } }));
     }
 
     if (action === 'getSelection') {
