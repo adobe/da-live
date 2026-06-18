@@ -169,7 +169,7 @@ function hashState() {
 
 async function openCanvasPanel(position, { panelName } = {}) {
   const config = CANVAS_PANELS[position];
-  if (!config) return;
+  if (!config) return undefined;
   const store = getPanelStore();
   const width = store[position]?.width ?? config.width;
   const aside = await openPanel({ position, width, getContent: config.getContent });
@@ -183,6 +183,7 @@ async function openCanvasPanel(position, { panelName } = {}) {
       }
     }
   }
+  return aside;
 }
 
 async function installCanvasHeader(block, { org, site }) {
@@ -226,6 +227,12 @@ export default async function decorate(block) {
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);
+  });
+
+  document.addEventListener('nx-open-chat-panel', async ({ detail }) => {
+    const aside = await openCanvasPanel('before');
+    if (!detail?.text) return;
+    aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
   });
 
   const store = getPanelStore();
