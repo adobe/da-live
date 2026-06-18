@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import { setNx, getNx2Api } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -515,6 +515,78 @@ describe('DaList helpers', () => {
       // handleConfirmDelete uses queue.push but with empty list nothing happens.
       await el.handleConfirmDelete();
       expect(el._itemsRemaining).to.equal(0);
+    });
+
+    it('Unpublishes HTML items by their extensionless path', async () => {
+      const { aem, source } = await getNx2Api();
+      const origUnPreview = aem.unPreview;
+      const origUnPublish = aem.unPublish;
+      const origMove = source.move;
+      const unpublished = [];
+      aem.unPreview = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      aem.unPublish = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      source.move = () => ({ ok: true });
+
+      try {
+        const el = makeList();
+        el._itemErrors = [];
+        el._listItems = [];
+        el._listItemPaths = new Set();
+        el._unpublish = true;
+        el._confirmText = 'YES';
+        el._selectedItems = [{ name: 'doc', ext: 'html', path: '/org/site/doc.html' }];
+
+        await el.handleConfirmDelete();
+
+        expect(unpublished).to.deep.equal(['/org/site/doc', '/org/site/doc']);
+        expect(el._itemErrors).to.deep.equal([]);
+      } finally {
+        aem.unPreview = origUnPreview;
+        aem.unPublish = origUnPublish;
+        source.move = origMove;
+      }
+    });
+
+    it('Unpublishes non-HTML items with their extension intact', async () => {
+      const { aem, source } = await getNx2Api();
+      const origUnPreview = aem.unPreview;
+      const origUnPublish = aem.unPublish;
+      const origMove = source.move;
+      const unpublished = [];
+      aem.unPreview = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      aem.unPublish = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      source.move = () => ({ ok: true });
+
+      try {
+        const el = makeList();
+        el._itemErrors = [];
+        el._listItems = [];
+        el._listItemPaths = new Set();
+        el._unpublish = true;
+        el._confirmText = 'YES';
+        el._selectedItems = [{ name: 'data', ext: 'json', path: '/org/site/data.json' }];
+
+        await el.handleConfirmDelete();
+
+        expect(unpublished).to.deep.equal(['/org/site/data.json', '/org/site/data.json']);
+        expect(el._itemErrors).to.deep.equal([]);
+      } finally {
+        aem.unPreview = origUnPreview;
+        aem.unPublish = origUnPublish;
+        source.move = origMove;
+      }
     });
   });
 
