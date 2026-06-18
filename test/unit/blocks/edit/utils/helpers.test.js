@@ -3,7 +3,10 @@ import { expect } from '@esm-bundle/chai';
 import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 
-import {
+const { setNx } = await import('../../../../../scripts/utils.js');
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const {
   saveToDa,
   convertSheets,
   parse,
@@ -21,7 +24,15 @@ import {
   debounce,
   getDiffLabels,
   htmlToProse,
-} from '../../../../../blocks/edit/utils/helpers.js';
+} = await import('../../../../../blocks/edit/utils/helpers.js');
+
+// Skip the api.js hlx6 upgrade probe so source/config URLs stay on DA_ADMIN.
+const skipPing = (handler) => async (url, opts) => {
+  if (typeof url === 'string' && url.startsWith('https://admin.hlx.page/ping')) {
+    return new Response('', { status: 200, headers: new Headers() });
+  }
+  return handler(url, opts);
+};
 
 const bodyHtml = await readFile({ path: './mocks/body.html' });
 
@@ -79,10 +90,10 @@ function createSheet(name, data, columnWidths) {
 
 describe('saveToDa', () => {
   it('Saves sheets', async () => {
-    const mockFetch = async (url, opts) => {
+    const mockFetch = skipPing(async (url, opts) => {
       const payload = [...opts.body.entries()][0][1];
       return new Response(payload, { status: 200 });
-    };
+    });
 
     const sheets = [
       createSheet(
@@ -711,10 +722,10 @@ describe('saveDaConfig', () => {
 
   it('PUTs to the config endpoint with the json under the config form key', async () => {
     let captured;
-    window.fetch = (url, opts) => {
+    window.fetch = skipPing((url, opts) => {
       captured = { url, opts };
       return Promise.resolve(new Response('{}', { status: 200 }));
-    };
+    });
     const sheets = [{
       name: 'config',
       getData: () => [['k', 'v'], ['a', '1']],

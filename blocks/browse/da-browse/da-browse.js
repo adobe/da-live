@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
+import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
@@ -8,7 +8,7 @@ import '../da-new/da-new.js';
 import '../da-search/da-search.js';
 import '../da-list/da-list.js';
 
-const { DA_ADMIN, loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -71,7 +71,8 @@ export default class DaBrowse extends LitElement {
   async update(props) {
     if (props.has('details') && this.details) {
       // Only re-fetch if the orgs are different
-      const reFetch = props.get('details')?.org !== this.details.org;
+      const reFetch = props.get('details')?.org !== this.details.org
+        || props.get('details')?.site !== this.details.site;
       this.editor = await this.getEditor(reFetch);
     }
 
@@ -82,12 +83,10 @@ export default class DaBrowse extends LitElement {
     const DEF_EDIT = '/edit#';
 
     if (reFetch) {
-      const resp = await daFetch(`${DA_ADMIN}/config/${this.details.org}/`);
-      if (!resp.ok) return DEF_EDIT;
-      const json = await resp.json();
-
-      const rows = getFirstSheet(json);
-      this.editorConfs = rows?.reduce((acc, row) => {
+      const { org, site } = this.details;
+      const configs = await Promise.all(fetchDaConfigs({ org, site }));
+      const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
+      this.editorConfs = rows.reduce((acc, row) => {
         if (row.key === 'editor.path') acc.push(row.value);
         return acc;
       }, []);

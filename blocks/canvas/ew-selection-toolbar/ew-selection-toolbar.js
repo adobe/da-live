@@ -13,6 +13,7 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+await import('../../shared/da-link-dialog/da-link-dialog.js');
 
 const styles = await loadStyle(import.meta.url);
 
@@ -41,6 +42,8 @@ class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
     _linkDialogOpen: { state: true },
+    _linkHref: { state: true },
+    _linkText: { state: true },
   };
 
   connectedCallback() {
@@ -187,6 +190,15 @@ class EwSelectionToolbar extends LitElement {
 
   _showLinkDialog() {
     if (!this.view) return;
+    const info = getLinkInfoInSelection(this.view.state);
+    if (info) {
+      this._linkHref = info.href;
+      this._linkText = info.text;
+    } else {
+      const { from, to } = this.view.state.selection;
+      this._linkHref = '';
+      this._linkText = from !== to ? this.view.state.doc.textBetween(from, to) : '';
+    }
     this.hide();
     this._linkDialogOpen = true;
   }
@@ -197,29 +209,18 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _onLinkDialogSubmit(e) {
-    e.preventDefault();
-    if (!this.view) return;
-    const form = e.target;
-    const href = form.elements['link-href'].value.trim();
-    if (!href) return;
-    const text = form.elements['link-text'].value;
+    const { href, text } = e.detail;
     this._closeLinkDialog();
     applyLink(this.view, { href, text });
     this.view.focus();
   }
 
-  _onLinkBackdropMousedown(e) {
-    if (e.target === e.currentTarget) this._closeLinkDialog();
-  }
-
-  _onLinkBackdropKeydown(e) {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      this._closeLinkDialog();
-    }
-  }
-
   get linkDialogOpen() { return this._linkDialogOpen ?? false; }
+
+  openLinkDialog(view) {
+    this.view = view;
+    this._showLinkDialog();
+  }
 
   /* ---- Rendering ---- */
 
@@ -269,45 +270,6 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
-  _renderLinkDialog() {
-    if (!this._linkDialogOpen) return nothing;
-    const info = this.view ? getLinkInfoInSelection(this.view.state) : null;
-
-    let hrefVal = '';
-    let textVal = '';
-    if (info) {
-      hrefVal = info.href;
-      textVal = info.text;
-    } else if (this.view) {
-      const { from, to } = this.view.state.selection;
-      textVal = from !== to ? this.view.state.doc.textBetween(from, to) : '';
-    }
-
-    return html`
-      <div class="link-dialog"
-        @mousedown=${this._onLinkBackdropMousedown}
-        @keydown=${this._onLinkBackdropKeydown}>
-        <form class="link-form" @submit=${this._onLinkDialogSubmit}>
-          <label class="link-form-field">
-            <span>URL</span>
-            <input name="link-href" type="url" placeholder="https://…"
-                   required autocomplete="off" .value=${hrefVal} />
-          </label>
-          <label class="link-form-field">
-            <span>Display text</span>
-            <input name="link-text" type="text" placeholder="Link text"
-                   autocomplete="off" .value=${textVal} />
-          </label>
-          <div class="link-form-actions">
-            <button type="button" class="link-form-cancel"
-              @click=${() => this._closeLinkDialog()}>Cancel</button>
-            <button type="submit" class="link-form-save">Save</button>
-          </div>
-        </form>
-      </div>
-    `;
-  }
-
   render() {
     const disabled = !this.view;
     return html`
@@ -332,7 +294,13 @@ class EwSelectionToolbar extends LitElement {
           ${this._renderLinkButtons()}
         </div>
       </div>
-      ${this._renderLinkDialog()}
+      <da-link-dialog
+        ?open=${this.linkDialogOpen}
+        .href=${this._linkHref ?? ''}
+        .text=${this._linkText ?? ''}
+        @da-link-submit=${this._onLinkDialogSubmit}
+        @da-link-cancel=${this._closeLinkDialog}
+      ></da-link-dialog>
     `;
   }
 }
