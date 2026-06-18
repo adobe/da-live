@@ -68,7 +68,8 @@ function removeNotPermitted(mountRoot) {
   mountRoot.querySelector('.nx-not-permitted')?.remove();
 }
 
-// Incremented on each load to prevent stale network requests from overwriting the current editor session.
+// Incremented on each load to prevent stale network requests
+// from overwriting the current editor session.
 let editorLoadCount = 0;
 
 function ensureNxEditorDoc(mountRoot) {
@@ -94,7 +95,8 @@ function editorCtxFromHashState(state, fullPath) {
 }
 
 async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
-  const loadCount = ++editorLoadCount;
+  editorLoadCount += 1;
+  const loadCount = editorLoadCount;
   header.undoAvailable = false;
   header.redoAvailable = false;
   const fullPath = buildCanvasDocPath(state);
