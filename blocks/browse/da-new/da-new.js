@@ -14,6 +14,7 @@ export default class DaNew extends LitElement {
   static properties = {
     fullpath: { type: String },
     editor: { type: String },
+    folderOnly: { type: Boolean },
     permissions: { attribute: false },
     _createShow: { state: true },
     _createType: { state: true },
@@ -36,6 +37,17 @@ export default class DaNew extends LitElement {
   }
 
   handleCreateMenu() {
+    if (this.folderOnly) {
+      this._createShow = this._createShow === 'input' ? '' : 'input';
+      this._createType = 'folder';
+      if (this._createShow === 'input') {
+        setTimeout(() => {
+          const input = this.shadowRoot.querySelector('.da-actions-input');
+          input?.focus();
+        }, 500);
+      }
+      return;
+    }
     this._createShow = this._createShow === 'menu' ? '' : 'menu';
   }
 
@@ -170,23 +182,25 @@ export default class DaNew extends LitElement {
     return html`
       <div class="da-actions-create ${this._createShow}">
         <button class="da-actions-new-button" @click=${this.handleCreateMenu} ?disabled=${this._disabled}>New</button>
-        <ul class="da-actions-menu">
-          <li class=da-actions-menu-item>
-            <button data-type=folder @click=${this.handleNewType}>Folder</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=document @click=${this.handleNewType}>Document</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=sheet @click=${this.handleNewType}>Sheet</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=media @click=${this.handleNewType}>Media</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=link @click=${this.handleNewType}>Link</button>
-          </li>
-        </ul>
+        ${this.folderOnly ? '' : html`
+          <ul class="da-actions-menu">
+            <li class=da-actions-menu-item>
+              <button data-type=folder @click=${this.handleNewType}>Folder</button>
+            </li>
+            <li class=da-actions-menu-item>
+              <button data-type=document @click=${this.handleNewType}>Document</button>
+            </li>
+            <li class=da-actions-menu-item>
+              <button data-type=sheet @click=${this.handleNewType}>Sheet</button>
+            </li>
+            <li class=da-actions-menu-item>
+              <button data-type=media @click=${this.handleNewType}>Media</button>
+            </li>
+            <li class=da-actions-menu-item>
+              <button data-type=link @click=${this.handleNewType}>Link</button>
+            </li>
+          </ul>
+        `}
         <div class="da-actions-input-container">
           <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
           ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="url" @input=${this.handleUrlChange} .value=${this._externalUrl || ''} />` : ''}
