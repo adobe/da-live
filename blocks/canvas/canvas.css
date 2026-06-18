@@ -33,14 +33,14 @@ nx-chat {
   flex: 1;
   min-height: 0;
   gap: 0;
-  height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height));
+  height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height) - 2px);
 }
 
 ew-editor-doc {
   display: block;
   flex: 1;
   min-height: 0;
-  max-height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height));
+  max-height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height) - 2px);
   overflow-y: auto;
 }
 
