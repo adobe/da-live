@@ -26,6 +26,13 @@ export function getSelectionToolbar() {
   return toolbar;
 }
 
+export function setSelectionToolbarCtx({ org = null, site = null, sourceUrl = null } = {}) {
+  const tb = getSelectionToolbar();
+  tb.org = org;
+  tb.site = site;
+  tb.sourceUrl = sourceUrl;
+}
+
 export function hideSelectionToolbar() {
   toolbar?.hide?.();
 }

@@ -12,7 +12,7 @@ const DEFAULT_BASE_PATH = '/adobe/assets';
 // Config helpers
 // ---------------------------------------------------------------------------
 
-async function getRepositoryConfig(org, site) {
+export async function getRepositoryConfig(org, site) {
   const configs = await Promise.all(fetchDaConfigs({ org, site }));
   const entries = configs
     .filter((c) => !c?.error)

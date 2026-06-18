@@ -40,8 +40,14 @@ function blockTypeLabelForRaw(raw) {
 class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
+    org: { type: String },
+    site: { type: String },
+    sourceUrl: { type: String },
     _linkDialogOpen: { state: true },
     _altDialogOpen: { state: true },
+    _addImagePopoverOpen: { state: true },
+    _aemAssetsDialogOpen: { state: true },
+    _hasAemAssets: { state: true },
   };
 
   connectedCallback() {
@@ -82,6 +88,7 @@ class EwSelectionToolbar extends LitElement {
 
   hide() {
     this.classList.remove('open');
+    this._addImagePopoverOpen = false;
   }
 
   get open() {
@@ -89,7 +96,10 @@ class EwSelectionToolbar extends LitElement {
   }
 
   get isInteracting() {
-    return (this._picker?.open ?? false) || (this._altDialogOpen ?? false);
+    return (this._picker?.open ?? false)
+      || (this._altDialogOpen ?? false)
+      || (this._addImagePopoverOpen ?? false)
+      || (this._aemAssetsDialogOpen ?? false);
   }
 
   _icon(name) {
@@ -125,6 +135,7 @@ class EwSelectionToolbar extends LitElement {
 
   _onToolbarClick(e) {
     e.preventDefault();
+    this._closeAddImagePopover();
     if (!this.view) return;
     const btn = e.target instanceof Element ? e.target.closest('button') : null;
     if (!btn || btn.disabled) return;
@@ -263,10 +274,88 @@ class EwSelectionToolbar extends LitElement {
 
   get altDialogOpen() { return this._altDialogOpen ?? false; }
 
+  /* ---- AEM assets check ---- */
+
+  async _checkAemAssets() {
+    const { org, site } = this;
+    if (!org || !site) {
+      this._hasAemAssets = false;
+      return;
+    }
+    const { getRepositoryConfig } = await import('../ew-panel-extensions/aem-assets.js');
+    const config = await getRepositoryConfig(org, site);
+    if (this.org !== org || this.site !== site) return;
+    this._hasAemAssets = config !== null;
+  }
+
+  /* ---- Add image ---- */
+
+  _onAddImageClick() {
+    if (!this.view) return;
+    if (this._hasAemAssets) {
+      this._addImagePopoverOpen = !this._addImagePopoverOpen;
+    } else {
+      this._triggerUpload();
+    }
+  }
+
+  _closeAddImagePopover() {
+    this._addImagePopoverOpen = false;
+  }
+
+  _triggerUpload() {
+    this._closeAddImagePopover();
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/svg+xml,image/png,image/jpeg,image/gif';
+    input.addEventListener('change', (e) => this._onFileSelected(e), { once: true });
+    input.click();
+  }
+
+  async _onFileSelected(e) {
+    const file = e.target.files?.[0];
+    if (!file || !this.view || !this.sourceUrl) return;
+    const [{ getSourceUploadContext }, { uploadImageFile }] = await Promise.all([
+      import('../ew-editor-doc/prose-plugins/sourceUploadContext.js'),
+      import('../ew-editor-doc/prose-plugins/imageDrop.js'),
+    ]);
+    const details = getSourceUploadContext(this.sourceUrl);
+    if (!details) return;
+    await uploadImageFile(this.view, file, details);
+  }
+
+  _openAemAssets() {
+    this.hide();
+    this._aemAssetsDialogOpen = true;
+  }
+
+  _closeAemAssetsDialog() {
+    this._aemAssetsDialogOpen = false;
+    this.view?.focus();
+  }
+
+  async _mountAemAssets() {
+    const container = this.shadowRoot?.querySelector('.aem-assets-dialog-inner');
+    if (!container) return;
+    const { renderAssets } = await import('../ew-panel-extensions/aem-assets.js');
+    await renderAssets({
+      container,
+      org: this.org,
+      site: this.site,
+      onClose: () => this._closeAemAssetsDialog(),
+    });
+  }
+
   /* ---- Rendering ---- */
 
-  updated() {
+  updated(changed) {
     this._syncBlockTypePicker();
+    if (changed.has('org') || changed.has('site')) {
+      this._checkAemAssets();
+    }
+    if (changed.has('_aemAssetsDialogOpen') && this._aemAssetsDialogOpen) {
+      this._mountAemAssets();
+    }
   }
 
   _renderMarkButton({ id, label, icon }) {
@@ -373,6 +462,35 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
+  _renderAddImageButton() {
+    return html`
+      <div class="add-image-btn-wrap">
+        <button type="button" class="toolbar-btn"
+          aria-label="Add image" title="Add image"
+          @click=${(e) => { e.stopPropagation(); this._onAddImageClick(); }}>
+          ${this._icon('imageadd')}
+        </button>
+        ${this._addImagePopoverOpen ? html`
+          <div class="add-image-menu">
+            <button type="button" class="add-image-menu-btn"
+              @click=${() => this._triggerUpload()}>Upload</button>
+            <button type="button" class="add-image-menu-btn"
+              @click=${() => this._openAemAssets()}>AEM Assets</button>
+          </div>
+        ` : nothing}
+      </div>
+    `;
+  }
+
+  _renderAemAssetsDialog() {
+    if (!this._aemAssetsDialogOpen) return nothing;
+    return html`
+      <div class="aem-assets-dialog">
+        <div class="aem-assets-dialog-inner"></div>
+      </div>
+    `;
+  }
+
   render() {
     const disabled = !this.view;
     if (this._isImageSelection()) {
@@ -384,9 +502,12 @@ class EwSelectionToolbar extends LitElement {
               @click=${() => this._showAltDialog()}>
               ${this._icon('imagetext')}
             </button>
+            <span class="toolbar-sep" aria-hidden="true"></span>
+            ${this._renderAddImageButton()}
           </div>
         </div>
         ${this._renderAltDialog()}
+        ${this._renderAemAssetsDialog()}
       `;
     }
     return html`
@@ -409,9 +530,12 @@ class EwSelectionToolbar extends LitElement {
           ${this._renderBlockStructure()}
           <span class="toolbar-sep" aria-hidden="true"></span>
           ${this._renderLinkButtons()}
+          <span class="toolbar-sep" aria-hidden="true"></span>
+          ${this._renderAddImageButton()}
         </div>
       </div>
       ${this._renderLinkDialog()}
+      ${this._renderAemAssetsDialog()}
     `;
   }
 }
