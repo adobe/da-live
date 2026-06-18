@@ -5,6 +5,7 @@ import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
   getAssetAlt, getDmApprovalStatus, getScene7PublishStatus,
 } from './helpers/urls.js';
+import { applySiteImageModifiers } from './helpers/imageModifiers.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
@@ -41,15 +42,20 @@ export function buildFeatureSet(isDmEnabled) {
 }
 
 export function resolveAssetUrl(asset, repoConfig) {
-  const { tierType, assetOrigin, assetBasePath, isDmEnabled, mimeRenditionOverrides } = repoConfig;
+  const {
+    tierType, assetOrigin, assetBasePath, isDmEnabled,
+    mimeRenditionOverrides, siteImageModifiers,
+  } = repoConfig;
   const renditionOptions = { mimeRenditionOverrides };
+  let url;
   if (tierType === 'delivery') {
-    return buildDeliveryUrl(asset, assetOrigin, assetBasePath, renditionOptions);
+    url = buildDeliveryUrl(asset, assetOrigin, assetBasePath, renditionOptions);
+  } else if (isDmEnabled) {
+    url = buildDmUrl(asset, assetOrigin, assetBasePath, renditionOptions);
+  } else {
+    url = buildAuthorUrl(asset, assetOrigin);
   }
-  if (isDmEnabled) {
-    return buildDmUrl(asset, assetOrigin, assetBasePath, renditionOptions);
-  }
-  return buildAuthorUrl(asset, assetOrigin);
+  return applySiteImageModifiers(url, siteImageModifiers);
 }
 
 function showErrorPanel(container, onBack, onCancel, message = DM_ERROR_MSG) {
@@ -140,7 +146,11 @@ export function buildHandleSelection(
         responsiveImageConfigPromise,
         onInsert: (srcs) => {
           closeAndReset();
-          const nodes = srcs.map((src) => createImageNode(view, src, alt));
+          const nodes = srcs.map((src) => createImageNode(
+            view,
+            applySiteImageModifiers(src, repoConfig.siteImageModifiers),
+            alt,
+          ));
           insertFragment(view, nodes);
         },
         onBack: resetToAssetPanel,

@@ -30,6 +30,10 @@ export function hideSelectionToolbar() {
   toolbar?.hide?.();
 }
 
+export function openLinkDialog(view) {
+  getSelectionToolbar().openLinkDialog(view);
+}
+
 function isNonTextSelection({ selection }) {
   return selection instanceof NodeSelection
     && NON_TEXT_NODES.has(selection.node.type.name);
