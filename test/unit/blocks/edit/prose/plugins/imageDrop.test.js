@@ -57,13 +57,33 @@ describe('imageDrop plugin', () => {
     }
   });
 
-  it('uploadImageFile bails when daFetch is not ok', async () => {
+  it('uploadImageFile removes FPO placeholder when daFetch returns non-ok', async () => {
     const savedFetch = window.fetch;
     window.fetch = () => Promise.resolve(new Response('boom', { status: 500 }));
     try {
       const file = new File(['x'], 'pic.png', { type: 'image/png' });
       await uploadImageFile(editor.view, file);
-      // FPO is still inserted; we just verify no throw.
+      let foundImg = false;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') foundImg = true;
+      });
+      expect(foundImg).to.be.false;
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('uploadImageFile removes FPO placeholder when daFetch throws', async () => {
+    const savedFetch = window.fetch;
+    window.fetch = () => Promise.reject(new Error('network error'));
+    try {
+      const file = new File(['x'], 'pic.png', { type: 'image/png' });
+      await uploadImageFile(editor.view, file);
+      let foundImg = false;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') foundImg = true;
+      });
+      expect(foundImg).to.be.false;
     } finally {
       window.fetch = savedFetch;
     }
@@ -144,6 +164,29 @@ describe('imageDrop plugin', () => {
       expect(fpoSrcs[0]).to.not.equal(fpoSrcs[1]);
       expect(fpoSrcs[0]).to.include('alpha.png');
       expect(fpoSrcs[1]).to.include('beta.gif');
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('uploadImageFile replaces FPO with the content URL even when the image fails to load', async () => {
+    // Use an invalid base64 data URL — Chrome fires error immediately for corrupt image data.
+    const brokenUrl = 'data:image/png;base64,notvalidpng';
+    const savedFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ source: { contentUrl: brokenUrl } }),
+      { status: 200 },
+    ));
+    try {
+      const file = new File(['x'], 'broken.png', { type: 'image/png' });
+      await uploadImageFile(editor.view, file);
+      // Give the img error event time to fire and dispatch the replacement transaction.
+      await new Promise((resolve) => { setTimeout(resolve, 200); });
+      let finalSrc = null;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') finalSrc = node.attrs.src;
+      });
+      expect(finalSrc).to.equal(brokenUrl);
     } finally {
       window.fetch = savedFetch;
     }

@@ -4,6 +4,35 @@
   grid-template-areas: 'editor';
 }
 
+.da-upload-error {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #d7373f;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: var(--body-font-family);
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 2000;
+  pointer-events: none;
+  animation: da-upload-error-fadein 0.2s ease;
+}
+
+@keyframes da-upload-error-fadein {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .da-prose-mirror {
   --editor-btn-bg-color: #EFEFEF;
   --editor-btn-bg-color-hover: var(--s2-blue-900);
