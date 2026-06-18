@@ -324,7 +324,11 @@ class EwSelectionToolbar extends LitElement {
 
   _openAemAssets() {
     this._closeAddImagePopover();
-    document.dispatchEvent(new CustomEvent('nx-show-panel', { detail: { panelName: 'aem-assets' } }));
+    document.querySelector('ew-canvas-header')?.dispatchEvent(new CustomEvent('nx-canvas-open-panel', {
+      bubbles: true,
+      composed: true,
+      detail: { position: 'after', panelName: 'aem-assets' },
+    }));
   }
 
   /* ---- Rendering ---- */
