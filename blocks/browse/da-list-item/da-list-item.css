@@ -85,6 +85,11 @@ button {
   pointer-events: none;
 }
 
+:host(:hover) .da-item-list-item-favorite,
+:host(.is-expanded) .da-item-list-item-favorite {
+  --da-favorite-ring: var(--s2-blue-200);
+}
+
 .icon.rename-icon {
   width: 18px;
   height: 18px;
