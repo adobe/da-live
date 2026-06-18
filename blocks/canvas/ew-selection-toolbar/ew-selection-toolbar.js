@@ -5,13 +5,13 @@ import {
   getBlockTypePickerValue,
   getLinkInfoInSelection,
   applyLink,
-  isImageNodeSelected,
 } from '../editor-utils/command-helpers.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+await import('../../shared/da-link-dialog/da-link-dialog.js');
 
 const styles = await loadStyle(import.meta.url);
 
@@ -42,6 +42,8 @@ class EwSelectionToolbar extends LitElement {
     site: { type: String },
     sourceUrl: { type: String },
     _linkDialogOpen: { state: true },
+    _linkHref: { state: true },
+    _linkText: { state: true },
     _altDialogOpen: { state: true },
     _addImagePopoverOpen: { state: true },
     _hasAemAssets: { state: true },
@@ -162,8 +164,18 @@ class EwSelectionToolbar extends LitElement {
 
   /* ---- Link dialog ---- */
 
-  openLinkDialog() {
+  openLinkDialog(view) {
+    if (view) this.view = view;
     if (!this.view) return;
+    const info = getLinkInfoInSelection(this.view.state);
+    if (info) {
+      this._linkHref = info.href;
+      this._linkText = info.text;
+    } else {
+      const { from, to } = this.view.state.selection;
+      this._linkHref = '';
+      this._linkText = from !== to ? this.view.state.doc.textBetween(from, to) : '';
+    }
     this.hide();
     this._linkDialogOpen = true;
   }
@@ -174,26 +186,10 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _onLinkDialogSubmit(e) {
-    e.preventDefault();
-    if (!this.view) return;
-    const form = e.target;
-    const href = form.elements['link-href'].value.trim();
-    if (!href) return;
-    const text = form.elements['link-text']?.value ?? '';
+    const { href, text } = e.detail;
     this._closeLinkDialog();
     applyLink(this.view, { href, text });
     this.view.focus();
-  }
-
-  _onLinkBackdropMousedown(e) {
-    if (e.target === e.currentTarget) this._closeLinkDialog();
-  }
-
-  _onLinkBackdropKeydown(e) {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      this._closeLinkDialog();
-    }
   }
 
   get linkDialogOpen() { return this._linkDialogOpen ?? false; }
@@ -365,61 +361,19 @@ class EwSelectionToolbar extends LitElement {
     if (!this._altDialogOpen) return nothing;
     const currentAlt = this.view?.state.selection.node?.attrs?.alt ?? '';
     return html`
-      <div class="link-dialog"
+      <div class="alt-dialog"
         @mousedown=${this._onAltBackdropMousedown}
         @keydown=${this._onAltBackdropKeydown}>
-        <form class="link-form" @submit=${this._onAltDialogSubmit}>
-          <label class="link-form-field">
+        <form class="alt-form" @submit=${this._onAltDialogSubmit}>
+          <label class="alt-form-field">
             <span>Alt text</span>
             <input name="alt-text" type="text" placeholder="Describe the image"
                    autocomplete="off" .value=${currentAlt} />
           </label>
-          <div class="link-form-actions">
-            <button type="button" class="link-form-cancel"
+          <div class="alt-form-actions">
+            <button type="button" class="alt-form-cancel"
               @click=${() => this._closeAltDialog()}>Cancel</button>
-            <button type="submit" class="link-form-save">Save</button>
-          </div>
-        </form>
-      </div>
-    `;
-  }
-
-  _renderLinkDialog() {
-    if (!this._linkDialogOpen) return nothing;
-    const isImage = this.view ? isImageNodeSelected(this.view.state) : false;
-    const info = this.view ? getLinkInfoInSelection(this.view.state) : null;
-
-    let hrefVal = '';
-    let textVal = '';
-    if (info) {
-      hrefVal = info.href;
-      textVal = info.text;
-    } else if (this.view && !isImage) {
-      const { from, to } = this.view.state.selection;
-      textVal = from !== to ? this.view.state.doc.textBetween(from, to) : '';
-    }
-
-    return html`
-      <div class="link-dialog"
-        @mousedown=${this._onLinkBackdropMousedown}
-        @keydown=${this._onLinkBackdropKeydown}>
-        <form class="link-form" @submit=${this._onLinkDialogSubmit}>
-          <label class="link-form-field">
-            <span>URL</span>
-            <input name="link-href" type="url" placeholder="https://…"
-                   required autocomplete="off" .value=${hrefVal} />
-          </label>
-          ${isImage ? nothing : html`
-            <label class="link-form-field">
-              <span>Display text</span>
-              <input name="link-text" type="text" placeholder="Link text"
-                     autocomplete="off" .value=${textVal} />
-            </label>
-          `}
-          <div class="link-form-actions">
-            <button type="button" class="link-form-cancel"
-              @click=${() => this._closeLinkDialog()}>Cancel</button>
-            <button type="submit" class="link-form-save">Save</button>
+            <button type="submit" class="alt-form-save">Save</button>
           </div>
         </form>
       </div>
@@ -455,7 +409,13 @@ class EwSelectionToolbar extends LitElement {
           ${this._renderSections()}
         </div>
       </div>
-      ${this._renderLinkDialog()}
+      <da-link-dialog
+        ?open=${this.linkDialogOpen}
+        .href=${this._linkHref ?? ''}
+        .text=${this._linkText ?? ''}
+        @da-link-submit=${this._onLinkDialogSubmit}
+        @da-link-cancel=${this._closeLinkDialog}
+      ></da-link-dialog>
       ${this._renderAltDialog()}
     `;
   }

@@ -91,6 +91,26 @@ export const COMMANDS = [
     active: (state) => markIsActive(state, 's'),
     apply: inlineMark('s'),
   },
+  {
+    id: 'sup',
+    label: 'Superscript',
+    schema: 'sup',
+    icon: iconName('TextSuperscript'),
+    showIn: ['toolbar-marks'],
+    visible: notImageSelected,
+    active: (state) => markIsActive(state, 'sup'),
+    apply: inlineMark('sup'),
+  },
+  {
+    id: 'sub',
+    label: 'Subscript',
+    schema: 'sub',
+    icon: iconName('TextSubscript'),
+    showIn: ['toolbar-marks'],
+    visible: notImageSelected,
+    active: (state) => markIsActive(state, 'sub'),
+    apply: inlineMark('sub'),
+  },
 
   // Toolbar: block-type picker
   {
