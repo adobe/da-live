@@ -46,7 +46,6 @@ class EwSelectionToolbar extends LitElement {
     _linkDialogOpen: { state: true },
     _altDialogOpen: { state: true },
     _addImagePopoverOpen: { state: true },
-    _aemAssetsDialogOpen: { state: true },
     _hasAemAssets: { state: true },
   };
 
@@ -98,8 +97,7 @@ class EwSelectionToolbar extends LitElement {
   get isInteracting() {
     return (this._picker?.open ?? false)
       || (this._altDialogOpen ?? false)
-      || (this._addImagePopoverOpen ?? false)
-      || (this._aemAssetsDialogOpen ?? false);
+      || (this._addImagePopoverOpen ?? false);
   }
 
   _icon(name) {
@@ -325,25 +323,8 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _openAemAssets() {
-    this.hide();
-    this._aemAssetsDialogOpen = true;
-  }
-
-  _closeAemAssetsDialog() {
-    this._aemAssetsDialogOpen = false;
-    this.view?.focus();
-  }
-
-  async _mountAemAssets() {
-    const container = this.shadowRoot?.querySelector('.aem-assets-dialog-inner');
-    if (!container) return;
-    const { renderAssets } = await import('../ew-panel-extensions/aem-assets.js');
-    await renderAssets({
-      container,
-      org: this.org,
-      site: this.site,
-      onClose: () => this._closeAemAssetsDialog(),
-    });
+    this._closeAddImagePopover();
+    document.dispatchEvent(new CustomEvent('nx-show-panel', { detail: { panelName: 'aem-assets' } }));
   }
 
   /* ---- Rendering ---- */
@@ -352,9 +333,6 @@ class EwSelectionToolbar extends LitElement {
     this._syncBlockTypePicker();
     if (changed.has('org') || changed.has('site')) {
       this._checkAemAssets();
-    }
-    if (changed.has('_aemAssetsDialogOpen') && this._aemAssetsDialogOpen) {
-      this._mountAemAssets();
     }
   }
 
@@ -482,15 +460,6 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
-  _renderAemAssetsDialog() {
-    if (!this._aemAssetsDialogOpen) return nothing;
-    return html`
-      <div class="aem-assets-dialog">
-        <div class="aem-assets-dialog-inner"></div>
-      </div>
-    `;
-  }
-
   render() {
     const disabled = !this.view;
     if (this._isImageSelection()) {
@@ -507,7 +476,6 @@ class EwSelectionToolbar extends LitElement {
           </div>
         </div>
         ${this._renderAltDialog()}
-        ${this._renderAemAssetsDialog()}
       `;
     }
     return html`
@@ -535,7 +503,6 @@ class EwSelectionToolbar extends LitElement {
         </div>
       </div>
       ${this._renderLinkDialog()}
-      ${this._renderAemAssetsDialog()}
     `;
   }
 }
