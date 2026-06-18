@@ -3,10 +3,9 @@ import { getNx } from '../../../scripts/utils.js';
 import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
   getBlockTypePickerValue,
-  selectionHasLink,
   getLinkInfoInSelection,
   applyLink,
-  removeLink,
+  isImageNodeSelected,
 } from '../editor-utils/command-helpers.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -20,6 +19,8 @@ const MARK_ITEMS = commandsFor('toolbar-marks');
 const STRUCTURE_ITEMS = commandsFor('toolbar-structure');
 const TABLE_ITEMS = commandsFor('toolbar-table');
 const PICKER_DEFS = commandsFor('toolbar-picker');
+const LINK_ITEMS = commandsFor('toolbar-link');
+const IMAGE_ITEMS = commandsFor('toolbar-image');
 
 const BLOCK_TYPE_LABELS = new Map(PICKER_DEFS.map(({ id, label }) => [id, label]));
 
@@ -27,9 +28,6 @@ const BLOCK_TYPE_PICKER_ITEMS = [
   { section: 'Change into' },
   ...PICKER_DEFS.map(({ id, label }) => ({ value: id, label })),
 ];
-
-const LINK_ICON = 'link';
-const UNLINK_ICON = 'unlink';
 
 function blockTypeLabelForRaw(raw) {
   if (raw === 'mixed') return 'Mixed';
@@ -69,11 +67,6 @@ class EwSelectionToolbar extends LitElement {
   }
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
-
-  _isImageSelection() {
-    const sel = this.view?.state?.selection;
-    return sel?.node?.type.name === 'image';
-  }
 
   show() {
     const main = document.querySelector('main');
@@ -129,32 +122,7 @@ class EwSelectionToolbar extends LitElement {
     }
   }
 
-  /* ---- Mark / structure buttons ---- */
-
-  _onToolbarClick(e) {
-    e.preventDefault();
-    this._closeAddImagePopover();
-    if (!this.view) return;
-    const btn = e.target instanceof Element ? e.target.closest('button') : null;
-    if (!btn || btn.disabled) return;
-
-    const { id, link } = btn.dataset;
-    if (link === 'create' || link === 'edit') {
-      this._showLinkDialog();
-      return;
-    }
-    if (link === 'remove') {
-      removeLink(this.view);
-      this.requestUpdate();
-      this.view.focus();
-      return;
-    }
-    if (id) {
-      COMMAND_BY_ID.get(id)?.apply(this.view);
-      this.requestUpdate();
-      this.view.focus();
-    }
-  }
+  /* ---- Command queries ---- */
 
   _isCommandActive(id) {
     if (!this.view) return false;
@@ -177,30 +145,24 @@ class EwSelectionToolbar extends LitElement {
     return items.some(({ id }) => this._isCommandVisible(id));
   }
 
-  _renderToolbarSep() {
-    return html`<span class="toolbar-sep" aria-hidden="true"></span>`;
-  }
+  /* ---- Toolbar button click ---- */
 
-  _renderBlockStructure() {
-    const hasStructure = this._hasVisibleCommands(STRUCTURE_ITEMS);
-    const hasTable = this._hasVisibleCommands(TABLE_ITEMS);
-    if (!hasStructure && !hasTable) return nothing;
-    return html`
-      ${this._renderToolbarSep()}
-      ${hasStructure ? STRUCTURE_ITEMS.map((s) => this._renderStructureButton(s)) : nothing}
-      ${hasStructure && hasTable ? this._renderToolbarSep() : nothing}
-      ${hasTable ? TABLE_ITEMS.map((s) => this._renderStructureButton(s)) : nothing}
-    `;
-  }
-
-  _hasLink() {
-    if (!this.view) return false;
-    return selectionHasLink(this.view.state);
+  _onToolbarClick(e) {
+    e.preventDefault();
+    if (!this.view) return;
+    const btn = e.target instanceof Element ? e.target.closest('button') : null;
+    if (!btn || btn.disabled) return;
+    const { id } = btn.dataset;
+    if (!id) return;
+    if (id !== 'image-add') this._closeAddImagePopover();
+    COMMAND_BY_ID.get(id)?.apply(this.view);
+    this.requestUpdate();
+    if (!this._linkDialogOpen && !this._altDialogOpen) this.view.focus();
   }
 
   /* ---- Link dialog ---- */
 
-  _showLinkDialog() {
+  openLinkDialog() {
     if (!this.view) return;
     this.hide();
     this._linkDialogOpen = true;
@@ -217,7 +179,7 @@ class EwSelectionToolbar extends LitElement {
     const form = e.target;
     const href = form.elements['link-href'].value.trim();
     if (!href) return;
-    const text = form.elements['link-text'].value;
+    const text = form.elements['link-text']?.value ?? '';
     this._closeLinkDialog();
     applyLink(this.view, { href, text });
     this.view.focus();
@@ -238,7 +200,7 @@ class EwSelectionToolbar extends LitElement {
 
   /* ---- Alt text dialog ---- */
 
-  _showAltDialog() {
+  openAltDialog() {
     if (!this.view) return;
     this.hide();
     this._altDialogOpen = true;
@@ -288,7 +250,7 @@ class EwSelectionToolbar extends LitElement {
 
   /* ---- Add image ---- */
 
-  _onAddImageClick() {
+  triggerAddImage() {
     if (!this.view) return;
     if (this._hasAemAssets) {
       this._addImagePopoverOpen = !this._addImagePopoverOpen;
@@ -338,9 +300,16 @@ class EwSelectionToolbar extends LitElement {
     if (changed.has('org') || changed.has('site')) {
       this._checkAemAssets();
     }
+    if (changed.has('_altDialogOpen') && this._altDialogOpen) {
+      const input = this.shadowRoot?.querySelector('input[name="alt-text"]');
+      input?.focus();
+      input?.select();
+    }
   }
 
-  _renderMarkButton({ id, label, icon }) {
+  _renderToolbarButton({ id, label, icon }) {
+    const hidden = !this._isCommandVisible(id);
+    const disabled = this._isCommandDisabled(id);
     const pressed = this._isCommandActive(id);
     return html`
       <button
@@ -349,20 +318,6 @@ class EwSelectionToolbar extends LitElement {
         aria-label=${label}
         title=${label}
         aria-pressed=${pressed ? 'true' : 'false'}
-        data-id=${id}
-      >${this._icon(icon)}</button>
-    `;
-  }
-
-  _renderStructureButton({ id, label, icon }) {
-    const hidden = !this._isCommandVisible(id);
-    const disabled = this._isCommandDisabled(id);
-    return html`
-      <button
-        type="button"
-        class="toolbar-btn"
-        aria-label=${label}
-        title=${label}
         ?hidden=${hidden}
         ?disabled=${disabled}
         data-id=${id}
@@ -370,15 +325,39 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
-  _renderLinkButtons() {
-    const hasLink = this._hasLink();
+  _renderAddImageItem(item) {
     return html`
-      <button type="button" class="toolbar-btn" aria-label="Create link" title="Create link"
-        data-link="create" ?hidden=${hasLink}>${this._icon(LINK_ICON)}</button>
-      <button type="button" class="toolbar-btn" aria-label="Edit link" title="Edit link"
-        data-link="edit" ?hidden=${!hasLink}>${this._icon(LINK_ICON)}</button>
-      <button type="button" class="toolbar-btn" aria-label="Remove link" title="Remove link"
-        data-link="remove" ?hidden=${!hasLink}>${this._icon(UNLINK_ICON)}</button>
+      <div class="add-image-btn-wrap">
+        ${this._renderToolbarButton(item)}
+        ${this._addImagePopoverOpen ? html`
+          <div class="add-image-menu">
+            <button type="button" class="add-image-menu-btn"
+              @click=${() => this._triggerUpload()}>Upload</button>
+            <button type="button" class="add-image-menu-btn"
+              @click=${() => this._openAemAssets()}>AEM Assets</button>
+          </div>
+        ` : nothing}
+      </div>
+    `;
+  }
+
+  _renderImageItem(item) {
+    if (item.id === 'image-add') return this._renderAddImageItem(item);
+    return this._renderToolbarButton(item);
+  }
+
+  _renderBlockTypePicker() {
+    return html`
+      <span class="toolbar-block-type-wrap">
+        <nx-picker
+          class="toolbar-block-type"
+          placement="above"
+          ignoreFocus
+          .items=${BLOCK_TYPE_PICKER_ITEMS}
+          value="paragraph"
+          @change=${(e) => this._onBlockTypeChange(e)}
+        ></nx-picker>
+      </span>
     `;
   }
 
@@ -407,6 +386,7 @@ class EwSelectionToolbar extends LitElement {
 
   _renderLinkDialog() {
     if (!this._linkDialogOpen) return nothing;
+    const isImage = this.view ? isImageNodeSelected(this.view.state) : false;
     const info = this.view ? getLinkInfoInSelection(this.view.state) : null;
 
     let hrefVal = '';
@@ -414,7 +394,7 @@ class EwSelectionToolbar extends LitElement {
     if (info) {
       hrefVal = info.href;
       textVal = info.text;
-    } else if (this.view) {
+    } else if (this.view && !isImage) {
       const { from, to } = this.view.state.selection;
       textVal = from !== to ? this.view.state.doc.textBetween(from, to) : '';
     }
@@ -429,11 +409,13 @@ class EwSelectionToolbar extends LitElement {
             <input name="link-href" type="url" placeholder="https://…"
                    required autocomplete="off" .value=${hrefVal} />
           </label>
-          <label class="link-form-field">
-            <span>Display text</span>
-            <input name="link-text" type="text" placeholder="Link text"
-                   autocomplete="off" .value=${textVal} />
-          </label>
+          ${isImage ? nothing : html`
+            <label class="link-form-field">
+              <span>Display text</span>
+              <input name="link-text" type="text" placeholder="Link text"
+                     autocomplete="off" .value=${textVal} />
+            </label>
+          `}
           <div class="link-form-actions">
             <button type="button" class="link-form-cancel"
               @click=${() => this._closeLinkDialog()}>Cancel</button>
@@ -444,69 +426,37 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
-  _renderAddImageButton() {
-    return html`
-      <div class="add-image-btn-wrap">
-        <button type="button" class="toolbar-btn"
-          aria-label="Add image" title="Add image"
-          @click=${(e) => { e.stopPropagation(); this._onAddImageClick(); }}>
-          ${this._icon('imageadd')}
-        </button>
-        ${this._addImagePopoverOpen ? html`
-          <div class="add-image-menu">
-            <button type="button" class="add-image-menu-btn"
-              @click=${() => this._triggerUpload()}>Upload</button>
-            <button type="button" class="add-image-menu-btn"
-              @click=${() => this._openAemAssets()}>AEM Assets</button>
-          </div>
-        ` : nothing}
-      </div>
-    `;
+  _renderSections() {
+    const renderButtons = (items) => items.map((i) => this._renderToolbarButton(i));
+    const renderImageItems = (items) => items.map((i) => this._renderImageItem(i));
+
+    const sections = [
+      { items: PICKER_DEFS, render: () => this._renderBlockTypePicker() },
+      { items: MARK_ITEMS, render: () => renderButtons(MARK_ITEMS) },
+      { items: STRUCTURE_ITEMS, render: () => renderButtons(STRUCTURE_ITEMS) },
+      { items: TABLE_ITEMS, render: () => renderButtons(TABLE_ITEMS) },
+      { items: LINK_ITEMS, render: () => renderButtons(LINK_ITEMS) },
+      { items: IMAGE_ITEMS, render: () => renderImageItems(IMAGE_ITEMS) },
+    ];
+
+    const visible = sections.filter(({ items }) => this._hasVisibleCommands(items));
+    return visible.flatMap(({ render }, i) => {
+      const part = render();
+      return i === 0 ? [part] : [html`<span class="toolbar-sep" aria-hidden="true"></span>`, part];
+    });
   }
 
   render() {
     const disabled = !this.view;
-    if (this._isImageSelection()) {
-      return html`
-        <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
-          <div class="toolbar-actions" ?data-disabled=${disabled}>
-            <button type="button" class="toolbar-btn"
-              aria-label="Edit alt text" title="Edit alt text"
-              @click=${() => this._showAltDialog()}>
-              ${this._icon('imagetext')}
-            </button>
-            <span class="toolbar-sep" aria-hidden="true"></span>
-            ${this._renderAddImageButton()}
-          </div>
-        </div>
-        ${this._renderAltDialog()}
-      `;
-    }
     return html`
-      <div class="toolbar-wrap"
-        @mousedown=${(e) => e.preventDefault()}>
+      <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
         <div class="toolbar-actions" ?data-disabled=${disabled}
           @click=${(e) => this._onToolbarClick(e)}>
-          <span class="toolbar-block-type-wrap">
-            <nx-picker
-              class="toolbar-block-type"
-              placement="above"
-              ignoreFocus
-              .items=${BLOCK_TYPE_PICKER_ITEMS}
-              value="paragraph"
-              @change=${(e) => this._onBlockTypeChange(e)}
-            ></nx-picker>
-          </span>
-          <span class="toolbar-sep" aria-hidden="true"></span>
-          ${MARK_ITEMS.map((m) => this._renderMarkButton(m))}
-          ${this._renderBlockStructure()}
-          <span class="toolbar-sep" aria-hidden="true"></span>
-          ${this._renderLinkButtons()}
-          <span class="toolbar-sep" aria-hidden="true"></span>
-          ${this._renderAddImageButton()}
+          ${this._renderSections()}
         </div>
       </div>
       ${this._renderLinkDialog()}
+      ${this._renderAltDialog()}
     `;
   }
 }
