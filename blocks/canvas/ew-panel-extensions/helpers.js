@@ -135,9 +135,14 @@ function getLibraryMetadata(el) {
 
 function transformBlock(block) {
   const prevSib = block.previousElementSibling;
-  const item = isHeading(prevSib) && prevSib.textContent
-    ? { name: prevSib.textContent }
-    : getBlockName(block.className || '');
+  let item;
+  if (block.dataset.groupheading) {
+    item = { name: block.dataset.groupheading };
+  } else if (isHeading(prevSib) && prevSib.textContent) {
+    item = { name: prevSib.textContent };
+  } else {
+    item = getBlockName(block.className || '');
+  }
   item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
 
   const metaEl = block.nextElementSibling?.classList.contains('library-metadata')
@@ -214,16 +219,19 @@ function mergePlugin(list, plugin) {
 }
 
 export async function fetchExtensions(org, site) {
-  const configs = fetchDaConfigs({ org, site });
-  const siteConfig = await configs[configs.length - 1];
-  if (siteConfig?.error) return [];
+  const configs = await Promise.all(fetchDaConfigs({ org, site }));
+  const validConfigs = configs.filter((conf) => !conf?.error).reverse();
+  if (!validConfigs.length) return [];
 
-  const rows = siteConfig?.library?.data;
-  if (!Array.isArray(rows)) return [];
+  const rows = validConfigs.flatMap((conf) => conf?.library?.data || []);
+  if (!rows.length) return [];
 
+  const seen = new Set();
   const extensions = rows.reduce((acc, row) => {
     if (!row.title || !getIsPluginAllowed(row.ref)) return acc;
     const name = row.title.trim().toLowerCase().replaceAll(' ', '-');
+    if (seen.has(name)) return acc;
+    seen.add(name);
     acc.push({
       name,
       title: row.title.trim(),
@@ -237,8 +245,8 @@ export async function fetchExtensions(org, site) {
   }, []);
 
   try {
-    const siteEntries = getFirstSheet(siteConfig) || [];
-    const hasRepo = siteEntries.find((e) => e.key === 'aem.repositoryId')?.value;
+    const entries = validConfigs.flatMap((conf) => getFirstSheet(conf) || []);
+    const hasRepo = entries.find((entry) => entry.key === 'aem.repositoryId')?.value;
     if (hasRepo) {
       const { getAssetsPlugin } = await import('./aem-assets.js');
       const plugin = getAssetsPlugin({ org, site });
