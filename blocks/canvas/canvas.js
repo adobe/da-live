@@ -15,6 +15,8 @@ import {
   installEditorSplitDrag,
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
+import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
+import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
@@ -52,6 +54,22 @@ function removeCanvasEditors(mountRoot) {
   mountRoot.querySelector('ew-editor-wysiwyg')?.remove();
 }
 
+function showNotPermitted(mountRoot, message) {
+  let el = mountRoot.querySelector('.nx-not-permitted');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'nx-not-permitted';
+    mountRoot.append(el);
+  }
+  el.textContent = message;
+}
+
+function removeNotPermitted(mountRoot) {
+  mountRoot.querySelector('.nx-not-permitted')?.remove();
+}
+
+let _syncGen = 0;
+
 function ensureNxEditorDoc(mountRoot) {
   let el = mountRoot.querySelector('ew-editor-doc');
   if (!el) {
@@ -74,7 +92,8 @@ function editorCtxFromHashState(state, fullPath) {
   return { org: state.org, repo: state.site, path: fullPath };
 }
 
-function syncCanvasEditorsToHash({ mountRoot, header, state }) {
+async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
+  const gen = ++_syncGen;
   header.undoAvailable = false;
   header.redoAvailable = false;
   const fullPath = buildCanvasDocPath(state);
@@ -82,11 +101,22 @@ function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
     removeCanvasEditors(mountRoot);
+    removeNotPermitted(mountRoot);
     return;
   }
   const ctx = editorCtxFromHashState(state, fullPath);
+  const session = await resolveEditorDocSession(sourceUrlFromEditorCtx(ctx));
+  if (gen !== _syncGen) return;
+  if (!session.ok) {
+    removeCanvasEditors(mountRoot);
+    showNotPermitted(mountRoot, session.error);
+    return;
+  }
+  removeNotPermitted(mountRoot);
+  const docEl = ensureNxEditorDoc(mountRoot);
+  docEl.session = session;
+  docEl.ctx = ctx;
   ensureNxEditorWysiwyg(mountRoot).ctx = ctx;
-  ensureNxEditorDoc(mountRoot).ctx = ctx;
   finalizeSplitEditorMountOrder(mountRoot);
   notifyCanvasEditorActive(mountRoot, header.editorView);
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
