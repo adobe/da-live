@@ -24,6 +24,7 @@ import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+import { selectionToolbarController } from '../editor-utils/selection-toolbar-controller.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -144,6 +145,32 @@ export class EwEditorDoc extends LitElement {
     wireQuickEditControllerPort(this._controllerCtx);
   }
 
+  _wireProseFocus(view, proseEl) {
+    this._unwireProseFocus?.();
+    const onFocus = () => {
+      const { selection } = view.state;
+      selectionToolbarController.setActive('doc', { view });
+      selectionToolbarController.setRange(!selection.empty);
+    };
+    const onBlur = () => {
+      // Defer: clicking on the toolbar blurs PM, but focus returns synchronously.
+      // If focus ends up inside the toolbar we want to stay active in 'doc' mode.
+      setTimeout(() => {
+        const active = document.activeElement;
+        const toolbar = document.querySelector('ew-selection-toolbar');
+        if (toolbar && active && (active === toolbar || toolbar.contains(active))) return;
+        selectionToolbarController.setInactive('doc');
+      }, 0);
+    };
+    proseEl.addEventListener('focusin', onFocus);
+    proseEl.addEventListener('focusout', onBlur);
+    this._unwireProseFocus = () => {
+      proseEl.removeEventListener('focusin', onFocus);
+      proseEl.removeEventListener('focusout', onBlur);
+      this._unwireProseFocus = undefined;
+    };
+  }
+
   _setupAwareness(wsProvider) {
     if (this._awarenessOff) {
       this._awarenessOff();
@@ -164,6 +191,7 @@ export class EwEditorDoc extends LitElement {
 
   _teardown() {
     this._stopObservingUndoManager();
+    this._unwireProseFocus?.();
     const { wsProvider, view, proseEl } = this._proseContext ?? {};
     teardownEditorDocResources({
       clearPortHandler: () => this._clearControllerPort(),
@@ -223,6 +251,7 @@ export class EwEditorDoc extends LitElement {
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
+      this._wireProseFocus(view, proseEl);
       this._emitHtmlChange();
 
       this._setupController();

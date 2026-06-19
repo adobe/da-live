@@ -1,21 +1,41 @@
 import { TextSelection, yUndo, yRedo } from 'da-y-wrapper';
 import {
-  getSelectionToolbar,
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
+import { selectionToolbarController } from '../../editor-utils/selection-toolbar-controller.js';
 import { editorSelectChange } from '../../editor-utils/editor-utils.js';
 import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
 
+/**
+ * Run `view.dispatch(tr)` while temporarily pretending the view has focus.
+ * y-prosemirror's cursor plugin reads `view.hasFocus()` synchronously inside
+ * its `view.update()` to decide whether to broadcast the cursor to awareness.
+ * In WYSIWYG mode the iframe owns DOM focus, so without the lie collaborators
+ * lose sight of this user's cursor. The lie is restored to truth immediately
+ * after dispatch so PM's undo path, DOM observer, focus-event timeouts, etc.
+ * see the real focus state at all other times.
+ */
+function dispatchWithFakeFocus(view, tr) {
+  const hadOwn = Object.hasOwn(view, 'hasFocus');
+  const prev = hadOwn ? view.hasFocus : undefined;
+  view.hasFocus = () => true;
+  try {
+    view.dispatch(tr);
+  } finally {
+    if (hadOwn) view.hasFocus = prev;
+    else delete view.hasFocus;
+  }
+}
+
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
-  const { view, wsProvider } = ctx;
+  const { view, wsProvider, iframe } = ctx;
   if (!view || !wsProvider) return;
 
   if (cursorOffset == null || textCursorOffset == null) {
-    delete view.hasFocus;
+    // Iframe reports the cursor has left the editable area entirely.
     wsProvider.awareness.setLocalStateField('cursor', null);
-    const tb = getSelectionToolbar();
-    if (!tb.isInteracting && !tb.linkDialogOpen) tb.hide?.();
+    selectionToolbarController.setInactive('wysiwyg');
     return;
   }
 
@@ -29,10 +49,9 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
       return;
     }
 
-    view.hasFocus = () => true;
-
     const { tr } = state;
     tr.setSelection(TextSelection.create(state.doc, position));
+    tr.setMeta(NX_QUICK_EDIT_IFRAME_SELECTION_META, true);
 
     // Sync stored marks so the toolbar reflects the marks active at the cursor.
     // Two problems this solves:
@@ -58,13 +77,12 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     }
 
     ctx.suppressRerender = true;
-    view.dispatch(tr.scrollIntoView());
+    dispatchWithFakeFocus(view, tr.scrollIntoView());
     ctx.suppressRerender = false;
-    const tb = getSelectionToolbar();
-    if (!tb.linkDialogOpen && !tb.isInteracting) {
-      tb.view = view;
-      tb.show();
-    }
+
+    selectionToolbarController.setActive('wysiwyg', { view, iframe });
+    selectionToolbarController.setRange(false);
+
     const blockIndex = getActiveBlockIndex(view);
     if (blockIndex !== ctx.lastBlockIndex) {
       ctx.lastBlockIndex = blockIndex;
@@ -80,19 +98,11 @@ export function handleUndoRedo(data, ctx) {
   const { action } = data;
   const view = ctx?.view;
   if (!view) return;
-  // hasFocus may be overridden to () => true by the cursor-move hack; temporarily
-  // restore the prototype so ProseMirror skips _isDomSelectionInView during the
-  // undo dispatch (the editor may be in a hidden or unfocused state).
-  const hadHasFocus = Object.hasOwn(view, 'hasFocus');
-  delete view.hasFocus;
-
   if (action === 'undo') {
     yUndo(view.state);
   } else if (action === 'redo') {
     yRedo(view.state);
   }
-
-  if (hadHasFocus) view.hasFocus = () => true;
 }
 
 export function handleStoredMarks({ marks }, ctx) {
@@ -110,7 +120,7 @@ export function handleStoredMarks({ marks }, ctx) {
     const { tr } = state;
     tr.setStoredMarks(parsedMarks);
     ctx.suppressRerender = true;
-    view.dispatch(tr);
+    dispatchWithFakeFocus(view, tr);
     ctx.suppressRerender = false;
   } catch (e) {
     // eslint-disable-next-line no-console
@@ -129,7 +139,7 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
     tr.setSelection(TextSelection.create(state.doc, a, h));
     if (fromQuickEditIframe) tr.setMeta(NX_QUICK_EDIT_IFRAME_SELECTION_META, true);
     ctx.suppressRerender = true;
-    view.dispatch(tr);
+    dispatchWithFakeFocus(view, tr);
     ctx.suppressRerender = false;
     return true;
   } catch (e) {
@@ -139,32 +149,25 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
   }
 }
 
-function showToolbarInIFrame(ctx) {
-  const { view } = ctx;
-  const tb = getSelectionToolbar();
-  tb.view = view;
-  tb.show();
-}
-
 /** PostMessage `selection-change` from wysiwyg iframe: sync PM selection and toolbar. */
 export function handleIframeSelectionChange(data, ctx) {
   const { anchor, head } = data;
+  const { view, iframe } = ctx;
   if (anchor === head) {
-    const tb = getSelectionToolbar();
-    if (tb.isInteracting) return;
-    const { view } = ctx;
     if (view) {
       const tr = view.state.tr
         .setMeta(NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META, true)
         .setMeta('addToHistory', false);
       ctx.suppressRerender = true;
-      view.dispatch(tr);
+      dispatchWithFakeFocus(view, tr);
       ctx.suppressRerender = false;
     }
+    selectionToolbarController.setRange(false);
     return;
   }
 
   if (!handleSelectionChange(data, ctx, { fromQuickEditIframe: true })) return;
 
-  showToolbarInIFrame(ctx);
+  selectionToolbarController.setActive('wysiwyg', { view, iframe });
+  selectionToolbarController.setRange(true);
 }
