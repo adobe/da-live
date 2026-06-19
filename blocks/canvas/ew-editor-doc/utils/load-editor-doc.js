@@ -10,7 +10,7 @@ export async function resolveEditorDocSession(sourceUrl) {
 
   const resp = await checkDoc(sourceUrl);
   if (!resp.ok && resp.status !== 404) {
-    const error = resp.status === 401 ? 'Sign in required' : `Failed to load (${resp.status})`;
+    const error = resp.status === 401 ? 'Sign in required' : 'Not permitted';
     return { ok: false, error };
   }
 
