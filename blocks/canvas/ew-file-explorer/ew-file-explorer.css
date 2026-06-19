@@ -98,6 +98,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
+    font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
   }
 }
 
