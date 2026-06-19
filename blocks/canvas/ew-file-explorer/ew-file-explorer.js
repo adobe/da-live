@@ -246,8 +246,8 @@ class EwFileExplorer extends LitElement {
     if (!this._treeRoot) {
       return html`<div class="ew-file-explorer">
         ${this._error
-    ? html`<p class="notice error" role="alert">${this._error}</p>`
-    : html`<p class="notice">Loading…</p>`}
+    ? html`<p class="notice centered" role="alert">${this._error}</p>`
+    : html`<p class="notice centered">Loading…</p>`}
       </div>`;
     }
 
