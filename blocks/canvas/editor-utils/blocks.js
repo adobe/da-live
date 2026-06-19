@@ -1,3 +1,5 @@
+import { DOMParser as PMDOMParser } from 'da-y-wrapper';
+
 function getTableBlockName(tableNode) {
   const firstRow = tableNode.firstChild;
   if (!firstRow) return '';
@@ -81,6 +83,27 @@ export function deleteBlock(view, blockIndex) {
   const node = view.state.doc.nodeAt(pos);
   if (!node) return;
   view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize));
+}
+
+function getSectionStartOffset(view, sectionIndex) {
+  const { doc, schema } = view.state;
+  if (sectionIndex === 0) return 0;
+  let hrCount = 0;
+  let result = doc.content.size;
+  doc.forEach((node, offset) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      hrCount += 1;
+      if (hrCount === sectionIndex) result = offset + node.nodeSize;
+    }
+  });
+  return result;
+}
+
+export function insertBlockAtSectionStart(view, dom, sectionIndex) {
+  if (!view) return;
+  const pos = getSectionStartOffset(view, sectionIndex);
+  const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
+  view.dispatch(view.state.tr.insert(pos, parsed).scrollIntoView());
 }
 
 export function deleteSection(view, sectionIndex) {
