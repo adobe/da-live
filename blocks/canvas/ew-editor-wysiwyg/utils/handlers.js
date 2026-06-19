@@ -53,28 +53,18 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     tr.setSelection(TextSelection.create(state.doc, position));
     tr.setMeta(NX_QUICK_EDIT_IFRAME_SELECTION_META, true);
 
-    // Sync stored marks so the toolbar reflects the marks active at the cursor.
-    // Two problems this solves:
-    // 1. ProseMirror clears storedMarks whenever selection.anchor changes, which
-    //    happens on every cursor-move — that wipes toolbar-toggled marks before the
-    //    first keystroke arrives.
-    // 2. marksAcross() returns Mark.none when the cursor is at the end of a mark
-    //    run (nothing to the right), so the toolbar shows the mark as inactive even
-    //    though the text is marked.  nodeBefore/nodeAfter covers both sides.
+    // PM's `marks()` returns Mark.none when the cursor sits at the end of a mark
+    // run (nothing immediately to the right), which would make the toolbar show
+    // an adjacent mark as inactive. Inspecting nodeBefore covers both sides so
+    // typing-inherits-mark is consistent with what the toolbar displays.
+    // Intentionally NOT preserving `state.storedMarks` when there's no adjacent
+    // mark: a cursor move without typing should drop any toolbar-toggled mark
+    // that was queued for the next keystroke.
     const $pos = state.doc.resolve(position);
-    const marksBefore = $pos.nodeBefore?.marks;
-    const marksAfter = $pos.nodeAfter?.marks;
-    const marksAtCursor = (marksBefore?.length ? marksBefore : null)
-      ?? (marksAfter?.length ? marksAfter : null);
-
-    if (marksAtCursor) {
-      // Cursor is adjacent to marked text — use those marks (handles Cmd+B case).
-      tr.setStoredMarks(marksAtCursor);
-    } else if (state.storedMarks?.length) {
-      // No marked text at this position, but user explicitly toggled a mark via
-      // the toolbar — preserve it so it survives cursor-move events before typing.
-      tr.setStoredMarks(state.storedMarks);
-    }
+    const marksAtCursor = $pos.nodeBefore?.marks?.length
+      ? $pos.nodeBefore.marks
+      : $pos.nodeAfter?.marks;
+    if (marksAtCursor?.length) tr.setStoredMarks(marksAtCursor);
 
     ctx.suppressRerender = true;
     dispatchWithFakeFocus(view, tr.scrollIntoView());

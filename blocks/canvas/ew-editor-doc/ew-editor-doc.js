@@ -269,8 +269,10 @@ export class EwEditorDoc extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onCanvasEditorActive = (e) => {
       const view = e.detail?.view;
+      const changed = this._canvasActiveView !== view;
+      this._canvasActiveView = view;
       this.hidden = view === 'layout';
-      hideSelectionToolbar();
+      if (changed) hideSelectionToolbar();
     };
     this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this._onWysiwygPortReady = (e) => {

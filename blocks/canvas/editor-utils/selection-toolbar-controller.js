@@ -43,20 +43,13 @@ export const selectionToolbarController = {
 
   setActive(mode, { view, iframe } = {}) {
     if (mode !== 'doc' && mode !== 'wysiwyg') return;
-    let changed = false;
-    if (state.mode !== mode) {
-      state.mode = mode;
-      changed = true;
-    }
-    if (view !== undefined && state.view !== view) {
-      state.view = view;
-      changed = true;
-    }
-    if (iframe !== undefined && state.iframe !== iframe) {
-      state.iframe = iframe;
-      changed = true;
-    }
-    if (changed) emit();
+    state.mode = mode;
+    if (view !== undefined) state.view = view;
+    if (iframe !== undefined) state.iframe = iframe;
+    // Emit unconditionally — even if mode/view identity hasn't changed,
+    // the underlying PM state (selection, storedMarks, marks) usually has,
+    // and the toolbar needs to re-query active/visible commands.
+    emit();
   },
 
   setInactive(mode) {

@@ -53,8 +53,14 @@ export class EwEditorWysiwyg extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onCanvasEditorActive = (e) => {
-      this._canvasActiveView = e.detail?.view;
+      const next = e.detail?.view;
+      const changed = this._canvasActiveView !== next;
+      this._canvasActiveView = next;
       this._syncCanvasVisibility();
+      // Only hide the toolbar when the user-visible canvas view actually
+      // transitions — _syncCanvasVisibility also runs on port-ready, ctx
+      // change, and iframe load, which shouldn't drop an active toolbar.
+      if (changed) hideSelectionToolbar();
     };
     this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this._syncCanvasVisibility();
@@ -100,7 +106,6 @@ export class EwEditorWysiwyg extends LitElement {
     const view = this._canvasActiveView ?? 'layout';
     const showWysiwyg = view === 'layout' || view === 'split';
     this.hidden = !showWysiwyg;
-    hideSelectionToolbar();
   }
 
   _resetCookieStateForCtxChange() {

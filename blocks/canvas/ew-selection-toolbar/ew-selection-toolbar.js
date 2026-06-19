@@ -42,6 +42,7 @@ function blockTypeLabelForRaw(raw) {
 class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
+    _mode: { state: true },
     _linkDialogOpen: { state: true },
     _linkHref: { state: true },
     _linkText: { state: true },
@@ -52,6 +53,7 @@ class EwSelectionToolbar extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [styles];
     this._unsubscribeController = selectionToolbarController.subscribe((s) => {
       this.view = s.view ?? this.view;
+      this._mode = s.mode;
       if (s.shouldShow) this._show();
       else if (!this.isInteracting) this._hide();
     });
@@ -285,24 +287,29 @@ class EwSelectionToolbar extends LitElement {
 
   render() {
     const disabled = !this.view;
+    // In wysiwyg mode the iframe owns block-level structure (paragraph/heading,
+    // lists, tables) — only show inline marks and link controls.
+    const inlineOnly = this._mode === 'wysiwyg';
     return html`
       <div class="toolbar-wrap"
         @mousedown=${(e) => e.preventDefault()}>
         <div class="toolbar-actions" ?data-disabled=${disabled}
           @click=${(e) => this._onToolbarClick(e)}>
-          <span class="toolbar-block-type-wrap">
-            <nx-picker
-              class="toolbar-block-type"
-              placement="above"
-              ignoreFocus
-              .items=${BLOCK_TYPE_PICKER_ITEMS}
-              value="paragraph"
-              @change=${(e) => this._onBlockTypeChange(e)}
-            ></nx-picker>
-          </span>
-          <span class="toolbar-sep" aria-hidden="true"></span>
+          ${inlineOnly ? nothing : html`
+            <span class="toolbar-block-type-wrap">
+              <nx-picker
+                class="toolbar-block-type"
+                placement="above"
+                ignoreFocus
+                .items=${BLOCK_TYPE_PICKER_ITEMS}
+                value="paragraph"
+                @change=${(e) => this._onBlockTypeChange(e)}
+              ></nx-picker>
+            </span>
+            <span class="toolbar-sep" aria-hidden="true"></span>
+          `}
           ${MARK_ITEMS.map((m) => this._renderMarkButton(m))}
-          ${this._renderBlockStructure()}
+          ${inlineOnly ? nothing : this._renderBlockStructure()}
           <span class="toolbar-sep" aria-hidden="true"></span>
           ${this._renderLinkButtons()}
         </div>
