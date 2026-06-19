@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
@@ -13,6 +13,7 @@ await import(`${getNx()}/blocks/shared/popover/popover.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import('../../shared/da-link-dialog/da-link-dialog.js');
+await import('../../shared/da-alt-dialog/da-alt-dialog.js');
 
 const styles = await loadStyle(import.meta.url);
 
@@ -46,6 +47,7 @@ class EwSelectionToolbar extends LitElement {
     _linkHref: { state: true },
     _linkText: { state: true },
     _altDialogOpen: { state: true },
+    _altText: { state: true },
     _hasAemAssets: { state: true },
   };
 
@@ -199,6 +201,7 @@ class EwSelectionToolbar extends LitElement {
 
   openAltDialog() {
     if (!this.view) return;
+    this._altText = this.view.state.selection.node?.attrs?.alt ?? '';
     this.hide();
     this._altDialogOpen = true;
   }
@@ -209,24 +212,12 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _onAltDialogSubmit(e) {
-    e.preventDefault();
+    const { alt } = e.detail;
     if (!this.view) return;
-    const alt = e.target.elements['alt-text'].value.trim();
     const { pos } = this.view.state.selection.$anchor;
     this._closeAltDialog();
     this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, 'alt', alt));
     this.view.focus();
-  }
-
-  _onAltBackdropMousedown(e) {
-    if (e.target === e.currentTarget) this._closeAltDialog();
-  }
-
-  _onAltBackdropKeydown(e) {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      this._closeAltDialog();
-    }
   }
 
   get altDialogOpen() { return this._altDialogOpen ?? false; }
@@ -286,11 +277,6 @@ class EwSelectionToolbar extends LitElement {
     this._syncBlockTypePicker();
     if (changed.has('org') || changed.has('site')) {
       this._checkAemAssets();
-    }
-    if (changed.has('_altDialogOpen') && this._altDialogOpen) {
-      const input = this.shadowRoot?.querySelector('input[name="alt-text"]');
-      input?.focus();
-      input?.select();
     }
   }
 
@@ -352,29 +338,6 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
-  _renderAltDialog() {
-    if (!this._altDialogOpen) return nothing;
-    const currentAlt = this.view?.state.selection.node?.attrs?.alt ?? '';
-    return html`
-      <div class="alt-dialog"
-        @mousedown=${this._onAltBackdropMousedown}
-        @keydown=${this._onAltBackdropKeydown}>
-        <form class="alt-form" @submit=${this._onAltDialogSubmit}>
-          <label class="alt-form-field">
-            <span>Alt text</span>
-            <input name="alt-text" type="text" placeholder="Describe the image"
-                   autocomplete="off" .value=${currentAlt} />
-          </label>
-          <div class="alt-form-actions">
-            <button type="button" class="alt-form-cancel"
-              @click=${() => this._closeAltDialog()}>Cancel</button>
-            <button type="submit" class="alt-form-save">Save</button>
-          </div>
-        </form>
-      </div>
-    `;
-  }
-
   _renderSections() {
     const renderButtons = (items) => items.map((i) => this._renderToolbarButton(i));
     const renderImageItems = (items) => items.map((i) => this._renderImageItem(i));
@@ -411,7 +374,12 @@ class EwSelectionToolbar extends LitElement {
         @da-link-submit=${this._onLinkDialogSubmit}
         @da-link-cancel=${this._closeLinkDialog}
       ></da-link-dialog>
-      ${this._renderAltDialog()}
+      <da-alt-dialog
+        ?open=${this.altDialogOpen}
+        .alt=${this._altText ?? ''}
+        @da-alt-submit=${this._onAltDialogSubmit}
+        @da-alt-cancel=${this._closeAltDialog}
+      ></da-alt-dialog>
     `;
   }
 }
