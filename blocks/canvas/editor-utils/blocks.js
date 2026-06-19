@@ -73,6 +73,43 @@ export function moveBlock(view, fromIndex, toIndex, dropPosition) {
   );
 }
 
+export function deleteBlock(view, blockIndex) {
+  if (!view) return;
+  const positions = getBlockPositions(view);
+  if (blockIndex < 0 || blockIndex >= positions.length) return;
+  const pos = positions[blockIndex];
+  const node = view.state.doc.nodeAt(pos);
+  if (!node) return;
+  view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize));
+}
+
+export function deleteSection(view, sectionIndex) {
+  if (!view) return;
+  const { doc, schema } = view.state;
+
+  const sections = [[]];
+  doc.forEach((node) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      sections.push([]);
+    } else {
+      sections[sections.length - 1].push(node);
+    }
+  });
+
+  if (sectionIndex < 0 || sectionIndex >= sections.length) return;
+
+  const remaining = sections.filter((_, i) => i !== sectionIndex);
+
+  const hrNode = schema.nodes.horizontal_rule.create();
+  const newNodes = [];
+  remaining.forEach((sectionNodes, i) => {
+    if (i > 0) newNodes.push(hrNode);
+    newNodes.push(...sectionNodes);
+  });
+
+  view.dispatch(view.state.tr.replaceWith(0, doc.content.size, newNodes));
+}
+
 export function moveSection(view, fromSectionIndex, toSectionIndex, dropPosition) {
   if (!view) return;
   if (isSamePosition(fromSectionIndex, toSectionIndex, dropPosition)) return;

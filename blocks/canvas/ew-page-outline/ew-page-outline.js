@@ -3,7 +3,9 @@ import { getNx } from '../../../scripts/utils.js';
 import { treeKeydown } from '../utils/tree-nav.js';
 import { editorHtmlChange, editorSelectChange, parseSections } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { moveBlock, moveSection } from '../editor-utils/blocks.js';
+import { deleteBlock, deleteSection, moveBlock, moveSection } from '../editor-utils/blocks.js';
+
+const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -173,6 +175,32 @@ class EwPageOutline extends LitElement {
 
   _onTreeKeydown = (e) => treeKeydown(e, this.shadowRoot);
 
+  _onDelete(e, type, index) {
+    e.stopPropagation();
+    e.preventDefault();
+    const { view } = getExtensionsBridge();
+    if (!view) return;
+    if (type === OUTLINE_TYPES.BLOCK) {
+      deleteBlock(view, index);
+    } else {
+      deleteSection(view, index);
+    }
+  }
+
+  _renderDeleteButton(type, index) {
+    const label = type === OUTLINE_TYPES.SECTION
+      ? `Delete section ${index + 1}` : 'Delete block';
+    return html`
+      <button type="button" class="delete-btn" draggable="false"
+              aria-label="${label}"
+              @pointerdown=${(e) => e.stopPropagation()}
+              @click=${(e) => this._onDelete(e, type, index)}>
+        <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+          <use href="${DELETE_ICON_SRC}#icon"></use>
+        </svg>
+      </button>`;
+  }
+
   _renderSection(sec, isFirstSection) {
     return html`
       <li class="outline-section" role="none"
@@ -184,6 +212,7 @@ class EwPageOutline extends LitElement {
              @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.SECTION, sec.sectionIndex)}
              @dragend=${this._onDragEnd}>
           <span class="section-label">Section ${sec.sectionIndex + 1}</span>
+          ${this._renderDeleteButton(OUTLINE_TYPES.SECTION, sec.sectionIndex)}
         </div>
         <ul class="block-list" role="group"
             aria-label="Blocks in section ${sec.sectionIndex + 1}">
@@ -202,7 +231,10 @@ class EwPageOutline extends LitElement {
                 @dragover=${(e) => this._onBlockDragOver(e, blockIndex)}
                 @drop=${this._onDrop}
                 @dragend=${this._onDragEnd}
-                @click=${() => this._select(blockIndex)}>${name}</li>`)}
+                @click=${() => this._select(blockIndex)}>
+              <span class="block-name">${name}</span>
+              ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, blockIndex)}
+            </li>`)}
         </ul>
       </li>`;
   }
