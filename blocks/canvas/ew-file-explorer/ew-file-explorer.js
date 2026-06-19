@@ -94,7 +94,35 @@ class EwFileExplorer extends LitElement {
       this._expanded = new Set();
       this._treeRoot = null;
       this._loadFromLeaves(org, site, path);
+    } else if (path) {
+      this._expandToPath(path);
     }
+  }
+
+  // Ensure every ancestor folder of `path` is expanded and loaded, so the
+  // newly selected item is visible after a hash change within the same site.
+  async _expandToPath(path) {
+    const orgSite = `${this._org}/${this._site}`;
+    const parts = path.split('/');
+    const expanded = new Set(this._expanded ?? []);
+    const cache = { ...(this._cache ?? {}) };
+    const toFetch = [];
+
+    for (let i = 1; i < parts.length; i += 1) {
+      const ancestorFp = `/${orgSite}/${parts.slice(0, i).join('/')}`;
+      expanded.add(ancestorFp.replace(/^\//, ''));
+      if (!cache[ancestorFp]) toFetch.push(ancestorFp);
+    }
+
+    this._expanded = expanded;
+
+    if (!toFetch.length) return;
+    const results = await Promise.all(toFetch.map(async (fp) => {
+      const result = await listFolder(fp);
+      return Array.isArray(result) ? [fp, result] : null;
+    }));
+    const patched = Object.fromEntries(results.filter(Boolean));
+    if (Object.keys(patched).length) this._cache = { ...cache, ...patched };
   }
 
   // Walks from the current page's parent folder up to the site root, fetching
