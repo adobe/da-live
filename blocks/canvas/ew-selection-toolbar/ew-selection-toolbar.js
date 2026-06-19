@@ -11,6 +11,7 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import('../../shared/da-link-dialog/da-link-dialog.js');
 
 const styles = await loadStyle(import.meta.url);
@@ -45,7 +46,6 @@ class EwSelectionToolbar extends LitElement {
     _linkHref: { state: true },
     _linkText: { state: true },
     _altDialogOpen: { state: true },
-    _addImagePopoverOpen: { state: true },
     _hasAemAssets: { state: true },
   };
 
@@ -70,6 +70,8 @@ class EwSelectionToolbar extends LitElement {
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
 
+  get _imageMenu() { return this.shadowRoot?.querySelector('nx-menu'); }
+
   show() {
     const main = document.querySelector('main');
     if (main) {
@@ -82,7 +84,7 @@ class EwSelectionToolbar extends LitElement {
 
   hide() {
     this.classList.remove('open');
-    this._addImagePopoverOpen = false;
+    this._imageMenu?.close();
   }
 
   get open() {
@@ -92,7 +94,7 @@ class EwSelectionToolbar extends LitElement {
   get isInteracting() {
     return (this._picker?.open ?? false)
       || (this._altDialogOpen ?? false)
-      || (this._addImagePopoverOpen ?? false);
+      || (this._imageMenu?.open ?? false);
   }
 
   _icon(name) {
@@ -156,7 +158,6 @@ class EwSelectionToolbar extends LitElement {
     if (!btn || btn.disabled) return;
     const { id } = btn.dataset;
     if (!id) return;
-    if (id !== 'image-add') this._closeAddImagePopover();
     COMMAND_BY_ID.get(id)?.apply(this.view);
     this.requestUpdate();
     if (!this._linkDialogOpen && !this._altDialogOpen) this.view.focus();
@@ -248,19 +249,10 @@ class EwSelectionToolbar extends LitElement {
 
   triggerAddImage() {
     if (!this.view) return;
-    if (this._hasAemAssets) {
-      this._addImagePopoverOpen = !this._addImagePopoverOpen;
-    } else {
-      this._triggerUpload();
-    }
-  }
-
-  _closeAddImagePopover() {
-    this._addImagePopoverOpen = false;
+    this._triggerUpload();
   }
 
   _triggerUpload() {
-    this._closeAddImagePopover();
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/svg+xml,image/png,image/jpeg,image/gif';
@@ -281,7 +273,6 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _openAemAssets() {
-    this._closeAddImagePopover();
     document.querySelector('ew-canvas-header')?.dispatchEvent(new CustomEvent('nx-canvas-open-panel', {
       bubbles: true,
       composed: true,
@@ -322,18 +313,22 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _renderAddImageItem(item) {
+    if (!this._hasAemAssets) return this._renderToolbarButton(item);
+    const menuItems = [
+      { id: 'upload', label: 'Upload' },
+      { id: 'aem-assets', label: 'AEM Assets' },
+    ];
     return html`
-      <div class="add-image-btn-wrap">
-        ${this._renderToolbarButton(item)}
-        ${this._addImagePopoverOpen ? html`
-          <div class="add-image-menu">
-            <button type="button" class="add-image-menu-btn"
-              @click=${() => this._triggerUpload()}>Upload</button>
-            <button type="button" class="add-image-menu-btn"
-              @click=${() => this._openAemAssets()}>AEM Assets</button>
-          </div>
-        ` : nothing}
-      </div>
+      <nx-menu placement="above" .items=${menuItems}
+        @select=${(e) => {
+          if (e.detail.id === 'upload') this._triggerUpload();
+          else this._openAemAssets();
+        }}>
+        <button slot="trigger" type="button" class="toolbar-btn"
+          aria-label=${item.label} title=${item.label}>
+          ${this._icon(item.icon)}
+        </button>
+      </nx-menu>
     `;
   }
 
