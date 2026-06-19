@@ -23,6 +23,7 @@ const ICONS = {
   media: '/img/icons/s2-icon-image-20-n.svg',
   pdf: '/img/icons/s2-icon-acrobatsolid-20-n.svg',
   folderClock: '/img/icons/s2-icon-folderclock-20-n.svg',
+  favorite: '/blocks/browse/da-list-item/img/da-favorite.svg',
 };
 
 export default class DaListItem extends LitElement {
@@ -36,6 +37,7 @@ export default class DaListItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
+    isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { type: Boolean },
     _isExpanded: { type: Boolean, state: true },
     _preview: { state: true },
@@ -257,9 +259,14 @@ export default class DaListItem extends LitElement {
       <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
         ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
         ` : html`
-          <span class="da-item-list-item-type">${this.renderIcon()}</span>
+          <span class="da-item-list-item-type">
+            ${this.renderIcon()}
+            ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"</svg>` : nothing}
+          </span>
         `}
-        <div class="da-item-list-item-name">${this.name}</div>
+        <div class="da-item-list-item-name">
+          <span class="da-item-list-item-name-text">${this.name}</span>
+        </div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
   }

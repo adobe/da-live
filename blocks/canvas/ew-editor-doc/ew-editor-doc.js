@@ -33,6 +33,7 @@ const style = await loadStyle(import.meta.url);
 export class EwEditorDoc extends LitElement {
   static properties = {
     ctx: { type: Object },
+    session: { type: Object },
     quickEditPort: { type: Object },
     _error: { state: true },
   };
@@ -185,7 +186,7 @@ export class EwEditorDoc extends LitElement {
 
     const sourceUrl = sourceUrlFromEditorCtx(this.ctx);
 
-    const session = await resolveEditorDocSession(sourceUrl);
+    const session = this.session ?? await resolveEditorDocSession(sourceUrl);
     if (!session.ok) {
       this._error = session.error;
       return;

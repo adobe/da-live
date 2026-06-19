@@ -386,7 +386,7 @@ describe('DaList helpers', () => {
       const el = makeList();
       el.fullpath = '/org/repo';
       const items = await el.getList();
-      expect(items).to.deep.equal([{ path: '/a' }, { path: '/b' }]);
+      expect(items).to.deep.equal([{ path: '/a', isFavorited: false }, { path: '/b', isFavorited: false }]);
       expect([...el._listItemPaths]).to.deep.equal(['/a', '/b']);
       expect(el._allPagesLoaded).to.be.true;
     });
