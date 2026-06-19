@@ -101,19 +101,39 @@ class EwFileExplorer extends LitElement {
 
   // Ensure every ancestor folder of `path` is expanded and loaded, so the
   // newly selected item is visible after a hash change within the same site.
+  // If the new page's parent folder isn't accessible, switches the explorer
+  // into the "Not permitted" state instead.
   async _expandToPath(path) {
+    if (!this._treeRoot) {
+      this._loadFromLeaves(this._org, this._site, path);
+      return;
+    }
+
     const orgSite = `${this._org}/${this._site}`;
     const parts = path.split('/');
-    const expanded = new Set(this._expanded ?? []);
-    const cache = { ...(this._cache ?? {}) };
-    const toFetch = [];
+    const parentFp = parts.length > 1
+      ? `/${orgSite}/${parts.slice(0, -1).join('/')}`
+      : `/${orgSite}`;
 
+    if (!this._cache?.[parentFp]) {
+      const result = await listFolder(parentFp);
+      if (!Array.isArray(result)) {
+        this._cache = {};
+        this._expanded = new Set();
+        this._treeRoot = null;
+        this._error = 'Not permitted';
+        return;
+      }
+      this._cache = { ...this._cache, [parentFp]: result };
+    }
+
+    const expanded = new Set(this._expanded ?? []);
+    const toFetch = [];
     for (let i = 1; i < parts.length; i += 1) {
       const ancestorFp = `/${orgSite}/${parts.slice(0, i).join('/')}`;
       expanded.add(ancestorFp.replace(/^\//, ''));
-      if (!cache[ancestorFp]) toFetch.push(ancestorFp);
+      if (!this._cache?.[ancestorFp]) toFetch.push(ancestorFp);
     }
-
     this._expanded = expanded;
 
     if (!toFetch.length) return;
@@ -122,7 +142,7 @@ class EwFileExplorer extends LitElement {
       return Array.isArray(result) ? [fp, result] : null;
     }));
     const patched = Object.fromEntries(results.filter(Boolean));
-    if (Object.keys(patched).length) this._cache = { ...cache, ...patched };
+    if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
   }
 
   // Walks from the current page's parent folder up to the site root, fetching
