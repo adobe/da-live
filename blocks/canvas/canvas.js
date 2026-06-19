@@ -105,6 +105,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   if (!fullPath) {
     removeCanvasEditors(mountRoot);
     removeNotPermitted(mountRoot);
+    header.authorized = true;
     return;
   }
   const ctx = editorCtxFromHashState(state, fullPath);
@@ -113,9 +114,11 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   if (!session.ok) {
     removeCanvasEditors(mountRoot);
     showNotPermitted(mountRoot, session.error);
+    header.authorized = false;
     return;
   }
   removeNotPermitted(mountRoot);
+  header.authorized = true;
   const docEl = ensureNxEditorDoc(mountRoot);
   docEl.session = session;
   docEl.ctx = ctx;
