@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+import { selectionToolbarController } from '../editor-utils/selection-toolbar-controller.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -52,8 +53,14 @@ export class EwEditorWysiwyg extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onCanvasEditorActive = (e) => {
-      this._canvasActiveView = e.detail?.view;
+      const next = e.detail?.view;
+      const changed = this._canvasActiveView !== next;
+      this._canvasActiveView = next;
       this._syncCanvasVisibility();
+      // Only hide the toolbar when the user-visible canvas view actually
+      // transitions — _syncCanvasVisibility also runs on port-ready, ctx
+      // change, and iframe load, which shouldn't drop an active toolbar.
+      if (changed) hideSelectionToolbar();
     };
     this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this._syncCanvasVisibility();
@@ -99,7 +106,6 @@ export class EwEditorWysiwyg extends LitElement {
     const view = this._canvasActiveView ?? 'layout';
     const showWysiwyg = view === 'layout' || view === 'split';
     this.hidden = !showWysiwyg;
-    hideSelectionToolbar();
   }
 
   _resetCookieStateForCtxChange() {
@@ -196,7 +202,15 @@ export class EwEditorWysiwyg extends LitElement {
   }
 
   _onIframeBlur() {
-    hideSelectionToolbar();
+    // Defer so we can see where focus actually went. If it moved to the
+    // toolbar (clicking a button) keep the wysiwyg context active; otherwise
+    // deactivate. relatedTarget is unreliable for iframe blurs across browsers.
+    setTimeout(() => {
+      const active = document.activeElement;
+      const toolbar = document.querySelector('ew-selection-toolbar');
+      if (toolbar && active && (active === toolbar || toolbar.contains(active))) return;
+      selectionToolbarController.setInactive('wysiwyg');
+    }, 0);
   }
 
   render() {

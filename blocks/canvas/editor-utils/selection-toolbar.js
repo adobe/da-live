@@ -1,5 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin, PluginKey, NodeSelection } from 'da-y-wrapper';
+import { selectionToolbarController } from './selection-toolbar-controller.js';
 
 const NON_TEXT_NODES = new Set(['table', 'image']);
 
@@ -11,7 +12,7 @@ export const NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META = 'nxClearQuickEdi
 
 const selectionToolbarOriginKey = new PluginKey('nxSelectionToolbarOrigin');
 
-function getSelectionOriginFromIframe(state) {
+export function getSelectionOriginFromIframe(state) {
   return selectionToolbarOriginKey.getState(state)?.fromIframe ?? false;
 }
 
@@ -27,7 +28,7 @@ export function getSelectionToolbar() {
 }
 
 export function hideSelectionToolbar() {
-  toolbar?.hide?.();
+  selectionToolbarController.setInactive();
 }
 
 export function openLinkDialog(view) {
@@ -37,19 +38,6 @@ export function openLinkDialog(view) {
 function isNonTextSelection({ selection }) {
   return selection instanceof NodeSelection
     && NON_TEXT_NODES.has(selection.node.type.name);
-}
-
-function syncToolbar(view) {
-  if (!view) return;
-  const tb = getSelectionToolbar();
-  if (tb.linkDialogOpen || tb.isInteracting) return;
-  if (isNonTextSelection(view.state)) {
-    hideSelectionToolbar();
-    return;
-  }
-  if (!view.hasFocus()) return;
-  tb.view = view;
-  tb.show();
 }
 
 export function createSelectionToolbarPlugin() {
@@ -67,16 +55,29 @@ export function createSelectionToolbarPlugin() {
       },
     },
     view() {
+      // Mount the toolbar element so it's ready to subscribe to the controller.
+      getSelectionToolbar();
       return {
         update(view) {
-          const header = document.querySelector('ew-canvas-header');
-          const ev = header?.editorView;
-          if (ev !== 'content' && ev !== 'split') return;
+          // WYSIWYG-origin dispatches are owned by handlers.js — don't let
+          // this plugin overwrite the controller state during them.
           if (getSelectionOriginFromIframe(view.state)) return;
-          syncToolbar(view);
+          // Don't claim doc mode while wysiwyg is active; otherwise PM
+          // dispatches triggered by iframe sync would flip the mode.
+          if (selectionToolbarController.getState().mode === 'wysiwyg') return;
+          // Require real PM focus before claiming 'doc' — without this,
+          // background dispatches (collab updates, etc.) would show the
+          // toolbar on a doc the user isn't actually editing.
+          if (!view.hasFocus()) return;
+          const { selection } = view.state;
+          selectionToolbarController.setActive('doc', { view });
+          selectionToolbarController.setRange(
+            !selection.empty,
+            { isNonTextSelection: isNonTextSelection(view.state) },
+          );
         },
         destroy() {
-          hideSelectionToolbar();
+          selectionToolbarController.setInactive();
         },
       };
     },
