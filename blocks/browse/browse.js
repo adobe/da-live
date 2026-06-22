@@ -1,7 +1,7 @@
 import { getNx } from '../../scripts/utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
+const { getPanelStore, openPanel, setPanelsGrid } = await import(`${getNx()}/utils/panel.js`);
 
 const styles = await loadStyle(import.meta.url);
 document.adoptedStyleSheets.push(styles);
@@ -29,7 +29,7 @@ async function openBrowsePanel(position) {
   return openPanel({ position, width, getContent: config.getContent });
 }
 
-function installBrowseHeader(block) {
+function installBrowseHeader(el) {
   const header = document.createElement('div');
   header.className = 'browse-header';
 
@@ -41,7 +41,7 @@ function installBrowseHeader(block) {
   chatBtn.addEventListener('click', () => openBrowsePanel('before'));
 
   header.append(chatBtn);
-  block.before(header);
+  el.prepend(header);
 }
 
 async function loadComponent(el, cmpName, pathDetails) {
@@ -56,17 +56,13 @@ async function loadComponent(el, cmpName, pathDetails) {
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
   el.append(cmp);
-
-  if (cmpName === CMP_NAME.BROWSE) {
-    installBrowseHeader(cmp);
-  }
 }
 
 function setRecentSite(details) {
   if (!details.site) return;
   // .trash, .da, .helix, .versions
   if (details.site.startsWith('.')) return;
-  const currentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
+  const currentSites = JSON.parse(localStorage.getItem(CMP_NAME.SITES)) || [];
   const siteString = `${details.org}/${details.site}`;
   const foundIdx = currentSites.indexOf(siteString);
   if (foundIdx === 0) return;
@@ -75,12 +71,20 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
+  installBrowseHeader(el);
+
   hashChange.subscribe((pathDetails) => {
     const cmpName = pathDetails ? CMP_NAME.BROWSE : CMP_NAME.SITES;
 
     if (cmpName === CMP_NAME.BROWSE) {
       const store = getPanelStore();
       if (store.before && !store.before.fragment) openBrowsePanel('before');
+    } else {
+      const beforePanel = document.querySelector('aside.panel[data-position="before"]');
+      if (beforePanel && !beforePanel.hidden) {
+        beforePanel.hidden = true;
+        setPanelsGrid();
+      }
     }
 
     loadComponent(el, cmpName, pathDetails);

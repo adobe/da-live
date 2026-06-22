@@ -33,6 +33,10 @@
   }
 }
 
+.browse:has(da-sites) .browse-header {
+  display: none;
+}
+
 html:has(aside.panel[data-position="before"]:not([hidden])) .browse-header-chat-btn {
   display: none;
 }
