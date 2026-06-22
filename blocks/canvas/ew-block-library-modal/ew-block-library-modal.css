@@ -178,6 +178,62 @@
   font-weight: 400;
 }
 
+.modal-tree-variant-row {
+  display: flex;
+  align-items: center;
+}
+
+.modal-tree-variant-row .modal-tree-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-tree-variant-row .modal-tree-row:hover {
+  background: transparent;
+}
+
+.modal-tree-variant-row:hover {
+  background: light-dark(var(--s2-gray-100), var(--s2-gray-700));
+}
+
+.modal-tree-variant-row.is-selected,
+.modal-tree-variant-row.is-selected:hover {
+  background: light-dark(var(--s2-blue-100), var(--s2-blue-900));
+  color: light-dark(var(--s2-blue-900), var(--s2-blue-100));
+}
+
+.modal-tree-info {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-inline-end: 8px;
+  padding: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-75);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.modal-tree-info svg {
+  width: 16px;
+  height: 16px;
+}
+
+.modal-tree-info:hover {
+  background: light-dark(var(--s2-gray-200), var(--s2-gray-700));
+}
+
+.modal-tree-description {
+  padding: 6px 36px 10px;
+  font-size: var(--s2-body-size-xs);
+  color: light-dark(var(--s2-gray-700), var(--s2-gray-300));
+  line-height: 1.4;
+}
+
 .modal-tree-caret {
   flex-shrink: 0;
   width: 16px;

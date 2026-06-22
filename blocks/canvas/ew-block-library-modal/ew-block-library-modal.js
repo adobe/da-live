@@ -15,13 +15,25 @@ const style = await loadStyle(import.meta.url);
 
 const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
 const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
+const INFO_ICON_SRC = '/img/icons/s2-icon-infocircle-20-n.svg';
 
-function matchesQuery(text, query) {
-  return (text || '').toLowerCase().includes(query);
+function andMatch(query, target) {
+  const terms = query.split(/\s+/).filter(Boolean);
+  return terms.every((term) => target.includes(term));
 }
 
-function variantMatches(variant, query) {
-  return matchesQuery(variant?.name, query) || matchesQuery(variant?.variants, query);
+function blockSearchText(block) {
+  return (block?.name || '').toLowerCase();
+}
+
+function variantSearchText(block, variant) {
+  return [
+    block?.name,
+    variant?.name,
+    variant?.variants,
+    variant?.tags,
+    variant?.description,
+  ].filter(Boolean).join(' ').toLowerCase();
 }
 
 class EwBlockLibraryModal extends LitElement {
@@ -36,12 +48,14 @@ class EwBlockLibraryModal extends LitElement {
     _previewInfo: { state: true },
     _hashState: { state: true },
     _search: { state: true },
+    _openDescriptions: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
     this._variantsByPath = new Map();
+    this._openDescriptions = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
   }
 
@@ -80,9 +94,9 @@ class EwBlockLibraryModal extends LitElement {
     const q = (this._search || '').trim().toLowerCase();
     if (!q || !this._blocks) return this._blocks || [];
     return this._blocks.filter((b) => {
-      if (matchesQuery(b.name, q)) return true;
+      if (andMatch(q, blockSearchText(b))) return true;
       const variants = this._variantsByPath.get(b.path) || [];
-      return variants.some((v) => variantMatches(v, q));
+      return variants.some((v) => andMatch(q, variantSearchText(b, v)));
     });
   }
 
@@ -90,8 +104,15 @@ class EwBlockLibraryModal extends LitElement {
     const variants = this._variantsByPath.get(block.path) || [];
     const q = (this._search || '').trim().toLowerCase();
     if (!q) return variants;
-    if (matchesQuery(block.name, q)) return variants;
-    return variants.filter((v) => variantMatches(v, q));
+    if (andMatch(q, blockSearchText(block))) return variants;
+    return variants.filter((v) => andMatch(q, variantSearchText(block, v)));
+  }
+
+  _toggleDescription(variant) {
+    const next = new Set(this._openDescriptions);
+    if (next.has(variant)) next.delete(variant);
+    else next.add(variant);
+    this._openDescriptions = next;
   }
 
   _isExpanded(block) {
@@ -198,23 +219,41 @@ class EwBlockLibraryModal extends LitElement {
     }
     return html`
       <ul class="modal-tree-variants" role="group">
-        ${variants.map((v) => {
+        ${variants.map((v) => this._renderVariantItem(block, v))}
+      </ul>`;
+  }
+
+  _renderVariantItem(block, v) {
     const isSel = this._selectedVariant?.path === block.path
-            && this._selectedVariant.variant === v;
+      && this._selectedVariant.variant === v;
+    const description = v.description?.trim();
+    const isOpen = this._openDescriptions.has(v);
     return html`
-            <li role="treeitem" aria-selected=${isSel}>
-              <button type="button"
-                      class="modal-tree-row modal-tree-row-variant ${isSel ? 'is-selected' : ''}"
-                      @click=${() => this._selectVariant(block, v)}>
-                <span class="modal-tree-label">
-                  ${v.name}${v.variants
+      <li role="treeitem" aria-selected=${isSel}>
+        <div class="modal-tree-variant-row ${isSel ? 'is-selected' : ''}">
+          <button type="button"
+                  class="modal-tree-row modal-tree-row-variant"
+                  @click=${() => this._selectVariant(block, v)}>
+            <span class="modal-tree-label">
+              ${v.name}${v.variants
     ? html` <span class="modal-tree-subtitle">${v.variants}</span>`
     : nothing}
-                </span>
-              </button>
-            </li>`;
-  })}
-      </ul>`;
+            </span>
+          </button>
+          ${description ? html`
+            <button type="button"
+                    class="modal-tree-info"
+                    aria-label="Show description"
+                    aria-expanded=${isOpen}
+                    @click=${() => this._toggleDescription(v)}>
+              <svg aria-hidden="true" viewBox="0 0 20 20">
+                <use href="${INFO_ICON_SRC}#icon"></use>
+              </svg>
+            </button>` : nothing}
+        </div>
+        ${description && isOpen ? html`
+          <div class="modal-tree-description">${description}</div>` : nothing}
+      </li>`;
   }
 
   _renderTree() {
