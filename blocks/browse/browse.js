@@ -6,6 +6,11 @@ const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 const styles = await loadStyle(import.meta.url);
 document.adoptedStyleSheets.push(styles);
 
+const CMP_NAME = {
+  BROWSE: 'da-browse',
+  SITES: 'da-sites',
+};
+
 const BROWSE_PANELS = {
   before: {
     width: '400px',
@@ -52,7 +57,7 @@ async function loadComponent(el, cmpName, pathDetails) {
   cmp.details = pathDetails;
   el.append(cmp);
 
-  if (cmpName === 'da-browse') {
+  if (cmpName === CMP_NAME.BROWSE) {
     installBrowseHeader(cmp);
   }
 }
@@ -66,12 +71,18 @@ function setRecentSite(details) {
   const foundIdx = currentSites.indexOf(siteString);
   if (foundIdx === 0) return;
   if (foundIdx !== -1) currentSites.splice(foundIdx, 1);
-  localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
+  localStorage.setItem(CMP_NAME.SITES, JSON.stringify([siteString, ...currentSites].slice(0, 8)));
 }
 
 export default function init(el) {
   hashChange.subscribe((pathDetails) => {
-    const cmpName = pathDetails ? 'da-browse' : 'da-sites';
+    const cmpName = pathDetails ? CMP_NAME.BROWSE : CMP_NAME.SITES;
+
+    if (cmpName === CMP_NAME.BROWSE) {
+      const store = getPanelStore();
+      if (store.before && !store.before.fragment) openBrowsePanel('before');
+    }
+
     loadComponent(el, cmpName, pathDetails);
     if (pathDetails) setRecentSite(pathDetails);
   });
@@ -81,9 +92,6 @@ export default function init(el) {
     if (!detail?.text) return;
     aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
   });
-
-  const store = getPanelStore();
-  if (store.before && !store.before.fragment) openBrowsePanel('before');
 
   // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
