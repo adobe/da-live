@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { TextSelection, NodeSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
+import { getSelectionToolbar } from '../../../../../blocks/canvas/editor-utils/selection-toolbar.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -15,13 +16,12 @@ describe('ew-selection-toolbar buttons', () => {
 
   beforeEach(async () => {
     editor = await createTestEditor();
-    toolbar = document.createElement('ew-selection-toolbar');
-    document.body.append(toolbar);
+    toolbar = getSelectionToolbar();
     toolbar.view = editor.view;
   });
 
   afterEach(() => {
-    toolbar?.remove();
+    toolbar.view = null;
     destroyEditor(editor);
   });
 

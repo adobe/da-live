@@ -29,12 +29,9 @@ import {
   selectionHasLink,
   removeLink,
 } from './command-helpers.js';
+import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 
 const notImageSelected = (state) => !isImageNodeSelected(state);
-
-function callToolbar(method) {
-  return () => document.querySelector('ew-selection-toolbar')?.[method]?.();
-}
 
 /** Spectrum icon stem for `/img/icons/s2-icon-{stem}-20-n.svg` */
 const iconName = (name) => name.replace(/-/g, '').toLowerCase();
@@ -306,7 +303,7 @@ export const COMMANDS = [
     icon: 'link',
     showIn: ['toolbar-link'],
     visible: (state) => !selectionHasLink(state),
-    apply: callToolbar('openLinkDialog'),
+    apply: openLinkDialog,
   },
   {
     id: 'link-edit',
@@ -314,7 +311,7 @@ export const COMMANDS = [
     icon: 'link',
     showIn: ['toolbar-link'],
     visible: selectionHasLink,
-    apply: callToolbar('openLinkDialog'),
+    apply: openLinkDialog,
   },
   {
     id: 'link-remove',
@@ -332,14 +329,14 @@ export const COMMANDS = [
     icon: iconName('imagetext'),
     showIn: ['toolbar-image'],
     visible: isImageNodeSelected,
-    apply: callToolbar('openAltDialog'),
+    apply: openAltDialog,
   },
   {
     id: 'image-add',
     label: 'Add image',
     icon: iconName('imageadd'),
     showIn: ['toolbar-image'],
-    apply: callToolbar('triggerAddImage'),
+    apply: triggerAddImage,
   },
 
   // Slash menu: text section only

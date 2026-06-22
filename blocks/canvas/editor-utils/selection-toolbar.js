@@ -41,6 +41,14 @@ export function openLinkDialog(view) {
   getSelectionToolbar().openLinkDialog(view);
 }
 
+export function openAltDialog() {
+  getSelectionToolbar().openAltDialog();
+}
+
+export function triggerAddImage() {
+  getSelectionToolbar().triggerAddImage();
+}
+
 function isNonTextSelection({ selection }) {
   return selection instanceof NodeSelection
     && NON_TEXT_NODES.has(selection.node.type.name);
