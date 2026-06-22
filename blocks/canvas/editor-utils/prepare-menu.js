@@ -149,7 +149,7 @@ export default class PrepareMenu extends LitElement {
   }
 
   renderIcon(item) {
-    if (item.icon.includes('.svg')) {
+    if (item.icon?.includes('.svg')) {
       return html`<svg class="icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
     }
     return html`<img class="icon" src="${item.icon}" />`;
