@@ -25,7 +25,13 @@ import {
   inTable,
   canMergeCells,
   canSplitCell,
+  isImageNodeSelected,
+  selectionHasLink,
+  removeLink,
 } from './command-helpers.js';
+import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
+
+const notImageSelected = (state) => !isImageNodeSelected(state);
 
 /** Spectrum icon stem for `/img/icons/s2-icon-{stem}-20-n.svg` */
 const iconName = (name) => name.replace(/-/g, '').toLowerCase();
@@ -38,6 +44,7 @@ export const COMMANDS = [
     schema: 'strong',
     icon: iconName('TagBold'),
     showIn: ['toolbar-marks'],
+    visible: notImageSelected,
     active: (state) => markIsActive(state, 'strong'),
     apply: inlineMark('strong'),
   },
@@ -47,6 +54,7 @@ export const COMMANDS = [
     schema: 'em',
     icon: iconName('TagItalic'),
     showIn: ['toolbar-marks'],
+    visible: notImageSelected,
     active: (state) => markIsActive(state, 'em'),
     apply: inlineMark('em'),
   },
@@ -56,6 +64,7 @@ export const COMMANDS = [
     schema: 'code',
     icon: iconName('Code'),
     showIn: ['toolbar-marks'],
+    visible: notImageSelected,
     active: (state) => markIsActive(state, 'code'),
     apply: inlineMark('code'),
   },
@@ -65,6 +74,7 @@ export const COMMANDS = [
     schema: 'u',
     icon: iconName('TagUnderline'),
     showIn: ['toolbar-marks'],
+    visible: notImageSelected,
     active: (state) => markIsActive(state, 'u'),
     apply: inlineMark('u'),
   },
@@ -74,8 +84,29 @@ export const COMMANDS = [
     schema: 's',
     icon: iconName('TagStrikeThrough'),
     showIn: ['toolbar-marks'],
+    visible: notImageSelected,
     active: (state) => markIsActive(state, 's'),
     apply: inlineMark('s'),
+  },
+  {
+    id: 'sup',
+    label: 'Superscript',
+    schema: 'sup',
+    icon: iconName('TextSuperscript'),
+    showIn: ['toolbar-marks'],
+    visible: notImageSelected,
+    active: (state) => markIsActive(state, 'sup'),
+    apply: inlineMark('sup'),
+  },
+  {
+    id: 'sub',
+    label: 'Subscript',
+    schema: 'sub',
+    icon: iconName('TextSubscript'),
+    showIn: ['toolbar-marks'],
+    visible: notImageSelected,
+    active: (state) => markIsActive(state, 'sub'),
+    apply: inlineMark('sub'),
   },
 
   // Toolbar: block-type picker
@@ -84,6 +115,7 @@ export const COMMANDS = [
     label: 'Paragraph',
     schema: 'paragraph',
     showIn: ['toolbar-picker'],
+    visible: notImageSelected,
     apply: blockType('paragraph'),
   },
   {
@@ -92,6 +124,7 @@ export const COMMANDS = [
     icon: iconName('Heading1'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
+    visible: notImageSelected,
     apply: blockType('heading', { level: 1 }),
   },
   {
@@ -100,6 +133,7 @@ export const COMMANDS = [
     icon: iconName('Heading2'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
+    visible: notImageSelected,
     apply: blockType('heading', { level: 2 }),
   },
   {
@@ -108,6 +142,7 @@ export const COMMANDS = [
     icon: iconName('Heading3'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
+    visible: notImageSelected,
     apply: blockType('heading', { level: 3 }),
   },
   {
@@ -116,6 +151,7 @@ export const COMMANDS = [
     icon: iconName('Heading4'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
+    visible: notImageSelected,
     apply: blockType('heading', { level: 4 }),
   },
   {
@@ -124,6 +160,7 @@ export const COMMANDS = [
     icon: iconName('Heading5'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
+    visible: notImageSelected,
     apply: blockType('heading', { level: 5 }),
   },
   {
@@ -132,6 +169,7 @@ export const COMMANDS = [
     icon: iconName('Heading6'),
     schema: 'heading',
     showIn: ['toolbar-picker', 'slash-text'],
+    visible: notImageSelected,
     apply: blockType('heading', { level: 6 }),
   },
   {
@@ -140,6 +178,7 @@ export const COMMANDS = [
     icon: iconName('BlockCode'),
     schema: 'code_block',
     showIn: ['toolbar-picker', 'slash-text'],
+    visible: notImageSelected,
     disabled: (state) => state.selection.$from.parent.type.name === 'code_block',
     apply: blockType('code_block'),
   },
@@ -151,6 +190,7 @@ export const COMMANDS = [
     icon: iconName('BlockQuote'),
     schema: 'blockquote',
     showIn: ['toolbar-structure', 'slash-text'],
+    visible: notImageSelected,
     apply: wrap('blockquote'),
   },
   {
@@ -159,7 +199,7 @@ export const COMMANDS = [
     icon: iconName('ListBulleted'),
     schema: 'bullet_list',
     showIn: ['toolbar-structure', 'slash-text'],
-    visible: ({ selection: { $from } }) => !inList($from),
+    visible: (state) => notImageSelected(state) && !inList(state.selection.$from),
     apply: list('bullet_list'),
   },
   {
@@ -168,7 +208,7 @@ export const COMMANDS = [
     icon: iconName('ListNumbered'),
     schema: 'ordered_list',
     showIn: ['toolbar-structure', 'slash-text'],
-    visible: ({ selection: { $from } }) => !inList($from),
+    visible: (state) => notImageSelected(state) && !inList(state.selection.$from),
     apply: list('ordered_list'),
   },
   {
@@ -176,7 +216,7 @@ export const COMMANDS = [
     label: 'Indent list',
     icon: iconName('TextIndentIncrease'),
     showIn: ['toolbar-structure'],
-    visible: ({ selection: { $from } }) => inList($from),
+    visible: (state) => notImageSelected(state) && inList(state.selection.$from),
     disabled: (state) => !canSinkList(state),
     apply: sinkListLevel,
   },
@@ -185,7 +225,7 @@ export const COMMANDS = [
     label: 'Outdent list',
     icon: iconName('TextIndentDecrease'),
     showIn: ['toolbar-structure'],
-    visible: ({ selection: { $from } }) => inList($from),
+    visible: (state) => notImageSelected(state) && inList(state.selection.$from),
     disabled: (state) => !canLiftList(state),
     apply: liftListLevel,
   },
@@ -256,6 +296,49 @@ export const COMMANDS = [
     apply: splitTableCell,
   },
 
+  // Toolbar: link buttons
+  {
+    id: 'link-create',
+    label: 'Create link',
+    icon: 'link',
+    showIn: ['toolbar-link'],
+    visible: (state) => !selectionHasLink(state),
+    apply: openLinkDialog,
+  },
+  {
+    id: 'link-edit',
+    label: 'Edit link',
+    icon: 'link',
+    showIn: ['toolbar-link'],
+    visible: selectionHasLink,
+    apply: openLinkDialog,
+  },
+  {
+    id: 'link-remove',
+    label: 'Remove link',
+    icon: 'unlink',
+    showIn: ['toolbar-link'],
+    visible: selectionHasLink,
+    apply: removeLink,
+  },
+
+  // Toolbar: image commands
+  {
+    id: 'image-alt-text',
+    label: 'Edit alt text',
+    icon: iconName('imagetext'),
+    showIn: ['toolbar-image'],
+    visible: isImageNodeSelected,
+    apply: openAltDialog,
+  },
+  {
+    id: 'image-add',
+    label: 'Add image',
+    icon: iconName('imageadd'),
+    showIn: ['toolbar-image'],
+    apply: triggerAddImage,
+  },
+
   // Slash menu: text section only
   {
     id: 'section-break',
@@ -297,7 +380,7 @@ export const COMMANDS = [
       const evt = new CustomEvent('nx-canvas-open-panel', {
         bubbles: true,
         composed: true,
-        detail: { position: 'after', viewId: 'blocks' },
+        detail: { position: 'after', panelName: 'blocks' },
       });
       document.querySelector('ew-canvas-header')?.dispatchEvent(evt);
     },

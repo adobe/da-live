@@ -1,4 +1,4 @@
-import { daFetch, getFirstSheet } from '../../../shared/utils.js';
+import { daFetch, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
 import { getMetadata } from '../../utils/helpers.js';
 import { parseDom, aemToContentUrl, daFetchLibrary } from './helpers.js';
 
@@ -209,7 +209,7 @@ export async function getBlocks(sources) {
 
     return sourcesData.reduce((acc, entry) => {
       if (entry) {
-        const data = getFirstSheet(entry.data);
+        const data = getSheetByName(entry.data, 'blocks') ?? getFirstSheet(entry.data);
         if (data) {
           data.forEach((block) => {
             if (block.name && block.path) {
