@@ -6,6 +6,7 @@ import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import '../da-breadcrumbs/da-breadcrumbs.js';
 import '../da-new/da-new.js';
 import '../da-search/da-search.js';
+import '../da-search-ai/da-search-ai.js';
 import '../da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -30,6 +31,11 @@ export default class DaBrowse extends LitElement {
       {
         id: 'search',
         title: 'Search',
+        selected: false,
+      },
+      {
+        id: 'search-ai',
+        title: 'AI Search',
         selected: false,
       },
     ];
@@ -121,6 +127,13 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.querySelector('.da-list-type-search').listItems = e.detail.items;
   }
 
+  renderSearchAi() {
+    return html`
+      <da-search-ai
+        fullpath="${this.details.fullpath}">
+      </da-search-ai>`;
+  }
+
   handleNewItem(e) {
     this.shadowRoot.querySelector('.da-list-type-browse').newItem = e.detail.item;
   }
@@ -177,7 +190,7 @@ export default class DaBrowse extends LitElement {
     return html`
       <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
         ${this._tabItems.map((tab, idx) => {
-          if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
+          if ((tab.id === 'search' || tab.id === 'search-ai') && this.isRootFolder(this.details.fullpath)) {
             return nothing;
           }
           return html` <button
@@ -199,7 +212,8 @@ export default class DaBrowse extends LitElement {
         ${this._tabItems.map(
           (tab) => html`
             <div class="da-list-header-action" data-visible="${tab.selected}">
-              ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
+              ${tab.id === 'browse' ? this.renderNew() : nothing}
+              ${tab.id === 'search' ? this.renderSearch() : nothing}
             </div>
           `,
         )}
@@ -213,9 +227,9 @@ export default class DaBrowse extends LitElement {
             aria-labelledby="tab-${tab.id}"
             data-visible="${tab.selected}"
           >
-            ${tab.id === 'browse'
-              ? this.renderList(tab.id, this.details.fullpath, true, true, true)
-              : this.renderList(tab.id, null, false, false, false)}
+            ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : nothing}
+            ${tab.id === 'search' ? this.renderList(tab.id, null, false, false, false) : nothing}
+            ${tab.id === 'search-ai' ? this.renderSearchAi() : nothing}
           </div>
         `,
       )}
