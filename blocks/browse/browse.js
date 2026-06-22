@@ -6,32 +6,6 @@ const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 const styles = await loadStyle(import.meta.url);
 document.adoptedStyleSheets.push(styles);
 
-async function loadComponent(el, cmpName, pathDetails) {
-  const existing = el.querySelector(cmpName);
-  if (existing && pathDetails) {
-    existing.details = pathDetails;
-    return;
-  }
-  // Swapping views — remove whichever component is currently mounted.
-  el.querySelector('da-sites, da-browse')?.remove();
-  await import(`./${cmpName}/${cmpName}.js`);
-  const cmp = document.createElement(cmpName);
-  cmp.details = pathDetails;
-  el.append(cmp);
-}
-
-function setRecentSite(details) {
-  if (!details.site) return;
-  // .trash, .da, .helix, .versions
-  if (details.site.startsWith('.')) return;
-  const currentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
-  const siteString = `${details.org}/${details.site}`;
-  const foundIdx = currentSites.indexOf(siteString);
-  if (foundIdx === 0) return;
-  if (foundIdx !== -1) currentSites.splice(foundIdx, 1);
-  localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
-}
-
 const BROWSE_PANELS = {
   before: {
     width: '400px',
@@ -65,9 +39,37 @@ function installBrowseHeader(block) {
   block.before(header);
 }
 
-export default function init(el) {
-  installBrowseHeader(el);
+async function loadComponent(el, cmpName, pathDetails) {
+  const existing = el.querySelector(cmpName);
+  if (existing && pathDetails) {
+    existing.details = pathDetails;
+    return;
+  }
+  // Swapping views — remove whichever component is currently mounted.
+  el.querySelector('da-sites, da-browse')?.remove();
+  await import(`./${cmpName}/${cmpName}.js`);
+  const cmp = document.createElement(cmpName);
+  cmp.details = pathDetails;
+  el.append(cmp);
 
+  if (cmpName === 'da-browse') {
+    installBrowseHeader(cmp);
+  }
+}
+
+function setRecentSite(details) {
+  if (!details.site) return;
+  // .trash, .da, .helix, .versions
+  if (details.site.startsWith('.')) return;
+  const currentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
+  const siteString = `${details.org}/${details.site}`;
+  const foundIdx = currentSites.indexOf(siteString);
+  if (foundIdx === 0) return;
+  if (foundIdx !== -1) currentSites.splice(foundIdx, 1);
+  localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
+}
+
+export default function init(el) {
   hashChange.subscribe((pathDetails) => {
     const cmpName = pathDetails ? 'da-browse' : 'da-sites';
     loadComponent(el, cmpName, pathDetails);
