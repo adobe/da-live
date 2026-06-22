@@ -35,6 +35,7 @@ class EWCanvasHeader extends LitElement {
     editorView: { type: String, reflect: true },
     undoAvailable: { type: Boolean },
     redoAvailable: { type: Boolean },
+    authorized: { type: Boolean },
     _chatDisabled: { state: true },
   };
 
@@ -43,6 +44,7 @@ class EWCanvasHeader extends LitElement {
     this.editorView = 'layout';
     this.undoAvailable = false;
     this.redoAvailable = false;
+    this.authorized = true;
   }
 
   connectedCallback() {
@@ -134,6 +136,7 @@ class EWCanvasHeader extends LitElement {
         </div>
 
         <div class="group group-center" part="group-center">
+          ${this.authorized ? html`
           <div class="segmented" role="group" aria-label="Editor view" part="editor-view-toggle">
             <button
               type="button"
@@ -156,6 +159,7 @@ class EWCanvasHeader extends LitElement {
               @click=${() => this._setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
           </div>
+          ` : nothing}
         </div>
 
         <div class="group group-end" part="group-end">
