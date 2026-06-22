@@ -27,17 +27,14 @@
 .outline-section {
   margin: 0;
   padding: 0;
-  border-bottom: 1px solid var(--s2-gray-200);
-
-  &:last-child:not([data-drop-position="after"]) {
-    border-bottom: none;
-  }
 }
 
 .section-header {
   display: flex;
   align-items: center;
+  padding-inline-end: var(--s2-spacing-100);
   background: var(--s2-gray-75);
+  border-bottom: 1px solid var(--s2-gray-200);
   cursor: grab;
 
   &:active {
@@ -74,7 +71,7 @@
   color: var(--s2-gray-800);
   min-height: 32px;
   box-sizing: border-box;
-  border-bottom: 1px solid var(--s2-gray-100);
+  border-bottom: 1px solid var(--s2-gray-200);
 
   &:hover {
     background: var(--s2-gray-75);
@@ -82,10 +79,6 @@
 
   &:focus-visible {
     background: var(--s2-gray-75);
-  }
-
-  &:last-child:not([data-drop-position="after"]) {
-    border-bottom: none;
   }
 
   &[aria-selected="true"] {
@@ -161,57 +154,6 @@
 .section-header:hover .action-btn,
 .block-item:hover .action-btn {
   visibility: visible;
-}
-
-.add-block-dialog {
-  width: min(640px, 90vw);
-  max-height: 80vh;
-  padding: 0;
-  border: none;
-  border-radius: var(--s2-corner-radius-200);
-  background: var(--s2-gray-50);
-  color: var(--s2-gray-900);
-  overflow: hidden;
-}
-
-.add-block-dialog::backdrop {
-  background: rgb(0 0 0 / 40%);
-}
-
-.add-block-dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--s2-spacing-100) var(--s2-spacing-200);
-  border-bottom: 1px solid var(--s2-gray-200);
-}
-
-.add-block-dialog-title {
-  font-weight: 600;
-  font-size: var(--s2-body-size-m);
-  color: var(--s2-gray-900);
-}
-
-.add-block-dialog-close {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: var(--s2-corner-radius-75);
-  background: transparent;
-  color: var(--s2-gray-800);
-  font-size: 16px;
-  cursor: pointer;
-
-  &:hover {
-    background: var(--s2-gray-200);
-  }
-}
-
-.add-block-dialog-body {
-  max-height: calc(80vh - 52px);
-  overflow: auto;
-  padding: var(--s2-spacing-100);
 }
 
 .placeholder {

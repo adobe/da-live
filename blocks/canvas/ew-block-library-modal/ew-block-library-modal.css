@@ -1,0 +1,195 @@
+:host {
+  display: contents;
+}
+
+.modal {
+  width: min(960px, 92vw);
+  height: min(640px, 86vh);
+  padding: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-200);
+  background: light-dark(var(--s2-gray-50), var(--s2-gray-800));
+  color: light-dark(var(--s2-gray-900), var(--s2-gray-100));
+  font-family: var(--s2-font-family);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.modal::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  border-bottom: 1px solid light-dark(var(--s2-gray-200), var(--s2-gray-700));
+}
+
+.modal-title {
+  font-weight: 600;
+  font-size: var(--s2-body-size-m);
+}
+
+.modal-close {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-75);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: light-dark(var(--s2-gray-200), var(--s2-gray-700));
+}
+
+.modal-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  min-height: 0;
+}
+
+/* Left column — tree */
+
+.modal-tree-wrap {
+  border-right: 1px solid light-dark(var(--s2-gray-200), var(--s2-gray-700));
+  overflow-y: auto;
+  background: light-dark(var(--s2-gray-75), var(--s2-gray-800));
+}
+
+.modal-state {
+  padding: var(--s2-spacing-200);
+  font-size: var(--s2-body-size-s);
+  color: light-dark(var(--s2-gray-700), var(--s2-gray-300));
+}
+
+.modal-tree,
+.modal-tree-variants {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-tree-block {
+  border-bottom: 1px solid light-dark(var(--s2-gray-100), var(--s2-gray-700));
+}
+
+.modal-tree-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: var(--s2-body-size-s);
+  color: inherit;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.modal-tree-row:hover {
+  background: light-dark(var(--s2-gray-100), var(--s2-gray-700));
+}
+
+.modal-tree-row.is-selected {
+  background: light-dark(var(--s2-blue-100), var(--s2-blue-900));
+  color: light-dark(var(--s2-blue-900), var(--s2-blue-100));
+}
+
+.modal-tree-row-variant {
+  padding-left: 36px;
+  font-weight: 400;
+}
+
+.modal-tree-caret {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: light-dark(var(--s2-gray-600), var(--s2-gray-400));
+  transition: transform 0.1s ease-out;
+}
+
+.modal-tree-caret.is-expanded {
+  transform: rotate(90deg);
+}
+
+.modal-tree-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-tree-subtitle {
+  margin-left: 4px;
+  color: light-dark(var(--s2-gray-600), var(--s2-gray-400));
+  font-size: var(--s2-body-size-xs);
+}
+
+.modal-tree-loading {
+  padding: 8px 36px;
+  font-size: var(--s2-body-size-xs);
+  color: light-dark(var(--s2-gray-600), var(--s2-gray-400));
+}
+
+/* Right column — preview */
+
+.modal-preview-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: light-dark(var(--s2-gray-50), var(--s2-gray-900));
+}
+
+.modal-preview-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: light-dark(var(--s2-gray-600), var(--s2-gray-400));
+  font-size: var(--s2-body-size-s);
+}
+
+.modal-preview-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: white;
+}
+
+.modal-preview-frame.hide-iframe {
+  visibility: hidden;
+}
+
+.modal-preview-error {
+  padding: var(--s2-spacing-200);
+  background: light-dark(var(--s2-orange-100), var(--s2-orange-900));
+  color: light-dark(var(--s2-orange-900), var(--s2-orange-100));
+  font-size: var(--s2-body-size-s);
+}
+
+.modal-preview-error p {
+  margin: 0;
+}
+
+/* Footer */
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2-spacing-100);
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  border-top: 1px solid light-dark(var(--s2-gray-200), var(--s2-gray-700));
+  background: light-dark(var(--s2-gray-50), var(--s2-gray-800));
+}
+

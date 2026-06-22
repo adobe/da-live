@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { treeKeydown } from '../utils/tree-nav.js';
 import { editorHtmlChange, editorSelectChange, parseSections } from '../editor-utils/editor-utils.js';
@@ -10,8 +10,6 @@ import {
   moveBlock,
   moveSection,
 } from '../editor-utils/blocks.js';
-import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
-import '../ew-panel-extensions/ew-panel-library.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_BLOCK_ICON_SRC = '/img/icons/s2-icon-tableadd-20-n.svg';
@@ -45,8 +43,6 @@ class EwPageOutline extends LitElement {
     _sections: { state: true },
     _selectedBlockIndex: { state: true },
     _hashState: { state: true },
-    _addBlockSectionIndex: { state: true },
-    _blocksExtension: { state: true },
   };
 
   connectedCallback() {
@@ -189,41 +185,12 @@ class EwPageOutline extends LitElement {
   async _openAddBlockModal(e, sectionIndex) {
     e.stopPropagation();
     e.preventDefault();
-    if (!this._blocksExtension) {
-      const { org, site } = this._hashState || {};
-      if (!org || !site) return;
-      const extensions = await fetchExtensions(org, site);
-      this._blocksExtension = extensions?.find((ext) => ext.name === 'blocks');
-      if (!this._blocksExtension) return;
-    }
-    this._addBlockSectionIndex = sectionIndex;
-  }
-
-  _closeAddBlockModal = () => {
-    const dialog = this.shadowRoot.querySelector('.add-block-dialog');
-    if (dialog?.open) dialog.close();
-    this._addBlockSectionIndex = undefined;
-  };
-
-  updated() {
-    if (this._addBlockSectionIndex == null) return;
-    const dialog = this.shadowRoot.querySelector('.add-block-dialog');
-    if (!dialog) return;
-    const lib = dialog.querySelector('ew-panel-library');
-    /* eslint-disable no-underscore-dangle */
-    if (lib && !lib._outlineInsertPatched) {
-      lib._outlineInsertPatched = true;
-      lib._insertBlock = (variant) => {
-        const { view } = getExtensionsBridge();
-        const targetSection = this._addBlockSectionIndex;
-        if (view && targetSection != null) {
-          insertBlockAtSectionStart(view, variant.dom, targetSection);
-        }
-        this._closeAddBlockModal();
-      };
-    }
-    /* eslint-enable no-underscore-dangle */
-    if (!dialog.open) dialog.showModal();
+    const { view } = getExtensionsBridge();
+    if (!view) return;
+    const modulePath = '../ew-block-library-modal/ew-block-library-modal.js';
+    const { openBlockLibraryModal } = await import(modulePath);
+    const onInsert = (dom) => insertBlockAtSectionStart(view, dom, sectionIndex);
+    openBlockLibraryModal({ onInsert });
   }
 
   _onDelete(e, type, index) {
@@ -315,17 +282,6 @@ class EwPageOutline extends LitElement {
               ${this._sections.map((sec, i) => this._renderSection(sec, i === 0))}
             </ul>`}
       </div>
-      ${this._addBlockSectionIndex != null && this._blocksExtension ? html`
-        <dialog class="add-block-dialog" @close=${this._closeAddBlockModal}>
-          <div class="add-block-dialog-header">
-            <span class="add-block-dialog-title">Insert block</span>
-            <button type="button" class="add-block-dialog-close"
-                    aria-label="Close" @click=${this._closeAddBlockModal}>✕</button>
-          </div>
-          <div class="add-block-dialog-body">
-            <ew-panel-library .extension=${this._blocksExtension}></ew-panel-library>
-          </div>
-        </dialog>` : nothing}
     </section>`;
   }
 }
