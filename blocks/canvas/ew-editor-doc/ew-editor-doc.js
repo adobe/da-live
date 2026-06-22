@@ -23,7 +23,7 @@ import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
 import { teardownEditorDocResources } from './utils/teardown.js';
-import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -43,6 +43,7 @@ export class EwEditorDoc extends LitElement {
     if (changed.has('ctx')) {
       this.quickEditPort = undefined;
       this._teardown();
+      setSelectionToolbarCtx();
       this._error = undefined;
       this._lastDocBlockIndex = undefined;
       editorHtmlChange.emit('');
@@ -222,6 +223,7 @@ export class EwEditorDoc extends LitElement {
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
+      setSelectionToolbarCtx({ org: this.ctx?.org, site: this.ctx?.repo, sourceUrl });
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
@@ -264,6 +266,7 @@ export class EwEditorDoc extends LitElement {
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
     this._unsubscribeSelect?.();
     this._teardown();
+    setSelectionToolbarCtx();
     super.disconnectedCallback();
   }
 
