@@ -141,7 +141,8 @@ export default class DaBrowse extends LitElement {
       <da-new
         @newitem=${this.handleNewItem}
         fullpath="${this.details.fullpath}"
-        editor="${this.editor}">
+        editor="${this.editor}"
+        ?folderOnly=${this.isRootFolder(this.details.fullpath)}>
       </da-new>`;
   }
 

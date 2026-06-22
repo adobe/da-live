@@ -313,6 +313,30 @@ describe('DaNew', () => {
       el.handleCreateMenu();
       expect(el._createShow).to.equal('');
     });
+
+    it('Goes directly to folder input when folderOnly is set', () => {
+      const el = new DaNew();
+      Object.defineProperty(el, 'shadowRoot', {
+        configurable: true,
+        value: { querySelector: () => null },
+      });
+      el.folderOnly = true;
+      el.handleCreateMenu();
+      expect(el._createShow).to.equal('input');
+      expect(el._createType).to.equal('folder');
+    });
+
+    it('Toggles folder input closed when folderOnly is set and already open', () => {
+      const el = new DaNew();
+      Object.defineProperty(el, 'shadowRoot', {
+        configurable: true,
+        value: { querySelector: () => null },
+      });
+      el.folderOnly = true;
+      el.handleCreateMenu();
+      el.handleCreateMenu();
+      expect(el._createShow).to.equal('');
+    });
   });
 
   describe('handleNewType', () => {

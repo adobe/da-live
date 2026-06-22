@@ -21,19 +21,41 @@ export async function uploadImageFile(view, file) {
   const fpo = schema.nodes.image.create({ src: fpoSrc, style: 'width: 180px' });
   view.dispatch(view.state.tr.replaceSelectionWith(fpo));
 
+  function removePlaceholder() {
+    let found = null;
+    view.state.doc.descendants((node, pos) => {
+      if (!found && node.type.name === 'image' && node.attrs.src === fpoSrc) {
+        found = { pos, size: node.nodeSize };
+      }
+    });
+    if (found) {
+      view.dispatch(view.state.tr.delete(found.pos, found.pos + found.size));
+    }
+    view.dom.dispatchEvent(new CustomEvent('imageuploaderror', {
+      detail: { filename: file.name },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
   const formData = new FormData();
   formData.append('data', file);
   const opts = { method: 'PUT', body: formData };
-  const resp = await daFetch(url, opts);
-  if (!resp.ok) return;
+  let resp;
+  try {
+    resp = await daFetch(url, opts);
+  } catch {
+    removePlaceholder();
+    return;
+  }
+  if (!resp.ok) {
+    removePlaceholder();
+    return;
+  }
   const json = await resp.json();
 
-  // Create a doc image to pre-download the image before showing it.
-  const docImg = document.createElement('img');
-  docImg.addEventListener('load', () => {
-    // Find the placeholder by its unique src rather than a stale position so
-    // concurrent uploads and collab updates cannot cause the wrong node to be
-    // replaced.
+  function replacePlaceholder() {
+    if (!view.dom.isConnected) return;
     let replaced = false;
     view.state.doc.descendants((node, pos) => {
       if (!replaced && node.type.name === 'image' && node.attrs.src === fpoSrc) {
@@ -42,7 +64,14 @@ export async function uploadImageFile(view, file) {
         view.dispatch(view.state.tr.replaceWith(pos, pos + node.nodeSize, img));
       }
     });
-  });
+  }
+
+  // Pre-download the image so the placeholder is only swapped once it's ready.
+  // If the content URL fails to load, replace the placeholder anyway so it
+  // isn't stuck as an fpo.svg permanently.
+  const docImg = document.createElement('img');
+  docImg.addEventListener('load', replacePlaceholder);
+  docImg.addEventListener('error', replacePlaceholder);
   docImg.src = json.source.contentUrl;
 }
 

@@ -34,6 +34,7 @@ export default class DaEditor extends LitElement {
     _versionDom: { state: true },
     _daMetadata: { state: true },
     _compareDom: { state: true },
+    _uploadError: { state: true },
   };
 
   connectedCallback() {
@@ -41,6 +42,11 @@ export default class DaEditor extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.shadowRoot.createRange = () => document.createRange();
     initIms().then(() => { this._imsLoaded = true; });
+    this.shadowRoot.addEventListener('imageuploaderror', ({ detail }) => {
+      this._uploadError = `Failed to upload "${detail.filename}". Please try again.`;
+      clearTimeout(this._uploadErrorTimer);
+      this._uploadErrorTimer = setTimeout(() => { this._uploadError = null; }, 5000);
+    });
   }
 
   async fetchVersion() {
@@ -125,6 +131,7 @@ export default class DaEditor extends LitElement {
 
   render() {
     return html`
+      ${this._uploadError ? html`<div class="da-upload-error" role="alert">${this._uploadError}</div>` : nothing}
       ${this._versionDom ? this.renderVersion() : nothing}
     `;
   }
