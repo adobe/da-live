@@ -1,3 +1,4 @@
+import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
@@ -84,7 +85,10 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
-      const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
+      const rows = configs
+        .filter(Boolean)
+        .reverse()
+        .flatMap((c) => getFirstSheet(c) || []);
       this.editorConfs = rows.reduce((acc, row) => {
         if (row.key === 'editor.path') acc.push(row.value);
         return acc;
@@ -94,20 +98,23 @@ export default class DaBrowse extends LitElement {
     if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
 
     // Filter down all matched confs
-    const matchedConfs = this.editorConfs.filter(
-      (conf) => this.details.fullpath.startsWith(conf.split('=')[0]),
-    );
+    const matchedConfs = this.editorConfs.filter((conf) => this.details.fullpath.startsWith(conf.split('=')[0]));
 
     if (matchedConfs.length === 0) return DEF_EDIT;
 
     // Sort by length in descending order (longest first)
-    const matchedConf = matchedConfs.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length)[0];
+    const matchedConf = matchedConfs.sort(
+      (a, b) => b.split('=')[0].length - a.split('=')[0].length,
+    )[0];
 
     return matchedConf.split('=')[1];
   }
 
   handleTabClick(idx) {
-    this._tabItems = this._tabItems.map((tab, tidx) => ({ ...tab, selected: idx === tidx }));
+    this._tabItems = this._tabItems.map((tab, tidx) => ({
+      ...tab,
+      selected: idx === tidx,
+    }));
   }
 
   handleSearch(e) {
@@ -128,7 +135,8 @@ export default class DaBrowse extends LitElement {
 
   get browseListItems() {
     // eslint-disable-next-line no-underscore-dangle
-    return this.shadowRoot.querySelector('.da-list-type-browse')?._listItems || [];
+    return (this.shadowRoot.querySelector('.da-list-type-browse')?._listItems || []
+    );
   }
 
   isRootFolder(path) {
@@ -136,33 +144,33 @@ export default class DaBrowse extends LitElement {
   }
 
   renderNew() {
-    return html`
-      <da-new
-        @newitem=${this.handleNewItem}
-        fullpath="${this.details.fullpath}"
-        editor="${this.editor}">
-      </da-new>`;
+    return html` <da-new
+      @newitem=${this.handleNewItem}
+      fullpath="${this.details.fullpath}"
+      editor="${this.editor}"
+    >
+    </da-new>`;
   }
 
   renderSearch() {
-    return html`
-      <da-search
-        @updated=${this.handleSearch}
-        fullpath="${this.details.fullpath}"
-        .browseItems="${this.browseListItems}">
-      </da-search>`;
+    return html` <da-search
+      @updated=${this.handleSearch}
+      fullpath="${this.details.fullpath}"
+      .browseItems="${this.browseListItems}"
+    >
+    </da-search>`;
   }
 
   renderList(type, fullpath, select, sort, drag) {
-    return html`
-      <da-list
-        class="da-list-type-${type}"
-        fullpath="${fullpath}"
-        editor="${this.editor}"
-        @onpermissions=${this.handlePermissions}
-        select="${select ? true : nothing}"
-        sort="${sort ? true : nothing}"
-        drag="${drag ? true : nothing}"></da-list>`;
+    return html` <da-list
+      class="da-list-type-${type}"
+      fullpath="${fullpath}"
+      editor="${this.editor}"
+      @onpermissions=${this.handlePermissions}
+      select="${select ? true : nothing}"
+      sort="${sort ? true : nothing}"
+      drag="${drag ? true : nothing}"
+    ></da-list>`;
   }
 
   render() {
@@ -172,31 +180,45 @@ export default class DaBrowse extends LitElement {
           if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
             return nothing;
           }
-          return html`
-            <button
-              id="tab-${tab.id}"
-              type="button"
-              role="tab"
-              aria-selected="${tab.selected}"
-              aria-controls="tabpanel-${tab.id}"
-              @click=${() => { this.handleTabClick(idx); }}>
-              <span class="focus">${tab.title}</span>
-            </button>`;
+          return html` <button
+            id="tab-${tab.id}"
+            type="button"
+            role="tab"
+            aria-selected="${tab.selected}"
+            aria-controls="tabpanel-${tab.id}"
+            @click=${() => {
+              this.handleTabClick(idx);
+            }}
+          >
+            <span class="focus">${tab.title}</span>
+          </button>`;
         })}
       </div>
       <div class="da-list-header context-${this.context}">
         <da-breadcrumbs .details="${this.details}"></da-breadcrumbs>
-        ${this._tabItems.map((tab) => html`
-          <div class="da-list-header-action" data-visible="${tab.selected}">
-            ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
-          </div>
-        `)}
+        ${this._tabItems.map(
+          (tab) => html`
+            <div class="da-list-header-action" data-visible="${tab.selected}">
+              ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
+            </div>
+          `,
+        )}
       </div>
-      ${this._tabItems.map((tab) => html`
-        <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
-          ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
-        </div>
-      `)}
+      ${this._tabItems.map(
+        (tab) => html`
+          <div
+            class="da-tabpanel"
+            id="tabpanel-${tab.id}"
+            role="grid"
+            aria-labelledby="tab-${tab.id}"
+            data-visible="${tab.selected}"
+          >
+            ${tab.id === 'browse'
+              ? this.renderList(tab.id, this.details.fullpath, true, true, true)
+              : this.renderList(tab.id, null, false, false, false)}
+          </div>
+        `,
+      )}
     `;
   }
 }

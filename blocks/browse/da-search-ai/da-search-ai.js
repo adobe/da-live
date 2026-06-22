@@ -129,11 +129,7 @@ export default class DaSearchAi extends LitElement {
           },
         ],
       },
-      queryOptions: {
-        resultFields: {
-          includes: ['title'],
-        },
-      },
+      queryOptions: { resultFields: { includes: ['title'] } },
     };
 
     const resp = await fetch(SEARCH_ENDPOINT, {
