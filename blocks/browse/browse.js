@@ -5,11 +5,6 @@ const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
 document.adoptedStyleSheets.push(styles);
 
-const CMP_NAME = {
-  BROWSE: 'da-browse',
-  SITES: 'da-sites',
-};
-
 async function loadComponent(el, cmpName, pathDetails) {
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
@@ -38,7 +33,7 @@ function setRecentSite(details) {
 
 export default function init(el) {
   hashChange.subscribe((pathDetails) => {
-    const cmpName = pathDetails ? CMP_NAME.BROWSE : CMP_NAME.SITES;
+    const cmpName = pathDetails ? 'da-browse' : 'da-sites';
     loadComponent(el, cmpName, pathDetails);
     if (pathDetails) setRecentSite(pathDetails);
   });
