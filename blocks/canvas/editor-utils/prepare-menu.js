@@ -93,6 +93,10 @@ export default class PrepareMenu extends LitElement {
     else popover.show({ anchor, placement: 'below-end' });
   }
 
+  _onPopoverClose() {
+    this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
+  }
+
   async handleItemClick(item) {
     this.shadowRoot.querySelector('nx-popover').close();
     if (item.render) {
@@ -155,17 +159,15 @@ export default class PrepareMenu extends LitElement {
     if (!this._menuItems) return nothing;
 
     return html`
-      <nx-popover>
-        <ul class="prepare-menu-list">
+      <nx-popover placement="below-end" @close=${this._onPopoverClose}>
+        <div class="prepare-menu" role="menu">
           ${this._menuItems.map((item) => html`
-            <li class="prepare-menu-item">
-              <button @click=${() => this.handleItemClick(item)}>
-                ${this.renderIcon(item)}
-                <span>${item.title}</span>
-              </button>
-            </li>
+            <button type="button" class="prepare-menu-item" role="menuitem" @click=${() => this.handleItemClick(item)}>
+              ${this.renderIcon(item)}
+              <span>${item.title}</span>
+            </button>
           `)}
-        </ul>
+        </div>
       </nx-popover>
       ${this.renderDialog()}
     `;

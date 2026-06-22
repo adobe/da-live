@@ -9,16 +9,14 @@
   }
 }
 
-.prepare-menu-list {
+.prepare-menu {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  min-width: 148px;
 }
 
-.prepare-menu-item button {
+.prepare-menu-item {
   display: grid;
   grid-template-columns: 20px 1fr;
   align-items: center;
@@ -39,11 +37,11 @@
   cursor: pointer;
 }
 
-.prepare-menu-item button:hover {
+.prepare-menu-item:hover {
   background: light-dark(var(--s2-gray-200), var(--s2-gray-300));
 }
 
-.prepare-menu-item button:focus-visible {
+.prepare-menu-item:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: 1px;
 }
