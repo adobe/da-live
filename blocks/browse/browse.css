@@ -1,5 +1,6 @@
 .browse-header {
-  padding: var(--s2-spacing-200);
+  padding: var(--s2-spacing-200) 0 0 var(--s2-spacing-200);
+  height: 40px;
 }
 
 .browse-header-chat-btn {
@@ -34,6 +35,16 @@
 
 html:has(aside.panel[data-position="before"]:not([hidden])) .browse-header-chat-btn {
   display: none;
+}
+
+.browse {
+  container-type: inline-size;
+}
+
+@container (width < 1440px) {
+  da-browse {
+    --se-grid-container-width: 83.4%;
+  }
 }
 
 .light-scheme {
