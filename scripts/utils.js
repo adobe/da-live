@@ -54,17 +54,11 @@ export const nxCSS = nxVer ? '/styles/styles.css' : '/styles/nexter.css';
 
 export const [setNx, getNx] = (() => {
   let nx;
-  let nxBase;
-
-  const getNxVer = (forcedVer) => {
-    if (forcedVer && forcedVer > 1) return `${nxBase}2`;
-    if (forcedVer && forcedVer === 1) return nxBase;
-    return nxVer ? `${nxBase}2` : nxBase;
-  };
 
   return [
-    (base, location) => {
-      nxBase = base;
+    (nxBase, location) => {
+      // Version nxBase if supplied from query param
+      const nxVerBase = nxVer ? `${nxBase}2` : nxBase;
 
       nx = (() => {
         const { hostname, search } = location || window.location;
@@ -72,19 +66,19 @@ export const [setNx, getNx] = (() => {
         const isProd = !(hostname.includes('.aem.') || hostname.includes('local'));
 
         // If no custom nexter branch & on prod, use the default CDN route
-        if (!nxBaseParam && isProd) return '';
+        if (!nxBaseParam && isProd) return nxVerBase;
 
         // Determine set a branch regardless of param
         const branch = nxBaseParam || 'main';
 
         // Local is a special key to use nexter from localhost
-        if (branch === 'local') return 'http://localhost:6456';
+        if (branch === 'local') return `http://localhost:6456${nxVerBase}`;
 
         // Otherwise use a fully qualified branch
-        return `https://${branch}--da-nx--adobe.aem.live`;
+        return `https://${branch}--da-nx--adobe.aem.live${nxVerBase}`;
       })();
-      return `${nx}${getNxVer()}`;
-    }, (forcedVer) => `${nx}${getNxVer(forcedVer)}`,
+      return nx;
+    }, () => nx,
   ];
 })();
 
