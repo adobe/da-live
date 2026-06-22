@@ -1,4 +1,3 @@
-import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
