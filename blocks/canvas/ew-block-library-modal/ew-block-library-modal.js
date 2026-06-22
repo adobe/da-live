@@ -14,6 +14,15 @@ const { loadStyle, hashChange } = await import(`${nx}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
 const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
+const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
+
+function matchesQuery(text, query) {
+  return (text || '').toLowerCase().includes(query);
+}
+
+function variantMatches(variant, query) {
+  return matchesQuery(variant?.name, query) || matchesQuery(variant?.variants, query);
+}
 
 class EwBlockLibraryModal extends LitElement {
   static properties = {
@@ -26,6 +35,7 @@ class EwBlockLibraryModal extends LitElement {
     _selectedVariant: { state: true },
     _previewInfo: { state: true },
     _hashState: { state: true },
+    _search: { state: true },
   };
 
   connectedCallback() {
@@ -54,8 +64,49 @@ class EwBlockLibraryModal extends LitElement {
   async _loadBlocks() {
     this._blocks = undefined;
     if (!this.extension) return;
-    this._blocks = await fetchBlocks(this.extension.sources);
+    const blocks = await fetchBlocks(this.extension.sources);
+    this._blocks = blocks;
+    // Prefetch variants for every block so search can match against them.
+    blocks.forEach(async (block) => {
+      if (this._variantsByPath.has(block.path)) return;
+      const variants = await block.loadVariants;
+      const next = new Map(this._variantsByPath);
+      next.set(block.path, variants ?? []);
+      this._variantsByPath = next;
+    });
   }
+
+  _filteredBlocks() {
+    const q = (this._search || '').trim().toLowerCase();
+    if (!q || !this._blocks) return this._blocks || [];
+    return this._blocks.filter((b) => {
+      if (matchesQuery(b.name, q)) return true;
+      const variants = this._variantsByPath.get(b.path) || [];
+      return variants.some((v) => variantMatches(v, q));
+    });
+  }
+
+  _filteredVariants(block) {
+    const variants = this._variantsByPath.get(block.path) || [];
+    const q = (this._search || '').trim().toLowerCase();
+    if (!q) return variants;
+    if (matchesQuery(block.name, q)) return variants;
+    return variants.filter((v) => variantMatches(v, q));
+  }
+
+  _isExpanded(block) {
+    if ((this._search || '').trim()) return true;
+    return this._expandedPath === block.path;
+  }
+
+  _onSearchInput = (e) => {
+    this._search = e.target.value;
+  };
+
+  _clearSearch = () => {
+    this._search = '';
+    this.shadowRoot.querySelector('.modal-search-input')?.focus();
+  };
 
   _onDialogClose = () => {
     this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
@@ -84,6 +135,9 @@ class EwBlockLibraryModal extends LitElement {
   _selectVariant(block, variant) {
     this._selectedPath = block.path;
     this._selectedVariant = { path: block.path, variant };
+    if (this._previewInfo?.path !== block.path) {
+      this._loadPreview(block);
+    }
   }
 
   async _loadPreview(block) {
@@ -94,7 +148,7 @@ class EwBlockLibraryModal extends LitElement {
     }
     const details = getItemPreviewUrl(block, { org, site });
     const url = details.previewUrl;
-    this._previewInfo = { name: block.name, url, ok: undefined };
+    this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
     const ok = await getPreviewStatus({
       org: details.org,
       site: details.site,
@@ -115,9 +169,11 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   _renderBlockNode(block) {
-    const expanded = this._expandedPath === block.path;
+    const expanded = this._isExpanded(block);
     const selected = this._selectedPath === block.path && !this._selectedVariant;
-    const variants = this._variantsByPath.get(block.path);
+    const variants = this._variantsByPath.has(block.path)
+      ? this._filteredVariants(block)
+      : undefined;
     return html`
       <li class="modal-tree-block" role="treeitem" aria-expanded=${expanded}>
         <button type="button"
@@ -168,10 +224,37 @@ class EwBlockLibraryModal extends LitElement {
     if (!this._blocks.length) {
       return html`<div class="modal-state">No blocks found.</div>`;
     }
+    const filtered = this._filteredBlocks();
+    if (!filtered.length) {
+      return html`<div class="modal-state">No matches.</div>`;
+    }
     return html`
       <ul class="modal-tree" role="tree">
-        ${this._blocks.map((block) => this._renderBlockNode(block))}
+        ${filtered.map((block) => this._renderBlockNode(block))}
       </ul>`;
+  }
+
+  _renderSearch() {
+    const hasValue = !!(this._search || '').length;
+    return html`
+      <div class="modal-search">
+        <div class="modal-search-field">
+          <svg aria-hidden="true" class="modal-search-icon" viewBox="0 0 20 20">
+            <use href="${SEARCH_ICON_SRC}#icon"></use>
+          </svg>
+          <input type="search"
+                 class="modal-search-input"
+                 placeholder="Search blocks"
+                 aria-label="Search blocks"
+                 .value=${this._search || ''}
+                 @input=${this._onSearchInput}>
+          ${hasValue ? html`
+            <button type="button"
+                    class="modal-search-clear"
+                    aria-label="Clear search"
+                    @click=${this._clearSearch}>✕</button>` : nothing}
+        </div>
+      </div>`;
   }
 
   _renderPreview() {
@@ -201,7 +284,10 @@ class EwBlockLibraryModal extends LitElement {
                   aria-label="Close" @click=${() => this._close()}>✕</button>
         </header>
         <div class="modal-body">
-          <aside class="modal-tree-wrap">${this._renderTree()}</aside>
+          <aside class="modal-tree-wrap">
+            ${this._renderSearch()}
+            ${this._renderTree()}
+          </aside>
           <section class="modal-preview-wrap">${this._renderPreview()}</section>
         </div>
         <footer class="modal-footer">
