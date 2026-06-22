@@ -3,6 +3,8 @@
 import { HLX_ADMIN, AEM_API, DA_ADMIN, ALLOWED_TOKEN } from './utils.js';
 import { loadIms, handleSignIn } from './ims.js';
 
+export { AEM_API };
+
 // ============================================================================
 // Public API
 // ----------------------------------------------------------------------------
@@ -34,7 +36,7 @@ import { loadIms, handleSignIn } from './ims.js';
 
 // aem: combined preview + live operations.
 // preview/unPreview/publish/unPublish accept `path` as string or array (2+ -> bulk).
-// preview/publish also accept optional `forceUpdate`/`forceSync` flags.
+// preview/publish also accept an optional `forceUpdate` flag.
 export const aem = {
   getPreview: withArgs(({ org, site, path }) => callPath({
     api: 'preview', org, site, path, method: 'GET',
@@ -44,16 +46,16 @@ export const aem = {
     api: 'live', org, site, path, method: 'GET',
   })),
 
-  preview: withArgs(({ org, site, path, forceUpdate, forceSync }) => callPath({
-    api: 'preview', org, site, path, method: 'POST', forceUpdate, forceSync,
+  preview: withArgs(({ org, site, path, forceUpdate }) => callPath({
+    api: 'preview', org, site, path, method: 'POST', forceUpdate,
   })),
 
   unPreview: withArgs(({ org, site, path }) => callPath({
     api: 'preview', org, site, path, method: 'DELETE', includeDelete: true,
   })),
 
-  publish: withArgs(({ org, site, path, forceUpdate, forceSync }) => callPath({
-    api: 'live', org, site, path, method: 'POST', forceUpdate, forceSync,
+  publish: withArgs(({ org, site, path, forceUpdate }) => callPath({
+    api: 'live', org, site, path, method: 'POST', forceUpdate,
   })),
 
   unPublish: withArgs(({ org, site, path }) => callPath({
@@ -180,9 +182,14 @@ export const snapshot = {
 // { org, site, path, ...extras } or a `/org/site/file/path` string.
 // `extras` (second arg) merges with parsed args when arg is a string.
 export const source = {
-  get: withArgs(async ({ org, site, path }) => {
+  get: withArgs(async ({
+    org, site, path, cachebust,
+  }) => {
     const url = await getDaApiPath(SOURCE, org, site, path);
-    return daFetch({ url });
+    const finalUrl = cachebust
+      ? `${url}${url.includes('?') ? '&' : '?'}nocache=${Date.now()}`
+      : url;
+    return daFetch({ url: finalUrl });
   }),
 
   // Returns `{ ok, items, continuationToken, permissions }`. Pagination
@@ -321,7 +328,7 @@ export const versions = {
       const url = `${AEM_API}/${org}/sites/${site}/source${path}/.versions/${versionId}`;
       return daFetch({ url });
     }
-    return daFetch({ url: `${DA_ADMIN}/versionsource/${org}/${versionId}` });
+    return daFetch({ url: `${DA_ADMIN}/versionsource/${org}/${site}/${versionId}` });
   }),
 
   create: withArgs(async ({ org, site, path, operation, comment }) => {
@@ -329,18 +336,14 @@ export const versions = {
     const url = await getDaApiPath(VERSIONS, org, site, path);
     const opts = { method: 'POST' };
     if (hlx6) {
-      // hlx6 accepts { operation, comment } JSON body.
-      const payload = {};
-      if (operation) payload.operation = operation;
-      if (comment) payload.comment = comment;
-      if (Object.keys(payload).length > 0) {
-        opts.headers = { 'Content-Type': 'application/json' };
-        opts.body = JSON.stringify(payload);
-      }
-    } else if (comment) {
-      // Legacy DA accepts { label } JSON body. Map comment -> label.
-      opts.body = JSON.stringify({ label: comment });
+      // hlx6 takes operation/comment as query params with no request body.
+      const u = new URL(url);
+      if (operation) u.searchParams.set('operation', operation);
+      if (comment) u.searchParams.set('comment', comment);
+      return daFetch({ url: u.toString(), opts });
     }
+    // Legacy DA accepts a { label } JSON body. Map comment -> label.
+    if (comment) opts.body = JSON.stringify({ label: comment });
     return daFetch({ url, opts });
   }),
 };
@@ -578,16 +581,15 @@ function jsonOpts(method, payload) {
 
 // Dispatcher for AEM ops that accept path as string or array.
 // Array of length >= 2 routes to the bulk /* endpoint with { paths, delete? }.
-// `forceUpdate`/`forceSync` are bulk-only (server ignores them on single-path).
+// `forceUpdate` is bulk-only (server ignores it on single-path).
 async function callPath({
-  api, org, site, path, method, includeDelete = false, forceUpdate, forceSync,
+  api, org, site, path, method, includeDelete = false, forceUpdate,
 }) {
   if (Array.isArray(path) && path.length >= 2) {
     const url = await getAemApiPath(api, org, site, '/*');
     const payload = { paths: path };
     if (includeDelete) payload.delete = true;
     if (forceUpdate) payload.forceUpdate = true;
-    if (forceSync) payload.forceSync = true;
     return daFetch({ url, opts: jsonOpts('POST', payload) });
   }
   const single = Array.isArray(path) ? path[0] : path;

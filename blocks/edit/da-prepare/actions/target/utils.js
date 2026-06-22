@@ -1,6 +1,6 @@
 import { DOMParser as ProseParser } from 'da-y-wrapper';
-import { DA_ORIGIN } from '../../../../shared/constants.js';
-import { daFetch, aemAdmin, etcFetch, getFirstSheet } from '../../../../shared/utils.js';
+import { etcFetch, getFirstSheet } from '../../../../shared/utils.js';
+import { getNx2Api } from '../../../../../scripts/utils.js';
 import { deleteOffer, getAccessToken, getOffer, saveOffer } from './api.js';
 
 const TARGET_CONFIG_PATH = '/.da/adobe-target.json';
@@ -119,8 +119,8 @@ export const fetchTargetConfig = (() => {
   const configCache = {};
 
   const fetchConfig = async (location) => {
-    const path = `${DA_ORIGIN}/source${location}${TARGET_CONFIG_PATH}`;
-    const resp = await daFetch(path);
+    const { source } = await getNx2Api();
+    const resp = await source.get(`${location}${TARGET_CONFIG_PATH}`);
     if (!resp.ok) return { error: 'Couldn\'t fetch Adobe Target config.' };
     const json = await resp.json();
     const data = getFirstSheet(json);
@@ -150,9 +150,10 @@ export const fetchTargetConfig = (() => {
 
 export async function savePreview(org, site, path) {
   const fullpath = `/${org}/${site}${path}`;
-  const json = await aemAdmin(fullpath, 'preview');
-  if (!json) return { error: 'Couldn\'t preview.' };
-  return json;
+  const { aem } = await getNx2Api();
+  const resp = await aem.preview(fullpath);
+  if (!resp.ok) return { error: 'Couldn\'t preview.' };
+  return resp.json();
 }
 
 export async function sendToTarget(org, site, name, aemPath, displayName, existingOfferId) {

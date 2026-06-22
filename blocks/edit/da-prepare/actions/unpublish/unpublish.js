@@ -1,6 +1,6 @@
 import { LitElement, html } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { aemAdmin } from '../../../../shared/utils.js';
+import { getNx2Api } from '../../../../../scripts/utils.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
@@ -31,13 +31,15 @@ class DaUnpublish extends LitElement {
     const { org, site, path } = this.details;
     const fullpath = `/${org}/${site}${path}`;
 
-    const previewJson = await aemAdmin(fullpath, 'preview', 'DELETE');
-    if (!previewJson) this._results.push('Couldn\'t remove preview.');
+    const { aem } = await getNx2Api();
+
+    const previewResp = await aem.unPreview(fullpath);
+    if (!previewResp.ok) this._results.push('Couldn\'t remove preview.');
 
     this._statusText = 'Unpublishing';
 
-    const liveJson = await aemAdmin(fullpath, 'live', 'DELETE');
-    if (!liveJson) {
+    const liveResp = await aem.unPublish(fullpath);
+    if (!liveResp.ok) {
       this._results.push('Couldn\'t unpublish from production.');
     }
 

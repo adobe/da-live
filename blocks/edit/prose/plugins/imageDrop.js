@@ -1,7 +1,7 @@
 // eslint-disable-next-line import/no-unresolved
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch } from '../../../shared/utils.js';
+import { getNx2Api } from '../../../../scripts/utils.js';
 
 const imageDropKey = new PluginKey('imageDrop');
 
@@ -13,7 +13,8 @@ export async function uploadImageFile(view, file) {
 
   const { schema } = view.state;
   const details = getPathDetails();
-  const url = `${details.origin}/source${details.parent}/.${details.name}/${file.name}`;
+  const path = `${details.parent}/.${details.name}/${file.name}`;
+  const url = `${details.origin}/source${path}`;
 
   // Use the upload URL as a unique FPO identifier so concurrent uploads can
   // each find their own placeholder by content rather than by stale position.
@@ -21,10 +22,8 @@ export async function uploadImageFile(view, file) {
   const fpo = schema.nodes.image.create({ src: fpoSrc, style: 'width: 180px' });
   view.dispatch(view.state.tr.replaceSelectionWith(fpo));
 
-  const formData = new FormData();
-  formData.append('data', file);
-  const opts = { method: 'PUT', body: formData };
-  const resp = await daFetch(url, opts);
+  const { source } = await getNx2Api();
+  const resp = await source.save(path, { body: file });
   if (!resp.ok) return;
   const json = await resp.json();
 
