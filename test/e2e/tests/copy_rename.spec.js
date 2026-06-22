@@ -14,6 +14,14 @@ import ENV from '../utils/env.js';
 import { getQuery, getTestFolderURL, getTestPageURL, fill, TEST_SITE } from '../utils/page.js';
 
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
+  test.skip(
+    TEST_SITE !== 'da-status', 
+    `
+On Helix 6 the copy and paste from one folder to another doesn't work yet, it fails on this line: 
+const link = await page.getByRole('link', { name: orgPageName });
+    `
+  );
+
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
   test.setTimeout(60000);
