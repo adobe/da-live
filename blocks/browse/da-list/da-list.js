@@ -927,11 +927,9 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <div class="checkbox-wrapper ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
+      <label class="checkbox-label ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-        <label class="checkbox-label" for="select-all"></label>
-      </div>
-      <input type="checkbox" name="select" style="display: none;">
+      </label>
     `;
   }
 

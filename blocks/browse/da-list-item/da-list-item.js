@@ -257,15 +257,17 @@ export default class DaListItem extends LitElement {
     }
     return html`
       <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
-        ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
-        ` : html`
-          <span class="da-item-list-item-type">
-            ${this.renderIcon()}
-            ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"</svg>` : nothing}
-          </span>
-        `}
-        <div class="da-item-list-item-name">
-          <span class="da-item-list-item-name-text">${this.name}</span>
+        <div class="da-item-list-item-info">
+          ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
+          ` : html`
+            <span class="da-item-list-item-type">
+              ${this.renderIcon()}
+              ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"</svg>` : nothing}
+            </span>
+          `}
+          <div class="da-item-list-item-name">
+            <span class="da-item-list-item-name-text">${this.name}</span>
+          </div>
         </div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
@@ -273,11 +275,9 @@ export default class DaListItem extends LitElement {
 
   renderCheckBox() {
     return html`
-      <div class="checkbox-wrapper">
-        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${(e) => { this.handleChecked(e); }}" aria-label="Select item">
-        <label class="checkbox-label" for="item-selected-${this.idx}"></label>
-      </div>
-      <input type="checkbox" name="select" style="display: none;">
+      <label class="checkbox-label">
+        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
+      </label>
     `;
   }
 

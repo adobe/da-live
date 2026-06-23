@@ -5,7 +5,7 @@ button {
 .da-action-bar {
   bottom: 12px;
   position: fixed;
-  background-color: rgb(188 28 116);
+  background-color: var(--s2-blue-900);
   min-height: 48px;
   border-radius: var(--s2-corner-radius-700);
   width: var(--se-grid-container-width);
@@ -36,17 +36,17 @@ button {
   background-color: rgb(255 255 255 / 25%);
 }
 
-.da-action-bar button img {
+.da-action-bar button svg {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .da-action-bar-left-rail {
   margin-left: 3px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--s2-spacing-100);
 }
 
 .da-action-bar-right-rail {
