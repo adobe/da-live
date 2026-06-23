@@ -1,3 +1,5 @@
+import { DOMParser as PMDOMParser } from 'da-y-wrapper';
+
 function getTableBlockName(tableNode) {
   const firstRow = tableNode.firstChild;
   if (!firstRow) return '';
@@ -71,6 +73,64 @@ export function moveBlock(view, fromIndex, toIndex, dropPosition) {
       .delete(fromBlockPos, fromBlockPos + fromBlockSize)
       .insert(adjustedInsertPos, fromBlockNode),
   );
+}
+
+export function deleteBlock(view, blockIndex) {
+  if (!view) return;
+  const positions = getBlockPositions(view);
+  if (blockIndex < 0 || blockIndex >= positions.length) return;
+  const pos = positions[blockIndex];
+  const node = view.state.doc.nodeAt(pos);
+  if (!node) return;
+  view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize));
+}
+
+function getSectionStartOffset(view, sectionIndex) {
+  const { doc, schema } = view.state;
+  if (sectionIndex === 0) return 0;
+  let hrCount = 0;
+  let result = doc.content.size;
+  doc.forEach((node, offset) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      hrCount += 1;
+      if (hrCount === sectionIndex) result = offset + node.nodeSize;
+    }
+  });
+  return result;
+}
+
+export function insertBlockAtSectionStart(view, dom, sectionIndex) {
+  if (!view) return;
+  const pos = getSectionStartOffset(view, sectionIndex);
+  const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
+  view.dispatch(view.state.tr.insert(pos, parsed).scrollIntoView());
+}
+
+export function deleteSection(view, sectionIndex) {
+  if (!view) return;
+  const { doc, schema } = view.state;
+
+  const sections = [[]];
+  doc.forEach((node) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      sections.push([]);
+    } else {
+      sections[sections.length - 1].push(node);
+    }
+  });
+
+  if (sectionIndex < 0 || sectionIndex >= sections.length) return;
+
+  const remaining = sections.filter((_, i) => i !== sectionIndex);
+
+  const hrNode = schema.nodes.horizontal_rule.create();
+  const newNodes = [];
+  remaining.forEach((sectionNodes, i) => {
+    if (i > 0) newNodes.push(hrNode);
+    newNodes.push(...sectionNodes);
+  });
+
+  view.dispatch(view.state.tr.replaceWith(0, doc.content.size, newNodes));
 }
 
 export function moveSection(view, fromSectionIndex, toSectionIndex, dropPosition) {
