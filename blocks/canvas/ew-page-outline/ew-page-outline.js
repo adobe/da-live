@@ -1,9 +1,19 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { treeKeydown } from '../utils/tree-nav.js';
 import { editorHtmlChange, editorSelectChange, parseSections } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { moveBlock, moveSection } from '../editor-utils/blocks.js';
+import {
+  deleteBlock,
+  deleteSection,
+  insertBlockAtSectionStart,
+  moveBlock,
+  moveSection,
+} from '../editor-utils/blocks.js';
+import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
+
+const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
+const ADD_BLOCK_ICON_SRC = '/img/icons/s2-icon-tableadd-20-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -34,6 +44,7 @@ class EwPageOutline extends LitElement {
     _sections: { state: true },
     _selectedBlockIndex: { state: true },
     _hashState: { state: true },
+    _hasBlockLibrary: { state: true },
   };
 
   connectedCallback() {
@@ -75,6 +86,20 @@ class EwPageOutline extends LitElement {
       this._selectedBlockIndex = undefined;
     }
     this._prevSelectedPath = sp;
+
+    const { org, site } = this._hashState ?? {};
+    const orgSiteKey = org && site ? `${org}/${site}` : '';
+    if (orgSiteKey !== this._prevOrgSiteKey) {
+      this._prevOrgSiteKey = orgSiteKey;
+      this._hasBlockLibrary = false;
+      if (orgSiteKey) this._checkBlockLibrary(org, site);
+    }
+  }
+
+  async _checkBlockLibrary(org, site) {
+    const extensions = await fetchExtensions(org, site);
+    if (org !== this._hashState?.org || site !== this._hashState?.site) return;
+    this._hasBlockLibrary = !!extensions?.find((ext) => ext.name === 'blocks');
   }
 
   _select(blockIndex) {
@@ -173,6 +198,43 @@ class EwPageOutline extends LitElement {
 
   _onTreeKeydown = (e) => treeKeydown(e, this.shadowRoot);
 
+  async _openAddBlockModal(e, sectionIndex) {
+    e.stopPropagation();
+    e.preventDefault();
+    const { view } = getExtensionsBridge();
+    if (!view) return;
+    const modulePath = '../ew-block-library-modal/ew-block-library-modal.js';
+    const { openBlockLibraryModal } = await import(modulePath);
+    const onInsert = (dom) => insertBlockAtSectionStart(view, dom, sectionIndex);
+    openBlockLibraryModal({ onInsert });
+  }
+
+  _onDelete(e, type, index) {
+    e.stopPropagation();
+    e.preventDefault();
+    const { view } = getExtensionsBridge();
+    if (!view) return;
+    if (type === OUTLINE_TYPES.BLOCK) {
+      deleteBlock(view, index);
+    } else {
+      deleteSection(view, index);
+    }
+  }
+
+  _renderDeleteButton(type, index) {
+    const label = type === OUTLINE_TYPES.SECTION
+      ? `Delete section ${index + 1}` : 'Delete block';
+    return html`
+      <button type="button" class="action-btn delete-btn" draggable="false"
+              aria-label="${label}"
+              @pointerdown=${(e) => e.stopPropagation()}
+              @click=${(e) => this._onDelete(e, type, index)}>
+        <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+          <use href="${DELETE_ICON_SRC}#icon"></use>
+        </svg>
+      </button>`;
+  }
+
   _renderSection(sec, isFirstSection) {
     return html`
       <li class="outline-section" role="none"
@@ -184,6 +246,16 @@ class EwPageOutline extends LitElement {
              @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.SECTION, sec.sectionIndex)}
              @dragend=${this._onDragEnd}>
           <span class="section-label">Section ${sec.sectionIndex + 1}</span>
+          ${this._hasBlockLibrary ? html`
+            <button type="button" class="action-btn add-block-btn" draggable="false"
+                    aria-label="Add block to section ${sec.sectionIndex + 1}"
+                    @pointerdown=${(e) => e.stopPropagation()}
+                    @click=${(e) => this._openAddBlockModal(e, sec.sectionIndex)}>
+              <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+                <use href="${ADD_BLOCK_ICON_SRC}#icon"></use>
+              </svg>
+            </button>` : nothing}
+          ${this._renderDeleteButton(OUTLINE_TYPES.SECTION, sec.sectionIndex)}
         </div>
         <ul class="block-list" role="group"
             aria-label="Blocks in section ${sec.sectionIndex + 1}">
@@ -202,7 +274,10 @@ class EwPageOutline extends LitElement {
                 @dragover=${(e) => this._onBlockDragOver(e, blockIndex)}
                 @drop=${this._onDrop}
                 @dragend=${this._onDragEnd}
-                @click=${() => this._select(blockIndex)}>${name}</li>`)}
+                @click=${() => this._select(blockIndex)}>
+              <span class="block-name">${name}</span>
+              ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, blockIndex)}
+            </li>`)}
         </ul>
       </li>`;
   }
