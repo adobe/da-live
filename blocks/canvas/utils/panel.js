@@ -1,4 +1,4 @@
-import { fetchDaConfigs } from '../../shared/utils.js';
+import { getEWFlag } from '../../shared/ewFlags.js';
 
 export const TOOL_PANEL_ACTIVE_VIEW_KEY = 'nx-tool-panel-active-view';
 
@@ -20,17 +20,8 @@ export function persistToolPanelView(viewId) {
 
 export async function readConfiguredToolPanelView({ org, site }) {
   if (!org || !site) return undefined;
-
-  try {
-    const [, siteConfig] = await Promise.all(fetchDaConfigs({ org, site }));
-    const flag = siteConfig?.flags?.data?.find((f) => f.key === CONFIG_FLAG_KEY);
-    const value = flag?.value?.trim();
-    return value || undefined;
-  } catch (e) {
-    if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
-  }
-
-  return undefined;
+  const value = await getEWFlag({ org, site, flagName: CONFIG_FLAG_KEY });
+  return value?.trim() || undefined;
 }
 
 /** Session storage wins over site config; caller falls back when no match in `availableIds`. */
