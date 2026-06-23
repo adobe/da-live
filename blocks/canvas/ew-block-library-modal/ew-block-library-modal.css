@@ -13,7 +13,7 @@
   font-family: var(--s2-font-family);
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
 }
 
 .modal::backdrop {
@@ -186,6 +186,7 @@
 .modal-tree-variant-row .modal-tree-row {
   flex: 1;
   min-width: 0;
+  cursor: default;
 }
 
 .modal-tree-variant-row .modal-tree-row:hover {
@@ -196,20 +197,14 @@
   background: light-dark(var(--s2-gray-100), var(--s2-gray-700));
 }
 
-.modal-tree-variant-row.is-selected,
-.modal-tree-variant-row.is-selected:hover {
-  background: light-dark(var(--s2-blue-100), var(--s2-blue-900));
-  color: light-dark(var(--s2-blue-900), var(--s2-blue-100));
-}
-
-.modal-tree-info {
+.modal-tree-info,
+.modal-tree-add {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  margin-inline-end: 8px;
   padding: 0;
   border: none;
   border-radius: var(--s2-corner-radius-75);
@@ -218,13 +213,33 @@
   cursor: pointer;
 }
 
-.modal-tree-info svg {
-  width: 16px;
-  height: 16px;
+.modal-tree-info {
+  margin-inline-end: 4px;
+  visibility: hidden;
 }
 
-.modal-tree-info:hover {
+.modal-tree-add {
+  margin-inline-end: 8px;
+  visibility: hidden;
+}
+
+.modal-tree-info svg,
+.modal-tree-add svg {
+  width: 18px;
+  height: 18px;
+}
+
+.modal-tree-info:hover,
+.modal-tree-add:hover {
   background: light-dark(var(--s2-gray-200), var(--s2-gray-700));
+}
+
+.modal-tree-add:focus-visible,
+.modal-tree-info:focus-visible,
+.modal-tree-variant-row:hover .modal-tree-add,
+.modal-tree-variant-row:hover .modal-tree-info,
+.modal-tree-variant-row .modal-tree-info[aria-expanded="true"] {
+  visibility: visible;
 }
 
 .modal-tree-description {
@@ -306,14 +321,4 @@
   margin: 0;
 }
 
-/* Footer */
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--s2-spacing-100);
-  padding: var(--s2-spacing-100) var(--s2-spacing-200);
-  border-top: 1px solid light-dark(var(--s2-gray-200), var(--s2-gray-700));
-  background: light-dark(var(--s2-gray-50), var(--s2-gray-800));
-}
 

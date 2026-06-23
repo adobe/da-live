@@ -8,14 +8,13 @@ import {
 } from '../ew-panel-extensions/helpers.js';
 
 const nx = getNx();
-await import(`${nx}/public/sl/components.js`);
-
 const { loadStyle, hashChange } = await import(`${nx}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
 const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
 const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
 const INFO_ICON_SRC = '/img/icons/s2-icon-infocircle-20-n.svg';
+const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
 
 function andMatch(query, target) {
   const terms = query.split(/\s+/).filter(Boolean);
@@ -44,7 +43,6 @@ class EwBlockLibraryModal extends LitElement {
     _variantsByPath: { state: true },
     _expandedPath: { state: true },
     _selectedPath: { state: true },
-    _selectedVariant: { state: true },
     _previewInfo: { state: true },
     _hashState: { state: true },
     _search: { state: true },
@@ -149,16 +147,7 @@ class EwBlockLibraryModal extends LitElement {
       this._variantsByPath = next;
     }
     this._selectedPath = block.path;
-    this._selectedVariant = null;
     this._loadPreview(block);
-  }
-
-  _selectVariant(block, variant) {
-    this._selectedPath = block.path;
-    this._selectedVariant = { path: block.path, variant };
-    if (this._previewInfo?.path !== block.path) {
-      this._loadPreview(block);
-    }
   }
 
   async _loadPreview(block) {
@@ -180,18 +169,15 @@ class EwBlockLibraryModal extends LitElement {
     }
   }
 
-  _addSelected() {
-    if (!this._selectedPath) return;
-    const variants = this._variantsByPath.get(this._selectedPath) ?? [];
-    const pick = this._selectedVariant?.variant ?? variants[0];
-    if (!pick) return;
-    this.onInsert?.(pick.dom);
+  _addVariant(variant) {
+    if (!variant) return;
+    this.onInsert?.(variant.dom);
     this._close();
   }
 
   _renderBlockNode(block) {
     const expanded = this._isExpanded(block);
-    const selected = this._selectedPath === block.path && !this._selectedVariant;
+    const selected = this._selectedPath === block.path;
     const variants = this._variantsByPath.has(block.path)
       ? this._filteredVariants(block)
       : undefined;
@@ -224,22 +210,18 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   _renderVariantItem(block, v) {
-    const isSel = this._selectedVariant?.path === block.path
-      && this._selectedVariant.variant === v;
     const description = v.description?.trim();
     const isOpen = this._openDescriptions.has(v);
     return html`
-      <li role="treeitem" aria-selected=${isSel}>
-        <div class="modal-tree-variant-row ${isSel ? 'is-selected' : ''}">
-          <button type="button"
-                  class="modal-tree-row modal-tree-row-variant"
-                  @click=${() => this._selectVariant(block, v)}>
+      <li role="treeitem">
+        <div class="modal-tree-variant-row">
+          <span class="modal-tree-row modal-tree-row-variant">
             <span class="modal-tree-label">
               ${v.name}${v.variants
     ? html` <span class="modal-tree-subtitle">${v.variants}</span>`
     : nothing}
             </span>
-          </button>
+          </span>
           ${description ? html`
             <button type="button"
                     class="modal-tree-info"
@@ -250,6 +232,14 @@ class EwBlockLibraryModal extends LitElement {
                 <use href="${INFO_ICON_SRC}#icon"></use>
               </svg>
             </button>` : nothing}
+          <button type="button"
+                  class="modal-tree-add"
+                  aria-label="Add ${v.name} to page"
+                  @click=${() => this._addVariant(v)}>
+            <svg aria-hidden="true" viewBox="0 0 20 20">
+              <use href="${ADD_ICON_SRC}#icon"></use>
+            </svg>
+          </button>
         </div>
         ${description && isOpen ? html`
           <div class="modal-tree-description">${description}</div>` : nothing}
@@ -313,8 +303,6 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   render() {
-    const canAdd = !!this._selectedPath
-      && (this._variantsByPath.get(this._selectedPath)?.length || 0) > 0;
     return html`
       <dialog class="modal" @close=${this._onDialogClose}>
         <header class="modal-header">
@@ -329,14 +317,6 @@ class EwBlockLibraryModal extends LitElement {
           </aside>
           <section class="modal-preview-wrap">${this._renderPreview()}</section>
         </div>
-        <footer class="modal-footer">
-          <sl-button class="primary outline" @click=${() => this._close()}>
-            Cancel
-          </sl-button>
-          <sl-button ?disabled=${!canAdd} @click=${() => this._addSelected()}>
-            Add to page
-          </sl-button>
-        </footer>
       </dialog>`;
   }
 }
