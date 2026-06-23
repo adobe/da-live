@@ -7,29 +7,27 @@ await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const DA_BASE = new URL(import.meta.url).origin;
-
 const OOTB_ACTIONS = [
   {
     title: 'Preflight',
     render: async (details) => (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default(details),
-    icon: `${DA_BASE}/img/icons/s2-icon-filetext-20-n.svg#icon`,
+    icon: '/img/icons/s2-icon-filetext-20-n.svg#icon',
   },
   {
     title: 'Schedule Publish',
     render: async (details) => (await import('../../edit/da-prepare/actions/scheduler/scheduler.js')).default(details),
-    icon: `${DA_BASE}/img/icons/s2-icon-clock-pending-20-n.svg#icon`,
+    icon: '/img/icons/s2-icon-clock-pending-20-n.svg#icon',
     optional: true,
   },
   {
     title: 'Unpublish',
     render: async (details) => (await import('../../edit/da-prepare/actions/unpublish/unpublish.js')).default(details),
-    icon: `${DA_BASE}/img/icons/s2-icon-publish-no-20-n.svg#icon`,
+    icon: '/img/icons/s2-icon-publish-no-20-n.svg#icon',
   },
   {
     title: 'Send to Adobe Target',
     render: async (details) => (await import('../../edit/da-prepare/actions/target/target.js')).default(details),
-    icon: `${DA_BASE}/img/icons/s2-icon-target-20-n.svg#icon`,
+    icon: '/img/icons/s2-icon-target-20-n.svg#icon',
     optional: true,
   },
 ];
