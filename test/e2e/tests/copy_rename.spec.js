@@ -11,15 +11,17 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestFolderURL, getTestPageURL, fill, TEST_SITE } from '../utils/page.js';
+import {
+  getQuery, getTestFolderURL, getTestPageURL, fill, TEST_ORG, TEST_SITE,
+} from '../utils/page.js';
 
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   test.skip(
-    TEST_SITE !== 'da-status', 
+    TEST_SITE !== 'da-status',
     `
 On Helix 6 the copy and paste from one folder to another doesn't work yet, it fails on this line: 
 const link = await page.getByRole('link', { name: orgPageName });
-    `
+    `,
   );
 
   // This test has a fairly high timeout because it waits for the document to be saved
@@ -58,7 +60,7 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.waitForTimeout(5000);
 
   // Go back to the directory view
-  await page.goto(`${ENV}/${getQuery()}#/da-sites/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
 
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
@@ -74,18 +76,18 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.getByRole('button', { name: 'Copy' }).click();
 
   await page.getByRole('link', { name: copyFolderName }).click();
-  await page.waitForURL(`**/da-sites/${TEST_SITE}/tests/${copyFolderName}`);
+  await page.waitForURL(`**/${TEST_ORG}/${TEST_SITE}/tests/${copyFolderName}`);
 
   await page.getByRole('button', { name: 'Paste' }).click();
   await page.waitForTimeout(3000);
   /* TODO REMOVE once #233 is fixed */ await page.reload();
   const link = await page.getByRole('link', { name: orgPageName });
   const href = await link.getAttribute('href');
-  await expect(href).toEqual(`/edit#/da-sites/${TEST_SITE}/tests/${copyFolderName}/${orgPageName}`);
+  await expect(href).toEqual(`/edit#/${TEST_ORG}/${TEST_SITE}/tests/${copyFolderName}/${orgPageName}`);
 
   // go back to the original to rename it
   // Go to the directory view
-  await page.goto(`${ENV}/${getQuery()}#/da-sites/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
   await page.reload(); // Clears any leftover selection, if any
 
   const checkbox = page.locator('div.da-item-list-item-inner').filter({ hasText: orgPageName })
@@ -119,7 +121,7 @@ const link = await page.getByRole('link', { name: orgPageName });
   await expect(page.locator('div.ProseMirror')).toContainText('Versioned text');
 
   // now go to the copy
-  await page.goto(`${ENV}/edit${getQuery()}#/da-sites/${TEST_SITE}/tests/${copyFolderName}/${orgPageName}`);
+  await page.goto(`${ENV}/edit${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${copyFolderName}/${orgPageName}`);
   await page.reload(); // Resets the versions view, shouldn't be needed TODO
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
   await page.getByRole('button', { name: 'Versions' }).click();

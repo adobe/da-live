@@ -12,7 +12,7 @@
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, getTestResourceAge, tabBackward, fill, TEST_SITE,
+  getQuery, getTestPageURL, getTestResourceAge, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 
 // Files are deleted after 2 hours by default
@@ -31,7 +31,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   test.setTimeout(600000);
 
   // Open the directory listing
-  await page.goto(`${ENV}/${getQuery()}#/da-sites/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
 
   // This page will always be there as its used by a test
   await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
@@ -115,14 +115,14 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await page.close();
 
   const list = await browser.newPage();
-  await list.goto(`${ENV}/${getQuery()}#/da-sites/${TEST_SITE}/tests`);
+  await list.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
 
   await list.waitForTimeout(3000);
   await list.reload();
 
   // Now delete the document
-  await expect(list.locator(`a[href="/edit#/da-sites/${TEST_SITE}/tests/${pageName}"]`)).toBeVisible();
-  await list.locator(`a[href="/edit#/da-sites/${TEST_SITE}/tests/${pageName}"]`).focus();
+  await expect(list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).toBeVisible();
+  await list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`).focus();
   await tabBackward(list);
   await list.keyboard.press(' ');
   await list.waitForTimeout(500);

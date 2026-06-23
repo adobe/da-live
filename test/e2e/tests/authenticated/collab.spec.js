@@ -100,8 +100,8 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   // Convert the editor URL (…#/<org>/<site>/<path>) into the da-admin/Helix source URL.
   const [, org, site, ...rest] = pageURL.split('#')[1].split('/');
   let sourceUrl;
-  if (TEST_SITE == 'da-status') {
-    sourceUrl = 'https://admin.da.live/source/${otg}/${site}/${rest.join('/')}.html';
+  if (TEST_SITE === 'da-status') {
+    sourceUrl = `https://admin.da.live/source/${org}/${site}/${rest.join('/')}.html`;
   } else {
     sourceUrl = `https://api.aem.live/${org}/sites/${site}/source/${rest.join('/')}.html`;
   }

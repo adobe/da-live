@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import ENV from '../utils/env.js';
 import path from 'path';
-import { getQuery, getTestFolderURL, TEST_SITE } from '../utils/page.js';
+import ENV from '../utils/env.js';
+import { getQuery, getTestFolderURL, TEST_ORG, TEST_SITE } from '../utils/page.js';
 
 async function findPageTab(title, page, context) {
   let attemptsLeft = 5;
@@ -35,7 +35,7 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
 
   /* */ // Added this to make it work in Helix 6
-  await page.goto(`${ENV}/${getQuery()}#/da-sites/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
   const folderName = folderURL.split('/').pop();
   await page.getByRole('button', { name: 'New' }).click();
   await page.getByRole('button', { name: 'Folder' }).click();
