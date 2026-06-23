@@ -21,6 +21,16 @@ if (!window.location.hash.startsWith('#/')) {
 
 const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
+// createConnection now resolves the collab backend via isHlx6 (nx2 api.js),
+// which pings admin.hlx.page. Mock it so unit tests stay offline: a header-less
+// 200 means "not upgraded" → the legacy admin.da.live room is used, matching
+// these tests' room URLs. Returns a restore fn.
+const stubHlx6Ping = () => {
+  const saved = window.fetch;
+  window.fetch = async () => new Response('', { status: 200 });
+  return () => { window.fetch = saved; };
+};
+
 function buildFakeWsProvider({ withSynced = false } = {}) {
   const listeners = new Map();
   const winListeners = [];
@@ -70,10 +80,13 @@ function buildFakeWsProvider({ withSynced = false } = {}) {
 }
 
 describe('prose/index createConnection', () => {
+  let restoreFetch;
   beforeEach(() => {
+    restoreFetch = stubHlx6Ping();
     window.localStorage.removeItem('nx-ims');
   });
   afterEach(() => {
+    restoreFetch();
     // Always remove rather than restoring a prior value — if a leak entered
     // this block, restoring it would propagate the leak to later test files.
     window.localStorage.removeItem('nx-ims');
@@ -85,10 +98,36 @@ describe('prose/index createConnection', () => {
     expect(result.wsProvider).to.exist;
     expect(result.ydoc).to.exist;
     expect(result.wsProvider.maxBackoffTime).to.equal(30000);
+    // Legacy (non-hlx6) docs keep the admin.da.live collab room.
+    expect(result.wsProvider.roomname).to.equal('https://admin.da.live/source/org/repo/page.html');
     // Clean up the underlying WS connection
     result.wsProvider.disconnect({ data: 'Client navigation' });
     result.wsProvider.destroy?.();
     result.ydoc.destroy();
+  });
+
+  it('Uses an api.aem.live collab room for a Helix-6 document', async () => {
+    // A ping that advertises the upgrade header makes isHlx6 resolve true.
+    // Use an org/site not probed elsewhere so the isHlx6 cache is cold here.
+    window.fetch = async () => new Response('', {
+      status: 200,
+      headers: { 'x-api-upgrade-available': 'true' },
+    });
+    try {
+      const { wsProvider, ydoc } = await createConnection(
+        'https://admin.da.live/source/hlxorg/hlxsite/dir/page.html',
+      );
+      // da-collab derives the Helix backend from this prefix; the path matches
+      // the api.aem.live source URL nx2 api.js builds for hlx6 docs.
+      expect(wsProvider.roomname).to.equal(
+        'https://api.aem.live/hlxorg/sites/hlxsite/source/dir/page.html',
+      );
+      wsProvider.disconnect({ data: 'Client navigation' });
+      wsProvider.destroy?.();
+      ydoc.destroy();
+    } finally {
+      window.localStorage.removeItem('hlx6-upgrade');
+    }
   });
 
   it('Refreshes protocols with the live IMS token on connection-close', async () => {
@@ -357,12 +396,15 @@ describe('prose/index createConnection rapid-reconnect guard (COR-44)', () => {
     return new Promise((resolve) => { originalSetTimeout.call(window, resolve, 0); });
   }
 
+  let restoreFetch;
   beforeEach(() => {
     installFakes();
+    restoreFetch = stubHlx6Ping();
     window.localStorage.removeItem('nx-ims');
   });
 
   afterEach(() => {
+    restoreFetch();
     uninstallFakes();
     window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());

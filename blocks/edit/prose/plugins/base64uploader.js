@@ -1,7 +1,7 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch } from '../../../shared/utils.js';
-import { DA_ORIGIN, CON_ORIGIN } from '../../../shared/constants.js';
+import { getNx2Api } from '../../../../scripts/utils.js';
+import { CON_ORIGIN } from '../../../shared/constants.js';
 
 const base64UploaderKey = new PluginKey('base64Uploader');
 
@@ -48,9 +48,8 @@ export default function base64Uploader() {
             uploadPromises.push((async () => {
               const resp = await fetch(src);
               const blob = await resp.blob();
-              const body = new FormData();
-              body.append('data', blob);
-              await daFetch(`${DA_ORIGIN}/source${path}`, { body, method: 'POST' });
+              const { source } = await getNx2Api();
+              await source.save(path, { body: blob });
             })());
           });
 
