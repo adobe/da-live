@@ -6,6 +6,9 @@ import {
 } from '../../../../../../../blocks/edit/da-prepare/actions/preflight/utils/utils.js';
 import { REASONS } from '../../../../../../../blocks/edit/da-prepare/actions/preflight/utils/constants.js';
 
+const { setNx } = await import('../../../../../../../scripts/utils.js');
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
 function makeDoc(html) {
   return new DOMParser().parseFromString(`<!doctype html><html><body>${html}</body></html>`, 'text/html');
 }

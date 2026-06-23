@@ -9,8 +9,22 @@ import '../da-search/da-search.js';
 import '../da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
+
+async function openChatPanel() {
+  const store = getPanelStore();
+  const width = store.before?.width ?? '400px';
+  return openPanel({
+    position: 'before',
+    width,
+    getContent: async () => {
+      await import(`${getNx()}/blocks/chat/chat.js`);
+      return document.createElement('nx-chat');
+    },
+  });
+}
 
 export default class DaBrowse extends LitElement {
   static properties = {
@@ -38,12 +52,24 @@ export default class DaBrowse extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    document.addEventListener('keydown', this.handleShortcuts.bind(this));
+    this._handleShortcuts = this.handleShortcuts.bind(this);
+    document.addEventListener('keydown', this._handleShortcuts);
+
+    this._handleOpenChat = async ({ detail }) => {
+      const aside = await openChatPanel();
+      if (!detail?.text) return;
+      aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
+    };
+    document.addEventListener('nx-open-chat-panel', this._handleOpenChat);
+
+    const store = getPanelStore();
+    if (store.before && !store.before.fragment) openChatPanel();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener('keydown', this.handleShortcuts.bind(this));
+    document.removeEventListener('keydown', this._handleShortcuts);
+    document.removeEventListener('nx-open-chat-panel', this._handleOpenChat);
   }
 
   handleShortcuts(e) {
@@ -168,12 +194,18 @@ export default class DaBrowse extends LitElement {
 
   render() {
     return html`
-      <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
-        ${this._tabItems.map((tab, idx) => {
-          if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
-            return nothing;
-          }
-          return html`
+      <div class="da-browse-header">
+        <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
+        </button>
+      </div>
+      <div class="da-browse-content">
+        <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
+          ${this._tabItems.map((tab, idx) => {
+      if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
+        return nothing;
+      }
+      return html`
             <button
               id="tab-${tab.id}"
               type="button"
@@ -183,7 +215,7 @@ export default class DaBrowse extends LitElement {
               @click=${() => { this.handleTabClick(idx); }}>
               <span class="focus">${tab.title}</span>
             </button>`;
-        })}
+    })}
       </div>
       <div class="da-list-header context-${this.context}">
         <da-breadcrumbs .details="${this.details}"></da-breadcrumbs>
@@ -198,6 +230,7 @@ export default class DaBrowse extends LitElement {
           ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
         </div>
       `)}
+      </div>
     `;
   }
 }

@@ -168,4 +168,39 @@ describe('Versions helper', () => {
     expect(formatted[2].audits).to.have.length(1);
     expect(formatted[2].audits[0].users[0].email).to.equal('before@acme.com');
   });
+
+  it('Normalizes hlx6 (.versions) records to the canonical version shape', () => {
+    const versions = [{
+      version: '01KVB6GVE75R432GPNZ8AVADFG',
+      'doc-last-modified': '2026-06-12T18:58:32.000Z',
+      'doc-path-hint': '/hello.html',
+      'doc-last-modified-by': 'CPEYER@ADOBE.COM',
+      'version-date': '2026-06-17T16:27:09.000Z',
+      'version-by': 'CPEYER@ADOBE.COM',
+      'version-comment': 'test',
+    }, {
+      version: '01KVB6GVE75R432GPNZ8AVADAA',
+      'version-date': '2026-06-15T10:00:00.000Z',
+      'version-by': 'someone@acme.com',
+    }];
+
+    const formatted = formatVersions(versions);
+
+    // Every hlx6 record is a restorable version (no audit grouping).
+    expect(formatted).to.have.length(2);
+
+    // Sorted newest-first by version-date.
+    const [first, second] = formatted;
+    expect(first.isVersion).to.be.true;
+    expect(first.versionId).to.equal('01KVB6GVE75R432GPNZ8AVADFG');
+    expect(first.label).to.equal('test');
+    expect(first.users).to.deep.equal([{ email: 'CPEYER@ADOBE.COM' }]);
+    expect(first.timestamp).to.equal(Date.parse('2026-06-17T16:27:09.000Z'));
+    expect(first.url).to.be.undefined;
+
+    // A record with no comment is still a version, just unlabelled.
+    expect(second.isVersion).to.be.true;
+    expect(second.versionId).to.equal('01KVB6GVE75R432GPNZ8AVADAA');
+    expect(second.label).to.be.undefined;
+  });
 });
