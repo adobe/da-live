@@ -477,7 +477,8 @@ function extensionToPanelView(ext, section) {
  */
 export async function getCanvasToolPanelViews({ org, site }) {
   const extensions = await fetchExtensions(org, site);
-  const library = sortLibraryExtensions(extensions.filter(isLibraryExtension));
+  const library = sortLibraryExtensions(extensions.filter(isLibraryExtension))
+    .filter((ext) => ext.name !== 'blocks');
   const thirdParty = extensions.filter((ext) => !isLibraryExtension(ext));
 
   return [
