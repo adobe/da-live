@@ -10,9 +10,18 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { getTestPageURL, fill } from '../utils/page.js';
+import { getTestPageURL, fill, TEST_SITE } from '../utils/page.js';
 
 test('Create Version and Restore from it', async ({ page }, workerInfo) => {
+  test.skip(
+    TEST_SITE !== 'da-status', 
+    `
+    Restoring versions doesn't work yet with Helix 6 and automatic 'audit' versions are not supported.
+    This test fails here: 
+      const audit = await page.locator('.da-version-entry.is-audit').first();
+      await audit.click();
+    `
+  );
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
   test.setTimeout(60000);
