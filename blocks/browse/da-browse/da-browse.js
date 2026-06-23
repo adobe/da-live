@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
-import isEWEnabled from '../../shared/isEWEnabled.js';
+import { isEWEnabled } from '../../shared/ewFlags.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
