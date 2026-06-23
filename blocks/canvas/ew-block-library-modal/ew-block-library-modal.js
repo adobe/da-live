@@ -8,6 +8,7 @@ import {
 } from '../ew-panel-extensions/helpers.js';
 
 const nx = getNx();
+await import(`${nx}/blocks/shared/dialog/dialog.js`);
 const { loadStyle, hashChange } = await import(`${nx}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 
@@ -66,11 +67,6 @@ class EwBlockLibraryModal extends LitElement {
     if (changed.has('extension') && this.extension) {
       this._loadBlocks();
     }
-  }
-
-  firstUpdated() {
-    const dialog = this.shadowRoot.querySelector('dialog');
-    dialog?.showModal();
   }
 
   async _loadBlocks() {
@@ -132,8 +128,8 @@ class EwBlockLibraryModal extends LitElement {
   };
 
   _close() {
-    const dialog = this.shadowRoot.querySelector('dialog');
-    if (dialog?.open) dialog.close();
+    const dialog = this.shadowRoot.querySelector('nx-dialog');
+    if (dialog) dialog.close();
     else this._onDialogClose();
   }
 
@@ -304,20 +300,22 @@ class EwBlockLibraryModal extends LitElement {
 
   render() {
     return html`
-      <dialog class="modal" @close=${this._onDialogClose}>
-        <header class="modal-header">
-          <span class="modal-title">Insert block</span>
-          <button type="button" class="modal-close"
-                  aria-label="Close" @click=${() => this._close()}>✕</button>
-        </header>
-        <div class="modal-body">
-          <aside class="modal-tree-wrap">
-            ${this._renderSearch()}
-            ${this._renderTree()}
-          </aside>
-          <section class="modal-preview-wrap">${this._renderPreview()}</section>
+      <nx-dialog class="modal" @close=${this._onDialogClose}>
+        <div class="modal-content">
+          <header class="modal-header">
+            <span class="modal-title">Insert block</span>
+            <button type="button" class="modal-close"
+                    aria-label="Close" @click=${() => this._close()}>✕</button>
+          </header>
+          <div class="modal-body">
+            <aside class="modal-tree-wrap">
+              ${this._renderSearch()}
+              ${this._renderTree()}
+            </aside>
+            <section class="modal-preview-wrap">${this._renderPreview()}</section>
+          </div>
         </div>
-      </dialog>`;
+      </nx-dialog>`;
   }
 }
 

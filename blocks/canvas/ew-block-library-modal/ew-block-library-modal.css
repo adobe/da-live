@@ -3,21 +3,21 @@
 }
 
 .modal {
-  width: min(960px, 92vw);
-  height: min(640px, 86vh);
-  padding: 0;
-  border: none;
-  border-radius: var(--s2-corner-radius-700);
-  background: light-dark(var(--s2-gray-50), var(--s2-gray-800));
-  color: light-dark(var(--s2-gray-900), var(--s2-gray-100));
-  font-family: var(--s2-font-family);
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: auto 1fr;
+  --nx-dialog-max-width: 960px;
+  --nx-dialog-max-height: 640px;
+  --nx-dialog-padding: 0;
 }
 
-.modal::backdrop {
-  background: rgb(0 0 0 / 40%);
+.modal-content {
+  width: 960px;
+  max-width: 100%;
+  height: 640px;
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  font-family: var(--s2-font-family);
+  color: light-dark(var(--s2-gray-900), var(--s2-gray-100));
 }
 
 .modal-header {
