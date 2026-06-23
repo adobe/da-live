@@ -44,7 +44,7 @@ const ROUTING_HEADER = JSON.stringify({
   tier: 'author',
 });
 
-const CONTENT_SOURCE = 'da-summit-portal';
+const CONTENT_SOURCE = 'da-summit-portal-2';
 
 const STATUS = {
   IDLE: 'idle',
