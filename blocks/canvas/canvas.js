@@ -254,7 +254,7 @@ export default async function decorate(block) {
   let hasContext = false;
   editorSelectChange.subscribe(({
     blockIndex, blockName, proseIndex, innerText, source,
-    selectionType, selectedText,
+    selectionType, selectedText, selFrom,
   }) => {
     if (source !== 'doc') return;
     const isBlock = selectionType === 'block' && blockIndex >= 0 && !!blockName;
@@ -281,8 +281,8 @@ export default async function decorate(block) {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
         label: 'Selection',
-        blockName,
-        proseIndex,
+        blockName: blockName || 'Selection',
+        proseIndex: typeof proseIndex === 'number' ? proseIndex : selFrom,
         innerText: selectedText,
         selectionType,
       };

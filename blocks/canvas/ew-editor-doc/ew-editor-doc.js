@@ -241,6 +241,7 @@ export class EwEditorDoc extends LitElement {
                 explicit: isBlockSel,
                 selectionType,
                 selectedText,
+                selFrom: sel.from,
               });
             },
           ),
