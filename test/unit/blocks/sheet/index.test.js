@@ -187,7 +187,8 @@ describe('restoreVersion', () => {
   });
 });
 
-const SOURCE_URL = 'http://example.com/source/org/site/file.json';
+// getData takes pathDetails; source.get rebuilds the admin.da.live URL the mock serves.
+const SOURCE_DETAILS = { org: 'org', site: 'site', path: '/file.json' };
 
 // The new api.js makes two requests: an hlx6 upgrade probe to admin.hlx.page/ping
 // and the actual source fetch. The probe must respond without an
@@ -225,7 +226,7 @@ describe('Sheets', () => {
     try {
       window.fetch = buildMockFetch(json);
 
-      const sheet = await sh.getData(SOURCE_URL);
+      const sheet = await sh.getData(SOURCE_DETAILS);
       expect(sheet.length).to.equal(1);
       expect(sheet[0].sheetName).to.equal('data');
       expect(sheet[0].data).to.deep.equal([['Value'], ['A'], ['B'], ['C']]);
@@ -265,7 +266,7 @@ describe('Sheets', () => {
     try {
       window.fetch = buildMockFetch(json);
 
-      const sheet = await sh.getData(SOURCE_URL);
+      const sheet = await sh.getData(SOURCE_DETAILS);
       expect(sheet.length).to.equal(2);
       expect(sheet[0].sheetName).to.equal('data');
       expect(sheet[0].data).to.deep.equal([['Tag'], ['red'], ['blue'], ['orange']]);
@@ -314,7 +315,7 @@ describe('Sheets', () => {
     try {
       window.fetch = buildMockFetch(json);
 
-      const sheet = await sh.getData(SOURCE_URL);
+      const sheet = await sh.getData(SOURCE_DETAILS);
       expect(sheet.length).to.equal(2);
       expect(sheet[0].sheetName).to.equal('single-sheet');
       expect(sheet[1].sheetName).to.equal('private-sheet');
@@ -380,7 +381,7 @@ describe('Sheets', () => {
     try {
       window.fetch = buildMockFetch(json);
 
-      const sheet = await sh.getData(SOURCE_URL);
+      const sheet = await sh.getData(SOURCE_DETAILS);
       expect(sheet.length).to.equal(3);
       expect(sheet[0].sheetName).to.equal('sheet1');
       expect(sheet[1].sheetName).to.equal('sheet2');

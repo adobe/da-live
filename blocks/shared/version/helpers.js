@@ -1,17 +1,40 @@
 import { formatDate } from '../utils.js';
 
-export function formatVersions(json) {
-  // Sort by timestamp epoch
-  json.sort((a, b) => b.timestamp - a.timestamp);
+// hlx6 (.versions) records carry a `version` ULID and ISO `version-date`;
+// hlx5 (/versionlist) records carry an epoch `timestamp` and a `users` array.
+function isHlx6Entry(entry) {
+  return entry.version !== undefined || entry['version-date'] !== undefined;
+}
 
-  // Make human readable entries
-  const ungrouped = json.map((entry) => {
+// Map an hlx6 .versions record onto the canonical entry shape the renderers and
+// restore flow use. hlx6 has no audit/auto-save entries — every record is a
+// restorable version, identified by its ULID rather than a /versionsource url.
+function normalizeHlx6Entry(entry) {
+  const author = entry['version-by'] || entry['doc-last-modified-by'];
+  return {
+    timestamp: Date.parse(entry['version-date'] || entry['doc-last-modified']),
+    users: author ? [{ email: author }] : [],
+    label: entry['version-comment'],
+    versionId: entry.version,
+  };
+}
+
+export function formatVersions(json) {
+  const entries = json.map((entry) => (
+    isHlx6Entry(entry) ? normalizeHlx6Entry(entry) : entry));
+
+  // Sort by timestamp epoch
+  entries.sort((a, b) => b.timestamp - a.timestamp);
+
+  // Make human readable entries. An entry is a restorable version when it has a
+  // legacy `url` (hlx5) or a `versionId` (hlx6); otherwise it's an audit entry.
+  const ungrouped = entries.map((entry) => {
     const { date, time } = formatDate(entry.timestamp);
     return {
       date,
       time,
       ...entry,
-      isVersion: !!entry.url,
+      isVersion: !!(entry.url || entry.versionId),
     };
   });
 
