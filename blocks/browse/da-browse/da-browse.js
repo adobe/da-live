@@ -62,8 +62,8 @@ export default class DaBrowse extends LitElement {
     };
     document.addEventListener('nx-open-chat-panel', this._handleOpenChat);
 
-    const store = getPanelStore();
-    if (store.before && !store.before.fragment) openChatPanel();
+    // const store = getPanelStore();
+    // if (store.before && !store.before.fragment) openChatPanel();
   }
 
   disconnectedCallback() {
