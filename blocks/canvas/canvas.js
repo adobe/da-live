@@ -248,24 +248,26 @@ export default async function decorate(block) {
     });
   }
 
-  // Only NodeSelection (explicit block handle click) in doc mode qualifies as intentional context.
+  // Any non-empty selection in doc mode is sent as chat context.
   // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.
   const CANVAS_CHAT_KEY = 'canvas-selection';
-  let hasExplicitBlock = false;
+  let hasContext = false;
   editorSelectChange.subscribe(({
-    blockIndex, blockName, proseIndex, innerText, source, explicit,
+    blockIndex, blockName, proseIndex, innerText, source,
+    selectionType, selectedText,
   }) => {
     if (source !== 'doc') return;
-    if (!explicit) {
-      if (hasExplicitBlock) {
-        hasExplicitBlock = false;
+    const isBlock = selectionType === 'block' && blockIndex >= 0 && !!blockName;
+    const isContent = selectionType === 'text' || selectionType === 'item';
+    if (!isBlock && !isContent) {
+      if (hasContext) {
+        hasContext = false;
         document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key: CANVAS_CHAT_KEY } }));
       }
       return;
     }
-    const hasBlock = blockIndex >= 0 && !!blockName;
-    hasExplicitBlock = hasBlock;
-    const detail = hasBlock
+    hasContext = true;
+    const detail = isBlock
       ? {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
@@ -273,8 +275,17 @@ export default async function decorate(block) {
         blockName,
         proseIndex,
         innerText,
+        selectionType,
       }
-      : { key: CANVAS_CHAT_KEY };
+      : {
+        key: CANVAS_CHAT_KEY,
+        id: CANVAS_CHAT_KEY,
+        label: 'Selection',
+        blockName,
+        proseIndex,
+        innerText: selectedText,
+        selectionType,
+      };
     document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail }));
   });
 }

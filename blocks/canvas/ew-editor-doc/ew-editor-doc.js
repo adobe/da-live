@@ -46,6 +46,7 @@ export class EwEditorDoc extends LitElement {
       setSelectionToolbarCtx();
       this._error = undefined;
       this._lastDocBlockIndex = undefined;
+      this._lastDocSelKey = undefined;
       editorHtmlChange.emit('');
     }
   }
@@ -109,6 +110,7 @@ export class EwEditorDoc extends LitElement {
     if (pos == null) return;
     this._lastDocBlockIndex = blockIndex;
     const sel = NodeSelection.create(view.state.doc, pos);
+    this._lastDocSelKey = `${sel.from}|${sel.to}|node`;
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
@@ -211,12 +213,35 @@ export class EwEditorDoc extends LitElement {
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
             (pmView) => {
-              const blockIndex = getActiveBlockIndex(pmView);
-              if (blockIndex === this._lastDocBlockIndex) return;
-              this._lastDocBlockIndex = blockIndex;
               const sel = pmView.state.selection;
-              const explicit = sel instanceof NodeSelection && sel.$from.depth === 0;
-              editorSelectChange.emit({ blockIndex, source: 'doc', explicit });
+              const blockIndex = getActiveBlockIndex(pmView);
+              const isNodeSel = sel instanceof NodeSelection;
+              const isBlockSel = isNodeSel && sel.$from.depth === 0;
+              const hasTextSel = !isNodeSel && !sel.empty;
+              const kind = isNodeSel ? 'node' : 'text';
+              const selKey = `${sel.from}|${sel.to}|${kind}`;
+              if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
+              this._lastDocBlockIndex = blockIndex;
+              this._lastDocSelKey = selKey;
+              let selectionType = 'empty';
+              let selectedText = '';
+              if (isBlockSel) {
+                selectionType = 'block';
+                selectedText = sel.node?.textContent ?? '';
+              } else if (isNodeSel) {
+                selectionType = 'item';
+                selectedText = sel.node?.textContent ?? '';
+              } else if (hasTextSel) {
+                selectionType = 'text';
+                selectedText = pmView.state.doc.textBetween(sel.from, sel.to, '\n', ' ');
+              }
+              editorSelectChange.emit({
+                blockIndex,
+                source: 'doc',
+                explicit: isBlockSel,
+                selectionType,
+                selectedText,
+              });
             },
           ),
         ],
