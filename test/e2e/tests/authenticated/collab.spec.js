@@ -13,7 +13,6 @@ import { test, expect } from '@playwright/test';
 import { getTestPageURL, fill, TEST_SITE } from '../../utils/page.js';
 
 test('Collab cursors in multiple editors', async ({ browser, page, browserName }, workerInfo) => {
-  test.skip(browserName !== 'chromium', 'Collab test only runs on Chrome');
   // Open 2 editors on the same page and edit in both of them.
   // Ensure that the edits are visible to both and that the collab cursors are there
   // Also check that the cloud icon is visible for the collaborator
@@ -97,6 +96,9 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
   expect(cursorIdx).toBeLessThan(textIdx);
   expect(textIdx2).toBeLessThan(cursorIdx);
 
+  // Wait for debounce to happen and changes to be saved
+  await page.waitForTimeout(4000);
+
   // Check with the backend that the edits came through and are stored there.
   // Convert the editor URL (…#/<org>/<site>/<path>) into the da-admin/Helix source URL.
   const [, org, site, ...rest] = pageURL.split('#')[1].split('/');
@@ -107,7 +109,7 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
     sourceUrl = `https://api.aem.live/${org}/sites/${site}/source/${rest.join('/')}.html`;
   }
 
-  console.log('*** Checking ', sourceUrl, ' with auth header ', authHeader?.substring(0, 30));
+  console.log('Checking backend at ', sourceUrl);
   const resp = await page.request.get(sourceUrl, { headers: { Authorization: authHeader } });
   const body = await resp.text();
 
