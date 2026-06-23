@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { yUndo, yRedo, NodeSelection, TextSelection, DOMSerializer } from 'da-y-wrapper';
+import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import {
   updateDocument, updateCursors, getInstrumentedHTML,
@@ -13,6 +13,7 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
+import { describeDocSelection } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -213,46 +214,17 @@ export class EwEditorDoc extends LitElement {
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
             (pmView) => {
-              const sel = pmView.state.selection;
               const blockIndex = getActiveBlockIndex(pmView);
-              const isNodeSel = sel instanceof NodeSelection;
-              const isBlockSel = isNodeSel && sel.$from.depth === 0;
-              const hasTextSel = !isNodeSel && !sel.empty;
-              const kind = isNodeSel ? 'node' : 'text';
-              const selKey = `${sel.from}|${sel.to}|${kind}`;
+              const { kind, ...descriptor } = describeDocSelection(pmView);
+              const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
               if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
               this._lastDocBlockIndex = blockIndex;
               this._lastDocSelKey = selKey;
-              let selectionType = 'empty';
-              let selectedText = '';
-              let selectedHTML = '';
-              if (isBlockSel) {
-                selectionType = 'block';
-                selectedText = sel.node?.textContent ?? '';
-              } else if (isNodeSel || hasTextSel) {
-                selectionType = isNodeSel ? 'item' : 'text';
-                selectedText = isNodeSel
-                  ? (sel.node?.textContent ?? '')
-                  : pmView.state.doc.textBetween(sel.from, sel.to, '\n', ' ');
-                try {
-                  const serializer = DOMSerializer.fromSchema(pmView.state.schema);
-                  const fragment = serializer.serializeFragment(sel.content().content);
-                  const div = document.createElement('div');
-                  div.appendChild(fragment);
-                  selectedHTML = div.innerHTML;
-                } catch {
-                  selectedHTML = '';
-                }
-              }
               editorSelectChange.emit({
                 blockIndex,
                 source: 'doc',
-                explicit: isBlockSel,
-                selectionType,
-                selectedText,
-                selectedHTML,
-                selFrom: sel.from,
-                selTo: sel.to,
+                explicit: descriptor.selectionType === 'block',
+                ...descriptor,
               });
             },
           ),
