@@ -203,7 +203,9 @@ function applySectionMetadata(editor) {
         .replace(/^-+|-+$/g, '');
       if (!key) return;
       if (key === 'style') {
-        toBlockCSSClassNames(cols[1].textContent.trim())
+        cols[1].textContent.trim().split(',')
+          .map((s) => s.trim().toLowerCase().replace(/[^0-9a-z]+/g, '-').replace(/^-+|-+$/g, ''))
+          .filter(Boolean)
           .forEach((cls) => section.classList.add(cls));
       } else {
         const camelKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());

@@ -94,20 +94,21 @@ describe('prose2aem section-metadata handling', () => {
     expect(section.classList.contains('highlight')).to.be.true;
   });
 
-  it('applies multiple style classes from the name (variant) notation', () => {
+  it('applies multiple style classes from comma-separated values', () => {
     const editor = makeEditor(`
       <p>Content</p>
       <div class="tableWrapper">
         <table>
           <tr><td>Section Metadata</td></tr>
-          <tr><td>Style</td><td>highlight (contained)</td></tr>
+          <tr><td>Style</td><td>divider, light</td></tr>
         </table>
       </div>
     `);
     const main = parseMain(prose2aem(editor, true, false));
     const section = main.querySelector(':scope > div');
-    expect(section.classList.contains('highlight')).to.be.true;
-    expect(section.classList.contains('contained')).to.be.true;
+    expect(section.classList.contains('divider')).to.be.true;
+    expect(section.classList.contains('light')).to.be.true;
+    expect(section.classList.contains('divider-light')).to.be.false;
   });
 
   it('removes the section-metadata block from the output', () => {
