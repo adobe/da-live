@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
+import { yUndo, yRedo, NodeSelection, TextSelection, DOMSerializer } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import {
   updateDocument, updateCursors, getInstrumentedHTML,
@@ -225,15 +225,24 @@ export class EwEditorDoc extends LitElement {
               this._lastDocSelKey = selKey;
               let selectionType = 'empty';
               let selectedText = '';
+              let selectedHTML = '';
               if (isBlockSel) {
                 selectionType = 'block';
                 selectedText = sel.node?.textContent ?? '';
-              } else if (isNodeSel) {
-                selectionType = 'item';
-                selectedText = sel.node?.textContent ?? '';
-              } else if (hasTextSel) {
-                selectionType = 'text';
-                selectedText = pmView.state.doc.textBetween(sel.from, sel.to, '\n', ' ');
+              } else if (isNodeSel || hasTextSel) {
+                selectionType = isNodeSel ? 'item' : 'text';
+                selectedText = isNodeSel
+                  ? (sel.node?.textContent ?? '')
+                  : pmView.state.doc.textBetween(sel.from, sel.to, '\n', ' ');
+                try {
+                  const serializer = DOMSerializer.fromSchema(pmView.state.schema);
+                  const fragment = serializer.serializeFragment(sel.content().content);
+                  const div = document.createElement('div');
+                  div.appendChild(fragment);
+                  selectedHTML = div.innerHTML;
+                } catch {
+                  selectedHTML = '';
+                }
               }
               editorSelectChange.emit({
                 blockIndex,
@@ -241,7 +250,9 @@ export class EwEditorDoc extends LitElement {
                 explicit: isBlockSel,
                 selectionType,
                 selectedText,
+                selectedHTML,
                 selFrom: sel.from,
+                selTo: sel.to,
               });
             },
           ),
@@ -285,11 +296,33 @@ export class EwEditorDoc extends LitElement {
       .subscribe(({ blockIndex, source }) => {
         if (source !== 'doc') this._scrollDocToBlock(blockIndex);
       });
+    this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
+    document.addEventListener('nx-canvas-highlight', this._onCanvasHighlight);
+  }
+
+  _applyHighlight({ selFrom, selTo, selectionType } = {}) {
+    const { view } = this._proseContext ?? {};
+    if (!view || typeof selFrom !== 'number' || typeof selTo !== 'number') return;
+    const { doc } = view.state;
+    if (selFrom < 0 || selTo > doc.content.size) return;
+    let sel;
+    try {
+      if (selectionType === 'block' || selectionType === 'item') {
+        sel = NodeSelection.create(doc, selFrom);
+      } else {
+        sel = TextSelection.create(doc, selFrom, selTo);
+      }
+    } catch {
+      return;
+    }
+    view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+    view.focus();
   }
 
   disconnectedCallback() {
     this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
+    document.removeEventListener('nx-canvas-highlight', this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._teardown();
     setSelectionToolbarCtx();

@@ -254,7 +254,7 @@ export default async function decorate(block) {
   let hasContext = false;
   editorSelectChange.subscribe(({
     blockIndex, blockName, proseIndex, innerText, source,
-    selectionType, selectedText, selFrom,
+    selectionType, selectedHTML, selFrom, selTo,
   }) => {
     if (source !== 'doc') return;
     const isBlock = selectionType === 'block' && blockIndex >= 0 && !!blockName;
@@ -271,20 +271,27 @@ export default async function decorate(block) {
       ? {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
+        type: 'block',
         label: blockName,
         blockName,
         proseIndex,
         innerText,
         selectionType,
+        selFrom,
+        selTo,
+        pinnable: true,
       }
       : {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
+        type: 'text',
         label: 'Selection',
-        blockName: blockName || 'Selection',
         proseIndex: typeof proseIndex === 'number' ? proseIndex : selFrom,
-        innerText: selectedText,
+        innerHTML: selectedHTML,
         selectionType,
+        selFrom,
+        selTo,
+        pinnable: true,
       };
     document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail }));
   });
