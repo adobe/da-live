@@ -5,7 +5,6 @@
 .da-browse-header {
   padding: var(--s2-spacing-200);
   height: 40px;
-  display: none;
 }
 
 .da-browse-content {
