@@ -38,7 +38,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   // created by the getTestPageURL() function in page.js
   const items = page.locator('.da-item-list-item-name');
 
-  let itemsToDelete;
+  let itemsToDelete = 0;
   for (let i = 0; i < await items.count(); i += 1) {
     const item = items.nth(i);
     const fileName = await item.innerText();
@@ -52,7 +52,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     }
     const day = 1000 * 60 * 60 * MIN_HOURS;
     if (Date.now() - day < age) {
-      // console.log('Too new:', fileName);
+      // console.log('Too new:', fileName, ' age is ', new Date(age));
       // eslint-disable-next-line no-continue
       continue;
     }
@@ -64,7 +64,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     // console.log('To be deleted, checked box:', await checkbox.count());
     await checkbox.focus();
     await page.keyboard.press(' ');
-    itemsToDelete = true;
+    itemsToDelete += 1;
   }
 
   if (!itemsToDelete) {
@@ -76,7 +76,9 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   await page.locator('button.delete-button').locator('visible=true').click();
 
   // Type in YES to delete > 10 items
-  await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
+  if (itemsToDelete > 10) {
+    await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
+  }
 
   // Hit the delete confirmation button
   await page.locator('sl-button.negative').locator('visible=true').click();
