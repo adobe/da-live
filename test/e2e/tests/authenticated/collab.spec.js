@@ -106,6 +106,8 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
   } else {
     sourceUrl = `https://api.aem.live/${org}/sites/${site}/source/${rest.join('/')}.html`;
   }
+
+  console.log('*** Checking ', sourceUrl, ' with auth header ', authHeader?.substring(0, 30));
   const resp = await page.request.get(sourceUrl, { headers: { Authorization: authHeader } });
   const body = await resp.text();
 
