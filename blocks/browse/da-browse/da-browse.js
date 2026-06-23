@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
+import isEWEnabled from '../../shared/isEWEnabled.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
@@ -71,18 +72,6 @@ export default class DaBrowse extends LitElement {
     document.removeEventListener('nx-open-chat-panel', this._handleOpenChat);
   }
 
-  async isEWEnabled({ org, site }) {
-    try {
-      const [, siteConfig] = await Promise.all(fetchDaConfigs({ org, site }));
-      const flag = siteConfig?.flags?.data?.find((f) => f.key === 'ew.enabled');
-      return flag?.value === 'true';
-    } catch (e) {
-      if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
-    }
-
-    return false;
-  }
-
   handleShortcuts(e) {
     // Check for Command / Control + Option + T
     if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
@@ -114,7 +103,7 @@ export default class DaBrowse extends LitElement {
       // and do this before getEditor so the default editor reflects EW state
       if (orgChanged || prevDetails?.site !== this.details.site) {
         const { org, site } = this.details;
-        this._chatEnabled = await this.isEWEnabled({ org, site });
+        this._chatEnabled = await isEWEnabled({ org, site });
         if (this._chatEnabled) {
           const store = getPanelStore();
           if (store.before && !store.before.fragment) openChatPanel();
