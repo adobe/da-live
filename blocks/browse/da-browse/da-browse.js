@@ -31,6 +31,7 @@ export default class DaBrowse extends LitElement {
     details: { attribute: false },
     _tabItems: { state: true },
     _searchItems: { state: true },
+    _chatEnabled: { state: true },
   };
 
   constructor() {
@@ -56,20 +57,30 @@ export default class DaBrowse extends LitElement {
     document.addEventListener('keydown', this._handleShortcuts);
 
     this._handleOpenChat = async ({ detail }) => {
+      if (!this._chatEnabled) return;
       const aside = await openChatPanel();
       if (!detail?.text) return;
       aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
     };
     document.addEventListener('nx-open-chat-panel', this._handleOpenChat);
-
-    const store = getPanelStore();
-    if (store.before && !store.before.fragment) openChatPanel();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
     document.removeEventListener('nx-open-chat-panel', this._handleOpenChat);
+  }
+
+  async isEWEnabled({ org, site }) {
+    try {
+      const [, siteConfig] = await Promise.all(fetchDaConfigs({ org, site }));
+      const flag = siteConfig?.flags?.data?.find((f) => f.key === 'ew.enabled');
+      return flag?.value === 'true';
+    } catch (e) {
+      if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
+    }
+
+    return false;
   }
 
   handleShortcuts(e) {
@@ -96,17 +107,29 @@ export default class DaBrowse extends LitElement {
 
   async update(props) {
     if (props.has('details') && this.details) {
-      // Only re-fetch if the orgs are different
-      const reFetch = props.get('details')?.org !== this.details.org
-        || props.get('details')?.site !== this.details.site;
-      this.editor = await this.getEditor(reFetch);
+      const prevDetails = props.get('details');
+      const orgChanged = prevDetails?.org !== this.details.org;
+
+      // EW flag lives at site level — re-check whenever org or site changes,
+      // and do this before getEditor so the default editor reflects EW state
+      if (orgChanged || prevDetails?.site !== this.details.site) {
+        const { org, site } = this.details;
+        this._chatEnabled = await this.isEWEnabled({ org, site });
+        if (this._chatEnabled) {
+          const store = getPanelStore();
+          if (store.before && !store.before.fragment) openChatPanel();
+        }
+      }
+
+      // Only re-fetch editor configs if the org changes
+      this.editor = await this.getEditor(orgChanged);
     }
 
     super.update(props);
   }
 
   async getEditor(reFetch) {
-    const DEF_EDIT = '/edit#';
+    const DEF_EDIT = this._chatEnabled ? '/canvas#' : '/edit#';
 
     if (reFetch) {
       const { org, site } = this.details;
@@ -195,9 +218,10 @@ export default class DaBrowse extends LitElement {
   render() {
     return html`
       <div class="da-browse-header">
-        <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
-          <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
-        </button>
+        ${this._chatEnabled ? html`
+          <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
+            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
+          </button>` : nothing}
       </div>
       <div class="da-browse-content">
         <div class="da-tablist" role="tablist" aria-label="Dark Alley content">

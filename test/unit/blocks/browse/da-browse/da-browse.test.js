@@ -515,6 +515,32 @@ describe('DaBrowse Component', () => {
     });
   });
 
+  describe('isEWEnabled', () => {
+    let savedFetch;
+    beforeEach(() => { savedFetch = window.fetch; });
+    afterEach(() => { window.fetch = savedFetch; });
+
+    it('returns true when ew.enabled flag value is "true"', async () => {
+      window.fetch = async (url) => ({
+        ok: true,
+        json: async () => (url.includes('/ew-s1/')
+          ? { flags: { data: [{ key: 'ew.enabled', value: 'true' }] } }
+          : {}),
+      });
+      expect(await daBrowseComp.isEWEnabled({ org: 'ew-o1', site: 'ew-s1' })).to.be.true;
+    });
+
+    it('returns false when ew.enabled flag value is "false"', async () => {
+      window.fetch = async (url) => ({
+        ok: true,
+        json: async () => (url.includes('/ew-s2/')
+          ? { flags: { data: [{ key: 'ew.enabled', value: 'false' }] } }
+          : {}),
+      });
+      expect(await daBrowseComp.isEWEnabled({ org: 'ew-o2', site: 'ew-s2' })).to.be.false;
+    });
+  });
+
   describe('getEditor', () => {
     let savedFetch;
     beforeEach(() => { savedFetch = window.fetch; });
@@ -560,6 +586,27 @@ describe('DaBrowse Component', () => {
       const before = calls;
       await daBrowseComp.getEditor(false);
       expect(calls).to.equal(before);
+    });
+
+    it('Returns /canvas# as default when EW is enabled and no explicit config', async () => {
+      daBrowseComp._chatEnabled = true;
+      window.fetch = () => Promise.resolve(
+        new Response(JSON.stringify({ data: [] }), { status: 200 }),
+      );
+      daBrowseComp.details = { owner: 'canvas-org', org: 'canvas-org', site: 'canvas-site', fullpath: '/canvas-org/canvas-site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('/canvas#');
+    });
+
+    it('Explicit editor.path config takes precedence over EW canvas default', async () => {
+      daBrowseComp._chatEnabled = true;
+      const body = JSON.stringify({
+        data: [{ key: 'editor.path', value: '/canvas-org2/canvas-site2=https://custom-editor' }],
+      });
+      window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
+      daBrowseComp.details = { owner: 'canvas-org2', org: 'canvas-org2', site: 'canvas-site2', fullpath: '/canvas-org2/canvas-site2/page' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('https://custom-editor');
     });
   });
 });
