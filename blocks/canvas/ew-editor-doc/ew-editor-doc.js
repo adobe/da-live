@@ -269,7 +269,7 @@ export class EwEditorDoc extends LitElement {
         if (source !== 'doc') this._scrollDocToBlock(blockIndex);
       });
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
-    document.addEventListener('nx-canvas-highlight', this._onCanvasHighlight);
+    document.addEventListener('nx-highlight-selection', this._onCanvasHighlight);
   }
 
   _applyHighlight(detail) {
@@ -279,7 +279,7 @@ export class EwEditorDoc extends LitElement {
   disconnectedCallback() {
     this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
-    document.removeEventListener('nx-canvas-highlight', this._onCanvasHighlight);
+    document.removeEventListener('nx-highlight-selection', this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._teardown();
     setSelectionToolbarCtx();
