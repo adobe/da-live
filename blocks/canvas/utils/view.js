@@ -1,6 +1,8 @@
-import { getEWFlags } from '../../shared/ewFlags.js';
+import { getNx2EwFlags } from '../../../scripts/utils.js';
 
 const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
+
+const loadEWFlags = async (args) => (await getNx2EwFlags()).getEWFlags(args);
 
 export function normalizeCanvasEditorView(view) {
   if (view === 'content') return 'content';
@@ -8,7 +10,7 @@ export function normalizeCanvasEditorView(view) {
   return 'layout';
 }
 
-export async function readInitialCanvasEditorView({ org, site }) {
+export async function readInitialCanvasEditorView({ org, site }, getEWFlags = loadEWFlags) {
   try {
     const persisted = sessionStorage.getItem(CANVAS_EDITOR_VIEW_KEY);
     if (persisted) return normalizeCanvasEditorView(persisted);
