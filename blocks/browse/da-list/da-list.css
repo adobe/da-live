@@ -14,7 +14,7 @@
 
 /* List Item */
 da-list-item {
-  font-size: var(--s2-component-m-regular-font-size);
+  font-size: var(--s2-component-l-regular-font-size);
 }
 
 da-list-item::before {
