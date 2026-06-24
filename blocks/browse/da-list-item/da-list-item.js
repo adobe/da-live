@@ -74,7 +74,9 @@ export default class DaListItem extends LitElement {
 
   async updateAEMStatus() {
     const { status, asJson } = await getNx2Api();
-    const { data: json } = await asJson(status.get(this.path));
+    // AEM resolves HTML pages by their extensionless path.
+    const path = this.ext === 'html' ? this.path.slice(0, -5) : this.path;
+    const { data: json } = await asJson(status.get(path));
 
     if (json) {
       this._preview = {

@@ -328,6 +328,44 @@ describe('DaListItem', () => {
       expect(el._preview).to.deep.equal({ status: 401 });
       expect(el._live).to.deep.equal({ status: 401 });
     });
+
+    it('Strips the .html extension from the AEM status request path', async () => {
+      const fetched = [];
+      window.fetch = (url) => {
+        fetched.push(url);
+        if (url.includes('/ping')) return Promise.resolve(new Response(null, { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({
+          preview: { status: 200, url: 'p', lastModified: null },
+          live: { status: 200, url: 'l', lastModified: null },
+        }), { status: 200 }));
+      };
+      const el = new DaListItem();
+      el.ext = 'html';
+      el.path = '/org/repo/page.html';
+      await el.updateAEMStatus();
+      const statusCall = fetched.find((url) => url.includes('/status/'));
+      expect(statusCall, 'expected a call to the status endpoint').to.exist;
+      expect(statusCall).to.not.contain('.html');
+    });
+
+    it('Leaves non-html paths untouched for the AEM status request', async () => {
+      const fetched = [];
+      window.fetch = (url) => {
+        fetched.push(url);
+        if (url.includes('/ping')) return Promise.resolve(new Response(null, { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({
+          preview: { status: 200, url: 'p', lastModified: null },
+          live: { status: 200, url: 'l', lastModified: null },
+        }), { status: 200 }));
+      };
+      const el = new DaListItem();
+      el.ext = 'json';
+      el.path = '/org/repo/data.json';
+      await el.updateAEMStatus();
+      const statusCall = fetched.find((url) => url.includes('/status/'));
+      expect(statusCall, 'expected a call to the status endpoint').to.exist;
+      expect(statusCall).to.contain('data.json');
+    });
   });
 
   describe('updateDAStatus', () => {
