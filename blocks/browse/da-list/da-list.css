@@ -295,7 +295,20 @@ da-list-item.is-expanded::after {
 }
 
 .da-list-status-type-info .da-list-status-title {
-  background: var(--s2-blue-800) url("/blocks/browse/img/Smock_InfoOutline_18_N.svg") 12px 50% no-repeat;
+  background-color: var(--s2-blue-800);
+  position: relative;
+}
+
+.da-list-status-type-info .da-list-status-title::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: url("/img/icons/s2-icon-infocircle-20-n.svg") center / contain no-repeat;
+  filter: brightness(0) invert(1);
 }
 
 /* Checkbox */

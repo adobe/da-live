@@ -6,12 +6,6 @@ import '../da-list-item/da-list-item.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
-const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
-const ICONS = [
-  '/blocks/edit/img/Smock_Cancel_18_N.svg',
-  '/blocks/edit/img/Smock_Checkmark_18_N.svg',
-  '/blocks/edit/img/Smock_Refresh_18_N.svg',
-];
 
 const MAX_DELETE_COUNT = 1000;
 const DELETE_CONFIRM_THRESHOLD = 10;
@@ -70,7 +64,6 @@ export default class DaList extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
-    getSvg({ parent: this.shadowRoot, paths: ICONS });
   }
 
   async update(props) {
@@ -729,10 +722,10 @@ export default class DaList extends LitElement {
           placeholder="YES"
           autofocus=""
           @input=${(e) => {
-            const upper = e.target.value.toUpperCase();
-            if (e.target.value !== upper) e.target.value = upper;
-            this._confirmText = upper;
-          }}
+        const upper = e.target.value.toUpperCase();
+        if (e.target.value !== upper) e.target.value = upper;
+        this._confirmText = upper;
+      }}
           aria-label="Type YES to confirm"
           value=${this._confirmText ?? ''}></sl-input>
       </div>
@@ -959,7 +952,7 @@ export default class DaList extends LitElement {
                 ?disabled=${this._filterLoading}
                 aria-disabled=${this._filterLoading ? 'true' : 'false'}
                 aria-label="Toggle filter">
-                <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
+                <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
               </button>
             ` : html`
               <button
@@ -969,7 +962,7 @@ export default class DaList extends LitElement {
                 ?disabled=${this._filterLoading}
                 aria-disabled=${this._filterLoading ? 'true' : 'false'}
                 aria-label="Toggle filter">
-                <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
+                <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
               </button>
             `}
           </div>

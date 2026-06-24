@@ -224,6 +224,7 @@ export default class DaListItem extends LitElement {
     return html`
       <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
         <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
+          ${this.renderIcon()}
         </span>
         <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="Rename item">
         <div class="da-item-list-item-rename-actions">
