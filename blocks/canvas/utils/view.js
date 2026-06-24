@@ -1,8 +1,8 @@
-import { getNx2EwFlags } from '../../../scripts/utils.js';
+import { getNxEWFlags } from '../../../scripts/utils.js';
 
 const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
 
-const loadEWFlags = async (args) => (await getNx2EwFlags()).getEWFlags(args);
+const loadEWFlags = async (args) => (await getNxEWFlags()).getEWFlags(args);
 
 export function normalizeCanvasEditorView(view) {
   if (view === 'content') return 'content';
