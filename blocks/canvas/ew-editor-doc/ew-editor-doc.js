@@ -13,6 +13,7 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
+import { describeDocSelection, applyHighlight, SEL_BLOCK } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -46,6 +47,7 @@ export class EwEditorDoc extends LitElement {
       setSelectionToolbarCtx();
       this._error = undefined;
       this._lastDocBlockIndex = undefined;
+      this._lastDocSelKey = undefined;
       editorHtmlChange.emit('');
     }
   }
@@ -109,6 +111,7 @@ export class EwEditorDoc extends LitElement {
     if (pos == null) return;
     this._lastDocBlockIndex = blockIndex;
     const sel = NodeSelection.create(view.state.doc, pos);
+    this._lastDocSelKey = `${sel.from}|${sel.to}|node`;
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
@@ -212,11 +215,17 @@ export class EwEditorDoc extends LitElement {
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
             (pmView) => {
               const blockIndex = getActiveBlockIndex(pmView);
-              if (blockIndex === this._lastDocBlockIndex) return;
+              const { kind, ...descriptor } = describeDocSelection(pmView);
+              const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
+              if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
               this._lastDocBlockIndex = blockIndex;
-              const sel = pmView.state.selection;
-              const explicit = sel instanceof NodeSelection && sel.$from.depth === 0;
-              editorSelectChange.emit({ blockIndex, source: 'doc', explicit });
+              this._lastDocSelKey = selKey;
+              editorSelectChange.emit({
+                blockIndex,
+                source: 'doc',
+                explicit: descriptor.selectionType === SEL_BLOCK,
+                ...descriptor,
+              });
             },
           ),
         ],
@@ -259,11 +268,18 @@ export class EwEditorDoc extends LitElement {
       .subscribe(({ blockIndex, source }) => {
         if (source !== 'doc') this._scrollDocToBlock(blockIndex);
       });
+    this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
+    document.addEventListener('nx-highlight-selection', this._onCanvasHighlight);
+  }
+
+  _applyHighlight(detail) {
+    applyHighlight(this._proseContext?.view, detail);
   }
 
   disconnectedCallback() {
     this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
+    document.removeEventListener('nx-highlight-selection', this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._teardown();
     setSelectionToolbarCtx();
