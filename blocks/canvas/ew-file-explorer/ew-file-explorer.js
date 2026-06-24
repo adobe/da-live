@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath } from '../../shared/daFiles.js';
 import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
+import getEditPath from '../../browse/shared.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -211,8 +212,22 @@ class EwFileExplorer extends LitElement {
     this._expanded = next;
   }
 
+  _onItemClick(item) {
+    if (item.type === 'directory') {
+      this._toggle(item.pathKey, item.path);
+      return;
+    }
+    if (item.ext === 'html') {
+      window.location.hash = `#/${itemHashPath(item)}`;
+      return;
+    }
+    if (item.ext === 'link') return;
+    const url = getEditPath({ path: item.path, ext: item.ext, editor: '' });
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
   _renderNode(item, depth) {
-    const { type, pathKey, name, children, path } = item;
+    const { type, pathKey, name, children } = item;
     const isDir = type === 'directory';
     const expanded = isDir && this._expanded?.has(pathKey);
     const hashPath = itemHashPath(item);
@@ -226,7 +241,7 @@ class EwFileExplorer extends LitElement {
           tabindex="-1"
           aria-expanded="${isDir ? expanded : nothing}"
           aria-selected="${selected}"
-          @click="${isDir ? () => this._toggle(pathKey, path) : () => { window.location.hash = `#/${hashPath}`; }}">
+          @click="${() => this._onItemClick(item)}">
           <span class="label">${name}</span>
         </button>
         ${expanded && children.length ? html`

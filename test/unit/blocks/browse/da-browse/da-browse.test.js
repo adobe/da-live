@@ -75,7 +75,7 @@ describe('Browse', () => {
     daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
     daBrowse._listItems = [];
     daBrowse._continuationToken = 'token-1';
-    daBrowse.scheduleAutoCheck = () => {};
+    daBrowse.scheduleAutoCheck = () => { };
 
     const orgFetch = window.fetch;
     try {
@@ -110,7 +110,7 @@ describe('Browse', () => {
     daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
     daBrowse._listItems = [{ path: '/already-there', name: 'already-there' }];
     daBrowse._continuationToken = 'token-1';
-    daBrowse.scheduleAutoCheck = () => {};
+    daBrowse.scheduleAutoCheck = () => { };
 
     const orgFetch = window.fetch;
     try {
@@ -157,7 +157,7 @@ describe('Browse', () => {
     daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
     daBrowse._listItems = initialItems;
     daBrowse._continuationToken = 'token-1';
-    daBrowse.scheduleAutoCheck = () => {};
+    daBrowse.scheduleAutoCheck = () => { };
 
     const orgFetch = window.fetch;
     try {
@@ -490,27 +490,27 @@ describe('DaBrowse Component', () => {
 
     it('Inserts /.trash/ when not already in trash', () => {
       daBrowseComp.details = { fullpath: '/org/site/folder' };
-      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => { } });
       expect(window.location.hash).to.equal('#/org/site/.trash/folder');
     });
 
     it('Removes /.trash/ when already in trash', () => {
       daBrowseComp.details = { fullpath: '/org/site/.trash/folder' };
-      daBrowseComp.handleShortcuts({ ctrlKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      daBrowseComp.handleShortcuts({ ctrlKey: true, altKey: true, code: 'KeyT', preventDefault: () => { } });
       expect(window.location.hash).to.equal('#/org/site/folder');
     });
 
     it('Does nothing when path is too shallow (< 2 segments)', () => {
       daBrowseComp.details = { fullpath: '/org' };
       const before = window.location.hash;
-      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => { } });
       expect(window.location.hash).to.equal(before);
     });
 
     it('Ignores keys without alt or meta/ctrl modifiers', () => {
       daBrowseComp.details = { fullpath: '/org/site' };
       const before = window.location.hash;
-      daBrowseComp.handleShortcuts({ metaKey: false, altKey: false, code: 'KeyT', preventDefault: () => {} });
+      daBrowseComp.handleShortcuts({ metaKey: false, altKey: false, code: 'KeyT', preventDefault: () => { } });
       expect(window.location.hash).to.equal(before);
     });
   });
@@ -560,6 +560,25 @@ describe('DaBrowse Component', () => {
       const before = calls;
       await daBrowseComp.getEditor(false);
       expect(calls).to.equal(before);
+    });
+
+    it('Returns /canvas# as default when EW is enabled and no explicit config', async () => {
+      daBrowseComp._chatEnabled = true;
+      window.fetch = () => Promise.resolve(
+        new Response(JSON.stringify({ data: [] }), { status: 200 }),
+      );
+      daBrowseComp.details = { owner: 'canvas-org', org: 'canvas-org', site: 'canvas-site', fullpath: '/canvas-org/canvas-site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('/canvas#');
+    });
+
+    it('Explicit editor.path config takes precedence over EW canvas default', async () => {
+      daBrowseComp._chatEnabled = true;
+      const body = JSON.stringify({ data: [{ key: 'editor.path', value: '/canvas-org2/canvas-site2=https://custom-editor' }] });
+      window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
+      daBrowseComp.details = { owner: 'canvas-org2', org: 'canvas-org2', site: 'canvas-site2', fullpath: '/canvas-org2/canvas-site2/page' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('https://custom-editor');
     });
   });
 });

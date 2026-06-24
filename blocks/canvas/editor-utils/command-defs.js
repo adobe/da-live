@@ -373,16 +373,13 @@ export const COMMANDS = [
   // Slash menu: blocks section
   {
     id: 'open-library',
-    label: 'Open library',
+    label: 'Open block library',
     icon: iconName('CCLibrary'),
     showIn: ['slash-blocks'],
-    apply: () => {
-      const evt = new CustomEvent('nx-canvas-open-panel', {
-        bubbles: true,
-        composed: true,
-        detail: { position: 'after', panelName: 'blocks' },
-      });
-      document.querySelector('ew-canvas-header')?.dispatchEvent(evt);
+    apply: async (view) => {
+      const { insertBlock } = await import('../ew-panel-extensions/helpers.js');
+      const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
+      openBlockLibraryModal({ onInsert: (dom) => insertBlock(view, dom) });
     },
   },
   {
