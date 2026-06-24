@@ -1,4 +1,4 @@
-import { getEWFlag } from '../../shared/ewFlags.js';
+import { getEWFlags } from '../../shared/ewFlags.js';
 
 export const TOOL_PANEL_ACTIVE_VIEW_KEY = 'nx-tool-panel-active-view';
 
@@ -20,7 +20,8 @@ export function persistToolPanelView(viewId) {
 
 export async function readConfiguredToolPanelView({ org, site }) {
   if (!org || !site) return undefined;
-  const value = await getEWFlag({ org, site, flagName: CONFIG_FLAG_KEY });
+  const flags = await getEWFlags({ org, site });
+  const value = flags[CONFIG_FLAG_KEY];
   return value?.trim() || undefined;
 }
 

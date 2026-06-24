@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 
 import { getNx } from '../../../scripts/utils.js';
-import { fetchDaConfigs } from '../../shared/utils.js';
+import { isEwDisableChat } from '../../shared/ewFlags.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -16,18 +16,6 @@ const ICONS = {
 };
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
-
-function isEwDisableChat(config, site) {
-  return !!config?.flags?.data?.find(
-    (item) => item.key === 'ew.disableChat' && (item.value === site || item.value === 'true'),
-  );
-}
-
-async function fetchEwDisableChat(org, site) {
-  const orgConfig = await fetchDaConfigs({ org })[0];
-  if (!orgConfig || orgConfig.error) return false;
-  return isEwDisableChat(orgConfig, site);
-}
 
 class EWCanvasHeader extends LitElement {
   static properties = {
@@ -67,7 +55,7 @@ class EWCanvasHeader extends LitElement {
       this._chatDisabled = false;
       return;
     }
-    const disabled = await fetchEwDisableChat(org, site);
+    const disabled = await isEwDisableChat({ org, site });
     if (this._chatDisableKey !== key) return;
     this._chatDisabled = disabled;
   }
