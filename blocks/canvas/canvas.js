@@ -17,6 +17,7 @@ import {
 } from './ew-editor-split/ew-editor-split.js';
 import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
 import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
+import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
@@ -251,14 +252,15 @@ export default async function decorate(block) {
   // Any non-empty selection in doc mode is sent as chat context.
   // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.
   const CANVAS_CHAT_KEY = 'canvas-selection';
+  const SELECTION_LABEL = 'Selection';
   let hasContext = false;
   editorSelectChange.subscribe(({
     blockIndex, blockName, proseIndex, innerText, source,
     selectionType, selectedHTML, selFrom, selTo,
   }) => {
     if (source !== 'doc') return;
-    const isBlock = selectionType === 'block' && blockIndex >= 0 && !!blockName;
-    const isContent = selectionType === 'text' || selectionType === 'item';
+    const isBlock = selectionType === SEL_BLOCK && blockIndex >= 0 && !!blockName;
+    const isContent = selectionType === SEL_TEXT || selectionType === SEL_ITEM;
     if (!isBlock && !isContent) {
       if (hasContext) {
         hasContext = false;
@@ -271,7 +273,7 @@ export default async function decorate(block) {
       ? {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
-        type: 'block',
+        type: SEL_BLOCK,
         label: blockName,
         blockName,
         proseIndex,
@@ -284,8 +286,8 @@ export default async function decorate(block) {
       : {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
-        type: 'text',
-        label: 'Selection',
+        type: SEL_TEXT,
+        label: SELECTION_LABEL,
         proseIndex: typeof proseIndex === 'number' ? proseIndex : selFrom,
         innerHTML: selectedHTML,
         selectionType,

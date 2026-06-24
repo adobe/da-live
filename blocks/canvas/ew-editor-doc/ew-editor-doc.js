@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
+import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import {
   updateDocument, updateCursors, getInstrumentedHTML,
@@ -13,7 +13,7 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection } from './utils/selection.js';
+import { describeDocSelection, applyHighlight, SEL_BLOCK } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -223,7 +223,7 @@ export class EwEditorDoc extends LitElement {
               editorSelectChange.emit({
                 blockIndex,
                 source: 'doc',
-                explicit: descriptor.selectionType === 'block',
+                explicit: descriptor.selectionType === SEL_BLOCK,
                 ...descriptor,
               });
             },
@@ -272,23 +272,8 @@ export class EwEditorDoc extends LitElement {
     document.addEventListener('nx-canvas-highlight', this._onCanvasHighlight);
   }
 
-  _applyHighlight({ selFrom, selTo, selectionType } = {}) {
-    const { view } = this._proseContext ?? {};
-    if (!view || typeof selFrom !== 'number' || typeof selTo !== 'number') return;
-    const { doc } = view.state;
-    if (selFrom < 0 || selTo > doc.content.size) return;
-    let sel;
-    try {
-      if (selectionType === 'block' || selectionType === 'item') {
-        sel = NodeSelection.create(doc, selFrom);
-      } else {
-        sel = TextSelection.create(doc, selFrom, selTo);
-      }
-    } catch {
-      return;
-    }
-    view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
-    view.focus();
+  _applyHighlight(detail) {
+    applyHighlight(this._proseContext?.view, detail);
   }
 
   disconnectedCallback() {
