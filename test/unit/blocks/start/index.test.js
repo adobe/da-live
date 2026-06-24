@@ -135,7 +135,7 @@ describe('start/index previewContent', () => {
     expect(captured.url).to.contain('/preview/org/site/main/*');
     const body = JSON.parse(captured.opts.body);
     expect(body.forceUpdate).to.be.true;
-    expect(body.forceSync).to.be.true;
+    expect(body.forceSync).to.be.undefined;
     // png excluded; library excluded; html, svg, json kept
     expect(body.paths.sort()).to.deep.equal(['/data.json', '/icon.svg', '/page'].sort());
     expect(status[0]).to.equal('Bulk previewing content.');

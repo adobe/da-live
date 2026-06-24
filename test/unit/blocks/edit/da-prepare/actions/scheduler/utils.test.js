@@ -6,6 +6,9 @@ import {
   schedulePagePublish,
 } from '../../../../../../../blocks/edit/da-prepare/actions/scheduler/utils.js';
 
+const { setNx } = await import('../../../../../../../scripts/utils.js');
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
 describe('scheduler/utils', () => {
   let savedFetch;
   let savedLocalStorage;

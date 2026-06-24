@@ -11,9 +11,10 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../../utils/env.js';
-import { getQuery } from '../../utils/page.js';
+import { getQuery, TEST_SITE } from '../../utils/page.js';
 
 test('Can read versions of read-write document', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/dir-readwrite/doc-rw`;
 
   await page.goto(url);
@@ -39,6 +40,7 @@ test('Can read versions of read-write document', async ({ page }) => {
 });
 
 test('Cannot read versions of read-only document', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/dir-readonly/doc-r`;
 
   await page.goto(url);
@@ -64,6 +66,7 @@ test('Cannot read versions of read-only document', async ({ page }) => {
 });
 
 test('Cannot access versions of no-access document', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   const url = `${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/dir-noaccess/doc-nope`;
 
   await page.goto(url);

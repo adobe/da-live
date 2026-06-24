@@ -15,6 +15,9 @@ import {
   installEditorSplitDrag,
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
+import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
+import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
+import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
@@ -52,6 +55,24 @@ function removeCanvasEditors(mountRoot) {
   mountRoot.querySelector('ew-editor-wysiwyg')?.remove();
 }
 
+function showNotPermitted(mountRoot, message) {
+  let el = mountRoot.querySelector('.nx-not-permitted');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'nx-not-permitted';
+    mountRoot.append(el);
+  }
+  el.textContent = message;
+}
+
+function removeNotPermitted(mountRoot) {
+  mountRoot.querySelector('.nx-not-permitted')?.remove();
+}
+
+// Incremented on each load to prevent stale network requests
+// from overwriting the current editor session.
+let editorLoadCount = 0;
+
 function ensureNxEditorDoc(mountRoot) {
   let el = mountRoot.querySelector('ew-editor-doc');
   if (!el) {
@@ -74,7 +95,9 @@ function editorCtxFromHashState(state, fullPath) {
   return { org: state.org, repo: state.site, path: fullPath };
 }
 
-function syncCanvasEditorsToHash({ mountRoot, header, state }) {
+async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
+  editorLoadCount += 1;
+  const loadCount = editorLoadCount;
   header.undoAvailable = false;
   header.redoAvailable = false;
   const fullPath = buildCanvasDocPath(state);
@@ -82,11 +105,25 @@ function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
     removeCanvasEditors(mountRoot);
+    removeNotPermitted(mountRoot);
+    header.authorized = true;
     return;
   }
   const ctx = editorCtxFromHashState(state, fullPath);
+  const session = await resolveEditorDocSession(sourceUrlFromEditorCtx(ctx));
+  if (loadCount !== editorLoadCount) return;
+  if (!session.ok) {
+    removeCanvasEditors(mountRoot);
+    showNotPermitted(mountRoot, session.error);
+    header.authorized = false;
+    return;
+  }
+  removeNotPermitted(mountRoot);
+  header.authorized = true;
+  const docEl = ensureNxEditorDoc(mountRoot);
+  docEl.session = session;
+  docEl.ctx = ctx;
   ensureNxEditorWysiwyg(mountRoot).ctx = ctx;
-  ensureNxEditorDoc(mountRoot).ctx = ctx;
   finalizeSplitEditorMountOrder(mountRoot);
   notifyCanvasEditorActive(mountRoot, header.editorView);
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
@@ -212,33 +249,52 @@ export default async function decorate(block) {
     });
   }
 
-  // Only NodeSelection (explicit block handle click) in doc mode qualifies as intentional context.
+  // Any non-empty selection in doc mode is sent as chat context.
   // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.
   const CANVAS_CHAT_KEY = 'canvas-selection';
-  let hasExplicitBlock = false;
+  const SELECTION_LABEL = 'Selection';
+  let hasContext = false;
   editorSelectChange.subscribe(({
-    blockIndex, blockName, proseIndex, innerText, source, explicit,
+    blockIndex, blockName, proseIndex, innerText, source,
+    selectionType, selectedHTML, selFrom, selTo,
   }) => {
     if (source !== 'doc') return;
-    if (!explicit) {
-      if (hasExplicitBlock) {
-        hasExplicitBlock = false;
+    const isBlock = selectionType === SEL_BLOCK && blockIndex >= 0 && !!blockName;
+    const isContent = selectionType === SEL_TEXT || selectionType === SEL_ITEM;
+    if (!isBlock && !isContent) {
+      if (hasContext) {
+        hasContext = false;
         document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key: CANVAS_CHAT_KEY } }));
       }
       return;
     }
-    const hasBlock = blockIndex >= 0 && !!blockName;
-    hasExplicitBlock = hasBlock;
-    const detail = hasBlock
+    hasContext = true;
+    const detail = isBlock
       ? {
         key: CANVAS_CHAT_KEY,
         id: CANVAS_CHAT_KEY,
+        type: SEL_BLOCK,
         label: blockName,
         blockName,
         proseIndex,
         innerText,
+        selectionType,
+        selFrom,
+        selTo,
+        pinnable: true,
       }
-      : { key: CANVAS_CHAT_KEY };
+      : {
+        key: CANVAS_CHAT_KEY,
+        id: CANVAS_CHAT_KEY,
+        type: SEL_TEXT,
+        label: SELECTION_LABEL,
+        proseIndex: typeof proseIndex === 'number' ? proseIndex : selFrom,
+        innerHTML: selectedHTML,
+        selectionType,
+        selFrom,
+        selTo,
+        pinnable: true,
+      };
     document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail }));
   });
 }
