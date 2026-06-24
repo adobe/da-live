@@ -1,5 +1,6 @@
 import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
 import { getNx, getNx2Api } from '../../scripts/utils.js';
+import getPathDetails from './pathDetails.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
 const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
@@ -9,28 +10,75 @@ const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS, ...ETC_ORIGINS];
 let imsDetails;
 let authMonitorAttached = false;
 
-// Watch imslib's session for cross-tab sign-in/out. imslib persists its
-// token in localStorage and other tabs' writes fire storage events here;
-// re-check the live auth state on every storage change so we react
-// regardless of which keys (nx-ims, imslib's own) flipped.
+// Auth reactions only fire in Edit/Browse. /apps/, Home, and the canvas mount
+// none of these elements and stay 'other' so long-running tasks aren't hit.
+export function getAuthView() {
+  if (document.querySelector('da-content')) return 'edit';
+  const { pathname } = window.location;
+  if (pathname === '/edit' || pathname === '/sheet') return 'edit';
+  if (document.querySelector('da-browse')) return 'browse';
+  return 'other';
+}
+
+export function isModalView() {
+  return getAuthView() !== 'other';
+}
+
+// React to cross-tab sign-in/out and in-place token rotation. Debounced so
+// routine token refreshes don't thrash the permission re-check.
 function attachAuthMonitor() {
   if (authMonitorAttached) return;
   authMonitorAttached = true;
   let wasAuthed = !!window.adobeIMS?.getAccessToken();
-  window.addEventListener('storage', async () => {
-    const isAuthed = !!window.adobeIMS?.getAccessToken();
+  let lastToken = window.adobeIMS?.getAccessToken()?.token || null;
+  let debounceTimer;
+
+  const evaluate = async () => {
+    const access = window.adobeIMS?.getAccessToken();
+    const isAuthed = !!access;
+    const token = access?.token || null;
+    if (isAuthed === wasAuthed && token === lastToken) return;
     if (wasAuthed && !isAuthed) {
-      const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
-      showAuthBanner();
-      // Drop any open collab WS so the stale auth cached on the server side
-      // can't keep authorizing persistence after the user signed out elsewhere.
+      // Sign-out: drop the WS and collapse the gnav in every tab/view.
       document.querySelector('da-content')?.wsProvider?.disconnect();
+      // nx-profile has no cross-tab sync; flip it so the avatar shows "Sign in".
+      const nxProfile = document.querySelector('nx-nav')
+        ?.shadowRoot?.querySelector('nx-profile');
+      // eslint-disable-next-line no-underscore-dangle
+      if (nxProfile) nxProfile._signedIn = false;
+      if (isModalView()) {
+        const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+        showAuthBanner();
+      }
     } else if (!wasAuthed && isAuthed) {
-      // Another tab signed back in — reload to pick up the fresh session.
-      window.location.reload();
+      // Signed back in elsewhere: reload to pick up the session, except under
+      // /apps/ where a long-running task may be running.
+      if (!window.location.pathname.startsWith('/apps/')) window.location.reload();
+    } else if (wasAuthed && isAuthed && token !== lastToken) {
+      // Token rotated (e.g. an org switch): re-validate only in Edit/Browse.
+      const view = getAuthView();
+      // eslint-disable-next-line no-use-before-define
+      if (view === 'edit' || view === 'browse') recheckPermissions(view);
     }
     wasAuthed = isAuthed;
-  });
+    lastToken = token;
+  };
+
+  const schedule = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(evaluate, 250);
+  };
+
+  // Other tabs' token writes arrive as storage events.
+  window.addEventListener('storage', schedule);
+
+  // A same-tab org switch writes the new token to localStorage but fires no
+  // storage event in this tab, so observe writes directly (no polling).
+  const setItem = window.localStorage.setItem.bind(window.localStorage);
+  window.localStorage.setItem = (...args) => {
+    setItem(...args);
+    schedule();
+  };
 }
 
 export async function initIms() {
@@ -86,7 +134,11 @@ export const daFetch = async (url, opts = {}) => {
       resp = await fetch(url, opts);
     }
     if (resp.status === 401) {
-      if (refreshed || accessToken) {
+      // Cross-tab sign-out clears nx-ims; treat any token we'd captured before
+      // that as stale and surface the banner instead of redirecting to
+      // /not-found (which itself bounces to IMS sign-in).
+      const stillSignedIn = !!localStorage.getItem('nx-ims');
+      if (stillSignedIn && (refreshed || accessToken)) {
         // eslint-disable-next-line no-console
         console.warn('You see the 404 page because you have no access to this page', url);
         window.location = `${window.location.origin}/not-found`;
@@ -94,8 +146,11 @@ export const daFetch = async (url, opts = {}) => {
       }
       // eslint-disable-next-line no-console
       console.warn('You need to sign in because you are not authorized to access this page', url);
-      const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
-      showAuthBanner();
+      // Only Browse/Edit get the blocking modal; app callers just get the 401.
+      if (isModalView()) {
+        const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+        showAuthBanner();
+      }
     }
   }
 
@@ -121,6 +176,54 @@ export const daFetch = async (url, opts = {}) => {
   resp.permissions = ['read', 'write'];
   return resp;
 };
+
+// Re-validate access to the current resource without disrupting an active
+// session: a 200 is a no-op, only lost access surfaces the Not-Permitted
+// banner. Declared after daFetch since it calls it.
+async function recheckPermissions(view) {
+  const details = getPathDetails();
+  if (!details) return;
+
+  if (view === 'edit') {
+    const resp = await daFetch(details.sourceUrl);
+    if (resp.status === 403) {
+      document.querySelector('da-content')?.wsProvider?.disconnect();
+      const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+      showAuthBanner({
+        title: 'Not Permitted',
+        message: 'You do not have permission to edit this file. Please change your Org or Sign In again.',
+      });
+    } else if (resp.ok && document.querySelector('da-dialog.da-auth-banner')) {
+      // Access restored after a denial — reload to reinitialize the editor.
+      window.location.reload();
+    }
+    return;
+  }
+
+  const resp = await daFetch(`${DA_ORIGIN}/list${details.fullpath}`);
+  if (resp.status === 403) {
+    const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+    showAuthBanner({
+      title: 'Not Permitted',
+      message: 'You do not have permission to view this folder. Please change your Org or Sign In again.',
+    });
+    return;
+  }
+  if (resp.ok) {
+    if (document.querySelector('da-dialog.da-auth-banner')) {
+      // Access restored after a denial — reload to clear the banner and view.
+      window.location.reload();
+      return;
+    }
+    // Otherwise just refresh the listing so it reflects the new context.
+    const list = document.querySelector('da-browse')
+      ?.shadowRoot?.querySelector('.da-list-type-browse');
+    if (list?.getList) {
+      // eslint-disable-next-line no-underscore-dangle
+      list._listItems = await list.getList();
+    }
+  }
+}
 
 export function etcFetch(href, api, options) {
   const url = `${DA_ETC_ORIGIN}/${api}?url=${encodeURIComponent(href)}`;

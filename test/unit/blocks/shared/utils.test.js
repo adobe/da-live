@@ -13,6 +13,8 @@ import {
   sanitizeName,
   fetchDaConfigs,
   getAuthToken,
+  getAuthView,
+  isModalView,
 } from '../../../../blocks/shared/utils.js';
 
 // daFetch's 401-no-token path lazy-loads the banner module, which resolves
@@ -233,6 +235,39 @@ describe('getAuthToken', () => {
   });
 });
 
+describe('getAuthView / isModalView', () => {
+  afterEach(() => {
+    document.querySelectorAll('da-content, da-browse').forEach((el) => el.remove());
+  });
+
+  it('Returns "edit" when da-content is mounted', () => {
+    const daContent = document.createElement('da-content');
+    document.body.appendChild(daContent);
+    expect(getAuthView()).to.equal('edit');
+    expect(isModalView()).to.equal(true);
+  });
+
+  it('Returns "browse" when da-browse is mounted and there is no da-content', () => {
+    const daBrowse = document.createElement('da-browse');
+    document.body.appendChild(daBrowse);
+    expect(getAuthView()).to.equal('browse');
+    expect(isModalView()).to.equal(true);
+  });
+
+  it('Prefers "edit" when both da-content and da-browse are present', () => {
+    document.body.appendChild(document.createElement('da-browse'));
+    document.body.appendChild(document.createElement('da-content'));
+    expect(getAuthView()).to.equal('edit');
+  });
+
+  it('Returns "other" when neither editor nor browse view is mounted', () => {
+    document.querySelectorAll('da-content, da-browse').forEach((el) => el.remove());
+    // The test runner serves from "/", so no pathname-based edit match either.
+    expect(getAuthView()).to.equal('other');
+    expect(isModalView()).to.equal(false);
+  });
+});
+
 describe('daFetch', () => {
   let savedFetch;
 
@@ -305,6 +340,10 @@ describe('daFetch', () => {
     window.localStorage.removeItem('nx-ims');
     const savedIMS = window.adobeIMS;
     delete window.adobeIMS;
+    // The banner is gated to Browse/Edit views; mount a da-content so
+    // isModalView() resolves to 'edit'.
+    const daContent = document.createElement('da-content');
+    document.body.appendChild(daContent);
 
     window.fetch = () => Promise.resolve(new Response('nope', { status: 401 }));
 
@@ -317,6 +356,28 @@ describe('daFetch', () => {
 
       expect(resp.ok).to.equal(false);
       expect(document.querySelector('da-dialog.da-auth-banner')).to.exist;
+    } finally {
+      document.querySelector('da-dialog.da-auth-banner')?.remove();
+      daContent.remove();
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
+  });
+
+  it('On 401 with no token in an app/other view, does NOT show the banner', async () => {
+    window.localStorage.removeItem('nx-ims');
+    const savedIMS = window.adobeIMS;
+    delete window.adobeIMS;
+    // No da-content / da-browse mounted → getAuthView() === 'other'.
+    document.querySelectorAll('da-content, da-browse').forEach((el) => el.remove());
+
+    window.fetch = () => Promise.resolve(new Response('nope', { status: 401 }));
+
+    try {
+      const resp = await daFetch('http://localhost:8787/source/o/r/p.html');
+      await new Promise((r) => { setTimeout(r, 80); });
+
+      expect(resp.ok).to.equal(false);
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.not.exist;
     } finally {
       document.querySelector('da-dialog.da-auth-banner')?.remove();
       if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
@@ -362,6 +423,47 @@ describe('daFetch', () => {
 
     const resp = await daFetch('https://example.com/test');
     expect(resp.status).to.equal(403);
+  });
+
+  it('On 401 after cross-tab sign-out (nx-ims gone), surfaces banner instead of the /not-found redirect', async () => {
+    // Start the request with nx-ims set so an access token is captured;
+    // clear it mid-flight (in refreshToken) to simulate another tab signing
+    // out before the 401 arrives. The new guard in daFetch should treat the
+    // captured token as stale and fall through to the banner branch instead
+    // of the redirect-to-/not-found branch.
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    // The banner is gated to Browse/Edit views; mount a da-content.
+    const daContent = document.createElement('da-content');
+    document.body.appendChild(daContent);
+    let getCalls = 0;
+    window.adobeIMS = {
+      getAccessToken: () => {
+        getCalls += 1;
+        if (getCalls === 1) return { token: 'stale' };
+        return null;
+      },
+      refreshToken: async () => {
+        window.localStorage.removeItem('nx-ims');
+      },
+    };
+
+    window.fetch = () => Promise.resolve(new Response('nope', { status: 401 }));
+
+    try {
+      const resp = await daFetch('http://localhost:8787/source/o/r/p.html');
+      await new Promise((r) => { setTimeout(r, 80); });
+      // Banner branch lets the original 401 Response fall through and adds
+      // a default `permissions` field; the redirect branch returns the bare
+      // `{ ok: false }` placeholder before reaching that code.
+      expect(resp).to.be.instanceOf(Response);
+      expect(resp.status).to.equal(401);
+      expect(document.querySelector('da-dialog.da-auth-banner')).to.exist;
+    } finally {
+      document.querySelector('da-dialog.da-auth-banner')?.remove();
+      daContent.remove();
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    }
   });
 });
 

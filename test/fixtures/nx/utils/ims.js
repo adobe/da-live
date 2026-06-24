@@ -10,3 +10,10 @@ export function handleSignIn() {
   localStorage.setItem('nx-ims', true);
   if (window.adobeIMS?.signIn) window.adobeIMS.signIn();
 }
+
+export function handleSignOut() {
+  // Mirrors the real nx handleSignOut so tests can observe the effect via
+  // window.adobeIMS.signOut().
+  localStorage.removeItem('nx-ims');
+  if (window.adobeIMS?.signOut) window.adobeIMS.signOut();
+}

@@ -1,0 +1,24 @@
+/* Adopted into da-dialog's own shadow root when modal=false: float the host
+ * fixed-positioned and flex-centered over the page, with clicks outside the
+ * dialog passing through. The compound :host(da-dialog…) selector makes this
+ * rule a no-op when the same sheet is adopted into sl-dialog's shadow root
+ * (where the host is sl-dialog, not da-dialog). */
+:host(da-dialog:not([modal])) {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Adopted into sl-dialog's shadow root when modal=false: the native <dialog>
+ * defaults to position: absolute (UA stylesheet), which would ignore the
+ * host's flex centering. Force it back into normal flow and re-enable
+ * pointer events so the dialog itself stays interactive. */
+dialog.sl-dialog {
+  position: static;
+  margin: 0;
+  pointer-events: auto;
+}

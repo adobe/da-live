@@ -18,12 +18,14 @@ export default class DaDialog extends LitElement {
     emphasis: { type: String }, // quiet
     size: { type: String }, // 'small', 'medium', 'large', 'auto'
     showCloseButton: { type: Boolean, attribute: 'show-close-button' },
+    modal: { type: Boolean, reflect: true },
     _showLazyModal: { state: true },
   };
 
   constructor() {
     super();
     this.showCloseButton = true;
+    this.modal = true;
   }
 
   connectedCallback() {
@@ -39,12 +41,26 @@ export default class DaDialog extends LitElement {
     }
   }
 
-  showModal() {
+  async showModal() {
     if (!this._dialog) {
       this._showLazyModal = true;
       return;
     }
-    this._dialog.showModal();
+    if (this.modal === false) {
+      await this._showNonModal();
+    } else {
+      this._dialog.showModal();
+    }
+  }
+
+  async _showNonModal() {
+    const sheet = await loadStyle(new URL('./da-dialog-non-modal.css', import.meta.url).href);
+    [this.shadowRoot, this._dialog.shadowRoot].forEach((root) => {
+      if (root && !root.adoptedStyleSheets.includes(sheet)) {
+        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+      }
+    });
+    this._dialog.show();
   }
 
   close() {

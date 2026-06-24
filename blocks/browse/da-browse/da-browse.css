@@ -45,6 +45,10 @@
   }
 }
 
+:host([inert]) {
+  opacity: 0.4;
+}
+
 .da-tablist {
   display: flex;
   gap: 18px;

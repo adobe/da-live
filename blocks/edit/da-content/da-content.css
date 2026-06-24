@@ -6,6 +6,10 @@
   margin: 0 0 120px;
 }
 
+:host([inert]) {
+  opacity: 0.4;
+}
+
 .editor-wrapper {
   --editor-btn-bg-color: #EFEFEF;
   --editor-btn-bg-color-hover: #e9e9e9;

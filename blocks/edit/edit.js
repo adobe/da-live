@@ -65,6 +65,19 @@ async function setUI(el) {
 
   const resp = await docPromise;
 
+  if (resp.status === 403) {
+    // User lacks read access — don't initialize ProseMirror behind a modal.
+    // Tear down the speculative WS connection started above and surface the
+    // "Not Permitted" banner instead.
+    wsPromise.then(({ wsProvider } = {}) => wsProvider?.disconnect?.()).catch(() => {});
+    const { showAuthBanner } = await import('../shared/da-auth-banner/da-auth-banner.js');
+    showAuthBanner({
+      title: 'Not Permitted',
+      message: 'You do not have permission to edit this file. Please change your Org or Sign In again.',
+    });
+    return;
+  }
+
   let permissions;
   let doc;
   if (resp.status === 404) {

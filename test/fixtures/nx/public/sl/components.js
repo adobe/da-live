@@ -13,6 +13,12 @@ class MockSlDialog extends HTMLElement {
     // Fire show event if needed
   }
 
+  show() {
+    // Non-modal counterpart used by da-dialog when modal=false.
+    this.open = true;
+    this.setAttribute('open', '');
+  }
+
   close() {
     this.open = false;
     this.removeAttribute('open');
