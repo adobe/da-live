@@ -1,0 +1,66 @@
+:root {
+  --ew-canvas-header-height: 48px;
+}
+
+html:has(aside.panel[data-position="before"]:not([hidden])) ew-canvas-header::part(toggle-before) {
+  display: none;
+}
+
+html:has(aside.panel[data-position="after"]:not([hidden])) ew-canvas-header::part(toggle-after) {
+  display: none;
+}
+
+.fragment-content:has(nx-chat) {
+  height: 100%;
+
+  & .section {
+    height: 100%;
+  }
+
+  & .block-content {
+    height: 100%;
+  }
+}
+
+nx-chat {
+  height: 100%;
+}
+
+/* Layout / content / split: one visible editor set; split uses WYSIWYG | gutter | doc; inactive uses [hidden] */
+.nx-canvas-editor-mount {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height));
+}
+
+ew-editor-doc {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height));
+  overflow-y: auto;
+}
+
+ew-editor-wysiwyg,
+ew-editor-doc {
+  contain: layout;
+  overflow: hidden;
+}
+
+ew-editor-doc[hidden],
+ew-editor-wysiwyg[hidden] {
+  display: none !important;
+}
+
+.nx-not-permitted {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: light-dark(#555, #aaa);
+  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+}
+

@@ -1,0 +1,156 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--s2-font-family);
+  overflow: hidden;
+}
+
+.tool-panel-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 0 var(--s2-spacing-100);
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.tool-panel-header-actions {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  justify-content: flex-end;
+  padding-right: var(--s2-spacing-75);
+}
+
+.tool-panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-400);
+  background: transparent;
+  color: var(--s2-gray-800);
+  cursor: pointer;
+
+  svg.icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+    overflow: hidden;
+  }
+
+  &:hover {
+    background-color: var(--s2-gray-75);
+  }
+}
+
+.tool-panel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+
+  > * {
+    flex: 1;
+    min-height: 0;
+  }
+
+  > [hidden] {
+    display: none;
+  }
+}
+
+.nx-tool-panel-editor-placeholder {
+  min-height: 120px;
+}
+
+/* Full-size experience dialog (same shell as ew-panel-extension preview). */
+.tool-panel-fullsize-dialog {
+  position: fixed;
+  inset: 0;
+  width: 90vw;
+  max-width: 1200px;
+  height: 80vh;
+  margin: auto;
+  padding: 0;
+  border: 1px solid light-dark(var(--s2-gray-300), var(--s2-gray-600));
+  border-radius: 8px;
+  background: light-dark(var(--s2-gray-50), var(--s2-gray-800));
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tool-panel-fullsize-dialog::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.tool-panel-fullsize-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid light-dark(var(--s2-gray-200), var(--s2-gray-600));
+  color: light-dark(var(--s2-gray-800), var(--s2-gray-200));
+  flex-shrink: 0;
+}
+
+.tool-panel-fullsize-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+
+  p {
+    margin: 0;
+  }
+}
+
+.tool-panel-dialog-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.tool-panel-fullsize-dialog-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  appearance: none;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: inherit;
+}
+
+.tool-panel-fullsize-dialog-close:hover {
+  background: light-dark(var(--s2-gray-200), var(--s2-gray-600));
+}
+
+.tool-panel-fullsize-dialog-body {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+}

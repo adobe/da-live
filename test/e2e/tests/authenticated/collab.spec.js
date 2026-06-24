@@ -10,15 +10,25 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { getTestPageURL, fill } from '../../utils/page.js';
+import { getTestPageURL, fill, TEST_SITE } from '../../utils/page.js';
 
-test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo) => {
-  // Open 2 editors on the same page and edit in both of them. One editor is logged in,
-  // the other isn't.
+test('Collab cursors in multiple editors', async ({ browser, page, browserName }, workerInfo) => {
+  // Open 2 editors on the same page and edit in both of them.
   // Ensure that the edits are visible to both and that the collab cursors are there
   // Also check that the cloud icon is visible for the collaborator
 
+  test.setTimeout(60000);
+
   const pageURL = getTestPageURL('collab', workerInfo);
+
+  // Capture the Bearer token that da-live's daFetch attaches to its backend
+  // requests, so we can reuse the exact same Authorization header below.
+  let authHeader;
+  page.on('request', (request) => {
+    const auth = request.headers().authorization;
+    if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
+  });
+
   await page.goto(pageURL);
   await page.waitForTimeout(2000);
   await page.getByText('Create document', { exact: true }).click();
@@ -29,7 +39,7 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
 
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
   await fill(page, 'Entered by user 1');
 
   // Right now there should not be any collab indicators yet
@@ -52,6 +62,9 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await page2.mouse.click(editBox.x + 10, editBox.y + 10);
   await page2.keyboard.type('From user 2');
 
+  // Wait for page2's edit to reach page1 — confirms YJS sync before checking collab state
+  await expect(page.locator('div.ProseMirror')).toContainText('From user 2');
+
   // Check the little cloud icon for collaborators
   // as we use the same user for both pages, the cloud icon should be visible on both pages
   await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
@@ -60,6 +73,9 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   // Check the cursor for collaborator
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
+  // Wait for user 1's cursor awareness to settle at the end of text so the two
+  // text pieces are adjacent in innerText (cursor span between them breaks indexOf)
+  await expect(page2.locator('div.ProseMirror')).toContainText('From user 2Entered by user 1');
   const text2 = await page2.locator('div.ProseMirror').innerText();
   const text2Idx = text2.indexOf('From user 2Entered by user 1');
   const cursor2Idx = text2.indexOf('DA Testuser');
@@ -81,4 +97,24 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   expect(cursorIdx).toBeGreaterThanOrEqual(0);
   expect(cursorIdx).toBeLessThan(textIdx);
   expect(textIdx2).toBeLessThan(cursorIdx);
+
+  // Wait for debounce to happen and changes to be saved
+  await page.waitForTimeout(4000);
+
+  // Check with the backend that the edits came through and are stored there.
+  // Convert the editor URL (…#/<org>/<site>/<path>) into the da-admin/Helix source URL.
+  const [, org, site, ...rest] = pageURL.split('#')[1].split('/');
+  let sourceUrl;
+  if (TEST_SITE === 'da-status') {
+    sourceUrl = `https://admin.da.live/source/${org}/${site}/${rest.join('/')}.html`;
+  } else {
+    sourceUrl = `https://api.aem.live/${org}/sites/${site}/source/${rest.join('/')}.html`;
+  }
+
+  console.log('Checking backend at ', sourceUrl);
+  const resp = await page.request.get(sourceUrl, { headers: { Authorization: authHeader } });
+  const body = await resp.text();
+
+  const expected = '<main><div><p>From user 2Entered by user 1</p></div></main>';
+  expect(body).toContain(expected);
 });

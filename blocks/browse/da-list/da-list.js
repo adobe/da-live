@@ -1,7 +1,6 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { isFavorite, toggleFavorite } from '../shared/favorites.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -64,6 +63,8 @@ export default class DaList extends LitElement {
     this._observer = null;
     this._autoCheckTimer = null;
     this._listItemPaths = new Set();
+    this._selectedItems = [];
+    this._listItems = [];
   }
 
   connectedCallback() {
@@ -73,9 +74,12 @@ export default class DaList extends LitElement {
   }
 
   async update(props) {
+    // List Items can be provided externally (via search)
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
       this.resetListItemPaths(this._listItems);
+      this.applyFavoritesToItems(this._listItems);
+      this.applyFavoriteOrder();
     }
 
     if (props.has('fullpath') && this.fullpath) {
@@ -115,18 +119,45 @@ export default class DaList extends LitElement {
     this.dispatchEvent(event);
   }
 
+  applyFavoritesToItems(items) {
+    if (!items) return items;
+    items.forEach((item) => {
+      item.isFavorited = isFavorite(this.fullpath, item.path);
+    });
+    return items;
+  }
+
+  applyFavoriteOrder() {
+    if (!this._listItems) return;
+    const favorites = [];
+    const rest = [];
+    this._listItems.forEach((item) => {
+      if (item.isFavorited) favorites.push(item);
+      else rest.push(item);
+    });
+    this._listItems = [...favorites, ...rest];
+  }
+
   async getList() {
     try {
       this._continuationToken = null;
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
-      if (resp.permissions) this.handlePermissions(resp.permissions);
-      const json = await resp.json();
-      const items = Array.isArray(json) ? json : json?.items || [];
-      this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
-      this._allPagesLoaded = !this._continuationToken;
+      const { source } = await getNx2Api();
+      const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
+      if (!ok) {
+        this._emptyMessage = 'Not permitted';
+        this.resetListItemPaths([]);
+        return [];
+      }
+      if (permissions) this.handlePermissions(permissions);
+      this._continuationToken = continuationToken;
+      this._allPagesLoaded = !continuationToken;
       this.resetListItemPaths(items);
+      this.applyFavoritesToItems(items);
+      const favorites = items.filter((i) => i.isFavorited);
+      const rest = items.filter((i) => !i.isFavorited);
+      const ordered = [...favorites, ...rest];
       this.scheduleAutoCheck();
-      return items;
+      return ordered;
     } catch {
       this._emptyMessage = 'Not permitted';
       this.resetListItemPaths([]);
@@ -141,10 +172,18 @@ export default class DaList extends LitElement {
     const requestToken = this._continuationToken;
     this._isLoadingMore = true;
     try {
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, { headers: { 'da-continuation-token': requestToken } });
-      if (resp.permissions) this.handlePermissions(resp.permissions);
-      const json = await resp.json();
-      const nextItems = Array.isArray(json) ? json : json?.items || [];
+      const { source } = await getNx2Api();
+      const {
+        ok,
+        items: nextItems,
+        continuationToken: nextToken,
+        permissions,
+      } = await source.list(this.fullpath, { continuationToken: requestToken });
+      if (!ok) {
+        this._emptyMessage = 'Not permitted';
+        return { added: 0, token: null };
+      }
+      if (permissions) this.handlePermissions(permissions);
       const existingItems = this._listItems || [];
       if (existingItems.length && this._listItemPaths.size === 0) {
         this.resetListItemPaths(existingItems);
@@ -155,8 +194,11 @@ export default class DaList extends LitElement {
         this._listItemPaths,
       );
       const uniqueAdded = mergedItems.length - existingItems.length;
-      if (uniqueAdded) this._listItems = mergedItems;
-      const nextToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+      if (uniqueAdded) {
+        this.applyFavoritesToItems(mergedItems);
+        this._listItems = mergedItems;
+        this.applyFavoriteOrder();
+      }
 
       if (!nextToken) {
         this._continuationToken = null;
@@ -236,7 +278,19 @@ export default class DaList extends LitElement {
     }
 
     this.actionBar.items = this._selectedItems;
+    this.actionBar.isFavorite = this._selectedItems.length === 1
+      ? !!this._selectedItems[0].isFavorited
+      : false;
     this.requestUpdate();
+  }
+
+  handleFavorite() {
+    const item = this._selectedItems?.[0];
+    if (!item) return;
+    const nowFavorite = toggleFavorite(this.fullpath, item.path);
+    item.isFavorited = nowFavorite;
+    this.applyFavoriteOrder();
+    this.handleClear();
   }
 
   handleItemChecked(e, item, index) {
@@ -289,47 +343,32 @@ export default class DaList extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
-    let continuationToken;
-
-    const type2api = {
-      copy: { api: 'copy', method: 'POST' },
-      delete: { api: 'source', method: 'DELETE' },
-      move: { api: 'move', method: 'POST' },
-    };
-
-    const { api, method } = type2api[type];
+    const { source } = await getNx2Api();
+    const type2fn = { copy: source.copy, delete: source.delete, move: source.move };
+    const fn = type2fn[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
-    const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
+    let continuationToken;
     try {
       do {
-        let body;
-
-        if (type !== 'delete') {
-          body = new FormData();
-          body.append('destination', item.destination);
-          if (continuationToken) body.append('continuation-token', continuationToken);
-        }
-
-        const opts = { method, body };
-        const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
-        if (resp.status === 204) {
-          break;
-        }
-        if (!resp.ok) {
-          const err = new Error(`Unexpected status: ${resp.status}`);
-          err.status = resp.status;
+        const args = type === 'delete'
+          ? { continuationToken }
+          : { destination: item.destination, continuationToken };
+        const { ok, status, continuationToken: nextToken } = await fn(item.path, args);
+        if (!ok) {
+          const err = new Error(`Unexpected status: ${status}`);
+          err.status = status;
           throw err;
         }
-        const json = await resp.json();
-        continuationToken = json?.continuationToken;
+        continuationToken = nextToken;
       } while (continuationToken);
 
       item.isChecked = false;
 
       // Remove or add the item to the current list
-      if (moveToTrash || method === 'DELETE') {
+      if (moveToTrash || type === 'delete') {
         this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
         this._listItemPaths.delete(item.path);
       } else {
@@ -447,11 +486,14 @@ export default class DaList extends LitElement {
       await this.handleItemAction({ item, type });
 
       if (this._unpublish && this._confirmText === 'YES') {
-        const previewJson = await aemAdmin(item.path, 'preview', 'DELETE');
-        if (!previewJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
+        const { aem } = await getNx2Api();
+        // AEM resolves HTML pages by their extensionless path
+        const aemPath = item.ext === 'html' ? item.path.slice(0, -5) : item.path;
+        const previewResp = await aem.unPreview(aemPath);
+        if (!previewResp.ok) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
 
-        const liveJson = await aemAdmin(item.path, 'live', 'DELETE');
-        if (!liveJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
+        const liveResp = await aem.unPublish(aemPath);
+        if (!liveResp.ok) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
       }
       this._itemsRemaining -= 1;
 
@@ -593,6 +635,7 @@ export default class DaList extends LitElement {
 
     const sortFn = this.getSortFn(first, last, prop);
     this._listItems.sort(sortFn);
+    this.applyFavoriteOrder();
     this.requestUpdate();
   }
 
@@ -863,6 +906,7 @@ export default class DaList extends LitElement {
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
           allowselect="${this.select ? true : nothing}"
           ischecked="${item.isChecked ? true : nothing}"
+          isfavorited="${item.isFavorited ? true : nothing}"
           rename="${item.rename ? true : nothing}"
           name="${item.name}"
           path="${item.path}"
@@ -960,6 +1004,7 @@ export default class DaList extends LitElement {
         .permissions=${this._permissions}
         @clearselection=${this.handleClear}
         @rename=${this.handleRename}
+        @onfavorite=${this.handleFavorite}
         @onpaste=${this.handlePaste}
         @ondelete=${this.handleDelete}
         @onshare=${this.handleShare}

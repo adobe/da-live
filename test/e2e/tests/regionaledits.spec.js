@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { getTestFolderURL } from '../utils/page.js';
+import ENV from '../utils/env.js';
+import { getQuery, getTestFolderURL, TEST_ORG, TEST_SITE } from '../utils/page.js';
 
 async function findPageTab(title, page, context) {
   let attemptsLeft = 5;
@@ -28,9 +29,19 @@ const sendUndo = async (page) => {
 };
 
 test('Regional Edit Document', async ({ page, context }, workerInfo) => {
+  /// Why does this fail?
   test.setTimeout(30000);
 
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
+
+  /* */ // Added this to make it work in Helix 6
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  const folderName = folderURL.split('/').pop();
+  await page.getByRole('button', { name: 'New' }).click();
+  await page.getByRole('button', { name: 'Folder' }).click();
+  await page.locator('input.da-actions-input').fill(folderName);
+  await page.locator('input.da-actions-input').press('Enter');
+  /* */ // End addition
 
   await page.goto(folderURL);
   await page.getByRole('button', { name: 'New' }).click();

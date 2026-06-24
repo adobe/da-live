@@ -67,6 +67,126 @@ describe('aem2prose', () => {
   });
 });
 
+describe('prose2aem section-metadata handling', () => {
+  function makeEditor(innerHtml) {
+    const editor = document.createElement('div');
+    editor.innerHTML = innerHtml;
+    return editor;
+  }
+
+  function parseMain(html) {
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    return parsed.querySelector('main');
+  }
+
+  it('applies style value as CSS class on the parent section', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.classList.contains('highlight')).to.be.true;
+  });
+
+  it('applies multiple style classes from comma-separated values', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>divider, light</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.classList.contains('divider')).to.be.true;
+    expect(section.classList.contains('light')).to.be.true;
+    expect(section.classList.contains('divider-light')).to.be.false;
+  });
+
+  it('removes the section-metadata block from the output', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    expect(main.querySelector('.section-metadata')).to.not.exist;
+  });
+
+  it('sets non-style keys as data attributes on the parent section', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Background</td><td>dark</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.dataset.background).to.equal('dark');
+  });
+
+  it('uses link href as the data attribute value when the cell contains a link', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Source</td><td><a href="https://example.com/page">Label</a></td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.dataset.source).to.equal('https://example.com/page');
+  });
+
+  it('uses image src as the data attribute value when the cell contains an image', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Image</td><td><img src="https://example.com/bg.jpg"></td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.dataset.image).to.equal('https://example.com/bg.jpg');
+  });
+
+  it('does not apply section metadata when livePreview is false', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, false, false));
+    const section = main.querySelector(':scope > div');
+    expect(main.querySelector('.section-metadata')).to.exist;
+    expect(section.classList.contains('highlight')).to.be.false;
+  });
+});
+
 describe('prose2aem with isFragment parameter', () => {
   let originalDoc;
 

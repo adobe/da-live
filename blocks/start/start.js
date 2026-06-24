@@ -3,7 +3,7 @@ import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { sanitizePathParts } from '../../scripts/utils.js';
+import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -67,15 +67,9 @@ const ORG_CONFIG = `{
     ":type": "multi-sheet"
 }`;
 
-async function fetchConfig(org, body) {
-  let opts;
-  if (body) opts = { method: 'POST', body };
-
-  return daFetch(`${DA_ORIGIN}/config/${org}/`, opts);
-}
-
 export async function loadConfig(org) {
-  const resp = await fetchConfig(org);
+  const { config } = await getNx2Api();
+  const resp = await config.get({ org });
 
   const result = { status: resp.status };
 
@@ -98,10 +92,8 @@ export async function saveConfig(org, email, existingConfig) {
   // Preserve the existing config
   if (existingConfig?.data) defConfig.data = existingConfig;
 
-  const body = new FormData();
-  body.append('config', JSON.stringify(defConfig));
-
-  const resp = await fetchConfig(org, body);
+  const { config } = await getNx2Api();
+  const resp = await config.save({ org, body: JSON.stringify(defConfig) });
 
   return { status: resp.status };
 }
@@ -170,9 +162,9 @@ class DaStart extends LitElement {
     if (hasDemo) {
       this._disableCreate = true;
 
-      const resp = await daFetch(`${DA_ORIGIN}/list/${this.org}/${this.site}`);
-      const json = await resp.json();
-      if (json.length > 0) {
+      const { source } = await getNx2Api();
+      const { items } = await source.list(`/${this.org}/${this.site}`);
+      if (items.length > 0) {
         this._errorText = 'The target site is not empty. Choose no demo content or a different site.';
         this._disableCreate = undefined;
         return;

@@ -11,7 +11,9 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestPageURL, tabBackward, fill } from '../utils/page.js';
+import {
+  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
+} from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
@@ -42,7 +44,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();
 
-  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
   await page.locator('button.da-actions-new-button').click();
   await page.locator('button:text("Document")').click();
   await page.locator('input.da-actions-input').fill(pageName);
@@ -56,13 +58,13 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
-  await newPage.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
+  await newPage.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
 
   await newPage.waitForTimeout(3000);
   await newPage.reload();
 
-  await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
-  await newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
+  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).toBeVisible();
+  await newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`).focus();
   await tabBackward(newPage);
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
@@ -74,7 +76,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   await newPage.waitForTimeout(1000);
   /* TODO REMOVE once #233 is fixed */ await newPage.reload();
-  await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
+  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).not.toBeVisible();
 });
 
 test('Change document by switching anchors', async ({ page }, workerInfo) => {
@@ -145,6 +147,9 @@ test('Add code mark', async ({ page }, workerInfo) => {
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
   await fill(page, 'This is a line that will contain a code mark.');
+  // Wait for text to commit to the editor before navigating
+  await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
+  await page.keyboard.press('End');
 
   // Forward
   for (let i = 0; i < 10; i += 1) {
@@ -164,6 +169,9 @@ test('Add code mark', async ({ page }, workerInfo) => {
 
   // Backward
   await fill(page, 'This is a line that will contain a code mark.');
+  // Wait for text to commit to the editor before navigating
+  await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
+  await page.keyboard.press('End');
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(100);

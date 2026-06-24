@@ -1,11 +1,28 @@
 import { expect } from '@esm-bundle/chai';
 import { stub } from 'sinon';
-import {
+import { setNx, getNx2Api } from '../../../../../scripts/utils.js';
+
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const {
   getFullEntryList,
   handleUpload,
   getDropConflicts,
   items2Clipboard,
-} from '../../../../../blocks/browse/da-list/helpers/utils.js';
+} = await import('../../../../../blocks/browse/da-list/helpers/utils.js');
+
+// nx2 api.js pings `/ping/{org}/{site}` to detect hlx6 before every source
+// op and caches the result. Pre-warm the cache for the org/site combinations
+// produced by the handleUpload test inputs (postpath = `${fullpath}${path}`).
+async function primeHlx6Cache(orgSitePairs) {
+  const tempStub = stub(window, 'fetch').callsFake(async () => new Response('', { status: 200 }));
+  try {
+    const { isHlx6 } = await getNx2Api();
+    await Promise.all(orgSitePairs.map(([org, site]) => isHlx6(org, site)));
+  } finally {
+    tempStub.restore();
+  }
+}
 
 const goodEntry = {
   isDirectory: false,
@@ -58,6 +75,12 @@ describe('Drag and drop', () => {
 
 describe('Upload and format', () => {
   const ogFetch = window.fetch;
+
+  before(async () => {
+    // Test postpaths: `/geometrixx/foo` and `/geometrixx/foo.html` — withArgs
+    // splits these into { org: 'geometrixx', site: 'foo' | 'foo.html' }.
+    await primeHlx6Cache([['geometrixx', 'foo'], ['geometrixx', 'foo.html']]);
+  });
 
   beforeEach(() => {
     window.fetch = stub().returns(

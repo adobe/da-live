@@ -554,7 +554,7 @@ describe('DaTitle', () => {
         await element.handleAction('preview');
         const sourceCall = calls.find((c) => c.url?.includes('/source'));
         expect(sourceCall).to.exist;
-        expect(sourceCall.method).to.equal('PUT');
+        expect(sourceCall.method).to.equal('POST');
       } finally {
         window.open = savedOpen;
       }

@@ -1,0 +1,111 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--s2-font-family);
+}
+
+.ew-file-explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.tree {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: var(--s2-spacing-75) 0;
+}
+
+[role="group"] {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  padding: var(--s2-spacing-75) var(--s2-spacing-100);
+  padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100));
+  border: none;
+  background: transparent;
+  color: var(--s2-gray-800);
+  font-family: inherit;
+  font-size: var(--s2-body-size-s);
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+  gap: var(--s2-spacing-75);
+  box-sizing: border-box;
+
+  &:hover {
+    background: var(--s2-gray-75);
+  }
+
+  &.selected {
+    background: var(--s2-blue-100);
+    color: var(--s2-blue-900);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-700);
+    outline-offset: -2px;
+    border-radius: var(--s2-corner-radius-75);
+  }
+}
+
+.row[aria-expanded]::before {
+  content: '›';
+  display: inline-block;
+  flex-shrink: 0;
+  width: 1rem;
+  text-align: center;
+  transition: transform 0.15s;
+}
+
+.row[aria-expanded="true"]::before {
+  transform: rotate(90deg);
+}
+
+/* Files have no chevron — indent to align with folder labels */
+.row.file {
+  padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100) + 1rem + var(--s2-spacing-75));
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice {
+  padding: var(--s2-spacing-75) var(--s2-spacing-100);
+  font-size: var(--s2-body-size-s);
+  color: var(--s2-gray-600);
+  margin: 0;
+
+  &.centered {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+  }
+}
+
+.placeholder {
+  padding: var(--s2-spacing-300) var(--s2-spacing-100);
+  font-size: var(--s2-body-size-s);
+  color: var(--s2-gray-600);
+  text-align: center;
+  margin: 0;
+}

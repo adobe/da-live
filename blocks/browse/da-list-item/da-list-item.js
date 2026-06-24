@@ -1,9 +1,7 @@
 import { LitElement, html, nothing, until } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, aemAdmin, delay, sanitizeName } from '../../shared/utils.js';
-import { getNx } from '../../../scripts/utils.js';
+import { delay, sanitizeName, formatDate } from '../../shared/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
-import { formatDate } from '../../edit/da-versions/helpers.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -25,6 +23,7 @@ const ICONS = {
   media: '/img/icons/s2-icon-image-20-n.svg',
   pdf: '/img/icons/s2-icon-acrobatsolid-20-n.svg',
   folderClock: '/img/icons/s2-icon-folderclock-20-n.svg',
+  favorite: '/blocks/browse/da-list-item/img/da-favorite.svg',
 };
 
 export default class DaListItem extends LitElement {
@@ -38,6 +37,7 @@ export default class DaListItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
+    isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { type: Boolean },
     _isExpanded: { type: Boolean, state: true },
     _preview: { state: true },
@@ -73,7 +73,9 @@ export default class DaListItem extends LitElement {
   }
 
   async updateAEMStatus() {
-    const json = await aemAdmin(this.path, 'status', 'GET');
+    const { status, asJson } = await getNx2Api();
+    const { data: json } = await asJson(status.get(this.path));
+
     if (json) {
       this._preview = {
         status: json.preview.status,
@@ -94,7 +96,8 @@ export default class DaListItem extends LitElement {
   }
 
   async updateDAStatus() {
-    const resp = await daFetch(`${DA_ORIGIN}/versionlist${this.path}`);
+    const { versions } = await getNx2Api();
+    const resp = await versions.list(this.path);
     if (!resp.ok) return;
     const json = await resp.json();
     if (json.length === 0) {
@@ -138,8 +141,9 @@ export default class DaListItem extends LitElement {
   }
 
   async doesFileExist(path) {
-    const resp = await daFetch(`${DA_ORIGIN}/source${path}`, { method: 'HEAD' });
-    return resp.status === 200;
+    const { source } = await getNx2Api();
+    const { status } = await source.getMetadata(path);
+    return status === 200;
   }
 
   async handleRenameSubmit(e) {
@@ -169,10 +173,6 @@ export default class DaListItem extends LitElement {
       this._preview = null;
       this._live = null;
 
-      const formData = new FormData();
-      formData.append('destination', newPath);
-      const opts = { body: formData, method: 'POST' };
-
       this.name = newName;
       this.path = newPath;
       this.rename = false;
@@ -180,9 +180,10 @@ export default class DaListItem extends LitElement {
       this.date = Date.now();
 
       const showStatus = setTimeout(() => { this.setStatus('Renaming', 'Please be patient. Renaming items with many children can take time.'); }, 5000);
-      const resp = await daFetch(`${DA_ORIGIN}/move${oldPath}`, opts);
+      const { source } = await getNx2Api();
+      const { status } = await source.move(oldPath, { destination: newPath });
 
-      if (resp.status === 204) {
+      if (status === 204) {
         clearTimeout(showStatus);
         this.setStatus();
         this._isRenaming = false;
@@ -249,7 +250,8 @@ export default class DaListItem extends LitElement {
     let externalUrlPromise;
     if (this.ext === 'link') {
       path = nothing;
-      externalUrlPromise = daFetch(`${DA_ORIGIN}/source${this.path}`)
+      externalUrlPromise = getNx2Api()
+        .then(({ source }) => source.get(this.path))
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }
@@ -257,9 +259,14 @@ export default class DaListItem extends LitElement {
       <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
         ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
         ` : html`
-          <span class="da-item-list-item-type">${this.renderIcon()}</span>
+          <span class="da-item-list-item-type">
+            ${this.renderIcon()}
+            ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"</svg>` : nothing}
+          </span>
         `}
-        <div class="da-item-list-item-name">${this.name}</div>
+        <div class="da-item-list-item-name">
+          <span class="da-item-list-item-name-text">${this.name}</span>
+        </div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
   }

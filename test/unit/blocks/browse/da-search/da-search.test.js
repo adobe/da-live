@@ -3,14 +3,32 @@ import { expect } from '@esm-bundle/chai';
 import { stub, spy } from 'sinon';
 
 // Setup for dynamic imports
-const { setNx } = await import('../../../../../scripts/utils.js');
+const { setNx, getNx2Api } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaSearch } = await import('../../../../../blocks/browse/da-search/da-search.js');
 
+// nx2 api.js pings `/ping/{org}/{site}` to detect hlx6 before every source
+// op and caches the result in a module-level closure. Pre-warm the cache with
+// a legacy (no-upgrade) response so individual tests don't need to mock the
+// ping in their fetch stubs and can keep one-fetch-per-call assertions.
+async function primeHlx6Cache(orgSitePairs) {
+  const tempStub = stub(window, 'fetch').callsFake(async () => new Response('', { status: 200 }));
+  try {
+    const { isHlx6 } = await getNx2Api();
+    await Promise.all(orgSitePairs.map(([org, site]) => isHlx6(org, site)));
+  } finally {
+    tempStub.restore();
+  }
+}
+
 describe('DaSearch', () => {
   let daSearch;
   let fetchStub;
+
+  before(async () => {
+    await primeHlx6Cache([['myorg', 'mysite']]);
+  });
 
   beforeEach(() => {
     daSearch = new DaSearch();
