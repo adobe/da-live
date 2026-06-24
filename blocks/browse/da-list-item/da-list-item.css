@@ -41,7 +41,7 @@ button {
   align-items: center;
   text-decoration: none;
   color: var(--s2-gray-900);
-  padding: var(--s2-spacing-300) 0;;
+  padding: var(--s2-spacing-300) 0;
 }
 
 .da-item-list-item-title {
@@ -223,24 +223,23 @@ input[type="checkbox"] {
   display: none;
   align-items: center;
   justify-content: center;
-  background-color: var(--s2-gray-1000);
-  mask: no-repeat center / 18px url('/img/icons/s2-icon-more-20-n.svg');
+  background: none;
+  border-radius: 3px;
   cursor: pointer;
   position: relative;
+  transition: background 0.2s ease;
 
   &:hover {
-    background-color: var(--s2-gray-800);
+      background: var(--s2-blue-300);
   }
 }
 
-.da-item-list-item-expand-btn::before {
+.da-item-list-item-expand-btn::after {
   content: '';
-  position: absolute;
-  inset: 0;
-  background: transparent;
-  border-radius: 3px;
-  transition: background 0.2s ease;
-  z-index: -1;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-more-20-n.svg');
 }
 
 .da-item-list-item-expand-btn.is-visible {
