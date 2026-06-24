@@ -1,4 +1,4 @@
-import { getEWFlag } from '../../shared/ewFlags.js';
+import { getEWFlags } from '../../shared/ewFlags.js';
 
 const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
 
@@ -14,7 +14,8 @@ export async function readInitialCanvasEditorView({ org, site }) {
     if (persisted) return normalizeCanvasEditorView(persisted);
   } catch { /* ignore if browser disallows session storage */ }
 
-  const value = await getEWFlag({ org, site, flagName: 'ew.canvasDefaultView' });
+  const flags = await getEWFlags({ org, site });
+  const value = flags['ew.canvasDefaultView'];
   if (value) return normalizeCanvasEditorView(value);
 
   return 'layout';

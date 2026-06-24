@@ -177,7 +177,8 @@ export function getInstrumentedHTML(view) {
   clonedTables.forEach((table, index) => {
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
-    if (firstCellText === 'metadata') return;
+    const isPageOrSectionMetadata = firstCellText === 'metadata' || firstCellText === 'section metadata' || firstCellText === 'section-metadata';
+    if (isPageOrSectionMetadata) return;
     const div = table.parentElement;
     const blockMarker = document.createElement('div');
     blockMarker.className = 'block-marker';
