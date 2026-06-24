@@ -21,3 +21,6 @@ function getEnv() {
 
 const ENV = (() => getEnv())();
 export default ENV;
+
+export const TEST_ORG = process.env.TEST_ORG || 'da-sites';
+export const TEST_SITE = process.env.TEST_SITE || 'da-status';
