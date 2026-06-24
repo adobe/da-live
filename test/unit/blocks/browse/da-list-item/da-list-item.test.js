@@ -366,6 +366,53 @@ describe('DaListItem', () => {
       await el.updateDAStatus();
       expect(el._version).to.equal(99);
     });
+
+    it('Reads last-modified-by from the document HEAD on hlx6 sites', async () => {
+      const list = [
+        { version: '01ABC', 'version-date': '2026-06-23T12:00:00Z' },
+        { version: '01DEF', 'version-date': '2026-06-22T12:00:00Z' },
+      ];
+      window.fetch = (url, opts) => {
+        // isHlx6 probe: advertise the upgrade so the hlx6 branch is taken.
+        if (url.includes('/ping')) {
+          return Promise.resolve(new Response(null, { status: 200, headers: { 'x-api-upgrade-available': 'true' } }));
+        }
+        // getMetadata HEAD: last-modified-by lives in the response header.
+        if (opts?.method === 'HEAD') {
+          return Promise.resolve(new Response(null, {
+            status: 200,
+            headers: {
+              'x-last-modified-by': 'da-test@adobetest.com',
+              'last-modified': 'Tue, 23 Jun 2026 12:51:39 GMT',
+            },
+          }));
+        }
+        // versions.list
+        return Promise.resolve(new Response(JSON.stringify(list), { status: 200 }));
+      };
+      const el = new DaListItem();
+      el.path = '/hlx6org/hlx6site/page';
+      await el.updateDAStatus();
+      expect(el._version).to.equal(2);
+      expect(el._lastModifedBy).to.equal('da-test');
+    });
+
+    it('Falls back to anonymous on hlx6 when the HEAD has no modified-by header', async () => {
+      window.fetch = (url, opts) => {
+        if (url.includes('/ping')) {
+          return Promise.resolve(new Response(null, { status: 200, headers: { 'x-api-upgrade-available': 'true' } }));
+        }
+        if (opts?.method === 'HEAD') {
+          return Promise.resolve(new Response(null, { status: 200 }));
+        }
+        return Promise.resolve(new Response('[]', { status: 200 }));
+      };
+      const el = new DaListItem();
+      el.path = '/hlx6org2/hlx6site2/page';
+      await el.updateDAStatus();
+      expect(el._version).to.equal(0);
+      expect(el._lastModifedBy).to.equal('anonymous');
+    });
   });
 
   describe('toggleExpand', () => {
