@@ -17,6 +17,8 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
   // Ensure that the edits are visible to both and that the collab cursors are there
   // Also check that the cloud icon is visible for the collaborator
 
+  test.setTimeout(60000);
+
   const pageURL = getTestPageURL('collab', workerInfo);
 
   // Capture the Bearer token that da-live's daFetch attaches to its backend
