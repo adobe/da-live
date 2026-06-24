@@ -11,9 +11,10 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../../utils/env.js';
-import { getTestPageURL, getQuery, tabBackward, fill } from '../../utils/page.js';
+import { getTestPageURL, getQuery, tabBackward, fill, TEST_SITE } from '../../utils/page.js';
 
 test('Read-only directory', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   const url = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
 
   await page.goto(url);
@@ -35,6 +36,7 @@ test('Read-only directory', async ({ page }) => {
 });
 
 test('Read-write directory', async ({ browser, page }, workerInfo) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   test.setTimeout(60000);
   const pageURL = getTestPageURL('acl-browse-edt', workerInfo, '/da-testautomation/acltest/testdocs/subdir/subdir1');
   const pageName = pageURL.split('/').pop();
@@ -90,6 +92,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
 });
 
 test('Readonly directory with writeable document', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   const browseURL = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir/subdir2`;
   await page.goto(browseURL);
 
@@ -110,6 +113,7 @@ test('Readonly directory with writeable document', async ({ page }) => {
 });
 
 test('No access directory should not show anything', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`);
 
   // In this directory we should be able to see files

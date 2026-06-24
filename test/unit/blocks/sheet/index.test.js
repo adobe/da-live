@@ -130,7 +130,7 @@ describe('restoreVersion', () => {
     document.querySelectorAll('da-sheet-tabs').forEach((t) => t.remove());
   });
 
-  it('PUTs restored version data to /source and returns true', async () => {
+  it('POSTs restored version data to /source and returns true', async () => {
     const { restoreVersion } = await import('../../../../blocks/sheet/utils/utils.js');
 
     const versionData = [{
@@ -142,12 +142,16 @@ describe('restoreVersion', () => {
 
     window.location.hash = '#/o/r/sheet';
 
-    let putUrl;
-    let putBody;
+    let saveUrl;
+    let saveBody;
     window.fetch = async (url, opts) => {
-      if (opts?.method === 'PUT') {
-        putUrl = String(url);
-        putBody = opts.body;
+      const urlStr = String(url);
+      if (urlStr.startsWith('https://admin.hlx.page/ping')) {
+        return new Response('', { status: 200, headers: new Headers() });
+      }
+      if (opts?.method === 'POST' && urlStr.includes('/source/')) {
+        saveUrl = urlStr;
+        saveBody = opts.body;
         return new Response('', { status: 200 });
       }
       return new Response('', { status: 200 });
@@ -157,9 +161,9 @@ describe('restoreVersion', () => {
 
     expect(result).to.be.true;
     expect(daTitle.sheet).to.exist;
-    expect(putUrl).to.contain('/source/o/r/sheet.json');
-    expect(putBody).to.be.instanceOf(FormData);
-    const blob = putBody.get('data');
+    expect(saveUrl).to.contain('/source/o/r/sheet.json');
+    expect(saveBody).to.be.instanceOf(FormData);
+    const blob = saveBody.get('data');
     const payload = JSON.parse(await blob.text());
     expect(JSON.stringify(payload)).to.contain('restored');
   });
@@ -183,6 +187,26 @@ describe('restoreVersion', () => {
   });
 });
 
+// getData takes pathDetails; source.get rebuilds the admin.da.live URL the mock serves.
+const SOURCE_DETAILS = { org: 'org', site: 'site', path: '/file.json' };
+
+// The new api.js makes two requests: an hlx6 upgrade probe to admin.hlx.page/ping
+// and the actual source fetch. The probe must respond without an
+// x-api-upgrade-available header so the source URL stays on DA_ADMIN.
+function buildMockFetch(json) {
+  return async (url) => {
+    if (url.startsWith('https://admin.hlx.page/ping')) {
+      return new Response('', { status: 200, headers: new Headers() });
+    }
+    if (url.startsWith('https://admin.da.live/source/')) {
+      const headers = new Headers();
+      headers.append('x-da-actions', '/=read,write');
+      return new Response(json, { status: 200, headers });
+    }
+    return undefined;
+  };
+}
+
 describe('Sheets', () => {
   it('Test single sheet getData', async () => {
     const json = `
@@ -198,20 +222,11 @@ describe('Sheets', () => {
       ":type": "sheet"
     }`;
 
-    const mockFetch = async (url) => {
-      if (url === 'http://example.com') {
-        const headers = new Headers();
-        headers.append('x-da-actions', '/=read,write');
-        return new Response(json, { status: 200, headers });
-      }
-      return undefined;
-    };
-
     const savedFetch = window.fetch;
     try {
-      window.fetch = mockFetch;
+      window.fetch = buildMockFetch(json);
 
-      const sheet = await sh.getData('http://example.com');
+      const sheet = await sh.getData(SOURCE_DETAILS);
       expect(sheet.length).to.equal(1);
       expect(sheet[0].sheetName).to.equal('data');
       expect(sheet[0].data).to.deep.equal([['Value'], ['A'], ['B'], ['C']]);
@@ -247,20 +262,11 @@ describe('Sheets', () => {
       ":type": "multi-sheet"
     }`;
 
-    const mockFetch = async (url) => {
-      if (url === 'http://example.com') {
-        const headers = new Headers();
-        headers.append('x-da-actions', '/=read,write');
-        return new Response(json, { status: 200, headers });
-      }
-      return undefined;
-    };
-
     const savedFetch = window.fetch;
     try {
-      window.fetch = mockFetch;
+      window.fetch = buildMockFetch(json);
 
-      const sheet = await sh.getData('http://example.com');
+      const sheet = await sh.getData(SOURCE_DETAILS);
       expect(sheet.length).to.equal(2);
       expect(sheet[0].sheetName).to.equal('data');
       expect(sheet[0].data).to.deep.equal([['Tag'], ['red'], ['blue'], ['orange']]);
@@ -305,20 +311,11 @@ describe('Sheets', () => {
     }
     `;
 
-    const mockFetch = async (url) => {
-      if (url === 'http://example.com') {
-        const headers = new Headers();
-        headers.append('x-da-actions', '/=read,write');
-        return new Response(json, { status: 200, headers });
-      }
-      return undefined;
-    };
-
     const savedFetch = window.fetch;
     try {
-      window.fetch = mockFetch;
+      window.fetch = buildMockFetch(json);
 
-      const sheet = await sh.getData('http://example.com');
+      const sheet = await sh.getData(SOURCE_DETAILS);
       expect(sheet.length).to.equal(2);
       expect(sheet[0].sheetName).to.equal('single-sheet');
       expect(sheet[1].sheetName).to.equal('private-sheet');
@@ -380,20 +377,11 @@ describe('Sheets', () => {
 
     `;
 
-    const mockFetch = async (url) => {
-      if (url === 'http://example.com') {
-        const headers = new Headers();
-        headers.append('x-da-actions', '/=read,write');
-        return new Response(json, { status: 200, headers });
-      }
-      return undefined;
-    };
-
     const savedFetch = window.fetch;
     try {
-      window.fetch = mockFetch;
+      window.fetch = buildMockFetch(json);
 
-      const sheet = await sh.getData('http://example.com');
+      const sheet = await sh.getData(SOURCE_DETAILS);
       expect(sheet.length).to.equal(3);
       expect(sheet[0].sheetName).to.equal('sheet1');
       expect(sheet[1].sheetName).to.equal('sheet2');

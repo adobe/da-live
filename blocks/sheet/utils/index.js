@@ -1,5 +1,4 @@
-import { daFetch } from '../../shared/utils.js';
-import { getNx, nxJS } from '../../../scripts/utils.js';
+import { getNx, getNx2Api, nxJS } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
 import '../da-sheet-tabs.js';
 
@@ -84,8 +83,22 @@ export function getPermissions() {
   return permissions;
 }
 
-export async function getData(url) {
-  const resp = await daFetch(url);
+// Takes a pathDetails object ({ org, site, path, view }). For a version restore,
+// pass the same doc details plus a `versionId` and it routes through versions.get.
+export async function getData(input) {
+  const { config, source, versions } = await getNx2Api();
+  const { org, site, path, view, versionId } = input;
+
+  let resp;
+  let isVersion = false;
+  if (versionId) {
+    isVersion = true;
+    resp = await versions.get({ org, site, path, versionId });
+  } else if (view === 'config') {
+    resp = await config.get({ org, site });
+  } else {
+    resp = await source.get({ org, site, path });
+  }
 
   // Set permissions even if the file is a 404
   const daTitle = document.querySelector('da-title');
@@ -101,7 +114,7 @@ export async function getData(url) {
   // Get base data
   const json = await resp.json();
 
-  if (!url.includes('/versionsource')) {
+  if (!isVersion) {
     staleCheck.markSynced(json);
     const sheetPanes = document.querySelector('da-sheet-panes');
     if (sheetPanes) sheetPanes.data = json;
@@ -131,7 +144,7 @@ export async function getData(url) {
 }
 
 export default async function init(el, data) {
-  const suppliedData = data || await getData(el.details.sourceUrl);
+  const suppliedData = data || await getData(el.details);
 
   await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');

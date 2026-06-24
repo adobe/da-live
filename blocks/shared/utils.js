@@ -1,5 +1,5 @@
 import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../scripts/utils.js';
 import getPathDetails from './pathDetails.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
@@ -316,7 +316,8 @@ export async function livePreviewLogin(owner, repo) {
  */
 export async function checkLockdownImages(owner) {
   try {
-    const resp = await daFetch(`${DA_ORIGIN}/config/${owner}`);
+    const { config: configApi } = await getNx2Api();
+    const resp = await configApi.get({ org: owner });
     if (!resp.ok) return false;
 
     const config = await resp.json();
@@ -404,6 +405,13 @@ export const getAemSiteToken = (() => {
     return tokenCache[path];
   };
 })();
+
+export function formatDate(timestamp) {
+  const rawDate = timestamp ? new Date(timestamp) : new Date();
+  const date = rawDate.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  const time = rawDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return { date, time };
+}
 
 export function delay(ms) {
   return new Promise((res) => { setTimeout(res, ms); });

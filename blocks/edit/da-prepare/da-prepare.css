@@ -14,6 +14,20 @@
   }
 }
 
+:host(.s2) {
+  .da-prepare-toggle {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--s2-corner-radius-500, 8px);
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      color: inherit;
+    }
+  }
+}
+
 .prepare-wrapper {
   position: relative;
 

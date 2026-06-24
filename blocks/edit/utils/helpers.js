@@ -1,8 +1,8 @@
 import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
-import { AEM_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
-import { daFetch, getSidekickConfig } from '../../shared/utils.js';
+import { getSidekickConfig } from '../../shared/utils.js';
+import { getNx2Api } from '../../../scripts/utils.js';
 
 export function isURL(text) {
   try {
@@ -68,11 +68,9 @@ export async function getAemHrefs({ path }) {
 }
 
 export async function saveToAem(path, action) {
-  const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
-  const aemPath = parts.join('/');
-
-  const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`;
-  const resp = await daFetch(url, { method: 'POST' });
+  const { aem } = await getNx2Api();
+  const previewOrPublish = action === 'preview' ? aem.preview : aem.publish;
+  const resp = await previewOrPublish(path.toLowerCase());
   // eslint-disable-next-line no-console
   if (!resp.ok) {
     const { status, headers } = resp;
@@ -91,13 +89,9 @@ export async function saveToAem(path, action) {
 async function saveHtml(fullPath) {
   const editor = window.view.root.querySelector('.ProseMirror').cloneNode(true);
   const html = prose2aem(editor, false);
-  const blob = new Blob([html], { type: 'text/html' });
 
-  const formData = new FormData();
-  formData.append('data', blob);
-
-  const opts = { method: 'PUT', body: formData };
-  return daFetch(fullPath, opts);
+  const { source } = await getNx2Api();
+  return source.save(fullPath, { body: html });
 }
 
 function formatSheetData(jData) {
@@ -180,47 +174,36 @@ export function convertSheets(sheets) {
   return json;
 }
 
-async function saveJson(fullPath, sheets, jsonToSave, dataType = 'blob') {
+async function saveJson(path, sheets, jsonToSave, type = 'sheet') {
   const json = jsonToSave || convertSheets(sheets);
+  const body = JSON.stringify(json);
 
-  const formData = new FormData();
+  const { source, config } = await getNx2Api();
 
-  if (dataType === 'blob') {
-    const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
-    formData.append('data', blob);
+  if (type === 'config') {
+    return config.save(path, { body });
   }
 
-  if (dataType === 'config') {
-    formData.append('config', JSON.stringify(json));
-  }
-
-  const opts = { method: 'PUT', body: formData };
-  return daFetch(fullPath, opts);
+  // type === 'sheet'
+  return source.save(path, { body });
 }
 
-export function saveToDa(pathname, sheet) {
+export async function saveToDa(pathname, sheet) {
   const suffix = sheet ? '.json' : '.html';
-  const fullPath = `${DA_ORIGIN}/source${pathname}${suffix}`;
+  const fullPath = `${pathname}${suffix}`;
 
   if (!sheet) return saveHtml(fullPath);
   return saveJson(fullPath, sheet);
 }
 
 export function saveDaConfig(pathname, sheet) {
-  const fullPath = `${DA_ORIGIN}/config${pathname}`;
-  return saveJson(fullPath, sheet, null, 'config');
+  return saveJson(pathname, sheet, null, 'config');
 }
 
 export async function saveDaVersion(pathname, label = 'Published') {
-  const fullPath = `${DA_ORIGIN}/versionsource${pathname}`;
-
-  const opts = {
-    method: 'POST',
-    body: JSON.stringify({ label }),
-  };
-
   try {
-    await daFetch(fullPath, opts);
+    const { versions } = await getNx2Api();
+    await versions.create(pathname, { comment: label });
   } catch {
     // eslint-disable-next-line no-console
     console.log(`Error creating auto version (${label}).`);
@@ -252,8 +235,9 @@ async function getRoleRequestDetails(action) {
 
 export async function requestRole(org, site, action) {
   let json = JSON.parse(AEM_PERMISSION_TPL);
-  const fullpath = `${DA_ORIGIN}/source/${org}/${site}/.da/aem-permission-requests.json`;
-  const resp = await daFetch(fullpath);
+  const fullpath = `/${org}/${site}/.da/aem-permission-requests.json`;
+  const { source } = await getNx2Api();
+  const resp = await source.get(fullpath);
   if (resp.ok) {
     json = await resp.json();
   }

@@ -1,22 +1,13 @@
-import { getNx } from '../../scripts/utils.js';
-import { daFetch } from './utils.js';
-
-const { DA_ADMIN } = await import(`${getNx()}/utils/utils.js`);
+import { getNx2Api } from '../../scripts/utils.js';
 
 export async function listFolder(fullpath) {
-  let response;
   try {
-    response = await daFetch(`${DA_ADMIN}/list${fullpath}`);
+    const { source } = await getNx2Api();
+    const { ok, items } = await source.list(fullpath);
+    if (!ok) return { error: 'List failed', status: 0 };
+    return items;
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'List request failed', status: 0 };
-  }
-  if (!response.ok) return { error: `List failed: ${response.status}`, status: response.status };
-  try {
-    const payload = await response.json();
-    if (!Array.isArray(payload)) return { error: 'Invalid list response', status: response.status };
-    return payload;
-  } catch {
-    return { error: 'Invalid response body', status: response.status };
   }
 }
 
