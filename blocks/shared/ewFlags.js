@@ -21,7 +21,7 @@ export async function isEWEnabled({ org, site }) {
   return flags['ew.enabled'] === 'true';
 }
 
-export async function isEwDisableChat({ org, site }) {
+export async function isEwChatDisabled({ org, site }) {
   const flags = await getEWFlags({ org, site });
   return flags['ew.disableChat'] === 'true';
 }

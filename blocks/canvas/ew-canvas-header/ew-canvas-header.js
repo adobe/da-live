@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 
 import { getNx } from '../../../scripts/utils.js';
-import { isEwDisableChat } from '../../shared/ewFlags.js';
+import { isEwChatDisabled } from '../../shared/ewFlags.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -55,7 +55,7 @@ class EWCanvasHeader extends LitElement {
       this._chatDisabled = false;
       return;
     }
-    const disabled = await isEwDisableChat({ org, site });
+    const disabled = await isEwChatDisabled({ org, site });
     if (this._chatDisableKey !== key) return;
     this._chatDisabled = disabled;
   }

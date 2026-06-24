@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../scripts/utils.js';
-import { getEWFlags, isEWEnabled, isEwDisableChat } from '../../../../blocks/shared/ewFlags.js';
+import { getEWFlags, isEWEnabled, isEwChatDisabled } from '../../../../blocks/shared/ewFlags.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -71,7 +71,7 @@ describe('isEWEnabled', () => {
   });
 });
 
-describe('isEwDisableChat', () => {
+describe('isEwChatDisabled', () => {
   let savedFetch;
   beforeEach(() => { savedFetch = window.fetch; });
   afterEach(() => { window.fetch = savedFetch; });
@@ -83,7 +83,7 @@ describe('isEwDisableChat', () => {
         ? { flags: { data: [] } }
         : { flags: { data: [{ key: 'ew.disableChat', value: 'true' }] } }),
     });
-    expect(await isEwDisableChat({ org: 'dc-org1', site: 'dc-site1' })).to.be.true;
+    expect(await isEwChatDisabled({ org: 'dc-org1', site: 'dc-site1' })).to.be.true;
   });
 
   it('returns true when ew.disableChat is set at site level but not org level', async () => {
@@ -93,11 +93,11 @@ describe('isEwDisableChat', () => {
         ? { flags: { data: [{ key: 'ew.disableChat', value: 'true' }] } }
         : { flags: { data: [] } }),
     });
-    expect(await isEwDisableChat({ org: 'dc-org2', site: 'dc-site2' })).to.be.true;
+    expect(await isEwChatDisabled({ org: 'dc-org2', site: 'dc-site2' })).to.be.true;
   });
 
   it('returns false when ew.disableChat flag is not set at any level', async () => {
     window.fetch = async () => ({ ok: true, json: async () => ({ flags: { data: [] } }) });
-    expect(await isEwDisableChat({ org: 'dc-org3', site: 'dc-site3' })).to.be.false;
+    expect(await isEwChatDisabled({ org: 'dc-org3', site: 'dc-site3' })).to.be.false;
   });
 });
