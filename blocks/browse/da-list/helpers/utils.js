@@ -81,6 +81,60 @@ export async function getFullEntryList(entries) {
   return files.filter((file) => file);
 }
 
+/**
+ * Recursively count the files contained within the given folders.
+ *
+ * This intentionally uses the backend-aware `source.list` API (which routes to
+ * the correct origin for both the legacy DA backend and Helix 6) instead of
+ * nx's `crawl` helper, which lists against the DA origin only and therefore
+ * returns nothing for Helix 6 sites.
+ *
+ * @param {Object} opts
+ * @param {Array} opts.folders Folder items to crawl (each with a `path`).
+ * @param {number} [opts.fileCount] Count of already-selected standalone files.
+ * @param {Object} opts.source The nx2 `source` API (provides `list`).
+ * @param {number} [opts.concurrent] Max folders listed in parallel.
+ * @returns {{ results: Promise<number>, cancelCrawl: () => void }}
+ */
+export function crawlDeleteCount({ folders, fileCount = 0, source, concurrent = 5 }) {
+  let cancelled = false;
+
+  const listFolder = async (path, onCount) => {
+    const subfolders = [];
+    let continuationToken;
+    do {
+      if (cancelled) break;
+      const { ok, items, continuationToken: next } = await source.list(
+        path,
+        { continuationToken },
+      );
+      if (!ok || !items) break;
+      items.forEach((item) => {
+        if (item.ext) onCount();
+        else subfolders.push(item.path);
+      });
+      continuationToken = next;
+    } while (continuationToken);
+    return subfolders;
+  };
+
+  const results = (async () => {
+    let count = fileCount;
+    const onCount = () => { count += 1; };
+    const pending = folders.map((folder) => folder.path);
+
+    while (pending.length && !cancelled) {
+      const batch = pending.splice(0, concurrent);
+      const discovered = await Promise.all(batch.map((path) => listFolder(path, onCount)));
+      discovered.forEach((subs) => pending.push(...subs));
+    }
+
+    return count;
+  })();
+
+  return { results, cancelCrawl: () => { cancelled = true; } };
+}
+
 export function getDropConflicts(list, files) {
   const existing = new Set(
     list.map((item) => (item.ext ? `${item.name}.${item.ext}` : item.name)),

@@ -443,17 +443,22 @@ export default class DaList extends LitElement {
 
     this._deleteCountLoading = true;
     try {
-      const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
-      const crawlInstance = crawl({
-        path: folders.map((folder) => folder.path),
-        files,
+      const { source } = await getNx2Api();
+      const { crawlDeleteCount } = await import('./helpers/utils.js');
+      // Use the backend-aware source.list (works for both DA and Helix 6) rather
+      // than nx's crawl, which only lists against the DA origin and returns 0 for
+      // Helix 6 sites.
+      const crawlInstance = crawlDeleteCount({
+        folders,
+        fileCount: files.length,
+        source,
         concurrent: 5,
       });
       this._deleteCrawl = crawlInstance;
-      const allFiles = await crawlInstance.results;
+      const count = await crawlInstance.results;
       // If the user cancelled/closed the dialog while we were crawling, bail out
       if (this._confirm !== 'delete' || this._deleteCrawl !== crawlInstance) return;
-      this._deleteCount = allFiles.length;
+      this._deleteCount = count;
     } finally {
       if (this._confirm === 'delete') {
         this._deleteCountLoading = false;

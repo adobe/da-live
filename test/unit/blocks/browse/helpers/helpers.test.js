@@ -9,6 +9,7 @@ const {
   handleUpload,
   getDropConflicts,
   items2Clipboard,
+  crawlDeleteCount,
 } = await import('../../../../../blocks/browse/da-list/helpers/utils.js');
 
 // nx2 api.js pings `/ping/{org}/{site}` to detect hlx6 before every source
@@ -151,6 +152,108 @@ describe('getDropConflicts', () => {
     const list = [{ name: 'images' }];
     const files = [{ path: '/images' }];
     expect(getDropConflicts(list, files)).to.deep.equal(['images']);
+  });
+});
+
+describe('crawlDeleteCount', () => {
+  // Build a fake `source` whose `list` returns the contents of `tree[path]`.
+  // A folder maps to an array of child items; files have an `ext`, folders don't.
+  function makeSource(tree) {
+    const list = async (path) => ({ ok: true, items: tree[path] ?? [], continuationToken: null });
+    return { list };
+  }
+
+  it('Counts files recursively across nested folders', async () => {
+    const source = makeSource({
+      '/org/site/folder': [
+        { name: 'a', ext: 'html', path: '/org/site/folder/a.html' },
+        { name: 'sub', path: '/org/site/folder/sub' },
+      ],
+      '/org/site/folder/sub': [
+        { name: 'b', ext: 'html', path: '/org/site/folder/sub/b.html' },
+        { name: 'c', ext: 'json', path: '/org/site/folder/sub/c.json' },
+      ],
+    });
+    const { results } = crawlDeleteCount({
+      folders: [{ path: '/org/site/folder' }],
+      source,
+    });
+    expect(await results).to.equal(3);
+  });
+
+  it('Includes the already-selected standalone file count', async () => {
+    const folderItems = [{ name: 'a', ext: 'html', path: '/org/site/folder/a.html' }];
+    const source = makeSource({ '/org/site/folder': folderItems });
+    const { results } = crawlDeleteCount({
+      folders: [{ path: '/org/site/folder' }],
+      fileCount: 2,
+      source,
+    });
+    expect(await results).to.equal(3);
+  });
+
+  it('Follows pagination via the continuation token', async () => {
+    let page = 0;
+    const source = {
+      list: async (path, { continuationToken } = {}) => {
+        expect(path).to.equal('/org/site/folder');
+        if (!continuationToken) {
+          page += 1;
+          return {
+            ok: true,
+            items: [{ name: 'a', ext: 'html', path: '/org/site/folder/a.html' }],
+            continuationToken: 'next',
+          };
+        }
+        return {
+          ok: true,
+          items: [{ name: 'b', ext: 'html', path: '/org/site/folder/b.html' }],
+          continuationToken: null,
+        };
+      },
+    };
+    const { results } = crawlDeleteCount({
+      folders: [{ path: '/org/site/folder' }],
+      source,
+    });
+    expect(await results).to.equal(2);
+    expect(page).to.equal(1);
+  });
+
+  it('Stops recursing into subfolders once cancelCrawl is called', async () => {
+    const listed = [];
+    const source = {
+      list: async (path) => {
+        listed.push(path);
+        if (path === '/org/site/folder') {
+          return {
+            ok: true,
+            items: [
+              { name: 'a', ext: 'html', path: '/org/site/folder/a.html' },
+              { name: 'sub', path: '/org/site/folder/sub' },
+            ],
+            continuationToken: null,
+          };
+        }
+        return { ok: true, items: [], continuationToken: null };
+      },
+    };
+    const crawl = crawlDeleteCount({ folders: [{ path: '/org/site/folder' }], source });
+    crawl.cancelCrawl();
+    // The top folder's in-flight listing still resolves, but the discovered
+    // subfolder is never crawled.
+    expect(await crawl.results).to.equal(1);
+    expect(listed).to.deep.equal(['/org/site/folder']);
+  });
+
+  it('Stops recursing when a listing is not ok', async () => {
+    const source = { list: async () => ({ ok: false, items: [], continuationToken: null }) };
+    const { results } = crawlDeleteCount({
+      folders: [{ path: '/org/site/folder' }],
+      fileCount: 1,
+      source,
+    });
+    expect(await results).to.equal(1);
   });
 });
 
