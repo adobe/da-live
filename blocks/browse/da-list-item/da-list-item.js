@@ -74,7 +74,9 @@ export default class DaListItem extends LitElement {
 
   async updateAEMStatus() {
     const { status, asJson } = await getNx2Api();
-    const { data: json } = await asJson(status.get(this.path));
+    // AEM resolves HTML pages by their extensionless path.
+    const path = this.ext === 'html' ? this.path.slice(0, -5) : this.path;
+    const { data: json } = await asJson(status.get(path));
 
     if (json) {
       this._preview = {
@@ -96,10 +98,26 @@ export default class DaListItem extends LitElement {
   }
 
   async updateDAStatus() {
-    const { versions } = await getNx2Api();
+    const { versions, source, isHlx6 } = await getNx2Api();
+    const [, org, site] = this.path.split('/');
+
     const resp = await versions.list(this.path);
     if (!resp.ok) return;
     const json = await resp.json();
+
+    // hlx6 no longer keeps last-modified info in the version records, and its
+    // version entries are ULID-based rather than /versionsource urls. Count the
+    // version records and HEAD the document for the last-modified-by header.
+    if (await isHlx6(org, site)) {
+      this._version = json.filter((entry) => entry.version).length;
+      const headResp = await source.getMetadata(this.path);
+      const lastModifiedBy = headResp?.headers?.get('x-last-modified-by');
+      this._lastModifedBy = lastModifiedBy
+        ? lastModifiedBy.split('@')[0].toLowerCase()
+        : 'anonymous';
+      return;
+    }
+
     if (json.length === 0) {
       this._lastModifedBy = 'anonymous';
       this._version = 0;
