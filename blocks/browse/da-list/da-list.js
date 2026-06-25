@@ -710,9 +710,10 @@ export default class DaList extends LitElement {
   }
 
   get filteredItems() {
+    const items = this._listItems.filter((item) => item.name !== '.trash');
     return this._filter
-      ? this._listItems.filter((item) => item.name.includes(this._filter))
-      : this._listItems;
+      ? items.filter((item) => item.name.includes(this._filter))
+      : items;
   }
 
   get isSelectAll() {
