@@ -56,29 +56,21 @@
 
   nx-breadcrumb {
     --s2-component-m-regular-font-size: var(--s2-component-l-regular-font-size);
-    --s2-component-m-regular-line-height: var(--s2-component-l-regular-line-height);
-    --s2-component-m-bold-font-weight: var(--s2-component-l-bold-font-weight);
   }
 }
 
 .da-breadcrumb-area {
   display: flex;
   align-items: center;
-  height:28px;
+}
 
-  &::after {
-    content: '';
-    flex-shrink: 0;
-    width: 8px;
-    height: 8px;
-    background-color: currentColor;
-    mask: url('/img/icons/s2-icon-chevronleft-10-n.svg') center / contain no-repeat;
-    margin-inline: var(--s2-spacing-75);
-  }
-
-  nx-breadcrumb {
-    height: 24px;
-  }
+.da-breadcrumb-sep {
+  flex-shrink: 0;
+  display: block;
+  width: 8px;
+  height: 8px;
+  color: currentColor;
+  margin-inline: var(--s2-spacing-75);
 }
 
 .da-breadcrumb-config {
