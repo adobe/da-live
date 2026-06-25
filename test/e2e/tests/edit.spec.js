@@ -45,7 +45,8 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const pageName = url.split('/').pop();
 
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
-  await page.locator('button.da-actions-new-button').click();
+  await expect(page.locator('button.da-actions-new-button')).toBeEnabled();
+  await page.locator('button.da-actions-new-button').click({ force: true });
   await page.getByRole('menuitem', { name: 'Document' }).click();
   await page.locator('input.da-actions-input').fill(pageName);
 

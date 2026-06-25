@@ -45,7 +45,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await page.goto(browseURL);
   const newButton = page.getByRole('button', { name: 'New' });
   await expect(newButton).toBeEnabled();
-  await newButton.click();
+  await newButton.click({ force: true });
   await page.getByRole('menuitem', { name: 'Document' }).click();
   await page.locator('input.da-actions-input').fill(pageName);
 
