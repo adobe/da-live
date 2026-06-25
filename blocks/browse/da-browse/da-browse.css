@@ -5,12 +5,15 @@
 .da-browse-header {
   padding: var(--s2-spacing-200);
   height: 40px;
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
 }
 
 .da-browse-content {
   max-width: var(--se-grid-container-width);
   margin: 0 auto;
-  padding: 40px 0;
+  padding: 20px 0;
 }
 
 .chat-btn {
@@ -43,6 +46,61 @@
     outline: 2px solid var(--s2-blue-800);
     outline-offset: 2px;
   }
+}
+
+.da-breadcrumb-action-area {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2-spacing-100);
+
+  nx-breadcrumb {
+    --s2-component-m-regular-font-size: var(--s2-component-l-regular-font-size);
+    --s2-component-m-regular-line-height: var(--s2-component-l-regular-line-height);
+    --s2-component-m-bold-font-weight: var(--s2-component-l-bold-font-weight);
+  }
+}
+
+.da-breadcrumb-area {
+  display: flex;
+  align-items: center;
+  height:28px;
+
+  &::after {
+    content: '';
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    background-color: currentColor;
+    mask: url('/img/icons/s2-icon-chevronleft-10-n.svg') center / contain no-repeat;
+    margin-inline: var(--s2-spacing-75);
+  }
+}
+
+.da-breadcrumb-config {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  height: 24px;
+  border-radius: var(--s2-corner-radius-100);
+  color: var(--s2-gray-700);
+  flex-shrink: 0;
+  cursor: pointer;
+
+  & svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    color: var(--s2-gray-900);
+  }
+}
+
+.da-tabpanel {
+  margin-top: 30px;
 }
 
 .da-tablist {
@@ -91,9 +149,3 @@
   display: none;
 }
 
-@media (width >= 900px) {
-  .da-list-header.context-browse {
-    display: flex;
-    flex-wrap: wrap;
-  }
-}

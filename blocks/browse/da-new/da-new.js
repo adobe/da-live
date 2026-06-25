@@ -6,6 +6,7 @@ import getEditPath from '../shared.js';
 // Styles & Icons
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
+await import(`${getNx()}/blocks/shared/menu/menu.js`);
 
 const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
 const INPUT_ERROR = 'da-input-error';
@@ -40,8 +41,9 @@ export default class DaNew extends LitElement {
   }
 
   handleNewType(e) {
-    this._createShow = e.target.dataset.type === 'media' ? 'upload' : 'input';
-    this._createType = e.target.dataset.type;
+    const type = e.detail?.id ?? e.target?.dataset?.type;
+    this._createShow = type === 'media' ? 'upload' : 'input';
+    this._createType = type;
     setTimeout(() => {
       const input = this.shadowRoot.querySelector('.da-actions-input');
       input.focus();
@@ -169,24 +171,17 @@ export default class DaNew extends LitElement {
   render() {
     return html`
       <div class="da-actions-create ${this._createShow}">
-        <button class="da-actions-new-button" @click=${this.handleCreateMenu} ?disabled=${this._disabled}>New</button>
-        <ul class="da-actions-menu">
-          <li class=da-actions-menu-item>
-            <button data-type=folder @click=${this.handleNewType}>Folder</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=document @click=${this.handleNewType}>Document</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=sheet @click=${this.handleNewType}>Sheet</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=media @click=${this.handleNewType}>Media</button>
-          </li>
-          <li class=da-actions-menu-item>
-            <button data-type=link @click=${this.handleNewType}>Link</button>
-          </li>
-        </ul>
+        <nx-menu .items=${[
+        { id: 'folder', label: 'Folder' },
+        { id: 'document', label: 'Document' },
+        { id: 'sheet', label: 'Sheet' },
+        { id: 'media', label: 'Media' },
+        { id: 'link', label: 'Link' },
+      ]} @select=${this.handleNewType}>
+          <button slot="trigger" class="da-actions-new-button" ?disabled=${this._disabled} aria-label="New">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></svg>
+          </button>
+        </nx-menu>
         <div class="da-actions-input-container">
           <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
           ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="url" @input=${this.handleUrlChange} .value=${this._externalUrl || ''} />` : ''}

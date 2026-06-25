@@ -4,12 +4,12 @@ import { isEWEnabled } from '../../shared/ewFlags.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 
 // Components
-import '../da-breadcrumbs/da-breadcrumbs.js';
 import '../da-new/da-new.js';
 import '../da-search/da-search.js';
 import '../da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
@@ -207,7 +207,7 @@ export default class DaBrowse extends LitElement {
   render() {
     return html`
       <div class="da-browse-header">
-        ${this._chatEnabled ? html`
+        ${!this._chatEnabled ? html`
           <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
             <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
           </button>` : nothing}
@@ -231,13 +231,21 @@ export default class DaBrowse extends LitElement {
     })}
       </div>
       <div class="da-list-header context-${this.context}">
-        <da-breadcrumbs .details="${this.details}"></da-breadcrumbs>
-        ${this._tabItems.map((tab) => html`
-          <div class="da-list-header-action" data-visible="${tab.selected}">
-            ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
+          <div class="da-breadcrumb-action-area">
+            <div class="da-breadcrumb-area">
+              <nx-breadcrumb .pathSegments="${this.details.fullpath.split('/').filter(Boolean)}"></nx-breadcrumb>
+              ${!this.details.path ? html`
+                <a class="da-breadcrumb-config" href="/config#${this.details.fullpath}/" aria-label="Config">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
+                </a>` : nothing}
+            </div>
+            ${this._tabItems.map((tab) => html`
+              <div class="da-list-header-action" data-visible="${tab.selected}">
+                ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
+              </div>
+            `)}
           </div>
-        `)}
-      </div>
+        </div>
       ${this._tabItems.map((tab) => html`
         <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
           ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}

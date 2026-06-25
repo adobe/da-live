@@ -47,12 +47,11 @@ da-list-item.is-expanded::after {
 /* Empty list */
 .empty-list {
   border: 1px solid rgb(234 234 234);
-  background-color: rgb(248 248 248);
   border-radius: 6px;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 400px;
+  min-height: 75px;
 }
 
 .da-browse-panel-header {
@@ -88,15 +87,17 @@ da-list-item.is-expanded::after {
   position: relative;
 }
 
-.da-browse-filter img {
+.da-browse-filter svg {
   opacity: 0.4;
+  width: 18px;
+  height: 18px;
 }
 
-.da-browse-filter.selected img {
+.da-browse-filter.selected svg {
   opacity: 1;
 }
 
-.da-browse-filter:hover img {
+.da-browse-filter:hover svg {
   opacity: 1;
 }
 
@@ -142,10 +143,11 @@ da-list-item.is-expanded::after {
   padding: 0;
   border: none;
   display: none;
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family);
   font-size: 14px;
   line-height: 18px;
   color: var(--s2-gray-800);
+  background: none;
 }
 
 .da-browse-header-container input::placeholder {
@@ -381,4 +383,10 @@ input[type="checkbox"] {
 
 .error-item-name {
   margin: 0 0 12px;
+}
+
+.da-modal-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
 }

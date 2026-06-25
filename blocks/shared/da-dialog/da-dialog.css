@@ -72,7 +72,7 @@ svg.icon {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: var(--s2-spacing-200);
 
     .da-dialog-footer-message {
       font-style: italic;
