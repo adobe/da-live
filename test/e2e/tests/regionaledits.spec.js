@@ -38,14 +38,14 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
   const folderName = folderURL.split('/').pop();
   await page.getByRole('button', { name: 'New' }).click();
-  await page.getByRole('button', { name: 'Folder' }).click();
+  await page.getByRole('menuitem', { name: 'Folder' }).click();
   await page.locator('input.da-actions-input').fill(folderName);
   await page.locator('input.da-actions-input').press('Enter');
   /* */ // End addition
 
   await page.goto(folderURL);
   await page.getByRole('button', { name: 'New' }).click();
-  await page.getByRole('button', { name: 'Media' }).click();
+  await page.getByRole('menuitem', { name: 'Media' }).click();
 
   const [fileChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByText('Select file').click()]);
 

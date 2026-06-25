@@ -65,7 +65,7 @@ const link = await page.getByRole('link', { name: orgPageName });
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
   await page.getByRole('button', { name: 'New' }).click();
-  await page.getByRole('button', { name: 'Folder' }).click();
+  await page.getByRole('menuitem', { name: 'Folder' }).click();
   await page.locator('input.da-actions-input').fill(copyFolderName);
   await page.locator('input.da-actions-input').press('Enter');
 

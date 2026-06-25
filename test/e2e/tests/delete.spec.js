@@ -76,7 +76,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   }
 
   // Hit the delete button
-  await page.locator('button.delete-button').locator('visible=true').click();
+  await page.locator('button.delete-button').filter({ visible: true }).click();
 
   // Type in YES to delete > 10 items
   if (itemsToDelete > 10) {
@@ -84,10 +84,10 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   }
 
   // Hit the delete confirmation button
-  await page.locator('sl-button.negative').locator('visible=true').click();
+  await page.locator('sl-button.negative').filter({ visible: true }).click();
 
   // Wait for the delete button to disappear which is when we're done
-  await expect(page.locator('button.delete-button').locator('visible=true')).not.toBeVisible({ timeout: 600000 });
+  await expect(page.locator('button.delete-button').filter({ visible: true })).not.toBeVisible({ timeout: 600000 });
 });
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
@@ -127,13 +127,13 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await tabBackward(list);
   await list.keyboard.press(' ');
   await list.waitForTimeout(500);
-  await list.locator('button.delete-button').locator('visible=true').click();
+  await list.locator('button.delete-button').filter({ visible: true }).click();
 
   // Give the modal a chance to open
   await list.waitForTimeout(1000);
 
   // Hit the delete confirmation button
-  await list.locator('sl-button.negative').locator('visible=true').click();
+  await list.locator('sl-button.negative').filter({ visible: true }).click();
 
   // The open window should be cleared out now
   await expect(page2.locator('div.ProseMirror')).not.toBeVisible();
