@@ -91,6 +91,13 @@
   color: var(--s2-gray-700);
   flex-shrink: 0;
   cursor: pointer;
+  width: 24px;
+  height: 24px;
+  margin-left: var(--s2-spacing-75);
+
+  &:hover{
+    background-color: var(--s2-gray-200);
+  }
 
   & svg {
     display: block;

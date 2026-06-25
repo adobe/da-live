@@ -12,12 +12,20 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
 
+function isBrowseChatOpen() {
+  try {
+    return !!sessionStorage.getItem(BROWSE_CHAT_SESSION_KEY);
+  } catch {
+    return false;
+  }
+}
+
 const style = await loadStyle(import.meta.url);
 
 async function openChatPanel() {
   const store = getPanelStore();
   const width = store.before?.width ?? '400px';
-  return openPanel({
+  const aside = await openPanel({
     position: 'before',
     width,
     getContent: async () => {
@@ -25,6 +33,13 @@ async function openChatPanel() {
       return document.createElement('nx-chat');
     },
   });
+  if (aside) {
+    try { sessionStorage.setItem(BROWSE_CHAT_SESSION_KEY, '1'); } catch (e) { /* ignore */ }
+    aside.addEventListener('nx-panel-close', () => {
+      try { sessionStorage.removeItem(BROWSE_CHAT_SESSION_KEY); } catch (e) { /* ignore */ }
+    }, { once: true });
+  }
+  return aside;
 }
 
 export default class DaBrowse extends LitElement {
@@ -106,7 +121,7 @@ export default class DaBrowse extends LitElement {
         this._chatEnabled = await isEWEnabled({ org, site });
         if (this._chatEnabled) {
           const store = getPanelStore();
-          if (store.before && !store.before.fragment) openChatPanel();
+          if (isBrowseChatOpen() || (store.before && !store.before.fragment)) openChatPanel();
         }
       }
 
@@ -207,7 +222,7 @@ export default class DaBrowse extends LitElement {
   render() {
     return html`
       <div class="da-browse-header">
-        ${!this._chatEnabled ? html`
+        ${this._chatEnabled ? html`
           <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
             <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
           </button>` : nothing}
