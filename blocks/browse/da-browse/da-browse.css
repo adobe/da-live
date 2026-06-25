@@ -52,7 +52,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--s2-spacing-100);
+  row-gap: var(--s2-spacing-100);
 
   nx-breadcrumb {
     --s2-component-m-regular-font-size: var(--s2-component-l-regular-font-size);
@@ -74,6 +74,10 @@
     background-color: currentColor;
     mask: url('/img/icons/s2-icon-chevronleft-10-n.svg') center / contain no-repeat;
     margin-inline: var(--s2-spacing-75);
+  }
+
+  nx-breadcrumb {
+    height: 24px;
   }
 }
 

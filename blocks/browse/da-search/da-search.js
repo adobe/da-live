@@ -293,11 +293,10 @@ export default class DaSearch extends LitElement {
           <input type="text" placeholder="Enter replace text" name="replace" aria-label="Replacement text"/>
           <input type="submit" value="Replace" />
         </form>
-        <div class="checkbox-wrapper">
-          <input id="show-replace" type="checkbox" name="item-selected" @click="${this.toggleReplace}" aria-label="Enable replace mode">
-          <label for="show-replace" class="checkbox-label"><span class="${this.showReplace ? 'hide' : nothing}">Replace</span></label>
-        </div>
-        <input type="checkbox" name="select" style="display: none;">
+        <label class="checkbox-label">
+          <input type="checkbox" @click="${this.toggleReplace}" aria-label="Enable replace mode">
+          <span class="${this.showReplace ? 'hide' : nothing}">Replace</span>
+        </label>
       </div>
     `;
   }
