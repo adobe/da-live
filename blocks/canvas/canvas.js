@@ -149,12 +149,112 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
   toolPanel.views = views;
 }
 
+const ORIGIN_KEY = 'slicc-origin';
+const JOIN_KEY = 'slicc-join-token';
+
+function mountCherryIframe(container, sliccOrigin, joinToken) {
+  container.innerHTML = '';
+
+  const bar = document.createElement('div');
+  bar.className = 'slicc-connected-bar';
+
+  const label = document.createElement('span');
+  label.textContent = 'Slicc';
+
+  const disconnectBtn = document.createElement('button');
+  disconnectBtn.type = 'button';
+  disconnectBtn.className = 'slicc-disconnect-btn';
+  disconnectBtn.textContent = 'Disconnect';
+  disconnectBtn.addEventListener('click', () => {
+    localStorage.removeItem(JOIN_KEY);
+    showCherryConfigForm(container);
+  });
+
+  bar.append(label, disconnectBtn);
+
+  const iframe = document.createElement('iframe');
+  const src = new URL(sliccOrigin);
+  src.searchParams.set('cherry', '1');
+  iframe.src = src.toString();
+
+  container.append(bar, iframe);
+
+  const onMessage = (event) => {
+    if (event.source !== iframe.contentWindow || event.origin !== sliccOrigin) return;
+    const { data } = event;
+    if (data?.cherry !== 1 || data?.kind !== 'handshake.hello') return;
+    iframe.contentWindow.postMessage(
+      { cherry: 1, channelId: data.channelId, kind: 'handshake.welcome', joinUrl: joinToken },
+      sliccOrigin,
+    );
+  };
+  window.addEventListener('message', onMessage);
+}
+
+function showCherryConfigForm(container) {
+  container.innerHTML = '';
+
+  const form = document.createElement('form');
+  form.className = 'slicc-config-form';
+
+  const heading = document.createElement('h3');
+  heading.textContent = 'Connect to Slicc';
+
+  const originLabel = document.createElement('label');
+  const originSpan = document.createElement('span');
+  originSpan.textContent = 'Origin';
+  const originInput = document.createElement('input');
+  originInput.type = 'url';
+  originInput.name = 'origin';
+  originInput.value = localStorage.getItem(ORIGIN_KEY) ?? 'http://localhost:5710';
+  originInput.required = true;
+  originLabel.append(originSpan, originInput);
+
+  const joinLabel = document.createElement('label');
+  const joinSpan = document.createElement('span');
+  joinSpan.textContent = 'Join URL';
+  const joinInput = document.createElement('input');
+  joinInput.type = 'url';
+  joinInput.name = 'join';
+  joinInput.value = localStorage.getItem(JOIN_KEY) ?? '';
+  joinInput.placeholder = 'http://localhost:5710/join/…';
+  joinInput.required = true;
+  joinLabel.append(joinSpan, joinInput);
+
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.textContent = 'Connect';
+
+  form.append(heading, originLabel, joinLabel, submit);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const origin = fd.get('origin').toString().replace(/\/$/, '');
+    const join = fd.get('join').toString();
+    localStorage.setItem(ORIGIN_KEY, origin);
+    localStorage.setItem(JOIN_KEY, join);
+    mountCherryIframe(container, origin, join);
+  });
+
+  container.appendChild(form);
+}
+
 const CANVAS_PANELS = {
   before: {
     width: '400px',
-    getContent: async () => {
-      await import(`${getNx()}/blocks/chat/chat.js`);
-      return document.createElement('nx-chat');
+    getContent: () => {
+      const container = document.createElement('div');
+      container.className = 'slicc-cherry-panel';
+
+      const savedOrigin = localStorage.getItem(ORIGIN_KEY);
+      const savedJoin = localStorage.getItem(JOIN_KEY);
+      if (savedOrigin && savedJoin) {
+        mountCherryIframe(container, savedOrigin, savedJoin);
+      } else {
+        showCherryConfigForm(container);
+      }
+
+      return container;
     },
   },
   after: {
@@ -231,12 +331,6 @@ export default async function decorate(block) {
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);
-  });
-
-  document.addEventListener('nx-open-chat-panel', async ({ detail }) => {
-    const aside = await openCanvasPanel('before');
-    if (!detail?.text) return;
-    aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
   });
 
   const store = getPanelStore();

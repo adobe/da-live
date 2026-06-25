@@ -10,7 +10,7 @@ html:has(aside.panel[data-position="after"]:not([hidden])) ew-canvas-header::par
   display: none;
 }
 
-.fragment-content:has(nx-chat) {
+.fragment-content:has(.slicc-cherry-panel) {
   height: 100%;
 
   & .section {
@@ -22,8 +22,98 @@ html:has(aside.panel[data-position="after"]:not([hidden])) ew-canvas-header::par
   }
 }
 
-nx-chat {
+.slicc-cherry-panel {
+  width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.slicc-cherry-panel iframe {
+  flex: 1;
+  border: 0;
+  min-height: 0;
+}
+
+.slicc-connected-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 36px;
+  flex-shrink: 0;
+  border-bottom: 1px solid light-dark(#e0e0e0, #333);
+  font: 13px/1 system-ui, sans-serif;
+  color: light-dark(#444, #bbb);
+}
+
+.slicc-disconnect-btn {
+  background: none;
+  border: 1px solid light-dark(#ccc, #555);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font: 12px/1 system-ui, sans-serif;
+  cursor: pointer;
+  color: inherit;
+}
+
+.slicc-disconnect-btn:hover {
+  background: light-dark(#f5f5f5, #2a2a2a);
+}
+
+.slicc-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  font: 14px/1.4 system-ui, sans-serif;
+  color: light-dark(#222, #ddd);
+}
+
+.slicc-config-form h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.slicc-config-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.slicc-config-form span {
+  font-size: 12px;
+  color: light-dark(#666, #999);
+}
+
+.slicc-config-form input {
+  padding: 7px 10px;
+  border: 1px solid light-dark(#ccc, #444);
+  border-radius: 6px;
+  font: 13px/1 system-ui, sans-serif;
+  background: light-dark(#fff, #1e1e1e);
+  color: inherit;
+}
+
+.slicc-config-form input:focus {
+  outline: 2px solid light-dark(#0066cc, #4d9fff);
+  outline-offset: -1px;
+}
+
+.slicc-config-form button[type="submit"] {
+  align-self: flex-start;
+  padding: 8px 18px;
+  background: light-dark(#0066cc, #4d9fff);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font: 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.slicc-config-form button[type="submit"]:hover {
+  background: light-dark(#0055aa, #3a8aee);
 }
 
 /* Layout / content / split: one visible editor set; split uses WYSIWYG | gutter | doc; inactive uses [hidden] */
