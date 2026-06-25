@@ -62,6 +62,7 @@
 .da-breadcrumb-area {
   display: flex;
   align-items: center;
+  min-height: 28px;
 }
 
 .da-breadcrumb-sep {
