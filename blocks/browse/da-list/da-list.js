@@ -606,7 +606,7 @@ export default class DaList extends LitElement {
       }
     }
 
-    this._listItems.forEach((item) => { item.isChecked = check; });
+    this.filteredItems.forEach((item) => { item.isChecked = check; });
     this.handleSelectionState();
   }
 
@@ -690,9 +690,16 @@ export default class DaList extends LitElement {
     this._filter = e.target.value;
   }
 
+  get filteredItems() {
+    return this._filter
+      ? this._listItems.filter((item) => item.name.includes(this._filter))
+      : this._listItems;
+  }
+
   get isSelectAll() {
-    const selectCount = this._listItems.filter((item) => item.isChecked).length;
-    return selectCount === this._listItems.length && this._listItems.length !== 0;
+    const items = this.filteredItems;
+    const selectCount = items.filter((item) => item.isChecked).length;
+    return selectCount === items.length && items.length !== 0;
   }
 
   get actionBar() {
@@ -933,9 +940,7 @@ export default class DaList extends LitElement {
 
   render() {
     const hasMorePages = this._continuationToken && !this._allPagesLoaded;
-    const filteredItems = this._filter
-      ? this._listItems.filter((item) => item.name.includes(this._filter))
-      : this._listItems;
+    const { filteredItems } = this;
     const showList = filteredItems?.length > 0 || hasMorePages;
 
     return html`
