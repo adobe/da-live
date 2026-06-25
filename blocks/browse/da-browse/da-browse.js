@@ -11,6 +11,7 @@ import '../da-list/da-list.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
+const BROWSE_CHAT_SESSION_KEY = 'nx-browse-chat-open';
 
 function isBrowseChatOpen() {
   try {
@@ -48,6 +49,43 @@ export default class DaBrowse extends LitElement {
     _tabItems: { state: true },
     _searchItems: { state: true },
     _chatEnabled: { state: true },
+  };
+
+  _browseSelKeys = new Set();
+
+  _clearBrowseSelection() {
+    for (const key of this._browseSelKeys) {
+      document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key } }));
+    }
+    this._browseSelKeys = new Set();
+  }
+
+  _handleBrowseSelection = ({ detail: { items } }) => {
+    const prevKeys = this._browseSelKeys;
+    const nextKeys = new Set(items.map((i) => i.path));
+
+    for (const key of prevKeys) {
+      if (!nextKeys.has(key)) {
+        document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key } }));
+      }
+    }
+
+    for (const item of items) {
+      if (!prevKeys.has(item.path)) {
+        document.dispatchEvent(new CustomEvent('nx-add-to-chat', {
+          detail: {
+            key: item.path,
+            id: item.path,
+            type: item.ext ? 'file' : 'folder',
+            label: item.name,
+            blockName: item.name,
+            innerText: `Selected repository path: ${item.path.replace(/^\//, '')}`,
+          },
+        }));
+      }
+    }
+
+    this._browseSelKeys = nextKeys;
   };
 
   constructor() {
@@ -113,12 +151,14 @@ export default class DaBrowse extends LitElement {
     if (props.has('details') && this.details) {
       const prevDetails = props.get('details');
       const orgChanged = prevDetails?.org !== this.details.org;
+      if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
 
       // EW flag lives at site level — re-check whenever org or site changes,
       // and do this before getEditor so the default editor reflects EW state
       if (orgChanged || prevDetails?.site !== this.details.site) {
         const { org, site } = this.details;
         this._chatEnabled = await isEWEnabled({ org, site });
+        this._chatEnabled = true;
         if (this._chatEnabled) {
           const store = getPanelStore();
           if (isBrowseChatOpen() || (store.before && !store.before.fragment)) openChatPanel();
@@ -214,6 +254,7 @@ export default class DaBrowse extends LitElement {
         fullpath="${fullpath}"
         editor="${this.editor}"
         @onpermissions=${this.handlePermissions}
+        @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
         drag="${drag ? true : nothing}"></da-list>`;
@@ -254,6 +295,7 @@ export default class DaBrowse extends LitElement {
                   <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
                 </a>` : nothing}
             </div>
+            <svg class="da-breadcrumb-sep" viewBox="0 0 10 10" aria-hidden="true"><use href="/img/icons/s2-icon-chevronleft-10-n.svg#icon"></use></svg>
             ${this._tabItems.map((tab) => html`
               <div class="da-list-header-action" data-visible="${tab.selected}">
                 ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
