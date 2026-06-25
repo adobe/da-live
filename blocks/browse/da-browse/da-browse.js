@@ -1,7 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
-import { isEWEnabled } from '../../shared/ewFlags.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
 
 // Components
 import '../da-new/da-new.js';
@@ -157,6 +156,7 @@ export default class DaBrowse extends LitElement {
       // and do this before getEditor so the default editor reflects EW state
       if (orgChanged || prevDetails?.site !== this.details.site) {
         const { org, site } = this.details;
+        const { isEWEnabled } = await getNxEWFlags();
         this._chatEnabled = await isEWEnabled({ org, site });
         this._chatEnabled = true;
         if (this._chatEnabled) {
