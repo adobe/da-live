@@ -235,10 +235,14 @@ export default class DaList extends LitElement {
   }
 
   handleNewItem() {
-    // Add it to internal list
-    if (this.newItem?.path) this._listItemPaths.add(this.newItem.path);
+    if (this.newItem?.path) {
+      if (this._listItemPaths.has(this.newItem.path)) {
+        this.newItem = null;
+        return;
+      }
+      this._listItemPaths.add(this.newItem.path);
+    }
     this._listItems.unshift(this.newItem);
-    // Clear the public item
     this.newItem = null;
   }
 

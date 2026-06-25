@@ -327,6 +327,17 @@ describe('DaList helpers', () => {
       el.handleNewItem();
       expect(el._listItemPaths.size).to.equal(0);
     });
+
+    it('Skips unshift when path already exists in _listItemPaths (dedup)', () => {
+      const el = makeList();
+      const existing = { name: 'doc', path: '/n', ext: 'html' };
+      el._listItems = [existing];
+      el._listItemPaths = new Set(['/n']);
+      el.newItem = { name: 'doc', path: '/n', ext: 'html' };
+      el.handleNewItem();
+      expect(el._listItems.length).to.equal(1);
+      expect(el.newItem).to.equal(null);
+    });
   });
 
   describe('handleRenameCompleted', () => {
