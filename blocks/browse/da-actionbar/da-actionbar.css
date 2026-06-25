@@ -5,16 +5,16 @@ button {
 .da-action-bar {
   bottom: 12px;
   position: fixed;
-  background-color: rgb(188 28 116);
+  background-color: var(--s2-blue-900);
   min-height: 48px;
-  border-radius: var(--s2-corner-radius-700);
+  border-radius: var(--s2-corner-radius-500);
   width: var(--se-grid-container-width);
   z-index: 400;
   filter: drop-shadow(rgb(0 0 0 / 15%) 0 1px 4px);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px;
+  padding: var(--s2-spacing-200);
   box-sizing: border-box;
   color: #FFF;
   font-size: 14px;
@@ -28,25 +28,25 @@ button {
   border-radius: var(--s2-corner-radius-500);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
+  gap: var(--s2-spacing-100);
+  padding: 0 var(--s2-spacing-100);
 }
 
 .da-action-bar button:hover {
   background-color: rgb(255 255 255 / 25%);
 }
 
-.da-action-bar button img {
+.da-action-bar button svg {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .da-action-bar-left-rail {
   margin-left: 3px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--s2-spacing-100);
 }
 
 .da-action-bar-right-rail {

@@ -8,7 +8,7 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
 
 @container (width < 1440px) {
   da-browse {
-    --se-grid-container-width: 83.4%;
+    --se-grid-container-width: 83.4cqi;
   }
 }
 
