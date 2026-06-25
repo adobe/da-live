@@ -1,3 +1,4 @@
+import { mountSlicc } from '../../deps/cherry/dist/index.js';
 import { getNx } from '../../scripts/utils.js';
 import { editorSelectChange } from './editor-utils/editor-utils.js';
 import {
@@ -152,7 +153,7 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
 const ORIGIN_KEY = 'slicc-origin';
 const JOIN_KEY = 'slicc-join-token';
 
-function mountCherryIframe(container, sliccOrigin, joinToken) {
+function mountCherryPanel(container, sliccOrigin, joinToken) {
   container.innerHTML = '';
 
   const bar = document.createElement('div');
@@ -165,30 +166,26 @@ function mountCherryIframe(container, sliccOrigin, joinToken) {
   disconnectBtn.type = 'button';
   disconnectBtn.className = 'slicc-disconnect-btn';
   disconnectBtn.textContent = 'Disconnect';
-  disconnectBtn.addEventListener('click', () => {
-    localStorage.removeItem(JOIN_KEY);
-    showCherryConfigForm(container);
-  });
 
   bar.append(label, disconnectBtn);
 
-  const iframe = document.createElement('iframe');
-  const src = new URL(sliccOrigin);
-  src.searchParams.set('cherry', '1');
-  iframe.src = src.toString();
+  const iframeContainer = document.createElement('div');
+  iframeContainer.style.cssText = 'flex:1;min-height:0;overflow:hidden;';
 
-  container.append(bar, iframe);
+  container.append(bar, iframeContainer);
 
-  const onMessage = (event) => {
-    if (event.source !== iframe.contentWindow || event.origin !== sliccOrigin) return;
-    const { data } = event;
-    if (data?.cherry !== 1 || data?.kind !== 'handshake.hello') return;
-    iframe.contentWindow.postMessage(
-      { cherry: 1, channelId: data.channelId, kind: 'handshake.welcome', joinUrl: joinToken },
-      sliccOrigin,
-    );
-  };
-  window.addEventListener('message', onMessage);
+  const handle = mountSlicc({
+    container: iframeContainer,
+    sliccOrigin,
+    joinToken,
+    capabilities: { navigate: false, screenshot: 'html2canvas', openUrl: true },
+  });
+
+  disconnectBtn.addEventListener('click', () => {
+    handle.destroy();
+    localStorage.removeItem(JOIN_KEY);
+    showCherryConfigForm(container);
+  });
 }
 
 function showCherryConfigForm(container) {
@@ -233,7 +230,7 @@ function showCherryConfigForm(container) {
     const join = fd.get('join').toString();
     localStorage.setItem(ORIGIN_KEY, origin);
     localStorage.setItem(JOIN_KEY, join);
-    mountCherryIframe(container, origin, join);
+    mountCherryPanel(container, origin, join);
   });
 
   container.appendChild(form);
@@ -249,7 +246,7 @@ const CANVAS_PANELS = {
       const savedOrigin = localStorage.getItem(ORIGIN_KEY);
       const savedJoin = localStorage.getItem(JOIN_KEY);
       if (savedOrigin && savedJoin) {
-        mountCherryIframe(container, savedOrigin, savedJoin);
+        mountCherryPanel(container, savedOrigin, savedJoin);
       } else {
         showCherryConfigForm(container);
       }
