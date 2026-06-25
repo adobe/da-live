@@ -340,8 +340,14 @@ export default class DaList extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
-    const { source } = await getNx2Api();
-    const type2fn = { copy: source.copy, delete: source.delete, move: source.move };
+    const { source, isHlx6 } = await getNx2Api();
+
+    const [org, site] = sanitizePathParts(item.path);
+    const hlx6 = await isHlx6(org, site);
+    const useDeleteFolder = type === 'delete' && !item.ext && hlx6;
+
+    const deleteFn = useDeleteFolder ? source.deleteFolder : source.delete;
+    const type2fn = { copy: source.copy, delete: deleteFn, move: source.move };
     const fn = type2fn[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
@@ -469,8 +475,12 @@ export default class DaList extends LitElement {
     const callback = async (item) => {
       const [org, site, ...rest] = sanitizePathParts(item.path);
 
-      // If already in trash or not in a site, its a direct delete
-      const directDelete = item.path.includes('/.trash/') || rest.length === 0;
+      const { isHlx6 } = await getNx2Api();
+      const hlx6 = await isHlx6(org, site);
+
+      // HLX6 has no trash — always direct delete.
+      // HLX5: move to trash unless already in trash or no site.
+      const directDelete = hlx6 || item.path.includes('/.trash/') || rest.length === 0;
       const type = directDelete ? 'delete' : 'move';
       if (!directDelete) {
         rest.pop();
