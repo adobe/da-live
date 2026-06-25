@@ -340,12 +340,9 @@ export default class DaList extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
-    const { source, isHlx6 } = await getNx2Api();
+    const { source } = await getNx2Api();
 
-    const [org, site] = sanitizePathParts(item.path);
-    const hlx6 = await isHlx6(org, site);
-    const useDeleteFolder = type === 'delete' && !item.ext && hlx6;
-
+    const useDeleteFolder = type === 'delete' && !item.ext;
     const deleteFn = useDeleteFolder ? source.deleteFolder : source.delete;
     const type2fn = { copy: source.copy, delete: deleteFn, move: source.move };
     const fn = type2fn[type];
