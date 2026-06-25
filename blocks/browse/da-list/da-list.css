@@ -4,10 +4,7 @@
 
 /* Item List */
 .da-item-list {
-  border: 1px solid var(--s2-gray-200);
-  border-radius: 6px;
   overflow: hidden;
-  background: var(--s2-gray-75);
 }
 
 .da-list-sentinel {
@@ -16,6 +13,10 @@
 }
 
 /* List Item */
+da-list-item {
+  font-size: var(--s2-component-l-regular-font-size);
+}
+
 da-list-item::before {
   display: block;
   content: "";
@@ -28,8 +29,7 @@ da-list-item::after {
   display: block;
   content: "";
   height: 1px;
-  background: var(--s2-gray-400);
-  margin: 0 18px;
+  background: var(--s2-gray-300);
 }
 
 da-list-item:hover::before,
@@ -66,7 +66,7 @@ da-list-item.is-expanded::after {
 .da-browse-sort {
   display: grid;
   grid-template-columns: 32px 1fr 160px;
-  gap: 24px;
+  gap: var(--s2-spacing-100);
   justify-content: space-between;
   padding: 0 56px 0 24px;
 }
@@ -125,12 +125,11 @@ da-list-item.is-expanded::after {
   padding: 0;
   border: none;
   background: none;
-  text-transform: uppercase;
   line-height: 18px;
-  font-size: 14px;
-  color: var(--s2-gray-700);
-  font-family: var(--body-font-family);
-  font-weight: 700;
+  font-size: var(--s2-component-m-regular-font-size);
+  color: var(--s2-gray-600);
+  font-family: var(--s2-font-family);
+  font-weight: var(--s2-component-s-medium-font-weight);
   cursor: pointer;
 }
 
@@ -182,22 +181,26 @@ da-list-item.is-expanded::after {
   display: none;
   position: absolute;
   content: "";
-  right: -16px;
-  width: 18px;
+  right: -12px;
+  width: 6px;
   height: 18px;
-  filter: invert(26%) sepia(0%) saturate(946%) hue-rotate(145deg) brightness(102%) contrast(81%);
-  background: no-repeat center / 18px url("/blocks/browse/img/Smock_ChevronRight_18_N.svg");
+  background-color: var(--s2-gray-600);
+  mask: no-repeat center / 18px url("/img/icons/s2-icon-arrowupsend-20-n.svg");
   transition: transform 0.2s ease-in-out;
 }
 
+.da-browse-header-name {
+  &.old, &.new {
+    color: var(--s2-gray-700);
+  }
+}
 .da-browse-header-name.new::before {
   display: block;
-  transform: rotate(-90deg);
 }
 
 .da-browse-header-name.old::before {
   display: block;
-  transform: rotate(90deg);
+  transform: rotate(180deg);
 }
 
 .da-browse-header-name.loading::before {
@@ -292,86 +295,71 @@ da-list-item.is-expanded::after {
 }
 
 .da-list-status-type-info .da-list-status-title {
-  background: var(--s2-blue-800) url("/blocks/browse/img/Smock_InfoOutline_18_N.svg") 12px 50% no-repeat;
+  background-color: var(--s2-blue-800);
+  position: relative;
+}
+
+.da-list-status-type-info .da-list-status-title::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: url("/img/icons/s2-icon-infocircle-20-n.svg") center / contain no-repeat;
+  filter: brightness(0) invert(1);
 }
 
 /* Checkbox */
 
-.checkbox-wrapper {
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+input[type="checkbox"] {
   position: relative;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  appearance: none;
+  border: 2px solid var(--s2-gray-800);
+  border-radius: var(--s2-corner-radius-75);
+  background: var(--s2-gray-75);
+  cursor: pointer;
 
-  input[type="checkbox"] {
-    appearance: none;
-    position: absolute;
-    top: -4px;
-    left: -5px;
-    height: 20px;
-    width: 20px;
+  &:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
   }
 
-  .checkbox-label {
-    display: flex;
-    position: relative;
-    font-size: 20px;
-    font-weight: 400;
-    align-items: center;
-    justify-content: flex-start;
-  }
+  &:checked {
+    background: var(--s2-blue-900);
+    color: var(--s2-gray-25);
+    border: none;
 
-  .checkbox-label::before,
-  .checkbox-label::after {
-    pointer-events: none;
-  }
-
-  .checkbox-label::before {
-    display: flex;
-    content: "";
-    height: 18px;
-    width: 18px;
-    border-radius: 2px;
-    background: rgb(221 221 221);
-  }
-
-  .checkbox-label::after {
-    position: absolute;
-    top: 3px;
-    left: 1px;
-    display: flex;
-    content: " ";
-    height: 5px;
-    width: 12px;
-    background: none;
-    border-bottom: 4px solid #fff;
-    border-left: 4px solid #fff;
-    transform: rotate(-45deg) scale(0);
-    transition: transform 0.1s ease 0s, opacity 0.1s ease 0s;
-    transform-origin: center center;
-  }
-
-  input[type="checkbox"]:checked + .checkbox-label::before {
-    background: #1473e6;
-  }
-
-  input[type="checkbox"]:checked + .checkbox-label::after {
-    opacity: 1;
-    transform: rotate(-45deg) scale(0.8);
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-color: currentcolor;
+      mask-image: url("/img/icons/s2-icon-checkmark-20-n.svg");
+      mask-size: contain;
+      mask-repeat: no-repeat;
+      mask-position: center;
+    }
   }
 }
 
-.checkbox-wrapper input[type="checkbox"]:disabled {
-  cursor: default;
-}
-
-.checkbox-wrapper.loading .checkbox-label::before {
+.checkbox-label.loading input[type="checkbox"] {
   background: none;
-  border: 2px solid #c7c7c7;
+  border-color: #c7c7c7;
   border-top-color: #5a5a5a;
   border-radius: 50%;
   animation: da-list-spin 0.8s linear infinite;
-}
-
-.checkbox-wrapper.loading .checkbox-label::after {
-  display: none;
 }
 
 /* Drop conflicts dialog */

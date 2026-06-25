@@ -6,12 +6,6 @@ import '../da-list-item/da-list-item.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
-const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
-const ICONS = [
-  '/blocks/edit/img/Smock_Cancel_18_N.svg',
-  '/blocks/edit/img/Smock_Checkmark_18_N.svg',
-  '/blocks/edit/img/Smock_Refresh_18_N.svg',
-];
 
 const MAX_DELETE_COUNT = 1000;
 const DELETE_CONFIRM_THRESHOLD = 10;
@@ -70,7 +64,6 @@ export default class DaList extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
-    getSvg({ parent: this.shadowRoot, paths: ICONS });
   }
 
   async update(props) {
@@ -235,10 +228,14 @@ export default class DaList extends LitElement {
   }
 
   handleNewItem() {
-    // Add it to internal list
-    if (this.newItem?.path) this._listItemPaths.add(this.newItem.path);
+    if (this.newItem?.path) {
+      if (this._listItemPaths.has(this.newItem.path)) {
+        this.newItem = null;
+        return;
+      }
+      this._listItemPaths.add(this.newItem.path);
+    }
     this._listItems.unshift(this.newItem);
-    // Clear the public item
     this.newItem = null;
   }
 
@@ -613,7 +610,7 @@ export default class DaList extends LitElement {
       }
     }
 
-    this._listItems.forEach((item) => { item.isChecked = check; });
+    this.filteredItems.forEach((item) => { item.isChecked = check; });
     this.handleSelectionState();
   }
 
@@ -697,9 +694,16 @@ export default class DaList extends LitElement {
     this._filter = e.target.value;
   }
 
+  get filteredItems() {
+    return this._filter
+      ? this._listItems.filter((item) => item.name.includes(this._filter))
+      : this._listItems;
+  }
+
   get isSelectAll() {
-    const selectCount = this._listItems.filter((item) => item.isChecked).length;
-    return selectCount === this._listItems.length && this._listItems.length !== 0;
+    const items = this.filteredItems;
+    const selectCount = items.filter((item) => item.isChecked).length;
+    return selectCount === items.length && items.length !== 0;
   }
 
   get actionBar() {
@@ -729,10 +733,10 @@ export default class DaList extends LitElement {
           placeholder="YES"
           autofocus=""
           @input=${(e) => {
-            const upper = e.target.value.toUpperCase();
-            if (e.target.value !== upper) e.target.value = upper;
-            this._confirmText = upper;
-          }}
+        const upper = e.target.value.toUpperCase();
+        if (e.target.value !== upper) e.target.value = upper;
+        this._confirmText = upper;
+      }}
           aria-label="Type YES to confirm"
           value=${this._confirmText ?? ''}></sl-input>
       </div>
@@ -927,11 +931,9 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <div class="checkbox-wrapper ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
+      <label class="checkbox-label ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-        <label class="checkbox-label" for="select-all"></label>
-      </div>
-      <input type="checkbox" name="select" style="display: none;">
+      </label>
     `;
   }
 
@@ -942,9 +944,7 @@ export default class DaList extends LitElement {
 
   render() {
     const hasMorePages = this._continuationToken && !this._allPagesLoaded;
-    const filteredItems = this._filter
-      ? this._listItems.filter((item) => item.name.includes(this._filter))
-      : this._listItems;
+    const { filteredItems } = this;
     const showList = filteredItems?.length > 0 || hasMorePages;
 
     return html`
@@ -961,7 +961,7 @@ export default class DaList extends LitElement {
                 ?disabled=${this._filterLoading}
                 aria-disabled=${this._filterLoading ? 'true' : 'false'}
                 aria-label="Toggle filter">
-                <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
+                <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
               </button>
             ` : html`
               <button
@@ -971,7 +971,7 @@ export default class DaList extends LitElement {
                 ?disabled=${this._filterLoading}
                 aria-disabled=${this._filterLoading ? 'true' : 'false'}
                 aria-label="Toggle filter">
-                <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
+                <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
               </button>
             `}
           </div>
