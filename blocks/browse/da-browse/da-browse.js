@@ -158,7 +158,6 @@ export default class DaBrowse extends LitElement {
         const { org, site } = this.details;
         const { isEWEnabled } = await getNxEWFlags();
         this._chatEnabled = await isEWEnabled({ org, site });
-        this._chatEnabled = true;
         if (this._chatEnabled) {
           const store = getPanelStore();
           if (isBrowseChatOpen() || (store.before && !store.before.fragment)) openChatPanel();
