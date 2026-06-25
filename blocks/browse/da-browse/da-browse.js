@@ -295,7 +295,6 @@ export default class DaBrowse extends LitElement {
                   <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
                 </a>` : nothing}
             </div>
-            <svg class="da-breadcrumb-sep" viewBox="0 0 10 10" aria-hidden="true"><use href="/img/icons/s2-icon-chevronleft-10-n.svg#icon"></use></svg>
             ${this._tabItems.map((tab) => html`
               <div class="da-list-header-action" data-visible="${tab.selected}">
                 ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
