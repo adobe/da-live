@@ -1,4 +1,4 @@
-name: Playwright Tests (Da-Admin)
+name: Playwright Tests (Helix)
 on:
   workflow_dispatch:
   push:
@@ -26,7 +26,7 @@ jobs:
     - name: Run Playwright tests
       env:
         TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
-      run: cd test/e2e && npm run test:all
+      run: cd test/e2e && TEST_ORG=da-testautomation TEST_SITE=da-e2e-tests npm run test:all
     - uses: actions/upload-artifact@v4
       if: always()
       with:
