@@ -287,7 +287,7 @@ export default class DaSearch extends LitElement {
         </div>
         <input type="submit" value="Search" />
       </form>
-      <p>${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>
+      <p class="search-results">${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>
       <div class="replace-pane">
         <form class="da-replace-form${this.showReplace ? nothing : ' hide'}" @submit=${this.handleReplace}>
           <input type="text" placeholder="Enter replace text" name="replace" aria-label="Replacement text"/>
