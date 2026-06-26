@@ -153,7 +153,7 @@ export async function aemAdmin(path, api, method = 'POST') {
  * [admin] not authorized
  */
 /* eslint-enable max-len */
-function parseAemError(xError) {
+export function parseAemError(xError) {
   if (xError.includes('PDF')) {
     const [seg1, seg2] = xError.split(': ').slice(-2);
     return `${seg1}: ${seg2}`;

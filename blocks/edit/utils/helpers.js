@@ -1,7 +1,7 @@
 import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import prose2aem from '../../shared/prose2aem.js';
-import { getSidekickConfig } from '../../shared/utils.js';
+import { getSidekickConfig, parseAemError } from '../../shared/utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 
 export function isURL(text) {
