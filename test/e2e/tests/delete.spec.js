@@ -20,7 +20,6 @@ const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOU
 
 // This test deletes old testing pages that are older than 2 hours
 test('Delete multiple old pages', async ({ page }, workerInfo) => {
-  test.skip(TEST_SITE !== 'da-status', 'Deleting documents doesn\'t work yet in Helix 6');
   if (workerInfo.project.name !== 'chromium') {
     // only execute this test on chromium
     return;
