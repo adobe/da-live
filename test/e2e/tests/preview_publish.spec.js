@@ -32,7 +32,7 @@ test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
   await selectItem(page, 'pingtest');
   await page.locator('button.preview-button').filter({ visible: true }).click();
 
-  await expect(page.locator('da-dialog')).toBeVisible();
+  await expect(page.locator('sl-button.accent').filter({ visible: true })).toBeVisible();
   await expect(page.locator('da-dialog')).toContainText('Preview the');
 });
 
