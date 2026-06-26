@@ -227,7 +227,7 @@ da-dialog {
       position: absolute;
       inset: -12px;
       border-radius: 100px;
-      background: var(--s2-gray-200);
+      background: var(--s2-gray-100);
     }
   }
 
