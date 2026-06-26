@@ -211,11 +211,11 @@ form button:hover {
   margin-bottom: -4px;
 }
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   .da-site .da-back-action img {
     filter: brightness(0) invert(1);
   }
-}
+} */
 
 .da-site:hover {
   transform: scale(1.015);
