@@ -12,9 +12,7 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   }
 }
 
-.light-scheme, .dark-scheme {
-  color-scheme: light;
-
+.light-scheme {
   .browse:has(da-sites) {
     [data-scheme="light"] {
       display: block;
@@ -22,13 +20,13 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   }
 }
 
-/* .dark-scheme {  
+.dark-scheme {  
   .browse:has(da-sites) {
     [data-scheme="dark"] {
       display: block;
     }
   }
-} */
+}
 
 picture {
   display: none;
