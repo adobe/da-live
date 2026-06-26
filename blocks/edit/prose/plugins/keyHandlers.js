@@ -123,12 +123,13 @@ export function handleTableTab(direction) {
   };
 
   const gtnc = goToNextCell(direction);
-  return (state, dispatch) => {
+  return (state, dispatch, view) => {
     if (!isInTable(state)) return false;
     const rect = selectedRect(state);
     if (direction === 1 && isCursorInLastTableCell(rect)) {
       addRowAfter(state, dispatch);
-      return gtnc(window.view.state, dispatch);
+      const liveView = view || window.view;
+      return gtnc(liveView.state, dispatch);
     }
     return gtnc(state, dispatch);
   };
