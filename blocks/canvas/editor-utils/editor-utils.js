@@ -1,7 +1,7 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -177,7 +177,8 @@ export function getInstrumentedHTML(view) {
   clonedTables.forEach((table, index) => {
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
-    if (firstCellText === 'metadata') return;
+    const isPageOrSectionMetadata = firstCellText === 'metadata' || firstCellText === 'section metadata' || firstCellText === 'section-metadata';
+    if (isPageOrSectionMetadata) return;
     const div = table.parentElement;
     const blockMarker = document.createElement('div');
     blockMarker.className = 'block-marker';
@@ -308,19 +309,44 @@ export function updateCursors(ctx) {
 
 // --- preview.js ---
 
-export function getPreviewOrigin(org, repo) {
+export function getPreviewOrigin(org, repo, branch = 'main') {
   const hostname = window?.location?.hostname ?? '';
   const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
     ? 'stage-preview.da.live'
     : 'preview.da.live';
-  return `https://main--${repo}--${org}.${domain}`;
+  return `https://${branch}--${repo}--${org}.${domain}`;
 }
 
-export async function fetchWysiwygCookie({ org, repo, token }) {
+export async function fetchWysiwygBranch({ org, site, path }) {
+  if (!org || !site) return 'main';
+  try {
+    const configs = await Promise.all(fetchDaConfigs({ org, site }));
+    const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
+    const branchRows = rows.filter((r) => r.key === 'ew.wysiwygBranch');
+    if (!branchRows.length) return 'main';
+
+    const fullPath = path ? `/${path}` : `/${org}/${site}`;
+    const matched = branchRows
+      .map((row) => {
+        const eqIdx = row.value.indexOf('=');
+        if (eqIdx === -1) return null;
+        return { prefix: row.value.slice(0, eqIdx), branch: row.value.slice(eqIdx + 1).trim() };
+      })
+      .filter((entry) => entry?.branch && fullPath.startsWith(entry.prefix))
+      .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+
+    return matched?.branch || 'main';
+  } catch (e) {
+    if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
+  }
+  return 'main';
+}
+
+export async function fetchWysiwygCookie({ org, repo, token, branch = 'main' }) {
   if (!org || !repo || !token) {
     throw new Error('fetchWysiwygCookie: org, repo, and token required');
   }
-  const previewUrl = `${getPreviewOrigin(org, repo)}/gimme_cookie`;
+  const previewUrl = `${getPreviewOrigin(org, repo, branch)}/gimme_cookie`;
   const contentUrl = `${DA_CONTENT}/${org}/${repo}/.gimme_cookie`;
 
   const previewResp = await daFetch(previewUrl, { method: 'GET', credentials: 'include', headers: { Authorization: `Bearer ${token}` } });

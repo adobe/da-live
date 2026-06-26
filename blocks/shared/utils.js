@@ -1,5 +1,5 @@
 import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
 const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
@@ -298,7 +298,8 @@ export async function livePreviewLogin(owner, repo) {
  */
 export async function checkLockdownImages(owner) {
   try {
-    const resp = await daFetch(`${DA_ORIGIN}/config/${owner}`);
+    const { config: configApi } = await getNx2Api();
+    const resp = await configApi.get({ org: owner });
     if (!resp.ok) return false;
 
     const config = await resp.json();

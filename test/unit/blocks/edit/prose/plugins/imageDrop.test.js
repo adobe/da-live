@@ -6,6 +6,9 @@ import imageDropPluginFactory, {
 } from '../../../../../../blocks/edit/prose/plugins/imageDrop.js';
 import { createTestEditor, destroyEditor } from '../test-helpers.js';
 
+const { setNx } = await import('../../../../../../scripts/utils.js');
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 describe('imageDrop plugin', () => {

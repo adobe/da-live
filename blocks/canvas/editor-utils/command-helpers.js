@@ -144,11 +144,37 @@ export const LOREM_SENTENCES = [
   'Maecenas volutpat blandit aliquam etiam erat velit scelerisque in dictum.',
 ];
 
+/* ---- Selection queries ---- */
+
+export function isImageNodeSelected({ selection }) {
+  return selection?.node?.type.name === 'image';
+}
+
 /* ---- Link queries ---- */
 
 function findLinkInRange(state) {
   const { from, to } = state.selection;
   const linkType = state.schema.marks.link;
+
+  if (from === to) {
+    // Empty selection: scan parent node children to find a link that contains the cursor.
+    const $pos = state.doc.resolve(from);
+    const { parent } = $pos;
+    const parentStart = $pos.start();
+    let result = null;
+    parent.forEach((node, offset) => {
+      if (result) return;
+      const mark = linkType.isInSet(node.marks);
+      if (!mark) return;
+      const nodeFrom = parentStart + offset;
+      const nodeTo = nodeFrom + node.nodeSize;
+      if (nodeFrom <= from && from < nodeTo) {
+        result = { node, mark, from: nodeFrom, to: nodeTo };
+      }
+    });
+    return result;
+  }
+
   let found;
   state.doc.nodesBetween(from, to, (node, pos) => {
     if (found) return false;
@@ -160,10 +186,24 @@ function findLinkInRange(state) {
 }
 
 export function selectionHasLink(state) {
+  if (isImageNodeSelected(state)) {
+    return Boolean(state.selection.node.attrs.href);
+  }
   return findLinkInRange(state) !== null;
 }
 
 export function getLinkInfoInSelection(state) {
+  if (isImageNodeSelected(state)) {
+    const { node, from, to } = state.selection;
+    if (!node.attrs.href) return null;
+    return {
+      href: node.attrs.href,
+      title: node.attrs.title ?? '',
+      text: '',
+      from,
+      to,
+    };
+  }
   const result = findLinkInRange(state);
   if (!result) return null;
   return {
@@ -179,6 +219,14 @@ export function getLinkInfoInSelection(state) {
 
 export function applyLink(view, { href, text }) {
   const { state } = view;
+  const trimmedHref = href.trim();
+
+  if (isImageNodeSelected(state)) {
+    const { from } = state.selection;
+    view.dispatch(state.tr.setNodeAttribute(from, 'href', trimmedHref || null));
+    return;
+  }
+
   const { schema, selection } = state;
   const linkType = schema.marks.link;
   let { from, to } = selection;
@@ -190,7 +238,7 @@ export function applyLink(view, { href, text }) {
     tr = tr.removeMark(from, to, linkType);
   }
 
-  const displayText = text?.trim() || href;
+  const displayText = text?.trim() || trimmedHref;
   const originalText = state.doc.textBetween(from, to);
 
   if (displayText !== originalText || from === to) {
@@ -202,13 +250,22 @@ export function applyLink(view, { href, text }) {
     to = from + displayText.length;
   }
 
-  tr = tr.addMark(from, to, linkType.create({ href: href.trim() }));
+  tr = tr.addMark(from, to, linkType.create({ href: trimmedHref }));
   tr = tr.setSelection(TextSelection.create(tr.doc, to));
   view.dispatch(tr);
 }
 
 export function removeLink(view) {
   const { state } = view;
+
+  if (isImageNodeSelected(state)) {
+    const { from } = state.selection;
+    view.dispatch(
+      state.tr.setNodeAttribute(from, 'href', null).setNodeAttribute(from, 'title', null),
+    );
+    return;
+  }
+
   const linkType = state.schema.marks.link;
   const found = findLinkInRange(state);
   if (!found) return;

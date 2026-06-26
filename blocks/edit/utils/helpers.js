@@ -1,8 +1,7 @@
 import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
-import { DA_ORIGIN } from '../../shared/constants.js';
 import prose2aem from '../../shared/prose2aem.js';
-import { daFetch, getSidekickConfig } from '../../shared/utils.js';
+import { getSidekickConfig } from '../../shared/utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 
 export function isURL(text) {
@@ -41,6 +40,25 @@ export async function getAemHrefs({ path }) {
   }
 
   return hrefs;
+}
+
+export async function saveToAem(path, action) {
+  const { aem } = await getNx2Api();
+  const previewOrPublish = action === 'preview' ? aem.preview : aem.publish;
+  const resp = await previewOrPublish(path.toLowerCase());
+  // eslint-disable-next-line no-console
+  if (!resp.ok) {
+    const { status, headers } = resp;
+    const authErr = [401, 403].some((s) => s === status);
+    const message = authErr ? `Not authorized to ${action}` : `Error during ${action}`;
+    const xerror = headers.get('x-error');
+
+    const error = { action, status, type: 'error', message };
+    if (xerror && !authErr) error.details = parseAemError(xerror);
+
+    return { error };
+  }
+  return resp.json();
 }
 
 async function saveHtml(fullPath) {
@@ -157,6 +175,16 @@ export function saveDaConfig(pathname, sheet) {
   return saveJson(pathname, sheet, null, 'config');
 }
 
+export async function saveDaVersion(pathname, label = 'Published') {
+  try {
+    const { versions } = await getNx2Api();
+    await versions.create(pathname, { comment: label });
+  } catch {
+    // eslint-disable-next-line no-console
+    console.log(`Error creating auto version (${label}).`);
+  }
+}
+
 async function getRoleRequestDetails(action) {
   const action2role = {
     preview: 'basic_author',
@@ -182,8 +210,9 @@ async function getRoleRequestDetails(action) {
 
 export async function requestRole(org, site, action) {
   let json = JSON.parse(AEM_PERMISSION_TPL);
-  const fullpath = `${DA_ORIGIN}/source/${org}/${site}/.da/aem-permission-requests.json`;
-  const resp = await daFetch(fullpath);
+  const fullpath = `/${org}/${site}/.da/aem-permission-requests.json`;
+  const { source } = await getNx2Api();
+  const resp = await source.get(fullpath);
   if (resp.ok) {
     json = await resp.json();
   }

@@ -11,13 +11,16 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestPageURL, getTestResourceAge, tabBackward, fill } from '../utils/page.js';
+import {
+  getQuery, getTestPageURL, getTestResourceAge, tabBackward, fill, TEST_ORG, TEST_SITE,
+} from '../utils/page.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
 
 // This test deletes old testing pages that are older than 2 hours
 test('Delete multiple old pages', async ({ page }, workerInfo) => {
+  test.skip(TEST_SITE !== 'da-status', 'Deleting documents doesn\'t work yet in Helix 6');
   if (workerInfo.project.name !== 'chromium') {
     // only execute this test on chromium
     return;
@@ -29,7 +32,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   test.setTimeout(600000);
 
   // Open the directory listing
-  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
 
   // This page will always be there as its used by a test
   await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
@@ -38,7 +41,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   // created by the getTestPageURL() function in page.js
   const items = page.locator('.da-item-list-item-name');
 
-  let itemsToDelete;
+  let itemsToDelete = 0;
   for (let i = 0; i < await items.count(); i += 1) {
     const item = items.nth(i);
     const fileName = await item.innerText();
@@ -52,7 +55,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     }
     const day = 1000 * 60 * 60 * MIN_HOURS;
     if (Date.now() - day < age) {
-      // console.log('Too new:', fileName);
+      // console.log('Too new:', fileName, ' age is ', new Date(age));
       // eslint-disable-next-line no-continue
       continue;
     }
@@ -64,7 +67,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     // console.log('To be deleted, checked box:', await checkbox.count());
     await checkbox.focus();
     await page.keyboard.press(' ');
-    itemsToDelete = true;
+    itemsToDelete += 1;
   }
 
   if (!itemsToDelete) {
@@ -76,7 +79,9 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   await page.locator('button.delete-button').locator('visible=true').click();
 
   // Type in YES to delete > 10 items
-  await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
+  if (itemsToDelete > 10) {
+    await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
+  }
 
   // Hit the delete confirmation button
   await page.locator('sl-button.negative').locator('visible=true').click();
@@ -86,6 +91,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 });
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
+  test.skip(TEST_SITE !== 'da-status', 'Empty out open editors on deleted documents doesn\'t work yet in Helix 6');
   test.setTimeout(60000);
 
   const url = getTestPageURL('delete', workerInfo);
@@ -110,14 +116,14 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await page.close();
 
   const list = await browser.newPage();
-  await list.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
+  await list.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
 
   await list.waitForTimeout(3000);
   await list.reload();
 
   // Now delete the document
-  await expect(list.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
-  await list.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
+  await expect(list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).toBeVisible();
+  await list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`).focus();
   await tabBackward(list);
   await list.keyboard.press(' ');
   await list.waitForTimeout(500);

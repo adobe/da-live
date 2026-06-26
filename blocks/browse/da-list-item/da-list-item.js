@@ -23,6 +23,7 @@ const ICONS = {
   media: '/img/icons/s2-icon-image-20-n.svg',
   pdf: '/img/icons/s2-icon-acrobatsolid-20-n.svg',
   folderClock: '/img/icons/s2-icon-folderclock-20-n.svg',
+  favorite: '/blocks/browse/da-list-item/img/da-favorite.svg',
 };
 
 export default class DaListItem extends LitElement {
@@ -36,6 +37,7 @@ export default class DaListItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
+    isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { type: Boolean },
     _isExpanded: { type: Boolean, state: true },
     _preview: { state: true },
@@ -72,7 +74,9 @@ export default class DaListItem extends LitElement {
 
   async updateAEMStatus() {
     const { status, asJson } = await getNx2Api();
-    const { data: json } = await asJson(status.get(this.path));
+    // AEM resolves HTML pages by their extensionless path.
+    const path = this.ext === 'html' ? this.path.slice(0, -5) : this.path;
+    const { data: json } = await asJson(status.get(path));
 
     if (json) {
       this._preview = {
@@ -94,10 +98,26 @@ export default class DaListItem extends LitElement {
   }
 
   async updateDAStatus() {
-    const { versions } = await getNx2Api();
+    const { versions, source, isHlx6 } = await getNx2Api();
+    const [, org, site] = this.path.split('/');
+
     const resp = await versions.list(this.path);
     if (!resp.ok) return;
     const json = await resp.json();
+
+    // hlx6 no longer keeps last-modified info in the version records, and its
+    // version entries are ULID-based rather than /versionsource urls. Count the
+    // version records and HEAD the document for the last-modified-by header.
+    if (await isHlx6(org, site)) {
+      this._version = json.filter((entry) => entry.version).length;
+      const headResp = await source.getMetadata(this.path);
+      const lastModifiedBy = headResp?.headers?.get('x-last-modified-by');
+      this._lastModifedBy = lastModifiedBy
+        ? lastModifiedBy.split('@')[0].toLowerCase()
+        : 'anonymous';
+      return;
+    }
+
     if (json.length === 0) {
       this._lastModifedBy = 'anonymous';
       this._version = 0;
@@ -222,6 +242,7 @@ export default class DaListItem extends LitElement {
     return html`
       <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
         <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
+          ${this.renderIcon()}
         </span>
         <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="Rename item">
         <div class="da-item-list-item-rename-actions">
@@ -255,22 +276,27 @@ export default class DaListItem extends LitElement {
     }
     return html`
       <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
-        ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
-        ` : html`
-          <span class="da-item-list-item-type">${this.renderIcon()}</span>
-        `}
-        <div class="da-item-list-item-name">${this.name}</div>
+        <div class="da-item-list-item-info">
+          ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
+          ` : html`
+            <span class="da-item-list-item-type">
+              ${this.renderIcon()}
+              ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"</svg>` : nothing}
+            </span>
+          `}
+          <div class="da-item-list-item-name">
+            <span class="da-item-list-item-name-text">${this.name}</span>
+          </div>
+        </div>
         <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
       </a>`;
   }
 
   renderCheckBox() {
     return html`
-      <div class="checkbox-wrapper">
-        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${(e) => { this.handleChecked(e); }}" aria-label="Select item">
-        <label class="checkbox-label" for="item-selected-${this.idx}"></label>
-      </div>
-      <input type="checkbox" name="select" style="display: none;">
+      <label class="checkbox-label">
+        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
+      </label>
     `;
   }
 

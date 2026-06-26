@@ -6,6 +6,9 @@ import {
 } from '../../../../../../../blocks/edit/da-prepare/actions/scheduler/utils.js';
 import { getExistingSchedule } from '../../../../../../../blocks/shared/utils.js';
 
+const { setNx } = await import('../../../../../../../scripts/utils.js');
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
 describe('scheduler/utils', () => {
   let savedFetch;
   let savedLocalStorage;

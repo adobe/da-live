@@ -1,6 +1,5 @@
-import { DA_ORIGIN } from '../../../../../shared/constants.js';
-import { daFetch } from '../../../../../shared/utils.js';
 import getPathDetails from '../../../../../shared/pathDetails.js';
+import { getNx2Api } from '../../../../../../scripts/utils.js';
 import { CATEGORIES, REASONS } from './constants.js';
 
 const getMetadata = (el) => {
@@ -107,8 +106,8 @@ export function loadResults(doc, requestUpdate) {
 }
 
 export async function loadDoc({ fullpath }) {
-  const href = `${DA_ORIGIN}/source${fullpath}?no-cache=${Date.now()}`;
-  const resp = await daFetch(href);
+  const { source } = await getNx2Api();
+  const resp = await source.get(fullpath, { cachebust: true });
   if (!resp.ok) return { error: `Could not fetch document. Status: ${resp.status}` };
   const html = await resp.text();
   const doc = new DOMParser().parseFromString(html, 'text/html');

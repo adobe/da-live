@@ -7,16 +7,17 @@ const POLL_INTERVAL = 30000;
 class StaleCheck {
   constructor() {
     this._intervalId = null;
-    this._sourceUrl = null;
+    this._doc = null;
     this._lastJsonString = null;
     this._hasLocalEdits = false;
     this._saveBlocked = false;
     this._onStale = null;
   }
 
-  start({ url, onStale }) {
+  // `details` is the pathDetails object ({ org, site, path, view }).
+  start({ details, onStale }) {
     if (this._intervalId) clearInterval(this._intervalId);
-    this._sourceUrl = url;
+    this._doc = details;
     this._onStale = onStale;
     this._intervalId = setInterval(() => this.checkForDrift(), POLL_INTERVAL);
   }
@@ -24,7 +25,7 @@ class StaleCheck {
   stop() {
     if (this._intervalId) clearInterval(this._intervalId);
     this._intervalId = null;
-    this._sourceUrl = null;
+    this._doc = null;
     this._lastJsonString = null;
     this._hasLocalEdits = false;
     this._saveBlocked = false;
@@ -56,12 +57,11 @@ class StaleCheck {
     if (this._saveBlocked) return true;
     try {
       const { config, source } = await getNx2Api();
-      const { pathname } = new URL(this._sourceUrl);
+      const { org, site, path, view } = this._doc;
 
-      const [api, org, site, ...parts] = pathname.slice(1).split('/');
-      const getFn = api === 'source' ? source.get : config.get;
-
-      const resp = await getFn({ org, site, path: parts.join('/') });
+      const resp = view === 'config'
+        ? await config.get({ org, site })
+        : await source.get({ org, site, path });
       if (!resp.ok) return false;
       const json = await resp.json();
       const text = JSON.stringify(json);

@@ -36,16 +36,31 @@ button {
 
 .da-item-list-item-title,
 .da-item-list-item-rename {
-  grid-template-columns: auto 1fr auto;
   gap: 24px;
   justify-content: space-between;
   align-items: center;
   text-decoration: none;
   color: var(--s2-gray-900);
-  padding: 24px 0;
+  padding: var(--s2-spacing-300) 0;
+}
+
+.da-item-list-item-title {
+  grid-template-columns: 1fr auto;
+}
+
+.da-item-list-item-rename {
+  grid-template-columns: auto 1fr auto;
+}
+
+.da-item-list-item-info {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  min-width: 0;
 }
 
 .da-item-list-item-type {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -57,24 +72,59 @@ button {
   min-width: 160px;
 }
 
+.da-item-list-item-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.da-item-list-item-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--s2-component-s-bold-font-weight);
+}
+
+.da-item-list-item-type > svg:first-child {
+  width: 18px;
+  height: 18px;
+}
+
+.da-item-list-item-favorite {
+  position: absolute;
+  bottom: 1px;
+  left: -1px;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+
+:host(:hover) .da-item-list-item-favorite,
+:host(.is-expanded) .da-item-list-item-favorite {
+  --da-favorite-ring: var(--s2-blue-200);
+}
+
 .icon.rename-icon {
   width: 18px;
   height: 18px;
-  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Refresh_18_N.svg');
+  background-color: currentColor;
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-refresh-20-n.svg');
   animation: spin 4s linear infinite;
 }
 
 .icon.cancel-icon {
   width: 18px;
   height: 18px;
-  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Cancel_18_N.svg');
-  animation: spin 4s linear infinite;
+  background-color: currentColor;
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-cancel-20-n.svg');
 }
 
 .icon.checkmark-icon {
   width: 18px;
   height: 18px;
-  background: no-repeat center / 18px url('/blocks/edit/img/Smock_Checkmark_18_N.svg');
+  background-color: currentColor;
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-checkmark-20-n.svg');
 }
 
 @keyframes spin {
@@ -85,66 +135,45 @@ button {
 
 /* Checkbox */
 
-.checkbox-wrapper {
-  position: relative;
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
   user-select: none;
 }
 
 input[type="checkbox"] {
-  appearance:  none;
-  position:  absolute;
-  top:  -4px;
-  left: -5px;
-  height:  20px;
-  width:  20px;
-}
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: var(--s2-spacing-75);
+  appearance: none;
+  border: 2px solid var(--s2-gray-800);
+  border-radius: var(--s2-corner-radius-75);
+  background: var(--s2-gray-75);
 
-.checkbox-label {
-  display:  flex;
-  position:  relative;
-  font-size:  20px;
-  font-weight:  400;
-  align-items:  center;
-  justify-content:  flex-start;
-}
+  &:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
+  }
 
-.checkbox-label::before,
-.checkbox-label::after {
-  pointer-events: none;
-}
+  &:checked {
+    background: var(--s2-blue-900);
+    color: var(--s2-gray-25);
+    border: none;
 
-.checkbox-label::before {
-  display:  flex;
-  content: ' ';
-  height:  18px;
-  width:  18px;
-  border-radius: 2px;
-  background: var(--s2-gray-400);
-}
-
-.checkbox-label::after {
-  position: absolute;
-  top: 3px;
-  left: 1px;
-  display: flex;
-  content: " ";
-  height: 5px;
-  width: 12px;
-  background: none;
-  border-bottom: 4px solid #FFF;
-  border-left: 4px solid #FFF;
-  transform: rotate(-45deg) scale(0);
-  transition: transform 0.1s ease 0s, opacity 0.1s ease 0s;
-  transform-origin: center center;
-}
-
-.checkbox-wrapper input[type="checkbox"]:checked + .checkbox-label::before {
-  background: #1473E6;
-}
-
-.checkbox-wrapper input[type="checkbox"]:checked + .checkbox-label::after {
-  opacity:  1;
-  transform: rotate(-45deg) scale(.8);
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-color: currentcolor;
+      mask-image: url("/img/icons/s2-icon-checkmark-20-n.svg");
+      mask-size: contain;
+      mask-repeat: no-repeat;
+      mask-position: center;
+    }
+  }
 }
 
 /* Rename */
@@ -194,23 +223,23 @@ input[type="checkbox"] {
   display: none;
   align-items: center;
   justify-content: center;
-  background: no-repeat center / 18px url('/blocks/browse/img/Smock_More_18_N.svg');
+  background: none;
+  border-radius: 3px;
   cursor: pointer;
   position: relative;
-}
-
-.da-item-list-item-expand-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: transparent;
-  border-radius: 3px;
   transition: background 0.2s ease;
-  z-index: -1;
+
+  &:hover {
+      background: var(--s2-blue-300);
+  }
 }
 
-.da-item-list-item-expand-btn:hover::before {
-  background: var(--s2-blue-300);
+.da-item-list-item-expand-btn::after {
+  content: '';
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-more-20-n.svg');
 }
 
 .da-item-list-item-expand-btn.is-visible {
