@@ -11,6 +11,11 @@ form {
   flex: 1 1 auto;
 }
 
+.search-results:not(:empty) {
+  line-height: 18px;
+  padding: 5px 0;
+}
+
 input {
   font-family: var(--body-font-family);
 }
