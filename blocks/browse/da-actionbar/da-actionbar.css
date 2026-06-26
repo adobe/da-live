@@ -18,6 +18,7 @@ button {
   box-sizing: border-box;
   color: #FFF;
   font-size: 14px;
+  gap: var(--s2-spacing-100);
 }
 
 .da-action-bar button {
@@ -28,7 +29,7 @@ button {
   border-radius: var(--s2-corner-radius-500);
   display: flex;
   align-items: center;
-  gap: var(--s2-spacing-100);
+  gap: var(--s2-spacing-75);
   padding: 0 var(--s2-spacing-100);
 }
 
@@ -52,7 +53,7 @@ button {
 .da-action-bar-right-rail {
   margin-right: 3px;
   display: flex;
-  gap: 8px;
+  gap: var(--s2-spacing-75);
 }
 
 .da-action-bar.hide,

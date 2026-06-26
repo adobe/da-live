@@ -241,6 +241,7 @@ export default class DaList extends LitElement {
 
   handleClear() {
     this._listItems = this._listItems.map((item) => ({ ...item, isChecked: false, rename: false }));
+    const hadSelection = this._selectedItems.length > 0;
     this._selectedItems = [];
     this._lastCheckedIndex = null;
 
@@ -249,6 +250,14 @@ export default class DaList extends LitElement {
 
     // Clear all actionbar properties
     if (this.actionBar) this.actionBar.items = [];
+
+    if (hadSelection) {
+      this.dispatchEvent(new CustomEvent('selectionchanged', {
+        detail: { items: [] },
+        bubbles: true,
+        composed: true,
+      }));
+    }
   }
 
   handleErrorClose() {
@@ -279,6 +288,12 @@ export default class DaList extends LitElement {
       ? !!this._selectedItems[0].isFavorited
       : false;
     this.requestUpdate();
+
+    this.dispatchEvent(new CustomEvent('selectionchanged', {
+      detail: { items: this._selectedItems },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   handleFavorite() {
