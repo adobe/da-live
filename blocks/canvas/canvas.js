@@ -159,11 +159,10 @@ let lastKnownPageState = null;
 
 function buildPagePrompt(state) {
   const { org, site, path } = state || {};
-  if (!org || !site) {
-    return 'User is on the da.live home page. Acknowledge briefly — one short sentence.';
-  }
-  const fullPath = path ? `${org}/${site}/${path}` : `${org}/${site}`;
-  return `User navigated to da.live page: ${fullPath}. Acknowledge briefly — one short sentence.`;
+  const target = !org || !site
+    ? 'the da.live home page'
+    : `the da.live document at ${path ? `${org}/${site}/${path}` : `${org}/${site}`}`;
+  return `The user is working on ${target}. Respond with exactly: "Page context switched: ${target}" and no more.`;
 }
 
 function notifyCherryOfPage(state) {
@@ -205,10 +204,10 @@ function mountCherryPanel(container, sliccOrigin, joinToken) {
     capabilities: { navigate: false, screenshot: 'none', openUrl: true },
     hooks: {
       onSliccEvent: (name) => {
-        if (name === 'ready') {
+        if (name === 'slicc.follower.ready') {
           cherryReady = true;
           if (lastKnownPageState) notifyCherryOfPage(lastKnownPageState);
-        } else if (name === 'disconnected') {
+        } else if (name === 'slicc.follower.disconnected') {
           cherryReady = false;
         }
       },
