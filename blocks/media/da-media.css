@@ -4,6 +4,10 @@
   align-items: center;
 }
 
+.da-content img[src$=".svg"] {
+  background-color: #fff;
+}
+
 .da-content img,
 .da-content video,
 .da-pdf-media {

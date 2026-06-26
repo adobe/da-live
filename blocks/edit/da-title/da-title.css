@@ -76,7 +76,7 @@ da-dialog {
   margin: 0 0 6px;
   text-transform: uppercase;
   font-weight: 700;
-  color: #464646;
+  color: var(--s2-gray-1000);
   opacity: 0.75;
   text-decoration: none;
   padding: 6px 12px;
@@ -85,7 +85,7 @@ da-dialog {
 }
 
 .da-title-name-label:hover {
-  background: #EFEFEF;
+  background: var(--s2-gray-200);
   opacity: 1;
 }
 
@@ -97,7 +97,8 @@ da-dialog {
   height: 18px;
   top: 11px;
   left: -24px;
-  background: url('/blocks/edit/img/left-large.svg') center/18px no-repeat;
+  background-color: currentColor;
+  mask: url('/blocks/edit/img/left-large.svg') center/18px no-repeat;
 }
 
 .da-title-collab-actions-wrapper {
@@ -226,7 +227,7 @@ da-dialog {
       position: absolute;
       inset: -12px;
       border-radius: 100px;
-      background: #EFEFEF;
+      background: var(--s2-gray-100);
     }
   }
 
