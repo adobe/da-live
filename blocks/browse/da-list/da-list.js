@@ -586,7 +586,8 @@ export default class DaList extends LitElement {
     const results = [];
 
     const callback = async (item) => {
-      const json = await aemAction(item.path, action, aemOpts);
+      const aemPath = item.ext === 'html' ? item.path.replace(/\.html$/, '') : item.path;
+      const json = await aemAction(aemPath, action, aemOpts);
       if (json.cancelled) {
         this._itemErrors.push({ ...item, message: 'Has a scheduled publish — not overridden' });
       } else if (json.error) {
