@@ -198,10 +198,9 @@ export async function getExistingSchedule(org, site, path) {
 }
 
 export async function saveDaVersion(pathname, label = 'Published') {
-  const fullPath = `${DA_ORIGIN}/versionsource${pathname}`;
-  const opts = { method: 'POST', body: JSON.stringify({ label }) };
   try {
-    await daFetch(fullPath, opts);
+    const { versions } = await getNx2Api();
+    await versions.create(pathname, { comment: label });
   } catch {
     // eslint-disable-next-line no-console
     console.log(`Error creating auto version (${label}).`);

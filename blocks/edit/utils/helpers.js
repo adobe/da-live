@@ -175,16 +175,6 @@ export function saveDaConfig(pathname, sheet) {
   return saveJson(pathname, sheet, null, 'config');
 }
 
-export async function saveDaVersion(pathname, label = 'Published') {
-  try {
-    const { versions } = await getNx2Api();
-    await versions.create(pathname, { comment: label });
-  } catch {
-    // eslint-disable-next-line no-console
-    console.log(`Error creating auto version (${label}).`);
-  }
-}
-
 async function getRoleRequestDetails(action) {
   const action2role = {
     preview: 'basic_author',
