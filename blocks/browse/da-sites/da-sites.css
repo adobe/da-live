@@ -324,6 +324,7 @@ form button:hover {
   border: none;
   background: transparent;
   padding: 0;
+  cursor: pointer;
 }
 
 .da-site-front picture {
@@ -461,5 +462,5 @@ form button:hover {
 }
 
 .da-list-status-type-info .da-list-status-title {
-  background: var(--s2-blue-800) url('/blocks/browse/img/Smock_InfoOutline_18_N.svg') 12px 50% no-repeat;
+  background: var(--s2-blue-800) url('/img/icons/s2-icon-infocircle-20-n.svg') 12px 50% no-repeat;
 }
