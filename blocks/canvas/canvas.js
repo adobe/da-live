@@ -154,6 +154,7 @@ const ORIGIN_KEY = 'slicc-origin';
 const JOIN_KEY = 'slicc-join-token';
 
 let cherryHandle = null;
+let cherryReady = false;
 let lastKnownPageState = null;
 
 function buildPagePrompt(state) {
@@ -166,7 +167,7 @@ function buildPagePrompt(state) {
 }
 
 function notifyCherryOfPage(state) {
-  if (!cherryHandle) return;
+  if (!cherryHandle || !cherryReady) return;
   cherryHandle.emitHostEvent('page-change', {
     prompt: buildPagePrompt(state),
     org: state?.org,
@@ -196,14 +197,20 @@ function mountCherryPanel(container, sliccOrigin, joinToken) {
 
   container.append(bar, iframeContainer);
 
+  cherryReady = false;
   cherryHandle = mountSlicc({
     container: iframeContainer,
     sliccOrigin,
     joinToken,
     capabilities: { navigate: false, screenshot: 'none', openUrl: true },
     hooks: {
-      onHandshakeComplete: () => {
-        if (lastKnownPageState) notifyCherryOfPage(lastKnownPageState);
+      onSliccEvent: (name) => {
+        if (name === 'ready') {
+          cherryReady = true;
+          if (lastKnownPageState) notifyCherryOfPage(lastKnownPageState);
+        } else if (name === 'disconnected') {
+          cherryReady = false;
+        }
       },
     },
   });
@@ -211,6 +218,7 @@ function mountCherryPanel(container, sliccOrigin, joinToken) {
   disconnectBtn.addEventListener('click', () => {
     cherryHandle?.destroy();
     cherryHandle = null;
+    cherryReady = false;
     localStorage.removeItem(JOIN_KEY);
     showCherryConfigForm(container);
   });
