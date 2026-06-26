@@ -153,6 +153,28 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
 const ORIGIN_KEY = 'slicc-origin';
 const JOIN_KEY = 'slicc-join-token';
 
+let cherryHandle = null;
+let lastKnownPageState = null;
+
+function buildPagePrompt(state) {
+  const { org, site, path } = state || {};
+  if (!org || !site) {
+    return 'User is on the da.live home page. Acknowledge briefly — one short sentence.';
+  }
+  const fullPath = path ? `${org}/${site}/${path}` : `${org}/${site}`;
+  return `User navigated to da.live page: ${fullPath}. Acknowledge briefly — one short sentence.`;
+}
+
+function notifyCherryOfPage(state) {
+  if (!cherryHandle) return;
+  cherryHandle.emitHostEvent('page-change', {
+    prompt: buildPagePrompt(state),
+    org: state?.org,
+    site: state?.site,
+    path: state?.path,
+  });
+}
+
 function mountCherryPanel(container, sliccOrigin, joinToken) {
   container.innerHTML = '';
 
@@ -174,15 +196,21 @@ function mountCherryPanel(container, sliccOrigin, joinToken) {
 
   container.append(bar, iframeContainer);
 
-  const handle = mountSlicc({
+  cherryHandle = mountSlicc({
     container: iframeContainer,
     sliccOrigin,
     joinToken,
     capabilities: { navigate: false, screenshot: 'none', openUrl: true },
+    hooks: {
+      onHandshakeComplete: () => {
+        if (lastKnownPageState) notifyCherryOfPage(lastKnownPageState);
+      },
+    },
   });
 
   disconnectBtn.addEventListener('click', () => {
-    handle.destroy();
+    cherryHandle?.destroy();
+    cherryHandle = null;
     localStorage.removeItem(JOIN_KEY);
     showCherryConfigForm(container);
   });
@@ -325,9 +353,11 @@ export default async function decorate(block) {
   });
 
   hashChange.subscribe((state) => {
+    lastKnownPageState = state;
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);
+    notifyCherryOfPage(state);
   });
 
   const store = getPanelStore();
