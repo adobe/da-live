@@ -265,7 +265,7 @@ input[type="checkbox"] {
 }
 
 .da-item-list-item-details.can-select {
-  padding: 24px 32px 24px 42px;
+  padding: 24px 32px 24px 45px;
 }
 
 :host(.is-expanded) .da-item-list-item-details {
