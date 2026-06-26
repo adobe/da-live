@@ -178,7 +178,7 @@ function mountCherryPanel(container, sliccOrigin, joinToken) {
     container: iframeContainer,
     sliccOrigin,
     joinToken,
-    capabilities: { navigate: false, screenshot: 'html2canvas', openUrl: true },
+    capabilities: { navigate: false, screenshot: 'none', openUrl: true },
   });
 
   disconnectBtn.addEventListener('click', () => {
