@@ -159,11 +159,11 @@ export default class DaSites extends LitElement {
           </div>
           <div class="da-site-back">
             <button class="da-back-action" @click=${() => this.handleShare(site.name)}>
-              <img src="/img/icons/s2-icon-share-20-n.svg" loading="lazy"/>
+              <img src="/blocks/browse/da-sites/img/s2-share.svg" loading="lazy"/>
               <span>Share</span>
             </button>
             <button class="da-back-action" @click=${() => this.handleRemove(site)}>
-              <img src="/img/icons/s2-icon-visibilityoff-20-n.svg" loading="lazy"/>
+              <img src="/blocks/browse/da-sites/img/s2-visibility-off.svg" loading="lazy"/>
               <span>Hide</span>
             </button>
           </div>
