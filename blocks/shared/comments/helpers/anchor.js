@@ -17,6 +17,66 @@ function decodeRelPos(encoded) {
   return Y.decodeRelativePosition(Uint8Array.from(encoded));
 }
 
+function pmPosAtTextOffset(doc, rangeFrom, rangeTo, targetOffset) {
+  if (targetOffset <= 0) return rangeFrom;
+  let count = 0;
+  let matched = false;
+  let result = rangeTo;
+
+  doc.nodesBetween(rangeFrom, rangeTo, (node, pos) => {
+    if (matched || !node.isText) return;
+    const start = Math.max(pos, rangeFrom);
+    const end = Math.min(pos + node.nodeSize, rangeTo);
+    for (let p = start; p < end; p += 1) {
+      if (count === targetOffset) {
+        result = p;
+        matched = true;
+        return;
+      }
+      count += 1;
+    }
+  });
+
+  if (!matched && count === targetOffset) return rangeTo;
+  return matched ? result : null;
+}
+
+function locateAnchorTextInRange(state, rangeFrom, rangeTo, anchorText, hintFrom) {
+  const haystack = state.doc.textBetween(rangeFrom, rangeTo, ' ');
+  if (!haystack.includes(anchorText)) return null;
+
+  let best = null;
+  let bestDist = Infinity;
+  let searchAt = 0;
+  let idx = haystack.indexOf(anchorText, searchAt);
+  while (idx !== -1) {
+    const from = pmPosAtTextOffset(state.doc, rangeFrom, rangeTo, idx);
+    const to = pmPosAtTextOffset(state.doc, rangeFrom, rangeTo, idx + anchorText.length);
+    if (from != null && to != null && from < to) {
+      const dist = Math.abs(from - hintFrom);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { from, to };
+      }
+    }
+    searchAt = idx + 1;
+    idx = haystack.indexOf(anchorText, searchAt);
+  }
+  return best;
+}
+
+function resolveTextAnchorRange(state, from, to, anchorText) {
+  if (!state.doc) return { from, to };
+
+  const decodedText = state.doc.textBetween(from, to, ' ');
+  if (decodedText === anchorText) return { from, to };
+  if (!decodedText.includes(anchorText)) return { from, to };
+
+  const narrowed = locateAnchorTextInRange(state, from, to, anchorText, from);
+  if (!narrowed || narrowed.from <= from) return { from, to };
+  return narrowed;
+}
+
 export function encodeAnchor({ selectionData, state }) {
   if (!selectionData) return null;
   const binding = ySyncPluginKey.getState(state)?.binding;
@@ -33,6 +93,14 @@ export function encodeAnchor({ selectionData, state }) {
   };
 }
 
+function resolveNodeAnchorRange(state, from, anchorType) {
+  if (!state.doc) return null;
+  const typeName = anchorType === 'image' ? 'image' : 'table';
+  const node = state.doc.nodeAt(from);
+  if (node?.type.name !== typeName) return null;
+  return { from, to: from + node.nodeSize };
+}
+
 export function decodeAnchor({ anchor, state }) {
   if (!anchor?.anchorFrom || !anchor?.anchorTo) return null;
   const binding = ySyncPluginKey.getState(state)?.binding;
@@ -46,6 +114,12 @@ export function decodeAnchor({ anchor, state }) {
     const from = relativePositionToAbsolutePosition(yDoc, type, relFrom, mapping);
     const to = relativePositionToAbsolutePosition(yDoc, type, relTo, mapping);
     if (from == null || to == null || from >= to) return null;
+    if (anchor.anchorType === 'image' || anchor.anchorType === 'table') {
+      return resolveNodeAnchorRange(state, from, anchor.anchorType);
+    }
+    if (anchor.anchorType === 'text' && anchor.anchorText) {
+      return resolveTextAnchorRange(state, from, to, anchor.anchorText);
+    }
     return { from, to };
   } catch {
     return null;

@@ -1,7 +1,6 @@
 import { expect } from '@esm-bundle/chai';
-import { TextSelection } from 'da-y-wrapper';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
-import { encodeAnchor } from '../../../../../blocks/canvas/ew-comments/helpers/anchor.js';
+import { encodeAnchor } from '../../../../../blocks/shared/comments/helpers/anchor.js';
 import {
   commentMarkers,
   postCommentMarkers,

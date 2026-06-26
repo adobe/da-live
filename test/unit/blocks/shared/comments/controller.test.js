@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
-import { createCommentsController } from '../../../../../blocks/canvas/ew-comments/helpers/controller.js';
-import commentPlugin, { commentPluginKey } from '../../../../../blocks/canvas/ew-comments/comment-plugin.js';
+import { createCommentsController } from '../../../../../blocks/shared/comments/helpers/controller.js';
+import commentPlugin, { commentPluginKey } from '../../../../../blocks/shared/comments/comment-plugin.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 
 function makeStore(initial = []) {
@@ -193,7 +193,7 @@ describe('comments helpers/controller', () => {
     const { controller: c, editor, store: m } = await createControllerWithPlugin();
     editor.view.dispatch(editor.view.state.tr.insertText('hello world'));
 
-    const { encodeAnchor } = await import('../../../../../blocks/canvas/ew-comments/helpers/anchor.js');
+    const { encodeAnchor } = await import('../../../../../blocks/shared/comments/helpers/anchor.js');
     const encoded = encodeAnchor({
       selectionData: { from: 1, to: 6, anchorType: 'text', anchorText: 'hello' },
       state: editor.view.state,

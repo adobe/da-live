@@ -57,6 +57,15 @@ function applyPluginMeta(prev, meta) {
 function mapRanges(prevRanges, tr) {
   const next = new Map();
   prevRanges.forEach((entry, id) => {
+    if (entry.anchorType === 'image' || entry.anchorType === 'table') {
+      const from = tr.mapping.map(entry.from, -1);
+      const typeName = entry.anchorType === 'image' ? 'image' : 'table';
+      const node = tr.doc.nodeAt(from);
+      if (node?.type.name === typeName) {
+        next.set(id, { ...entry, from, to: from + node.nodeSize });
+        return;
+      }
+    }
     const from = tr.mapping.map(entry.from, 1);
     const to = tr.mapping.map(entry.to, -1);
     if (from < to) next.set(id, { ...entry, from, to });

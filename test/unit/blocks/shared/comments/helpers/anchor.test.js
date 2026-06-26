@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { TextSelection } from 'da-y-wrapper';
-import { getSelectionData } from '../../../../../../blocks/canvas/ew-comments/helpers/anchor.js';
+import { getSelectionData } from '../../../../../../blocks/shared/comments/helpers/anchor.js';
 import { createTestEditor, destroyEditor } from '../../../edit/prose/test-helpers.js';
 
 describe('getSelectionData', () => {

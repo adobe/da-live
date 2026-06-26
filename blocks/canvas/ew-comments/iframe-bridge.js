@@ -1,4 +1,4 @@
-import { decodeAnchor } from './helpers/anchor.js';
+import { decodeAnchor } from '../../shared/comments/helpers/anchor.js';
 
 function imageSrcAtAnchor(view, from) {
   if (!view?.state?.doc) return '';

@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { createCommentsStore } from '../../../../../../blocks/canvas/ew-comments/helpers/comments-store.js';
+import { createCommentsStore } from '../../../../../../blocks/shared/comments/helpers/comments-store.js';
 
 let originalFetch;
 

@@ -19,7 +19,7 @@ import {
   isInTable,
 } from 'da-y-wrapper';
 import { getCommentsBridge, openCommentsPanel } from './comments-bridge.js';
-import { getSelectionData } from '../ew-comments/helpers/anchor.js';
+import { getSelectionData } from '../../shared/comments/helpers/anchor.js';
 
 /* ---- Apply factories ---- */
 

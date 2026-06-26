@@ -6,7 +6,7 @@ import {
   setDraftText,
   hasUnsavedText,
   shouldAdoptPendingAnchor,
-} from '../../../../../../blocks/canvas/ew-comments/helpers/draft-state.js';
+} from '../../../../../../blocks/shared/comments/helpers/draft-state.js';
 
 describe('ew-comments draft-state', () => {
   it('makeNewDraft creates a new-mode draft with the given anchor', () => {

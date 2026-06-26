@@ -4,7 +4,7 @@ import {
   getReplySummary,
   formatTimestamp,
   formatAnchorPreview,
-} from '../../../../../../blocks/canvas/ew-comments/helpers/format-utils.js';
+} from '../../../../../../blocks/shared/comments/helpers/format-utils.js';
 
 describe('format-utils', () => {
   describe('formatAnchorPreview', () => {

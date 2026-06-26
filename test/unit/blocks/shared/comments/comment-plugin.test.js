@@ -1,8 +1,8 @@
 import { expect } from '@esm-bundle/chai';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
-import { createCommentsController } from '../../../../../blocks/canvas/ew-comments/helpers/controller.js';
-import commentPlugin, { commentPluginKey } from '../../../../../blocks/canvas/ew-comments/comment-plugin.js';
-import { encodeAnchor } from '../../../../../blocks/canvas/ew-comments/helpers/anchor.js';
+import { createCommentsController } from '../../../../../blocks/shared/comments/helpers/controller.js';
+import commentPlugin, { commentPluginKey } from '../../../../../blocks/shared/comments/comment-plugin.js';
+import { encodeAnchor } from '../../../../../blocks/shared/comments/helpers/anchor.js';
 
 function makeStore() {
   const map = new Map();

@@ -4,7 +4,7 @@ import {
   encodeAnchor,
   decodeAnchor,
   getSelectionData,
-} from '../../../../../blocks/canvas/ew-comments/helpers/anchor.js';
+} from '../../../../../blocks/shared/comments/helpers/anchor.js';
 
 function makeState(ydoc) {
   const fragment = ydoc.getXmlFragment('prosemirror');

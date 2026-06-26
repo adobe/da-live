@@ -5,6 +5,7 @@
   font-family: var(--body-font-family);
 
   --comments-panel-padding-left: 16px;
+  --comments-panel-top-offset: 16px;
   --comments-card-gap: 16px;
   --comment-surface: light-dark(#fff, var(--s2-gray-50));
   --comment-border: var(--s2-gray-200);
@@ -155,7 +156,8 @@
 .ew-comments-thread-detail {
   padding-right: 16px;
   position: sticky;
-  top: 16px;
+  top: var(--comments-panel-top-offset);
+  z-index: 10;
 }
 
 .ew-comments-back-btn {
@@ -189,7 +191,7 @@
 .ew-comments-inline-composer {
   margin-bottom: 16px;
   position: sticky;
-  top: 16px;
+  top: var(--comments-panel-top-offset);
   z-index: 10;
 }
 

@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { buildDeepLinkUrl, parseDeepLink } from '../../../../../../blocks/canvas/ew-comments/helpers/deep-link.js';
+import { buildDeepLinkUrl, parseDeepLink } from '../../../../../../blocks/shared/comments/helpers/deep-link.js';
 
 describe('deep-link', () => {
   it('encodes comment id as a URL search param and leaves the hash untouched', () => {

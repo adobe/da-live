@@ -3,7 +3,7 @@
 import { html, nothing, ref } from 'da-lit';
 import * as formatUtils from './format-utils.js';
 import { DRAFT_MODES } from './draft-state.js';
-import { generateColor } from '../../ew-editor-doc/utils/collab.js';
+import { generateColor } from '../../../canvas/ew-editor-doc/utils/collab.js';
 
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 export const COMMENT_SHORTCUT = IS_MAC ? '⌘ + Option + M' : 'Ctrl + Alt + M';

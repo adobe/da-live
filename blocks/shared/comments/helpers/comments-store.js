@@ -1,5 +1,5 @@
-import { DA_ORIGIN } from '../../../shared/constants.js';
-import { daFetch } from '../../../shared/utils.js';
+import { DA_ORIGIN } from '../../constants.js';
+import { daFetch } from '../../utils.js';
 
 // Fingerprint covers only mutable fields — anchor and author are write-once.
 function commentFingerprint(c) {

@@ -26,9 +26,9 @@ import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
-import { createCommentsStore } from '../ew-comments/helpers/comments-store.js';
-import { createCommentsController } from '../ew-comments/helpers/controller.js';
-import commentPlugin from '../ew-comments/comment-plugin.js';
+import { createCommentsStore } from '../../shared/comments/helpers/comments-store.js';
+import { createCommentsController } from '../../shared/comments/helpers/controller.js';
+import commentPlugin from '../../shared/comments/comment-plugin.js';
 import { setCommentsController } from '../editor-utils/comments-bridge.js';
 import { commentMarkers, postCommentMarkers, postScrollToComment } from '../ew-comments/iframe-bridge.js';
 import getSheet from '../../shared/sheet.js';
@@ -36,7 +36,7 @@ import getSheet from '../../shared/sheet.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
-const commentHighlightStyle = await getSheet('/blocks/canvas/ew-comments/comment-highlight.css');
+const commentHighlightStyle = await getSheet('/blocks/shared/comments/comment-highlight.css');
 
 export function createCommentsStoreFor(session, ctx) {
   return session?.docId
