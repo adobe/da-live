@@ -9,7 +9,7 @@ const PDF_CLIENT_ID = 'cd73455ea6c04d0aac86270f9f5f830c';
 const PDF_DIV_ID = 'da-pdf-viewer';
 
 async function loadViewer() {
-  const { default: loadScript } = await import(`${getNx()}/utils/script.js`);
+  const { loadScript } = await import(`${getNx()}/utils/utils.js`);
   await loadScript(PDF_VIEWER_SRC);
 
   // The window object is not instantiated
@@ -27,8 +27,8 @@ async function loadViewer() {
 async function getPdfMedia() {
   await loadViewer();
 
-  const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-  const style = await getStyle('/blocks/media/da-media.css');
+  const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+  const style = await loadStyle('/blocks/media/da-media.css');
   document.adoptedStyleSheets = [style];
 
   const daContent = document.createElement('div');
