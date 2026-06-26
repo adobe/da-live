@@ -18,6 +18,8 @@ import {
   splitCell,
   isInTable,
 } from 'da-y-wrapper';
+import { getCommentsBridge, openCommentsPanel } from './comments-bridge.js';
+import { getSelectionData } from '../ew-comments/helpers/anchor.js';
 
 /* ---- Apply factories ---- */
 
@@ -272,6 +274,19 @@ export function removeLink(view) {
   const { tr } = state;
   tr.removeMark(found.from, found.to, linkType);
   view.dispatch(tr);
+}
+
+/* ---- Comments ---- */
+
+export function requestComment(_) {
+  openCommentsPanel();
+  getCommentsBridge().controller?.requestCompose();
+}
+
+// Only show the comment action when the selection can be anchored to a comment
+// (non-empty text, or an image/table node selection).
+export function canComment(state) {
+  return getSelectionData(state) != null;
 }
 
 /* ---- Block-type picker value ---- */

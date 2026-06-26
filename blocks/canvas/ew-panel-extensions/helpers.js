@@ -4,6 +4,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { aemAdmin, daFetch } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -418,6 +419,62 @@ function createFileExplorerView() {
   };
 }
 
+/**
+ * Mirror DA's behaviour where comment highlights and the thread list only show
+ * while the panel is visible: tie the controller's panelOpen flag to whether the
+ * panel element is actually rendered (the active tool-panel view in an open
+ * rail). Returns a function that re-applies the current visibility to whatever
+ * controller `getController` currently resolves, for use after a controller swap.
+ */
+export function bindPanelOpenToVisibility(el, getController) {
+  let visible = false;
+  let hideTimer = null;
+  const syncPanelOpen = () => getController()?.setPanelOpen(visible);
+  const observer = new IntersectionObserver((entries) => {
+    visible = entries.some((entry) => entry.isIntersecting);
+    if (visible) {
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+      syncPanelOpen();
+      return;
+    }
+    hideTimer = setTimeout(() => {
+      hideTimer = null;
+      syncPanelOpen();
+    }, 150);
+  });
+  observer.observe(el);
+  return syncPanelOpen;
+}
+
+export function createCommentsView() {
+  return {
+    id: 'comments',
+    label: 'Comments',
+    section: 'Editor',
+    firstParty: true,
+    getLabel() {
+      return formatCommentsViewLabel(getCommentsBridge().controller?.counts?.active);
+    },
+    load: async () => {
+      await import('../ew-comments/ew-comments.js');
+      const el = document.createElement('ew-comments');
+      // The tool panel owns the close control in EW, so hide the in-panel one.
+      el.embedded = true;
+      const getController = () => getCommentsBridge().controller;
+      el.controller = getController();
+      const syncPanelOpen = bindPanelOpenToVisibility(el, getController);
+      document.addEventListener('nx-comments-controller-change', (e) => {
+        el.controller = e.detail.controller;
+        syncPanelOpen();
+      });
+      return el;
+    },
+  };
+}
+
 function extensionToPanelView(ext, section) {
   const view = {
     id: ext.name,
@@ -485,6 +542,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
   return [
     createOutlineView(),
     createFileExplorerView(),
+    createCommentsView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

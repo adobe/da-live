@@ -26,10 +26,53 @@ import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
+import { createCommentsStore } from '../ew-comments/helpers/comments-store.js';
+import { createCommentsController } from '../ew-comments/helpers/controller.js';
+import commentPlugin from '../ew-comments/comment-plugin.js';
+import { setCommentsController } from '../editor-utils/comments-bridge.js';
+import { commentMarkers, postCommentMarkers, postScrollToComment } from '../ew-comments/iframe-bridge.js';
+import getSheet from '../../shared/sheet.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
+const commentHighlightStyle = await getSheet('/blocks/canvas/ew-comments/comment-highlight.css');
+
+export function createCommentsStoreFor(session, ctx) {
+  return session?.docId
+    ? createCommentsStore({ docId: session.docId, owner: ctx.org, repo: ctx.repo })
+    : null;
+}
+
+export function publishCommentsController(store, wsProvider) {
+  const controller = createCommentsController({ commentsStore: store, wsProvider });
+  setCommentsController(controller);
+  return controller;
+}
+
+export function subscribeCommentIframeBridge({ controller, getView, getPort }) {
+  if (!controller?.subscribe) return () => {};
+
+  const syncLayoutMarkers = () => {
+    const port = getPort();
+    const view = getView();
+    if (!port || !view) return;
+    const markers = controller.panelOpen ? commentMarkers(view, controller) : [];
+    postCommentMarkers(port, markers, controller);
+  };
+
+  return controller.subscribe(({ reason }) => {
+    const port = getPort();
+    const view = getView();
+    if (!port || !view) return;
+    if (reason === 'selectedThreadId') {
+      if (controller.panelOpen) postScrollToComment(port, view, controller);
+      syncLayoutMarkers();
+    } else if (reason === 'counts' || reason === 'docChange' || reason === 'init' || reason === 'panelOpen') {
+      syncLayoutMarkers();
+    }
+  });
+}
 
 export class EwEditorDoc extends LitElement {
   static properties = {
@@ -147,6 +190,13 @@ export class EwEditorDoc extends LitElement {
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
     };
     wireQuickEditControllerPort(this._controllerCtx);
+
+    this._unsubCommentBridge?.();
+    this._unsubCommentBridge = subscribeCommentIframeBridge({
+      controller: this._commentsController,
+      getView: () => this._proseContext?.view,
+      getPort: () => this._controllerCtx?.port,
+    });
   }
 
   _setupAwareness(wsProvider) {
@@ -179,6 +229,12 @@ export class EwEditorDoc extends LitElement {
       onCollabUsersCleared: () => this._emitCollabUsers([]),
     });
     this._awarenessOff = undefined;
+    this._unsubCommentBridge?.();
+    this._unsubCommentBridge = null;
+    this._commentsController?.destroy();
+    this._commentsController = null;
+    this._commentsStore = null;
+    setCommentsController(null);
     this._proseContext = undefined;
   }
 
@@ -202,37 +258,72 @@ export class EwEditorDoc extends LitElement {
         permissions,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
-        extraPlugins: [
-          createExtensionsBridgePlugin(),
-          createTrackingPlugin(
-            () => {
-              const body = this._controllerCtx
-                ? updateDocument(this._controllerCtx)
-                : getInstrumentedHTML(this._proseContext?.view);
-              if (body) editorHtmlChange.emit(body);
-            },
-            () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
-            (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
-            (pmView) => {
-              const blockIndex = getActiveBlockIndex(pmView);
-              const { kind, ...descriptor } = describeDocSelection(pmView);
-              const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
-              if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
-              this._lastDocBlockIndex = blockIndex;
-              this._lastDocSelKey = selKey;
-              editorSelectChange.emit({
-                blockIndex,
-                source: 'doc',
-                explicit: descriptor.selectionType === SEL_BLOCK,
-                ...descriptor,
-              });
-            },
-          ),
-        ],
+        extraPlugins: ({ wsProvider: ws }) => {
+          this._commentsStore = createCommentsStoreFor(session, this.ctx);
+          this._commentsController = createCommentsController({
+            commentsStore: this._commentsStore,
+            wsProvider: ws,
+          });
+          return [
+            createExtensionsBridgePlugin(),
+            createTrackingPlugin(
+              () => {
+                const body = this._controllerCtx
+                  ? updateDocument(this._controllerCtx)
+                  : getInstrumentedHTML(this._proseContext?.view);
+                if (body) editorHtmlChange.emit(body);
+              },
+              () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
+              (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
+              (pmView) => {
+                const blockIndex = getActiveBlockIndex(pmView);
+                const { kind, ...descriptor } = describeDocSelection(pmView);
+                const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
+                const unchanged = blockIndex === this._lastDocBlockIndex
+                  && selKey === this._lastDocSelKey;
+                if (unchanged) return;
+                this._lastDocBlockIndex = blockIndex;
+                this._lastDocSelKey = selKey;
+                editorSelectChange.emit({
+                  blockIndex,
+                  source: 'doc',
+                  explicit: descriptor.selectionType === SEL_BLOCK,
+                  ...descriptor,
+                });
+              },
+            ),
+            commentPlugin({ controller: this._commentsController, store: this._commentsStore }),
+          ];
+        },
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
+      // bindView has been called by now (EditorView creation triggered commentPlugin.view()),
+      // so setPanelOpen dispatches will succeed when syncPanelOpen fires from this event.
+      setCommentsController(this._commentsController);
       setSelectionToolbarCtx({ org: this.ctx?.org, site: this.ctx?.repo, sourceUrl });
+
+      if (this._commentsStore) {
+        const doLoad = () => {
+          this._commentsStore.load().catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn('[comments] store load failed', err);
+          });
+        };
+        // 'synced' can fire during initProse()'s await getCollabIdentity(), so
+        // check wsProvider.synced first to avoid missing the event.
+        if (wsProvider.synced) {
+          doLoad();
+        } else {
+          const onSynced = (isSynced) => {
+            if (!isSynced) return;
+            wsProvider.off('synced', onSynced);
+            doLoad();
+          };
+          wsProvider.on('synced', onSynced);
+        }
+      }
+
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
@@ -249,7 +340,7 @@ export class EwEditorDoc extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle];
     this._onCanvasEditorActive = (e) => {
       const view = e.detail?.view;
       this.hidden = view === 'layout';

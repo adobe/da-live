@@ -1,5 +1,6 @@
 import { getNx } from '../../scripts/utils.js';
 import { editorSelectChange } from './editor-utils/editor-utils.js';
+import { getCommentsBridge } from './editor-utils/comments-bridge.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -18,6 +19,14 @@ import {
 import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
 import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
+
+export function handleCommentShortcut(event, { controller, openPanel }) {
+  const isShortcut = (event.metaKey || event.ctrlKey) && event.altKey && event.code === 'KeyM';
+  if (!isShortcut) return;
+  event.preventDefault();
+  controller?.requestCompose();
+  openPanel();
+}
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
@@ -216,6 +225,13 @@ async function installCanvasHeader(block, { org, site }) {
 export default async function decorate(block) {
   const { org, site } = hashState();
   const header = await installCanvasHeader(block, { org, site });
+
+  window.addEventListener('keydown', (event) => {
+    handleCommentShortcut(event, {
+      controller: getCommentsBridge().controller,
+      openPanel: () => openCanvasPanel('after', { panelName: 'comments' }),
+    });
+  });
 
   const mountRoot = canvasEditorMountRoot(block);
   mountRoot.classList.add('nx-canvas-editor-mount');

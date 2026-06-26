@@ -28,6 +28,8 @@ import {
   isImageNodeSelected,
   selectionHasLink,
   removeLink,
+  requestComment,
+  canComment,
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 
@@ -337,6 +339,16 @@ export const COMMANDS = [
     icon: iconName('imageadd'),
     showIn: ['toolbar-image'],
     apply: triggerAddImage,
+  },
+
+  // Toolbar: comment (end of the toolbar, after image)
+  {
+    id: 'add-comment',
+    label: 'Comment',
+    icon: iconName('comment'),
+    showIn: ['toolbar-comment'],
+    visible: canComment,
+    apply: requestComment,
   },
 
   // Slash menu: text section only
