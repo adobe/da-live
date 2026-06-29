@@ -328,6 +328,45 @@ describe('commentPlugin', () => {
     expect(store.get('t1').anchorFrom, 'store anchor untouched when text absent').to.deep.equal(beforeAnchor);
   });
 
+  it('restores the highlight after a wholesale node replace (WYSIWYG-style edit)', async () => {
+    const { store } = await setup();
+    editor.view.dispatch(editor.view.state.tr.insertText('hello world'));
+    const encoded = encodeAnchor({
+      selectionData: { from: 1, to: 6, anchorType: 'text', anchorText: 'hello' },
+      state: editor.view.state,
+    });
+    store.set('t1', {
+      id: 't1',
+      threadId: null,
+      ...encoded,
+      author: { id: 'u' },
+      body: '',
+      createdAt: 0,
+      resolved: false,
+      reactions: {},
+    });
+    controller.setPanelOpen(true);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+
+    expect(commentPluginKey.getState(editor.view.state).ranges.get('t1'), 'present before edit')
+      .to.deep.include({ from: 1, to: 6 });
+
+    // Mirror editor-utils updateState: a layout-mode keystroke sends the full node JSON
+    // and the doc view replaces the whole editable node wholesale (here inserting "XX"
+    // before the commented word). The replace collapses the mapped range; the plugin must
+    // re-decode from the anchor once Yjs has synced.
+    const { schema } = editor.view.state;
+    const newPara = schema.node('paragraph', null, schema.text('XXhello world'));
+    const docSize = editor.view.state.doc.content.size;
+    editor.view.dispatch(editor.view.state.tr.replaceWith(0, docSize, newPara));
+
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+
+    const after = commentPluginKey.getState(editor.view.state).ranges.get('t1');
+    expect(after, 'highlight survives wholesale node replace and tracks "hello"')
+      .to.deep.include({ from: 3, to: 8 });
+  });
+
   it('decorations track anchor positions across edits in earlier blocks', async () => {
     const { store } = await setup();
 

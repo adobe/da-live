@@ -19,13 +19,14 @@ const emptyState = () => ({
   selectedThreadId: null,
   panelOpen: false,
   pendingAnchor: null,
+  needsResync: false,
 });
 
 function applyAction(prev, action) {
   switch (action.type) {
     case SET_RANGES:
-      if (prev.ranges === action.payload) return prev;
-      return { ...prev, ranges: action.payload };
+      if (prev.ranges === action.payload && !prev.needsResync) return prev;
+      return { ...prev, ranges: action.payload, needsResync: false };
     case SET_SELECTED_THREAD: {
       const next = action.payload ?? null;
       if (prev.selectedThreadId === next) return prev;
@@ -104,14 +105,16 @@ export default function commentPlugin({ controller, store }) {
         let next = meta ? applyPluginMeta(prev, meta) : prev;
 
         if (!prev.panelOpen && next.panelOpen) {
-          next = { ...next, ranges: computeRanges(store, newState) };
+          next = { ...next, ranges: computeRanges(store, newState), needsResync: false };
         } else if (tr.docChanged && next.panelOpen) {
           const yMeta = ySyncPluginKey.getState(newState);
           const mustRebuild = yMeta?.isUndoRedoOperation || yMeta?.isChangeOrigin;
-          const ranges = mustRebuild
-            ? computeRanges(store, newState)
-            : mapRanges(next.ranges, tr);
-          next = { ...next, ranges };
+          if (mustRebuild) {
+            next = { ...next, ranges: computeRanges(store, newState), needsResync: false };
+          } else {
+            const ranges = mapRanges(next.ranges, tr);
+            next = { ...next, ranges, needsResync: ranges.size < next.ranges.size };
+          }
         }
         return next;
       },
@@ -141,6 +144,18 @@ export default function commentPlugin({ controller, store }) {
 
           if (view.state.doc !== prevState.doc) {
             controller.notifyDocChange();
+          }
+
+          if (next.needsResync && next.panelOpen) {
+            queueMicrotask(() => {
+              if (view.isDestroyed) return;
+              const state = commentPluginKey.getState(view.state);
+              if (!state.needsResync || !state.panelOpen) return;
+              const ranges = computeRanges(store, view.state);
+              view.dispatch(
+                view.state.tr.setMeta(commentPluginKey, { type: SET_RANGES, payload: ranges }),
+              );
+            });
           }
         },
         destroy() {
