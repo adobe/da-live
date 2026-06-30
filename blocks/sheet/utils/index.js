@@ -1,13 +1,19 @@
-import { getNx, getNx2Api, nxJS } from '../../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
 import '../da-sheet-tabs.js';
 
 const nx = getNx();
 const isNx2 = nx.endsWith('/nx2');
-const { loadStyle } = await import(`${nx}${nxJS}`);
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
 const loadScript = isNx2
   ? (await import(`${nx}/utils/utils.js`)).loadScript
   : (await import(`${nx}/utils/script.js`)).default;
+
+async function adoptStyle(href) {
+  const sheet = await loadStyle(href);
+  if (!sheet || document.adoptedStyleSheets.includes(sheet)) return;
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+}
 
 const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
@@ -150,7 +156,7 @@ export async function getData(input) {
 export default async function init(el, data) {
   const suppliedData = data || await getData(el.details);
 
-  await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
+  await adoptStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');
   await loadScript('/deps/jsuites/dist/jsuites.js');
 

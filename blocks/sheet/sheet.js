@@ -8,6 +8,9 @@ import { convertSheets } from '../edit/utils/helpers.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
+const blockStyle = await loadStyle(import.meta.url);
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, blockStyle];
+
 const style = await loadStyle('/blocks/sheet/da-sheet-panes.css');
 
 class DaSheetPanes extends LitElement {
