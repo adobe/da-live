@@ -11,11 +11,7 @@
 :host(:hover),
 :host(.is-expanded) {
   z-index: 1;
-  background: var(--s2-blue-200);
-}
-
-button {
-  font-family: var(--body-font-family);
+  background: var(--s2-blue-100);
 }
 
 :host > svg {
@@ -27,7 +23,7 @@ button {
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 24px;
-  padding: 0 24px;
+  padding: 0 var(--da-list-pad-inline, 24px);
 }
 
 .da-item-list-item-inner.can-select {
@@ -134,48 +130,8 @@ button {
   }
 }
 
-/* Checkbox */
 
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
 
-input[type="checkbox"] {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  margin-top: var(--s2-spacing-75);
-  appearance: none;
-  border: 2px solid var(--s2-gray-800);
-  border-radius: var(--s2-corner-radius-75);
-  background: var(--s2-gray-75);
-
-  &:disabled {
-    opacity: 0.8;
-    cursor: not-allowed;
-  }
-
-  &:checked {
-    background: var(--s2-blue-900);
-    color: var(--s2-gray-25);
-    border: none;
-
-    &::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-color: currentcolor;
-      mask-image: url("/img/icons/s2-icon-checkmark-20-n.svg");
-      mask-size: contain;
-      mask-repeat: no-repeat;
-      mask-position: center;
-    }
-  }
-}
 
 /* Rename */
 .da-item-list-item-rename input {
@@ -219,8 +175,8 @@ input[type="checkbox"] {
 
 .da-item-list-item-expand-btn {
   border: none;
-  width: 32px;
-  height: 32px;
+  width: var(--da-list-action-width, 32px);
+  height: var(--da-list-action-width, 32px);
   display: none;
   align-items: center;
   justify-content: center;
@@ -259,7 +215,7 @@ input[type="checkbox"] {
   grid-template-columns: 32px 80px 1fr 182px 182px;
   padding: 24px 32px 24px 0;
   gap: var(--s2-spacing-100);
-  border-top: 1px solid rgb(165 199 240);
+  border-top: 1px solid var(--s2-gray-100);
   margin: 0 24px;
   font-size: 14px;
 }

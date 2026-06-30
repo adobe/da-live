@@ -5,6 +5,7 @@ import getEditPath from '../shared.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const SHARED = await loadStyle(new URL('../shared.css', import.meta.url).href);
 const STYLE = await loadStyle(import.meta.url);
 
 const ICONS = {
@@ -49,7 +50,7 @@ export default class DaListItem extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
+    this.shadowRoot.adoptedStyleSheets = [SHARED, STYLE];
   }
 
   async update(props) {
@@ -295,7 +296,7 @@ export default class DaListItem extends LitElement {
 
   renderCheckBox() {
     return html`
-      <label class="checkbox-label">
+      <label class="da-checkbox">
         <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
       </label>
     `;

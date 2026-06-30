@@ -1,0 +1,110 @@
+button,
+input {
+  font-family: var(--body-font-family);
+}
+
+.da-btn {
+  background-color: var(--s2-gray-800);
+  color: var(--s2-gray-25);
+  border: none;
+  display: inline-block;
+  font-size: var(--s2-component-m-medium-font-size);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 18px;
+  padding: 5px 14px;
+  text-decoration: none;
+  outline-offset: 0;
+  border-radius: var(--s2-corner-radius-800);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--s2-gray-900);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+}
+
+.da-btn-cancel {
+  background-color: var(--s2-gray-100);
+  color: var(--s2-gray-800);
+
+  &:hover {
+    background-color: var(--s2-gray-200);
+  }
+}
+
+.da-input {
+  display: block;
+  height: 24px;
+  border: 2px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-500);
+  padding: 0 var(--s2-spacing-200);
+  font-size: var(--s2-component-m-regular-font-size);
+
+  &:focus-visible {
+    border-color: var(--s2-gray-800);
+    outline: none;
+  }
+}
+
+.da-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  gap: var(--s2-spacing-75);
+
+  input[type="checkbox"] {
+    position: relative;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    appearance: none;
+    border: 2px solid var(--s2-gray-800);
+    border-radius: var(--s2-corner-radius-75);
+    background: var(--s2-gray-75);
+    cursor: pointer;
+    margin: 0;
+
+    &:disabled {
+      opacity: 0.8;
+      cursor: not-allowed;
+    }
+
+    &:checked {
+      background: var(--s2-blue-900);
+      color: var(--s2-gray-25);
+      border: none;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-color: currentColor;
+        mask-image: url('/img/icons/s2-icon-checkmark-20-n.svg');
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        mask-position: center;
+      }
+    }
+  }
+  
+  &.loading input[type="checkbox"] {
+    background: none;
+    border-color: var(--s2-gray-400);
+    border-top-color: var(--s2-gray-700);
+    border-radius: 50%;
+    animation: da-spin 0.8s linear infinite;
+  }
+}
+
+@keyframes da-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+

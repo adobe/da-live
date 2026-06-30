@@ -5,6 +5,7 @@ import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import '../da-list-item/da-list-item.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const SHARED = await loadStyle(new URL('../shared.css', import.meta.url).href);
 const STYLE = await loadStyle(import.meta.url);
 
 const MAX_DELETE_COUNT = 1000;
@@ -63,16 +64,23 @@ export default class DaList extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
+    this.shadowRoot.adoptedStyleSheets = [SHARED, STYLE];
   }
 
   async update(props) {
-    // List Items can be provided externally (via search)
-    if (props.has('listItems') && this.listItems) {
-      this._listItems = this.listItems;
-      this.resetListItemPaths(this._listItems);
-      this.applyFavoritesToItems(this._listItems);
-      this.applyFavoriteOrder();
+    // List Items can be provided externally (via search); null clears back to fullpath fetch
+    if (props.has('listItems')) {
+      if (this.listItems?.length) {
+        this._listItems = this.listItems;
+        this.resetListItemPaths(this._listItems);
+        this.applyFavoritesToItems(this._listItems);
+        this.applyFavoriteOrder();
+      } else if (this.fullpath) {
+        this._filter = '';
+        this._showFilter = undefined;
+        this._allPagesLoaded = false;
+        this._listItems = await this.getList();
+      }
     }
 
     if (props.has('fullpath') && this.fullpath) {
@@ -954,7 +962,7 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <label class="checkbox-label ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
+      <label class="da-checkbox ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
       </label>
     `;
