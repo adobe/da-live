@@ -211,6 +211,12 @@ form button:hover {
   margin-bottom: -4px;
 }
 
+/* @media (prefers-color-scheme: dark) {
+  .da-site .da-back-action img {
+    filter: brightness(0) invert(1);
+  }
+} */
+
 .da-site:hover {
   transform: scale(1.015);
   box-shadow: rgb(0 0 0 / 15%) 0 6px 32px, rgb(0 0 0 / 35%) 0 3px 12px;
@@ -277,7 +283,7 @@ form button:hover {
   gap: 24px;
   align-items: center;
   place-content: center center;
-  background-color: rgb(250 250 250);
+  background-color: var(--s2-gray-50);
   position: absolute;
   width: 100%;
   height: 100%;
@@ -305,7 +311,7 @@ form button:hover {
   }
 
   .da-site-card-action {
-    color: #000;
+    color: var(--s2-gray-1000);
   }
 
   .da-site-card-action-go svg {
@@ -324,6 +330,7 @@ form button:hover {
   border: none;
   background: transparent;
   padding: 0;
+  cursor: pointer;
 }
 
 .da-site-front picture {
@@ -461,5 +468,18 @@ form button:hover {
 }
 
 .da-list-status-type-info .da-list-status-title {
-  background: var(--s2-blue-800) url('/blocks/browse/img/Smock_InfoOutline_18_N.svg') 12px 50% no-repeat;
+  background-color: var(--s2-blue-800);
+  position: relative;
+}
+
+.da-list-status-type-info .da-list-status-title::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: url('/img/icons/s2-icon-infocircle-20-n.svg') center / contain no-repeat;
+  filter: brightness(0) invert(1);
 }

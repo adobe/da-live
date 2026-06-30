@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath } from '../../shared/daFiles.js';
 import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
+import getEditPath from '../../browse/shared.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -42,6 +43,7 @@ class EwFileExplorer extends LitElement {
     _error: { state: true },
     _expanded: { state: true },
     _selectedPath: { state: true },
+    _treeRoot: { state: true },
   };
 
   connectedCallback() {
@@ -82,6 +84,7 @@ class EwFileExplorer extends LitElement {
       this._expanded = new Set();
       this._selectedPath = undefined;
       this._error = null;
+      this._treeRoot = null;
       return;
     }
 
@@ -89,36 +92,100 @@ class EwFileExplorer extends LitElement {
 
     if (rootChanged) {
       this._cache = {};
-      this._expanded = new Set([`${org}/${site}`]);
-      this._loadFromRoot(`/${org}/${site}`, org, site, path);
+      this._expanded = new Set();
+      this._treeRoot = null;
+      this._loadFromLeaves(org, site, path);
+    } else if (path) {
+      this._expandToPath(path);
     }
   }
 
-  async _loadFromRoot(rootFullpath, org, site, path) {
+  // Ensure every ancestor folder of `path` is expanded and loaded, so the
+  // newly selected item is visible after a hash change within the same site.
+  // If the new page's parent folder isn't accessible, switches the explorer
+  // into the "Not permitted" state instead.
+  async _expandToPath(path) {
+    if (!this._treeRoot) {
+      this._loadFromLeaves(this._org, this._site, path);
+      return;
+    }
+
+    const orgSite = `${this._org}/${this._site}`;
+    const parts = path.split('/');
+    const parentFp = parts.length > 1
+      ? `/${orgSite}/${parts.slice(0, -1).join('/')}`
+      : `/${orgSite}`;
+
+    if (!this._cache?.[parentFp]) {
+      const result = await listFolder(parentFp);
+      if (!Array.isArray(result)) {
+        this._cache = {};
+        this._expanded = new Set();
+        this._treeRoot = null;
+        this._error = 'Not permitted';
+        return;
+      }
+      this._cache = { ...this._cache, [parentFp]: result };
+    }
+
+    const expanded = new Set(this._expanded ?? []);
+    const toFetch = [];
+    for (let i = 1; i < parts.length; i += 1) {
+      const ancestorFp = `/${orgSite}/${parts.slice(0, i).join('/')}`;
+      expanded.add(ancestorFp.replace(/^\//, ''));
+      if (!this._cache?.[ancestorFp]) toFetch.push(ancestorFp);
+    }
+    this._expanded = expanded;
+
+    if (!toFetch.length) return;
+    const results = await Promise.all(toFetch.map(async (fp) => {
+      const result = await listFolder(fp);
+      return Array.isArray(result) ? [fp, result] : null;
+    }));
+    const patched = Object.fromEntries(results.filter(Boolean));
+    if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
+  }
+
+  // Walks from the current page's parent folder up to the site root, fetching
+  // each level sequentially. Stops as soon as a level fails (the user may have
+  // permission on a subfolder but not its ancestors). If the very first fetch
+  // fails, treats it as "not permitted" and shows no tree.
+  async _loadFromLeaves(org, site, path) {
     this._loading = true;
     this._error = null;
     const cache = {};
     const orgSite = `${org}/${site}`;
-    const expanded = new Set([orgSite]);
-    const toFetch = [rootFullpath];
+    const expanded = new Set();
+    const rootFullpath = `/${orgSite}`;
 
+    const pathsToFetch = [];
     if (path) {
       const parts = path.split('/');
-      for (let i = 1; i < parts.length; i += 1) {
-        const ancestorPath = `/${orgSite}/${parts.slice(0, i).join('/')}`;
-        toFetch.push(ancestorPath);
-        expanded.add(ancestorPath.replace(/^\//, ''));
+      for (let i = parts.length - 1; i >= 1; i -= 1) {
+        pathsToFetch.push(`/${orgSite}/${parts.slice(0, i).join('/')}`);
       }
     }
+    pathsToFetch.push(rootFullpath);
+
+    let treeRoot = null;
 
     try {
-      await Promise.all(toFetch.map(async (fp) => {
+      for (let i = 0; i < pathsToFetch.length; i += 1) {
+        const fp = pathsToFetch[i];
+        // eslint-disable-next-line no-await-in-loop
         const result = await listFolder(fp);
-        if (Array.isArray(result)) cache[fp] = result;
-        else if (fp === rootFullpath) this._error = result.error;
-      }));
+        if (Array.isArray(result)) {
+          cache[fp] = result;
+          treeRoot = fp;
+          expanded.add(fp.replace(/^\//, ''));
+        } else {
+          if (i === 0) this._error = 'Not permitted';
+          break;
+        }
+      }
       this._cache = cache;
       this._expanded = expanded;
+      this._treeRoot = treeRoot;
     } finally {
       this._loading = false;
     }
@@ -127,9 +194,7 @@ class EwFileExplorer extends LitElement {
   async _loadAndExpand(pathKey) {
     this._loading = true;
     const result = await listFolder(`/${pathKey}`);
-    if (!Array.isArray(result)) {
-      this._error = result.error;
-    } else {
+    if (Array.isArray(result)) {
       this._cache = { ...this._cache, [`/${pathKey}`]: result };
       this._expanded = new Set([...(this._expanded ?? []), pathKey]);
     }
@@ -147,8 +212,22 @@ class EwFileExplorer extends LitElement {
     this._expanded = next;
   }
 
+  _onItemClick(item) {
+    if (item.type === 'directory') {
+      this._toggle(item.pathKey, item.path);
+      return;
+    }
+    if (item.ext === 'html') {
+      window.location.hash = `#/${itemHashPath(item)}`;
+      return;
+    }
+    if (item.ext === 'link') return;
+    const url = getEditPath({ path: item.path, ext: item.ext, editor: '' });
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
   _renderNode(item, depth) {
-    const { type, pathKey, name, children, path } = item;
+    const { type, pathKey, name, children } = item;
     const isDir = type === 'directory';
     const expanded = isDir && this._expanded?.has(pathKey);
     const hashPath = itemHashPath(item);
@@ -162,7 +241,7 @@ class EwFileExplorer extends LitElement {
           tabindex="-1"
           aria-expanded="${isDir ? expanded : nothing}"
           aria-selected="${selected}"
-          @click="${isDir ? () => this._toggle(pathKey, path) : () => { window.location.hash = `#/${hashPath}`; }}">
+          @click="${() => this._onItemClick(item)}">
           <span class="label">${name}</span>
         </button>
         ${expanded && children.length ? html`
@@ -179,12 +258,17 @@ class EwFileExplorer extends LitElement {
       </div>`;
     }
 
-    const tree = buildTree(this._cache ?? {}, `/${this._org}/${this._site}`);
+    if (!this._treeRoot) {
+      return html`<div class="ew-file-explorer">
+        ${this._error
+    ? html`<p class="notice centered" role="alert">${this._error}</p>`
+    : html`<p class="notice centered">Loading…</p>`}
+      </div>`;
+    }
+
+    const tree = buildTree(this._cache ?? {}, this._treeRoot);
 
     return html`<div class="ew-file-explorer">
-      ${this._error ? html`<p class="notice error" role="alert">${this._error}</p>` : nothing}
-      ${this._loading && !Object.keys(this._cache ?? {}).length
-        ? html`<p class="notice">Loading…</p>` : nothing}
       <ul class="tree" role="tree" aria-label="Files"
         @keydown="${(e) => treeKeydown(e, this.shadowRoot)}"
         @focusin="${(e) => treeFocusIn(e, this.shadowRoot)}">

@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import { setNx, getNx2Api } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -180,6 +180,29 @@ describe('DaList helpers', () => {
     });
   });
 
+  describe('filteredItems getter', () => {
+    it('Returns full list when no filter is active', () => {
+      const el = makeList();
+      el._listItems = [{ name: 'alpha' }, { name: 'beta' }];
+      el._filter = '';
+      expect(el.filteredItems).to.deep.equal(el._listItems);
+    });
+
+    it('Returns only items whose name includes the filter string', () => {
+      const el = makeList();
+      el._listItems = [{ name: 'alpha' }, { name: 'beta' }, { name: 'alphabet' }];
+      el._filter = 'alpha';
+      expect(el.filteredItems.map((i) => i.name)).to.deep.equal(['alpha', 'alphabet']);
+    });
+
+    it('Returns empty array when no items match the filter', () => {
+      const el = makeList();
+      el._listItems = [{ name: 'alpha' }, { name: 'beta' }];
+      el._filter = 'zzz';
+      expect(el.filteredItems).to.deep.equal([]);
+    });
+  });
+
   describe('isSelectAll getter', () => {
     it('Is true when every list item is selected', () => {
       const el = makeList();
@@ -196,6 +219,27 @@ describe('DaList helpers', () => {
     it('Is false when there are no items', () => {
       const el = makeList();
       el._listItems = [];
+      expect(el.isSelectAll).to.be.false;
+    });
+
+    it('Is true when all filtered items are checked, even if unfiltered items are not', () => {
+      const el = makeList();
+      el._listItems = [
+        { name: 'alpha', isChecked: true },
+        { name: 'beta', isChecked: false },
+      ];
+      el._filter = 'alpha';
+      expect(el.isSelectAll).to.be.true;
+    });
+
+    it('Is false when some filtered items are unchecked', () => {
+      const el = makeList();
+      el._listItems = [
+        { name: 'alpha', isChecked: true },
+        { name: 'alphabet', isChecked: false },
+        { name: 'beta', isChecked: true },
+      ];
+      el._filter = 'alpha';
       expect(el.isSelectAll).to.be.false;
     });
   });
@@ -282,6 +326,17 @@ describe('DaList helpers', () => {
       el.newItem = { name: 'orphan' };
       el.handleNewItem();
       expect(el._listItemPaths.size).to.equal(0);
+    });
+
+    it('Skips unshift when path already exists in _listItemPaths (dedup)', () => {
+      const el = makeList();
+      const existing = { name: 'doc', path: '/n', ext: 'html' };
+      el._listItems = [existing];
+      el._listItemPaths = new Set(['/n']);
+      el.newItem = { name: 'doc', path: '/n', ext: 'html' };
+      el.handleNewItem();
+      expect(el._listItems.length).to.equal(1);
+      expect(el.newItem).to.equal(null);
     });
   });
 
@@ -386,7 +441,7 @@ describe('DaList helpers', () => {
       const el = makeList();
       el.fullpath = '/org/repo';
       const items = await el.getList();
-      expect(items).to.deep.equal([{ path: '/a' }, { path: '/b' }]);
+      expect(items).to.deep.equal([{ path: '/a', isFavorited: false }, { path: '/b', isFavorited: false }]);
       expect([...el._listItemPaths]).to.deep.equal(['/a', '/b']);
       expect(el._allPagesLoaded).to.be.true;
     });
@@ -515,6 +570,78 @@ describe('DaList helpers', () => {
       // handleConfirmDelete uses queue.push but with empty list nothing happens.
       await el.handleConfirmDelete();
       expect(el._itemsRemaining).to.equal(0);
+    });
+
+    it('Unpublishes HTML items by their extensionless path', async () => {
+      const { aem, source } = await getNx2Api();
+      const origUnPreview = aem.unPreview;
+      const origUnPublish = aem.unPublish;
+      const origMove = source.move;
+      const unpublished = [];
+      aem.unPreview = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      aem.unPublish = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      source.move = () => ({ ok: true });
+
+      try {
+        const el = makeList();
+        el._itemErrors = [];
+        el._listItems = [];
+        el._listItemPaths = new Set();
+        el._unpublish = true;
+        el._confirmText = 'YES';
+        el._selectedItems = [{ name: 'doc', ext: 'html', path: '/org/site/doc.html' }];
+
+        await el.handleConfirmDelete();
+
+        expect(unpublished).to.deep.equal(['/org/site/doc', '/org/site/doc']);
+        expect(el._itemErrors).to.deep.equal([]);
+      } finally {
+        aem.unPreview = origUnPreview;
+        aem.unPublish = origUnPublish;
+        source.move = origMove;
+      }
+    });
+
+    it('Unpublishes non-HTML items with their extension intact', async () => {
+      const { aem, source } = await getNx2Api();
+      const origUnPreview = aem.unPreview;
+      const origUnPublish = aem.unPublish;
+      const origMove = source.move;
+      const unpublished = [];
+      aem.unPreview = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      aem.unPublish = (path) => {
+        unpublished.push(path);
+        return { ok: true };
+      };
+      source.move = () => ({ ok: true });
+
+      try {
+        const el = makeList();
+        el._itemErrors = [];
+        el._listItems = [];
+        el._listItemPaths = new Set();
+        el._unpublish = true;
+        el._confirmText = 'YES';
+        el._selectedItems = [{ name: 'data', ext: 'json', path: '/org/site/data.json' }];
+
+        await el.handleConfirmDelete();
+
+        expect(unpublished).to.deep.equal(['/org/site/data.json', '/org/site/data.json']);
+        expect(el._itemErrors).to.deep.equal([]);
+      } finally {
+        aem.unPreview = origUnPreview;
+        aem.unPublish = origUnPublish;
+        source.move = origMove;
+      }
     });
   });
 
@@ -680,6 +807,32 @@ describe('DaList helpers', () => {
       el.handleSelectionState = () => {};
       await el.handleCheckAll();
       expect(el._listItems.every((i) => i.isChecked === false)).to.be.true;
+    });
+
+    it('With filter active, only checks matching items and leaves others unchecked', async () => {
+      const el = makeList();
+      const alpha = { name: 'alpha', isChecked: false };
+      const beta = { name: 'beta', isChecked: false };
+      el._listItems = [alpha, beta];
+      el._filter = 'alpha';
+      el._continuationToken = null;
+      el.handleSelectionState = () => {};
+      await el.handleCheckAll();
+      expect(alpha.isChecked).to.be.true;
+      expect(beta.isChecked).to.be.false;
+    });
+
+    it('With filter active, unchecks only matching items when all filtered are already checked', async () => {
+      const el = makeList();
+      const alpha = { name: 'alpha', isChecked: true };
+      const beta = { name: 'beta', isChecked: true };
+      el._listItems = [alpha, beta];
+      el._filter = 'alpha';
+      el._continuationToken = null;
+      el.handleSelectionState = () => {};
+      await el.handleCheckAll();
+      expect(alpha.isChecked).to.be.false;
+      expect(beta.isChecked).to.be.true;
     });
   });
 

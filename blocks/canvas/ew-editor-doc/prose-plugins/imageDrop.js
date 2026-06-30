@@ -3,7 +3,33 @@ import { daFetch } from '../../../shared/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
-const SUPPORTED_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
+export const SUPPORTED_IMAGE_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
+
+export async function uploadImageFile(view, file, details) {
+  if (!SUPPORTED_IMAGE_FILES.some((type) => type === file.type)) return;
+
+  const { schema } = view.state;
+  const fpo = schema.nodes.image.create({ src: FPO_IMG_URL, style: 'width: 180px' });
+  view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
+
+  const { $from } = view.state.selection;
+  const url = `${details.origin}/source${details.parent}/.${details.name}/${file.name}`;
+
+  const formData = new FormData();
+  formData.append('data', file);
+  const resp = await daFetch(url, { method: 'PUT', body: formData });
+  if (!resp.ok) return;
+  const json = await resp.json();
+
+  const docImg = document.createElement('img');
+  docImg.addEventListener('load', () => {
+    const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
+    const ts = view.state.tr.setSelection(fpoSelection);
+    const img = schema.nodes.image.create({ src: json.source.contentUrl });
+    view.dispatch(ts.replaceSelectionWith(img).scrollIntoView());
+  });
+  docImg.src = json.source.contentUrl;
+}
 
 /**
  * @param {import('prosemirror-model').Schema} schema
@@ -23,31 +49,7 @@ export default function imageDrop(schema, getSourceUrl) {
           if (!details) return false;
 
           ([...files]).forEach(async (file) => {
-            if (!SUPPORTED_FILES.some((type) => type === file.type)) return;
-
-            const fpo = schema.nodes.image.create({ src: FPO_IMG_URL, style: 'width: 180px' });
-            view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
-
-            const { $from } = view.state.selection;
-
-            const url = `${details.origin}/source${details.parent}/.${details.name}/${file.name}`;
-
-            const formData = new FormData();
-            formData.append('data', file);
-            const opts = { method: 'PUT', body: formData };
-            const resp = await daFetch(url, opts);
-            if (!resp.ok) return;
-            const json = await resp.json();
-
-            const docImg = document.createElement('img');
-            docImg.addEventListener('load', () => {
-              const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
-              const ts = view.state.tr.setSelection(fpoSelection);
-              const img = schema.nodes.image.create({ src: json.source.contentUrl });
-              const tr = ts.replaceSelectionWith(img).scrollIntoView();
-              view.dispatch(tr);
-            });
-            docImg.src = json.source.contentUrl;
+            await uploadImageFile(view, file, details);
           });
           return true;
         },

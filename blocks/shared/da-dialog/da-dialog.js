@@ -75,7 +75,7 @@ export default class DaDialog extends LitElement {
               class="da-dialog-close-btn"
               @click=${this.close}
               aria-label="Close dialog">
-              <svg class="icon"><use href="/blocks/browse/img/S2IconClose20N-icon.svg#S2IconClose20N-icon"></use></svg>
+              <svg class="icon"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg>
             </button>` : nothing}
           </div>
           <hr/>

@@ -5,10 +5,24 @@ import { getNx } from '../../../scripts/utils.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
 
+const ICON_NAMES = {
+  close: 's2-icon-close-20-n',
+  rename: 's2-icon-rename-20-n',
+  favorite: 's2-icon-star-20-n',
+  copy: 's2-icon-copy-20-n',
+  cut: 's2-icon-cut-20-n',
+  paste: 's2-icon-paste-20-n',
+  delete: 's2-icon-delete-20-n',
+  share: 's2-icon-share-20-n',
+};
+
+const icon = (name) => html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/${ICON_NAMES[name]}.svg#icon"></use></svg>`;
+
 export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
     permissions: { attribute: false },
+    isFavorite: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -19,6 +33,7 @@ export default class DaActionBar extends LitElement {
     super();
     this.items = [];
     this.currentPath = '';
+    this.isFavorite = false;
   }
 
   connectedCallback() {
@@ -51,6 +66,12 @@ export default class DaActionBar extends LitElement {
   handleRename() {
     const opts = { detail: true, bubbles: true, composed: true };
     const event = new CustomEvent('rename', opts);
+    this.dispatchEvent(event);
+  }
+
+  handleFavorite() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onfavorite', opts);
     this.dispatchEvent(event);
   }
 
@@ -122,7 +143,7 @@ export default class DaActionBar extends LitElement {
             class="close-circle"
             @click=${this.handleClear}
             aria-label="Unselect items">
-            <img src="/blocks/browse/da-browse/img/CrossSize200.svg" alt="" />
+            ${icon('close')}
           </button>
           <span>${this.currentAction}</span>
         </div>
@@ -130,37 +151,44 @@ export default class DaActionBar extends LitElement {
           <button
             @click=${this.handleRename}
             class="rename-button ${this._canWrite ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_TextEdit_18_N.svg" alt="" aria-hidden="true"/>
+            ${icon('rename')}
             <span>Rename</span>
+          </button>
+          <button
+            @click=${this.handleFavorite}
+            aria-pressed=${this.isFavorite ? 'true' : 'false'}
+            class="favorite-button ${this.isFavorite ? 'is-favorited' : ''} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            ${icon('favorite')}
+            <span>Favorite</span>
           </button>
           <button
             @click=${this.handleCopy}
             class="copy-button ${this._isCopying ? 'hide' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" alt="" aria-hidden="true"/>
+            ${icon('copy')}
             <span>Copy</span>
           </button>
           <button
             @click=${this.handleMove}
             class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_Cut_18_N.svg" alt="" aria-hidden="true"/>
+            ${icon('cut')}
             <span>Cut</span>
           </button>
           <button
             @click=${this.handlePaste}
             class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? '' : 'hide'}">
-            <img src="/blocks/browse/da-browse/img/Smock_Copy_18_N.svg" alt="" aria-hidden="true"/>
+            ${icon('paste')}
             <span>Paste</span>
           </button>
           <button
             @click=${this.handleDelete}
             class="delete-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
-            <img src="/blocks/browse/da-browse/img/Smock_Delete_18_N.svg" alt="" aria-hidden="true"/>
+            ${icon('delete')}
             <span>Delete</span>
           </button>
           <button
             @click=${this.handleShare}
             class="share-button ${this._canShare ? '' : 'hide'}">
-            <img src="/blocks/browse/img/Smock_Share_18_N.svg" alt="" aria-hidden="true"/>
+            ${icon('share')}
             <span>Share</span>
           </button>
         </div>

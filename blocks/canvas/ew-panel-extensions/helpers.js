@@ -2,6 +2,7 @@
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import { aemAdmin, daFetch } from '../../shared/utils.js';
+import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -342,8 +343,8 @@ export async function insertTemplate(view, url) {
   const resp = await daFetch(url);
   if (!resp.ok) return;
   const html = (await resp.text()).replace('class="template-metadata"', 'class="metadata"');
-  const doc = new window.DOMParser().parseFromString(html, 'text/html');
-  const parsed = PMDOMParser.fromSchema(view.state.schema).parse(doc.body);
+  const { dom } = htmlToProse(html);
+  const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
   view.dispatch(view.state.tr.replaceSelectionWith(parsed).scrollIntoView());
 }
 
@@ -477,7 +478,8 @@ function extensionToPanelView(ext, section) {
  */
 export async function getCanvasToolPanelViews({ org, site }) {
   const extensions = await fetchExtensions(org, site);
-  const library = sortLibraryExtensions(extensions.filter(isLibraryExtension));
+  const library = sortLibraryExtensions(extensions.filter(isLibraryExtension))
+    .filter((ext) => ext.name !== 'blocks');
   const thirdParty = extensions.filter((ext) => !isLibraryExtension(ext));
 
   return [

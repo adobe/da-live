@@ -11,7 +11,9 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
-import { getQuery, getTestPageURL, tabBackward, fill } from '../utils/page.js';
+import {
+  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
+} from '../utils/page.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
@@ -42,9 +44,10 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();
 
-  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
-  await page.locator('button.da-actions-new-button').click();
-  await page.locator('button:text("Document")').click();
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await expect(page.locator('button.da-actions-new-button')).toBeEnabled();
+  await page.locator('button.da-actions-new-button').click({ force: true });
+  await page.getByRole('menuitem', { name: 'Document' }).click();
   await page.locator('input.da-actions-input').fill(pageName);
 
   await page.locator('button:text("Create document")').click();
@@ -56,13 +59,13 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
-  await newPage.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
+  await newPage.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
 
   await newPage.waitForTimeout(3000);
   await newPage.reload();
 
-  await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
-  await newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
+  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).toBeVisible();
+  await newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`).focus();
   await tabBackward(newPage);
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
@@ -70,11 +73,11 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   // There are 2 delete buttons, one on the Browse panel and another on the Search one
   // select the visible one.
-  await newPage.locator('button.delete-button').locator('visible=true').click();
+  await newPage.locator('button.delete-button').filter({ visible: true }).click();
 
   await newPage.waitForTimeout(1000);
   /* TODO REMOVE once #233 is fixed */ await newPage.reload();
-  await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
+  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).not.toBeVisible();
 });
 
 test('Change document by switching anchors', async ({ page }, workerInfo) => {

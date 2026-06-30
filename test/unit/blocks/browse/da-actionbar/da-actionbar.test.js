@@ -187,6 +187,18 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('handleFavorite', () => {
+    it('Dispatches an onfavorite event', () => {
+      const el = new DaActionBar();
+      let dispatched;
+      el.dispatchEvent = (e) => { dispatched = e; };
+      el.handleFavorite();
+      expect(dispatched.type).to.equal('onfavorite');
+      expect(dispatched.bubbles).to.be.true;
+      expect(dispatched.composed).to.be.true;
+    });
+  });
+
   describe('handleDelete', () => {
     it('Dispatches an ondelete event', () => {
       const el = new DaActionBar();

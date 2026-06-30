@@ -11,9 +11,10 @@
  */
 import { test, expect } from '@playwright/test';
 import ENV from '../../utils/env.js';
-import { getTestPageURL, getQuery, tabBackward, fill } from '../../utils/page.js';
+import { getTestPageURL, getQuery, tabBackward, fill, TEST_SITE } from '../../utils/page.js';
 
 test('Read-only directory', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   const url = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
 
   await page.goto(url);
@@ -31,10 +32,11 @@ test('Read-only directory', async ({ page }) => {
   await expect(tickbox).toBeChecked();
 
   // There should not be a delete button
-  await expect(page.locator('button.delete-button').locator('visible=true')).toHaveCount(0);
+  await expect(page.locator('button.delete-button').filter({ visible: true })).toHaveCount(0);
 });
 
 test('Read-write directory', async ({ browser, page }, workerInfo) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   test.setTimeout(60000);
   const pageURL = getTestPageURL('acl-browse-edt', workerInfo, '/da-testautomation/acltest/testdocs/subdir/subdir1');
   const pageName = pageURL.split('/').pop();
@@ -43,8 +45,8 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await page.goto(browseURL);
   const newButton = page.getByRole('button', { name: 'New' });
   await expect(newButton).toBeEnabled();
-  await newButton.click();
-  await page.locator('button:text("Document")').click();
+  await newButton.click({ force: true });
+  await page.getByRole('menuitem', { name: 'Document' }).click();
   await page.locator('input.da-actions-input').fill(pageName);
 
   // Cannot just click the 'Create document' button because on Firefox that for some reason gets
@@ -78,11 +80,11 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
 
   // There are 2 delete buttons, one on the Browse panel and another on the Search one
   // select the visible one.
-  await page.locator('button.delete-button').locator('visible=true').click();
+  await page.locator('button.delete-button').filter({ visible: true }).click();
 
   await page.waitForTimeout(1000);
 
-  await page.locator('sl-button.negative').locator('visible=true').click();
+  await page.locator('sl-button.negative').filter({ visible: true }).click();
 
   await page.waitForTimeout(1000);
 
@@ -90,6 +92,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
 });
 
 test('Readonly directory with writeable document', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   const browseURL = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir/subdir2`;
   await page.goto(browseURL);
 
@@ -101,7 +104,7 @@ test('Readonly directory with writeable document', async ({ page }) => {
   await page.waitForTimeout(500);
 
   // Check that the expected delete button is there (but don't click it)
-  await expect(page.locator('button.delete-button').locator('visible=true')).toBeVisible();
+  await expect(page.locator('button.delete-button').filter({ visible: true })).toBeVisible();
 
   await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc"]').click();
   const editor = page.locator('div.ProseMirror');
@@ -110,6 +113,7 @@ test('Readonly directory with writeable document', async ({ page }) => {
 });
 
 test('No access directory should not show anything', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`);
 
   // In this directory we should be able to see files

@@ -104,7 +104,7 @@ class EwPanelLibrary extends LitElement {
   async _insertTemplate(item) {
     const { view } = getExtensionsBridge();
     if (!view) return;
-    await insertTemplate(view, item.value);
+    await insertTemplate(view, item.path || item.value);
   }
 
   async _openPreview(item) {

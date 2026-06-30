@@ -1,4 +1,20 @@
-.light-scheme {
+html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat-btn) {
+  display: none;
+}
+
+.browse {
+  container-type: inline-size;
+}
+
+@container (width < 1440px) {
+  da-browse {
+    --se-grid-container-width: 83.4cqi;
+  }
+}
+
+.light-scheme, .dark-scheme {
+  color-scheme: light;
+
   .browse:has(da-sites) {
     [data-scheme="light"] {
       display: block;
@@ -6,13 +22,13 @@
   }
 }
 
-.dark-scheme {
+/* .dark-scheme {  
   .browse:has(da-sites) {
     [data-scheme="dark"] {
       display: block;
     }
   }
-}
+} */
 
 picture {
   display: none;

@@ -30,7 +30,7 @@ import {
 } from '../../edit/prose/plugins/keyHandlers.js';
 import { getHeadingKeymap } from '../../edit/prose/plugins/menu/menu.js';
 import { createSlashMenuPlugin } from './slash-menu/slash-menu.js';
-import { createSelectionToolbarPlugin } from '../editor-utils/selection-toolbar.js';
+import { createSelectionToolbarPlugin, openLinkDialog } from '../editor-utils/selection-toolbar.js';
 import codemark from '../../edit/prose/plugins/codemark.js';
 import tableSelectHandle from '../../edit/prose/plugins/tableSelectHandle.js';
 import imageDrop from './prose-plugins/imageDrop.js';
@@ -174,6 +174,11 @@ export default async function initProse({
       'Mod-z': (state) => yUndo(state) || false,
       'Mod-y': (state) => yRedo(state) || false,
       'Mod-Shift-z': (state) => yRedo(state) || false,
+      'Mod-k': (_state, _dispatch, view) => {
+        if (!view.editable) return false;
+        openLinkDialog(view);
+        return true;
+      },
       ...getHeadingKeymap(schema),
     }),
     keymap({

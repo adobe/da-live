@@ -75,7 +75,7 @@ describe('Browse', () => {
     daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
     daBrowse._listItems = [];
     daBrowse._continuationToken = 'token-1';
-    daBrowse.scheduleAutoCheck = () => {};
+    daBrowse.scheduleAutoCheck = () => { };
 
     const orgFetch = window.fetch;
     try {
@@ -110,7 +110,7 @@ describe('Browse', () => {
     daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
     daBrowse._listItems = [{ path: '/already-there', name: 'already-there' }];
     daBrowse._continuationToken = 'token-1';
-    daBrowse.scheduleAutoCheck = () => {};
+    daBrowse.scheduleAutoCheck = () => { };
 
     const orgFetch = window.fetch;
     try {
@@ -157,7 +157,7 @@ describe('Browse', () => {
     daBrowse.fullpath = '/myorg/mysite/myroot/destdir';
     daBrowse._listItems = initialItems;
     daBrowse._continuationToken = 'token-1';
-    daBrowse.scheduleAutoCheck = () => {};
+    daBrowse.scheduleAutoCheck = () => { };
 
     const orgFetch = window.fetch;
     try {
@@ -342,13 +342,10 @@ describe('DaBrowse Component', () => {
 
   beforeEach(() => {
     daBrowseComp = new DaBrowseComponent();
-    daBrowseComp.details = { fullpath: '/myorg/mysite/folder', owner: 'myorg', depth: 3 };
+    daBrowseComp.details = { fullpath: '/myorg/mysite/folder', org: 'myorg', site: 'mysite', owner: 'myorg', depth: 3 };
   });
 
   describe('getEditor', () => {
-    const UE_CONF = '/myorg/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live';
-    const FORM_CONF = '/myorg/mysite/dealers=https://da.live/form#';
-
     function mockConfig(rows) {
       window.fetch = async () => ({
         ok: true,
@@ -367,37 +364,37 @@ describe('DaBrowse Component', () => {
     });
 
     it('matches a single editor.path row by prefix', async () => {
-      daBrowseComp.details = { fullpath: '/myorg/mysite/some-doc', owner: 'myorg', depth: 3 };
-      mockConfig([{ key: 'editor.path', value: UE_CONF }]);
+      daBrowseComp.details = { fullpath: '/myorg-a/mysite/some-doc', org: 'myorg-a', site: 'mysite', owner: 'myorg-a', depth: 3 };
+      mockConfig([{ key: 'editor.path', value: '/myorg-a/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live' }]);
       const url = await daBrowseComp.getEditor(true);
       expect(url).to.equal('https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live');
     });
 
     it('prefers the more specific (longer prefix) match over a shorter one', async () => {
-      daBrowseComp.details = { fullpath: '/myorg/mysite/dealers/acme', owner: 'myorg', depth: 4 };
+      daBrowseComp.details = { fullpath: '/myorg-b/mysite/dealers/acme', org: 'myorg-b', site: 'mysite', owner: 'myorg-b', depth: 4 };
       mockConfig([
-        { key: 'editor.path', value: UE_CONF },
-        { key: 'editor.path', value: FORM_CONF },
+        { key: 'editor.path', value: '/myorg-b/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live' },
+        { key: 'editor.path', value: '/myorg-b/mysite/dealers=https://da.live/form#' },
       ]);
       const url = await daBrowseComp.getEditor(true);
-      // /myorg/mysite/dealers is more specific than /myorg/mysite even though
+      // /myorg-b/mysite/dealers is more specific than /myorg-b/mysite even though
       // UE_CONF has a longer total string length
       expect(url).to.equal('https://da.live/form#');
     });
 
     it('falls back to the broader match when path is outside the specific folder', async () => {
-      daBrowseComp.details = { fullpath: '/myorg/mysite/other/page', owner: 'myorg', depth: 4 };
+      daBrowseComp.details = { fullpath: '/myorg-c/mysite/other/page', org: 'myorg-c', site: 'mysite', owner: 'myorg-c', depth: 4 };
       mockConfig([
-        { key: 'editor.path', value: UE_CONF },
-        { key: 'editor.path', value: FORM_CONF },
+        { key: 'editor.path', value: '/myorg-c/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live' },
+        { key: 'editor.path', value: '/myorg-c/mysite/dealers=https://da.live/form#' },
       ]);
       const url = await daBrowseComp.getEditor(true);
       expect(url).to.equal('https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live');
     });
 
     it('returns default edit path when no prefix matches the current path', async () => {
-      daBrowseComp.details = { fullpath: '/otherorg/othersite/page', owner: 'otherorg', depth: 3 };
-      mockConfig([{ key: 'editor.path', value: UE_CONF }]);
+      daBrowseComp.details = { fullpath: '/otherorg/othersite/page', org: 'otherorg', site: 'othersite', owner: 'otherorg', depth: 3 };
+      mockConfig([{ key: 'editor.path', value: '/myorg/mysite=https://experience.adobe.com/#/@dxorg/aem/editor/canvas/main--mysite--myorg.ue.da.live' }]);
       const url = await daBrowseComp.getEditor(true);
       expect(url).to.equal('/edit#');
     });
@@ -493,27 +490,27 @@ describe('DaBrowse Component', () => {
 
     it('Inserts /.trash/ when not already in trash', () => {
       daBrowseComp.details = { fullpath: '/org/site/folder' };
-      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => { } });
       expect(window.location.hash).to.equal('#/org/site/.trash/folder');
     });
 
     it('Removes /.trash/ when already in trash', () => {
       daBrowseComp.details = { fullpath: '/org/site/.trash/folder' };
-      daBrowseComp.handleShortcuts({ ctrlKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      daBrowseComp.handleShortcuts({ ctrlKey: true, altKey: true, code: 'KeyT', preventDefault: () => { } });
       expect(window.location.hash).to.equal('#/org/site/folder');
     });
 
     it('Does nothing when path is too shallow (< 2 segments)', () => {
       daBrowseComp.details = { fullpath: '/org' };
       const before = window.location.hash;
-      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => {} });
+      daBrowseComp.handleShortcuts({ metaKey: true, altKey: true, code: 'KeyT', preventDefault: () => { } });
       expect(window.location.hash).to.equal(before);
     });
 
     it('Ignores keys without alt or meta/ctrl modifiers', () => {
       daBrowseComp.details = { fullpath: '/org/site' };
       const before = window.location.hash;
-      daBrowseComp.handleShortcuts({ metaKey: false, altKey: false, code: 'KeyT', preventDefault: () => {} });
+      daBrowseComp.handleShortcuts({ metaKey: false, altKey: false, code: 'KeyT', preventDefault: () => { } });
       expect(window.location.hash).to.equal(before);
     });
   });
@@ -547,7 +544,7 @@ describe('DaBrowse Component', () => {
         ],
       });
       window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
-      daBrowseComp.details = { owner: 'org', fullpath: '/org/site/folder' };
+      daBrowseComp.details = { owner: 'org', org: 'org', site: 'site', fullpath: '/org/site/folder' };
       const editor = await daBrowseComp.getEditor(true);
       expect(editor).to.equal('https://long-match');
     });
@@ -563,6 +560,25 @@ describe('DaBrowse Component', () => {
       const before = calls;
       await daBrowseComp.getEditor(false);
       expect(calls).to.equal(before);
+    });
+
+    it('Returns /canvas# as default when EW is enabled and no explicit config', async () => {
+      daBrowseComp._chatEnabled = true;
+      window.fetch = () => Promise.resolve(
+        new Response(JSON.stringify({ data: [] }), { status: 200 }),
+      );
+      daBrowseComp.details = { owner: 'canvas-org', org: 'canvas-org', site: 'canvas-site', fullpath: '/canvas-org/canvas-site/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('/canvas#');
+    });
+
+    it('Explicit editor.path config takes precedence over EW canvas default', async () => {
+      daBrowseComp._chatEnabled = true;
+      const body = JSON.stringify({ data: [{ key: 'editor.path', value: '/canvas-org2/canvas-site2=https://custom-editor' }] });
+      window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
+      daBrowseComp.details = { owner: 'canvas-org2', org: 'canvas-org2', site: 'canvas-site2', fullpath: '/canvas-org2/canvas-site2/page' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('https://custom-editor');
     });
   });
 });
