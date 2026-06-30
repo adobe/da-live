@@ -1,8 +1,11 @@
 import '../../shared/da-dialog/da-dialog.js';
-import { getNx, getNx2Api, nxJS } from '../../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
 
-const { loadStyle } = await import(`${getNx()}${nxJS}`);
-await loadStyle('/blocks/edit/da-not-found/da-not-found.css');
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const sheet = await loadStyle('/blocks/edit/da-not-found/da-not-found.css');
+if (sheet && !document.adoptedStyleSheets.includes(sheet)) {
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+}
 
 async function folderHasContents(folderPath) {
   try {

@@ -13,7 +13,7 @@ h1 {
 }
 
 button {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
 }
 
 da-prepare {

@@ -1,4 +1,4 @@
-import { getNx, nxJS } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
@@ -177,9 +177,13 @@ export function buildHandleSelection(
 }
 
 export async function openAssets() {
-  const { loadStyle } = await import(`${getNx()}${nxJS}`);
-  const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-  const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
+  const nx = getNx();
+  const isNx2 = nx.endsWith('/nx2');
+  const { loadStyle } = await import(`${nx}/utils/utils.js`);
+  const { loadIms, handleSignIn } = await import(`${nx}/utils/ims.js`);
+  const loadScript = isNx2
+    ? (await import(`${nx}/utils/utils.js`)).loadScript
+    : (await import(`${nx}/utils/script.js`)).default;
 
   const details = await loadIms();
   if (details.anonymous) handleSignIn();
@@ -195,7 +199,10 @@ export async function openAssets() {
     return;
   }
 
-  await loadStyle(import.meta.url.replace('.js', '.css'));
+  const assetSheet = await loadStyle(import.meta.url);
+  if (assetSheet && !document.adoptedStyleSheets.includes(assetSheet)) {
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, assetSheet];
+  }
   await loadScript(ASSET_SELECTOR_URL);
 
   dialog = document.createElement('dialog');

@@ -35,7 +35,7 @@
 
 .da-version-title {
   margin: 0;
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
   font-size: 18px;
   font-weight: 700;
   color: #000;
@@ -52,7 +52,7 @@
 }
 
 .da-version-action-area button {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
   display: inline-block;
   font-style: normal;
   cursor: pointer;
@@ -814,7 +814,7 @@ da-library.hide {
   left: -1px;
   font-size: 13px;
   background-color: rgb(250 129 0);
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
   border-radius: 2px;
   font-style: normal;
   font-weight: normal;
