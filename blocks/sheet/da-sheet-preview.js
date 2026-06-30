@@ -2,9 +2,9 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 import getPathDetails from '../shared/pathDetails.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const style = await getStyle('/blocks/sheet/da-sheet-preview.css');
+const style = await loadStyle('/blocks/sheet/da-sheet-preview.css');
 
 class DaSheetPreview extends LitElement {
   static properties = {
