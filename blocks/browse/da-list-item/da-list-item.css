@@ -258,14 +258,14 @@ input[type="checkbox"] {
   display: none;
   grid-template-columns: 32px 80px 1fr 182px 182px;
   padding: 24px 32px 24px 0;
-  gap: 24px;
+  gap: var(--s2-spacing-100);
   border-top: 1px solid rgb(165 199 240);
   margin: 0 24px;
   font-size: 14px;
 }
 
 .da-item-list-item-details.can-select {
-  padding: 24px 32px 24px 42px;
+  padding: 24px 32px 24px 45px;
 }
 
 :host(.is-expanded) .da-item-list-item-details {

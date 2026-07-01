@@ -86,7 +86,7 @@ export default async function initProse({
   if (typeof getToken === 'function') {
     const t = getToken();
     if (t) {
-      wsOpts.params = { Authorization: `Bearer ${t}` };
+      wsOpts.protocols.push(t);
       lastSentToken = t;
     }
   }
@@ -115,16 +115,12 @@ export default async function initProse({
         }
         return;
       }
-      wsProvider.params = { Authorization: `Bearer ${fresh}` };
+      wsProvider.protocols = ['yjs', fresh];
       lastSentToken = fresh;
       return;
     }
     const fresh = await getAuthToken();
-    if (fresh) {
-      wsProvider.params = { Authorization: `Bearer ${fresh}` };
-    } else {
-      wsProvider.params = {};
-    }
+    wsProvider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
     lastSentToken = fresh;
   });
 

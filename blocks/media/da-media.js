@@ -1,9 +1,8 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 
-// Styles
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const STYLE = await getStyle(import.meta.url);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 
 class DaMedia extends LitElement {
   static properties = {};
@@ -11,7 +10,7 @@ class DaMedia extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [STYLE];
-    document.title = `View ${this.details.name} - Dark Alley`;
+    document.title = `View ${this.details.name} - Experience Workspace`;
   }
 
   get _mediaType() {
