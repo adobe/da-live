@@ -29,7 +29,6 @@ const sendUndo = async (page) => {
 };
 
 test('Regional Edit Document', async ({ page, context }, workerInfo) => {
-  /// Why does this fail?
   test.setTimeout(30000);
 
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
@@ -56,7 +55,6 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   console.log(htmlFile);
   await fileChooser.setFiles([`${htmlFile}`]);
 
-  await page.getByRole('button', { name: 'Upload' }).click();
   await page.getByRole('link', { name: 'regionaledit', exact: true }).click();
 
   const newPage = await findPageTab('Edit regionaledit', page, context);

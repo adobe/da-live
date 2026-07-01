@@ -15,7 +15,7 @@ class DaLinkDialog extends LitElement {
     open: { type: Boolean, reflect: true },
     href: { type: String },
     text: { type: String },
-    title: { type: String },
+    title: { type: String, attribute: 'dialog-title' },
     saveLabel: { type: String },
     _urlError: { state: true },
   };
@@ -67,7 +67,7 @@ class DaLinkDialog extends LitElement {
             <input class="da-input" name="link-href" type="text" autofocus placeholder="https://…"
                    autocomplete="off" .value=${this.href ?? ''}
                    @input=${() => { this._urlError = ''; }} />
-            ${this._urlError ? html`<span class="da-input-error-msg">${this._urlError}</span>` : nothing}
+            <span class="da-input-error-msg" role="alert">${this._urlError}</span>
           </label>
           <label class="da-form-field">
             <span>Display text</span>

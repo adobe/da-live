@@ -181,7 +181,7 @@ export default class DaNew extends LitElement {
         <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} />
       </div>
     <da-link-dialog
-      title="Add link"
+      dialog-title="Add link"
       saveLabel="Create"
       ?open=${this._linkDialogOpen}
       @da-link-submit=${this._handleLinkSubmit}
@@ -195,7 +195,7 @@ export default class DaNew extends LitElement {
                .value=${this._createName || ''}
                @input=${this.handleNameChange}
                @keydown=${this._handleCreateKeydown} />
-        ${this._nameError ? html`<span class="da-input-error-msg">Please fill out this field.</span>` : nothing}
+        <span class="da-input-error-msg" role="alert">${this._nameError ? 'Please fill out this field.' : ''}</span>
       </label>
       <button slot="actions" type="button" class="da-btn-secondary" @click=${this._handleCreateDialogClose}>Cancel</button>
       <button slot="actions" type="button" class="da-btn-primary" ?disabled=${this._loading} @click=${this._handleCreate}>Create</button>
