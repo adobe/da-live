@@ -69,6 +69,29 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('_canCut', () => {
+    it('Returns true when user can write and site is not HLX6', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.isHlx6 = false;
+      expect(el._canCut).to.be.true;
+    });
+
+    it('Returns false when site is HLX6, even with write permission', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.isHlx6 = true;
+      expect(el._canCut).to.be.false;
+    });
+
+    it('Returns false when user cannot write', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read'];
+      el.isHlx6 = false;
+      expect(el._canCut).to.be.false;
+    });
+  });
+
   describe('_canShare', () => {
     it('Returns false when no items have a non-link extension', () => {
       const el = new DaActionBar();

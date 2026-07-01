@@ -23,6 +23,7 @@ export default class DaActionBar extends LitElement {
     items: { attribute: false },
     permissions: { attribute: false },
     isFavorite: { attribute: false },
+    isHlx6: { type: Boolean },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -121,6 +122,10 @@ export default class DaActionBar extends LitElement {
     return this.permissions.some((permission) => permission === 'write');
   }
 
+  get _canCut() {
+    return this._canWrite && !this.isHlx6;
+  }
+
   get _canShare() {
     const isFile = this.items.some((item) => item.ext && item.ext !== 'link');
     return isFile && !this._isCopying;
@@ -169,7 +174,7 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleMove}
-            class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            class="copy-button ${this._canCut ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('cut')}
             <span>Cut</span>
           </button>
