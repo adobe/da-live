@@ -101,7 +101,7 @@ describe('da-link-dialog', () => {
 
   it('shows an error message for dangerous URL protocols', async () => {
     await mount({ open: true });
-    el.shadowRoot.querySelector(`input[name="link-href"]`).value = `${'javascript'}:alert(1)`;
+    el.shadowRoot.querySelector('input[name="link-href"]').value = `${'javascript'}:alert(1)`;
     el.shadowRoot.querySelector('.da-btn-primary').click();
     await el.updateComplete;
 

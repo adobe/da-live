@@ -55,7 +55,7 @@ da-list-item.is-expanded::after {
 }
 
 .da-browse-panel-header {
-  margin: var(--s2-spacing-100) 1px var(--s2-spacing-300) 1px;
+  margin: var(--s2-spacing-100) 0 var(--s2-spacing-300) 0;
   padding: 0 var(--s2-spacing-400);
   display: grid;
   grid-template-columns: auto 1fr auto;

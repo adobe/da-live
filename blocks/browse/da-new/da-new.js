@@ -13,6 +13,14 @@ await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import('../../shared/da-link-dialog/da-link-dialog.js');
 
 const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
+const EMPTY_SHEET = JSON.stringify({
+  ':type': 'sheet',
+  ':sheetname': 'data',
+  total: 0,
+  limit: 0,
+  offset: 0,
+  data: [],
+});
 
 export default class DaNew extends LitElement {
   static properties = {
@@ -84,7 +92,8 @@ export default class DaNew extends LitElement {
         const ext = this._createType === 'document' ? 'html' : 'json';
         const path = `${this.fullpath}/${finalName}.${ext}`;
         const { source } = await getNx2Api();
-        if (ext === 'html') await source.save(path, { body: EMPTY_DOC });
+        const body = ext === 'html' ? EMPTY_DOC : EMPTY_SHEET;
+        await source.save(path, { body });
         window.location = getEditPath({ path, ext, editor: this.editor });
       }
     } finally {

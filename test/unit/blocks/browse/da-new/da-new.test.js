@@ -158,6 +158,41 @@ describe('DaNew', () => {
       expect(sendEvents[0].name).to.equal('my-folder');
       expect(sendEvents[0].path).to.equal('/org/repo/my-folder');
     });
+
+    it('saves an empty sheet JSON via source.save before navigating (sheet type)', async () => {
+      const el = new DaNew();
+      el._createName = 'my-sheet';
+      el._createType = 'sheet';
+      el.fullpath = '/org/repo';
+      el.editor = '';
+
+      const fetchCalls = [];
+      const savedFetch = window.fetch;
+      const NAV_SENTINEL = new Error('stop-before-nav');
+      window.fetch = async (url, opts) => {
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+        const body = opts?.body instanceof FormData ? opts.body.get('data') : opts?.body;
+        const bodyText = body && typeof body.text === 'function' ? await body.text() : body;
+        fetchCalls.push({ url: String(url), method: opts?.method, bodyText });
+        throw NAV_SENTINEL;
+      };
+
+      try {
+        await el._handleCreate();
+      } catch (e) {
+        // expected NAV_SENTINEL
+      } finally {
+        window.fetch = savedFetch;
+      }
+
+      expect(fetchCalls).to.have.length(1);
+      expect(fetchCalls[0].url).to.equal('https://admin.da.live/source/org/repo/my-sheet.json');
+      expect(fetchCalls[0].method).to.equal('POST');
+      const saved = JSON.parse(fetchCalls[0].bodyText);
+      expect(saved[':type']).to.equal('sheet');
+      expect(saved[':sheetname']).to.equal('data');
+      expect(saved.data).to.deep.equal([]);
+    });
   });
 
   describe('sendNewItem', () => {

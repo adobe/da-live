@@ -5,7 +5,7 @@ import getEditPath from '../shared.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const SHARED = await loadStyle(new URL('../shared.css', import.meta.url).href);
+const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const STYLE = await loadStyle(import.meta.url);
 
 const ICONS = {
