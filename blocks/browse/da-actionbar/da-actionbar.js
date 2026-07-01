@@ -122,6 +122,13 @@ export default class DaActionBar extends LitElement {
     return this.permissions.some((permission) => permission === 'write');
   }
 
+  get _canRename() {
+    if (!this._canWrite) return false;
+    const isFolder = !this.items[0]?.ext;
+    if (this.isHlx6 && isFolder) return false;
+    return true;
+  }
+
   get _canCut() {
     return this._canWrite && !this.isHlx6;
   }
@@ -155,7 +162,7 @@ export default class DaActionBar extends LitElement {
         <div class="da-action-bar-right-rail" role="toolbar">
           <button
             @click=${this.handleRename}
-            class="rename-button ${this._canWrite ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            class="rename-button ${this._canRename ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('rename')}
             <span>Rename</span>
           </button>
