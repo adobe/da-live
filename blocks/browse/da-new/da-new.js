@@ -1,33 +1,35 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { sanitizeName } from '../../shared/utils.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
-
 // Styles & Icons
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const STYLE = await loadStyle(import.meta.url);
+const [base, STYLE] = await Promise.all([
+  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+  loadStyle(import.meta.url),
+]);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
+await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
+await import('../../shared/da-link-dialog/da-link-dialog.js');
 
 const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
-const INPUT_ERROR = 'da-input-error';
 
 export default class DaNew extends LitElement {
   static properties = {
     fullpath: { type: String },
     editor: { type: String },
     permissions: { attribute: false },
-    _createShow: { state: true },
     _createType: { state: true },
-    _createFile: { state: true },
     _createName: { state: true },
-    _fileLabel: { state: true },
-    _externalUrl: { state: true },
+    _createDialogOpen: { state: true },
+    _nameError: { state: true },
+    _linkDialogOpen: { state: true },
+    _loading: { state: true },
   };
 
   connectedCallback() {
-    this._fileLabel = 'Select file';
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
+    this.shadowRoot.adoptedStyleSheets = [base, STYLE];
   }
 
   sendNewItem(item) {
@@ -36,18 +38,19 @@ export default class DaNew extends LitElement {
     this.dispatchEvent(event);
   }
 
-  handleCreateMenu() {
-    this._createShow = this._createShow === 'menu' ? '' : 'menu';
-  }
-
   handleNewType(e) {
     const type = e.detail?.id ?? e.target?.dataset?.type;
-    this._createShow = type === 'media' ? 'upload' : 'input';
+    if (type === 'link') {
+      this._linkDialogOpen = true;
+      return;
+    }
+    if (type === 'media') {
+      this.shadowRoot.querySelector('#da-actions-file').click();
+      return;
+    }
     this._createType = type;
-    setTimeout(() => {
-      const input = this.shadowRoot.querySelector('.da-actions-input');
-      input.focus();
-    }, 500);
+    this._createName = '';
+    this._createDialogOpen = true;
   }
 
   handleNameChange(e) {
@@ -57,110 +60,87 @@ export default class DaNew extends LitElement {
     // Lit's property binding would not re-render and the raw typed value
     // would remain in the input.
     e.target.value = normalized;
+    this._nameError = false;
     this._createName = normalized;
-    if (e.target.placeholder === 'name') {
-      e.target.classList.remove(INPUT_ERROR);
-    }
   }
 
-  handleUrlChange(e) {
-    this._externalUrl = e.target.value;
-  }
-
-  async handleSave() {
-    const nameInput = this.shadowRoot.querySelector('.da-actions-input[placeholder="name"]');
+  async _handleCreate() {
     const finalName = sanitizeName(this._createName || '', { trimTrailing: true });
     if (!finalName) {
-      if (nameInput) nameInput.classList.add(INPUT_ERROR);
+      this._nameError = true;
       return;
     }
-    this._createName = finalName;
-    if (nameInput) nameInput.classList.remove(INPUT_ERROR);
-
-    let ext;
-    let data;
-    switch (this._createType) {
-      case 'document':
-        ext = 'html';
-        data = EMPTY_DOC;
-        break;
-      case 'sheet':
-        ext = 'json';
-        break;
-      case 'link':
-        ext = 'link';
-        data = JSON.stringify({ externalUrl: this._externalUrl });
-        break;
-      default:
-        break;
-    }
-    let path = `${this.fullpath}/${this._createName}`;
-    if (ext) path += `.${ext}`;
-    const { source } = await getNx2Api();
-    if (this._createType === 'folder') {
-      await source.createFolder(path);
-      this.sendNewItem({ name: this._createName, path });
-    } else if (ext === 'link') {
-      await source.save(path, { body: data });
-      this.sendNewItem({ name: this._createName, path, ext });
-    } else {
-      // Sheet skips the save — the editor creates it on first load.
-      if (ext === 'html') await source.save(path, { body: data });
-      window.location = getEditPath({ path, ext, editor: this.editor });
-    }
-    this.resetCreate();
-  }
-
-  async handleUpload(e) {
-    if (this._fileLabel === 'Select file') {
-      const label = this.shadowRoot.querySelector('.da-actions-file-label');
-      label.classList.add(INPUT_ERROR);
-      return false;
-    }
-
-    e.preventDefault();
-    const file = new FormData(e.target).get('data');
-    const split = this._fileLabel.split('.');
-    const ext = split.pop();
-    const name = sanitizeName(split.join('.'), { allowDot: true, trimTrailing: true });
-    const filename = `${name}.${ext}`;
-    const path = `${this.fullpath}/${filename}`;
-
-    const { source } = await getNx2Api();
-    await source.save(path, { body: file });
-
-    const item = { name, path, ext };
-    this.sendNewItem(item);
-    this.resetCreate();
-    this.requestUpdate();
-    return true;
-  }
-
-  handleKeyCommands(event) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      this.handleSave();
-    } else if (event.key === 'Escape') {
-      this.resetCreate();
-    }
-  }
-
-  handleAddFile(e) {
-    this._fileLabel = e.target.files[0].name;
-    const fileLabelError = e.target.parentElement.querySelector('.da-actions-file-label.da-input-error');
-    if (fileLabelError) fileLabelError.classList.remove(INPUT_ERROR);
-  }
-
-  resetCreate(e) {
-    if (e) e.preventDefault();
-    this._createShow = '';
+    this._nameError = false;
+    this._createDialogOpen = false;
     this._createName = '';
-    this._createType = '';
-    this._createFile = '';
-    this._fileLabel = 'Select file';
-    this._externalUrl = '';
-    const input = this.shadowRoot.querySelector('.da-actions-input.da-input-error');
-    if (input) input.classList.remove(INPUT_ERROR);
+    this._loading = true;
+    try {
+      if (this._createType === 'folder') {
+        const path = `${this.fullpath}/${finalName}`;
+        const { source } = await getNx2Api();
+        await source.createFolder(path);
+        this.sendNewItem({ name: finalName, path });
+      } else {
+        const ext = this._createType === 'document' ? 'html' : 'json';
+        const path = `${this.fullpath}/${finalName}.${ext}`;
+        const { source } = await getNx2Api();
+        if (ext === 'html') await source.save(path, { body: EMPTY_DOC });
+        window.location = getEditPath({ path, ext, editor: this.editor });
+      }
+    } finally {
+      this._loading = false;
+    }
+  }
+
+  _handleCreateDialogClose() {
+    this._createDialogOpen = false;
+    this._createName = '';
+    this._nameError = false;
+  }
+
+  _handleCreateKeydown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this._handleCreate();
+    }
+  }
+
+  async _handleLinkSubmit(e) {
+    const { href, text } = e.detail;
+    const name = sanitizeName(text || '', { trimTrailing: true });
+    if (!name) return;
+    this._loading = true;
+    try {
+      const path = `${this.fullpath}/${name}.link`;
+      const { source } = await getNx2Api();
+      await source.save(path, { body: JSON.stringify({ externalUrl: href }) });
+      this.sendNewItem({ name, path, ext: 'link' });
+      this._linkDialogOpen = false;
+    } finally {
+      this._loading = false;
+    }
+  }
+
+  _handleLinkCancel() {
+    this._linkDialogOpen = false;
+  }
+
+  async handleAddFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    this._loading = true;
+    try {
+      const split = file.name.split('.');
+      const ext = split.pop();
+      const name = sanitizeName(split.join('.'), { allowDot: true, trimTrailing: true });
+      const path = `${this.fullpath}/${name}.${ext}`;
+      const { source } = await getNx2Api();
+      await source.save(path, { body: file });
+      this.sendNewItem({ name, path, ext });
+    } finally {
+      this._loading = false;
+      e.target.value = '';
+    }
   }
 
   get _disabled() {
@@ -168,9 +148,14 @@ export default class DaNew extends LitElement {
     return !this.permissions.some((permission) => permission === 'write');
   }
 
+  get _createDialogTitle() {
+    const titles = { folder: 'New folder', document: 'New document', sheet: 'New sheet' };
+    return titles[this._createType] ?? 'New';
+  }
+
   render() {
     return html`
-      <div class="da-actions-create ${this._createShow}">
+      <div class="da-actions-create">
         <nx-menu .items=${[
         { id: 'folder', label: 'Folder' },
         { id: 'document', label: 'Document' },
@@ -178,23 +163,34 @@ export default class DaNew extends LitElement {
         { id: 'media', label: 'Media' },
         { id: 'link', label: 'Link' },
       ]} @select=${this.handleNewType}>
-          <button slot="trigger" class="da-actions-new-button" ?disabled=${this._disabled} aria-label="New">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></svg>
+          <button slot="trigger" class="da-actions-new-button" ?disabled=${this._disabled || this._loading} aria-label="New">
+            ${this._loading
+        ? html`<span class="da-loading-spinner" aria-hidden="true"></span>`
+        : html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></svg>`}
           </button>
         </nx-menu>
-        <div class="da-actions-input-container">
-          <input type="text" class="da-actions-input" placeholder="name" @input=${this.handleNameChange} .value=${this._createName || ''} @keydown=${this.handleKeyCommands}/>
-          ${this._createType === 'link' ? html`<input type="text" class="da-actions-input" placeholder="url" @input=${this.handleUrlChange} .value=${this._externalUrl || ''} />` : ''}
-          <button class="da-actions-button" @click=${this.handleSave}>Create ${this._createType}</button>
-          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
-        </div>
-        <form enctype="multipart/form-data" class="da-actions-file-container" @submit=${this.handleUpload}>
-          <label for="da-actions-file" class="da-actions-file-label">${this._fileLabel}</label>
-          <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} name="data" />
-          <button class="da-actions-button">Upload</button>
-          <button class="da-actions-button da-actions-button-cancel" @click=${this.resetCreate}>Cancel</button>
-        </form>
-      </div>`;
+        <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} />
+      </div>
+    <da-link-dialog
+      title="Add link"
+      saveLabel="Create"
+      ?open=${this._linkDialogOpen}
+      @da-link-submit=${this._handleLinkSubmit}
+      @da-link-cancel=${this._handleLinkCancel}>
+    </da-link-dialog>
+    ${this._createDialogOpen ? html`
+    <nx-dialog title="${this._createDialogTitle}" @close=${this._handleCreateDialogClose}>
+      <label class="da-form-field ${this._nameError ? 'da-field-error' : ''}">
+        <span>Name</span>
+        <input autofocus type="text" placeholder="${this._createType} name"
+               .value=${this._createName || ''}
+               @input=${this.handleNameChange}
+               @keydown=${this._handleCreateKeydown} />
+        ${this._nameError ? html`<span class="da-input-error-msg">Please fill out this field.</span>` : nothing}
+      </label>
+      <button slot="actions" type="button" class="da-btn-secondary" @click=${this._handleCreateDialogClose}>Cancel</button>
+      <button slot="actions" type="button" class="da-btn-primary" ?disabled=${this._loading} @click=${this._handleCreate}>Create</button>
+    </nx-dialog>` : nothing}`;
   }
 }
 
