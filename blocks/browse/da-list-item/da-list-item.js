@@ -25,7 +25,7 @@ const ICONS = {
   media: '/img/icons/s2-icon-image-20-n.svg',
   pdf: '/img/icons/s2-icon-acrobatsolid-20-n.svg',
   folderClock: '/img/icons/s2-icon-folderclock-20-n.svg',
-  favorite: '/blocks/browse/da-list-item/img/da-favorite.svg',
+  favorite: '/img/icons/s2-icon-starfilled-20-n.svg',
 };
 
 export default class DaListItem extends LitElement {

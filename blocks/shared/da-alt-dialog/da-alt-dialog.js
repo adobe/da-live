@@ -53,7 +53,7 @@ class DaAltDialog extends LitElement {
         <form class="alt-form" @submit=${this._onSubmit}>
           <label class="da-form-field">
             <span>Alt text</span>
-            <input name="alt-text" type="text" autofocus placeholder="Describe the image"
+            <input class="da-input" name="alt-text" type="text" autofocus placeholder="Describe the image"
                    autocomplete="off" .value=${this.alt ?? ''} />
           </label>
         </form>

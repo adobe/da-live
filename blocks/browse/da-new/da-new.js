@@ -191,7 +191,7 @@ export default class DaNew extends LitElement {
     <nx-dialog title="${this._createDialogTitle}" @close=${this._handleCreateDialogClose}>
       <label class="da-form-field ${this._nameError ? 'da-field-error' : ''}">
         <span>Name</span>
-        <input autofocus type="text" placeholder="${this._createType} name"
+        <input autofocus type="text" class="da-input" placeholder="${this._createType} name"
                .value=${this._createName || ''}
                @input=${this.handleNameChange}
                @keydown=${this._handleCreateKeydown} />

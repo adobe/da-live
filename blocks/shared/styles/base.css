@@ -3,9 +3,7 @@ input {
   font-family: var(--s2-font-family);
 }
 
-input[type="text"],
-input[type="url"],
-input[type="email"] {
+.da-input {
   box-sizing: border-box;
   height: 32px;
   padding: 0 var(--s2-spacing-200);
@@ -81,6 +79,7 @@ input[type="email"] {
 }
 
 .da-checkbox {
+  --da-checkbox-size: 14px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -89,8 +88,8 @@ input[type="email"] {
 
   input[type="checkbox"] {
     position: relative;
-    width: 14px;
-    height: 14px;
+    width: var(--da-checkbox-size);
+    height: var(--da-checkbox-size);
     flex-shrink: 0;
     appearance: none;
     border: 2px solid var(--s2-gray-800);

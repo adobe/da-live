@@ -64,14 +64,14 @@ class DaLinkDialog extends LitElement {
         <form class="link-form">
           <label class="da-form-field ${this._urlError ? 'da-field-error' : ''}">
             <span>URL</span>
-            <input name="link-href" type="text" autofocus placeholder="https://…"
+            <input class="da-input" name="link-href" type="text" autofocus placeholder="https://…"
                    autocomplete="off" .value=${this.href ?? ''}
                    @input=${() => { this._urlError = ''; }} />
             ${this._urlError ? html`<span class="da-input-error-msg">${this._urlError}</span>` : nothing}
           </label>
           <label class="da-form-field">
             <span>Display text</span>
-            <input name="link-text" type="text" placeholder="Link text"
+            <input class="da-input" name="link-text" type="text" placeholder="Link text"
                    autocomplete="off" .value=${this.text ?? ''} />
           </label>
         </form>

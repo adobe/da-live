@@ -68,19 +68,12 @@ export default class DaList extends LitElement {
   }
 
   async update(props) {
-    // List Items can be provided externally (via search); null clears back to fullpath fetch
-    if (props.has('listItems')) {
-      if (this.listItems?.length) {
-        this._listItems = this.listItems;
-        this.resetListItemPaths(this._listItems);
-        this.applyFavoritesToItems(this._listItems);
-        this.applyFavoriteOrder();
-      } else if (this.fullpath) {
-        this._filter = '';
-        this._showFilter = undefined;
-        this._allPagesLoaded = false;
-        this._listItems = await this.getList();
-      }
+    // List Items can be provided externally (via search)
+    if (props.has('listItems') && this.listItems) {
+      this._listItems = this.listItems;
+      this.resetListItemPaths(this._listItems);
+      this.applyFavoritesToItems(this._listItems);
+      this.applyFavoriteOrder();
     }
 
     if (props.has('fullpath') && this.fullpath) {
