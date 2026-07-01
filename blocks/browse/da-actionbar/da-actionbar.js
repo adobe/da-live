@@ -23,7 +23,7 @@ export default class DaActionBar extends LitElement {
     items: { attribute: false },
     permissions: { attribute: false },
     isFavorite: { attribute: false },
-    isHlx6: { type: Boolean },
+    isHlx6: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
