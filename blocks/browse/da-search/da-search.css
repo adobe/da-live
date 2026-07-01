@@ -39,6 +39,8 @@ input[type="text"] {
   align-items: stretch;
   gap: 0;
   position: relative;
+  height: 28px;
+  box-sizing: border-box;
 }
 
 .search-input-wrapper input[type="text"] {
@@ -63,6 +65,8 @@ input[type="text"] {
   color: #888;
   cursor: pointer;
   transition: background-color 0.2s, color 0.2s;
+  border: 2px solid var(--s2-gray-1000);
+  border-left: 0;
 }
 
 .case-toggle:hover {
