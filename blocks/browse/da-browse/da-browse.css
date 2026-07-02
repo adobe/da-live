@@ -71,7 +71,8 @@
     height: 8px;
     background-color: var(--s2-gray-700);
     mask: url('/img/icons/s2-icon-chevronleft-10-n.svg') center / contain no-repeat;
-    margin-inline: var(--s2-spacing-50);
+    margin-inline-end: var(--s2-spacing-50);
+    margin-inline-start: var(--s2-spacing-75);
     color: currentcolor;
     display: block;
     position: relative;
@@ -79,6 +80,9 @@
   }
 }
 
+.da-breadcrumb-area:has(.da-breadcrumb-config)::after {
+  margin-inline-start: var(--s2-spacing-50);
+}
 
 .da-breadcrumb-config {
   display: flex;
