@@ -14,7 +14,7 @@ body {
   display: flex;
   justify-content: center;
   max-width: 83.4%;
-  margin: 0 auto var(--spacing-600) auto;
+  margin: 0 auto var(--s2-spacing-600, var(--spacing-600)) auto;
 }
 
 da-versions,

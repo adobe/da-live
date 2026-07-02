@@ -6,9 +6,12 @@ import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
 import { convertSheets } from '../edit/utils/helpers.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const style = await getStyle('/blocks/sheet/da-sheet-panes.css');
+const blockStyle = await loadStyle(import.meta.url);
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, blockStyle];
+
+const style = await loadStyle('/blocks/sheet/da-sheet-panes.css');
 
 class DaSheetPanes extends LitElement {
   static properties = {

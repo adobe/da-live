@@ -1,11 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
+import inlinesvg from '../shared/inlinesvg.js';
 import { handleSave } from './utils/utils.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const style = await getStyle(import.meta.url);
+const style = await loadStyle(import.meta.url);
 
 const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 const ICONS = [
@@ -31,7 +31,7 @@ class DaSheetTabs extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    getSvg({ parent: this.shadowRoot, paths: ICONS });
+    inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._names = this.getNames();
     this.showSheet(0);
     this.getPermissions();
