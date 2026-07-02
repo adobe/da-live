@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import {
   persistToolPanelView,
   resolveInitialToolPanelView,
@@ -30,11 +31,28 @@ class EwToolPanel extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onShowPanel = ({ detail }) => this.showPanel(detail?.panelName);
     document.addEventListener('nx-show-panel', this._onShowPanel);
+    this._bindCommentCountUpdates();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('nx-show-panel', this._onShowPanel);
+    this._unsubCommentCounts?.();
+    document.removeEventListener('nx-comments-controller-change', this._onCommentsControllerChange);
+  }
+
+  _bindCommentCountUpdates() {
+    const refresh = () => this.requestUpdate();
+    const bind = (controller) => {
+      this._unsubCommentCounts?.();
+      if (!controller?.subscribe) return;
+      this._unsubCommentCounts = controller.subscribe(({ reason }) => {
+        if (reason === 'counts' || reason === 'init') refresh();
+      });
+    };
+    bind(getCommentsBridge().controller);
+    this._onCommentsControllerChange = (e) => bind(e.detail.controller);
+    document.addEventListener('nx-comments-controller-change', this._onCommentsControllerChange);
   }
 
   get _fullsizeDialogView() {
@@ -55,7 +73,7 @@ class EwToolPanel extends LitElement {
       const opensExternally = v.experience === 'window' || v.experience === 'fullsize-dialog';
       items.push({
         value: v.id,
-        label: v.label,
+        label: v.getLabel?.() ?? v.label,
         ...(opensExternally && {
           action: true,
           trailingIcon: OPEN_IN_ICON_URL,

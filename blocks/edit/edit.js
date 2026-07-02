@@ -67,6 +67,7 @@ async function setUI(el) {
 
   let permissions;
   let doc;
+  let docId;
   if (resp.status === 404) {
     const { default: showNotFoundDialog } = await import('./da-not-found/da-not-found.js');
     const choice = await showNotFoundDialog(details);
@@ -85,9 +86,11 @@ async function setUI(el) {
     }
     const createResp = await createDoc(details.fullpath);
     permissions = createResp.permissions;
+    docId = createResp.headers?.get?.('x-da-id') ?? null;
     doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
   } else {
     permissions = resp.permissions;
+    docId = resp.headers?.get?.('x-da-id') ?? null;
     const respText = await resp.text();
     doc = DOMPARSER.parseFromString(respText, 'text/html');
   }
@@ -112,6 +115,7 @@ async function setUI(el) {
       path: details.sourceUrl,
       permissions,
       doc,
+      docId,
       daContent,
       wsPromise,
     });

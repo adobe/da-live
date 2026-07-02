@@ -6,6 +6,7 @@ import { getNx2Api } from '../../../scripts/utils.js';
 import { setDaMetadata, htmlToProse } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
+const commentHighlightSheet = await getSheet('/blocks/shared/comments/comment-highlight.css');
 
 function wrapTablesInWrappers(root) {
   root.querySelectorAll('table').forEach((table) => {
@@ -39,7 +40,7 @@ export default class DaEditor extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [sheet];
+    this.shadowRoot.adoptedStyleSheets = [sheet, commentHighlightSheet];
     this.shadowRoot.createRange = () => document.createRange();
     initIms().then(() => { this._imsLoaded = true; });
   }

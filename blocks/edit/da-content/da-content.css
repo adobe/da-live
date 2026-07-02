@@ -29,7 +29,9 @@ da-version {
 }
 
 da-preview,
-da-versions {
+da-versions,
+da-comments {
+  display: none;
   visibility: hidden;
   position: absolute;
   width: 0;
@@ -38,6 +40,7 @@ da-versions {
   justify-self: right;
 
   &.is-visible {
+    display: block;
     visibility: unset;
     position: relative;
     width: unset;
@@ -86,6 +89,29 @@ da-versions {
 
 .da-editor-tab.open-ue {
   background: url("/blocks/edit/img/S2_icon_OpenIn_20_N.svg") center center / 20px no-repeat;
+}
+
+.da-editor-tab.show-comments {
+  position: relative;
+  background: url("/blocks/edit/img/S2_icon_Comment_20_N.svg") center center / 20px no-repeat;
+}
+
+.da-comment-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  background: var(--spectrum-blue-800);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  text-indent: 0;
+  border-radius: 7px;
+  box-sizing: border-box;
 }
 
 .da-preview-menuitem.show-preview:hover {

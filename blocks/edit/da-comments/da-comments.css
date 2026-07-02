@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  flex: 0 0 var(--comments-panel-width);
+  width: var(--comments-panel-width);
+  align-self: stretch;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+
+  --comments-panel-width: 375px;
+  --comments-panel-padding-left: 32px;
+  --comments-panel-top-offset: 36px;
+}
+
+/* Page scroll — column matches editor height so thread UI can stick while scrolling. */
+.ew-comments-panel {
+  display: block;
+  width: var(--comments-panel-width);
+  height: auto;
+  min-height: 100%;
+}
+
+.ew-comments-scroll {
+  flex: none;
+  min-height: unset;
+  overflow: visible;
+}

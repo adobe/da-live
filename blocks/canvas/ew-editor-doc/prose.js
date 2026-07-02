@@ -148,6 +148,10 @@ export default async function initProse({
   let viewRef = null;
   const dispatch = (tr) => { if (viewRef) viewRef.dispatch(tr); };
 
+  const resolvedExtraPlugins = typeof extraPlugins === 'function'
+    ? extraPlugins({ wsProvider, ydoc })
+    : extraPlugins;
+
   /* Keymap order matches da.live prose/index.js: baseKeymap after buildKeymap +
    * handleTableBackspace (fixes list Enter + table NodeSelection + Backspace). */
   const plugins = [
@@ -187,7 +191,7 @@ export default async function initProse({
     }),
     gapCursor(),
     tableEditing({ allowTableNodeSelection: true }),
-    ...extraPlugins,
+    ...resolvedExtraPlugins,
   ];
 
   if (canWrite) {
