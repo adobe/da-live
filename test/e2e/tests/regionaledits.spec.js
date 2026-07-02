@@ -29,7 +29,6 @@ const sendUndo = async (page) => {
 };
 
 test('Regional Edit Document', async ({ page, context }, workerInfo) => {
-  /// Why does this fail?
   test.setTimeout(30000);
 
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
@@ -40,22 +39,22 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
   await page.getByRole('menuitem', { name: 'Folder' }).click();
-  await page.locator('input.da-actions-input').fill(folderName);
-  await page.locator('input.da-actions-input').press('Enter');
+  await page.getByPlaceholder('folder name').fill(folderName);
+  await page.getByRole('button', { name: 'Create' }).click();
   /* */ // End addition
 
   await page.goto(folderURL);
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
-  await page.getByRole('menuitem', { name: 'Media' }).click();
-
-  const [fileChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByText('Select file').click()]);
+  const [fileChooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.getByRole('menuitem', { name: 'Media' }).click(),
+  ]);
 
   const htmlFile = path.join(__dirname, '/mocks/regionaledit.html');
   console.log(htmlFile);
   await fileChooser.setFiles([`${htmlFile}`]);
 
-  await page.getByRole('button', { name: 'Upload' }).click();
   await page.getByRole('link', { name: 'regionaledit', exact: true }).click();
 
   const newPage = await findPageTab('Edit regionaledit', page, context);

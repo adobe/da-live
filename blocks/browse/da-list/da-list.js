@@ -5,6 +5,7 @@ import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import '../da-list-item/da-list-item.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const STYLE = await loadStyle(import.meta.url);
 
 const MAX_DELETE_COUNT = 1000;
@@ -64,7 +65,7 @@ export default class DaList extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
+    this.shadowRoot.adoptedStyleSheets = [SHARED, STYLE];
   }
 
   async update(props) {
@@ -956,7 +957,7 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <label class="checkbox-label ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
+      <label class="da-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
       </label>
     `;
