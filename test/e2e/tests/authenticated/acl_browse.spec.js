@@ -47,11 +47,8 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await expect(newButton).toBeEnabled();
   await newButton.click({ force: true });
   await page.getByRole('menuitem', { name: 'Document' }).click();
-  await page.locator('input.da-actions-input').fill(pageName);
-
-  // Cannot just click the 'Create document' button because on Firefox that for some reason gets
-  // overlaid with the 'sign out button', so just press 'space' on it.
-  await page.locator('button:text("Create document")').press(' ');
+  await page.getByPlaceholder('document name').fill(pageName);
+  await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // The new page needs a moment to be ready
