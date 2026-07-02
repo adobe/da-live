@@ -42,6 +42,7 @@ export default class DaList extends LitElement {
     _bulkLoading: { state: true },
     _filterLoading: { state: true },
     _allPagesLoaded: { state: true },
+    _isHlx6: { state: true },
   };
 
   constructor() {
@@ -135,7 +136,9 @@ export default class DaList extends LitElement {
   async getList() {
     try {
       this._continuationToken = null;
-      const { source } = await getNx2Api();
+      const { source, isHlx6 } = await getNx2Api();
+      const [org, site] = sanitizePathParts(this.fullpath);
+      this._isHlx6 = site ? await isHlx6(org, site) : false;
       const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
       if (!ok) {
         this._emptyMessage = 'Not permitted';
@@ -1032,6 +1035,7 @@ export default class DaList extends LitElement {
         @ondelete=${this.handleDelete}
         @onshare=${this.handleShare}
         currentPath="${this.fullpath}"
+        .isHlx6=${this._isHlx6 ?? false}
         role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
