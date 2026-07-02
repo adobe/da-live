@@ -2,6 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 import { sanitizeName } from '../../shared/utils.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
+import '../../shared/da-link-dialog/da-link-dialog.js';
+
 // Styles & Icons
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const [base, STYLE] = await Promise.all([
@@ -10,7 +12,6 @@ const [base, STYLE] = await Promise.all([
 ]);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
-await import('../../shared/da-link-dialog/da-link-dialog.js');
 
 const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
 const EMPTY_SHEET = JSON.stringify({

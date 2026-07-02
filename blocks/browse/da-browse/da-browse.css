@@ -71,7 +71,7 @@
     height: 8px;
     background-color: var(--s2-gray-700);
     mask: url('/img/icons/s2-icon-chevronleft-10-n.svg') center / contain no-repeat;
-    margin-inline: var(--s2-spacing-75);
+    margin-inline: var(--s2-spacing-50);
     color: currentcolor;
     display: block;
     position: relative;
@@ -86,15 +86,14 @@
   justify-content: center;
   margin-left: 4px;
   height: 24px;
+  width:24px;
   border-radius: var(--s2-corner-radius-100);
   color: var(--s2-gray-700);
   flex-shrink: 0;
   cursor: pointer;
-  width: 24px;
-  height: 24px;
-  margin-left: var(--s2-spacing-75);
+  margin-left: var(--s2-spacing-50);
   position: relative;
-  top: 2px;
+  top: 1.25px;
 
   &:hover{
     background-color: var(--s2-gray-200);
@@ -102,8 +101,8 @@
 
   & svg {
     display: block;
-    width: 18px;
-    height: 18px;
+    width: 18.5px;
+    height: 18.5px;
   }
 
   &:hover {
