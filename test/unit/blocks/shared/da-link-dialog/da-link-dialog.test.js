@@ -57,7 +57,7 @@ describe('da-link-dialog', () => {
 
     el.shadowRoot.querySelector('input[name="link-href"]').value = 'https://test.com';
     el.shadowRoot.querySelector('input[name="link-text"]').value = 'Test';
-    el.shadowRoot.querySelector('.link-form-save').click();
+    el.shadowRoot.querySelector('.da-btn-primary').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ href: 'https://test.com', text: 'Test' });
@@ -69,7 +69,7 @@ describe('da-link-dialog', () => {
     el.addEventListener('da-link-submit', (e) => { detail = e.detail; });
 
     el.shadowRoot.querySelector('input[name="link-href"]').value = '/about';
-    el.shadowRoot.querySelector('.link-form-save').click();
+    el.shadowRoot.querySelector('.da-btn-primary').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ href: '/about', text: '' });
@@ -82,18 +82,50 @@ describe('da-link-dialog', () => {
 
     for (const url of [`${'javascript'}:alert(1)`, 'data:text/html,x', 'vbscript:foo']) {
       el.shadowRoot.querySelector('input[name="link-href"]').value = url;
-      el.shadowRoot.querySelector('.link-form-save').click();
+      el.shadowRoot.querySelector('.da-btn-primary').click();
       await nextFrame();
     }
 
     expect(fired).to.be.false;
   });
 
+  it('shows an error message when Save is clicked with an empty URL', async () => {
+    await mount({ open: true });
+    el.shadowRoot.querySelector('input[name="link-href"]').value = '';
+    el.shadowRoot.querySelector('.da-btn-primary').click();
+    await el.updateComplete;
+
+    expect(el._urlError).to.equal('URL is required');
+    expect(el.shadowRoot.querySelector('.da-input-error-msg')).to.exist;
+  });
+
+  it('shows an error message for dangerous URL protocols', async () => {
+    await mount({ open: true });
+    el.shadowRoot.querySelector('input[name="link-href"]').value = `${'javascript'}:alert(1)`;
+    el.shadowRoot.querySelector('.da-btn-primary').click();
+    await el.updateComplete;
+
+    expect(el._urlError).to.equal('Invalid URL protocol');
+    expect(el.shadowRoot.querySelector('.da-input-error-msg')).to.exist;
+  });
+
+  it('clears the error when the URL input is changed', async () => {
+    await mount({ open: true });
+    el.shadowRoot.querySelector('.da-btn-primary').click();
+    await el.updateComplete;
+    expect(el._urlError).to.equal('URL is required');
+
+    el.shadowRoot.querySelector('input[name="link-href"]').dispatchEvent(new Event('input'));
+    await el.updateComplete;
+    expect(el._urlError).to.equal('');
+  });
+
   it('emits da-link-cancel when Cancel button is clicked', async () => {
     await mount({ open: true });
     let cancelled = false;
     el.addEventListener('da-link-cancel', () => { cancelled = true; });
-    el.shadowRoot.querySelector('.link-form-cancel').click();
+    el.shadowRoot.querySelector('.da-btn-secondary').click();
+    await nextFrame();
     expect(cancelled).to.be.true;
   });
 
@@ -103,5 +135,16 @@ describe('da-link-dialog', () => {
     el.addEventListener('da-link-cancel', () => { cancelled = true; });
     el.shadowRoot.querySelector('nx-dialog').dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
     expect(cancelled).to.be.true;
+  });
+
+  it('clears _urlError when the dialog closes', async () => {
+    await mount({ open: true });
+    el.shadowRoot.querySelector('.da-btn-primary').click();
+    await el.updateComplete;
+    expect(el._urlError).to.equal('URL is required');
+
+    el.shadowRoot.querySelector('nx-dialog').dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    expect(el._urlError).to.equal('');
   });
 });

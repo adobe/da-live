@@ -69,6 +69,63 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('_canRename', () => {
+    it('Returns true when user can write and site is not HLX6', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.isHlx6 = false;
+      el.items = [{ path: '/org/site/folder' }]; // folder (no ext)
+      expect(el._canRename).to.be.true;
+    });
+
+    it('Returns false for folders on HLX6', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.isHlx6 = true;
+      el.items = [{ path: '/org/site/folder' }]; // folder (no ext)
+      expect(el._canRename).to.be.false;
+    });
+
+    it('Returns true for files on HLX6', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.isHlx6 = true;
+      el.items = [{ path: '/org/site/page.html', ext: 'html' }];
+      expect(el._canRename).to.be.true;
+    });
+
+    it('Returns false when user cannot write', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read'];
+      el.isHlx6 = false;
+      el.items = [{ path: '/org/site/page.html', ext: 'html' }];
+      expect(el._canRename).to.be.false;
+    });
+  });
+
+  describe('_canCut', () => {
+    it('Returns true when user can write and site is not HLX6', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.isHlx6 = false;
+      expect(el._canCut).to.be.true;
+    });
+
+    it('Returns false when site is HLX6, even with write permission', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.isHlx6 = true;
+      expect(el._canCut).to.be.false;
+    });
+
+    it('Returns false when user cannot write', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read'];
+      el.isHlx6 = false;
+      expect(el._canCut).to.be.false;
+    });
+  });
+
   describe('_canShare', () => {
     it('Returns false when no items have a non-link extension', () => {
       const el = new DaActionBar();
@@ -182,6 +239,18 @@ describe('DaActionBar', () => {
       el.dispatchEvent = (e) => { dispatched = e; };
       el.handleRename();
       expect(dispatched.type).to.equal('rename');
+      expect(dispatched.bubbles).to.be.true;
+      expect(dispatched.composed).to.be.true;
+    });
+  });
+
+  describe('handleFavorite', () => {
+    it('Dispatches an onfavorite event', () => {
+      const el = new DaActionBar();
+      let dispatched;
+      el.dispatchEvent = (e) => { dispatched = e; };
+      el.handleFavorite();
+      expect(dispatched.type).to.equal('onfavorite');
       expect(dispatched.bubbles).to.be.true;
       expect(dispatched.composed).to.be.true;
     });

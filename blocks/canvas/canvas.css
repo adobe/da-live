@@ -55,3 +55,12 @@ ew-editor-wysiwyg[hidden] {
   display: none !important;
 }
 
+.nx-not-permitted {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: light-dark(#555, #aaa);
+  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+}
+

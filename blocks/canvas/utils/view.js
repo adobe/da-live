@@ -1,6 +1,8 @@
-import { fetchDaConfigs } from '../../shared/utils.js';
+import { getNxEWFlags } from '../../../scripts/utils.js';
 
 const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
+
+const loadEWFlags = async (args) => (await getNxEWFlags()).getEWFlags(args);
 
 export function normalizeCanvasEditorView(view) {
   if (view === 'content') return 'content';
@@ -8,19 +10,15 @@ export function normalizeCanvasEditorView(view) {
   return 'layout';
 }
 
-export async function readInitialCanvasEditorView({ org, site }) {
+export async function readInitialCanvasEditorView({ org, site }, getEWFlags = loadEWFlags) {
   try {
     const persisted = sessionStorage.getItem(CANVAS_EDITOR_VIEW_KEY);
     if (persisted) return normalizeCanvasEditorView(persisted);
   } catch { /* ignore if browser disallows session storage */ }
 
-  try {
-    const [, siteConfig] = await Promise.all(fetchDaConfigs({ org, site }));
-    const flag = siteConfig?.flags?.data?.find((f) => f.key === 'ew.canvasDefaultView');
-    if (flag) return normalizeCanvasEditorView(flag.value);
-  } catch (e) {
-    if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
-  }
+  const flags = await getEWFlags({ org, site });
+  const value = flags['ew.canvasDefaultView'];
+  if (value) return normalizeCanvasEditorView(value);
 
   return 'layout';
 }

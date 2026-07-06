@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { getTestFolderURL } from '../utils/page.js';
+import ENV from '../utils/env.js';
+import { getQuery, getTestFolderURL, TEST_ORG, TEST_SITE } from '../utils/page.js';
 
 async function findPageTab(title, page, context) {
   let attemptsLeft = 5;
@@ -32,17 +33,28 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
 
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
 
-  await page.goto(folderURL);
-  await page.getByRole('button', { name: 'New' }).click();
-  await page.getByRole('button', { name: 'Media' }).click();
+  /* */ // Added this to make it work in Helix 6
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  const folderName = folderURL.split('/').pop();
+  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
+  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  await page.getByRole('menuitem', { name: 'Folder' }).click();
+  await page.getByPlaceholder('folder name').fill(folderName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  /* */ // End addition
 
-  const [fileChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByText('Select file').click()]);
+  await page.goto(folderURL);
+  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
+  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  const [fileChooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.getByRole('menuitem', { name: 'Media' }).click(),
+  ]);
 
   const htmlFile = path.join(__dirname, '/mocks/regionaledit.html');
   console.log(htmlFile);
   await fileChooser.setFiles([`${htmlFile}`]);
 
-  await page.getByRole('button', { name: 'Upload' }).click();
   await page.getByRole('link', { name: 'regionaledit', exact: true }).click();
 
   const newPage = await findPageTab('Edit regionaledit', page, context);

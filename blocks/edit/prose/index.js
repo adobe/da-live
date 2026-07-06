@@ -24,7 +24,8 @@ import {
 
 import { getSchema } from 'da-parser';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getAuthToken } from '../../shared/utils.js';
+import { getAuthToken } from '../../shared/utils.js';
+import { getNx2Api } from '../../../scripts/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { forceSave } from './forcesave.js';
@@ -40,14 +41,25 @@ const SHORT_SESSION_BASE_MS = 1000;
 const SHORT_SESSION_MAX_MS = 30000;
 
 async function checkDoc(path) {
-  return daFetch(path, { method: 'HEAD' });
+  const { source } = await getNx2Api();
+  const { pathname } = new URL(path);
+  const [, org, site, ...parts] = pathname.slice(1).split('/');
+  return source.getMetadata({ org, site, path: `/${parts.join('/')}` });
 }
 
 export async function createConnection(path) {
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+
+  const { pathname } = new URL(path);
+  const [, , org, site, ...parts] = pathname.split('/');
+  const { AEM_API, isHlx6 } = await getNx2Api();
+  const hlx6 = await isHlx6(org, site);
+
+  const roomName = hlx6
+    ? `${AEM_API}/${org}/sites/${site}/source/${parts.join('/')}`
+    : `${DA_ORIGIN}${pathname}`;
 
   const opts = {
     protocols: ['yjs'],

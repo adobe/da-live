@@ -9,7 +9,9 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import ENV from './env.js';
+import ENV, { TEST_ORG, TEST_SITE } from './env.js';
+
+export { TEST_ORG, TEST_SITE };
 
 export function getQuery() {
   const { GITHUB_HEAD_REF: branch } = process.env;
@@ -21,7 +23,7 @@ export function getQuery() {
 
 const QUERY = getQuery();
 
-function getTestURL(type, testIdentifier, workerInfo, dir = '/da-sites/da-status/tests') {
+function getTestURL(type, testIdentifier, workerInfo, dir = `/${TEST_ORG}/${TEST_SITE}/tests`) {
   const dateStamp = Date.now().toString(36);
   const pageName = `pw-${testIdentifier}-${dateStamp}-${workerInfo.project.name}`;
   return `${ENV}/${type}${QUERY}#${dir}/${pageName}`;

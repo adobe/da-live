@@ -1,7 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 
-import { getNx } from '../../../scripts/utils.js';
-import { fetchDaConfigs } from '../../shared/utils.js';
+import { getNx, getNxEWFlags } from '../../../scripts/utils.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -17,24 +16,13 @@ const ICONS = {
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
 
-function isEwDisableChat(config, site) {
-  return !!config?.flags?.data?.find(
-    (item) => item.key === 'ew.disableChat' && (item.value === site || item.value === 'true'),
-  );
-}
-
-async function fetchEwDisableChat(org, site) {
-  const orgConfig = await fetchDaConfigs({ org })[0];
-  if (!orgConfig || orgConfig.error) return false;
-  return isEwDisableChat(orgConfig, site);
-}
-
 class EWCanvasHeader extends LitElement {
   static properties = {
     /** `'layout'` / `'content'` = single pane; `'split'` = doc + WYSIWYG side by side */
     editorView: { type: String, reflect: true },
     undoAvailable: { type: Boolean },
     redoAvailable: { type: Boolean },
+    authorized: { type: Boolean },
     _chatDisabled: { state: true },
   };
 
@@ -43,6 +31,7 @@ class EWCanvasHeader extends LitElement {
     this.editorView = 'layout';
     this.undoAvailable = false;
     this.redoAvailable = false;
+    this.authorized = true;
   }
 
   connectedCallback() {
@@ -65,7 +54,8 @@ class EWCanvasHeader extends LitElement {
       this._chatDisabled = false;
       return;
     }
-    const disabled = await fetchEwDisableChat(org, site);
+    const { isEwChatDisabled } = await getNxEWFlags();
+    const disabled = await isEwChatDisabled({ org, site });
     if (this._chatDisableKey !== key) return;
     this._chatDisabled = disabled;
   }
@@ -134,6 +124,7 @@ class EWCanvasHeader extends LitElement {
         </div>
 
         <div class="group group-center" part="group-center">
+          ${this.authorized ? html`
           <div class="segmented" role="group" aria-label="Editor view" part="editor-view-toggle">
             <button
               type="button"
@@ -156,6 +147,7 @@ class EWCanvasHeader extends LitElement {
               @click=${() => this._setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
           </div>
+          ` : nothing}
         </div>
 
         <div class="group group-end" part="group-end">
