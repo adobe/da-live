@@ -48,9 +48,8 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await expect(page.locator('button.da-actions-new-button')).toBeEnabled();
   await page.locator('button.da-actions-new-button').click({ force: true });
   await page.getByRole('menuitem', { name: 'Document' }).click();
-  await page.locator('input.da-actions-input').fill(pageName);
-
-  await page.locator('button:text("Create document")').click();
+  await page.getByPlaceholder('document name').fill(pageName);
+  await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing

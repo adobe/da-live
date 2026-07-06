@@ -2,6 +2,11 @@
   display: none;
 }
 
+:host {
+  --da-list-pad-inline: 24px;
+  --da-list-action-width: 32px;
+}
+
 /* Item List */
 .da-item-list {
   overflow: hidden;
@@ -21,7 +26,7 @@ da-list-item::before {
   display: block;
   content: "";
   height: 1px;
-  background: var(--s2-gray-400);
+  background: var(--s2-gray-300);
   margin: 0 18px;
 }
 
@@ -29,24 +34,19 @@ da-list-item::after {
   display: block;
   content: "";
   height: 1px;
-  background: var(--s2-gray-300);
+  background: var(--s2-gray-200);
 }
 
 da-list-item:hover::before,
-da-list-item.is-expanded::before {
-  margin: 0;
-  background: var(--s2-blue-900);
-}
-
+da-list-item.is-expanded::before, 
 da-list-item:hover::after,
 da-list-item.is-expanded::after {
   margin: 0;
-  background: var(--s2-blue-900);
 }
 
 /* Empty list */
 .empty-list {
-  border: 1px solid rgb(234 234 234);
+  border: 1px solid var(--s2-gray-100);
   border-radius: 6px;
   display: flex;
   justify-content: center;
@@ -55,7 +55,7 @@ da-list-item.is-expanded::after {
 }
 
 .da-browse-panel-header {
-  margin: var(--s2-spacing-100) 1px var(--s2-spacing-300) 1px;
+  margin: var(--s2-spacing-100) 0 var(--s2-spacing-300) 0;
   padding: 0 var(--s2-spacing-400);
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -64,10 +64,10 @@ da-list-item.is-expanded::after {
 
 .da-browse-sort {
   display: grid;
-  grid-template-columns: 32px 1fr 160px;
+  grid-template-columns: var(--da-list-action-width) 1fr 160px;
   gap: var(--s2-spacing-100);
   justify-content: space-between;
-  padding: 0 56px 0 24px;
+  padding: 0 calc(var(--da-list-action-width) + var(--da-list-pad-inline)) 0 var(--da-list-pad-inline);
 }
 
 .da-browse-header-container {
@@ -114,10 +114,10 @@ da-list-item.is-expanded::after {
   position: absolute;
   width: 14px;
   height: 14px;
-  border: 2px solid #c7c7c7;
-  border-top-color: #5a5a5a;
+  border: 2px solid var(--s2-gray-400);
+  border-top-color: var(--s2-gray-700);
   border-radius: 50%;
-  animation: da-list-spin 0.8s linear infinite;
+  animation: da-spin 0.8s linear infinite;
 }
 
 .da-browse-header-name {
@@ -153,7 +153,7 @@ da-list-item.is-expanded::after {
 .da-browse-header-container input::placeholder {
   font-weight: 700;
   text-transform: uppercase;
-  color: #8f8f8f;
+  color: var(--s2-gray-500);
 }
 
 .da-browse-header-container .hide {
@@ -208,18 +208,14 @@ da-list-item.is-expanded::after {
 .da-browse-header-name.loading::before {
   display: block;
   background: none;
-  border: 2px solid #c7c7c7;
-  border-top-color: #5a5a5a;
+  border: 2px solid var(--s2-gray-400);
+  border-top-color: var(--s2-gray-700);
   border-radius: 50%;
   width: 12px;
   height: 12px;
   right: -22px;
   animation: da-list-spin 0.8s linear infinite;
   transform: none;
-}
-
-@keyframes da-list-spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Drag & Drop */
@@ -278,7 +274,7 @@ da-list-item.is-expanded::after {
   justify-content: space-between;
   align-items: center;
   box-sizing: border-box;
-  color: #fff;
+  color: var(--s2-gray-25);
   font-size: 14px;
   overflow: hidden;
 }
@@ -335,56 +331,6 @@ da-list-item.is-expanded::after {
   background: var(--s2-blue-900);
 }
 
-/* Checkbox */
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-input[type="checkbox"] {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  appearance: none;
-  border: 2px solid var(--s2-gray-800);
-  border-radius: var(--s2-corner-radius-75);
-  background: var(--s2-gray-75);
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.8;
-    cursor: not-allowed;
-  }
-
-  &:checked {
-    background: var(--s2-blue-900);
-    color: var(--s2-gray-25);
-    border: none;
-
-    &::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-color: currentcolor;
-      mask-image: url("/img/icons/s2-icon-checkmark-20-n.svg");
-      mask-size: contain;
-      mask-repeat: no-repeat;
-      mask-position: center;
-    }
-  }
-}
-
-.checkbox-label.loading input[type="checkbox"] {
-  background: none;
-  border-color: #c7c7c7;
-  border-top-color: #5a5a5a;
-  border-radius: 50%;
-  animation: da-list-spin 0.8s linear infinite;
-}
 
 /* Drop conflicts dialog */
 .da-drop-conflicts {

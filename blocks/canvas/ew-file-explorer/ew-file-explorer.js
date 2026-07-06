@@ -231,7 +231,7 @@ class EwFileExplorer extends LitElement {
     const isDir = type === 'directory';
     const expanded = isDir && this._expanded?.has(pathKey);
     const hashPath = itemHashPath(item);
-    const selected = this._selectedPath === hashPath;
+    const selected = !isDir && this._selectedPath === hashPath;
 
     return html`
       <li role="none">

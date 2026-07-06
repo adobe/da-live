@@ -6,6 +6,7 @@ import { aemAction, saveDaVersion, getExistingSchedule } from '../../shared/util
 import '../da-list-item/da-list-item.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const STYLE = await loadStyle(import.meta.url);
 
 const MAX_DELETE_COUNT = 1000;
@@ -43,6 +44,7 @@ export default class DaList extends LitElement {
     _filterLoading: { state: true },
     _allPagesLoaded: { state: true },
     _aemActionState: { state: true },
+    _isHlx6: { state: true },
   };
 
   constructor() {
@@ -65,7 +67,7 @@ export default class DaList extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
+    this.shadowRoot.adoptedStyleSheets = [SHARED, STYLE];
   }
 
   async update(props) {
@@ -136,7 +138,9 @@ export default class DaList extends LitElement {
   async getList() {
     try {
       this._continuationToken = null;
-      const { source } = await getNx2Api();
+      const { source, isHlx6 } = await getNx2Api();
+      const [org, site] = sanitizePathParts(this.fullpath);
+      this._isHlx6 = site ? await isHlx6(org, site) : false;
       const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
       if (!ok) {
         this._emptyMessage = 'Not permitted';
@@ -1134,7 +1138,7 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <label class="checkbox-label ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
+      <label class="da-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
       </label>
     `;
@@ -1215,6 +1219,7 @@ export default class DaList extends LitElement {
         @onshare=${this.handleShare}
         .loading=${typeof this._aemActionState === 'string' ? this._aemActionState : null}
         currentPath="${this.fullpath}"
+        .isHlx6=${this._isHlx6 ?? false}
         role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}

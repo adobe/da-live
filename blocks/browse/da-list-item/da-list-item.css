@@ -11,11 +11,7 @@
 :host(:hover),
 :host(.is-expanded) {
   z-index: 1;
-  background: var(--s2-blue-200);
-}
-
-button {
-  font-family: var(--body-font-family);
+  background: var(--s2-blue-100);
 }
 
 :host > svg {
@@ -26,8 +22,8 @@ button {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 24px;
-  padding: 0 24px;
+  gap: var(--da-list-pad-inline, 24px);
+  padding: 0 var(--da-list-pad-inline, 24px);
 }
 
 .da-item-list-item-inner.can-select {
@@ -36,7 +32,7 @@ button {
 
 .da-item-list-item-title,
 .da-item-list-item-rename {
-  gap: 24px;
+  gap: var(--s2-spacing-100);
   justify-content: space-between;
   align-items: center;
   text-decoration: none;
@@ -94,97 +90,45 @@ button {
 
 .da-item-list-item-favorite {
   position: absolute;
-  bottom: 1px;
-  left: -1px;
-  width: 14px;
-  height: 14px;
+  bottom: 4px;
+  left: 5px;
+  width: 10px;
+  height: 10px;
   pointer-events: none;
+  filter: drop-shadow(0 0 1.5px var(--s2-gray-25));
+  color: var(--s2-yellow-500);
 }
 
-:host(:hover) .da-item-list-item-favorite,
-:host(.is-expanded) .da-item-list-item-favorite {
-  --da-favorite-ring: var(--s2-blue-200);
-}
 
-.icon.rename-icon {
-  width: 18px;
-  height: 18px;
-  background-color: currentColor;
-  mask: no-repeat center / 18px url('/img/icons/s2-icon-refresh-20-n.svg');
-  animation: spin 4s linear infinite;
-}
-
-.icon.cancel-icon {
-  width: 18px;
-  height: 18px;
-  background-color: currentColor;
-  mask: no-repeat center / 18px url('/img/icons/s2-icon-cancel-20-n.svg');
-}
-
+.icon.rename-icon,
+.icon.cancel-icon,
 .icon.checkmark-icon {
   width: 18px;
   height: 18px;
   background-color: currentColor;
+}
+
+.icon.rename-icon {
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-refresh-20-n.svg');
+  animation: da-spin 4s linear infinite;
+}
+
+.icon.cancel-icon {
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-cancel-20-n.svg');
+}
+
+.icon.checkmark-icon {
   mask: no-repeat center / 18px url('/img/icons/s2-icon-checkmark-20-n.svg');
-}
-
-@keyframes spin {
-  100% {
-    transform:rotate(360deg);
-  }
-}
-
-/* Checkbox */
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-input[type="checkbox"] {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  margin-top: var(--s2-spacing-75);
-  appearance: none;
-  border: 2px solid var(--s2-gray-800);
-  border-radius: var(--s2-corner-radius-75);
-  background: var(--s2-gray-75);
-
-  &:disabled {
-    opacity: 0.8;
-    cursor: not-allowed;
-  }
-
-  &:checked {
-    background: var(--s2-blue-900);
-    color: var(--s2-gray-25);
-    border: none;
-
-    &::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-color: currentcolor;
-      mask-image: url("/img/icons/s2-icon-checkmark-20-n.svg");
-      mask-size: contain;
-      mask-repeat: no-repeat;
-      mask-position: center;
-    }
-  }
 }
 
 /* Rename */
 .da-item-list-item-rename input {
   display: block;
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family);
   font-size: 16px;
   background: none;
   border: none;
-  border-bottom: 1px dotted #000;
+  border-bottom: 1px dotted var(--s2-gray-900);
   padding: 0;
   margin: 1px 0 0;
   line-height: 24px;
@@ -219,8 +163,8 @@ input[type="checkbox"] {
 
 .da-item-list-item-expand-btn {
   border: none;
-  width: 32px;
-  height: 32px;
+  width: var(--da-list-action-width, 32px);
+  height: var(--da-list-action-width, 32px);
   display: none;
   align-items: center;
   justify-content: center;
@@ -256,16 +200,16 @@ input[type="checkbox"] {
 /* Details */
 .da-item-list-item-details {
   display: none;
-  grid-template-columns: 32px 80px 1fr 182px 182px;
-  padding: 24px 32px 24px 0;
+  grid-template-columns: var(--da-list-action-width, 32px) 80px 1fr 182px 182px;
+  padding: 24px var(--da-list-action-width, 32px) 24px 0;
   gap: var(--s2-spacing-100);
-  border-top: 1px solid rgb(165 199 240);
-  margin: 0 24px;
+  border-top: 1px solid var(--s2-gray-100);
+  margin: 0 var(--da-list-pad-inline, 24px);
   font-size: 14px;
 }
 
 .da-item-list-item-details.can-select {
-  padding: 24px 32px 24px 45px;
+  padding: 24px var(--da-list-action-width, 32px) 24px calc(var(--da-checkbox-size, 14px) + var(--da-list-pad-inline, 24px));
 }
 
 :host(.is-expanded) .da-item-list-item-details {
@@ -277,7 +221,7 @@ input[type="checkbox"] {
   color: var(--s2-gray-900);
   display: flex;
   background: none;
-  gap: 12px;
+  gap: var(--s2-spacing-100);
 }
 
 .da-item-list-item-aem-icon {

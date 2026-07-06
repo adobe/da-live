@@ -24,6 +24,7 @@ export default class DaActionBar extends LitElement {
     permissions: { attribute: false },
     loading: { attribute: false },
     isFavorite: { attribute: false },
+    isHlx6: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -138,6 +139,17 @@ export default class DaActionBar extends LitElement {
     return this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
+  get _canRename() {
+    if (!this._canWrite) return false;
+    const isFolder = !this.items[0]?.ext;
+    if (this.isHlx6 && isFolder) return false;
+    return true;
+  }
+
+  get _canCut() {
+    return this._canWrite && !this.isHlx6;
+  }
+
   get _canShare() {
     return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
@@ -166,7 +178,7 @@ export default class DaActionBar extends LitElement {
         <div class="da-action-bar-right-rail" role="toolbar">
           <button
             @click=${this.handleRename}
-            class="rename-button ${this._canWrite ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            class="rename-button ${this._canRename ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('rename')}
             <span>Rename</span>
           </button>
@@ -185,7 +197,7 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleMove}
-            class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            class="copy-button ${this._canCut ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('cut')}
             <span>Cut</span>
           </button>

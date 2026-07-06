@@ -22,7 +22,8 @@ input {
 
 input[type="text"] {
   display: block;
-  height: 24px;
+  height: 28px;
+  box-sizing: border-box;
   border: 2px solid var(--s2-gray-300);
   border-radius: var(--s2-corner-radius-500);
   padding: 0 var(--s2-spacing-200);
@@ -39,6 +40,8 @@ input[type="text"] {
   align-items: stretch;
   gap: 0;
   position: relative;
+  height: 28px;
+  box-sizing: border-box;
 }
 
 .search-input-wrapper input[type="text"] {
@@ -63,6 +66,11 @@ input[type="text"] {
   color: #888;
   cursor: pointer;
   transition: background-color 0.2s, color 0.2s;
+}
+
+input[type="text"]:focus-visible + .case-toggle {
+  border: 2px solid var(--s2-gray-800);
+  border-left: 0;
 }
 
 .case-toggle:hover {
