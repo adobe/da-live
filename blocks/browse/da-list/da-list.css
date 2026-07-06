@@ -358,3 +358,12 @@ da-list-item.is-expanded::after {
   align-items: center;
   gap: var(--s2-spacing-75);
 }
+
+.da-list-note-excluded {
+  display: inline-block;
+  text-transform: lowercase;
+}
+
+.da-list-note-excluded::first-letter {
+  text-transform: uppercase;
+}

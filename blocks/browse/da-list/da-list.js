@@ -1071,7 +1071,7 @@ export default class DaList extends LitElement {
       const excluded = [hasFolders && 'Folders', hasLinks && 'Links'].filter(Boolean).join(' and ');
       body = html`
         <p>${label} the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>
-        ${excluded ? html`<em>Note: ${excluded} are not ${label.toLowerCase()}ed.</em>` : nothing}
+        ${excluded ? html`<em>Note: <span class="da-list-note-excluded">${excluded}</span> are not ${label.toLowerCase()}ed.</em>` : nothing}
       `;
     }
 
