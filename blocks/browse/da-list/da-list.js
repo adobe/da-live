@@ -25,8 +25,6 @@ export default class DaList extends LitElement {
     _listItems: { state: true },
     _itemsRemaining: { state: true },
     _itemErrors: { state: true },
-    _filter: { state: true },
-    _showFilter: { state: true },
     _selectedItems: { state: true },
     _dropFiles: { state: true },
     _dropMessage: { state: true },
@@ -40,7 +38,6 @@ export default class DaList extends LitElement {
     _continuationToken: { state: true },
     _isLoadingMore: { state: true },
     _bulkLoading: { state: true },
-    _filterLoading: { state: true },
     _allPagesLoaded: { state: true },
     _isHlx6: { state: true },
   };
@@ -53,7 +50,6 @@ export default class DaList extends LitElement {
     this._emptyMessage = 'Empty';
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
-    this._filter = '';
     this._continuationToken = null;
     this._isLoadingMore = false;
     this._observer = null;
@@ -78,10 +74,9 @@ export default class DaList extends LitElement {
     }
 
     if (props.has('fullpath') && this.fullpath) {
-      this._filter = '';
-      this._showFilter = undefined;
       this._allPagesLoaded = false;
       this._listItems = await this.getList();
+      this.dispatchEvent(new CustomEvent('listloaded', { bubbles: true, composed: true }));
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -636,7 +631,7 @@ export default class DaList extends LitElement {
       }
     }
 
-    this.filteredItems.forEach((item) => { item.isChecked = check; });
+    this._listItems.forEach((item) => { item.isChecked = check; });
     this.handleSelectionState();
   }
 
@@ -688,46 +683,8 @@ export default class DaList extends LitElement {
     this.handleSort(this._sortDate, 'lastModified');
   }
 
-  async toggleFilterView() {
-    this._filter = '';
-    this._filterLoading = true;
-    this._showFilter = !this._showFilter;
-    const filterInput = this.shadowRoot?.querySelector('input[name="filter"]');
-    filterInput.value = '';
-    if (this._showFilter) {
-      if (this._continuationToken && !this._allPagesLoaded) {
-        this._bulkLoading = true;
-        await this.loadAllPages();
-        this._bulkLoading = false;
-      }
-      await this.wait(1);
-      filterInput.focus();
-      this._filterLoading = false;
-    } else {
-      this._filterLoading = false;
-    }
-  }
-
-  handleFilterBlur(e) {
-    if (e.target.value === '') {
-      this._showFilter = false;
-    }
-  }
-
-  handleNameFilter(e) {
-    this._sortName = undefined;
-    this._sortDate = undefined;
-    this._filter = e.target.value;
-  }
-
-  get filteredItems() {
-    return this._filter
-      ? this._listItems.filter((item) => item.name.includes(this._filter))
-      : this._listItems;
-  }
-
   get isSelectAll() {
-    const items = this.filteredItems;
+    const items = this._listItems;
     const selectCount = items.filter((item) => item.isChecked).length;
     return selectCount === items.length && items.length !== 0;
   }
@@ -970,41 +927,15 @@ export default class DaList extends LitElement {
 
   render() {
     const hasMorePages = this._continuationToken && !this._allPagesLoaded;
-    const { filteredItems } = this;
-    const showList = filteredItems?.length > 0 || hasMorePages;
+    const showList = this._listItems?.length > 0 || hasMorePages;
 
     return html`
       <div class="da-browse-panel-header" role="row">
         ${this.renderCheckBox()}
         <div class="da-browse-sort" role="presentation">
-          <!-- Toggle button is split into 2 buttons (enable/disable) to prevent bug re-toggling on blur event -->
-          <div role="columnheader" class="da-browse-sort-filter-container">
-            ${!this._showFilter ? html`
-              <button
-                class="da-browse-filter ${this._filterLoading ? 'loading' : ''}"
-                name="toggle-filter"
-                @click=${() => this.toggleFilterView()}
-                ?disabled=${this._filterLoading}
-                aria-disabled=${this._filterLoading ? 'true' : 'false'}
-                aria-label="Toggle filter">
-                <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
-              </button>
-            ` : html`
-              <button
-                class="da-browse-filter selected ${this._filterLoading ? 'loading' : ''}"
-                name="toggle-filter"
-                @click=${() => this.toggleFilterView()}
-                ?disabled=${this._filterLoading}
-                aria-disabled=${this._filterLoading ? 'true' : 'false'}
-                aria-label="Toggle filter">
-                <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
-              </button>
-            `}
-          </div>
           <div class="da-browse-header-container" role="columnheader" aria-sort="${this.getSortAttr(this._sortName) || 'none'}">
-            <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter" aria-label="Filter items">
             <button
-              class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''} ${this._bulkLoading ? 'loading' : ''}"
+              class="da-browse-header-name ${this._sortName} ${this._bulkLoading ? 'loading' : ''}"
               @click=${this.handleNameSort}
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
@@ -1023,7 +954,7 @@ export default class DaList extends LitElement {
         </div>
       </div>
       <div class="da-browse-panel" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
-        ${showList ? this.renderList(filteredItems) : this.renderEmpty()}
+        ${showList ? this.renderList(this._listItems) : this.renderEmpty()}
         ${this.drag ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar

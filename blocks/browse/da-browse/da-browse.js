@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
+import getEditPath from '../shared.js';
 
 // Components
 import '../da-new/da-new.js';
@@ -45,9 +46,10 @@ async function openChatPanel() {
 export default class DaBrowse extends LitElement {
   static properties = {
     details: { attribute: false },
-    _tabItems: { state: true },
-    _searchItems: { state: true },
+    _isSearchMode: { state: true },
+    _searchStatus: { state: true },
     _chatEnabled: { state: true },
+    _browseItems: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -86,22 +88,6 @@ export default class DaBrowse extends LitElement {
 
     this._browseSelKeys = nextKeys;
   };
-
-  constructor() {
-    super();
-    this._tabItems = [
-      {
-        id: 'browse',
-        title: 'Browse',
-        selected: true,
-      },
-      {
-        id: 'search',
-        title: 'Search',
-        selected: false,
-      },
-    ];
-  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -146,11 +132,19 @@ export default class DaBrowse extends LitElement {
     if (this.newCmp) this.newCmp.permissions = e.detail;
   }
 
+  handleBrowseListLoaded() {
+    this._browseItems = this.browseListItems;
+  }
+
   async update(props) {
     if (props.has('details') && this.details) {
       const prevDetails = props.get('details');
       const orgChanged = prevDetails?.org !== this.details.org;
-      if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
+      if (prevDetails?.fullpath !== this.details.fullpath) {
+        this._clearBrowseSelection();
+        this._isSearchMode = false;
+        this._searchStatus = null;
+      }
 
       // EW flag lives at site level — re-check whenever org or site changes,
       // and do this before getEditor so the default editor reflects EW state
@@ -193,16 +187,22 @@ export default class DaBrowse extends LitElement {
     if (matchedConfs.length === 0) return DEF_EDIT;
 
     // Sort by length in descending order (longest first)
-    const matchedConf = matchedConfs.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length)[0];
-
-    return matchedConf.split('=')[1];
+    const sorted = matchedConfs.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length);
+    return sorted[0].split('=')[1];
   }
 
-  handleTabClick(idx) {
-    this._tabItems = this._tabItems.map((tab, tidx) => ({ ...tab, selected: idx === tidx }));
+  handleSearchStarted() {
+    this._isSearchMode = true;
+    this._searchStatus = null;
+  }
+
+  handleSearchCleared() {
+    this._isSearchMode = false;
+    this._searchStatus = null;
   }
 
   handleSearch(e) {
+    this._searchStatus = e.detail.status ?? null;
     this.shadowRoot.querySelector('.da-list-type-search').listItems = e.detail.items;
   }
 
@@ -210,8 +210,13 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.querySelector('.da-list-type-browse').newItem = e.detail.item;
   }
 
-  get context() {
-    return this._tabItems.find((tab) => tab.selected).id;
+  handleSuggestionSelected(e) {
+    const { item } = e.detail;
+    if (!item.ext) {
+      window.location.hash = item.path;
+    } else {
+      window.location = getEditPath({ path: item.path, ext: item.ext, editor: this.editor });
+    }
   }
 
   get newCmp() {
@@ -224,6 +229,7 @@ export default class DaBrowse extends LitElement {
   }
 
   isRootFolder(path) {
+    if (!path) return true;
     return path.split('/').length <= 2;
   }
 
@@ -237,11 +243,17 @@ export default class DaBrowse extends LitElement {
   }
 
   renderSearch() {
+    const hidden = this.isRootFolder(this.details?.fullpath);
     return html`
       <da-search
+        ?inert=${hidden}
+        style=${hidden ? 'visibility: hidden' : ''}
         @updated=${this.handleSearch}
+        @search-started=${this.handleSearchStarted}
+        @search-cleared=${this.handleSearchCleared}
+        @suggestion-selected=${this.handleSuggestionSelected}
         fullpath="${this.details.fullpath}"
-        .browseItems="${this.browseListItems}">
+        .browseItems="${this._browseItems}">
       </da-search>`;
   }
 
@@ -252,6 +264,7 @@ export default class DaBrowse extends LitElement {
         fullpath="${fullpath}"
         editor="${this.editor}"
         @onpermissions=${this.handlePermissions}
+        @listloaded=${type === 'browse' ? this.handleBrowseListLoaded : nothing}
         @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
@@ -261,30 +274,14 @@ export default class DaBrowse extends LitElement {
   render() {
     return html`
       <div class="da-browse-header">
-        ${this._chatEnabled ? html`
+        ${!this._chatEnabled ? html`
           <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
             <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
           </button>` : nothing}
+        ${this.renderSearch()}
       </div>
       <div class="da-browse-content">
-        <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
-          ${this._tabItems.map((tab, idx) => {
-      if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
-        return nothing;
-      }
-      return html`
-            <button
-              id="tab-${tab.id}"
-              type="button"
-              role="tab"
-              aria-selected="${tab.selected}"
-              aria-controls="tabpanel-${tab.id}"
-              @click=${() => { this.handleTabClick(idx); }}>
-              <span class="focus">${tab.title}</span>
-            </button>`;
-    })}
-      </div>
-      <div class="da-list-header context-${this.context}">
+        <div class="da-list-header">
           <div class="da-breadcrumb-action-area">
             <div class="da-breadcrumb-area">
               <nx-breadcrumb .pathSegments="${this.details.fullpath.split('/').filter(Boolean)}"></nx-breadcrumb>
@@ -293,18 +290,19 @@ export default class DaBrowse extends LitElement {
                   <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
                 </a>` : nothing}
             </div>
-            ${this._tabItems.map((tab) => html`
-              <div class="da-list-header-action" data-visible="${tab.selected}">
-                ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
-              </div>
-            `)}
+            <div class="da-list-header-action">
+              ${this.renderNew()}
+            </div>
           </div>
+          ${this._isSearchMode ? html`<h3 class="da-browse-title">Search results</h3>` : nothing}
+          ${this._searchStatus ? html`<p class="da-browse-search-status">${this._searchStatus}</p>` : nothing}
         </div>
-      ${this._tabItems.map((tab) => html`
-        <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
-          ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
+        <div data-visible="${!this._isSearchMode}">
+          ${this.renderList('browse', this.details.fullpath, true, true, true)}
         </div>
-      `)}
+        <div data-visible="${this._isSearchMode}">
+          ${this.renderList('search', null, false, false, false)}
+        </div>
       </div>
     `;
   }

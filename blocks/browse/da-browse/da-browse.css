@@ -1,25 +1,47 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--s2-nav-height));
+  overflow: hidden;
+  --da-browse-header-pad: var(--s2-spacing-300);
+  justify-content: center;
 }
 
+
 .da-browse-header {
-  padding: var(--s2-spacing-200);
-  height: 40px;
+  flex-shrink: 0;
+  z-index: 2;
+  background: var(--s2-gray-25);
+  padding: var(--da-browse-header-pad);
   display: flex;
   align-items: center;
-  gap: var(--s2-spacing-100);
 }
 
 .da-browse-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
   max-width: var(--se-grid-container-width);
-  margin: 0 auto;
-  padding: 20px 0;
+  align-self: center;
+  padding: 40px 0;
+}
+
+.da-list-header {
+  flex-shrink: 0;
+}
+
+[data-visible="true"] {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  top: var(--da-browse-header-pad);
   box-sizing: border-box;
   min-width: 24px;
   min-height: 24px;
@@ -88,7 +110,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 4px;
   height: 24px;
   width:24px;
   border-radius: var(--s2-corner-radius-100);
@@ -114,50 +135,14 @@
   }
 }
 
-.da-tabpanel {
-  margin-top: 30px;
+.da-browse-title {
+  color: var(--s2-gray-900);
 }
 
-.da-tablist {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 24px;
-
-  button {
-    font-family: var(--body-font-family);
-    position: relative;
-    display: block;
-    background: none;
-    border: none;
-    padding: 0 0 6px;
-    margin: 0;
-    box-sizing: border-box;
-    color: var(--s2-gray-700);
-    text-transform: uppercase;
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  button::after {
-    display: block;
-    content: "";
-    position: absolute;
-    bottom: 0;
-    height: 3px;
-    width: 100%;
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out 0s;
-    background: var(--s2-gray-900);
-    border-radius: 3px;
-  }
-
-  button[aria-selected="true"] {
-    color: var(--s2-gray-900);
-  }
-
-  button[aria-selected="true"]::after {
-    opacity: 1;
-  }
+.da-browse-search-status {
+  margin: 0 0 var(--s2-spacing-400);
+  font-size: var(--s2-component-s-regular-font-size);
+  color: var(--s2-gray-600);
 }
 
 [data-visible="false"] {

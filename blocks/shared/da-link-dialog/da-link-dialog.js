@@ -25,8 +25,9 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [base, styles];
   }
 
-  _onSave() {
-    const form = this.shadowRoot.querySelector('.link-form');
+  _onSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
     const href = form.elements['link-href'].value.trim();
     if (!href) {
       this._urlError = 'URL is required';
@@ -45,6 +46,10 @@ class DaLinkDialog extends LitElement {
     }));
   }
 
+  _onSave() {
+    this.shadowRoot.querySelector('.link-form').requestSubmit();
+  }
+
   _onCancel() {
     this.shadowRoot.querySelector('nx-dialog').close();
   }
@@ -61,7 +66,7 @@ class DaLinkDialog extends LitElement {
     if (!this.open) return nothing;
     return html`
       <nx-dialog title="${this.title ?? 'Edit link'}" @close=${this._onClose}>
-        <form class="link-form">
+        <form class="link-form" @submit=${this._onSubmit}>
           <label class="da-form-field ${this._urlError ? 'da-field-error' : ''}">
             <span>URL</span>
             <input class="da-input" name="link-href" type="text" autofocus placeholder="https://…"
