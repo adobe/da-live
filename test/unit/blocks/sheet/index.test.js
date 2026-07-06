@@ -115,11 +115,11 @@ describe('finishSetup - structural change handlers', () => {
     document.querySelectorAll('da-sheet-tabs').forEach((t) => t.remove());
   });
 
-  // jspreadsheet-ce doesn't fire onafterchanges for row/column delete or row move, so
+  // jspreadsheet-ce doesn't fire onafterchanges for row/column delete or row/column move, so
   // without their own hooks the change never reaches the server - it just sits in the
   // in-memory grid until an unrelated cell edit happens to flush it, or is lost on reload.
   // The actual delete-reload-verify behavior is covered end-to-end in test/e2e.
-  ['ondeleterow', 'ondeletecolumn', 'onmoverow'].forEach((hookName) => {
+  ['ondeleterow', 'ondeletecolumn', 'onmoverow', 'onmovecolumn'].forEach((hookName) => {
     it(`${hookName} schedules a save, matching onafterchanges`, async () => {
       const data = [{ sheetName: 'data', minDimensions: [20, 20], data: [['Key'], ['A']], columns: [{ width: '300' }] }];
 
