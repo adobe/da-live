@@ -65,3 +65,43 @@ test('Deleting rows persists after reload', async ({ page }, workerInfo) => {
 
   await page.close();
 });
+
+test('Deleting columns persists after reload', async ({ page }, workerInfo) => {
+  test.setTimeout(30000);
+
+  const url = getTestSheetURL('sheetdelc', workerInfo);
+  await page.goto(url);
+
+  await expect(page.locator('da-sheet-tabs')).toBeVisible();
+
+  // Fill three identifiable columns in the first row
+  const cols = ['colzero', 'colone', 'coltwo'];
+  for (let x = 0; x < cols.length; x += 1) {
+    await page.locator(`[data-x="${x}"][data-y="0"]`).dblclick();
+    await page.locator('td input').fill(cols[x]);
+    await page.keyboard.press('Enter');
+  }
+
+  // Let the initial cell edits save before deleting columns
+  await page.waitForTimeout(1500);
+
+  // Delete the first two columns via the column header's context menu (no confirm
+  // dialog on this path, unlike the Delete key shortcut)
+  await page.locator('thead td[data-x="0"]').click({ button: 'right' });
+  await page.getByText('Delete selected columns').click();
+  await page.locator('thead td[data-x="0"]').click({ button: 'right' });
+  await page.getByText('Delete selected columns').click();
+
+  // Let the delete-triggered save flush
+  await page.waitForTimeout(1500);
+
+  // Reload to force re-fetching the saved content, same as closing and reopening
+  await page.reload();
+  await expect(page.locator('da-sheet-tabs')).toBeVisible();
+
+  await expect(page.locator('[data-x="0"][data-y="0"]')).toHaveText('coltwo');
+  await expect(page.locator('td', { hasText: 'colzero' })).toHaveCount(0);
+  await expect(page.locator('td', { hasText: 'colone' })).toHaveCount(0);
+
+  await page.close();
+});
