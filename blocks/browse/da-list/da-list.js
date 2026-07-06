@@ -588,6 +588,7 @@ export default class DaList extends LitElement {
     }
     let remaining = items.length;
     const results = [];
+    const MEDIA_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'mp4', 'pdf', 'svg', 'ico', 'webp', 'avif']);
 
     const callback = async (item) => {
       const aemPath = item.ext === 'html' ? item.path.replace(/\.html$/, '') : item.path;
@@ -597,7 +598,7 @@ export default class DaList extends LitElement {
       } else if (json.error) {
         this._itemErrors.push({ ...item, message: json.error?.message || `Couldn't ${action} item` });
       } else {
-        saveDaVersion(item.path, `${verb}ed`);
+        if (!MEDIA_EXTS.has(item.ext)) saveDaVersion(item.path, `${verb}ed`);
         results.push({ name: item.name, url: json[urlKey]?.url });
       }
       remaining -= 1;
@@ -1066,9 +1067,11 @@ export default class DaList extends LitElement {
         disabled: !!checking,
       };
       const hasFolders = this._selectedItems.some((item) => !item.ext);
+      const hasLinks = this._selectedItems.some((item) => item.ext === 'link');
+      const excluded = [hasFolders && 'Folders', hasLinks && 'Links'].filter(Boolean).join(' and ');
       body = html`
         <p>${label} the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>
-        ${hasFolders ? html`<em>Note: Folders are not ${label.toLowerCase()}ed, only files will be included.</em>` : nothing}
+        ${excluded ? html`<em>Note: ${excluded} are not ${label.toLowerCase()}ed.</em>` : nothing}
       `;
     }
 

@@ -723,6 +723,114 @@ describe('DaList helpers', () => {
     });
   });
 
+  describe('runAemQueue', () => {
+    let savedFetch;
+    let api;
+    let origCreate;
+
+    before(async () => {
+      api = await getNx2Api();
+      origCreate = api.versions.create;
+    });
+
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      // Stub aemAction's preview fetch to return a valid response
+      window.fetch = (url) => {
+        if (url.includes('admin.hlx.page/preview')) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ preview: { url: 'https://example.com/preview/page' } }),
+            { status: 200 },
+          ));
+        }
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+    });
+
+    afterEach(() => {
+      window.fetch = savedFetch;
+      api.versions.create = origCreate;
+    });
+
+    function stubVersionCreate() {
+      const versioned = [];
+      api.versions.create = async (path) => { versioned.push(path); };
+      return versioned;
+    }
+
+    // flush fire-and-forget saveDaVersion (not awaited in callback)
+    const flush = () => new Promise((r) => setTimeout(r, 0));
+
+    it('Calls saveDaVersion for html items', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [{ name: 'page', ext: 'html', path: '/org/site/page.html' }];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(1);
+    });
+
+    it('Calls saveDaVersion for json items', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [{ name: 'data', ext: 'json', path: '/org/site/data.json' }];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(1);
+    });
+
+    it('Skips saveDaVersion for svg items', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [{ name: 'icon', ext: 'svg', path: '/org/site/icon.svg' }];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(0);
+    });
+
+    it('Skips saveDaVersion for pdf items', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [{ name: 'doc', ext: 'pdf', path: '/org/site/doc.pdf' }];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(0);
+    });
+
+    it('Skips saveDaVersion for image items (png, jpg, gif, webp)', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [
+        { name: 'a', ext: 'png', path: '/org/site/a.png' },
+        { name: 'b', ext: 'jpg', path: '/org/site/b.jpg' },
+        { name: 'c', ext: 'gif', path: '/org/site/c.gif' },
+        { name: 'd', ext: 'webp', path: '/org/site/d.webp' },
+      ];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(0);
+    });
+
+    it('Versions html but not media in a mixed selection', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [
+        { name: 'page', ext: 'html', path: '/org/site/page.html' },
+        { name: 'img', ext: 'png', path: '/org/site/img.png' },
+        { name: 'icon', ext: 'svg', path: '/org/site/icon.svg' },
+      ];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(1);
+    });
+  });
+
   describe('drop flow', () => {
     let panel;
     function attachShadow(el) {
