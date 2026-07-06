@@ -1,8 +1,9 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from blocks/sheet/index.js
-const { setNx } = await import('../../../../scripts/utils.js');
+const { setNx, getNx2Api } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const sh = await import('../../../../blocks/sheet/utils/index.js');
@@ -75,6 +76,96 @@ describe('init - double restore', () => {
     const daSheet = document.querySelector('.da-sheet');
     expect(daSheet).to.not.be.null;
     await sh.default(daSheet, data);
+  });
+});
+
+describe('finishSetup - structural change handlers', () => {
+  let el;
+  let daTitle;
+  let panes;
+  let savedJspreadsheet;
+
+  // getNx2Api() caches a dynamic import on first call. Pre-warm it outside the fake-timer
+  // tests below, since that extra async hop only happens once and isn't timer-driven, so
+  // clock.tickAsync in a first-time-only call can resolve before it's actually done.
+  before(() => getNx2Api());
+
+  beforeEach(() => {
+    el = document.createElement('div');
+    el.className = 'da-sheet';
+    document.body.appendChild(el);
+
+    daTitle = document.createElement('da-title');
+    daTitle.permissions = [];
+    document.body.appendChild(daTitle);
+
+    panes = document.createElement('da-sheet-panes');
+    document.body.appendChild(panes);
+
+    savedJspreadsheet = window.jspreadsheet;
+    window.jspreadsheet = { tabs: mockJspreadsheetTabs };
+  });
+
+  afterEach(() => {
+    el.remove();
+    daTitle.remove();
+    panes.remove();
+    window.jspreadsheet = savedJspreadsheet;
+    document.querySelectorAll('da-sheet-tabs').forEach((t) => t.remove());
+  });
+
+  // jspreadsheet-ce doesn't fire onafterchanges for row/column delete or row move, so
+  // without their own hooks the change never reaches the server - it just sits in the
+  // in-memory grid until an unrelated cell edit happens to flush it, or is lost on reload.
+  ['ondeleterow', 'ondeletecolumn', 'onmoverow'].forEach((hookName) => {
+    it(`${hookName} persists the current grid state via a save, not just a cell edit`, async () => {
+      const savedFetch = window.fetch;
+      const savedHash = window.location.hash;
+      const clock = sinon.useFakeTimers();
+
+      try {
+        const data = [{
+          sheetName: 'data',
+          minDimensions: [20, 20],
+          data: [['Key'], ['A'], ['B']],
+          columns: [{ width: '300' }],
+        }];
+
+        el.details = { org: 'org', site: 'site', path: '/file', view: 'sheet' };
+        window.location.hash = '#/org/site/file';
+
+        const jexcel = await sh.default(el, data);
+        // Stand in for what jspreadsheet's own grid state looks like right after the
+        // row/column removal or reorder the hook is meant to react to.
+        jexcel[0].getData = () => [['Key'], ['B']];
+        jexcel[0].getConfig = () => ({ columns: [{ width: '300' }] });
+
+        let saveBody;
+        window.fetch = async (url, opts) => {
+          const urlStr = String(url);
+          if (urlStr.startsWith('https://admin.hlx.page/ping')) {
+            return new Response('', { status: 200, headers: new Headers() });
+          }
+          if (opts?.method === 'POST' && urlStr.includes('/source/')) {
+            saveBody = opts.body;
+            return new Response('', { status: 200 });
+          }
+          return new Response('', { status: 200 });
+        };
+
+        jexcel[0].options[hookName]();
+        await clock.tickAsync(1000);
+
+        expect(saveBody, 'expected a save request to have been sent').to.exist;
+        const payload = JSON.parse(await saveBody.get('data').text());
+        expect(JSON.stringify(payload)).to.not.contain('"A"');
+        expect(JSON.stringify(payload)).to.contain('"B"');
+      } finally {
+        clock.restore();
+        window.fetch = savedFetch;
+        window.location.hash = savedHash;
+      }
+    });
   });
 });
 

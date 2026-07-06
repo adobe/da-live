@@ -23,9 +23,15 @@ function finishSetup(el, data) {
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
     sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    sheet.options.onafterchanges = () => {
-      handleSave(el.jexcel, el.details.view);
-    };
+    const save = () => handleSave(el.jexcel, el.details.view);
+    sheet.options.onafterchanges = save;
+    // Removing or reordering existing rows/columns doesn't fire onafterchanges, so those
+    // need their own hooks or the change is silently lost. Inserts are skipped - a fresh
+    // row/column starts empty, and once data lands in it onafterchanges saves it anyway.
+    // onsort is skipped too: it's a header-click view convenience, not an intentional edit.
+    sheet.options.ondeleterow = save;
+    sheet.options.ondeletecolumn = save;
+    sheet.options.onmoverow = save;
   });
 
   // Setup tabs
