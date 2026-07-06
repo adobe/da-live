@@ -274,7 +274,7 @@ export default class DaBrowse extends LitElement {
   render() {
     return html`
       <div class="da-browse-header">
-        ${!this._chatEnabled ? html`
+        ${this._chatEnabled ? html`
           <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
             <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
           </button>` : nothing}
