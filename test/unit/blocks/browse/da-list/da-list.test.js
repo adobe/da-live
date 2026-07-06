@@ -759,7 +759,7 @@ describe('DaList helpers', () => {
     }
 
     // flush fire-and-forget saveDaVersion (not awaited in callback)
-    const flush = () => new Promise((r) => setTimeout(r, 0));
+    const flush = () => new Promise((r) => { setTimeout(r, 0); });
 
     it('Calls saveDaVersion for html items', async () => {
       const versioned = stubVersionCreate();
