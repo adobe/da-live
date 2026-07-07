@@ -309,6 +309,29 @@ da-list-item.is-expanded::after {
   filter: brightness(0) invert(1);
 }
 
+.da-aem-results-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  z-index: 400;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: none;
+  background: var(--s2-blue-800);
+  color: #fff;
+  font-size: 14px;
+  font-family: var(--body-font-family);
+  cursor: pointer;
+  filter: drop-shadow(rgb(0 0 0 / 20%) 0 2px 6px);
+  white-space: nowrap;
+}
+
+.da-aem-results-btn:hover {
+  background: var(--s2-blue-900);
+}
+
+
 /* Drop conflicts dialog */
 .da-drop-conflicts {
   margin: 8px 0 0;
@@ -334,4 +357,13 @@ da-list-item.is-expanded::after {
   display: flex;
   align-items: center;
   gap: var(--s2-spacing-75);
+}
+
+.da-list-note-excluded {
+  display: inline-block;
+  text-transform: lowercase;
+}
+
+.da-list-note-excluded::first-letter {
+  text-transform: uppercase;
 }
