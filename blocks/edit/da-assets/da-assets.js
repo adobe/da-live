@@ -178,12 +178,8 @@ export function buildHandleSelection(
 
 export async function openAssets() {
   const nx = getNx();
-  const isNx2 = nx.endsWith('/nx2');
-  const { loadStyle } = await import(`${nx}/utils/utils.js`);
+  const { loadStyle, loadScript } = await import(`${nx}/utils/utils.js`);
   const { loadIms, handleSignIn } = await import(`${nx}/utils/ims.js`);
-  const loadScript = isNx2
-    ? (await import(`${nx}/utils/utils.js`)).loadScript
-    : (await import(`${nx}/utils/script.js`)).default;
 
   const details = await loadIms();
   if (details.anonymous) handleSignIn();

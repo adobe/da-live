@@ -3,11 +3,7 @@ import { handleSave, staleCheck } from './utils.js';
 import '../da-sheet-tabs.js';
 
 const nx = getNx();
-const isNx2 = nx.endsWith('/nx2');
-const { loadStyle } = await import(`${nx}/utils/utils.js`);
-const loadScript = isNx2
-  ? (await import(`${nx}/utils/utils.js`)).loadScript
-  : (await import(`${nx}/utils/script.js`)).default;
+const { loadStyle, loadScript } = await import(`${nx}/utils/utils.js`);
 
 async function adoptStyle(href) {
   const sheet = await loadStyle(href);
