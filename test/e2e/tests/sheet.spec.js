@@ -107,3 +107,51 @@ test('Deleting columns persists after reload', async ({ page }, workerInfo) => {
 
   await page.close();
 });
+
+test('Moving a row persists after reload', async ({ page }, workerInfo) => {
+  test.setTimeout(30000);
+
+  const url = getTestSheetURL('sheetmove', workerInfo);
+  await page.goto(url);
+
+  await expect(page.locator('da-sheet-tabs')).toBeVisible();
+
+  // Fill three identifiable rows in the first column
+  const rows = ['rowzero', 'rowone', 'rowtwo'];
+  for (let y = 0; y < rows.length; y += 1) {
+    await page.locator(`[data-x="0"][data-y="${y}"]`).dblclick();
+    await page.locator('td input').fill(rows[y]);
+    await page.keyboard.press('Enter');
+  }
+
+  // Let the initial cell edits save before dragging
+  await page.waitForTimeout(1500);
+
+  // jspreadsheet-ce only starts a row drag when the mousedown lands within the last
+  // few pixels of the row-number cell's right edge - anywhere else on it just selects
+  // the row (as the delete test above does). Drop on the upper half of row 0's header
+  // to insert row 2 before it.
+  const sourceHandle = page.locator('td.jexcel_row[data-y="2"]');
+  const targetHandle = page.locator('td.jexcel_row[data-y="0"]');
+  const sourceBox = await sourceHandle.boundingBox();
+  const targetBox = await targetHandle.boundingBox();
+
+  await page.mouse.move(sourceBox.x + sourceBox.width - 2, sourceBox.y + sourceBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 5 });
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps: 5 });
+  await page.mouse.up();
+
+  // Let the move-triggered save flush
+  await page.waitForTimeout(1500);
+
+  // Reload to force re-fetching the saved content, same as closing and reopening
+  await page.reload();
+  await expect(page.locator('da-sheet-tabs')).toBeVisible();
+
+  await expect(page.locator('[data-x="0"][data-y="0"]')).toHaveText('rowtwo');
+  await expect(page.locator('[data-x="0"][data-y="1"]')).toHaveText('rowzero');
+  await expect(page.locator('[data-x="0"][data-y="2"]')).toHaveText('rowone');
+
+  await page.close();
+});

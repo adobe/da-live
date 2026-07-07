@@ -26,11 +26,11 @@ function finishSetup(el, data) {
     const save = () => handleSave(el.jexcel, el.details.view);
     sheet.options.onafterchanges = save;
     // onafterchanges doesn't fire for these; inserts are skipped since they start empty
-    // and get saved once onafterchanges fires on their content.
+    // and get saved once onafterchanges fires on their content. onmovecolumn is left
+    // unbound - columnDrag is off, so there's no UI path that can ever fire it.
     sheet.options.ondeleterow = save;
     sheet.options.ondeletecolumn = save;
     sheet.options.onmoverow = save;
-    sheet.options.onmovecolumn = save;
   });
 
   // Setup tabs
