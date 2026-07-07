@@ -1,7 +1,7 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin } from 'da-y-wrapper';
 import { getNx } from '../../../../scripts/utils.js';
-import { slashMenuItemsForQuery, COMMAND_BY_ID } from '../../editor-utils/command-defs.js';
+import { slashMenuItemsForQuery, applySlashSelection } from '../../editor-utils/command-defs.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 
@@ -11,7 +11,7 @@ function inTopLevelParagraph($from) {
   return $from.node($from.depth - 1).type.name === 'doc';
 }
 
-function getSlashContext(state) {
+export function getSlashContext(state) {
   const { $from } = state.selection;
   if (!inTopLevelParagraph($from)) return null;
 
@@ -23,7 +23,7 @@ function getSlashContext(state) {
   if (!prefix.startsWith('/')) return null;
 
   const query = prefix.slice(1);
-  if (/\s/.test(query)) return null;
+  if (query.length > 50) return null;
 
   return { query, anchorPos: paraStart };
 }
@@ -50,15 +50,13 @@ function setup(container, view) {
   container.append(menu);
 
   menu.addEventListener('select', (e) => {
-    const run = COMMAND_BY_ID.get(e.detail.id)?.apply;
     const { state } = view;
     const slash = getSlashContext(state);
-    if (slash && run) {
+    if (slash) {
       const { anchorPos } = slash;
       const head = state.selection.from;
-      const tr = state.tr.delete(anchorPos, head);
-      view.dispatch(tr);
-      run(view);
+      view.dispatch(state.tr.delete(anchorPos, head));
+      applySlashSelection(view, e.detail.id);
     }
     view.focus();
   });
