@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getTestSheetURL } from '../utils/page.js';
+import { getTestSheetURL, waitForSave } from '../utils/page.js';
 
 test('New sheet', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
@@ -36,26 +36,29 @@ test('Deleting rows persists after reload', async ({ page }, workerInfo) => {
 
   // Fill three identifiable rows in the first column
   const rows = ['rowzero', 'rowone', 'rowtwo'];
+  const initialSave = waitForSave(page);
   for (let y = 0; y < rows.length; y += 1) {
     await page.locator(`[data-x="0"][data-y="${y}"]`).dblclick();
     await page.locator('td input').fill(rows[y]);
     await page.keyboard.press('Enter');
   }
 
-  // Let the initial cell edits save before deleting rows
-  await page.waitForTimeout(1500);
+  // Wait for the initial cell edits to actually save (saves are debounced) before deleting rows
+  await initialSave;
 
-  // Select rows 0-1 (click + shift-right-click extends the selection) and delete
-  // both in one context-menu action. A second separate right-click/delete cycle
-  // doesn't work here: jSuites' contextmenu handler dispatches based on
-  // document.activeElement, which after the first menu-item click is still that
-  // (now-closed) link, so a follow-up right-click never reopens a fresh menu.
+  // Select rows 0-1: a plain click sets the anchor, then a shift-click (left button)
+  // extends the range selection to include both rows. Right-clicking within an
+  // already-selected range keeps the whole range selected and opens the context
+  // menu for it - right-clicking straight to row 1 with a Shift modifier does not
+  // extend the selection the same way and only ends up deleting that single row.
+  const deleteSave = waitForSave(page);
   await page.locator('td.jexcel_row[data-y="0"]').click();
-  await page.locator('td.jexcel_row[data-y="1"]').click({ button: 'right', modifiers: ['Shift'] });
+  await page.locator('td.jexcel_row[data-y="1"]').click({ modifiers: ['Shift'] });
+  await page.locator('td.jexcel_row[data-y="1"]').click({ button: 'right' });
   await page.getByText('Delete selected rows').click();
 
-  // Let the delete-triggered save flush
-  await page.waitForTimeout(1500);
+  // Wait for the delete-triggered save to flush
+  await deleteSave;
 
   // Reload to force re-fetching the saved content, same as closing and reopening
   await page.reload();
@@ -78,24 +81,27 @@ test('Deleting columns persists after reload', async ({ page }, workerInfo) => {
 
   // Fill three identifiable columns in the first row
   const cols = ['colzero', 'colone', 'coltwo'];
+  const initialSave = waitForSave(page);
   for (let x = 0; x < cols.length; x += 1) {
     await page.locator(`[data-x="${x}"][data-y="0"]`).dblclick();
     await page.locator('td input').fill(cols[x]);
     await page.keyboard.press('Enter');
   }
 
-  // Let the initial cell edits save before deleting columns
-  await page.waitForTimeout(1500);
+  // Wait for the initial cell edits to actually save (saves are debounced) before deleting columns
+  await initialSave;
 
-  // Select columns 0-1 (click + shift-right-click extends the selection) and
-  // delete both in one context-menu action - see the row-delete test above for
-  // why a second separate right-click/delete cycle doesn't work.
+  // Select columns 0-1: click + shift-click (left button) extends the range
+  // selection - see the row-delete test above for why the selection needs to be
+  // extended with a plain shift-click before the right-click opens the context menu.
+  const deleteSave = waitForSave(page);
   await page.locator('thead td[data-x="0"]').click();
-  await page.locator('thead td[data-x="1"]').click({ button: 'right', modifiers: ['Shift'] });
+  await page.locator('thead td[data-x="1"]').click({ modifiers: ['Shift'] });
+  await page.locator('thead td[data-x="1"]').click({ button: 'right' });
   await page.getByText('Delete selected columns').click();
 
-  // Let the delete-triggered save flush
-  await page.waitForTimeout(1500);
+  // Wait for the delete-triggered save to flush
+  await deleteSave;
 
   // Reload to force re-fetching the saved content, same as closing and reopening
   await page.reload();
@@ -118,14 +124,15 @@ test('Moving a row persists after reload', async ({ page }, workerInfo) => {
 
   // Fill three identifiable rows in the first column
   const rows = ['rowzero', 'rowone', 'rowtwo'];
+  const initialSave = waitForSave(page);
   for (let y = 0; y < rows.length; y += 1) {
     await page.locator(`[data-x="0"][data-y="${y}"]`).dblclick();
     await page.locator('td input').fill(rows[y]);
     await page.keyboard.press('Enter');
   }
 
-  // Let the initial cell edits save before dragging
-  await page.waitForTimeout(1500);
+  // Wait for the initial cell edits to actually save (saves are debounced) before dragging
+  await initialSave;
 
   // jspreadsheet-ce only starts a row drag when the mousedown lands within the last
   // few pixels of the row-number cell's right edge - anywhere else on it just selects
@@ -136,14 +143,15 @@ test('Moving a row persists after reload', async ({ page }, workerInfo) => {
   const sourceBox = await sourceHandle.boundingBox();
   const targetBox = await targetHandle.boundingBox();
 
+  const moveSave = waitForSave(page);
   await page.mouse.move(sourceBox.x + sourceBox.width - 2, sourceBox.y + sourceBox.height / 2);
   await page.mouse.down();
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 5 });
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps: 5 });
   await page.mouse.up();
 
-  // Let the move-triggered save flush
-  await page.waitForTimeout(1500);
+  // Wait for the move-triggered save to flush
+  await moveSave;
 
   // Reload to force re-fetching the saved content, same as closing and reopening
   await page.reload();
