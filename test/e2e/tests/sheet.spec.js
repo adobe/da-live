@@ -45,11 +45,13 @@ test('Deleting rows persists after reload', async ({ page }, workerInfo) => {
   // Let the initial cell edits save before deleting rows
   await page.waitForTimeout(1500);
 
-  // Delete the first two rows via the row header's context menu (no confirm dialog
-  // on this path, unlike the Delete key shortcut)
-  await page.locator('td.jexcel_row[data-y="0"]').click({ button: 'right' });
-  await page.getByText('Delete selected rows').click();
-  await page.locator('td.jexcel_row[data-y="0"]').click({ button: 'right' });
+  // Select rows 0-1 (click + shift-right-click extends the selection) and delete
+  // both in one context-menu action. A second separate right-click/delete cycle
+  // doesn't work here: jSuites' contextmenu handler dispatches based on
+  // document.activeElement, which after the first menu-item click is still that
+  // (now-closed) link, so a follow-up right-click never reopens a fresh menu.
+  await page.locator('td.jexcel_row[data-y="0"]').click();
+  await page.locator('td.jexcel_row[data-y="1"]').click({ button: 'right', modifiers: ['Shift'] });
   await page.getByText('Delete selected rows').click();
 
   // Let the delete-triggered save flush
@@ -85,11 +87,11 @@ test('Deleting columns persists after reload', async ({ page }, workerInfo) => {
   // Let the initial cell edits save before deleting columns
   await page.waitForTimeout(1500);
 
-  // Delete the first two columns via the column header's context menu (no confirm
-  // dialog on this path, unlike the Delete key shortcut)
-  await page.locator('thead td[data-x="0"]').click({ button: 'right' });
-  await page.getByText('Delete selected columns').click();
-  await page.locator('thead td[data-x="0"]').click({ button: 'right' });
+  // Select columns 0-1 (click + shift-right-click extends the selection) and
+  // delete both in one context-menu action - see the row-delete test above for
+  // why a second separate right-click/delete cycle doesn't work.
+  await page.locator('thead td[data-x="0"]').click();
+  await page.locator('thead td[data-x="1"]').click({ button: 'right', modifiers: ['Shift'] });
   await page.getByText('Delete selected columns').click();
 
   // Let the delete-triggered save flush
