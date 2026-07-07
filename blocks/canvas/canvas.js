@@ -154,7 +154,9 @@ const CANVAS_PANELS = {
     width: '400px',
     getContent: async () => {
       await import(`${getNx()}/blocks/chat/chat.js`);
-      return document.createElement('nx-chat');
+      const chat = document.createElement('nx-chat');
+      chat.styled = true;
+      return chat;
     },
   },
   after: {
