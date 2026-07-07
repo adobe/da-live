@@ -1,9 +1,11 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin } from 'da-y-wrapper';
 import { getNx } from '../../../../scripts/utils.js';
-import { slashMenuItemsForQuery, COMMAND_BY_ID } from '../../editor-utils/command-defs.js';
+import { slashMenuItemsForQuery, applySlashSelection } from '../../editor-utils/command-defs.js';
+import { prefetchBlockLibrary } from '../../editor-utils/block-slash.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 function inTopLevelParagraph($from) {
   if ($from.parent.type.name !== 'paragraph') return false;
@@ -11,7 +13,7 @@ function inTopLevelParagraph($from) {
   return $from.node($from.depth - 1).type.name === 'doc';
 }
 
-function getSlashContext(state) {
+export function getSlashContext(state) {
   const { $from } = state.selection;
   if (!inTopLevelParagraph($from)) return null;
 
@@ -23,7 +25,7 @@ function getSlashContext(state) {
   if (!prefix.startsWith('/')) return null;
 
   const query = prefix.slice(1);
-  if (/\s/.test(query)) return null;
+  if (query.length > 50) return null;
 
   return { query, anchorPos: paraStart };
 }
@@ -50,15 +52,13 @@ function setup(container, view) {
   container.append(menu);
 
   menu.addEventListener('select', (e) => {
-    const run = COMMAND_BY_ID.get(e.detail.id)?.apply;
     const { state } = view;
     const slash = getSlashContext(state);
-    if (slash && run) {
+    if (slash) {
       const { anchorPos } = slash;
       const head = state.selection.from;
-      const tr = state.tr.delete(anchorPos, head);
-      view.dispatch(tr);
-      run(view);
+      view.dispatch(state.tr.delete(anchorPos, head));
+      applySlashSelection(view, e.detail.id);
     }
     view.focus();
   });
@@ -149,6 +149,13 @@ export function createSlashMenuPlugin() {
 
   return new Plugin({
     view(editorView) {
+      let hashState;
+      const unsub = hashChange.subscribe((s) => { hashState = s; });
+      unsub();
+      if (hashState?.org && hashState?.site) {
+        prefetchBlockLibrary({ org: hashState.org, site: hashState.site });
+      }
+
       const onKeyDown = () => {
         syncSlashUi(editorView, ctxRef);
       };
