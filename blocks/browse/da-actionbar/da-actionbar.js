@@ -14,6 +14,8 @@ const ICON_NAMES = {
   paste: 's2-icon-paste-20-n',
   delete: 's2-icon-delete-20-n',
   share: 's2-icon-share-20-n',
+  publish: 's2-icon-publish-20-n',
+  preview: 's2-icon-preview-20-n',
 };
 
 const icon = (name) => html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/${ICON_NAMES[name]}.svg#icon"></use></svg>`;
@@ -22,7 +24,9 @@ export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
     permissions: { attribute: false },
+    loading: { attribute: false },
     isFavorite: { attribute: false },
+    isHlx6: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -101,6 +105,18 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handlePreview() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpreview', opts);
+    this.dispatchEvent(event);
+  }
+
+  handlePublish() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpublish', opts);
+    this.dispatchEvent(event);
+  }
+
   async handleShare() {
     const { items2Clipboard } = await import('../da-list/helpers/utils.js');
     items2Clipboard(this.items);
@@ -121,9 +137,23 @@ export default class DaActionBar extends LitElement {
     return this.permissions.some((permission) => permission === 'write');
   }
 
+  get _canAemAction() {
+    return this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
+  }
+
+  get _canRename() {
+    if (!this._canWrite) return false;
+    const isFolder = !this.items[0]?.ext;
+    if (this.isHlx6 && isFolder) return false;
+    return true;
+  }
+
+  get _canCut() {
+    return this._canWrite && !this.isHlx6;
+  }
+
   get _canShare() {
-    const isFile = this.items.some((item) => item.ext && item.ext !== 'link');
-    return isFile && !this._isCopying;
+    return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
   get currentAction() {
@@ -150,7 +180,7 @@ export default class DaActionBar extends LitElement {
         <div class="da-action-bar-right-rail" role="toolbar">
           <button
             @click=${this.handleRename}
-            class="rename-button ${this._canWrite ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            class="rename-button ${this._canRename ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('rename')}
             <span>Rename</span>
           </button>
@@ -169,7 +199,7 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleMove}
-            class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            class="copy-button ${this._canCut ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('cut')}
             <span>Cut</span>
           </button>
@@ -184,6 +214,20 @@ export default class DaActionBar extends LitElement {
             class="delete-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('delete')}
             <span>Delete</span>
+          </button>
+          <button
+            @click=${this.handlePreview}
+            ?disabled=${!!this.loading}
+            class="preview-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'preview' ? 'loading' : ''}">
+            ${icon('preview')}
+            <span>Preview</span>
+          </button>
+          <button
+            @click=${this.handlePublish}
+            ?disabled=${!!this.loading}
+            class="publish-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
+            ${icon('publish')}
+            <span>Publish</span>
           </button>
           <button
             @click=${this.handleShare}
