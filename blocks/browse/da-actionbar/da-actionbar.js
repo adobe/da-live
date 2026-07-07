@@ -22,6 +22,7 @@ export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
     permissions: { attribute: false },
+    loading: { attribute: false },
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
     _isCopying: { state: true },
@@ -102,6 +103,18 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handlePreview() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpreview', opts);
+    this.dispatchEvent(event);
+  }
+
+  handlePublish() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpublish', opts);
+    this.dispatchEvent(event);
+  }
+
   async handleShare() {
     const { items2Clipboard } = await import('../da-list/helpers/utils.js');
     items2Clipboard(this.items);
@@ -122,6 +135,10 @@ export default class DaActionBar extends LitElement {
     return this.permissions.some((permission) => permission === 'write');
   }
 
+  get _canAemAction() {
+    return this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
+  }
+
   get _canRename() {
     if (!this._canWrite) return false;
     const isFolder = !this.items[0]?.ext;
@@ -134,8 +151,7 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canShare() {
-    const isFile = this.items.some((item) => item.ext && item.ext !== 'link');
-    return isFile && !this._isCopying;
+    return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
   get currentAction() {
@@ -196,6 +212,20 @@ export default class DaActionBar extends LitElement {
             class="delete-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('delete')}
             <span>Delete</span>
+          </button>
+          <button
+            @click=${this.handlePreview}
+            ?disabled=${!!this.loading}
+            class="preview-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'preview' ? 'loading' : ''}">
+            <img src="/blocks/edit/img/S2_Icon_Preview_20_N.svg" alt="" aria-hidden="true"/>
+            <span>Preview</span>
+          </button>
+          <button
+            @click=${this.handlePublish}
+            ?disabled=${!!this.loading}
+            class="publish-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
+            <img src="/blocks/edit/img/S2_Icon_Publish_20_N.svg" alt="" aria-hidden="true"/>
+            <span>Publish</span>
           </button>
           <button
             @click=${this.handleShare}
