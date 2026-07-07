@@ -14,6 +14,8 @@ const ICON_NAMES = {
   paste: 's2-icon-paste-20-n',
   delete: 's2-icon-delete-20-n',
   share: 's2-icon-share-20-n',
+  publish: 's2-icon-publish-20-n',
+  preview: 's2-icon-preview-20-n',
 };
 
 const icon = (name) => html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/${ICON_NAMES[name]}.svg#icon"></use></svg>`;
@@ -217,14 +219,14 @@ export default class DaActionBar extends LitElement {
             @click=${this.handlePreview}
             ?disabled=${!!this.loading}
             class="preview-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'preview' ? 'loading' : ''}">
-            <img src="/blocks/edit/img/S2_Icon_Preview_20_N.svg" alt="" aria-hidden="true"/>
+            ${icon('preview')}
             <span>Preview</span>
           </button>
           <button
             @click=${this.handlePublish}
             ?disabled=${!!this.loading}
             class="publish-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
-            <img src="/blocks/edit/img/S2_Icon_Publish_20_N.svg" alt="" aria-hidden="true"/>
+            ${icon('publish')}
             <span>Publish</span>
           </button>
           <button
