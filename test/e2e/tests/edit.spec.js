@@ -28,8 +28,12 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
   await fill(page, enteredText);
 
-  // Wait for content to save before closing
-  await page.waitForTimeout(3000);
+  // Confirm the collab save actually flushed to the backend before closing -
+  // a fixed wait here raced against Y.js persistence and was occasionally too
+  // short under CI load, leaving the reopened page empty. da-content.forceSave()
+  // is the same flush-and-wait-for-ack protocol the app uses before preview/publish.
+  const flushResult = await page.evaluate(() => document.querySelector('da-content').forceSave());
+  expect(flushResult.ok).toBe(true);
   await page.close();
 
   const newPage = await browser.newPage();

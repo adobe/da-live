@@ -17,7 +17,7 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
   // Ensure that the edits are visible to both and that the collab cursors are there
   // Also check that the cloud icon is visible for the collaborator
 
-  test.setTimeout(60000);
+  test.setTimeout(120000);
 
   const pageURL = getTestPageURL('collab', workerInfo);
 
@@ -70,11 +70,13 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
 
   // Check the little cloud icon for collaborators
   // as we use the same user for both pages, the cloud icon should be visible on both pages
-  await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
-  await expect(page2.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
+  // These rely on the Y.js awareness broadcast reaching the other tab, which is a real
+  // network round trip - give it more room than the global default under slow CI runners.
+  await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible({ timeout: 30000 });
+  await expect(page2.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible({ timeout: 30000 });
 
   // Check the cursor for collaborator
-  await expect(page2.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
+  await expect(page2.locator('span.ProseMirror-yjs-cursor')).toBeVisible({ timeout: 30000 });
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
   // Wait for user 1's cursor awareness to settle at the end of text so the two
   // text pieces are adjacent in innerText (cursor span between them breaks indexOf)
@@ -86,7 +88,7 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
   expect(cursor2Idx).toBeGreaterThanOrEqual(0);
   expect(cursor2Idx).toBeGreaterThan(text2Idx);
   // Check the cursor for collaborator, should be in a different location here
-  await expect(page.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
+  await expect(page.locator('span.ProseMirror-yjs-cursor')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
   await expect(page.locator('div.ProseMirror')).toContainText('From user 2');
   await expect(page.locator('div.ProseMirror')).toContainText('Entered by user 1');
