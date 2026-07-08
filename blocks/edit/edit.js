@@ -127,6 +127,11 @@ async function setUI(el) {
 }
 
 export default async function init(el) {
+  // TODO: remove once dark-mode styling for the edit view is complete.
+  // Strip the dark-scheme class so document.body always renders in light.
+  document.body.classList.remove('dark-scheme');
+  document.body.classList.add('light-scheme');
+
   setUI(el);
 
   window.addEventListener('hashchange', () => {
