@@ -41,7 +41,7 @@
     justify-content: center;
     align-items: center;
     background-color: var(--s2-gray-100);
-    color: #717171;
+    color: var(--s2-gray-1000);
     cursor: pointer;
     anchor-name: --prepare-toggle;
 
@@ -53,7 +53,6 @@
 
     &:hover {
       background-color: var(--s2-gray-300);
-      color: #292929;
     }
   }
 
@@ -62,9 +61,9 @@
     position-anchor: --prepare-toggle;
     top: anchor(bottom);
     right: anchor(right);
-    background-color: #fff;
+    background-color: var(--s2-gray-25);
     border-radius: 12px;
-    box-shadow: 0 0 5px 0 #b5b5b5;
+    box-shadow: var(--s2-gray-400) 0px 0px 5px 0px;
     z-index: 200;
     min-width: 280px;
     margin-top: 12px;
@@ -115,7 +114,6 @@
 
       &:hover {
         color: rgb(22 122 243);
-        background: rgb(228 240 255);
         z-index: 105;
 
         &::before {

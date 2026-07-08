@@ -53,7 +53,7 @@ describe('da-alt-dialog', () => {
     el.addEventListener('da-alt-submit', (e) => { detail = e.detail; });
 
     el.shadowRoot.querySelector('input[name="alt-text"]').value = '  My image  ';
-    el.shadowRoot.querySelector('.alt-form-save').click();
+    el.shadowRoot.querySelector('.da-btn-primary').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ alt: 'My image' });
@@ -64,7 +64,7 @@ describe('da-alt-dialog', () => {
     let detail = null;
     el.addEventListener('da-alt-submit', (e) => { detail = e.detail; });
 
-    el.shadowRoot.querySelector('.alt-form-save').click();
+    el.shadowRoot.querySelector('.da-btn-primary').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ alt: '' });
@@ -74,7 +74,8 @@ describe('da-alt-dialog', () => {
     await mount({ open: true });
     let cancelled = false;
     el.addEventListener('da-alt-cancel', () => { cancelled = true; });
-    el.shadowRoot.querySelector('.alt-form-cancel').click();
+    el.shadowRoot.querySelector('.da-btn-secondary').click();
+    await nextFrame();
     expect(cancelled).to.be.true;
   });
 

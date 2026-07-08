@@ -1,23 +1,24 @@
 button {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family);
 }
 
 .da-action-bar {
   bottom: 12px;
   position: fixed;
-  background-color: rgb(188 28 116);
+  background-color: var(--s2-blue-900);
   min-height: 48px;
-  border-radius: var(--s2-corner-radius-700);
+  border-radius: var(--s2-corner-radius-500);
   width: var(--se-grid-container-width);
   z-index: 400;
   filter: drop-shadow(rgb(0 0 0 / 15%) 0 1px 4px);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px;
+  padding: var(--s2-spacing-200);
   box-sizing: border-box;
   color: #FFF;
   font-size: 14px;
+  gap: var(--s2-spacing-100);
 }
 
 .da-action-bar button {
@@ -28,31 +29,58 @@ button {
   border-radius: var(--s2-corner-radius-500);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
+  gap: var(--s2-spacing-75);
+  padding: 0 var(--s2-spacing-100);
 }
 
 .da-action-bar button:hover {
   background-color: rgb(255 255 255 / 25%);
 }
 
-.da-action-bar button img {
+.da-action-bar button svg {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .da-action-bar-left-rail {
   margin-left: 3px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--s2-spacing-100);
 }
 
 .da-action-bar-right-rail {
   margin-right: 3px;
   display: flex;
-  gap: 8px;
+  gap: var(--s2-spacing-75);
+}
+
+.da-action-bar .preview-button img,
+.da-action-bar .publish-button img {
+  filter: brightness(0) invert(1);
+}
+
+.da-action-bar .preview-button.loading img,
+.da-action-bar .publish-button.loading img {
+  display: none;
+}
+
+.da-action-bar .preview-button.loading::before,
+.da-action-bar .publish-button.loading::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgb(255 255 255 / 40%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ab-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ab-spin {
+  to { transform: rotate(360deg); }
 }
 
 .da-action-bar.hide,

@@ -135,7 +135,7 @@ describe('da-list render', () => {
   it('Renders the confirm dialog when _confirm is set', async () => {
     await fixture({ fullpath: '/o/r' });
     el._selectedItems = [{ path: '/o/r/x.html', ext: 'html' }];
-    el._confirm = 'delete';
+    el._confirm = { type: 'delete' };
     el._itemsRemaining = 0;
     await rerender();
     const dialog = el.shadowRoot.querySelector('da-dialog');

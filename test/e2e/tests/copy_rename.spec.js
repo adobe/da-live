@@ -64,10 +64,11 @@ const link = await page.getByRole('link', { name: orgPageName });
 
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
-  await page.getByRole('button', { name: 'New' }).click();
-  await page.getByRole('button', { name: 'Folder' }).click();
-  await page.locator('input.da-actions-input').fill(copyFolderName);
-  await page.locator('input.da-actions-input').press('Enter');
+  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
+  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  await page.getByRole('menuitem', { name: 'Folder' }).click();
+  await page.getByPlaceholder('folder name').fill(copyFolderName);
+  await page.getByRole('button', { name: 'Create' }).click();
 
   const cpCheckbox = page.locator('div.da-item-list-item-inner').filter({ hasText: orgPageName })
     .locator('input[type="checkbox"][name="item-selected"]');

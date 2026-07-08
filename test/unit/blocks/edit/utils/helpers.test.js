@@ -18,13 +18,16 @@ const {
   getDaMetadata,
   setDaMetadata,
   isURL,
-  saveToAem,
   saveDaConfig,
-  saveDaVersion,
   debounce,
   getDiffLabels,
   htmlToProse,
 } = await import('../../../../../blocks/edit/utils/helpers.js');
+
+const {
+  saveToAem,
+  saveDaVersion,
+} = await import('../../../../../blocks/shared/utils.js');
 
 // Skip the api.js hlx6 upgrade probe so source/config URLs stay on DA_ADMIN.
 const skipPing = (handler) => async (url, opts) => {

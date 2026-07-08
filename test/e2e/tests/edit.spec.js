@@ -45,11 +45,11 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const pageName = url.split('/').pop();
 
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
-  await page.locator('button.da-actions-new-button').click();
-  await page.locator('button:text("Document")').click();
-  await page.locator('input.da-actions-input').fill(pageName);
-
-  await page.locator('button:text("Create document")').click();
+  await expect(page.locator('button.da-actions-new-button')).toBeEnabled();
+  await page.locator('button.da-actions-new-button').click({ force: true });
+  await page.getByRole('menuitem', { name: 'Document' }).click();
+  await page.getByPlaceholder('document name').fill(pageName);
+  await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
@@ -72,7 +72,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   // There are 2 delete buttons, one on the Browse panel and another on the Search one
   // select the visible one.
-  await newPage.locator('button.delete-button').locator('visible=true').click();
+  await newPage.locator('button.delete-button').filter({ visible: true }).click();
 
   await newPage.waitForTimeout(1000);
   /* TODO REMOVE once #233 is fixed */ await newPage.reload();

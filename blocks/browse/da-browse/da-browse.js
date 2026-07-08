@@ -1,23 +1,31 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
-import { isEWEnabled } from '../../shared/ewFlags.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
 
 // Components
-import '../da-breadcrumbs/da-breadcrumbs.js';
 import '../da-new/da-new.js';
 import '../da-search/da-search.js';
 import '../da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
+const BROWSE_CHAT_SESSION_KEY = 'nx-browse-chat-open';
+
+function isBrowseChatOpen() {
+  try {
+    return !!sessionStorage.getItem(BROWSE_CHAT_SESSION_KEY);
+  } catch {
+    return false;
+  }
+}
 
 const style = await loadStyle(import.meta.url);
 
 async function openChatPanel() {
   const store = getPanelStore();
   const width = store.before?.width ?? '400px';
-  return openPanel({
+  const aside = await openPanel({
     position: 'before',
     width,
     getContent: async () => {
@@ -25,6 +33,13 @@ async function openChatPanel() {
       return document.createElement('nx-chat');
     },
   });
+  if (aside) {
+    try { sessionStorage.setItem(BROWSE_CHAT_SESSION_KEY, '1'); } catch (e) { /* ignore */ }
+    aside.addEventListener('nx-panel-close', () => {
+      try { sessionStorage.removeItem(BROWSE_CHAT_SESSION_KEY); } catch (e) { /* ignore */ }
+    }, { once: true });
+  }
+  return aside;
 }
 
 export default class DaBrowse extends LitElement {
@@ -33,6 +48,43 @@ export default class DaBrowse extends LitElement {
     _tabItems: { state: true },
     _searchItems: { state: true },
     _chatEnabled: { state: true },
+  };
+
+  _browseSelKeys = new Set();
+
+  _clearBrowseSelection() {
+    for (const key of this._browseSelKeys) {
+      document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key } }));
+    }
+    this._browseSelKeys = new Set();
+  }
+
+  _handleBrowseSelection = ({ detail: { items } }) => {
+    const prevKeys = this._browseSelKeys;
+    const nextKeys = new Set(items.map((i) => i.path));
+
+    for (const key of prevKeys) {
+      if (!nextKeys.has(key)) {
+        document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key } }));
+      }
+    }
+
+    for (const item of items) {
+      if (!prevKeys.has(item.path)) {
+        document.dispatchEvent(new CustomEvent('nx-add-to-chat', {
+          detail: {
+            key: item.path,
+            id: item.path,
+            type: item.ext ? 'file' : 'folder',
+            label: item.name,
+            blockName: item.name,
+            innerText: `Selected repository path: ${item.path.replace(/^\//, '')}`,
+          },
+        }));
+      }
+    }
+
+    this._browseSelKeys = nextKeys;
   };
 
   constructor() {
@@ -98,15 +150,16 @@ export default class DaBrowse extends LitElement {
     if (props.has('details') && this.details) {
       const prevDetails = props.get('details');
       const orgChanged = prevDetails?.org !== this.details.org;
+      if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
 
       // EW flag lives at site level — re-check whenever org or site changes,
       // and do this before getEditor so the default editor reflects EW state
       if (orgChanged || prevDetails?.site !== this.details.site) {
         const { org, site } = this.details;
+        const { isEWEnabled } = await getNxEWFlags();
         this._chatEnabled = await isEWEnabled({ org, site });
-        if (this._chatEnabled) {
-          const store = getPanelStore();
-          if (store.before && !store.before.fragment) openChatPanel();
+        if (this._chatEnabled && isBrowseChatOpen()) {
+          openChatPanel();
         }
       }
 
@@ -199,6 +252,7 @@ export default class DaBrowse extends LitElement {
         fullpath="${fullpath}"
         editor="${this.editor}"
         @onpermissions=${this.handlePermissions}
+        @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
         drag="${drag ? true : nothing}"></da-list>`;
@@ -231,13 +285,21 @@ export default class DaBrowse extends LitElement {
     })}
       </div>
       <div class="da-list-header context-${this.context}">
-        <da-breadcrumbs .details="${this.details}"></da-breadcrumbs>
-        ${this._tabItems.map((tab) => html`
-          <div class="da-list-header-action" data-visible="${tab.selected}">
-            ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
+          <div class="da-breadcrumb-action-area">
+            <div class="da-breadcrumb-area">
+              <nx-breadcrumb .pathSegments="${this.details.fullpath.split('/').filter(Boolean)}"></nx-breadcrumb>
+              ${!this.details.path ? html`
+                <a class="da-breadcrumb-config" href="/config#${this.details.fullpath}/" aria-label="Config">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
+                </a>` : nothing}
+            </div>
+            ${this._tabItems.map((tab) => html`
+              <div class="da-list-header-action" data-visible="${tab.selected}">
+                ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
+              </div>
+            `)}
           </div>
-        `)}
-      </div>
+        </div>
       ${this._tabItems.map((tab) => html`
         <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
           ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
