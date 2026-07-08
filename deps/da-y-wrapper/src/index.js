@@ -1,5 +1,5 @@
 // ProseMirror
-import { EditorView } from 'prosemirror-view';
+import { EditorView, Decoration, DecorationSet } from 'prosemirror-view';
 import { EditorState, Plugin, PluginKey, TextSelection, NodeSelection } from 'prosemirror-state';
 import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
@@ -33,11 +33,14 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import {
   ySyncPlugin,
+  ySyncPluginKey,
   yCursorPlugin,
   yUndoPlugin,
   yUndoPluginKey,
   undo as yUndo,
   redo as yRedo,
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
   prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
   yDocToProsemirror,
@@ -52,6 +55,8 @@ import { InputRule, inputRules, wrappingInputRule } from 'prosemirror-inputrules
 // All exported
 export {
   EditorView,
+  Decoration,
+  DecorationSet,
   EditorState,
   DOMParser,
   DOMSerializer,
@@ -102,11 +107,14 @@ export {
   Y,
   WebsocketProvider,
   ySyncPlugin,
+  ySyncPluginKey,
   yCursorPlugin,
   yUndoPlugin,
   yUndoPluginKey,
   yUndo,
   yRedo,
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
   prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
   yDocToProsemirror,

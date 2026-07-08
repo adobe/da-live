@@ -1027,3 +1027,45 @@ da-diff-deleted, da-diff-added {
   background-color: #f0f7ff;
   border-color: var(--s2-blue-800);
 }
+
+.table-collapse-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: #fff;
+  background-image: url('/blocks/edit/img/S2_Icon_ChevronRight_20_N.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  z-index: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-90deg);
+}
+
+.table-collapse-handle.is-collapsed-state {
+  transform: rotate(90deg);
+}
+
+.table-collapse-handle.is-visible {
+  display: flex;
+}
+
+.table-collapse-handle:hover {
+  background-color: #f0f7ff;
+  border-color: var(--s2-blue-800);
+}
+
+/* Collapsed table: show only the first (header) row. The is-collapsed class is
+   applied by a node decoration to the prosemirror-tables .tableWrapper. */
+.ProseMirror .tableWrapper.is-collapsed table tr:not(:first-child) {
+  display: none;
+}
+
+.ProseMirror .tableWrapper.is-collapsed table {
+  border-bottom: 2px dashed var(--s2-blue-800);
+}
