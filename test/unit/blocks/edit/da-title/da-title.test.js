@@ -145,12 +145,10 @@ describe('DaTitle', () => {
   describe('reset', () => {
     it('clears internal state', async () => {
       el = await fixture();
-      el._scheduled = 'something';
       el._configs = ['config'];
 
       el.reset();
 
-      expect(el._scheduled).to.be.undefined;
       expect(el._configs).to.be.undefined;
     });
   });
@@ -469,7 +467,6 @@ describe('DaTitle', () => {
 
     it('Publish path: previews then publishes and opens the live URL', async () => {
       const element = buildEl();
-      element._scheduled = { scheduled: false };
       element._lazyMods = new Map([
         ['da-schedule', Promise.resolve({ getExistingSchedule: async () => null })],
       ]);
@@ -507,17 +504,24 @@ describe('DaTitle', () => {
         ['da-dialog', Promise.resolve()],
         ['da-schedule', Promise.resolve({ getExistingSchedule: async () => ({ scheduled: true, scheduledPublish: '2026-12-31' }) })],
       ]);
-      element._scheduled = { scheduled: true, scheduledPublish: '2026-12-31', userId: 'u1' };
       let dialogShown = false;
       const origSetScheduledDialog = element.setScheduledDialog;
       element.setScheduledDialog = async () => {
         dialogShown = true;
         return false; // user cancels
       };
-      window.fetch = () => Promise.resolve(new Response(
-        JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
-        { status: 200 },
-      ));
+      window.fetch = (url) => {
+        if (url.includes('snapshot-scheduler')) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ scheduled: true, scheduledPublish: '2026-12-31' }),
+            { status: 200 },
+          ));
+        }
+        return Promise.resolve(new Response(
+          JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
+          { status: 200 },
+        ));
+      };
       const opens = [];
       const savedOpen = window.open;
       window.open = (...args) => { opens.push(args); };

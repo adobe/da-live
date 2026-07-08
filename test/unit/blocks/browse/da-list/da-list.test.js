@@ -542,7 +542,85 @@ describe('DaList helpers', () => {
     it('Sets _confirm to "delete"', () => {
       const el = makeList();
       el.handleDelete();
-      expect(el._confirm).to.equal('delete');
+      expect(el._confirm).to.deep.equal({ type: 'delete' });
+    });
+  });
+
+  describe('handlePreview', () => {
+    it('Sets _confirm to preview type', () => {
+      const el = makeList();
+      el.handlePreview();
+      expect(el._confirm).to.deep.equal({ type: 'preview' });
+    });
+  });
+
+  describe('handlePublish', () => {
+    it('Sets _confirm to publish type', () => {
+      const el = makeList();
+      el.handlePublish();
+      expect(el._confirm).to.deep.equal({ type: 'publish' });
+    });
+  });
+
+  describe('handleConfirmPublish', () => {
+    let savedFetch;
+    beforeEach(() => { savedFetch = window.fetch; });
+    afterEach(() => { window.fetch = savedFetch; });
+
+    it('Populates _confirm.scheduled when items have an existing schedule', async () => {
+      window.fetch = (url) => {
+        if (url.includes('snapshot-scheduler')) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ scheduled: true, scheduledPublish: '2026-12-31T00:00:00Z', userId: 'user@example.com' }),
+            { status: 200 },
+          ));
+        }
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+      const el = makeList();
+      el._selectedItems = [{ name: 'doc', ext: 'html', path: '/org/site/doc.html' }];
+      await el.handleConfirmPublish();
+      expect(el._confirm.type).to.equal('publish');
+      expect(el._confirm.scheduled).to.have.length(1);
+      expect(el._confirm.scheduled[0].name).to.equal('doc');
+      expect(el._confirm.scheduled[0].scheduledPublish).to.equal('2026-12-31T00:00:00Z');
+      expect(el._confirm.scheduled[0].userId).to.equal('user@example.com');
+    });
+
+    it('Closes the dialog and starts the queue when no items have a scheduled publish', async () => {
+      window.fetch = (url) => {
+        if (url.includes('snapshot-scheduler')) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ scheduled: false }),
+            { status: 200 },
+          ));
+        }
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+      const el = makeList();
+      el._selectedItems = [{ name: 'doc', ext: 'html', path: '/org/site/doc.html' }];
+      await el.handleConfirmPublish();
+      expect(el._confirm).to.equal(null);
+    });
+
+    it('Skips folders and link items when checking schedules', async () => {
+      let schedulerCallCount = 0;
+      window.fetch = (url) => {
+        if (url.includes('snapshot-scheduler')) {
+          schedulerCallCount += 1;
+          const body = JSON.stringify({ scheduled: false });
+          return Promise.resolve(new Response(body, { status: 200 }));
+        }
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+      const el = makeList();
+      el._selectedItems = [
+        { name: 'doc', ext: 'html', path: '/org/site/doc.html' },
+        { name: 'folder', path: '/org/site/folder' },
+        { name: 'link', ext: 'link', path: '/org/site/link.link' },
+      ];
+      await el.handleConfirmPublish();
+      expect(schedulerCallCount).to.equal(1);
     });
   });
 
@@ -642,6 +720,114 @@ describe('DaList helpers', () => {
         aem.unPublish = origUnPublish;
         source.move = origMove;
       }
+    });
+  });
+
+  describe('runAemQueue', () => {
+    let savedFetch;
+    let api;
+    let origCreate;
+
+    before(async () => {
+      api = await getNx2Api();
+      origCreate = api.versions.create;
+    });
+
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      // Stub aemAction's preview fetch to return a valid response
+      window.fetch = (url) => {
+        if (url.includes('admin.hlx.page/preview')) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ preview: { url: 'https://example.com/preview/page' } }),
+            { status: 200 },
+          ));
+        }
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+    });
+
+    afterEach(() => {
+      window.fetch = savedFetch;
+      api.versions.create = origCreate;
+    });
+
+    function stubVersionCreate() {
+      const versioned = [];
+      api.versions.create = async (path) => { versioned.push(path); };
+      return versioned;
+    }
+
+    // flush fire-and-forget saveDaVersion (not awaited in callback)
+    const flush = () => new Promise((r) => { setTimeout(r, 0); });
+
+    it('Calls saveDaVersion for html items', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [{ name: 'page', ext: 'html', path: '/org/site/page.html' }];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(1);
+    });
+
+    it('Calls saveDaVersion for json items', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [{ name: 'data', ext: 'json', path: '/org/site/data.json' }];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(1);
+    });
+
+    it('Skips saveDaVersion for svg items', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [{ name: 'icon', ext: 'svg', path: '/org/site/icon.svg' }];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(0);
+    });
+
+    it('Skips saveDaVersion for pdf items', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [{ name: 'doc', ext: 'pdf', path: '/org/site/doc.pdf' }];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(0);
+    });
+
+    it('Skips saveDaVersion for image items (png, jpg, gif, webp)', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [
+        { name: 'a', ext: 'png', path: '/org/site/a.png' },
+        { name: 'b', ext: 'jpg', path: '/org/site/b.jpg' },
+        { name: 'c', ext: 'gif', path: '/org/site/c.gif' },
+        { name: 'd', ext: 'webp', path: '/org/site/d.webp' },
+      ];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(0);
+    });
+
+    it('Versions html but not media in a mixed selection', async () => {
+      const versioned = stubVersionCreate();
+      const el = makeList();
+      el._selectedItems = [
+        { name: 'page', ext: 'html', path: '/org/site/page.html' },
+        { name: 'img', ext: 'png', path: '/org/site/img.png' },
+        { name: 'icon', ext: 'svg', path: '/org/site/icon.svg' },
+      ];
+      el._itemErrors = [];
+      await el.runAemQueue('preview');
+      await flush();
+      expect(versioned.length).to.equal(1);
     });
   });
 
@@ -915,7 +1101,7 @@ async function mountWithSelection(items, opts = {}) {
   // which fetches /list/{fullpath} and would hang in a test environment.
   el._listItems = items;
   el._selectedItems = items;
-  el._confirm = 'delete';
+  el._confirm = { type: 'delete' };
   el._deleteCount = deleteCount;
   el._deleteCountLoading = deleteCountLoading;
   el._unpublish = unpublish;

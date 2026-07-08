@@ -24,16 +24,6 @@ export async function getUserPublishPermission(org, site, path) {
   }
 }
 
-export async function getExistingSchedule(org, site, path) {
-  try {
-    const resp = await daFetch(`${SNAPSHOT_SCHEDULER_URL}/schedule/${org}/${site}?path=${encodeURIComponent(path)}`);
-    if (!resp.ok) return null;
-    return resp.json();
-  } catch {
-    return null;
-  }
-}
-
 export async function schedulePagePublish(org, site, path, userId, scheduledPublish) {
   const resp = await daFetch(`${SNAPSHOT_SCHEDULER_URL}/schedule/page`, {
     method: 'POST',
