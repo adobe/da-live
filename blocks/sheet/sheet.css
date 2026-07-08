@@ -1,4 +1,10 @@
 /* stylelint-disable property-no-vendor-prefix */
+
+/* TODO: remove once dark-mode styling is complete. */
+.light-scheme, .dark-scheme {
+  color-scheme: light;
+}
+
 body {
   background: rgb(250 250 250);
 }
