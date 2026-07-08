@@ -157,11 +157,6 @@ async function setSheet(details, daTitle, daSheet) {
 }
 
 export default async function init(el) {
-  // TODO: remove once dark-mode styling for the sheet view is complete.
-  // Strip the dark-scheme class so document.body always renders in light.
-  document.body.classList.remove('dark-scheme');
-  document.body.classList.add('light-scheme');
-
   let details = getPathDetails();
   if (!details) {
     el.innerHTML = '<h1>Please edit a sheet.</h1>';
