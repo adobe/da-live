@@ -4,10 +4,11 @@ import '../da-sheet-tabs.js';
 
 const nx = getNx();
 const isNx2 = nx.endsWith('/nx2');
-// Backward-compat with nx v1: loadScript lives in a dedicated module
-// there and is re-exported from utils/utils.js in nx2. Remove the
-// ternary once nxver=2 is rolled out on the CDN.
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
+// TODO: remove the ternary and the nx v1 branch once nxver=2 is rolled
+// out on the CDN. Kept for backward compat during the transition:
+// nx v1 exposes loadScript at utils/script.js; nx2 re-exports it from
+// utils/utils.js.
 const loadScript = isNx2
   ? (await import(`${nx}/utils/utils.js`)).loadScript
   : (await import(`${nx}/utils/script.js`)).default;
