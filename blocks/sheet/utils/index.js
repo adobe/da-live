@@ -3,7 +3,14 @@ import { handleSave, staleCheck } from './utils.js';
 import '../da-sheet-tabs.js';
 
 const nx = getNx();
-const { loadStyle, loadScript } = await import(`${nx}/utils/utils.js`);
+const isNx2 = nx.endsWith('/nx2');
+// Backward-compat with nx v1: loadScript lives in a dedicated module
+// there and is re-exported from utils/utils.js in nx2. Remove the
+// ternary once nxver=2 is rolled out on the CDN.
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const loadScript = isNx2
+  ? (await import(`${nx}/utils/utils.js`)).loadScript
+  : (await import(`${nx}/utils/script.js`)).default;
 
 async function adoptStyle(href) {
   const sheet = await loadStyle(href);
