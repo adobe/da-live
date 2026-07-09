@@ -60,15 +60,31 @@ describe('imageDrop plugin', () => {
     }
   });
 
-  it('uploadImageFile bails when daFetch is not ok', async () => {
+  it('uploadImageFile removes the FPO, logs, and shows an error banner when the upload fails', async () => {
     const savedFetch = window.fetch;
-    window.fetch = () => Promise.resolve(new Response('boom', { status: 500 }));
+    const savedConsoleError = console.error;
+    let loggedArgs = null;
+    console.error = (...args) => { loggedArgs = args; };
+    window.fetch = () => Promise.resolve(new Response('boom', { status: 403, statusText: 'Forbidden' }));
+    const daTitle = document.createElement('da-title');
+    document.body.append(daTitle);
     try {
       const file = new File(['x'], 'pic.png', { type: 'image/png' });
       await uploadImageFile(editor.view, file);
-      // FPO is still inserted; we just verify no throw.
+      let foundImg = false;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') foundImg = true;
+      });
+      expect(foundImg).to.be.false;
+      expect(loggedArgs).to.not.be.null;
+      expect(loggedArgs[0]).to.include('pic.png');
+      expect(daTitle._status).to.not.be.undefined;
+      expect(daTitle._status.message).to.include('pic.png');
+      expect(daTitle._status.details).to.include('403');
     } finally {
       window.fetch = savedFetch;
+      console.error = savedConsoleError;
+      daTitle.remove();
     }
   });
 

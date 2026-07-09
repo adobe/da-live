@@ -24,7 +24,26 @@ export async function uploadImageFile(view, file) {
 
   const { source } = await getNx2Api();
   const resp = await source.save(path, { body: file });
-  if (!resp.ok) return;
+  if (!resp.ok) {
+    // eslint-disable-next-line no-console
+    console.error(`Failed to upload image "${file.name}": ${resp.status} ${resp.statusText}`);
+    view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image' && node.attrs.src === fpoSrc) {
+        view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize));
+        return false;
+      }
+      return true;
+    });
+    const daTitle = document.querySelector('da-title');
+    if (daTitle) {
+      // eslint-disable-next-line no-underscore-dangle
+      daTitle._status = {
+        message: `Couldn't upload "${file.name}"`,
+        details: `Server responded ${resp.status} ${resp.statusText}`.trim(),
+      };
+    }
+    return;
+  }
   const json = await resp.json();
 
   // Create a doc image to pre-download the image before showing it.
