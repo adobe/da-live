@@ -46,7 +46,7 @@ class DaSheetPreview extends LitElement {
   }
 
   renderValue(value) {
-    if (!(value.startsWith('/') || value.startsWith('http'))) return value;
+    if (typeof value !== 'string' || !(value.startsWith('/') || value.startsWith('http'))) return value;
     const links = value.split(',').map((val) => val.replaceAll(' ', ''));
     return links.map((link) => html`<a href="${this.getUrl(link)}" target="_blank">${link}</a> `);
   }
