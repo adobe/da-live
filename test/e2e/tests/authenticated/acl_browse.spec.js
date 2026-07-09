@@ -109,15 +109,39 @@ test('Readonly directory with writeable document', async ({ page }) => {
   await expect(editor).toHaveAttribute('contenteditable', 'true');
 });
 
-test('No access directory should not show anything', async ({ page }) => {
+test('Ancestor directory shows only permitted descendants', async ({ page }) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`);
 
   // In this directory we should be able to see files
   await expect(page.getByRole('button', { name: 'Name' })).toBeVisible();
 
-  // In this directory we should be able to see nothing
+  // `testdocs` itself has no direct grant, but the user has permission on
+  // several descendants (readwrite-doc, readonly-doc, subdir/**, dir-readwrite/**,
+  // dir-readonly/**), so listing it should now succeed and be filtered to just
+  // those, per adobe/da-admin#299.
   await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs`);
+  // We need to reload the page explicitly because the only thing we changed
+  // was the anchor and that doesn't normally trigger a change
+  await page.reload();
+
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/readwrite-doc"]')).toBeVisible();
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/readonly-doc"]')).toBeVisible();
+  await expect(page.locator('a[href="#/da-testautomation/acltest/testdocs/subdir"]')).toBeVisible();
+  await expect(page.locator('a[href="#/da-testautomation/acltest/testdocs/dir-readwrite"]')).toBeVisible();
+  await expect(page.locator('a[href="#/da-testautomation/acltest/testdocs/dir-readonly"]')).toBeVisible();
+
+  // noaccess-doc requires DA-Nonexist, which the test user is not a member of
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/noaccess-doc"]')).not.toBeVisible();
+});
+
+test('No access directory should not show anything', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
+
+  // `otherdir` sits outside the `testdocs` tree and has no ACL grant on it or
+  // any descendant, so unlike `testdocs` above it has no permitted descendant
+  // to fall back on and listing it must still be blocked (see auth.setup.js).
+  await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/otherdir`);
   // We need to reload the page explicitly because the only thing we changed
   // was the anchor and that doesn't normally trigger a change
   await page.reload();
