@@ -11,12 +11,9 @@ export default class EwVersionHistory extends DaVersionsBase {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    // DaVersionsBase.handlePreview() already dispatches this on itself; forward
-    // it onto the cross-subtree bus so canvas.js can mount the preview overlay.
-    this.addEventListener('preview', ({ detail }) => versionPreviewChange.emit(detail));
+    this._onPreview = ({ detail }) => versionPreviewChange.emit(detail);
+    this.addEventListener('preview', this._onPreview);
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
-    // DaVersionsBase has no keyboard escape hatch for the "create a new
-    // version" label form; add one without touching the shared base class.
     this._onKeydown = (e) => {
       if (e.key === 'Escape' && this._newVersion) this.handleCancel();
     };
@@ -26,26 +23,16 @@ export default class EwVersionHistory extends DaVersionsBase {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this.removeEventListener('preview', this._onPreview);
     this.shadowRoot.removeEventListener('keydown', this._onKeydown);
   }
 
   _onHashChange({ org, site, path } = {}) {
-    // hashChange's path has no extension (e.g. "mydoc"), but DA's version APIs
-    // identify documents by their .html source path, same as canvas's own
-    // buildSourceUrl() (ew-editor-doc/utils/source.js) appends unconditionally
-    // for the exact same hash-derived path when loading the live document.
     const nextPath = org && site && path ? `/${org}/${site}/${path}.html` : '';
     if (nextPath === this.path) return;
     this.path = nextPath;
     if (!this.path) return;
-    // DaVersionsBase.getVersions() has no built-in request-sequencing, so a
-    // slower response for an earlier path can resolve after a newer one and
-    // overwrite it. Detect that with a sequence counter and re-fetch once
-    // more so the panel always converges on the current path's versions.
-    const seq = (this._versionsSeq = (this._versionsSeq || 0) + 1);
-    this.getVersions().then(() => {
-      if (seq !== this._versionsSeq) this.getVersions();
-    });
+    this.getVersions();
   }
 
   render() {

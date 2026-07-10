@@ -2,9 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
-import {
-  docToHtml, domToHtml, buildCompareDom, wrapTablesInWrappers,
-} from '../../shared/version/compare.js';
+import { docToHtml, domToHtml, buildCompareDom, wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { renderModal as renderCompareModal } from '../../edit/da-editor/da-compare.js';
 import getSheet from '../../shared/sheet.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
@@ -47,15 +45,14 @@ export default class EwVersionPreview extends LitElement {
     // Guards against an older, slower request overwriting a newer selection
     // (e.g. two version rows clicked in quick succession) — only the response
     // for the most recently requested versionId is applied.
-    const requestId = (this._fetchVersionSeq = (this._fetchVersionSeq || 0) + 1);
+    this._fetchVersionSeq = (this._fetchVersionSeq || 0) + 1;
+    const requestId = this._fetchVersionSeq;
     const { versions } = await getNx2Api();
     // this.path comes from canvas's raw hashChange state (e.g. "mydoc"), with
     // no extension. DA's version APIs identify documents by their .html
     // source path — same as canvas's own buildSourceUrl() (ew-editor-doc/
     // utils/source.js) appends unconditionally for this same hash-derived path.
-    const resp = await versions.get({
-      org: this.org, site: this.site, path: `${this.path}.html`, versionId: this.versionId,
-    });
+    const resp = await versions.get({ org: this.org, site: this.site, path: `${this.path}.html`, versionId: this.versionId });
     if (requestId !== this._fetchVersionSeq) return;
     if (!resp.ok) {
       versionPreviewChange.emit(null);

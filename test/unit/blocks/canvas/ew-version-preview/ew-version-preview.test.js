@@ -61,9 +61,7 @@ describe('ew-version-preview', () => {
     const org = `org-vp-${testIndex}`;
     const site = `site-vp-${testIndex}`;
     mockVersionSource('<body><main><div><p>Hello from version</p></div></main></body>');
-    mount({
-      org, site, path: '/mydoc', versionId: 'abc123', label: 'Ver 1',
-    });
+    mount({ org, site, path: '/mydoc', versionId: 'abc123', label: 'Ver 1' });
     await waitFor(() => !!el._versionDom);
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.version-title').textContent).to.contain('Ver 1');
@@ -74,9 +72,7 @@ describe('ew-version-preview', () => {
     const org = `org-vp-${testIndex}`;
     const site = `site-vp-${testIndex}`;
     mockVersionSource('<body><main><div><p>content</p></div></main></body>');
-    mount({
-      org, site, path: '/mydoc', versionId: 'abc123', label: 'Ver 1',
-    });
+    mount({ org, site, path: '/mydoc', versionId: 'abc123', label: 'Ver 1' });
     await waitFor(() => !!el._versionDom);
     await el.updateComplete;
     const restoreBtn = el.shadowRoot.querySelector('.version-action-buttons .accent');
@@ -102,9 +98,7 @@ describe('ew-version-preview', () => {
       }
       return Promise.resolve(new Response('', { status: 404 }));
     };
-    mount({
-      org, site, path: '/mydoc', versionId: 'versionA', label: 'Ver A',
-    });
+    mount({ org, site, path: '/mydoc', versionId: 'versionA', label: 'Ver A' });
     await waitFor(() => !!el._versionDom);
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.version-dom').textContent).to.contain('Content A');
@@ -138,9 +132,7 @@ describe('ew-version-preview', () => {
       return Promise.resolve(new Response('', { status: 404 }));
     };
     try {
-      mount({
-        org, site, path: 'mydoc', versionId: 'abc123', label: 'Ver 1',
-      });
+      mount({ org, site, path: 'mydoc', versionId: 'abc123', label: 'Ver 1' });
       await waitFor(() => requestedUrls.some((u) => u.includes('/.versions/')));
       const versionUrl = requestedUrls.find((u) => u.includes('/.versions/'));
       expect(versionUrl).to.contain(`/${org}/sites/${site}/source/mydoc.html/.versions/abc123`);
@@ -153,9 +145,7 @@ describe('ew-version-preview', () => {
     const org = `org-vp-${testIndex}`;
     const site = `site-vp-${testIndex}`;
     mockVersionSource('<body><main><div><p>content</p></div></main></body>');
-    mount({
-      org, site, path: '/mydoc', versionId: 'abc123', label: 'Ver 1',
-    });
+    mount({ org, site, path: '/mydoc', versionId: 'abc123', label: 'Ver 1' });
     await waitFor(() => !!el._versionDom);
     await el.updateComplete;
 

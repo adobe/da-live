@@ -69,33 +69,34 @@ function removeNotPermitted(mountRoot) {
   mountRoot.querySelector('.nx-not-permitted')?.remove();
 }
 
-// Tracks the in-flight element-creation promise so concurrent calls (e.g. two
-// version rows clicked before the dynamic import resolves) share one mount
-// instead of each appending their own <ew-version-preview>.
-let versionPreviewMount;
+// Cached, one-time dynamic import of the preview element definition; deduped so
+// rapid clicks don't import twice.
+let versionPreviewImport;
+// Incremented on every call (open or close) so a request that lands while the
+// module is still loading can detect it has been superseded — otherwise a close
+// (or newer selection) arriving mid-import would be lost and a stale preview
+// would mount over the newly loaded document.
+let versionPreviewGen = 0;
 
 async function showVersionPreview(mountRoot, detail) {
-  let el = mountRoot.querySelector('ew-version-preview');
+  versionPreviewGen += 1;
+  const gen = versionPreviewGen;
   if (!detail) {
-    versionPreviewMount = undefined;
-    el?.remove();
+    mountRoot.querySelector('ew-version-preview')?.remove();
     return;
   }
+  versionPreviewImport ??= import('./ew-version-preview/ew-version-preview.js');
+  await versionPreviewImport;
+  // A newer call (another open, or a close) ran while we were importing — let
+  // that call own the element instead of applying this now-stale detail.
+  if (gen !== versionPreviewGen) return;
+  let el = mountRoot.querySelector('ew-version-preview');
   if (!el) {
-    versionPreviewMount ??= (async () => {
-      await import('./ew-version-preview/ew-version-preview.js');
-      const created = document.createElement('ew-version-preview');
-      mountRoot.append(created);
-      return created;
-    })();
-    el = await versionPreviewMount;
+    el = document.createElement('ew-version-preview');
+    mountRoot.append(el);
   }
-  const {
-    org, site, path, versionId, label,
-  } = detail;
-  Object.assign(el, {
-    org, site, path, versionId, label,
-  });
+  const { org, site, path, versionId, label } = detail;
+  Object.assign(el, { org, site, path, versionId, label });
 }
 
 // Incremented on each load to prevent stale network requests

@@ -204,9 +204,7 @@ export class EwEditorDoc extends LitElement {
 
     try {
       const { token, permissions } = session;
-      ({
-        proseEl, wsProvider, view, ydoc, undoManager,
-      } = await initProse({
+      ({ proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
         path: sourceUrl,
         permissions,
         setEditable: (editable) => this._setEditable(editable),
