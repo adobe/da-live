@@ -69,16 +69,26 @@ function removeNotPermitted(mountRoot) {
   mountRoot.querySelector('.nx-not-permitted')?.remove();
 }
 
+// Tracks the in-flight element-creation promise so concurrent calls (e.g. two
+// version rows clicked before the dynamic import resolves) share one mount
+// instead of each appending their own <ew-version-preview>.
+let versionPreviewMount;
+
 async function showVersionPreview(mountRoot, detail) {
   let el = mountRoot.querySelector('ew-version-preview');
   if (!detail) {
+    versionPreviewMount = undefined;
     el?.remove();
     return;
   }
   if (!el) {
-    await import('./ew-version-preview/ew-version-preview.js');
-    el = document.createElement('ew-version-preview');
-    mountRoot.append(el);
+    versionPreviewMount ??= (async () => {
+      await import('./ew-version-preview/ew-version-preview.js');
+      const created = document.createElement('ew-version-preview');
+      mountRoot.append(created);
+      return created;
+    })();
+    el = await versionPreviewMount;
   }
   const {
     org, site, path, versionId, label,
@@ -248,6 +258,11 @@ export default async function decorate(block) {
 
   let currentHashState = {};
   hashChange.subscribe((state) => {
+    // Close any open version-preview overlay when the active document changes —
+    // otherwise Restore would apply a stale version onto the newly loaded doc.
+    if (buildCanvasDocPath(state) !== buildCanvasDocPath(currentHashState)) {
+      versionPreviewChange.emit(null);
+    }
     currentHashState = state;
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');

@@ -37,7 +37,15 @@ export default class EwVersionHistory extends DaVersionsBase {
     const nextPath = org && site && path ? `/${org}/${site}/${path}.html` : '';
     if (nextPath === this.path) return;
     this.path = nextPath;
-    if (this.path) this.getVersions();
+    if (!this.path) return;
+    // DaVersionsBase.getVersions() has no built-in request-sequencing, so a
+    // slower response for an earlier path can resolve after a newer one and
+    // overwrite it. Detect that with a sequence counter and re-fetch once
+    // more so the panel always converges on the current path's versions.
+    const seq = (this._versionsSeq = (this._versionsSeq || 0) + 1);
+    this.getVersions().then(() => {
+      if (seq !== this._versionsSeq) this.getVersions();
+    });
   }
 
   render() {

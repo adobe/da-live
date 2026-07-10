@@ -118,7 +118,7 @@ export default class DaVersionsBase extends LitElement {
           <p class="da-version-date">${entry.date}</p>
           <input type="text" name="label" placeholder="Label" class="da-version-new-input" />
         </form>
-        <button class="da-version-btn da-version-btn-cancel" @click=${this.handleCancel}>Save</button>
+        <button class="da-version-btn da-version-btn-cancel" @click=${this.handleCancel}>Cancel</button>
       </li>
     `;
   }

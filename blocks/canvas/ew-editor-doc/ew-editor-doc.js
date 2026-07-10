@@ -196,9 +196,17 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
+    let proseEl;
+    let wsProvider;
+    let view;
+    let ydoc;
+    let undoManager;
+
     try {
       const { token, permissions } = session;
-      const { proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
+      ({
+        proseEl, wsProvider, view, ydoc, undoManager,
+      } = await initProse({
         path: sourceUrl,
         permissions,
         setEditable: (editable) => this._setEditable(editable),
@@ -242,7 +250,21 @@ export class EwEditorDoc extends LitElement {
       this._setupController();
     } catch (e) {
       this._error = e?.message || 'Failed to load editor';
+      // A failure after initProse resolved can leave a live ProseMirror view/
+      // wsProvider that this component no longer tracks — tear them down the
+      // same way _teardown() does, so nothing leaks and the shared extensions
+      // bridge doesn't keep pointing at a session this component has given up on.
+      teardownEditorDocResources({
+        clearPortHandler: () => this._clearControllerPort(),
+        awarenessOff: this._awarenessOff,
+        wsProvider,
+        view,
+        proseEl,
+        onCollabUsersCleared: () => this._emitCollabUsers([]),
+      });
+      this._awarenessOff = undefined;
       this._proseContext = undefined;
+      setExtensionsBridgeContext();
       return;
     }
 
