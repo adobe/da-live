@@ -102,9 +102,8 @@ export async function prefetchBlockLibrary({ org, site } = {}) {
   store.key = key;
   store.state = 'loading';
   try {
-    const { fetchExtensions, fetchBlocks } = await import('../ew-panel-extensions/helpers.js');
-    const extensions = await fetchExtensions(org, site);
-    const ext = extensions?.find((e) => e.name === 'blocks');
+    const { loadBlockLibrary } = await import('../ew-panel-extensions/helpers.js');
+    const { ext, blocks } = await loadBlockLibrary(org, site);
     if (!ext) {
       store.entries = [];
       store.hasLibrary = false;
@@ -113,7 +112,6 @@ export async function prefetchBlockLibrary({ org, site } = {}) {
     }
 
     store.hasLibrary = true;
-    const blocks = await fetchBlocks(ext.sources);
     await ingestBlocks(blocks);
   } catch {
     store.state = 'empty';

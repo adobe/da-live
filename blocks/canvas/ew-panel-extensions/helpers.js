@@ -258,6 +258,13 @@ export async function fetchExtensions(org, site) {
   return extensions;
 }
 
+/** Resolve the configured "blocks" library extension for an org/site, or null. */
+export async function getBlocksExtension(org, site) {
+  if (!org || !site) return null;
+  const extensions = await fetchExtensions(org, site);
+  return extensions?.find((ext) => ext.name === 'blocks') || null;
+}
+
 // ---------------------------------------------------------------------------
 // Data fetching
 // ---------------------------------------------------------------------------
@@ -279,6 +286,38 @@ export async function fetchBlocks(sources) {
     } catch { /* skip failed source */ }
   }
   return blocks;
+}
+
+const blockLibraryCache = new Map();
+
+/**
+ * Load — and memoize per org/site — the configured blocks library: the resolved
+ * "blocks" extension plus its fetched blocks (each carrying a lazy `loadVariants`
+ * promise). Shared by the slash-menu prefetch and the block-library modal so the
+ * library (and every variant's HTML) is fetched and parsed at most once.
+ * Resolves to `{ ext: null, blocks: [] }` when no library is configured.
+ */
+export function loadBlockLibrary(org, site) {
+  if (!org || !site) return Promise.resolve({ ext: null, blocks: [] });
+  const key = `${org}/${site}`;
+  if (!blockLibraryCache.has(key)) {
+    const pending = (async () => {
+      const ext = await getBlocksExtension(org, site);
+      if (!ext) return { ext: null, blocks: [] };
+      const blocks = await fetchBlocks(ext.sources);
+      return { ext, blocks };
+    })().catch((err) => {
+      // Don't cache transient failures — allow a later retry.
+      blockLibraryCache.delete(key);
+      throw err;
+    });
+    blockLibraryCache.set(key, pending);
+  }
+  return blockLibraryCache.get(key);
+}
+
+export function resetBlockLibraryCache() {
+  blockLibraryCache.clear();
 }
 
 export async function fetchItems(sources, format) {

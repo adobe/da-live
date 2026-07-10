@@ -138,6 +138,7 @@ describe('block-slash store', () => {
   let resetBlockLibrary;
 
   let prefetchBlockLibrary;
+  let resetBlockLibraryCache;
 
   before(async () => {
     const mod = await import('../../../../../blocks/canvas/editor-utils/block-slash.js');
@@ -148,9 +149,13 @@ describe('block-slash store', () => {
     getState = mod.getState;
     resetBlockLibrary = mod.resetBlockLibrary;
     prefetchBlockLibrary = mod.prefetchBlockLibrary;
+    ({ resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
   });
 
-  afterEach(() => resetBlockLibrary());
+  afterEach(() => {
+    resetBlockLibrary();
+    resetBlockLibraryCache();
+  });
 
   function mockBlocks() {
     return [
