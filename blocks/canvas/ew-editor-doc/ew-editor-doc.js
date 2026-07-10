@@ -238,7 +238,7 @@ export class EwEditorDoc extends LitElement {
             },
           ),
         ],
-      });
+      }));
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
       setExtensionsBridgeContext({ permissions, ydoc });
