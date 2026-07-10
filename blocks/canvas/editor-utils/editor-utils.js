@@ -295,6 +295,23 @@ export const editorSelectChange = (() => {
   };
 })();
 
+// Event observable — no replay on subscribe, like editorSelectChange. Bridges
+// ew-version-history (in the tool-panel subtree) to canvas.js's editor mount
+// (a separate subtree), which mounts/unmounts ew-version-preview in response.
+// detail is { versionId, label, date } to open a preview, or null to close it.
+export const versionPreviewChange = (() => {
+  const listeners = new Set();
+  return {
+    emit(detail) {
+      listeners.forEach((fn) => fn(detail));
+    },
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+})();
+
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);

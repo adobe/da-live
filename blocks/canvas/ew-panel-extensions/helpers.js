@@ -418,6 +418,19 @@ function createFileExplorerView() {
   };
 }
 
+function createVersionHistoryView() {
+  return {
+    id: 'versions',
+    label: 'Versions',
+    section: 'Editor',
+    firstParty: true,
+    load: async () => {
+      await import('../ew-version-history/ew-version-history.js');
+      return document.createElement('ew-version-history');
+    },
+  };
+}
+
 function extensionToPanelView(ext, section) {
   const view = {
     id: ext.name,
@@ -485,6 +498,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
   return [
     createOutlineView(),
     createFileExplorerView(),
+    createVersionHistoryView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

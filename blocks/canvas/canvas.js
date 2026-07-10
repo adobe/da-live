@@ -1,5 +1,5 @@
 import { getNx } from '../../scripts/utils.js';
-import { editorSelectChange } from './editor-utils/editor-utils.js';
+import { editorSelectChange, versionPreviewChange } from './editor-utils/editor-utils.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -67,6 +67,25 @@ function showNotPermitted(mountRoot, message) {
 
 function removeNotPermitted(mountRoot) {
   mountRoot.querySelector('.nx-not-permitted')?.remove();
+}
+
+async function showVersionPreview(mountRoot, detail) {
+  let el = mountRoot.querySelector('ew-version-preview');
+  if (!detail) {
+    el?.remove();
+    return;
+  }
+  if (!el) {
+    await import('./ew-version-preview/ew-version-preview.js');
+    el = document.createElement('ew-version-preview');
+    mountRoot.append(el);
+  }
+  const {
+    org, site, path, versionId, label,
+  } = detail;
+  Object.assign(el, {
+    org, site, path, versionId, label,
+  });
 }
 
 // Incremented on each load to prevent stale network requests
@@ -227,10 +246,16 @@ export default async function decorate(block) {
     header.redoAvailable = e.detail?.canRedo ?? false;
   });
 
+  let currentHashState = {};
   hashChange.subscribe((state) => {
+    currentHashState = state;
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);
+  });
+
+  versionPreviewChange.subscribe((detail) => {
+    showVersionPreview(mountRoot, detail ? { ...currentHashState, ...detail } : null);
   });
 
   document.addEventListener('nx-open-chat-panel', async ({ detail }) => {

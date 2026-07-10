@@ -5,11 +5,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getPreviewOrigin;
 let fetchWysiwygBranch;
+let versionPreviewChange;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
   getPreviewOrigin = mod.getPreviewOrigin;
   fetchWysiwygBranch = mod.fetchWysiwygBranch;
+  versionPreviewChange = mod.versionPreviewChange;
 });
 
 describe('getPreviewOrigin', () => {
@@ -117,5 +119,32 @@ describe('fetchWysiwygBranch', () => {
     ]);
     const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-10/site-wbr-10/page' }));
     expect(branch).to.equal('valid');
+  });
+});
+
+describe('versionPreviewChange', () => {
+  it('does not replay the last value to new subscribers', () => {
+    versionPreviewChange.emit({ versionId: 'abc' });
+    let received = 'unset';
+    const unsub = versionPreviewChange.subscribe((detail) => { received = detail; });
+    unsub();
+    expect(received).to.equal('unset');
+  });
+
+  it('notifies subscribers of emitted values, including null to close', () => {
+    const received = [];
+    const unsub = versionPreviewChange.subscribe((detail) => received.push(detail));
+    versionPreviewChange.emit({ versionId: 'abc', label: 'Ver 1', date: '1/1/24' });
+    versionPreviewChange.emit(null);
+    unsub();
+    expect(received).to.deep.equal([{ versionId: 'abc', label: 'Ver 1', date: '1/1/24' }, null]);
+  });
+
+  it('stops notifying after unsubscribing', () => {
+    const received = [];
+    const unsub = versionPreviewChange.subscribe((detail) => received.push(detail));
+    unsub();
+    versionPreviewChange.emit({ versionId: 'xyz' });
+    expect(received).to.deep.equal([]);
   });
 });

@@ -25,7 +25,7 @@ import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
-import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
+import { createExtensionsBridgePlugin, setExtensionsBridgeContext } from '../editor-utils/extensions-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -180,6 +180,7 @@ export class EwEditorDoc extends LitElement {
     });
     this._awarenessOff = undefined;
     this._proseContext = undefined;
+    setExtensionsBridgeContext();
   }
 
   async _loadEditor() {
@@ -232,6 +233,7 @@ export class EwEditorDoc extends LitElement {
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
+      setExtensionsBridgeContext({ permissions, ydoc });
       setSelectionToolbarCtx({ org: this.ctx?.org, site: this.ctx?.repo, sourceUrl });
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);

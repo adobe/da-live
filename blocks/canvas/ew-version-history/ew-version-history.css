@@ -1,0 +1,229 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--s2-font-family);
+}
+
+.ew-version-history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.da-version-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.da-version-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: start;
+  gap: var(--s2-spacing-25, 2px) var(--s2-spacing-150);
+  padding: var(--s2-spacing-100);
+  border-bottom: 1px solid var(--s2-gray-200);
+  cursor: pointer;
+}
+
+.da-version-entry.is-audit {
+  color: var(--s2-gray-600);
+}
+
+/* renderNewVersion() wraps its button/date/input in a <form>, which would
+   otherwise be the only direct grid child — display: contents promotes its
+   children to real grid items so the same column layout applies to them. */
+.da-version-entry.is-new > form {
+  display: contents;
+}
+
+/* Third column holds the cancel (X) icon beside the input, on the same row. */
+.da-version-entry.is-new {
+  grid-template-columns: 24px 1fr auto;
+}
+
+.da-version-date,
+.da-version-label,
+.da-version-audit-entries,
+.da-version-new-input,
+.da-version-btn-cancel {
+  grid-column: 2;
+  margin: 0;
+}
+
+.da-version-date,
+.da-version-label {
+  font-size: var(--s2-body-size-s);
+  font-weight: 600;
+  color: var(--s2-gray-800);
+}
+
+.da-version-entry.is-audit .da-version-date {
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Icon badges, matching edit mode's approach: the button's text ("Create",
+   "Restore", "View") stays as the accessible name but is visually replaced
+   by an icon, so it reads as a timeline marker rather than a text button. */
+.da-version-btn {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  place-self: start center;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--s2-gray-400);
+  text-indent: -9999px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* :not(.da-version-btn-cancel) matters here: renderNewVersion() puts that
+   class on a button that ALSO carries .da-version-btn, so without the
+   exclusion these higher-specificity rules would win over the dedicated
+   .da-version-btn-cancel styling below and paint it blue with a + icon. */
+.da-version-entry.is-now .da-version-btn:not(.da-version-btn-cancel),
+.da-version-entry.is-new .da-version-btn:not(.da-version-btn-cancel),
+.da-version-entry.is-version .da-version-btn:not(.da-version-btn-cancel) {
+  width: 24px;
+  height: 24px;
+  margin-top: 0;
+}
+
+.da-version-entry.is-now .da-version-btn:not(.da-version-btn-cancel),
+.da-version-entry.is-new .da-version-btn:not(.da-version-btn-cancel) {
+  background-color: var(--s2-blue-800);
+  mask: no-repeat center / 16px url('/img/icons/s2-icon-addcircle-20-n.svg');
+}
+
+.da-version-entry.is-version .da-version-btn:not(.da-version-btn-cancel) {
+  background-color: var(--s2-gray-600);
+  mask: no-repeat center / 14px url('/img/icons/s2-icon-refresh-20-n.svg');
+}
+
+.da-version-entry.is-now .da-version-btn:hover {
+  background-color: var(--s2-blue-900);
+}
+
+.da-version-entry.is-version:hover .da-version-btn,
+.da-version-entry.is-version.is-open .da-version-btn {
+  background-color: var(--s2-blue-800);
+}
+
+.da-version-btn-cancel {
+  width: 24px;
+  height: 24px;
+  margin-top: unset;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--s2-red-700);
+  mask: no-repeat center / 14px url('/img/icons/s2-icon-cancel-20-n.svg');
+  text-indent: -9999px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.da-version-btn-cancel:hover {
+  background-color: var(--s2-red-800);
+}
+
+.da-version-audit-entries {
+  margin: 0;
+  padding: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+}
+
+.da-version-entry.is-open .da-version-audit-entries {
+  max-height: 400px;
+}
+
+.da-version-audit-entry {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: var(--s2-spacing-100);
+  padding-top: var(--s2-spacing-50);
+  font-size: var(--s2-body-size-s);
+}
+
+.da-version-time {
+  font-weight: 600;
+  color: var(--s2-gray-700);
+  margin: 0;
+}
+
+.da-audit-names p {
+  margin: 0;
+  color: var(--s2-gray-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.da-version-new-input {
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-body-size-s);
+  padding: var(--s2-spacing-50);
+  border: 1px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-75);
+}
+
+.da-version-new-input::placeholder {
+  font-style: italic;
+}
+
+.da-version-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--s2-gray-400);
+  animation: ew-version-pulse 1.2s ease-in-out infinite;
+}
+
+.placeholder {
+  padding: var(--s2-spacing-300) var(--s2-spacing-100);
+  font-size: var(--s2-body-size-s);
+  color: var(--s2-gray-600);
+  text-align: center;
+}
+
+/* Row/column placement for the "create a new version" form — comes after
+   the general rules above so the more-specific .is-new overrides win. */
+.da-version-entry.is-new .da-version-date {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.da-version-entry.is-new .da-version-new-input {
+  grid-row: 2;
+  grid-column: 2;
+  align-self: center;
+}
+
+.da-version-entry.is-new .da-version-btn-cancel {
+  grid-row: 2;
+  grid-column: 3;
+  align-self: center;
+}
+
+@keyframes ew-version-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}

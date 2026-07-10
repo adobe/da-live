@@ -1,0 +1,86 @@
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: block;
+  background: #fff;
+  font-family: var(--s2-font-family);
+  overflow-y: auto;
+}
+
+.version-action-area {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  background: var(--s2-gray-75);
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.version-title {
+  margin: 0;
+  font-size: var(--s2-body-size-m);
+  font-weight: 700;
+  color: var(--s2-gray-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-150);
+  flex: 0 0 auto;
+}
+
+/* Matches ew-canvas-header.css's .segment convention: borderless pill
+   buttons with a hover background instead of a visible border. */
+.version-action-buttons button {
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-body-size-s);
+  font-weight: var(--s2-component-s-medium-font-weight, 600);
+  height: 32px;
+  padding: 0 var(--s2-spacing-200);
+  border: none;
+  border-radius: var(--s2-corner-radius-400);
+  background: transparent;
+  color: var(--s2-gray-800);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.version-action-buttons button:hover {
+  background-color: var(--s2-gray-200);
+  color: var(--s2-gray-900);
+}
+
+.version-action-buttons button:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}
+
+.version-action-buttons button.accent {
+  background: var(--s2-blue-800);
+  color: #fff;
+}
+
+.version-action-buttons button.accent:hover {
+  background: var(--s2-blue-900);
+  color: #fff;
+}
+
+.version-action-buttons button.accent:disabled {
+  background: var(--s2-gray-400);
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.version-dom {
+  padding: var(--s2-spacing-300);
+  pointer-events: none;
+}

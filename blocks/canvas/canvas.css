@@ -28,6 +28,7 @@ nx-chat {
 
 /* Layout / content / split: one visible editor set; split uses WYSIWYG | gutter | doc; inactive uses [hidden] */
 .nx-canvas-editor-mount {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;

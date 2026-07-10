@@ -179,3 +179,35 @@ describe('EW panel helpers transformBlock', () => {
     expect(dom.querySelector('p')).to.not.be.null;
   });
 });
+
+describe('getCanvasToolPanelViews', () => {
+  let getCanvasToolPanelViews;
+  let savedFetch;
+
+  before(async () => {
+    const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
+    ({ getCanvasToolPanelViews } = mod);
+  });
+
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  it('includes a first-party Versions view alongside Outline and Files', async () => {
+    window.fetch = () => Promise.resolve(new Response('error', { status: 404 }));
+    const views = await getCanvasToolPanelViews({ org: 'gcvt-org-1', site: 'gcvt-site-1' });
+    const ids = views.map((v) => v.id);
+    expect(ids).to.include.members(['outline', 'files', 'versions']);
+    const versionsView = views.find((v) => v.id === 'versions');
+    expect(versionsView.label).to.equal('Versions');
+    expect(versionsView.section).to.equal('Editor');
+    expect(versionsView.firstParty).to.equal(true);
+  });
+
+  it('lazily loads the ew-version-history element', async () => {
+    window.fetch = () => Promise.resolve(new Response('error', { status: 404 }));
+    const views = await getCanvasToolPanelViews({ org: 'gcvt-org-2', site: 'gcvt-site-2' });
+    const versionsView = views.find((v) => v.id === 'versions');
+    const el = await versionsView.load();
+    expect(el.tagName.toLowerCase()).to.equal('ew-version-history');
+  });
+});

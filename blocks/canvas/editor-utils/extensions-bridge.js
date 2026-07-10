@@ -1,10 +1,15 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin } from 'da-y-wrapper';
 
-const bridge = { view: null };
+const bridge = { view: null, permissions: undefined, ydoc: undefined };
 
 export function getExtensionsBridge() {
   return bridge;
+}
+
+export function setExtensionsBridgeContext({ permissions, ydoc } = {}) {
+  bridge.permissions = permissions;
+  bridge.ydoc = ydoc;
 }
 
 export function createExtensionsBridgePlugin() {
