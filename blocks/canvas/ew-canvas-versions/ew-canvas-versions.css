@@ -8,8 +8,6 @@
   color: var(--s2-gray-700);
 }
 
-
-
 button {
   border-radius: var(--s2-corner-radius-400);
   border: none;
@@ -61,8 +59,8 @@ button {
   padding: 0 var(--s2-spacing-100);
 
   &.is-selected {
-   background: var(--s2-gray-100);
-   color: var(--s2-gray-800);
+    background: var(--s2-gray-100);
+    color: var(--s2-gray-800);
   }
 
   &:hover:not(.is-selected) {
@@ -108,9 +106,9 @@ button {
   list-style: none;
   padding: 0;
   padding-left: var(--s2-spacing-200);
-      margin: var(--s2-spacing-400) 0;
-    overflow-y: scroll;
-    overflow-x: hidden;
+  margin: var(--s2-spacing-400) 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .versionentry {
@@ -151,11 +149,10 @@ button {
   content: '';
 }
 
-.versionicon { 
+.versionicon {
   text-align: center;
 
   svg {
-    
     width: 16px;
     height: 16px;
     position: relative;
@@ -164,16 +161,15 @@ button {
 }
 
 .is-current .versionicon {
-background: var(--s2-gray-1000);
+  background: var(--s2-gray-1000);
 
-svg {
-color: var(--s2-gray-25);
-}
+  svg {
+    color: var(--s2-gray-25);
+  }
 }
 
 .is-version .versionicon {
-background: var(--s2-gray-100);
-
+  background: var(--s2-gray-100);
 }
 
 
@@ -237,23 +233,6 @@ details[open] > summary::before {
   }
 }
 
-/* ── Entry row ───────────────────────────────────── */
-
-.ew-cv-entry.is-published::before {
-  background: var(--s2-blue-600, #147af3);
-  border-color: var(--s2-blue-600, #147af3);
-}
-
-.ew-cv-entry.is-audits::before {
-  width: 6px;
-  height: 6px;
-  left: -3px;
-  top: 13px;
-  background: var(--s2-gray-300);
-  border-color: var(--s2-gray-300);
-}
-
-
 /* details / summary */
 details {
   flex: 1;
@@ -279,36 +258,6 @@ summary {
   gap: 2px;
   min-width: 0;
   flex: 1;
-}
-
-.ew-cv-meta {
-  font-size: var(--s2-body-size-xs);
-  color: var(--s2-gray-700);
-}
-
-.ew-cv-user {
-  font-size: var(--s2-body-size-xs);
-  color: var(--s2-gray-600);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-
-/* Audit expanded list */
-.ew-cv-audit-list {
-  list-style: none;
-  margin: var(--s2-spacing-75) 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2-spacing-75);
-}
-
-.ew-cv-audit-item {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
 }
 
 /* New version inline form */

@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
+import { initIms } from '../../shared/utils.js';
 import {
   fetchVersions,
   newVersionEntry,
@@ -30,17 +31,18 @@ class EwCanvasVersions extends LitElement {
   static properties = {
     path: { type: String },
     _filter: { state: true },
+    _imsEmail: { state: true },
     _versions: { state: true },
     _newVersion: { state: true },
     _restoreEntry: { state: true },
     _compareDom: { state: true },
-    _compareLabel: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._filter = 'all';
+    initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
     this._unsubHash = hashChange.subscribe((state) => {
       const { org, site, path } = state ?? {};
       const next = org && site && path ? `/${org}/${site}/${path}.html` : '';
@@ -65,8 +67,7 @@ class EwCanvasVersions extends LitElement {
     this._filter = val;
   }
 
-  handleNew(e) {
-    e.target.disabled = true;
+  handleNew() {
     this._newVersion = newVersionEntry();
   }
 
@@ -138,9 +139,11 @@ class EwCanvasVersions extends LitElement {
 
   get _filteredVersions() {
     if (!this._versions) return [];
-    if (this._filter === 'all') return this._versions;
-    // TODO: filter by current IMS user email
-    return this._versions;
+    if (this._filter === 'all' || !this._imsEmail) return this._versions;
+    return this._versions.filter((entry) => {
+      if (entry.isVersion) return entry.users?.some((u) => u.email === this._imsEmail);
+      return entry.audits?.some((a) => a.users?.some((u) => u.email === this._imsEmail));
+    });
   }
 
   // Merge consecutive audit groups (which helpers.js splits by date) into one
@@ -180,7 +183,6 @@ class EwCanvasVersions extends LitElement {
   }
 
   renderVersion(entry) {
-    const isPublished = !!entry.published;
     const users = entry.users?.map((u) => u.email).join(', ');
     const menuItems = [
       { section: 'Actions' },
@@ -188,15 +190,15 @@ class EwCanvasVersions extends LitElement {
       { id: 'compare', label: 'Compare', icon: 'gridcompare' },
     ];
     return html`
-      <li class="versionentry is-version${isPublished ? ' is-published' : ''}">
-              <span class="versionicon">
-        <svg viewBox="0 0 16 16" aria-hidden="true">
-          <use href="/img/icons/s2-icon-targetsmall-20-n.svg#icon"></use>
-        </svg>
+      <li class="versionentry is-version">
+        <span class="versionicon">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <use href="/img/icons/s2-icon-targetsmall-20-n.svg#icon"></use>
+          </svg>
         </span>
         <div class="version-row">
           <div class="ew-cv-body">
-            <span class="versionname">${isPublished ? 'Published' : (entry.label || entry.date)}</span>
+            <span class="versionname">${entry.label || entry.date}</span>
             <span class="meta">${entry.date}, ${entry.time}</span>
             ${users ? html`<span class="user">${users}</span>` : nothing}
           </div>
@@ -240,7 +242,7 @@ class EwCanvasVersions extends LitElement {
   renderNewVersion() {
     const { date } = this._newVersion;
     return html`
-      <li class="ew-cv-entry is-new">
+      <li class="versionentry is-new">
         <div class="ew-cv-body">
           <form class="ew-cv-new-form" @submit=${this.handleNewSubmit}>
             <input type="text" name="label" placeholder="Version name"
@@ -251,7 +253,7 @@ class EwCanvasVersions extends LitElement {
               <button type="submit" class="da-btn-primary">Save</button>
             </div>
           </form>
-          <span class="ew-cv-meta">${date}</span>
+          <span class="meta">${date}</span>
         </div>
       </li>
     `;
@@ -286,9 +288,11 @@ class EwCanvasVersions extends LitElement {
           <div class="segment" role="group" aria-label="Filter versions">
             <button type="button"
               class="seg-btn${this._filter === 'all' ? ' is-selected' : ''}"
+              aria-pressed=${this._filter === 'all'}
               @click=${() => this._setFilter('all')}>All</button>
             <button type="button"
               class="seg-btn${this._filter === 'me' ? ' is-selected' : ''}"
+              aria-pressed=${this._filter === 'me'}
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
           <button type="button" class="ew-cv-add-btn" aria-label="Create version"
