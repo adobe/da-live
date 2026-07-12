@@ -616,7 +616,7 @@ export default class DaList extends LitElement {
       }
     };
 
-    const queue = new Queue(callback, 5);
+    const queue = new Queue(callback, 5, null, 250);
     await Promise.all(items.map((item) => queue.push(item)));
   }
 
