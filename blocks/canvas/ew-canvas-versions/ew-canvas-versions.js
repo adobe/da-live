@@ -21,6 +21,11 @@ await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 
+export function buildDocPath(state) {
+  const { org, site, path } = state ?? {};
+  return org && site && path ? `/${org}/${site}/${path}.html` : '';
+}
+
 let compareSheetPromise;
 function loadCompareSheet() {
   compareSheetPromise ??= getSheet('/blocks/shared/version/compare.css');
@@ -43,9 +48,8 @@ class EwCanvasVersions extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._filter = 'all';
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
-    this._unsubHash = hashChange.subscribe((state) => {
-      const { org, site, path } = state ?? {};
-      const next = org && site && path ? `/${org}/${site}/${path}.html` : '';
+    this._unsubHash = hashChange?.subscribe((state) => {
+      const next = buildDocPath(state);
       if (next !== this.path) {
         this.path = next;
         if (next) this._load();
@@ -167,8 +171,6 @@ class EwCanvasVersions extends LitElement {
     return items;
   }
 
-  // --- render helpers ---
-
   renderNow() {
     return html`
       <li class="versionentry is-current">
@@ -184,9 +186,10 @@ class EwCanvasVersions extends LitElement {
 
   renderVersion(entry) {
     const users = entry.users?.map((u) => u.email).join(', ');
+    const canWrite = getExtensionsBridge().view?.editable ?? false;
     const menuItems = [
       { section: 'Actions' },
-      { id: 'restore', label: 'Restore', icon: 'revert' },
+      ...(canWrite ? [{ id: 'restore', label: 'Restore', icon: 'revert' }] : []),
       { id: 'compare', label: 'Compare', icon: 'gridcompare' },
     ];
     return html`
