@@ -10,7 +10,7 @@ import {
 } from '../../shared/version/version-actions.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import getSheet from '../../shared/sheet.js';
+import './ew-canvas-compare.js';
 
 const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
@@ -26,12 +26,6 @@ const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import
 export function buildDocPath(state) {
   const { org, site, path } = state ?? {};
   return org && site && path ? `/${org}/${site}/${path}.html` : '';
-}
-
-let compareSheetPromise;
-function loadCompareSheet() {
-  compareSheetPromise ??= getSheet('/blocks/shared/version/compare.css');
-  return compareSheetPromise;
 }
 
 let toastPromise;
@@ -55,6 +49,7 @@ class EwCanvasVersions extends LitElement {
     _savingVersion: { state: true },
     _restoreEntry: { state: true },
     _compareCtx: { state: true },
+    _compareSplit: { state: true },
   };
 
   connectedCallback() {
@@ -141,6 +136,7 @@ class EwCanvasVersions extends LitElement {
     const newDoc = PMDOMParser.fromSchema(view.state.schema).parse(versionBody);
     const { doc } = view.state;
     view.dispatch(view.state.tr.replaceWith(0, doc.content.size, newDoc.content));
+    this.handleCloseCompare();
   }
 
   async handleCompare(e, entry) {
@@ -148,24 +144,16 @@ class EwCanvasVersions extends LitElement {
     const { view } = getExtensionsBridge();
     if (!view) return;
 
-    const [versionBody, compareSheet] = await Promise.all([
-      fetchVersionHtml(this.path, entry),
-      loadCompareSheet(),
-    ]);
+    const versionBody = await fetchVersionHtml(this.path, entry);
     if (!versionBody) {
       showError('Could not load the selected version.');
       return;
-    }
-
-    if (!this.shadowRoot.adoptedStyleSheets.includes(compareSheet)) {
-      this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, compareSheet];
     }
 
     this.handleCloseCompare();
     const { dom, cleanup } = await buildCompareDom({
       htmlA: docToHtml(view),
       htmlB: domToHtml(versionBody),
-      onClose: () => this.handleCloseCompare(),
       closeOnOutsideClick: false,
     });
     this._compareCtx = { dom, cleanup, label: entry.label || entry.date, entry };
@@ -173,13 +161,16 @@ class EwCanvasVersions extends LitElement {
 
   handleRestoreFromCompare() {
     const { entry } = this._compareCtx ?? {};
-    this.handleCloseCompare();
     this.handleRestoreClick(entry);
   }
 
   handleCloseCompare() {
     this._compareCtx?.cleanup?.();
     this._compareCtx = null;
+  }
+
+  handleToggleCompareSplit() {
+    this._compareSplit = !this._compareSplit;
   }
 
   get _canWrite() {
@@ -263,8 +254,9 @@ class EwCanvasVersions extends LitElement {
       ...(this._canWrite ? [{ id: 'restore', label: 'Restore', icon: 'revert' }] : []),
       { id: 'compare', label: 'Compare', icon: 'gridcompare' },
     ];
+    const isComparing = this._compareCtx?.entry === entry;
     return html`
-      <li class="versionentry is-version">
+      <li class="versionentry is-version${isComparing ? ' is-comparing' : ''}">
         <span class="versionicon">
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <use href="/img/icons/s2-icon-targetsmall-20-n.svg#icon"></use>
@@ -276,7 +268,7 @@ class EwCanvasVersions extends LitElement {
             <span class="meta">${entry.date}, ${entry.time}</span>
             ${users ? html`<span class="user">${users}</span>` : nothing}
           </div>
-          <nx-menu .items=${menuItems}
+          <nx-menu .items=${menuItems} placement="auto"
             @select=${(e) => {
         if (e.detail.id === 'restore') this.handleRestoreClick(entry);
         else this.handleCompare(e, entry);
@@ -374,22 +366,15 @@ class EwCanvasVersions extends LitElement {
       </div>
       ${this._restoreEntry ? this.renderRestoreDialog() : nothing}
       ${this._compareCtx ? html`
-        <nx-dialog class="compare" @close=${this.handleCloseCompare}>
-          <div class="compare-header">
-            <h2>Compare with current document</h2>
-            <div class="compare-actions">
-              ${this._canWrite ? html`
-                <button class="da-btn-primary" @click=${this.handleRestoreFromCompare}>Restore</button>
-              ` : nothing}
-              <button class="da-btn-secondary" @click=${this.handleCloseCompare}>Close</button>
-            </div>
-          </div>
-          <div class="da-compare-key">
-            <del class="diffdel">Current</del>
-            <ins class="diffins">${this._compareCtx.label}</ins>
-          </div>
-          <div class="da-compare-body ProseMirror">${this._compareCtx.dom}</div>
-        </nx-dialog>
+        <ew-canvas-compare
+          .dom=${this._compareCtx.dom}
+          label=${this._compareCtx.label}
+          ?canWrite=${this._canWrite}
+          ?split=${this._compareSplit}
+          @close=${this.handleCloseCompare}
+          @restore=${this.handleRestoreFromCompare}
+          @toggle-split=${this.handleToggleCompareSplit}>
+        </ew-canvas-compare>
       ` : nothing}
     `;
   }

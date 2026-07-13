@@ -1,0 +1,249 @@
+:host {
+  display: contents;
+  font-family: var(--s2-font-family);
+}
+
+nx-popover {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-700);
+  box-shadow: 0 8px 32px light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 45%));
+  overflow: hidden;
+  border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.ew-cc-header {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  padding: var(--s2-spacing-200);
+  border-bottom: 1px solid var(--s2-gray-100);
+  height: 48px;
+  box-sizing: border-box;
+}
+
+.ew-cc-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 var(--s2-spacing-200);
+  border-radius: var(--s2-corner-radius-400);
+  background: var(--s2-blue-200);
+  color: var(--s2-gray-800);
+  font-size: var(--s2-component-s-regular-font-size);
+}
+
+.ew-cc-chip.is-neutral {
+  background: var(--s2-red-200);
+}
+
+.ew-cc-chip-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.ew-cc-chip-slot {
+  display: flex;
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+.ew-cc-actions {
+  position: absolute;
+  top: 50%;
+  right: var(--s2-spacing-200);
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+
+  .da-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    padding: 0 var(--s2-spacing-100);
+    font-size: var(--s2-component-s-regular-font-size);
+    font-weight: normal;
+    border-radius: var(--s2-corner-radius-400);
+  }
+}
+
+.ew-cc-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--s2-gray-800);
+  border-radius: var(--s2-corner-radius-400);
+
+  .icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: var(--s2-gray-100);
+  }
+}
+
+.ew-cc-icon-btn.is-active {
+  background: var(--s2-gray-900);
+  color: var(--s2-gray-25);
+
+  &:hover {
+    background: var(--s2-gray-1000);
+  }
+}
+
+.ew-cc-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--s2-spacing-300);
+}
+
+.ew-cc-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.ew-cc-pane {
+  flex: 1 1 50%;
+  min-width: 0;
+  overflow: auto;
+  padding: var(--s2-spacing-300);
+
+  &:first-child {
+    border-right: 1px solid var(--s2-gray-100);
+  }
+}
+
+:is(.ew-cc-body, .ew-cc-pane) > *:first-child {
+  margin-top: 0;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) img {
+  max-width: 100%;
+  height: auto;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) .tableWrapper {
+  overflow-x: auto;
+  border: 2px solid var(--s2-gray-400);
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  border-style: hidden;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) td,
+:is(.ew-cc-body, .ew-cc-pane) th {
+  border: 1px solid var(--s2-gray-400);
+  padding: 8px;
+  vertical-align: top;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) tr:first-child td,
+:is(.ew-cc-body, .ew-cc-pane) tr:first-child th {
+  background: var(--s2-gray-100);
+  font-weight: 700;
+  text-align: center;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) td > *:first-child,
+:is(.ew-cc-body, .ew-cc-pane) th > *:first-child {
+  margin-top: 0;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) td > *:last-child,
+:is(.ew-cc-body, .ew-cc-pane) th > *:last-child {
+  margin-bottom: 0;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins,
+:is(.ew-cc-body, .ew-cc-pane) ins.diffmod {
+  background: var(--s2-green-200);
+  color: var(--s2-green-1000);
+  text-decoration: none;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel,
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod {
+  background: var(--s2-red-300);
+  color: var(--s2-red-1000);
+  text-decoration: none;
+  padding: 0 var(--s2-spacing-75);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod {
+  background: var(--s2-orange-200);
+  color: var(--s2-orange-1000);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:empty,
+:is(.ew-cc-body, .ew-cc-pane) ins.diffmod:empty,
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:empty,
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod:empty,
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
+:is(.ew-cc-body, .ew-cc-pane) ins.diffmod:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty) {
+  display: none;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
+:is(.ew-cc-body, .ew-cc-pane) ins.diffmod:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table) {
+  display: block;
+  padding: 4px 8px;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(table),
+:is(.ew-cc-body, .ew-cc-pane) ins.diffmod:has(table),
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(table),
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(table) {
+  background: none;
+  padding: 0 0 0 12px;
+  margin: 4px 0;
+  color: inherit;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(table) {
+  border-left: 4px solid var(--s2-green-900);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(table) {
+  border-left: 4px solid var(--s2-red-900);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(table) {
+  border-left: 4px solid var(--s2-orange-900);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(table) .tableWrapper {
+  border-color: var(--s2-green-900);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(table) .tableWrapper {
+  border-color: var(--s2-red-900);
+}

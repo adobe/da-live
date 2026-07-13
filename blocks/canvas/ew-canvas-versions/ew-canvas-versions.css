@@ -233,7 +233,7 @@ button {
   margin: calc(-1 * var(--s2-spacing-50));
 }
 
-.versionentry.is-version:hover,
+.versionentry.is-version:not(.is-comparing):hover,
 .versionentry.is-version:has(.version-more-btn[data-active]) {
   .version-row {
     background: var(--s2-gray-100);
@@ -241,6 +241,17 @@ button {
 
   .version-more-btn {
     opacity: 1;
+  }
+}
+
+.versionentry.is-version.is-comparing {
+  .version-row {
+    background: var(--s2-blue-100);
+  }
+
+  .versionicon {
+    background: var(--s2-blue-900);
+    color: var(--s2-gray-25);
   }
 }
 
@@ -331,86 +342,10 @@ summary {
   }
 }
 
-nx-dialog.compare {
-  --nx-dialog-min-width: min(90vw, 1200px);
-}
-
 nx-dialog {
   --nx-dialog-max-width: min(90vw, 1200px);
   --nx-dialog-max-height: 80vh;
   --nx-dialog-padding: var(--s2-spacing-200);
-}
-
-.compare-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--s2-spacing-150) var(--s2-spacing-200);
-  background: var(--s2-gray-25);
-
-  .da-compare-key {
-    font-family: var(--s2-font-family);
-  }
-}
-
-.compare-actions {
-  display: flex;
-  gap: var(--s2-spacing-100);
-}
-
-/* Content styling for the diffed document itself — kept here rather than in the
-   shared compare.css since this panel is the only consumer that needs it (the
-   classic edit page's compare view already inherits table/image styling from
-   da-editor.css via its shared shadow root). */
-.da-compare-body img {
-  max-width: 100%;
-  height: auto;
-}
-
-.da-compare-body .tableWrapper {
-  overflow-x: auto;
-  border: 2px solid var(--s2-gray-400);
-  border-radius: 6px;
-  margin: 8px 0;
-}
-
-.da-compare-body table {
-  border-collapse: collapse;
-  table-layout: fixed;
-  width: 100%;
-  border-style: hidden;
-}
-
-.da-compare-body td,
-.da-compare-body th {
-  border: 1px solid var(--s2-gray-400);
-  padding: 8px;
-  vertical-align: top;
-  box-sizing: border-box;
-}
-
-.da-compare-body tr:first-child td,
-.da-compare-body tr:first-child th {
-  background: var(--s2-gray-100);
-  font-weight: 700;
-  text-align: center;
-}
-
-.da-compare-body td > *:first-child,
-.da-compare-body th > *:first-child {
-  margin-top: 0;
-}
-
-.da-compare-body td > *:last-child,
-.da-compare-body th > *:last-child {
-  margin-bottom: 0;
-}
-
-.da-compare-body .ProseMirror > *:first-child {
-  margin-top: 0;
 }
 
 
