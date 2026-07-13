@@ -15,6 +15,7 @@ import getSheet from '../../shared/sheet.js';
 const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
 const ICON_CHEVRON = '/img/icons/s2-icon-chevrondown-20-n.svg';
+const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
@@ -77,7 +78,7 @@ class EwCanvasVersions extends LitElement {
 
   updated(changed) {
     if (changed.has('_newVersion') && this._newVersion) {
-      const input = this.shadowRoot.querySelector('.new-input');
+      const input = this.shadowRoot.querySelector('.da-input');
       input?.focus();
       input?.select();
     }
@@ -215,6 +216,33 @@ class EwCanvasVersions extends LitElement {
     return items;
   }
 
+  renderNewRow() {
+    return html`
+      <li class="versionentry is-new">
+        <span class="versionicon"></span>
+        <form class="ew-cv-new-row" @submit=${this.handleNewSubmit} @keydown=${this.handleNewKeydown}>
+          <input type="text" name="label" placeholder="Version name"
+            class="da-input" .value=${`Version ${this._newVersion.date}`}
+            ?readonly=${this._savingVersion} />
+          <div class="ew-cv-new-actions">
+            <button type="submit" class="ew-cv-save-btn da-btn-secondary"
+              ?disabled=${this._savingVersion}
+              aria-label=${this._savingVersion ? 'Saving' : nothing}>
+              ${this._savingVersion ? html`<span class="da-loading-spinner" aria-hidden="true"></span>` : 'Save'}
+            </button>
+            <button type="button" class="ew-cv-icon-btn" aria-label="Cancel"
+              ?disabled=${this._savingVersion}
+              @click=${this.handleCancel}>
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <use href="${ICON_CLOSE}#icon"></use>
+              </svg>
+            </button>
+          </div>
+        </form>
+      </li>
+    `;
+  }
+
   renderCurrentRow() {
     return html`
       <li class="versionentry is-current">
@@ -223,23 +251,7 @@ class EwCanvasVersions extends LitElement {
           <use href="/img/icons/s2-icon-targetsmall-20-n.svg#icon"></use>
         </svg>
         </span>
-        ${this._newVersion ? html`
-          <form class="ew-cv-new-row" @submit=${this.handleNewSubmit} @keydown=${this.handleNewKeydown}>
-            <input type="text" name="label" placeholder="Version name"
-              class="new-input" .value=${`Version ${this._newVersion.date}`}
-              ?readonly=${this._savingVersion} />
-            <div class="ew-cv-new-actions">
-              <button type="button" class="ew-cv-quiet-btn"
-                ?disabled=${this._savingVersion}
-                @click=${this.handleCancel}>Cancel</button>
-              <button type="submit" class="ew-cv-quiet-btn is-primary"
-                ?disabled=${this._savingVersion}
-                aria-label=${this._savingVersion ? 'Saving' : nothing}>
-                ${this._savingVersion ? html`<span class="da-loading-spinner" aria-hidden="true"></span>` : 'Save'}
-              </button>
-            </div>
-          </form>
-        ` : html`<span class="versionname">Current</span>`}
+        <span class="versionname">Current</span>
       </li>
     `;
   }
@@ -353,6 +365,7 @@ class EwCanvasVersions extends LitElement {
         ${this._versions === undefined
         ? html`<p class="loading">Loading…</p>`
         : html`<ul class="versionlist">
+              ${this._newVersion ? this.renderNewRow() : nothing}
               ${this.renderCurrentRow()}
               ${this._buildDisplayItems(this._filteredVersions).map((entry) => (
           entry.isVersion ? this.renderVersion(entry) : this.renderAudits(entry)
