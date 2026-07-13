@@ -171,14 +171,12 @@ describe('ew-canvas-versions', () => {
     expect(allBtn.getAttribute('aria-pressed')).to.equal('false');
   });
 
-  it('handleCloseCompare calls cleanup and clears _compareDom', async () => {
+  it('handleCloseCompare calls cleanup and clears _compareCtx', async () => {
     inst = await createInstance();
     let cleaned = false;
-    inst._compareDom = document.createElement('div');
-    inst._compareCleanup = () => { cleaned = true; };
+    inst._compareCtx = { dom: document.createElement('div'), cleanup: () => { cleaned = true; }, label: 'v1', entry: {} };
     inst.handleCloseCompare();
-    expect(inst._compareDom).to.be.null;
-    expect(inst._compareLabel).to.be.null;
+    expect(inst._compareCtx).to.be.null;
     expect(cleaned).to.be.true;
   });
 });

@@ -40,7 +40,7 @@ class EwCanvasVersions extends LitElement {
     _versions: { state: true },
     _newVersion: { state: true },
     _restoreEntry: { state: true },
-    _compareDom: { state: true },
+    _compareCtx: { state: true },
   };
 
   connectedCallback() {
@@ -129,16 +129,22 @@ class EwCanvasVersions extends LitElement {
       htmlB: versionBody.innerHTML,
       onClose: () => this.handleCloseCompare(),
     });
-    this._compareDom = dom;
-    this._compareCleanup = cleanup;
-    this._compareLabel = entry.label || entry.date;
+    this._compareCtx = { dom, cleanup, label: entry.label || entry.date, entry };
+  }
+
+  handleRestoreFromCompare() {
+    const { entry } = this._compareCtx ?? {};
+    this.handleCloseCompare();
+    this.handleRestoreClick(entry);
   }
 
   handleCloseCompare() {
-    this._compareCleanup?.();
-    this._compareCleanup = null;
-    this._compareDom = null;
-    this._compareLabel = null;
+    this._compareCtx?.cleanup?.();
+    this._compareCtx = null;
+  }
+
+  get _canWrite() {
+    return getExtensionsBridge().view?.editable ?? false;
   }
 
   get _filteredVersions() {
@@ -186,10 +192,9 @@ class EwCanvasVersions extends LitElement {
 
   renderVersion(entry) {
     const users = entry.users?.map((u) => u.email).join(', ');
-    const canWrite = getExtensionsBridge().view?.editable ?? false;
     const menuItems = [
       { section: 'Actions' },
-      ...(canWrite ? [{ id: 'restore', label: 'Restore', icon: 'revert' }] : []),
+      ...(this._canWrite ? [{ id: 'restore', label: 'Restore', icon: 'revert' }] : []),
       { id: 'compare', label: 'Compare', icon: 'gridcompare' },
     ];
     return html`
@@ -200,7 +205,7 @@ class EwCanvasVersions extends LitElement {
           </svg>
         </span>
         <div class="version-row">
-          <div class="ew-cv-body">
+          <div class="version-info">
             <span class="versionname">${entry.label || entry.date}</span>
             <span class="meta">${entry.date}, ${entry.time}</span>
             ${users ? html`<span class="user">${users}</span>` : nothing}
@@ -225,7 +230,7 @@ class EwCanvasVersions extends LitElement {
     const auditLength = entry.audits.length;
     return html`
       <li class="versionentry">
-        <details open>
+        <details>
           <summary>
             <span class="versionname">${auditLength} change${auditLength > 1 ? 's' : ''}</span>
           </summary>
@@ -233,7 +238,7 @@ class EwCanvasVersions extends LitElement {
             ${entry.audits.map((a) => html`
               <li class="audititem">
                 <span class="meta">${a.date}, ${a.time}</span>
-                ${a.users?.length ? html`<span class="user">${a.users[0].email}</span>` : nothing}
+                ${a.users?.length ? html`<span class="user">${a.users.map((u) => u.email).join(', ')}</span>` : nothing}
               </li>
             `)}
           </ul>
@@ -316,18 +321,22 @@ class EwCanvasVersions extends LitElement {
             </ul>`}
       </div>
       ${this._restoreEntry ? this.renderRestoreDialog() : nothing}
-      ${this._compareDom ? html`
-        <nx-dialog class="ew-cv-compare" @close=${this.handleCloseCompare}>
-          <div class="ew-cv-compare-header">
-          <h2>Compare with current document</h2>
-              <button class="da-btn-secondary" aria-label="Close"
-              @click=${() => this.shadowRoot.querySelector('nx-dialog.ew-cv-compare').close()}>Close</button>
+      ${this._compareCtx ? html`
+        <nx-dialog class="compare" @close=${this.handleCloseCompare}>
+          <div class="compare-header">
+            <h2>Compare with current document</h2>
+            <div class="compare-actions">
+              ${this._canWrite ? html`
+                <button class="da-btn-primary" @click=${this.handleRestoreFromCompare}>Restore</button>
+              ` : nothing}
+              <button class="da-btn-secondary" @click=${this.handleCloseCompare}>Close</button>
+            </div>
           </div>
           <div class="da-compare-key">
             <del class="diffdel">Current</del>
-            <ins class="diffins">${this._compareLabel}</ins>
+            <ins class="diffins">${this._compareCtx.label}</ins>
           </div>
-          <div class="da-compare-body ProseMirror">${this._compareDom}</div>
+          <div class="da-compare-body ProseMirror">${this._compareCtx.dom}</div>
         </nx-dialog>
       ` : nothing}
     `;
