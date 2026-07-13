@@ -104,7 +104,7 @@ button {
   list-style: none;
   padding: 0;
   padding-left: var(--s2-spacing-200);
-  margin: var(--s2-spacing-400) 0;
+  margin: var(--s2-spacing-400) 0 0 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -112,7 +112,7 @@ button {
 .versionentry {
   position: relative;
   gap: var(--s2-spacing-75);
-  padding: var(--s2-spacing-200) 0 0 30px;
+  padding: var(--s2-spacing-200) 0 0 28px;
   border-left: 1px solid var(--s2-gray-200);
   min-height: 24px;
 
@@ -122,6 +122,8 @@ button {
 
   &.is-current {
     padding-top: 0;
+    display: flex;
+    align-items: center;
 
     .versionicon {
       top: 0;
@@ -135,30 +137,38 @@ button {
   color: var(--s2-gray-900);
 }
 
-.versionentry.is-version::before,
-.versionentry summary::before,
-.versionicon  {
+.versionicon {
   width: 24px;
   height: 24px;
-  left: -12px;
-  top: 12px;
+  left: -12.5px;
   position: absolute;
   border-radius: 12px;
   content: '';
 }
 
 .versionicon {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--s2-gray-75);
 
   svg {
     width: 16px;
     height: 16px;
-    position: relative;
-    top: 4px;
+    transition: transform 0.15s ease;
   }
 }
 
-.is-current .versionicon {
+.versionentry.is-audit .versionicon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.versionentry:hover .versionicon {
+  background: var(--s2-gray-100);
+}
+
+.is-current .versionicon, .is-current:hover .versionicon {
   background: var(--s2-gray-1000);
 
   svg {
@@ -166,19 +176,7 @@ button {
   }
 }
 
-.is-version .versionicon {
-  background: var(--s2-gray-100);
-}
-
-
-.versionentry summary::before {
-  background: url('/img/icons/s2-icon-chevrondown-20-n.svg') center / contain no-repeat;
-  transition: transform 0.15s ease;
-  background-color: var(--s2-gray-75);
-  background-size: 14px 14px;
-}
-
-details[open] > summary::before {
+.versionentry:has(details[open]) .versionicon svg {
   transform: rotate(180deg);
 }
 
@@ -231,7 +229,7 @@ details[open] > summary::before {
 .versionentry.is-version:hover,
 .versionentry.is-version:has(.version-more-btn[data-active]) {
   .version-row {
-    background: var(--s2-gray-75);
+    background: var(--s2-gray-100);
   }
   .version-more-btn {
     opacity: 1;
@@ -245,7 +243,7 @@ details {
 
 summary {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--s2-spacing-75);
   list-style: none;
   cursor: pointer;
@@ -263,33 +261,81 @@ summary {
   flex: 1;
 }
 
-/* New version inline form */
-.ew-cv-new-form {
+/* New version inline row */
+.ew-cv-new-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--s2-spacing-100);
 }
 
-.ew-cv-new-input {
+.new-input {
+  flex: 1;
+  min-width: 0;
   font-family: var(--s2-font-family);
-  font-size: var(--s2-body-size-s);
-  padding: var(--s2-spacing-75) var(--s2-spacing-100);
-  border: 1px solid var(--s2-gray-400);
-  border-radius: var(--s2-corner-radius-75);
-  background: var(--s2-gray-25, white);
+  font-size: var(--s2-component-s-regular-font-size);
+  font-weight: 700;
+  padding: 0;
+  border: none;
+  border-bottom: 2px solid var(--s2-gray-300);
+  border-radius: 0;
+  background: transparent;
   color: var(--s2-gray-900);
   outline: none;
 
+  &::placeholder {
+    font-weight: 400;
+    color: var(--s2-gray-600);
+  }
+
   &:focus {
-    border-color: var(--s2-blue-600, #147af3);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--s2-blue-600, #147af3) 25%, transparent);
+    border-color: var(--s2-gray-900);
   }
 }
 
 .ew-cv-new-actions {
   display: flex;
-  gap: var(--s2-spacing-100);
-  justify-content: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.ew-cv-quiet-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 var(--s2-spacing-100);
+  background: transparent;
+  border-radius: var(--s2-corner-radius-75);
+  font-size: var(--s2-component-s-regular-font-size);
+  color: var(--s2-gray-700);
+
+  &:hover {
+    background: var(--s2-gray-100);
+    color: var(--s2-gray-900);
+  }
+
+  &.is-primary {
+    color: var(--s2-blue-900, #0265dc);
+    font-weight: 700;
+
+    &:hover {
+      background: color-mix(in srgb, var(--s2-blue-600, #147af3) 12%, transparent);
+    }
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.da-loading-spinner {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--s2-gray-300);
+  border-top-color: var(--s2-gray-700);
+  border-radius: 50%;
+  animation: da-spin 0.8s linear infinite;
 }
 
 

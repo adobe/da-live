@@ -240,7 +240,17 @@ export default async function decorate(block) {
   });
 
   const SHORTCUTS = [
-    { code: 'KeyS', metaKey: true, altKey: true, action: () => openCanvasPanel('after', { panelName: 'versions' }) },
+    {
+      code: 'KeyS',
+      metaKey: true,
+      altKey: true,
+      action: async () => {
+        const aside = await openCanvasPanel('after', { panelName: 'versions' });
+        const toolPanel = aside?.querySelector('ew-tool-panel');
+        await toolPanel?.updateComplete;
+        toolPanel?.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
+      },
+    },
   ];
   document.addEventListener('keydown', (e) => {
     const match = SHORTCUTS.find((s) => (
