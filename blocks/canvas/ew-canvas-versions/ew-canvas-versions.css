@@ -353,4 +353,56 @@ nx-dialog {
   gap: var(--s2-spacing-100);
 }
 
+/* Content styling for the diffed document itself — kept here rather than in the
+   shared compare.css since this panel is the only consumer that needs it (the
+   classic edit page's compare view already inherits table/image styling from
+   da-editor.css via its shared shadow root). */
+.da-compare-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.da-compare-body .tableWrapper {
+  overflow-x: auto;
+  border: 2px solid var(--s2-gray-400);
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+.da-compare-body table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  border-style: hidden;
+}
+
+.da-compare-body td,
+.da-compare-body th {
+  border: 1px solid var(--s2-gray-400);
+  padding: 8px;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.da-compare-body tr:first-child td,
+.da-compare-body tr:first-child th {
+  background: var(--s2-gray-100);
+  font-weight: 700;
+  text-align: center;
+}
+
+.da-compare-body td > *:first-child,
+.da-compare-body th > *:first-child {
+  margin-top: 0;
+}
+
+.da-compare-body td > *:last-child,
+.da-compare-body th > *:last-child {
+  margin-bottom: 0;
+}
+
+.da-compare-body .ProseMirror > *:first-child {
+  margin-top: 0;
+}
+
 
