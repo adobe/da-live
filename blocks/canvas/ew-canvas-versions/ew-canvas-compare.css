@@ -199,17 +199,6 @@ nx-popover {
   color: var(--s2-orange-1000);
 }
 
-:is(.ew-cc-body, .ew-cc-pane) ins.diffins:empty,
-:is(.ew-cc-body, .ew-cc-pane) ins.diffmod:empty,
-:is(.ew-cc-body, .ew-cc-pane) del.diffdel:empty,
-:is(.ew-cc-body, .ew-cc-pane) del.diffmod:empty,
-:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
-:is(.ew-cc-body, .ew-cc-pane) ins.diffmod:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
-:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
-:is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty) {
-  display: none;
-}
-
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
 :is(.ew-cc-body, .ew-cc-pane) ins.diffmod:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
@@ -246,4 +235,15 @@ nx-popover {
 
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(table) .tableWrapper {
   border-color: var(--s2-red-900);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:empty,
+:is(.ew-cc-body, .ew-cc-pane) ins.diffmod:empty,
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:empty,
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod:empty,
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
+:is(.ew-cc-body, .ew-cc-pane) ins.diffmod:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
+:is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty) {
+  display: none;
 }

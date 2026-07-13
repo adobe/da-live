@@ -233,17 +233,6 @@ button {
   margin: calc(-1 * var(--s2-spacing-50));
 }
 
-.versionentry.is-version:not(.is-comparing):hover,
-.versionentry.is-version:has(.version-more-btn[data-active]) {
-  .version-row {
-    background: var(--s2-gray-100);
-  }
-
-  .version-more-btn {
-    opacity: 1;
-  }
-}
-
 .versionentry.is-version.is-comparing {
   .version-row {
     background: var(--s2-blue-100);
@@ -252,6 +241,17 @@ button {
   .versionicon {
     background: var(--s2-blue-900);
     color: var(--s2-gray-25);
+  }
+}
+
+.versionentry.is-version:not(.is-comparing):hover,
+.versionentry.is-version:has(.version-more-btn[data-active]) {
+  .version-row {
+    background: var(--s2-gray-100);
+  }
+
+  .version-more-btn {
+    opacity: 1;
   }
 }
 

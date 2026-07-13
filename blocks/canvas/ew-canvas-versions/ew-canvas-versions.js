@@ -7,6 +7,7 @@ import {
   newVersionEntry,
   createVersion,
   fetchVersionHtml,
+  getVersionId,
 } from '../../shared/version/version-actions.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
@@ -61,6 +62,9 @@ class EwCanvasVersions extends LitElement {
       const next = buildDocPath(state);
       if (next !== this.path) {
         this.path = next;
+        this.handleCloseCompare();
+        this.handleRestoreCancel();
+        this.handleCancel();
         if (next) this._load();
       }
     });
@@ -141,6 +145,7 @@ class EwCanvasVersions extends LitElement {
 
   async handleCompare(e, entry) {
     e.stopPropagation();
+    const trigger = this.shadowRoot.activeElement;
     const { view } = getExtensionsBridge();
     if (!view) return;
 
@@ -151,6 +156,7 @@ class EwCanvasVersions extends LitElement {
     }
 
     this.handleCloseCompare();
+    this._compareTrigger = trigger;
     const { dom, cleanup } = await buildCompareDom({
       htmlA: docToHtml(view),
       htmlB: domToHtml(versionBody),
@@ -167,6 +173,8 @@ class EwCanvasVersions extends LitElement {
   handleCloseCompare() {
     this._compareCtx?.cleanup?.();
     this._compareCtx = null;
+    this._compareTrigger?.focus?.();
+    this._compareTrigger = null;
   }
 
   handleToggleCompareSplit() {
@@ -175,6 +183,10 @@ class EwCanvasVersions extends LitElement {
 
   get _canWrite() {
     return getExtensionsBridge().view?.editable ?? false;
+  }
+
+  get _comparingId() {
+    return this._compareCtx ? getVersionId(this.path, this._compareCtx.entry) : null;
   }
 
   get _filteredVersions() {
@@ -254,7 +266,7 @@ class EwCanvasVersions extends LitElement {
       ...(this._canWrite ? [{ id: 'restore', label: 'Restore', icon: 'revert' }] : []),
       { id: 'compare', label: 'Compare', icon: 'gridcompare' },
     ];
-    const isComparing = this._compareCtx?.entry === entry;
+    const isComparing = !!this._comparingId && getVersionId(this.path, entry) === this._comparingId;
     return html`
       <li class="versionentry is-version${isComparing ? ' is-comparing' : ''}">
         <span class="versionicon">
