@@ -181,6 +181,80 @@ describe('ew-canvas-versions', () => {
   });
 });
 
+// ─── Create-version form ─────────────────────────────────────────────────────
+
+describe('create-version form', () => {
+  let inst;
+  afterEach(() => {
+    inst?.remove(); inst = null;
+  });
+
+  it('handleNew opens the form with a prefilled, focused, selected input', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    inst.handleNew();
+    await inst.updateComplete;
+    const input = inst.shadowRoot.querySelector('.new-input');
+    expect(input).to.exist;
+    expect(input.value).to.equal(`Version ${inst._newVersion.date}`);
+    expect(inst.shadowRoot.activeElement).to.equal(input);
+    expect(input.selectionStart).to.equal(0);
+    expect(input.selectionEnd).to.equal(input.value.length);
+  });
+
+  it('handleCancel closes the form back to the Current row', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    inst.handleNew();
+    await inst.updateComplete;
+    inst.handleCancel();
+    await inst.updateComplete;
+    expect(inst._newVersion).to.be.null;
+    expect(inst.shadowRoot.querySelector('.new-input')).to.not.exist;
+    expect(inst.shadowRoot.querySelector('.versionname').textContent).to.equal('Current');
+  });
+
+  it('pressing Escape in the form cancels it', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    inst.handleNew();
+    await inst.updateComplete;
+    const form = inst.shadowRoot.querySelector('.ew-cv-new-row');
+    form.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await inst.updateComplete;
+    expect(inst._newVersion).to.be.null;
+    expect(inst.shadowRoot.querySelector('.new-input')).to.not.exist;
+  });
+
+  it('pressing a non-Escape key in the form leaves it open', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    inst.handleNew();
+    await inst.updateComplete;
+    const form = inst.shadowRoot.querySelector('.ew-cv-new-row');
+    form.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await inst.updateComplete;
+    expect(inst._newVersion).to.not.be.null;
+    expect(inst.shadowRoot.querySelector('.new-input')).to.exist;
+  });
+
+  it('while saving, disables the actions, makes the input read-only, and swaps Save for a labelled spinner', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    inst.handleNew();
+    inst._savingVersion = true;
+    await inst.updateComplete;
+    const input = inst.shadowRoot.querySelector('.new-input');
+    const [cancelBtn, saveBtn] = inst.shadowRoot.querySelectorAll('.ew-cv-quiet-btn');
+    expect(input.readOnly).to.be.true;
+    expect(input.disabled).to.be.false;
+    expect(cancelBtn.disabled).to.be.true;
+    expect(saveBtn.disabled).to.be.true;
+    expect(saveBtn.getAttribute('aria-label')).to.equal('Saving');
+    expect(saveBtn.querySelector('.da-loading-spinner')).to.exist;
+  });
+});
+
 // ─── Restore menu permission gating ─────────────────────────────────────────
 
 describe('version menu restore gating', () => {

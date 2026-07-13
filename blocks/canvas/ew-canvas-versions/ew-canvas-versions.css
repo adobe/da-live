@@ -105,8 +105,7 @@ button {
   padding: 0;
   padding-left: var(--s2-spacing-200);
   margin: var(--s2-spacing-400) 0 0 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden auto;
 }
 
 .versionentry {
@@ -124,10 +123,6 @@ button {
     padding-top: 0;
     display: flex;
     align-items: center;
-
-    .versionicon {
-      top: 0;
-    }
   }
 }
 
@@ -144,9 +139,6 @@ button {
   position: absolute;
   border-radius: 12px;
   content: '';
-}
-
-.versionicon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -168,16 +160,18 @@ button {
   background: var(--s2-gray-100);
 }
 
-.is-current .versionicon, .is-current:hover .versionicon {
+.versionentry:has(details[open]) .versionicon svg {
+  transform: rotate(180deg);
+}
+
+.versionentry.is-current .versionicon,
+.versionentry.is-current:hover .versionicon {
+  top: 0;
   background: var(--s2-gray-1000);
 
   svg {
     color: var(--s2-gray-25);
   }
-}
-
-.versionentry:has(details[open]) .versionicon svg {
-  transform: rotate(180deg);
 }
 
 .auditlist {
@@ -231,6 +225,7 @@ button {
   .version-row {
     background: var(--s2-gray-100);
   }
+
   .version-more-btn {
     opacity: 1;
   }
@@ -327,17 +322,6 @@ summary {
     cursor: default;
   }
 }
-
-.da-loading-spinner {
-  display: block;
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--s2-gray-300);
-  border-top-color: var(--s2-gray-700);
-  border-radius: 50%;
-  animation: da-spin 0.8s linear infinite;
-}
-
 
 nx-dialog.compare {
   --nx-dialog-min-width: min(90vw, 1200px);

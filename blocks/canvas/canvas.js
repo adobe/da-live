@@ -213,6 +213,31 @@ async function installCanvasHeader(block, { org, site }) {
   return header;
 }
 
+const SHORTCUTS = [
+  {
+    code: 'KeyS',
+    metaKey: true,
+    altKey: true,
+    action: async () => {
+      const aside = await openCanvasPanel('after', { panelName: 'versions' });
+      const toolPanel = aside?.querySelector('ew-tool-panel');
+      await toolPanel?.updateComplete;
+      toolPanel?.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
+    },
+  },
+];
+document.addEventListener('keydown', (e) => {
+  const match = SHORTCUTS.find((s) => (
+    s.code === e.code
+    && !!s.metaKey === e.metaKey
+    && !!s.altKey === e.altKey
+    && !!s.ctrlKey === e.ctrlKey
+  ));
+  if (!match) return;
+  e.preventDefault();
+  match.action();
+});
+
 export default async function decorate(block) {
   const { org, site } = hashState();
   const header = await installCanvasHeader(block, { org, site });
@@ -237,31 +262,6 @@ export default async function decorate(block) {
     const aside = await openCanvasPanel('before');
     if (!detail?.text) return;
     aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
-  });
-
-  const SHORTCUTS = [
-    {
-      code: 'KeyS',
-      metaKey: true,
-      altKey: true,
-      action: async () => {
-        const aside = await openCanvasPanel('after', { panelName: 'versions' });
-        const toolPanel = aside?.querySelector('ew-tool-panel');
-        await toolPanel?.updateComplete;
-        toolPanel?.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
-      },
-    },
-  ];
-  document.addEventListener('keydown', (e) => {
-    const match = SHORTCUTS.find((s) => (
-      s.code === e.code
-      && !!s.metaKey === e.metaKey
-      && !!s.altKey === e.altKey
-      && !!s.ctrlKey === e.ctrlKey
-    ));
-    if (!match) return;
-    e.preventDefault();
-    match.action();
   });
 
   const store = getPanelStore();

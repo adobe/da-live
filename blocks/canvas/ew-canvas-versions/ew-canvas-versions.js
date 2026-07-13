@@ -33,6 +33,17 @@ function loadCompareSheet() {
   return compareSheetPromise;
 }
 
+let toastPromise;
+function loadToast() {
+  toastPromise ??= import(`${getNx()}/blocks/shared/toast/toast.js`);
+  return toastPromise;
+}
+
+async function showError(text) {
+  const { showToast } = await loadToast();
+  showToast({ text, variant: 'error' });
+}
+
 class EwCanvasVersions extends LitElement {
   static properties = {
     path: { type: String },
@@ -87,11 +98,15 @@ class EwCanvasVersions extends LitElement {
 
   async handleNewSubmit(e) {
     e.preventDefault();
+    if (this._savingVersion) return;
     const label = e.target.elements.label?.value || '';
     this._savingVersion = true;
     const ok = await createVersion(this.path, label);
     this._savingVersion = false;
-    if (!ok) return;
+    if (!ok) {
+      showError('Could not save version. Please try again.');
+      return;
+    }
     this._newVersion = null;
     this._load({ showLoading: false });
   }
@@ -118,7 +133,10 @@ class EwCanvasVersions extends LitElement {
     const { view } = getExtensionsBridge();
     if (!view) return;
     const versionBody = await fetchVersionHtml(this.path, entry);
-    if (!versionBody) return;
+    if (!versionBody) {
+      showError('Could not load the selected version.');
+      return;
+    }
     const newDoc = PMDOMParser.fromSchema(view.state.schema).parse(versionBody);
     const { doc } = view.state;
     view.dispatch(view.state.tr.replaceWith(0, doc.content.size, newDoc.content));
@@ -133,7 +151,10 @@ class EwCanvasVersions extends LitElement {
       fetchVersionHtml(this.path, entry),
       loadCompareSheet(),
     ]);
-    if (!versionBody) return;
+    if (!versionBody) {
+      showError('Could not load the selected version.');
+      return;
+    }
 
     if (!this.shadowRoot.adoptedStyleSheets.includes(compareSheet)) {
       this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, compareSheet];
@@ -144,6 +165,7 @@ class EwCanvasVersions extends LitElement {
       htmlA: docToHtml(view),
       htmlB: versionBody.innerHTML,
       onClose: () => this.handleCloseCompare(),
+      closeOnOutsideClick: false,
     });
     this._compareCtx = { dom, cleanup, label: entry.label || entry.date, entry };
   }
@@ -205,13 +227,14 @@ class EwCanvasVersions extends LitElement {
           <form class="ew-cv-new-row" @submit=${this.handleNewSubmit} @keydown=${this.handleNewKeydown}>
             <input type="text" name="label" placeholder="Version name"
               class="new-input" .value=${`Version ${this._newVersion.date}`}
-              ?disabled=${this._savingVersion} />
+              ?readonly=${this._savingVersion} />
             <div class="ew-cv-new-actions">
               <button type="button" class="ew-cv-quiet-btn"
                 ?disabled=${this._savingVersion}
                 @click=${this.handleCancel}>Cancel</button>
               <button type="submit" class="ew-cv-quiet-btn is-primary"
-                ?disabled=${this._savingVersion}>
+                ?disabled=${this._savingVersion}
+                aria-label=${this._savingVersion ? 'Saving' : nothing}>
                 ${this._savingVersion ? html`<span class="da-loading-spinner" aria-hidden="true"></span>` : 'Save'}
               </button>
             </div>

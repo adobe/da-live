@@ -15,7 +15,6 @@ export async function fetchVersions(path) {
   }
 }
 
-// Build an optimistic "new version" entry shown while the create form is open.
 export function newVersionEntry() {
   const { date, time } = formatDate();
   return { date, time, isVersion: true, users: [] };
