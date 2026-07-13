@@ -239,6 +239,21 @@ export default async function decorate(block) {
     aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
   });
 
+  const SHORTCUTS = [
+    { code: 'KeyS', metaKey: true, altKey: true, action: () => openCanvasPanel('after', { panelName: 'versions' }) },
+  ];
+  document.addEventListener('keydown', (e) => {
+    const match = SHORTCUTS.find((s) => (
+      s.code === e.code
+      && !!s.metaKey === e.metaKey
+      && !!s.altKey === e.altKey
+      && !!s.ctrlKey === e.ctrlKey
+    ));
+    if (!match) return;
+    e.preventDefault();
+    match.action();
+  });
+
   const store = getPanelStore();
   if (store.before && !store.before.fragment) openCanvasPanel('before');
   if (store.after && !store.after.fragment) {
