@@ -5,7 +5,7 @@
 }
 
 button {
-  font-family: var(--s2-font-family);
+  font-family: var(--font-family);
 }
 
 h2 {
@@ -83,7 +83,7 @@ form input {
   border: none;
   background: transparent;
   border-bottom: 1px solid var(--s2-gray-900);
-  font-family: var(--s2-font-family);
+  font-family: var(--font-family);
   font-size: 16px;
   padding: 0 0 4px 4px;
   line-height: 26px;

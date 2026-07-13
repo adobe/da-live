@@ -2,7 +2,7 @@
   display: block;
   height: 100%;
   min-height: 0;
-  font-family: var(--s2-font-family);
+  font-family: var(--font-family);
 }
 
 .ew-file-explorer {

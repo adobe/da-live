@@ -129,7 +129,7 @@ da-list-item.is-expanded::after {
   line-height: 18px;
   font-size: var(--s2-component-m-regular-font-size);
   color: var(--s2-gray-600);
-  font-family: var(--s2-font-family);
+  font-family: var(--font-family);
   font-weight: var(--s2-component-s-medium-font-weight);
   cursor: pointer;
 }
@@ -143,7 +143,7 @@ da-list-item.is-expanded::after {
   padding: 0;
   border: none;
   display: none;
-  font-family: var(--s2-font-family);
+  font-family: var(--font-family);
   font-size: 14px;
   line-height: 18px;
   color: var(--s2-gray-800);

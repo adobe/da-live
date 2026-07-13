@@ -16,7 +16,7 @@
   display: grid;
   grid-template-rows: auto 1fr;
   min-height: 0;
-  font-family: var(--s2-font-family);
+  font-family: var(--font-family);
   color: light-dark(var(--s2-gray-900), var(--s2-gray-100));
 }
 
