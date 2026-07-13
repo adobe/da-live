@@ -1,5 +1,7 @@
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
 
+const NON_BLOCK_TABLE_NAMES = new Set(['metadata', 'section metadata', 'section-metadata']);
+
 function getTableBlockName(tableNode) {
   const firstRow = tableNode.firstChild;
   if (!firstRow) return '';
@@ -22,7 +24,7 @@ export function getBlockPositions(view) {
   doc.descendants((node, pos) => {
     if (node.type.name === 'table') {
       const blockName = getTableBlockName(node);
-      if (blockName === 'metadata') return;
+      if (NON_BLOCK_TABLE_NAMES.has(blockName)) return;
       positions.push(pos);
     }
   });
