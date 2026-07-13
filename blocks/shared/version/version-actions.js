@@ -1,6 +1,9 @@
+import { DOMSerializer, Y } from 'da-y-wrapper';
+import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { formatDate } from '../utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 import { formatVersions } from './helpers.js';
+import { wrapTablesInWrappers } from './compare.js';
 
 // Fetch and format the version list for a document path.
 // Returns the formatted array on success, null on network/auth failure.
@@ -35,7 +38,12 @@ export function getVersionId(path, entry) {
     : entry.versionId;
 }
 
-// Fetch a version's HTML body element for comparison.
+// Fetch a version's HTML and parse it through the same schema-driven pipeline
+// the live doc went through (aem2doc -> ProseMirror -> DOMSerializer), so the
+// result is in the editor's authoring shape rather than raw stored/rendered
+// markup — matching what docToHtml(view) produces for the current document.
+// (Mirrors da-editor.js's fetchVersion/htmlToProse for the classic editor.)
+// todo: extract to shared logic
 export async function fetchVersionHtml(path, entry) {
   const { versions } = await getNx2Api();
   const versionId = getVersionId(path, entry);
@@ -43,7 +51,15 @@ export async function fetchVersionHtml(path, entry) {
   if (!resp.ok) return null;
   try {
     const text = await resp.text();
-    return new DOMParser().parseFromString(text, 'text/html').body;
+    const ydoc = new Y.Doc();
+    aem2doc(text, ydoc);
+    const schema = getSchema();
+    const pmDoc = yDocToProsemirror(schema, ydoc);
+    const fragment = DOMSerializer.fromSchema(schema).serializeFragment(pmDoc.content);
+    const dom = document.createElement('div');
+    dom.append(fragment);
+    wrapTablesInWrappers(dom);
+    return dom;
   } catch {
     return null;
   }
