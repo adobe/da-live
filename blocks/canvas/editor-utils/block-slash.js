@@ -95,25 +95,61 @@ export async function insertBlockItem(view, id) {
   insertBlock(view, entry.dom);
 }
 
-export async function prefetchBlockLibrary({ org, site } = {}) {
-  if (!org || !site) return;
-  const key = `${org}/${site}`;
-  if (store.key === key && store.state !== 'idle') return;
-  store.key = key;
-  store.state = 'loading';
-  try {
-    const { loadBlockLibrary } = await import('../ew-panel-extensions/helpers.js');
-    const { ext, blocks } = await loadBlockLibrary(org, site);
-    if (!ext) {
-      store.entries = [];
-      store.hasLibrary = false;
-      store.state = 'empty';
-      return;
-    }
-
-    store.hasLibrary = true;
-    await ingestBlocks(blocks);
-  } catch {
-    store.state = 'empty';
+/**
+ * Lightweight, load-time check (no block/variant fetching) for whether a "blocks"
+ * library is configured for the org/site. Records the result so the slash menu can
+ * decide up-front whether to show "Open block library" — avoiding the flicker of
+ * showing it and then hiding it once an on-demand load settles. The full library
+ * (blocks + variant HTML) is still fetched lazily via ensureBlockLibrary on "/".
+ */
+export function checkBlockLibraryConfigured({ org, site } = {}) {
+  if (!org || !site) {
+    store.hasLibrary = false;
+    return null;
   }
+  return (async () => {
+    try {
+      const { getBlocksExtension } = await import('../ew-panel-extensions/helpers.js');
+      store.hasLibrary = !!(await getBlocksExtension(org, site));
+    } catch {
+      store.hasLibrary = false;
+    }
+  })();
+}
+
+/**
+ * Load the block library on demand — called when the user opens the slash menu.
+ * Cached per org/site, so repeated calls while typing don't refetch. Static slash
+ * commands render immediately; block results appear once the returned promise
+ * settles. Returns the in-flight load promise the first time a load is kicked off
+ * (so the caller can re-render when it resolves), or `null` when there's nothing
+ * new to wait on (already loading/loaded, or no org/site).
+ */
+export function ensureBlockLibrary({ org, site } = {}) {
+  const key = org && site ? `${org}/${site}` : null;
+  if (store.key === key && store.state !== 'idle') return null;
+  store.key = key;
+  if (!key) {
+    store.entries = [];
+    store.hasLibrary = false;
+    store.state = 'empty';
+    return null;
+  }
+  store.state = 'loading';
+  return (async () => {
+    try {
+      const { loadBlockLibrary } = await import('../ew-panel-extensions/helpers.js');
+      const { ext, blocks } = await loadBlockLibrary(org, site);
+      if (!ext) {
+        store.entries = [];
+        store.hasLibrary = false;
+        store.state = 'empty';
+        return;
+      }
+      store.hasLibrary = true;
+      await ingestBlocks(blocks);
+    } catch {
+      store.state = 'empty';
+    }
+  })();
 }

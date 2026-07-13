@@ -137,7 +137,8 @@ describe('block-slash store', () => {
   let getState;
   let resetBlockLibrary;
 
-  let prefetchBlockLibrary;
+  let ensureBlockLibrary;
+  let checkBlockLibraryConfigured;
   let resetBlockLibraryCache;
 
   before(async () => {
@@ -148,7 +149,8 @@ describe('block-slash store', () => {
     hasLibrary = mod.hasLibrary;
     getState = mod.getState;
     resetBlockLibrary = mod.resetBlockLibrary;
-    prefetchBlockLibrary = mod.prefetchBlockLibrary;
+    ensureBlockLibrary = mod.ensureBlockLibrary;
+    checkBlockLibraryConfigured = mod.checkBlockLibraryConfigured;
     ({ resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
   });
 
@@ -240,11 +242,39 @@ describe('block-slash store', () => {
     expect(blockItemsForQuery('ban')).to.deep.equal([]);
   });
 
-  it('prefetchBlockLibrary leaves hasLibrary false and state empty when no blocks extension is configured', async () => {
+  it('ensureBlockLibrary goes loading then settles empty when no blocks extension is configured', async () => {
     // The test fixture's fetchDaConfigs returns {}, so fetchExtensions yields no 'blocks'
     // extension — this exercises the no-library branch.
-    await prefetchBlockLibrary({ org: 'testorg', site: 'testsite' });
+    const pending = ensureBlockLibrary({ org: 'testorg', site: 'testsite' });
+    expect(getState()).to.equal('loading');
+    await pending;
     expect(hasLibrary()).to.be.false;
     expect(getState()).to.equal('empty');
+  });
+
+  it('ensureBlockLibrary returns null and settles empty synchronously when org/site are missing', () => {
+    expect(ensureBlockLibrary({})).to.be.null;
+    expect(getState()).to.equal('empty');
+    expect(hasLibrary()).to.be.false;
+  });
+
+  it('ensureBlockLibrary returns null once a load is already in flight or done', async () => {
+    const pending = ensureBlockLibrary({ org: 'testorg', site: 'testsite' });
+    expect(ensureBlockLibrary({ org: 'testorg', site: 'testsite' })).to.be.null;
+    await pending;
+    expect(ensureBlockLibrary({ org: 'testorg', site: 'testsite' })).to.be.null;
+  });
+
+  it('checkBlockLibraryConfigured records hasLibrary false when no blocks extension is configured', async () => {
+    // The fixture config exposes no 'blocks' extension. The check is config-only —
+    // it must not fetch blocks (state stays idle) or flip hasLibrary true.
+    await checkBlockLibraryConfigured({ org: 'testorg', site: 'testsite' });
+    expect(hasLibrary()).to.be.false;
+    expect(getState()).to.equal('idle');
+  });
+
+  it('checkBlockLibraryConfigured returns null and clears hasLibrary when org/site are missing', () => {
+    expect(checkBlockLibraryConfigured({})).to.be.null;
+    expect(hasLibrary()).to.be.false;
   });
 });

@@ -30,7 +30,7 @@ import {
   removeLink,
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
-import { blockItemsForQuery, hasLibrary, insertBlockItem } from './block-slash.js';
+import { blockItemsForQuery, hasLibrary, insertBlockItem, getState } from './block-slash.js';
 
 const notImageSelected = (state) => !isImageNodeSelected(state);
 
@@ -409,26 +409,42 @@ export function commandsFor(showIn) {
 
 export const COMMAND_BY_ID = new Map(COMMANDS.map((c) => [c.id, c]));
 
+function toSlashItem(cmd, extra) {
+  const item = { id: cmd.id, label: cmd.label, icon: cmd.icon };
+  return extra ? { ...item, ...extra } : item;
+}
+
 export function slashMenuItemsForQuery(query) {
   const raw = query || '';
   const q = raw.toLowerCase();
+
+  // the library is fetched on demand when the slash menu opens. static commands
+  // (Text, Insert block) render immediately - block results stream in once the
+  // async load settles.
+  const loading = getState() === 'loading';
 
   const blockRows = raw.trim() ? blockItemsForQuery(raw) : [];
   const blockCmds = commandsFor('slash-blocks')
     .filter((c) => (c.id !== 'open-library' || hasLibrary()))
     .filter((c) => !q || c.label.toLowerCase().startsWith(q))
-    // On the bare "/" menu, hang a hint off "Open block library" so users
-    // discover they can type a block name to search the configured library.
     .map((c) => (c.id === 'open-library' && !raw.trim()
-      ? { ...c, description: 'Or type a block name to search' }
-      : c));
+      // On the bare "/" menu, hint that typing searches the configured library.
+      ? toSlashItem(c, { description: 'Or type a block name to search' })
+      : toSlashItem(c)));
   const blockItems = [...blockRows, ...blockCmds];
 
+  const showLoading = loading && !!raw.trim() && !blockRows.length;
+
   const textItems = commandsFor('slash-text')
-    .filter((c) => !q || c.label.toLowerCase().startsWith(q));
+    .filter((c) => !q || c.label.toLowerCase().startsWith(q))
+    .map((c) => toSlashItem(c));
 
   const out = [];
-  if (blockItems.length) out.push({ section: 'Blocks' }, ...blockItems);
+  if (blockItems.length) {
+    out.push({ section: 'Blocks' }, ...blockItems);
+  } else if (showLoading) {
+    out.push({ section: 'Loading blocks…' });
+  }
   if (textItems.length) out.push({ section: 'Text' }, ...textItems);
   return out;
 }

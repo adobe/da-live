@@ -9,6 +9,9 @@ let applySlashSelection;
 let COMMAND_BY_ID;
 let ingestBlocks;
 let resetBlockLibrary;
+let ensureBlockLibrary;
+let checkBlockLibraryConfigured;
+let resetBlockLibraryCache;
 
 before(async () => {
   const cmd = await import('../../../../../blocks/canvas/editor-utils/command-defs.js');
@@ -18,9 +21,15 @@ before(async () => {
   const bs = await import('../../../../../blocks/canvas/editor-utils/block-slash.js');
   ingestBlocks = bs.ingestBlocks;
   resetBlockLibrary = bs.resetBlockLibrary;
+  ensureBlockLibrary = bs.ensureBlockLibrary;
+  checkBlockLibraryConfigured = bs.checkBlockLibraryConfigured;
+  ({ resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
 });
 
-afterEach(() => resetBlockLibrary());
+afterEach(() => {
+  resetBlockLibrary();
+  resetBlockLibraryCache();
+});
 
 async function seed() {
   await ingestBlocks([
@@ -86,6 +95,36 @@ describe('slashMenuItemsForQuery', () => {
     const items = slashMenuItemsForQuery('head');
     expect(sections(items)).to.include('Text');
     expect(items.some((i) => i.id === 'heading-1')).to.be.true;
+  });
+
+  it('shows static commands immediately and a loading hint while the library fetches', async () => {
+    // ensureBlockLibrary flips the store to "loading" synchronously; the fixture
+    // then settles it empty. During loading, "/h" should still offer headings.
+    const pending = ensureBlockLibrary({ org: 'someorg', site: 'somesite' });
+    const items = slashMenuItemsForQuery('h');
+    expect(sections(items)).to.include('Loading blocks…');
+    expect(items.some((i) => i.id === 'heading-1')).to.be.true;
+    await pending; // let the load finish so it doesn't leak into later tests
+  });
+
+  it('resolves "Open block library" visibility from the load-time config check', async () => {
+    // The fixture config has no blocks extension, so the check settles hasLibrary
+    // false and the item stays hidden — visibility is decided up-front, not by the
+    // on-demand load, so there's no flicker.
+    await checkBlockLibraryConfigured({ org: 'testorg', site: 'testsite' });
+    expect(slashMenuItemsForQuery('').some((i) => i.id === 'open-library')).to.be.false;
+  });
+
+  it('does not leak command state-predicate functions as a disabled flag', () => {
+    // Command defs use `disabled` as a state predicate (a function) for the
+    // toolbar; a function is truthy, so it must not reach nx-menu as a flag.
+    const items = slashMenuItemsForQuery('');
+    items.forEach((i) => {
+      expect(i.disabled, `${i.id ?? i.section} disabled`).to.not.be.a('function');
+    });
+    const codeBlock = slashMenuItemsForQuery('code').find((i) => i.id === 'code-block');
+    expect(codeBlock).to.exist;
+    expect(codeBlock.disabled).to.not.be.ok;
   });
 
   it('returns nothing for a non-matching non-empty query so the menu can auto-close', () => {

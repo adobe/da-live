@@ -2,8 +2,10 @@
 import { Plugin } from 'da-y-wrapper';
 import { getNx } from '../../../../scripts/utils.js';
 import { slashMenuItemsForQuery, applySlashSelection } from '../../editor-utils/command-defs.js';
+import { ensureBlockLibrary } from '../../editor-utils/block-slash.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 function inTopLevelParagraph($from) {
   if ($from.parent.type.name !== 'paragraph') return false;
@@ -115,6 +117,10 @@ function syncSlashUi(view, ctxRef) {
     return;
   }
 
+  // load the library on demand when the slash menu is invoked.
+  const pending = ensureBlockLibrary(ctxRef.orgSite);
+  if (pending) pending.then(() => syncSlashUi(view, ctxRef));
+
   const items = slashMenuItemsForQuery(slash.query);
   if (!items.length) {
     ctxRef.ctx?.menu.close();
@@ -147,6 +153,10 @@ export function createSlashMenuPlugin() {
 
   return new Plugin({
     view(editorView) {
+      const unsubHash = hashChange.subscribe((s) => {
+        ctxRef.orgSite = s ? { org: s.org, site: s.site } : undefined;
+      });
+
       const onKeyDown = () => {
         syncSlashUi(editorView, ctxRef);
       };
@@ -159,6 +169,7 @@ export function createSlashMenuPlugin() {
         },
         destroy() {
           editorView.dom.removeEventListener('keydown', onKeyDown);
+          unsubHash?.();
           destroySlashUi(ctxRef);
         },
       };
