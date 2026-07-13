@@ -363,9 +363,12 @@ export default class DaList extends LitElement {
   async handleItemAction({ item, type = 'copy' }) {
     const { source } = await getNx2Api();
 
-    const useDeleteFolder = type === 'delete' && !item.ext;
-    const deleteFn = useDeleteFolder ? source.deleteFolder : source.delete;
-    const type2fn = { copy: source.copy, delete: deleteFn, move: source.move };
+    const isFolder = !item.ext || item.contentType === 'application/folder';
+    const type2fn = {
+      copy: isFolder ? source.copyFolder : source.copy,
+      delete: isFolder ? source.deleteFolder : source.delete,
+      move: source.move,
+    };
     const fn = type2fn[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
@@ -440,6 +443,10 @@ export default class DaList extends LitElement {
     const type = e.detail?.move ? 'move' : 'copy';
 
     await Promise.all(itemsToPaste.map(async (item) => {
+      if (this._isHlx6) {
+        const [, , ...rest] = sanitizePathParts(item.destination);
+        item.destination = `/${rest.join('/')}`;
+      }
       await this.handleItemAction({ item, type });
     }));
 
