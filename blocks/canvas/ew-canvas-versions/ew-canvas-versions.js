@@ -8,7 +8,7 @@ import {
   createVersion,
   fetchVersionHtml,
 } from '../../shared/version/version-actions.js';
-import { docToHtml, buildCompareDom } from '../../shared/version/compare.js';
+import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -163,7 +163,7 @@ class EwCanvasVersions extends LitElement {
     this.handleCloseCompare();
     const { dom, cleanup } = await buildCompareDom({
       htmlA: docToHtml(view),
-      htmlB: versionBody.innerHTML,
+      htmlB: domToHtml(versionBody),
       onClose: () => this.handleCloseCompare(),
       closeOnOutsideClick: false,
     });
