@@ -99,3 +99,15 @@ export async function tabBackward(page) {
   const key = browserName === 'webkit' ? 'Shift+Alt+Tab' : 'Shift+Tab';
   await page.keyboard.press(key);
 }
+
+/**
+ * Waits for the next successful save request (POST to da-admin's /source endpoint).
+ * Sheet saves are debounced through a single shared timer that's cancelled and
+ * rescheduled on every edit, so whichever change triggered this call is guaranteed
+ * to be included in the next save that fires. Call this before triggering the change.
+ */
+export function waitForSave(page, timeout = 10000) {
+  return page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.includes('/source/')
+    && response.ok(), { timeout });
+}

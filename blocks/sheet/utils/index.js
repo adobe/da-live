@@ -23,9 +23,14 @@ function finishSetup(el, data) {
   el.jexcel.forEach((sheet, idx) => {
     sheet.name = data[idx].sheetName;
     sheet.options.onbeforepaste = (_el, pasteVal) => pasteVal?.trim();
-    sheet.options.onafterchanges = () => {
-      handleSave(el.jexcel, el.details.view);
-    };
+    const save = () => handleSave(el.jexcel, el.details.view);
+    sheet.options.onafterchanges = save;
+    // onafterchanges doesn't fire for these; inserts are skipped since they start empty
+    // and get saved once onafterchanges fires on their content. onmovecolumn is left
+    // unbound - columnDrag is off, so there's no UI path that can ever fire it.
+    sheet.options.ondeleterow = save;
+    sheet.options.ondeletecolumn = save;
+    sheet.options.onmoverow = save;
   });
 
   // Setup tabs
