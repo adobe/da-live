@@ -213,17 +213,19 @@ async function installCanvasHeader(block, { org, site }) {
   return header;
 }
 
+async function openNewVersionRow() {
+  const aside = await openCanvasPanel('after', { panelName: 'versions' });
+  const toolPanel = aside?.querySelector('ew-tool-panel');
+  await toolPanel?.updateComplete;
+  toolPanel?.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
+}
+
 const SHORTCUTS = [
   {
     code: 'KeyS',
     metaKey: true,
     altKey: true,
-    action: async () => {
-      const aside = await openCanvasPanel('after', { panelName: 'versions' });
-      const toolPanel = aside?.querySelector('ew-tool-panel');
-      await toolPanel?.updateComplete;
-      toolPanel?.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
-    },
+    action: openNewVersionRow,
   },
 ];
 document.addEventListener('keydown', (e) => {
@@ -237,6 +239,11 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault();
   match.action();
 });
+
+// The document-level keydown above never fires while typing inside the
+// ProseMirror editor — the editor's own keymap (ew-editor-doc/prose.js) gets
+// the event first, so it re-dispatches this as a DOM event instead.
+document.addEventListener('nx-canvas-new-version', openNewVersionRow);
 
 export default async function decorate(block) {
   const { org, site } = hashState();
