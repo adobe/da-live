@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, createDocument, TEST_ORG, TEST_SITE,
+  getQuery, getTestPageURL, createDocument, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 
 // Requires write access to TEST_SITE. pingtest must exist in the /tests directory.
@@ -36,12 +36,18 @@ test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
   await expect(page.locator('da-dialog')).toContainText('Preview the');
 });
 
-test.only('Preview actually previews the selected page', async ({ page }, workerInfo) => {
+test('Preview actually previews the selected page', async ({ page }, workerInfo) => {
   test.setTimeout(60000);
 
   const url = getTestPageURL('preview', workerInfo);
   const pageName = url.split('/').pop();
-  await createDocument(page, url, 'preview test');
+  await createDocument(page, url);
+
+  // Enter some text onto the page
+  await fill(page, 'preview test');
+
+  // Wait to ensure its saved in da-admin
+  await page.waitForTimeout(5000);
 
   await page.goto(TESTS_DIR);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
@@ -62,7 +68,13 @@ test('Publish actually publishes the selected page', async ({ page }, workerInfo
 
   const url = getTestPageURL('publish', workerInfo);
   const pageName = url.split('/').pop();
-  await createDocument(page, url, 'publish test');
+  await createDocument(page, url);
+
+  // Enter some text onto the page
+  await fill(page, 'publish test');
+
+  // Wait to ensure its saved in da-admin
+  await page.waitForTimeout(5000);
 
   await page.goto(TESTS_DIR);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();

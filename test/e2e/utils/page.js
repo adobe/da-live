@@ -89,22 +89,14 @@ const SELECT_ALL = process.platform === 'darwin' ? 'Meta+a' : 'Control+a';
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} url - The URL of the (not yet existing) document to create.
- * @param {string} [content] - Optional text content to type into the document. If
- * provided, the function waits for the resulting save to complete before returning.
  */
-export async function createDocument(page, url, content) {
+export async function createDocument(page, url) {
   await page.goto(url);
   await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
-
-  if (content) {
-    const savePromise = waitForSave(page);
-    await fill(page, content);
-    await savePromise;
-  }
 }
 
 export async function fill(page, text) {
