@@ -12,7 +12,7 @@ let canWrite;
 
 export function commitActiveEditors(sheets) {
   sheets?.forEach((sheet) => {
-    if (sheet.edition) sheet.closeEditor(sheet.edition, true);
+    if (sheet.edition) sheet.closeEditor(sheet.edition[0], true);
   });
 }
 
