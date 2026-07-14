@@ -218,23 +218,11 @@ nx-popover {
 }
 
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(table) {
-  border-left: 4px solid var(--s2-green-900);
+  box-shadow: 4px 0 0 inset var(--s2-green-900);
 }
 
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(table) {
-  border-left: 4px solid var(--s2-red-900);
-}
-
-:is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(table) {
-  border-left: 4px solid var(--s2-orange-900);
-}
-
-:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(table) .tableWrapper {
-  border-color: var(--s2-green-900);
-}
-
-:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(table) .tableWrapper {
-  border-color: var(--s2-red-900);
+  box-shadow: 4px 0 0 inset var(--s2-red-900);
 }
 
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:empty,
