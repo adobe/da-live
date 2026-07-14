@@ -23,11 +23,13 @@ function mockJspreadsheetTabs(container, data) {
 
 describe('commitActiveEditors', () => {
   it('commits only worksheets with an active editor', () => {
+    // jspreadsheet sets `edition` to [cell, innerHTML, colIndex, rowIndex] while a
+    // cell editor is open; closeEditor expects the cell element (edition[0]).
     const activeCell = document.createElement('td');
     const calls = [];
     const sheets = [
       {
-        edition: activeCell,
+        edition: [activeCell, '<td>Key</td>', 0, 1],
         closeEditor: (...args) => calls.push(args),
       },
       {
