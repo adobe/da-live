@@ -1,8 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import {
-  fetchBlocks,
-  fetchExtensions,
+  loadBlockLibrary,
   getItemPreviewUrl,
   getPreviewStatus,
 } from '../ew-panel-extensions/helpers.js';
@@ -38,7 +37,7 @@ function variantSearchText(block, variant) {
 
 class EwBlockLibraryModal extends LitElement {
   static properties = {
-    extension: { attribute: false },
+    blocks: { attribute: false },
     onInsert: { attribute: false },
     _blocks: { state: true },
     _variantsByPath: { state: true },
@@ -64,18 +63,15 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   willUpdate(changed) {
-    if (changed.has('extension') && this.extension) {
-      this._loadBlocks();
+    if (changed.has('blocks')) {
+      this._populateBlocks(this.blocks);
     }
   }
 
-  async _loadBlocks() {
-    this._blocks = undefined;
-    if (!this.extension) return;
-    const blocks = await fetchBlocks(this.extension.sources);
-    this._blocks = blocks;
-    // Prefetch variants for every block so search can match against them.
-    blocks.forEach(async (block) => {
+  _populateBlocks(blocks) {
+    this._blocks = blocks || [];
+    // Resolve every block's variants so search can match against them.
+    (blocks || []).forEach(async (block) => {
       if (this._variantsByPath.has(block.path)) return;
       const variants = await block.loadVariants;
       const next = new Map(this._variantsByPath);
@@ -328,14 +324,13 @@ export async function openBlockLibraryModal({ onInsert } = {}) {
   const unsub = hashChange.subscribe((s) => { hashState = s; });
   unsub();
   const { org, site } = hashState || {};
-  if (!org || !site) return;
 
-  const extensions = await fetchExtensions(org, site);
-  const ext = extensions?.find((e) => e.name === 'blocks');
+  // Reuses the slash-menu prefetch cache, so this is instant once warmed.
+  const { ext, blocks } = await loadBlockLibrary(org, site);
   if (!ext) return;
 
   const modal = document.createElement('ew-block-library-modal');
-  modal.extension = ext;
+  modal.blocks = blocks;
   modal.onInsert = onInsert;
   modal.addEventListener('close', () => modal.remove(), { once: true });
   document.body.append(modal);
