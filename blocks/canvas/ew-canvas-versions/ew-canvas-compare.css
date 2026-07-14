@@ -9,10 +9,13 @@ nx-popover {
   padding: 0;
   border: none;
   border-radius: var(--s2-corner-radius-700);
-  box-shadow: 0 8px 32px light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 45%));
+  box-shadow: 0 8px 32px light-dark(
+    rgb(from var(--s2-gray-1000) r g b / 18%),
+    rgb(from var(--s2-gray-1000) r g b / 45%)
+  );
   overflow: hidden;
   border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .ew-cc-header {
@@ -72,37 +75,6 @@ nx-popover {
     font-size: var(--s2-component-s-regular-font-size);
     font-weight: normal;
     border-radius: var(--s2-corner-radius-400);
-  }
-}
-
-.ew-cc-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--s2-gray-800);
-  border-radius: var(--s2-corner-radius-400);
-
-  .icon {
-    width: 16px;
-    height: 16px;
-  }
-
-  &:hover {
-    background: var(--s2-gray-100);
-  }
-}
-
-.ew-cc-icon-btn.is-active {
-  background: var(--s2-gray-900);
-  color: var(--s2-gray-25);
-
-  &:hover {
-    background: var(--s2-gray-1000);
   }
 }
 

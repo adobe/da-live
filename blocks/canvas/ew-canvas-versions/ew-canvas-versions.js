@@ -233,7 +233,7 @@ class EwCanvasVersions extends LitElement {
               aria-label=${this._savingVersion ? 'Saving' : nothing}>
               ${this._savingVersion ? html`<span class="da-loading-spinner" aria-hidden="true"></span>` : 'Save'}
             </button>
-            <button type="button" class="ew-cv-icon-btn" aria-label="Cancel"
+            <button type="button" class="da-icon-btn" aria-label="Cancel"
               ?disabled=${this._savingVersion}
               @click=${this.handleCancel}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
@@ -358,7 +358,7 @@ class EwCanvasVersions extends LitElement {
               aria-pressed=${this._filter === 'me'}
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
-          <button type="button" class="ew-cv-add-btn" aria-label="Create version"
+          <button type="button" class="da-icon-btn" aria-label="Create version"
             ?disabled=${!!this._newVersion} @click=${this.handleNew}>
             <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
               <use href="${ICON_ADD}#icon"></use>

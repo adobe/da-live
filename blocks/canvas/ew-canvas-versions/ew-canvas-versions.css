@@ -11,7 +11,6 @@
 button {
   border-radius: var(--s2-corner-radius-400);
   border: none;
-  cursor: pointer;
 }
 
 
@@ -63,32 +62,6 @@ button {
 
   &:hover:not(.is-selected) {
     background: var(--s2-gray-75);
-  }
-}
-
-.ew-cv-add-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: transparent;
-  color: var(--s2-gray-800);
-
-  .icon {
-    display: block;
-    width: 20px;
-    height: 20px;
-  }
-
-  &:hover {
-    background: var(--s2-gray-100);
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
   }
 }
 
@@ -315,31 +288,6 @@ summary {
   align-items: center;
   gap: var(--s2-spacing-75);
   flex-shrink: 0;
-}
-
-.ew-cv-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: transparent;
-  color: var(--s2-gray-800);
-
-  .icon {
-    width: 16px;
-    height: 16px;
-  }
-
-  &:hover {
-    background: var(--s2-gray-100);
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
 }
 
 nx-dialog {

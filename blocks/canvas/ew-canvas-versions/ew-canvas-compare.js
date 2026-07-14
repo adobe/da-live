@@ -14,6 +14,10 @@ function getCanvasSection() {
     ?? document.querySelector('.nx-canvas-editor-mount');
 }
 
+function getChatPanel() {
+  return document.querySelector('aside.panel[data-position="before"]:not([hidden])');
+}
+
 class EwCanvasCompare extends LitElement {
   static properties = {
     dom: { attribute: false },
@@ -52,16 +56,23 @@ class EwCanvasCompare extends LitElement {
     const section = getCanvasSection();
     const popover = this.shadowRoot.querySelector('nx-popover');
     if (!section || !popover) return;
-    const rect = section.getBoundingClientRect();
+    // Union with the chat panel's rect (if open) so the popover covers it too,
+    // since the panel sits outside the canvas section in the DOM.
+    const sectionRect = section.getBoundingClientRect();
+    const chatRect = getChatPanel()?.getBoundingClientRect();
+    const left = Math.min(sectionRect.left, chatRect?.left ?? Infinity);
+    const top = Math.min(sectionRect.top, chatRect?.top ?? Infinity);
+    const right = Math.max(sectionRect.right, chatRect?.right ?? -Infinity);
+    const bottom = Math.max(sectionRect.bottom, chatRect?.bottom ?? -Infinity);
     // Overhang slightly on every side so the section's own border never peeks out
     // from behind the popover's rounded corners — sizing exactly to the rect left
     // a sliver of it visible at each corner.
-    const overhang = 2;
+    const overhang = 1;
     Object.assign(popover.style, {
-      top: `${rect.top - overhang}px`,
-      left: `${rect.left - overhang}px`,
-      width: `${rect.width + overhang * 2}px`,
-      height: `${rect.height + overhang * 2}px`,
+      top: `${top - overhang}px`,
+      left: `${left - overhang}px`,
+      width: `${right - left + overhang * 2}px`,
+      height: `${bottom - top + overhang * 2}px`,
     });
   }
 
@@ -99,7 +110,7 @@ class EwCanvasCompare extends LitElement {
             </div>
           ` : html`<span class="ew-cc-chip">${this.label}</span>`}
           <div class="ew-cc-actions">
-            <button type="button" class="ew-cc-icon-btn${this.split ? ' is-active' : ''}"
+            <button type="button" class="da-icon-btn${this.split ? ' is-active' : ''}"
               aria-label="Toggle split view" aria-pressed=${this.split ? 'true' : 'false'}
               @click=${this._toggleSplit}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
@@ -109,7 +120,7 @@ class EwCanvasCompare extends LitElement {
             ${this.canWrite ? html`
               <button type="button" class="da-btn-secondary" @click=${this._restore}>Restore</button>
             ` : nothing}
-            <button type="button" class="ew-cc-icon-btn" aria-label="Close" @click=${this._close}>
+            <button type="button" class="da-icon-btn" aria-label="Close" @click=${this._close}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_CLOSE}#icon"></use>
               </svg>

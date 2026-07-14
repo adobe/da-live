@@ -246,7 +246,7 @@ describe('create-version form', () => {
     await inst.updateComplete;
     const input = inst.shadowRoot.querySelector('.da-input');
     const saveBtn = inst.shadowRoot.querySelector('.ew-cv-save-btn');
-    const cancelBtn = inst.shadowRoot.querySelector('.ew-cv-icon-btn');
+    const cancelBtn = inst.shadowRoot.querySelector('.da-icon-btn');
     expect(input.readOnly).to.be.true;
     expect(input.disabled).to.be.false;
     expect(cancelBtn.disabled).to.be.true;
