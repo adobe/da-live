@@ -3,15 +3,6 @@ input {
   font-family: var(--s2-font-family);
 }
 
-button {
-  cursor: pointer;
-  transition: transform 0.125s ease-out;
-
-  &:active {
-    transform: scale(0.97);
-  }
-}
-
 @keyframes da-spin {
   to { transform: rotate(360deg); }
 }
@@ -37,6 +28,12 @@ button {
   color: var(--s2-gray-800);
   border-radius: var(--s2-corner-radius-400);
   border: none;
+  cursor: pointer;
+  transition: transform 0.125s ease-out;
+
+  &:active {
+    transform: scale(0.97);
+  }
 
   svg {
     width: 16px;
@@ -112,6 +109,7 @@ button {
   font-size: var(--s2-body-size-s, 0.875rem);
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.125s ease-out;
 
   &:focus-visible {
     outline: 2px solid var(--s2-blue-800);
@@ -121,6 +119,10 @@ button {
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  &:active {
+    transform: scale(0.97);
   }
 }
 

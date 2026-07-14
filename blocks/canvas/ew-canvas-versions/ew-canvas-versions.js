@@ -11,6 +11,7 @@ import {
 } from '../../shared/version/version-actions.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { trackingPluginKey } from '../editor-utils/prose-diff.js';
 import './ew-canvas-compare.js';
 
 const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
@@ -139,7 +140,10 @@ class EwCanvasVersions extends LitElement {
     }
     const newDoc = PMDOMParser.fromSchema(view.state.schema).parse(versionBody);
     const { doc } = view.state;
-    view.dispatch(view.state.tr.replaceWith(0, doc.content.size, newDoc.content));
+    const tr = view.state.tr
+      .replaceWith(0, doc.content.size, newDoc.content)
+      .setMeta(trackingPluginKey, true);
+    view.dispatch(tr);
     this.handleCloseCompare();
   }
 
@@ -157,12 +161,37 @@ class EwCanvasVersions extends LitElement {
 
     this.handleCloseCompare();
     this._compareTrigger = trigger;
+    this._compareSplit = true;
     const { dom, cleanup } = await buildCompareDom({
       htmlA: docToHtml(view),
       htmlB: domToHtml(versionBody),
       closeOnOutsideClick: false,
     });
-    this._compareCtx = { dom, cleanup, label: entry.label || entry.date, entry };
+    this._compareCtx = { dom, cleanup, label: entry.label || entry.date, entry, isDiff: true };
+  }
+
+  // Reuses whatever split preference is already remembered on `_compareSplit`:
+  // if the user had split on for a previous version, opening a new one via the
+  // row click goes straight to a real comparison instead of resetting to plain.
+  async handlePreview(e, entry) {
+    const trigger = this.shadowRoot.activeElement;
+    const versionBody = await fetchVersionHtml(this.path, entry);
+    if (!versionBody) {
+      showError('Could not load the selected version.');
+      return;
+    }
+
+    this.handleCloseCompare();
+    this._compareTrigger = trigger;
+    const label = entry.label || entry.date;
+
+    if (this._compareSplit) {
+      const diff = await this._buildDiff(versionBody);
+      if (!diff) return;
+      this._compareCtx = { ...diff, label, entry, isDiff: true };
+      return;
+    }
+    this._compareCtx = { dom: versionBody, cleanup: () => {}, label, entry, isDiff: false };
   }
 
   handleRestoreFromCompare() {
@@ -177,7 +206,26 @@ class EwCanvasVersions extends LitElement {
     this._compareTrigger = null;
   }
 
-  handleToggleCompareSplit() {
+  async _buildDiff(versionBody) {
+    const { view } = getExtensionsBridge();
+    if (!view) return null;
+    return buildCompareDom({
+      htmlA: docToHtml(view),
+      htmlB: domToHtml(versionBody),
+      closeOnOutsideClick: false,
+    });
+  }
+
+  // The li's click opens a plain, undiffed preview of the version (isDiff: false).
+  // Turning split on is the first point a real comparison is needed, so the diff
+  // against the current doc is only computed then, not for every preview.
+  async handleToggleCompareSplit() {
+    if (!this._compareCtx) return;
+    if (!this._compareCtx.isDiff) {
+      const diff = await this._buildDiff(this._compareCtx.dom);
+      if (!diff) return;
+      this._compareCtx = { ...this._compareCtx, ...diff, isDiff: true };
+    }
     this._compareSplit = !this._compareSplit;
   }
 
@@ -263,8 +311,8 @@ class EwCanvasVersions extends LitElement {
     const users = entry.users?.map((u) => u.email).join(', ');
     const menuItems = [
       { section: 'Actions' },
-      ...(this._canWrite ? [{ id: 'restore', label: 'Restore', icon: 'revert' }] : []),
-      { id: 'compare', label: 'Compare', icon: 'gridcompare' },
+      ...(this._canWrite ? [{ id: 'restore', label: 'Restore' }] : []),
+      { id: 'compare', label: 'Compare' },
     ];
     const isComparing = !!this._comparingId && getVersionId(this.path, entry) === this._comparingId;
     return html`
@@ -274,13 +322,14 @@ class EwCanvasVersions extends LitElement {
             <use href="/img/icons/s2-icon-targetsmall-20-n.svg#icon"></use>
           </svg>
         </span>
-        <div class="version-row">
+        <div class="version-row" @click=${(e) => this.handlePreview(e, entry)}>
           <div class="version-info">
             <span class="versionname">${entry.label || entry.date}</span>
             <span class="meta">${entry.date}, ${entry.time}</span>
             ${users ? html`<span class="user">${users}</span>` : nothing}
           </div>
           <nx-menu .items=${menuItems} placement="auto"
+            @click=${(e) => e.stopPropagation()}
             @select=${(e) => {
         if (e.detail.id === 'restore') this.handleRestoreClick(entry);
         else this.handleCompare(e, entry);

@@ -258,7 +258,7 @@ describe('create-version form', () => {
 
 // ─── Restore menu permission gating ─────────────────────────────────────────
 
-describe('version menu restore gating', () => {
+describe('version restore button permission gating', () => {
   let inst;
 
   afterEach(() => {
@@ -266,26 +266,23 @@ describe('version menu restore gating', () => {
     inst?.remove(); inst = null;
   });
 
-  async function versionMenuItems() {
+  async function hasRestoreButton() {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
     await inst.updateComplete;
-    return inst.shadowRoot.querySelector('nx-menu').items;
+    return !!inst.shadowRoot.querySelector('.da-icon-btn[aria-label="Restore"]');
   }
 
   it('omits Restore when there is no editor view', async () => {
-    const items = await versionMenuItems();
-    expect(items.some((i) => i.id === 'restore')).to.be.false;
+    expect(await hasRestoreButton()).to.be.false;
   });
 
   it('omits Restore when the editor view is read-only', async () => {
     getExtensionsBridge().view = { editable: false };
-    const items = await versionMenuItems();
-    expect(items.some((i) => i.id === 'restore')).to.be.false;
+    expect(await hasRestoreButton()).to.be.false;
   });
 
   it('includes Restore when the editor view is writable', async () => {
     getExtensionsBridge().view = { editable: true };
-    const items = await versionMenuItems();
-    expect(items.some((i) => i.id === 'restore')).to.be.true;
+    expect(await hasRestoreButton()).to.be.true;
   });
 });

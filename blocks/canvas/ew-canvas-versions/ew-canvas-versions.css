@@ -11,6 +11,7 @@
 button {
   border-radius: var(--s2-corner-radius-400);
   border: none;
+  cursor: pointer;
 }
 
 
@@ -54,6 +55,11 @@ button {
   height: 24px;
   min-width: 48px;
   padding: 0 var(--s2-spacing-100);
+  transition: transform 0.125s ease-out;
+
+  &:active {
+    transform: scale(0.97);
+  }
 
   &.is-selected {
     background: var(--s2-gray-100);
@@ -67,7 +73,8 @@ button {
 
 .hint {
   margin: 0;
-  padding: var(--s2-spacing-75);
+  padding: 0 var(--s2-spacing-75);
+  height: 24px;
   font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-700);
   flex-shrink: 0;
@@ -76,8 +83,8 @@ button {
 .versionlist {
   list-style: none;
   padding: 0;
-  padding-left: var(--s2-spacing-200);
-  margin: var(--s2-spacing-400) 0 0 0;
+  padding-left: var(--s2-spacing-400);
+  margin: var(--s2-spacing-200) 0 0 0;
   overflow: hidden auto;
 }
 
@@ -96,6 +103,10 @@ button {
   &.is-new {
     display: flex;
     align-items: center;
+  }
+
+  .da-icon-btn:hover {
+    background: var(--s2-gray-300);
   }
 }
 
@@ -220,7 +231,7 @@ button {
 .versionentry.is-version:not(.is-comparing):hover,
 .versionentry.is-version:has(.version-more-btn[data-active]) {
   .version-row {
-    background: var(--s2-gray-100);
+    background: var(--s2-gray-75);
   }
 
   .version-more-btn {

@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
-const ICON_SPLIT = '/img/icons/s2-icon-gridcompare-20-n.svg';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -67,12 +66,11 @@ class EwCanvasCompare extends LitElement {
     // Overhang slightly on every side so the section's own border never peeks out
     // from behind the popover's rounded corners — sizing exactly to the rect left
     // a sliver of it visible at each corner.
-    const overhang = 1;
     Object.assign(popover.style, {
-      top: `${top - overhang}px`,
-      left: `${left - overhang}px`,
-      width: `${right - left + overhang * 2}px`,
-      height: `${bottom - top + overhang * 2}px`,
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${right - left}px`,
+      height: `${bottom - top}px`,
     });
   }
 
@@ -110,12 +108,10 @@ class EwCanvasCompare extends LitElement {
             </div>
           ` : html`<span class="ew-cc-chip">${this.label}</span>`}
           <div class="ew-cc-actions">
-            <button type="button" class="da-icon-btn${this.split ? ' is-active' : ''}"
+            <button type="button" class="da-btn-secondary${this.split ? ' is-active' : ''}"
               aria-label="Toggle split view" aria-pressed=${this.split ? 'true' : 'false'}
               @click=${this._toggleSplit}>
-              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-                <use href="${ICON_SPLIT}#icon"></use>
-              </svg>
+              Compare
             </button>
             ${this.canWrite ? html`
               <button type="button" class="da-btn-secondary" @click=${this._restore}>Restore</button>
