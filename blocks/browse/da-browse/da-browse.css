@@ -164,3 +164,7 @@
   display: none;
 }
 
+.da-list-header-action:has(da-search) {
+  min-width: 0;
+  width: 100%;
+}
