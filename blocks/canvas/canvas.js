@@ -220,29 +220,30 @@ async function openNewVersionRow() {
   toolPanel?.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
 }
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
+
 const SHORTCUTS = [
   {
     code: 'KeyS',
-    metaKey: true,
+    mod: true,
     altKey: true,
     action: openNewVersionRow,
   },
 ];
 document.addEventListener('keydown', (e) => {
+  const modKey = isMac ? e.metaKey : e.ctrlKey;
+  const otherModKey = isMac ? e.ctrlKey : e.metaKey;
   const match = SHORTCUTS.find((s) => (
     s.code === e.code
-    && !!s.metaKey === e.metaKey
+    && !!s.mod === modKey
+    && !otherModKey
     && !!s.altKey === e.altKey
-    && !!s.ctrlKey === e.ctrlKey
   ));
   if (!match) return;
   e.preventDefault();
   match.action();
 });
 
-// The document-level keydown above never fires while typing inside the
-// ProseMirror editor — the editor's own keymap (ew-editor-doc/prose.js) gets
-// the event first, so it re-dispatches this as a DOM event instead.
 document.addEventListener('nx-canvas-new-version', openNewVersionRow);
 
 export default async function decorate(block) {

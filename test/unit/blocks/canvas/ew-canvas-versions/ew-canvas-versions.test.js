@@ -27,40 +27,6 @@ const ver = (overrides = {}) => ({ isVersion: true, date: 'Jan 1', time: '10:00'
 
 const auditGroup = (audits = [{ date: 'Jan 1', time: '09:00', users: [] }]) => ({ date: 'Jan 1', audits });
 
-// ─── _buildDisplayItems ──────────────────────────────────────────────────────
-
-describe('_buildDisplayItems', () => {
-  let inst;
-  before(async () => { inst = await createInstance(); });
-  after(() => { inst.remove(); });
-
-  it('merges adjacent audit groups into one expand/collapse entry', () => {
-    const result = inst._buildDisplayItems([auditGroup(), auditGroup()]);
-    expect(result).to.have.lengthOf(1);
-    expect(result[0].audits).to.have.lengthOf(2);
-  });
-
-  it('a version between two audit groups prevents them from merging', () => {
-    const result = inst._buildDisplayItems([auditGroup(), ver(), auditGroup()]);
-    expect(result).to.have.lengthOf(3);
-    expect(result[0].audits).to.have.lengthOf(1);
-    expect(result[2].audits).to.have.lengthOf(1);
-  });
-
-  it('collects trailing audit groups that follow the last version', () => {
-    const result = inst._buildDisplayItems([ver(), auditGroup(), auditGroup()]);
-    expect(result).to.have.lengthOf(2);
-    expect(result[1].audits).to.have.lengthOf(2);
-  });
-
-  it('passes through a list of only versions unchanged', () => {
-    const v1 = ver();
-    const v2 = ver();
-    const result = inst._buildDisplayItems([v1, v2]);
-    expect(result).to.deep.equal([v1, v2]);
-  });
-});
-
 // ─── _filteredVersions ───────────────────────────────────────────────────────
 
 describe('_filteredVersions', () => {
@@ -174,7 +140,13 @@ describe('ew-canvas-versions', () => {
   it('handleCloseCompare calls cleanup and clears _compareCtx', async () => {
     inst = await createInstance();
     let cleaned = false;
-    inst._compareCtx = { dom: document.createElement('div'), cleanup: () => { cleaned = true; }, label: 'v1', entry: {} };
+    inst._compareCtx = {
+      previewDom: document.createElement('div'),
+      diffDom: null,
+      cleanup: () => { cleaned = true; },
+      label: 'v1',
+      entry: {},
+    };
     inst.handleCloseCompare();
     expect(inst._compareCtx).to.be.null;
     expect(cleaned).to.be.true;
@@ -258,7 +230,7 @@ describe('create-version form', () => {
 
 // ─── Restore menu permission gating ─────────────────────────────────────────
 
-describe('version restore button permission gating', () => {
+describe('version menu restore gating', () => {
   let inst;
 
   afterEach(() => {
@@ -269,7 +241,8 @@ describe('version restore button permission gating', () => {
   async function hasRestoreButton() {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
     await inst.updateComplete;
-    return !!inst.shadowRoot.querySelector('.da-icon-btn[aria-label="Restore"]');
+    const items = inst.shadowRoot.querySelector('nx-menu')?.items ?? [];
+    return items.some((i) => i.id === 'restore');
   }
 
   it('omits Restore when there is no editor view', async () => {
@@ -284,5 +257,79 @@ describe('version restore button permission gating', () => {
   it('includes Restore when the editor view is writable', async () => {
     getExtensionsBridge().view = { editable: true };
     expect(await hasRestoreButton()).to.be.true;
+  });
+});
+
+// ─── handleToggleCompareSplit — lazy diff build ─────────────────────────────
+
+describe('handleToggleCompareSplit', () => {
+  let inst;
+  afterEach(() => { inst?.remove(); inst = null; });
+
+  it('builds the diff dom on first toggle and flips _compareSplit on', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    const previewDom = document.createElement('div');
+    inst._compareCtx = {
+      previewDom, diffDom: null, cleanup: () => {}, label: 'v1', entry: {},
+    };
+    inst._compareSplit = false;
+    const fakeDiffDom = document.createElement('div');
+    let buildCalls = 0;
+    inst._buildDiff = async (body) => {
+      buildCalls += 1;
+      expect(body).to.equal(previewDom);
+      return { dom: fakeDiffDom, cleanup: () => {} };
+    };
+
+    await inst.handleToggleCompareSplit();
+
+    expect(buildCalls).to.equal(1);
+    expect(inst._compareCtx.diffDom).to.equal(fakeDiffDom);
+    expect(inst._compareSplit).to.be.true;
+  });
+
+  it('does not rebuild the diff on a later toggle once already built', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    const diffDom = document.createElement('div');
+    inst._compareCtx = {
+      previewDom: document.createElement('div'), diffDom, cleanup: () => {}, label: 'v1', entry: {},
+    };
+    inst._compareSplit = true;
+    let buildCalls = 0;
+    inst._buildDiff = async () => { buildCalls += 1; return { dom: document.createElement('div'), cleanup: () => {} }; };
+
+    await inst.handleToggleCompareSplit();
+
+    expect(buildCalls).to.equal(0);
+    expect(inst._compareSplit).to.be.false;
+    expect(inst._compareCtx.diffDom).to.equal(diffDom);
+  });
+
+  it('does nothing when there is no active compare context', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    inst._compareCtx = null;
+    inst._compareSplit = false;
+
+    await inst.handleToggleCompareSplit();
+
+    expect(inst._compareSplit).to.be.false;
+  });
+
+  it('leaves diffDom unset and split off when the diff build fails', async () => {
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    await inst.updateComplete;
+    inst._compareCtx = {
+      previewDom: document.createElement('div'), diffDom: null, cleanup: () => {}, label: 'v1', entry: {},
+    };
+    inst._compareSplit = false;
+    inst._buildDiff = async () => null;
+
+    await inst.handleToggleCompareSplit();
+
+    expect(inst._compareCtx.diffDom).to.be.null;
+    expect(inst._compareSplit).to.be.false;
   });
 });

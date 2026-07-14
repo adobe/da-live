@@ -65,3 +65,22 @@ export function formatVersions(json) {
     return acc;
   }, []);
 }
+
+export function buildDisplayItems(versions) {
+  const items = [];
+  let auditGroup = null;
+  for (const entry of versions) {
+    if (entry.isVersion) {
+      if (auditGroup) {
+        items.push(auditGroup);
+        auditGroup = null;
+      }
+      items.push(entry);
+    } else {
+      if (!auditGroup) auditGroup = { audits: [] };
+      auditGroup.audits.push(...entry.audits);
+    }
+  }
+  if (auditGroup) items.push(auditGroup);
+  return items;
+}

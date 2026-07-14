@@ -7,7 +7,6 @@ nx-popover {
   display: flex;
   flex-direction: column;
   padding: 0;
-  border: none;
   border-radius: var(--s2-corner-radius-800) var(--s2-corner-radius-800) 0 0;
   border: 1px solid var(--s2-gray-100);
   box-shadow: none;

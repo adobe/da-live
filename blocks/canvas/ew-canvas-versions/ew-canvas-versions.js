@@ -9,10 +9,14 @@ import {
   fetchVersionHtml,
   getVersionId,
 } from '../../shared/version/version-actions.js';
+import { buildDisplayItems } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { trackingPluginKey } from '../editor-utils/prose-diff.js';
 import './ew-canvas-compare.js';
+
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
+const SHORTCUT_HINT = IS_MAC ? '⌘ + ⌥ + S' : 'Ctrl + Alt + S';
 
 const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
@@ -86,7 +90,13 @@ class EwCanvasVersions extends LitElement {
 
   async _load({ showLoading = true } = {}) {
     if (showLoading) this._versions = undefined;
-    this._versions = await fetchVersions(this.path);
+    const versions = await fetchVersions(this.path);
+    if (versions === null) {
+      showError('Could not load version history. Please try again.');
+      this._versions = [];
+      return;
+    }
+    this._versions = versions;
   }
 
   _setFilter(val) {
@@ -147,51 +157,42 @@ class EwCanvasVersions extends LitElement {
     this.handleCloseCompare();
   }
 
-  async handleCompare(e, entry) {
-    e.stopPropagation();
-    const trigger = this.shadowRoot.activeElement;
-    const { view } = getExtensionsBridge();
-    if (!view) return;
+  get _focusTrigger() {
+    const active = this.shadowRoot.activeElement;
+    return active?.closest('[tabindex], button, a[href]') ?? active;
+  }
 
+  async _openCompare(entry, { forceSplit = false } = {}) {
+    const trigger = this._focusTrigger;
     const versionBody = await fetchVersionHtml(this.path, entry);
     if (!versionBody) {
       showError('Could not load the selected version.');
       return;
     }
-    const { dom: diffDom, cleanup } = await this._buildDiff(versionBody) ?? {};
-    if (!diffDom) return;
+
+    const wantsSplit = forceSplit || this._compareSplit;
+    let diffDom = null;
+    let cleanup = () => { };
+    if (wantsSplit) {
+      const diff = await this._buildDiff(versionBody);
+      if (!diff) return;
+      ({ dom: diffDom, cleanup } = diff);
+    }
 
     this.handleCloseCompare();
     this._compareTrigger = trigger;
-    this._compareSplit = true;
+    if (forceSplit) this._compareSplit = true;
     const label = entry.label || entry.date;
     this._compareCtx = { previewDom: versionBody, diffDom, cleanup, label, entry };
   }
 
-  // Reuses whatever split preference is already remembered on `_compareSplit`:
-  // if the user had split on for a previous version, opening a new one via the
-  // row click goes straight to a real comparison instead of resetting to plain.
-  // previewDom (the raw version, for the unsplit view) is always kept around;
-  // diffDom (for the split panes) is only ever built when actually needed.
+  async handleCompare(e, entry) {
+    e.stopPropagation();
+    await this._openCompare(entry, { forceSplit: true });
+  }
+
   async handlePreview(e, entry) {
-    const trigger = this.shadowRoot.activeElement;
-    const versionBody = await fetchVersionHtml(this.path, entry);
-    if (!versionBody) {
-      showError('Could not load the selected version.');
-      return;
-    }
-
-    this.handleCloseCompare();
-    this._compareTrigger = trigger;
-    const label = entry.label || entry.date;
-
-    if (this._compareSplit) {
-      const { dom: diffDom, cleanup } = await this._buildDiff(versionBody) ?? {};
-      if (!diffDom) return;
-      this._compareCtx = { previewDom: versionBody, diffDom, cleanup, label, entry };
-      return;
-    }
-    this._compareCtx = { previewDom: versionBody, diffDom: null, cleanup: () => {}, label, entry };
+    await this._openCompare(entry);
   }
 
   handleRestoreFromCompare() {
@@ -206,9 +207,18 @@ class EwCanvasVersions extends LitElement {
     this._compareTrigger = null;
   }
 
+  handleCurrentClick(e) {
+    this._compareTrigger = null;
+    this.handleCloseCompare();
+    e.currentTarget.focus();
+  }
+
   async _buildDiff(versionBody) {
     const { view } = getExtensionsBridge();
-    if (!view) return null;
+    if (!view) {
+      showError('Could not build the comparison. Please try again.');
+      return null;
+    }
     return buildCompareDom({
       htmlA: docToHtml(view),
       htmlB: domToHtml(versionBody),
@@ -216,9 +226,6 @@ class EwCanvasVersions extends LitElement {
     });
   }
 
-  // The li's click opens a plain, undiffed preview of the version. Turning split
-  // on is the first point a real comparison is needed, so the diff against the
-  // current doc is only computed then, not for every preview.
   async handleToggleCompareSplit() {
     if (!this._compareCtx) return;
     if (!this._compareCtx.diffDom) {
@@ -244,27 +251,6 @@ class EwCanvasVersions extends LitElement {
       if (entry.isVersion) return entry.users?.some((u) => u.email === this._imsEmail);
       return entry.audits?.some((a) => a.users?.some((u) => u.email === this._imsEmail));
     });
-  }
-
-  // Merge consecutive audit groups (which helpers.js splits by date) into one
-  // display group per contiguous run, so the UI shows one expand/collapse for all.
-  _buildDisplayItems(versions) {
-    const items = [];
-    let auditGroup = null;
-    for (const entry of versions) {
-      if (entry.isVersion) {
-        if (auditGroup) {
-          items.push(auditGroup);
-          auditGroup = null;
-        }
-        items.push(entry);
-      } else {
-        if (!auditGroup) auditGroup = { audits: [] };
-        auditGroup.audits.push(...entry.audits);
-      }
-    }
-    if (auditGroup) items.push(auditGroup);
-    return items;
   }
 
   renderNewRow() {
@@ -296,7 +282,13 @@ class EwCanvasVersions extends LitElement {
 
   renderCurrentRow() {
     return html`
-      <li class="versionentry is-current">
+      <li class="versionentry is-current" tabindex="0" role="button"
+        @click=${(e) => this.handleCurrentClick(e)}
+        @keydown=${(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        this.handleCurrentClick(e);
+      }}>
         <span class="versionicon">
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <use href="/img/icons/s2-icon-targetsmall-20-n.svg#icon"></use>
@@ -322,7 +314,13 @@ class EwCanvasVersions extends LitElement {
             <use href="/img/icons/s2-icon-targetsmall-20-n.svg#icon"></use>
           </svg>
         </span>
-        <div class="version-row" @click=${(e) => this.handlePreview(e, entry)}>
+        <div class="version-row" tabindex="0" role="button"
+          @click=${(e) => this.handlePreview(e, entry)}
+          @keydown=${(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        this.handlePreview(e, entry);
+      }}>
           <div class="version-info">
             <span class="versionname">${entry.label || entry.date}</span>
             <span class="meta">${entry.date}, ${entry.time}</span>
@@ -330,6 +328,7 @@ class EwCanvasVersions extends LitElement {
           </div>
           <nx-menu .items=${menuItems} placement="auto"
             @click=${(e) => e.stopPropagation()}
+            @keydown=${(e) => e.stopPropagation()}
             @select=${(e) => {
         if (e.detail.id === 'restore') this.handleRestoreClick(entry);
         else this.handleCompare(e, entry);
@@ -414,13 +413,13 @@ class EwCanvasVersions extends LitElement {
             </svg>
           </button>
         </div>
-        <p class="hint">Press ⌘ + ⌥ + S to add to version history while editing.</p>
+        <p class="hint">Press ${SHORTCUT_HINT} to add to version history while editing.</p>
         ${this._versions === undefined
         ? html`<p class="loading">Loading…</p>`
         : html`<ul class="versionlist">
               ${this._newVersion ? this.renderNewRow() : nothing}
               ${this.renderCurrentRow()}
-              ${this._buildDisplayItems(this._filteredVersions).map((entry) => (
+              ${buildDisplayItems(this._filteredVersions).map((entry) => (
           entry.isVersion ? this.renderVersion(entry) : this.renderAudits(entry)
         ))}
             </ul>`}
