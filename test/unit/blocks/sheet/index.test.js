@@ -21,6 +21,27 @@ function mockJspreadsheetTabs(container, data) {
   container.jexcel = data.map((d) => ({ name: d.sheetName, options: {} }));
 }
 
+describe('commitActiveEditors', () => {
+  it('commits only worksheets with an active editor', () => {
+    const activeCell = document.createElement('td');
+    const calls = [];
+    const sheets = [
+      {
+        edition: activeCell,
+        closeEditor: (...args) => calls.push(args),
+      },
+      {
+        edition: null,
+        closeEditor: (...args) => calls.push(args),
+      },
+    ];
+
+    sh.commitActiveEditors(sheets);
+
+    expect(calls).to.deep.equal([[activeCell, true]]);
+  });
+});
+
 describe('init - double restore', () => {
   let el;
   let daTitle;

@@ -3,7 +3,12 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { saveSheets, handleSave, staleCheck } = await import('../../../../blocks/sheet/utils/utils.js');
+const {
+  saveSheets,
+  handleSave,
+  flushPendingSave,
+  staleCheck,
+} = await import('../../../../blocks/sheet/utils/utils.js');
 
 // The new api.js makes an hlx6 upgrade probe before each source op. The probe
 // must respond without an x-api-upgrade-available header so the source URL
@@ -132,6 +137,22 @@ describe('sheet/utils utils', () => {
       // wait beyond the 1000ms debounce
       await new Promise((r) => { setTimeout(r, 1200); });
       expect(captured).to.contain('/source/o/r/test');
+    });
+
+    it('Flushes a pending save immediately to its original path', async () => {
+      window.location.hash = '#/o/r/original';
+      let captured;
+      window.fetch = wrap((url) => {
+        if (typeof url === 'string' && url.includes('/source/')) captured = url;
+        return Promise.resolve(new Response('', { status: 200 }));
+      });
+
+      handleSave([buildSheet('a', [['x']])], 'edit');
+      window.location.hash = '#/o/r/other';
+      const result = await flushPendingSave();
+
+      expect(result).to.be.true;
+      expect(captured).to.contain('/source/o/r/original');
     });
   });
 });

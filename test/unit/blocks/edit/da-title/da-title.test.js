@@ -89,6 +89,25 @@ describe('DaTitle', () => {
     expect(h1.textContent).to.equal('page');
   });
 
+  it('waits for beforeNavigate before following the parent link', async () => {
+    el = await fixture();
+    let release;
+    let called = false;
+    el.beforeNavigate = () => new Promise((resolve) => {
+      called = true;
+      release = resolve;
+    });
+
+    const link = el.shadowRoot.querySelector('.da-title-name-label');
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    link.dispatchEvent(event);
+
+    expect(event.defaultPrevented).to.be.true;
+    expect(called).to.be.true;
+    release(false);
+    await nextFrame();
+  });
+
   it('renders actions wrapper', async () => {
     el = await fixture();
     const actionsWrapper = el.shadowRoot.querySelector('.da-title-actions');

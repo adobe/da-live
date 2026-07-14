@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { getTestSheetURL, waitForSave } from '../utils/page.js';
 
-test('New sheet', async ({ page }, workerInfo) => {
+test('Last cell edit persists when immediately navigating to the parent folder', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
 
   const url = getTestSheetURL('sheet1', workerInfo);
@@ -22,7 +22,13 @@ test('New sheet', async ({ page }, workerInfo) => {
   await page.locator('[data-x="0"][data-y="1"]').dblclick();
   await page.locator('td input').fill(enteredText);
 
-  await page.waitForTimeout(3000);
+  // Leave while the cell editor is still active and before the autosave debounce expires.
+  await page.locator('.da-title-name-label').click();
+
+  await page.goto(url);
+  await expect(page.locator('da-sheet-tabs')).toBeVisible();
+  await expect(page.locator('[data-x="0"][data-y="1"]')).toHaveText(enteredText);
+
   await page.close();
 });
 
