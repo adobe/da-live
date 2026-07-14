@@ -182,21 +182,15 @@ nx-popover {
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins,
 :is(.ew-cc-body, .ew-cc-pane) ins.diffmod {
   background: var(--s2-green-200);
-  color: var(--s2-green-1000);
+  padding: var(--s2-spacing-50) var(--s2-spacing-100);
   text-decoration: none;
 }
 
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel,
 :is(.ew-cc-body, .ew-cc-pane) del.diffmod {
-  background: var(--s2-red-300);
-  color: var(--s2-red-1000);
+  background: var(--s2-red-200);
   text-decoration: none;
-  padding: 0 var(--s2-spacing-75);
-}
-
-:is(.ew-cc-body, .ew-cc-pane) del.diffmod {
-  background: var(--s2-orange-200);
-  color: var(--s2-orange-1000);
+  padding: var(--s2-spacing-50) var(--s2-spacing-100);
 }
 
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
@@ -204,7 +198,7 @@ nx-popover {
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table),
 :is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, table) {
   display: block;
-  padding: 4px 8px;
+  padding: var(--s2-spacing-50) var(--s2-spacing-100);
 }
 
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(table),
