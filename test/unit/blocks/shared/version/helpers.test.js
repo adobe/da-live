@@ -203,4 +203,42 @@ describe('Versions helper', () => {
     expect(second.versionId).to.equal('01KVB6GVE75R432GPNZ8AVADAA');
     expect(second.label).to.be.undefined;
   });
+
+  it('Collapses duplicate hlx6 records sharing the same versionId', () => {
+    const versions = [{
+      version: '01KVB6GVE75R432GPNZ8AVADFG',
+      'version-date': '2026-06-17T16:27:09.000Z',
+      'version-by': 'someone@acme.com',
+      'version-comment': 'Test',
+    }, {
+      version: '01KVB6GVE75R432GPNZ8AVADFG',
+      'version-date': '2026-06-17T16:27:09.000Z',
+      'version-by': 'someone@acme.com',
+      'version-comment': 'Test',
+    }];
+
+    const formatted = formatVersions(versions);
+
+    expect(formatted).to.have.length(1);
+    expect(formatted[0].versionId).to.equal('01KVB6GVE75R432GPNZ8AVADFG');
+  });
+
+  it('Collapses duplicate hlx5 version records sharing the same url', () => {
+    const versions = [{
+      url: '/versionsource/joey/abc.html',
+      users: [{ email: 'anonymous' }],
+      timestamp: 1715594886177,
+      label: 'Test',
+    }, {
+      url: '/versionsource/joey/abc.html',
+      users: [{ email: 'anonymous' }],
+      timestamp: 1715594886177,
+      label: 'Test',
+    }];
+
+    const formatted = formatVersions(versions);
+
+    expect(formatted).to.have.length(1);
+    expect(formatted[0].url).to.equal('/versionsource/joey/abc.html');
+  });
 });
