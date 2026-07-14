@@ -156,7 +156,7 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   await page.waitForTimeout(5000);
 });
 
-test.only('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
+test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
   test.setTimeout(300000);
 
   const { folderURL, folderPath } = await createFolder(page, workerInfo, 'bulkprev');
@@ -197,7 +197,6 @@ test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
 });
 
 test('Preview and Publish buttons are hidden when only a folder is selected', async ({ page }) => {
-  //test.skip(TEST_SITE !== 'da-status', 'Requires write access to da-status');
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}`);
   await expect(page.getByText('tests'), 'Precondition: tests folder must exist').toBeVisible();
 
