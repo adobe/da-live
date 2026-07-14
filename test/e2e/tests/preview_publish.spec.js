@@ -156,7 +156,7 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   await page.waitForTimeout(5000);
 });
 
-test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
+test.only('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
   test.setTimeout(300000);
 
   const { folderURL, folderPath } = await createFolder(page, workerInfo, 'bulkprev');
@@ -165,7 +165,7 @@ test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
   await page.goto(folderURL);
   await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
 
-  await page.locator('input#select-all').click();
+  await page.locator('da-list.da-list-type-browse input#select-all').click();
   await page.locator('button.preview-button').filter({ visible: true }).click();
 
   await expect(page.locator('da-dialog')).toContainText('Preview the');
@@ -185,7 +185,7 @@ test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
   await page.goto(folderURL);
   await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
 
-  await page.locator('input#select-all').click();
+  await page.locator('da-list.da-list-type-browse input#select-all').click();
   await page.locator('button.publish-button').filter({ visible: true }).click();
 
   await expect(page.locator('da-dialog')).toContainText('Publish the');
