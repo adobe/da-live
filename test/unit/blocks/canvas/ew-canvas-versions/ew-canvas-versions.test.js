@@ -16,8 +16,9 @@ before(async () => {
 
 async function createInstance(props = {}) {
   const inst = document.createElement('ew-canvas-versions');
-  Object.assign(inst, props);
   document.body.appendChild(inst);
+  await inst.updateComplete;
+  Object.assign(inst, props);
   await inst.updateComplete;
   await nextFrame();
   return inst;
@@ -273,7 +274,7 @@ describe('handleToggleCompareSplit', () => {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
     await inst.updateComplete;
     const previewDom = document.createElement('div');
-    const noop = () => {};
+    const noop = () => { };
     inst._compareCtx = { previewDom, diffDom: null, cleanup: noop, label: 'v1', entry: {} };
     inst._compareSplit = false;
     const fakeDiffDom = document.createElement('div');
@@ -281,7 +282,7 @@ describe('handleToggleCompareSplit', () => {
     inst._buildDiff = async (body) => {
       buildCalls += 1;
       expect(body).to.equal(previewDom);
-      return { dom: fakeDiffDom, cleanup: () => {} };
+      return { dom: fakeDiffDom, cleanup: () => { } };
     };
 
     await inst.handleToggleCompareSplit();
@@ -296,7 +297,7 @@ describe('handleToggleCompareSplit', () => {
     await inst.updateComplete;
     const diffDom = document.createElement('div');
     const previewDom = document.createElement('div');
-    const noop = () => {};
+    const noop = () => { };
     inst._compareCtx = { previewDom, diffDom, cleanup: noop, label: 'v1', entry: {} };
     inst._compareSplit = true;
     let buildCalls = 0;
@@ -327,7 +328,7 @@ describe('handleToggleCompareSplit', () => {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
     await inst.updateComplete;
     const previewDom = document.createElement('div');
-    inst._compareCtx = { previewDom, diffDom: null, cleanup: () => {}, label: 'v1', entry: {} };
+    inst._compareCtx = { previewDom, diffDom: null, cleanup: () => { }, label: 'v1', entry: {} };
     inst._compareSplit = false;
     inst._buildDiff = async () => null;
 
