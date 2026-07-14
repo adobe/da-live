@@ -35,6 +35,26 @@ describe('DA Admin', () => {
   });
 });
 
+describe('Local dev defaults to stage', () => {
+  it('Defaults localhost to stage admin', () => {
+    localStorage.removeItem('da-admin');
+    const env = getDaAdmin({ href: 'http://localhost:3000/' });
+    expect(env).to.equal('https://stage-admin.da.live');
+  });
+
+  it('Keeps prod default for non-local hosts', () => {
+    localStorage.removeItem('da-admin');
+    const env = getDaAdmin({ href: 'https://da.live/' });
+    expect(env).to.equal('https://admin.da.live');
+  });
+
+  it('Honors an explicit override on localhost', () => {
+    const env = getDaAdmin({ href: 'http://localhost:3000/?da-admin=prod' });
+    expect(env).to.equal('https://admin.da.live');
+    getDaAdmin({ href: 'http://localhost:3000/?da-admin=reset' });
+  });
+});
+
 describe('Other origins', () => {
   it('Sets DA Origin', () => {
     expect(DA_ORIGIN).to.equal('https://admin.da.live');
