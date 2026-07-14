@@ -1,4 +1,4 @@
-import { convertSheets, debounce, saveToDa } from '../../edit/utils/helpers.js';
+import { convertSheets, saveToDa } from '../../edit/utils/helpers.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 
 const DEBOUNCE_TIME = 1000;
@@ -77,7 +77,7 @@ class StaleCheck {
 
 export const staleCheck = new StaleCheck();
 
-export const saveSheets = async (sheets) => {
+export const saveSheets = async (sheets, pathname = window.location.hash.replace('#', '')) => {
   const convertedJson = convertSheets(sheets);
   document.querySelector('da-sheet-panes').data = convertedJson;
 
@@ -85,8 +85,6 @@ export const saveSheets = async (sheets) => {
   // last-write-wins between concurrent editors. Drift triggers the onStale flow.
   if (await staleCheck.checkForDrift()) return false;
 
-  const { hash } = window.location;
-  const pathname = hash.replace('#', '');
   const dasSave = await saveToDa(pathname, sheets);
   if (!dasSave.ok) {
     // eslint-disable-next-line no-console
@@ -97,7 +95,24 @@ export const saveSheets = async (sheets) => {
   return true;
 };
 
-const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
+let pendingSave;
+let saveTimeout;
+let savePromise = Promise.resolve(true);
+
+export function flushPendingSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = undefined;
+
+  if (pendingSave) {
+    const { sheets, pathname } = pendingSave;
+    pendingSave = undefined;
+    savePromise = savePromise
+      .catch(() => false)
+      .then(() => saveSheets(sheets, pathname));
+  }
+
+  return savePromise;
+}
 
 export async function restoreVersion(daTitle, daSheet, versionData) {
   const initSheet = (await import('./index.js')).default;
@@ -110,7 +125,12 @@ export function handleSave(jexcel, view) {
   staleCheck.markEdited();
   if (view === 'config') return;
   if (staleCheck.isBlocked) return;
-  debouncedSaveSheets(jexcel);
+  clearTimeout(saveTimeout);
+  pendingSave = {
+    sheets: jexcel,
+    pathname: window.location.hash.replace('#', ''),
+  };
+  saveTimeout = setTimeout(flushPendingSave, DEBOUNCE_TIME);
 }
 
 export async function showDaDialog({ title, body, confirmLabel }) {

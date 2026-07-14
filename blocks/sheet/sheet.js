@@ -2,8 +2,13 @@ import { LitElement, html, nothing } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
-import { getData } from './utils/index.js';
-import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
+import { commitActiveEditors, getData } from './utils/index.js';
+import {
+  flushPendingSave,
+  staleCheck,
+  showDaDialog,
+  restoreVersion,
+} from './utils/utils.js';
 import { convertSheets } from '../edit/utils/helpers.js';
 
 const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
@@ -175,6 +180,11 @@ export default async function init(el) {
   const daSheet = document.createElement('div');
   daSheet.className = 'da-sheet';
   wrapper.append(daSheet);
+
+  daTitle.beforeNavigate = () => {
+    commitActiveEditors(daSheet.jexcel);
+    return flushPendingSave().catch(() => false);
+  };
 
   // Sheet & Version Wrapper
   const versionWrapper = document.createElement('div');

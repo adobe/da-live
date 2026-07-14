@@ -10,6 +10,12 @@ const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 let permissions;
 let canWrite;
 
+export function commitActiveEditors(sheets) {
+  sheets?.forEach((sheet) => {
+    if (sheet.edition) sheet.closeEditor(sheet.edition, true);
+  });
+}
+
 function resetSheets(el) {
   document.querySelector('da-sheet-tabs')?.remove();
   if (!el.jexcel) return;

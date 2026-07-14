@@ -215,6 +215,14 @@ export default class DaTitle extends LitElement {
     }
   }
 
+  async handleNavigate(e) {
+    const modified = e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
+    if (!this.beforeNavigate || modified) return;
+    e.preventDefault();
+    const { href } = e.currentTarget;
+    if (await this.beforeNavigate() !== false) window.location.href = href;
+  }
+
   async handleAction(action) {
     this._status = null;
     this._isSending = true;
@@ -417,6 +425,7 @@ export default class DaTitle extends LitElement {
         <div class="da-title-name">
           <a
             href="/#${this.details.parent}"
+            @click=${this.handleNavigate}
             class="da-title-name-label">${this.details.parentName}</a>
           <h1>${this.details.name}</h1>
         </div>
