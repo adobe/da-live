@@ -226,6 +226,10 @@ button {
     background: var(--s2-blue-900);
     color: var(--s2-gray-25);
   }
+
+  .version-more-btn {
+    opacity: 1;
+  }
 }
 
 .versionentry.is-version:not(.is-comparing):hover,
