@@ -36,8 +36,8 @@ test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
   await expect(page.locator('da-dialog')).toContainText('Preview the');
 });
 
-test('Preview actually previews the selected page', async ({ page }, workerInfo) => {
-  test.setTimeout(60000);
+test('Preview actually previews the selected page', async ({ page, context }, workerInfo) => {
+  test.setTimeout(90000);
 
   const url = getTestPageURL('preview', workerInfo);
   const pageName = url.split('/').pop();
@@ -61,10 +61,23 @@ test('Preview actually previews the selected page', async ({ page }, workerInfo)
   await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('button.da-aem-results-btn')).toContainText('Previewed 1 item');
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+
+  // Open the previewed page in its own browser tab and confirm it actually rendered
+  await page.locator('button.da-aem-results-btn').click();
+  const previewLink = page.locator('da-dialog a').first();
+  await expect(previewLink).toBeVisible();
+  const previewUrl = await previewLink.getAttribute('href');
+
+  const previewTab = await context.newPage();
+  await previewTab.goto(previewUrl);
+  await expect(previewTab.locator('body')).toContainText('preview test');
+
+  // Give the preview tab a moment before wrapping up
+  await page.waitForTimeout(5000);
 });
 
-test('Publish actually publishes the selected page', async ({ page }, workerInfo) => {
-  test.setTimeout(60000);
+test('Publish actually publishes the selected page', async ({ page, context }, workerInfo) => {
+  test.setTimeout(90000);
 
   const url = getTestPageURL('publish', workerInfo);
   const pageName = url.split('/').pop();
@@ -88,6 +101,19 @@ test('Publish actually publishes the selected page', async ({ page }, workerInfo
   await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('button.da-aem-results-btn')).toContainText('Published 1 item');
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+
+  // Open the published page in its own browser tab and confirm it actually rendered
+  await page.locator('button.da-aem-results-btn').click();
+  const publishLink = page.locator('da-dialog a').first();
+  await expect(publishLink).toBeVisible();
+  const publishUrl = await publishLink.getAttribute('href');
+
+  const publishTab = await context.newPage();
+  await publishTab.goto(publishUrl);
+  await expect(publishTab.locator('body')).toContainText('publish test');
+
+  // Give the publish tab a moment before wrapping up
+  await page.waitForTimeout(5000);
 });
 
 test('Preview and Publish buttons are hidden when only a folder is selected', async ({ page }) => {
