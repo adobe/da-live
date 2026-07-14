@@ -9,9 +9,8 @@ let fetchVersionHtml;
 let getVersionId;
 
 before(async () => {
-  ({
-    fetchVersions, createVersion, fetchVersionHtml, getVersionId,
-  } = await import('../../../../../blocks/shared/version/version-actions.js'));
+  const mod = await import('../../../../../blocks/shared/version/version-actions.js');
+  ({ fetchVersions, createVersion, fetchVersionHtml, getVersionId } = mod);
 });
 
 const PATH = '/testorg/testsite/doc.html';

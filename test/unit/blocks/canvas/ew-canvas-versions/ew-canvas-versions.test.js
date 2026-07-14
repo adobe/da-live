@@ -264,15 +264,17 @@ describe('version menu restore gating', () => {
 
 describe('handleToggleCompareSplit', () => {
   let inst;
-  afterEach(() => { inst?.remove(); inst = null; });
+  afterEach(() => {
+    inst?.remove();
+    inst = null;
+  });
 
   it('builds the diff dom on first toggle and flips _compareSplit on', async () => {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
     await inst.updateComplete;
     const previewDom = document.createElement('div');
-    inst._compareCtx = {
-      previewDom, diffDom: null, cleanup: () => {}, label: 'v1', entry: {},
-    };
+    const noop = () => {};
+    inst._compareCtx = { previewDom, diffDom: null, cleanup: noop, label: 'v1', entry: {} };
     inst._compareSplit = false;
     const fakeDiffDom = document.createElement('div');
     let buildCalls = 0;
@@ -293,12 +295,15 @@ describe('handleToggleCompareSplit', () => {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
     await inst.updateComplete;
     const diffDom = document.createElement('div');
-    inst._compareCtx = {
-      previewDom: document.createElement('div'), diffDom, cleanup: () => {}, label: 'v1', entry: {},
-    };
+    const previewDom = document.createElement('div');
+    const noop = () => {};
+    inst._compareCtx = { previewDom, diffDom, cleanup: noop, label: 'v1', entry: {} };
     inst._compareSplit = true;
     let buildCalls = 0;
-    inst._buildDiff = async () => { buildCalls += 1; return { dom: document.createElement('div'), cleanup: () => {} }; };
+    inst._buildDiff = async () => {
+      buildCalls += 1;
+      return { dom: document.createElement('div'), cleanup: noop };
+    };
 
     await inst.handleToggleCompareSplit();
 
@@ -321,9 +326,8 @@ describe('handleToggleCompareSplit', () => {
   it('leaves diffDom unset and split off when the diff build fails', async () => {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
     await inst.updateComplete;
-    inst._compareCtx = {
-      previewDom: document.createElement('div'), diffDom: null, cleanup: () => {}, label: 'v1', entry: {},
-    };
+    const previewDom = document.createElement('div');
+    inst._compareCtx = { previewDom, diffDom: null, cleanup: () => {}, label: 'v1', entry: {} };
     inst._compareSplit = false;
     inst._buildDiff = async () => null;
 
