@@ -212,11 +212,11 @@ nx-popover {
 }
 
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(table) {
-  box-shadow: 4px 0 0 inset var(--s2-green-900);
+  box-shadow: 4px 0 0 inset var(--s2-green-300);
 }
 
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(table) {
-  box-shadow: 4px 0 0 inset var(--s2-red-900);
+  box-shadow: 4px 0 0 inset var(--s2-red-400);
 }
 
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:empty,
