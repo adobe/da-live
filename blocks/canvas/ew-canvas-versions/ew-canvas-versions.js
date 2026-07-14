@@ -158,21 +158,21 @@ class EwCanvasVersions extends LitElement {
       showError('Could not load the selected version.');
       return;
     }
+    const { dom: diffDom, cleanup } = await this._buildDiff(versionBody) ?? {};
+    if (!diffDom) return;
 
     this.handleCloseCompare();
     this._compareTrigger = trigger;
     this._compareSplit = true;
-    const { dom, cleanup } = await buildCompareDom({
-      htmlA: docToHtml(view),
-      htmlB: domToHtml(versionBody),
-      closeOnOutsideClick: false,
-    });
-    this._compareCtx = { dom, cleanup, label: entry.label || entry.date, entry, isDiff: true };
+    const label = entry.label || entry.date;
+    this._compareCtx = { previewDom: versionBody, diffDom, cleanup, label, entry };
   }
 
   // Reuses whatever split preference is already remembered on `_compareSplit`:
   // if the user had split on for a previous version, opening a new one via the
   // row click goes straight to a real comparison instead of resetting to plain.
+  // previewDom (the raw version, for the unsplit view) is always kept around;
+  // diffDom (for the split panes) is only ever built when actually needed.
   async handlePreview(e, entry) {
     const trigger = this.shadowRoot.activeElement;
     const versionBody = await fetchVersionHtml(this.path, entry);
@@ -186,12 +186,12 @@ class EwCanvasVersions extends LitElement {
     const label = entry.label || entry.date;
 
     if (this._compareSplit) {
-      const diff = await this._buildDiff(versionBody);
-      if (!diff) return;
-      this._compareCtx = { ...diff, label, entry, isDiff: true };
+      const { dom: diffDom, cleanup } = await this._buildDiff(versionBody) ?? {};
+      if (!diffDom) return;
+      this._compareCtx = { previewDom: versionBody, diffDom, cleanup, label, entry };
       return;
     }
-    this._compareCtx = { dom: versionBody, cleanup: () => {}, label, entry, isDiff: false };
+    this._compareCtx = { previewDom: versionBody, diffDom: null, cleanup: () => {}, label, entry };
   }
 
   handleRestoreFromCompare() {
@@ -216,15 +216,15 @@ class EwCanvasVersions extends LitElement {
     });
   }
 
-  // The li's click opens a plain, undiffed preview of the version (isDiff: false).
-  // Turning split on is the first point a real comparison is needed, so the diff
-  // against the current doc is only computed then, not for every preview.
+  // The li's click opens a plain, undiffed preview of the version. Turning split
+  // on is the first point a real comparison is needed, so the diff against the
+  // current doc is only computed then, not for every preview.
   async handleToggleCompareSplit() {
     if (!this._compareCtx) return;
-    if (!this._compareCtx.isDiff) {
-      const diff = await this._buildDiff(this._compareCtx.dom);
-      if (!diff) return;
-      this._compareCtx = { ...this._compareCtx, ...diff, isDiff: true };
+    if (!this._compareCtx.diffDom) {
+      const { dom: diffDom, cleanup } = await this._buildDiff(this._compareCtx.previewDom) ?? {};
+      if (!diffDom) return;
+      this._compareCtx = { ...this._compareCtx, diffDom, cleanup };
     }
     this._compareSplit = !this._compareSplit;
   }
@@ -428,7 +428,8 @@ class EwCanvasVersions extends LitElement {
       ${this._restoreEntry ? this.renderRestoreDialog() : nothing}
       ${this._compareCtx ? html`
         <ew-canvas-compare
-          .dom=${this._compareCtx.dom}
+          .dom=${this._compareCtx.previewDom}
+          .diffDom=${this._compareCtx.diffDom}
           label=${this._compareCtx.label}
           ?canWrite=${this._canWrite}
           ?split=${this._compareSplit}

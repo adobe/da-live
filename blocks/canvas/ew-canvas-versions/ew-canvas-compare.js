@@ -20,6 +20,7 @@ function getChatPanel() {
 class EwCanvasCompare extends LitElement {
   static properties = {
     dom: { attribute: false },
+    diffDom: { attribute: false },
     label: { type: String },
     canWrite: { type: Boolean },
     split: { type: Boolean },
@@ -87,12 +88,13 @@ class EwCanvasCompare extends LitElement {
   }
 
   get _panes() {
-    if (this._panesCache?.source === this.dom) return this._panesCache;
-    const current = this.dom.cloneNode(true);
+    if (!this.diffDom) return null;
+    if (this._panesCache?.source === this.diffDom) return this._panesCache;
+    const current = this.diffDom.cloneNode(true);
     current.querySelectorAll('ins').forEach((el) => el.remove());
-    const version = this.dom.cloneNode(true);
+    const version = this.diffDom.cloneNode(true);
     version.querySelectorAll('del').forEach((el) => el.remove());
-    this._panesCache = { source: this.dom, current, version };
+    this._panesCache = { source: this.diffDom, current, version };
     return this._panesCache;
   }
 
