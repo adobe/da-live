@@ -184,6 +184,9 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
   let folderPath;
 
   test.beforeAll(async ({ browser }, workerInfo) => {
+    // Creating 12 real pages takes well over the default 30s hook timeout.
+    test.setTimeout(180000);
+
     const page = await browser.newPage();
     ({ folderURL, folderPath } = await createFolder(page, workerInfo, 'bulk'));
     await createPagesInFolder(page, workerInfo, folderPath, 'bulk', BULK_PAGE_COUNT);
