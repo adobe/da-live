@@ -13,7 +13,7 @@ h1 {
 }
 
 button {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
 }
 
 da-prepare {
@@ -52,7 +52,7 @@ da-dialog {
 }
 
 .da-title-inner {
-  max-width: var(--grid-container-width);
+  max-width: var(--se-grid-container-width, var(--grid-container-width));
   margin: 0 auto;
   display: block;
   justify-content: space-between;

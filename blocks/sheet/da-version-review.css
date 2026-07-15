@@ -37,7 +37,7 @@ button {
   padding: 5px 14px;
   line-height: 18px;
   font-size: 15px;
-  border-radius: var(--s2-radius-300);
+  border-radius: var(--s2-corner-radius-800, var(--s2-radius-300));
   outline-offset: 0;
   transition: outline-offset .2s;
   text-decoration: none;

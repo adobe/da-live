@@ -1,4 +1,10 @@
 /* stylelint-disable property-no-vendor-prefix */
+
+/* TODO: remove once dark-mode styling is complete. */
+.light-scheme, .dark-scheme {
+  color-scheme: light;
+}
+
 body {
   background: rgb(250 250 250);
 }
@@ -14,7 +20,7 @@ body {
   display: flex;
   justify-content: center;
   max-width: 83.4%;
-  margin: 0 auto var(--spacing-600) auto;
+  margin: 0 auto var(--s2-spacing-600, var(--spacing-600)) auto;
 }
 
 da-versions,

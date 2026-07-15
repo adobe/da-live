@@ -1,9 +1,23 @@
-import { getNx, getNx2Api, nxJS } from '../../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
 import '../da-sheet-tabs.js';
 
-const { loadStyle } = await import(`${getNx()}${nxJS}`);
-const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
+const nx = getNx();
+const isNx2 = nx.endsWith('/nx2');
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
+// TODO: remove the ternary and the nx v1 branch once nxver=2 is rolled
+// out on the CDN. Kept for backward compat during the transition:
+// nx v1 exposes loadScript at utils/script.js; nx2 re-exports it from
+// utils/utils.js.
+const loadScript = isNx2
+  ? (await import(`${nx}/utils/utils.js`)).loadScript
+  : (await import(`${nx}/utils/script.js`)).default;
+
+async function adoptStyle(href) {
+  const sheet = await loadStyle(href);
+  if (!sheet || document.adoptedStyleSheets.includes(sheet)) return;
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+}
 
 const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
@@ -151,7 +165,7 @@ export async function getData(input) {
 export default async function init(el, data) {
   const suppliedData = data || await getData(el.details);
 
-  await loadStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
+  await adoptStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
   await loadScript('/deps/jspreadsheet-ce/dist/index.js');
   await loadScript('/deps/jsuites/dist/jsuites.js');
 

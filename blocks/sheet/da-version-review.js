@@ -1,9 +1,9 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const style = await getStyle('/blocks/sheet/da-version-review.css');
+const style = await loadStyle('/blocks/sheet/da-version-review.css');
 
 class DaVersionReview extends LitElement {
   static properties = { data: { type: Object } };
