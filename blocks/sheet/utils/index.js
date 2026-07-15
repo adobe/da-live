@@ -94,11 +94,7 @@ export async function getData(input) {
   const { config, source, versions } = await getNx2Api();
   const { org, site, path, view, versionId } = input;
 
-  // A specific version snapshot is immutable and lives on a different key, so
-  // it never needs to wait. For the live source/config file, hold off until any
-  // in-flight save on this document has settled — otherwise reloadSheet (or
-  // any other load path) would replay pre-write state that our own POST is
-  // about to invalidate.
+  // Version snapshots are immutable; only live-file reads need to wait for our own writes.
   if (!versionId) await staleCheck.awaitPendingSave();
 
   let resp;
