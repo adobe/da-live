@@ -23,7 +23,11 @@ test('Last cell edit persists when immediately navigating to the parent folder',
   await page.locator('td input').fill(enteredText);
 
   // Leave while the cell editor is still active and before the autosave debounce expires.
+  // The parent link commits the open editor and flushes the save, then navigates to the
+  // parent folder. Waiting for that navigation guarantees the save landed (beforeNavigate
+  // awaits it) and avoids racing it with the reload below.
   await page.locator('.da-title-name-label').click();
+  await page.waitForURL((u) => !String(u).includes('/sheet#'));
 
   await page.goto(url);
   await expect(page.locator('da-sheet-tabs')).toBeVisible();
