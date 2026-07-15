@@ -163,12 +163,12 @@ async function saveJson(path, sheets, jsonToSave, type = 'sheet') {
   return source.save(path, { body });
 }
 
-export async function saveToDa(pathname, sheet, jsonToSave) {
+export async function saveToDa(pathname, sheet) {
   const suffix = sheet ? '.json' : '.html';
   const fullPath = `${pathname}${suffix}`;
 
   if (!sheet) return saveHtml(fullPath);
-  return saveJson(fullPath, sheet, jsonToSave);
+  return saveJson(fullPath, sheet);
 }
 
 export function saveDaConfig(pathname, sheet) {

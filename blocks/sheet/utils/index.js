@@ -123,7 +123,7 @@ export async function getData(input) {
   const json = await resp.json();
 
   if (!isVersion) {
-    staleCheck.markSynced(json);
+    staleCheck.markSynced(resp.headers.get('etag'));
     const sheetPanes = document.querySelector('da-sheet-panes');
     if (sheetPanes) sheetPanes.data = json;
   }
