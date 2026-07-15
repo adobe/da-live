@@ -12,7 +12,6 @@ const BULK_PAGE_COUNT = 12;
 // Some environments show a dismissible alert banner the first time the browse
 // view loads. If present, dismiss it so it doesn't block later interactions.
 async function dismissAlertBanner(page) {
-  await page.waitForTimeout(5000);
   const alert = page.getByRole('alert');
   if (await alert.isVisible().catch(() => false)) {
     await alert.getByRole('button', { name: 'Dismiss' }).click();
@@ -35,6 +34,7 @@ async function createFolder(page, workerInfo, testIdentifier) {
   const folderName = folderURL.split('/').pop();
 
   await page.goto(TESTS_DIR);
+  await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
@@ -57,17 +57,23 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
 
     // eslint-disable-next-line no-await-in-loop
     await createDocument(page, url);
+
+    // Allow Y.js WebSocket to stabilize before typing
+    // eslint-disable-next-line no-await-in-loop
+    await page.waitForTimeout(2000);
+
     // eslint-disable-next-line no-await-in-loop
     await fill(page, `${prefix} test ${i}`);
-    // Wait to ensure its saved in da-admin
+
     // eslint-disable-next-line no-await-in-loop
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(3000);
   }
   return pageNames;
 }
 
 test('Preview and Publish buttons appear when a file is selected', async ({ page }) => {
   await page.goto(TESTS_DIR);
+  await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
   await expect(page.getByText('pingtest'), 'Precondition: pingtest must exist').toBeVisible();
 
@@ -79,6 +85,7 @@ test('Preview and Publish buttons appear when a file is selected', async ({ page
 
 test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
   await page.goto(TESTS_DIR);
+  await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
   await expect(page.getByText('pingtest'), 'Precondition: pingtest must exist').toBeVisible();
 
@@ -96,16 +103,17 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   const pageName = url.split('/').pop();
   await createDocument(page, url);
 
-  // Enter some text onto the page
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
   await fill(page, 'preview test');
 
   // Wait to ensure its saved in da-admin
-  await page.waitForTimeout(5000);
+  await page.waitForTimeout(3000);
 
   await page.goto(TESTS_DIR);
-  await dismissAlertBanner(page);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
 
+  await dismissAlertBanner(page);
   await selectItem(page, pageName);
   await page.locator('button.preview-button').filter({ visible: true }).click();
 
@@ -138,15 +146,16 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   const pageName = url.split('/').pop();
   await createDocument(page, url);
 
-  // Enter some text onto the page
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
   await fill(page, 'publish test');
 
   // Wait to ensure its saved in da-admin
-  await page.waitForTimeout(5000);
+  await page.waitForTimeout(3000);
 
   await page.goto(TESTS_DIR);
-  await dismissAlertBanner(page);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
+  await dismissAlertBanner(page);
 
   await selectItem(page, pageName);
   await page.locator('button.publish-button').filter({ visible: true }).click();
@@ -181,6 +190,7 @@ test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
 
   await page.goto(folderURL);
   await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
+  await dismissAlertBanner(page);
 
   await page.locator('da-list.da-list-type-browse input#select-all').click();
   await page.locator('button.preview-button').filter({ visible: true }).click();
@@ -201,6 +211,7 @@ test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
 
   await page.goto(folderURL);
   await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
+  await dismissAlertBanner(page);
 
   await page.locator('da-list.da-list-type-browse input#select-all').click();
   await page.locator('button.publish-button').filter({ visible: true }).click();
