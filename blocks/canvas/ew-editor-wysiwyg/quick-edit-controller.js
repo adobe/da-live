@@ -3,6 +3,7 @@ import { handleImageReplace } from './utils/image.js';
 import {
   handleCursorMove,
   handleUndoRedo,
+  handleNewVersion,
   handleIframeSelectionChange,
 } from './utils/handlers.js';
 
@@ -20,6 +21,8 @@ export function createControllerOnMessage(ctx) {
       updateState(e.data, ctx);
     } else if (e.data.type === 'history') {
       handleUndoRedo(e.data, ctx);
+    } else if (e.data.type === 'new-version') {
+      handleNewVersion();
     } else if (e.data.type === 'selection-change') {
       handleIframeSelectionChange(e.data, ctx);
     }

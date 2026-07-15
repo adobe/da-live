@@ -95,6 +95,10 @@ export function handleUndoRedo(data, ctx) {
   if (hadHasFocus) view.hasFocus = () => true;
 }
 
+export function handleNewVersion() {
+  document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
+}
+
 export function handleStoredMarks({ marks }, ctx) {
   const { view } = ctx;
   if (!view) return;
