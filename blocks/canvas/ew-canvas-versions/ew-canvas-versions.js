@@ -247,10 +247,15 @@ class EwCanvasVersions extends LitElement {
   get _filteredVersions() {
     if (!this._versions) return [];
     if (this._filter === 'all' || !this._imsEmail) return this._versions;
-    return this._versions.filter((entry) => {
-      if (entry.isVersion) return entry.users?.some((u) => u.email === this._imsEmail);
-      return entry.audits?.some((a) => a.users?.some((u) => u.email === this._imsEmail));
-    });
+    return this._versions.reduce((acc, entry) => {
+      if (entry.isVersion) {
+        if (entry.users?.some((u) => u.email === this._imsEmail)) acc.push(entry);
+        return acc;
+      }
+      const audits = entry.audits?.filter((a) => a.users?.some((u) => u.email === this._imsEmail));
+      if (audits?.length) acc.push({ ...entry, audits });
+      return acc;
+    }, []);
   }
 
   renderNewRow() {
