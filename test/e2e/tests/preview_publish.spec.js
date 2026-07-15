@@ -133,9 +133,6 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   const previewTab = await context.newPage();
   await previewTab.goto(previewUrl);
   await expect(previewTab.locator('body')).toContainText('preview test');
-
-  // Give the preview tab a moment before wrapping up
-  await page.waitForTimeout(5000);
   await previewTab.close();
 });
 
@@ -176,56 +173,63 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   const publishTab = await context.newPage();
   await publishTab.goto(publishUrl);
   await expect(publishTab.locator('body')).toContainText('publish test');
-
-  // Give the publish tab a moment before wrapping up
-  await page.waitForTimeout(5000);
   await publishTab.close();
 });
 
-test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
-  test.setTimeout(360000);
+test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
+  // Created once in beforeAll and reused by both tests below, since creating
+  // 12 real pages is expensive and the same set can be previewed and then
+  // published in sequence.
+  let folderURL;
+  let folderPath;
 
-  const { folderURL, folderPath } = await createFolder(page, workerInfo, 'bulkprev');
-  await createPagesInFolder(page, workerInfo, folderPath, 'bulkprev', BULK_PAGE_COUNT);
+  test.beforeAll(async ({ browser }, workerInfo) => {
+    const page = await browser.newPage();
+    ({ folderURL, folderPath } = await createFolder(page, workerInfo, 'bulk'));
+    await createPagesInFolder(page, workerInfo, folderPath, 'bulk', BULK_PAGE_COUNT);
+    await page.close();
+  });
 
-  await page.goto(folderURL);
-  await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
-  await dismissAlertBanner(page);
+  test('Preview 12 pages in a folder', async ({ page }) => {
+    test.setTimeout(120000);
 
-  await page.locator('da-list.da-list-type-browse input#select-all').click();
-  await page.locator('button.preview-button').filter({ visible: true }).click();
+    await page.goto(folderURL);
+    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
+    await dismissAlertBanner(page);
 
-  await expect(page.locator('da-dialog')).toContainText('Preview the');
-  await page.locator('sl-button.accent').filter({ visible: true }).click();
+    await page.locator('da-list.da-list-type-browse input#select-all').click();
+    await page.locator('button.preview-button').filter({ visible: true }).click();
 
-  await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
-  await expect(page.locator('button.da-aem-results-btn')).toContainText(`Previewed ${BULK_PAGE_COUNT} items`);
-  await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
-});
+    await expect(page.locator('da-dialog')).toContainText('Preview the');
+    await page.locator('sl-button.accent').filter({ visible: true }).click();
 
-test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
-  test.setTimeout(360000);
+    await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
+    await expect(page.locator('button.da-aem-results-btn')).toContainText(`Previewed ${BULK_PAGE_COUNT} items`);
+    await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+  });
 
-  const { folderURL, folderPath } = await createFolder(page, workerInfo, 'bulkpub');
-  await createPagesInFolder(page, workerInfo, folderPath, 'bulkpub', BULK_PAGE_COUNT);
+  test('Publish 12 pages in a folder', async ({ page }) => {
+    test.setTimeout(120000);
 
-  await page.goto(folderURL);
-  await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
-  await dismissAlertBanner(page);
+    await page.goto(folderURL);
+    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
+    await dismissAlertBanner(page);
 
-  await page.locator('da-list.da-list-type-browse input#select-all').click();
-  await page.locator('button.publish-button').filter({ visible: true }).click();
+    await page.locator('da-list.da-list-type-browse input#select-all').click();
+    await page.locator('button.publish-button').filter({ visible: true }).click();
 
-  await expect(page.locator('da-dialog')).toContainText('Publish the');
-  await page.locator('sl-button.accent').filter({ visible: true }).click();
+    await expect(page.locator('da-dialog')).toContainText('Publish the');
+    await page.locator('sl-button.accent').filter({ visible: true }).click();
 
-  await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
-  await expect(page.locator('button.da-aem-results-btn')).toContainText(`Published ${BULK_PAGE_COUNT} items`);
-  await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+    await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
+    await expect(page.locator('button.da-aem-results-btn')).toContainText(`Published ${BULK_PAGE_COUNT} items`);
+    await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+  });
 });
 
 test('Preview and Publish buttons are hidden when only a folder is selected', async ({ page }) => {
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}`);
+  await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
   await expect(page.getByText('tests'), 'Precondition: tests folder must exist').toBeVisible();
 
