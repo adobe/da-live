@@ -14,7 +14,7 @@ const BULK_PAGE_COUNT = 12;
 async function dismissAlertBanner(page) {
   const alert = page.getByRole('alert');
   if (await alert.isVisible().catch(() => false)) {
-    await alert.getByRole('button').first().click();
+    await alert.getByRole('button', { name: 'Dismiss' }).click();
   }
 }
 
