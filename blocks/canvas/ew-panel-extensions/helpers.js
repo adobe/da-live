@@ -471,6 +471,28 @@ function createVersioningView() {
 }
 
 function extensionToPanelView(ext, section) {
+  // Block library opens its own dedicated modal (used by the slash menu and
+  // outline "+" button) rather than the generic inline panel or iframe dialog.
+  if (ext.name === 'blocks') {
+    return {
+      id: ext.name,
+      label: ext.title,
+      section,
+      firstParty: ext.ootb,
+      experience: 'modal',
+      icon: ext.icon,
+      openModal: async () => {
+        const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
+        openBlockLibraryModal({
+          onInsert: (dom) => {
+            const { view } = getExtensionsBridge();
+            if (view) insertBlock(view, dom);
+          },
+        });
+      },
+    };
+  }
+
   const view = {
     id: ext.name,
     label: ext.title,
@@ -530,8 +552,7 @@ function extensionToPanelView(ext, section) {
  */
 export async function getCanvasToolPanelViews({ org, site }) {
   const extensions = await fetchExtensions(org, site);
-  const library = sortLibraryExtensions(extensions.filter(isLibraryExtension))
-    .filter((ext) => ext.name !== 'blocks');
+  const library = sortLibraryExtensions(extensions.filter(isLibraryExtension));
   const thirdParty = extensions.filter((ext) => !isLibraryExtension(ext));
 
   return [
