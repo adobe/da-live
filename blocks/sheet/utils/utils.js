@@ -12,6 +12,14 @@ class StaleCheck {
     this._hasLocalEdits = false;
     this._saveBlocked = false;
     this._onStale = null;
+    // Promise that resolves when the current save (POST + markSynced) is done.
+    // Reads gate on this so we never issue a GET while our own write is in
+    // flight — otherwise the server correctly returns a state that predates
+    // the write, and drift detection misfires against the just-updated
+    // _lastJsonString. Deadlock is impossible because a POST only fires from
+    // saveSheets after checkForDrift completes, so at most one save can be
+    // pending at a time.
+    this._pendingSave = null;
   }
 
   // `details` is the pathDetails object ({ org, site, path, view }).
@@ -30,6 +38,9 @@ class StaleCheck {
     this._hasLocalEdits = false;
     this._saveBlocked = false;
     this._onStale = null;
+    // Drop the reference so a load for a different file doesn't wait on the
+    // previous file's in-flight save. The fetch itself is not cancelled.
+    this._pendingSave = null;
   }
 
   markSynced(json) {
@@ -51,10 +62,41 @@ class StaleCheck {
     return this._saveBlocked;
   }
 
+  // Waits for any in-flight save. Loops so a new save that started while we
+  // were waiting also gets awaited before returning.
+  async awaitPendingSave() {
+    while (this._pendingSave) {
+      // eslint-disable-next-line no-await-in-loop
+      await this._pendingSave;
+    }
+  }
+
+  // Serialise a save operation. Any concurrent save queues behind the current
+  // one; any read that calls awaitPendingSave() waits until the save (POST +
+  // markSynced) has fully settled, so the read never observes a pre-write
+  // state that its own markSynced has already invalidated locally.
+  async runSave(saveOp) {
+    await this.awaitPendingSave();
+    let resolve;
+    const p = new Promise((r) => { resolve = r; });
+    this._pendingSave = p;
+    try {
+      return await saveOp();
+    } finally {
+      resolve();
+      if (this._pendingSave === p) this._pendingSave = null;
+    }
+  }
+
   // Returns true if drift was detected (caller should not write).
   // Skips while blocked so a stale dialog doesn't keep re-firing on subsequent edits/polls.
   async checkForDrift() {
     if (this._saveBlocked) return true;
+    // Never read while our own save is in flight — the server hasn't seen
+    // the write yet, so the GET would return the previous body and drift
+    // would misfire against the locally-updated _lastJsonString once the
+    // POST returns.
+    await this.awaitPendingSave();
     try {
       const { config, source } = await getNx2Api();
       const { org, site, path, view } = this._doc;
@@ -87,14 +129,16 @@ export const saveSheets = async (sheets) => {
 
   const { hash } = window.location;
   const pathname = hash.replace('#', '');
-  const dasSave = await saveToDa(pathname, sheets);
-  if (!dasSave.ok) {
-    // eslint-disable-next-line no-console
-    console.error('Error saving sheet', dasSave);
-    return false;
-  }
-  staleCheck.markSynced(convertedJson);
-  return true;
+  return staleCheck.runSave(async () => {
+    const dasSave = await saveToDa(pathname, sheets);
+    if (!dasSave.ok) {
+      // eslint-disable-next-line no-console
+      console.error('Error saving sheet', dasSave);
+      return false;
+    }
+    staleCheck.markSynced(convertedJson);
+    return true;
+  });
 };
 
 const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
