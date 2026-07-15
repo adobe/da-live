@@ -1,4 +1,10 @@
-import { Plugin } from 'da-y-wrapper';
+import { Plugin, PluginKey } from 'da-y-wrapper';
+
+// Set on a transaction (tr.setMeta(trackingPluginKey, true)) to skip the diff
+// walk below — e.g. a full-document replace (restore) has no shared node
+// identity between old/new docs, so the position math it relies on doesn't
+// hold and resolving a change's pos can throw.
+export const trackingPluginKey = new PluginKey('proseDiffTracking');
 
 export function findChangedNodes(oldDoc, newDoc) {
   const changes = [];
@@ -141,12 +147,19 @@ export function findCommonEditableAncestor(view, changes, prevState) {
 
 export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onSelectionChange) {
   return new Plugin({
+    key: trackingPluginKey,
+    state: {
+      init() { return false; },
+      apply(tr) { return tr.getMeta(trackingPluginKey) === true; },
+    },
     view() {
       return {
         update(view, prevState) {
           const docChanged = view.state.doc !== prevState.doc;
 
-          if (docChanged) {
+          if (docChanged && trackingPluginKey.getState(view.state)) {
+            rerenderPage?.();
+          } else if (docChanged) {
             const changes = findChangedNodes(prevState.doc, view.state.doc);
 
             if (changes.length > 0) {

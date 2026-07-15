@@ -457,6 +457,19 @@ function createFileExplorerView() {
   };
 }
 
+function createVersioningView() {
+  return {
+    id: 'versions',
+    label: 'Versions',
+    section: 'Editor',
+    firstParty: true,
+    load: async () => {
+      await import('../ew-canvas-versions/ew-canvas-versions.js');
+      return document.createElement('ew-canvas-versions');
+    },
+  };
+}
+
 function extensionToPanelView(ext, section) {
   const view = {
     id: ext.name,
@@ -479,7 +492,7 @@ function extensionToPanelView(ext, section) {
       if (ext.name === 'aem-assets') {
         const { renderAssets } = await import('./aem-assets.js');
         await renderAssets({ container, org: ext.org, site: ext.site, onClose });
-        return () => {};
+        return () => { };
       }
 
       const iframe = document.createElement('iframe');
@@ -489,7 +502,7 @@ function extensionToPanelView(ext, section) {
       iframe.allow = 'clipboard-write *';
       container.append(iframe);
 
-      let destroyChannel = () => {};
+      let destroyChannel = () => { };
       iframe.addEventListener('load', async () => {
         let hashState;
         const unsub = hashChange.subscribe((s) => { hashState = s; });
@@ -524,6 +537,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
   return [
     createOutlineView(),
     createFileExplorerView(),
+    createVersioningView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

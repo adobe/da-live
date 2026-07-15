@@ -35,12 +35,14 @@ export function domToHtml(el) {
   return clone.innerHTML;
 }
 
-export async function buildCompareDom({ htmlA, htmlB, onClose }) {
+export async function buildCompareDom({ htmlA, htmlB, onClose, closeOnOutsideClick = true }) {
   const { htmlDiff } = await import('./htmldiff.js');
   const dom = document.createElement('div');
   dom.className = 'ProseMirror';
   dom.innerHTML = htmlDiff(htmlA, htmlB);
   wrapTablesInWrappers(dom);
+
+  if (!closeOnOutsideClick) return { dom, cleanup: () => {} };
 
   const onDocClick = (ev) => {
     const insideModal = ev.composedPath().some((n) => n?.classList?.contains?.('da-compare-modal'));
