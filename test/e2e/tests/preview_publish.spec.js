@@ -55,17 +55,17 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
   return pageNames;
 }
 
-// Deletes the currently selected item(s) and unpublishes them (removes preview and
-// live copies), so tests that actually preview/publish real content don't leave
-// anything behind in AEM. Assumes the delete confirmation dialog isn't open yet.
-async function deleteAndUnpublish(page) {
+// Deletes the currently selected item(s). Note: this does NOT unpublish them
+// (leaves any preview/live copies in place) — the unpublish checkbox is disabled
+// for now due to an outstanding issue. Assumes the delete confirmation dialog
+// isn't open yet.
+async function deleteItems(page, itemCount) {
   await page.locator('button.delete-button').filter({ visible: true }).click();
 
-  // Check "Unpublish" so the preview/live copies are removed, not just the DA document
-  await page.locator('input[name="confirm-unpublish"]').click();
-
-  // Unpublishing (and bulk deletes of 10+ items) requires typing YES to confirm
-  await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
+  // Bulk deletes of 10+ items require typing YES to confirm
+  if (itemCount >= 10) {
+    await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
+  }
 
   await page.locator('sl-button.negative').filter({ visible: true }).click();
 
@@ -154,10 +154,10 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   await page.waitForTimeout(5000);
   await previewTab.close();
 
-  // Clean up: unpublish and delete the test page
+  // Clean up: delete the test page
   await page.locator('button.da-dialog-close-btn').click();
   await selectItem(page, pageName);
-  await deleteAndUnpublish(page);
+  await deleteItems(page, 1);
 });
 
 test('Publish the selected page', async ({ page, context }, workerInfo) => {
@@ -200,10 +200,10 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   await page.waitForTimeout(5000);
   await publishTab.close();
 
-  // Clean up: unpublish and delete the test page
+  // Clean up: delete the test page
   await page.locator('button.da-dialog-close-btn').click();
   await selectItem(page, pageName);
-  await deleteAndUnpublish(page);
+  await deleteItems(page, 1);
 });
 
 test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
@@ -226,9 +226,9 @@ test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
   await expect(page.locator('button.da-aem-results-btn')).toContainText(`Previewed ${BULK_PAGE_COUNT} items`);
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
 
-  // Clean up: unpublish and delete all 12 test pages, then the now-empty folder
+  // Clean up: delete all 12 test pages, then the now-empty folder
   await page.locator('da-list.da-list-type-browse input#select-all').click();
-  await deleteAndUnpublish(page);
+  await deleteItems(page, BULK_PAGE_COUNT);
   await deleteFolder(page, folderName);
 });
 
@@ -252,9 +252,9 @@ test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
   await expect(page.locator('button.da-aem-results-btn')).toContainText(`Published ${BULK_PAGE_COUNT} items`);
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
 
-  // Clean up: unpublish and delete all 12 test pages, then the now-empty folder
+  // Clean up: delete all 12 test pages, then the now-empty folder
   await page.locator('da-list.da-list-type-browse input#select-all').click();
-  await deleteAndUnpublish(page);
+  await deleteItems(page, BULK_PAGE_COUNT);
   await deleteFolder(page, folderName);
 });
 
