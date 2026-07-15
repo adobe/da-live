@@ -55,18 +55,13 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
   return pageNames;
 }
 
-// Deletes the currently selected item(s). Note: this does NOT unpublish them
-// (leaves any preview/live copies in place) — the unpublish checkbox is disabled
-// for now due to an outstanding issue. Assumes the delete confirmation dialog
-// isn't open yet.
-async function deleteItems(page, itemCount) {
+// Deletes the currently selected item(s) with a plain delete confirmation. Note:
+// this does NOT unpublish them (leaves any preview/live copies in place) — the
+// unpublish checkbox is skipped for now due to an outstanding issue, and no typed
+// YES confirmation is used either. Assumes the delete confirmation dialog isn't
+// open yet.
+async function deleteItems(page) {
   await page.locator('button.delete-button').filter({ visible: true }).click();
-
-  // Bulk deletes of 10+ items require typing YES to confirm
-  if (itemCount >= 10) {
-    await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
-  }
-
   await page.locator('sl-button.negative').filter({ visible: true }).click();
 
   // Wait for the delete button to disappear, which is when we're done
@@ -157,7 +152,7 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   // Clean up: delete the test page
   await page.locator('button.da-dialog-close-btn').click();
   await selectItem(page, pageName);
-  await deleteItems(page, 1);
+  await deleteItems(page);
 });
 
 test('Publish the selected page', async ({ page, context }, workerInfo) => {
@@ -203,7 +198,7 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   // Clean up: delete the test page
   await page.locator('button.da-dialog-close-btn').click();
   await selectItem(page, pageName);
-  await deleteItems(page, 1);
+  await deleteItems(page);
 });
 
 test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
@@ -228,7 +223,7 @@ test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
 
   // Clean up: delete all 12 test pages, then the now-empty folder
   await page.locator('da-list.da-list-type-browse input#select-all').click();
-  await deleteItems(page, BULK_PAGE_COUNT);
+  await deleteItems(page);
   await deleteFolder(page, folderName);
 });
 
@@ -254,7 +249,7 @@ test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
 
   // Clean up: delete all 12 test pages, then the now-empty folder
   await page.locator('da-list.da-list-type-browse input#select-all').click();
-  await deleteItems(page, BULK_PAGE_COUNT);
+  await deleteItems(page);
   await deleteFolder(page, folderName);
 });
 
