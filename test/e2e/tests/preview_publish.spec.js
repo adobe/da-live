@@ -9,6 +9,15 @@ const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`;
 
 const BULK_PAGE_COUNT = 12;
 
+// Some environments show a dismissible alert banner the first time the browse
+// view loads. If present, dismiss it so it doesn't block later interactions.
+async function dismissAlertBanner(page) {
+  const alert = page.getByRole('alert');
+  if (await alert.isVisible().catch(() => false)) {
+    await alert.getByRole('button').first().click();
+  }
+}
+
 async function selectItem(page, name) {
   const checkbox = page
     .locator('div.da-item-list-item-inner').filter({ hasText: name, exact: true })
@@ -25,6 +34,7 @@ async function createFolder(page, workerInfo, testIdentifier) {
   const folderName = folderURL.split('/').pop();
 
   await page.goto(TESTS_DIR);
+  await dismissAlertBanner(page);
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
   await page.getByRole('menuitem', { name: 'Folder' }).click();
@@ -57,6 +67,7 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
 
 test('Preview and Publish buttons appear when a file is selected', async ({ page }) => {
   await page.goto(TESTS_DIR);
+  await dismissAlertBanner(page);
   await expect(page.getByText('pingtest'), 'Precondition: pingtest must exist').toBeVisible();
 
   await selectItem(page, 'pingtest');
@@ -67,6 +78,7 @@ test('Preview and Publish buttons appear when a file is selected', async ({ page
 
 test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
   await page.goto(TESTS_DIR);
+  await dismissAlertBanner(page);
   await expect(page.getByText('pingtest'), 'Precondition: pingtest must exist').toBeVisible();
 
   await selectItem(page, 'pingtest');
@@ -90,6 +102,7 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   await page.waitForTimeout(5000);
 
   await page.goto(TESTS_DIR);
+  await dismissAlertBanner(page);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
 
   await selectItem(page, pageName);
@@ -115,9 +128,6 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   // Give the preview tab a moment before wrapping up
   await page.waitForTimeout(5000);
   await previewTab.close();
-
-  // Note: the test page is intentionally not deleted here — it's cleaned up
-  // later by the scheduled cleanup in delete.spec.js.
 });
 
 test('Publish the selected page', async ({ page, context }, workerInfo) => {
@@ -134,6 +144,7 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   await page.waitForTimeout(5000);
 
   await page.goto(TESTS_DIR);
+  await dismissAlertBanner(page);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
 
   await selectItem(page, pageName);
@@ -159,9 +170,6 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   // Give the publish tab a moment before wrapping up
   await page.waitForTimeout(5000);
   await publishTab.close();
-
-  // Note: the test page is intentionally not deleted here — it's cleaned up
-  // later by the scheduled cleanup in delete.spec.js.
 });
 
 test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
@@ -182,9 +190,6 @@ test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
   await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
   await expect(page.locator('button.da-aem-results-btn')).toContainText(`Previewed ${BULK_PAGE_COUNT} items`);
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
-
-  // Note: the test pages and folder are intentionally not deleted here — they're
-  // cleaned up later by the scheduled cleanup in delete.spec.js.
 });
 
 test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
@@ -205,13 +210,11 @@ test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
   await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
   await expect(page.locator('button.da-aem-results-btn')).toContainText(`Published ${BULK_PAGE_COUNT} items`);
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
-
-  // Note: the test pages and folder are intentionally not deleted here — they're
-  // cleaned up later by the scheduled cleanup in delete.spec.js.
 });
 
 test('Preview and Publish buttons are hidden when only a folder is selected', async ({ page }) => {
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}`);
+  await dismissAlertBanner(page);
   await expect(page.getByText('tests'), 'Precondition: tests folder must exist').toBeVisible();
 
   await selectItem(page, 'tests');
