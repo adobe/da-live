@@ -2,6 +2,10 @@
   --ew-canvas-header-height: 48px;
 }
 
+.light-scheme, .dark-scheme {
+  color-scheme: light;
+}
+
 html:has(aside.panel[data-position="before"]:not([hidden])) ew-canvas-header::part(toggle-before) {
   display: none;
 }
