@@ -55,6 +55,25 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
   return pageNames;
 }
 
+// Deletes the currently selected item(s) and unpublishes them (removes preview and
+// live copies), so tests that actually preview/publish real content don't leave
+// anything behind in AEM. Assumes the delete confirmation dialog isn't open yet.
+async function deleteAndUnpublish(page) {
+  await page.locator('button.delete-button').filter({ visible: true }).click();
+
+  // Check "Unpublish" so the preview/live copies are removed, not just the DA document
+  await page.locator('input[name="confirm-unpublish"]').click();
+
+  // Unpublishing (and bulk deletes of 10+ items) requires typing YES to confirm
+  await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
+
+  await page.locator('sl-button.negative').filter({ visible: true }).click();
+
+  // Wait for the delete button to disappear, which is when we're done
+  await expect(page.locator('button.delete-button').filter({ visible: true }))
+    .not.toBeVisible({ timeout: 60000 });
+}
+
 test('Preview and Publish buttons appear when a file is selected', async ({ page }) => {
   await page.goto(TESTS_DIR);
   await expect(page.getByText('pingtest'), 'Precondition: pingtest must exist').toBeVisible();
@@ -77,7 +96,7 @@ test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
 });
 
 test('Preview the selected page', async ({ page, context }, workerInfo) => {
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   const url = getTestPageURL('preview', workerInfo);
   const pageName = url.split('/').pop();
@@ -114,10 +133,16 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
 
   // Give the preview tab a moment before wrapping up
   await page.waitForTimeout(5000);
+  await previewTab.close();
+
+  // Clean up: unpublish and delete the test page
+  await page.locator('button.da-dialog-close-btn').click();
+  await selectItem(page, pageName);
+  await deleteAndUnpublish(page);
 });
 
 test('Publish the selected page', async ({ page, context }, workerInfo) => {
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   const url = getTestPageURL('publish', workerInfo);
   const pageName = url.split('/').pop();
@@ -154,10 +179,16 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
 
   // Give the publish tab a moment before wrapping up
   await page.waitForTimeout(5000);
+  await publishTab.close();
+
+  // Clean up: unpublish and delete the test page
+  await page.locator('button.da-dialog-close-btn').click();
+  await selectItem(page, pageName);
+  await deleteAndUnpublish(page);
 });
 
 test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
-  test.setTimeout(300000);
+  test.setTimeout(360000);
 
   const { folderURL, folderPath } = await createFolder(page, workerInfo, 'bulkprev');
   await createPagesInFolder(page, workerInfo, folderPath, 'bulkprev', BULK_PAGE_COUNT);
@@ -174,10 +205,14 @@ test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
   await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
   await expect(page.locator('button.da-aem-results-btn')).toContainText(`Previewed ${BULK_PAGE_COUNT} items`);
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+
+  // Clean up: unpublish and delete all 12 test pages
+  await page.locator('da-list.da-list-type-browse input#select-all').click();
+  await deleteAndUnpublish(page);
 });
 
 test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
-  test.setTimeout(300000);
+  test.setTimeout(360000);
 
   const { folderURL, folderPath } = await createFolder(page, workerInfo, 'bulkpub');
   await createPagesInFolder(page, workerInfo, folderPath, 'bulkpub', BULK_PAGE_COUNT);
@@ -194,6 +229,10 @@ test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
   await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
   await expect(page.locator('button.da-aem-results-btn')).toContainText(`Published ${BULK_PAGE_COUNT} items`);
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+
+  // Clean up: unpublish and delete all 12 test pages
+  await page.locator('da-list.da-list-type-browse input#select-all').click();
+  await deleteAndUnpublish(page);
 });
 
 test('Preview and Publish buttons are hidden when only a folder is selected', async ({ page }) => {
