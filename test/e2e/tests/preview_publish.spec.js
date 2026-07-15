@@ -74,6 +74,25 @@ async function deleteAndUnpublish(page) {
     .not.toBeVisible({ timeout: 60000 });
 }
 
+// Deletes an (empty) folder from the tests directory. Folders don't have anything
+// to unpublish, and an empty folder's delete count is below the typed-YES threshold,
+// so this is a plain delete confirmation.
+async function deleteFolder(page, folderName) {
+  await page.goto(TESTS_DIR);
+  await expect(page.getByText(folderName), 'Precondition: folder must exist').toBeVisible();
+
+  await selectItem(page, folderName);
+  await page.locator('button.delete-button').filter({ visible: true }).click();
+
+  const confirmButton = page.locator('sl-button.negative').filter({ visible: true });
+  await expect(confirmButton).toBeEnabled({ timeout: 10000 });
+  await confirmButton.click();
+
+  // Wait for the delete button to disappear, which is when we're done
+  await expect(page.locator('button.delete-button').filter({ visible: true }))
+    .not.toBeVisible({ timeout: 30000 });
+}
+
 test('Preview and Publish buttons appear when a file is selected', async ({ page }) => {
   await page.goto(TESTS_DIR);
   await expect(page.getByText('pingtest'), 'Precondition: pingtest must exist').toBeVisible();
@@ -191,6 +210,7 @@ test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
   test.setTimeout(360000);
 
   const { folderURL, folderPath } = await createFolder(page, workerInfo, 'bulkprev');
+  const folderName = folderPath.split('/').pop();
   await createPagesInFolder(page, workerInfo, folderPath, 'bulkprev', BULK_PAGE_COUNT);
 
   await page.goto(folderURL);
@@ -206,15 +226,17 @@ test('Preview 12 pages in a folder', async ({ page }, workerInfo) => {
   await expect(page.locator('button.da-aem-results-btn')).toContainText(`Previewed ${BULK_PAGE_COUNT} items`);
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
 
-  // Clean up: unpublish and delete all 12 test pages
+  // Clean up: unpublish and delete all 12 test pages, then the now-empty folder
   await page.locator('da-list.da-list-type-browse input#select-all').click();
   await deleteAndUnpublish(page);
+  await deleteFolder(page, folderName);
 });
 
 test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
   test.setTimeout(360000);
 
   const { folderURL, folderPath } = await createFolder(page, workerInfo, 'bulkpub');
+  const folderName = folderPath.split('/').pop();
   await createPagesInFolder(page, workerInfo, folderPath, 'bulkpub', BULK_PAGE_COUNT);
 
   await page.goto(folderURL);
@@ -230,9 +252,10 @@ test('Publish 12 pages in a folder', async ({ page }, workerInfo) => {
   await expect(page.locator('button.da-aem-results-btn')).toContainText(`Published ${BULK_PAGE_COUNT} items`);
   await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
 
-  // Clean up: unpublish and delete all 12 test pages
+  // Clean up: unpublish and delete all 12 test pages, then the now-empty folder
   await page.locator('da-list.da-list-type-browse input#select-all').click();
   await deleteAndUnpublish(page);
+  await deleteFolder(page, folderName);
 });
 
 test('Preview and Publish buttons are hidden when only a folder is selected', async ({ page }) => {
