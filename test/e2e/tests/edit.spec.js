@@ -14,6 +14,7 @@ import ENV from '../utils/env.js';
 import {
   getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
+import { dismissAlertBanner } from '../utils/utils.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
@@ -46,6 +47,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const pageName = url.split('/').pop();
 
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await dismissAlertBanner(page);
   await expect(page.locator('button.da-actions-new-button')).toBeEnabled();
   await page.locator('button.da-actions-new-button').click({ force: true });
   await page.getByRole('menuitem', { name: 'Document' }).click();
@@ -60,6 +62,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   const newPage = await browser.newPage();
   await newPage.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await dismissAlertBanner(newPage);
 
   await newPage.waitForTimeout(3000);
   await newPage.reload();

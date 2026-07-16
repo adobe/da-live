@@ -121,7 +121,6 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
 
   const list = await browser.newPage();
   await list.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
-  await dismissAlertBanner(list);
 
   await list.waitForTimeout(3000);
   await list.reload();
@@ -132,6 +131,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await tabBackward(list);
   await list.keyboard.press(' ');
   await list.waitForTimeout(500);
+  await dismissAlertBanner(list);
   await list.locator('button.delete-button').filter({ visible: true }).click();
 
   // Give the modal a chance to open
