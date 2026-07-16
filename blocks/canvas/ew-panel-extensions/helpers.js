@@ -470,7 +470,7 @@ function createVersioningView() {
   };
 }
 
-function extensionToPanelView(ext, section) {
+export function extensionToPanelView(ext, section) {
   // Block library opens its own dedicated modal (used by the slash menu and
   // outline "+" button) rather than the generic inline panel or iframe dialog.
   if (ext.name === 'blocks') {
