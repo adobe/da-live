@@ -3,20 +3,12 @@ import ENV from '../utils/env.js';
 import {
   getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
+import { dismissAlertBanner } from '../utils/utils.js';
 
 // Requires write access to TEST_SITE. pingtest must exist in the /tests directory.
 const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`;
 
 const BULK_PAGE_COUNT = 12;
-
-// Some environments show a dismissible alert banner the first time the browse
-// view loads. If present, dismiss it so it doesn't block later interactions.
-async function dismissAlertBanner(page) {
-  const alert = page.getByRole('alert');
-  if (await alert.isVisible().catch(() => false)) {
-    await alert.getByRole('button', { name: 'Dismiss' }).click();
-  }
-}
 
 async function selectItem(page, name) {
   const checkbox = page
