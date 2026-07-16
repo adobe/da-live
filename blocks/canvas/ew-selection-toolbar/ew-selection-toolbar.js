@@ -372,13 +372,13 @@ class EwSelectionToolbar extends LitElement {
         .href=${this._linkHref ?? ''}
         .text=${this._linkText ?? ''}
         @da-link-submit=${this._onLinkDialogSubmit}
-        @da-link-cancel=${this._closeLinkDialog}
+        @close=${this._closeLinkDialog}
       ></da-link-dialog>
       <da-alt-dialog
         ?open=${this.altDialogOpen}
         .alt=${this._altText ?? ''}
         @da-alt-submit=${this._onAltDialogSubmit}
-        @da-alt-cancel=${this._closeAltDialog}
+        @close=${this._closeAltDialog}
       ></da-alt-dialog>
     `;
   }
