@@ -1,8 +1,11 @@
 import '../../../shared/da-dialog/da-dialog.js';
-import { getNx, nxJS } from '../../../../scripts/utils.js';
+import { getNx } from '../../../../scripts/utils.js';
 
-const { loadStyle } = await import(`${getNx()}${nxJS}`);
-await loadStyle('/blocks/edit/prose/plugins/focalPointDialog.css');
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const focalSheet = await loadStyle('/blocks/edit/prose/plugins/focalPointDialog.css');
+if (focalSheet && !document.adoptedStyleSheets.includes(focalSheet)) {
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, focalSheet];
+}
 
 let currentDialog = null;
 let faceApiLoaded = false;

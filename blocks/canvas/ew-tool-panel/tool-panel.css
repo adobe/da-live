@@ -13,6 +13,7 @@
   min-height: 48px;
   padding: 0 var(--s2-spacing-100);
   border-bottom: 1px solid var(--s2-gray-200);
+  box-sizing: border-box;
 }
 
 .tool-panel-header-actions {

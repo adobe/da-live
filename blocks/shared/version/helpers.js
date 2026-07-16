@@ -38,8 +38,20 @@ export function formatVersions(json) {
     };
   });
 
+  // The list endpoint can return the same version record twice (identical
+  // url/versionId) — collapse those before grouping so the UI doesn't show
+  // duplicate rows for what is really one version.
+  const seenVersionIds = new Set();
+  const deduped = ungrouped.filter((entry) => {
+    if (!entry.isVersion) return true;
+    const id = entry.url || entry.versionId;
+    if (seenVersionIds.has(id)) return false;
+    seenVersionIds.add(id);
+    return true;
+  });
+
   // Group consecutive audit entries by date, but never across a version boundary
-  return ungrouped.reduce((acc, entry) => {
+  return deduped.reduce((acc, entry) => {
     if (entry.isVersion) {
       acc.push(entry);
     } else {
@@ -52,4 +64,23 @@ export function formatVersions(json) {
     }
     return acc;
   }, []);
+}
+
+export function buildDisplayItems(versions) {
+  const items = [];
+  let auditGroup = null;
+  for (const entry of versions) {
+    if (entry.isVersion) {
+      if (auditGroup) {
+        items.push(auditGroup);
+        auditGroup = null;
+      }
+      items.push(entry);
+    } else {
+      if (!auditGroup) auditGroup = { audits: [] };
+      auditGroup.audits.push(...entry.audits);
+    }
+  }
+  if (auditGroup) items.push(auditGroup);
+  return items;
 }

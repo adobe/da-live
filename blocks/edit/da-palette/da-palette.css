@@ -33,7 +33,7 @@ input {
 }
 
 button {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
   display: block;
   border: 2px solid #1373e6;
   background: #1373e6;

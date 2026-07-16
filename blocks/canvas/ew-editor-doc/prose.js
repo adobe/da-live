@@ -40,8 +40,9 @@ import base64Uploader from './prose-plugins/base64Uploader.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, getCollabIdentity } from './utils/collab.js';
+import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
 
-const { DA_ADMIN, DA_COLLAB } = await import(`${getNx()}/utils/utils.js`);
+const { DA_ADMIN, DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 function registerErrorHandler(ydoc) {
   ydoc.on('update', () => {
@@ -62,6 +63,19 @@ function addSyncedListener(wsProvider, canWrite, setEditable) {
       }
       wsProvider.off('synced', handleSynced);
     }
+  };
+  wsProvider.on('synced', handleSynced);
+}
+
+function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
+  if (!canWrite) return;
+  const handleSynced = (isSynced) => {
+    if (!isSynced) return;
+    wsProvider.off('synced', handleSynced);
+    const unsub = hashChange.subscribe((s) => {
+      if (s?.org && s?.site) checkBlockLibraryConfigured({ org: s.org, site: s.site });
+    });
+    unsub?.();
   };
   wsProvider.on('synced', handleSynced);
 }
@@ -125,6 +139,7 @@ export default async function initProse({
   });
 
   addSyncedListener(wsProvider, canWrite, setEditable);
+  checkLibraryConfiguredOnSync(wsProvider, canWrite);
   registerErrorHandler(ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
@@ -173,6 +188,10 @@ export default async function initProse({
       'Mod-k': (_state, _dispatch, view) => {
         if (!view.editable) return false;
         openLinkDialog(view);
+        return true;
+      },
+      'Mod-Alt-s': () => {
+        document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
         return true;
       },
       ...getHeadingKeymap(schema),

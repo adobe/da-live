@@ -1,9 +1,13 @@
 import { expect } from '@esm-bundle/chai';
 import { formatDate } from '../../../../../blocks/shared/utils.js';
-import { formatVersions } from '../../../../../blocks/shared/version/helpers.js';
+import { formatVersions, buildDisplayItems } from '../../../../../blocks/shared/version/helpers.js';
 
 const TIME_OPTS = { hour: 'numeric', minute: '2-digit' };
 const DATE_OPTS = { year: 'numeric', month: 'short', day: 'numeric' };
+
+const ver = (overrides = {}) => ({ isVersion: true, date: 'Jan 1', time: '10:00', users: [], ...overrides });
+
+const auditGroup = (audits = [{ date: 'Jan 1', time: '09:00', users: [] }]) => ({ date: 'Jan 1', audits });
 
 describe('Versions helper', () => {
   it('Format date', () => {
@@ -202,5 +206,71 @@ describe('Versions helper', () => {
     expect(second.isVersion).to.be.true;
     expect(second.versionId).to.equal('01KVB6GVE75R432GPNZ8AVADAA');
     expect(second.label).to.be.undefined;
+  });
+
+  it('Collapses duplicate hlx6 records sharing the same versionId', () => {
+    const versions = [{
+      version: '01KVB6GVE75R432GPNZ8AVADFG',
+      'version-date': '2026-06-17T16:27:09.000Z',
+      'version-by': 'someone@acme.com',
+      'version-comment': 'Test',
+    }, {
+      version: '01KVB6GVE75R432GPNZ8AVADFG',
+      'version-date': '2026-06-17T16:27:09.000Z',
+      'version-by': 'someone@acme.com',
+      'version-comment': 'Test',
+    }];
+
+    const formatted = formatVersions(versions);
+
+    expect(formatted).to.have.length(1);
+    expect(formatted[0].versionId).to.equal('01KVB6GVE75R432GPNZ8AVADFG');
+  });
+
+  it('Collapses duplicate hlx5 version records sharing the same url', () => {
+    const versions = [{
+      url: '/versionsource/joey/abc.html',
+      users: [{ email: 'anonymous' }],
+      timestamp: 1715594886177,
+      label: 'Test',
+    }, {
+      url: '/versionsource/joey/abc.html',
+      users: [{ email: 'anonymous' }],
+      timestamp: 1715594886177,
+      label: 'Test',
+    }];
+
+    const formatted = formatVersions(versions);
+
+    expect(formatted).to.have.length(1);
+    expect(formatted[0].url).to.equal('/versionsource/joey/abc.html');
+  });
+});
+
+describe('buildDisplayItems', () => {
+  it('merges adjacent audit groups into one expand/collapse entry', () => {
+    const result = buildDisplayItems([auditGroup(), auditGroup()]);
+    expect(result).to.have.lengthOf(1);
+    expect(result[0].audits).to.have.lengthOf(2);
+  });
+
+  it('a version between two audit groups prevents them from merging', () => {
+    const result = buildDisplayItems([auditGroup(), ver(), auditGroup()]);
+    expect(result).to.have.lengthOf(3);
+    expect(result[0].audits).to.have.lengthOf(1);
+    expect(result[2].audits).to.have.lengthOf(1);
+  });
+
+  it('collects trailing audit groups that follow the last version', () => {
+    const result = buildDisplayItems([ver(), auditGroup(), auditGroup()]);
+    expect(result).to.have.lengthOf(2);
+    expect(result[1].audits).to.have.lengthOf(2);
+  });
+
+  it('passes through a list of only versions unchanged', () => {
+    const v1 = ver();
+    const v2 = ver();
+    const result = buildDisplayItems([v1, v2]);
+    expect(result).to.deep.equal([v1, v2]);
   });
 });

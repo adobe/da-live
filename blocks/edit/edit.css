@@ -1,0 +1,4 @@
+/* TODO: remove once dark-mode styling is complete. */
+.light-scheme, .dark-scheme {
+  color-scheme: light;
+}

@@ -12,7 +12,7 @@
 
   position: relative;
   flex: 0 1 auto;
-  width: var(--grid-container-width);
+  width: var(--se-grid-container-width, var(--grid-container-width));
 }
 
 da-editor {

@@ -213,6 +213,39 @@ async function installCanvasHeader(block, { org, site }) {
   return header;
 }
 
+async function openNewVersionRow() {
+  const aside = await openCanvasPanel('after', { panelName: 'versions' });
+  const toolPanel = aside?.querySelector('ew-tool-panel');
+  await toolPanel?.updateComplete;
+  toolPanel?.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
+}
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
+
+const SHORTCUTS = [
+  {
+    code: 'KeyS',
+    mod: true,
+    altKey: true,
+    action: openNewVersionRow,
+  },
+];
+document.addEventListener('keydown', (e) => {
+  const modKey = isMac ? e.metaKey : e.ctrlKey;
+  const otherModKey = isMac ? e.ctrlKey : e.metaKey;
+  const match = SHORTCUTS.find((s) => (
+    s.code === e.code
+    && !!s.mod === modKey
+    && !otherModKey
+    && !!s.altKey === e.altKey
+  ));
+  if (!match) return;
+  e.preventDefault();
+  match.action();
+});
+
+document.addEventListener('nx-canvas-new-version', openNewVersionRow);
+
 export default async function decorate(block) {
   const { org, site } = hashState();
   const header = await installCanvasHeader(block, { org, site });

@@ -15,7 +15,7 @@ import {
 } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
-const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
+const buttons = await getSheet(`${getNx().replace(/\/nx2$/, '/nx')}/styles/buttons.css`);
 
 const ICONS = [
   '/blocks/edit/img/S2_Icon_ExperienceAdd_20_N.svg',

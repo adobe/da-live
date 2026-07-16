@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { formatDate } from '../utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 import { formatVersions } from './helpers.js';
+import { getVersionId } from './version-actions.js';
 
 export default class DaVersionsBase extends LitElement {
   static properties = {
@@ -46,10 +47,7 @@ export default class DaVersionsBase extends LitElement {
     // version id — org/site/path come from the doc on the consumer side, which
     // lets the fetch go through api.js's versions.get for both backends. hlx5's
     // id is the /versionsource tail; hlx6's is the entry's ULID.
-    const [, org, site] = this.path.split('/');
-    const versionId = entry.url
-      ? entry.url.replace(`/versionsource/${org}/${site}/`, '')
-      : entry.versionId;
+    const versionId = getVersionId(this.path, entry);
     const detail = { versionId, label: entry.label, date: entry.date };
     this.dispatchEvent(new CustomEvent('preview', { detail, bubbles: true, composed: true }));
   }
