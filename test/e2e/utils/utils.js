@@ -18,7 +18,16 @@
  */
 export async function dismissAlertBanner(page) {
   const alert = page.getByRole('alert');
-  if (await alert.isVisible().catch(() => false)) {
+
+  let visible = await alert.isVisible().catch(() => false);
+  if (!visible) {
+    // The banner can take a moment to appear; wait once and check again
+    // before giving up, but skip the wait entirely if it's already there.
+    await page.waitForTimeout(3000);
+    visible = await alert.isVisible().catch(() => false);
+  }
+
+  if (visible) {
     await alert.getByRole('button', { name: 'Dismiss' }).click();
   }
 }

@@ -26,7 +26,6 @@ async function createFolder(page, workerInfo, testIdentifier) {
   const folderName = folderURL.split('/').pop();
 
   await page.goto(TESTS_DIR);
-  await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
@@ -65,7 +64,6 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
 
 test('Preview and Publish buttons appear when a file is selected', async ({ page }) => {
   await page.goto(TESTS_DIR);
-  await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
   await expect(page.getByText('pingtest'), 'Precondition: pingtest must exist').toBeVisible();
 
@@ -77,7 +75,6 @@ test('Preview and Publish buttons appear when a file is selected', async ({ page
 
 test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
   await page.goto(TESTS_DIR);
-  await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
   await expect(page.getByText('pingtest'), 'Precondition: pingtest must exist').toBeVisible();
 
@@ -224,7 +221,6 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
 
 test('Preview and Publish buttons are hidden when only a folder is selected', async ({ page }) => {
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}`);
-  await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
 
   await expect(page.getByRole('link', { name: 'tests' }), 'Precondition: tests folder must exist').toBeVisible();

@@ -20,7 +20,7 @@ test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => 
   test.skip(
     TEST_SITE !== 'da-status',
     `
-On Helix 6 the copy and paste from one folder to another doesn't work yet, it fails on this line: 
+On Helix 6 the copy and paste from one folder to another doesn't work yet, it fails on this line:
 const link = await page.getByRole('link', { name: orgPageName });
     `,
   );
@@ -92,6 +92,8 @@ const link = await page.getByRole('link', { name: orgPageName });
   // Go to the directory view
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
   await page.reload(); // Clears any leftover selection, if any
+
+  await dismissAlertBanner(page);
 
   const checkbox = page.locator('div.da-item-list-item-inner').filter({ hasText: orgPageName })
     .locator('input[type="checkbox"][name="item-selected"]');
