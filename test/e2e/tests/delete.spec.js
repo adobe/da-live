@@ -33,10 +33,11 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 
   // Open the directory listing
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
-  await dismissAlertBanner(page);
 
   // This page will always be there as its used by a test
   await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
+
+  await dismissAlertBanner(page);
 
   // List the resources and check fot the ones that are to be deleted. These are always pages
   // created by the getTestPageURL() function in page.js
@@ -120,6 +121,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
 
   const list = await browser.newPage();
   await list.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await dismissAlertBanner(list);
 
   await list.waitForTimeout(3000);
   await list.reload();
