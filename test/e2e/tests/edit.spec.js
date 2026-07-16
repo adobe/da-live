@@ -14,12 +14,14 @@ import ENV from '../utils/env.js';
 import {
   getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
+import { dismissAlertBanner } from '../utils/utils.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
 
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
+  await page.waitForTimeout(2000);
   await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
@@ -59,6 +61,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   const newPage = await browser.newPage();
   await newPage.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await dismissAlertBanner(newPage);
 
   await newPage.waitForTimeout(3000);
   await newPage.reload();
@@ -70,6 +73,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await newPage.waitForTimeout(500);
   await page.close(); // Close the original page to avoid it writing the content
 
+  await dismissAlertBanner(newPage);
   // There are 2 delete buttons, one on the Browse panel and another on the Search one
   // select the visible one.
   await newPage.locator('button.delete-button').filter({ visible: true }).click();
@@ -116,8 +120,10 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(2000);
   await fill(page, 'page B');
+  await page.waitForTimeout(3000);
+
   // Verify the fill took effect locally before waiting for persistence
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
   // Wait for Y.js to persist the content to the server
@@ -154,12 +160,12 @@ test('Add code mark', async ({ page }, workerInfo) => {
   // Forward
   for (let i = 0; i < 10; i += 1) {
     await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(200);
   }
   await page.keyboard.press('`');
   for (let i = 0; i < 4; i += 1) {
     await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(200);
   }
   await page.keyboard.press('`');
   // leave time for the code mark to be processed
@@ -174,13 +180,13 @@ test('Add code mark', async ({ page }, workerInfo) => {
   await page.keyboard.press('End');
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(200);
   }
   await page.keyboard.press('`');
   await page.locator('div.ProseMirror').locator('code');
   for (let i = 0; i < 5; i += 1) {
     await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(200);
   }
   await page.keyboard.press('`');
   codeElement = proseMirror.locator('code');
