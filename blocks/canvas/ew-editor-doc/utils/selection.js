@@ -55,6 +55,19 @@ export function describeDocSelection(view) {
   };
 }
 
+export function selectedNodePayload(view) {
+  const sel = view?.state?.selection;
+  if (!(sel instanceof NodeSelection)) return null;
+  const name = sel.node?.type?.name;
+  if (name === 'table' && sel.$from.depth === 0) {
+    return { anchorType: 'table', proseIndex: sel.from + 1 };
+  }
+  if (name === 'image') {
+    return { anchorType: 'image', proseIndex: sel.from, src: sel.node?.attrs?.src ?? '' };
+  }
+  return null;
+}
+
 export function applyHighlight(view, { selFrom, selTo, selectionType } = {}) {
   if (!view || typeof selFrom !== 'number' || typeof selTo !== 'number') return;
   const { doc } = view.state;

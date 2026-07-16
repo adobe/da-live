@@ -5,6 +5,7 @@ import {
   handleUndoRedo,
   handleNewVersion,
   handleIframeSelectionChange,
+  handleNodeSelect,
 } from './utils/handlers.js';
 
 export function createControllerOnMessage(ctx) {
@@ -25,6 +26,8 @@ export function createControllerOnMessage(ctx) {
       handleNewVersion();
     } else if (e.data.type === 'selection-change') {
       handleIframeSelectionChange(e.data, ctx);
+    } else if (e.data.type === 'node-select') {
+      handleNodeSelect(e.data, ctx);
     }
   };
 }
