@@ -234,7 +234,8 @@ test('Preview and Publish buttons are hidden when only a folder is selected', as
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}`);
   await page.waitForTimeout(5000);
   await dismissAlertBanner(page);
-  await expect(page.getByText('tests'), 'Precondition: tests folder must exist').toBeVisible();
+
+  await expect(page.getByRole('link', { name: 'tests' }), 'Precondition: tests folder must exist').toBeVisible();
 
   await selectItem(page, 'tests');
 
