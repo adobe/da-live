@@ -14,6 +14,7 @@ import ENV from '../utils/env.js';
 import {
   getQuery, getTestFolderURL, getTestPageURL, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
+import { dismissAlertBanner } from '../utils/utils.js';
 
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   test.skip(
@@ -61,6 +62,7 @@ const link = await page.getByRole('link', { name: orgPageName });
 
   // Go back to the directory view
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await dismissAlertBanner(page);
 
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
