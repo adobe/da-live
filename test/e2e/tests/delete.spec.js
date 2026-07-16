@@ -14,6 +14,7 @@ import ENV from '../utils/env.js';
 import {
   getQuery, getTestPageURL, getTestResourceAge, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
+import { dismissAlertBanner } from '../utils/utils.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
@@ -32,6 +33,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 
   // Open the directory listing
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await dismissAlertBanner(page);
 
   // This page will always be there as its used by a test
   await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
