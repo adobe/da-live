@@ -117,9 +117,11 @@ export async function getData(input) {
     isVersion = true;
     resp = await versions.get({ org, site, path, versionId });
   } else if (view === 'config') {
-    resp = await config.get({ org, site });
+    resp = await config.get({ org, site, cachebust: true });
   } else {
-    resp = await source.get({ org, site, path });
+    // cachebust: browser HTTP cache would otherwise seed _lastEtag with a
+    // stale value from a prior page load and fake drift on the next check.
+    resp = await source.get({ org, site, path, cachebust: true });
   }
 
   // Set permissions even if the file is a 404

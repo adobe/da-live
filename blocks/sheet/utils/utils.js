@@ -85,11 +85,13 @@ class StaleCheck {
       const { config, source } = await getNx2Api();
       const { org, site, path, view } = this._doc;
 
+      // cachebust: Firefox heuristic-caches responses that carry
+      // Last-Modified but no Cache-Control, so a plain GET can return the
+      // pre-POST ETag from browser cache and fake a drift.
       const resp = view === 'config'
-        ? await config.get({ org, site })
-        : await source.get({ org, site, path });
+        ? await config.get({ org, site, cachebust: true })
+        : await source.get({ org, site, path, cachebust: true });
       if (!resp.ok) return false;
-      // No baseline (never synced) or missing header: nothing to compare against.
       const etag = resp.headers.get('etag');
       if (!etag || !this._lastEtag || etag === this._lastEtag) return false;
       const json = await resp.json();
