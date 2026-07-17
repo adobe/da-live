@@ -150,7 +150,8 @@
     height: 16px;
   }
 
-.outline-section:has(.selected) .action-btn,
+.outline-section:has(.selected) .section-header .action-btn,
+.selected .action-btn,
 .action-btn:focus-visible,
 .section-header:hover .action-btn,
 .block-item:hover .action-btn {
