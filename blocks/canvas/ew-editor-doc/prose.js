@@ -190,6 +190,10 @@ export default async function initProse({
         openLinkDialog(view);
         return true;
       },
+      'Mod-Alt-s': () => {
+        document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
+        return true;
+      },
       ...getHeadingKeymap(schema),
     }),
     keymap({

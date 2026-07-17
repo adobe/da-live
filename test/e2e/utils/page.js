@@ -9,6 +9,7 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
+import { expect } from '@playwright/test';
 import ENV, { TEST_ORG, TEST_SITE } from './env.js';
 
 export { TEST_ORG, TEST_SITE };
@@ -80,6 +81,23 @@ export function getTestResourceAge(fileName) {
 }
 
 const SELECT_ALL = process.platform === 'darwin' ? 'Meta+a' : 'Control+a';
+
+/**
+ * Navigates to a document URL and creates a new document from the blank-page prompt,
+ * waiting for the ProseMirror editor to become editable. Used by tests that need a
+ * fresh document to work with (editing, deleting, previewing, publishing, etc).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} url - The URL of the (not yet existing) document to create.
+ */
+export async function createDocument(page, url) {
+  await page.goto(url);
+  await page.getByText('Create document', { exact: true }).click();
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
+}
 
 export async function fill(page, text) {
   const proseMirror = page.locator('div.ProseMirror');

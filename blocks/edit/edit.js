@@ -1,9 +1,13 @@
 import getPathDetails from '../shared/pathDetails.js';
 import { contentLogin, livePreviewLogin } from '../shared/utils.js';
-import { getNx2Api } from '../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
+
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const styles = await loadStyle(import.meta.url);
+document.adoptedStyleSheets.push(styles);
 
 const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
 const DOMPARSER = new DOMParser();

@@ -4,6 +4,8 @@ export const loadStyle = async () => {
   return sheet;
 };
 
+export const loadScript = async () => {};
+
 export const DA_ADMIN = 'https://admin.da.live';
 
 let _hashState = {};
