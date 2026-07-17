@@ -81,7 +81,7 @@
     background: var(--s2-gray-75);
   }
 
-  &[aria-selected="true"] {
+  &.selected {
     background: var(--s2-blue-100);
     color: var(--s2-blue-900);
   }
@@ -139,17 +139,18 @@
   color: var(--s2-gray-800);
   cursor: pointer;
 
+  &:hover {
+    background: var(--s2-gray-200);
+  }
+}
+
   svg.icon {
     display: block;
     width: 16px;
     height: 16px;
   }
 
-  &:hover {
-    background: var(--s2-gray-200);
-  }
-}
-
+.outline-section:has(.selected) .action-btn,
 .action-btn:focus-visible,
 .section-header:hover .action-btn,
 .block-item:hover .action-btn {
