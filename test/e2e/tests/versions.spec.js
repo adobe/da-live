@@ -13,15 +13,6 @@ import { test, expect } from '@playwright/test';
 import { getTestPageURL, fill, TEST_SITE } from '../utils/page.js';
 
 test('Create Version and Restore from it', async ({ page }, workerInfo) => {
-  test.skip(
-    TEST_SITE !== 'da-status', 
-    `
-    Restoring versions doesn't work yet with Helix 6 and automatic 'audit' versions are not supported.
-    This test fails here: 
-      const audit = await page.locator('.da-version-entry.is-audit').first();
-      await audit.click();
-    `
-  );
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
   test.setTimeout(60000);
@@ -73,11 +64,13 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   // expliticly create a version for.
   // Use .first() because PR #931 keeps audit groups separate across version boundaries,
   // so there may be multiple is-audit entries (one before and one after 'ver 1').
-  const audit = await page.locator('.da-version-entry.is-audit').first();
-  await audit.click();
+  if (TEST_SITE === 'da-status') {
+    const audit = await page.locator('.da-version-entry.is-audit').first();
+    await audit.click();
 
-  const expectedUser = process.env.SKIP_AUTH ? 'anonymous' : 'da-test@adobetest.com';
-  await expect(audit).toContainText(expectedUser);
+    const expectedUser = process.env.SKIP_AUTH ? 'anonymous' : 'da-test@adobetest.com';
+    await expect(audit).toContainText(expectedUser);
+  }
 
   // Select 'ver 1' and restore it — the click expands the version entry;
   // WebKit needs a beat for the expansion to start processing.
