@@ -119,8 +119,6 @@ export async function getData(input) {
   } else if (view === 'config') {
     resp = await config.get({ org, site, cachebust: true });
   } else {
-    // cachebust: browser HTTP cache would otherwise seed _lastEtag with a
-    // stale value from a prior page load and fake drift on the next check.
     resp = await source.get({ org, site, path, cachebust: true });
   }
 
