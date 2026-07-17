@@ -1,9 +1,10 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx1 } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
+const { MessageTypes } = await import(`${getNx1()}/public/plugins/quick-edit/src/message-types.js`);
 
 // --- state.js ---
 
@@ -64,10 +65,15 @@ export function updateState(data, ctx) {
       const syncNodeStart = syncPos.before(syncPos.depth);
       const syncNode = view.state.doc.resolve(syncNodeStart).nodeAfter;
       if (syncNode) {
+        // @deprecated top-level editorState/cursorOffset — prefer payload.editorState/cursorOffset
+        // (kept so the quick-edit iframe script in da-nx keeps working until it migrates).
+        const editorState = syncNode.toJSON();
+        const { cursorOffset } = data;
         ctx.port.postMessage({
-          type: 'set-editor-state',
-          editorState: syncNode.toJSON(),
-          cursorOffset: data.cursorOffset,
+          type: MessageTypes.SET_EDITOR_STATE,
+          editorState,
+          cursorOffset,
+          payload: { editorState, cursorOffset },
         });
       }
     } catch {
@@ -92,7 +98,14 @@ export function getEditor(data, ctx) {
     const beforePos = doc.resolve(before);
     const nodeAtBefore = beforePos.nodeAfter;
     if (!nodeAtBefore) return;
-    ctx.port.postMessage({ type: 'set-editor-state', editorState: nodeAtBefore.toJSON(), cursorOffset: before + 1 });
+    const editorState = nodeAtBefore.toJSON();
+    const newCursorOffset = before + 1;
+    ctx.port.postMessage({
+      type: MessageTypes.SET_EDITOR_STATE,
+      editorState,
+      cursorOffset: newCursorOffset,
+      payload: { editorState, cursorOffset: newCursorOffset },
+    });
   } catch {
     // Stale iframe cursor after structural replace (e.g. chat revert, remote sync).
   }
@@ -298,13 +311,13 @@ export const editorSelectChange = (() => {
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: 'set-body', body });
+  ctx.port.postMessage({ type: MessageTypes.SET_BODY, body, payload: { body } });
   return body;
 }
 
 export function updateCursors(ctx) {
   const cursors = extractCursors(ctx.view);
-  ctx.port.postMessage({ type: 'set-cursors', cursors });
+  ctx.port.postMessage({ type: MessageTypes.SET_CURSORS, cursors, payload: { cursors } });
 }
 
 // --- preview.js ---

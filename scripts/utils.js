@@ -87,6 +87,13 @@ export const getNx2 = () => {
   return nx.endsWith('/nx') ? `${nx}2` : nx;
 };
 
+// Forces the base nx (never nx2), regardless of the page's nxVer flag — for consumers
+// like da-nx's quick-edit plugin that only exist under nx/, not nx2/.
+export const getNx1 = () => {
+  const nx = getNx();
+  return nx.endsWith('/nx2') ? nx.slice(0, -1) : nx;
+};
+
 let nx2ApiPromise;
 export const getNx2Api = () => {
   nx2ApiPromise ??= import(`${getNx2()}/utils/api.js`);

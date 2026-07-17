@@ -1,5 +1,6 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
+import { getIframeOrigin, sendIframeHandshake } from '../../shared/utils.js';
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.
@@ -15,7 +16,30 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
 
-  const channel = new MessageChannel();
+  const targetOrigin = getIframeOrigin(iframe);
+  if (!targetOrigin) return { channel: null, destroy() { } };
+
+  const project = {
+    org,
+    repo: site,
+    ref: 'main',
+    path: path ? `/${path}` : '/',
+    view: view || 'edit',
+  };
+
+  let token;
+  try {
+    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
+    const ims = await loadIms();
+    token = ims?.accessToken?.token;
+  } catch { /* proceed without token */ }
+
+  const channel = sendIframeHandshake(
+    iframe,
+    targetOrigin,
+    { ready: true, project, context: project, token },
+  );
+  if (!channel) return { channel: null, destroy() { } };
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
@@ -63,38 +87,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       }
       iframe.contentWindow.postMessage(
         { action: 'sendSelection', details: html },
-        '*',
+        targetOrigin,
       );
     }
   };
 
-  const project = {
-    org,
-    repo: site,
-    ref: 'main',
-    path: path ? `/${path}` : '/',
-    view: view || 'edit',
-  };
-
-  let token;
-  try {
-    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
-    const ims = await loadIms();
-    token = ims?.accessToken?.token;
-  } catch { /* proceed without token */ }
-
-  setTimeout(() => {
-    if (!iframe.contentWindow) return;
-    iframe.contentWindow.postMessage(
-      { ready: true, project, context: project, token },
-      '*',
-      [channel.port2],
-    );
-  }, 750);
-
   const onAgentChange = ({ detail }) => {
     if (!iframe.contentWindow) return;
-    iframe.contentWindow.postMessage({ action: 'agentChange', detail }, '*');
+    iframe.contentWindow.postMessage({ action: 'agentChange', detail }, targetOrigin);
   };
   document.addEventListener('nx-agent-change', onAgentChange);
 

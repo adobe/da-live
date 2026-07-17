@@ -1,10 +1,11 @@
 import { LitElement, html } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx1 } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
-import { initIms as loadIms } from '../../shared/utils.js';
+import { initIms as loadIms, getIframeOrigin, sendIframeHandshake } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { MessageTypes } = await import(`${getNx1()}/public/plugins/quick-edit/src/message-types.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -158,20 +159,29 @@ export class EwEditorWysiwyg extends LitElement {
 
   _postQuickEditInitToIframe({ iframe, config, location, onReady }) {
     this._disposeQuickEditLocalPort();
-    const { port1, port2 } = new MessageChannel();
-    this._quickEditLocalPort = port1;
-    port1.onmessage = (ev) => {
-      if (ev.data?.ready !== true) return;
+    const targetOrigin = getIframeOrigin(iframe);
+    if (!targetOrigin) return;
+    // @deprecated top-level init/location — prefer type/payload. Kept so the quick-edit
+    // iframe script (da-nx) keeps working until it migrates.
+    const channel = sendIframeHandshake(
+      iframe,
+      targetOrigin,
+      {
+        init: config,
+        location,
+        type: MessageTypes.INIT,
+        payload: { config, location },
+      },
+    );
+    if (!channel) return;
+    this._quickEditLocalPort = channel.port1;
+    channel.port1.onmessage = (ev) => {
+      // @deprecated flat `ready` — prefer `type === MessageTypes.READY` (da-nx now sends both).
+      const isReady = ev.data?.type === MessageTypes.READY || ev.data?.ready === true;
+      if (!isReady) return;
       this._quickEditLocalPort = null;
-      onReady(port1);
+      onReady(channel.port1);
     };
-    try {
-      iframe.contentWindow.postMessage({ init: config, location }, '*', [port2]);
-    } catch (err) {
-      this._disposeQuickEditLocalPort();
-      // eslint-disable-next-line no-console
-      console.error('[ew-editor-wysiwyg] Error posting init to iframe', err);
-    }
   }
 
   _onIframeLoad(e) {

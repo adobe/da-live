@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import { getHtmlWithCursor } from '../../shared/prose2aem.js';
+import { getIframeOrigin } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-preview/da-preview.css');
 
@@ -59,6 +60,9 @@ export default class DaPreview extends LitElement {
   }
 
   handleFirstLoad({ target }) {
+    const targetOrigin = getIframeOrigin(target);
+    if (!targetOrigin) return;
+
     const channel = new MessageChannel();
     this.port1 = channel.port1;
     this.port2 = channel.port2;
