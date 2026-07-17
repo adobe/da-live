@@ -118,7 +118,7 @@ export default class PrepareMenu extends LitElement {
     const { token } = window.adobeIMS.getAccessToken();
     const message = { ready: true, context, token };
 
-    sendIframeHandshake(target, targetOrigin, message);
+    sendIframeHandshake(target, targetOrigin, message, { delayMs: 750 });
   }
 
   renderDialog() {

@@ -406,11 +406,29 @@ export function getIframeOrigin(iframe) {
   }
 }
 
-export function sendIframeHandshake(iframe, targetOrigin, payload) {
+export function sendIframeHandshake(iframe, targetOrigin, payload, { delayMs = 0 } = {}) {
   if (!targetOrigin || !iframe.contentWindow) return null;
   const channel = new MessageChannel();
-  try {
+
+  const send = () => {
+    if (!iframe.contentWindow) return;
     iframe.contentWindow.postMessage(payload, targetOrigin, [channel.port2]);
+  };
+
+  if (delayMs > 0) {
+    setTimeout(() => {
+      try {
+        send();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[sendIframeHandshake] Error posting to iframe', err);
+      }
+    }, delayMs);
+    return channel;
+  }
+
+  try {
+    send();
   } catch (err) {
     channel.port1.close();
     // eslint-disable-next-line no-console

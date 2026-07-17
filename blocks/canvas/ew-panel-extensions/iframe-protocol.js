@@ -38,6 +38,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     iframe,
     targetOrigin,
     { ready: true, project, context: project, token },
+    { delayMs: 750 },
   );
   if (!channel) return { channel: null, destroy() { } };
 

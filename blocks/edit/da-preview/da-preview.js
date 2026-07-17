@@ -68,7 +68,7 @@ export default class DaPreview extends LitElement {
     this.port2 = channel.port2;
 
     // attempt to send a message
-    target.contentWindow.postMessage({ ready: true }, '*', [this.port2]);
+    target.contentWindow.postMessage({ ready: true }, targetOrigin, [this.port2]);
 
     // Use port 1 to receive messages
     this.port1.onmessage = (e) => {
