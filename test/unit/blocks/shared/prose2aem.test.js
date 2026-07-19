@@ -376,3 +376,111 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.include('data-title="data-focal:30.5,70.2"');
   });
 });
+
+describe('prose2aem fragment URL conversion', () => {
+  function makeEditor(innerHtml) {
+    const editor = document.createElement('div');
+    editor.innerHTML = innerHtml;
+    return editor;
+  }
+
+  it('converts fragment URLs to relative when livePreview=true', () => {
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/fragments/tabs-homepage">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/fragments/tabs-homepage');
+  });
+
+  it('does not convert fragment URLs when livePreview=false', () => {
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/fragments/tabs-homepage">Fragment</a></p>
+    `);
+
+    prose2aem(editor, false, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('https://main--repo--org.aem.live/fragments/tabs-homepage');
+  });
+
+  it('converts fragment URLs with nested paths', () => {
+    const editor = makeEditor(`
+      <p><a href="https://main--site--org.aem.live/en/fragments/footer">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/en/fragments/footer');
+  });
+
+  it('preserves search params and hash in converted URLs', () => {
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/fragments/tabs?param=value#section">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/fragments/tabs?param=value#section');
+  });
+
+  it('does not convert non-fragment URLs', () => {
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/products/page">Regular page</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('https://main--repo--org.aem.live/products/page');
+  });
+
+  it('does not convert non-EDS URLs', () => {
+    const editor = makeEditor(`
+      <p><a href="https://example.com/fragments/something">External</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('https://example.com/fragments/something');
+  });
+
+  it('converts hlx.live and hlx.page URLs', () => {
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.hlx.live/fragments/hero">Fragment 1</a></p>
+      <p><a href="https://main--repo--org.hlx.page/fragments/footer">Fragment 2</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const links = editor.querySelectorAll('a');
+
+    expect(links[0].getAttribute('href')).to.equal('/fragments/hero');
+    expect(links[1].getAttribute('href')).to.equal('/fragments/footer');
+  });
+
+  it('handles relative fragment URLs without conversion', () => {
+    const editor = makeEditor(`
+      <p><a href="/fragments/tabs">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/fragments/tabs');
+  });
+
+  it('handles invalid URLs gracefully', () => {
+    const editor = makeEditor(`
+      <p><a href="not-a-valid-url">Invalid</a></p>
+    `);
+
+    expect(() => prose2aem(editor, true, false)).to.not.throw();
+    const link = editor.querySelector('a');
+    expect(link.getAttribute('href')).to.equal('not-a-valid-url');
+  });
+});

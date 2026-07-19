@@ -232,6 +232,32 @@ function parseIcons(editor) {
 
 const removeEls = (els) => els.forEach((el) => el.remove());
 
+function convertFragmentUrlsToRelative(editor) {
+  const HELIX_URL_REGEXP = /^https:\/\/.*\.(aem|hlx3?)\.(live|page)(\/|$)/;
+
+  const links = editor.querySelectorAll('a[href]');
+  links.forEach((link) => {
+    const url = link.getAttribute('href');
+
+    if (!url || !url.startsWith('https://')) {
+      return;
+    }
+
+    try {
+      const parsed = new URL(url);
+      const { host, pathname, search, hash } = parsed;
+
+      if (pathname.includes('/fragments/')
+          && host.includes('--')
+          && HELIX_URL_REGEXP.test(url)) {
+        link.setAttribute('href', `${pathname}${search}${hash}`);
+      }
+    } catch {
+      // ignore
+    }
+  });
+}
+
 /**
  * A utility to take ProseMirror formatted DOM and convert to AEM semantic markup
  * @param {HTMLElement} editor the editor dom
@@ -244,6 +270,10 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
+
+  if (livePreview) {
+    convertFragmentUrlsToRelative(editor);
+  }
 
   const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
   removeEls(daDiffDeletedEls);
