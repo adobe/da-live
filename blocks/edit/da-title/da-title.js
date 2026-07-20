@@ -246,13 +246,6 @@ export default class DaTitle extends LitElement {
 
     const aemPath = `/${org}/${site}${path}`;
 
-    // Drain any pending/in-flight background save before preview/publish so it
-    // can't race the write we're about to issue (last-write-wins on DA).
-    if (view === 'sheet' && (action === 'preview' || action === 'publish')) {
-      const { flushPendingSave } = await import('../../sheet/utils/utils.js');
-      await flushPendingSave();
-    }
-
     // Bail before writing if the remote drifted under us — protects against
     // last-write-wins. Drift triggers the stale-content dialog via onStale.
     // The POST itself runs inside staleCheck.runSave so it shares the same

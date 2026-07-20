@@ -1,4 +1,4 @@
-import { convertSheets, saveToDa } from '../../edit/utils/helpers.js';
+import { convertSheets, debounce, saveToDa } from '../../edit/utils/helpers.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 
 const DEBOUNCE_TIME = 1000;
@@ -132,45 +132,7 @@ export const saveSheets = async (sheets) => {
   }
 };
 
-// A debounced saveSheets wrapper we can also flush and await. Kept module-local
-// so preview/publish can drain a pending or in-flight background save before
-// issuing their own write — otherwise the two writes can race last-write-wins.
-let pendingTimer = null;
-let pendingSheets = null;
-let inflightSave = null;
-
-function runSave(sheets) {
-  const promise = saveSheets(sheets);
-  inflightSave = promise;
-  promise.finally(() => {
-    if (inflightSave === promise) inflightSave = null;
-  });
-  return promise;
-}
-
-function scheduleSave(sheets) {
-  pendingSheets = sheets;
-  clearTimeout(pendingTimer);
-  pendingTimer = setTimeout(() => {
-    pendingTimer = null;
-    const next = pendingSheets;
-    pendingSheets = null;
-    if (next) runSave(next);
-  }, DEBOUNCE_TIME);
-}
-
-export async function flushPendingSave() {
-  if (pendingTimer) {
-    clearTimeout(pendingTimer);
-    pendingTimer = null;
-    const next = pendingSheets;
-    pendingSheets = null;
-    if (next) runSave(next);
-  }
-  if (inflightSave) {
-    try { await inflightSave; } catch { /* swallowed — caller re-issues its own save */ }
-  }
-}
+const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
 
 export async function restoreVersion(daTitle, daSheet, versionData) {
   const initSheet = (await import('./index.js')).default;
@@ -183,7 +145,7 @@ export function handleSave(jexcel, view) {
   staleCheck.markEdited();
   if (view === 'config') return;
   if (staleCheck.isBlocked) return;
-  scheduleSave(jexcel);
+  debouncedSaveSheets(jexcel);
 }
 
 export async function showDaDialog({ title, body, confirmLabel }) {

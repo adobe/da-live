@@ -8,7 +8,6 @@ const {
   handleSave,
   staleCheck,
   findColumnsWithDataButNoHeader,
-  flushPendingSave,
   colIndexToLetter,
 } = await import('../../../../blocks/sheet/utils/utils.js');
 
@@ -262,68 +261,6 @@ describe('sheet/utils utils', () => {
       expect(findColumnsWithDataButNoHeader([sheet])).to.deep.equal([
         { name: 'data', cols: [2] },
       ]);
-    });
-  });
-
-  describe('flushPendingSave', () => {
-    it('Resolves immediately when nothing is pending', async () => {
-      const start = performance.now();
-      await flushPendingSave();
-      expect(performance.now() - start).to.be.below(50);
-    });
-
-    it('Flushes a pending debounced save before the debounce would fire', async () => {
-      window.location.hash = '#/o/r/flush-test';
-      let putCount = 0;
-      window.fetch = wrap((url, opts) => {
-        if (typeof url === 'string' && url.includes('/source/') && opts?.method === 'POST') {
-          putCount += 1;
-        }
-        return Promise.resolve(new Response('', { status: 200 }));
-      });
-
-      const start = performance.now();
-      handleSave([buildSheet('a', [['x'], ['y']])], 'edit');
-      await flushPendingSave();
-      const elapsed = performance.now() - start;
-
-      expect(putCount, 'flush must run the pending save').to.equal(1);
-      expect(elapsed, 'flush must not wait out the 1000ms debounce').to.be.below(800);
-    });
-
-    it('Awaits an in-flight save without re-issuing it', async () => {
-      window.location.hash = '#/o/r/inflight-test';
-      let putCount = 0;
-      const pending = [];
-      window.fetch = wrap((url, opts) => {
-        if (typeof url === 'string' && url.includes('/source/') && opts?.method === 'POST') {
-          putCount += 1;
-          return new Promise((resolve) => {
-            pending.push(() => resolve(new Response('', { status: 200 })));
-          });
-        }
-        return Promise.resolve(new Response('', { status: 200 }));
-      });
-
-      handleSave([buildSheet('a', [['x'], ['y']])], 'edit');
-      // Wait for the debounce to fire and the save to be issued (but not resolved).
-      const deadline = performance.now() + 2000;
-      while (putCount === 0 && performance.now() < deadline) {
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((r) => { setTimeout(r, 20); });
-      }
-      expect(putCount, 'save should have started after the debounce').to.equal(1);
-
-      const flushPromise = flushPendingSave();
-      let flushResolved = false;
-      flushPromise.then(() => { flushResolved = true; });
-      await new Promise((r) => { setTimeout(r, 100); });
-      expect(flushResolved, 'flush must wait for the in-flight save to resolve').to.be.false;
-      expect(putCount, 'flush must not issue a second save').to.equal(1);
-
-      pending.forEach((r) => r());
-      await flushPromise;
-      expect(flushResolved).to.be.true;
     });
   });
 });
