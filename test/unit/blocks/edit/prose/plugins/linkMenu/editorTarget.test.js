@@ -6,9 +6,7 @@ const context = { org: 'myorg', repo: 'myrepo', ref: 'main' };
 describe('resolveEditorTarget', () => {
   it('resolves a root-relative href within the current project', () => {
     const result = resolveEditorTarget('/products/foo', context);
-    expect(result).to.deep.equal({
-      org: 'myorg', repo: 'myrepo', path: '/products/foo', branch: 'main',
-    });
+    expect(result).to.deep.equal({ org: 'myorg', repo: 'myrepo', path: '/products/foo', branch: 'main' });
   });
 
   it('strips a .html extension and a trailing slash', () => {
@@ -23,9 +21,7 @@ describe('resolveEditorTarget', () => {
 
   it('resolves an aem.page URL matching the current org/repo, using the hostname branch', () => {
     const result = resolveEditorTarget('https://feature--myrepo--myorg.aem.page/products/foo', context);
-    expect(result).to.deep.equal({
-      org: 'myorg', repo: 'myrepo', path: '/products/foo', branch: 'feature',
-    });
+    expect(result).to.deep.equal({ org: 'myorg', repo: 'myrepo', path: '/products/foo', branch: 'feature' });
   });
 
   it('resolves aem.live/hlx.page/hlx.live URLs the same way', () => {
@@ -65,23 +61,17 @@ describe('resolveEditorTarget', () => {
 
 describe('buildEditorUrl', () => {
   it('omits the ref param for the main branch', () => {
-    const url = buildEditorUrl({
-      org: 'myorg', repo: 'myrepo', path: '/products/foo', branch: 'main',
-    });
+    const url = buildEditorUrl({ org: 'myorg', repo: 'myrepo', path: '/products/foo', branch: 'main' });
     expect(url).to.equal('/edit#/myorg/myrepo/products/foo');
   });
 
   it('includes a ref param for a non-main branch', () => {
-    const url = buildEditorUrl({
-      org: 'myorg', repo: 'myrepo', path: '/products/foo', branch: 'feature',
-    });
+    const url = buildEditorUrl({ org: 'myorg', repo: 'myrepo', path: '/products/foo', branch: 'feature' });
     expect(url).to.equal('/edit?ref=feature#/myorg/myrepo/products/foo');
   });
 
   it('handles the root path', () => {
-    const url = buildEditorUrl({
-      org: 'myorg', repo: 'myrepo', path: '/', branch: 'main',
-    });
+    const url = buildEditorUrl({ org: 'myorg', repo: 'myrepo', path: '/', branch: 'main' });
     expect(url).to.equal('/edit#/myorg/myrepo/');
   });
 });

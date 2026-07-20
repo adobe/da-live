@@ -15,9 +15,7 @@ function parseHref(href) {
 
   if (isRelative) {
     if (!href.startsWith('/')) return null;
-    return {
-      org: null, site: null, branch: null, pathname: url.pathname,
-    };
+    return { org: null, site: null, branch: null, pathname: url.pathname };
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
@@ -25,9 +23,7 @@ function parseHref(href) {
   const aemMatch = url.hostname.match(AEM_HOST_RE);
   if (aemMatch) {
     const [, branch, site, org] = aemMatch;
-    return {
-      org, site, branch, pathname: url.pathname,
-    };
+    return { org, site, branch, pathname: url.pathname };
   }
 
   return null;
@@ -49,21 +45,15 @@ export function resolveEditorTarget(href, context = {}) {
   const path = normalizePath(parsed.pathname);
 
   if (parsed.org === null) {
-    return {
-      org: currentOrg, repo: currentRepo, path, branch: currentRef,
-    };
+    return { org: currentOrg, repo: currentRepo, path, branch: currentRef };
   }
 
   if (parsed.org !== currentOrg || parsed.site !== currentRepo) return null;
 
-  return {
-    org: currentOrg, repo: currentRepo, path, branch: parsed.branch,
-  };
+  return { org: currentOrg, repo: currentRepo, path, branch: parsed.branch };
 }
 
-export function buildEditorUrl({
-  org, repo, path, branch,
-}) {
+export function buildEditorUrl({ org, repo, path, branch }) {
   const refParam = branch && branch !== 'main' ? `?ref=${branch}` : '';
   return `/edit${refParam}#/${org}/${repo}${path}`;
 }
