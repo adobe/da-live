@@ -42,12 +42,14 @@ export default class DaTitle extends LitElement {
     _actions: { state: true },
     _status: { state: true },
     _isSending: { state: true },
+    _bgSaveCount: { state: true },
     _dialog: { state: true },
   };
 
   constructor() {
     super();
     this._actions = {};
+    this._bgSaveCount = 0;
   }
 
   connectedCallback() {
@@ -63,6 +65,26 @@ export default class DaTitle extends LitElement {
       window.addEventListener('online', () => { this.collabStatus = 'connected'; });
       window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
     }
+
+    // Reflect background saves (debounced autosave, restoreVersion) in the
+    // send-button spinner. Ref-counted so serialised saves keep the animation
+    // continuous rather than flickering off between them.
+    this._onBgSaveStart = () => { this._bgSaveCount += 1; };
+    this._onBgSaveEnd = () => {
+      this._bgSaveCount = Math.max(0, this._bgSaveCount - 1);
+    };
+    document.addEventListener('sheet-save-start', this._onBgSaveStart);
+    document.addEventListener('sheet-save-end', this._onBgSaveEnd);
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener('sheet-save-start', this._onBgSaveStart);
+    document.removeEventListener('sheet-save-end', this._onBgSaveEnd);
+    super.disconnectedCallback();
+  }
+
+  get _showSpinner() {
+    return this._isSending || this._bgSaveCount > 0;
   }
 
   update(changed) {
@@ -454,10 +476,10 @@ export default class DaTitle extends LitElement {
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._canPrepare ? html`<da-prepare .details=${this.details}></da-prepare>` : nothing}
           ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._actions.available?.length === 1 && !this._isSending ? 'has-one-action' : ''} ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
+          <div class="da-title-actions ${this._actions.available?.length === 1 && !this._showSpinner ? 'has-one-action' : ''} ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
             ${this.renderActions()}
             <button @click=${this.toggleActions} class="con-button blue da-title-action-send ${this._status ? 'is-error' : ''}" aria-label="Send">
-              <svg class="da-title-action-send-icon ${this._isSending ? 'is-sending' : ''}" viewBox="0 0 20 20">
+              <svg class="da-title-action-send-icon ${this._showSpinner ? 'is-sending' : ''}" viewBox="0 0 20 20">
                 <use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish"/>
               </svg>
             </button>

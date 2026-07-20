@@ -72,6 +72,42 @@ describe('sheet/utils utils', () => {
       const result = await saveSheets(sheets);
       expect(result).to.be.false;
     });
+
+    it('Dispatches sheet-save-start and sheet-save-end around the write', async () => {
+      window.location.hash = '#/org/repo/event-test';
+      window.fetch = wrap(() => Promise.resolve(new Response('', { status: 200 })));
+      const events = [];
+      const onStart = () => events.push('start');
+      const onEnd = () => events.push('end');
+      document.addEventListener('sheet-save-start', onStart);
+      document.addEventListener('sheet-save-end', onEnd);
+      try {
+        const result = await saveSheets([buildSheet('one', [['k'], ['v']])]);
+        expect(result).to.be.true;
+        expect(events).to.deep.equal(['start', 'end']);
+      } finally {
+        document.removeEventListener('sheet-save-start', onStart);
+        document.removeEventListener('sheet-save-end', onEnd);
+      }
+    });
+
+    it('Fires sheet-save-end even when the write fails', async () => {
+      window.location.hash = '#/org/repo/event-fail';
+      window.fetch = wrap(() => Promise.resolve(new Response('boom', { status: 500 })));
+      const events = [];
+      const onStart = () => events.push('start');
+      const onEnd = () => events.push('end');
+      document.addEventListener('sheet-save-start', onStart);
+      document.addEventListener('sheet-save-end', onEnd);
+      try {
+        const result = await saveSheets([buildSheet('one', [['k'], ['v']])]);
+        expect(result).to.be.false;
+        expect(events).to.deep.equal(['start', 'end']);
+      } finally {
+        document.removeEventListener('sheet-save-start', onStart);
+        document.removeEventListener('sheet-save-end', onEnd);
+      }
+    });
   });
 
   describe('etag drift detection', () => {

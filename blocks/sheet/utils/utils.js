@@ -112,16 +112,24 @@ export const saveSheets = async (sheets) => {
 
   const { hash } = window.location;
   const pathname = hash.replace('#', '');
-  return staleCheck.runSave(async () => {
-    const dasSave = await saveToDa(pathname, sheets);
-    if (!dasSave.ok) {
-      // eslint-disable-next-line no-console
-      console.error('Error saving sheet', dasSave);
-      return false;
-    }
-    staleCheck.markSynced(dasSave.headers.get('etag'));
-    return true;
-  });
+  // Notify listeners (da-title) so the send-button spinner plays for background
+  // saves too, not just clicks. Paired with sheet-save-end below; da-title
+  // ref-counts them so serialised saves keep the animation continuous.
+  document.dispatchEvent(new CustomEvent('sheet-save-start'));
+  try {
+    return await staleCheck.runSave(async () => {
+      const dasSave = await saveToDa(pathname, sheets);
+      if (!dasSave.ok) {
+        // eslint-disable-next-line no-console
+        console.error('Error saving sheet', dasSave);
+        return false;
+      }
+      staleCheck.markSynced(dasSave.headers.get('etag'));
+      return true;
+    });
+  } finally {
+    document.dispatchEvent(new CustomEvent('sheet-save-end'));
+  }
 };
 
 // A debounced saveSheets wrapper we can also flush and await. Kept module-local
