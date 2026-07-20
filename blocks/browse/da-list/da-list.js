@@ -36,6 +36,7 @@ export default class DaList extends LitElement {
     _confirm: { state: true },
     _confirmText: { state: true },
     _unpublish: { state: true },
+    _canUnpublish: { state: true },
     _deleteCount: { state: true },
     _deleteCountLoading: { state: true },
     _continuationToken: { state: true },
@@ -62,6 +63,7 @@ export default class DaList extends LitElement {
     this._autoCheckTimer = null;
     this._listItemPaths = new Set();
     this._selectedItems = [];
+    this._canUnpublish = true;
     this._listItems = [];
   }
 
@@ -274,6 +276,7 @@ export default class DaList extends LitElement {
     this._confirm = null;
     this._confirmText = null;
     this._unpublish = null;
+    this._canUnpublish = true;
     if (this._deleteCrawl) {
       this._deleteCrawl.cancelCrawl();
       this._deleteCrawl = null;
@@ -453,34 +456,51 @@ export default class DaList extends LitElement {
     this._confirm = { type: 'delete' };
     this._deleteCount = null;
     this._deleteCountLoading = false;
+    this._canUnpublish = true;
 
     const folders = this._selectedItems.filter((item) => !item.ext);
     const files = this._selectedItems.filter((item) => item.ext);
 
     if (folders.length === 0) {
       this._deleteCount = files.length;
-      return;
+    } else {
+      this._deleteCountLoading = true;
+      try {
+        const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
+        const crawlInstance = crawl({
+          path: folders.map((folder) => folder.path),
+          files,
+          concurrent: 5,
+        });
+        this._deleteCrawl = crawlInstance;
+        const allFiles = await crawlInstance.results;
+        // If the user cancelled/closed the dialog while we were crawling, bail out
+        if (this._confirm?.type !== 'delete' || this._deleteCrawl !== crawlInstance) return;
+        this._deleteCount = allFiles.length;
+      } finally {
+        if (this._confirm?.type === 'delete') {
+          this._deleteCountLoading = false;
+        }
+        this._deleteCrawl = null;
+      }
     }
 
-    this._deleteCountLoading = true;
-    try {
-      const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
-      const crawlInstance = crawl({
-        path: folders.map((folder) => folder.path),
-        files,
-        concurrent: 5,
-      });
-      this._deleteCrawl = crawlInstance;
-      const allFiles = await crawlInstance.results;
-      // If the user cancelled/closed the dialog while we were crawling, bail out
-      if (this._confirm?.type !== 'delete' || this._deleteCrawl !== crawlInstance) return;
-      this._deleteCount = allFiles.length;
-    } finally {
-      if (this._confirm?.type === 'delete') {
-        this._deleteCountLoading = false;
-      }
-      this._deleteCrawl = null;
-    }
+    await this.checkCanUnpublish();
+  }
+
+  async checkCanUnpublish() {
+    const [item] = this._selectedItems;
+    const isSingleUnpublishable = this._selectedItems.length === 1
+      && item.ext && item.ext !== 'link'
+      && !item.path.includes('/.trash/');
+    if (!isSingleUnpublishable) return;
+
+    this._canUnpublish = null;
+    const { status, asJson } = await getNx2Api();
+    const path = item.ext === 'html' ? item.path.slice(0, -5) : item.path;
+    const { data } = await asJson(status.get(path));
+    if (this._confirm?.type !== 'delete') return;
+    this._canUnpublish = !data || data.preview?.status === 200 || data.live?.status === 200;
   }
 
   async handleConfirmDelete() {
@@ -515,10 +535,10 @@ export default class DaList extends LitElement {
         // AEM resolves HTML pages by their extensionless path
         const aemPath = item.ext === 'html' ? item.path.slice(0, -5) : item.path;
         const previewResp = await aem.unPreview(aemPath);
-        if (!previewResp.ok) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
+        if (!previewResp.ok && previewResp.status !== 404) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
 
         const liveResp = await aem.unPublish(aemPath);
-        if (!liveResp.ok) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
+        if (!liveResp.ok && liveResp.status !== 404) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
       }
       this._itemsRemaining -= 1;
 
@@ -826,7 +846,9 @@ export default class DaList extends LitElement {
   }
 
   get _confirmContent() {
-    const noUnpub = this._selectedItems.some((item) => !item.ext || item.ext === 'link' || item.path.includes('/.trash/'));
+    const notPublished = this._canUnpublish !== true;
+    const noUnpub = notPublished
+      || this._selectedItems.some((item) => !item.ext || item.ext === 'link' || item.path.includes('/.trash/'));
     const inTrash = this._selectedItems.some((item) => item.path.includes('/.trash/'));
     const linkOnly = this._selectedItems.length === 1 && this._selectedItems[0].ext === 'link';
 
@@ -856,7 +878,7 @@ export default class DaList extends LitElement {
       const subject = requireTypedDelete
         ? `${this._deleteCount} ${this._itemString}`
         : 'this content';
-      const suffix = inTrash || linkOnly ? '' : ' Published items will remain live.';
+      const suffix = inTrash || linkOnly || notPublished ? '' : ' Published items will remain live.';
       const lead = html`<p>Are you sure you want to delete ${subject}?${suffix}</p>`;
       if (!requireTypedDelete) return lead;
       return html`
@@ -880,15 +902,23 @@ export default class DaList extends LitElement {
       </div>
     `;
 
-    if (!this._unpublish && !requireTypedDelete) return checkbox;
+    const subject = requireTypedDelete
+      ? `${this._deleteCount} ${this._itemString}`
+      : 'this content';
 
-    let heading;
+    let heading = `Are you sure you want to delete ${subject}?`;
+
+    if (!this._unpublish && !requireTypedDelete) {
+      return html`
+        <p>${heading}</p>
+        ${checkbox}
+      `;
+    }
+
     if (this._unpublish && requireTypedDelete) {
-      heading = `Are you sure you want to unpublish and delete ${this._deleteCount} ${this._itemString}?`;
+      heading = `Are you sure you want to unpublish and delete ${subject}?`;
     } else if (this._unpublish) {
       heading = 'Are you sure you want to unpublish?';
-    } else {
-      heading = `Are you sure you want to delete ${this._deleteCount} ${this._itemString}?`;
     }
 
     return html`
@@ -930,6 +960,7 @@ export default class DaList extends LitElement {
 
   renderConfirm() {
     const loading = this._deleteCountLoading;
+    const checkingUnpublish = this._canUnpublish === null;
     const count = this._deleteCount;
     const exceedsMax = !loading && count > MAX_DELETE_COUNT;
 
@@ -950,19 +981,19 @@ export default class DaList extends LitElement {
       message = `${this._itemsRemaining} remaining`;
     } else if (loading) {
       message = 'Crawling selected folders…';
+    } else if (checkingUnpublish) {
+      message = 'Checking publish status…';
     }
 
     const action = {
       style: 'negative',
       label: this._unpublish ? 'Unpublish & delete' : 'Delete',
       click: async () => this.handleConfirmDelete(),
-      disabled: yesUnconfirmed || hasRemaining || loading || exceedsMax,
+      disabled: yesUnconfirmed || hasRemaining || loading || checkingUnpublish || exceedsMax,
     };
 
     let body;
-    if (loading) {
-      body = nothing;
-    } else if (exceedsMax) {
+    if (exceedsMax) {
       body = html`<p>This selection contains more than ${MAX_DELETE_COUNT} items. Bulk deletions of this size aren't supported here — please contact your administrator to proceed.</p>`;
     } else {
       body = this._confirmContent;
