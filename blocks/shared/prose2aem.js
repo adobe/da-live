@@ -1,3 +1,5 @@
+import getPathDetails from './pathDetails.js';
+
 function setCursor(cursor, el) {
   el.id = cursor.id;
   cursor.remove();
@@ -232,11 +234,11 @@ function parseIcons(editor) {
 
 const removeEls = (els) => els.forEach((el) => el.remove());
 
-function convertFragmentUrlsToRelative(editor) {
-  const hashParts = window.location.hash.slice(2).split('/');
-  const [org, site] = hashParts;
+function convertLocalUrlsToRelative(editor) {
+  const pathDetails = getPathDetails();
+  if (!pathDetails?.org || !pathDetails?.site) return;
 
-  if (!org || !site) return;
+  const { org, site } = pathDetails;
 
   const links = editor.querySelectorAll('a[href]');
   links.forEach((link) => {
@@ -270,7 +272,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   editor.removeAttribute('translate');
 
   if (livePreview) {
-    convertFragmentUrlsToRelative(editor);
+    convertLocalUrlsToRelative(editor);
   }
 
   const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
