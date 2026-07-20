@@ -25,6 +25,7 @@ const CLOUD_ICONS = {
   disconnected: 'spectrum-Cloud-offline',
   offline: 'spectrum-Cloud-offline',
   connecting: 'cloud_refresh',
+  unsaved: 'cloud_refresh',
   error: 'spectrum-Cloud-error',
 };
 
@@ -42,14 +43,12 @@ export default class DaTitle extends LitElement {
     _actions: { state: true },
     _status: { state: true },
     _isSending: { state: true },
-    _bgSaveCount: { state: true },
     _dialog: { state: true },
   };
 
   constructor() {
     super();
     this._actions = {};
-    this._bgSaveCount = 0;
   }
 
   connectedCallback() {
@@ -57,34 +56,6 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._actionsVis = [];
-    if (this.details.view === 'sheet') {
-      this.collabStatus = window.navigator.onLine
-        ? 'connected'
-        : 'offline';
-
-      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
-      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
-    }
-
-    // Reflect background saves (debounced autosave, restoreVersion) in the
-    // send-button spinner. Ref-counted so serialised saves keep the animation
-    // continuous rather than flickering off between them.
-    this._onBgSaveStart = () => { this._bgSaveCount += 1; };
-    this._onBgSaveEnd = () => {
-      this._bgSaveCount = Math.max(0, this._bgSaveCount - 1);
-    };
-    document.addEventListener('sheet-save-start', this._onBgSaveStart);
-    document.addEventListener('sheet-save-end', this._onBgSaveEnd);
-  }
-
-  disconnectedCallback() {
-    document.removeEventListener('sheet-save-start', this._onBgSaveStart);
-    document.removeEventListener('sheet-save-end', this._onBgSaveEnd);
-    super.disconnectedCallback();
-  }
-
-  get _isAutosaving() {
-    return this._bgSaveCount > 0;
   }
 
   update(changed) {
@@ -438,18 +409,12 @@ export default class DaTitle extends LitElement {
   }
 
   renderCollab() {
-    // The sheet view only ever sets collabStatus to 'connected' or 'offline',
-    // so the cloud icon's other states (connecting/error) are unused there.
-    // We reuse the slot to show autosave progress instead — the send-button
-    // spinner is reserved for explicit action clicks.
-    const autosaving = this._isAutosaving && this.details?.view === 'sheet';
-    const iconId = autosaving ? 'cloud_refresh' : CLOUD_ICONS[this.collabStatus];
-    const tooltip = autosaving ? 'Saving…' : this.collabStatus;
+    const tooltip = this.collabStatus === 'unsaved' ? 'Unsaved changes' : this.collabStatus;
     return html`
       <div class="collab-status">
         ${this.collabUsers ? this.renderCollabUsers() : nothing}
-        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus} ${autosaving ? 'is-saving' : ''}" data-popup-content="${tooltip}" @click=${this.popover}>
-         <svg class="icon"><use href="#${iconId}"/></svg>
+        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${tooltip}" @click=${this.popover}>
+         <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
         </div>
       </div>`;
   }

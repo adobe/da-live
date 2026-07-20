@@ -29,22 +29,28 @@ class StaleCheck {
     this._intervalId = null;
     this._doc = null;
     this._lastEtag = null;
+    const wasDirty = this._hasLocalEdits;
     this._hasLocalEdits = false;
     this._saveBlocked = false;
     this._onStale = null;
     // Detach so a new file's load isn't gated on the previous file's save.
     this._pendingSave = null;
+    if (wasDirty) document.dispatchEvent(new CustomEvent('sheet-clean'));
   }
 
   markSynced(etag) {
     this._lastEtag = etag;
+    const wasDirty = this._hasLocalEdits;
     this._hasLocalEdits = false;
     // Clear the post-Cancel block: a fresh sync (load or save) is the recovery path.
     this._saveBlocked = false;
+    if (wasDirty) document.dispatchEvent(new CustomEvent('sheet-clean'));
   }
 
   markEdited() {
+    const wasClean = !this._hasLocalEdits;
     this._hasLocalEdits = true;
+    if (wasClean) document.dispatchEvent(new CustomEvent('sheet-dirty'));
   }
 
   blockSaves() {
@@ -112,24 +118,16 @@ export const saveSheets = async (sheets) => {
 
   const { hash } = window.location;
   const pathname = hash.replace('#', '');
-  // Notify listeners (da-title) so the send-button spinner plays for background
-  // saves too, not just clicks. Paired with sheet-save-end below; da-title
-  // ref-counts them so serialised saves keep the animation continuous.
-  document.dispatchEvent(new CustomEvent('sheet-save-start'));
-  try {
-    return await staleCheck.runSave(async () => {
-      const dasSave = await saveToDa(pathname, sheets);
-      if (!dasSave.ok) {
-        // eslint-disable-next-line no-console
-        console.error('Error saving sheet', dasSave);
-        return false;
-      }
-      staleCheck.markSynced(dasSave.headers.get('etag'));
-      return true;
-    });
-  } finally {
-    document.dispatchEvent(new CustomEvent('sheet-save-end'));
-  }
+  return staleCheck.runSave(async () => {
+    const dasSave = await saveToDa(pathname, sheets);
+    if (!dasSave.ok) {
+      // eslint-disable-next-line no-console
+      console.error('Error saving sheet', dasSave);
+      return false;
+    }
+    staleCheck.markSynced(dasSave.headers.get('etag'));
+    return true;
+  });
 };
 
 const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
@@ -177,8 +175,6 @@ export async function showDaDialog({ title, body, confirmLabel }) {
   });
 }
 
-// Convert a 1-indexed column number into the spreadsheet letter (1 → A, 26 → Z,
-// 27 → AA, ...). Values ≤ 0 return an empty string.
 export function colIndexToLetter(n) {
   let x = n;
   let s = '';
@@ -190,9 +186,7 @@ export function colIndexToLetter(n) {
   return s;
 }
 
-// Mirrors the drop rule in formatSheetData: any column whose header cell is
-// falsy is discarded on save. Returns one entry per affected sheet, listing the
-// 1-indexed column numbers whose data would be lost.
+// Mirrors formatSheetData's drop rule: columns with a falsy header lose their data on save.
 export function findColumnsWithDataButNoHeader(sheets) {
   const affected = [];
   sheets.forEach((sheet) => {

@@ -72,39 +72,36 @@ describe('sheet/utils utils', () => {
       expect(result).to.be.false;
     });
 
-    it('Dispatches sheet-save-start and sheet-save-end around the write', async () => {
-      window.location.hash = '#/org/repo/event-test';
-      window.fetch = wrap(() => Promise.resolve(new Response('', { status: 200 })));
+    it('Fires sheet-dirty on the clean→dirty transition and sheet-clean on markSynced', () => {
       const events = [];
-      const onStart = () => events.push('start');
-      const onEnd = () => events.push('end');
-      document.addEventListener('sheet-save-start', onStart);
-      document.addEventListener('sheet-save-end', onEnd);
+      const onDirty = () => events.push('dirty');
+      const onClean = () => events.push('clean');
+      document.addEventListener('sheet-dirty', onDirty);
+      document.addEventListener('sheet-clean', onClean);
       try {
-        const result = await saveSheets([buildSheet('one', [['k'], ['v']])]);
-        expect(result).to.be.true;
-        expect(events).to.deep.equal(['start', 'end']);
+        staleCheck.markSynced('"initial"');
+        staleCheck.markEdited();
+        staleCheck.markEdited();
+        staleCheck.markEdited();
+        staleCheck.markSynced('"saved"');
+        expect(events).to.deep.equal(['dirty', 'clean']);
       } finally {
-        document.removeEventListener('sheet-save-start', onStart);
-        document.removeEventListener('sheet-save-end', onEnd);
+        document.removeEventListener('sheet-dirty', onDirty);
+        document.removeEventListener('sheet-clean', onClean);
       }
     });
 
-    it('Fires sheet-save-end even when the write fails', async () => {
-      window.location.hash = '#/org/repo/event-fail';
-      window.fetch = wrap(() => Promise.resolve(new Response('boom', { status: 500 })));
+    it('Fires sheet-clean when stop() drops a dirty session', () => {
       const events = [];
-      const onStart = () => events.push('start');
-      const onEnd = () => events.push('end');
-      document.addEventListener('sheet-save-start', onStart);
-      document.addEventListener('sheet-save-end', onEnd);
+      const onClean = () => events.push('clean');
+      document.addEventListener('sheet-clean', onClean);
       try {
-        const result = await saveSheets([buildSheet('one', [['k'], ['v']])]);
-        expect(result).to.be.false;
-        expect(events).to.deep.equal(['start', 'end']);
+        staleCheck.start({ details: { org: 'o', site: 's', path: '/p', view: 'sheet' }, onStale: () => {} });
+        staleCheck.markEdited();
+        staleCheck.stop();
+        expect(events).to.deep.equal(['clean']);
       } finally {
-        document.removeEventListener('sheet-save-start', onStart);
-        document.removeEventListener('sheet-save-end', onEnd);
+        document.removeEventListener('sheet-clean', onClean);
       }
     });
   });
