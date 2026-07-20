@@ -83,8 +83,8 @@ export default class DaTitle extends LitElement {
     super.disconnectedCallback();
   }
 
-  get _showSpinner() {
-    return this._isSending || this._bgSaveCount > 0;
+  get _isAutosaving() {
+    return this._bgSaveCount > 0;
   }
 
   update(changed) {
@@ -438,11 +438,18 @@ export default class DaTitle extends LitElement {
   }
 
   renderCollab() {
+    // The sheet view only ever sets collabStatus to 'connected' or 'offline',
+    // so the cloud icon's other states (connecting/error) are unused there.
+    // We reuse the slot to show autosave progress instead — the send-button
+    // spinner is reserved for explicit action clicks.
+    const autosaving = this._isAutosaving && this.details?.view === 'sheet';
+    const iconId = autosaving ? 'cloud_refresh' : CLOUD_ICONS[this.collabStatus];
+    const tooltip = autosaving ? 'Saving…' : this.collabStatus;
     return html`
       <div class="collab-status">
         ${this.collabUsers ? this.renderCollabUsers() : nothing}
-        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${this.collabStatus}" @click=${this.popover}>
-         <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
+        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus} ${autosaving ? 'is-saving' : ''}" data-popup-content="${tooltip}" @click=${this.popover}>
+         <svg class="icon"><use href="#${iconId}"/></svg>
         </div>
       </div>`;
   }
@@ -469,10 +476,10 @@ export default class DaTitle extends LitElement {
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._canPrepare ? html`<da-prepare .details=${this.details}></da-prepare>` : nothing}
           ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._actions.available?.length === 1 && !this._showSpinner ? 'has-one-action' : ''} ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
+          <div class="da-title-actions ${this._actions.available?.length === 1 && !this._isSending ? 'has-one-action' : ''} ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
             ${this.renderActions()}
             <button @click=${this.toggleActions} class="con-button blue da-title-action-send ${this._status ? 'is-error' : ''}" aria-label="Send">
-              <svg class="da-title-action-send-icon ${this._showSpinner ? 'is-sending' : ''}" viewBox="0 0 20 20">
+              <svg class="da-title-action-send-icon ${this._isSending ? 'is-sending' : ''}" viewBox="0 0 20 20">
                 <use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish"/>
               </svg>
             </button>
