@@ -233,25 +233,19 @@ function parseIcons(editor) {
 const removeEls = (els) => els.forEach((el) => el.remove());
 
 function convertFragmentUrlsToRelative(editor) {
-  const HELIX_URL_REGEXP = /^https:\/\/.*\.(aem|hlx3?)\.(live|page)(\/|$)/;
+  const EDS_FRAGMENT_URL = /^https:\/\/[^\/]*--[^\/]*\.aem\.(live|page)\/(?:.*\/)?fragments\//;
 
   const links = editor.querySelectorAll('a[href]');
   links.forEach((link) => {
     const url = link.getAttribute('href');
 
-    if (!url || !url.startsWith('https://')) {
+    if (!url || !EDS_FRAGMENT_URL.test(url)) {
       return;
     }
 
     try {
-      const parsed = new URL(url);
-      const { host, pathname, search, hash } = parsed;
-
-      if (pathname.includes('/fragments/')
-          && host.includes('--')
-          && HELIX_URL_REGEXP.test(url)) {
-        link.setAttribute('href', `${pathname}${search}${hash}`);
-      }
+      const { pathname, search, hash } = new URL(url);
+      link.setAttribute('href', `${pathname}${search}${hash}`);
     } catch {
       // ignore
     }

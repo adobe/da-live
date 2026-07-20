@@ -450,10 +450,10 @@ describe('prose2aem fragment URL conversion', () => {
     expect(link.getAttribute('href')).to.equal('https://example.com/fragments/something');
   });
 
-  it('converts hlx.live and hlx.page URLs', () => {
+  it('converts both .aem.live and .aem.page URLs', () => {
     const editor = makeEditor(`
-      <p><a href="https://main--repo--org.hlx.live/fragments/hero">Fragment 1</a></p>
-      <p><a href="https://main--repo--org.hlx.page/fragments/footer">Fragment 2</a></p>
+      <p><a href="https://main--repo--org.aem.live/fragments/hero">Fragment 1</a></p>
+      <p><a href="https://main--repo--org.aem.page/fragments/footer">Fragment 2</a></p>
     `);
 
     prose2aem(editor, true, false);
