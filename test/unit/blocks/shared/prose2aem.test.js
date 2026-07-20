@@ -377,7 +377,7 @@ describe('prose2aem with isFragment parameter', () => {
   });
 });
 
-describe('prose2aem fragment URL conversion', () => {
+describe('prose2aem same-site URL conversion', () => {
   function makeEditor(innerHtml) {
     const editor = document.createElement('div');
     editor.innerHTML = innerHtml;
@@ -394,7 +394,7 @@ describe('prose2aem fragment URL conversion', () => {
     window.location.hash = originalHash;
   });
 
-  it('converts same-site fragment URLs to relative when livePreview=true', () => {
+  it('converts same-site URLs to relative when livePreview=true', () => {
     window.location.hash = '#/org/repo/path';
     const editor = makeEditor(`
       <p><a href="https://main--repo--org.aem.live/fragments/tabs-homepage">Fragment</a></p>
@@ -406,7 +406,7 @@ describe('prose2aem fragment URL conversion', () => {
     expect(link.getAttribute('href')).to.equal('/fragments/tabs-homepage');
   });
 
-  it('does not convert fragment URLs when livePreview=false', () => {
+  it('does not convert URLs when livePreview=false', () => {
     window.location.hash = '#/org/repo/path';
     const editor = makeEditor(`
       <p><a href="https://main--repo--org.aem.live/fragments/tabs-homepage">Fragment</a></p>
@@ -492,7 +492,7 @@ describe('prose2aem fragment URL conversion', () => {
     expect(links[1].getAttribute('href')).to.equal('/fragments/footer');
   });
 
-  it('handles relative fragment URLs without conversion', () => {
+  it('handles relative URLs without conversion', () => {
     window.location.hash = '#/org/repo/path';
     const editor = makeEditor(`
       <p><a href="/fragments/tabs">Fragment</a></p>
