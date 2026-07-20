@@ -8,10 +8,12 @@ class StaleCheck {
   constructor() {
     this._intervalId = null;
     this._doc = null;
-    this._lastJsonString = null;
+    this._lastEtag = null;
     this._hasLocalEdits = false;
     this._saveBlocked = false;
     this._onStale = null;
+    // Set while a POST is in flight so reads (drift + reload) queue behind it.
+    this._pendingSave = null;
   }
 
   // `details` is the pathDetails object ({ org, site, path, view }).
@@ -26,14 +28,16 @@ class StaleCheck {
     if (this._intervalId) clearInterval(this._intervalId);
     this._intervalId = null;
     this._doc = null;
-    this._lastJsonString = null;
+    this._lastEtag = null;
     this._hasLocalEdits = false;
     this._saveBlocked = false;
     this._onStale = null;
+    // Detach so a new file's load isn't gated on the previous file's save.
+    this._pendingSave = null;
   }
 
-  markSynced(json) {
-    this._lastJsonString = JSON.stringify(json);
+  markSynced(etag) {
+    this._lastEtag = etag;
     this._hasLocalEdits = false;
     // Clear the post-Cancel block: a fresh sync (load or save) is the recovery path.
     this._saveBlocked = false;
@@ -51,21 +55,43 @@ class StaleCheck {
     return this._saveBlocked;
   }
 
+  // Loops so a save that started mid-wait is also awaited.
+  async awaitPendingSave() {
+    while (this._pendingSave) {
+      // eslint-disable-next-line no-await-in-loop
+      await this._pendingSave;
+    }
+  }
+
+  async runSave(saveOp) {
+    await this.awaitPendingSave();
+    let resolve;
+    const p = new Promise((r) => { resolve = r; });
+    this._pendingSave = p;
+    try {
+      return await saveOp();
+    } finally {
+      resolve();
+      if (this._pendingSave === p) this._pendingSave = null;
+    }
+  }
+
   // Returns true if drift was detected (caller should not write).
   // Skips while blocked so a stale dialog doesn't keep re-firing on subsequent edits/polls.
   async checkForDrift() {
     if (this._saveBlocked) return true;
+    await this.awaitPendingSave();
     try {
       const { config, source } = await getNx2Api();
       const { org, site, path, view } = this._doc;
 
       const resp = view === 'config'
-        ? await config.get({ org, site })
-        : await source.get({ org, site, path });
+        ? await config.get({ org, site, cachebust: true })
+        : await source.get({ org, site, path, cachebust: true });
       if (!resp.ok) return false;
+      const etag = resp.headers.get('etag');
+      if (!etag || !this._lastEtag || etag === this._lastEtag) return false;
       const json = await resp.json();
-      const text = JSON.stringify(json);
-      if (text === this._lastJsonString) return false;
       this._onStale({ json, dirty: this._hasLocalEdits });
       return true;
     } catch {
@@ -78,8 +104,7 @@ class StaleCheck {
 export const staleCheck = new StaleCheck();
 
 export const saveSheets = async (sheets) => {
-  const convertedJson = convertSheets(sheets);
-  document.querySelector('da-sheet-panes').data = convertedJson;
+  document.querySelector('da-sheet-panes').data = convertSheets(sheets);
 
   // Bail before writing if the remote moved out from under us — protects against
   // last-write-wins between concurrent editors. Drift triggers the onStale flow.
@@ -87,14 +112,16 @@ export const saveSheets = async (sheets) => {
 
   const { hash } = window.location;
   const pathname = hash.replace('#', '');
-  const dasSave = await saveToDa(pathname, sheets);
-  if (!dasSave.ok) {
-    // eslint-disable-next-line no-console
-    console.error('Error saving sheet', dasSave);
-    return false;
-  }
-  staleCheck.markSynced(convertedJson);
-  return true;
+  return staleCheck.runSave(async () => {
+    const dasSave = await saveToDa(pathname, sheets);
+    if (!dasSave.ok) {
+      // eslint-disable-next-line no-console
+      console.error('Error saving sheet', dasSave);
+      return false;
+    }
+    staleCheck.markSynced(dasSave.headers.get('etag'));
+    return true;
+  });
 };
 
 // A debounced saveSheets wrapper we can also flush and await. Kept module-local
