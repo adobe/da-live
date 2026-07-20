@@ -1,4 +1,4 @@
-import { convertSheets, debounce, saveToDa } from '../../edit/utils/helpers.js';
+import { convertSheets, saveToDa } from '../../edit/utils/helpers.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 
 const DEBOUNCE_TIME = 1000;
@@ -97,7 +97,45 @@ export const saveSheets = async (sheets) => {
   return true;
 };
 
-const debouncedSaveSheets = debounce(saveSheets, DEBOUNCE_TIME);
+// A debounced saveSheets wrapper we can also flush and await. Kept module-local
+// so preview/publish can drain a pending or in-flight background save before
+// issuing their own write — otherwise the two writes can race last-write-wins.
+let pendingTimer = null;
+let pendingSheets = null;
+let inflightSave = null;
+
+function runSave(sheets) {
+  const promise = saveSheets(sheets);
+  inflightSave = promise;
+  promise.finally(() => {
+    if (inflightSave === promise) inflightSave = null;
+  });
+  return promise;
+}
+
+function scheduleSave(sheets) {
+  pendingSheets = sheets;
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => {
+    pendingTimer = null;
+    const next = pendingSheets;
+    pendingSheets = null;
+    if (next) runSave(next);
+  }, DEBOUNCE_TIME);
+}
+
+export async function flushPendingSave() {
+  if (pendingTimer) {
+    clearTimeout(pendingTimer);
+    pendingTimer = null;
+    const next = pendingSheets;
+    pendingSheets = null;
+    if (next) runSave(next);
+  }
+  if (inflightSave) {
+    try { await inflightSave; } catch { /* swallowed — caller re-issues its own save */ }
+  }
+}
 
 export async function restoreVersion(daTitle, daSheet, versionData) {
   const initSheet = (await import('./index.js')).default;
@@ -110,7 +148,7 @@ export function handleSave(jexcel, view) {
   staleCheck.markEdited();
   if (view === 'config') return;
   if (staleCheck.isBlocked) return;
-  debouncedSaveSheets(jexcel);
+  scheduleSave(jexcel);
 }
 
 export async function showDaDialog({ title, body, confirmLabel }) {
@@ -140,4 +178,69 @@ export async function showDaDialog({ title, body, confirmLabel }) {
     daDialog.addEventListener('close', () => finish('cancel'));
     document.body.append(daDialog);
   });
+}
+
+// Convert a 1-indexed column number into the spreadsheet letter (1 → A, 26 → Z,
+// 27 → AA, ...). Values ≤ 0 return an empty string.
+export function colIndexToLetter(n) {
+  let x = n;
+  let s = '';
+  while (x > 0) {
+    const rem = (x - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    x = Math.floor((x - 1) / 26);
+  }
+  return s;
+}
+
+// Mirrors the drop rule in formatSheetData: any column whose header cell is
+// falsy is discarded on save. Returns one entry per affected sheet, listing the
+// 1-indexed column numbers whose data would be lost.
+export function findColumnsWithDataButNoHeader(sheets) {
+  const affected = [];
+  sheets.forEach((sheet) => {
+    const data = sheet.getData?.();
+    if (!data?.length) return;
+    const [headers, ...rows] = data;
+    if (!headers) return;
+    const cols = [];
+    headers.forEach((header, colIdx) => {
+      if (header) return;
+      const hasData = rows.some((row) => {
+        const cell = row?.[colIdx];
+        return cell !== undefined && cell !== null && String(cell) !== '';
+      });
+      if (hasData) cols.push(colIdx + 1);
+    });
+    if (cols.length) affected.push({ name: sheet.name, cols });
+  });
+  return affected;
+}
+
+export async function confirmSaveWithMissingHeaders(affected) {
+  const body = document.createElement('div');
+  const intro = document.createElement('p');
+  intro.textContent = 'These columns have data but no header. Their data will be lost when the sheet is saved:';
+  body.append(intro);
+
+  const list = document.createElement('ul');
+  affected.forEach(({ name, cols }) => {
+    const item = document.createElement('li');
+    const label = cols.length === 1 ? 'Column' : 'Columns';
+    const letters = cols.map(colIndexToLetter).join(', ');
+    item.textContent = `Sheet "${name}" — ${label} ${letters}`;
+    list.append(item);
+  });
+  body.append(list);
+
+  const outro = document.createElement('p');
+  outro.textContent = 'Add a header to keep the column, or save anyway to drop it.';
+  body.append(outro);
+
+  const result = await showDaDialog({
+    title: 'Columns without headers',
+    body,
+    confirmLabel: 'Save anyway',
+  });
+  return result === 'confirm';
 }

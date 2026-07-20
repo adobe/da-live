@@ -224,6 +224,13 @@ export default class DaTitle extends LitElement {
 
     const aemPath = `/${org}/${site}${path}`;
 
+    // Drain any pending/in-flight background save before preview/publish so it
+    // can't race the write we're about to issue (last-write-wins on DA).
+    if (view === 'sheet' && (action === 'preview' || action === 'publish')) {
+      const { flushPendingSave } = await import('../../sheet/utils/utils.js');
+      await flushPendingSave();
+    }
+
     // Bail before writing if the remote drifted under us — protects against
     // last-write-wins. Drift triggers the stale-content dialog via onStale.
     if (view === 'sheet' || view === 'config') {
@@ -236,6 +243,20 @@ export default class DaTitle extends LitElement {
 
     // Only save to DA if it is a sheet or config
     if (view === 'sheet') {
+      if (action === 'save' && this.sheet) {
+        const {
+          findColumnsWithDataButNoHeader,
+          confirmSaveWithMissingHeaders,
+        } = await import('../../sheet/utils/utils.js');
+        const affected = findColumnsWithDataButNoHeader(this.sheet);
+        if (affected.length) {
+          const proceed = await confirmSaveWithMissingHeaders(affected);
+          if (!proceed) {
+            this._isSending = false;
+            return;
+          }
+        }
+      }
       const sheetPath = fullpath.replace('.json', '');
       const dasSave = await saveToDa(sheetPath, this.sheet);
       if (!dasSave.ok) return;
