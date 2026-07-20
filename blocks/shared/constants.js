@@ -42,7 +42,9 @@ const DA_ETC_ENVS = {
   local: 'http://localhost:8787',
 };
 
-function getDaEnv(location, key, envs, localDefault = 'prod') {
+const LOCALHOST_DEFAULTS = { 'da-admin': 'stage' };
+
+function getDaEnv(location, key, envs) {
   const { href } = location;
   const url = new URL(href);
   const query = url.searchParams.get(key);
@@ -51,11 +53,9 @@ function getDaEnv(location, key, envs, localDefault = 'prod') {
   } else if (query) {
     localStorage.setItem(key, query);
   }
-  // On localhost the IMS token is always minted against IMS stage, so the DA
-  // admin default must be stage there too — otherwise a stage token hits prod
-  // admin, 401s, and da-nx redirects to /not-found.
   const isLocal = url.hostname.includes('local');
-  const env = envs[localStorage.getItem(key)] || envs[isLocal ? localDefault : 'prod'] || envs.prod;
+  const fallback = isLocal ? (LOCALHOST_DEFAULTS[key] || 'prod') : 'prod';
+  const env = envs[localStorage.getItem(key)] || envs[fallback] || envs.prod;
   // TODO: INFRA
   return location.origin === 'https://da.page' ? env.replace('.live', '.page') : env;
 }
@@ -64,12 +64,12 @@ export const getDaAdmin = (() => {
   let daAdmin;
   return (location) => {
     if (!location && daAdmin) return daAdmin;
-    daAdmin = getDaEnv(location || window.location, 'da-admin', DA_ADMIN_ENVS, 'stage');
+    daAdmin = getDaEnv(location || window.location, 'da-admin', DA_ADMIN_ENVS);
     return daAdmin;
   };
 })();
 
-export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS, 'stage'))();
+export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
 export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();
 export const CON_ORIGIN = (() => getDaEnv(window.location, 'da-content', DA_CONTENT_ENVS))();
 export const LIVE_PREVIEW_DOMAIN = (() => getDaEnv(window.location, 'da-live-preview', DA_LIVE_PREVIEW_ENVS))();
