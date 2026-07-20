@@ -233,7 +233,7 @@ function parseIcons(editor) {
 const removeEls = (els) => els.forEach((el) => el.remove());
 
 function convertFragmentUrlsToRelative(editor) {
-  const EDS_FRAGMENT_URL = /^https:\/\/[^\/]*--[^\/]*\.aem\.(live|page)\/(?:.*\/)?fragments\//;
+  const EDS_FRAGMENT_URL = /^https:\/\/[^/]*--[^/]*\.aem\.(live|page)\/(?:.*\/)?fragments\//;
 
   const links = editor.querySelectorAll('a[href]');
   links.forEach((link) => {
