@@ -226,31 +226,39 @@ export default class DaTitle extends LitElement {
 
     // Bail before writing if the remote drifted under us — protects against
     // last-write-wins. Drift triggers the stale-content dialog via onStale.
+    // The POST itself runs inside staleCheck.runSave so it shares the same
+    // serialisation gate as the debounced saveSheets flow — otherwise a
+    // Preview/Publish click could race a background autosave on the same file.
     if (view === 'sheet' || view === 'config') {
       const { staleCheck } = await import('../../sheet/utils/utils.js');
       if (await staleCheck.checkForDrift()) {
         this._isSending = false;
         return;
       }
-    }
 
-    // Only save to DA if it is a sheet or config
-    if (view === 'sheet') {
-      const sheetPath = fullpath.replace('.json', '');
-      const dasSave = await saveToDa(sheetPath, this.sheet);
-      if (!dasSave.ok) return;
-    }
-    if (view === 'config') {
-      const daConfigResp = await saveDaConfig(fullpath, this.sheet);
-      if (!daConfigResp.ok) {
-        // eslint-disable-next-line no-console
-        console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
-        return;
-      }
-    }
-    if (view === 'sheet' || view === 'config') {
-      // Tell anything listening save was successful
-      this.handleSuccess('save');
+      const savedOk = await staleCheck.runSave(async () => {
+        let resp;
+        if (view === 'sheet') {
+          const sheetPath = fullpath.replace('.json', '');
+          resp = await saveToDa(sheetPath, this.sheet);
+        } else {
+          resp = await saveDaConfig(fullpath, this.sheet);
+        }
+        if (!resp.ok) {
+          if (view === 'config') {
+            // eslint-disable-next-line no-console
+            console.log('Saving configuration failed because:', resp.status, await resp.text());
+          }
+          return false;
+        }
+        // markSynced inside runSave so _lastEtag is updated before pendingSave
+        // resolves — a concurrent read that unblocks on pendingSave otherwise
+        // sees a stale baseline etag.
+        staleCheck.markSynced(resp.headers.get('etag'));
+        this.handleSuccess('save');
+        return true;
+      });
+      if (!savedOk) return;
     }
 
     // AEM Actions
