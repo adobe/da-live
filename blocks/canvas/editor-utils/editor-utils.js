@@ -192,6 +192,21 @@ export function getInstrumentedHTML(view) {
     div.insertAdjacentElement('beforebegin', blockMarker);
   });
 
+  const originalImages = view.dom.querySelectorAll('img');
+  const clonedImages = editorClone.querySelectorAll('img');
+  originalImages.forEach((originalImage, index) => {
+    if (originalImage.matches('.ProseMirror-separator, .ProseMirror-trailingBreak')) return;
+    const clonedImage = clonedImages[index];
+    if (!clonedImage) return;
+    try {
+      const pos = view.posAtDOM(originalImage, 0);
+      clonedImage.setAttribute('data-image-index', pos);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Could not find position for image:', e);
+    }
+  });
+
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
 
   remoteCursors.forEach((remoteCursor) => {

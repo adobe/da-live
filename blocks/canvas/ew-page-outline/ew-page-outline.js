@@ -14,6 +14,7 @@ import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_BLOCK_ICON_SRC = '/img/icons/s2-icon-tableadd-20-n.svg';
+const DRAG_ICON_SRC = '/img/icons/s2-icon-draghandle-20-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -256,6 +257,9 @@ class EwPageOutline extends LitElement {
               </svg>
             </button>` : nothing}
           ${this._renderDeleteButton(OUTLINE_TYPES.SECTION, sec.sectionIndex)}
+          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+                <use href="${DRAG_ICON_SRC}#icon"></use>
+              </svg>
         </div>
         <ul class="block-list" role="group"
             aria-label="Blocks in section ${sec.sectionIndex + 1}">
@@ -265,7 +269,7 @@ class EwPageOutline extends LitElement {
                 <span class="empty-label">No blocks</span>
               </li>`
         : sec.blocks.map(({ name, blockIndex }, blockIdx) => html`
-            <li class="block-item" role="treeitem"
+            <li class="block-item ${this._selectedBlockIndex === blockIndex ? 'selected' : ''}" role="treeitem"
                 data-block-index="${blockIndex}"
                 tabindex="${isFirstSection && blockIdx === 0 ? '0' : '-1'}"
                 aria-selected="${this._selectedBlockIndex === blockIndex}"
@@ -277,6 +281,9 @@ class EwPageOutline extends LitElement {
                 @click=${() => this._select(blockIndex)}>
               <span class="block-name">${name}</span>
               ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, blockIndex)}
+              <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
+                <use href="${DRAG_ICON_SRC}#icon"></use>
+              </svg>
             </li>`)}
         </ul>
       </li>`;
