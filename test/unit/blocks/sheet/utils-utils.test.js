@@ -116,6 +116,30 @@ describe('sheet/utils utils', () => {
       const result = await saveSheets(sheets);
       expect(result).to.be.true;
     });
+
+    it('treats a weak server etag as equal to a strong baseline (no phantom drift)', async () => {
+      // Cloudflare returns a weak etag (W/"h") on the gzipped GET while a create
+      // returns a strong etag ("h") for the same content. These must compare equal.
+      let onStaleFired = false;
+      staleCheck.start({ details: DETAILS, onStale: () => { onStaleFired = true; } });
+      staleCheck.markSynced('"baseline"');
+
+      window.location.hash = '#/org/repo/sheet';
+      window.fetch = wrap(async (url, opts) => {
+        if (opts?.method === 'POST' || opts?.method === 'PUT') {
+          return new Response('', { status: 200, headers: { ETag: '"next"' } });
+        }
+        return new Response(JSON.stringify(serverJson), {
+          status: 200,
+          headers: { ETag: 'W/"baseline"', 'Content-Type': 'application/json' },
+        });
+      });
+
+      const sheets = [buildSheet('data', [['key'], ['a']])];
+      const result = await saveSheets(sheets);
+      expect(result).to.be.true;
+      expect(onStaleFired).to.be.false;
+    });
   });
 
   describe('handleSave', () => {
