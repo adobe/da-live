@@ -1,5 +1,5 @@
 import { getNx } from '../../../../scripts/utils.js';
-import { MessageTypes } from '../../utils/quick-edit-messages.js';
+import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
 
 const { DA_ADMIN, DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -93,7 +93,7 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     if (!resp.ok) {
       const error = `Upload failed with status ${resp.status}`;
       ctx.port.postMessage({
-        type: MessageTypes.IMAGE_ERROR,
+        type: MESSAGE_TYPES.IMAGE_ERROR,
         error,
         originalSrc,
         payload: { error, originalSrc },
@@ -107,7 +107,7 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     updateImageInDocument(ctx.view, originalSrc, newSrc);
 
     ctx.port.postMessage({
-      type: MessageTypes.UPDATE_IMAGE_SRC,
+      type: MESSAGE_TYPES.UPDATE_IMAGE_SRC,
       newSrc,
       originalSrc,
       payload: { newSrc, originalSrc },
@@ -116,7 +116,7 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     // eslint-disable-next-line no-console
     console.error('Error replacing image:', error);
     ctx.port.postMessage({
-      type: MessageTypes.IMAGE_ERROR,
+      type: MESSAGE_TYPES.IMAGE_ERROR,
       error: error.message,
       originalSrc,
       payload: { error: error.message, originalSrc },

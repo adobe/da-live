@@ -1,5 +1,5 @@
 // Test fixture mirroring da-nx's nx/utils/message-types.js.
-export const MessageTypes = Object.freeze({
+export const MESSAGE_TYPES = Object.freeze({
   INIT: 'init',
   READY: 'ready',
 

@@ -3,7 +3,7 @@ import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { getSelectionToolbar } from './selection-toolbar.js';
-import { MessageTypes } from '../utils/quick-edit-messages.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -80,7 +80,7 @@ export function updateState(data, ctx) {
         const editorState = syncNode.toJSON();
         const { cursorOffset } = data;
         ctx.port.postMessage({
-          type: MessageTypes.SET_EDITOR_STATE,
+          type: MESSAGE_TYPES.SET_EDITOR_STATE,
           editorState,
           cursorOffset,
           payload: { editorState, cursorOffset },
@@ -111,7 +111,7 @@ export function getEditor(data, ctx) {
     const editorState = nodeAtBefore.toJSON();
     const newCursorOffset = before + 1;
     ctx.port.postMessage({
-      type: MessageTypes.SET_EDITOR_STATE,
+      type: MESSAGE_TYPES.SET_EDITOR_STATE,
       editorState,
       cursorOffset: newCursorOffset,
       payload: { editorState, cursorOffset: newCursorOffset },
@@ -336,13 +336,13 @@ export const editorSelectChange = (() => {
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: MessageTypes.SET_BODY, body, payload: { body } });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, body, payload: { body } });
   return body;
 }
 
 export function updateCursors(ctx) {
   const cursors = extractCursors(ctx.view);
-  ctx.port.postMessage({ type: MessageTypes.SET_CURSORS, cursors, payload: { cursors } });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_CURSORS, cursors, payload: { cursors } });
 }
 
 // --- preview.js ---

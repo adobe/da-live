@@ -3,7 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
-import { MessageTypes } from '../utils/quick-edit-messages.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -162,8 +162,8 @@ export class EwEditorWysiwyg extends LitElement {
     const { port1, port2 } = new MessageChannel();
     this._quickEditLocalPort = port1;
     port1.onmessage = (ev) => {
-      // @deprecated flat `ready` — prefer `type === MessageTypes.READY` (da-nx now sends both).
-      const isReady = ev.data?.type === MessageTypes.READY || ev.data?.ready === true;
+      // @deprecated flat `ready` — prefer `type === MESSAGE_TYPES.READY` (da-nx now sends both).
+      const isReady = ev.data?.type === MESSAGE_TYPES.READY || ev.data?.ready === true;
       if (!isReady) return;
       this._quickEditLocalPort = null;
       onReady(port1);
@@ -174,7 +174,7 @@ export class EwEditorWysiwyg extends LitElement {
       iframe.contentWindow.postMessage({
         init: config,
         location,
-        type: MessageTypes.INIT,
+        type: MESSAGE_TYPES.INIT,
         payload: { config, location },
       }, '*', [port2]);
     } catch (err) {
