@@ -10,6 +10,8 @@ const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 describe('da-media', () => {
   let el;
+  let revokedObjectUrls;
+  let savedRevokeObjectURL;
 
   async function fixture(details) {
     const element = document.createElement('da-media');
@@ -19,8 +21,15 @@ describe('da-media', () => {
     return element;
   }
 
+  beforeEach(() => {
+    revokedObjectUrls = [];
+    savedRevokeObjectURL = URL.revokeObjectURL;
+    URL.revokeObjectURL = (url) => revokedObjectUrls.push(url);
+  });
+
   afterEach(() => {
     if (el && el.parentElement) el.remove();
+    URL.revokeObjectURL = savedRevokeObjectURL;
     el = null;
   });
 
@@ -50,5 +59,12 @@ describe('da-media', () => {
   it('Sets the document title from details.name', async () => {
     el = await fixture({ name: 'doc.png', contentUrl: '/x.png' });
     expect(document.title).to.contain('View doc.png');
+  });
+
+  it('Revokes Blob URLs when disconnected', async () => {
+    el = await fixture({ name: 'image.png', contentUrl: 'blob:hlx6-media' });
+    el.remove();
+
+    expect(revokedObjectUrls).to.deep.equal(['blob:hlx6-media']);
   });
 });
