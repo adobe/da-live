@@ -8,8 +8,8 @@ let extensionToPanelView;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
-  getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
+  ({ getBlockVariants } = await import('../../../../../blocks/shared/block-library.js'));
 });
 
 describe('EW panel helpers transformBlock', () => {

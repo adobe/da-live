@@ -140,8 +140,16 @@ describe('block-slash store', () => {
   let ensureBlockLibrary;
   let checkBlockLibraryConfigured;
   let resetBlockLibraryCache;
+  let savedFetch;
 
   before(async () => {
+    // No blocks library is configured in these tests; stub the config fetch so the
+    // shared loader resolves to "no extensions" without hitting the network.
+    savedFetch = window.fetch;
+    window.fetch = async (url, opts) => (String(url).includes('/config/')
+      ? { ok: true, json: async () => ({}) }
+      : savedFetch(url, opts));
+
     const mod = await import('../../../../../blocks/canvas/editor-utils/block-slash.js');
     ingestBlocks = mod.ingestBlocks;
     blockItemsForQuery = mod.blockItemsForQuery;
@@ -151,8 +159,10 @@ describe('block-slash store', () => {
     resetBlockLibrary = mod.resetBlockLibrary;
     ensureBlockLibrary = mod.ensureBlockLibrary;
     checkBlockLibraryConfigured = mod.checkBlockLibraryConfigured;
-    ({ resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
+    ({ resetBlockLibraryCache } = await import('../../../../../blocks/shared/block-library.js'));
   });
+
+  after(() => { window.fetch = savedFetch; });
 
   afterEach(() => {
     resetBlockLibrary();
@@ -243,7 +253,7 @@ describe('block-slash store', () => {
   });
 
   it('ensureBlockLibrary goes loading then settles empty when no blocks extension is configured', async () => {
-    // The test fixture's fetchDaConfigs returns {}, so fetchExtensions yields no 'blocks'
+    // The stubbed config fetch returns no library, so fetchExtensions yields no 'blocks'
     // extension — this exercises the no-library branch.
     const pending = ensureBlockLibrary({ org: 'testorg', site: 'testsite' });
     expect(getState()).to.equal('loading');

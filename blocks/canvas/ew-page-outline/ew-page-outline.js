@@ -10,7 +10,7 @@ import {
   moveBlock,
   moveSection,
 } from '../editor-utils/blocks.js';
-import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
+import { fetchExtensions } from '../../shared/block-library.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_BLOCK_ICON_SRC = '/img/icons/s2-icon-tableadd-20-n.svg';
