@@ -4,7 +4,6 @@ import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
-import { convertSheets } from '../edit/utils/helpers.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -125,7 +124,7 @@ async function reloadSheet(daTitle, daSheet) {
 async function setSheet(details, daTitle, daSheet) {
   // Drop any open stale-content dialog so its Cancel can't act on the new path's staleCheck.
   document.body.querySelectorAll(':scope > da-dialog').forEach((d) => d.remove());
-  // Full reset before the load — getData calls markSynced which sets _lastJsonString.
+  // Full reset before the load — getData calls markSynced which sets _lastEtag.
   // start() below only wires up the interval without resetting state.
   staleCheck.stop();
 
@@ -188,11 +187,6 @@ export default async function init(el) {
   setSheet(details, daTitle, daSheet);
 
   el.append(daTitle, versionWrapper);
-
-  daTitle.addEventListener('success', (e) => {
-    if (e.detail.action !== 'save') return;
-    staleCheck.markSynced(convertSheets(daSheet.jexcel));
-  });
 
   window.addEventListener('hashchange', async () => {
     details = getPathDetails();

@@ -13,7 +13,7 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection, applyHighlight, SEL_BLOCK } from './utils/selection.js';
+import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -48,6 +48,7 @@ export class EwEditorDoc extends LitElement {
       this._error = undefined;
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
+      this._lastBroadcastNodeKey = undefined;
       editorHtmlChange.emit('');
     }
   }
@@ -113,6 +114,18 @@ export class EwEditorDoc extends LitElement {
     const sel = NodeSelection.create(view.state.doc, pos);
     this._lastDocSelKey = `${sel.from}|${sel.to}|node`;
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+  }
+
+  _broadcastSelectedNode(scrollIntoView = false) {
+    const port = this._controllerCtx?.port;
+    const { view } = this._proseContext ?? {};
+    if (!port || !view) return;
+    const node = selectedNodePayload(view);
+    const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
+    const forceScroll = scrollIntoView && Boolean(node);
+    if (!forceScroll && key === this._lastBroadcastNodeKey) return;
+    this._lastBroadcastNodeKey = key;
+    port.postMessage({ type: 'set-selected-node', node, scrollIntoView: forceScroll });
   }
 
   undo() {
@@ -226,6 +239,7 @@ export class EwEditorDoc extends LitElement {
                 explicit: descriptor.selectionType === SEL_BLOCK,
                 ...descriptor,
               });
+              this._broadcastSelectedNode(true);
             },
           ),
         ],
@@ -266,7 +280,9 @@ export class EwEditorDoc extends LitElement {
     this.parentElement?.addEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
     this._unsubscribeSelect = editorSelectChange
       .subscribe(({ blockIndex, source }) => {
-        if (source !== 'doc') this._scrollDocToBlock(blockIndex);
+        if (source === 'doc') return;
+        this._scrollDocToBlock(blockIndex);
+        if (source === 'outline') this._broadcastSelectedNode(true);
       });
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener('nx-highlight-selection', this._onCanvasHighlight);

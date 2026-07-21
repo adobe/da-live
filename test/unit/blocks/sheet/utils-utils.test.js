@@ -67,44 +67,54 @@ describe('sheet/utils utils', () => {
     });
   });
 
-  describe('staleCheck after restore', () => {
+  describe('etag drift detection', () => {
     const DETAILS = { org: 'org', site: 'repo', path: '/sheet', view: 'sheet' };
     const serverJson = { ':type': 'sheet', ':sheetname': 'data', data: [{ key: 'a' }] };
-
-    beforeEach(() => {
-      staleCheck.start({ details: DETAILS, onStale: () => {} });
-      staleCheck.markSynced(serverJson);
-    });
 
     afterEach(() => {
       staleCheck.stop();
     });
 
-    it('markSynced with jspreadsheet-format array causes saveSheets to falsely bail', async () => {
-      // Simulates the old (buggy) restore handler calling markSynced with wrong-format data
-      const jspsheetData = [{ sheetName: 'data', data: [['key'], ['a']], columns: [] }];
-      staleCheck.markSynced(jspsheetData);
+    it('bails saveSheets when server etag differs from the recorded baseline', async () => {
+      let onStaleFired = false;
+      staleCheck.start({ details: DETAILS, onStale: () => { onStaleFired = true; } });
+      staleCheck.markSynced('"baseline"');
 
       window.location.hash = '#/org/repo/sheet';
-      window.fetch = async () => new Response(JSON.stringify(serverJson), { status: 200 });
+      window.fetch = wrap(async (url, opts) => {
+        if (opts?.method === 'POST' || opts?.method === 'PUT') {
+          return new Response('', { status: 200, headers: { ETag: '"remote"' } });
+        }
+        return new Response(JSON.stringify(serverJson), {
+          status: 200,
+          headers: { ETag: '"remote"', 'Content-Type': 'application/json' },
+        });
+      });
 
       const sheets = [buildSheet('data', [['key'], ['a']])];
       const result = await saveSheets(sheets);
-      expect(result).to.be.false; // drift falsely detected — save bailed
+      expect(result).to.be.false;
+      expect(onStaleFired).to.be.true;
     });
 
-    it('Preserves correct baseline so saveSheets proceeds when server is unchanged', async () => {
-      // Restore handler does NOT call markSynced with wrong-format data — baseline stays intact.
+    it('proceeds when server etag matches the recorded baseline', async () => {
+      staleCheck.start({ details: DETAILS, onStale: () => {} });
+      staleCheck.markSynced('"baseline"');
 
       window.location.hash = '#/org/repo/sheet';
-      window.fetch = async (url, opts) => {
-        if (opts?.method === 'PUT') return new Response('', { status: 200 });
-        return new Response(JSON.stringify(serverJson), { status: 200 });
-      };
+      window.fetch = wrap(async (url, opts) => {
+        if (opts?.method === 'POST' || opts?.method === 'PUT') {
+          return new Response('', { status: 200, headers: { ETag: '"next"' } });
+        }
+        return new Response(JSON.stringify(serverJson), {
+          status: 200,
+          headers: { ETag: '"baseline"', 'Content-Type': 'application/json' },
+        });
+      });
 
       const sheets = [buildSheet('data', [['key'], ['a']])];
       const result = await saveSheets(sheets);
-      expect(result).to.be.true; // no false drift — save went through
+      expect(result).to.be.true;
     });
   });
 

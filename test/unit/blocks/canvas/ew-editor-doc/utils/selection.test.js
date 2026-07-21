@@ -4,6 +4,7 @@ import { createTestEditor, destroyEditor } from '../../../edit/prose/test-helper
 import {
   describeDocSelection,
   applyHighlight,
+  selectedNodePayload,
   SEL_BLOCK,
   SEL_ITEM,
   SEL_TEXT,
@@ -147,5 +148,50 @@ describe('applyHighlight', () => {
   it('creates a NodeSelection for item selectionType', () => {
     applyHighlight(editor.view, { selFrom: 0, selTo: 0, selectionType: SEL_ITEM });
     expect(editor.view.state.selection).to.be.instanceOf(NodeSelection);
+  });
+});
+
+describe('selectedNodePayload', () => {
+  let editor;
+  beforeEach(async () => { editor = await createTestEditor(); });
+  afterEach(() => { destroyEditor(editor); });
+
+  it('returns null for a caret/text selection', () => {
+    expect(selectedNodePayload(editor.view)).to.equal(null);
+    editor.view.dispatch(editor.view.state.tr.insertText('hello'));
+    const sel = TextSelection.create(editor.view.state.doc, 1, 4);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(selectedNodePayload(editor.view)).to.equal(null);
+  });
+
+  it('returns a table payload (proseIndex = from + 1) for a block NodeSelection', () => {
+    const { state } = editor.view;
+    const { schema } = state;
+    const para = schema.nodes.paragraph.create(null, schema.text('cards'));
+    const cell = schema.nodes.table_cell.create({ colspan: 2, colwidth: null }, para);
+    const row = schema.nodes.table_row.create(null, cell);
+    const table = schema.nodes.table.create(null, row);
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, table));
+    let tablePos = -1;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'table' && tablePos < 0) tablePos = pos;
+    });
+    const sel = NodeSelection.create(editor.view.state.doc, tablePos);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(selectedNodePayload(editor.view)).to.deep.equal({ anchorType: 'table', proseIndex: tablePos + 1 });
+  });
+
+  it('returns an image payload (proseIndex = from) for an image NodeSelection', () => {
+    const { state } = editor.view;
+    const { schema } = state;
+    const para = schema.nodes.paragraph.create(null, schema.nodes.image.create({ src: '/x.png' }));
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, para));
+    let imgPos = -1;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') imgPos = pos;
+    });
+    const sel = NodeSelection.create(editor.view.state.doc, imgPos);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(selectedNodePayload(editor.view)).to.deep.equal({ anchorType: 'image', proseIndex: imgPos, src: '/x.png' });
   });
 });
