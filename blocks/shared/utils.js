@@ -264,10 +264,12 @@ export const getSheetByName = (json, name) => {
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
-export function getUrlOrigin(url, fallback = '*') {
+export function getPostMessageTargetOrigin(url, fallback = '/') {
   try {
     return new URL(url, window.location.href).origin;
-  } catch {
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(`Could not determine postMessage target origin for "${url}"`, e);
     return fallback;
   }
 }

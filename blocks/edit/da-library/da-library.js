@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { getUrlOrigin } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import searchFor from './helpers/search.js';
@@ -253,7 +253,7 @@ class DaLibrary extends LitElement {
   }
 
   async handlePluginLoad({ target }) {
-    const targetOrigin = getUrlOrigin(target.src);
+    const targetOrigin = getPostMessageTargetOrigin(target.src);
     const channel = new MessageChannel();
     channel.port1.onmessage = (e) => {
       if (e.data.action === 'sendText') {
