@@ -28,7 +28,7 @@ import { getAuthToken } from '../../shared/utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
-import { forceSave } from './forcesave.js';
+import { forceSave } from '../../shared/forcesave.js';
 
 // Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
 // every successful onopen, so a close that follows a brief successful
