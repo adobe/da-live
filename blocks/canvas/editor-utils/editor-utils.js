@@ -26,7 +26,10 @@ export function updateState(data, ctx) {
   const { storedMarks } = view.state;
   const node = view.state.schema.nodeFromJSON(data.node);
   const pos = view.state.doc.resolve(data.cursorOffset);
-  const docPos = view.state.selection.from;
+  // Preserve a range selection (e.g. toggling Bold on selected text) rather than
+  // always collapsing to a point — collapsing loses the range when nothing moves
+  // the selection afterward (no CURSOR_MOVE follows a mark-only edit).
+  const { from: selFrom, to: selTo } = view.state.selection;
 
   const nodeStart = pos.before(pos.depth);
   const nodeEnd = pos.after(pos.depth);
@@ -50,7 +53,10 @@ export function updateState(data, ctx) {
     }
   }
 
-  tr.setSelection(TextSelection.create(tr.doc, docPos));
+  const maxPos = tr.doc.content.size;
+  const restoredFrom = Math.min(selFrom, maxPos);
+  const restoredTo = Math.min(selTo, maxPos);
+  tr.setSelection(TextSelection.create(tr.doc, restoredFrom, restoredTo));
 
   ctx.suppressRerender = true;
   view.dispatch(tr);
