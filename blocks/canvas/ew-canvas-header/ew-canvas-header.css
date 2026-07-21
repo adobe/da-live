@@ -56,6 +56,15 @@
   opacity: 0.45;
 }
 
+.icon-btn.comments-toggle.is-active {
+  background-color: var(--s2-gray-800);
+  color: var(--s2-gray-25);
+}
+
+.icon-btn.comments-toggle.is-active:hover:not(:disabled) {
+  background-color: var(--s2-gray-900);
+}
+
 .segmented {
   display: inline-flex;
   align-items: center;

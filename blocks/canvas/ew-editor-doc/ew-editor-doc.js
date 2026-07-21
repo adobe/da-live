@@ -27,6 +27,14 @@ import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.
 import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { createCommentsStore } from '../comments/helpers/comments-store.js';
+import { parseDeepLink } from '../comments/helpers/deep-link.js';
+import { createCommentsController } from '../comments/helpers/controller.js';
+import commentPlugin from '../comments/comment-plugin.js';
+import { setCommentsController, openCommentsPanel } from '../editor-utils/comments-bridge.js';
+import { commentMarkers, postCommentMarkers, postScrollToComment } from '../ew-comments/iframe-bridge.js';
+import { createCommentGutter } from './utils/comment-gutter.js';
+import getSheet from '../../shared/sheet.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
 // so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
@@ -43,6 +51,65 @@ const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
+const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-highlight.css');
+
+export function createCommentsStoreFor(session, ctx) {
+  return session?.docId
+    ? createCommentsStore({ docId: session.docId, owner: ctx.org, repo: ctx.repo })
+    : null;
+}
+
+export function publishCommentsController(store, wsProvider) {
+  const controller = createCommentsController({ commentsStore: store, wsProvider });
+  setCommentsController(controller);
+  return controller;
+}
+
+export function subscribeCommentIframeBridge({ controller, getView, getPort }) {
+  if (!controller?.subscribe) return () => {};
+
+  const visible = () => controller.panelOpen || controller.showHighlights;
+
+  const syncLayoutMarkers = () => {
+    const port = getPort();
+    const view = getView();
+    if (!port || !view) return;
+    const markers = visible() ? commentMarkers(view, controller) : [];
+    postCommentMarkers(port, markers, controller);
+  };
+
+  const scrollToSelected = () => {
+    const port = getPort();
+    const view = getView();
+    if (port && view && visible() && controller.selectedThreadId) {
+      postScrollToComment(port, view, controller);
+    }
+  };
+
+  const unsub = controller.subscribe(({ reason }) => {
+    if (reason === 'selectedThreadId'
+      && controller.selectedThreadId
+      && !controller.panelOpen) {
+      openCommentsPanel();
+    }
+    const port = getPort();
+    const view = getView();
+    if (!port || !view) return;
+    if (reason === 'selectedThreadId') {
+      scrollToSelected();
+      syncLayoutMarkers();
+    } else if (reason === 'counts' || reason === 'docChange' || reason === 'init'
+      || reason === 'panelOpen' || reason === 'showHighlights') {
+      syncLayoutMarkers();
+    }
+  });
+
+  if (controller.selectedThreadId) {
+    syncLayoutMarkers();
+    scrollToSelected();
+  }
+  return unsub;
+}
 
 export class EwEditorDoc extends LitElement {
   static properties = {
@@ -229,6 +296,13 @@ export class EwEditorDoc extends LitElement {
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
     };
     wireQuickEditControllerPort(this._controllerCtx);
+
+    this._unsubCommentBridge?.();
+    this._unsubCommentBridge = subscribeCommentIframeBridge({
+      controller: this._commentsController,
+      getView: () => this._proseContext?.view,
+      getPort: () => this._controllerCtx?.port,
+    });
   }
 
   _setupAwareness(wsProvider) {
@@ -261,6 +335,14 @@ export class EwEditorDoc extends LitElement {
       onCollabUsersCleared: () => this._emitCollabUsers([]),
     });
     this._awarenessOff = undefined;
+    this._commentGutterOff?.();
+    this._commentGutterOff = null;
+    this._unsubCommentBridge?.();
+    this._unsubCommentBridge = null;
+    this._commentsController?.destroy();
+    this._commentsController = null;
+    this._commentsStore = null;
+    setCommentsController(null);
     this._proseContext = undefined;
   }
 
@@ -284,49 +366,87 @@ export class EwEditorDoc extends LitElement {
         permissions,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
-        extraPlugins: [
-          mediaBusImage(this.ctx),
-          createExtensionsBridgePlugin(),
-          createTrackingPlugin(
-            () => {
-              const body = this._controllerCtx
-                ? updateDocument(this._controllerCtx)
-                : getInstrumentedHTML(this._proseContext?.view);
-              if (body) canvasBus.editorHtmlState.emit(body);
-            },
-            () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
-            (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
-            (pmView) => {
-              const blockIndex = getActiveBlockIndex(pmView);
-              const proseIndex = activeContentProseIndex(pmView);
-              const { kind, ...descriptor } = describeDocSelection(pmView);
-              const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
-              if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
-              this._lastDocBlockIndex = blockIndex;
-              this._lastDocSelKey = selKey;
-              canvasBus.editorSelectState.emit({
-                blockIndex,
-                proseIndex,
-                source: 'doc',
-                explicit: descriptor.selectionType === SEL_BLOCK,
-                ...descriptor,
-              });
-              this._broadcastSelectedNode(true);
-            },
-          ),
-        ],
+        extraPlugins: ({ wsProvider: ws }) => {
+          this._commentsStore = createCommentsStoreFor(session, this.ctx);
+          this._commentsController = createCommentsController({
+            commentsStore: this._commentsStore,
+            wsProvider: ws,
+          });
+          return [
+            mediaBusImage(this.ctx),
+            createExtensionsBridgePlugin(),
+            createTrackingPlugin(
+              () => {
+                const body = this._controllerCtx
+                  ? updateDocument(this._controllerCtx)
+                  : getInstrumentedHTML(this._proseContext?.view);
+                if (body) canvasBus.editorHtmlState.emit(body);
+              },
+              () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
+              (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
+              (pmView) => {
+                const blockIndex = getActiveBlockIndex(pmView);
+                const proseIndex = activeContentProseIndex(pmView);
+                const { kind, ...descriptor } = describeDocSelection(pmView);
+                const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
+                const unchanged = blockIndex === this._lastDocBlockIndex
+                  && selKey === this._lastDocSelKey;
+                if (unchanged) return;
+                this._lastDocBlockIndex = blockIndex;
+                this._lastDocSelKey = selKey;
+                canvasBus.editorSelectState.emit({
+                  blockIndex,
+                  proseIndex,
+                  source: 'doc',
+                  explicit: descriptor.selectionType === SEL_BLOCK,
+                  ...descriptor,
+                });
+                this._broadcastSelectedNode(true);
+              },
+            ),
+            commentPlugin({ controller: this._commentsController, store: this._commentsStore }),
+          ];
+        },
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
+      setCommentsController(this._commentsController);
+
+      if (parseDeepLink(new URL(window.location.href)).commentId) {
+        openCommentsPanel();
+      }
+
       setSelectionToolbarCtx({
         org: this.ctx?.org,
         site: this.ctx?.repo,
         sourceUrl,
         canWrite: this._canWrite,
       });
+
+      if (this._commentsStore) {
+        const doLoad = () => {
+          this._commentsStore.load().catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn('[comments] store load failed', err);
+          });
+        };
+
+        if (wsProvider.synced) {
+          doLoad();
+        } else {
+          const onSynced = (isSynced) => {
+            if (!isSynced) return;
+            wsProvider.off('synced', onSynced);
+            doLoad();
+          };
+          wsProvider.on('synced', onSynced);
+        }
+      }
+
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
+      this._setupCommentGutter();
 
       this._setupController();
     } catch (e) {
@@ -340,7 +460,7 @@ export class EwEditorDoc extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
@@ -434,6 +554,18 @@ export class EwEditorDoc extends LitElement {
     const view = this._proseContext?.view;
     if (view) clearBlockFocus(view);
     canvasBus.blockEditState.emit({ open: false });
+  }
+
+  _setupCommentGutter() {
+    this._commentGutterOff?.();
+    if (!this._commentsController) return;
+    afterNextPaint(() => {
+      this._commentGutterOff = createCommentGutter({
+        controller: this._commentsController,
+        getView: () => this._proseContext?.view,
+        getContainer: () => this.shadowRoot?.querySelector('.ew-editor-doc'),
+      });
+    });
   }
 
   disconnectedCallback() {
