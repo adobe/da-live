@@ -264,6 +264,16 @@ export const getSheetByName = (json, name) => {
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
+export function getPostMessageTargetOrigin(url, fallback = '/') {
+  try {
+    return new URL(url, window.location.href).origin;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(`Could not determine postMessage target origin for "${url}"`, e);
+    return fallback;
+  }
+}
+
 export async function contentLogin(owner, repo) {
   try {
     const { accessToken } = await initIms();
@@ -399,46 +409,6 @@ export function formatDate(timestamp) {
 
 export function delay(ms) {
   return new Promise((res) => { setTimeout(res, ms); });
-}
-
-export function getIframeOrigin(iframe) {
-  try {
-    return new URL(iframe.src, window.location.href).origin;
-  } catch {
-    return null;
-  }
-}
-
-export function sendIframeHandshake(iframe, targetOrigin, payload, { delayMs = 0 } = {}) {
-  if (!targetOrigin || !iframe.contentWindow) return null;
-  const channel = new MessageChannel();
-
-  const send = () => {
-    if (!iframe.contentWindow) return;
-    iframe.contentWindow.postMessage(payload, targetOrigin, [channel.port2]);
-  };
-
-  if (delayMs > 0) {
-    setTimeout(() => {
-      try {
-        send();
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('[sendIframeHandshake] Error posting to iframe', err);
-      }
-    }, delayMs);
-    return channel;
-  }
-
-  try {
-    send();
-  } catch (err) {
-    channel.port1.close();
-    // eslint-disable-next-line no-console
-    console.error('[sendIframeHandshake] Error posting to iframe', err);
-    return null;
-  }
-  return channel;
 }
 
 // Replaces every character not in `allowed` with '-', then collapses any run

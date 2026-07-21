@@ -1,6 +1,6 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
-import { getIframeOrigin, sendIframeHandshake } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin } from '../../shared/utils.js';
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.
@@ -16,31 +16,9 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
 
-  const targetOrigin = getIframeOrigin(iframe);
-  if (!targetOrigin) return { channel: null, destroy() { } };
+  const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
-  const project = {
-    org,
-    repo: site,
-    ref: 'main',
-    path: path ? `/${path}` : '/',
-    view: view || 'edit',
-  };
-
-  let token;
-  try {
-    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
-    const ims = await loadIms();
-    token = ims?.accessToken?.token;
-  } catch { /* proceed without token */ }
-
-  const channel = sendIframeHandshake(
-    iframe,
-    targetOrigin,
-    { ready: true, project, context: project, token },
-    { delayMs: 750 },
-  );
-  if (!channel) return { channel: null, destroy() { } };
+  const channel = new MessageChannel();
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
@@ -92,6 +70,30 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       );
     }
   };
+
+  const project = {
+    org,
+    repo: site,
+    ref: 'main',
+    path: path ? `/${path}` : '/',
+    view: view || 'edit',
+  };
+
+  let token;
+  try {
+    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
+    const ims = await loadIms();
+    token = ims?.accessToken?.token;
+  } catch { /* proceed without token */ }
+
+  setTimeout(() => {
+    if (!iframe.contentWindow) return;
+    iframe.contentWindow.postMessage(
+      { ready: true, project, context: project, token },
+      targetOrigin,
+      [channel.port2],
+    );
+  }, 750);
 
   const onAgentChange = ({ detail }) => {
     if (!iframe.contentWindow) return;

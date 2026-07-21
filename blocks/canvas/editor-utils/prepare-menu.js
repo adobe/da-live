@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { fetchDaConfigs, getIframeOrigin, sendIframeHandshake } from '../../shared/utils.js';
+import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -112,13 +112,21 @@ export default class PrepareMenu extends LitElement {
   }
 
   handleIframeLoad({ target }) {
-    const targetOrigin = getIframeOrigin(target);
-    const { view, org, site, path } = this.details;
-    const context = { view, org, site, ref: 'main', path };
-    const { token } = window.adobeIMS.getAccessToken();
-    const message = { ready: true, context, token };
+    const targetOrigin = getPostMessageTargetOrigin(target.src);
+    const channel = new MessageChannel();
 
-    sendIframeHandshake(target, targetOrigin, message, { delayMs: 750 });
+    setTimeout(() => {
+      if (!target.contentWindow) return;
+
+      const { view, org, site, path } = this.details;
+
+      const context = { view, org, site, ref: 'main', path };
+      const { token } = window.adobeIMS.getAccessToken();
+
+      const message = { ready: true, context, token };
+
+      target.contentWindow.postMessage(message, targetOrigin, [channel.port2]);
+    }, 750);
   }
 
   renderDialog() {
