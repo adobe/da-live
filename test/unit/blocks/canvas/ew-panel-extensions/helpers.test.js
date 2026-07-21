@@ -1,17 +1,22 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { setCommentsController } from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
 let extensionToPanelView;
 let getPreviewStatus;
+let createCommentsView;
+let bindPanelOpenToVisibility;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
   getPreviewStatus = mod.getPreviewStatus;
+  createCommentsView = mod.createCommentsView;
+  bindPanelOpenToVisibility = mod.bindPanelOpenToVisibility;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -338,5 +343,102 @@ describe('getPreviewStatus', () => {
     window.fetch = () => Promise.resolve(new Response('{}', { status: 500 }));
     const result = await getPreviewStatus({ org: 'pstatusorg3', site: 'pstatussite3', pathname: '/p' });
     expect(result).to.equal(null);
+  });
+});
+
+describe('createCommentsView', () => {
+  afterEach(() => setCommentsController(null));
+
+  it('is a first-party Editor-section view', () => {
+    const view = createCommentsView();
+    expect(view.id).to.equal('comments');
+    expect(view.section).to.equal('Editor');
+    expect(view.firstParty).to.equal(true);
+  });
+
+  it('getLabel() shows the active thread count when comments exist', () => {
+    setCommentsController({ counts: { active: 20, resolved: 3 } });
+    expect(createCommentsView().getLabel()).to.equal('Comments (20)');
+  });
+
+  it('getLabel() omits the count when there are no active comments', () => {
+    setCommentsController({ counts: { active: 0, resolved: 3 } });
+    expect(createCommentsView().getLabel()).to.equal('Comments');
+    setCommentsController(null);
+    expect(createCommentsView().getLabel()).to.equal('Comments');
+  });
+
+  it('load() returns an ew-comments element bound to the current controller', async () => {
+    const controller = {
+      subscribe() { return () => {}; },
+      getCurrentUser() { return null; },
+      setPanelOpen() {},
+    };
+    setCommentsController(controller);
+    const el = await createCommentsView().load();
+    expect(el.localName).to.equal('ew-comments');
+    expect(el.controller).to.equal(controller);
+  });
+
+  it('rebinds the element when the controller changes', async () => {
+    const el = await createCommentsView().load();
+    const next = {
+      subscribe() { return () => {}; },
+      getCurrentUser() { return null; },
+      setPanelOpen() {},
+    };
+    setCommentsController(next);
+    expect(el.controller).to.equal(next);
+  });
+});
+
+describe('bindPanelOpenToVisibility', () => {
+  let realIntersectionObserver;
+  let fireIntersection;
+
+  beforeEach(() => {
+    realIntersectionObserver = window.IntersectionObserver;
+    let callback;
+    window.IntersectionObserver = class {
+      constructor(cb) { callback = cb; }
+
+      observe() {}
+
+      disconnect() {}
+    };
+    fireIntersection = (isIntersecting) => callback([{ isIntersecting }]);
+  });
+
+  afterEach(() => { window.IntersectionObserver = realIntersectionObserver; });
+
+  it('opens the panel when visible and closes it when hidden', async () => {
+    const calls = [];
+    const controller = { setPanelOpen(value) { calls.push(value); } };
+    const el = document.createElement('div');
+
+    bindPanelOpenToVisibility(el, () => controller);
+
+    fireIntersection(true);
+    expect(calls.at(-1)).to.equal(true);
+
+    fireIntersection(false);
+    // Hiding is debounced (see bindPanelOpenToVisibility); wait for the timer.
+    await new Promise((resolve) => { setTimeout(resolve, 200); });
+    expect(calls.at(-1)).to.equal(false);
+  });
+
+  it('re-applies the current visibility to a swapped-in controller', () => {
+    const first = [];
+    const second = [];
+    let controller = { setPanelOpen(value) { first.push(value); } };
+    const el = document.createElement('div');
+
+    const syncPanelOpen = bindPanelOpenToVisibility(el, () => controller);
+    fireIntersection(true);
+    expect(first.at(-1)).to.equal(true);
+
+    controller = { setPanelOpen(value) { second.push(value); } };
+    syncPanelOpen();
+    expect(second.at(-1)).to.equal(true);
   });
 });

@@ -1,4 +1,5 @@
 import { updateDocument, updateState, getEditor } from '../editor-utils/editor-utils.js';
+import { getCommentsBridge, openCommentsPanel } from '../editor-utils/comments-bridge.js';
 import { handleImageReplace } from './utils/image.js';
 import {
   handleCursorMove,
@@ -22,6 +23,23 @@ function scheduleReload(ctx) {
     ctx.reloadTimer = null;
     updateDocument(ctx);
   }, RELOAD_DEBOUNCE_MS);
+}
+
+export function handleCommentShortcut() {
+  getCommentsBridge().controller?.requestCompose();
+  openCommentsPanel();
+}
+
+export function handleCommentMarkerClick({ threadId }) {
+  if (!threadId) return;
+  const { controller } = getCommentsBridge();
+  controller?.setSelectedThread(threadId);
+  controller?.scrollToThread(threadId);
+  openCommentsPanel();
+}
+
+export function handleCommentMarkerClear() {
+  getCommentsBridge().controller?.setSelectedThread(null);
 }
 
 export function createControllerOnMessage(ctx) {
@@ -50,6 +68,12 @@ export function createControllerOnMessage(ctx) {
       handleNodeSelect(payload, ctx);
     } else if (type === MESSAGE_TYPES.STORED_MARKS) {
       handleStoredMarks(payload, ctx);
+    } else if (type === MESSAGE_TYPES.COMMENT_MARKER_CLICK) {
+      handleCommentMarkerClick(e.data);
+    } else if (type === MESSAGE_TYPES.COMMENT_MARKER_CLEAR) {
+      handleCommentMarkerClear();
+    } else if (type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
+      handleCommentShortcut();
     }
   };
 }
