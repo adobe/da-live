@@ -52,7 +52,8 @@ class EwToolPanel extends LitElement {
         items.push({ section: v.section });
         lastSection = v.section;
       }
-      const opensExternally = v.experience === 'window' || v.experience === 'fullsize-dialog';
+      const opensExternally = v.experience === 'window' || v.experience === 'fullsize-dialog'
+        || v.experience === 'modal';
       items.push({
         value: v.id,
         label: v.label,
@@ -151,6 +152,10 @@ class EwToolPanel extends LitElement {
     }
     if (consumer.experience === 'fullsize-dialog') {
       this._fullsizeDialogViewId = name;
+      return;
+    }
+    if (consumer.experience === 'modal') {
+      await consumer.openModal?.();
       return;
     }
     if (!this._loaded[name]) {

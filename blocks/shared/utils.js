@@ -168,11 +168,14 @@ export function parseAemError(xError) {
   return xError.replace('[admin] ', '');
 }
 
+// `action` is the admin API namespace: 'preview' or 'live' (the latter is the
+// admin API's name for publish). Routes through nx's `aem` API, which detects
+// HLX6 vs legacy (via isHlx6) and calls the correct endpoint for the org/site.
 export async function saveToAem(path, action) {
-  const [owner, repo, ...parts] = path.slice(1).toLowerCase().split('/');
-  const aemPath = parts.join('/');
-  const url = `${AEM_ORIGIN}/${action}/${owner}/${repo}/main/${aemPath}`;
-  const resp = await daFetch(url, { method: 'POST' });
+  const { aem } = await getNx2Api();
+  const aemPath = path.toLowerCase();
+  const call = action === 'live' ? aem.publish : aem.preview;
+  const resp = await call(aemPath);
   if (!resp.ok) {
     const { status, headers } = resp;
     const authErr = [401, 403].some((s) => s === status);

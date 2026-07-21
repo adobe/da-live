@@ -108,15 +108,18 @@ export async function getData(input) {
   const { config, source, versions } = await getNx2Api();
   const { org, site, path, view, versionId } = input;
 
+  // Version snapshots are immutable; only live-file reads need to wait for our own writes.
+  if (!versionId) await staleCheck.awaitPendingSave();
+
   let resp;
   let isVersion = false;
   if (versionId) {
     isVersion = true;
     resp = await versions.get({ org, site, path, versionId });
   } else if (view === 'config') {
-    resp = await config.get({ org, site });
+    resp = await config.get({ org, site, cachebust: true });
   } else {
-    resp = await source.get({ org, site, path });
+    resp = await source.get({ org, site, path, cachebust: true });
   }
 
   // Set permissions even if the file is a 404
@@ -134,7 +137,7 @@ export async function getData(input) {
   const json = await resp.json();
 
   if (!isVersion) {
-    staleCheck.markSynced(json);
+    staleCheck.markSynced(resp.headers.get('etag'));
     const sheetPanes = document.querySelector('da-sheet-panes');
     if (sheetPanes) sheetPanes.data = json;
   }

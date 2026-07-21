@@ -14,6 +14,7 @@ import ENV from '../utils/env.js';
 import {
   getQuery, getTestPageURL, getTestResourceAge, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
+import { dismissAlertBanner } from '../utils/utils.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
@@ -35,6 +36,8 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 
   // This page will always be there as its used by a test
   await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
+
+  await dismissAlertBanner(page);
 
   // List the resources and check fot the ones that are to be deleted. These are always pages
   // created by the getTestPageURL() function in page.js
@@ -87,6 +90,8 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
 
   // Wait for the delete button to disappear which is when we're done
   await expect(page.locator('button.delete-button').filter({ visible: true })).not.toBeVisible({ timeout: 600000 });
+
+  console.log('Deleted', itemsToDelete, 'test files and folders');
 });
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
@@ -126,6 +131,7 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await tabBackward(list);
   await list.keyboard.press(' ');
   await list.waitForTimeout(500);
+  await dismissAlertBanner(list);
   await list.locator('button.delete-button').filter({ visible: true }).click();
 
   // Give the modal a chance to open

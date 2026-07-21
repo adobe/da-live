@@ -6,6 +6,7 @@ import {
   handleUndoRedo,
   handleNewVersion,
   handleIframeSelectionChange,
+  handleNodeSelect,
 } from './utils/handlers.js';
 
 const { MessageTypes } = await import(`${getNx1()}/public/plugins/quick-edit/src/message-types.js`);
@@ -34,6 +35,8 @@ export function createControllerOnMessage(ctx) {
       handleNewVersion();
     } else if (data.type === MessageTypes.SELECTION_CHANGE) {
       handleIframeSelectionChange(data, ctx);
+    } else if (data.type === MessageTypes.NODE_SELECT) {
+      handleNodeSelect(data, ctx);
     }
   };
 }
