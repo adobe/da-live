@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
+import { getCommentsBridge, toggleComments, getCommentsVisible } from '../editor-utils/comments-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT, getSectionAtPosition } = await import(`${getNx()}/utils/panel.js`);
@@ -16,6 +17,7 @@ const ICONS = {
   splitRight: '/img/icons/s2-icon-splitright-20-n.svg',
   gridCompare: '/img/icons/s2-icon-gridcompare-20-n.svg',
   lock: '/img/icons/s2-icon-lock-20-n.svg',
+  comment: '/img/icons/s2-icon-chat-20-n.svg',
 };
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
@@ -29,6 +31,7 @@ class EWCanvasHeader extends LitElement {
     authorized: { type: Boolean },
     canWrite: { type: Boolean },
     _chatDisabled: { state: true },
+    _commentsVisible: { state: true },
   };
 
   constructor() {
@@ -38,6 +41,7 @@ class EWCanvasHeader extends LitElement {
     this.redoAvailable = false;
     this.authorized = true;
     this.canWrite = true;
+    this._commentsVisible = false;
   }
 
   connectedCallback() {
@@ -46,11 +50,36 @@ class EWCanvasHeader extends LitElement {
     this._unsubHash = hashChange.subscribe((state) => {
       this._syncChatDisabled(state?.org, state?.site);
     });
+    this._onControllerChange = () => this._bindComments();
+    document.addEventListener('nx-comments-controller-change', this._onControllerChange);
+    this._bindComments();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    document.removeEventListener('nx-comments-controller-change', this._onControllerChange);
+    this._unbindComments?.();
+  }
+
+  // Track the active comments controller so the toggle reflects effective
+  // comment visibility (panel open OR highlights on) as the controller is
+  // recreated across documents.
+  _bindComments() {
+    this._unbindComments?.();
+    const sync = () => { this._commentsVisible = getCommentsVisible(); };
+    sync();
+    const { controller } = getCommentsBridge();
+    if (!controller?.on) {
+      this._unbindComments = null;
+      return;
+    }
+    const offs = [controller.on('showHighlights', sync), controller.on('panelOpen', sync)];
+    this._unbindComments = () => offs.forEach((off) => off?.());
+  }
+
+  _toggleComments() {
+    toggleComments();
   }
 
   async _syncChatDisabled(org, site) {
@@ -164,6 +193,17 @@ class EWCanvasHeader extends LitElement {
         </div>
 
         <div class="group group-end" part="group-end">
+          <button
+            type="button"
+            class="icon-btn comments-toggle ${this._commentsVisible ? 'is-active' : ''}"
+            part="btn comments-toggle"
+            data-action="toggle-comments"
+            aria-label=${this._commentsVisible ? 'Hide comments' : 'Show comments'}
+            aria-pressed=${this._commentsVisible}
+            @click=${this._toggleComments}
+          >
+            ${this._renderIcon('comment')}
+          </button>
           <button type="button" class="icon-btn" part="btn toggle-after" data-action="open-panel-after" aria-label="Open after panel" @click=${() => this._openPanel('after')}>
             ${this._renderIcon('splitRight')}
           </button>

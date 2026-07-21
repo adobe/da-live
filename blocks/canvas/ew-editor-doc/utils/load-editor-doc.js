@@ -1,6 +1,12 @@
 import { checkDoc } from './source.js';
 import { initIms } from '../../../shared/utils.js';
 
+export function sessionFromResponse(resp, token) {
+  const permissions = resp.permissions || ['read'];
+  const docId = resp.headers?.get?.('x-da-id') ?? null;
+  return { ok: true, token, permissions, docId };
+}
+
 export async function resolveEditorDocSession(sourceUrl) {
   const ims = await initIms();
   const token = ims?.accessToken?.token ?? null;
@@ -14,6 +20,5 @@ export async function resolveEditorDocSession(sourceUrl) {
     return { ok: false, error };
   }
 
-  const permissions = resp.permissions || ['read'];
-  return { ok: true, token, permissions };
+  return sessionFromResponse(resp, token);
 }
