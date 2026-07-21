@@ -4,6 +4,11 @@ import { getNx2Api } from '../../../scripts/utils.js';
 const DEBOUNCE_TIME = 1000;
 const POLL_INTERVAL = 30000;
 
+// A gzipped response through Cloudflare carries a weak etag (W/"h") while a
+// create carries a strong etag ("h") for the same content. Strip the weak
+// prefix so the two compare equal (HTTP weak comparison).
+const normalizeEtag = (etag) => etag?.replace(/^W\//, '');
+
 class StaleCheck {
   constructor() {
     this._intervalId = null;
@@ -37,7 +42,7 @@ class StaleCheck {
   }
 
   markSynced(etag) {
-    this._lastEtag = etag;
+    this._lastEtag = normalizeEtag(etag);
     this._hasLocalEdits = false;
     // Clear the post-Cancel block: a fresh sync (load or save) is the recovery path.
     this._saveBlocked = false;
@@ -89,7 +94,7 @@ class StaleCheck {
         ? await config.get({ org, site, cachebust: true })
         : await source.get({ org, site, path, cachebust: true });
       if (!resp.ok) return false;
-      const etag = resp.headers.get('etag');
+      const etag = normalizeEtag(resp.headers.get('etag'));
       if (!etag || !this._lastEtag || etag === this._lastEtag) return false;
       const json = await resp.json();
       this._onStale({ json, dirty: this._hasLocalEdits });
