@@ -1,5 +1,6 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
+import { getUrlOrigin } from '../../shared/utils.js';
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.
@@ -14,6 +15,8 @@ import { getNx } from '../../../scripts/utils.js';
 export async function setupIframeChannel({ iframe, hashState, getView, onClose }) {
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
+
+  const targetOrigin = getUrlOrigin(iframe.src);
 
   const channel = new MessageChannel();
 
@@ -63,7 +66,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       }
       iframe.contentWindow.postMessage(
         { action: 'sendSelection', details: html },
-        '*',
+        targetOrigin,
       );
     }
   };
@@ -87,14 +90,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     if (!iframe.contentWindow) return;
     iframe.contentWindow.postMessage(
       { ready: true, project, context: project, token },
-      '*',
+      targetOrigin,
       [channel.port2],
     );
   }, 750);
 
   const onAgentChange = ({ detail }) => {
     if (!iframe.contentWindow) return;
-    iframe.contentWindow.postMessage({ action: 'agentChange', detail }, '*');
+    iframe.contentWindow.postMessage({ action: 'agentChange', detail }, targetOrigin);
   };
   document.addEventListener('nx-agent-change', onAgentChange);
 

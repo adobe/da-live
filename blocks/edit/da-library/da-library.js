@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getUrlOrigin } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import searchFor from './helpers/search.js';
@@ -252,6 +253,7 @@ class DaLibrary extends LitElement {
   }
 
   async handlePluginLoad({ target }) {
+    const targetOrigin = getUrlOrigin(target.src);
     const channel = new MessageChannel();
     channel.port1.onmessage = (e) => {
       if (e.data.action === 'sendText') {
@@ -285,7 +287,7 @@ class DaLibrary extends LitElement {
         const fragment = serializer.serializeFragment(slice.content);
         const div = document.createElement('div');
         div.appendChild(fragment);
-        target.contentWindow.postMessage({ action: 'sendSelection', details: div.innerHTML }, '*');
+        target.contentWindow.postMessage({ action: 'sendSelection', details: div.innerHTML }, targetOrigin);
       }
     };
 
@@ -308,7 +310,7 @@ class DaLibrary extends LitElement {
         token,
       };
 
-      target.contentWindow.postMessage(message, '*', [channel.port2]);
+      target.contentWindow.postMessage(message, targetOrigin, [channel.port2]);
     }, 750);
   }
 

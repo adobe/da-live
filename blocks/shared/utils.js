@@ -264,6 +264,14 @@ export const getSheetByName = (json, name) => {
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
+export function getUrlOrigin(url, fallback = '*') {
+  try {
+    return new URL(url, window.location.href).origin;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function contentLogin(owner, repo) {
   try {
     const { accessToken } = await initIms();
