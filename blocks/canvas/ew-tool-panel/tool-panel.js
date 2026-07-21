@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import {
   persistToolPanelView,
   resolveInitialToolPanelView,
@@ -30,11 +31,28 @@ class EwToolPanel extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onShowPanel = ({ detail }) => this.showPanel(detail?.panelName);
     document.addEventListener('nx-show-panel', this._onShowPanel);
+    this._bindCommentCountUpdates();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('nx-show-panel', this._onShowPanel);
+    this._unsubCommentCounts?.();
+    document.removeEventListener('nx-comments-controller-change', this._onCommentsControllerChange);
+  }
+
+  _bindCommentCountUpdates() {
+    const refresh = () => this.requestUpdate();
+    const bind = (controller) => {
+      this._unsubCommentCounts?.();
+      if (!controller?.subscribe) return;
+      this._unsubCommentCounts = controller.subscribe(({ reason }) => {
+        if (reason === 'counts' || reason === 'init') refresh();
+      });
+    };
+    bind(getCommentsBridge().controller);
+    this._onCommentsControllerChange = (e) => bind(e.detail.controller);
+    document.addEventListener('nx-comments-controller-change', this._onCommentsControllerChange);
   }
 
   get _fullsizeDialogView() {
@@ -56,7 +74,7 @@ class EwToolPanel extends LitElement {
         || v.experience === 'modal';
       items.push({
         value: v.id,
-        label: v.label,
+        label: v.getLabel?.() ?? v.label,
         ...(opensExternally && {
           action: true,
           trailingIcon: OPEN_IN_ICON_URL,
@@ -92,6 +110,14 @@ class EwToolPanel extends LitElement {
   }
 
   async _onViewsChange() {
+    // A caller can set `pendingView` (a plain field, not reactive) right before
+    // assigning `views` to request a specific initial view. Consuming it here
+    // lets us skip resolveInitialToolPanelView's flags fetch — which otherwise
+    // races an explicit showPanel(name) call made by that same caller once this
+    // (unawaited) update settles, and can clobber it if the fetch is slow.
+    const requestedView = this.pendingView;
+    this.pendingView = undefined;
+
     if (!this.views?.length) {
       this._closeDialog();
       this.activeId = undefined;
@@ -108,11 +134,13 @@ class EwToolPanel extends LitElement {
     }
 
     if (!this.activeId || !ids.has(this.activeId)) {
-      const initial = await resolveInitialToolPanelView({
-        org: this.org,
-        site: this.site,
-        availableIds: ids,
-      });
+      const initial = (requestedView && ids.has(requestedView))
+        ? requestedView
+        : await resolveInitialToolPanelView({
+          org: this.org,
+          site: this.site,
+          availableIds: ids,
+        });
       await this.showPanel(initial ?? this.views[0].id);
     }
   }

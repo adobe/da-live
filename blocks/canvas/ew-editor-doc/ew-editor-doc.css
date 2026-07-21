@@ -6,6 +6,62 @@
   height: 100%;
   min-height: 0;
   overflow: hidden auto;
+  position: relative;
+}
+
+/* EXPERIMENTAL: right-margin gutter of comment initials bubbles (comment-gutter.js). */
+.ew-editor-doc .ew-comment-gutter {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  width: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ew-editor-doc .ew-comment-gutter-bubble {
+  position: absolute;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 32px fill + 2px ring (content-box), matching the canvas bubbles' Spectrum
+     avatar sizing (see .qe-comment-bubble in da-nx's quick-edit.css). */
+  box-sizing: content-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  border: 2px solid light-dark(#fff, var(--s2-gray-75, #2c2c2c));
+  border-radius: 50%;
+  background: var(--ew-comment-author-color, #6b7280);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+
+  /* Spectrum "emphasized" elevation, matching the canvas bubbles. */
+  filter:
+    drop-shadow(0 2px 8px rgb(0 0 0 / 8%))
+    drop-shadow(0 1px 4px rgb(0 0 0 / 4%))
+    drop-shadow(0 0 1px rgb(0 0 0 / 8%));
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateY(-2px);
+}
+
+.ew-editor-doc .ew-comment-gutter-bubble.is-active {
+  outline: 2px solid var(--ew-comment-author-color, #6b7280);
+  outline-offset: 1px;
+}
+
+.ew-editor-doc .ew-comment-gutter-bubble:hover {
+  filter:
+    drop-shadow(0 4px 12px rgb(0 0 0 / 8%))
+    drop-shadow(0 2px 6px rgb(0 0 0 / 4%))
+    drop-shadow(0 0 2px rgb(0 0 0 / 12%));
 }
 
 .ew-editor-doc .ew-editor-doc-mount {
@@ -209,7 +265,7 @@
   border-radius: 2px;
   padding: 0 3px;
   white-space: nowrap;
-  color: white;
+  color: var(--s2-gray-800);
 }
 
 .ew-editor-doc-placeholder {
