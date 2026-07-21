@@ -2,6 +2,7 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
+import { getSelectionToolbar } from './selection-toolbar.js';
 import { MessageTypes } from '../utils/quick-edit-messages.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
@@ -54,6 +55,9 @@ export function updateState(data, ctx) {
   ctx.suppressRerender = true;
   view.dispatch(tr);
   ctx.suppressRerender = false;
+
+  const tb = getSelectionToolbar();
+  if (tb.open && !tb.isInteracting) tb.requestUpdate();
 
   // Sync the updated node (with marks applied) back to the portal's mini editor.
   // Without this, the portal's editor retains the plain-text version, so the next
