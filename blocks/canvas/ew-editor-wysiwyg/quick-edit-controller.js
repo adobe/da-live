@@ -1,4 +1,3 @@
-import { getNx1 } from '../../../scripts/utils.js';
 import { updateDocument, updateState, getEditor } from '../editor-utils/editor-utils.js';
 import { handleImageReplace } from './utils/image.js';
 import {
@@ -7,9 +6,9 @@ import {
   handleNewVersion,
   handleIframeSelectionChange,
   handleNodeSelect,
+  handleStoredMarks,
 } from './utils/handlers.js';
-
-const { MessageTypes } = await import(`${getNx1()}/public/plugins/quick-edit/src/message-types.js`);
+import { MessageTypes } from '../utils/quick-edit-messages.js';
 
 export function createControllerOnMessage(ctx) {
   return function onMessage(e) {
@@ -37,6 +36,8 @@ export function createControllerOnMessage(ctx) {
       handleIframeSelectionChange(data, ctx);
     } else if (data.type === MessageTypes.NODE_SELECT) {
       handleNodeSelect(data, ctx);
+    } else if (data.type === MessageTypes.STORED_MARKS) {
+      handleStoredMarks(data, ctx);
     }
   };
 }

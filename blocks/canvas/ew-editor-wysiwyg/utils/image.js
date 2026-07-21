@@ -1,7 +1,7 @@
-import { getNx, getNx1 } from '../../../../scripts/utils.js';
+import { getNx } from '../../../../scripts/utils.js';
+import { MessageTypes } from '../../utils/quick-edit-messages.js';
 
 const { DA_ADMIN, DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
-const { MessageTypes } = await import(`${getNx1()}/public/plugins/quick-edit/src/message-types.js`);
 
 function updateImageInDocument(view, originalSrc, newSrc) {
   if (!view) return false;

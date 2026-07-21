@@ -1,11 +1,11 @@
 import { LitElement, html } from 'da-lit';
-import { getNx, getNx1 } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms, getIframeOrigin, sendIframeHandshake } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+import { MessageTypes } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { MessageTypes } = await import(`${getNx1()}/public/plugins/quick-edit/src/message-types.js`);
 
 const style = await loadStyle(import.meta.url);
 

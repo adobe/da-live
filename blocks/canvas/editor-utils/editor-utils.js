@@ -1,10 +1,10 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
-import { getNx, getNx1 } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
+import { MessageTypes } from '../utils/quick-edit-messages.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
-const { MessageTypes } = await import(`${getNx1()}/public/plugins/quick-edit/src/message-types.js`);
 
 // --- state.js ---
 

@@ -26,6 +26,7 @@ import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
+import { MessageTypes } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -125,7 +126,12 @@ export class EwEditorDoc extends LitElement {
     const forceScroll = scrollIntoView && Boolean(node);
     if (!forceScroll && key === this._lastBroadcastNodeKey) return;
     this._lastBroadcastNodeKey = key;
-    port.postMessage({ type: 'set-selected-node', node, scrollIntoView: forceScroll });
+    port.postMessage({
+      type: MessageTypes.SET_SELECTED_NODE,
+      node,
+      scrollIntoView: forceScroll,
+      payload: { node, scrollIntoView: forceScroll },
+    });
   }
 
   undo() {

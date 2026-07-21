@@ -1,4 +1,4 @@
-// Test fixture mirroring da-nx's nx/public/plugins/quick-edit/src/message-types.js.
+// Test fixture mirroring da-nx's nx/utils/message-types.js.
 export const MessageTypes = Object.freeze({
   INIT: 'init',
   READY: 'ready',
@@ -6,11 +6,13 @@ export const MessageTypes = Object.freeze({
   SET_BODY: 'set-body',
   SET_EDITOR_STATE: 'set-editor-state',
   SET_CURSORS: 'set-cursors',
+  SET_SELECTED_NODE: 'set-selected-node',
 
   CURSOR_MOVE: 'cursor-move',
   RELOAD: 'reload',
   GET_EDITOR: 'get-editor',
   NODE_UPDATE: 'node-update',
+  NODE_SELECT: 'node-select',
   HISTORY: 'history',
   NEW_VERSION: 'new-version',
   SELECTION_CHANGE: 'selection-change',
