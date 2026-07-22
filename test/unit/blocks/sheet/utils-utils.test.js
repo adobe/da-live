@@ -182,6 +182,32 @@ describe('sheet/utils utils', () => {
       const result = await saveSheets(sheets);
       expect(result).to.be.true;
     });
+
+    it('proceeds when the server etag only differs by the weak W/ prefix', async () => {
+      // Cloudflare downgrades strong ETags to weak (W/"...") when it transforms
+      // the response body (gzip/brotli on GETs), so a POST can record a strong
+      // baseline that a later GET echoes back weak with the same hash. That must
+      // not read as drift, otherwise every save after the first misfires.
+      let onStaleFired = false;
+      staleCheck.start({ details: DETAILS, onStale: () => { onStaleFired = true; } });
+      staleCheck.markSynced('"abc123"');
+
+      window.location.hash = '#/org/repo/sheet';
+      window.fetch = wrap(async (url, opts) => {
+        if (opts?.method === 'POST' || opts?.method === 'PUT') {
+          return new Response('', { status: 200, headers: { ETag: '"def456"' } });
+        }
+        return new Response(JSON.stringify(serverJson), {
+          status: 200,
+          headers: { ETag: 'W/"abc123"', 'Content-Type': 'application/json' },
+        });
+      });
+
+      const sheets = [buildSheet('data', [['key'], ['a']])];
+      const result = await saveSheets(sheets);
+      expect(result).to.be.true;
+      expect(onStaleFired).to.be.false;
+    });
   });
 
   describe('handleSave', () => {
