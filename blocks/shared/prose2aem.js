@@ -1,3 +1,5 @@
+import getPathDetails from './pathDetails.js';
+
 function setCursor(cursor, el) {
   el.id = cursor.id;
   cursor.remove();
@@ -232,6 +234,30 @@ function parseIcons(editor) {
 
 const removeEls = (els) => els.forEach((el) => el.remove());
 
+function convertLocalUrlsToRelative(editor) {
+  const pathDetails = getPathDetails();
+  if (!pathDetails?.org || !pathDetails?.site) return;
+
+  const { org, site } = pathDetails;
+
+  const links = editor.querySelectorAll('a[href]');
+  links.forEach((link) => {
+    const url = link.getAttribute('href');
+    if (!url || !url.startsWith('https://')) return;
+
+    try {
+      const { hostname, pathname, search, hash } = new URL(url);
+
+      const sameSitePattern = `--${site}--${org}.aem.`;
+      if (hostname.includes(sameSitePattern)) {
+        link.setAttribute('href', `${pathname}${search}${hash}`);
+      }
+    } catch {
+      // ignore
+    }
+  });
+}
+
 /**
  * A utility to take ProseMirror formatted DOM and convert to AEM semantic markup
  * @param {HTMLElement} editor the editor dom
@@ -244,6 +270,10 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
+
+  if (livePreview) {
+    convertLocalUrlsToRelative(editor);
+  }
 
   const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
   removeEls(daDiffDeletedEls);

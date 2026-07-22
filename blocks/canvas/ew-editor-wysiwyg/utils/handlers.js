@@ -1,4 +1,4 @@
-import { TextSelection, yUndo, yRedo } from 'da-y-wrapper';
+import { TextSelection, NodeSelection, yUndo, yRedo } from 'da-y-wrapper';
 import {
   getSelectionToolbar,
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
@@ -171,4 +171,82 @@ export function handleIframeSelectionChange(data, ctx) {
   if (!handleSelectionChange(data, ctx, { fromQuickEditIframe: true })) return;
 
   showToolbarInIFrame(ctx);
+}
+
+function srcFileName(src) {
+  if (!src) return '';
+  const bare = String(src).split('?')[0].split('#')[0];
+  return bare.split('/').pop() || '';
+}
+
+function findImagePosBySrc(doc, src, blockIndex) {
+  const name = srcFileName(src);
+  if (!name) return null;
+  let from = 0;
+  let to = doc.content.size;
+  if (blockIndex != null) {
+    const tablePos = blockIndex - 1;
+    const table = tablePos >= 0 ? doc.nodeAt(tablePos) : null;
+    if (table?.type.name === 'table') {
+      from = tablePos;
+      to = tablePos + table.nodeSize;
+    }
+  }
+  let found = null;
+  doc.nodesBetween(from, to, (n, pos) => {
+    if (found != null) return false;
+    if (n.type.name === 'image' && srcFileName(n.attrs?.src) === name) {
+      found = pos;
+      return false;
+    }
+    return true;
+  });
+  return found;
+}
+
+export function resolveNodeSelectPos(node, doc) {
+  if (!node) return null;
+  if (node.anchorType === 'table') {
+    const pos = node.proseIndex - 1;
+    if (pos < 0 || pos > doc.content.size) return null;
+    return doc.nodeAt(pos)?.type.name === 'table' ? pos : null;
+  }
+  if (node.anchorType === 'image') {
+    const pos = node.proseIndex;
+    if (pos != null && pos >= 0 && pos <= doc.content.size
+      && doc.nodeAt(pos)?.type.name === 'image') {
+      return pos;
+    }
+    return node.src ? findImagePosBySrc(doc, node.src, node.blockIndex) : null;
+  }
+  return null;
+}
+
+export function handleNodeSelect({ node }, ctx) {
+  const { view } = ctx;
+  if (!view) return;
+  const { state } = view;
+  try {
+    if (!node) {
+      const tr = state.tr
+        .setSelection(TextSelection.near(state.doc.resolve(state.selection.from), 1))
+        .setMeta('addToHistory', false);
+      ctx.suppressRerender = true;
+      view.dispatch(tr);
+      ctx.suppressRerender = false;
+      return;
+    }
+    const pos = resolveNodeSelectPos(node, state.doc);
+    if (pos == null) return;
+    const tr = state.tr
+      .setSelection(NodeSelection.create(state.doc, pos))
+      .scrollIntoView()
+      .setMeta('addToHistory', false);
+    ctx.suppressRerender = true;
+    view.dispatch(tr);
+    ctx.suppressRerender = false;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[quick-edit-controller] handleNodeSelect failed', e?.message);
+  }
 }

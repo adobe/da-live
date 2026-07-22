@@ -13,12 +13,13 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection, applyHighlight, SEL_BLOCK } from './utils/selection.js';
+import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
 import { initIms as loadIms } from '../../shared/utils.js';
+import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
@@ -48,6 +49,7 @@ export class EwEditorDoc extends LitElement {
       this._error = undefined;
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
+      this._lastBroadcastNodeKey = undefined;
       editorHtmlChange.emit('');
     }
   }
@@ -115,6 +117,18 @@ export class EwEditorDoc extends LitElement {
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
+  _broadcastSelectedNode(scrollIntoView = false) {
+    const port = this._controllerCtx?.port;
+    const { view } = this._proseContext ?? {};
+    if (!port || !view) return;
+    const node = selectedNodePayload(view);
+    const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
+    const forceScroll = scrollIntoView && Boolean(node);
+    if (!forceScroll && key === this._lastBroadcastNodeKey) return;
+    this._lastBroadcastNodeKey = key;
+    port.postMessage({ type: 'set-selected-node', node, scrollIntoView: forceScroll });
+  }
+
   undo() {
     const { view } = this._proseContext ?? {};
     if (view) yUndo(view.state, view.dispatch);
@@ -123,6 +137,15 @@ export class EwEditorDoc extends LitElement {
   redo() {
     const { view } = this._proseContext ?? {};
     if (view) yRedo(view.state, view.dispatch);
+  }
+
+  // Flush pending collab updates to da-admin before an external read (e.g. AEM
+  // preview/publish). Without this, da-collab's debounced writer can leave the
+  // last ~2s of edits unflushed when the preview action reads from da-admin.
+  forceSave() {
+    const { wsProvider } = this._proseContext ?? {};
+    if (!wsProvider) return Promise.resolve({ ok: true });
+    return forceSave(wsProvider);
   }
 
   _setupController() {
@@ -226,6 +249,7 @@ export class EwEditorDoc extends LitElement {
                 explicit: descriptor.selectionType === SEL_BLOCK,
                 ...descriptor,
               });
+              this._broadcastSelectedNode(true);
             },
           ),
         ],
@@ -266,7 +290,9 @@ export class EwEditorDoc extends LitElement {
     this.parentElement?.addEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
     this._unsubscribeSelect = editorSelectChange
       .subscribe(({ blockIndex, source }) => {
-        if (source !== 'doc') this._scrollDocToBlock(blockIndex);
+        if (source === 'doc') return;
+        this._scrollDocToBlock(blockIndex);
+        if (source === 'outline') this._broadcastSelectedNode(true);
       });
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener('nx-highlight-selection', this._onCanvasHighlight);
