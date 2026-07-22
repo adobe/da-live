@@ -216,6 +216,9 @@ export default class DaTitle extends LitElement {
   }
 
   async handleAction(action) {
+    // Guard against a stale/bypassed disabled state (e.g. permissions changed mid-session).
+    if (action === 'save' && this._readOnly) return;
+
     this._status = null;
     this._isSending = true;
     this._actions.open = false;
@@ -357,16 +360,20 @@ export default class DaTitle extends LitElement {
   renderActions() {
     if (!this._actions?.available) return nothing;
 
-    return html`${this._actions.available?.map((action) => html`
+    return html`${this._actions.available?.map((action) => {
+      const readOnlyBlock = action === 'save' && this._readOnly;
+      const disabledText = this.disabledText ?? (readOnlyBlock ? 'You do not have permission to save.' : undefined);
+      return html`
       <button
         @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
         aria-label="Send"
-        data-popup-content=${this.disabledText ?? nothing}
-        ?disabled=${this.disabledText}>
+        data-popup-content=${disabledText ?? nothing}
+        ?disabled=${this.disabledText || readOnlyBlock}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
-    `)}`;
+    `;
+    })}`;
   }
 
   popover({ target }) {
