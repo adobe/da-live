@@ -4,6 +4,9 @@ import { getTableBlockName, getTableBlockVariant } from './blocks.js';
 
 const NON_TEXT_NODES = new Set(['table']);
 
+/** Editor views the selection/block toolbars may appear in. */
+const TOOLBAR_EDITOR_VIEWS = new Set(['content', 'split', 'layout', 'block']);
+
 /** Set on transactions that mirror WYSIWYG iframe text selection into ProseMirror. */
 export const NX_QUICK_EDIT_IFRAME_SELECTION_META = 'nxQuickEditIframeSelection';
 
@@ -115,7 +118,7 @@ export function createSelectionToolbarPlugin() {
         update(view) {
           const header = document.querySelector('ew-canvas-header');
           const ev = header?.editorView;
-          if (ev !== 'content' && ev !== 'split' && ev !== 'layout') return;
+          if (!TOOLBAR_EDITOR_VIEWS.has(ev)) return;
           syncToolbar(view, ev);
         },
         destroy() {

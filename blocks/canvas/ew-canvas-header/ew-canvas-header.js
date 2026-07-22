@@ -14,7 +14,7 @@ const ICONS = {
   gridCompare: '/img/icons/s2-icon-gridcompare-20-n.svg',
 };
 
-const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
+const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split', 'block']);
 
 class EWCanvasHeader extends LitElement {
   static properties = {
@@ -151,6 +151,15 @@ class EWCanvasHeader extends LitElement {
               title="Split view"
               @click=${() => this._setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
+            ${this.editorView === 'block' ? html`
+            <button
+              type="button"
+              class="segment is-selected"
+              aria-pressed="true"
+              title="Block editing"
+              @click=${() => this._setEditorView('layout')}
+            >Block</button>
+            ` : nothing}
           </div>
           ` : nothing}
         </div>

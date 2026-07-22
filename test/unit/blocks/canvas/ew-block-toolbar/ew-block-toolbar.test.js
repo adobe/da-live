@@ -126,38 +126,30 @@ describe('ew-block-toolbar', () => {
     expect(editBtn()).to.be.null;
   });
 
-  it('switches to split view when the edit-block button is clicked', async () => {
+  it('enters block mode and focuses the selected block when the edit button is clicked', async () => {
     const header = document.createElement('ew-canvas-header');
     const calls = [];
     header.setEditorView = (v) => calls.push(v);
     document.body.append(header);
 
-    toolbar.show('cards');
-    toolbar._editorView = 'layout';
-    await toolbar.updateComplete;
-    editBtn().click();
-
-    expect(calls).to.deep.equal(['split']);
-    header.remove();
-  });
-
-  it('scrolls the doc view to the selected block after switching to split', async () => {
-    const scrolled = [];
-    const dom = { scrollIntoView: (opts) => scrolled.push(opts) };
-    let nodeDomPos;
+    const dispatched = [];
     toolbar.view = {
-      nodeDOM: (p) => { nodeDomPos = p; return dom; },
-      state: { selection: { from: 7 } },
+      dispatch: (tr) => dispatched.push(tr),
+      state: {
+        selection: { from: 7 },
+        tr: { setMeta: (key, val) => ({ key, val }) },
+      },
     };
     toolbar.show('cards');
     toolbar._editorView = 'layout';
     await toolbar.updateComplete;
-
     editBtn().click();
-    await new Promise((r) => { requestAnimationFrame(() => requestAnimationFrame(r)); });
 
-    expect(nodeDomPos).to.equal(7);
-    expect(scrolled).to.deep.equal([{ block: 'center' }]);
+    // Block focus is set on the doc view before the view switches.
+    expect(dispatched).to.have.length(1);
+    expect(dispatched[0].val).to.deep.equal({ pos: 7 });
+    expect(calls).to.deep.equal(['block']);
+    header.remove();
   });
 
   it('reacts to editor-view changes dispatched on the document', async () => {

@@ -21,6 +21,7 @@ import {
 import { initIms as loadIms } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
+import { clearBlockFocus } from './prose-plugins/blockFocus.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
@@ -278,6 +279,10 @@ export class EwEditorDoc extends LitElement {
       const view = e.detail?.view;
       this.hidden = view === 'layout';
       hideSelectionToolbar();
+      if (view !== 'block') {
+        const pmView = this._proseContext?.view;
+        if (pmView) clearBlockFocus(pmView);
+      }
     };
     this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this._onWysiwygPortReady = (e) => {

@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant } from '../editor-utils/blocks.js';
+import { setBlockFocus } from '../ew-editor-doc/prose-plugins/blockFocus.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
@@ -149,15 +150,10 @@ class EwBlockToolbar extends LitElement {
   _onEditBlock() {
     const { view } = this;
     const pos = view?.state.selection.from;
-    document.querySelector('ew-canvas-header')?.setEditorView('split');
-    if (!view || pos == null) return;
-    // The doc pane is hidden in layout mode, so scrolling only works once split
-    // view has made it visible and laid it out — wait two frames, then bring the
-    // block's DOM into view (centered) since a hidden-pane scrollIntoView is a no-op.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      const dom = view.nodeDOM(pos);
-      dom?.scrollIntoView?.({ block: 'center' });
-    }));
+    // Focus the selected block in the doc editor, then open the (hidden) block
+    // view — which shows only this block in the doc while keeping the preview.
+    if (view && pos != null) setBlockFocus(view, pos);
+    document.querySelector('ew-canvas-header')?.setEditorView('block');
   }
 
   async _onReplaceBlock() {
