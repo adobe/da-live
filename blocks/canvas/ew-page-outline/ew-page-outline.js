@@ -8,6 +8,7 @@ import {
   deleteSection,
   insertBlockAtSectionStart,
   moveBlock,
+  moveBlockToSection,
   moveSection,
 } from '../editor-utils/blocks.js';
 import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
@@ -148,8 +149,16 @@ class EwPageOutline extends LitElement {
         : e.currentTarget;
 
       this._setDropIndicator(el, { sectionIndex: sec.sectionIndex, dropPosition });
+    } else if (!sec.blocks.length) {
+      e.preventDefault();
+
+      const emptyEl = e.currentTarget.querySelector('[data-empty-section]');
+      if (!emptyEl) return;
+      this._setDropIndicator(
+        emptyEl,
+        { sectionIndex: sec.sectionIndex, dropPosition: DROP_POSITIONS.AFTER, emptySection: true },
+      );
     } else {
-      if (!sec.blocks.length) return;
       if (sec.blocks.some((b) => b.blockIndex === this._dragging?.index)) return;
       const { blockIndex } = sec.blocks[sec.blocks.length - 1];
       e.preventDefault();
@@ -180,6 +189,9 @@ class EwPageOutline extends LitElement {
     if (_dropTarget.blockIndex != null) {
       if (_dragging.type !== OUTLINE_TYPES.BLOCK) return;
       moveBlock(view, _dragging.index, _dropTarget.blockIndex, _dropTarget.dropPosition);
+    } else if (_dropTarget.emptySection) {
+      if (_dragging.type !== OUTLINE_TYPES.BLOCK) return;
+      moveBlockToSection(view, _dragging.index, _dropTarget.sectionIndex);
     } else if (_dropTarget.sectionIndex != null) {
       if (_dragging.type !== OUTLINE_TYPES.SECTION) return;
       moveSection(view, _dragging.index, _dropTarget.sectionIndex, _dropTarget.dropPosition);
@@ -264,7 +276,7 @@ class EwPageOutline extends LitElement {
         <ul class="block-list" role="group"
             aria-label="Blocks in section ${sec.sectionIndex + 1}">
           ${sec.blocks.length === 0
-        ? html`<li class="block-item block-empty"
+        ? html`<li class="block-item block-empty" data-empty-section
                     role="treeitem" tabindex="-1">
                 <span class="empty-label">No blocks</span>
               </li>`

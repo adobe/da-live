@@ -108,6 +108,38 @@ export function insertBlockAtSectionStart(view, dom, sectionIndex) {
   view.dispatch(view.state.tr.insert(pos, parsed).scrollIntoView());
 }
 
+function getSectionCount(view) {
+  const { doc, schema } = view.state;
+  let count = 1;
+  doc.forEach((node) => {
+    if (node.type === schema.nodes.horizontal_rule) count += 1;
+  });
+  return count;
+}
+
+export function moveBlockToSection(view, fromIndex, sectionIndex) {
+  if (!view) return;
+  const positions = getBlockPositions(view);
+  if (fromIndex < 0 || fromIndex >= positions.length) return;
+  if (sectionIndex < 0 || sectionIndex >= getSectionCount(view)) return;
+
+  const fromBlockPos = positions[fromIndex];
+  const fromBlockNode = view.state.doc.nodeAt(fromBlockPos);
+  if (!fromBlockNode) return;
+  const fromBlockSize = fromBlockNode.nodeSize;
+
+  const insertPos = getSectionStartOffset(view, sectionIndex);
+  const adjustedInsertPos = insertPos > fromBlockPos
+    ? insertPos - fromBlockSize
+    : insertPos;
+
+  view.dispatch(
+    view.state.tr
+      .delete(fromBlockPos, fromBlockPos + fromBlockSize)
+      .insert(adjustedInsertPos, fromBlockNode),
+  );
+}
+
 export function deleteSection(view, sectionIndex) {
   if (!view) return;
   const { doc, schema } = view.state;
