@@ -21,6 +21,15 @@ export function getBlockFocus(state) {
   return blockFocusKey.getState(state)?.pos ?? null;
 }
 
+/** True when nothing is focused or the selection still sits inside the focused block. */
+export function isSelectionInFocusedBlock(state) {
+  const pos = getBlockFocus(state);
+  if (pos == null) return true;
+  const node = state.doc.nodeAt(pos);
+  const { from } = state.selection;
+  return !!node && from >= pos && from < pos + node.nodeSize;
+}
+
 function buildDecorations(doc, pos) {
   if (pos == null) return DecorationSet.empty;
   const decos = [];

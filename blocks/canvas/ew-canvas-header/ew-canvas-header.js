@@ -137,6 +137,7 @@ class EWCanvasHeader extends LitElement {
               aria-pressed=${this.editorView === 'layout'}
               @click=${() => this._setEditorView('layout')}
             >Layout</button>
+            ${this.editorView === 'block' ? nothing : html`
             <button
               type="button"
               class="segment ${this.editorView === 'content' ? 'is-selected' : ''}"
@@ -151,14 +152,16 @@ class EWCanvasHeader extends LitElement {
               title="Split view"
               @click=${() => this._setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
+            `}
             ${this.editorView === 'block' ? html`
             <button
               type="button"
-              class="segment is-selected"
+              class="segment is-selected segment-block"
               aria-pressed="true"
-              title="Block editing"
+              aria-label="Close block editing"
+              title="Close block editing"
               @click=${() => this._setEditorView('layout')}
-            >Block</button>
+            >Block<span class="segment-close" aria-hidden="true">✕</span></button>
             ` : nothing}
           </div>
           ` : nothing}

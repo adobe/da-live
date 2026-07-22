@@ -21,7 +21,7 @@ import {
 import { initIms as loadIms } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
-import { clearBlockFocus } from './prose-plugins/blockFocus.js';
+import { clearBlockFocus, isSelectionInFocusedBlock } from './prose-plugins/blockFocus.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
@@ -238,6 +238,7 @@ export class EwEditorDoc extends LitElement {
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
             (pmView) => {
+              this._maybeExitBlockMode(pmView);
               const blockIndex = getActiveBlockIndex(pmView);
               const { kind, ...descriptor } = describeDocSelection(pmView);
               const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
@@ -277,6 +278,7 @@ export class EwEditorDoc extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onCanvasEditorActive = (e) => {
       const view = e.detail?.view;
+      this._editorView = view;
       this.hidden = view === 'layout';
       hideSelectionToolbar();
       if (view !== 'block') {
@@ -305,6 +307,16 @@ export class EwEditorDoc extends LitElement {
 
   _applyHighlight(detail) {
     applyHighlight(this._proseContext?.view, detail);
+  }
+
+  /** In block view, auto-close back to layout once the selection leaves the focused block. */
+  _maybeExitBlockMode(pmView) {
+    if (this._editorView !== 'block') return;
+    if (isSelectionInFocusedBlock(pmView.state)) return;
+    // Defer so we don't switch views (and dispatch clearBlockFocus) mid-transaction.
+    queueMicrotask(() => {
+      document.querySelector('ew-canvas-header')?.setEditorView('layout');
+    });
   }
 
   disconnectedCallback() {

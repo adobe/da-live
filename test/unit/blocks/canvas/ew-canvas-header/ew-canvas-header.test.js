@@ -7,7 +7,11 @@ await import('../../../../../blocks/canvas/ew-canvas-header/ew-canvas-header.js'
 
 function segmentByLabel(header, label) {
   return [...header.shadowRoot.querySelectorAll('.segment')]
-    .find((b) => b.textContent.trim() === label) ?? null;
+    .find((b) => b.textContent.trim().startsWith(label)) ?? null;
+}
+
+function blockSegment(header) {
+  return header.shadowRoot.querySelector('.segment-block');
 }
 
 describe('ew-canvas-header block segment', () => {
@@ -24,28 +28,36 @@ describe('ew-canvas-header block segment', () => {
   it('does not render the Block segment outside block mode', async () => {
     header.editorView = 'layout';
     await header.updateComplete;
-    expect(segmentByLabel(header, 'Block')).to.be.null;
+    expect(blockSegment(header)).to.be.null;
 
     header.editorView = 'split';
     await header.updateComplete;
-    expect(segmentByLabel(header, 'Block')).to.be.null;
+    expect(blockSegment(header)).to.be.null;
   });
 
-  it('renders the Block segment as selected in block mode', async () => {
+  it('renders the Block segment (with a close affordance) as selected in block mode', async () => {
     header.editorView = 'block';
     await header.updateComplete;
-    const seg = segmentByLabel(header, 'Block');
+    const seg = blockSegment(header);
     expect(seg).to.exist;
     expect(seg.classList.contains('is-selected')).to.be.true;
+    expect(seg.querySelector('.segment-close')).to.exist;
   });
 
-  it('toggles back to layout and emits the view-change event when clicked', async () => {
+  it('hides the Content and Split segments in block mode', async () => {
+    header.editorView = 'block';
+    await header.updateComplete;
+    expect(segmentByLabel(header, 'Content')).to.be.null;
+    expect(segmentByLabel(header, 'Layout')).to.exist;
+  });
+
+  it('closes back to layout and emits the view-change event when the block segment is clicked', async () => {
     header.editorView = 'block';
     await header.updateComplete;
     let detailView;
     header.addEventListener('nx-canvas-editor-view', (e) => { detailView = e.detail.view; });
 
-    segmentByLabel(header, 'Block').click();
+    blockSegment(header).click();
 
     expect(detailView).to.equal('layout');
     expect(header.editorView).to.equal('layout');

@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { TextSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -6,7 +7,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { createTestEditor, destroyEditor } = await import('../../edit/prose/test-helpers.js');
 const blockFocusMod = await import('../../../../../blocks/canvas/ew-editor-doc/prose-plugins/blockFocus.js');
 
-const { default: blockFocus, setBlockFocus, clearBlockFocus, getBlockFocus } = blockFocusMod;
+const {
+  default: blockFocus,
+  setBlockFocus,
+  clearBlockFocus,
+  getBlockFocus,
+  isSelectionInFocusedBlock,
+} = blockFocusMod;
 
 function setParagraphs(editor, texts) {
   const { state } = editor.view;
@@ -47,5 +54,30 @@ describe('blockFocus plugin', () => {
   it('does not hide anything when no block is focused', () => {
     setParagraphs(editor, ['a', 'b']);
     expect(hiddenFlags(editor)).to.deep.equal([false, false]);
+  });
+
+  function selectAt(pos) {
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, pos)));
+  }
+
+  it('reports the selection as inside the focused block while editing it', () => {
+    setParagraphs(editor, ['aa', 'bb', 'cc']);
+    // 'bb' is the second paragraph: starts at 4, text runs 5..7.
+    setBlockFocus(editor.view, 4);
+    selectAt(6);
+    expect(isSelectionInFocusedBlock(editor.view.state)).to.be.true;
+  });
+
+  it('reports the selection as outside once it leaves the focused block', () => {
+    setParagraphs(editor, ['aa', 'bb', 'cc']);
+    setBlockFocus(editor.view, 4);
+    selectAt(1); // inside the first paragraph 'aa'
+    expect(isSelectionInFocusedBlock(editor.view.state)).to.be.false;
+  });
+
+  it('reports true when nothing is focused', () => {
+    setParagraphs(editor, ['aa', 'bb']);
+    expect(isSelectionInFocusedBlock(editor.view.state)).to.be.true;
   });
 });
