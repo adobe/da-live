@@ -261,22 +261,69 @@ export function getInstrumentedHTML(view) {
 
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'block-marker']);
 
+// A loose (non-block) node counts as "empty" — and is skipped entirely, never even
+// breaking/joining a run — when it has no non-whitespace text and no image/media content.
+// prose2aem doesn't always strip these (e.g. an empty <h2></h2> can survive serialization
+// even though empty top-level <p> tags are stripped upstream).
+function hasLooseContent(el) {
+  if (el.textContent?.trim()) return true;
+  return el.matches?.('img') || !!el.querySelector?.('img');
+}
+
+// Loose text elements (h1-h6, p, ol, ul) get data-prose-index stamped directly on
+// themselves by getInstrumentedHTML; images get data-image-index instead. Either
+// attribute may live on the node itself (e.g. a top-level <picture>'s <img>) or nested
+// inside it (e.g. an <img> inside a wrapping element).
+function getLooseProseIndex(el) {
+  const own = el.getAttribute('data-prose-index') ?? el.getAttribute('data-image-index');
+  if (own != null) return Number(own);
+  const nested = el.querySelector('[data-prose-index], [data-image-index]');
+  if (!nested) return undefined;
+  const attr = nested.getAttribute('data-prose-index') ?? nested.getAttribute('data-image-index');
+  return attr != null ? Number(attr) : undefined;
+}
+
 export function parseSections(htmlText) {
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
   const container = doc.querySelector('main') ?? doc.body;
   let flatIndex = 0;
   return Array.from(container.querySelectorAll(':scope > div'), (section, sectionIndex) => {
     const blocks = [];
-    Array.from(section.querySelectorAll(':scope > div[class]')).forEach((el) => {
-      const name = el.classList[0];
-      if (!name || SKIP_BLOCK_CLASSES.has(name)) return;
-      const rawProseIndex = el.getAttribute('data-block-index');
-      const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
-      const innerText = el.textContent?.trim() ?? '';
-      blocks.push({ name, blockIndex: flatIndex, proseIndex, innerText });
-      flatIndex += 1;
+    const items = [];
+    let currentRun = [];
+
+    const flushRun = () => {
+      if (currentRun.length) {
+        items.push({
+          type: 'content',
+          proseIndex: getLooseProseIndex(currentRun[0]),
+          innerText: currentRun.map((el) => el.textContent.trim()).filter(Boolean).join(' '),
+        });
+      }
+      currentRun = [];
+    };
+
+    Array.from(section.children).forEach((el) => {
+      const name = el.tagName === 'DIV' ? el.classList[0] : undefined;
+      const isBlock = name && !SKIP_BLOCK_CLASSES.has(name);
+
+      if (isBlock) {
+        flushRun();
+        const rawProseIndex = el.getAttribute('data-block-index');
+        const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
+        const innerText = el.textContent?.trim() ?? '';
+        const block = { name, blockIndex: flatIndex, proseIndex, innerText };
+        blocks.push(block);
+        items.push({ type: 'block', ...block });
+        flatIndex += 1;
+        return;
+      }
+
+      if (hasLooseContent(el)) currentRun.push(el);
     });
-    return { sectionIndex, blocks };
+    flushRun();
+
+    return { sectionIndex, blocks, items };
   });
 }
 
@@ -325,6 +372,23 @@ export const editorSelectChange = (() => {
         ? { ...detail, blockName, proseIndex, innerText }
         : detail;
       listeners.forEach((fn) => fn(enriched));
+    },
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+})();
+
+// Event observable — no replay on subscribe. See docs/canvas-events.md.
+// Selects/scrolls to an arbitrary ProseMirror document position (not a block index).
+// Used by the outline's default-content entries; general enough for other features
+// (e.g. a metadata-editing mode) to reuse for position-based selection.
+export const editorProseSelectChange = (() => {
+  const listeners = new Set();
+  return {
+    emit(detail) {
+      listeners.forEach((fn) => fn(detail));
     },
     subscribe(fn) {
       listeners.add(fn);

@@ -5,11 +5,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getPreviewOrigin;
 let fetchWysiwygBranch;
+let parseSections;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
   getPreviewOrigin = mod.getPreviewOrigin;
   fetchWysiwygBranch = mod.fetchWysiwygBranch;
+  parseSections = mod.parseSections;
 });
 
 describe('getPreviewOrigin', () => {
@@ -117,5 +119,112 @@ describe('fetchWysiwygBranch', () => {
     ]);
     const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-10/site-wbr-10/page' }));
     expect(branch).to.equal('valid');
+  });
+});
+
+describe('parseSections', () => {
+  it('collects a single block and mirrors it in items (unchanged behavior)', () => {
+    const html = `<main><div>
+      <div class="hero" data-block-index="0">Hero content</div>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.blocks).to.deep.equal([
+      { name: 'hero', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
+    ]);
+    expect(section.items).to.deep.equal([
+      { type: 'block', name: 'hero', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
+    ]);
+  });
+
+  it('returns empty blocks and items for a section with nothing in it', () => {
+    const html = '<main><div></div></main>';
+    const [section] = parseSections(html);
+    expect(section.blocks).to.deep.equal([]);
+    expect(section.items).to.deep.equal([]);
+  });
+
+  it('produces separate default-content entries before and after a block', () => {
+    const html = `<main><div>
+      <p data-prose-index="1">Intro text</p>
+      <div class="hero" data-block-index="5">Hero</div>
+      <p data-prose-index="20">Outro text</p>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.items.map((i) => i.type)).to.deep.equal(['content', 'block', 'content']);
+    expect(section.items[0]).to.deep.equal({ type: 'content', proseIndex: 1, innerText: 'Intro text' });
+    expect(section.items[2]).to.deep.equal({ type: 'content', proseIndex: 20, innerText: 'Outro text' });
+  });
+
+  it('groups consecutive loose children into a single content entry', () => {
+    const html = `<main><div>
+      <h2 data-prose-index="1">Title</h2>
+      <p data-prose-index="5">Para one</p>
+      <p data-prose-index="12">Para two</p>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.items).to.deep.equal([
+      { type: 'content', proseIndex: 1, innerText: 'Title Para one Para two' },
+    ]);
+  });
+
+  it('treats empty loose nodes as invisible — they neither break nor join a run', () => {
+    const html = `<main><div>
+      <p data-prose-index="1">Para one</p>
+      <h2></h2>
+      <p data-prose-index="12">   </p>
+      <p data-prose-index="20">Para two</p>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.items).to.deep.equal([
+      { type: 'content', proseIndex: 1, innerText: 'Para one Para two' },
+    ]);
+  });
+
+  it('produces nothing for a run made up entirely of empty nodes', () => {
+    const html = `<main><div>
+      <div class="hero" data-block-index="0">Hero</div>
+      <h2></h2>
+      <p>   </p>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.items).to.have.length(1);
+    expect(section.items[0].type).to.equal('block');
+  });
+
+  it('reads proseIndex from data-image-index on a loose image', () => {
+    const html = `<main><div>
+      <picture><img data-image-index="7" src="x.png"></picture>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.items).to.deep.equal([
+      { type: 'content', proseIndex: 7, innerText: '' },
+    ]);
+  });
+
+  it('takes proseIndex from the first non-empty node in a run', () => {
+    const html = `<main><div>
+      <h2></h2>
+      <p data-prose-index="9">First real content</p>
+      <p data-prose-index="15">More content</p>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.items).to.deep.equal([
+      { type: 'content', proseIndex: 9, innerText: 'First real content More content' },
+    ]);
+  });
+
+  it('handles multiple sections independently', () => {
+    const html = `<main>
+      <div><p data-prose-index="1">Section one text</p></div>
+      <div><div class="cards" data-block-index="0">Cards</div></div>
+    </main>`;
+    const sections = parseSections(html);
+    expect(sections).to.have.length(2);
+    expect(sections[0].items).to.deep.equal([
+      { type: 'content', proseIndex: 1, innerText: 'Section one text' },
+    ]);
+    expect(sections[1].items).to.deep.equal([
+      { type: 'block', name: 'cards', blockIndex: 0, proseIndex: 0, innerText: 'Cards' },
+    ]);
   });
 });

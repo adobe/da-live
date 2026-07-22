@@ -116,6 +116,16 @@
   font-weight: 400;
 }
 
+.content-item {
+  cursor: pointer;
+}
+
+.content-label {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--s2-gray-700);
+}
+
 .block-name {
   flex: 1;
   overflow: hidden;

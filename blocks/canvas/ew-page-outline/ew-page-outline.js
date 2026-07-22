@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { treeKeydown } from '../utils/tree-nav.js';
-import { editorHtmlChange, editorSelectChange, parseSections } from '../editor-utils/editor-utils.js';
+import { editorHtmlChange, editorSelectChange, editorProseSelectChange, parseSections } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import {
   deleteBlock,
@@ -30,13 +30,21 @@ const DROP_POSITIONS = {
   AFTER: 'after',
 };
 
+function itemsEqual(item, other) {
+  if (!other || item.type !== other.type) return false;
+  if (item.type === 'block') return item.blockIndex === other.blockIndex && item.name === other.name;
+  return item.proseIndex === other.proseIndex && item.innerText === other.innerText;
+}
+
 function sectionsEqual(a, b) {
   if (!a || !b || a.length !== b.length) return false;
   return a.every((sec, i) => {
     const other = b[i];
     return sec.sectionIndex === other.sectionIndex
       && sec.blocks.length === other.blocks.length
-      && sec.blocks.every((blk, j) => blk.name === other.blocks[j].name);
+      && sec.blocks.every((blk, j) => blk.name === other.blocks[j].name)
+      && sec.items.length === other.items.length
+      && sec.items.every((item, j) => itemsEqual(item, other.items[j]));
   });
 }
 
@@ -106,6 +114,10 @@ class EwPageOutline extends LitElement {
   _select(blockIndex) {
     this._selectedBlockIndex = blockIndex;
     editorSelectChange.emit({ blockIndex, source: 'outline' });
+  }
+
+  _selectProse(proseIndex) {
+    editorProseSelectChange.emit({ proseIndex });
   }
 
   _clearDropIndicator() {
@@ -263,28 +275,35 @@ class EwPageOutline extends LitElement {
         </div>
         <ul class="block-list" role="group"
             aria-label="Blocks in section ${sec.sectionIndex + 1}">
-          ${sec.blocks.length === 0
+          ${sec.items.length === 0
         ? html`<li class="block-item block-empty"
                     role="treeitem" tabindex="-1">
-                <span class="empty-label">No blocks</span>
+                <span class="empty-label">Empty section</span>
               </li>`
-        : sec.blocks.map(({ name, blockIndex }, blockIdx) => html`
-            <li class="block-item ${this._selectedBlockIndex === blockIndex ? 'selected' : ''}" role="treeitem"
-                data-block-index="${blockIndex}"
-                tabindex="${isFirstSection && blockIdx === 0 ? '0' : '-1'}"
-                aria-selected="${this._selectedBlockIndex === blockIndex}"
+        : sec.items.map((item, itemIdx) => (item.type === 'block'
+          ? html`
+            <li class="block-item ${this._selectedBlockIndex === item.blockIndex ? 'selected' : ''}" role="treeitem"
+                data-block-index="${item.blockIndex}"
+                tabindex="${isFirstSection && itemIdx === 0 ? '0' : '-1'}"
+                aria-selected="${this._selectedBlockIndex === item.blockIndex}"
                 draggable="true"
-                @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.BLOCK, blockIndex)}
-                @dragover=${(e) => this._onBlockDragOver(e, blockIndex)}
+                @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.BLOCK, item.blockIndex)}
+                @dragover=${(e) => this._onBlockDragOver(e, item.blockIndex)}
                 @drop=${this._onDrop}
                 @dragend=${this._onDragEnd}
-                @click=${() => this._select(blockIndex)}>
-              <span class="block-name">${name}</span>
-              ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, blockIndex)}
+                @click=${() => this._select(item.blockIndex)}>
+              <span class="block-name">${item.name}</span>
+              ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, item.blockIndex)}
               <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
                 <use href="${DRAG_ICON_SRC}#icon"></use>
               </svg>
-            </li>`)}
+            </li>`
+          : html`
+            <li class="block-item content-item" role="treeitem"
+                tabindex="${isFirstSection && itemIdx === 0 ? '0' : '-1'}"
+                @click=${() => this._selectProse(item.proseIndex)}>
+              <span class="block-name content-label">Default content</span>
+            </li>`))}
         </ul>
       </li>`;
   }
