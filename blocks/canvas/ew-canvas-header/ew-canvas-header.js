@@ -94,6 +94,11 @@ class EWCanvasHeader extends LitElement {
     );
   }
 
+  /** Programmatically switch the editor view (same as clicking a header segment). */
+  setEditorView(view) {
+    this._setEditorView(view);
+  }
+
   _renderIcon(name) {
     return html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${ICONS[name]}#icon"></use></svg>`;
   }

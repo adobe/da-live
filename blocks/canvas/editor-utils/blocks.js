@@ -1,8 +1,8 @@
-import { DOMParser as PMDOMParser } from 'da-y-wrapper';
+import { DOMParser as PMDOMParser, NodeSelection } from 'da-y-wrapper';
 
 const NON_BLOCK_TABLE_NAMES = new Set(['metadata', 'section metadata', 'section-metadata']);
 
-function getTableBlockName(tableNode) {
+export function getTableBlockName(tableNode) {
   const firstRow = tableNode.firstChild;
   if (!firstRow) return '';
   const firstCell = firstRow.firstChild;
@@ -10,6 +10,38 @@ function getTableBlockName(tableNode) {
   const raw = firstCell.textContent?.trim() ?? '';
   const match = raw.match(/^([a-zA-Z0-9_\s-]+)(?:\s*\([^)]*\))?$/);
   return match ? match[1].trim().toLowerCase() : raw.toLowerCase();
+}
+
+/** The variant descriptor inside the block header's parentheses, or '' if none. */
+export function getTableBlockVariant(tableNode) {
+  const firstRow = tableNode?.firstChild;
+  const firstCell = firstRow?.firstChild;
+  const raw = firstCell?.textContent?.trim() ?? '';
+  const match = raw.match(/\(([^)]*)\)\s*$/);
+  return match ? match[1].trim() : '';
+}
+
+/**
+ * Rewrite the selected block's header cell to carry `variant` (e.g. `name (variant)`),
+ * or just `name` when `variant` is empty, keeping the block node selected.
+ */
+export function setTableBlockVariant(view, variant) {
+  if (!view) return;
+  const { selection } = view.state;
+  if (!(selection instanceof NodeSelection)) return;
+  const table = selection.node;
+  if (table?.type?.name !== 'table') return;
+  const para = table.firstChild?.firstChild?.firstChild;
+  if (!para) return;
+  const tablePos = selection.from;
+  // table > row > cell > paragraph: content of the paragraph starts 4 tokens in.
+  const from = tablePos + 4;
+  const to = from + para.content.size;
+  const base = (para.textContent ?? '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const newText = variant ? `${base} (${variant})` : base;
+  const tr = view.state.tr.insertText(newText, from, to);
+  tr.setSelection(NodeSelection.create(tr.doc, tablePos));
+  view.dispatch(tr);
 }
 
 function isSamePosition(from, to, dropPosition) {
@@ -106,6 +138,12 @@ export function insertBlockAtSectionStart(view, dom, sectionIndex) {
   const pos = getSectionStartOffset(view, sectionIndex);
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
   view.dispatch(view.state.tr.insert(pos, parsed).scrollIntoView());
+}
+
+export function replaceBlockRange(view, from, to, dom) {
+  if (!view) return;
+  const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
+  view.dispatch(view.state.tr.replaceWith(from, to, parsed.content).scrollIntoView());
 }
 
 export function deleteSection(view, sectionIndex) {

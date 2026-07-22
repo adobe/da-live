@@ -39,6 +39,7 @@ class EwBlockLibraryModal extends LitElement {
   static properties = {
     blocks: { attribute: false },
     onInsert: { attribute: false },
+    heading: { attribute: false },
     _blocks: { state: true },
     _variantsByPath: { state: true },
     _expandedPath: { state: true },
@@ -299,7 +300,7 @@ class EwBlockLibraryModal extends LitElement {
       <nx-dialog class="modal" @close=${this._onDialogClose}>
         <div class="modal-content">
           <header class="modal-header">
-            <span class="modal-title">Insert block</span>
+            <span class="modal-title">${this.heading ?? 'Insert block'}</span>
             <button type="button" class="modal-close"
                     aria-label="Close" @click=${() => this._close()}>✕</button>
           </header>
@@ -317,7 +318,7 @@ class EwBlockLibraryModal extends LitElement {
 
 customElements.define('ew-block-library-modal', EwBlockLibraryModal);
 
-export async function openBlockLibraryModal({ onInsert } = {}) {
+export async function openBlockLibraryModal({ onInsert, heading } = {}) {
   if (document.body.querySelector('ew-block-library-modal')) return;
 
   let hashState;
@@ -332,6 +333,7 @@ export async function openBlockLibraryModal({ onInsert } = {}) {
   const modal = document.createElement('ew-block-library-modal');
   modal.blocks = blocks;
   modal.onInsert = onInsert;
+  modal.heading = heading;
   modal.addEventListener('close', () => modal.remove(), { once: true });
   document.body.append(modal);
 }
