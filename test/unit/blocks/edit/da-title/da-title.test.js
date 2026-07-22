@@ -273,25 +273,15 @@ describe('DaTitle', () => {
     });
   });
 
-  describe('collab status (sheet view)', () => {
-    it('sets collabStatus to connected when online', async () => {
-      const origOnLine = window.navigator.onLine;
-      Object.defineProperty(window.navigator, 'onLine', { value: true, configurable: true });
-
-      el = await fixture({ details: createDetails({ view: 'sheet' }) });
-      expect(el.collabStatus).to.equal('connected');
-
-      Object.defineProperty(window.navigator, 'onLine', { value: origOnLine, configurable: true });
-    });
-
-    it('sets collabStatus to offline when offline', async () => {
-      const origOnLine = window.navigator.onLine;
-      Object.defineProperty(window.navigator, 'onLine', { value: false, configurable: true });
-
-      el = await fixture({ details: createDetails({ view: 'sheet' }) });
-      expect(el.collabStatus).to.equal('offline');
-
-      Object.defineProperty(window.navigator, 'onLine', { value: origOnLine, configurable: true });
+  describe('collab status = "unsaved"', () => {
+    it('renders the cloud_refresh icon and the "Unsaved changes" tooltip', async () => {
+      el = await fixture({ collabStatus: 'unsaved' });
+      await nextFrame();
+      const cloud = el.shadowRoot.querySelector('.collab-status-cloud');
+      expect(cloud.classList.contains('collab-status-unsaved')).to.be.true;
+      expect(cloud.getAttribute('data-popup-content')).to.equal('Unsaved changes');
+      const use = cloud.querySelector('use');
+      expect(use.getAttribute('href')).to.equal('#cloud_refresh');
     });
   });
 

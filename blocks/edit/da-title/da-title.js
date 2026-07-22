@@ -25,6 +25,7 @@ const CLOUD_ICONS = {
   disconnected: 'spectrum-Cloud-offline',
   offline: 'spectrum-Cloud-offline',
   connecting: 'cloud_refresh',
+  unsaved: 'cloud_refresh',
   error: 'spectrum-Cloud-error',
 };
 
@@ -55,14 +56,6 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._actionsVis = [];
-    if (this.details.view === 'sheet') {
-      this.collabStatus = window.navigator.onLine
-        ? 'connected'
-        : 'offline';
-
-      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
-      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
-    }
   }
 
   update(changed) {
@@ -239,6 +232,21 @@ export default class DaTitle extends LitElement {
         return;
       }
 
+      if (view === 'sheet' && action === 'save' && this.sheet) {
+        const {
+          findColumnsWithDataButNoHeader,
+          confirmSaveWithMissingHeaders,
+        } = await import('../../sheet/utils/utils.js');
+        const affected = findColumnsWithDataButNoHeader(this.sheet);
+        if (affected.length) {
+          const proceed = await confirmSaveWithMissingHeaders(affected);
+          if (!proceed) {
+            this._isSending = false;
+            return;
+          }
+        }
+      }
+
       const savedOk = await staleCheck.runSave(async () => {
         let resp;
         if (view === 'sheet') {
@@ -408,10 +416,11 @@ export default class DaTitle extends LitElement {
   }
 
   renderCollab() {
+    const tooltip = this.collabStatus === 'unsaved' ? 'Unsaved changes' : this.collabStatus;
     return html`
       <div class="collab-status">
         ${this.collabUsers ? this.renderCollabUsers() : nothing}
-        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${this.collabStatus}" @click=${this.popover}>
+        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${tooltip}" @click=${this.popover}>
          <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
         </div>
       </div>`;
