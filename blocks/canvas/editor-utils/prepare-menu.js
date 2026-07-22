@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { fetchDaConfigs } from '../../shared/utils.js';
+import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -112,6 +112,7 @@ export default class PrepareMenu extends LitElement {
   }
 
   handleIframeLoad({ target }) {
+    const targetOrigin = getPostMessageTargetOrigin(target.src);
     const channel = new MessageChannel();
 
     setTimeout(() => {
@@ -124,7 +125,7 @@ export default class PrepareMenu extends LitElement {
 
       const message = { ready: true, context, token };
 
-      target.contentWindow.postMessage(message, '*', [channel.port2]);
+      target.contentWindow.postMessage(message, targetOrigin, [channel.port2]);
     }, 750);
   }
 

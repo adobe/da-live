@@ -186,7 +186,7 @@ export default class DaNew extends LitElement {
       saveLabel="Create"
       ?open=${this._linkDialogOpen}
       @da-link-submit=${this._handleLinkSubmit}
-      @da-link-cancel=${this._handleLinkCancel}>
+      @close=${this._handleLinkCancel}>
     </da-link-dialog>
     ${this._createDialogOpen ? html`
     <nx-dialog title="${this._createDialogTitle}" @close=${this._handleCreateDialogClose}>
