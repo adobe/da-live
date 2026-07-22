@@ -147,6 +147,7 @@ async function loadCustomPlugins() {
     { default: imageDrop },
     { default: imageFocalPoint },
     { default: tableSelectHandle },
+    { default: tableCollapse },
     { default: linkConverter },
     { default: linkTextSync },
     { default: sectionPasteHandler },
@@ -162,6 +163,7 @@ async function loadCustomPlugins() {
     import('./plugins/imageDrop.js'),
     import('./plugins/imageFocalPoint.js'),
     import('./plugins/tableSelectHandle.js'),
+    import('./plugins/tableCollapse.js'),
     import('./plugins/linkConverter.js'),
     import('./plugins/linkTextSync.js'),
     import('./plugins/sectionPasteHandler.js'),
@@ -180,6 +182,7 @@ async function loadCustomPlugins() {
     imageDrop,
     imageFocalPoint,
     tableSelectHandle,
+    tableCollapse,
     linkConverter,
     linkTextSync,
     sectionPasteHandler,
@@ -438,7 +441,15 @@ function addSyncedListener(wsProvider, canWrite) {
   });
 }
 
-function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
+function getCollapseStorageKey(path) {
+  try {
+    return `da-collapsed-tables:${new URL(path).pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins, path) {
   pluginsPromise.then((plugins) => {
     const {
       syncPlugin,
@@ -460,6 +471,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
       plugins.slashMenu(),
       plugins.linkMenu(),
       plugins.tableSelectHandle(),
+      plugins.tableCollapse(getCollapseStorageKey(path)),
       plugins.imageDrop(schema),
       plugins.linkConverter(schema),
       plugins.linkTextSync(),
@@ -591,7 +603,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {
     syncPlugin,
     cursorPlugin,
-  });
+  }, path);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
