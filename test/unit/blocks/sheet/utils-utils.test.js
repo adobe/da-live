@@ -3,7 +3,13 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { saveSheets, handleSave, staleCheck } = await import('../../../../blocks/sheet/utils/utils.js');
+const {
+  saveSheets,
+  handleSave,
+  staleCheck,
+  findColumnsWithDataButNoHeader,
+  colIndexToLetter,
+} = await import('../../../../blocks/sheet/utils/utils.js');
 
 // The new api.js makes an hlx6 upgrade probe before each source op. The probe
 // must respond without an x-api-upgrade-available header so the source URL
@@ -64,6 +70,66 @@ describe('sheet/utils utils', () => {
       const sheets = [buildSheet('one', [['k'], ['v']])];
       const result = await saveSheets(sheets);
       expect(result).to.be.false;
+    });
+
+    it('Fires sheet-dirty on the clean→dirty transition and sheet-clean on markSynced', () => {
+      const events = [];
+      const onDirty = () => events.push('dirty');
+      const onClean = () => events.push('clean');
+      document.addEventListener('sheet-dirty', onDirty);
+      document.addEventListener('sheet-clean', onClean);
+      try {
+        staleCheck.markSynced('"initial"');
+        staleCheck.markEdited();
+        staleCheck.markEdited();
+        staleCheck.markEdited();
+        staleCheck.markSynced('"saved"');
+        expect(events).to.deep.equal(['dirty', 'clean']);
+      } finally {
+        document.removeEventListener('sheet-dirty', onDirty);
+        document.removeEventListener('sheet-clean', onClean);
+      }
+    });
+
+    it('Stays dirty when an edit lands while a save is in flight', async () => {
+      const events = [];
+      const onDirty = () => events.push('dirty');
+      const onClean = () => events.push('clean');
+      document.addEventListener('sheet-dirty', onDirty);
+      document.addEventListener('sheet-clean', onClean);
+      try {
+        staleCheck.markSynced('"initial"');
+        // Save A: the user types again while A's POST is in flight, then A lands.
+        // markSynced must NOT clear dirty — a follow-up save is still queued.
+        staleCheck.markEdited();
+        await staleCheck.runSave(async () => {
+          staleCheck.markEdited();
+          staleCheck.markSynced('"a"');
+        });
+        expect(events).to.deep.equal(['dirty']);
+        // Save B covers the later edit and clears the flag.
+        await staleCheck.runSave(async () => {
+          staleCheck.markSynced('"b"');
+        });
+        expect(events).to.deep.equal(['dirty', 'clean']);
+      } finally {
+        document.removeEventListener('sheet-dirty', onDirty);
+        document.removeEventListener('sheet-clean', onClean);
+      }
+    });
+
+    it('Fires sheet-clean when stop() drops a dirty session', () => {
+      const events = [];
+      const onClean = () => events.push('clean');
+      document.addEventListener('sheet-clean', onClean);
+      try {
+        staleCheck.start({ details: { org: 'o', site: 's', path: '/p', view: 'sheet' }, onStale: () => {} });
+        staleCheck.markEdited();
+        staleCheck.stop();
+        expect(events).to.deep.equal(['clean']);
+      } finally {
+        document.removeEventListener('sheet-clean', onClean);
+      }
     });
   });
 
@@ -168,6 +234,83 @@ describe('sheet/utils utils', () => {
       // wait beyond the 1000ms debounce
       await new Promise((r) => { setTimeout(r, 1200); });
       expect(captured).to.contain('/source/o/r/test');
+    });
+  });
+
+  describe('findColumnsWithDataButNoHeader', () => {
+    it('Flags columns with data but a missing header', () => {
+      const sheet = buildSheet('data', [
+        ['name', '', undefined, 'age'],
+        ['Ada', 'lost1', '', 30],
+        ['Grace', '', 'lost2', 31],
+      ]);
+      const result = findColumnsWithDataButNoHeader([sheet]);
+      expect(result).to.deep.equal([{ name: 'data', cols: [2, 3] }]);
+    });
+
+    it('Does not flag whitespace-only headers (save keeps them as keys)', () => {
+      const sheet = buildSheet('data', [
+        ['name', '   '],
+        ['Ada', 'kept'],
+      ]);
+      expect(findColumnsWithDataButNoHeader([sheet])).to.deep.equal([]);
+    });
+
+    it('Ignores unnamed columns that are entirely empty', () => {
+      const sheet = buildSheet('data', [
+        ['name', '', 'age'],
+        ['Ada', '', 30],
+        ['Grace', undefined, 31],
+      ]);
+      expect(findColumnsWithDataButNoHeader([sheet])).to.deep.equal([]);
+    });
+
+    it('Returns [] when every header is present', () => {
+      const sheet = buildSheet('data', [
+        ['name', 'age'],
+        ['Ada', 30],
+      ]);
+      expect(findColumnsWithDataButNoHeader([sheet])).to.deep.equal([]);
+    });
+
+    it('Returns [] for an empty sheet', () => {
+      const sheet = buildSheet('data', []);
+      expect(findColumnsWithDataButNoHeader([sheet])).to.deep.equal([]);
+    });
+
+    it('Reports per-sheet across multiple sheets', () => {
+      const a = buildSheet('a', [
+        ['x', ''],
+        ['1', 'lost'],
+      ]);
+      const b = buildSheet('b', [
+        ['y'],
+        ['2'],
+      ]);
+      const result = findColumnsWithDataButNoHeader([a, b]);
+      expect(result).to.deep.equal([{ name: 'a', cols: [2] }]);
+    });
+
+    it('colIndexToLetter maps to spreadsheet letters', () => {
+      expect(colIndexToLetter(1)).to.equal('A');
+      expect(colIndexToLetter(2)).to.equal('B');
+      expect(colIndexToLetter(26)).to.equal('Z');
+      expect(colIndexToLetter(27)).to.equal('AA');
+      expect(colIndexToLetter(52)).to.equal('AZ');
+      expect(colIndexToLetter(53)).to.equal('BA');
+      expect(colIndexToLetter(702)).to.equal('ZZ');
+      expect(colIndexToLetter(703)).to.equal('AAA');
+      expect(colIndexToLetter(0)).to.equal('');
+    });
+
+    it('Treats numeric zero as data (would be lost)', () => {
+      const sheet = buildSheet('data', [
+        ['name', ''],
+        ['Ada', 0],
+      ]);
+      expect(findColumnsWithDataButNoHeader([sheet])).to.deep.equal([
+        { name: 'data', cols: [2] },
+      ]);
     });
   });
 });
