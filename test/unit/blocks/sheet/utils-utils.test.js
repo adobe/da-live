@@ -91,6 +91,33 @@ describe('sheet/utils utils', () => {
       }
     });
 
+    it('Stays dirty when an edit lands while a save is in flight', async () => {
+      const events = [];
+      const onDirty = () => events.push('dirty');
+      const onClean = () => events.push('clean');
+      document.addEventListener('sheet-dirty', onDirty);
+      document.addEventListener('sheet-clean', onClean);
+      try {
+        staleCheck.markSynced('"initial"');
+        // Save A: the user types again while A's POST is in flight, then A lands.
+        // markSynced must NOT clear dirty — a follow-up save is still queued.
+        staleCheck.markEdited();
+        await staleCheck.runSave(async () => {
+          staleCheck.markEdited();
+          staleCheck.markSynced('"a"');
+        });
+        expect(events).to.deep.equal(['dirty']);
+        // Save B covers the later edit and clears the flag.
+        await staleCheck.runSave(async () => {
+          staleCheck.markSynced('"b"');
+        });
+        expect(events).to.deep.equal(['dirty', 'clean']);
+      } finally {
+        document.removeEventListener('sheet-dirty', onDirty);
+        document.removeEventListener('sheet-clean', onClean);
+      }
+    });
+
     it('Fires sheet-clean when stop() drops a dirty session', () => {
       const events = [];
       const onClean = () => events.push('clean');

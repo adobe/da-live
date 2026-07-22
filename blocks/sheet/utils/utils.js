@@ -14,6 +14,12 @@ class StaleCheck {
     this._onStale = null;
     // Set while a POST is in flight so reads (drift + reload) queue behind it.
     this._pendingSave = null;
+    // Monotonic edit counter, bumped on every edit. runSave snapshots it into
+    // _savingSeq for the POST it's about to make; markSynced then clears the
+    // dirty flag only if no edit has landed since, so edits typed while a save
+    // was in flight keep the indicator in "saving". Null when no save is live.
+    this._editSeq = 0;
+    this._savingSeq = null;
   }
 
   // `details` is the pathDetails object ({ org, site, path, view }).
@@ -35,19 +41,26 @@ class StaleCheck {
     this._onStale = null;
     // Detach so a new file's load isn't gated on the previous file's save.
     this._pendingSave = null;
+    this._editSeq = 0;
+    this._savingSeq = null;
     if (wasDirty) document.dispatchEvent(new CustomEvent('sheet-clean'));
   }
 
   markSynced(etag) {
     this._lastEtag = etag;
-    const wasDirty = this._hasLocalEdits;
-    this._hasLocalEdits = false;
     // Clear the post-Cancel block: a fresh sync (load or save) is the recovery path.
     this._saveBlocked = false;
+    // If edits landed since the in-flight save snapshotted its body, a follow-up
+    // save is queued — stay "unsaved" so the indicator keeps showing "saving".
+    // (_savingSeq is null outside a save, e.g. load/version restore → clear.)
+    if (this._savingSeq !== null && this._savingSeq !== this._editSeq) return;
+    const wasDirty = this._hasLocalEdits;
+    this._hasLocalEdits = false;
     if (wasDirty) document.dispatchEvent(new CustomEvent('sheet-clean'));
   }
 
   markEdited() {
+    this._editSeq += 1;
     const wasClean = !this._hasLocalEdits;
     this._hasLocalEdits = true;
     if (wasClean) document.dispatchEvent(new CustomEvent('sheet-dirty'));
@@ -71,6 +84,9 @@ class StaleCheck {
 
   async runSave(saveOp) {
     await this.awaitPendingSave();
+    // Snapshot the edit seq now — saveOp builds the POST body synchronously
+    // before its first await, so this exactly labels the content being sent.
+    this._savingSeq = this._editSeq;
     let resolve;
     const p = new Promise((r) => { resolve = r; });
     this._pendingSave = p;
@@ -78,6 +94,7 @@ class StaleCheck {
       return await saveOp();
     } finally {
       resolve();
+      this._savingSeq = null;
       if (this._pendingSave === p) this._pendingSave = null;
     }
   }
