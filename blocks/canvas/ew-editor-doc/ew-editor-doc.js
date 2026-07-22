@@ -19,6 +19,7 @@ import {
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
 import { initIms as loadIms } from '../../shared/utils.js';
+import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
@@ -144,6 +145,15 @@ export class EwEditorDoc extends LitElement {
   redo() {
     const { view } = this._proseContext ?? {};
     if (view) yRedo(view.state, view.dispatch);
+  }
+
+  // Flush pending collab updates to da-admin before an external read (e.g. AEM
+  // preview/publish). Without this, da-collab's debounced writer can leave the
+  // last ~2s of edits unflushed when the preview action reads from da-admin.
+  forceSave() {
+    const { wsProvider } = this._proseContext ?? {};
+    if (!wsProvider) return Promise.resolve({ ok: true });
+    return forceSave(wsProvider);
   }
 
   _setupController() {
