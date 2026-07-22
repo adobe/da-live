@@ -158,6 +158,31 @@
   visibility: visible;
 }
 
+.add-section-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  width: 100%;
+  padding: var(--s2-spacing-75) var(--s2-spacing-100);
+  border: none;
+  background: transparent;
+  color: var(--s2-gray-700);
+  font-family: inherit;
+  font-size: var(--s2-body-size-s);
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--s2-gray-75);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-700);
+    outline-offset: -2px;
+    border-radius: var(--s2-corner-radius-75);
+  }
+}
+
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-100);
   font-size: var(--s2-body-size-s);
