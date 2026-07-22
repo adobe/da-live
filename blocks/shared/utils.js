@@ -264,6 +264,16 @@ export const getSheetByName = (json, name) => {
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
+export function getPostMessageTargetOrigin(url, fallback = '/') {
+  try {
+    return new URL(url, window.location.href).origin;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(`Could not determine postMessage target origin for "${url}"`, e);
+    return fallback;
+  }
+}
+
 export async function contentLogin(owner, repo) {
   try {
     const { accessToken } = await initIms();
