@@ -582,6 +582,22 @@ describe('DaTitle', () => {
         window.open = savedOpen;
       }
     });
+
+    it('Config view: does not save when the user has no write permission', async () => {
+      const element = buildEl({ details: { view: 'config' }, permissions: ['read'] });
+      element.sheet = [{
+        name: 'config',
+        getData: () => [['k'], ['v']],
+        getConfig: () => ({ columns: [{ width: '20' }] }),
+      }];
+      let fetchCalled = false;
+      window.fetch = () => {
+        fetchCalled = true;
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+      await element.handleAction('save');
+      expect(fetchCalled).to.be.false;
+    });
   });
 
   describe('sidekickCacheBust', () => {
@@ -666,6 +682,34 @@ describe('DaTitle', () => {
       await nextFrame();
       const buttons = element.shadowRoot.querySelectorAll('.da-title-action');
       expect(buttons.length).to.be.at.least(2);
+      element.remove();
+    });
+
+    it('Disables the save button when the user has no write permission', async () => {
+      const element = await fixture({
+        details: createDetails({ view: 'config' }),
+        permissions: ['read'],
+      });
+      element._actions = { available: ['save'] };
+      element.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+      const saveBtn = element.shadowRoot.querySelector('.da-title-action');
+      expect(saveBtn.disabled).to.be.true;
+      element.remove();
+    });
+
+    it('Leaves the save button enabled when the user has write permission', async () => {
+      const element = await fixture({
+        details: createDetails({ view: 'config' }),
+        permissions: ['read', 'write'],
+      });
+      element._actions = { available: ['save'] };
+      element.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+      const saveBtn = element.shadowRoot.querySelector('.da-title-action');
+      expect(saveBtn.disabled).to.be.false;
       element.remove();
     });
   });
