@@ -255,6 +255,11 @@ export default async function decorate(block) {
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
   installEditorSplitDrag(mountRoot);
 
+  mountRoot.addEventListener('nx-canvas-merge-conflicts', (e) => {
+    header.hasUnresolvedMergeConflicts = e.detail?.hasMergeConflicts ?? false;
+    if (header.hasUnresolvedMergeConflicts) header.setEditorView('content');
+  });
+
   mountRoot.addEventListener('nx-editor-undo-state', (e) => {
     header.undoAvailable = e.detail?.canUndo ?? false;
     header.redoAvailable = e.detail?.canRedo ?? false;

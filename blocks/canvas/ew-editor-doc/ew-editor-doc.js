@@ -87,6 +87,14 @@ export class EwEditorDoc extends LitElement {
     }));
   }
 
+  _emitMergeConflictsState(hasMergeConflicts) {
+    this.dispatchEvent(new CustomEvent('nx-canvas-merge-conflicts', {
+      bubbles: true,
+      composed: true,
+      detail: { hasMergeConflicts },
+    }));
+  }
+
   _observeUndoManager(mgr) {
     this._stopObservingUndoManager();
     if (!mgr) return;
@@ -215,6 +223,7 @@ export class EwEditorDoc extends LitElement {
         permissions,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
+        onMergeConflictsChange: (hasConflicts) => this._emitMergeConflictsState(hasConflicts),
         extraPlugins: [
           createExtensionsBridgePlugin(),
           createTrackingPlugin(
