@@ -108,3 +108,5 @@ typings/
 .claude
 /.scout
 docs/superpowers/
+.superpowers
+.nvmrc
