@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath } from '../../shared/daFiles.js';
 import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
 import getEditPath from '../../browse/shared.js';
+import { CHAT_EVENT } from '../../shared/chat-events.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -61,13 +62,13 @@ class EwFileExplorer extends LitElement {
       const patched = Object.fromEntries(updates.filter(Boolean));
       if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
     };
-    document.addEventListener('nx-agent-change', this._onAgentChange);
+    document.addEventListener(CHAT_EVENT.AGENT_CHANGE, this._onAgentChange);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
-    document.removeEventListener('nx-agent-change', this._onAgentChange);
+    document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, this._onAgentChange);
   }
 
   updated() {

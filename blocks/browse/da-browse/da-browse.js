@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
+import { CHAT_EVENT } from '../../shared/chat-events.js';
 
 // Components
 import '../da-new/da-new.js';
@@ -9,37 +10,21 @@ import '../da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
-const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
-const BROWSE_CHAT_SESSION_KEY = 'nx-browse-chat-open';
-
-function isBrowseChatOpen() {
-  try {
-    return !!sessionStorage.getItem(BROWSE_CHAT_SESSION_KEY);
-  } catch {
-    return false;
-  }
-}
+const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
 
-async function openChatPanel() {
-  const store = getPanelStore();
-  const width = store.before?.width ?? '400px';
-  const aside = await openPanel({
-    position: 'before',
-    width,
-    getContent: async () => {
-      await import(`${getNx()}/blocks/chat/chat.js`);
-      return document.createElement('nx-chat');
-    },
-  });
-  if (aside) {
-    try { sessionStorage.setItem(BROWSE_CHAT_SESSION_KEY, '1'); } catch (e) { /* ignore */ }
-    aside.addEventListener('nx-panel-close', () => {
-      try { sessionStorage.removeItem(BROWSE_CHAT_SESSION_KEY); } catch (e) { /* ignore */ }
-    }, { once: true });
-  }
-  return aside;
+registerPanelSection('chat', {
+  position: 'before',
+  width: '400px',
+  getContent: async () => {
+    await import(`${getNx()}/blocks/chat/chat.js`);
+    return document.createElement('nx-chat');
+  },
+});
+
+function openChatPanel() {
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
 }
 
 export default class DaBrowse extends LitElement {
@@ -54,7 +39,7 @@ export default class DaBrowse extends LitElement {
 
   _clearBrowseSelection() {
     for (const key of this._browseSelKeys) {
-      document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key } }));
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: { key } }));
     }
     this._browseSelKeys = new Set();
   }
@@ -65,13 +50,13 @@ export default class DaBrowse extends LitElement {
 
     for (const key of prevKeys) {
       if (!nextKeys.has(key)) {
-        document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key } }));
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: { key } }));
       }
     }
 
     for (const item of items) {
       if (!prevKeys.has(item.path)) {
-        document.dispatchEvent(new CustomEvent('nx-add-to-chat', {
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, {
           detail: {
             key: item.path,
             id: item.path,
@@ -108,20 +93,11 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
-
-    this._handleOpenChat = async ({ detail }) => {
-      if (!this._chatEnabled) return;
-      const aside = await openChatPanel();
-      if (!detail?.text) return;
-      aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
-    };
-    document.addEventListener('nx-open-chat-panel', this._handleOpenChat);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
-    document.removeEventListener('nx-open-chat-panel', this._handleOpenChat);
   }
 
   handleShortcuts(e) {
@@ -158,7 +134,7 @@ export default class DaBrowse extends LitElement {
         const { org, site } = this.details;
         const { isEWEnabled } = await getNxEWFlags();
         this._chatEnabled = await isEWEnabled({ org, site });
-        if (this._chatEnabled && isBrowseChatOpen()) {
+        if (this._chatEnabled && wasPanelOpen('chat')) {
           openChatPanel();
         }
       }
