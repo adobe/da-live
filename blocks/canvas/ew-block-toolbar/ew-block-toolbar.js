@@ -1,8 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
-import { replaceBlockRange, setTableBlockVariant } from '../editor-utils/blocks.js';
+import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { setBlockFocus } from '../ew-editor-doc/prose-plugins/blockFocus.js';
+import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
@@ -33,6 +34,7 @@ class EwBlockToolbar extends LitElement {
     _variantOptions: { state: true },
     _hasBlockLibrary: { state: true },
     _editorView: { state: true },
+    _multiTemplateRow: { state: true },
   };
 
   connectedCallback() {
@@ -92,6 +94,24 @@ class EwBlockToolbar extends LitElement {
     this._variantOptions = [...found];
   }
 
+  async _loadMultiBlock(blockName) {
+    this._multiTemplateRow = null;
+    if (!this.org || !this.site || !blockName) return;
+    const [multi, row] = await Promise.all([
+      isMultiBlock(this.org, this.site, blockName),
+      getMultiBlockTemplateRow(this.org, this.site, blockName),
+    ]);
+    if (this._blockName !== blockName) return;
+    this._multiTemplateRow = (multi && row) ? row : null;
+  }
+
+  _onAddItem() {
+    if (!this.view || !this._multiTemplateRow) return;
+    const { from } = this.view.state.selection;
+    appendBlockRow(this.view, from, this._multiTemplateRow);
+    this.view.focus();
+  }
+
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
 
   _variantPickerItems() {
@@ -131,6 +151,7 @@ class EwBlockToolbar extends LitElement {
     this._currentVariant = variant;
     this._editorView = document.querySelector('ew-canvas-header')?.editorView;
     this._loadVariants(blockName);
+    this._loadMultiBlock(blockName);
     this.classList.add('open');
     this.requestUpdate();
   }
@@ -199,6 +220,15 @@ class EwBlockToolbar extends LitElement {
               @change=${(e) => this._onVariantChange(e)}
             ></nx-picker>
           </span>` : nothing}
+        ${this._multiTemplateRow ? html`
+          <span class="toolbar-sep" aria-hidden="true"></span>
+          <button
+            type="button"
+            class="toolbar-btn block-add-item"
+            aria-label="Add item"
+            title="Add item"
+            @click=${() => this._onAddItem()}
+          >${this._icon('addcircle')}<span>Add item</span></button>` : nothing}
         ${canEdit ? html`
           <span class="toolbar-sep" aria-hidden="true"></span>
           <button

@@ -320,16 +320,17 @@ export function resetBlockLibraryCache() {
   blockLibraryCache.clear();
 }
 
-const blockOptionsCache = new Map();
+const librarySheetCache = new Map();
 
 /**
- * Fetch and memoize the block library's "options" sheet rows (per-block key/value
- * autocomplete data). Resolves to [] when no library / options sheet is configured.
+ * Fetch and memoize a named sheet's rows from the block library sources — e.g.
+ * "options" (per-block key/value autocomplete) or "editor" (multi-block config).
+ * Resolves to [] when no library / sheet is configured.
  */
-export function loadBlockOptions(org, site) {
+function loadLibrarySheet(org, site, sheet) {
   if (!org || !site) return Promise.resolve([]);
-  const key = `${org}/${site}`;
-  if (!blockOptionsCache.has(key)) {
+  const key = `${sheet}:${org}/${site}`;
+  if (!librarySheetCache.has(key)) {
     const pending = (async () => {
       const ext = await getBlocksExtension(org, site);
       if (!ext) return [];
@@ -339,22 +340,25 @@ export function loadBlockOptions(org, site) {
           const resp = await daFetch(url, { noRedirect: true });
           if (resp.ok) {
             const json = await resp.json();
-            if (Array.isArray(json?.options?.data)) rows.push(...json.options.data);
+            if (Array.isArray(json?.[sheet]?.data)) rows.push(...json[sheet].data);
           }
         } catch { /* skip failed source */ }
       }
       return rows;
     })().catch((err) => {
-      blockOptionsCache.delete(key);
+      librarySheetCache.delete(key);
       throw err;
     });
-    blockOptionsCache.set(key, pending);
+    librarySheetCache.set(key, pending);
   }
-  return blockOptionsCache.get(key);
+  return librarySheetCache.get(key);
 }
 
+export const loadBlockOptions = (org, site) => loadLibrarySheet(org, site, 'options');
+export const loadBlockEditor = (org, site) => loadLibrarySheet(org, site, 'editor');
+
 export function resetBlockOptionsCache() {
-  blockOptionsCache.clear();
+  librarySheetCache.clear();
 }
 
 export async function fetchItems(sources, format) {

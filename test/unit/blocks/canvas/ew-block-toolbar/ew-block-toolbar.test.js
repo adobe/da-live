@@ -106,6 +106,23 @@ describe('ew-block-toolbar', () => {
     return toolbar.shadowRoot.querySelector('.block-edit');
   }
 
+  function addItemBtn() {
+    return toolbar.shadowRoot.querySelector('.block-add-item');
+  }
+
+  it('shows the Add item button when the block has a multi template row', async () => {
+    toolbar.show('cards');
+    toolbar._multiTemplateRow = document.createElement('tr');
+    await toolbar.updateComplete;
+    expect(addItemBtn()).to.exist;
+  });
+
+  it('hides the Add item button when there is no template row', async () => {
+    toolbar.show('cards');
+    await toolbar.updateComplete;
+    expect(addItemBtn()).to.be.null;
+  });
+
   it('shows the edit-block button only in layout (wysiwyg-only) mode', async () => {
     toolbar.show('cards');
     toolbar._editorView = 'layout';

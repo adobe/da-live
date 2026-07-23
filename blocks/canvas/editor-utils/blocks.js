@@ -178,6 +178,30 @@ export function replaceBlockRange(view, from, to, dom) {
   view.dispatch(view.state.tr.replaceWith(from, to, parsed.content).scrollIntoView());
 }
 
+/** Append a copy of `rowDom` (a library <tr>) as a new last row of the table at `tablePos`. */
+export function appendBlockRow(view, tablePos, rowDom) {
+  if (!view || !rowDom) return;
+  const { state } = view;
+  const table = state.doc.nodeAt(tablePos);
+  if (table?.type?.name !== 'table') return;
+  const wrapper = document.createElement('table');
+  wrapper.append(rowDom.cloneNode(true));
+  const parsed = PMDOMParser.fromSchema(state.schema).parse(wrapper);
+  let rowNode = null;
+  parsed.descendants((node) => {
+    if (rowNode) return false;
+    if (node.type.name === 'table_row') {
+      rowNode = node;
+      return false;
+    }
+    return true;
+  });
+  if (!rowNode) return;
+  const tr = state.tr.insert(tablePos + table.nodeSize - 1, rowNode);
+  tr.setSelection(NodeSelection.create(tr.doc, tablePos));
+  view.dispatch(tr.scrollIntoView());
+}
+
 export function deleteSection(view, sectionIndex) {
   if (!view) return;
   const { doc, schema } = view.state;
