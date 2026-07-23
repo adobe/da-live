@@ -96,8 +96,14 @@ async function loadLocCss(hostEl) {
     const locSheet = await getSheet('/blocks/edit/prose/diff/diff-utils.css');
 
     if (hostEl?.shadowRoot) {
-      const existingSheets = hostEl.shadowRoot.adoptedStyleSheets || [];
-      hostEl.shadowRoot.adoptedStyleSheets = [...existingSheets, locSheet];
+      const sheets = [...(hostEl.shadowRoot.adoptedStyleSheets || []), locSheet];
+
+      if (hostEl.tagName === 'EW-EDITOR-DOC') {
+        const ewSheet = await getSheet('/blocks/canvas/ew-editor-doc/ew-editor-doc-diff.css');
+        sheets.push(ewSheet);
+      }
+
+      hostEl.shadowRoot.adoptedStyleSheets = sheets;
 
       // Set CSS custom properties for diff labels
       setDiffLabelCssVars(hostEl);
@@ -280,6 +286,10 @@ async function getLangOverlay(upstream) {
 
 export function addActiveView(view) {
   activeViews.add(view);
+}
+
+export function removeActiveView(view) {
+  activeViews.delete(view);
 }
 
 export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {

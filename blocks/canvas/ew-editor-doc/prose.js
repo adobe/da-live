@@ -41,7 +41,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
-import { getDiffClass } from '../../edit/prose/diff/diff-utils.js';
+import { getDiffClass, addActiveView } from '../../edit/prose/diff/diff-utils.js';
 import { initDaMetadata } from '../../edit/utils/helpers.js';
 import { createMergeConflictsPlugin } from '../editor-utils/prose-merge-conflicts.js';
 
@@ -238,6 +238,8 @@ export default async function initProse({
     editable() { return canWrite; },
     nodeViews: diffNodeViews,
   });
+
+  if (canWrite) addActiveView(viewRef);
 
   initDaMetadata(ydoc.getMap('daMetadata'));
 
