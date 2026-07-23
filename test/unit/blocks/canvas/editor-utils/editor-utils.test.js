@@ -218,6 +218,17 @@ describe('parseSections', () => {
     expect(children[0].kind).to.equal('paragraph');
   });
 
+  it('classifies a <pre> as a code block', () => {
+    const html = `<main><div>
+      <h2 data-prose-index="1">Title</h2>
+      <pre data-prose-index="5"><code>const x = 1;</code></pre>
+    </div></main>`;
+    const [section] = parseSections(html);
+    const [{ children }] = section.items;
+    expect(children.map((c) => c.kind)).to.deep.equal(['heading', 'code']);
+    expect(children[1]).to.deep.equal({ type: 'content', kind: 'code', proseIndex: 5, innerText: 'const x = 1;' });
+  });
+
   it('treats empty loose nodes as invisible — they neither break nor join a run', () => {
     const html = `<main><div>
       <p data-prose-index="1">Para one</p>

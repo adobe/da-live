@@ -44,6 +44,7 @@ describe('ew-page-outline — expandable default content', () => {
           { type: 'content', kind: 'paragraph', proseIndex: 5, innerText: 'Para one' },
           { type: 'content', kind: 'image', proseIndex: 9, innerText: '' },
           { type: 'content', kind: 'list', ordered: true, proseIndex: 12, innerText: 'one two' },
+          { type: 'content', kind: 'code', proseIndex: 15, innerText: 'const x = 1;' },
         ]),
       ],
     }];
@@ -67,9 +68,9 @@ describe('ew-page-outline — expandable default content', () => {
 
     expect(header.getAttribute('aria-expanded')).to.equal('true');
     const children = [...el.shadowRoot.querySelectorAll('.content-child')];
-    expect(children).to.have.lengthOf(4);
+    expect(children).to.have.lengthOf(5);
     expect(children.map((c) => c.textContent.trim())).to.deep.equal([
-      'Heading 2', 'Paragraph', 'Image', 'Numbered list',
+      'Heading 2', 'Paragraph', 'Image', 'Numbered list', 'Code block',
     ]);
 
     header.click();

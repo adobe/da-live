@@ -133,6 +133,7 @@ const EDITABLES = [
   { selector: 'p', nodeName: 'P' },
   { selector: 'ol', nodeName: 'OL' },
   { selector: 'ul', nodeName: 'UL' },
+  { selector: 'pre', nodeName: 'PRE' },
 ];
 const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
 
@@ -298,6 +299,7 @@ function getLooseNodeKind(el) {
   if (/^H[1-6]$/.test(tag)) return { kind: 'heading', level: Number(tag[1]) };
   if (tag === 'OL') return { kind: 'list', ordered: true };
   if (tag === 'UL') return { kind: 'list', ordered: false };
+  if (tag === 'PRE') return { kind: 'code' };
   if (tag === 'P') return { kind: el.textContent?.trim() ? 'paragraph' : 'image' };
   return { kind: 'image' };
 }

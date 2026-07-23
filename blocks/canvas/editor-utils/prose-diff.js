@@ -163,7 +163,14 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
             const changes = findChangedNodes(prevState.doc, view.state.doc);
 
             if (changes.length > 0) {
-              const commonEditable = findCommonEditableAncestor(view, changes, prevState);
+              // An 'attrs' or 'replaced' change alters a block's own identity (e.g. a
+              // heading's level, or switching bullet_list <-> ordered_list) — the
+              // outline and other editorHtmlChange consumers need a full re-parse for
+              // that, not the in-place text sync a plain edit gets.
+              const identityChanged = changes.some((c) => c.type === 'attrs' || c.type === 'replaced');
+              const commonEditable = identityChanged
+                ? null
+                : findCommonEditableAncestor(view, changes, prevState);
 
               if (commonEditable) {
                 getEditor?.({ cursorOffset: commonEditable.pos + 1 });

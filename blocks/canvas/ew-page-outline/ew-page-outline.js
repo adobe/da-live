@@ -38,8 +38,9 @@ function contentChildEqual(child, other) {
 function contentChildLabel(child) {
   switch (child.kind) {
     case 'heading': return `Heading ${child.level}`;
-    case 'list': return child.ordered ? 'Numbered list' : 'Bulleted list';
+    case 'list': return child.ordered ? 'Numbered list' : 'Bullet list';
     case 'image': return 'Image';
+    case 'code': return 'Code block';
     default: return 'Paragraph';
   }
 }
