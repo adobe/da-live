@@ -162,9 +162,6 @@ function hashState() {
 async function installCanvasHeader(block, { org, site }) {
   const header = document.createElement('ew-canvas-header');
   header.editorView = await readInitialCanvasEditorView({ org, site });
-  header.addEventListener('nx-canvas-open-panel', (e) => {
-    openCanvasPanel(e.detail.position, { panelName: e.detail.panelName });
-  });
   header.addEventListener('nx-canvas-editor-view', (e) => {
     const view = normalizeCanvasEditorView(e.detail?.view);
     persistCanvasEditorView(view);
