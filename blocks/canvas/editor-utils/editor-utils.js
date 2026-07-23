@@ -262,20 +262,19 @@ export function getInstrumentedHTML(view) {
 
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'block-marker']);
 
-// A loose (non-block) node counts as "empty" — and is skipped entirely, never even
-// breaking/joining a run — when it has no non-whitespace text and no image/media content.
-// prose2aem doesn't always strip these (e.g. an empty <h2></h2> can survive serialization
-// even though empty top-level <p> tags are stripped upstream).
-function hasLooseContent(el) {
+function hasDefaultContent(el) {
   if (el.textContent?.trim()) return true;
   return el.matches?.('img') || !!el.querySelector?.('img');
 }
 
-// Loose text elements (h1-h6, p, ol, ul) get data-prose-index stamped directly on
-// themselves by getInstrumentedHTML; images get data-image-index instead. Either
-// attribute may live on the node itself (e.g. a top-level <picture>'s <img>) or nested
-// inside it (e.g. an <img> inside a wrapping element).
-function getLooseProseIndex(el) {
+function getDefaultContentProseIndex(el, kind) {
+  // A <p> wrapping an image keeps its own data-prose-index, but only the nested
+  // data-image-index resolves to the image node (prose2aem leaves the <p> unless the
+  // image is the section's sole child), so for kind 'image' it must win.
+  if (kind === 'image') {
+    const nestedImage = el.querySelector('[data-image-index]');
+    if (nestedImage) return Number(nestedImage.getAttribute('data-image-index'));
+  }
   const own = el.getAttribute('data-prose-index') ?? el.getAttribute('data-image-index');
   if (own != null) return Number(own);
   const nested = el.querySelector('[data-prose-index], [data-image-index]');
@@ -284,24 +283,16 @@ function getLooseProseIndex(el) {
   return attr != null ? Number(attr) : undefined;
 }
 
-// Classifies a loose top-level node for display in the outline's expanded
-// "Default content" group. Anything that isn't a recognized text tag (e.g. a
-// <picture> or bare <img>) is treated as an image — hasLooseContent() only lets
-// through text-bearing nodes or ones containing an <img>.
-//
-// The image schema node is inline-only, so it always lives inside a block node.
-// prose2aem unwraps that wrapper down to a bare <picture> only when the image is
-// the sole content of its section (see makePictures() in prose2aem.js); otherwise
-// the <p> survives with the picture nested inside it. A <p> with no text of its
-// own — only an image — is really an image, not a paragraph.
-function getLooseNodeKind(el) {
+function getDefaultContentKind(el) {
   const tag = el.tagName;
   if (/^H[1-6]$/.test(tag)) return { kind: 'heading', level: Number(tag[1]) };
   if (tag === 'OL') return { kind: 'list', ordered: true };
   if (tag === 'UL') return { kind: 'list', ordered: false };
   if (tag === 'PRE') return { kind: 'code' };
-  if (tag === 'P') return { kind: el.textContent?.trim() ? 'paragraph' : 'image' };
-  return { kind: 'image' };
+  if (tag === 'BLOCKQUOTE') return { kind: 'quote' };
+  // a text-less <p> wraps only an image, as does a bare <picture>/<img>;
+  // anything with text is a paragraph
+  return { kind: el.textContent?.trim() ? 'paragraph' : 'image' };
 }
 
 export function parseSections(htmlText) {
@@ -317,14 +308,17 @@ export function parseSections(htmlText) {
       if (currentRun.length) {
         items.push({
           type: 'content',
-          proseIndex: getLooseProseIndex(currentRun[0]),
+          proseIndex: getDefaultContentProseIndex(currentRun[0]),
           innerText: currentRun.map((el) => el.textContent.trim()).filter(Boolean).join(' '),
-          children: currentRun.map((el) => ({
-            type: 'content',
-            ...getLooseNodeKind(el),
-            proseIndex: getLooseProseIndex(el),
-            innerText: el.textContent.trim(),
-          })),
+          children: currentRun.map((el) => {
+            const kindInfo = getDefaultContentKind(el);
+            return {
+              type: 'content',
+              ...kindInfo,
+              proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
+              innerText: el.textContent.trim(),
+            };
+          }),
         });
       }
       currentRun = [];
@@ -346,7 +340,9 @@ export function parseSections(htmlText) {
         return;
       }
 
-      if (hasLooseContent(el)) currentRun.push(el);
+      // Skip empty nodes — prose2aem doesn't always strip them (e.g. an empty <h2> can
+      // survive serialization) — so they neither break nor join a run.
+      if (hasDefaultContent(el)) currentRun.push(el);
     });
     flushRun();
 
@@ -408,9 +404,8 @@ export const editorSelectChange = (() => {
 })();
 
 // Event observable — no replay on subscribe. See docs/canvas-events.md.
-// Selects/scrolls to an arbitrary ProseMirror document position (not a block index).
-// Used by the outline's default-content entries; general enough for other features
-// (e.g. a metadata-editing mode) to reuse for position-based selection.
+// Selects/scrolls to a raw ProseMirror position (not a block index); used by the
+// outline's default-content entries.
 export const editorProseSelectChange = (() => {
   const listeners = new Set();
   return {

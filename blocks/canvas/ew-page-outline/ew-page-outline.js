@@ -41,6 +41,7 @@ function contentChildLabel(child) {
     case 'list': return child.ordered ? 'Numbered list' : 'Bullet list';
     case 'image': return 'Image';
     case 'code': return 'Code block';
+    case 'quote': return 'Blockquote';
     default: return 'Paragraph';
   }
 }
@@ -60,8 +61,6 @@ function sectionsEqual(a, b) {
   return a.every((sec, i) => {
     const other = b[i];
     return sec.sectionIndex === other.sectionIndex
-      && sec.blocks.length === other.blocks.length
-      && sec.blocks.every((blk, j) => blk.name === other.blocks[j].name)
       && sec.items.length === other.items.length
       && sec.items.every((item, j) => itemsEqual(item, other.items[j]));
   });

@@ -118,11 +118,9 @@ export class EwEditorDoc extends LitElement {
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
-  // proseIndex is already a raw doc position (no lookup table needed). Content it
-  // points at (text or an image) isn't necessarily a whole top-level node, so use
-  // TextSelection.near — it resolves to the nearest valid selection without throwing.
-  // An image is the exception: it's a real node, so select it the same way a block
-  // is (NodeSelection + broadcast) to get layout-view parity via the quick-edit port.
+  // proseIndex may point mid-node, so TextSelection.near resolves to the nearest valid
+  // selection without throwing. An image is a real node: select it as a NodeSelection and
+  // broadcast, matching how blocks sync to the layout view.
   _scrollDocToProseIndex(proseIndex, kind) {
     if (proseIndex == null || proseIndex < 0) return;
     const { view } = this._proseContext ?? {};

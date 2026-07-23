@@ -54,6 +54,7 @@ export function findChangedNodes(oldDoc, newDoc) {
         pos,
         oldAttrs: oldNode.attrs,
         newAttrs: newNode.attrs,
+        nodeType: newNode.type.name,
       });
     }
 
@@ -102,6 +103,12 @@ export function findChangedNodes(oldDoc, newDoc) {
 }
 
 export const EDITABLE_TYPES = ['heading', 'paragraph', 'ordered_list', 'bullet_list'];
+
+function changedNodeType(change) {
+  if (change.type === 'attrs') return change.nodeType;
+  if (change.type === 'replaced') return change.newNode?.type.name ?? change.oldNode?.type.name;
+  return undefined;
+}
 
 export function findCommonEditableAncestor(view, changes, prevState) {
   if (changes.length === 0) return null;
@@ -163,11 +170,12 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
             const changes = findChangedNodes(prevState.doc, view.state.doc);
 
             if (changes.length > 0) {
-              // An 'attrs' or 'replaced' change alters a block's own identity (e.g. a
-              // heading's level, or switching bullet_list <-> ordered_list) — the
-              // outline and other editorHtmlChange consumers need a full re-parse for
-              // that, not the in-place text sync a plain edit gets.
-              const identityChanged = changes.some((c) => c.type === 'attrs' || c.type === 'replaced');
+              // Only an EDITABLE_TYPES node changing its own attrs/type (heading level,
+              // list-type swap) needs a full outline re-parse; the same change on e.g. an
+              // image's src does not, so it takes the in-place text sync instead.
+              const identityChanged = changes.some((c) => (
+                (c.type === 'attrs' || c.type === 'replaced') && EDITABLE_TYPES.includes(changedNodeType(c))
+              ));
               const commonEditable = identityChanged
                 ? null
                 : findCommonEditableAncestor(view, changes, prevState);

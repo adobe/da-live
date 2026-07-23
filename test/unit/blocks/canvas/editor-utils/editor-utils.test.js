@@ -197,10 +197,22 @@ describe('parseSections', () => {
     expect(children[1].ordered).to.equal(false);
   });
 
-  it('classifies a <p>-wrapped image as image, not paragraph (prose2aem only unwraps the <p> when the image is the section\'s sole child)', () => {
+  it('classifies a top-level <blockquote> as a quote, not an image', () => {
+    const html = `<main><div>
+      <blockquote data-prose-index="1">Some wisdom</blockquote>
+    </div></main>`;
+    const [section] = parseSections(html);
+    const [{ children }] = section.items;
+    expect(children.map((c) => c.kind)).to.deep.equal(['quote']);
+    expect(children[0].proseIndex).to.equal(1);
+  });
+
+  it('classifies a <p>-wrapped image as image, not paragraph (prose2aem only unwraps the <p> when the image is the section\'s sole child), and reads the nested image index rather than the <p>\'s own', () => {
+    // getInstrumentedHTML stamps data-prose-index on every outermost <p>, including
+    // one that only wraps a <picture> — so a realistic fixture must include it too.
     const html = `<main><div>
       <h2 data-prose-index="1">Title</h2>
-      <p><picture><img data-image-index="5" src="x.png"></picture></p>
+      <p data-prose-index="4"><picture><img data-image-index="5" src="x.png"></picture></p>
       <p data-prose-index="9">Caption text</p>
     </div></main>`;
     const [section] = parseSections(html);
