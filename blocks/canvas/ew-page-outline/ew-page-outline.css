@@ -116,8 +116,36 @@
   font-weight: 400;
 }
 
+.content-group {
+  margin: 0;
+  padding: 0;
+}
+
 .content-item {
   cursor: pointer;
+}
+
+.content-item[aria-expanded]::before {
+  content: '›';
+  display: inline-block;
+  flex-shrink: 0;
+  width: 1rem;
+  text-align: center;
+  transition: transform 0.15s;
+}
+
+.content-item[aria-expanded="true"]::before {
+  transform: rotate(90deg);
+}
+
+.content-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.content-child {
+  padding-inline-start: var(--s2-spacing-500);
 }
 
 .content-label {

@@ -151,20 +151,71 @@ describe('parseSections', () => {
     </div></main>`;
     const [section] = parseSections(html);
     expect(section.items.map((i) => i.type)).to.deep.equal(['content', 'block', 'content']);
-    expect(section.items[0]).to.deep.equal({ type: 'content', proseIndex: 1, innerText: 'Intro text' });
-    expect(section.items[2]).to.deep.equal({ type: 'content', proseIndex: 20, innerText: 'Outro text' });
+    expect(section.items[0]).to.deep.equal({
+      type: 'content',
+      proseIndex: 1,
+      innerText: 'Intro text',
+      children: [{ type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Intro text' }],
+    });
+    expect(section.items[2]).to.deep.equal({
+      type: 'content',
+      proseIndex: 20,
+      innerText: 'Outro text',
+      children: [{ type: 'content', kind: 'paragraph', proseIndex: 20, innerText: 'Outro text' }],
+    });
   });
 
-  it('groups consecutive loose children into a single content entry', () => {
+  it('groups consecutive loose children into a single content entry, listing each child', () => {
     const html = `<main><div>
       <h2 data-prose-index="1">Title</h2>
       <p data-prose-index="5">Para one</p>
       <p data-prose-index="12">Para two</p>
     </div></main>`;
     const [section] = parseSections(html);
-    expect(section.items).to.deep.equal([
-      { type: 'content', proseIndex: 1, innerText: 'Title Para one Para two' },
-    ]);
+    expect(section.items).to.deep.equal([{
+      type: 'content',
+      proseIndex: 1,
+      innerText: 'Title Para one Para two',
+      children: [
+        { type: 'content', kind: 'heading', level: 2, proseIndex: 1, innerText: 'Title' },
+        { type: 'content', kind: 'paragraph', proseIndex: 5, innerText: 'Para one' },
+        { type: 'content', kind: 'paragraph', proseIndex: 12, innerText: 'Para two' },
+      ],
+    }]);
+  });
+
+  it('classifies ordered/unordered lists and images', () => {
+    const html = `<main><div>
+      <ol data-prose-index="1"><li>one</li></ol>
+      <ul data-prose-index="5"><li>two</li></ul>
+      <picture><img data-image-index="9" src="x.png"></picture>
+    </div></main>`;
+    const [section] = parseSections(html);
+    const [{ children }] = section.items;
+    expect(children.map((c) => c.kind)).to.deep.equal(['list', 'list', 'image']);
+    expect(children[0].ordered).to.equal(true);
+    expect(children[1].ordered).to.equal(false);
+  });
+
+  it('classifies a <p>-wrapped image as image, not paragraph (prose2aem only unwraps the <p> when the image is the section\'s sole child)', () => {
+    const html = `<main><div>
+      <h2 data-prose-index="1">Title</h2>
+      <p><picture><img data-image-index="5" src="x.png"></picture></p>
+      <p data-prose-index="9">Caption text</p>
+    </div></main>`;
+    const [section] = parseSections(html);
+    const [{ children }] = section.items;
+    expect(children.map((c) => c.kind)).to.deep.equal(['heading', 'image', 'paragraph']);
+    expect(children[1].proseIndex).to.equal(5);
+  });
+
+  it('keeps a paragraph with mixed text and an inline image classified as paragraph', () => {
+    const html = `<main><div>
+      <p data-prose-index="1">Some text <img data-image-index="3" src="x.png"> more text</p>
+    </div></main>`;
+    const [section] = parseSections(html);
+    const [{ children }] = section.items;
+    expect(children[0].kind).to.equal('paragraph');
   });
 
   it('treats empty loose nodes as invisible — they neither break nor join a run', () => {
@@ -175,9 +226,15 @@ describe('parseSections', () => {
       <p data-prose-index="20">Para two</p>
     </div></main>`;
     const [section] = parseSections(html);
-    expect(section.items).to.deep.equal([
-      { type: 'content', proseIndex: 1, innerText: 'Para one Para two' },
-    ]);
+    expect(section.items).to.deep.equal([{
+      type: 'content',
+      proseIndex: 1,
+      innerText: 'Para one Para two',
+      children: [
+        { type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Para one' },
+        { type: 'content', kind: 'paragraph', proseIndex: 20, innerText: 'Para two' },
+      ],
+    }]);
   });
 
   it('produces nothing for a run made up entirely of empty nodes', () => {
@@ -196,9 +253,12 @@ describe('parseSections', () => {
       <picture><img data-image-index="7" src="x.png"></picture>
     </div></main>`;
     const [section] = parseSections(html);
-    expect(section.items).to.deep.equal([
-      { type: 'content', proseIndex: 7, innerText: '' },
-    ]);
+    expect(section.items).to.deep.equal([{
+      type: 'content',
+      proseIndex: 7,
+      innerText: '',
+      children: [{ type: 'content', kind: 'image', proseIndex: 7, innerText: '' }],
+    }]);
   });
 
   it('takes proseIndex from the first non-empty node in a run', () => {
@@ -208,9 +268,15 @@ describe('parseSections', () => {
       <p data-prose-index="15">More content</p>
     </div></main>`;
     const [section] = parseSections(html);
-    expect(section.items).to.deep.equal([
-      { type: 'content', proseIndex: 9, innerText: 'First real content More content' },
-    ]);
+    expect(section.items).to.deep.equal([{
+      type: 'content',
+      proseIndex: 9,
+      innerText: 'First real content More content',
+      children: [
+        { type: 'content', kind: 'paragraph', proseIndex: 9, innerText: 'First real content' },
+        { type: 'content', kind: 'paragraph', proseIndex: 15, innerText: 'More content' },
+      ],
+    }]);
   });
 
   it('handles multiple sections independently', () => {
@@ -220,9 +286,12 @@ describe('parseSections', () => {
     </main>`;
     const sections = parseSections(html);
     expect(sections).to.have.length(2);
-    expect(sections[0].items).to.deep.equal([
-      { type: 'content', proseIndex: 1, innerText: 'Section one text' },
-    ]);
+    expect(sections[0].items).to.deep.equal([{
+      type: 'content',
+      proseIndex: 1,
+      innerText: 'Section one text',
+      children: [{ type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Section one text' }],
+    }]);
     expect(sections[1].items).to.deep.equal([
       { type: 'block', name: 'cards', blockIndex: 0, proseIndex: 0, innerText: 'Cards' },
     ]);

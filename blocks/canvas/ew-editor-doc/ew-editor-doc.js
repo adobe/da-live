@@ -121,12 +121,22 @@ export class EwEditorDoc extends LitElement {
   // proseIndex is already a raw doc position (no lookup table needed). Content it
   // points at (text or an image) isn't necessarily a whole top-level node, so use
   // TextSelection.near — it resolves to the nearest valid selection without throwing.
-  _scrollDocToProseIndex(proseIndex) {
+  // An image is the exception: it's a real node, so select it the same way a block
+  // is (NodeSelection + broadcast) to get layout-view parity via the quick-edit port.
+  _scrollDocToProseIndex(proseIndex, kind) {
     if (proseIndex == null || proseIndex < 0) return;
     const { view } = this._proseContext ?? {};
     if (!view) return;
     const { doc } = view.state;
     if (proseIndex > doc.content.size) return;
+
+    if (kind === 'image' && doc.nodeAt(proseIndex)?.type.name === 'image') {
+      const sel = NodeSelection.create(doc, proseIndex);
+      view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._broadcastSelectedNode(true);
+      return;
+    }
+
     const sel = TextSelection.near(doc.resolve(proseIndex));
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
@@ -314,7 +324,7 @@ export class EwEditorDoc extends LitElement {
         if (source === 'outline') this._broadcastSelectedNode(true);
       });
     this._unsubscribeProseSelect = editorProseSelectChange
-      .subscribe(({ proseIndex }) => this._scrollDocToProseIndex(proseIndex));
+      .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener('nx-highlight-selection', this._onCanvasHighlight);
   }

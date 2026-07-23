@@ -283,6 +283,25 @@ function getLooseProseIndex(el) {
   return attr != null ? Number(attr) : undefined;
 }
 
+// Classifies a loose top-level node for display in the outline's expanded
+// "Default content" group. Anything that isn't a recognized text tag (e.g. a
+// <picture> or bare <img>) is treated as an image — hasLooseContent() only lets
+// through text-bearing nodes or ones containing an <img>.
+//
+// The image schema node is inline-only, so it always lives inside a block node.
+// prose2aem unwraps that wrapper down to a bare <picture> only when the image is
+// the sole content of its section (see makePictures() in prose2aem.js); otherwise
+// the <p> survives with the picture nested inside it. A <p> with no text of its
+// own — only an image — is really an image, not a paragraph.
+function getLooseNodeKind(el) {
+  const tag = el.tagName;
+  if (/^H[1-6]$/.test(tag)) return { kind: 'heading', level: Number(tag[1]) };
+  if (tag === 'OL') return { kind: 'list', ordered: true };
+  if (tag === 'UL') return { kind: 'list', ordered: false };
+  if (tag === 'P') return { kind: el.textContent?.trim() ? 'paragraph' : 'image' };
+  return { kind: 'image' };
+}
+
 export function parseSections(htmlText) {
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
   const container = doc.querySelector('main') ?? doc.body;
@@ -298,6 +317,12 @@ export function parseSections(htmlText) {
           type: 'content',
           proseIndex: getLooseProseIndex(currentRun[0]),
           innerText: currentRun.map((el) => el.textContent.trim()).filter(Boolean).join(' '),
+          children: currentRun.map((el) => ({
+            type: 'content',
+            ...getLooseNodeKind(el),
+            proseIndex: getLooseProseIndex(el),
+            innerText: el.textContent.trim(),
+          })),
         });
       }
       currentRun = [];

@@ -30,10 +30,28 @@ const DROP_POSITIONS = {
   AFTER: 'after',
 };
 
+function contentChildEqual(child, other) {
+  return child.proseIndex === other.proseIndex && child.innerText === other.innerText
+    && child.kind === other.kind && child.level === other.level && child.ordered === other.ordered;
+}
+
+function contentChildLabel(child) {
+  switch (child.kind) {
+    case 'heading': return `Heading ${child.level}`;
+    case 'list': return child.ordered ? 'Numbered list' : 'Bulleted list';
+    case 'image': return 'Image';
+    default: return 'Paragraph';
+  }
+}
+
 function itemsEqual(item, other) {
   if (!other || item.type !== other.type) return false;
   if (item.type === 'block') return item.blockIndex === other.blockIndex && item.name === other.name;
-  return item.proseIndex === other.proseIndex && item.innerText === other.innerText;
+  if (item.proseIndex !== other.proseIndex || item.innerText !== other.innerText) return false;
+  const children = item.children ?? [];
+  const otherChildren = other.children ?? [];
+  return children.length === otherChildren.length
+    && children.every((child, i) => contentChildEqual(child, otherChildren[i]));
 }
 
 function sectionsEqual(a, b) {
@@ -54,11 +72,13 @@ class EwPageOutline extends LitElement {
     _selectedBlockIndex: { state: true },
     _hashState: { state: true },
     _hasBlockLibrary: { state: true },
+    _expandedContent: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this._expandedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubscribeHtml = editorHtmlChange.subscribe((aemHtml) => {
       if (aemHtml.trim()) {
@@ -116,8 +136,15 @@ class EwPageOutline extends LitElement {
     editorSelectChange.emit({ blockIndex, source: 'outline' });
   }
 
-  _selectProse(proseIndex) {
-    editorProseSelectChange.emit({ proseIndex });
+  _selectProse(proseIndex, kind) {
+    editorProseSelectChange.emit({ proseIndex, kind });
+  }
+
+  _toggleContentGroup(key) {
+    const next = new Set(this._expandedContent);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    this._expandedContent = next;
   }
 
   _clearDropIndicator() {
@@ -248,6 +275,28 @@ class EwPageOutline extends LitElement {
       </button>`;
   }
 
+  _renderContentGroup(item, isFirst) {
+    const key = item.proseIndex;
+    const expanded = this._expandedContent?.has(key);
+    return html`
+      <li class="content-group" role="none">
+        <div class="block-item content-item" role="treeitem"
+             tabindex="${isFirst ? '0' : '-1'}"
+             aria-expanded="${expanded}"
+             @click=${() => this._toggleContentGroup(key)}>
+          <span class="block-name content-label">Default content</span>
+        </div>
+        ${expanded ? html`
+          <ul class="content-children" role="group">
+            ${item.children.map((child) => html`
+              <li class="block-item content-item content-child" role="treeitem" tabindex="-1"
+                  @click=${(e) => { e.stopPropagation(); this._selectProse(child.proseIndex, child.kind); }}>
+                <span class="block-name content-label">${contentChildLabel(child)}</span>
+              </li>`)}
+          </ul>` : nothing}
+      </li>`;
+  }
+
   _renderSection(sec, isFirstSection) {
     return html`
       <li class="outline-section" role="none"
@@ -298,12 +347,7 @@ class EwPageOutline extends LitElement {
                 <use href="${DRAG_ICON_SRC}#icon"></use>
               </svg>
             </li>`
-          : html`
-            <li class="block-item content-item" role="treeitem"
-                tabindex="${isFirstSection && itemIdx === 0 ? '0' : '-1'}"
-                @click=${() => this._selectProse(item.proseIndex)}>
-              <span class="block-name content-label">Default content</span>
-            </li>`))}
+          : this._renderContentGroup(item, isFirstSection && itemIdx === 0)))}
         </ul>
       </li>`;
   }
