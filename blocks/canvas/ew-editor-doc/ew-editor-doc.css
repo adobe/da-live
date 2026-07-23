@@ -66,6 +66,10 @@
   background-size: var(--transparency-grid-size) var(--transparency-grid-size);
 }
 
+.ew-editor-doc .ProseMirror li p {
+  margin: 0;
+}
+
 /* Table chrome matches da.live da-editor.css “COPY FROM TABLES”: wrapper holds the
    outer border; table uses border-style hidden so cell borders do not stack on it. */
 .ew-editor-doc .ProseMirror table {

@@ -4,10 +4,12 @@ import { setNx } from '../../../../../scripts/utils.js';
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
+let extensionToPanelView;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
+  extensionToPanelView = mod.extensionToPanelView;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -177,5 +179,32 @@ describe('EW panel helpers transformBlock', () => {
     expect(dom).to.be.instanceOf(window.HTMLDivElement);
     expect(dom.querySelector('table')).to.not.be.null;
     expect(dom.querySelector('p')).to.not.be.null;
+  });
+});
+
+describe('extensionToPanelView', () => {
+  it('gives the "blocks" extension a dedicated modal experience', () => {
+    const ext = { name: 'blocks', title: 'Blocks', ootb: true, icon: '#icon-blocks' };
+    const view = extensionToPanelView(ext, 'Library');
+    expect(view.id).to.equal('blocks');
+    expect(view.label).to.equal('Blocks');
+    expect(view.section).to.equal('Library');
+    expect(view.firstParty).to.be.true;
+    expect(view.experience).to.equal('modal');
+    expect(view.icon).to.equal('#icon-blocks');
+    expect(view.openModal).to.be.a('function');
+    // The modal view opts out of the generic inline-panel loader.
+    expect(view.load).to.be.undefined;
+  });
+
+  it('leaves non-blocks extensions on the standard inline/load experience', () => {
+    const ext = {
+      name: 'templates', title: 'Templates', ootb: true, experience: 'inline', sources: ['/tpl'], icon: '',
+    };
+    const view = extensionToPanelView(ext, 'Library');
+    expect(view.id).to.equal('templates');
+    expect(view.experience).to.equal('inline');
+    expect(view.load).to.be.a('function');
+    expect(view.openModal).to.be.undefined;
   });
 });

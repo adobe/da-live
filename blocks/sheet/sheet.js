@@ -4,7 +4,6 @@ import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
-import { convertSheets } from '../edit/utils/helpers.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -125,7 +124,7 @@ async function reloadSheet(daTitle, daSheet) {
 async function setSheet(details, daTitle, daSheet) {
   // Drop any open stale-content dialog so its Cancel can't act on the new path's staleCheck.
   document.body.querySelectorAll(':scope > da-dialog').forEach((d) => d.remove());
-  // Full reset before the load — getData calls markSynced which sets _lastJsonString.
+  // Full reset before the load — getData calls markSynced which sets _lastEtag.
   // start() below only wires up the interval without resetting state.
   staleCheck.stop();
 
@@ -184,15 +183,29 @@ export default async function init(el) {
   versionWrapper.classList.add('da-version-wrapper');
   versionWrapper.append(wrapper, daSheetPanes);
 
+  // Sheet view drives daTitle.collabStatus itself (like prose/index.js does for
+  // the edit view). staleCheck emits sheet-dirty / sheet-clean on the transition,
+  // and we combine that with navigator.onLine into a single status value.
+  let isOnline = window.navigator.onLine;
+  let isDirty = false;
+  const applyStatus = () => {
+    if (isDirty) daTitle.collabStatus = 'unsaved';
+    else daTitle.collabStatus = isOnline ? 'connected' : 'offline';
+  };
+  applyStatus();
+  const bindStatus = (event, target, setter) => target.addEventListener(event, () => {
+    setter();
+    applyStatus();
+  });
+  bindStatus('online', window, () => { isOnline = true; });
+  bindStatus('offline', window, () => { isOnline = false; });
+  bindStatus('sheet-dirty', document, () => { isDirty = true; });
+  bindStatus('sheet-clean', document, () => { isDirty = false; });
+
   // Set data against the title & sheet
   setSheet(details, daTitle, daSheet);
 
   el.append(daTitle, versionWrapper);
-
-  daTitle.addEventListener('success', (e) => {
-    if (e.detail.action !== 'save') return;
-    staleCheck.markSynced(convertSheets(daSheet.jexcel));
-  });
 
   window.addEventListener('hashchange', async () => {
     details = getPathDetails();

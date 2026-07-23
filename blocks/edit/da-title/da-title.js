@@ -25,6 +25,7 @@ const CLOUD_ICONS = {
   disconnected: 'spectrum-Cloud-offline',
   offline: 'spectrum-Cloud-offline',
   connecting: 'cloud_refresh',
+  unsaved: 'cloud_refresh',
   error: 'spectrum-Cloud-error',
 };
 
@@ -55,14 +56,6 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._actionsVis = [];
-    if (this.details.view === 'sheet') {
-      this.collabStatus = window.navigator.onLine
-        ? 'connected'
-        : 'offline';
-
-      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
-      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
-    }
   }
 
   update(changed) {
@@ -216,6 +209,9 @@ export default class DaTitle extends LitElement {
   }
 
   async handleAction(action) {
+    // Guard against a stale/bypassed disabled state (e.g. permissions changed mid-session).
+    if (action === 'save' && this._readOnly) return;
+
     this._status = null;
     this._isSending = true;
     this._actions.open = false;
@@ -226,31 +222,54 @@ export default class DaTitle extends LitElement {
 
     // Bail before writing if the remote drifted under us — protects against
     // last-write-wins. Drift triggers the stale-content dialog via onStale.
+    // The POST itself runs inside staleCheck.runSave so it shares the same
+    // serialisation gate as the debounced saveSheets flow — otherwise a
+    // Preview/Publish click could race a background autosave on the same file.
     if (view === 'sheet' || view === 'config') {
       const { staleCheck } = await import('../../sheet/utils/utils.js');
       if (await staleCheck.checkForDrift()) {
         this._isSending = false;
         return;
       }
-    }
 
-    // Only save to DA if it is a sheet or config
-    if (view === 'sheet') {
-      const sheetPath = fullpath.replace('.json', '');
-      const dasSave = await saveToDa(sheetPath, this.sheet);
-      if (!dasSave.ok) return;
-    }
-    if (view === 'config') {
-      const daConfigResp = await saveDaConfig(fullpath, this.sheet);
-      if (!daConfigResp.ok) {
-        // eslint-disable-next-line no-console
-        console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
-        return;
+      if (view === 'sheet' && action === 'save' && this.sheet) {
+        const {
+          findColumnsWithDataButNoHeader,
+          confirmSaveWithMissingHeaders,
+        } = await import('../../sheet/utils/utils.js');
+        const affected = findColumnsWithDataButNoHeader(this.sheet);
+        if (affected.length) {
+          const proceed = await confirmSaveWithMissingHeaders(affected);
+          if (!proceed) {
+            this._isSending = false;
+            return;
+          }
+        }
       }
-    }
-    if (view === 'sheet' || view === 'config') {
-      // Tell anything listening save was successful
-      this.handleSuccess('save');
+
+      const savedOk = await staleCheck.runSave(async () => {
+        let resp;
+        if (view === 'sheet') {
+          const sheetPath = fullpath.replace('.json', '');
+          resp = await saveToDa(sheetPath, this.sheet);
+        } else {
+          resp = await saveDaConfig(fullpath, this.sheet);
+        }
+        if (!resp.ok) {
+          if (view === 'config') {
+            // eslint-disable-next-line no-console
+            console.log('Saving configuration failed because:', resp.status, await resp.text());
+          }
+          return false;
+        }
+        // markSynced inside runSave so _lastEtag is updated before pendingSave
+        // resolves — a concurrent read that unblocks on pendingSave otherwise
+        // sees a stale baseline etag.
+        staleCheck.markSynced(resp.headers.get('etag'));
+        this.handleSuccess('save');
+        return true;
+      });
+      if (!savedOk) return;
     }
 
     // AEM Actions
@@ -349,16 +368,20 @@ export default class DaTitle extends LitElement {
   renderActions() {
     if (!this._actions?.available) return nothing;
 
-    return html`${this._actions.available?.map((action) => html`
+    return html`${this._actions.available?.map((action) => {
+      const readOnlyBlock = action === 'save' && this._readOnly;
+      const disabledText = this.disabledText ?? (readOnlyBlock ? 'You do not have permission to save.' : undefined);
+      return html`
       <button
         @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
         aria-label="Send"
-        data-popup-content=${this.disabledText ?? nothing}
-        ?disabled=${this.disabledText}>
+        data-popup-content=${disabledText ?? nothing}
+        ?disabled=${this.disabledText || readOnlyBlock}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
-    `)}`;
+    `;
+    })}`;
   }
 
   popover({ target }) {
@@ -393,10 +416,11 @@ export default class DaTitle extends LitElement {
   }
 
   renderCollab() {
+    const tooltip = this.collabStatus === 'unsaved' ? 'Unsaved changes' : this.collabStatus;
     return html`
       <div class="collab-status">
         ${this.collabUsers ? this.renderCollabUsers() : nothing}
-        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${this.collabStatus}" @click=${this.popover}>
+        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${tooltip}" @click=${this.popover}>
          <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
         </div>
       </div>`;
