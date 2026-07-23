@@ -1,6 +1,6 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.
@@ -36,7 +36,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       window.location.hash = details;
     }
 
-    if (action === 'setHref') {
+    if (action === 'setHref' && isValidHref(details)) {
       window.location.href = details;
     }
 
