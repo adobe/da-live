@@ -320,6 +320,43 @@ export function resetBlockLibraryCache() {
   blockLibraryCache.clear();
 }
 
+const blockOptionsCache = new Map();
+
+/**
+ * Fetch and memoize the block library's "options" sheet rows (per-block key/value
+ * autocomplete data). Resolves to [] when no library / options sheet is configured.
+ */
+export function loadBlockOptions(org, site) {
+  if (!org || !site) return Promise.resolve([]);
+  const key = `${org}/${site}`;
+  if (!blockOptionsCache.has(key)) {
+    const pending = (async () => {
+      const ext = await getBlocksExtension(org, site);
+      if (!ext) return [];
+      const rows = [];
+      for (const url of ext.sources || []) {
+        try {
+          const resp = await daFetch(url, { noRedirect: true });
+          if (resp.ok) {
+            const json = await resp.json();
+            if (Array.isArray(json?.options?.data)) rows.push(...json.options.data);
+          }
+        } catch { /* skip failed source */ }
+      }
+      return rows;
+    })().catch((err) => {
+      blockOptionsCache.delete(key);
+      throw err;
+    });
+    blockOptionsCache.set(key, pending);
+  }
+  return blockOptionsCache.get(key);
+}
+
+export function resetBlockOptionsCache() {
+  blockOptionsCache.clear();
+}
+
 export async function fetchItems(sources, format) {
   const items = [];
   for (const source of sources) {

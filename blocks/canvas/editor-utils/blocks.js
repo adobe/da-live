@@ -12,6 +12,38 @@ export function getTableBlockName(tableNode) {
   return match ? match[1].trim().toLowerCase() : raw.toLowerCase();
 }
 
+/**
+ * Describe the block cell the position sits in: the block (table) name, the row's
+ * key cell content (when in a 2-column row's value cell), and the cell's column.
+ * Returns null when the position isn't inside a table cell.
+ */
+export function getTableInfo(state, pos) {
+  const $pos = state.doc.resolve(pos);
+  let cellDepth = -1;
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    if ($pos.node(d).type.name === 'table_cell') {
+      cellDepth = d;
+      break;
+    }
+  }
+  if (cellDepth === -1) return null;
+
+  const rowDepth = cellDepth - 1;
+  const table = $pos.node(rowDepth - 1);
+  const row = $pos.node(rowDepth);
+  const cellIndex = $pos.index(cellDepth - 1);
+  const firstRowContent = table.child(0)?.child(0)?.textContent ?? '';
+  const match = firstRowContent.match(/^([a-zA-Z0-9_\s-]+)(?:\s*\([^)]*\))?$/);
+  if (!match) return null;
+
+  return {
+    tableName: match[1].trim(),
+    keyValue: (row.childCount > 1 && cellIndex === 1) ? row.child(0).textContent : null,
+    isFirstColumn: cellIndex === 0,
+    columnsInRow: row.childCount,
+  };
+}
+
 /** The variant descriptor inside the block header's parentheses, or '' if none. */
 export function getTableBlockVariant(tableNode) {
   const firstRow = tableNode?.firstChild;
