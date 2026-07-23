@@ -50,8 +50,20 @@
 }
 
 .ew-editor-doc .ProseMirror img {
+  --transparency-grid-size: 8px;
+  --transparency-grid-color-a: light-dark(#fff, #3a3a3a);
+  --transparency-grid-color-b: light-dark(#ccc, #505050);
+
   max-width: 100%;
   height: auto;
+
+  /* Checkerboard pattern behind the img so transparent pixels are visible */
+  background-color: var(--transparency-grid-color-a);
+  background-image: conic-gradient(
+    var(--transparency-grid-color-b) 90deg, transparent 90deg 180deg,
+    var(--transparency-grid-color-b) 180deg 270deg, transparent 270deg
+  );
+  background-size: var(--transparency-grid-size) var(--transparency-grid-size);
 }
 
 .ew-editor-doc .ProseMirror li p {
