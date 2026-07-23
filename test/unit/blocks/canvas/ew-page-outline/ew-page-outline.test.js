@@ -104,4 +104,19 @@ describe('ew-page-outline — expandable default content', () => {
 
     expect(received).to.deep.equal({ proseIndex: 9, kind: 'image' });
   });
+
+  it('expands and collapses the focused group header with ArrowRight/ArrowLeft', async () => {
+    const header = el.shadowRoot.querySelector('.content-item');
+    header.focus();
+
+    header.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await el.updateComplete;
+    expect(header.getAttribute('aria-expanded')).to.equal('true');
+    expect(el.shadowRoot.querySelector('.content-children')).to.exist;
+
+    header.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    await el.updateComplete;
+    expect(header.getAttribute('aria-expanded')).to.equal('false');
+    expect(el.shadowRoot.querySelector('.content-children')).to.be.null;
+  });
 });

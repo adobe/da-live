@@ -236,7 +236,18 @@ class EwPageOutline extends LitElement {
     }
   };
 
-  _onTreeKeydown = (e) => treeKeydown(e, this.shadowRoot);
+  _onTreeKeydown = (e) => {
+    const item = this.shadowRoot.activeElement;
+    if (item?.matches('.content-item[aria-expanded]')) {
+      const expanded = item.getAttribute('aria-expanded') === 'true';
+      if ((e.key === 'ArrowRight' && !expanded) || (e.key === 'ArrowLeft' && expanded)) {
+        e.preventDefault();
+        item.click();
+        return;
+      }
+    }
+    treeKeydown(e, this.shadowRoot);
+  };
 
   async _openAddBlockModal(e, sectionIndex) {
     e.stopPropagation();
