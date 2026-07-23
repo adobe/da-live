@@ -45,6 +45,7 @@ export class EwEditorDoc extends LitElement {
     super.willUpdate(changed);
     if (changed.has('ctx')) {
       this.quickEditPort = undefined;
+      this._canWrite = false;
       this._teardown();
       setSelectionToolbarCtx();
       this._error = undefined;
@@ -173,6 +174,7 @@ export class EwEditorDoc extends LitElement {
       owner: org,
       repo,
       path: controllerPathnameFromEditorCtx(this.ctx),
+      canWrite: this._canWrite === true,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
     };
     wireQuickEditControllerPort(this._controllerCtx);
@@ -226,6 +228,7 @@ export class EwEditorDoc extends LitElement {
 
     try {
       const { token, permissions } = session;
+      this._canWrite = permissions.some((permission) => permission === 'write');
       const { proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
         path: sourceUrl,
         permissions,
@@ -262,7 +265,12 @@ export class EwEditorDoc extends LitElement {
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
-      setSelectionToolbarCtx({ org: this.ctx?.org, site: this.ctx?.repo, sourceUrl });
+      setSelectionToolbarCtx({
+        org: this.ctx?.org,
+        site: this.ctx?.repo,
+        sourceUrl,
+        canWrite: this._canWrite,
+      });
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();

@@ -12,6 +12,7 @@ const ICONS = {
   splitLeft: '/img/icons/s2-icon-splitleft-20-n.svg',
   splitRight: '/img/icons/s2-icon-splitright-20-n.svg',
   gridCompare: '/img/icons/s2-icon-gridcompare-20-n.svg',
+  lock: '/img/icons/s2-icon-lock-20-n.svg',
 };
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
@@ -23,6 +24,7 @@ class EWCanvasHeader extends LitElement {
     undoAvailable: { type: Boolean },
     redoAvailable: { type: Boolean },
     authorized: { type: Boolean },
+    canWrite: { type: Boolean },
     _chatDisabled: { state: true },
   };
 
@@ -32,6 +34,7 @@ class EWCanvasHeader extends LitElement {
     this.undoAvailable = false;
     this.redoAvailable = false;
     this.authorized = true;
+    this.canWrite = true;
   }
 
   connectedCallback() {
@@ -98,6 +101,14 @@ class EWCanvasHeader extends LitElement {
     return html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${ICONS[name]}#icon"></use></svg>`;
   }
 
+  _renderLock() {
+    const label = "Read-only — you don't have write access";
+    return html`
+      <span class="lock-indicator" role="img" aria-label=${label} title=${label}>
+        ${this._renderIcon('lock')}
+      </span>`;
+  }
+
   render() {
     return html`
       <header class="bar" part="bar">
@@ -107,6 +118,7 @@ class EWCanvasHeader extends LitElement {
             ${this._renderIcon('splitLeft')}
           </button>
           `}
+          ${this.canWrite ? html`
           <button type="button" class="icon-btn" part="btn" data-action="undo" aria-label="Undo" ?disabled=${!this.undoAvailable} @click=${this._undo}>
             ${this._renderIcon('undo')}
           </button>
@@ -121,6 +133,8 @@ class EWCanvasHeader extends LitElement {
           >
             ${this._renderIcon('redo')}
           </button>
+          ` : nothing}
+          ${this.authorized && !this.canWrite ? this._renderLock() : nothing}
         </div>
 
         <div class="group group-center" part="group-center">

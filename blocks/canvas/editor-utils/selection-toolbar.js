@@ -18,6 +18,8 @@ function getSelectionOriginFromIframe(state) {
 let toolbar;
 let componentLoaded;
 
+let selectionToolbarCanWrite = false;
+
 export function getSelectionToolbar() {
   if (toolbar) return toolbar;
   componentLoaded ??= import('../ew-selection-toolbar/ew-selection-toolbar.js');
@@ -26,7 +28,17 @@ export function getSelectionToolbar() {
   return toolbar;
 }
 
-export function setSelectionToolbarCtx({ org = null, site = null, sourceUrl = null } = {}) {
+export function canShowSelectionToolbar() {
+  return selectionToolbarCanWrite;
+}
+
+export function setSelectionToolbarCtx({
+  org = null,
+  site = null,
+  sourceUrl = null,
+  canWrite = false,
+} = {}) {
+  selectionToolbarCanWrite = canWrite === true;
   const tb = getSelectionToolbar();
   tb.org = org;
   tb.site = site;
@@ -56,6 +68,10 @@ function isNonTextSelection({ selection }) {
 
 function syncToolbar(view) {
   if (!view) return;
+  if (!selectionToolbarCanWrite) {
+    hideSelectionToolbar();
+    return;
+  }
   const tb = getSelectionToolbar();
   if (tb.linkDialogOpen || tb.altDialogOpen || tb.isInteracting) return;
   if (isNonTextSelection(view.state)) {

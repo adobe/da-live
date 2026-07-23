@@ -1,6 +1,7 @@
 import { TextSelection, NodeSelection, yUndo, yRedo } from 'da-y-wrapper';
 import {
   getSelectionToolbar,
+  canShowSelectionToolbar,
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
@@ -61,7 +62,7 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     view.dispatch(tr.scrollIntoView());
     ctx.suppressRerender = false;
     const tb = getSelectionToolbar();
-    if (!tb.linkDialogOpen && !tb.isInteracting) {
+    if (canShowSelectionToolbar() && !tb.linkDialogOpen && !tb.isInteracting) {
       tb.view = view;
       tb.show();
     }
@@ -146,6 +147,7 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
 }
 
 function showToolbarInIFrame(ctx) {
+  if (!canShowSelectionToolbar()) return;
   const { view } = ctx;
   const tb = getSelectionToolbar();
   tb.view = view;
