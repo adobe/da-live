@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
-import { CHAT_EVENT } from '../../shared/chat-events.js';
+import { getChatPanelContent } from '../../shared/chat-panel.js';
 
 // Components
 import '../da-new/da-new.js';
@@ -10,18 +10,10 @@ import '../da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
-
-registerPanelSection('chat', {
-  position: 'before',
-  width: '400px',
-  getContent: async () => {
-    await import(`${getNx()}/blocks/chat/chat.js`);
-    return document.createElement('nx-chat');
-  },
-});
 
 function openChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
@@ -134,8 +126,13 @@ export default class DaBrowse extends LitElement {
         const { org, site } = this.details;
         const { isEWEnabled } = await getNxEWFlags();
         this._chatEnabled = await isEWEnabled({ org, site });
-        if (this._chatEnabled && wasPanelOpen('chat')) {
-          openChatPanel();
+        if (this._chatEnabled) {
+          registerPanelSection('chat', {
+            position: 'before',
+            width: '400px',
+            getContent: getChatPanelContent(),
+          });
+          if (wasPanelOpen('chat')) openChatPanel();
         }
       }
 

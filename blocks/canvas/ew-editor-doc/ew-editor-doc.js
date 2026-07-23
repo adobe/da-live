@@ -18,7 +18,6 @@ import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
-import { CHAT_EVENT } from '../../shared/chat-events.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
@@ -31,6 +30,7 @@ import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 
 const style = await loadStyle(import.meta.url);
 

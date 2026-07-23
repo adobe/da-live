@@ -18,9 +18,10 @@ import {
 import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
 import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
-import { CHAT_EVENT } from '../shared/chat-events.js';
+import { getChatPanelContent } from '../shared/chat-panel.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 const {
   wasPanelOpen,
   registerPanelSection,
@@ -219,10 +220,7 @@ export default async function decorate(block) {
   registerPanelSection('chat', {
     position: 'before',
     width: '400px',
-    getContent: async () => {
-      await import(`${getNx()}/blocks/chat/chat.js`);
-      return document.createElement('nx-chat');
-    },
+    getContent: getChatPanelContent(),
     onShow: (aside, id, options) => {
       if (!options?.text) return;
       aside?.querySelector('nx-chat')?.setPrompt(options.text, { autoSend: options.autoSend });

@@ -3,9 +3,9 @@ import { getNx } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath } from '../../shared/daFiles.js';
 import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
 import getEditPath from '../../browse/shared.js';
-import { CHAT_EVENT } from '../../shared/chat-events.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 
 const style = await loadStyle(import.meta.url);
 
