@@ -1,19 +1,5 @@
 /* stylelint-disable selector-class-pattern */
 
-/*
- * Canvas-only visual overrides for the shared regional-edits diff UI
- * (blocks/edit/prose/diff/*). Adopted in addition to diff-utils.css, only
- * when the diff host is canvas's <ew-editor-doc> — classic editor keeps its
- * original look untouched. Reuses EW's --s2-* tokens.
- *
- * EW's own chrome is mostly monotone gray, with color reserved for
- * content-level meaning rather than button fills — so button chrome here is
- * neutral gray throughout, and the green=local(added)/red=upstream(removed)
- * split (matching ew-canvas-versions/ew-canvas-compare.css's ins/del
- * treatment) is used only for the text/overlay rules further down, where it
- * actually conveys which content is which.
- */
-
 .loc-tabbed-container {
   background: var(--s2-gray-25);
   box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
@@ -39,7 +25,6 @@
   }
 }
 
-/* Checkmark / close icons, replacing the "✓" / "✕" text glyphs */
 .da-diff-btn .confirm-btn::before,
 .da-diff-btn-3part .diff-accept::before {
   content: '';
@@ -59,14 +44,6 @@
   mask: no-repeat center / 16px url('/img/icons/s2-icon-close-20-n.svg');
 }
 
-/* Neutral button chrome — EW's own chrome (headers, panels, toolbars) is
-   almost entirely gray, with color reserved for content-level meaning (see
-   the ins/del + overlay rules below), not button fills. So Local/Upstream/
-   Difference all get the same treatment; the label text + icon already say
-   what each button does.
-   The base stylesheet's per-variant rules (e.g. .da-diff-btn.is-local
-   .switch-btn) are 3 classes deep — :is(...) here matches that specificity
-   so this actually wins the cascade instead of silently losing to it. */
 .da-diff-btn:is(.is-local, .is-upstream, .is-diff) .switch-btn,
 .da-diff-btn-3part:is(.is-local, .is-upstream) .diff-label {
   background: var(--s2-gray-100);
@@ -96,7 +73,6 @@
   color: var(--s2-gray-25);
 }
 
-/* Flatter tooltip, matching EW's chrome instead of the dark-gradient default */
 .diff-tooltip {
   background: var(--s2-gray-1000);
   color: var(--s2-gray-25);
@@ -116,7 +92,6 @@
   filter: none;
 }
 
-/* "Difference" tab text-level highlighting, matching ew-canvas-compare's ins/del treatment */
 .diff-tab-pane del.diffdel,
 .diff-tab-pane del.diffmod {
   background-color: var(--s2-red-200);
@@ -131,14 +106,6 @@
   border: none;
 }
 
-/* Single-node floating overlay: colors are set inline by diff-utils.js
-   (renderSingleNode), so !important is required to win over that. The
-   distinguishing class (loc-regional/loc-langstore) is only added once the
-   real overlay finishes its async load; until then the inline color briefly
-   shows through, unchanged.
-   These sit on top of the actual diff content (position: absolute, covering
-   the node), so the fill must stay translucent — same reason the original
-   inline colors were hex+alpha (#902ade33 etc.) rather than solid. */
 .loc-color-overlay.loc-regional {
   background-color: color-mix(in srgb, var(--s2-green-200) 60%, transparent) !important;
 }
@@ -159,7 +126,6 @@
   background-color: color-mix(in srgb, var(--s2-gray-100) 60%, transparent);
 }
 
-/* Global "Keep All Local / Keep All Upstream" bar */
 .da-regional-edits-overlay {
   padding: var(--s2-spacing-200);
   border-radius: var(--s2-corner-radius-400);

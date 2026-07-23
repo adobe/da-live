@@ -70,20 +70,12 @@ describe('da-alt-dialog', () => {
     expect(detail).to.deep.equal({ alt: '' });
   });
 
-  it('emits da-alt-cancel when Cancel button is clicked', async () => {
+  it('emits close when Cancel button is clicked', async () => {
     await mount({ open: true });
     let cancelled = false;
-    el.addEventListener('da-alt-cancel', () => { cancelled = true; });
+    el.addEventListener('close', () => { cancelled = true; });
     el.shadowRoot.querySelector('.da-btn-secondary').click();
     await nextFrame();
-    expect(cancelled).to.be.true;
-  });
-
-  it('emits da-alt-cancel when nx-dialog emits a close event', async () => {
-    await mount({ open: true });
-    let cancelled = false;
-    el.addEventListener('da-alt-cancel', () => { cancelled = true; });
-    el.shadowRoot.querySelector('nx-dialog').dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
     expect(cancelled).to.be.true;
   });
 });

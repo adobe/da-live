@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -182,12 +183,21 @@ export class EwEditorWysiwyg extends LitElement {
     const { port1, port2 } = new MessageChannel();
     this._quickEditLocalPort = port1;
     port1.onmessage = (ev) => {
-      if (ev.data?.ready !== true) return;
+      // @deprecated flat `ready` — prefer `type === MESSAGE_TYPES.READY` (da-nx now sends both).
+      const isReady = ev.data?.type === MESSAGE_TYPES.READY || ev.data?.ready === true;
+      if (!isReady) return;
       this._quickEditLocalPort = null;
       onReady(port1);
     };
     try {
-      iframe.contentWindow.postMessage({ init: config, location }, '*', [port2]);
+      // @deprecated top-level init/location — prefer type/payload. Kept so the quick-edit
+      // iframe script (da-nx) keeps working until it migrates.
+      iframe.contentWindow.postMessage({
+        init: config,
+        location,
+        type: MESSAGE_TYPES.INIT,
+        payload: { config, location },
+      }, '*', [port2]);
     } catch (err) {
       this._disposeQuickEditLocalPort();
       // eslint-disable-next-line no-console

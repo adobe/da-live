@@ -2,6 +2,8 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
+import { getSelectionToolbar } from './selection-toolbar.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -24,7 +26,10 @@ export function updateState(data, ctx) {
   const { storedMarks } = view.state;
   const node = view.state.schema.nodeFromJSON(data.node);
   const pos = view.state.doc.resolve(data.cursorOffset);
-  const docPos = view.state.selection.from;
+  // Preserve a range selection (e.g. toggling Bold on selected text) rather than
+  // always collapsing to a point — collapsing loses the range when nothing moves
+  // the selection afterward (no CURSOR_MOVE follows a mark-only edit).
+  const { from: selFrom, to: selTo } = view.state.selection;
 
   const nodeStart = pos.before(pos.depth);
   const nodeEnd = pos.after(pos.depth);
@@ -48,11 +53,17 @@ export function updateState(data, ctx) {
     }
   }
 
-  tr.setSelection(TextSelection.create(tr.doc, docPos));
+  const maxPos = tr.doc.content.size;
+  const restoredFrom = Math.min(selFrom, maxPos);
+  const restoredTo = Math.min(selTo, maxPos);
+  tr.setSelection(TextSelection.create(tr.doc, restoredFrom, restoredTo));
 
   ctx.suppressRerender = true;
   view.dispatch(tr);
   ctx.suppressRerender = false;
+
+  const tb = getSelectionToolbar();
+  if (tb.open && !tb.isInteracting) tb.requestUpdate();
 
   // Sync the updated node (with marks applied) back to the portal's mini editor.
   // Without this, the portal's editor retains the plain-text version, so the next
@@ -64,10 +75,15 @@ export function updateState(data, ctx) {
       const syncNodeStart = syncPos.before(syncPos.depth);
       const syncNode = view.state.doc.resolve(syncNodeStart).nodeAfter;
       if (syncNode) {
+        // @deprecated top-level editorState/cursorOffset — prefer payload.editorState/cursorOffset
+        // (kept so the quick-edit iframe script in da-nx keeps working until it migrates).
+        const editorState = syncNode.toJSON();
+        const { cursorOffset } = data;
         ctx.port.postMessage({
-          type: 'set-editor-state',
-          editorState: syncNode.toJSON(),
-          cursorOffset: data.cursorOffset,
+          type: MESSAGE_TYPES.SET_EDITOR_STATE,
+          editorState,
+          cursorOffset,
+          payload: { editorState, cursorOffset },
         });
       }
     } catch {
@@ -92,7 +108,14 @@ export function getEditor(data, ctx) {
     const beforePos = doc.resolve(before);
     const nodeAtBefore = beforePos.nodeAfter;
     if (!nodeAtBefore) return;
-    ctx.port.postMessage({ type: 'set-editor-state', editorState: nodeAtBefore.toJSON(), cursorOffset: before + 1 });
+    const editorState = nodeAtBefore.toJSON();
+    const newCursorOffset = before + 1;
+    ctx.port.postMessage({
+      type: MESSAGE_TYPES.SET_EDITOR_STATE,
+      editorState,
+      cursorOffset: newCursorOffset,
+      payload: { editorState, cursorOffset: newCursorOffset },
+    });
   } catch {
     // Stale iframe cursor after structural replace (e.g. chat revert, remote sync).
   }
@@ -313,13 +336,13 @@ export const editorSelectChange = (() => {
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: 'set-body', body });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, body, payload: { body } });
   return body;
 }
 
 export function updateCursors(ctx) {
   const cursors = extractCursors(ctx.view);
-  ctx.port.postMessage({ type: 'set-cursors', cursors });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_CURSORS, cursors, payload: { cursors } });
 }
 
 // --- preview.js ---

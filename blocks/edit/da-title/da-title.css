@@ -186,6 +186,15 @@ da-dialog {
   color: rgb(212 212 212 / 50%);
 }
 
+.collab-status-cloud.collab-status-unsaved {
+  animation: cloud-unsaved-pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes cloud-unsaved-pulse {
+  from { color: rgb(212 212 212 / 50%); }
+  to { color: rgb(110 110 110); }
+}
+
 .collab-icon.collab-status-cloud.collab-popup::after {
   bottom: -29px;
 }
