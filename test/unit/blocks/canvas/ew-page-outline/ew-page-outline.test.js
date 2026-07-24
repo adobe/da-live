@@ -1,15 +1,24 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { makeView, posOf } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let editorProseSelectChange;
+let getExtensionsBridge;
 
 before(async () => {
   await import('../../../../../blocks/canvas/ew-page-outline/ew-page-outline.js');
   ({ editorProseSelectChange } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+  ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
 });
+
+function docSeq(doc) {
+  const seq = [];
+  doc.forEach((n) => seq.push(n.type.name === 'horizontal_rule' ? 'hr' : n.textContent));
+  return seq;
+}
 
 async function createOutline() {
   const el = document.createElement('ew-page-outline');
@@ -118,5 +127,111 @@ describe('ew-page-outline — expandable default content', () => {
     await el.updateComplete;
     expect(header.getAttribute('aria-expanded')).to.equal('false');
     expect(el.shadowRoot.querySelector('.content-children')).to.be.null;
+  });
+});
+
+describe('ew-page-outline — content drag & delete', () => {
+  let el;
+  let bridge;
+
+  beforeEach(async () => {
+    el = await createOutline();
+    bridge = getExtensionsBridge();
+  });
+
+  afterEach(() => {
+    el.remove();
+    bridge.view = null;
+  });
+
+  it('deletes a content child via its delete button', async () => {
+    bridge.view = makeView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Delete me' }] },
+      ],
+    });
+    const deletePos = posOf(bridge.view.state.doc, (n) => n.textContent === 'Delete me');
+
+    el._sections = [{
+      sectionIndex: 0,
+      blocks: [],
+      items: [contentGroupItem(deletePos, [
+        { type: 'content', kind: 'paragraph', proseIndex: deletePos, innerText: 'Delete me' },
+      ])],
+    }];
+    await el.updateComplete;
+    el.shadowRoot.querySelector('.content-item').click();
+    await el.updateComplete;
+
+    el.shadowRoot.querySelector('.content-child .delete-btn').click();
+
+    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['Keep me']);
+  });
+
+  it('reorders content children via drop onto another content child', () => {
+    bridge.view = makeView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+      ],
+    });
+    const aPos = posOf(bridge.view.state.doc, (n) => n.textContent === 'A');
+    const bPos = posOf(bridge.view.state.doc, (n) => n.textContent === 'B');
+    const childA = { kind: 'paragraph', proseIndex: aPos };
+    const childB = { kind: 'paragraph', proseIndex: bPos };
+
+    el._dragging = { type: 'content', index: childA };
+    el._dropTarget = { contentChild: childB, dropPosition: 'after' };
+    el._onDrop({ preventDefault() {}, stopPropagation() {} });
+
+    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['B', 'A']);
+  });
+
+  it('routes a content drop onto a section header through moveContentItem', () => {
+    bridge.view = makeView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Move me' }] },
+        { type: 'horizontal_rule' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Existing' }] },
+      ],
+    });
+    const movePos = posOf(bridge.view.state.doc, (n) => n.textContent === 'Move me');
+
+    el._dragging = { type: 'content', index: { kind: 'paragraph', proseIndex: movePos } };
+    el._dropTarget = { sectionIndex: 1, dropPosition: 'after' };
+    el._onDrop({ preventDefault() {}, stopPropagation() {} });
+
+    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['hr', 'Move me', 'Existing']);
+  });
+
+  it('dropping on a group header before/after targets the first/last child', () => {
+    const item = {
+      proseIndex: 1,
+      children: [
+        { kind: 'paragraph', proseIndex: 1, innerText: 'first' },
+        { kind: 'paragraph', proseIndex: 5, innerText: 'last' },
+      ],
+    };
+    el._dragging = { type: 'content', index: { kind: 'paragraph', proseIndex: 99 } };
+
+    const rect = { top: 0, height: 20 };
+    const fakeEvent = (clientY) => ({
+      preventDefault() {},
+      stopPropagation() {},
+      currentTarget: { getBoundingClientRect: () => rect, dataset: {} },
+      clientY,
+    });
+
+    el._onContentGroupDragOver(fakeEvent(5), item);
+    expect(el._dropTarget.contentChild).to.deep.equal(item.children[0]);
+    expect(el._dropTarget.dropPosition).to.equal('before');
+
+    el._onContentGroupDragOver(fakeEvent(15), item);
+    expect(el._dropTarget.contentChild).to.deep.equal(item.children[1]);
+    expect(el._dropTarget.dropPosition).to.equal('after');
   });
 });

@@ -5,9 +5,11 @@ import { editorHtmlChange, editorSelectChange, editorProseSelectChange, parseSec
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import {
   deleteBlock,
+  deleteContentItem,
   deleteSection,
   insertBlockAtSectionStart,
   moveBlock,
+  moveContentItem,
   moveSection,
 } from '../editor-utils/blocks.js';
 import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
@@ -23,6 +25,7 @@ const style = await loadStyle(import.meta.url);
 const OUTLINE_TYPES = {
   SECTION: 'section',
   BLOCK: 'block',
+  CONTENT: 'content',
 };
 
 const DROP_POSITIONS = {
@@ -174,11 +177,12 @@ class EwPageOutline extends LitElement {
   }
 
   _onSectionDragOver(e, sec) {
+    const type = this._dragging?.type;
     const rect = e.currentTarget.getBoundingClientRect();
     const dropPosition = e.clientY < rect.top + rect.height / 2
       ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
 
-    if (this._dragging?.type === OUTLINE_TYPES.SECTION) {
+    if (type === OUTLINE_TYPES.SECTION) {
       if (this._dragging.index === sec.sectionIndex) return;
       e.preventDefault();
 
@@ -187,6 +191,17 @@ class EwPageOutline extends LitElement {
         : e.currentTarget;
 
       this._setDropIndicator(el, { sectionIndex: sec.sectionIndex, dropPosition });
+    } else if (type === OUTLINE_TYPES.CONTENT) {
+      // Bubbles here from anywhere unclaimed in the section; on the header itself we're
+      // before/after-aware, elsewhere (e.g. an empty section) we default to "first item".
+      e.preventDefault();
+      const headerEl = e.currentTarget.querySelector('[data-section-header]');
+      const onHeader = headerEl?.contains(e.target);
+      const contentDropPosition = onHeader ? dropPosition : DROP_POSITIONS.AFTER;
+      this._setDropIndicator(
+        headerEl,
+        { sectionIndex: sec.sectionIndex, dropPosition: contentDropPosition },
+      );
     } else {
       if (!sec.blocks.length) return;
       if (sec.blocks.some((b) => b.blockIndex === this._dragging?.index)) return;
@@ -200,13 +215,39 @@ class EwPageOutline extends LitElement {
   }
 
   _onBlockDragOver(e, blockIndex) {
-    if (this._dragging?.type !== OUTLINE_TYPES.BLOCK || this._dragging.index === blockIndex) return;
+    const type = this._dragging?.type;
+    if (![OUTLINE_TYPES.BLOCK, OUTLINE_TYPES.CONTENT].includes(type)) return;
+    if (type === OUTLINE_TYPES.BLOCK && this._dragging.index === blockIndex) return;
     e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     const dropPosition = e.clientY < rect.top + rect.height / 2
       ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
     this._setDropIndicator(e.currentTarget, { blockIndex, dropPosition });
+  }
+
+  _onContentDragOver(e, child) {
+    if (this._dragging?.type !== OUTLINE_TYPES.CONTENT) return;
+    if (this._dragging.index.proseIndex === child.proseIndex) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dropPosition = e.clientY < rect.top + rect.height / 2
+      ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
+    this._setDropIndicator(e.currentTarget, { contentChild: child, dropPosition });
+  }
+
+  _onContentGroupDragOver(e, item) {
+    if (this._dragging?.type !== OUTLINE_TYPES.CONTENT) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dropPosition = e.clientY < rect.top + rect.height / 2
+      ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
+    const targetChild = dropPosition === DROP_POSITIONS.BEFORE
+      ? item.children[0]
+      : item.children[item.children.length - 1];
+    this._setDropIndicator(e.currentTarget, { contentChild: targetChild, dropPosition });
   }
 
   _onDrop = (e) => {
@@ -216,7 +257,15 @@ class EwPageOutline extends LitElement {
     this._clearDragState();
     if (!_dropTarget || !_dragging) return;
     const { view } = getExtensionsBridge();
-    if (_dropTarget.blockIndex != null) {
+
+    if (_dragging.type === OUTLINE_TYPES.CONTENT) {
+      let target;
+      if (_dropTarget.contentChild) target = { type: 'content', child: _dropTarget.contentChild };
+      else if (_dropTarget.blockIndex != null) target = { type: 'block', blockIndex: _dropTarget.blockIndex };
+      else if (_dropTarget.sectionIndex != null) target = { type: 'section', sectionIndex: _dropTarget.sectionIndex };
+      else return;
+      moveContentItem(view, _dragging.index, target, _dropTarget.dropPosition);
+    } else if (_dropTarget.blockIndex != null) {
       if (_dragging.type !== OUTLINE_TYPES.BLOCK) return;
       moveBlock(view, _dragging.index, _dropTarget.blockIndex, _dropTarget.dropPosition);
     } else if (_dropTarget.sectionIndex != null) {
@@ -267,14 +316,18 @@ class EwPageOutline extends LitElement {
     if (!view) return;
     if (type === OUTLINE_TYPES.BLOCK) {
       deleteBlock(view, index);
+    } else if (type === OUTLINE_TYPES.CONTENT) {
+      deleteContentItem(view, index);
     } else {
       deleteSection(view, index);
     }
   }
 
   _renderDeleteButton(type, index) {
-    const label = type === OUTLINE_TYPES.SECTION
-      ? `Delete section ${index + 1}` : 'Delete block';
+    let noun = 'block';
+    if (type === OUTLINE_TYPES.SECTION) noun = `section ${index + 1}`;
+    else if (type === OUTLINE_TYPES.CONTENT) noun = contentChildLabel(index).toLowerCase();
+    const label = `Delete ${noun}`;
     return html`
       <button type="button" class="action-btn delete-btn" draggable="false"
               aria-label="${label}"
@@ -294,15 +347,26 @@ class EwPageOutline extends LitElement {
         <div class="block-item content-item" role="treeitem"
              tabindex="${isFirst ? '0' : '-1'}"
              aria-expanded="${expanded}"
-             @click=${() => this._toggleContentGroup(key)}>
+             @click=${() => this._toggleContentGroup(key)}
+             @dragover=${(e) => this._onContentGroupDragOver(e, item)}
+             @drop=${this._onDrop}>
           <span class="block-name content-label">Default content</span>
         </div>
         ${expanded ? html`
           <ul class="content-children" role="group">
             ${item.children.map((child) => html`
               <li class="block-item content-item content-child" role="treeitem" tabindex="-1"
+                  draggable="true"
+                  @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.CONTENT, child)}
+                  @dragover=${(e) => this._onContentDragOver(e, child)}
+                  @drop=${this._onDrop}
+                  @dragend=${this._onDragEnd}
                   @click=${(e) => { e.stopPropagation(); this._selectProse(child.proseIndex, child.kind); }}>
                 <span class="block-name content-label">${contentChildLabel(child)}</span>
+                ${this._renderDeleteButton(OUTLINE_TYPES.CONTENT, child)}
+                <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
+                  <use href="${DRAG_ICON_SRC}#icon"></use>
+                </svg>
               </li>`)}
           </ul>` : nothing}
       </li>`;
