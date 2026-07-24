@@ -1,10 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 
-import { getNx, getNxEWFlags } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
+const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 const ICONS = {
   undo: '/img/icons/s2-icon-undo-20-n.svg',
@@ -39,7 +41,7 @@ class EWCanvasHeader extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [style, buttons];
     this._unsubHash = hashChange.subscribe((state) => {
       this._syncChatDisabled(state?.org, state?.site);
     });
@@ -104,7 +106,7 @@ class EWCanvasHeader extends LitElement {
   _renderLock() {
     const label = "Read-only — you don't have write access";
     return html`
-      <span class="lock-indicator" role="img" aria-label=${label} title=${label}>
+      <span class="nx-action-btn-icon" role="img" aria-label=${label} title=${label}>
         ${this._renderIcon('lock')}
       </span>`;
   }
