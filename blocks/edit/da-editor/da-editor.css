@@ -820,7 +820,7 @@ da-library.hide {
   font-weight: normal;
   line-height: normal;
   user-select: none;
-  color: white;
+  color: var(--s2-gray-800);
   padding: 0 3px;
   white-space: nowrap;
 }

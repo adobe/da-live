@@ -1,4 +1,5 @@
 import { updateDocument, updateState, getEditor } from '../editor-utils/editor-utils.js';
+import { getCommentsBridge, openCommentsPanel } from '../editor-utils/comments-bridge.js';
 import { handleImageReplace } from './utils/image.js';
 import {
   handleCursorMove,
@@ -9,6 +10,23 @@ import {
   handleStoredMarks,
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+
+export function handleCommentShortcut() {
+  getCommentsBridge().controller?.requestCompose();
+  openCommentsPanel();
+}
+
+export function handleCommentMarkerClick({ threadId }) {
+  if (!threadId) return;
+  const { controller } = getCommentsBridge();
+  controller?.setSelectedThread(threadId);
+  controller?.scrollToThread(threadId);
+  openCommentsPanel();
+}
+
+export function handleCommentMarkerClear() {
+  getCommentsBridge().controller?.setSelectedThread(null);
+}
 
 export function createControllerOnMessage(ctx) {
   return function onMessage(e) {
@@ -38,6 +56,12 @@ export function createControllerOnMessage(ctx) {
       handleNodeSelect(data, ctx);
     } else if (data.type === MESSAGE_TYPES.STORED_MARKS) {
       handleStoredMarks(data, ctx);
+    } else if (data.type === MESSAGE_TYPES.COMMENT_MARKER_CLICK) {
+      handleCommentMarkerClick(data);
+    } else if (data.type === MESSAGE_TYPES.COMMENT_MARKER_CLEAR) {
+      handleCommentMarkerClear();
+    } else if (data.type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
+      handleCommentShortcut();
     }
   };
 }

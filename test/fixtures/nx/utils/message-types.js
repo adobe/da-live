@@ -19,6 +19,11 @@ export const MESSAGE_TYPES = Object.freeze({
   STORED_MARKS: 'stored-marks',
   PREVIEW: 'preview',
 
+  SET_COMMENT_MARKERS: 'set-comment-markers',
+  COMMENT_MARKER_CLICK: 'comment-marker-click',
+  COMMENT_MARKER_CLEAR: 'comment-marker-clear',
+  COMMENT_SHORTCUT: 'comment-shortcut',
+
   IMAGE_REPLACE: 'image-replace',
 
   UPDATE_IMAGE_SRC: 'update-image-src',

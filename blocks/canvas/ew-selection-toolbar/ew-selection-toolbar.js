@@ -23,6 +23,7 @@ const TABLE_ITEMS = commandsFor('toolbar-table');
 const PICKER_DEFS = commandsFor('toolbar-picker');
 const LINK_ITEMS = commandsFor('toolbar-link');
 const IMAGE_ITEMS = commandsFor('toolbar-image');
+const COMMENT_ITEMS = commandsFor('toolbar-comment');
 
 const BLOCK_TYPE_LABELS = new Map(PICKER_DEFS.map(({ id, label }) => [id, label]));
 
@@ -349,6 +350,7 @@ class EwSelectionToolbar extends LitElement {
       { items: TABLE_ITEMS, render: () => renderButtons(TABLE_ITEMS) },
       { items: LINK_ITEMS, render: () => renderButtons(LINK_ITEMS) },
       { items: IMAGE_ITEMS, render: () => renderImageItems(IMAGE_ITEMS) },
+      { items: COMMENT_ITEMS, render: () => renderButtons(COMMENT_ITEMS) },
     ];
 
     const visible = sections.filter(({ items }) => this._hasVisibleCommands(items));

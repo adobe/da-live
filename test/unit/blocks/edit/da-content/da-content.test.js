@@ -1,7 +1,6 @@
+/* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 
-// This is needed to make a dynamic import work that is indirectly referenced
-// from da-editor.js
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -32,6 +31,8 @@ describe('da-content', () => {
     expect(ed._showPane).to.equal('preview');
     ed.togglePane({ detail: 'versions' });
     expect(ed._showPane).to.equal('versions');
+    ed.togglePane({ detail: 'comments' });
+    expect(ed._showPane).to.equal('comments');
   });
 
   it('handleVersionReset clears _versionId', () => {
@@ -50,7 +51,7 @@ describe('da-content', () => {
   it('loadViews short-circuits after the first call', async () => {
     const ed = new DaContent();
     ed._editorLoaded = true;
-    await ed.loadViews(); // should resolve without re-importing modules
+    await ed.loadViews();
     expect(ed._editorLoaded).to.be.true;
   });
 
@@ -63,5 +64,29 @@ describe('da-content', () => {
     await ed.handleEditorLoaded();
     expect(viewsCalled).to.be.true;
     expect(ueCalled).to.be.true;
+  });
+
+  it('renders comment badge from controller.counts.active', () => {
+    const ed = new DaContent();
+    ed.commentsController = {
+      counts: { active: 3, resolved: 0 },
+      hasSelection: false,
+    };
+    const result = ed.renderCommentBadge();
+    expect(result?.strings?.raw?.[0] || '').to.include('da-comment-badge');
+    expect(result?.values?.[0]).to.equal(3);
+  });
+
+  it('handleToggleComments calls controller.requestCompose', () => {
+    const ed = new DaContent();
+    const calls = [];
+    ed.commentsController = {
+      requestCompose() { calls.push('requestCompose'); },
+      hasSelection: false,
+      counts: { active: 0, resolved: 0 },
+    };
+    ed.handleToggleComments();
+    expect(calls).to.deep.equal(['requestCompose']);
+    expect(ed._showPane).to.equal('comments');
   });
 });

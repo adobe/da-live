@@ -29,6 +29,9 @@ import { getNx2Api } from '../../../scripts/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { forceSave } from '../../shared/forcesave.js';
+import { createCommentsController } from '../../shared/comments/helpers/controller.js';
+import { createCommentsStore } from '../../shared/comments/helpers/comments-store.js';
+import { generateColor, collabCursorBuilder } from '../../shared/author-color.js';
 
 // Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
 // every successful onopen, so a close that follows a brief successful
@@ -154,6 +157,7 @@ async function loadCustomPlugins() {
     { default: toggleLibrary },
     { default: slashMenu },
     { default: linkMenu },
+    { default: commentPlugin },
   ] = await Promise.all([
     import('./plugins/keyHandlers.js'),
     import('./plugins/menu/menu.js'),
@@ -169,6 +173,7 @@ async function loadCustomPlugins() {
     import('../da-library/da-library.js'),
     import('./plugins/slashMenu/slashMenu.js'),
     import('./plugins/linkMenu/linkMenu.js'),
+    import('../../shared/comments/comment-plugin.js'),
   ]);
 
   return {
@@ -187,6 +192,7 @@ async function loadCustomPlugins() {
     toggleLibrary,
     slashMenu,
     linkMenu,
+    commentPlugin,
   };
 }
 
@@ -390,26 +396,6 @@ function registerErrorHandler(ydoc) {
   });
 }
 
-function generateColor(name, hRange = [0, 360], sRange = [60, 80], lRange = [40, 60]) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i += 1) {
-    // eslint-disable-next-line no-bitwise
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  hash = Math.abs(hash);
-  const normalizeHash = (min, max) => Math.floor((hash % (max - min)) + min);
-  const h = normalizeHash(hRange[0], hRange[1]);
-  const s = normalizeHash(sRange[0], sRange[1]);
-  const l = normalizeHash(lRange[0], lRange[1]) / 100;
-  const a = (s * Math.min(l, 1 - l)) / 100;
-  const f = (n) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
-
 function storeCursorPosition(view) {
   const { from, to } = view.state.selection;
   lastCursorPosition = { from, to };
@@ -438,7 +424,14 @@ function addSyncedListener(wsProvider, canWrite) {
   });
 }
 
-function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
+function applyDelayedPlugins(
+  pluginsPromise,
+  schema,
+  canWrite,
+  basePlugins,
+  commentsController,
+  commentsStore,
+) {
   pluginsPromise.then((plugins) => {
     const {
       syncPlugin,
@@ -457,6 +450,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
       cursorPlugin,
       undoPlugin,
       trackPlugin,
+      plugins.commentPlugin({ controller: commentsController, store: commentsStore }),
       plugins.slashMenu(),
       plugins.linkMenu(),
       plugins.tableSelectHandle(),
@@ -508,12 +502,18 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
   });
 }
 
-// eslint-disable-next-line no-unused-vars
-export default async function initProse({ path, permissions, doc, daContent, wsPromise }) {
+export default async function initProse({
+  path, permissions, doc: _, docId, daContent, wsPromise,
+}) {
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) {
     window.view.destroy();
     delete window.view;
+  }
+
+  if (daContent.commentsController) {
+    daContent.commentsController.destroy();
+    daContent.commentsController = null;
   }
 
   const connectionPromise = wsPromise || createConnection(path);
@@ -529,6 +529,25 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   addSyncedListener(wsProvider, canWrite);
   createAwarenessStatusWidget(wsProvider, window, path);
   registerErrorHandler(ydoc);
+
+  const { details } = daContent;
+  const commentsStore = docId
+    ? createCommentsStore({
+      docId,
+      owner: details.owner,
+      repo: details.repo,
+    })
+    : null;
+  const commentsController = createCommentsController({ commentsStore, wsProvider });
+
+  if (commentsStore) {
+    onWsSync(wsProvider, () => {
+      commentsStore.load().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[comments] store load failed', err);
+      });
+    });
+  }
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
@@ -549,7 +568,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   }
 
   const syncPlugin = ySyncPlugin(yXmlFragment);
-  const cursorPlugin = yCursorPlugin(wsProvider.awareness);
+  const cursorPlugin = yCursorPlugin(wsProvider.awareness, { cursorBuilder: collabCursorBuilder });
 
   let state = EditorState.create({ schema, plugins: [syncPlugin, cursorPlugin] });
 
@@ -591,7 +610,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {
     syncPlugin,
     cursorPlugin,
-  });
+  }, commentsController, commentsStore);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
@@ -599,4 +618,5 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   daContent.proseEl = editor;
   daContent.wsProvider = wsProvider;
   daContent.forceSave = () => forceSave(wsProvider);
+  daContent.commentsController = commentsController;
 }
