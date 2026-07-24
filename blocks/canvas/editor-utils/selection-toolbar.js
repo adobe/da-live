@@ -16,10 +16,6 @@ export function getSelectionOriginFromIframe(state) {
   return selectionToolbarOriginKey.getState(state)?.fromIframe ?? false;
 }
 
-export function getSelectionToolbar() {
-  return toolbarController.ensureToolbar();
-}
-
 export function setSelectionToolbarCtx({ org = null, site = null, sourceUrl = null } = {}) {
   const tb = toolbarController.ensureToolbar();
   tb.org = org;

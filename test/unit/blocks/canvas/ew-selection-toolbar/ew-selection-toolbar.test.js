@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { TextSelection, NodeSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
-import { getSelectionToolbar } from '../../../../../blocks/canvas/editor-utils/selection-toolbar.js';
+import { toolbarController } from '../../../../../blocks/canvas/editor-utils/toolbar-controller.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -16,7 +16,7 @@ describe('ew-selection-toolbar buttons', () => {
 
   beforeEach(async () => {
     editor = await createTestEditor();
-    toolbar = getSelectionToolbar();
+    toolbar = toolbarController.ensureToolbar();
     toolbar.view = editor.view;
   });
 
