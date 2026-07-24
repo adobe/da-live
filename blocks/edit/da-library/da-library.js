@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import searchFor from './helpers/search.js';
@@ -270,7 +270,7 @@ class DaLibrary extends LitElement {
       if (e.data.action === 'setHash') {
         window.location.hash = e.data.details;
       }
-      if (e.data.action === 'setHref') {
+      if (e.data.action === 'setHref' && isValidHref(e.data.details)) {
         window.location.href = e.data.details;
       }
       if (e.data.action === 'closeLibrary') {
