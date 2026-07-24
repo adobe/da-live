@@ -12,7 +12,13 @@
 
 .da-diff-btn-base {
   border-radius: var(--s2-corner-radius-400);
-  height: 32px;
+  height: 28px;
+  background: var(--s2-gray-100);
+}
+
+.da-diff-btn .switch-btn,
+.da-diff-btn-3part .diff-label {
+  padding: 4px 10px;
 }
 
 .da-diff-btn-base-element {
@@ -46,22 +52,16 @@
 
 .da-diff-btn:is(.is-local, .is-upstream, .is-diff) .switch-btn,
 .da-diff-btn-3part:is(.is-local, .is-upstream) .diff-label {
-  background: var(--s2-gray-100);
+  background: transparent;
   color: var(--s2-gray-800);
 }
 
 .da-diff-btn:is(.is-local, .is-upstream, .is-diff) .confirm-btn,
 .da-diff-btn-3part:is(.is-local, .is-upstream) .diff-accept,
 .da-diff-btn-3part:is(.is-local, .is-upstream) .diff-delete {
-  background: var(--s2-gray-800);
-  color: var(--s2-gray-25);
-}
-
-.da-diff-btn .confirm-btn:hover,
-.da-diff-btn-3part .diff-accept:hover,
-.da-diff-btn-3part .diff-delete:hover {
-  color: var(--s2-gray-25);
-  filter: brightness(1.1);
+  background: var(--s2-gray-200);
+  color: var(--s2-gray-800);
+  border-left: 1px solid var(--s2-gray-300);
 }
 
 .da-diff-btn.is-active {
@@ -70,7 +70,20 @@
 
 .da-diff-btn.is-active .switch-btn,
 .da-diff-btn.is-active .confirm-btn {
-  color: var(--s2-gray-25);
+  background: var(--s2-gray-300);
+  color: var(--s2-gray-900);
+}
+
+
+.da-diff-btn .switch-btn {
+  cursor: default;
+}
+
+.da-diff-btn .confirm-btn:hover,
+.da-diff-btn-3part .diff-accept:hover,
+.da-diff-btn-3part .diff-delete:hover {
+  background: var(--s2-gray-300);
+  color: var(--s2-gray-900);
 }
 
 .diff-tooltip {
@@ -107,28 +120,27 @@
 }
 
 .loc-color-overlay.loc-regional {
-  background-color: color-mix(in srgb, var(--s2-green-200) 60%, transparent) !important;
+  background-color: color-mix(in srgb, var(--s2-green-200) 25%, transparent) !important;
 }
 
 .loc-color-overlay.loc-langstore {
-  background-color: color-mix(in srgb, var(--s2-red-200) 60%, transparent) !important;
+  background-color: color-mix(in srgb, var(--s2-red-200) 25%, transparent) !important;
 }
 
 .diff-bg-local {
-  background-color: color-mix(in srgb, var(--s2-green-200) 60%, transparent);
+  background-color: color-mix(in srgb, var(--s2-green-200) 25%, transparent);
 }
 
 .diff-bg-upstream {
-  background-color: color-mix(in srgb, var(--s2-red-200) 60%, transparent);
+  background-color: color-mix(in srgb, var(--s2-red-200) 25%, transparent);
 }
 
 .diff-bg-diff {
-  background-color: color-mix(in srgb, var(--s2-gray-100) 60%, transparent);
+  background-color: color-mix(in srgb, var(--s2-gray-100) 25%, transparent);
 }
 
 .da-regional-edits-overlay {
   padding: var(--s2-spacing-200);
-  border-radius: var(--s2-corner-radius-400);
   background: var(--s2-gray-25);
   box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }

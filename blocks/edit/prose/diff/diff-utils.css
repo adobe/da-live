@@ -84,6 +84,10 @@ da-loc-added,
   pointer-events: auto;
 }
 
+.da-prose-mirror.has-regional-edits .loc-sticky-buttons {
+  top: 64px;
+}
+
 /* When the container is short, the sticky buttons should be moved down to not block content */
 .loc-single-container.is-short .loc-sticky-buttons,
 .loc-tabbed-container.is-short .loc-sticky-buttons,
@@ -404,27 +408,24 @@ da-loc-added,
 
 .da-regional-edits-overlay {
   display: none;
-  position: absolute;
-  right: -48px;
-  z-index: 4;
-  padding: 16px 20px;
-  margin: 0 48px;
+  position: sticky;
+  top: 0;
+  z-index: 1111;
+  padding: 12px 20px;
   box-sizing: border-box;
+  width: 100%;
+  background: #fff;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
 }
 
 .da-regional-edits-overlay.show {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  justify-content: flex-end;
 }
 
 .da-regional-edits-actions {
   display: flex;
   gap: 12px;
   align-items: center;
-}
-
-.da-prose-mirror.has-regional-edits .ProseMirror {
-  padding-top: 60px;
+  justify-content: flex-end;
 }

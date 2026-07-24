@@ -384,6 +384,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
           colorOverlay.style.display = 'block';
           colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-upstream';
         } else if (targetTab === 'diff') {
+          colorOverlay.style.display = 'none';
           colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-diff';
 
           const diffTab = tabContent.querySelector('[data-tab="diff"]');

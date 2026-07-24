@@ -92,6 +92,16 @@
     outline: none;
   }
 
+  &:disabled {
+    color: var(--s2-gray-400);
+    cursor: not-allowed;
+
+    &:hover {
+      color: var(--s2-gray-400);
+      background-color: transparent;
+    }
+  }
+
   &:hover:not(.is-selected) {
     color: var(--s2-gray-900);
     background-color: var(--s2-gray-200);
@@ -117,6 +127,10 @@
     height: 16px;
     flex-shrink: 0;
     overflow: hidden;
+  }
+
+  &:disabled.segment-icon svg.icon {
+    opacity: 0.45;
   }
 }
 

@@ -24,7 +24,7 @@ class EWCanvasHeader extends LitElement {
     undoAvailable: { type: Boolean },
     redoAvailable: { type: Boolean },
     authorized: { type: Boolean },
-    hasUnresolvedMergeConflicts: { type: Boolean },
+    hasUnresolvedMergeConflicts: { type: Boolean, reflect: true, attribute: 'has-conflicts' },
     _chatDisabled: { state: true },
   };
 
@@ -134,6 +134,7 @@ class EWCanvasHeader extends LitElement {
               type="button"
               class="segment ${this.editorView === 'layout' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'layout'}
+              title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : nothing}
               ?disabled=${this.hasUnresolvedMergeConflicts}
               @click=${() => this._setEditorView('layout')}
             >Layout</button>
@@ -148,7 +149,7 @@ class EWCanvasHeader extends LitElement {
               class="segment segment-icon ${this.editorView === 'split' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'split'}
               aria-label="Split view"
-              title="Split view"
+              title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : 'Split view'}
               ?disabled=${this.hasUnresolvedMergeConflicts}
               @click=${() => this._setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
