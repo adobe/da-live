@@ -56,6 +56,9 @@ function render() {
   // Only assign a known view; never clobber with null (teardown just hides, and a
   // fresh view arrives via setDocView on the next load).
   if (state.docView) tb.view = state.docView;
+  // The element renders a surface-appropriate button set: the wysiwyg iframe owns
+  // block-level structure, so it gets inline/link/image controls only.
+  tb.activeSurface = state.activeSurface;
   if (shouldShow(tb)) {
     tb.show();
   } else if (!tb.linkDialogOpen && !tb.altDialogOpen && !tb.isInteracting) {

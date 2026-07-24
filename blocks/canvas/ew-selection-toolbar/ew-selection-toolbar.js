@@ -41,6 +41,7 @@ function blockTypeLabelForRaw(raw) {
 class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
+    activeSurface: { attribute: false },
     org: { type: String },
     site: { type: String },
     sourceUrl: { type: String },
@@ -337,16 +338,27 @@ class EwSelectionToolbar extends LitElement {
     const renderButtons = (items) => items.map((i) => this._renderToolbarButton(i));
     const renderImageItems = (items) => items.map((i) => this._renderImageItem(i));
 
+    const inWysiwyg = this.activeSurface === 'wysiwyg';
+    // The iframe owns block insertion, so "add image" is doc-only; editing a
+    // selected image's alt text stays available in wysiwyg.
+    const imageItems = inWysiwyg
+      ? IMAGE_ITEMS.filter((i) => i.id !== 'image-add')
+      : IMAGE_ITEMS;
+
+    // `wysiwyg` marks sections offered while editing in the WYSIWYG iframe. The
+    // iframe owns block-level structure (block type, lists, tables), so those are
+    // doc-only; inline marks, links, and image controls remain in both surfaces.
     const sections = [
-      { items: PICKER_DEFS, render: () => this._renderBlockTypePicker() },
-      { items: MARK_ITEMS, render: () => renderButtons(MARK_ITEMS) },
-      { items: STRUCTURE_ITEMS, render: () => renderButtons(STRUCTURE_ITEMS) },
-      { items: TABLE_ITEMS, render: () => renderButtons(TABLE_ITEMS) },
-      { items: LINK_ITEMS, render: () => renderButtons(LINK_ITEMS) },
-      { items: IMAGE_ITEMS, render: () => renderImageItems(IMAGE_ITEMS) },
+      { items: PICKER_DEFS, wysiwyg: false, render: () => this._renderBlockTypePicker() },
+      { items: MARK_ITEMS, wysiwyg: true, render: () => renderButtons(MARK_ITEMS) },
+      { items: STRUCTURE_ITEMS, wysiwyg: false, render: () => renderButtons(STRUCTURE_ITEMS) },
+      { items: TABLE_ITEMS, wysiwyg: false, render: () => renderButtons(TABLE_ITEMS) },
+      { items: LINK_ITEMS, wysiwyg: true, render: () => renderButtons(LINK_ITEMS) },
+      { items: imageItems, wysiwyg: true, render: () => renderImageItems(imageItems) },
     ];
 
-    const visible = sections.filter(({ items }) => this._hasVisibleCommands(items));
+    const allowed = inWysiwyg ? sections.filter((s) => s.wysiwyg) : sections;
+    const visible = allowed.filter(({ items }) => this._hasVisibleCommands(items));
     return visible.flatMap(({ render }, i) => {
       const part = render();
       return i === 0 ? [part] : [html`<span class="toolbar-sep" aria-hidden="true"></span>`, part];
