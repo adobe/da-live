@@ -1,7 +1,11 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin, PluginKey, NodeSelection } from 'da-y-wrapper';
+import { getTableBlockName, getTableBlockVariant } from './blocks.js';
 
 const NON_TEXT_NODES = new Set(['table']);
+
+/** Editor views the selection/block toolbars may appear in. */
+const TOOLBAR_EDITOR_VIEWS = new Set(['content', 'split', 'layout', 'block']);
 
 /** Set on transactions that mirror WYSIWYG iframe text selection into ProseMirror. */
 export const NX_QUICK_EDIT_IFRAME_SELECTION_META = 'nxQuickEditIframeSelection';
@@ -26,11 +30,29 @@ export function getSelectionToolbar() {
   return toolbar;
 }
 
+let blockToolbar;
+let blockComponentLoaded;
+
+export function getBlockToolbar() {
+  if (blockToolbar) return blockToolbar;
+  blockComponentLoaded ??= import('../ew-block-toolbar/ew-block-toolbar.js');
+  blockToolbar = document.createElement('ew-block-toolbar');
+  document.body.append(blockToolbar);
+  return blockToolbar;
+}
+
+export function hideBlockToolbar() {
+  blockToolbar?.hide?.();
+}
+
 export function setSelectionToolbarCtx({ org = null, site = null, sourceUrl = null } = {}) {
   const tb = getSelectionToolbar();
   tb.org = org;
   tb.site = site;
   tb.sourceUrl = sourceUrl;
+  const blockTb = getBlockToolbar();
+  blockTb.org = org;
+  blockTb.site = site;
 }
 
 export function hideSelectionToolbar() {
@@ -54,14 +76,24 @@ function isNonTextSelection({ selection }) {
     && NON_TEXT_NODES.has(selection.node.type.name);
 }
 
-function syncToolbar(view) {
+function syncToolbar(view, editorView) {
   if (!view) return;
   const tb = getSelectionToolbar();
   if (tb.linkDialogOpen || tb.altDialogOpen || tb.isInteracting) return;
   if (isNonTextSelection(view.state)) {
+    // A block is selected — show the block toolbar in every editor view.
     hideSelectionToolbar();
+    const blockTb = getBlockToolbar();
+    blockTb.view = view;
+    const { node } = view.state.selection;
+    blockTb.show(getTableBlockName(node), getTableBlockVariant(node));
     return;
   }
+  hideBlockToolbar();
+  // The text toolbar is only relevant when the doc editor is visible, and never
+  // for selections that originate in (and are already served by) the WYSIWYG iframe.
+  if (getSelectionOriginFromIframe(view.state)) return;
+  if (editorView === 'layout') return;
   if (!view.hasFocus()) return;
   tb.view = view;
   tb.show();
@@ -86,12 +118,12 @@ export function createSelectionToolbarPlugin() {
         update(view) {
           const header = document.querySelector('ew-canvas-header');
           const ev = header?.editorView;
-          if (ev !== 'content' && ev !== 'split') return;
-          if (getSelectionOriginFromIframe(view.state)) return;
-          syncToolbar(view);
+          if (!TOOLBAR_EDITOR_VIEWS.has(ev)) return;
+          syncToolbar(view, ev);
         },
         destroy() {
           hideSelectionToolbar();
+          hideBlockToolbar();
         },
       };
     },
