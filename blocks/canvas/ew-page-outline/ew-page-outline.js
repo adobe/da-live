@@ -9,6 +9,8 @@ import {
   deleteSection,
   insertBlockAtSectionStart,
   moveBlock,
+  moveBlockToContentItem,
+  moveBlockToSection,
   moveContentItem,
   moveSection,
 } from '../editor-utils/blocks.js';
@@ -203,14 +205,25 @@ class EwPageOutline extends LitElement {
         { sectionIndex: sec.sectionIndex, dropPosition: contentDropPosition },
       );
     } else {
-      if (!sec.blocks.length) return;
       if (sec.blocks.some((b) => b.blockIndex === this._dragging?.index)) return;
-      const { blockIndex } = sec.blocks[sec.blocks.length - 1];
-      e.preventDefault();
+      if (sec.blocks.length) {
+        const { blockIndex } = sec.blocks[sec.blocks.length - 1];
+        e.preventDefault();
 
-      const lastBlockEl = this.shadowRoot.querySelector(`[data-block-index="${blockIndex}"]`);
-      if (!lastBlockEl) return;
-      this._setDropIndicator(lastBlockEl, { blockIndex, dropPosition: DROP_POSITIONS.AFTER });
+        const lastBlockEl = this.shadowRoot.querySelector(`[data-block-index="${blockIndex}"]`);
+        if (!lastBlockEl) return;
+        this._setDropIndicator(lastBlockEl, { blockIndex, dropPosition: DROP_POSITIONS.AFTER });
+        return;
+      }
+
+      // No blocks in this section to anchor on (it may still have content, or be
+      // wholly empty) — fall back to the section boundary itself.
+      e.preventDefault();
+      const headerEl = e.currentTarget.querySelector('[data-section-header]');
+      this._setDropIndicator(
+        headerEl,
+        { sectionIndex: sec.sectionIndex, dropPosition: DROP_POSITIONS.AFTER },
+      );
     }
   }
 
@@ -227,8 +240,11 @@ class EwPageOutline extends LitElement {
   }
 
   _onContentDragOver(e, child) {
-    if (this._dragging?.type !== OUTLINE_TYPES.CONTENT) return;
-    if (this._dragging.index.proseIndex === child.proseIndex) return;
+    const type = this._dragging?.type;
+    if (![OUTLINE_TYPES.CONTENT, OUTLINE_TYPES.BLOCK].includes(type)) return;
+    const isSameChild = type === OUTLINE_TYPES.CONTENT
+      && this._dragging.index.proseIndex === child.proseIndex;
+    if (isSameChild) return;
     e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -238,7 +254,7 @@ class EwPageOutline extends LitElement {
   }
 
   _onContentGroupDragOver(e, item) {
-    if (this._dragging?.type !== OUTLINE_TYPES.CONTENT) return;
+    if (![OUTLINE_TYPES.CONTENT, OUTLINE_TYPES.BLOCK].includes(this._dragging?.type)) return;
     e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -265,6 +281,11 @@ class EwPageOutline extends LitElement {
       else if (_dropTarget.sectionIndex != null) target = { type: 'section', sectionIndex: _dropTarget.sectionIndex };
       else return;
       moveContentItem(view, _dragging.index, target, _dropTarget.dropPosition);
+    } else if (_dragging.type === OUTLINE_TYPES.BLOCK && _dropTarget.contentChild) {
+      const { contentChild, dropPosition } = _dropTarget;
+      moveBlockToContentItem(view, _dragging.index, contentChild, dropPosition);
+    } else if (_dragging.type === OUTLINE_TYPES.BLOCK && _dropTarget.sectionIndex != null) {
+      moveBlockToSection(view, _dragging.index, _dropTarget.sectionIndex, _dropTarget.dropPosition);
     } else if (_dropTarget.blockIndex != null) {
       if (_dragging.type !== OUTLINE_TYPES.BLOCK) return;
       moveBlock(view, _dragging.index, _dropTarget.blockIndex, _dropTarget.dropPosition);

@@ -1,11 +1,33 @@
 import { expect } from '@esm-bundle/chai';
+import { setNx } from '../../../../../scripts/utils.js';
 import {
   getContentItemRange,
   deleteContentItem,
   moveContentItem,
+  moveBlockToContentItem,
+  moveBlockToSection,
   moveBlock,
 } from '../../../../../blocks/canvas/editor-utils/blocks.js';
-import { makeView, posOf } from '../test-helpers.js';
+import { makeView, makeRealView } from '../test-helpers.js';
+
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+let getInstrumentedHTML;
+let parseSections;
+
+before(async () => {
+  ({ getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+});
+
+// Builds the same `child` descriptors the outline actually drags/deletes — proseIndex
+// comes from the real getInstrumentedHTML/parseSections pipeline, not a hand-picked
+// node position, since that's what previously masked a whole class of bugs (proseIndex
+// points inside a node's content, not at its own start — see getContentItemRange).
+function childrenOf(view) {
+  const html = getInstrumentedHTML(view);
+  const sections = parseSections(html);
+  return sections.flatMap((section) => section.items.flatMap((item) => item.children ?? []));
+}
 
 function docTypes(doc) {
   const types = [];
@@ -28,69 +50,99 @@ function tableJSON(name, contentText = 'content') {
 }
 
 describe('getContentItemRange', () => {
-  it('resolves a non-image child to its own node range', () => {
-    const view = makeView({
-      type: 'doc',
+  const cases = [
+    ['paragraph', { type: 'paragraph', content: [{ type: 'text', text: 'Para text' }] }, 'paragraph', 'Para text'],
+    ['heading', { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Heading text' }] }, 'heading', 'Heading text'],
+    ['code block', { type: 'code_block', content: [{ type: 'text', text: 'const x = 1;' }] }, 'code_block', 'const x = 1;'],
+    ['quote', { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Some wisdom' }] }] }, 'blockquote', 'Some wisdom'],
+    ['multi-item list', {
+      type: 'bullet_list',
       content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'Para one' }] },
-        { type: 'paragraph', content: [{ type: 'text', text: 'Para two' }] },
+        { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'One' }] }] },
+        { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Two' }] }] },
       ],
+    }, 'bullet_list', 'OneTwo'],
+  ];
+
+  cases.forEach(([label, nodeJSON, expectedType, expectedText]) => {
+    it(`resolves a ${label} child to its whole node, not an inner fragment`, () => {
+      const view = makeRealView({ type: 'doc', content: [nodeJSON] });
+      const [child] = childrenOf(view);
+      const range = getContentItemRange(view.state.doc, child);
+      expect(range.pos).to.equal(0);
+      expect(range.node.type.name).to.equal(expectedType);
+      expect(range.node.textContent).to.equal(expectedText);
     });
-    const { doc } = view.state;
-    const pos = posOf(doc, (n) => n.textContent === 'Para one');
-    const range = getContentItemRange(doc, { kind: 'paragraph', proseIndex: pos });
-    expect(range.pos).to.equal(pos);
-    expect(range.size).to.equal(doc.nodeAt(pos).nodeSize);
   });
 
   it('resolves an image child to its wrapping <p>, not just the inline image node', () => {
-    const view = makeView({
+    const view = makeRealView({
       type: 'doc',
-      content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'Before' }] },
-        { type: 'paragraph', content: [{ type: 'image', attrs: { src: 'x.png' } }] },
-      ],
+      content: [{ type: 'paragraph', content: [{ type: 'image', attrs: { src: 'x.png' } }] }],
     });
-    const { doc } = view.state;
-    const wrapperPos = posOf(doc, (n) => n.type.name === 'paragraph' && n.textContent === '');
-    const wrapper = doc.nodeAt(wrapperPos);
-    const imagePos = wrapperPos + 1;
-
-    const range = getContentItemRange(doc, { kind: 'image', proseIndex: imagePos });
-    expect(range.pos).to.equal(wrapperPos);
-    expect(range.size).to.equal(wrapper.nodeSize);
+    const [child] = childrenOf(view);
+    const range = getContentItemRange(view.state.doc, child);
+    expect(range.pos).to.equal(0);
     expect(range.node.type.name).to.equal('paragraph');
   });
 });
 
 describe('deleteContentItem', () => {
   it('removes a paragraph child entirely', () => {
-    const view = makeView({
+    const view = makeRealView({
       type: 'doc',
       content: [
         { type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] },
         { type: 'paragraph', content: [{ type: 'text', text: 'Delete me' }] },
       ],
     });
-    const pos = posOf(view.state.doc, (n) => n.textContent === 'Delete me');
-    deleteContentItem(view, { kind: 'paragraph', proseIndex: pos });
+    const child = childrenOf(view).find((c) => c.innerText === 'Delete me');
+    deleteContentItem(view, child);
 
-    const texts = [];
-    view.state.doc.forEach((n) => texts.push(n.textContent));
-    expect(texts).to.deep.equal(['Keep me']);
+    expect(view.state.doc.childCount).to.equal(1);
+    expect(view.state.doc.firstChild.textContent).to.equal('Keep me');
+  });
+
+  it('removes the whole code block, not just its text', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] },
+        { type: 'code_block', content: [{ type: 'text', text: 'const x = 1;' }] },
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.kind === 'code');
+    deleteContentItem(view, child);
+
+    expect(view.state.doc.childCount).to.equal(1);
+    expect(view.state.doc.firstChild.textContent).to.equal('Keep me');
+  });
+
+  it('removes the whole blockquote, not just its inner paragraph text', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] },
+        { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Wisdom' }] }] },
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.kind === 'quote');
+    deleteContentItem(view, child);
+
+    expect(view.state.doc.childCount).to.equal(1);
+    expect(view.state.doc.firstChild.textContent).to.equal('Keep me');
   });
 
   it('removes the whole wrapping <p> for an image child — no orphaned empty paragraph', () => {
-    const view = makeView({
+    const view = makeRealView({
       type: 'doc',
       content: [
         { type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] },
         { type: 'paragraph', content: [{ type: 'image', attrs: { src: 'x.png' } }] },
       ],
     });
-    const wrapperPos = posOf(view.state.doc, (n) => n.type.name === 'paragraph' && n.textContent === '');
-    const imagePos = wrapperPos + 1;
-    deleteContentItem(view, { kind: 'image', proseIndex: imagePos });
+    const child = childrenOf(view).find((c) => c.kind === 'image');
+    deleteContentItem(view, child);
 
     expect(view.state.doc.childCount).to.equal(1);
     expect(view.state.doc.firstChild.textContent).to.equal('Keep me');
@@ -98,113 +150,161 @@ describe('deleteContentItem', () => {
 });
 
 describe('moveContentItem', () => {
-  it('reorders a content child relative to another content child (content target)', () => {
-    const view = makeView({
+  it('moves a whole code block relative to another content child (content target)', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'code_block', content: [{ type: 'text', text: 'const x = 1;' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+      ],
+    });
+    const [codeChild, paraChild] = childrenOf(view);
+
+    moveContentItem(view, codeChild, { type: 'content', child: paraChild }, 'after');
+
+    const { doc } = view.state;
+    expect(docTypes(doc)).to.deep.equal(['paragraph', 'code_block']);
+    expect(doc.lastChild.textContent).to.equal('const x = 1;');
+  });
+
+  it('moves a whole quote before a block without merging into it (block target)', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        tableJSON('hero'),
+        { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Wisdom' }] }] },
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.kind === 'quote');
+
+    moveContentItem(view, child, { type: 'block', blockIndex: 0 }, 'before');
+
+    const { doc } = view.state;
+    expect(docTypes(doc)).to.deep.equal(['blockquote', 'table']);
+    expect(doc.firstChild.textContent).to.equal('Wisdom');
+  });
+
+  it('moves a whole multi-item list into a section with no default content yet (section target)', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        {
+          type: 'bullet_list',
+          content: [
+            { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'One' }] }] },
+            { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Two' }] }] },
+          ],
+        },
+        { type: 'horizontal_rule' },
+        tableJSON('hero'),
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.kind === 'list');
+
+    moveContentItem(view, child, { type: 'section', sectionIndex: 1 }, 'after');
+
+    const { doc } = view.state;
+    expect(docTypes(doc)).to.deep.equal(['horizontal_rule', 'bullet_list', 'table']);
+    expect(doc.child(1).textContent).to.equal('OneTwo');
+  });
+
+  it('lands right before a section header — last item of the previous section', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
+        { type: 'horizontal_rule' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.innerText === 'B');
+
+    moveContentItem(view, child, { type: 'section', sectionIndex: 1 }, 'before');
+
+    const { doc } = view.state;
+    expect(docTypes(doc)).to.deep.equal(['paragraph', 'paragraph', 'horizontal_rule']);
+    expect(doc.child(1).textContent).to.equal('B');
+  });
+
+  it('does not dispatch when the drop position is a no-op', () => {
+    const view = makeRealView({
       type: 'doc',
       content: [
         { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
         { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
       ],
     });
-    const aPos = posOf(view.state.doc, (n) => n.textContent === 'A');
-    const bPos = posOf(view.state.doc, (n) => n.textContent === 'B');
+    const [a, b] = childrenOf(view);
+    const before = view.state;
 
-    moveContentItem(
-      view,
-      { kind: 'paragraph', proseIndex: aPos },
-      { type: 'content', child: { kind: 'paragraph', proseIndex: bPos } },
-      'after',
-    );
+    moveContentItem(view, a, { type: 'content', child: b }, 'before');
 
-    const texts = [];
-    view.state.doc.forEach((n) => texts.push(n.textContent));
-    expect(texts).to.deep.equal(['B', 'A']);
+    expect(view.state).to.equal(before);
+  });
+});
+
+describe('moveBlockToContentItem', () => {
+  it('moves a block before a content child, landing as a sibling in doc order', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Loose para' }] },
+        tableJSON('hero'),
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.innerText === 'Loose para');
+
+    moveBlockToContentItem(view, 0, child, 'before');
+
+    const { doc } = view.state;
+    expect(docTypes(doc)).to.deep.equal(['table', 'paragraph']);
+    expect(doc.firstChild.firstChild.firstChild.textContent).to.equal('hero');
   });
 
-  it('moves a content child before a block without merging into it (block target)', () => {
-    const view = makeView({
+  it('moves a block after a content child', () => {
+    const view = makeRealView({
       type: 'doc',
       content: [
         tableJSON('hero'),
         { type: 'paragraph', content: [{ type: 'text', text: 'Loose para' }] },
       ],
     });
-    const paraPos = posOf(view.state.doc, (n) => n.type.name === 'paragraph');
+    const child = childrenOf(view).find((c) => c.innerText === 'Loose para');
 
-    moveContentItem(
-      view,
-      { kind: 'paragraph', proseIndex: paraPos },
-      { type: 'block', blockIndex: 0 },
-      'before',
-    );
+    moveBlockToContentItem(view, 0, child, 'after');
 
-    expect(docTypes(view.state.doc)).to.deep.equal(['paragraph', 'table']);
-    expect(view.state.doc.firstChild.textContent).to.equal('Loose para');
+    const { doc } = view.state;
+    expect(docTypes(doc)).to.deep.equal(['paragraph', 'table']);
   });
+});
 
-  it('moves a content child into a section with no default content yet (section target)', () => {
-    const view = makeView({
+describe('moveBlockToSection', () => {
+  it('moves a block into a section that has no blocks (including a wholly empty one)', () => {
+    const view = makeRealView({
       type: 'doc',
-      content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'Move me' }] },
-        { type: 'horizontal_rule' },
-        tableJSON('hero'),
-      ],
+      content: [{ type: 'horizontal_rule' }, tableJSON('hero')],
     });
-    const paraPos = posOf(view.state.doc, (n) => n.type.name === 'paragraph');
 
-    moveContentItem(
-      view,
-      { kind: 'paragraph', proseIndex: paraPos },
-      { type: 'section', sectionIndex: 1 },
-      'after',
-    );
+    moveBlockToSection(view, 0, 0, 'after');
 
-    expect(docTypes(view.state.doc)).to.deep.equal(['horizontal_rule', 'paragraph', 'table']);
+    expect(docTypes(view.state.doc)).to.deep.equal(['table', 'horizontal_rule']);
   });
 
   it('lands right before a section header — last item of the previous section', () => {
-    const view = makeView({
+    const view = makeRealView({
       type: 'doc',
-      content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
-        { type: 'horizontal_rule' },
-        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
-      ],
+      content: [tableJSON('hero'), { type: 'horizontal_rule' }, tableJSON('cards')],
     });
-    const bPos = posOf(view.state.doc, (n) => n.textContent === 'B');
 
-    moveContentItem(
-      view,
-      { kind: 'paragraph', proseIndex: bPos },
-      { type: 'section', sectionIndex: 1 },
-      'before',
-    );
+    moveBlockToSection(view, 1, 1, 'before');
 
-    expect(docTypes(view.state.doc)).to.deep.equal(['paragraph', 'paragraph', 'horizontal_rule']);
-    expect(view.state.doc.child(1).textContent).to.equal('B');
-  });
-
-  it('does not dispatch when the drop position is a no-op', () => {
-    const view = makeView({
-      type: 'doc',
-      content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
-        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
-      ],
+    const { doc } = view.state;
+    expect(docTypes(doc)).to.deep.equal(['table', 'table', 'horizontal_rule']);
+    const names = [];
+    doc.descendants((n) => {
+      if (n.type.name === 'table') names.push(n.firstChild.firstChild.textContent);
     });
-    const aPos = posOf(view.state.doc, (n) => n.textContent === 'A');
-    const bPos = posOf(view.state.doc, (n) => n.textContent === 'B');
-    const before = view.state;
-
-    moveContentItem(
-      view,
-      { kind: 'paragraph', proseIndex: aPos },
-      { type: 'content', child: { kind: 'paragraph', proseIndex: bPos } },
-      'before',
-    );
-
-    expect(view.state).to.equal(before);
+    expect(names).to.deep.equal(['hero', 'cards']);
   });
 });
 

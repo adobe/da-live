@@ -1,18 +1,29 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
-import { makeView, posOf } from '../test-helpers.js';
+import { makeRealView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let editorProseSelectChange;
 let getExtensionsBridge;
+let getInstrumentedHTML;
+let parseSections;
 
 before(async () => {
   await import('../../../../../blocks/canvas/ew-page-outline/ew-page-outline.js');
-  ({ editorProseSelectChange } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+  ({ editorProseSelectChange, getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
 });
+
+// Builds the same `child` descriptors the outline actually drags/deletes — proseIndex
+// comes from the real getInstrumentedHTML/parseSections pipeline, not a hand-picked
+// node position (proseIndex points inside a node's content, not at its own start).
+function childrenOf(view) {
+  const html = getInstrumentedHTML(view);
+  const sections = parseSections(html);
+  return sections.flatMap((section) => section.items.flatMap((item) => item.children ?? []));
+}
 
 function docSeq(doc) {
   const seq = [];
@@ -145,21 +156,19 @@ describe('ew-page-outline — content drag & delete', () => {
   });
 
   it('deletes a content child via its delete button', async () => {
-    bridge.view = makeView({
+    bridge.view = makeRealView({
       type: 'doc',
       content: [
         { type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] },
-        { type: 'paragraph', content: [{ type: 'text', text: 'Delete me' }] },
+        { type: 'code_block', content: [{ type: 'text', text: 'const x = 1;' }] },
       ],
     });
-    const deletePos = posOf(bridge.view.state.doc, (n) => n.textContent === 'Delete me');
+    const child = childrenOf(bridge.view).find((c) => c.kind === 'code');
 
     el._sections = [{
       sectionIndex: 0,
       blocks: [],
-      items: [contentGroupItem(deletePos, [
-        { type: 'content', kind: 'paragraph', proseIndex: deletePos, innerText: 'Delete me' },
-      ])],
+      items: [contentGroupItem(child.proseIndex, [child])],
     }];
     await el.updateComplete;
     el.shadowRoot.querySelector('.content-item').click();
@@ -171,17 +180,14 @@ describe('ew-page-outline — content drag & delete', () => {
   });
 
   it('reorders content children via drop onto another content child', () => {
-    bridge.view = makeView({
+    bridge.view = makeRealView({
       type: 'doc',
       content: [
         { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
         { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
       ],
     });
-    const aPos = posOf(bridge.view.state.doc, (n) => n.textContent === 'A');
-    const bPos = posOf(bridge.view.state.doc, (n) => n.textContent === 'B');
-    const childA = { kind: 'paragraph', proseIndex: aPos };
-    const childB = { kind: 'paragraph', proseIndex: bPos };
+    const [childA, childB] = childrenOf(bridge.view);
 
     el._dragging = { type: 'content', index: childA };
     el._dropTarget = { contentChild: childB, dropPosition: 'after' };
@@ -191,21 +197,82 @@ describe('ew-page-outline — content drag & delete', () => {
   });
 
   it('routes a content drop onto a section header through moveContentItem', () => {
-    bridge.view = makeView({
+    bridge.view = makeRealView({
       type: 'doc',
       content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'Move me' }] },
+        { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Move me' }] }] },
         { type: 'horizontal_rule' },
         { type: 'paragraph', content: [{ type: 'text', text: 'Existing' }] },
       ],
     });
-    const movePos = posOf(bridge.view.state.doc, (n) => n.textContent === 'Move me');
+    const child = childrenOf(bridge.view).find((c) => c.kind === 'quote');
 
-    el._dragging = { type: 'content', index: { kind: 'paragraph', proseIndex: movePos } };
+    el._dragging = { type: 'content', index: child };
     el._dropTarget = { sectionIndex: 1, dropPosition: 'after' };
     el._onDrop({ preventDefault() {}, stopPropagation() {} });
 
     expect(docSeq(bridge.view.state.doc)).to.deep.equal(['hr', 'Move me', 'Existing']);
+  });
+
+  it('routes a block dropped onto a content child through moveBlockToContentItem', () => {
+    bridge.view = makeRealView({
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'table_row',
+              content: [{ type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hero' }] }] }],
+            },
+          ],
+        },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Loose para' }] },
+      ],
+    });
+    const child = childrenOf(bridge.view).find((c) => c.innerText === 'Loose para');
+
+    el._dragging = { type: 'block', index: 0 };
+    el._dropTarget = { contentChild: child, dropPosition: 'after' };
+    el._onDrop({ preventDefault() {}, stopPropagation() {} });
+
+    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['Loose para', 'hero']);
+  });
+
+  it('routes a block dropped onto an empty section through moveBlockToSection', () => {
+    const tableNode = (name) => ({
+      type: 'table',
+      content: [{
+        type: 'table_row',
+        content: [{ type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: name }] }] }],
+      }],
+    });
+    bridge.view = makeRealView({
+      type: 'doc',
+      content: [{ type: 'horizontal_rule' }, tableNode('hero')],
+    });
+
+    el._dragging = { type: 'block', index: 0 };
+    el._dropTarget = { sectionIndex: 0, dropPosition: 'after' };
+    el._onDrop({ preventDefault() {}, stopPropagation() {} });
+
+    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['hero', 'hr']);
+  });
+
+  it('accepts a block drag over a content child/group (sets a drop indicator, not just content drags)', () => {
+    const child = { kind: 'paragraph', proseIndex: 1 };
+    el._dragging = { type: 'block', index: 0 };
+
+    const rect = { top: 0, height: 20 };
+    const fakeEvent = (clientY) => ({
+      preventDefault() {},
+      stopPropagation() {},
+      currentTarget: { getBoundingClientRect: () => rect, dataset: {} },
+      clientY,
+    });
+
+    el._onContentDragOver(fakeEvent(15), child);
+    expect(el._dropTarget).to.deep.equal({ contentChild: child, dropPosition: 'after' });
   });
 
   it('dropping on a group header before/after targets the first/last child', () => {

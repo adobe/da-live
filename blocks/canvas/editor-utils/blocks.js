@@ -92,10 +92,13 @@ export function deleteBlock(view, blockIndex) {
   view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize));
 }
 
-// image proseIndex points at the nested <img>; its text-less <p> wrapper always starts
-// one position earlier (getDefaultContentKind guarantees the <p> wraps only that image).
+// proseIndex is a position INSIDE the default-content node (getInstrumentedHTML stamps
+// it at the node's content-start, e.g. where an image or a paragraph's text begins), not
+// the node's own start — resolving to the depth-1 ancestor recovers the whole top-level
+// node regardless of kind or how deeply proseIndex sits inside it (e.g. a blockquote's
+// nested paragraph, or a list's first item).
 export function getContentItemRange(doc, child) {
-  const pos = child.kind === 'image' ? child.proseIndex - 1 : child.proseIndex;
+  const pos = doc.resolve(child.proseIndex).before(1);
   const node = doc.nodeAt(pos);
   return node ? { pos, size: node.nodeSize, node } : null;
 }
@@ -229,6 +232,46 @@ export function moveContentItem(view, fromChild, target, dropPosition) {
   } else {
     return;
   }
+
+  spliceNode(view, from, insertPos);
+}
+
+function getBlockRange(view, blockIndex) {
+  const { doc } = view.state;
+  const positions = getBlockPositions(view);
+  if (blockIndex >= positions.length) return null;
+  const pos = positions[blockIndex];
+  const node = doc.nodeAt(pos);
+  return node ? { pos, size: node.nodeSize, node } : null;
+}
+
+// Block dropped onto/near a default-content row — the reverse of moveContentItem's
+// 'content' target. Block-to-block reordering stays on moveBlock; this only covers a
+// block landing next to a content item.
+export function moveBlockToContentItem(view, blockIndex, targetChild, dropPosition) {
+  if (!view) return;
+  const from = getBlockRange(view, blockIndex);
+  if (!from) return;
+
+  const to = getContentItemRange(view.state.doc, targetChild);
+  if (!to) return;
+  const insertPos = dropPosition === 'before' ? to.pos : to.pos + to.size;
+
+  spliceNode(view, from, insertPos);
+}
+
+// Block dropped onto a section's header when that section has no blocks to anchor a
+// drop indicator on — the reverse of moveContentItem's 'section' target. Whole-section
+// reordering stays on moveSection; this only covers a lone block landing at the
+// section boundary.
+export function moveBlockToSection(view, blockIndex, sectionIndex, dropPosition) {
+  if (!view) return;
+  const from = getBlockRange(view, blockIndex);
+  if (!from) return;
+
+  const insertPos = dropPosition === 'before'
+    ? getSectionEndOffset(view, sectionIndex)
+    : getSectionStartOffset(view, sectionIndex);
 
   spliceNode(view, from, insertPos);
 }
