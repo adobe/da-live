@@ -24,6 +24,7 @@ class EWCanvasHeader extends LitElement {
     undoAvailable: { type: Boolean },
     redoAvailable: { type: Boolean },
     authorized: { type: Boolean },
+    hasUnresolvedMergeConflicts: { type: Boolean },
     _chatDisabled: { state: true },
   };
 
@@ -33,6 +34,7 @@ class EWCanvasHeader extends LitElement {
     this.undoAvailable = false;
     this.redoAvailable = false;
     this.authorized = true;
+    this.hasUnresolvedMergeConflicts = false;
   }
 
   connectedCallback() {
@@ -79,7 +81,12 @@ class EWCanvasHeader extends LitElement {
     );
   }
 
+  setEditorView(view) {
+    this._setEditorView(view);
+  }
+
   _setEditorView(view) {
+    if (this.hasUnresolvedMergeConflicts && view !== 'content') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
     this.editorView = view;
     this.dispatchEvent(
@@ -127,6 +134,7 @@ class EWCanvasHeader extends LitElement {
               type="button"
               class="segment ${this.editorView === 'layout' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'layout'}
+              ?disabled=${this.hasUnresolvedMergeConflicts}
               @click=${() => this._setEditorView('layout')}
             >Layout</button>
             <button
@@ -141,6 +149,7 @@ class EWCanvasHeader extends LitElement {
               aria-pressed=${this.editorView === 'split'}
               aria-label="Split view"
               title="Split view"
+              ?disabled=${this.hasUnresolvedMergeConflicts}
               @click=${() => this._setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
           </div>

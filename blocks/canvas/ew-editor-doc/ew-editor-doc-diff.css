@@ -1,0 +1,138 @@
+/* stylelint-disable selector-class-pattern */
+
+.loc-tabbed-container {
+  background: var(--s2-gray-25);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+  border-radius: var(--s2-corner-radius-400);
+}
+
+.diff-tab-content {
+  background: var(--s2-gray-25);
+}
+
+.da-diff-btn-base {
+  border-radius: var(--s2-corner-radius-400);
+  height: 32px;
+}
+
+.da-diff-btn-base-element {
+  font-size: var(--s2-component-s-regular-font-size, 0.875rem);
+  font-weight: 600;
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+}
+
+.da-diff-btn .confirm-btn::before,
+.da-diff-btn-3part .diff-accept::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: currentcolor;
+  mask: no-repeat center / 16px url('/img/icons/s2-icon-checkmark-20-n.svg');
+}
+
+.da-diff-btn-3part .diff-delete::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: currentcolor;
+  mask: no-repeat center / 16px url('/img/icons/s2-icon-close-20-n.svg');
+}
+
+.da-diff-btn:is(.is-local, .is-upstream, .is-diff) .switch-btn,
+.da-diff-btn-3part:is(.is-local, .is-upstream) .diff-label {
+  background: var(--s2-gray-100);
+  color: var(--s2-gray-800);
+}
+
+.da-diff-btn:is(.is-local, .is-upstream, .is-diff) .confirm-btn,
+.da-diff-btn-3part:is(.is-local, .is-upstream) .diff-accept,
+.da-diff-btn-3part:is(.is-local, .is-upstream) .diff-delete {
+  background: var(--s2-gray-800);
+  color: var(--s2-gray-25);
+}
+
+.da-diff-btn .confirm-btn:hover,
+.da-diff-btn-3part .diff-accept:hover,
+.da-diff-btn-3part .diff-delete:hover {
+  color: var(--s2-gray-25);
+  filter: brightness(1.1);
+}
+
+.da-diff-btn.is-active {
+  border-color: var(--s2-gray-900);
+}
+
+.da-diff-btn.is-active .switch-btn,
+.da-diff-btn.is-active .confirm-btn {
+  color: var(--s2-gray-25);
+}
+
+.diff-tooltip {
+  background: var(--s2-gray-1000);
+  color: var(--s2-gray-25);
+  font-weight: 500;
+  border: none;
+  border-radius: var(--s2-corner-radius-400);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
+  backdrop-filter: none;
+}
+
+.diff-tooltip::before {
+  display: none;
+}
+
+.diff-tooltip::after {
+  border-top-color: var(--s2-gray-1000);
+  filter: none;
+}
+
+.diff-tab-pane del.diffdel,
+.diff-tab-pane del.diffmod {
+  background-color: var(--s2-red-200);
+  color: var(--s2-red-900);
+  border: none;
+}
+
+.diff-tab-pane ins.diffins,
+.diff-tab-pane ins.diffmod {
+  background-color: var(--s2-green-200);
+  color: var(--s2-green-900);
+  border: none;
+}
+
+.loc-color-overlay.loc-regional {
+  background-color: color-mix(in srgb, var(--s2-green-200) 60%, transparent) !important;
+}
+
+.loc-color-overlay.loc-langstore {
+  background-color: color-mix(in srgb, var(--s2-red-200) 60%, transparent) !important;
+}
+
+.diff-bg-local {
+  background-color: color-mix(in srgb, var(--s2-green-200) 60%, transparent);
+}
+
+.diff-bg-upstream {
+  background-color: color-mix(in srgb, var(--s2-red-200) 60%, transparent);
+}
+
+.diff-bg-diff {
+  background-color: color-mix(in srgb, var(--s2-gray-100) 60%, transparent);
+}
+
+.da-regional-edits-overlay {
+  padding: var(--s2-spacing-200);
+  border-radius: var(--s2-corner-radius-400);
+  background: var(--s2-gray-25);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+}
+
+.da-regional-edits-actions {
+  gap: var(--s2-spacing-200);
+}

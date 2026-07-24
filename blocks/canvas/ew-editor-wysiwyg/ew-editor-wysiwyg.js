@@ -57,13 +57,33 @@ export class EwEditorWysiwyg extends LitElement {
       this._syncCanvasVisibility();
     };
     this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
+    this._onMergeConflictsChange = (e) => {
+      const hasMergeConflicts = e.detail?.hasMergeConflicts ?? false;
+      if (hasMergeConflicts) {
+        this._hadMergeConflicts = true;
+      } else if (this._hadMergeConflicts) {
+        this._hadMergeConflicts = false;
+        this._reloadIframe();
+      }
+    };
+    this.parentElement?.addEventListener('nx-canvas-merge-conflicts', this._onMergeConflictsChange);
     this._syncCanvasVisibility();
   }
 
   disconnectedCallback() {
     this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
+    this.parentElement?.removeEventListener('nx-canvas-merge-conflicts', this._onMergeConflictsChange);
     this._clearQuickEditRetry();
     super.disconnectedCallback();
+  }
+
+  _reloadIframe() {
+    const iframe = this.shadowRoot?.querySelector('iframe');
+    try {
+      iframe?.contentWindow?.location.reload();
+    } catch {
+      /* ignore — cross-origin reload should be allowed, but don't let this throw */
+    }
   }
 
   get _iframeSrc() {
@@ -106,6 +126,7 @@ export class EwEditorWysiwyg extends LitElement {
   _resetCookieStateForCtxChange() {
     this._clearQuickEditRetry();
     this._cookieReady = false;
+    this._hadMergeConflicts = false;
   }
 
   updated(changed) {

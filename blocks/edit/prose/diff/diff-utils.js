@@ -78,23 +78,35 @@ function setDiffLabelCssVars(daEditor) {
   host.style.setProperty('--diff-label-upstream', `'${labels.upstream}'`);
 }
 
+function getDiffHost(view) {
+  const classicHost = document.querySelector('da-content')?.shadowRoot
+    ?.querySelector('da-editor');
+  if (classicHost) return classicHost;
+
+  const root = view?.dom?.getRootNode?.();
+  return root instanceof ShadowRoot ? root.host : null;
+}
+
 let locCssLoading = false;
-async function loadLocCss() {
+async function loadLocCss(hostEl) {
   if (locCssLoading) return;
   locCssLoading = true;
 
   try {
     const locSheet = await getSheet('/blocks/edit/prose/diff/diff-utils.css');
 
-    const daEditor = document.querySelector('da-content')?.shadowRoot
-      ?.querySelector('da-editor');
+    if (hostEl?.shadowRoot) {
+      const sheets = [...(hostEl.shadowRoot.adoptedStyleSheets || []), locSheet];
 
-    if (daEditor?.shadowRoot) {
-      const existingSheets = daEditor.shadowRoot.adoptedStyleSheets || [];
-      daEditor.shadowRoot.adoptedStyleSheets = [...existingSheets, locSheet];
+      if (hostEl.tagName === 'EW-EDITOR-DOC') {
+        const ewSheet = await getSheet('/blocks/canvas/ew-editor-doc/ew-editor-doc-diff.css');
+        sheets.push(ewSheet);
+      }
+
+      hostEl.shadowRoot.adoptedStyleSheets = sheets;
 
       // Set CSS custom properties for diff labels
-      setDiffLabelCssVars(daEditor);
+      setDiffLabelCssVars(hostEl);
     }
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -192,7 +204,7 @@ export function checkForLocNodes(view) {
     .some((node) => isLocNode(node) || hasListLocNode(node));
 
   if (hasLocNodes) {
-    loadLocCss();
+    loadLocCss(getDiffHost(view));
     showGlobalDialog(view);
   } else {
     hideGlobalDialog();
@@ -276,6 +288,10 @@ export function addActiveView(view) {
   activeViews.add(view);
 }
 
+export function removeActiveView(view) {
+  activeViews.delete(view);
+}
+
 export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {
   return class {
     constructor(node, view, getPos) {
@@ -323,7 +339,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     renderTabbedInterface(nodeA, view, posA, nodeB) {
-      loadLocCss();
+      loadLocCss(getDiffHost(view));
 
       this.dom = createElement('div', 'loc-tabbed-container', { contentEditable: 'false' });
       this.contentDOM = null; // Don't let ProseMirror manage content
@@ -430,7 +446,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     renderSingleNode(node, view, pos, upstream) {
-      loadLocCss();
+      loadLocCss(getDiffHost(view));
 
       const isDeleted = node.type.name === 'diff_deleted';
       const viewClass = isDeleted ? 'loc-deleted-view' : 'loc-added-view';
