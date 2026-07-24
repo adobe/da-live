@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { TextSelection, NodeSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
-import { getSelectionToolbar } from '../../../../../blocks/canvas/editor-utils/selection-toolbar.js';
+import { toolbarController } from '../../../../../blocks/canvas/editor-utils/toolbar-controller.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -16,7 +16,7 @@ describe('ew-selection-toolbar buttons', () => {
 
   beforeEach(async () => {
     editor = await createTestEditor();
-    toolbar = getSelectionToolbar();
+    toolbar = toolbarController.ensureToolbar();
     toolbar.view = editor.view;
   });
 
@@ -106,5 +106,29 @@ describe('ew-selection-toolbar buttons', () => {
     });
     expect(imgNode.attrs.alt).to.equal('New alt');
     expect(toolbar.altDialogOpen).to.be.false;
+  });
+
+  it('shows block-level controls in the doc surface', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'doc';
+    await toolbar.updateComplete;
+
+    expect(toolbar.shadowRoot.querySelector('.toolbar-block-type'), 'block-type picker').to.exist;
+    expect(toolbar.shadowRoot.querySelector('button[data-id="bullet-list"]'), 'bullet-list').to.exist;
+    expect(toolbar.shadowRoot.querySelector('button[data-id="strong"]'), 'strong').to.exist;
+    expect(toolbar.shadowRoot.querySelector('button[data-id="image-add"]'), 'add image').to.exist;
+  });
+
+  it('drops block-level controls but keeps inline marks in the wysiwyg surface', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'wysiwyg';
+    await toolbar.updateComplete;
+
+    expect(toolbar.shadowRoot.querySelector('.toolbar-block-type'), 'block-type picker').to.not.exist;
+    expect(toolbar.shadowRoot.querySelector('button[data-id="bullet-list"]'), 'bullet-list').to.not.exist;
+    expect(toolbar.shadowRoot.querySelector('button[data-id="image-add"]'), 'add image').to.not.exist;
+    expect(toolbar.shadowRoot.querySelector('button[data-id="strong"]'), 'strong').to.exist;
   });
 });

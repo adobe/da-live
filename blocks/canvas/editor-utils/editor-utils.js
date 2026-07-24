@@ -2,10 +2,32 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
-import { getSelectionToolbar } from './selection-toolbar.js';
+import { toolbarController } from './toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
+
+/**
+ * Dispatch a mirror transaction while forcing `view.hasFocus()` true for the
+ * duration, then restore it. y-prosemirror's cursor plugin broadcasts this user's
+ * cursor to collaborators only while the view "has focus". The toolbar controller
+ * already keeps `hasFocus` true whenever the wysiwyg surface is active, but a
+ * mirrored edit can land in the instant before the surface flips (the message is
+ * applied, then the surface is claimed) — this guarantees the very edit that moves
+ * the caret also broadcasts it. Toolbar visibility never reads focus; it derives
+ * from the active surface.
+ */
+export function dispatchWithFakeFocus(view, tr) {
+  const hadOwn = Object.hasOwn(view, 'hasFocus');
+  const prev = hadOwn ? view.hasFocus : undefined;
+  view.hasFocus = () => true;
+  try {
+    view.dispatch(tr);
+  } finally {
+    if (hadOwn) view.hasFocus = prev;
+    else delete view.hasFocus;
+  }
+}
 
 // --- state.js ---
 
@@ -59,11 +81,10 @@ export function updateState(data, ctx) {
   tr.setSelection(TextSelection.create(tr.doc, restoredFrom, restoredTo));
 
   ctx.suppressRerender = true;
-  view.dispatch(tr);
+  dispatchWithFakeFocus(view, tr);
   ctx.suppressRerender = false;
 
-  const tb = getSelectionToolbar();
-  if (tb.open && !tb.isInteracting) tb.requestUpdate();
+  toolbarController.refresh();
 
   // Sync the updated node (with marks applied) back to the portal's mini editor.
   // Without this, the portal's editor retains the plain-text version, so the next
