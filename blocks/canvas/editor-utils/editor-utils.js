@@ -8,12 +8,14 @@ import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
 /**
- * Dispatch a mirror transaction while temporarily making `view.hasFocus()` return
- * true, then restore it. y-prosemirror's cursor plugin broadcasts this user's
- * cursor to collaborators only while the view "has focus"; in WYSIWYG mode the
- * iframe owns DOM focus, so without this the local cursor would be cleared on
- * every mirrored edit. Scoped to the dispatch so nothing else ever reads the lie —
- * toolbar visibility is derived from the active surface, not from focus.
+ * Dispatch a mirror transaction while forcing `view.hasFocus()` true for the
+ * duration, then restore it. y-prosemirror's cursor plugin broadcasts this user's
+ * cursor to collaborators only while the view "has focus". The toolbar controller
+ * already keeps `hasFocus` true whenever the wysiwyg surface is active, but a
+ * mirrored edit can land in the instant before the surface flips (the message is
+ * applied, then the surface is claimed) — this guarantees the very edit that moves
+ * the caret also broadcasts it. Toolbar visibility never reads focus; it derives
+ * from the active surface.
  */
 export function dispatchWithFakeFocus(view, tr) {
   const hadOwn = Object.hasOwn(view, 'hasFocus');

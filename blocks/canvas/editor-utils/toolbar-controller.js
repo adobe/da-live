@@ -103,6 +103,32 @@ function installIframeFocusDetection() {
   });
 }
 
+/**
+ * While the wysiwyg iframe owns editing, keep the doc view broadcasting this
+ * user's cursor to collaborators without ever letting real focus land on it.
+ *
+ * y-prosemirror's cursor plugin broadcasts the local cursor only while the view
+ * "has focus", and clears it on the next update once focus is lost — so a caret
+ * mirrored from the iframe would flash to peers and vanish. We lie about focus so
+ * the plugin keeps broadcasting; but `hasFocus` lying alone would let ProseMirror's
+ * `selectionToDOM` treat the doc editor as focused. That only writes a DOM
+ * selection range (harmless — it doesn't move focus), so the one thing left to
+ * guard is `view.focus()`, which really would steal focus from the iframe and
+ * bring back the toolbar-visibility bugs. Neuter it while wysiwyg is active.
+ */
+const focusGuardedViews = new WeakSet();
+function installSurfaceFocusGuards(view) {
+  if (focusGuardedViews.has(view)) return;
+  focusGuardedViews.add(view);
+  const realHasFocus = view.hasFocus.bind(view);
+  view.hasFocus = () => state.activeSurface === 'wysiwyg' || realHasFocus();
+  const realFocus = view.focus.bind(view);
+  view.focus = () => {
+    if (state.activeSurface === 'wysiwyg') return;
+    realFocus();
+  };
+}
+
 function installOutsidePointerdown() {
   if (pointerdownInstalled) return;
   pointerdownInstalled = true;
@@ -126,6 +152,7 @@ export const toolbarController = {
   /** Register the doc editor's view (the command target). */
   setDocView(view) {
     state.docView = view ?? null;
+    if (view) installSurfaceFocusGuards(view);
     installOutsidePointerdown();
     scheduleRender();
   },

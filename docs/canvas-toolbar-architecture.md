@@ -176,7 +176,8 @@ burst and any activate/deactivate churn within a frame, eliminating flicker.
 
 - **`ToolbarController` (new, `editor-utils/`):** owns state, exposes the §4.3
   intake methods, does coalesced render, drives the element. Replaces the
-  show/hide orchestration currently spread across files.
+  show/hide orchestration currently spread across files. On `setDocView` it also
+  installs the surface-gated focus guards (§6) on the doc view.
 - **`<ew-selection-toolbar>`:** presentation + command dispatch only. Commands
   apply to `controller.docView`. Emits `setModal(true/false)` around its dialogs,
   pickers, and menus. No focus logic, no surface logic, no outside-click logic of
@@ -205,15 +206,38 @@ da-live has no alternative outbound path (its `updateCursors`/`SET_CURSORS` is t
 user edits in the WYSIWYG pane, the doc view genuinely lacks DOM focus, so without
 the fake, collaborators would lose sight of this user's cursor.
 
-Resolution:
+A **scoped** lie (fake focus only for the duration of one mirror
+`view.dispatch(tr)`) is **not sufficient**, and this was found in testing.
+`updateCursorInfo` is the plugin's `view.update` callback — it runs after *every*
+transaction. The scoped dispatch broadcasts the cursor, but the next unrelated
+update (a remote peer's edit, the iframe streaming changes into Yjs, or the redraw
+transaction our own `setLocalStateField` triggers via awareness `'change'`) runs
+`updateCursorInfo` with the real `hasFocus() === false` and hits its *else* branch,
+which **clears** the just-broadcast cursor. Net effect: the cursor flashes to peers
+for one tick and vanishes.
 
-- **Keep** a scoped helper that fakes focus only for the duration of a mirror
-  `view.dispatch(tr)` and restores it in a `finally` (as PR #1018's
-  `dispatchWithFakeFocus` did). This preserves outbound awareness.
-- **Guarantee** the visibility layer never reads `view.hasFocus()` (§4.2). Once
-  that holds, the scoped lie is harmless: it feeds the y-cursor plugin (intended)
-  and cannot influence the toolbar. Untangling these two consumers of the same
-  value is the crux of the fix.
+Resolution — a lie **gated on the active surface**, plus a focus guard:
+
+- **`installSurfaceFocusGuards(view)`** (in `toolbar-controller.js`, wired from
+  `setDocView`) overrides `view.hasFocus` to return `true` whenever
+  `state.activeSurface === 'wysiwyg'`, else the real check. This holds the lie for
+  the *whole* duration the iframe owns editing (layout **and** split), so no later
+  update can clear the cursor. When the user leaves, the surface goes to `null`,
+  the real check returns, and `updateCursorInfo` correctly clears the cursor.
+- **Focus must never actually move to the doc editor.** The `hasFocus` lie makes
+  ProseMirror's `selectionToDOM` treat the doc view as owning the selection — but
+  that only writes a DOM selection *range* (`domSel.collapse/extend`), which does
+  **not** move focus. The one thing that would is `view.focus()` (→ `this.dom.focus()`,
+  `prosemirror-view` index.js:5521). So the same guard neuters `view.focus()` while
+  `activeSurface === 'wysiwyg'`, so no caller (drop handler, command, `restoreFocus`)
+  can steal focus from the iframe and resurrect the toolbar bugs.
+- **`dispatchWithFakeFocus`** is retained as a complement, not the primary mechanism:
+  a mirrored edit can arrive in the instant before the surface flips to `'wysiwyg'`
+  (the message is applied, *then* the surface is claimed), so it forces the lie for
+  that one dispatch to guarantee the edit that moves the caret also broadcasts it.
+- **The visibility layer never reads `view.hasFocus()`** (§4.2). That is what makes
+  the lie safe: it feeds the y-cursor plugin (intended) and cannot influence the
+  toolbar.
 
 ---
 
@@ -234,7 +258,8 @@ as a follow-up with the da-nx owner.
 2. Add `activeSurface` + the §4.2 predicate; move `editorMode` off the header DOM
    query into `setEditorMode`.
 3. Flip the PM plugin and `handlers.js` to emit events; **stop hiding on null
-   `cursor-move`**; confine the focus lie to the scoped dispatch helper.
+   `cursor-move`**; gate the focus lie on the active surface and neuter
+   `view.focus()` while the iframe owns editing (§6).
 4. Move activation to real focus events (doc prose focus/out, iframe focus/blur);
    remove the `activeElement`-based outside logic.
 5. Add coalesced render.
@@ -255,8 +280,9 @@ Drive the real app in **split view**:
   active surface.
 - Switch view modes → toolbar recomputes from the current selection rather than
   hiding until the next selection change.
-- Second collaborator session → this user's cursor remains visible to them while
-  editing in the WYSIWYG pane (confirms the scoped focus lie still works).
+- Second collaborator session → this user's cursor remains visible to them
+  **continuously** (not just a one-tick flash) while editing in the WYSIWYG pane,
+  in both layout and split (confirms the surface-gated focus lie, §6).
 
 ---
 
