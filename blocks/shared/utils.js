@@ -264,6 +264,16 @@ export const getSheetByName = (json, name) => {
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
+export function isValidHref(href) {
+  if (typeof href !== 'string' || !href) return false;
+  if (href.startsWith('/') && !href.startsWith('//')) return true;
+  try {
+    return new URL(href).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function getPostMessageTargetOrigin(url, fallback = '/') {
   try {
     return new URL(url, window.location.href).origin;

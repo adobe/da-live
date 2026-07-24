@@ -18,9 +18,15 @@ import {
 import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
 import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
+import { getChatPanelContent } from '../shared/chat-panel.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { getPanelStore, openPanel } = await import(`${getNx()}/utils/panel.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const {
+  wasPanelOpen,
+  registerPanelSection,
+  PANEL_EVENT,
+} = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, style];
@@ -149,53 +155,14 @@ async function syncToolPanelViews(toolPanel, { org, site }) {
   toolPanel.views = views;
 }
 
-const CANVAS_PANELS = {
-  before: {
-    width: '400px',
-    getContent: async () => {
-      await import(`${getNx()}/blocks/chat/chat.js`);
-      return document.createElement('nx-chat');
-    },
-  },
-  after: {
-    width: '400px',
-    getContent: async () => {
-      await import('./ew-tool-panel/tool-panel.js');
-      return document.createElement('ew-tool-panel');
-    },
-  },
-};
-
 function hashState() {
   const [org, site] = window.location.hash.slice(2).split('/');
   return { org: org || undefined, site: site || undefined };
 }
 
-async function openCanvasPanel(position, { panelName } = {}) {
-  const config = CANVAS_PANELS[position];
-  if (!config) return undefined;
-  const store = getPanelStore();
-  const width = store[position]?.width ?? config.width;
-  const aside = await openPanel({ position, width, getContent: config.getContent });
-  if (position === 'after') {
-    const toolPanel = aside?.querySelector('ew-tool-panel');
-    if (toolPanel) {
-      await syncToolPanelViews(toolPanel, hashState());
-      await toolPanel.updateComplete;
-      if (panelName && toolPanel.views?.some((v) => v.id === panelName)) {
-        await toolPanel.showPanel(panelName);
-      }
-    }
-  }
-  return aside;
-}
-
 async function installCanvasHeader(block, { org, site }) {
   const header = document.createElement('ew-canvas-header');
   header.editorView = await readInitialCanvasEditorView({ org, site });
-  header.addEventListener('nx-canvas-open-panel', (e) => {
-    openCanvasPanel(e.detail.position, { panelName: e.detail.panelName });
-  });
   header.addEventListener('nx-canvas-editor-view', (e) => {
     const view = normalizeCanvasEditorView(e.detail?.view);
     persistCanvasEditorView(view);
@@ -213,11 +180,12 @@ async function installCanvasHeader(block, { org, site }) {
   return header;
 }
 
-async function openNewVersionRow() {
-  const aside = await openCanvasPanel('after', { panelName: 'versions' });
-  const toolPanel = aside?.querySelector('ew-tool-panel');
-  await toolPanel?.updateComplete;
-  toolPanel?.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
+function openPanelSection(section, id, options) {
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section, id, options } }));
+}
+
+function openNewVersionRow() {
+  openPanelSection('tools', 'versions', { newVersion: true });
 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
@@ -248,6 +216,39 @@ document.addEventListener('nx-canvas-new-version', openNewVersionRow);
 
 export default async function decorate(block) {
   const { org, site } = hashState();
+
+  registerPanelSection('chat', {
+    position: 'before',
+    width: '400px',
+    getContent: getChatPanelContent(),
+    onShow: (aside, id, options) => {
+      if (!options?.text) return;
+      aside?.querySelector('nx-chat')?.setPrompt(options.text, { autoSend: options.autoSend });
+    },
+  });
+
+  registerPanelSection('tools', {
+    position: 'after',
+    width: '400px',
+    getContent: async () => {
+      await import('./ew-tool-panel/tool-panel.js');
+      return document.createElement('ew-tool-panel');
+    },
+    onShow: async (aside, id, options) => {
+      const toolPanel = aside?.querySelector('ew-tool-panel');
+      if (!toolPanel) return;
+      await syncToolPanelViews(toolPanel, hashState());
+      await toolPanel.updateComplete;
+      if (id && toolPanel.views?.some((v) => v.id === id)) {
+        await toolPanel.showPanel(id);
+      }
+      if (options?.newVersion) {
+        await toolPanel.updateComplete;
+        toolPanel.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
+      }
+    },
+  });
+
   const header = await installCanvasHeader(block, { org, site });
 
   const mountRoot = canvasEditorMountRoot(block);
@@ -266,19 +267,12 @@ export default async function decorate(block) {
     if (toolPanel) syncToolPanelViews(toolPanel, state);
   });
 
-  document.addEventListener('nx-open-chat-panel', async ({ detail }) => {
-    const aside = await openCanvasPanel('before');
-    if (!detail?.text) return;
-    aside?.querySelector('nx-chat')?.setPrompt(detail.text, { autoSend: detail.autoSend });
-  });
-
-  const store = getPanelStore();
-  if (store.before && !store.before.fragment) openCanvasPanel('before');
-  if (store.after && !store.after.fragment) {
-    openCanvasPanel('after');
+  if (wasPanelOpen('chat')) openPanelSection('chat');
+  if (wasPanelOpen('tools')) {
+    openPanelSection('tools');
   } else {
     shouldAutoOpenAfterPanel({ org, site }).then((open) => {
-      if (open) openCanvasPanel('after');
+      if (open) openPanelSection('tools');
     });
   }
 
@@ -297,7 +291,9 @@ export default async function decorate(block) {
     if (!isBlock && !isContent) {
       if (hasContext) {
         hasContext = false;
-        document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail: { key: CANVAS_CHAT_KEY } }));
+        document.dispatchEvent(
+          new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: { key: CANVAS_CHAT_KEY } }),
+        );
       }
       return;
     }
@@ -328,6 +324,6 @@ export default async function decorate(block) {
         selTo,
         pinnable: true,
       };
-    document.dispatchEvent(new CustomEvent('nx-add-to-chat', { detail }));
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail }));
   });
 }
