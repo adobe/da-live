@@ -12,8 +12,7 @@ export function makeView(json) {
   };
 }
 
-// A real, mounted EditorView — needed wherever a test goes through getInstrumentedHTML,
-// since that relies on view.posAtDOM/view.dom, which a fake view can't provide.
+// Needed wherever a test goes through getInstrumentedHTML, which relies on view.posAtDOM/view.dom.
 export function makeRealView(json) {
   const doc = schema.nodeFromJSON(json);
   const state = EditorState.create({ schema, doc });

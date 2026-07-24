@@ -16,9 +16,7 @@ before(async () => {
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
 });
 
-// Builds the same `child` descriptors the outline actually drags/deletes — proseIndex
-// comes from the real getInstrumentedHTML/parseSections pipeline, not a hand-picked
-// node position (proseIndex points inside a node's content, not at its own start).
+// Real pipeline, not a hand-picked node position — matches what the outline actually does.
 function childrenOf(view) {
   const html = getInstrumentedHTML(view);
   const sections = parseSections(html);

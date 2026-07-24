@@ -92,11 +92,8 @@ export function deleteBlock(view, blockIndex) {
   view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize));
 }
 
-// proseIndex is a position INSIDE the default-content node (getInstrumentedHTML stamps
-// it at the node's content-start, e.g. where an image or a paragraph's text begins), not
-// the node's own start — resolving to the depth-1 ancestor recovers the whole top-level
-// node regardless of kind or how deeply proseIndex sits inside it (e.g. a blockquote's
-// nested paragraph, or a list's first item).
+// proseIndex sits inside the node's content, not at its own start; depth-1 recovers
+// the whole node regardless of kind or nesting (e.g. a blockquote's nested paragraph).
 export function getContentItemRange(doc, child) {
   const pos = doc.resolve(child.proseIndex).before(1);
   const node = doc.nodeAt(pos);
@@ -245,9 +242,7 @@ function getBlockRange(view, blockIndex) {
   return node ? { pos, size: node.nodeSize, node } : null;
 }
 
-// Block dropped onto/near a default-content row — the reverse of moveContentItem's
-// 'content' target. Block-to-block reordering stays on moveBlock; this only covers a
-// block landing next to a content item.
+// Reverse of moveContentItem's 'content' target — a block landing next to a content item.
 export function moveBlockToContentItem(view, blockIndex, targetChild, dropPosition) {
   if (!view) return;
   const from = getBlockRange(view, blockIndex);
@@ -260,10 +255,8 @@ export function moveBlockToContentItem(view, blockIndex, targetChild, dropPositi
   spliceNode(view, from, insertPos);
 }
 
-// Block dropped onto a section's header when that section has no blocks to anchor a
-// drop indicator on — the reverse of moveContentItem's 'section' target. Whole-section
-// reordering stays on moveSection; this only covers a lone block landing at the
-// section boundary.
+// Reverse of moveContentItem's 'section' target — a lone block landing at the boundary
+// of a section with no blocks to anchor on.
 export function moveBlockToSection(view, blockIndex, sectionIndex, dropPosition) {
   if (!view) return;
   const from = getBlockRange(view, blockIndex);

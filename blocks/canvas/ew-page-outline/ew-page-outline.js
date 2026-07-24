@@ -194,8 +194,7 @@ class EwPageOutline extends LitElement {
 
       this._setDropIndicator(el, { sectionIndex: sec.sectionIndex, dropPosition });
     } else if (type === OUTLINE_TYPES.CONTENT) {
-      // Bubbles here from anywhere unclaimed in the section; on the header itself we're
-      // before/after-aware, elsewhere (e.g. an empty section) we default to "first item".
+      // Bubbles here from anywhere unclaimed in the section; only the header is before/after-aware.
       e.preventDefault();
       const headerEl = e.currentTarget.querySelector('[data-section-header]');
       const onHeader = headerEl?.contains(e.target);
@@ -216,8 +215,7 @@ class EwPageOutline extends LitElement {
         return;
       }
 
-      // No blocks in this section to anchor on (it may still have content, or be
-      // wholly empty) — fall back to the section boundary itself.
+      // No blocks to anchor on — fall back to the section boundary itself.
       e.preventDefault();
       const headerEl = e.currentTarget.querySelector('[data-section-header]');
       this._setDropIndicator(

@@ -19,10 +19,7 @@ before(async () => {
   ({ getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
 });
 
-// Builds the same `child` descriptors the outline actually drags/deletes — proseIndex
-// comes from the real getInstrumentedHTML/parseSections pipeline, not a hand-picked
-// node position, since that's what previously masked a whole class of bugs (proseIndex
-// points inside a node's content, not at its own start — see getContentItemRange).
+// Real pipeline, not a hand-picked node position — that mismatch is what masked the bug.
 function childrenOf(view) {
   const html = getInstrumentedHTML(view);
   const sections = parseSections(html);
