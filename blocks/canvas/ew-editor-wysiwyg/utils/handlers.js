@@ -16,6 +16,9 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     // remote cursor, NOT hiding the toolbar. The user is still in the pane while
     // the iframe holds focus; toolbar deactivation comes from the iframe's blur.
     wsProvider.awareness.setLocalStateField('cursor', null);
+    // Forget the last position so re-entering (even at the same offset) counts as
+    // a move and resets stored marks rather than preserving a stale queued mark.
+    ctx.lastCursorPos = null;
     return;
   }
 
@@ -32,28 +35,33 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     const { tr } = state;
     tr.setSelection(TextSelection.create(state.doc, position));
 
-    // Sync stored marks so the toolbar reflects the marks active at the cursor.
-    // Two problems this solves:
-    // 1. ProseMirror clears storedMarks whenever selection.anchor changes, which
-    //    happens on every cursor-move — that wipes toolbar-toggled marks before the
-    //    first keystroke arrives.
-    // 2. marksAcross() returns Mark.none when the cursor is at the end of a mark
-    //    run (nothing to the right), so the toolbar shows the mark as inactive even
-    //    though the text is marked.  nodeBefore/nodeAfter covers both sides.
+    // Sync stored marks to the cursor's location. marksAcross() returns Mark.none
+    // when the cursor sits at the end of a mark run (nothing to the right), so the
+    // toolbar would show the mark inactive even though the text is marked;
+    // inspecting nodeBefore/nodeAfter covers both sides.
     const $pos = state.doc.resolve(position);
     const marksBefore = $pos.nodeBefore?.marks;
     const marksAfter = $pos.nodeAfter?.marks;
     const marksAtCursor = (marksBefore?.length ? marksBefore : null)
       ?? (marksAfter?.length ? marksAfter : null);
 
+    // A real cursor move always resets stored marks to what's at the new location
+    // (which is nothing when the text there is unmarked). A toolbar-toggled mark is
+    // only queued for the next keystroke — it must survive the *same-position*
+    // cursor-move the iframe re-reports after the toggle, but not an actual move.
+    const cursorMoved = position !== ctx.lastCursorPos;
     if (marksAtCursor) {
       // Cursor is adjacent to marked text — use those marks (handles Cmd+B case).
       tr.setStoredMarks(marksAtCursor);
+    } else if (cursorMoved) {
+      // Moved onto unmarked text — clear so nothing lingers from the old position.
+      tr.setStoredMarks(null);
     } else if (state.storedMarks?.length) {
-      // No marked text at this position, but user explicitly toggled a mark via
-      // the toolbar — preserve it so it survives cursor-move events before typing.
+      // Same position after a toolbar toggle — keep the queued mark until the user
+      // types or actually moves the cursor.
       tr.setStoredMarks(state.storedMarks);
     }
+    ctx.lastCursorPos = position;
 
     ctx.suppressRerender = true;
     dispatchWithFakeFocus(view, tr.scrollIntoView());
