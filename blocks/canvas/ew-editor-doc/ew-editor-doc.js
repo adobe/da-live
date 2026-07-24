@@ -30,6 +30,7 @@ import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -324,7 +325,7 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeProseSelect = editorProseSelectChange
       .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
-    document.addEventListener('nx-highlight-selection', this._onCanvasHighlight);
+    document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
 
   _applyHighlight(detail) {
@@ -334,7 +335,7 @@ export class EwEditorDoc extends LitElement {
   disconnectedCallback() {
     this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
-    document.removeEventListener('nx-highlight-selection', this._onCanvasHighlight);
+    document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._unsubscribeProseSelect?.();
     this._teardown();
