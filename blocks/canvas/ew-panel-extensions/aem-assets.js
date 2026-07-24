@@ -1,6 +1,11 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
+import {
+  isDynamicMediaEnabled,
+  shouldFilterApprovedAssets,
+} from '../../shared/aem-assets/config.js';
+import { getApprovedOnlyFilterProps } from '../../shared/aem-assets/filter-schema.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -25,9 +30,19 @@ export async function getRepositoryConfig(org, site) {
 
   const tierType = repositoryId.startsWith('delivery') ? 'delivery' : 'author';
   const customOrigin = getValue('aem.assets.prod.origin');
-  const isDmEnabled = getValue('aem.asset.dm.delivery') === 'on'
-    || getValue('aem.asset.smartcrop.select') === 'on'
-    || tierType === 'delivery';
+  const dmDelivery = getValue('aem.asset.dm.delivery');
+  const smartCrop = getValue('aem.asset.smartcrop.select');
+  const isDmEnabled = isDynamicMediaEnabled({
+    repositoryId,
+    customOrigin,
+    dmDelivery,
+    smartCrop,
+  });
+  const approvedOnly = shouldFilterApprovedAssets({
+    tierType,
+    isDmEnabled,
+    configuredValue: getValue('aem.asset.dm.approvedonly'),
+  });
 
   let assetOrigin;
   if (customOrigin) assetOrigin = customOrigin;
@@ -37,7 +52,14 @@ export async function getRepositoryConfig(org, site) {
 
   const assetBasePath = getValue('aem.assets.prod.basepath') || DEFAULT_BASE_PATH;
 
-  return { repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled };
+  return {
+    repositoryId,
+    tierType,
+    assetOrigin,
+    assetBasePath,
+    isDmEnabled,
+    approvedOnly,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -100,6 +122,23 @@ function getAssetAlt(asset) {
     || '';
 }
 
+export function buildAssetSelectorProps({
+  token,
+  repoConfig,
+  onClose,
+  handleSelection,
+}) {
+  return {
+    imsToken: token,
+    repositoryId: repoConfig.repositoryId,
+    aemTierType: repoConfig.tierType,
+    featureSet: ['upload', 'collections', 'detail-panel', 'advisor'],
+    ...getApprovedOnlyFilterProps(repoConfig.approvedOnly),
+    ...(onClose && { onClose }),
+    handleSelection,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Script loader
 // ---------------------------------------------------------------------------
@@ -134,27 +173,27 @@ export async function renderAssets({ container, org, site, onClose }) {
 
   await loadSelectorScript();
 
-  const selectorProps = {
-    imsToken: token,
-    repositoryId: repoConfig.repositoryId,
-    aemTierType: repoConfig.tierType,
-    featureSet: ['upload', 'collections', 'detail-panel', 'advisor'],
-    ...(onClose && { onClose }),
-    handleSelection: (assets) => {
-      const [asset] = assets;
-      if (!asset) return;
-      const { view } = getExtensionsBridge();
-      if (!view) return;
-      const src = resolveAssetUrl(asset, repoConfig);
-      const mimetype = (asset.mimetype || asset['dc:format'] || '').toLowerCase();
-      const alt = getAssetAlt(asset);
-      if (mimetype.startsWith('image/')) {
-        insertImage(view, src, alt);
-      } else {
-        insertLink(view, src);
-      }
-    },
+  const handleSelection = (assets) => {
+    const [asset] = assets;
+    if (!asset) return;
+    const { view } = getExtensionsBridge();
+    if (!view) return;
+    const src = resolveAssetUrl(asset, repoConfig);
+    const mimetype = (asset.mimetype || asset['dc:format'] || '').toLowerCase();
+    const alt = getAssetAlt(asset);
+    if (mimetype.startsWith('image/')) {
+      insertImage(view, src, alt);
+    } else {
+      insertLink(view, src);
+    }
   };
+
+  const selectorProps = buildAssetSelectorProps({
+    token,
+    repoConfig,
+    onClose,
+    handleSelection,
+  });
 
   window.PureJSSelectors.renderAssetSelector(container, selectorProps);
 }

@@ -1,5 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
+import { getApprovedOnlyFilterProps } from '../../shared/aem-assets/filter-schema.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
@@ -39,6 +40,25 @@ export function buildFeatureSet(isDmEnabled) {
   const features = ['upload', 'collections', 'detail-panel', 'advisor'];
   if (isDmEnabled) features.push('dynamic-media');
   return features;
+}
+
+export function buildAssetSelectorProps({
+  imsToken,
+  repoConfig,
+  externalBrief,
+  onClose,
+  handleSelection,
+}) {
+  return {
+    imsToken,
+    repositoryId: repoConfig.repositoryId,
+    aemTierType: repoConfig.tierType,
+    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
+    externalBrief,
+    ...getApprovedOnlyFilterProps(repoConfig.approvedOnly),
+    onClose,
+    handleSelection,
+  };
 }
 
 export function resolveAssetUrl(asset, repoConfig) {
@@ -221,11 +241,9 @@ export async function openAssets() {
   const responsiveImageConfigPromise = getResponsiveImageConfig(owner, repo);
   const externalBrief = formatExternalBrief(window.view.state.doc);
 
-  const selectorProps = {
+  const selectorProps = buildAssetSelectorProps({
     imsToken: details.accessToken.token,
-    repositoryId: repoConfig.repositoryId,
-    aemTierType: repoConfig.tierType,
-    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
+    repoConfig,
     externalBrief,
     onClose: () => assetPanel.style.display !== 'none' && dialog.close(),
     handleSelection: buildHandleSelection(
@@ -235,7 +253,7 @@ export async function openAssets() {
       repoConfig,
       responsiveImageConfigPromise,
     ),
-  };
+  });
 
   window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
 }

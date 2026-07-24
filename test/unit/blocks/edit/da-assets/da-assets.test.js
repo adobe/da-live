@@ -6,6 +6,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const {
   formatExternalBrief,
   buildFeatureSet,
+  buildAssetSelectorProps,
   resolveAssetUrl,
   buildHandleSelection,
   createDialogPanels,
@@ -143,6 +144,38 @@ describe('buildFeatureSet', () => {
     const features = buildFeatureSet(true);
     expect(features).to.include('dynamic-media');
     expect(features).to.include('upload');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildAssetSelectorProps
+// ---------------------------------------------------------------------------
+
+describe('buildAssetSelectorProps', () => {
+  const baseArgs = {
+    imsToken: 'token',
+    repoConfig: {
+      repositoryId: 'author-p1-e1.adobeaemcloud.com',
+      tierType: 'author',
+      isDmEnabled: true,
+      approvedOnly: true,
+    },
+    externalBrief: 'brief',
+    onClose: () => {},
+    handleSelection: () => {},
+  };
+
+  it('adds the locked filter schema when approvedOnly is enabled', () => {
+    const props = buildAssetSelectorProps(baseArgs);
+    expect(props.filterSchema).to.be.an('array').and.not.empty;
+  });
+
+  it('omits filterSchema when approvedOnly is disabled', () => {
+    const props = buildAssetSelectorProps({
+      ...baseArgs,
+      repoConfig: { ...baseArgs.repoConfig, approvedOnly: false },
+    });
+    expect(props).to.not.have.property('filterSchema');
   });
 });
 
