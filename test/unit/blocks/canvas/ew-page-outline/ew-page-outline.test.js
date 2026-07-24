@@ -123,6 +123,25 @@ describe('ew-page-outline — expandable default content', () => {
     expect(received).to.deep.equal({ proseIndex: 9, kind: 'image' });
   });
 
+  it('marks a clicked content child as selected, and clears it when a block is selected instead', async () => {
+    el._sections[0].blocks = [{ name: 'hero', blockIndex: 0 }];
+    el.shadowRoot.querySelector('.content-item').click();
+    await el.updateComplete;
+
+    const paragraphChild = [...el.shadowRoot.querySelectorAll('.content-child')][1];
+    paragraphChild.click();
+    await el.updateComplete;
+
+    expect(paragraphChild.classList.contains('selected')).to.be.true;
+    expect(paragraphChild.getAttribute('aria-selected')).to.equal('true');
+
+    el._select(0);
+    await el.updateComplete;
+
+    expect(paragraphChild.classList.contains('selected')).to.be.false;
+    expect(paragraphChild.getAttribute('aria-selected')).to.equal('false');
+  });
+
   it('expands and collapses the focused group header with ArrowRight/ArrowLeft', async () => {
     const header = el.shadowRoot.querySelector('.content-item');
     header.focus();

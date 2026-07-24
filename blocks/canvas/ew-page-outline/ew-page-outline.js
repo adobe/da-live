@@ -75,6 +75,7 @@ class EwPageOutline extends LitElement {
   static properties = {
     _sections: { state: true },
     _selectedBlockIndex: { state: true },
+    _selectedProseIndex: { state: true },
     _hashState: { state: true },
     _hasBlockLibrary: { state: true },
     _expandedContent: { state: true },
@@ -92,12 +93,14 @@ class EwPageOutline extends LitElement {
       } else {
         this._sections = undefined;
         this._selectedBlockIndex = undefined;
+        this._selectedProseIndex = undefined;
       }
     });
     this._unsubscribeSelect = editorSelectChange
       .subscribe(({ blockIndex, source }) => {
         if (source === 'outline') return;
         this._selectedBlockIndex = blockIndex;
+        this._selectedProseIndex = undefined;
       });
   }
 
@@ -118,6 +121,7 @@ class EwPageOutline extends LitElement {
     if (this._prevSelectedPath !== undefined && sp !== this._prevSelectedPath) {
       this._sections = undefined;
       this._selectedBlockIndex = undefined;
+      this._selectedProseIndex = undefined;
     }
     this._prevSelectedPath = sp;
 
@@ -138,10 +142,13 @@ class EwPageOutline extends LitElement {
 
   _select(blockIndex) {
     this._selectedBlockIndex = blockIndex;
+    this._selectedProseIndex = undefined;
     editorSelectChange.emit({ blockIndex, source: 'outline' });
   }
 
   _selectProse(proseIndex, kind) {
+    this._selectedProseIndex = proseIndex;
+    this._selectedBlockIndex = undefined;
     editorProseSelectChange.emit({ proseIndex, kind });
   }
 
@@ -374,7 +381,9 @@ class EwPageOutline extends LitElement {
         ${expanded ? html`
           <ul class="content-children" role="group">
             ${item.children.map((child) => html`
-              <li class="block-item content-item content-child" role="treeitem" tabindex="-1"
+              <li class="block-item content-item content-child ${this._selectedProseIndex === child.proseIndex ? 'selected' : ''}"
+                  role="treeitem" tabindex="-1"
+                  aria-selected="${this._selectedProseIndex === child.proseIndex}"
                   draggable="true"
                   @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.CONTENT, child)}
                   @dragover=${(e) => this._onContentDragOver(e, child)}
