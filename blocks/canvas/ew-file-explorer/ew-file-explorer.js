@@ -5,6 +5,7 @@ import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.j
 import getEditPath from '../../browse/shared.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -61,13 +62,13 @@ class EwFileExplorer extends LitElement {
       const patched = Object.fromEntries(updates.filter(Boolean));
       if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
     };
-    document.addEventListener('nx-agent-change', this._onAgentChange);
+    document.addEventListener(CHAT_EVENT.AGENT_CHANGE, this._onAgentChange);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
-    document.removeEventListener('nx-agent-change', this._onAgentChange);
+    document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, this._onAgentChange);
   }
 
   updated() {

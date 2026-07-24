@@ -4,6 +4,7 @@ import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT, getSectionAtPosition } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
@@ -66,13 +67,9 @@ class EWCanvasHeader extends LitElement {
   }
 
   _openPanel(position) {
-    this.dispatchEvent(
-      new CustomEvent('nx-canvas-open-panel', {
-        bubbles: true,
-        composed: true,
-        detail: { position },
-      }),
-    );
+    const section = getSectionAtPosition(position);
+    if (!section) return;
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section } }));
   }
 
   _undo() {
