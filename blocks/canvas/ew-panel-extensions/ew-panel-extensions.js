@@ -4,6 +4,7 @@ import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import './ew-panel-library.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -34,7 +35,7 @@ class EwPanelExtension extends LitElement {
       hashState,
       getView: () => getExtensionsBridge().view,
       onClose: () => this.dispatchEvent(
-        new CustomEvent('nx-panel-close', { bubbles: true, composed: true }),
+        new CustomEvent(PANEL_EVENT.CLOSE, { bubbles: true, composed: true }),
       ),
     });
     this._destroyChannel = destroy;
