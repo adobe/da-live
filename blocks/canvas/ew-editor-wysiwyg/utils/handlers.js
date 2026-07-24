@@ -1,10 +1,10 @@
 import { TextSelection, NodeSelection, yUndo, yRedo } from 'da-y-wrapper';
 import {
-  getSelectionToolbar,
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
-import { editorSelectChange } from '../../editor-utils/editor-utils.js';
+import { editorSelectChange, dispatchWithFakeFocus } from '../../editor-utils/editor-utils.js';
+import { toolbarController } from '../../editor-utils/toolbar-controller.js';
 import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
 
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
@@ -12,10 +12,10 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   if (!view || !wsProvider) return;
 
   if (cursorOffset == null || textCursorOffset == null) {
-    delete view.hasFocus;
+    // Per-block blur from the iframe — its documented purpose is clearing the
+    // remote cursor, NOT hiding the toolbar. The user is still in the pane while
+    // the iframe holds focus; toolbar deactivation comes from the iframe's blur.
     wsProvider.awareness.setLocalStateField('cursor', null);
-    const tb = getSelectionToolbar();
-    if (!tb.isInteracting && !tb.linkDialogOpen) tb.hide?.();
     return;
   }
 
@@ -28,8 +28,6 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
       console.warn('Invalid cursor position:', position);
       return;
     }
-
-    view.hasFocus = () => true;
 
     const { tr } = state;
     tr.setSelection(TextSelection.create(state.doc, position));
@@ -58,13 +56,9 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     }
 
     ctx.suppressRerender = true;
-    view.dispatch(tr.scrollIntoView());
+    dispatchWithFakeFocus(view, tr.scrollIntoView());
     ctx.suppressRerender = false;
-    const tb = getSelectionToolbar();
-    if (!tb.linkDialogOpen && !tb.isInteracting) {
-      tb.view = view;
-      tb.show();
-    }
+    toolbarController.setWysiwygSelection({ showable: true });
     const blockIndex = getActiveBlockIndex(view);
     if (blockIndex !== ctx.lastBlockIndex) {
       ctx.lastBlockIndex = blockIndex;
@@ -80,19 +74,11 @@ export function handleUndoRedo(data, ctx) {
   const { action } = data;
   const view = ctx?.view;
   if (!view) return;
-  // hasFocus may be overridden to () => true by the cursor-move hack; temporarily
-  // restore the prototype so ProseMirror skips _isDomSelectionInView during the
-  // undo dispatch (the editor may be in a hidden or unfocused state).
-  const hadHasFocus = Object.hasOwn(view, 'hasFocus');
-  delete view.hasFocus;
-
   if (action === 'undo') {
     yUndo(view.state);
   } else if (action === 'redo') {
     yRedo(view.state);
   }
-
-  if (hadHasFocus) view.hasFocus = () => true;
 }
 
 export function handleNewVersion() {
@@ -114,10 +100,9 @@ export function handleStoredMarks({ marks }, ctx) {
     const { tr } = state;
     tr.setStoredMarks(parsedMarks);
     ctx.suppressRerender = true;
-    view.dispatch(tr);
+    dispatchWithFakeFocus(view, tr);
     ctx.suppressRerender = false;
-    const tb = getSelectionToolbar();
-    if (tb.open && !tb.isInteracting) tb.requestUpdate();
+    toolbarController.refresh();
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[quick-edit-controller] handleStoredMarks failed', e?.message);
@@ -135,7 +120,7 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
     tr.setSelection(TextSelection.create(state.doc, a, h));
     if (fromQuickEditIframe) tr.setMeta(NX_QUICK_EDIT_IFRAME_SELECTION_META, true);
     ctx.suppressRerender = true;
-    view.dispatch(tr);
+    dispatchWithFakeFocus(view, tr);
     ctx.suppressRerender = false;
     return true;
   } catch (e) {
@@ -145,34 +130,29 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
   }
 }
 
-function showToolbarInIFrame(ctx) {
-  const { view } = ctx;
-  const tb = getSelectionToolbar();
-  tb.view = view;
-  tb.show();
-}
-
 /** PostMessage `selection-change` from wysiwyg iframe: sync PM selection and toolbar. */
 export function handleIframeSelectionChange(data, ctx) {
   const { anchor, head } = data;
+  const { view } = ctx;
   if (anchor === head) {
-    const tb = getSelectionToolbar();
-    if (tb.isInteracting) return;
-    const { view } = ctx;
+    // Collapsed to a caret: clear the iframe-origin flag so subsequent doc
+    // transactions are read normally. Still a caret in the iframe, so the toolbar
+    // stays active/showable.
     if (view) {
       const tr = view.state.tr
         .setMeta(NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META, true)
         .setMeta('addToHistory', false);
       ctx.suppressRerender = true;
-      view.dispatch(tr);
+      dispatchWithFakeFocus(view, tr);
       ctx.suppressRerender = false;
     }
+    toolbarController.setWysiwygSelection({ showable: true });
     return;
   }
 
   if (!handleSelectionChange(data, ctx, { fromQuickEditIframe: true })) return;
 
-  showToolbarInIFrame(ctx);
+  toolbarController.setWysiwygSelection({ showable: true });
 }
 
 function srcFileName(src) {
@@ -234,7 +214,7 @@ export function handleNodeSelect({ node }, ctx) {
         .setSelection(TextSelection.near(state.doc.resolve(state.selection.from), 1))
         .setMeta('addToHistory', false);
       ctx.suppressRerender = true;
-      view.dispatch(tr);
+      dispatchWithFakeFocus(view, tr);
       ctx.suppressRerender = false;
       return;
     }
@@ -245,8 +225,10 @@ export function handleNodeSelect({ node }, ctx) {
       .scrollIntoView()
       .setMeta('addToHistory', false);
     ctx.suppressRerender = true;
-    view.dispatch(tr);
+    dispatchWithFakeFocus(view, tr);
     ctx.suppressRerender = false;
+    // Tables have their own UI; the toolbar hides for them. Images keep it.
+    toolbarController.setWysiwygSelection({ showable: node.anchorType !== 'table' });
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[quick-edit-controller] handleNodeSelect failed', e?.message);

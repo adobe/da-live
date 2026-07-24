@@ -6,6 +6,7 @@ import {
   persistCanvasEditorView,
 } from './utils/view.js';
 import { shouldAutoOpenAfterPanel } from './utils/panel.js';
+import { toolbarController } from './editor-utils/toolbar-controller.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -33,6 +34,7 @@ function buildCanvasDocPath(state) {
 
 function notifyCanvasEditorActive(mountRoot, view) {
   const v = normalizeCanvasEditorView(view);
+  toolbarController.setEditorMode(v);
   mountRoot.dispatchEvent(new CustomEvent('nx-canvas-editor-active', {
     bubbles: false,
     detail: { view: v },

@@ -6,6 +6,7 @@ import {
   getLinkInfoInSelection,
   applyLink,
 } from '../editor-utils/command-helpers.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -54,20 +55,6 @@ class EwSelectionToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
-    this._onOutsidePointerDown = (e) => {
-      if (!this.open) return;
-      const path = e.composedPath();
-      if (path.includes(this)) return;
-      const editorDom = this.view?.dom;
-      if (editorDom && path.includes(editorDom)) return;
-      this.hide();
-    };
-    document.addEventListener('pointerdown', this._onOutsidePointerDown);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener('pointerdown', this._onOutsidePointerDown);
   }
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
@@ -124,7 +111,8 @@ class EwSelectionToolbar extends LitElement {
     if (cmd) {
       cmd.apply(this.view);
       this.requestUpdate();
-      this.view.focus();
+      toolbarController.restoreFocus();
+      toolbarController.refresh();
     }
   }
 
@@ -162,7 +150,10 @@ class EwSelectionToolbar extends LitElement {
     if (!id) return;
     COMMAND_BY_ID.get(id)?.apply(this.view);
     this.requestUpdate();
-    if (!this._linkDialogOpen && !this._altDialogOpen) this.view.focus();
+    if (!this._linkDialogOpen && !this._altDialogOpen) {
+      toolbarController.restoreFocus();
+      toolbarController.refresh();
+    }
   }
 
   /* ---- Link dialog ---- */
@@ -185,14 +176,16 @@ class EwSelectionToolbar extends LitElement {
 
   _closeLinkDialog() {
     this._linkDialogOpen = false;
-    this.view?.focus();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
   }
 
   _onLinkDialogSubmit(e) {
     const { href, text } = e.detail;
     this._closeLinkDialog();
     applyLink(this.view, { href, text });
-    this.view.focus();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
   }
 
   get linkDialogOpen() { return this._linkDialogOpen ?? false; }
@@ -208,7 +201,8 @@ class EwSelectionToolbar extends LitElement {
 
   _closeAltDialog() {
     this._altDialogOpen = false;
-    this.view?.focus();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
   }
 
   _onAltDialogSubmit(e) {
@@ -217,7 +211,8 @@ class EwSelectionToolbar extends LitElement {
     const { pos } = this.view.state.selection.$anchor;
     this._closeAltDialog();
     this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, 'alt', alt));
-    this.view.focus();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
   }
 
   get altDialogOpen() { return this._altDialogOpen ?? false; }
