@@ -44,6 +44,17 @@ export function getActiveBlockIndex(view) {
   return -1;
 }
 
+// Shared by every single-node move; adjusts insertPos for the shift the delete causes.
+function spliceNode(view, from, insertPos) {
+  const adjustedInsertPos = insertPos > from.pos ? insertPos - from.size : insertPos;
+  if (adjustedInsertPos === from.pos) return;
+  view.dispatch(
+    view.state.tr
+      .delete(from.pos, from.pos + from.size)
+      .insert(adjustedInsertPos, from.node),
+  );
+}
+
 export function moveBlock(view, fromIndex, toIndex, dropPosition) {
   if (!view) return;
   if (isSamePosition(fromIndex, toIndex, dropPosition)) return;
@@ -60,20 +71,14 @@ export function moveBlock(view, fromIndex, toIndex, dropPosition) {
 
   if (!fromBlockNode || !toBlockNode) return;
 
-  const fromBlockSize = fromBlockNode.nodeSize;
-  const toBlockSize = toBlockNode.nodeSize;
-
   const insertPos = dropPosition === 'before'
     ? toBlockPos
-    : toBlockPos + toBlockSize;
-  const adjustedInsertPos = insertPos > fromBlockPos
-    ? insertPos - fromBlockSize
-    : insertPos;
+    : toBlockPos + toBlockNode.nodeSize;
 
-  view.dispatch(
-    view.state.tr
-      .delete(fromBlockPos, fromBlockPos + fromBlockSize)
-      .insert(adjustedInsertPos, fromBlockNode),
+  spliceNode(
+    view,
+    { pos: fromBlockPos, size: fromBlockNode.nodeSize, node: fromBlockNode },
+    insertPos,
   );
 }
 
@@ -85,6 +90,21 @@ export function deleteBlock(view, blockIndex) {
   const node = view.state.doc.nodeAt(pos);
   if (!node) return;
   view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize));
+}
+
+// proseIndex sits inside the node's content, not at its own start; depth-1 recovers
+// the whole node regardless of kind or nesting (e.g. a blockquote's nested paragraph).
+export function getContentItemRange(doc, child) {
+  const pos = doc.resolve(child.proseIndex).before(1);
+  const node = doc.nodeAt(pos);
+  return node ? { pos, size: node.nodeSize, node } : null;
+}
+
+export function deleteContentItem(view, child) {
+  if (!view) return;
+  const range = getContentItemRange(view.state.doc, child);
+  if (!range) return;
+  view.dispatch(view.state.tr.delete(range.pos, range.pos + range.size));
 }
 
 function getSectionStartOffset(view, sectionIndex) {
@@ -166,4 +186,85 @@ export function moveSection(view, fromSectionIndex, toSectionIndex, dropPosition
   });
 
   view.dispatch(view.state.tr.replaceWith(0, doc.content.size, newNodes));
+}
+
+// Counterpart to getSectionStartOffset — the hr position bounding the previous section.
+function getSectionEndOffset(view, sectionIndex) {
+  if (sectionIndex === 0) return 0;
+  const { doc, schema } = view.state;
+  let hrCount = 0;
+  let result = 0;
+  doc.forEach((node, offset) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      hrCount += 1;
+      if (hrCount === sectionIndex) result = offset;
+    }
+  });
+  return result;
+}
+
+export function moveContentItem(view, fromChild, target, dropPosition) {
+  if (!view) return;
+  const { doc } = view.state;
+  const from = getContentItemRange(doc, fromChild);
+  if (!from) return;
+
+  let insertPos;
+  if (target.type === 'content') {
+    const to = getContentItemRange(doc, target.child);
+    if (!to || to.pos === from.pos) return;
+    insertPos = dropPosition === 'before' ? to.pos : to.pos + to.size;
+  } else if (target.type === 'block') {
+    const positions = getBlockPositions(view);
+    if (target.blockIndex >= positions.length) return;
+    const toPos = positions[target.blockIndex];
+    const toNode = doc.nodeAt(toPos);
+    if (!toNode) return;
+    insertPos = dropPosition === 'before' ? toPos : toPos + toNode.nodeSize;
+  } else if (target.type === 'section') {
+    // before the header = last item of the previous section, after = first of this one
+    insertPos = dropPosition === 'before'
+      ? getSectionEndOffset(view, target.sectionIndex)
+      : getSectionStartOffset(view, target.sectionIndex);
+  } else {
+    return;
+  }
+
+  spliceNode(view, from, insertPos);
+}
+
+function getBlockRange(view, blockIndex) {
+  const { doc } = view.state;
+  const positions = getBlockPositions(view);
+  if (blockIndex >= positions.length) return null;
+  const pos = positions[blockIndex];
+  const node = doc.nodeAt(pos);
+  return node ? { pos, size: node.nodeSize, node } : null;
+}
+
+// Reverse of moveContentItem's 'content' target — a block landing next to a content item.
+export function moveBlockToContentItem(view, blockIndex, targetChild, dropPosition) {
+  if (!view) return;
+  const from = getBlockRange(view, blockIndex);
+  if (!from) return;
+
+  const to = getContentItemRange(view.state.doc, targetChild);
+  if (!to) return;
+  const insertPos = dropPosition === 'before' ? to.pos : to.pos + to.size;
+
+  spliceNode(view, from, insertPos);
+}
+
+// Reverse of moveContentItem's 'section' target — a lone block landing at the boundary
+// of a section with no blocks to anchor on.
+export function moveBlockToSection(view, blockIndex, sectionIndex, dropPosition) {
+  if (!view) return;
+  const from = getBlockRange(view, blockIndex);
+  if (!from) return;
+
+  const insertPos = dropPosition === 'before'
+    ? getSectionEndOffset(view, sectionIndex)
+    : getSectionStartOffset(view, sectionIndex);
+
+  spliceNode(view, from, insertPos);
 }

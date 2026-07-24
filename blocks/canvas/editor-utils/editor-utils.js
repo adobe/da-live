@@ -133,6 +133,7 @@ const EDITABLES = [
   { selector: 'p', nodeName: 'P' },
   { selector: 'ol', nodeName: 'OL' },
   { selector: 'ul', nodeName: 'UL' },
+  { selector: 'pre', nodeName: 'PRE' },
 ];
 const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
 
@@ -261,22 +262,91 @@ export function getInstrumentedHTML(view) {
 
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'block-marker']);
 
+function hasDefaultContent(el) {
+  if (el.textContent?.trim()) return true;
+  return el.matches?.('img') || !!el.querySelector?.('img');
+}
+
+function getDefaultContentProseIndex(el, kind) {
+  // A <p> wrapping an image keeps its own data-prose-index, but only the nested
+  // data-image-index resolves to the image node (prose2aem leaves the <p> unless the
+  // image is the section's sole child), so for kind 'image' it must win.
+  if (kind === 'image') {
+    const nestedImage = el.querySelector('[data-image-index]');
+    if (nestedImage) return Number(nestedImage.getAttribute('data-image-index'));
+  }
+  const own = el.getAttribute('data-prose-index') ?? el.getAttribute('data-image-index');
+  if (own != null) return Number(own);
+  const nested = el.querySelector('[data-prose-index], [data-image-index]');
+  if (!nested) return undefined;
+  const attr = nested.getAttribute('data-prose-index') ?? nested.getAttribute('data-image-index');
+  return attr != null ? Number(attr) : undefined;
+}
+
+function getDefaultContentKind(el) {
+  const tag = el.tagName;
+  if (/^H[1-6]$/.test(tag)) return { kind: 'heading', level: Number(tag[1]) };
+  if (tag === 'OL') return { kind: 'list', ordered: true };
+  if (tag === 'UL') return { kind: 'list', ordered: false };
+  if (tag === 'PRE') return { kind: 'code' };
+  if (tag === 'BLOCKQUOTE') return { kind: 'quote' };
+  // a text-less <p> wraps only an image, as does a bare <picture>/<img>;
+  // anything with text is a paragraph
+  return { kind: el.textContent?.trim() ? 'paragraph' : 'image' };
+}
+
 export function parseSections(htmlText) {
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
   const container = doc.querySelector('main') ?? doc.body;
   let flatIndex = 0;
   return Array.from(container.querySelectorAll(':scope > div'), (section, sectionIndex) => {
     const blocks = [];
-    Array.from(section.querySelectorAll(':scope > div[class]')).forEach((el) => {
-      const name = el.classList[0];
-      if (!name || SKIP_BLOCK_CLASSES.has(name)) return;
-      const rawProseIndex = el.getAttribute('data-block-index');
-      const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
-      const innerText = el.textContent?.trim() ?? '';
-      blocks.push({ name, blockIndex: flatIndex, proseIndex, innerText });
-      flatIndex += 1;
+    const items = [];
+    let currentRun = [];
+
+    const flushRun = () => {
+      if (currentRun.length) {
+        items.push({
+          type: 'content',
+          proseIndex: getDefaultContentProseIndex(currentRun[0]),
+          innerText: currentRun.map((el) => el.textContent.trim()).filter(Boolean).join(' '),
+          children: currentRun.map((el) => {
+            const kindInfo = getDefaultContentKind(el);
+            return {
+              type: 'content',
+              ...kindInfo,
+              proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
+              innerText: el.textContent.trim(),
+            };
+          }),
+        });
+      }
+      currentRun = [];
+    };
+
+    Array.from(section.children).forEach((el) => {
+      const name = el.tagName === 'DIV' ? el.classList[0] : undefined;
+      const isBlock = name && !SKIP_BLOCK_CLASSES.has(name);
+
+      if (isBlock) {
+        flushRun();
+        const rawProseIndex = el.getAttribute('data-block-index');
+        const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
+        const innerText = el.textContent?.trim() ?? '';
+        const block = { name, blockIndex: flatIndex, proseIndex, innerText };
+        blocks.push(block);
+        items.push({ type: 'block', ...block });
+        flatIndex += 1;
+        return;
+      }
+
+      // Skip empty nodes — prose2aem doesn't always strip them (e.g. an empty <h2> can
+      // survive serialization) — so they neither break nor join a run.
+      if (hasDefaultContent(el)) currentRun.push(el);
     });
-    return { sectionIndex, blocks };
+    flushRun();
+
+    return { sectionIndex, blocks, items };
   });
 }
 
@@ -325,6 +395,22 @@ export const editorSelectChange = (() => {
         ? { ...detail, blockName, proseIndex, innerText }
         : detail;
       listeners.forEach((fn) => fn(enriched));
+    },
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+})();
+
+// Event observable — no replay on subscribe. See docs/canvas-events.md.
+// Selects/scrolls to a raw ProseMirror position (not a block index); used by the
+// outline's default-content entries.
+export const editorProseSelectChange = (() => {
+  const listeners = new Set();
+  return {
+    emit(detail) {
+      listeners.forEach((fn) => fn(detail));
     },
     subscribe(fn) {
       listeners.add(fn);

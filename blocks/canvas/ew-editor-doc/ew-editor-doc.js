@@ -1,9 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
+import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import {
   updateDocument, updateCursors, getInstrumentedHTML,
-  editorHtmlChange, editorSelectChange, getEditor,
+  editorHtmlChange, editorSelectChange, editorProseSelectChange, getEditor,
 } from '../editor-utils/editor-utils.js';
 import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
 import {
@@ -116,6 +116,27 @@ export class EwEditorDoc extends LitElement {
     this._lastDocBlockIndex = blockIndex;
     const sel = NodeSelection.create(view.state.doc, pos);
     this._lastDocSelKey = `${sel.from}|${sel.to}|node`;
+    view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+  }
+
+  // proseIndex may point mid-node, so TextSelection.near resolves to the nearest valid
+  // selection without throwing. An image is a real node: select it as a NodeSelection and
+  // broadcast, matching how blocks sync to the layout view.
+  _scrollDocToProseIndex(proseIndex, kind) {
+    if (proseIndex == null || proseIndex < 0) return;
+    const { view } = this._proseContext ?? {};
+    if (!view) return;
+    const { doc } = view.state;
+    if (proseIndex > doc.content.size) return;
+
+    if (kind === 'image' && doc.nodeAt(proseIndex)?.type.name === 'image') {
+      const sel = NodeSelection.create(doc, proseIndex);
+      view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._broadcastSelectedNode(true);
+      return;
+    }
+
+    const sel = TextSelection.near(doc.resolve(proseIndex));
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
@@ -301,6 +322,8 @@ export class EwEditorDoc extends LitElement {
         this._scrollDocToBlock(blockIndex);
         if (source === 'outline') this._broadcastSelectedNode(true);
       });
+    this._unsubscribeProseSelect = editorProseSelectChange
+      .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
@@ -314,6 +337,7 @@ export class EwEditorDoc extends LitElement {
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
+    this._unsubscribeProseSelect?.();
     this._teardown();
     setSelectionToolbarCtx();
     super.disconnectedCallback();
