@@ -33,7 +33,7 @@ class DaScheduler extends LitElement {
       this._statusText = null;
       this._instructions = html`
         <p>This site is not registered.</p>
-        <p>Please register your site in the Scheduler App <a href="${REGISTER_PATH}"></a> first.</p>`;
+        <p>Please register your site in the <a href="${REGISTER_PATH}">Scheduler App</a> first.</p>`;
       return;
     }
 
