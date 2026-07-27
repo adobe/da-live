@@ -16,8 +16,7 @@ const DA_ADMIN = 'https://admin.da.live';
 const AEM_API = 'https://api.aem.live';
 
 // Same discriminator the rest of the suite already uses
-// (test.skip(TEST_SITE !== 'da-status', ...)). Helix 6 has no `list` API, so
-// listOldTestResources() is a no-op there.
+// (test.skip(TEST_SITE !== 'da-status', ...)).
 const IS_HLX6_SITE = TEST_SITE !== 'da-status';
 
 /**
@@ -38,11 +37,15 @@ function buildSourceUrl(org, site, path) {
     : `${DA_ADMIN}/source/${org}/${site}${path}`;
 }
 
+function buildListUrl(org, site, path) {
+  if (!IS_HLX6_SITE) return `${DA_ADMIN}/list/${org}/${site}${path}`;
+  const slashed = path.endsWith('/') ? path : `${path}/`;
+  return buildSourceUrl(org, site, slashed);
+}
+
 /**
  * Deletes a single test-created document or folder directly via the admin API,
- * bypassing the browse-view UI entirely (see delete.spec.js history for why:
- * driving the UI here previously interacted badly with da-list's infinite-scroll
- * pagination once the backlog grew large).
+ * bypassing the browse-view UI entirely
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} authHeader - `Bearer <token>`, e.g. captured from an authenticated
@@ -60,43 +63,37 @@ export async function deleteResource(page, authHeader, org, site, path, opts = {
   await page.request.delete(url, { headers, failOnStatusCode: false });
 }
 
-/**
- * Lists test-generated resources under `path` that are older than `minHours`,
- * for the lightweight safety-net sweep (delete.spec.js). Legacy-DA only: Helix 6
- * has no `list` API, so this returns an empty array there, matching the
- * `test.skip(TEST_SITE !== 'da-status', ...)` convention used elsewhere.
- *
- * @param {import('@playwright/test').Page} page
- * @param {string} authHeader
- * @param {string} org
- * @param {string} site
- * @param {string} path
- * @param {number} minHours
- * @returns {Promise<string[]>} paths (relative to org/site) safe to pass to deleteResource
- */
 export async function listOldTestResources(page, authHeader, org, site, path, minHours) {
-  if (IS_HLX6_SITE) return [];
-
   const cutoff = Date.now() - (1000 * 60 * 60 * minHours);
   const stale = [];
+  const listUrl = buildListUrl(org, site, path);
   let token;
   // Same 500-iteration safety cap as da-list.js's loadAllPages(), so a runaway
   // continuation token can't spin forever.
   for (let i = 0; i < 500; i += 1) {
     const headers = { Authorization: authHeader };
+    if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;
     if (token) headers['da-continuation-token'] = token;
 
     // eslint-disable-next-line no-await-in-loop
-    const resp = await page.request.get(`${DA_ADMIN}/list/${org}/${site}${path}`, { headers, failOnStatusCode: false });
-    if (!resp.ok()) break;
+    const resp = await page.request.get(listUrl, { headers, failOnStatusCode: false });
+    if (!resp.ok()) {
+      // Surface this instead of quietly returning no stragglers - a failed list
+      // call and an empty folder look identical to the caller otherwise.
+      if (i === 0) console.warn(`listOldTestResources: list failed (${resp.status()}) for ${listUrl}`);
+      break;
+    }
 
     // eslint-disable-next-line no-await-in-loop
     const items = await resp.json().catch(() => []);
     if (Array.isArray(items)) {
       items.forEach((item) => {
-        const name = item.name ?? item.path?.split('/').pop();
+        const rawName = item.name ?? item.path?.split('/').pop();
+        if (!rawName) return;
+        const isFolder = IS_HLX6_SITE ? rawName.endsWith('/') : !item.ext;
+        const name = isFolder ? rawName.replace(/\/$/, '') : rawName;
         const age = getTestResourceAge(name);
-        if (age && age < cutoff) stale.push(`${path}/${name}`);
+        if (age && age < cutoff) stale.push({ path: `${path}/${name}`, isFolder });
       });
     }
 

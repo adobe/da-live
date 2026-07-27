@@ -46,9 +46,9 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     return;
   }
 
-  await Promise.all(stale.map(
-    (path) => deleteResource(page, authHeader, TEST_ORG, TEST_SITE, path),
-  ));
+  await Promise.all(stale.map(({ path, isFolder }) => (
+    deleteResource(page, authHeader, TEST_ORG, TEST_SITE, path, { isFolder })
+  )));
 
   console.log('Deleted', stale.length, 'test files');
 });
