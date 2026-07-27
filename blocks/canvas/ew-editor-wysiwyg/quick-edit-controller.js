@@ -6,6 +6,7 @@ import {
   handleNewVersion,
   handleIframeSelectionChange,
   handleNodeSelect,
+  handleApplyVariant,
   handleStoredMarks,
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
@@ -36,6 +37,8 @@ export function createControllerOnMessage(ctx) {
       handleIframeSelectionChange(data, ctx);
     } else if (data.type === MESSAGE_TYPES.NODE_SELECT) {
       handleNodeSelect(data, ctx);
+    } else if (data.type === MESSAGE_TYPES.APPLY_VARIANT) {
+      handleApplyVariant(data, ctx);
     } else if (data.type === MESSAGE_TYPES.STORED_MARKS) {
       handleStoredMarks(data, ctx);
     }

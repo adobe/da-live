@@ -12,6 +12,23 @@ function getTableBlockName(tableNode) {
   return match ? match[1].trim().toLowerCase() : raw.toLowerCase();
 }
 
+export function applyVariantLabel(state, tablePos, label) {
+  const { doc, schema } = state;
+  if (!label) return null;
+  const table = doc.nodeAt(tablePos);
+  if (!table || table.type.name !== 'table') return null;
+  const row = table.firstChild;
+  const cell = row?.firstChild;
+  if (!cell) return null;
+
+  const cellStart = tablePos + 2;
+  const contentStart = cellStart + 1;
+  const contentEnd = contentStart + cell.content.size;
+
+  const paragraph = schema.nodes.paragraph.create(null, schema.text(label));
+  return state.tr.replaceWith(contentStart, contentEnd, paragraph);
+}
+
 function isSamePosition(from, to, dropPosition) {
   return from === to || (to === from + 1 && dropPosition === 'before')
     || (to === from - 1 && dropPosition === 'after');

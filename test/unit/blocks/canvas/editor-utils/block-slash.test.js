@@ -278,3 +278,121 @@ describe('block-slash store', () => {
     expect(hasLibrary()).to.be.false;
   });
 });
+
+describe('deriveVariantCatalog', () => {
+  let deriveVariantCatalog;
+  let resetBlockLibraryCache;
+  let resetBlockLibrary;
+
+  before(async () => {
+    const mod = await import('../../../../../blocks/canvas/editor-utils/block-slash.js');
+    deriveVariantCatalog = mod.deriveVariantCatalog;
+    resetBlockLibrary = mod.resetBlockLibrary;
+    ({ resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
+  });
+
+  afterEach(() => {
+    resetBlockLibrary();
+    resetBlockLibraryCache();
+  });
+
+  function tableWithHeading(text) {
+    const table = document.createElement('table');
+    table.innerHTML = `<tr><td>${text}</td></tr>`;
+    return table;
+  }
+
+  it('splits a combined-modifier entry into atomic tokens, deduped and grouped by blockName', () => {
+    const entries = buildBlockEntries([
+      {
+        name: 'cards',
+        variants: [
+          { name: 'cards', dom: tableWithHeading('cards') },
+          { name: 'cards', variants: 'large, light', dom: tableWithHeading('cards (large, light)') },
+          { name: 'cards', variants: 'large', dom: tableWithHeading('cards (large)') },
+        ],
+      },
+      {
+        name: 'columns',
+        variants: [
+          { name: 'columns', dom: tableWithHeading('columns') },
+        ],
+      },
+    ]);
+
+    const catalog = deriveVariantCatalog(entries);
+
+    expect(catalog).to.deep.equal({ cards: ['large', 'light'] });
+    expect(catalog).to.not.have.property('columns');
+  });
+
+  it('does not add the base (no-variant) entry as a selectable token', () => {
+    const entries = buildBlockEntries([
+      { name: 'cards', variants: [{ name: 'cards', dom: tableWithHeading('cards') }] },
+    ]);
+    expect(deriveVariantCatalog(entries)).to.deep.equal({});
+  });
+
+  it('lowercases the blockName key', () => {
+    const entries = buildBlockEntries([
+      { name: 'Cards', variants: [{ name: 'Cards', variants: 'large', dom: tableWithHeading('Cards (large)') }] },
+    ]);
+    const catalog = deriveVariantCatalog(entries);
+    expect(Object.keys(catalog)).to.deep.equal(['cards']);
+  });
+
+  it('skips an entry whose dom has no cell text', () => {
+    const entries = buildBlockEntries([
+      { name: 'empty', variants: [{ name: 'empty', dom: document.createElement('table') }] },
+    ]);
+    expect(deriveVariantCatalog(entries)).to.deep.equal({});
+  });
+
+  it('de-duplicates identical tokens for the same block across separate entries', () => {
+    const entries = buildBlockEntries([
+      {
+        name: 'cards',
+        variants: [
+          { name: 'cards', variants: 'large', dom: tableWithHeading('cards (large)') },
+          { name: 'cards', variants: 'large', dom: tableWithHeading('cards (large)') },
+        ],
+      },
+    ]);
+    expect(deriveVariantCatalog(entries)).to.deep.equal({ cards: ['large'] });
+  });
+
+  it('returns {} for no entries', () => {
+    expect(deriveVariantCatalog([])).to.deep.equal({});
+    expect(deriveVariantCatalog(undefined)).to.deep.equal({});
+  });
+});
+
+describe('getBlockVariantCatalog', () => {
+  let getBlockVariantCatalog;
+  let resetBlockLibraryCache;
+  let resetBlockLibrary;
+
+  before(async () => {
+    const mod = await import('../../../../../blocks/canvas/editor-utils/block-slash.js');
+    getBlockVariantCatalog = mod.getBlockVariantCatalog;
+    resetBlockLibrary = mod.resetBlockLibrary;
+    ({ resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
+  });
+
+  afterEach(() => {
+    resetBlockLibrary();
+    resetBlockLibraryCache();
+  });
+
+  it('resolves {} when no blocks library is configured', async () => {
+    // The test fixture's fetchDaConfigs returns [], so loadBlockLibrary resolves
+    // { ext: null, blocks: [] } — same no-library branch ensureBlockLibrary hits above.
+    const catalog = await getBlockVariantCatalog('testorg', 'testsite');
+    expect(catalog).to.deep.equal({});
+  });
+
+  it('resolves {} when org/site are missing', async () => {
+    const catalog = await getBlockVariantCatalog(undefined, undefined);
+    expect(catalog).to.deep.equal({});
+  });
+});

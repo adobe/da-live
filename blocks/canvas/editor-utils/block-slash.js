@@ -88,6 +88,32 @@ export async function ingestBlocks(blocks) {
   return store.entries;
 }
 
+export function deriveVariantCatalog(entries) {
+  const catalog = {};
+  (entries || []).forEach((entry) => {
+    const label = entry.dom?.querySelector?.('td')?.textContent?.trim();
+    const key = (entry.blockName || '').trim().toLowerCase();
+    if (!label || !key) return;
+    const match = label.match(/\(([^)]+)\)\s*$/);
+    if (!match) return;
+    const tokens = match[1].split(',').map((token) => token.trim()).filter(Boolean);
+    if (!tokens.length) return;
+    if (!catalog[key]) catalog[key] = [];
+    tokens.forEach((token) => {
+      if (!catalog[key].includes(token)) catalog[key].push(token);
+    });
+  });
+  return catalog;
+}
+
+export async function getBlockVariantCatalog(org, site) {
+  const { loadBlockLibrary } = await import('../ew-panel-extensions/helpers.js');
+  const { ext, blocks } = await loadBlockLibrary(org, site);
+  if (!ext) return {};
+  const entries = await ingestBlocks(blocks);
+  return deriveVariantCatalog(entries);
+}
+
 export async function insertBlockItem(view, id) {
   const entry = store.entries.find((e) => e.id === id);
   if (!entry) return;

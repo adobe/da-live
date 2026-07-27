@@ -14,6 +14,7 @@ import {
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
 import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload } from './utils/selection.js';
+import { getBlockVariantCatalog } from '../editor-utils/block-slash.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -177,6 +178,22 @@ export class EwEditorDoc extends LitElement {
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
     };
     wireQuickEditControllerPort(this._controllerCtx);
+    this._pushBlockVariantCatalog(org, repo);
+  }
+
+  _pushBlockVariantCatalog(org, site) {
+    const port = this._controllerCtx?.port;
+    getBlockVariantCatalog(org, site).then((catalog) => {
+      if (this._controllerCtx?.port !== port) return;
+      port.postMessage({
+        type: MESSAGE_TYPES.BLOCK_VARIANTS,
+        catalog,
+        payload: { catalog },
+      });
+    }).catch((e) => {
+      // eslint-disable-next-line no-console
+      console.error('[quick-edit-controller] block-variant catalog push failed', e?.message);
+    });
   }
 
   _setupAwareness(wsProvider) {

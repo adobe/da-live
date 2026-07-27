@@ -5,7 +5,8 @@ import {
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
 import { editorSelectChange } from '../../editor-utils/editor-utils.js';
-import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
+import { getActiveBlockIndex, applyVariantLabel } from '../../editor-utils/blocks.js';
+import { trackingPluginKey } from '../../editor-utils/prose-diff.js';
 
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
@@ -250,5 +251,22 @@ export function handleNodeSelect({ node }, ctx) {
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[quick-edit-controller] handleNodeSelect failed', e?.message);
+  }
+}
+
+export function handleApplyVariant({ node, label }, ctx) {
+  const { view } = ctx;
+  if (!view || !node) return;
+  const { state } = view;
+  try {
+    const pos = resolveNodeSelectPos({ anchorType: 'table', proseIndex: node.proseIndex }, state.doc);
+    if (pos == null) return;
+    const tr = applyVariantLabel(state, pos, label);
+    if (!tr) return;
+    tr.setMeta(trackingPluginKey, true);
+    view.dispatch(tr);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[quick-edit-controller] handleApplyVariant failed', e?.message);
   }
 }
