@@ -9,7 +9,7 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../utils/fixtures.js';
 import ENV from '../../utils/env.js';
 import { getTestPageURL, getQuery, tabBackward, fill, TEST_SITE } from '../../utils/page.js';
 
@@ -35,10 +35,11 @@ test('Read-only directory', async ({ page }) => {
   await expect(page.locator('button.delete-button').filter({ visible: true })).toHaveCount(0);
 });
 
-test('Read-write directory', async ({ browser, page }, workerInfo) => {
+test('Read-write directory', async ({ browser, page, trackCleanup }, workerInfo) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   test.setTimeout(60000);
   const pageURL = getTestPageURL('acl-browse-edt', workerInfo, '/da-testautomation/acltest/testdocs/subdir/subdir1');
+  trackCleanup(pageURL);
   const pageName = pageURL.split('/').pop();
   const browseURL = pageURL.replace(`/${pageName}`, '').replace('/edit#/', '/#/');
 

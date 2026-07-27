@@ -15,7 +15,7 @@ import {
   getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
-import { listOldTestResources, deleteResource } from '../utils/cleanup.js';
+import { listOldTestResources, deleteResource, mapWithConcurrency, DELETE_CONCURRENCY } from '../utils/cleanup.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
@@ -46,9 +46,9 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     return;
   }
 
-  await Promise.all(stale.map(({ path, isFolder }) => (
+  await mapWithConcurrency(stale, DELETE_CONCURRENCY, ({ path, isFolder }) => (
     deleteResource(page, authHeader, TEST_ORG, TEST_SITE, path, { isFolder })
-  )));
+  ));
 
   console.log('Deleted', stale.length, 'test files');
 });

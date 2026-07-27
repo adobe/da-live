@@ -24,6 +24,23 @@ export function parseTestUrl(url) {
   return { org, site, path: `/${rest.join('/')}` };
 }
 
+export const DELETE_CONCURRENCY = 5;
+
+export async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next;
+      next += 1;
+      // eslint-disable-next-line no-await-in-loop
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 function buildSourceUrl(org, site, path) {
   return IS_HLX6_SITE
     ? `${AEM_API}/${org}/sites/${site}/source${path}`
@@ -41,7 +58,9 @@ function buildListUrl(org, site, path) {
  * bypassing the browse-view UI entirely
  */
 export async function deleteResource(page, authHeader, org, site, path, opts = {}) {
-  const resourcePath = opts.isFolder ? `${path.replace(/\/$/, '')}/` : `${path}.html`;
+  const resourcePath = opts.isFolder
+    ? `${path.replace(/\/$/, '')}/`
+    : `${path}${opts.ext ?? '.html'}`;
   const url = buildSourceUrl(org, site, resourcePath);
   const headers = { Authorization: authHeader };
   if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;

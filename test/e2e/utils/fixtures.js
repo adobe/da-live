@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { test as base, expect } from '@playwright/test';
-import { parseTestUrl, deleteResource } from './cleanup.js';
+import { parseTestUrl, deleteResource, mapWithConcurrency, DELETE_CONCURRENCY } from './cleanup.js';
 
 /**
  * Extends the base test with a `trackCleanup` fixture. Call
@@ -31,7 +31,7 @@ export const test = base.extend({
     const registered = [];
     await use((url, opts) => registered.push({ url, opts }));
 
-    await Promise.all(registered.map(async ({ url, opts }) => {
+    await mapWithConcurrency(registered, DELETE_CONCURRENCY, async ({ url, opts }) => {
       const { org, site, path } = parseTestUrl(url);
       const label = `[cleanup] ${testInfo.title} -> ${org}/${site}${path}`;
       if (!authHeader) {
@@ -44,7 +44,7 @@ export const test = base.extend({
       } catch (err) {
         console.warn(`${label}: error (${err.message})`);
       }
-    }));
+    });
   },
 });
 
