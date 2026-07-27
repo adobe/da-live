@@ -19,13 +19,6 @@ const AEM_API = 'https://api.aem.live';
 // (test.skip(TEST_SITE !== 'da-status', ...)).
 const IS_HLX6_SITE = TEST_SITE !== 'da-status';
 
-/**
- * Parses a URL produced by getTestPageURL()/getTestFolderURL() into its
- * org/site/path parts. Mirrors the inline parsing in collab.spec.js.
- *
- * @param {string} url
- * @returns {{ org: string, site: string, path: string }}
- */
 export function parseTestUrl(url) {
   const [, org, site, ...rest] = url.split('#')[1].split('/');
   return { org, site, path: `/${rest.join('/')}` };
@@ -46,14 +39,6 @@ function buildListUrl(org, site, path) {
 /**
  * Deletes a single test-created document or folder directly via the admin API,
  * bypassing the browse-view UI entirely
- *
- * @param {import('@playwright/test').Page} page
- * @param {string} authHeader - `Bearer <token>`, e.g. captured from an authenticated
- *   in-app request (same technique collab.spec.js uses).
- * @param {string} org
- * @param {string} site
- * @param {string} path - e.g. `/tests/pw-edit1-abc123-chromium`
- * @param {{ isFolder?: boolean }} [opts]
  */
 export async function deleteResource(page, authHeader, org, site, path, opts = {}) {
   const resourcePath = opts.isFolder ? `${path.replace(/\/$/, '')}/` : `${path}.html`;
