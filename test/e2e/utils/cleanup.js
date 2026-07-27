@@ -45,7 +45,7 @@ export async function deleteResource(page, authHeader, org, site, path, opts = {
   const url = buildSourceUrl(org, site, resourcePath);
   const headers = { Authorization: authHeader };
   if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;
-  await page.request.delete(url, { headers, failOnStatusCode: false });
+  return page.request.delete(url, { headers, failOnStatusCode: false });
 }
 
 export async function listOldTestResources(page, authHeader, org, site, path, minHours) {

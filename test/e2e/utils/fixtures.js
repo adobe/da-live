@@ -21,7 +21,7 @@ import { parseTestUrl, deleteResource } from './cleanup.js';
  * block would.
  */
 export const test = base.extend({
-  trackCleanup: async ({ page }, use) => {
+  trackCleanup: async ({ page }, use, testInfo) => {
     let authHeader;
     page.on('request', (request) => {
       const auth = request.headers().authorization;
@@ -31,10 +31,19 @@ export const test = base.extend({
     const registered = [];
     await use((url, opts) => registered.push({ url, opts }));
 
-    await Promise.all(registered.map(({ url, opts }) => {
-      if (!authHeader) return null;
+    await Promise.all(registered.map(async ({ url, opts }) => {
       const { org, site, path } = parseTestUrl(url);
-      return deleteResource(page, authHeader, org, site, path, opts).catch(() => {});
+      const label = `[cleanup] ${testInfo.title} -> ${org}/${site}${path}`;
+      if (!authHeader) {
+        console.warn(`${label}: skipped (no auth header captured)`);
+        return;
+      }
+      try {
+        const resp = await deleteResource(page, authHeader, org, site, path, opts);
+        console.log(`${label}: ${resp.ok() ? 'deleted' : `failed (${resp.status()})`}`);
+      } catch (err) {
+        console.warn(`${label}: error (${err.message})`);
+      }
     }));
   },
 });
