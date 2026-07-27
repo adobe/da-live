@@ -116,6 +116,8 @@ export function handleStoredMarks({ marks }, ctx) {
     ctx.suppressRerender = true;
     view.dispatch(tr);
     ctx.suppressRerender = false;
+    const tb = getSelectionToolbar();
+    if (tb.open && !tb.isInteracting) tb.requestUpdate();
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[quick-edit-controller] handleStoredMarks failed', e?.message);

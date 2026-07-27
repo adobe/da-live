@@ -27,8 +27,10 @@ import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -126,7 +128,12 @@ export class EwEditorDoc extends LitElement {
     const forceScroll = scrollIntoView && Boolean(node);
     if (!forceScroll && key === this._lastBroadcastNodeKey) return;
     this._lastBroadcastNodeKey = key;
-    port.postMessage({ type: 'set-selected-node', node, scrollIntoView: forceScroll });
+    port.postMessage({
+      type: MESSAGE_TYPES.SET_SELECTED_NODE,
+      node,
+      scrollIntoView: forceScroll,
+      payload: { node, scrollIntoView: forceScroll },
+    });
   }
 
   undo() {
@@ -295,7 +302,7 @@ export class EwEditorDoc extends LitElement {
         if (source === 'outline') this._broadcastSelectedNode(true);
       });
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
-    document.addEventListener('nx-highlight-selection', this._onCanvasHighlight);
+    document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
 
   _applyHighlight(detail) {
@@ -305,7 +312,7 @@ export class EwEditorDoc extends LitElement {
   disconnectedCallback() {
     this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
-    document.removeEventListener('nx-highlight-selection', this._onCanvasHighlight);
+    document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._teardown();
     setSelectionToolbarCtx();

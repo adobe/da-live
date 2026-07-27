@@ -1,5 +1,9 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
+import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.
@@ -14,6 +18,8 @@ import { getNx } from '../../../scripts/utils.js';
 export async function setupIframeChannel({ iframe, hashState, getView, onClose }) {
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
+
+  const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();
 
@@ -33,7 +39,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       window.location.hash = details;
     }
 
-    if (action === 'setHref') {
+    if (action === 'setHref' && isValidHref(details)) {
       window.location.href = details;
     }
 
@@ -42,13 +48,17 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
 
     if (action === 'showPanel') {
-      document.dispatchEvent(new CustomEvent('nx-show-panel', { detail: { panelName: details } }));
+      document.dispatchEvent(
+        new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: details } }),
+      );
     }
 
     if (action === 'setPrompt') {
       const text = typeof details === 'string' ? details : details.text;
       const autoSend = typeof details === 'object' && details.autoSend;
-      document.dispatchEvent(new CustomEvent('nx-open-chat-panel', { detail: { text, autoSend } }));
+      document.dispatchEvent(
+        new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, autoSend } } }),
+      );
     }
 
     if (action === 'getSelection') {
@@ -63,7 +73,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       }
       iframe.contentWindow.postMessage(
         { action: 'sendSelection', details: html },
-        '*',
+        targetOrigin,
       );
     }
   };
@@ -87,19 +97,19 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     if (!iframe.contentWindow) return;
     iframe.contentWindow.postMessage(
       { ready: true, project, context: project, token },
-      '*',
+      targetOrigin,
       [channel.port2],
     );
   }, 750);
 
   const onAgentChange = ({ detail }) => {
     if (!iframe.contentWindow) return;
-    iframe.contentWindow.postMessage({ action: 'agentChange', detail }, '*');
+    iframe.contentWindow.postMessage({ action: 'agentChange', detail }, targetOrigin);
   };
-  document.addEventListener('nx-agent-change', onAgentChange);
+  document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
-    document.removeEventListener('nx-agent-change', onAgentChange);
+    document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();
   };
 

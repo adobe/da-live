@@ -183,6 +183,25 @@ export default async function init(el) {
   versionWrapper.classList.add('da-version-wrapper');
   versionWrapper.append(wrapper, daSheetPanes);
 
+  // Sheet view drives daTitle.collabStatus itself (like prose/index.js does for
+  // the edit view). staleCheck emits sheet-dirty / sheet-clean on the transition,
+  // and we combine that with navigator.onLine into a single status value.
+  let isOnline = window.navigator.onLine;
+  let isDirty = false;
+  const applyStatus = () => {
+    if (isDirty) daTitle.collabStatus = 'unsaved';
+    else daTitle.collabStatus = isOnline ? 'connected' : 'offline';
+  };
+  applyStatus();
+  const bindStatus = (event, target, setter) => target.addEventListener(event, () => {
+    setter();
+    applyStatus();
+  });
+  bindStatus('online', window, () => { isOnline = true; });
+  bindStatus('offline', window, () => { isOnline = false; });
+  bindStatus('sheet-dirty', document, () => { isDirty = true; });
+  bindStatus('sheet-clean', document, () => { isDirty = false; });
+
   // Set data against the title & sheet
   setSheet(details, daTitle, daSheet);
 
