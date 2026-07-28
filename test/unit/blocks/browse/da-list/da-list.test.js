@@ -721,6 +721,62 @@ describe('DaList helpers', () => {
         source.move = origMove;
       }
     });
+
+    it('Does not record a 404 from unpreview/unpublish as an error', async () => {
+      const { aem, source } = await getNx2Api();
+      const origUnPreview = aem.unPreview;
+      const origUnPublish = aem.unPublish;
+      const origMove = source.move;
+      aem.unPreview = () => ({ ok: false, status: 404 });
+      aem.unPublish = () => ({ ok: false, status: 404 });
+      source.move = () => ({ ok: true });
+
+      try {
+        const el = makeList();
+        el._itemErrors = [];
+        el._listItems = [];
+        el._listItemPaths = new Set();
+        el._unpublish = true;
+        el._confirmText = 'YES';
+        el._selectedItems = [{ name: 'doc', ext: 'html', path: '/org/site/doc.html' }];
+
+        await el.handleConfirmDelete();
+
+        expect(el._itemErrors).to.deep.equal([]);
+      } finally {
+        aem.unPreview = origUnPreview;
+        aem.unPublish = origUnPublish;
+        source.move = origMove;
+      }
+    });
+
+    it('Still records a non-404 failure from unpreview/unpublish as an error', async () => {
+      const { aem, source } = await getNx2Api();
+      const origUnPreview = aem.unPreview;
+      const origUnPublish = aem.unPublish;
+      const origMove = source.move;
+      aem.unPreview = () => ({ ok: false, status: 500 });
+      aem.unPublish = () => ({ ok: false, status: 500 });
+      source.move = () => ({ ok: true });
+
+      try {
+        const el = makeList();
+        el._itemErrors = [];
+        el._listItems = [];
+        el._listItemPaths = new Set();
+        el._unpublish = true;
+        el._confirmText = 'YES';
+        el._selectedItems = [{ name: 'doc', ext: 'html', path: '/org/site/doc.html' }];
+
+        await el.handleConfirmDelete();
+
+        expect(el._itemErrors).to.have.length(2);
+      } finally {
+        aem.unPreview = origUnPreview;
+        aem.unPublish = origUnPublish;
+        source.move = origMove;
+      }
+    });
   });
 
   describe('runAemQueue', () => {
@@ -1095,6 +1151,7 @@ async function mountWithSelection(items, opts = {}) {
     unpublish = false,
     deleteCount = items.length,
     deleteCountLoading = false,
+    canUnpublish = true,
   } = opts;
   const el = new DaList();
   // Pre-seed _listItems so the dialog can render without invoking getList(),
@@ -1105,6 +1162,7 @@ async function mountWithSelection(items, opts = {}) {
   el._deleteCount = deleteCount;
   el._deleteCountLoading = deleteCountLoading;
   el._unpublish = unpublish;
+  el._canUnpublish = canUnpublish;
   document.body.appendChild(el);
   await el.updateComplete;
   return el;
@@ -1129,10 +1187,13 @@ describe('DaList delete confirmation', () => {
     document.querySelectorAll('da-list').forEach((n) => n.remove());
   });
 
-  it('below threshold, no unpublish: no YES input, button enabled', async () => {
+  it('below threshold, no unpublish: no YES input, button enabled, lead question shown alongside the checkbox', async () => {
     const el = await mountWithSelection([fileItem('a'), fileItem('b')]);
+    const dialog = getDialog(el);
     expect(getYesInput(el)).to.equal(null);
     expect(getDisabled(el)).to.equal(false);
+    expect(dialog.querySelector('p').textContent.trim()).to.equal('Are you sure you want to delete this content?');
+    expect(dialog.querySelector('input[name="confirm-unpublish"]')).to.not.equal(null);
   });
 
   it('at threshold, no unpublish: YES input gates the button with delete-only heading', async () => {
@@ -1267,16 +1328,107 @@ describe('DaList delete confirmation', () => {
     expect(getYesInput(el)).to.equal(null);
   });
 
-  it('loading state renders an empty body so only the "Crawling…" footer message is visible', async () => {
+  it('loading state still shows the generic confirm question alongside the "Crawling…" footer message', async () => {
     const el = await mountWithSelection([folderItem('big')], {
       deleteCount: null,
       deleteCountLoading: true,
     });
     const dialog = getDialog(el);
-    // No body text — just the footer message.
-    expect(dialog.querySelectorAll('p').length).to.equal(0);
+    const lead = dialog.querySelector('p');
+    expect(lead.textContent.trim()).to.equal('Are you sure you want to delete this content? Published items will remain live.');
     expect(getYesInput(el)).to.equal(null);
     expect(dialog.message).to.equal('Crawling selected folders…');
     expect(getDisabled(el)).to.equal(true);
+  });
+
+  it('single unpublished item: no checkbox, no "remain live" suffix', async () => {
+    const el = await mountWithSelection([fileItem()], { canUnpublish: false });
+    const dialog = getDialog(el);
+    expect(dialog.querySelector('input[name="confirm-unpublish"]')).to.equal(null);
+    const lead = dialog.querySelector('p');
+    expect(lead.textContent.trim()).to.equal('Are you sure you want to delete this content?');
+  });
+
+  it('single previously-published item: checkbox is offered as before', async () => {
+    const el = await mountWithSelection([fileItem()], { canUnpublish: true });
+    const dialog = getDialog(el);
+    expect(dialog.querySelector('input[name="confirm-unpublish"]')).to.not.equal(null);
+  });
+
+  it('while checking publish status: lead text renders immediately, no checkbox, button disabled', async () => {
+    const el = await mountWithSelection([fileItem()], { canUnpublish: null });
+    const dialog = getDialog(el);
+    const lead = dialog.querySelector('p');
+    expect(lead.textContent.trim()).to.equal('Are you sure you want to delete this content?');
+    expect(dialog.querySelector('input[name="confirm-unpublish"]')).to.equal(null);
+    expect(getDisabled(el)).to.equal(true);
+    expect(dialog.message).to.equal('Checking publish status…');
+  });
+});
+
+describe('DaList checkCanUnpublish', () => {
+  let savedFetch;
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  it('skips the status check and leaves unpublish available for multi-item selections', async () => {
+    window.fetch = () => { throw new Error('should not fetch for multi-select'); };
+    const el = makeList();
+    el._selectedItems = [fileItem('a'), fileItem('b')];
+    await el.checkCanUnpublish();
+    expect(el._canUnpublish).to.equal(true);
+  });
+
+  it('skips the status check for folders, links, and trashed items', async () => {
+    window.fetch = () => { throw new Error('should not fetch for a folder'); };
+    const el = makeList();
+    el._selectedItems = [folderItem()];
+    await el.checkCanUnpublish();
+    expect(el._canUnpublish).to.equal(true);
+  });
+
+  it('sets _canUnpublish to false when the page was never previewed or published', async () => {
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      preview: { status: 404 },
+      live: { status: 404 },
+    }), { status: 200 }));
+    const el = makeList();
+    el._confirm = { type: 'delete' };
+    el._selectedItems = [fileItem()];
+    await el.checkCanUnpublish();
+    expect(el._canUnpublish).to.equal(false);
+  });
+
+  it('sets _canUnpublish to true when the page has been previewed', async () => {
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      preview: { status: 200 },
+      live: { status: 404 },
+    }), { status: 200 }));
+    const el = makeList();
+    el._confirm = { type: 'delete' };
+    el._selectedItems = [fileItem()];
+    await el.checkCanUnpublish();
+    expect(el._canUnpublish).to.equal(true);
+  });
+
+  it('sets _canUnpublish to true when the page has been published', async () => {
+    window.fetch = () => Promise.resolve(new Response(JSON.stringify({
+      preview: { status: 404 },
+      live: { status: 200 },
+    }), { status: 200 }));
+    const el = makeList();
+    el._confirm = { type: 'delete' };
+    el._selectedItems = [fileItem()];
+    await el.checkCanUnpublish();
+    expect(el._canUnpublish).to.equal(true);
+  });
+
+  it('does not block unpublishing if the status check itself fails', async () => {
+    window.fetch = () => Promise.resolve(new Response('', { status: 500 }));
+    const el = makeList();
+    el._confirm = { type: 'delete' };
+    el._selectedItems = [fileItem()];
+    await el.checkCanUnpublish();
+    expect(el._canUnpublish).to.equal(true);
   });
 });

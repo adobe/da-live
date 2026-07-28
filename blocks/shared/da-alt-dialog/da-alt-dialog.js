@@ -39,17 +39,10 @@ class DaAltDialog extends LitElement {
     this.shadowRoot.querySelector('nx-dialog').close();
   }
 
-  _onClose() {
-    this.dispatchEvent(new CustomEvent('da-alt-cancel', {
-      bubbles: true,
-      composed: true,
-    }));
-  }
-
   render() {
     if (!this.open) return nothing;
     return html`
-      <nx-dialog title="Edit alt text" @close=${this._onClose}>
+      <nx-dialog title="Edit alt text">
         <form class="alt-form" @submit=${this._onSubmit}>
           <label class="da-form-field">
             <span>Alt text</span>
