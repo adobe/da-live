@@ -121,7 +121,7 @@
   padding: 0;
 }
 
-.content-item {
+.content-item:not(.content-child) {
   cursor: pointer;
 }
 
