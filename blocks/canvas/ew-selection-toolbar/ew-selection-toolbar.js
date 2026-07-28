@@ -6,6 +6,7 @@ import {
   getLinkInfoInSelection,
   applyLink,
 } from '../editor-utils/command-helpers.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -41,6 +42,7 @@ function blockTypeLabelForRaw(raw) {
 class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
+    activeSurface: { attribute: false },
     org: { type: String },
     site: { type: String },
     sourceUrl: { type: String },
@@ -55,20 +57,6 @@ class EwSelectionToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
-    this._onOutsidePointerDown = (e) => {
-      if (!this.open) return;
-      const path = e.composedPath();
-      if (path.includes(this)) return;
-      const editorDom = this.view?.dom;
-      if (editorDom && path.includes(editorDom)) return;
-      this.hide();
-    };
-    document.addEventListener('pointerdown', this._onOutsidePointerDown);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener('pointerdown', this._onOutsidePointerDown);
   }
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
@@ -125,7 +113,8 @@ class EwSelectionToolbar extends LitElement {
     if (cmd) {
       cmd.apply(this.view);
       this.requestUpdate();
-      this.view.focus();
+      toolbarController.restoreFocus();
+      toolbarController.refresh();
     }
   }
 
@@ -163,7 +152,10 @@ class EwSelectionToolbar extends LitElement {
     if (!id) return;
     COMMAND_BY_ID.get(id)?.apply(this.view);
     this.requestUpdate();
-    if (!this._linkDialogOpen && !this._altDialogOpen) this.view.focus();
+    if (!this._linkDialogOpen && !this._altDialogOpen) {
+      toolbarController.restoreFocus();
+      toolbarController.refresh();
+    }
   }
 
   /* ---- Link dialog ---- */
@@ -186,14 +178,16 @@ class EwSelectionToolbar extends LitElement {
 
   _closeLinkDialog() {
     this._linkDialogOpen = false;
-    this.view?.focus();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
   }
 
   _onLinkDialogSubmit(e) {
     const { href, text } = e.detail;
     this._closeLinkDialog();
     applyLink(this.view, { href, text });
-    this.view.focus();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
   }
 
   get linkDialogOpen() { return this._linkDialogOpen ?? false; }
@@ -209,7 +203,8 @@ class EwSelectionToolbar extends LitElement {
 
   _closeAltDialog() {
     this._altDialogOpen = false;
-    this.view?.focus();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
   }
 
   _onAltDialogSubmit(e) {
@@ -218,7 +213,8 @@ class EwSelectionToolbar extends LitElement {
     const { pos } = this.view.state.selection.$anchor;
     this._closeAltDialog();
     this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, 'alt', alt));
-    this.view.focus();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
   }
 
   get altDialogOpen() { return this._altDialogOpen ?? false; }
@@ -342,16 +338,27 @@ class EwSelectionToolbar extends LitElement {
     const renderButtons = (items) => items.map((i) => this._renderToolbarButton(i));
     const renderImageItems = (items) => items.map((i) => this._renderImageItem(i));
 
+    const inWysiwyg = this.activeSurface === 'wysiwyg';
+    // The iframe owns block insertion, so "add image" is doc-only; editing a
+    // selected image's alt text stays available in wysiwyg.
+    const imageItems = inWysiwyg
+      ? IMAGE_ITEMS.filter((i) => i.id !== 'image-add')
+      : IMAGE_ITEMS;
+
+    // `wysiwyg` marks sections offered while editing in the WYSIWYG iframe. The
+    // iframe owns block-level structure (block type, lists, tables), so those are
+    // doc-only; inline marks, links, and image controls remain in both surfaces.
     const sections = [
-      { items: PICKER_DEFS, render: () => this._renderBlockTypePicker() },
-      { items: MARK_ITEMS, render: () => renderButtons(MARK_ITEMS) },
-      { items: STRUCTURE_ITEMS, render: () => renderButtons(STRUCTURE_ITEMS) },
-      { items: TABLE_ITEMS, render: () => renderButtons(TABLE_ITEMS) },
-      { items: LINK_ITEMS, render: () => renderButtons(LINK_ITEMS) },
-      { items: IMAGE_ITEMS, render: () => renderImageItems(IMAGE_ITEMS) },
+      { items: PICKER_DEFS, wysiwyg: false, render: () => this._renderBlockTypePicker() },
+      { items: MARK_ITEMS, wysiwyg: true, render: () => renderButtons(MARK_ITEMS) },
+      { items: STRUCTURE_ITEMS, wysiwyg: false, render: () => renderButtons(STRUCTURE_ITEMS) },
+      { items: TABLE_ITEMS, wysiwyg: false, render: () => renderButtons(TABLE_ITEMS) },
+      { items: LINK_ITEMS, wysiwyg: true, render: () => renderButtons(LINK_ITEMS) },
+      { items: imageItems, wysiwyg: true, render: () => renderImageItems(imageItems) },
     ];
 
-    const visible = sections.filter(({ items }) => this._hasVisibleCommands(items));
+    const allowed = inWysiwyg ? sections.filter((s) => s.wysiwyg) : sections;
+    const visible = allowed.filter(({ items }) => this._hasVisibleCommands(items));
     return visible.flatMap(({ render }, i) => {
       const part = render();
       return i === 0 ? [part] : [html`<span class="toolbar-sep" aria-hidden="true"></span>`, part];

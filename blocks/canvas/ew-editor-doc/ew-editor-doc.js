@@ -25,7 +25,8 @@ import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
 import { teardownEditorDocResources } from './utils/teardown.js';
-import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
+import { setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
@@ -48,6 +49,7 @@ export class EwEditorDoc extends LitElement {
       this.quickEditPort = undefined;
       this._teardown();
       setSelectionToolbarCtx();
+      toolbarController.reset();
       this._error = undefined;
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
@@ -179,6 +181,28 @@ export class EwEditorDoc extends LitElement {
     wireQuickEditControllerPort(this._controllerCtx);
   }
 
+  _wireProseFocus(view, proseEl) {
+    this._unwireProseFocus?.();
+    const onFocusIn = () => toolbarController.activate('doc');
+    const onFocusOut = () => {
+      // Defer so focus can settle. If it landed on the toolbar (button/dialog),
+      // stay active; otherwise the user left the doc surface.
+      setTimeout(() => {
+        const tb = toolbarController.ensureToolbar();
+        const active = document.activeElement;
+        if (active && (active === tb || tb.contains(active))) return;
+        toolbarController.deactivate('doc');
+      }, 0);
+    };
+    proseEl.addEventListener('focusin', onFocusIn);
+    proseEl.addEventListener('focusout', onFocusOut);
+    this._unwireProseFocus = () => {
+      proseEl.removeEventListener('focusin', onFocusIn);
+      proseEl.removeEventListener('focusout', onFocusOut);
+      this._unwireProseFocus = undefined;
+    };
+  }
+
   _setupAwareness(wsProvider) {
     if (this._awarenessOff) {
       this._awarenessOff();
@@ -199,6 +223,7 @@ export class EwEditorDoc extends LitElement {
 
   _teardown() {
     this._stopObservingUndoManager();
+    this._unwireProseFocus?.();
     const { wsProvider, view, proseEl } = this._proseContext ?? {};
     teardownEditorDocResources({
       clearPortHandler: () => this._clearControllerPort(),
@@ -264,6 +289,8 @@ export class EwEditorDoc extends LitElement {
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
       setSelectionToolbarCtx({ org: this.ctx?.org, site: this.ctx?.repo, sourceUrl });
+      toolbarController.setDocView(view);
+      this._wireProseFocus(view, proseEl);
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
@@ -284,7 +311,6 @@ export class EwEditorDoc extends LitElement {
     this._onCanvasEditorActive = (e) => {
       const view = e.detail?.view;
       this.hidden = view === 'layout';
-      hideSelectionToolbar();
     };
     this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this._onWysiwygPortReady = (e) => {
@@ -316,6 +342,7 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeSelect?.();
     this._teardown();
     setSelectionToolbarCtx();
+    toolbarController.reset();
     super.disconnectedCallback();
   }
 

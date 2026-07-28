@@ -2,7 +2,7 @@ import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
-import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -100,7 +100,6 @@ export class EwEditorWysiwyg extends LitElement {
     const view = this._canvasActiveView ?? 'layout';
     const showWysiwyg = view === 'layout' || view === 'split';
     this.hidden = !showWysiwyg;
-    hideSelectionToolbar();
   }
 
   _resetCookieStateForCtxChange() {
@@ -189,6 +188,7 @@ export class EwEditorWysiwyg extends LitElement {
     const { org, repo, path } = this.ctx ?? {};
     if (!iframe?.contentWindow || !org || !repo || !path) return;
 
+    toolbarController.setIframe(iframe);
     this.removeAttribute(WYSIWYG_PORT_READY_ATTR);
     this._clearQuickEditRetry();
     this._syncCanvasVisibility();
@@ -205,8 +205,20 @@ export class EwEditorWysiwyg extends LitElement {
     this._scheduleQuickEditInitRetries(send);
   }
 
+  _onIframeFocus() {
+    const iframe = this.shadowRoot?.querySelector('iframe');
+    toolbarController.activate('wysiwyg', { iframeEl: iframe });
+  }
+
   _onIframeBlur() {
-    hideSelectionToolbar();
+    // Defer so focus can settle. If it landed on the toolbar (button/dialog), keep
+    // the wysiwyg surface active; otherwise the user has left the pane.
+    setTimeout(() => {
+      const tb = toolbarController.ensureToolbar();
+      const active = document.activeElement;
+      if (active && (active === tb || tb.contains(active))) return;
+      toolbarController.deactivate('wysiwyg');
+    }, 0);
   }
 
   render() {
@@ -228,6 +240,7 @@ export class EwEditorWysiwyg extends LitElement {
           allow="local-network-access"
           class="ew-editor-wysiwyg-iframe"
           @load=${this._onIframeLoad}
+          @focus=${this._onIframeFocus}
           @blur=${this._onIframeBlur}
         ></iframe>
       `;

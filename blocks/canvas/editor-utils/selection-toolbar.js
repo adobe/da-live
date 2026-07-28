@@ -1,5 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin, PluginKey, NodeSelection } from 'da-y-wrapper';
+import { toolbarController } from './toolbar-controller.js';
 
 const NON_TEXT_NODES = new Set(['table']);
 
@@ -11,60 +12,32 @@ export const NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META = 'nxClearQuickEdi
 
 const selectionToolbarOriginKey = new PluginKey('nxSelectionToolbarOrigin');
 
-function getSelectionOriginFromIframe(state) {
+export function getSelectionOriginFromIframe(state) {
   return selectionToolbarOriginKey.getState(state)?.fromIframe ?? false;
 }
 
-let toolbar;
-let componentLoaded;
-
-export function getSelectionToolbar() {
-  if (toolbar) return toolbar;
-  componentLoaded ??= import('../ew-selection-toolbar/ew-selection-toolbar.js');
-  toolbar = document.createElement('ew-selection-toolbar');
-  document.body.append(toolbar);
-  return toolbar;
-}
-
 export function setSelectionToolbarCtx({ org = null, site = null, sourceUrl = null } = {}) {
-  const tb = getSelectionToolbar();
+  const tb = toolbarController.ensureToolbar();
   tb.org = org;
   tb.site = site;
   tb.sourceUrl = sourceUrl;
 }
 
-export function hideSelectionToolbar() {
-  toolbar?.hide?.();
-}
-
 export function openLinkDialog(view) {
-  getSelectionToolbar().openLinkDialog(view);
+  toolbarController.ensureToolbar().openLinkDialog(view);
 }
 
 export function openAltDialog() {
-  getSelectionToolbar().openAltDialog();
+  toolbarController.ensureToolbar().openAltDialog();
 }
 
 export function triggerAddImage() {
-  getSelectionToolbar().triggerAddImage();
+  toolbarController.ensureToolbar().triggerAddImage();
 }
 
 function isNonTextSelection({ selection }) {
   return selection instanceof NodeSelection
     && NON_TEXT_NODES.has(selection.node.type.name);
-}
-
-function syncToolbar(view) {
-  if (!view) return;
-  const tb = getSelectionToolbar();
-  if (tb.linkDialogOpen || tb.altDialogOpen || tb.isInteracting) return;
-  if (isNonTextSelection(view.state)) {
-    hideSelectionToolbar();
-    return;
-  }
-  if (!view.hasFocus()) return;
-  tb.view = view;
-  tb.show();
 }
 
 export function createSelectionToolbarPlugin() {
@@ -84,14 +57,14 @@ export function createSelectionToolbarPlugin() {
     view() {
       return {
         update(view) {
-          const header = document.querySelector('ew-canvas-header');
-          const ev = header?.editorView;
-          if (ev !== 'content' && ev !== 'split') return;
+          // Iframe-origin dispatches are owned by the wysiwyg handlers; the doc
+          // plugin only reports the *doc* selection, and never claims the surface
+          // (activation comes from real focus — see toolbar-controller.js).
           if (getSelectionOriginFromIframe(view.state)) return;
-          syncToolbar(view);
+          toolbarController.setDocSelection({ showable: !isNonTextSelection(view.state) });
         },
         destroy() {
-          hideSelectionToolbar();
+          toolbarController.reset();
         },
       };
     },
