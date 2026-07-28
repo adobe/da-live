@@ -219,7 +219,7 @@ function applySectionMetadata(editor) {
         section.dataset[camelKey] = value;
       }
     });
-    block.remove();
+    block.style.display = 'none';
   });
 }
 

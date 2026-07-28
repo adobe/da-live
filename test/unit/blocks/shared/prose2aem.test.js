@@ -111,7 +111,7 @@ describe('prose2aem section-metadata handling', () => {
     expect(section.classList.contains('divider-light')).to.be.false;
   });
 
-  it('removes the section-metadata block from the output', () => {
+  it('hides the section-metadata block instead of removing it, so client-side processing (if any) can still find it', () => {
     const editor = makeEditor(`
       <p>Content</p>
       <div class="tableWrapper">
@@ -122,7 +122,9 @@ describe('prose2aem section-metadata handling', () => {
       </div>
     `);
     const main = parseMain(prose2aem(editor, true, false));
-    expect(main.querySelector('.section-metadata')).to.not.exist;
+    const block = main.querySelector('.section-metadata');
+    expect(block).to.exist;
+    expect(block.style.display).to.equal('none');
   });
 
   it('sets non-style keys as data attributes on the parent section', () => {
