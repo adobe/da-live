@@ -160,6 +160,10 @@
   color: var(--s2-gray-700);
 }
 
+.selected .content-label {
+  color: var(--s2-blue-900);
+}
+
 .content-label-stack {
   flex: 1;
   display: flex;
@@ -175,6 +179,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.selected .content-snippet {
+  color: var(--s2-blue-800);
 }
 
 .block-name {
