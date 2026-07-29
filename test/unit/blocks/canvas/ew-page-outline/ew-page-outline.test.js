@@ -87,8 +87,8 @@ describe('ew-page-outline — expandable default content', () => {
     expect(header.getAttribute('aria-expanded')).to.equal('true');
     const children = [...el.shadowRoot.querySelectorAll('.content-child')];
     expect(children).to.have.lengthOf(5);
-    expect(children.map((c) => c.textContent.trim())).to.deep.equal([
-      'Heading 2', 'Paragraph', 'Image', 'Numbered list', 'Code block',
+    expect(children.map((c) => c.textContent.replace(/\s+/g, ' ').trim())).to.deep.equal([
+      'Heading 2 Title', 'Paragraph Para one', 'Image', 'Numbered list one two', 'Code block const x = 1;',
     ]);
 
     header.click();

@@ -106,6 +106,11 @@
   border-bottom: 2px solid var(--s2-blue-600, #147af3);
 }
 
+/* Blocks have no chevron — indent to align with expandable content-item labels */
+.block-item:not(.content-item) {
+  padding-inline-start: calc(var(--s2-spacing-300) + 1rem);
+}
+
 .block-empty {
   cursor: default;
 }
@@ -146,12 +151,30 @@
 
 .content-child {
   padding-inline-start: var(--s2-spacing-500);
+  min-height: 44px;
 }
 
 .content-label {
   font-weight: 400;
   font-style: italic;
   color: var(--s2-gray-700);
+}
+
+.content-label-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.content-snippet {
+  font-size: var(--s2-body-size-xs, 0.75rem);
+  font-weight: 400;
+  color: var(--s2-gray-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .block-name {
