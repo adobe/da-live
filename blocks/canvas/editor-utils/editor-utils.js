@@ -134,6 +134,7 @@ const EDITABLES = [
   { selector: 'ol', nodeName: 'OL' },
   { selector: 'ul', nodeName: 'UL' },
   { selector: 'pre', nodeName: 'PRE' },
+  { selector: 'blockquote', nodeName: 'BLOCKQUOTE' },
 ];
 const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
 

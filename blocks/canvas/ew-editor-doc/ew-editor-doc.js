@@ -13,7 +13,7 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload } from './utils/selection.js';
+import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload, activeContentProseIndex } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -28,6 +28,16 @@ import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+
+// Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
+// so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
+const CONTENT_KIND_NODE_NAMES = {
+  paragraph: ['paragraph'],
+  heading: ['heading'],
+  list: ['bullet_list', 'ordered_list'],
+  code: ['code_block'],
+  quote: ['blockquote'],
+};
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
@@ -120,9 +130,13 @@ export class EwEditorDoc extends LitElement {
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
-  // proseIndex may point mid-node, so TextSelection.near resolves to the nearest valid
-  // selection without throwing. An image is a real node: select it as a NodeSelection and
-  // broadcast, matching how blocks sync to the layout view.
+  // proseIndex may point mid-node (or have drifted since the outline was built), so
+  // TextSelection.near is the fallback that resolves to the nearest valid selection
+  // without throwing. When the node at proseIndex still matches the outline kind, select
+  // it as a NodeSelection instead so it gets the same blue-border highlight as a block.
+  // Either way, broadcast so the layout view (quick-edit) can scroll/highlight the match
+  // (using the raw, unadjusted proseIndex — that's what data-prose-index in the layout
+  // DOM actually carries; see the nodeStart comment below for why it differs here).
   _scrollDocToProseIndex(proseIndex, kind) {
     if (proseIndex == null || proseIndex < 0) return;
     const { view } = this._proseContext ?? {};
@@ -137,15 +151,32 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
+    // Unlike images, non-image content's proseIndex (from data-prose-index/posAtDOM) is one
+    // position *inside* the node's own start — da-nx's inline-editor bootstrap depends on
+    // that exact convention (see cursorOffset in prose-diff.js/da-nx's prose.js), so it can't
+    // change. Step back one to get the node's own start for a NodeSelection anchor.
+    const nodeStart = proseIndex - 1;
+    const nodeNames = CONTENT_KIND_NODE_NAMES[kind];
+    if (nodeStart >= 0 && nodeNames?.includes(doc.nodeAt(nodeStart)?.type.name)) {
+      const sel = NodeSelection.create(doc, nodeStart);
+      view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
+      return;
+    }
+
     const sel = TextSelection.near(doc.resolve(proseIndex));
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+    this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
   }
 
-  _broadcastSelectedNode(scrollIntoView = false) {
+  // overrideNode lets outline-driven content navigation (a TextSelection, which
+  // selectedNodePayload can't classify) broadcast an explicit anchorType/proseIndex
+  // instead of one derived from the current ProseMirror selection.
+  _broadcastSelectedNode(scrollIntoView = false, overrideNode = undefined) {
     const port = this._controllerCtx?.port;
     const { view } = this._proseContext ?? {};
     if (!port || !view) return;
-    const node = selectedNodePayload(view);
+    const node = overrideNode !== undefined ? overrideNode : selectedNodePayload(view);
     const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
     const forceScroll = scrollIntoView && Boolean(node);
     if (!forceScroll && key === this._lastBroadcastNodeKey) return;
@@ -269,6 +300,7 @@ export class EwEditorDoc extends LitElement {
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
             (pmView) => {
               const blockIndex = getActiveBlockIndex(pmView);
+              const proseIndex = activeContentProseIndex(pmView);
               const { kind, ...descriptor } = describeDocSelection(pmView);
               const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
               if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
@@ -276,6 +308,7 @@ export class EwEditorDoc extends LitElement {
               this._lastDocSelKey = selKey;
               editorSelectChange.emit({
                 blockIndex,
+                proseIndex,
                 source: 'doc',
                 explicit: descriptor.selectionType === SEL_BLOCK,
                 ...descriptor,

@@ -68,7 +68,23 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
     expect(broadcastCalls).to.deep.equal([[true]]);
   });
 
-  it('creates a TextSelection near proseIndex for a non-image kind and does not broadcast', () => {
+  it('selects the paragraph node with a NodeSelection and broadcasts the raw content anchor when proseIndex is one past the node start', () => {
+    const dispatchCalls = spyDispatch(editor.view);
+    const broadcastCalls = [];
+    el._broadcastSelectedNode = (...args) => broadcastCalls.push(args);
+    el._proseContext = { view: editor.view };
+
+    // proseIndex 1 mirrors the real data-prose-index/posAtDOM convention: one position
+    // inside the paragraph's own start (0), not the start itself.
+    el._scrollDocToProseIndex(1, 'paragraph');
+
+    expect(dispatchCalls).to.have.lengthOf(1);
+    expect(editor.view.state.selection).to.be.instanceOf(NodeSelection);
+    expect(editor.view.state.selection.from).to.equal(0);
+    expect(broadcastCalls).to.deep.equal([[true, { anchorType: 'content', proseIndex: 1 }]]);
+  });
+
+  it('falls back to a TextSelection near proseIndex when it lands mid-node and broadcasts a content anchor', () => {
     const dispatchCalls = spyDispatch(editor.view);
     const broadcastCalls = [];
     el._broadcastSelectedNode = (...args) => broadcastCalls.push(args);
@@ -78,7 +94,7 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
 
     expect(dispatchCalls).to.have.lengthOf(1);
     expect(editor.view.state.selection).to.be.instanceOf(TextSelection);
-    expect(broadcastCalls).to.deep.equal([]);
+    expect(broadcastCalls).to.deep.equal([[true, { anchorType: 'content', proseIndex: 3 }]]);
   });
 
   describe('guards', () => {

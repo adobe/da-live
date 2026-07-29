@@ -6,13 +6,14 @@ import { makeRealView } from '../test-helpers.js';
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let editorProseSelectChange;
+let editorSelectChange;
 let getExtensionsBridge;
 let getInstrumentedHTML;
 let parseSections;
 
 before(async () => {
   await import('../../../../../blocks/canvas/ew-page-outline/ew-page-outline.js');
-  ({ editorProseSelectChange, getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+  ({ editorProseSelectChange, editorSelectChange, getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
 });
 
@@ -140,6 +141,22 @@ describe('ew-page-outline — expandable default content', () => {
 
     expect(paragraphChild.classList.contains('selected')).to.be.false;
     expect(paragraphChild.getAttribute('aria-selected')).to.equal('false');
+  });
+
+  it('highlights a content child when the doc selection (not just an outline click) lands on it', async () => {
+    el.shadowRoot.querySelector('.content-item').click();
+    await el.updateComplete;
+    const paragraphChild = [...el.shadowRoot.querySelectorAll('.content-child')][1];
+
+    editorSelectChange.emit({ blockIndex: -1, proseIndex: 5, source: 'doc' });
+    await el.updateComplete;
+
+    expect(paragraphChild.classList.contains('selected')).to.be.true;
+
+    editorSelectChange.emit({ blockIndex: 0, proseIndex: undefined, source: 'doc' });
+    await el.updateComplete;
+
+    expect(paragraphChild.classList.contains('selected')).to.be.false;
   });
 
   it('expands and collapses the focused group header with ArrowRight/ArrowLeft', async () => {

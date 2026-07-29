@@ -97,10 +97,10 @@ class EwPageOutline extends LitElement {
       }
     });
     this._unsubscribeSelect = editorSelectChange
-      .subscribe(({ blockIndex, source }) => {
+      .subscribe(({ blockIndex, proseIndex, source }) => {
         if (source === 'outline') return;
         this._selectedBlockIndex = blockIndex;
-        this._selectedProseIndex = undefined;
+        this._selectedProseIndex = proseIndex;
       });
   }
 

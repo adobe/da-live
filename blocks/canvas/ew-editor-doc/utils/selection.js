@@ -68,6 +68,26 @@ export function selectedNodePayload(view) {
   return null;
 }
 
+// Mirrors the outline's own proseIndex convention (getDefaultContentProseIndex /
+// data-prose-index), which is NOT simply each node's own start — non-image content is
+// indexed one position *inside* its own start (posAtDOM(el, 0)), because da-nx's
+// inline-editor bootstrap depends on that exact value as its cursorOffset (see
+// prose-diff.js/da-nx's prose.js). Images are the one exception: data-image-index stores
+// the node's own start directly, since an atomic node has no "inside". Blocks (table)
+// are excluded entirely — they're tracked via blockIndex, never as outline content-children.
+export function activeContentProseIndex(view) {
+  const sel = view?.state?.selection;
+  if (!sel) return undefined;
+  if (sel instanceof NodeSelection) {
+    const name = sel.node?.type?.name;
+    if (name === 'table') return undefined;
+    return name === 'image' ? sel.from : sel.from + 1;
+  }
+  const { $from } = sel;
+  if ($from.depth < 1) return undefined;
+  return $from.node(1).type.name === 'table' ? undefined : $from.before(1) + 1;
+}
+
 export function applyHighlight(view, { selFrom, selTo, selectionType } = {}) {
   if (!view || typeof selFrom !== 'number' || typeof selTo !== 'number') return;
   const { doc } = view.state;
