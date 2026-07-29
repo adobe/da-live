@@ -57,10 +57,9 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     }
 
     ctx.suppressRerender = true;
-    // dispatch() synchronously runs createTrackingPlugin's view-update hook, which already
-    // emits editorSelectChange with the full { blockIndex, proseIndex, source: 'doc' }
-    // payload for this exact selection — a second, blockIndex-only emit here would
-    // clobber that (dropping proseIndex) and incorrectly collapse the outline.
+    // dispatch() already triggers createTrackingPlugin's hook, which emits editorSelectChange
+    // with the full payload (incl. proseIndex) — a second, blockIndex-only emit here would
+    // clobber that and collapse the outline.
     view.dispatch(tr.scrollIntoView());
     ctx.suppressRerender = false;
     const tb = getSelectionToolbar();

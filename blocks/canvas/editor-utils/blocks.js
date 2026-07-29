@@ -105,8 +105,6 @@ function isContentNode(node, schema) {
   return node.type.name !== 'table' && node.type !== schema.nodes.horizontal_rule;
 }
 
-// Same-run adjacency: the immediate top-level sibling in a given direction, or null if
-// it doesn't exist or is a block/section boundary (which ends the run).
 function getRunSibling(doc, schema, pos, direction) {
   const topNodes = [];
   doc.forEach((node, nodePos) => topNodes.push({ node, pos: nodePos }));

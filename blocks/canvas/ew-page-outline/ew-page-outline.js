@@ -165,9 +165,8 @@ class EwPageOutline extends LitElement {
     this._expandedContent = next;
   }
 
-  // Selection changes always fully reset expansion (see _renderContentGroup): a block
-  // selection collapses every run, a content selection expands only its own run. Manual
-  // expand/collapse (_toggleContentGroup) persists only until the next selection change.
+  // A block selection collapses every run; a content selection expands only its own
+  // (see _renderContentGroup). Manual toggles (_toggleContentGroup) survive until then.
   _resetExpansionForBlock() {
     this._expandedContent = new Set();
   }

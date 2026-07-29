@@ -421,8 +421,7 @@ export const editorSelectChange = (() => {
 })();
 
 // Event observable — no replay on subscribe. See docs/canvas-events.md.
-// Selects/scrolls to a raw ProseMirror position (not a block index); used by the
-// outline's default-content entries.
+// Carries a raw ProseMirror position, not a block index, for the outline's default-content entries.
 export const editorProseSelectChange = (() => {
   const listeners = new Set();
   return {

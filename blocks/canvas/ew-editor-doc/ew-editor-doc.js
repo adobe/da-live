@@ -130,13 +130,9 @@ export class EwEditorDoc extends LitElement {
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
-  // proseIndex may point mid-node (or have drifted since the outline was built), so
-  // TextSelection.near is the fallback that resolves to the nearest valid selection
-  // without throwing. When the node at proseIndex still matches the outline kind, select
-  // it as a NodeSelection instead so it gets the same blue-border highlight as a block.
-  // Either way, broadcast so the layout view (quick-edit) can scroll/highlight the match
-  // (using the raw, unadjusted proseIndex — that's what data-prose-index in the layout
-  // DOM actually carries; see the nodeStart comment below for why it differs here).
+  // TextSelection.near is the fallback for a drifted/mid-node proseIndex. A kind match
+  // selects a NodeSelection instead, for the block-style highlight. Either way, broadcasts
+  // the raw proseIndex, since that's what layout-view's data-prose-index carries.
   _scrollDocToProseIndex(proseIndex, kind) {
     if (proseIndex == null || proseIndex < 0) return;
     const { view } = this._proseContext ?? {};
@@ -151,10 +147,8 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
-    // Unlike images, non-image content's proseIndex (from data-prose-index/posAtDOM) is one
-    // position *inside* the node's own start — da-nx's inline-editor bootstrap depends on
-    // that exact convention (see cursorOffset in prose-diff.js/da-nx's prose.js), so it can't
-    // change. Step back one to get the node's own start for a NodeSelection anchor.
+    // Non-image content's proseIndex is one position inside the node's own start
+    // (see activeContentProseIndex in utils/selection.js) — step back one for the anchor.
     const nodeStart = proseIndex - 1;
     const nodeNames = CONTENT_KIND_NODE_NAMES[kind];
     if (nodeStart >= 0 && nodeNames?.includes(doc.nodeAt(nodeStart)?.type.name)) {
@@ -169,9 +163,8 @@ export class EwEditorDoc extends LitElement {
     this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
   }
 
-  // overrideNode lets outline-driven content navigation (a TextSelection, which
-  // selectedNodePayload can't classify) broadcast an explicit anchorType/proseIndex
-  // instead of one derived from the current ProseMirror selection.
+  // overrideNode lets content navigation (a TextSelection selectedNodePayload can't
+  // classify) broadcast an explicit anchorType/proseIndex instead of a derived one.
   _broadcastSelectedNode(scrollIntoView = false, overrideNode = undefined) {
     const port = this._controllerCtx?.port;
     const { view } = this._proseContext ?? {};

@@ -10,9 +10,8 @@ before(async () => {
   await import('../../../../../blocks/canvas/ew-editor-doc/ew-editor-doc.js');
 });
 
-// Wraps view.dispatch so tests can assert whether the guarded early-returns in
-// _scrollDocToProseIndex actually skip dispatching, while still letting dispatched
-// transactions apply so the resulting selection can be inspected.
+// Wraps view.dispatch so tests can assert the guarded early-returns in
+// _scrollDocToProseIndex skip dispatching, while still applying transactions that do.
 function spyDispatch(view) {
   const calls = [];
   const original = view.dispatch.bind(view);
@@ -23,8 +22,7 @@ function spyDispatch(view) {
   return calls;
 }
 
-// Replaces the default single-paragraph doc with a text paragraph followed by a
-// paragraph wrapping an image, mirroring how a real page mixes prose and images.
+// Replaces the default doc with a text paragraph + an image paragraph, mirroring a real page.
 function buildDoc(view) {
   const { schema } = view.state;
   const textPara = schema.nodes.paragraph.create(null, schema.text('hello world'));

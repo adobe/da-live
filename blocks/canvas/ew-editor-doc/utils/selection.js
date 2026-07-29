@@ -68,13 +68,10 @@ export function selectedNodePayload(view) {
   return null;
 }
 
-// Mirrors the outline's own proseIndex convention (getDefaultContentProseIndex /
-// data-prose-index), which is NOT simply each node's own start — non-image content is
-// indexed one position *inside* its own start (posAtDOM(el, 0)), because da-nx's
-// inline-editor bootstrap depends on that exact value as its cursorOffset (see
-// prose-diff.js/da-nx's prose.js). Images are the one exception: data-image-index stores
-// the node's own start directly, since an atomic node has no "inside". Blocks (table)
-// are excluded entirely — they're tracked via blockIndex, never as outline content-children.
+// Mirrors data-prose-index/getDefaultContentProseIndex: non-image content is indexed
+// one position *inside* its own start (posAtDOM(el, 0)), since da-nx's inline-editor
+// bootstrap depends on that exact value as its cursorOffset (see prose-diff.js/da-nx's
+// prose.js). Images use their own start directly; tables are excluded (tracked via blockIndex).
 export function activeContentProseIndex(view) {
   const sel = view?.state?.selection;
   if (!sel) return undefined;
