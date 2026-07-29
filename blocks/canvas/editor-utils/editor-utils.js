@@ -253,6 +253,8 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
+  // keepEmptyParagraphs: an empty <p> being actively edited must survive here so
+  // parseSections/the outline can see and select it; the saved/published HTML still strips it.
   let htmlString = prose2aem(editorClone, true, false, true);
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
@@ -303,9 +305,11 @@ function getDefaultContentKind(el) {
   if (tag === 'UL') return { kind: 'list', ordered: false };
   if (tag === 'PRE') return { kind: 'code' };
   if (tag === 'BLOCKQUOTE') return { kind: 'quote' };
-  // a text-less <p> wraps only an image, as does a bare <picture>/<img>;
-  // anything with text is a paragraph
-  return { kind: el.textContent?.trim() ? 'paragraph' : 'image' };
+  if (el.textContent?.trim()) return { kind: 'paragraph' };
+  // A text-less <p> wraps only an image, as does a bare <picture>/<img> — but a text-less
+  // <p> with no image at all is just an empty paragraph, not an image wrapper.
+  const hasImage = el.matches?.('img') || !!el.querySelector?.('img');
+  return { kind: hasImage ? 'image' : 'paragraph' };
 }
 
 export function parseSections(htmlText) {
@@ -331,6 +335,7 @@ export function parseSections(htmlText) {
               proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
               innerText: el.textContent.trim(),
               snippet: getContentSnippet(el, kindInfo.kind),
+              empty: !hasDefaultContent(el),
             };
           }),
         });
@@ -354,9 +359,7 @@ export function parseSections(htmlText) {
         return;
       }
 
-      // Skip empty nodes — prose2aem doesn't always strip them (e.g. an empty <h2> can
-      // survive serialization) — so they neither break nor join a run.
-      if (hasDefaultContent(el)) currentRun.push(el);
+      currentRun.push(el);
     });
     flushRun();
 

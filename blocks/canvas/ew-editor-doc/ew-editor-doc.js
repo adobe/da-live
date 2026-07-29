@@ -223,7 +223,6 @@ export class EwEditorDoc extends LitElement {
       port: this.quickEditPort,
       iframe: this._wysiwygIframe,
       suppressRerender: false,
-      lastBlockIndex: undefined,
       owner: org,
       repo,
       path: controllerPathnameFromEditorCtx(this.ctx),

@@ -5,8 +5,6 @@ import {
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
-import { editorSelectChange } from '../../editor-utils/editor-utils.js';
-import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
 
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
@@ -59,17 +57,16 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     }
 
     ctx.suppressRerender = true;
+    // dispatch() synchronously runs createTrackingPlugin's view-update hook, which already
+    // emits editorSelectChange with the full { blockIndex, proseIndex, source: 'doc' }
+    // payload for this exact selection — a second, blockIndex-only emit here would
+    // clobber that (dropping proseIndex) and incorrectly collapse the outline.
     view.dispatch(tr.scrollIntoView());
     ctx.suppressRerender = false;
     const tb = getSelectionToolbar();
     if (canShowSelectionToolbar() && !tb.linkDialogOpen && !tb.isInteracting) {
       tb.view = view;
       tb.show();
-    }
-    const blockIndex = getActiveBlockIndex(view);
-    if (blockIndex !== ctx.lastBlockIndex) {
-      ctx.lastBlockIndex = blockIndex;
-      editorSelectChange.emit({ blockIndex, source: 'wysiwyg' });
     }
   } catch (error) {
     // eslint-disable-next-line no-console

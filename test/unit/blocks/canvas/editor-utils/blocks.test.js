@@ -1,12 +1,15 @@
+import { NodeSelection } from 'da-y-wrapper';
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 import {
   getContentItemRange,
   deleteContentItem,
+  deleteBlock,
   moveContentItem,
   moveBlockToContentItem,
   moveBlockToSection,
   moveBlock,
+  moveSection,
 } from '../../../../../blocks/canvas/editor-utils/blocks.js';
 import { makeView, makeRealView } from '../test-helpers.js';
 
@@ -144,6 +147,59 @@ describe('deleteContentItem', () => {
     expect(view.state.doc.childCount).to.equal(1);
     expect(view.state.doc.firstChild.textContent).to.equal('Keep me');
   });
+
+  it('selects the next sibling in the same run after deleting a middle child', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'C' }] },
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.innerText === 'B');
+    deleteContentItem(view, child);
+
+    const { selection, doc } = view.state;
+    expect(selection).to.be.instanceOf(NodeSelection);
+    expect(selection.node.textContent).to.equal('C');
+    expect(doc.childCount).to.equal(2);
+  });
+
+  it('falls back to the previous sibling when the deleted child was last in its run', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'C' }] },
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.innerText === 'C');
+    deleteContentItem(view, child);
+
+    const { selection } = view.state;
+    expect(selection).to.be.instanceOf(NodeSelection);
+    expect(selection.node.textContent).to.equal('B');
+  });
+
+  it('never crosses a block boundary to find a sibling to select', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        tableJSON('hero'),
+        { type: 'paragraph', content: [{ type: 'text', text: 'Lone para' }] },
+        tableJSON('cards'),
+      ],
+    });
+    const child = childrenOf(view).find((c) => c.innerText === 'Lone para');
+    deleteContentItem(view, child);
+
+    // No same-run sibling exists (blocks on both sides) — nothing gets deliberately
+    // selected, so the neighboring tables are never turned into a NodeSelection.
+    expect(view.state.selection).to.not.be.instanceOf(NodeSelection);
+    expect(view.state.doc.childCount).to.equal(2);
+  });
 });
 
 describe('moveContentItem', () => {
@@ -237,6 +293,25 @@ describe('moveContentItem', () => {
     moveContentItem(view, a, { type: 'content', child: b }, 'before');
 
     expect(view.state).to.equal(before);
+  });
+
+  it('selects the moved item at its new position', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+      ],
+    });
+    const [a, b] = childrenOf(view);
+
+    moveContentItem(view, a, { type: 'content', child: b }, 'after');
+
+    const { selection } = view.state;
+    expect(selection).to.be.instanceOf(NodeSelection);
+    expect(selection.node.textContent).to.equal('A');
+    expect(docTypes(view.state.doc)).to.deep.equal(['paragraph', 'paragraph']);
+    expect(view.state.doc.lastChild.textContent).to.equal('A');
   });
 });
 
@@ -332,5 +407,68 @@ describe('moveBlock (regression coverage for the shared splice helper)', () => {
       if (n.type.name === 'table') names.push(n.firstChild.firstChild.textContent);
     });
     expect(names).to.deep.equal(['columns', 'hero', 'cards']);
+  });
+
+  it('selects the moved block at its new position', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [tableJSON('hero'), tableJSON('cards')],
+    });
+    moveBlock(view, 0, 1, 'after');
+
+    const { selection } = view.state;
+    expect(selection).to.be.instanceOf(NodeSelection);
+    expect(selection.node.type.name).to.equal('table');
+    expect(selection.node.firstChild.firstChild.textContent).to.equal('hero');
+  });
+});
+
+describe('moveSection', () => {
+  it('selects the first node of the moved section at its new position', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
+        { type: 'horizontal_rule' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+      ],
+    });
+
+    moveSection(view, 0, 1, 'after');
+
+    const { doc, selection } = view.state;
+    expect(docTypes(doc)).to.deep.equal(['paragraph', 'horizontal_rule', 'paragraph']);
+    // Section 0 (containing 'A') is the one being moved, to land after section 1 ('B').
+    expect(doc.firstChild.textContent).to.equal('B');
+    expect(selection).to.be.instanceOf(NodeSelection);
+    expect(selection.node.textContent).to.equal('A');
+  });
+
+  it('does not throw when the moved section is empty', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'horizontal_rule' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+      ],
+    });
+
+    expect(() => moveSection(view, 0, 1, 'after')).to.not.throw();
+    // Pre-existing behavior: moving an empty section still leaves its separating hr.
+    expect(docTypes(view.state.doc)).to.deep.equal(['paragraph', 'horizontal_rule']);
+  });
+});
+
+describe('deleteBlock (no deliberate selection change)', () => {
+  it('leaves selection to PM\'s own mapping rather than selecting a sibling', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [tableJSON('hero'), tableJSON('cards')],
+    });
+
+    deleteBlock(view, 0);
+
+    expect(view.state.selection).to.not.be.instanceOf(NodeSelection);
+    expect(docTypes(view.state.doc)).to.deep.equal(['table']);
   });
 });

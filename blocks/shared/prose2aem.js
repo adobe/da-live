@@ -134,11 +134,11 @@ function makePictures(editor, live) {
   });
 }
 
-function convertParagraphs(editor) {
+function convertParagraphs(editor, keepEmpty = false) {
   const paras = editor.querySelectorAll(':scope > p');
   paras.forEach((p) => {
     // Remove empty p tags
-    if (p.innerHTML.trim() === '') { p.remove(); }
+    if (!keepEmpty && p.innerHTML.trim() === '') { p.remove(); }
     // Convert dash p tags to rules
     if (p.textContent.trim() === '---') {
       const hr = document.createElement('hr');
@@ -263,9 +263,17 @@ function convertLocalUrlsToRelative(editor) {
  * @param {HTMLElement} editor the editor dom
  * @param {Boolean} livePreview whether or not the target destination is Live Preview
  * @param {Boolean} isFragment whether or not the DOM is a fragment
+ * @param {Boolean} keepEmptyParagraphs keep empty <p> tags instead of stripping them
+ *   (canvas's instrumented HTML needs these so an empty node being edited stays
+ *   visible/selectable in the outline; the actual saved/published HTML still strips them)
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false) {
+export default function prose2aem(
+  editor,
+  livePreview,
+  isFragment = false,
+  keepEmptyParagraphs = false,
+) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -297,7 +305,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   convertListItems(editor);
 
-  convertParagraphs(editor);
+  convertParagraphs(editor, keepEmptyParagraphs);
 
   convertBlocks(editor, isFragment);
 

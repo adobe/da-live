@@ -59,11 +59,15 @@ describe('ew-page-outline — expandable default content', () => {
       blocks: [],
       items: [
         contentGroupItem(1, [
-          { type: 'content', kind: 'heading', level: 2, proseIndex: 1, innerText: 'Title' },
-          { type: 'content', kind: 'paragraph', proseIndex: 5, innerText: 'Para one' },
-          { type: 'content', kind: 'image', proseIndex: 9, innerText: '' },
-          { type: 'content', kind: 'list', ordered: true, proseIndex: 12, innerText: 'one two' },
-          { type: 'content', kind: 'code', proseIndex: 15, innerText: 'const x = 1;' },
+          {
+            type: 'content', kind: 'heading', level: 2, proseIndex: 1, innerText: 'Title', snippet: 'Title',
+          },
+          { type: 'content', kind: 'paragraph', proseIndex: 5, innerText: 'Para one', snippet: 'Para one' },
+          { type: 'content', kind: 'image', proseIndex: 9, innerText: '', snippet: '' },
+          {
+            type: 'content', kind: 'list', ordered: true, proseIndex: 12, innerText: 'one two', snippet: 'one two',
+          },
+          { type: 'content', kind: 'code', proseIndex: 15, innerText: 'const x = 1;', snippet: 'const x = 1;' },
         ]),
       ],
     }];
@@ -124,7 +128,7 @@ describe('ew-page-outline — expandable default content', () => {
     expect(received).to.deep.equal({ proseIndex: 9, kind: 'image' });
   });
 
-  it('marks a clicked content child as selected, and clears it when a block is selected instead', async () => {
+  it('marks a clicked content child as selected, and collapses its run when a block is selected instead', async () => {
     el._sections[0].blocks = [{ name: 'hero', blockIndex: 0 }];
     el.shadowRoot.querySelector('.content-item').click();
     await el.updateComplete;
@@ -139,24 +143,26 @@ describe('ew-page-outline — expandable default content', () => {
     el._select(0);
     await el.updateComplete;
 
-    expect(paragraphChild.classList.contains('selected')).to.be.false;
-    expect(paragraphChild.getAttribute('aria-selected')).to.equal('false');
+    // Selecting a block resets expansion, collapsing every run — the previously
+    // selected child is no longer rendered at all, not just unmarked as selected.
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('false');
+    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(0);
   });
 
-  it('highlights a content child when the doc selection (not just an outline click) lands on it', async () => {
-    el.shadowRoot.querySelector('.content-item').click();
-    await el.updateComplete;
-    const paragraphChild = [...el.shadowRoot.querySelectorAll('.content-child')][1];
-
+  it('highlights a content child when the doc selection (not just an outline click) lands on it, and collapses its run on block selection', async () => {
     editorSelectChange.emit({ blockIndex: -1, proseIndex: 5, source: 'doc' });
     await el.updateComplete;
 
+    // A content selection expands only the run containing it, with no manual click needed.
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
+    const paragraphChild = [...el.shadowRoot.querySelectorAll('.content-child')][1];
     expect(paragraphChild.classList.contains('selected')).to.be.true;
 
     editorSelectChange.emit({ blockIndex: 0, proseIndex: undefined, source: 'doc' });
     await el.updateComplete;
 
-    expect(paragraphChild.classList.contains('selected')).to.be.false;
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('false');
+    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(0);
   });
 
   it('expands and collapses the focused group header with ArrowRight/ArrowLeft', async () => {

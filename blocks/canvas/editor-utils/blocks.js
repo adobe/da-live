@@ -1,4 +1,4 @@
-import { DOMParser as PMDOMParser } from 'da-y-wrapper';
+import { DOMParser as PMDOMParser, NodeSelection } from 'da-y-wrapper';
 
 const NON_BLOCK_TABLE_NAMES = new Set(['metadata', 'section metadata', 'section-metadata']);
 
@@ -44,15 +44,16 @@ export function getActiveBlockIndex(view) {
   return -1;
 }
 
-// Shared by every single-node move; adjusts insertPos for the shift the delete causes.
+// Shared by every single-node move; adjusts insertPos for the shift the delete causes,
+// and selects the moved node at its new position.
 function spliceNode(view, from, insertPos) {
   const adjustedInsertPos = insertPos > from.pos ? insertPos - from.size : insertPos;
   if (adjustedInsertPos === from.pos) return;
-  view.dispatch(
-    view.state.tr
-      .delete(from.pos, from.pos + from.size)
-      .insert(adjustedInsertPos, from.node),
-  );
+  const tr = view.state.tr
+    .delete(from.pos, from.pos + from.size)
+    .insert(adjustedInsertPos, from.node);
+  tr.setSelection(NodeSelection.create(tr.doc, adjustedInsertPos));
+  view.dispatch(tr);
 }
 
 export function moveBlock(view, fromIndex, toIndex, dropPosition) {
@@ -100,11 +101,34 @@ export function getContentItemRange(doc, child) {
   return node ? { pos, size: node.nodeSize, node } : null;
 }
 
+function isContentNode(node, schema) {
+  return node.type.name !== 'table' && node.type !== schema.nodes.horizontal_rule;
+}
+
+// Same-run adjacency: the immediate top-level sibling in a given direction, or null if
+// it doesn't exist or is a block/section boundary (which ends the run).
+function getRunSibling(doc, schema, pos, direction) {
+  const topNodes = [];
+  doc.forEach((node, nodePos) => topNodes.push({ node, pos: nodePos }));
+  const idx = topNodes.findIndex((entry) => entry.pos === pos);
+  if (idx === -1) return null;
+  const sibling = topNodes[idx + direction];
+  if (!sibling || !isContentNode(sibling.node, schema)) return null;
+  return sibling;
+}
+
 export function deleteContentItem(view, child) {
   if (!view) return;
-  const range = getContentItemRange(view.state.doc, child);
+  const { doc, schema } = view.state;
+  const range = getContentItemRange(doc, child);
   if (!range) return;
-  view.dispatch(view.state.tr.delete(range.pos, range.pos + range.size));
+
+  const sibling = getRunSibling(doc, schema, range.pos, 1)
+    ?? getRunSibling(doc, schema, range.pos, -1);
+
+  const tr = view.state.tr.delete(range.pos, range.pos + range.size);
+  if (sibling) tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sibling.pos)));
+  view.dispatch(tr);
 }
 
 function getSectionStartOffset(view, sectionIndex) {
@@ -180,12 +204,20 @@ export function moveSection(view, fromSectionIndex, toSectionIndex, dropPosition
 
   const hrNode = schema.nodes.horizontal_rule.create();
   const newNodes = [];
+  let movedSectionStart;
   reordered.forEach((sectionNodes, i) => {
     if (i > 0) newNodes.push(hrNode);
+    if (sectionNodes === moved) {
+      movedSectionStart = newNodes.reduce((size, node) => size + node.nodeSize, 0);
+    }
     newNodes.push(...sectionNodes);
   });
 
-  view.dispatch(view.state.tr.replaceWith(0, doc.content.size, newNodes));
+  const tr = view.state.tr.replaceWith(0, doc.content.size, newNodes);
+  if (movedSectionStart != null && moved.length) {
+    tr.setSelection(NodeSelection.create(tr.doc, movedSectionStart));
+  }
+  view.dispatch(tr);
 }
 
 // Counterpart to getSectionStartOffset — the hr position bounding the previous section.

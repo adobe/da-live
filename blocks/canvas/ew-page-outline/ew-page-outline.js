@@ -37,7 +37,8 @@ const DROP_POSITIONS = {
 
 function contentChildEqual(child, other) {
   return child.proseIndex === other.proseIndex && child.innerText === other.innerText
-    && child.kind === other.kind && child.level === other.level && child.ordered === other.ordered;
+    && child.kind === other.kind && child.level === other.level && child.ordered === other.ordered
+    && child.empty === other.empty;
 }
 
 function contentChildLabel(child) {
@@ -101,6 +102,9 @@ class EwPageOutline extends LitElement {
         if (source === 'outline') return;
         this._selectedBlockIndex = blockIndex;
         this._selectedProseIndex = proseIndex;
+        if (blockIndex != null && blockIndex >= 0) this._resetExpansionForBlock();
+        else if (proseIndex != null) this._resetExpansionForProse(proseIndex);
+        else this._resetExpansionForBlock();
       });
   }
 
@@ -143,12 +147,14 @@ class EwPageOutline extends LitElement {
   _select(blockIndex) {
     this._selectedBlockIndex = blockIndex;
     this._selectedProseIndex = undefined;
+    this._resetExpansionForBlock();
     editorSelectChange.emit({ blockIndex, source: 'outline' });
   }
 
   _selectProse(proseIndex, kind) {
     this._selectedProseIndex = proseIndex;
     this._selectedBlockIndex = undefined;
+    this._resetExpansionForProse(proseIndex);
     editorProseSelectChange.emit({ proseIndex, kind });
   }
 
@@ -157,6 +163,29 @@ class EwPageOutline extends LitElement {
     if (next.has(key)) next.delete(key);
     else next.add(key);
     this._expandedContent = next;
+  }
+
+  // Selection changes always fully reset expansion (see _renderContentGroup): a block
+  // selection collapses every run, a content selection expands only its own run. Manual
+  // expand/collapse (_toggleContentGroup) persists only until the next selection change.
+  _resetExpansionForBlock() {
+    this._expandedContent = new Set();
+  }
+
+  _resetExpansionForProse(proseIndex) {
+    const runKey = this._findRunKeyForProseIndex(proseIndex);
+    this._expandedContent = runKey != null ? new Set([runKey]) : new Set();
+  }
+
+  _findRunKeyForProseIndex(proseIndex) {
+    for (const sec of this._sections ?? []) {
+      for (const item of sec.items) {
+        if (item.type === 'content' && item.children.some((child) => child.proseIndex === proseIndex)) {
+          return item.proseIndex;
+        }
+      }
+    }
+    return undefined;
   }
 
   _clearDropIndicator() {
@@ -366,6 +395,10 @@ class EwPageOutline extends LitElement {
   }
 
   _renderContentGroup(item, isFirst) {
+    const visibleChildren = item.children.filter(
+      (child) => !child.empty || child.proseIndex === this._selectedProseIndex,
+    );
+    if (!visibleChildren.length) return nothing;
     const key = item.proseIndex;
     const expanded = this._expandedContent?.has(key);
     return html`
@@ -380,7 +413,7 @@ class EwPageOutline extends LitElement {
         </div>
         ${expanded ? html`
           <ul class="content-children" role="group">
-            ${item.children.map((child) => html`
+            ${visibleChildren.map((child) => html`
               <li class="block-item content-item content-child ${this._selectedProseIndex === child.proseIndex ? 'selected' : ''}"
                   role="treeitem" tabindex="-1"
                   aria-selected="${this._selectedProseIndex === child.proseIndex}"

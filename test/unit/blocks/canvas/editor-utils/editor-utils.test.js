@@ -155,13 +155,17 @@ describe('parseSections', () => {
       type: 'content',
       proseIndex: 1,
       innerText: 'Intro text',
-      children: [{ type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Intro text' }],
+      children: [{
+        type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Intro text', snippet: 'Intro text', empty: false,
+      }],
     });
     expect(section.items[2]).to.deep.equal({
       type: 'content',
       proseIndex: 20,
       innerText: 'Outro text',
-      children: [{ type: 'content', kind: 'paragraph', proseIndex: 20, innerText: 'Outro text' }],
+      children: [{
+        type: 'content', kind: 'paragraph', proseIndex: 20, innerText: 'Outro text', snippet: 'Outro text', empty: false,
+      }],
     });
   });
 
@@ -177,9 +181,15 @@ describe('parseSections', () => {
       proseIndex: 1,
       innerText: 'Title Para one Para two',
       children: [
-        { type: 'content', kind: 'heading', level: 2, proseIndex: 1, innerText: 'Title' },
-        { type: 'content', kind: 'paragraph', proseIndex: 5, innerText: 'Para one' },
-        { type: 'content', kind: 'paragraph', proseIndex: 12, innerText: 'Para two' },
+        {
+          type: 'content', kind: 'heading', level: 2, proseIndex: 1, innerText: 'Title', snippet: 'Title', empty: false,
+        },
+        {
+          type: 'content', kind: 'paragraph', proseIndex: 5, innerText: 'Para one', snippet: 'Para one', empty: false,
+        },
+        {
+          type: 'content', kind: 'paragraph', proseIndex: 12, innerText: 'Para two', snippet: 'Para two', empty: false,
+        },
       ],
     }]);
   });
@@ -238,13 +248,17 @@ describe('parseSections', () => {
     const [section] = parseSections(html);
     const [{ children }] = section.items;
     expect(children.map((c) => c.kind)).to.deep.equal(['heading', 'code']);
-    expect(children[1]).to.deep.equal({ type: 'content', kind: 'code', proseIndex: 5, innerText: 'const x = 1;' });
+    expect(children[1]).to.deep.equal({
+      type: 'content', kind: 'code', proseIndex: 5, innerText: 'const x = 1;', snippet: 'const x = 1;', empty: false,
+    });
   });
 
-  it('treats empty loose nodes as invisible — they neither break nor join a run', () => {
+  it('keeps empty loose nodes in the run, flagged empty, without breaking it', () => {
+    // getInstrumentedHTML stamps data-prose-index on every editable element, empty or
+    // not (keepEmptyParagraphs keeps the empty <p> itself alive through prose2aem too).
     const html = `<main><div>
       <p data-prose-index="1">Para one</p>
-      <h2></h2>
+      <h2 data-prose-index="8"></h2>
       <p data-prose-index="12">   </p>
       <p data-prose-index="20">Para two</p>
     </div></main>`;
@@ -254,21 +268,33 @@ describe('parseSections', () => {
       proseIndex: 1,
       innerText: 'Para one Para two',
       children: [
-        { type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Para one' },
-        { type: 'content', kind: 'paragraph', proseIndex: 20, innerText: 'Para two' },
+        {
+          type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Para one', snippet: 'Para one', empty: false,
+        },
+        {
+          type: 'content', kind: 'heading', level: 2, proseIndex: 8, innerText: '', snippet: '', empty: true,
+        },
+        {
+          type: 'content', kind: 'paragraph', proseIndex: 12, innerText: '', snippet: '', empty: true,
+        },
+        {
+          type: 'content', kind: 'paragraph', proseIndex: 20, innerText: 'Para two', snippet: 'Para two', empty: false,
+        },
       ],
     }]);
   });
 
-  it('produces nothing for a run made up entirely of empty nodes', () => {
+  it('produces a content entry flagged empty for a run made up entirely of empty nodes', () => {
     const html = `<main><div>
       <div class="hero" data-block-index="0">Hero</div>
-      <h2></h2>
-      <p>   </p>
+      <h2 data-prose-index="1"></h2>
+      <p data-prose-index="3">   </p>
     </div></main>`;
     const [section] = parseSections(html);
-    expect(section.items).to.have.length(1);
+    expect(section.items).to.have.length(2);
     expect(section.items[0].type).to.equal('block');
+    expect(section.items[1].type).to.equal('content');
+    expect(section.items[1].children.every((c) => c.empty)).to.be.true;
   });
 
   it('reads proseIndex from data-image-index on a loose image', () => {
@@ -280,24 +306,33 @@ describe('parseSections', () => {
       type: 'content',
       proseIndex: 7,
       innerText: '',
-      children: [{ type: 'content', kind: 'image', proseIndex: 7, innerText: '' }],
+      children: [{
+        type: 'content', kind: 'image', proseIndex: 7, innerText: '', snippet: '', empty: false,
+      }],
     }]);
   });
 
-  it('takes proseIndex from the first non-empty node in a run', () => {
+  it('takes run identity from the first node in the run, even when that node is empty', () => {
     const html = `<main><div>
-      <h2></h2>
+      <h2 data-prose-index="1"></h2>
       <p data-prose-index="9">First real content</p>
       <p data-prose-index="15">More content</p>
     </div></main>`;
     const [section] = parseSections(html);
     expect(section.items).to.deep.equal([{
       type: 'content',
-      proseIndex: 9,
+      proseIndex: 1,
       innerText: 'First real content More content',
       children: [
-        { type: 'content', kind: 'paragraph', proseIndex: 9, innerText: 'First real content' },
-        { type: 'content', kind: 'paragraph', proseIndex: 15, innerText: 'More content' },
+        {
+          type: 'content', kind: 'heading', level: 2, proseIndex: 1, innerText: '', snippet: '', empty: true,
+        },
+        {
+          type: 'content', kind: 'paragraph', proseIndex: 9, innerText: 'First real content', snippet: 'First real content', empty: false,
+        },
+        {
+          type: 'content', kind: 'paragraph', proseIndex: 15, innerText: 'More content', snippet: 'More content', empty: false,
+        },
       ],
     }]);
   });
@@ -313,7 +348,9 @@ describe('parseSections', () => {
       type: 'content',
       proseIndex: 1,
       innerText: 'Section one text',
-      children: [{ type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Section one text' }],
+      children: [{
+        type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Section one text', snippet: 'Section one text', empty: false,
+      }],
     }]);
     expect(sections[1].items).to.deep.equal([
       { type: 'block', name: 'cards', blockIndex: 0, proseIndex: 0, innerText: 'Cards' },
