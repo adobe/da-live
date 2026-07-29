@@ -30,6 +30,7 @@ import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -45,6 +46,7 @@ export class EwEditorDoc extends LitElement {
     super.willUpdate(changed);
     if (changed.has('ctx')) {
       this.quickEditPort = undefined;
+      this._canWrite = false;
       this._teardown();
       setSelectionToolbarCtx();
       this._error = undefined;
@@ -173,6 +175,7 @@ export class EwEditorDoc extends LitElement {
       owner: org,
       repo,
       path: controllerPathnameFromEditorCtx(this.ctx),
+      canWrite: this._canWrite === true,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
     };
     wireQuickEditControllerPort(this._controllerCtx);
@@ -226,6 +229,7 @@ export class EwEditorDoc extends LitElement {
 
     try {
       const { token, permissions } = session;
+      this._canWrite = permissions.some((permission) => permission === 'write');
       const { proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
         path: sourceUrl,
         permissions,
@@ -262,7 +266,12 @@ export class EwEditorDoc extends LitElement {
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
-      setSelectionToolbarCtx({ org: this.ctx?.org, site: this.ctx?.repo, sourceUrl });
+      setSelectionToolbarCtx({
+        org: this.ctx?.org,
+        site: this.ctx?.repo,
+        sourceUrl,
+        canWrite: this._canWrite,
+      });
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
@@ -301,7 +310,7 @@ export class EwEditorDoc extends LitElement {
         if (source === 'outline') this._broadcastSelectedNode(true);
       });
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
-    document.addEventListener('nx-highlight-selection', this._onCanvasHighlight);
+    document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
 
   _applyHighlight(detail) {
@@ -311,7 +320,7 @@ export class EwEditorDoc extends LitElement {
   disconnectedCallback() {
     this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
-    document.removeEventListener('nx-highlight-selection', this._onCanvasHighlight);
+    document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._teardown();
     setSelectionToolbarCtx();
