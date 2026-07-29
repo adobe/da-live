@@ -37,8 +37,7 @@ const DROP_POSITIONS = {
 
 function contentChildEqual(child, other) {
   return child.proseIndex === other.proseIndex && child.innerText === other.innerText
-    && child.kind === other.kind && child.level === other.level && child.ordered === other.ordered
-    && child.empty === other.empty;
+    && child.kind === other.kind && child.level === other.level && child.ordered === other.ordered;
 }
 
 function contentChildLabel(child) {
@@ -394,10 +393,6 @@ class EwPageOutline extends LitElement {
   }
 
   _renderContentGroup(item, isFirst) {
-    const visibleChildren = item.children.filter(
-      (child) => !child.empty || child.proseIndex === this._selectedProseIndex,
-    );
-    if (!visibleChildren.length) return nothing;
     const key = item.proseIndex;
     const expanded = this._expandedContent?.has(key);
     return html`
@@ -412,7 +407,7 @@ class EwPageOutline extends LitElement {
         </div>
         ${expanded ? html`
           <ul class="content-children" role="group">
-            ${visibleChildren.map((child) => html`
+            ${item.children.map((child) => html`
               <li class="block-item content-item content-child ${this._selectedProseIndex === child.proseIndex ? 'selected' : ''}"
                   role="treeitem" tabindex="-1"
                   aria-selected="${this._selectedProseIndex === child.proseIndex}"

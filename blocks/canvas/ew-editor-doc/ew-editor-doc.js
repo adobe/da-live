@@ -87,7 +87,7 @@ export class EwEditorDoc extends LitElement {
   _emitHtmlChange() {
     const { view } = this._proseContext ?? {};
     if (!view) return;
-    editorHtmlChange.emit(getInstrumentedHTML(view, { keepEmptyParagraphs: true }));
+    editorHtmlChange.emit(getInstrumentedHTML(view));
   }
 
   _emitUndoState() {
@@ -283,12 +283,10 @@ export class EwEditorDoc extends LitElement {
           createExtensionsBridgePlugin(),
           createTrackingPlugin(
             () => {
-              // SET_BODY (layout view/live preview) strips empty paragraphs; the outline's
-              // copy keeps them so an empty node being edited stays visible/selectable.
-              if (this._controllerCtx) updateDocument(this._controllerCtx);
-              const docView = this._proseContext?.view;
-              if (!docView) return;
-              editorHtmlChange.emit(getInstrumentedHTML(docView, { keepEmptyParagraphs: true }));
+              const body = this._controllerCtx
+                ? updateDocument(this._controllerCtx)
+                : getInstrumentedHTML(this._proseContext?.view);
+              if (body) editorHtmlChange.emit(body);
             },
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
