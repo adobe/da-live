@@ -113,6 +113,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     removeCanvasEditors(mountRoot);
     removeNotPermitted(mountRoot);
     header.authorized = true;
+    header.canWrite = true;
     return;
   }
   const ctx = editorCtxFromHashState(state, fullPath);
@@ -125,11 +126,15 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   removeNotPermitted(mountRoot);
+  const canWrite = (session.permissions ?? []).some((p) => p === 'write');
   header.authorized = true;
+  header.canWrite = canWrite;
   const docEl = ensureNxEditorDoc(mountRoot);
   docEl.session = session;
   docEl.ctx = ctx;
-  ensureNxEditorWysiwyg(mountRoot).ctx = ctx;
+  const frameEl = ensureNxEditorWysiwyg(mountRoot);
+  frameEl.canWrite = canWrite;
+  frameEl.ctx = ctx;
   finalizeSplitEditorMountOrder(mountRoot);
   notifyCanvasEditorActive(mountRoot, header.editorView);
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
