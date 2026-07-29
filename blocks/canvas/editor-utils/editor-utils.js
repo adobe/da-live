@@ -253,7 +253,7 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false);
+  let htmlString = prose2aem(editorClone, true, false, true);
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
@@ -303,9 +303,11 @@ function getDefaultContentKind(el) {
   if (tag === 'UL') return { kind: 'list', ordered: false };
   if (tag === 'PRE') return { kind: 'code' };
   if (tag === 'BLOCKQUOTE') return { kind: 'quote' };
-  // a text-less <p> wraps only an image, as does a bare <picture>/<img>;
-  // anything with text is a paragraph
-  return { kind: el.textContent?.trim() ? 'paragraph' : 'image' };
+  if (el.textContent?.trim()) return { kind: 'paragraph' };
+  // A text-less <p> wraps only an image, as does a bare <picture>/<img> — but a text-less
+  // <p> with no image at all is just an empty paragraph, not an image wrapper.
+  if (el.matches?.('img') || el.querySelector?.('img')) return { kind: 'image' };
+  return { kind: 'paragraph' };
 }
 
 export function parseSections(htmlText) {
