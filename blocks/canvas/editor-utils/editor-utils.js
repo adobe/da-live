@@ -284,6 +284,18 @@ function getDefaultContentProseIndex(el, kind) {
   return attr != null ? Number(attr) : undefined;
 }
 
+function firstLineText(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+  return clone.textContent.trim().split('\n')[0].trim();
+}
+
+function getContentSnippet(el, kind) {
+  if (kind === 'list') return firstLineText(el.querySelector(':scope > li') ?? el);
+  if (kind === 'quote') return firstLineText(el.querySelector(':scope > p') ?? el);
+  return firstLineText(el);
+}
+
 function getDefaultContentKind(el) {
   const tag = el.tagName;
   if (/^H[1-6]$/.test(tag)) return { kind: 'heading', level: Number(tag[1]) };
@@ -318,6 +330,7 @@ export function parseSections(htmlText) {
               ...kindInfo,
               proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
               innerText: el.textContent.trim(),
+              snippet: getContentSnippet(el, kindInfo.kind),
             };
           }),
         });

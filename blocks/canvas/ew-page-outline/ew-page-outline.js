@@ -392,7 +392,7 @@ class EwPageOutline extends LitElement {
                   @click=${(e) => { e.stopPropagation(); this._selectProse(child.proseIndex, child.kind); }}>
                 <span class="content-label-stack">
                   <span class="block-name content-label">${contentChildLabel(child)}</span>
-                  ${child.innerText ? html`<span class="content-snippet">${child.innerText}</span>` : nothing}
+                  ${child.snippet ? html`<span class="content-snippet">${child.snippet}</span>` : nothing}
                 </span>
                 ${this._renderDeleteButton(OUTLINE_TYPES.CONTENT, child)}
                 <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
