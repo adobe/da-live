@@ -176,7 +176,9 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
-export function getInstrumentedHTML(view) {
+const EMPTY_PARAGRAPH_MARKER = 'da-canvas-empty-paragraph';
+
+export function getInstrumentedHTML(view, { keepEmptyParagraphs = false } = {}) {
   const editorClone = view.dom.cloneNode(true);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
@@ -188,6 +190,15 @@ export function getInstrumentedHTML(view) {
       try {
         const editableElementStartPos = view.posAtDOM(originalElement, 0);
         clonedElements[index].setAttribute('data-prose-index', editableElementStartPos);
+        // prose2aem strips empty <p> tags on save/publish. Mask truly-empty ones (per the
+        // PM doc itself, not DOM decorations like cursors/gap-cursor) so this copy's <p>
+        // survives serialization for the outline to see and select. Unmasked below.
+        if (keepEmptyParagraphs && originalElement.tagName === 'P') {
+          const node = view.state.doc.resolve(editableElementStartPos).parent;
+          if (node.type.name === 'paragraph' && node.content.size === 0) {
+            clonedElements[index].append(document.createComment(EMPTY_PARAGRAPH_MARKER));
+          }
+        }
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('Could not find position for element:', e);
@@ -253,9 +264,10 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  // keepEmptyParagraphs: an empty <p> being actively edited must survive here so
-  // parseSections/the outline can see and select it; the saved/published HTML still strips it.
-  let htmlString = prose2aem(editorClone, true, false, true);
+  let htmlString = prose2aem(editorClone, true, false);
+  if (keepEmptyParagraphs) {
+    htmlString = htmlString.replaceAll(`<!--${EMPTY_PARAGRAPH_MARKER}-->`, '');
+  }
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
