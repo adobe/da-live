@@ -140,9 +140,14 @@ export class EwEditorDoc extends LitElement {
     const { doc } = view.state;
     if (proseIndex > doc.content.size) return;
 
+    // The dispatch below runs the tracking plugin's onSelectionChange synchronously, which
+    // would otherwise broadcast its own (null, for non-image/table selections) node payload
+    // an instant before the correct one just below overwrites it.
+    this._suppressAutoBroadcast = true;
     if (kind === 'image' && doc.nodeAt(proseIndex)?.type.name === 'image') {
       const sel = NodeSelection.create(doc, proseIndex);
       view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._suppressAutoBroadcast = false;
       this._broadcastSelectedNode(true);
       return;
     }
@@ -154,18 +159,21 @@ export class EwEditorDoc extends LitElement {
     if (nodeStart >= 0 && nodeNames?.includes(doc.nodeAt(nodeStart)?.type.name)) {
       const sel = NodeSelection.create(doc, nodeStart);
       view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._suppressAutoBroadcast = false;
       this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
       return;
     }
 
     const sel = TextSelection.near(doc.resolve(proseIndex));
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+    this._suppressAutoBroadcast = false;
     this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
   }
 
   // overrideNode lets content navigation (a TextSelection selectedNodePayload can't
   // classify) broadcast an explicit anchorType/proseIndex instead of a derived one.
   _broadcastSelectedNode(scrollIntoView = false, overrideNode = undefined) {
+    if (this._suppressAutoBroadcast && overrideNode === undefined) return;
     const port = this._controllerCtx?.port;
     const { view } = this._proseContext ?? {};
     if (!port || !view) return;
