@@ -101,32 +101,11 @@ export function getContentItemRange(doc, child) {
   return node ? { pos, size: node.nodeSize, node } : null;
 }
 
-function isContentNode(node, schema) {
-  return node.type.name !== 'table' && node.type !== schema.nodes.horizontal_rule;
-}
-
-function getRunSibling(doc, schema, pos, direction) {
-  const topNodes = [];
-  doc.forEach((node, nodePos) => topNodes.push({ node, pos: nodePos }));
-  const idx = topNodes.findIndex((entry) => entry.pos === pos);
-  if (idx === -1) return null;
-  const sibling = topNodes[idx + direction];
-  if (!sibling || !isContentNode(sibling.node, schema)) return null;
-  return sibling;
-}
-
 export function deleteContentItem(view, child) {
   if (!view) return;
-  const { doc, schema } = view.state;
-  const range = getContentItemRange(doc, child);
+  const range = getContentItemRange(view.state.doc, child);
   if (!range) return;
-
-  const sibling = getRunSibling(doc, schema, range.pos, 1)
-    ?? getRunSibling(doc, schema, range.pos, -1);
-
-  const tr = view.state.tr.delete(range.pos, range.pos + range.size);
-  if (sibling) tr.setSelection(NodeSelection.create(tr.doc, tr.mapping.map(sibling.pos)));
-  view.dispatch(tr);
+  view.dispatch(view.state.tr.delete(range.pos, range.pos + range.size));
 }
 
 function getSectionStartOffset(view, sectionIndex) {

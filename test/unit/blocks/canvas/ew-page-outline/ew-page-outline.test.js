@@ -1,10 +1,14 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { EditorState, EditorView } from 'da-y-wrapper';
+import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
 import { makeRealView } from '../test-helpers.js';
+import { createTrackingPlugin } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
+let editorHtmlChange;
 let editorProseSelectChange;
 let editorSelectChange;
 let getExtensionsBridge;
@@ -13,7 +17,9 @@ let parseSections;
 
 before(async () => {
   await import('../../../../../blocks/canvas/ew-page-outline/ew-page-outline.js');
-  ({ editorProseSelectChange, editorSelectChange, getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+  const editorUtils = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
+  ({ editorHtmlChange, editorProseSelectChange, editorSelectChange } = editorUtils);
+  ({ getInstrumentedHTML, parseSections } = editorUtils);
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
 });
 
@@ -28,6 +34,21 @@ function docSeq(doc) {
   const seq = [];
   doc.forEach((n) => seq.push(n.type.name === 'horizontal_rule' ? 'hr' : n.textContent));
   return seq;
+}
+
+// Unlike makeRealView, wires the real tracking plugin so a delete/insert dispatched
+// through it auto-emits editorHtmlChange exactly like the production editor does —
+// needed to test that a reparse-driven expansion reset/re-expand actually happens.
+function makeTrackedView(json) {
+  const schema = getSchema();
+  const doc = schema.nodeFromJSON(json);
+  const dom = document.createElement('div');
+  document.body.appendChild(dom);
+  let view;
+  const plugins = [createTrackingPlugin(() => editorHtmlChange.emit(getInstrumentedHTML(view)))];
+  const state = EditorState.create({ schema, doc, plugins });
+  view = new EditorView(dom, { state });
+  return view;
 }
 
 async function createOutline() {
@@ -128,7 +149,7 @@ describe('ew-page-outline — expandable default content', () => {
     expect(received).to.deep.equal({ proseIndex: 9, kind: 'image' });
   });
 
-  it('marks a clicked content child as selected, and collapses its run when a block is selected instead', async () => {
+  it('marks a clicked content child as selected, and leaves its run expanded when a block is selected instead', async () => {
     el._sections[0].blocks = [{ name: 'hero', blockIndex: 0 }];
     el.shadowRoot.querySelector('.content-item').click();
     await el.updateComplete;
@@ -143,17 +164,18 @@ describe('ew-page-outline — expandable default content', () => {
     el._select(0);
     await el.updateComplete;
 
-    // Selecting a block resets expansion, collapsing every run — the previously
-    // selected child is no longer rendered at all, not just unmarked as selected.
-    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('false');
-    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(0);
+    // Selecting a block no longer collapses anything — the run stays expanded and its
+    // children stay rendered, just no longer marked selected.
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
+    expect(paragraphChild.classList.contains('selected')).to.be.false;
+    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(5);
   });
 
-  it('highlights a content child when the doc selection (not just an outline click) lands on it, and collapses its run on block selection', async () => {
+  it('highlights a content child when the doc selection (not just an outline click) lands on it, and leaves it expanded on a later block selection', async () => {
     editorSelectChange.emit({ blockIndex: -1, proseIndex: 5, source: 'doc' });
     await el.updateComplete;
 
-    // A content selection expands only the run containing it, with no manual click needed.
+    // A collapsed run expands additively to reveal a new selection, with no manual click needed.
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
     const paragraphChild = [...el.shadowRoot.querySelectorAll('.content-child')][1];
     expect(paragraphChild.classList.contains('selected')).to.be.true;
@@ -161,8 +183,88 @@ describe('ew-page-outline — expandable default content', () => {
     editorSelectChange.emit({ blockIndex: 0, proseIndex: undefined, source: 'doc' });
     await el.updateComplete;
 
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
+    expect(paragraphChild.classList.contains('selected')).to.be.false;
+    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(5);
+  });
+
+  it('expands a run when the selection lands between two of its children, not on one exactly', async () => {
+    // Simulates pressing Enter mid-paragraph: the new empty node has no row of its own
+    // (filtered out of parseSections), but its proseIndex (7) falls between the
+    // surrounding real children (5 and 9), so it should still resolve to their run.
+    editorSelectChange.emit({ blockIndex: -1, proseIndex: 7, source: 'doc' });
+    await el.updateComplete;
+
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
+  });
+
+  it('does not let an unmatched proseIndex leak expansion into a neighboring run', async () => {
+    el._sections = [
+      {
+        sectionIndex: 0,
+        blocks: [],
+        items: [contentGroupItem(1, [
+          { type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'One', snippet: 'One' },
+        ])],
+      },
+      {
+        sectionIndex: 1,
+        blocks: [],
+        items: [contentGroupItem(20, [
+          { type: 'content', kind: 'paragraph', proseIndex: 20, innerText: 'Two', snippet: 'Two' },
+        ])],
+      },
+    ];
+    await el.updateComplete;
+
+    // Group headers only — `.content-item` also matches rendered content-child rows.
+    const headers = () => el.shadowRoot.querySelectorAll('.content-group > .content-item');
+
+    // proseIndex 10 sits after section 0's only child (1) but well before section 1's
+    // (20) — with no next item in section 0 to bound it, it's attributed to section 0's
+    // run (the trailing/unbounded case a fresh Enter-created node at the end lands in).
+    editorSelectChange.emit({ blockIndex: -1, proseIndex: 10, source: 'doc' });
+    await el.updateComplete;
+
+    expect(headers()[0].getAttribute('aria-expanded')).to.equal('true');
+    expect(headers()[1].getAttribute('aria-expanded')).to.equal('false');
+
+    // proseIndex 25, past section 1's only child with nothing after it, resolves there.
+    editorSelectChange.emit({ blockIndex: -1, proseIndex: 25, source: 'doc' });
+    await el.updateComplete;
+
+    expect(headers()[1].getAttribute('aria-expanded')).to.equal('true');
+  });
+
+  it('resets expansion only when a structural edit actually changes the sections', async () => {
+    // Drives _sections through the real editorHtmlChange/parseSections pipeline (rather
+    // than the manual fixture in beforeEach) so re-emitting identical HTML is guaranteed
+    // to parse to a sectionsEqual result.
+    const initialHtml = `<main><div>
+      <h2 data-prose-index="1">Title</h2>
+      <p data-prose-index="5">Para one</p>
+    </div></main>`;
+    editorHtmlChange.emit(initialHtml);
+    await el.updateComplete;
+
+    el.shadowRoot.querySelector('.content-item').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
+
+    editorHtmlChange.emit(initialHtml);
+    await el.updateComplete;
+
+    // Same HTML reparses to an equal section tree — sectionsEqual holds, expansion survives.
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
+
+    const changedHtml = `<main><div>
+      <h2 data-prose-index="1">Title</h2>
+    </div></main>`;
+    editorHtmlChange.emit(changedHtml);
+    await el.updateComplete;
+
+    // Structural change (a child removed) — sectionsEqual fails, expansion resets.
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('false');
-    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(0);
   });
 
   it('expands and collapses the focused group header with ArrowRight/ArrowLeft', async () => {
@@ -217,6 +319,31 @@ describe('ew-page-outline — content drag & delete', () => {
     el.shadowRoot.querySelector('.content-child .delete-btn').click();
 
     expect(docSeq(bridge.view.state.doc)).to.deep.equal(['Keep me']);
+  });
+
+  it('keeps a run expanded after deleting one of its children', async () => {
+    bridge.view = makeTrackedView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+      ],
+    });
+
+    editorHtmlChange.emit(getInstrumentedHTML(bridge.view));
+    await el.updateComplete;
+
+    el.shadowRoot.querySelector('.content-item').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
+
+    el.shadowRoot.querySelectorAll('.content-child .delete-btn')[0].click();
+    await el.updateComplete;
+
+    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['B']);
+    // No sibling-select workaround needed — the run survived the reparse-driven reset
+    // because _onDelete re-expands it by array position (see _findRunLocation).
+    expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
   });
 
   it('reorders content children via drop onto another content child', () => {

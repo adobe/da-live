@@ -148,7 +148,7 @@ describe('deleteContentItem', () => {
     expect(view.state.doc.firstChild.textContent).to.equal('Keep me');
   });
 
-  it('selects the next sibling in the same run after deleting a middle child', () => {
+  it('leaves selection to PM\'s own mapping rather than selecting a sibling (matches deleteBlock)', () => {
     const view = makeRealView({
       type: 'doc',
       content: [
@@ -161,44 +161,8 @@ describe('deleteContentItem', () => {
     deleteContentItem(view, child);
 
     const { selection, doc } = view.state;
-    expect(selection).to.be.instanceOf(NodeSelection);
-    expect(selection.node.textContent).to.equal('C');
+    expect(selection).to.not.be.instanceOf(NodeSelection);
     expect(doc.childCount).to.equal(2);
-  });
-
-  it('falls back to the previous sibling when the deleted child was last in its run', () => {
-    const view = makeRealView({
-      type: 'doc',
-      content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
-        { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
-        { type: 'paragraph', content: [{ type: 'text', text: 'C' }] },
-      ],
-    });
-    const child = childrenOf(view).find((c) => c.innerText === 'C');
-    deleteContentItem(view, child);
-
-    const { selection } = view.state;
-    expect(selection).to.be.instanceOf(NodeSelection);
-    expect(selection.node.textContent).to.equal('B');
-  });
-
-  it('never crosses a block boundary to find a sibling to select', () => {
-    const view = makeRealView({
-      type: 'doc',
-      content: [
-        tableJSON('hero'),
-        { type: 'paragraph', content: [{ type: 'text', text: 'Lone para' }] },
-        tableJSON('cards'),
-      ],
-    });
-    const child = childrenOf(view).find((c) => c.innerText === 'Lone para');
-    deleteContentItem(view, child);
-
-    // No same-run sibling exists (blocks on both sides) — nothing gets deliberately
-    // selected, so the neighboring tables are never turned into a NodeSelection.
-    expect(view.state.selection).to.not.be.instanceOf(NodeSelection);
-    expect(view.state.doc.childCount).to.equal(2);
   });
 });
 

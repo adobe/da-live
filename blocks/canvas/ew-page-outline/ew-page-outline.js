@@ -89,7 +89,13 @@ class EwPageOutline extends LitElement {
     this._unsubscribeHtml = editorHtmlChange.subscribe((aemHtml) => {
       if (aemHtml.trim()) {
         const next = parseSections(aemHtml);
-        if (!sectionsEqual(next, this._sections)) this._sections = next;
+        if (!sectionsEqual(next, this._sections)) {
+          this._sections = next;
+          // A structural edit is the only time proseIndex-keyed expansion state can go
+          // stale (positions shift), so this is the one point where it's safe to drop —
+          // selection changes never do (see _expandRunForProse).
+          this._expandedContent = new Set();
+        }
       } else {
         this._sections = undefined;
         this._selectedBlockIndex = undefined;
@@ -101,9 +107,7 @@ class EwPageOutline extends LitElement {
         if (source === 'outline') return;
         this._selectedBlockIndex = blockIndex;
         this._selectedProseIndex = proseIndex;
-        if (blockIndex != null && blockIndex >= 0) this._resetExpansionForBlock();
-        else if (proseIndex != null) this._resetExpansionForProse(proseIndex);
-        else this._resetExpansionForBlock();
+        if (proseIndex != null) this._expandRunForProse(proseIndex);
       });
   }
 
@@ -146,14 +150,13 @@ class EwPageOutline extends LitElement {
   _select(blockIndex) {
     this._selectedBlockIndex = blockIndex;
     this._selectedProseIndex = undefined;
-    this._resetExpansionForBlock();
     editorSelectChange.emit({ blockIndex, source: 'outline' });
   }
 
   _selectProse(proseIndex, kind) {
     this._selectedProseIndex = proseIndex;
     this._selectedBlockIndex = undefined;
-    this._resetExpansionForProse(proseIndex);
+    this._expandRunForProse(proseIndex);
     editorProseSelectChange.emit({ proseIndex, kind });
   }
 
@@ -164,22 +167,30 @@ class EwPageOutline extends LitElement {
     this._expandedContent = next;
   }
 
-  // A block selection collapses every run; a content selection expands only its own
-  // (see _renderContentGroup). Manual toggles (_toggleContentGroup) survive until then.
-  _resetExpansionForBlock() {
-    this._expandedContent = new Set();
-  }
-
-  _resetExpansionForProse(proseIndex) {
+  // Selection never collapses anything — it only ensures the run holding the new
+  // selection is visible, adding it alongside whatever's already expanded. Expansion is
+  // only ever cleared wholesale on a reparse (see the editorHtmlChange subscription).
+  _expandRunForProse(proseIndex) {
     const runKey = this._findRunKeyForProseIndex(proseIndex);
-    this._expandedContent = runKey != null ? new Set([runKey]) : new Set();
+    if (runKey == null) return;
+    this._expandedContent = new Set(this._expandedContent).add(runKey);
   }
 
   _findRunKeyForProseIndex(proseIndex) {
-    for (const sec of this._sections ?? []) {
-      for (const item of sec.items) {
-        if (item.type === 'content' && item.children.some((child) => child.proseIndex === proseIndex)) {
-          return item.proseIndex;
+    const sections = this._sections ?? [];
+    for (const [secIdx, sec] of sections.entries()) {
+      for (const [itemIdx, item] of sec.items.entries()) {
+        if (item.type === 'content') {
+          const hasChild = item.children.some((child) => child.proseIndex === proseIndex);
+          if (hasChild) return item.proseIndex;
+
+          // A node invisible in the outline (e.g. a fresh empty paragraph from pressing
+          // Enter) still belongs to this run if its position falls between the run's own
+          // start and whatever comes next — the next item in this section, the next
+          // section's first item, or unbounded if this is the very last item overall.
+          const nextItem = sec.items[itemIdx + 1] ?? sections[secIdx + 1]?.items[0];
+          const upperBound = nextItem ? nextItem.proseIndex : Infinity;
+          if (proseIndex >= item.proseIndex && proseIndex < upperBound) return item.proseIndex;
         }
       }
     }
@@ -362,6 +373,19 @@ class EwPageOutline extends LitElement {
     openBlockLibraryModal({ onInsert });
   }
 
+  // Array position (not proseIndex) of the run holding this child, so a delete can find
+  // it again afterward without comparing positions across the edit (see _onDelete).
+  _findRunLocation(proseIndex) {
+    for (const [sectionIndex, sec] of (this._sections ?? []).entries()) {
+      const itemIndex = sec.items.findIndex(
+        (item) => item.type === 'content'
+          && item.children.some((child) => child.proseIndex === proseIndex),
+      );
+      if (itemIndex !== -1) return { sectionIndex, itemIndex };
+    }
+    return undefined;
+  }
+
   _onDelete(e, type, index) {
     e.stopPropagation();
     e.preventDefault();
@@ -370,7 +394,13 @@ class EwPageOutline extends LitElement {
     if (type === OUTLINE_TYPES.BLOCK) {
       deleteBlock(view, index);
     } else if (type === OUTLINE_TYPES.CONTENT) {
+      const location = this._findRunLocation(index.proseIndex);
       deleteContentItem(view, index);
+      // A content-child delete never reorders/merges runs, only shrinks or removes the
+      // deleted-from one — so the same array position still identifies it, if it survived.
+      const survivingRun = location
+        && this._sections?.[location.sectionIndex]?.items[location.itemIndex];
+      if (survivingRun?.type === 'content') this._expandRunForProse(survivingRun.proseIndex);
     } else {
       deleteSection(view, index);
     }
