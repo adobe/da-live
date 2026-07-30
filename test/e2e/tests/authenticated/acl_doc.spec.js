@@ -35,7 +35,7 @@ test('Read-only document directly configured', async ({ page }, workerInfo) => {
   // check the lock icon
   const h1 = page.locator('h1');
   const h1Before = await h1.evaluate((element) => window.getComputedStyle(element, ':before'));
-  expect(h1Before.backgroundImage).toContain('LockClosed');
+  expect(h1Before.backgroundImage).toContain('S2_Icon_Lock_20_N');
 });
 
 test('Read-only document indirectly configured', async ({ page }, workerInfo) => {
@@ -60,7 +60,7 @@ test('Read-only document indirectly configured', async ({ page }, workerInfo) =>
   // check the lock icon
   const h1 = page.locator('h1');
   const h1Before = await h1.evaluate((element) => window.getComputedStyle(element, ':before'));
-  expect(h1Before.backgroundImage).toContain('LockClosed');
+  expect(h1Before.backgroundImage).toContain('S2_Icon_Lock_20_N');
 });
 
 test('Read-write document', async ({ page }, workerInfo) => {
@@ -81,7 +81,7 @@ test('Read-write document', async ({ page }, workerInfo) => {
   // check the lock icon
   const h1 = page.locator('h1');
   const h1Before = await h1.evaluate((element) => window.getComputedStyle(element, ':before'));
-  expect(h1Before.backgroundImage).not.toContain('LockClosed');
+  expect(h1Before.backgroundImage).not.toContain('S2_Icon_Lock_20_N');
 });
 
 test('No access at all', async ({ page }) => {

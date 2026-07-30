@@ -15,6 +15,7 @@ import {
   sanitizeName,
   fetchDaConfigs,
   getAuthToken,
+  isValidHref,
 } from '../../../../blocks/shared/utils.js';
 
 // daFetch's 401-no-token path lazy-loads the banner module, which resolves
@@ -745,6 +746,46 @@ describe('aemAction', () => {
 
     const result = await aemAction('/org/site/doc', 'publish', { onScheduled: async () => false });
     expect(result.cancelled).to.be.true;
+  });
+});
+
+describe('isValidHref', () => {
+  it('Accepts a root-relative path', () => {
+    expect(isValidHref('/foo/bar')).to.be.true;
+  });
+
+  it('Accepts an https URL', () => {
+    expect(isValidHref('https://example.com/foo')).to.be.true;
+  });
+
+  it('Rejects an http URL', () => {
+    expect(isValidHref('http://example.com/foo')).to.be.false;
+  });
+
+  it('Rejects a javascript: URL', () => {
+    expect(isValidHref(`${'javascript'}:alert(1)`)).to.be.false;
+  });
+
+  it('Rejects a data: URL', () => {
+    expect(isValidHref('data:text/html,<script>alert(1)</script>')).to.be.false;
+  });
+
+  it('Rejects a protocol-relative URL', () => {
+    expect(isValidHref('//evil.example.com')).to.be.false;
+  });
+
+  it('Rejects a bare host with no scheme or leading slash', () => {
+    expect(isValidHref('evil.example.com')).to.be.false;
+  });
+
+  it('Rejects an empty string', () => {
+    expect(isValidHref('')).to.be.false;
+  });
+
+  it('Rejects non-string input', () => {
+    expect(isValidHref(undefined)).to.be.false;
+    expect(isValidHref(null)).to.be.false;
+    expect(isValidHref({})).to.be.false;
   });
 });
 
