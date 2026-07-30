@@ -29,6 +29,10 @@ You will want to point your local to stage admin & collab or run these services 
 2. Local - `localhost:3000/?da-admin=local&da-collab=local`
 3. Reset - `localhost:3000/?da-admin=reset&da-collab=reset`
 
+#### NX
+
+In order to also use the local `nx` scripts, run `npm run local` in the `da-nx` checkout and then enable it via: `localhost:3000/?nx=local`
+
 **Note:** these values will persist in local storage until you reset them.
 
 ### Edge Delivery
