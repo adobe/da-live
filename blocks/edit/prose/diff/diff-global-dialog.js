@@ -149,14 +149,15 @@ function createGlobalAction(
 
 function createGlobalOverlay(activeViews, isLocNode) {
   const dialog = createElement('div', 'da-regional-edits-overlay');
+  const actionsContainer = createElement('div', 'da-regional-edits-actions');
+
   const labels = getDiffLabels();
 
-  const actionsContainer = createElement('div', 'da-regional-edits-actions');
   const localButton = createGlobalAction('local', `Keep All ${labels.local}`, KEEP_LOCAL, `Accept All ${labels.local}`, activeViews, isLocNode);
   const upstreamButton = createGlobalAction('upstream', `Keep All ${labels.upstream}`, KEEP_UPSTREAM, `Accept All ${labels.upstream}`, activeViews, isLocNode);
+
   actionsContainer.appendChild(localButton);
   actionsContainer.appendChild(upstreamButton);
-
   dialog.appendChild(actionsContainer);
 
   return dialog;
