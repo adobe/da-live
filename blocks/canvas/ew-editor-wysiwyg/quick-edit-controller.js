@@ -10,9 +10,13 @@ import {
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
+const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
+
 export function createControllerOnMessage(ctx) {
   return function onMessage(e) {
     const { type, payload = {} } = e.data ?? {};
+
+    if (MUTATING_MESSAGES.has(type) && !ctx.canWrite) return;
 
     if (type === MESSAGE_TYPES.CURSOR_MOVE) {
       handleCursorMove(payload, ctx);
