@@ -4,6 +4,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { getSelectionToolbar } from './selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -366,73 +367,29 @@ export function parseSections(htmlText) {
   });
 }
 
-// State observable — replays last value on subscribe. See docs/canvas-events.md.
-export const editorHtmlChange = (() => {
-  const listeners = new Set();
-  let currentHtml = '';
-  return {
-    emit(html) {
-      currentHtml = html;
-      listeners.forEach((fn) => fn(html));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      if (currentHtml) fn(currentHtml);
-      return () => listeners.delete(fn);
-    },
-  };
-})();
-
-// Event observable — no replay on subscribe. See docs/canvas-events.md.
-// emit() enriches the detail with blockName/proseIndex/innerText from the last parsed HTML.
-export const editorSelectChange = (() => {
-  const listeners = new Set();
-  let blockMeta = new Map();
-
-  editorHtmlChange.subscribe((html) => {
-    if (!html.trim()) {
-      blockMeta = new Map();
-      return;
+let selectBlockMeta = new Map();
+canvasBus.editorHtmlState.subscribe((html) => {
+  if (!html.trim()) {
+    selectBlockMeta = new Map();
+    return;
+  }
+  const next = new Map();
+  for (const { blocks } of parseSections(html)) {
+    for (const { name, blockIndex, proseIndex, innerText } of blocks) {
+      next.set(blockIndex, { name, proseIndex, innerText });
     }
-    const next = new Map();
-    for (const { blocks } of parseSections(html)) {
-      for (const { name, blockIndex, proseIndex, innerText } of blocks) {
-        next.set(blockIndex, { name, proseIndex, innerText });
-      }
-    }
-    blockMeta = next;
-  });
+  }
+  selectBlockMeta = next;
+});
 
-  return {
-    emit(detail) {
-      const meta = blockMeta.get(detail.blockIndex);
-      const { name: blockName, proseIndex, innerText } = meta || {};
-      const enriched = meta
-        ? { ...detail, blockName, proseIndex, innerText }
-        : detail;
-      listeners.forEach((fn) => fn(enriched));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
-    },
-  };
-})();
-
-// Event observable — no replay on subscribe. See docs/canvas-events.md.
-// Carries a raw ProseMirror position, not a block index, for the outline's default-content entries.
-export const editorProseSelectChange = (() => {
-  const listeners = new Set();
-  return {
-    emit(detail) {
-      listeners.forEach((fn) => fn(detail));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
-    },
-  };
-})();
+export function emitEditorSelectState(detail) {
+  const meta = selectBlockMeta.get(detail.blockIndex);
+  const { name: blockName, proseIndex, innerText } = meta || {};
+  const enriched = meta
+    ? { ...detail, blockName, proseIndex, innerText }
+    : detail;
+  canvasBus.editorSelectState.emit(enriched);
+}
 
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;

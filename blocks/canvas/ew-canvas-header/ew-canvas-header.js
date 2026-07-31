@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT, getSectionAtPosition } = await import(`${getNx()}/utils/panel.js`);
@@ -73,27 +74,17 @@ class EWCanvasHeader extends LitElement {
   }
 
   _undo() {
-    this.dispatchEvent(
-      new CustomEvent('nx-canvas-undo', { bubbles: true, composed: true }),
-    );
+    canvasBus.undoRequest.emit();
   }
 
   _redo() {
-    this.dispatchEvent(
-      new CustomEvent('nx-canvas-redo', { bubbles: true, composed: true }),
-    );
+    canvasBus.redoRequest.emit();
   }
 
   _setEditorView(view) {
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
     this.editorView = view;
-    this.dispatchEvent(
-      new CustomEvent('nx-canvas-editor-view', {
-        bubbles: true,
-        composed: true,
-        detail: { view },
-      }),
-    );
+    canvasBus.editorViewRequest.emit({ view });
   }
 
   _renderIcon(name) {

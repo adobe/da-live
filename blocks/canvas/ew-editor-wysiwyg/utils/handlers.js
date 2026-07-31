@@ -5,6 +5,7 @@ import {
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
+import { canvasBus } from '../../utils/canvas-bus.js';
 
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
@@ -57,9 +58,9 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     }
 
     ctx.suppressRerender = true;
-    // dispatch() already triggers createTrackingPlugin's hook, which emits editorSelectChange
-    // with the full payload (incl. proseIndex) — a second, blockIndex-only emit here would
-    // clobber that and collapse the outline.
+    // dispatch() already triggers createTrackingPlugin's hook, which emits
+    // canvasBus.editorSelectState with the full payload (incl. proseIndex) — a second,
+    // blockIndex-only emit here would clobber that and collapse the outline.
     view.dispatch(tr.scrollIntoView());
     ctx.suppressRerender = false;
     const tb = getSelectionToolbar();
@@ -93,7 +94,7 @@ export function handleUndoRedo(data, ctx) {
 }
 
 export function handleNewVersion() {
-  document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
+  canvasBus.newVersionRequest.emit();
 }
 
 export function handleStoredMarks({ marks }, ctx) {
