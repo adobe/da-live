@@ -33,6 +33,11 @@ module.exports = defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    /* Failure-only artifacts: now that runs clean up their own test data (see
+       utils/fixtures.js), these are the debugging record instead of kept-around
+       server files. */
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
 
   /* Configure projects for major browsers */
