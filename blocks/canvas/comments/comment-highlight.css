@@ -1,0 +1,69 @@
+/* stylelint-disable selector-class-pattern */
+
+.da-prose-mirror {
+  --comment-highlight-bg: light-dark(#fbf198, rgb(255 200 50 / 0.24));
+  --comment-highlight-bg-active: light-dark(#f8d904, rgb(255 220 90 / 0.38));
+  --comment-highlight-border: light-dark(#f8d904, rgb(255 210 70 / 0.9));
+  --comment-highlight-border-active: light-dark(#e8c600, rgb(255 238 130));
+  --comment-pending-bg: light-dark(#ffe9fc, rgb(236 130 210 / 0.22));
+  --comment-pending-border: light-dark(#ed74ed, rgb(244 170 225 / 0.95));
+}
+
+@media (prefers-color-scheme: dark) {
+  .ew-comment-highlight:not(.ew-comment-highlight-pending):not(img):not(:has(> img)) {
+    background-color: color-mix(in srgb, var(--ew-comment-bg) 58%, transparent);
+  }
+
+  .ew-comment-highlight-active:not(.ew-comment-highlight-pending):not(img):not(:has(> img)) {
+    background-color: color-mix(in srgb, var(--ew-comment-bg) 72%, transparent);
+  }
+}
+
+.ew-comment-highlight {
+  --ew-comment-bg: var(--comment-highlight-bg);
+  --ew-comment-border-color: var(--comment-highlight-border);
+  --ew-comment-border-style: solid;
+
+  background-color: var(--ew-comment-bg);
+  border-bottom: 2px var(--ew-comment-border-style) var(--ew-comment-border-color);
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+
+  &:has(> img) {
+    padding: 6px;
+  }
+}
+
+.ew-comment-highlight-active {
+  --ew-comment-bg: var(--comment-highlight-bg-active);
+  --ew-comment-border-color: var(--comment-highlight-border-active);
+}
+
+.ew-comment-highlight-pending {
+  --ew-comment-bg: var(--comment-pending-bg);
+  --ew-comment-border-color: var(--comment-pending-border);
+  --ew-comment-border-style: dashed;
+}
+
+/* Per-author strong (weight 700) color at 20% opacity, per Spectrum spec. Pending
+   keeps its own theme. */
+.ew-comment-highlight.ew-comment-authored:not(.ew-comment-highlight-pending) {
+  --ew-comment-bg: color-mix(in srgb, var(--ew-comment-author-color) 20%, transparent);
+  --ew-comment-border-color: var(--ew-comment-author-color);
+}
+
+.ew-comment-highlight.ew-comment-authored.ew-comment-highlight-active {
+  --ew-comment-bg: color-mix(in srgb, var(--ew-comment-author-color) 35%, transparent);
+}
+
+.ProseMirror .ew-comment-highlight tr:first-child td,
+.ProseMirror .ew-comment-highlight tr:first-child th {
+  background-color: var(--ew-comment-bg);
+}
+
+img.ew-comment-highlight {
+  pointer-events: auto;
+  box-shadow:
+    0 0 0 6px var(--ew-comment-bg),
+    0 2px 0 6px var(--ew-comment-border-color);
+}
