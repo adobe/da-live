@@ -304,7 +304,7 @@ describe('getItemPreviewUrl', () => {
 });
 
 describe('buildIsolatedPreviewHtml', () => {
-  it('wraps rawDom in a document with a base href and the given head', () => {
+  it('wraps a single block in one extra section div, directly under main', () => {
     const rawDom = document.createElement('div');
     rawDom.className = 'hero';
     rawDom.innerHTML = '<div><div>content</div></div>';
@@ -315,9 +315,37 @@ describe('buildIsolatedPreviewHtml', () => {
     });
     expect(html).to.contain('<base href="https://main--site--org.aem.page/">');
     expect(html).to.contain('/styles/styles.css');
-    expect(html).to.contain('class="hero"');
     expect(html).to.contain('<header></header>');
     expect(html).to.contain('<footer></footer>');
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const main = doc.querySelector('main');
+    // decorateSections() only recognizes main's own direct children as
+    // sections, so the block itself must sit one level deeper.
+    expect(main.children).to.have.lengthOf(1);
+    expect(main.firstElementChild.tagName).to.equal('DIV');
+    expect(main.firstElementChild.firstElementChild.className).to.equal('hero');
+  });
+
+  it('unwraps a group so each of its blocks sits directly in the section, not nested under the group container', () => {
+    const rawDom = document.createElement('div');
+    rawDom.dataset.isgroup = 'true';
+    const blockA = document.createElement('div');
+    blockA.className = 'hero';
+    const blockB = document.createElement('div');
+    blockB.className = 'cards';
+    rawDom.append(blockA, blockB);
+
+    const html = buildIsolatedPreviewHtml({
+      rawDom,
+      headHtml: '',
+      origin: 'https://main--site--org.aem.page',
+    });
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const section = doc.querySelector('main > div');
+    expect(section.children).to.have.lengthOf(2);
+    expect(section.children[0].className).to.equal('hero');
+    expect(section.children[1].className).to.equal('cards');
   });
 });
 

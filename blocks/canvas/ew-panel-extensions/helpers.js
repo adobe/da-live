@@ -521,10 +521,19 @@ export function resetSiteHeadCache() {
  * decoration scripts still run on just this block. Empty header/footer are
  * included defensively since boilerplate scripts often query for them
  * unconditionally.
+ *
+ * The block is wrapped in one extra `<div>` representing a page "section":
+ * AEM boilerplate's decorateSections() only recognizes `main`'s own direct
+ * children as sections (and itself adds the next wrapper level down before
+ * decorateBlocks()'s `div.section > div > div` selector can find the block),
+ * so without this wrapper nothing gets decorated or its JS/CSS loaded. For a
+ * group, rawDom itself is just an unnamed container — its children (which may
+ * include multiple named blocks) are what belong directly in the section.
  */
 export function buildIsolatedPreviewHtml({ rawDom, headHtml, origin }) {
+  const sectionInnerHtml = rawDom.dataset.isgroup ? rawDom.innerHTML : rawDom.outerHTML;
   return `<!doctype html><html><head><base href="${origin}/">${headHtml}</head>`
-    + `<body><header></header><main>${rawDom.outerHTML}</main><footer></footer></body></html>`;
+    + `<body><header></header><main><div>${sectionInnerHtml}</div></main><footer></footer></body></html>`;
 }
 
 /**
