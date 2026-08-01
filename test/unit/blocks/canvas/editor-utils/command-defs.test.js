@@ -12,6 +12,18 @@ let resetBlockLibrary;
 let ensureBlockLibrary;
 let checkBlockLibraryConfigured;
 let resetBlockLibraryCache;
+let savedFetch;
+
+before(() => {
+  // No blocks library is configured in these tests; stub the config fetch so the
+  // shared loader resolves to "no extensions" without hitting the network.
+  savedFetch = window.fetch;
+  window.fetch = async (url, opts) => (String(url).includes('/config/')
+    ? { ok: true, json: async () => ({}) }
+    : savedFetch(url, opts));
+});
+
+after(() => { window.fetch = savedFetch; });
 
 before(async () => {
   const cmd = await import('../../../../../blocks/canvas/editor-utils/command-defs.js');
@@ -23,7 +35,7 @@ before(async () => {
   resetBlockLibrary = bs.resetBlockLibrary;
   ensureBlockLibrary = bs.ensureBlockLibrary;
   checkBlockLibraryConfigured = bs.checkBlockLibraryConfigured;
-  ({ resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
+  ({ resetBlockLibraryCache } = await import('../../../../../blocks/shared/block-library.js'));
 });
 
 afterEach(() => {
@@ -98,8 +110,8 @@ describe('slashMenuItemsForQuery', () => {
   });
 
   it('shows static commands immediately and a loading hint while the library fetches', async () => {
-    // ensureBlockLibrary flips the store to "loading" synchronously; the fixture
-    // then settles it empty. During loading, "/h" should still offer headings.
+    // ensureBlockLibrary flips the store to "loading" synchronously; the stubbed
+    // config fetch then settles it empty. During loading, "/h" should still offer headings.
     const pending = ensureBlockLibrary({ org: 'someorg', site: 'somesite' });
     const items = slashMenuItemsForQuery('h');
     expect(sections(items)).to.include('Loading blocks…');

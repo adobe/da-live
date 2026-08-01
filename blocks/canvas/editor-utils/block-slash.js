@@ -109,7 +109,7 @@ export function checkBlockLibraryConfigured({ org, site } = {}) {
   }
   return (async () => {
     try {
-      const { getBlocksExtension } = await import('../ew-panel-extensions/helpers.js');
+      const { getBlocksExtension } = await import('../../shared/block-library.js');
       store.hasLibrary = !!(await getBlocksExtension(org, site));
     } catch {
       store.hasLibrary = false;
@@ -138,7 +138,7 @@ export function ensureBlockLibrary({ org, site } = {}) {
   store.state = 'loading';
   return (async () => {
     try {
-      const { loadBlockLibrary } = await import('../ew-panel-extensions/helpers.js');
+      const { loadBlockLibrary } = await import('../../shared/block-library.js');
       const { ext, blocks } = await loadBlockLibrary(org, site);
       if (!ext) {
         store.entries = [];
