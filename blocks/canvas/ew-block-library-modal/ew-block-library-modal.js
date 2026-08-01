@@ -43,7 +43,6 @@ class EwBlockLibraryModal extends LitElement {
     _blocks: { state: true },
     _variantsByPath: { state: true },
     _expandedPath: { state: true },
-    _selectedPath: { state: true },
     _previewInfo: { state: true },
     _previewedVariant: { state: true },
     _hashState: { state: true },
@@ -134,7 +133,6 @@ class EwBlockLibraryModal extends LitElement {
   async _selectBlock(block) {
     const willExpand = this._expandedPath !== block.path;
     this._expandedPath = willExpand ? block.path : null;
-    this._selectedPath = block.path;
 
     if (!willExpand) {
       this._previewedVariant = null;
@@ -197,14 +195,13 @@ class EwBlockLibraryModal extends LitElement {
 
   _renderBlockNode(block) {
     const expanded = this._isExpanded(block);
-    const selected = this._selectedPath === block.path;
     const variants = this._variantsByPath.has(block.path)
       ? this._filteredVariants(block)
       : undefined;
     return html`
       <li class="modal-tree-block" role="treeitem" aria-expanded=${expanded}>
         <button type="button"
-                class="modal-tree-row ${selected ? 'is-selected' : ''}"
+                class="modal-tree-row ${expanded ? 'is-expanded' : ''}"
                 @click=${() => this._selectBlock(block)}>
           <svg aria-hidden="true" class="modal-tree-caret ${expanded ? 'is-expanded' : ''}"
                viewBox="0 0 20 20">
@@ -235,9 +232,9 @@ class EwBlockLibraryModal extends LitElement {
     const selected = this._previewedVariant === v;
     return html`
       <li role="treeitem">
-        <div class="modal-tree-variant-row">
+        <div class="modal-tree-variant-row ${selected ? 'is-selected' : ''}">
           <button type="button"
-                  class="modal-tree-row modal-tree-row-variant ${selected ? 'is-selected' : ''}"
+                  class="modal-tree-row modal-tree-row-variant"
                   aria-label="Preview ${v.name}"
                   @click=${() => this._loadPreview(block, v)}>
             <span class="modal-tree-label">
