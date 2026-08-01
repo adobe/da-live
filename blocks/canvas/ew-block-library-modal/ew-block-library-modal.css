@@ -168,8 +168,9 @@
   background: light-dark(var(--s2-gray-100), var(--s2-gray-700));
 }
 
-.modal-tree-row.is-expanded .modal-tree-label {
-  font-weight: 600;
+.modal-tree-row.is-selected {
+  background: light-dark(var(--s2-blue-100), var(--s2-blue-900));
+  color: light-dark(var(--s2-blue-900), var(--s2-blue-100));
 }
 
 .modal-tree-row-variant {

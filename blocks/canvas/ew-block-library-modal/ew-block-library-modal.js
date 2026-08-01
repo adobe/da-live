@@ -43,6 +43,7 @@ class EwBlockLibraryModal extends LitElement {
     _blocks: { state: true },
     _variantsByPath: { state: true },
     _expandedPath: { state: true },
+    _selectedPath: { state: true },
     _previewInfo: { state: true },
     _hashState: { state: true },
     _search: { state: true },
@@ -138,6 +139,7 @@ class EwBlockLibraryModal extends LitElement {
       next.set(block.path, variants ?? []);
       this._variantsByPath = next;
     }
+    this._selectedPath = block.path;
     this._loadPreview(block);
   }
 
@@ -169,13 +171,14 @@ class EwBlockLibraryModal extends LitElement {
 
   _renderBlockNode(block) {
     const expanded = this._isExpanded(block);
+    const selected = this._selectedPath === block.path;
     const variants = this._variantsByPath.has(block.path)
       ? this._filteredVariants(block)
       : undefined;
     return html`
       <li class="modal-tree-block" role="treeitem" aria-expanded=${expanded}>
         <button type="button"
-                class="modal-tree-row ${expanded ? 'is-expanded' : ''}"
+                class="modal-tree-row ${selected ? 'is-selected' : ''}"
                 @click=${() => this._selectBlock(block)}>
           <svg aria-hidden="true" class="modal-tree-caret ${expanded ? 'is-expanded' : ''}"
                viewBox="0 0 20 20">
