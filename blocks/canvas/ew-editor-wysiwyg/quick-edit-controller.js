@@ -10,6 +10,8 @@ import {
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
+const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
+
 export function createControllerOnMessage(ctx) {
   return function onMessage(e) {
     // @deprecated flat fields alongside `type` — prefer nesting under `payload`.
@@ -17,6 +19,8 @@ export function createControllerOnMessage(ctx) {
     // which shape the quick-edit iframe script (da-nx) sends.
     // todo: cleanup once nx side is updated
     const data = e.data?.payload ? { ...e.data, ...e.data.payload } : e.data;
+
+    if (MUTATING_MESSAGES.has(data.type) && !ctx.canWrite) return;
 
     if (data.type === MESSAGE_TYPES.CURSOR_MOVE) {
       handleCursorMove(data, ctx);

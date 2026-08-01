@@ -30,7 +30,7 @@
   background: none;
   color: light-dark(var(--s2-gray-900), var(--s2-gray-800));
   font-family: inherit;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-menu-font-size, var(--s2-body-size-s));
   font-weight: 500;
   line-height: var(--s2-body-line-height, 1.5);
   text-align: left;

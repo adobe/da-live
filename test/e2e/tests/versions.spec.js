@@ -9,15 +9,17 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../utils/fixtures.js';
 import { getTestPageURL, fill, TEST_SITE } from '../utils/page.js';
 
-test('Create Version and Restore from it', async ({ page }, workerInfo) => {
+test('Create Version and Restore from it', async ({ page, trackCleanup }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
   test.setTimeout(60000);
 
-  await page.goto(getTestPageURL('versions', workerInfo));
+  const url = getTestPageURL('versions', workerInfo);
+  trackCleanup(url);
+  await page.goto(url);
   await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
