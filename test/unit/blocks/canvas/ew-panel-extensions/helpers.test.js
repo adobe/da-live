@@ -6,18 +6,12 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 let getBlockVariants;
 let extensionToPanelView;
 let getItemPreviewUrl;
-let buildIsolatedPreviewHtml;
-let getIsolatedPreviewHtml;
-let resetSiteHeadCache;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
   getItemPreviewUrl = mod.getItemPreviewUrl;
-  buildIsolatedPreviewHtml = mod.buildIsolatedPreviewHtml;
-  getIsolatedPreviewHtml = mod.getIsolatedPreviewHtml;
-  resetSiteHeadCache = mod.resetSiteHeadCache;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -258,33 +252,6 @@ describe('EW panel helpers transformBlock', () => {
     const variants = await getBlockVariants('/mock-path');
     expect(variants[0].name).to.equal('Custom Name');
   });
-
-  it('item.rawDom matches the metadata-stripped content for a single block', async () => {
-    mockHtml(`
-      <body><div>
-        <div class="hero"><div><div>content</div></div></div>
-        <div class="library-metadata"><div><div>searchtags</div><div>hero, card</div></div></div>
-      </div></body>
-    `);
-    const variants = await getBlockVariants('/mock-path');
-    expect(variants[0].rawDom.querySelector('.library-metadata')).to.be.null;
-    expect(variants[0].rawDom.className).to.contain('hero');
-  });
-
-  it('item.rawDom matches the metadata-stripped content for a group', async () => {
-    mockHtml(`
-      <body><div>
-        <h2>My Group</h2>
-        <div class="library-container-start"></div>
-        <div class="hero"><div><div>content</div></div></div>
-        <div class="library-container-end"></div>
-        <div class="library-metadata"><div><div>searchtags</div><div>group, hero</div></div></div>
-      </div></body>
-    `);
-    const variants = await getBlockVariants('/mock-path');
-    expect(variants[0].rawDom.querySelector('.library-metadata')).to.be.null;
-    expect(variants[0].rawDom.querySelector('.hero')).to.not.be.null;
-  });
 });
 
 describe('getItemPreviewUrl', () => {
@@ -300,89 +267,6 @@ describe('getItemPreviewUrl', () => {
     expect(details.previewUrl).to.not.contain('.aem.page');
     expect(details.previewUrl).to.contain('main--library--acme.');
     expect(details.previewUrl).to.contain('/blocks/hero');
-  });
-});
-
-describe('buildIsolatedPreviewHtml', () => {
-  it('wraps a single block in one extra section div, directly under main', () => {
-    const rawDom = document.createElement('div');
-    rawDom.className = 'hero';
-    rawDom.innerHTML = '<div><div>content</div></div>';
-    const html = buildIsolatedPreviewHtml({
-      rawDom,
-      headHtml: '<link rel="stylesheet" href="/styles/styles.css">',
-      origin: 'https://main--site--org.aem.page',
-    });
-    expect(html).to.contain('<base href="https://main--site--org.aem.page/">');
-    expect(html).to.contain('/styles/styles.css');
-    expect(html).to.contain('<header></header>');
-    expect(html).to.contain('<footer></footer>');
-
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const main = doc.querySelector('main');
-    // decorateSections() only recognizes main's own direct children as
-    // sections, so the block itself must sit one level deeper.
-    expect(main.children).to.have.lengthOf(1);
-    expect(main.firstElementChild.tagName).to.equal('DIV');
-    expect(main.firstElementChild.firstElementChild.className).to.equal('hero');
-  });
-
-  it('unwraps a group so each of its blocks sits directly in the section, not nested under the group container', () => {
-    const rawDom = document.createElement('div');
-    rawDom.dataset.isgroup = 'true';
-    const blockA = document.createElement('div');
-    blockA.className = 'hero';
-    const blockB = document.createElement('div');
-    blockB.className = 'cards';
-    rawDom.append(blockA, blockB);
-
-    const html = buildIsolatedPreviewHtml({
-      rawDom,
-      headHtml: '',
-      origin: 'https://main--site--org.aem.page',
-    });
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    const section = doc.querySelector('main > div');
-    expect(section.children).to.have.lengthOf(2);
-    expect(section.children[0].className).to.equal('hero');
-    expect(section.children[1].className).to.equal('cards');
-  });
-});
-
-describe('getIsolatedPreviewHtml', () => {
-  let savedFetch;
-  beforeEach(() => {
-    savedFetch = window.fetch;
-    resetSiteHeadCache();
-  });
-  afterEach(() => { window.fetch = savedFetch; });
-
-  it('builds isolated preview html using the fetched page head', async () => {
-    window.fetch = () => Promise.resolve(new Response(
-      '<html><head><link rel="stylesheet" href="/styles/styles.css"></head><body></body></html>',
-      { status: 200 },
-    ));
-    const rawDom = document.createElement('div');
-    rawDom.className = 'hero';
-    const previewDetails = { previewUrl: 'https://main--site--org.preview.da.live/some-page', org: 'org', site: 'site' };
-    const html = await getIsolatedPreviewHtml({ rawDom }, previewDetails);
-    expect(html).to.contain('/styles/styles.css');
-    expect(html).to.contain('class="hero"');
-    expect(html).to.contain('<base href="https://main--site--org.preview.da.live/">');
-  });
-
-  it('returns null when the item has no rawDom', async () => {
-    const previewDetails = { previewUrl: 'https://main--site--org.preview.da.live/some-page', org: 'org', site: 'site' };
-    const html = await getIsolatedPreviewHtml({}, previewDetails);
-    expect(html).to.be.null;
-  });
-
-  it('returns null when the head fetch fails', async () => {
-    window.fetch = () => Promise.resolve(new Response('error', { status: 500 }));
-    const rawDom = document.createElement('div');
-    const previewDetails = { previewUrl: 'https://main--other--org2.preview.da.live/some-page', org: 'org2', site: 'other' };
-    const html = await getIsolatedPreviewHtml({ rawDom }, previewDetails);
-    expect(html).to.be.null;
   });
 });
 

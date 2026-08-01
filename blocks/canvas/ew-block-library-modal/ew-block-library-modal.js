@@ -4,7 +4,7 @@ import {
   loadBlockLibrary,
   getItemPreviewUrl,
   getPreviewStatus,
-  getIsolatedPreviewHtml,
+  ensurePreviewCookie,
 } from '../ew-panel-extensions/helpers.js';
 
 const nx = getNx();
@@ -44,7 +44,6 @@ class EwBlockLibraryModal extends LitElement {
     _variantsByPath: { state: true },
     _expandedPath: { state: true },
     _previewInfo: { state: true },
-    _previewedVariant: { state: true },
     _hashState: { state: true },
     _search: { state: true },
     _openDescriptions: { state: true },
@@ -133,58 +132,33 @@ class EwBlockLibraryModal extends LitElement {
   async _selectBlock(block) {
     const willExpand = this._expandedPath !== block.path;
     this._expandedPath = willExpand ? block.path : null;
-
-    if (!willExpand) {
-      this._previewedVariant = null;
-      this._previewInfo = null;
-      return;
-    }
-
-    let variants = this._variantsByPath.get(block.path);
-    if (!variants) {
-      variants = (await block.loadVariants) ?? [];
+    if (willExpand && !this._variantsByPath.has(block.path)) {
+      const variants = await block.loadVariants;
       const next = new Map(this._variantsByPath);
-      next.set(block.path, variants);
+      next.set(block.path, variants ?? []);
       this._variantsByPath = next;
     }
-
-    if (variants.length) {
-      this._loadPreview(block, variants[0]);
-    } else {
-      this._previewedVariant = null;
-      this._previewInfo = null;
-    }
+    this._loadPreview(block);
   }
 
-  // Preview renders only the selected variant's own isolated markup (via
-  // getIsolatedPreviewHtml), not the whole source page it came from.
-  async _loadPreview(block, variant) {
+  async _loadPreview(block) {
     const { org, site } = this._hashState || {};
     if (!org || !site) {
-      this._previewedVariant = null;
       this._previewInfo = null;
       return;
     }
     const details = getItemPreviewUrl(block, { org, site });
     const url = details.previewUrl;
-    this._previewedVariant = variant;
-    this._previewInfo = { name: variant?.name || block.name, ok: undefined, html: null };
-
+    this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
+    await ensurePreviewCookie(details.org, details.site);
     const ok = await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
     });
-    if (this._previewedVariant !== variant) return;
-    if (!ok) {
+    if (this._previewInfo?.url === url) {
       this._previewInfo = { ...this._previewInfo, ok };
-      return;
     }
-
-    // Falls back to a full-page load (via url) if the isolated build fails.
-    const srcdoc = await getIsolatedPreviewHtml(variant, details);
-    if (this._previewedVariant !== variant) return;
-    this._previewInfo = { ...this._previewInfo, ok, html: srcdoc, url };
   }
 
   _addVariant(variant) {
@@ -229,20 +203,16 @@ class EwBlockLibraryModal extends LitElement {
   _renderVariantItem(block, v) {
     const description = v.description?.trim();
     const isOpen = this._openDescriptions.has(v);
-    const selected = this._previewedVariant === v;
     return html`
       <li role="treeitem">
-        <div class="modal-tree-variant-row ${selected ? 'is-selected' : ''}">
-          <button type="button"
-                  class="modal-tree-row modal-tree-row-variant"
-                  aria-label="Preview ${v.name}"
-                  @click=${() => this._loadPreview(block, v)}>
+        <div class="modal-tree-variant-row">
+          <span class="modal-tree-row modal-tree-row-variant">
             <span class="modal-tree-label">
               ${v.name}${v.variants
     ? html` <span class="modal-tree-subtitle">${v.variants}</span>`
     : nothing}
             </span>
-          </button>
+          </span>
           ${description ? html`
             <button type="button"
                     class="modal-tree-info"
@@ -313,20 +283,14 @@ class EwBlockLibraryModal extends LitElement {
         Select a block to see a preview.
       </div>`;
     }
-    const { name, url, ok, html: srcdoc } = this._previewInfo;
-    if (ok === undefined) {
-      return html`<div class="modal-preview-placeholder">Loading preview…</div>`;
-    }
-    if (ok === false) {
-      return html`<div class="modal-preview-error">
-        <p>It appears ${name} has not been previewed.</p>
-      </div>`;
-    }
-    return srcdoc
-      ? html`<iframe class="modal-preview-frame" .srcdoc=${srcdoc}
-              title="Preview of ${name}" allow="clipboard-write *"></iframe>`
-      : html`<iframe class="modal-preview-frame" src=${url}
-              title="Preview of ${name}" allow="clipboard-write *"></iframe>`;
+    const { name, url, ok } = this._previewInfo;
+    const hideIframe = ok === false ? 'hide-iframe' : '';
+    const error = ok === false ? `It appears ${name} has not been previewed.` : '';
+    return html`
+      ${error ? html`<div class="modal-preview-error"><p>${error}</p></div>` : nothing}
+      <iframe class="modal-preview-frame ${hideIframe}" src=${url}
+              title="Preview of ${name}"
+              allow="clipboard-write *"></iframe>`;
   }
 
   render() {

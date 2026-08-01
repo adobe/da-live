@@ -58,11 +58,13 @@ describe('Ew panel library _insertTemplate', () => {
   });
 });
 
-describe('Ew panel library variant preview', () => {
+describe('Ew panel library preview', () => {
   const SOURCE_URL = 'https://example.com/blocks-sheet.json';
   const BLOCK_PATH = 'https://example.com/blocks/hero';
   const STATUS_URL = 'https://admin.hlx.page/status/acme/mysite/main/blocks/hero';
-  // Preview is routed through DA's preview proxy, not raw aem.page (see #1202).
+  // Preview is routed through DA's preview proxy, not raw aem.page — aem.page's
+  // CDN blocks cross-origin fetch of full pages, and this proxy is also the
+  // route to protected-site auth (via the cookie exchange in _openPreview).
   const PREVIEW_URL = `${getPreviewOrigin('acme', 'mysite', 'main')}/blocks/hero`;
 
   let savedFetch;
@@ -91,12 +93,6 @@ describe('Ew panel library variant preview', () => {
           { status: 200 },
         ));
       }
-      if (url === PREVIEW_URL) {
-        return Promise.resolve(new Response(
-          '<html><head><link rel="stylesheet" href="/styles/styles.css"></head><body></body></html>',
-          { status: 200 },
-        ));
-      }
       return Promise.resolve(new Response('', { status: 404 }));
     };
   });
@@ -107,7 +103,7 @@ describe('Ew panel library variant preview', () => {
     hashChange._set({});
   });
 
-  it('scopes the preview to the clicked variant, not the whole source page', async () => {
+  it('previews the whole source page for the clicked block, via the DA preview proxy', async () => {
     el = document.createElement('ew-panel-library');
     document.body.append(el);
     await el.updateComplete;
@@ -121,23 +117,15 @@ describe('Ew panel library variant preview', () => {
     await loadCall.pending;
     await el.updateComplete;
 
-    const toggleCall = captureAsync(el, '_toggleBlock');
-    const groupBtn = el.shadowRoot.querySelector('.ext-group-title');
-    groupBtn.click();
-    await toggleCall.pending;
-    await el.updateComplete;
-
     const previewBtn = el.shadowRoot.querySelector('.ext-preview-btn');
-    expect(previewBtn, 'variant preview button should be rendered').to.exist;
+    expect(previewBtn, 'block preview button should be rendered').to.exist;
 
-    const previewCall = captureAsync(el, '_openVariantPreview');
+    const previewCall = captureAsync(el, '_openPreview');
     previewBtn.click();
     await previewCall.pending;
 
-    expect(el._preview.name).to.equal('hero');
+    expect(el._preview.name).to.equal('Hero');
+    expect(el._preview.url).to.equal(PREVIEW_URL);
     expect(el._preview.ok).to.be.true;
-    // Isolated content, not the full source page: only the block's own markup.
-    expect(el._preview.html).to.contain('class="hero"');
-    expect(el._preview.html).to.contain('/styles/styles.css');
   });
 });

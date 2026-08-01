@@ -279,6 +279,10 @@
   border: none;
 }
 
+.ext-preview-frame.hide-iframe {
+  visibility: hidden;
+}
+
 .ext-preview-error {
   position: absolute;
   inset: 0;

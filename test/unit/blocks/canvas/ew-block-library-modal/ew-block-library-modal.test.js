@@ -14,16 +14,17 @@ const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 await import('../../../../../blocks/canvas/ew-block-library-modal/ew-block-library-modal.js');
 
-describe('Ew block library modal variant preview', () => {
+describe('Ew block library modal preview', () => {
   const BLOCK_PATH = 'https://example.com/blocks/hero';
   const STATUS_URL = 'https://admin.hlx.page/status/acme/mysite/main/blocks/hero';
-  // Preview is routed through DA's preview proxy, not raw aem.page (see #1202).
+  // Preview is routed through DA's preview proxy, not raw aem.page — aem.page's
+  // CDN blocks cross-origin fetch of full pages, and this proxy is also the
+  // route to protected-site auth (via the cookie exchange in _loadPreview).
   const PREVIEW_URL = `${getPreviewOrigin('acme', 'mysite', 'main')}/blocks/hero`;
 
   let savedFetch;
   let el;
-  let variantA;
-  let variantB;
+  let variant;
   let block;
 
   beforeEach(() => {
@@ -36,24 +37,11 @@ describe('Ew block library modal variant preview', () => {
           { status: 200 },
         ));
       }
-      if (url === PREVIEW_URL) {
-        return Promise.resolve(new Response(
-          '<html><head><link rel="stylesheet" href="/styles/styles.css"></head><body></body></html>',
-          { status: 200 },
-        ));
-      }
       return Promise.resolve(new Response('', { status: 404 }));
     };
 
-    const rawDomA = document.createElement('div');
-    rawDomA.className = 'hero';
-    variantA = { name: 'Hero A', dom: document.createElement('table'), rawDom: rawDomA };
-
-    const rawDomB = document.createElement('div');
-    rawDomB.className = 'hero variant-2';
-    variantB = { name: 'Hero B', dom: document.createElement('table'), rawDom: rawDomB };
-
-    block = { name: 'Hero', path: BLOCK_PATH, loadVariants: Promise.resolve([variantA, variantB]) };
+    variant = { name: 'Hero', dom: document.createElement('table') };
+    block = { name: 'Hero', path: BLOCK_PATH, loadVariants: Promise.resolve([variant]) };
   });
 
   afterEach(() => {
@@ -62,7 +50,7 @@ describe('Ew block library modal variant preview', () => {
     hashChange._set({});
   });
 
-  it('previews only the clicked variant, not the whole source page', async () => {
+  it('previews the whole source page for the clicked block, via the DA preview proxy', async () => {
     el = document.createElement('ew-block-library-modal');
     document.body.append(el);
     await el.updateComplete;
@@ -71,31 +59,20 @@ describe('Ew block library modal variant preview', () => {
     await block.loadVariants;
     await el.updateComplete;
 
-    // _selectBlock/_loadPreview fire click-triggered work without awaiting it
-    // internally; capture whichever promise each call kicks off so the test
-    // can wait for the fetch chain to actually settle.
+    // _selectBlock fires _loadPreview without awaiting it internally; capture
+    // whichever promise each call kicks off so the test can wait for the
+    // fetch chain to actually settle.
     const selectCall = captureAsync(el, '_selectBlock');
     const previewCall = captureAsync(el, '_loadPreview');
 
-    // Expanding the block auto-previews its first variant.
     const blockRow = el.shadowRoot.querySelector('.modal-tree-row');
     blockRow.click();
     await selectCall.pending;
     await previewCall.pending;
     await el.updateComplete;
 
-    expect(el._previewInfo.name).to.equal('Hero A');
-    expect(el._previewInfo.html).to.contain('class="hero"');
-    expect(el._previewInfo.html).to.not.contain('variant-2');
-
-    // Clicking the second variant re-scopes the preview to it.
-    const variantRows = el.shadowRoot.querySelectorAll('.modal-tree-row-variant');
-    expect(variantRows, 'both variants should be rendered').to.have.lengthOf(2);
-
-    variantRows[1].click();
-    await previewCall.pending;
-
-    expect(el._previewInfo.name).to.equal('Hero B');
-    expect(el._previewInfo.html).to.contain('variant-2');
+    expect(el._previewInfo.name).to.equal('Hero');
+    expect(el._previewInfo.url).to.equal(PREVIEW_URL);
+    expect(el._previewInfo.ok).to.be.true;
   });
 });
