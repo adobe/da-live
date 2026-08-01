@@ -5,13 +5,11 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
 let extensionToPanelView;
-let getItemPreviewUrl;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
-  getItemPreviewUrl = mod.getItemPreviewUrl;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -251,22 +249,6 @@ describe('EW panel helpers transformBlock', () => {
     `);
     const variants = await getBlockVariants('/mock-path');
     expect(variants[0].name).to.equal('Custom Name');
-  });
-});
-
-describe('getItemPreviewUrl', () => {
-  it('builds a DA preview-proxy URL (not the raw aem-hosted origin) from an item path', () => {
-    const item = { path: 'https://main--library--acme.aem.page/blocks/hero' };
-    const details = getItemPreviewUrl(item, { org: 'fallback-org', site: 'fallback-site' });
-    expect(details.org).to.equal('acme');
-    expect(details.site).to.equal('library');
-    expect(details.pathname).to.equal('/blocks/hero');
-    // aem.page's CDN doesn't allow cross-origin fetch of full pages (only
-    // .plain.html), so previews are routed through DA's own preview proxy,
-    // which sends permissive CORS headers for this app's origin.
-    expect(details.previewUrl).to.not.contain('.aem.page');
-    expect(details.previewUrl).to.contain('main--library--acme.');
-    expect(details.previewUrl).to.contain('/blocks/hero');
   });
 });
 

@@ -1,10 +1,9 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import { aemAdmin, daFetch, getAuthToken } from '../../shared/utils.js';
+import { aemAdmin, daFetch } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -442,45 +441,11 @@ export function getItemPreviewUrl(item, { org, site }) {
   }
 
   return {
-    previewUrl: `${getPreviewOrigin(itemOrg, itemSite, ref)}${itemPath}`,
+    previewUrl: `https://${ref}--${itemSite}--${itemOrg}.aem.page${itemPath}`,
     org: itemOrg,
     site: itemSite,
     pathname: itemPath,
   };
-}
-
-// ---------------------------------------------------------------------------
-// Preview auth
-// ---------------------------------------------------------------------------
-
-const previewCookieCache = new Map();
-
-/**
- * Warm the DA preview-proxy auth cookie for an item's own org/site (which may
- * differ from the currently edited doc's org/site, e.g. a shared library
- * site), so a preview iframe pointed at preview.da.live for it isn't blocked
- * by the target site's own auth. Memoized per org/site. Call before
- * navigating a preview iframe to a getItemPreviewUrl() result.
- */
-export function ensurePreviewCookie(org, site) {
-  if (!org || !site) return Promise.resolve();
-  const key = `${org}/${site}`;
-  if (!previewCookieCache.has(key)) {
-    const pending = (async () => {
-      const token = await getAuthToken();
-      if (!token) return;
-      await fetchWysiwygCookie({ org, repo: site, token, branch: ref });
-    })().catch(() => {
-      // Don't cache a failed cookie exchange — allow a later retry.
-      previewCookieCache.delete(key);
-    });
-    previewCookieCache.set(key, pending);
-  }
-  return previewCookieCache.get(key);
-}
-
-export function resetPreviewCookieCache() {
-  previewCookieCache.clear();
 }
 
 // ---------------------------------------------------------------------------

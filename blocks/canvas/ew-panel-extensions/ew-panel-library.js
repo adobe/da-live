@@ -8,7 +8,6 @@ import {
   insertTemplate,
   getPreviewStatus,
   getItemPreviewUrl,
-  ensurePreviewCookie,
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
@@ -116,7 +115,6 @@ class EwPanelLibrary extends LitElement {
       name: item.name || item.key || item.title,
       url: details.previewUrl,
     };
-    await ensurePreviewCookie(details.org, details.site);
     this._preview.ok = await getPreviewStatus({
       org: details.org,
       site: details.site,

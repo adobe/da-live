@@ -4,7 +4,6 @@ import {
   loadBlockLibrary,
   getItemPreviewUrl,
   getPreviewStatus,
-  ensurePreviewCookie,
 } from '../ew-panel-extensions/helpers.js';
 
 const nx = getNx();
@@ -152,7 +151,6 @@ class EwBlockLibraryModal extends LitElement {
     const details = getItemPreviewUrl(block, { org, site });
     const url = details.previewUrl;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
-    await ensurePreviewCookie(details.org, details.site);
     const ok = await getPreviewStatus({
       org: details.org,
       site: details.site,
