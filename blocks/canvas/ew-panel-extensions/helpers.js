@@ -1,9 +1,10 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import { aemAdmin, daFetch } from '../../shared/utils.js';
+import { aemAdmin, daFetch, getAuthToken } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -442,7 +443,7 @@ export function getItemPreviewUrl(item, { org, site }) {
   }
 
   return {
-    previewUrl: `https://${ref}--${itemSite}--${itemOrg}.aem.page${itemPath}`,
+    previewUrl: `${getPreviewOrigin(itemOrg, itemSite, ref)}${itemPath}`,
     org: itemOrg,
     site: itemSite,
     pathname: itemPath,
@@ -453,18 +454,54 @@ export function getItemPreviewUrl(item, { org, site }) {
 // Isolated block preview
 // ---------------------------------------------------------------------------
 
+const previewCookieCache = new Map();
+
+/**
+ * Warm the DA preview-proxy auth cookie for an item's own org/site (which may
+ * differ from the currently edited doc's org/site, e.g. a shared library
+ * site), so preview.da.live fetches for it succeed. Memoized per org/site.
+ */
+function ensurePreviewCookie(org, site) {
+  if (!org || !site) return Promise.resolve();
+  const key = `${org}/${site}`;
+  if (!previewCookieCache.has(key)) {
+    const pending = (async () => {
+      const token = await getAuthToken();
+      if (!token) return;
+      await fetchWysiwygCookie({ org, repo: site, token, branch: ref });
+    })().catch(() => {
+      // Don't cache a failed cookie exchange — allow a later retry.
+      previewCookieCache.delete(key);
+    });
+    previewCookieCache.set(key, pending);
+  }
+  return previewCookieCache.get(key);
+}
+
+export function resetPreviewCookieCache() {
+  previewCookieCache.clear();
+}
+
 const siteHeadCache = new Map();
 
 /**
  * Fetch and memoize a site's page `<head>` (styles/scripts) so an isolated
  * block preview can render with the site's real assets. Memoized per origin
  * since every page on a site shares the same head/boilerplate.
+ *
+ * Fetched via the DA preview proxy (preview.da.live), not the customer's raw
+ * aem.page origin: aem.page's CDN allows cross-origin fetch of `.plain.html`
+ * fragments (used elsewhere in this file) but not full rendered pages, and
+ * building an isolated preview needs the full page's `<head>`. The proxy
+ * sends permissive CORS headers for this app's origin and is
+ * cookie-authenticated via ensurePreviewCookie.
  */
-async function getSiteHead(previewUrl) {
+async function getSiteHead(previewUrl, org, site) {
   const { origin } = new URL(previewUrl);
   if (!siteHeadCache.has(origin)) {
     const pending = (async () => {
-      const resp = await daFetch(previewUrl, { noRedirect: true });
+      await ensurePreviewCookie(org, site);
+      const resp = await daFetch(previewUrl, { noRedirect: true, credentials: 'include' });
       if (!resp.ok) return null;
       const doc = new window.DOMParser().parseFromString(await resp.text(), 'text/html');
       return doc.head.innerHTML;
@@ -490,10 +527,15 @@ export function buildIsolatedPreviewHtml({ rawDom, headHtml, origin }) {
     + `<body><header></header><main>${rawDom.outerHTML}</main><footer></footer></body></html>`;
 }
 
-/** Resolves to a srcdoc-ready isolated preview, or null if it can't be built. */
-export async function getIsolatedPreviewHtml(item, previewUrl) {
+/**
+ * Resolves to a srcdoc-ready isolated preview, or null if it can't be built.
+ * `previewDetails` is the object returned by getItemPreviewUrl — needs org/site
+ * for the cookie exchange, not just the URL.
+ */
+export async function getIsolatedPreviewHtml(item, previewDetails) {
   if (!item?.rawDom) return null;
-  const headHtml = await getSiteHead(previewUrl);
+  const { previewUrl, org, site } = previewDetails;
+  const headHtml = await getSiteHead(previewUrl, org, site);
   if (!headHtml) return null;
   const { origin } = new URL(previewUrl);
   return buildIsolatedPreviewHtml({ rawDom: item.rawDom, headHtml, origin });

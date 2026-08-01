@@ -184,7 +184,7 @@ class EwBlockLibraryModal extends LitElement {
     }
 
     // Falls back to a full-page load (via url) if the isolated build fails.
-    const srcdoc = await getIsolatedPreviewHtml(variant, url);
+    const srcdoc = await getIsolatedPreviewHtml(variant, details);
     if (this._previewedVariant !== variant) return;
     this._previewInfo = { ...this._previewInfo, ok, html: srcdoc, url };
   }

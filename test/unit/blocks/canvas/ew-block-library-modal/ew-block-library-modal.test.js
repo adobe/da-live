@@ -4,6 +4,10 @@ import { captureAsync } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
+// Dynamic, and after setNx: editor-utils.js transitively needs getNx()
+// configured before its own module body (quick-edit-messages.js) runs.
+const { getPreviewOrigin } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
+
 // Import the same way the component does (a computed `${getNx()}/...` specifier)
 // so this resolves to the identical cached module instance, not a second copy.
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -13,7 +17,8 @@ await import('../../../../../blocks/canvas/ew-block-library-modal/ew-block-libra
 describe('Ew block library modal variant preview', () => {
   const BLOCK_PATH = 'https://example.com/blocks/hero';
   const STATUS_URL = 'https://admin.hlx.page/status/acme/mysite/main/blocks/hero';
-  const PREVIEW_URL = 'https://main--mysite--acme.aem.page/blocks/hero';
+  // Preview is routed through DA's preview proxy, not raw aem.page (see #1202).
+  const PREVIEW_URL = `${getPreviewOrigin('acme', 'mysite', 'main')}/blocks/hero`;
 
   let savedFetch;
   let el;

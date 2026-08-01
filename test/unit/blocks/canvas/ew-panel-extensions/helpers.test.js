@@ -288,13 +288,18 @@ describe('EW panel helpers transformBlock', () => {
 });
 
 describe('getItemPreviewUrl', () => {
-  it('builds an aem.page preview URL from an aem-hosted item path', () => {
+  it('builds a DA preview-proxy URL (not the raw aem-hosted origin) from an item path', () => {
     const item = { path: 'https://main--library--acme.aem.page/blocks/hero' };
     const details = getItemPreviewUrl(item, { org: 'fallback-org', site: 'fallback-site' });
     expect(details.org).to.equal('acme');
     expect(details.site).to.equal('library');
     expect(details.pathname).to.equal('/blocks/hero');
-    expect(details.previewUrl).to.equal('https://main--library--acme.aem.page/blocks/hero');
+    // aem.page's CDN doesn't allow cross-origin fetch of full pages (only
+    // .plain.html), so previews are routed through DA's own preview proxy,
+    // which sends permissive CORS headers for this app's origin.
+    expect(details.previewUrl).to.not.contain('.aem.page');
+    expect(details.previewUrl).to.contain('main--library--acme.');
+    expect(details.previewUrl).to.contain('/blocks/hero');
   });
 });
 
@@ -331,21 +336,24 @@ describe('getIsolatedPreviewHtml', () => {
     ));
     const rawDom = document.createElement('div');
     rawDom.className = 'hero';
-    const html = await getIsolatedPreviewHtml({ rawDom }, 'https://main--site--org.aem.page/some-page');
+    const previewDetails = { previewUrl: 'https://main--site--org.preview.da.live/some-page', org: 'org', site: 'site' };
+    const html = await getIsolatedPreviewHtml({ rawDom }, previewDetails);
     expect(html).to.contain('/styles/styles.css');
     expect(html).to.contain('class="hero"');
-    expect(html).to.contain('<base href="https://main--site--org.aem.page/">');
+    expect(html).to.contain('<base href="https://main--site--org.preview.da.live/">');
   });
 
   it('returns null when the item has no rawDom', async () => {
-    const html = await getIsolatedPreviewHtml({}, 'https://main--site--org.aem.page/some-page');
+    const previewDetails = { previewUrl: 'https://main--site--org.preview.da.live/some-page', org: 'org', site: 'site' };
+    const html = await getIsolatedPreviewHtml({}, previewDetails);
     expect(html).to.be.null;
   });
 
   it('returns null when the head fetch fails', async () => {
     window.fetch = () => Promise.resolve(new Response('error', { status: 500 }));
     const rawDom = document.createElement('div');
-    const html = await getIsolatedPreviewHtml({ rawDom }, 'https://main--other--org2.aem.page/some-page');
+    const previewDetails = { previewUrl: 'https://main--other--org2.preview.da.live/some-page', org: 'org2', site: 'other' };
+    const html = await getIsolatedPreviewHtml({ rawDom }, previewDetails);
     expect(html).to.be.null;
   });
 });
