@@ -186,11 +186,6 @@
 .modal-tree-variant-row .modal-tree-row {
   flex: 1;
   min-width: 0;
-  cursor: default;
-}
-
-.modal-tree-variant-row .modal-tree-row:hover {
-  background: transparent;
 }
 
 .modal-tree-variant-row:hover {
@@ -304,10 +299,6 @@
   width: 100%;
   border: none;
   background: white;
-}
-
-.modal-preview-frame.hide-iframe {
-  visibility: hidden;
 }
 
 .modal-preview-error {

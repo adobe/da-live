@@ -5,11 +5,19 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
 let extensionToPanelView;
+let getItemPreviewUrl;
+let buildIsolatedPreviewHtml;
+let getIsolatedPreviewHtml;
+let resetSiteHeadCache;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
+  getItemPreviewUrl = mod.getItemPreviewUrl;
+  buildIsolatedPreviewHtml = mod.buildIsolatedPreviewHtml;
+  getIsolatedPreviewHtml = mod.getIsolatedPreviewHtml;
+  resetSiteHeadCache = mod.resetSiteHeadCache;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -179,6 +187,166 @@ describe('EW panel helpers transformBlock', () => {
     expect(dom).to.be.instanceOf(window.HTMLDivElement);
     expect(dom.querySelector('table')).to.not.be.null;
     expect(dom.querySelector('p')).to.not.be.null;
+  });
+
+  it('Excludes embedded library-metadata from item.dom', async () => {
+    mockHtml(`
+      <body><div>
+        <div class="hero">
+          <div><div>content</div></div>
+          <div class="library-metadata"><div><div>searchtags</div><div>hero, banner</div></div></div>
+        </div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Excludes library-metadata appended after library-container-end from group item.dom', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-container-end"></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>group, hero</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Extracts and excludes library-metadata placed before a single block, preserving heading name', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>Block Title</h2>
+        <div class="library-metadata"><div><div>searchtags</div><div>early, meta</div></div></div>
+        <div class="hero"><div><div>content</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].name).to.equal('Block Title');
+    expect(variants[0].tags).to.equal('early, meta');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Extracts and excludes library-metadata placed between library-container-start/end', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>mid, group</div></div></div>
+        <div class="library-container-end"></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].tags).to.equal('mid, group');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Uses library-metadata Name to override the derived name', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>Block Title</h2>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>name</div><div>Custom Name</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].name).to.equal('Custom Name');
+  });
+
+  it('item.rawDom matches the metadata-stripped content for a single block', async () => {
+    mockHtml(`
+      <body><div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>hero, card</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].rawDom.querySelector('.library-metadata')).to.be.null;
+    expect(variants[0].rawDom.className).to.contain('hero');
+  });
+
+  it('item.rawDom matches the metadata-stripped content for a group', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-container-end"></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>group, hero</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].rawDom.querySelector('.library-metadata')).to.be.null;
+    expect(variants[0].rawDom.querySelector('.hero')).to.not.be.null;
+  });
+});
+
+describe('getItemPreviewUrl', () => {
+  it('builds an aem.page preview URL from an aem-hosted item path', () => {
+    const item = { path: 'https://main--library--acme.aem.page/blocks/hero' };
+    const details = getItemPreviewUrl(item, { org: 'fallback-org', site: 'fallback-site' });
+    expect(details.org).to.equal('acme');
+    expect(details.site).to.equal('library');
+    expect(details.pathname).to.equal('/blocks/hero');
+    expect(details.previewUrl).to.equal('https://main--library--acme.aem.page/blocks/hero');
+  });
+});
+
+describe('buildIsolatedPreviewHtml', () => {
+  it('wraps rawDom in a document with a base href and the given head', () => {
+    const rawDom = document.createElement('div');
+    rawDom.className = 'hero';
+    rawDom.innerHTML = '<div><div>content</div></div>';
+    const html = buildIsolatedPreviewHtml({
+      rawDom,
+      headHtml: '<link rel="stylesheet" href="/styles/styles.css">',
+      origin: 'https://main--site--org.aem.page',
+    });
+    expect(html).to.contain('<base href="https://main--site--org.aem.page/">');
+    expect(html).to.contain('/styles/styles.css');
+    expect(html).to.contain('class="hero"');
+    expect(html).to.contain('<header></header>');
+    expect(html).to.contain('<footer></footer>');
+  });
+});
+
+describe('getIsolatedPreviewHtml', () => {
+  let savedFetch;
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    resetSiteHeadCache();
+  });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  it('builds isolated preview html using the fetched page head', async () => {
+    window.fetch = () => Promise.resolve(new Response(
+      '<html><head><link rel="stylesheet" href="/styles/styles.css"></head><body></body></html>',
+      { status: 200 },
+    ));
+    const rawDom = document.createElement('div');
+    rawDom.className = 'hero';
+    const html = await getIsolatedPreviewHtml({ rawDom }, 'https://main--site--org.aem.page/some-page');
+    expect(html).to.contain('/styles/styles.css');
+    expect(html).to.contain('class="hero"');
+    expect(html).to.contain('<base href="https://main--site--org.aem.page/">');
+  });
+
+  it('returns null when the item has no rawDom', async () => {
+    const html = await getIsolatedPreviewHtml({}, 'https://main--site--org.aem.page/some-page');
+    expect(html).to.be.null;
+  });
+
+  it('returns null when the head fetch fails', async () => {
+    window.fetch = () => Promise.resolve(new Response('error', { status: 500 }));
+    const rawDom = document.createElement('div');
+    const html = await getIsolatedPreviewHtml({ rawDom }, 'https://main--other--org2.aem.page/some-page');
+    expect(html).to.be.null;
   });
 });
 

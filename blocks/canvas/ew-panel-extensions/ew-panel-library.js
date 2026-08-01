@@ -8,6 +8,7 @@ import {
   insertTemplate,
   getPreviewStatus,
   getItemPreviewUrl,
+  getIsolatedPreviewHtml,
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
@@ -48,6 +49,7 @@ class EwPanelLibrary extends LitElement {
       this._blockVariants = new Map();
       this._expandedBlock = null;
       this._preview = undefined;
+      this._previewedVariant = null;
       this._tooltipOpen = null;
       this._loadItems();
     }
@@ -107,24 +109,55 @@ class EwPanelLibrary extends LitElement {
     await insertTemplate(view, item.path || item.value);
   }
 
+  // Whole-item preview (templates, and anything else that isn't a block
+  // variant) — the item itself is a full previewable page, so this loads it
+  // as-is.
   async _openPreview(item) {
     const { org, site } = this._hashState || {};
     if (!org || !site) return;
     const details = getItemPreviewUrl(item, { org, site });
-    this._preview = {
-      name: item.name || item.key || item.title,
-      url: details.previewUrl,
-    };
-    this._preview.ok = await getPreviewStatus({
+    const name = item.name || item.key || item.title;
+    this._previewedVariant = null;
+    this._preview = { name, url: details.previewUrl, ok: undefined };
+    const ok = await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
     });
-    this.requestUpdate();
+    if (this._previewedVariant) return;
+    this._preview = { ...this._preview, ok };
+  }
+
+  // Preview renders only the selected variant's own isolated markup (via
+  // getIsolatedPreviewHtml), not the whole source page it came from.
+  async _openVariantPreview(block, variant) {
+    const { org, site } = this._hashState || {};
+    if (!org || !site) return;
+    const details = getItemPreviewUrl(block, { org, site });
+    const url = details.previewUrl;
+    this._previewedVariant = variant;
+    this._preview = { name: variant.name || variant.key || variant.title, ok: undefined };
+
+    const ok = await getPreviewStatus({
+      org: details.org,
+      site: details.site,
+      pathname: details.pathname,
+    });
+    if (this._previewedVariant !== variant) return;
+    if (!ok) {
+      this._preview = { ...this._preview, ok };
+      return;
+    }
+
+    // Falls back to a full-page load (via url) if the isolated build fails.
+    const srcdoc = await getIsolatedPreviewHtml(variant, url);
+    if (this._previewedVariant !== variant) return;
+    this._preview = { ...this._preview, ok, html: srcdoc, url };
   }
 
   async _closePreview() {
     this._preview = undefined;
+    this._previewedVariant = null;
     await this.updateComplete;
     this.shadowRoot.querySelector('button')?.focus();
   }
@@ -155,6 +188,8 @@ class EwPanelLibrary extends LitElement {
                 ${v.description ? html`
                   <button class="ext-action-btn" aria-label="Info"
                     @click=${() => this._toggleTooltip(v.name)}>ℹ</button>` : nothing}
+                <button class="ext-action-btn ext-preview-btn" aria-label="Preview ${v.name}"
+                  @click=${() => this._openVariantPreview(block, v)}>${iconPreview()}</button>
                 <button class="ext-action-btn ext-add-btn" aria-label="Add"
                   @click=${() => this._insertBlock(v)}>${iconAdd()}</button>
               </div>
@@ -179,8 +214,6 @@ class EwPanelLibrary extends LitElement {
                 <span class="ext-item-name">${block.name}</span>
                 <span class="ext-expand-icon">${this._expandedBlock === block.path ? '▾' : '▸'}</span>
               </button>
-              <button class="ext-action-btn ext-preview-btn" aria-label="Preview"
-                @click=${() => this._openPreview(block)}>${iconPreview()}</button>
             </div>
             ${this._renderVariants(block)}
           </li>
@@ -233,13 +266,22 @@ class EwPanelLibrary extends LitElement {
     `;
   }
 
+  _renderPreviewBody() {
+    const { ok, name, url, html: srcdoc } = this._preview;
+    if (ok === undefined) {
+      return html`<div class="ext-preview-error"><p>Loading preview…</p></div>`;
+    }
+    if (ok === false) {
+      return html`<div class="ext-preview-error"><p>It appears ${name} has not been previewed.</p></div>`;
+    }
+    return srcdoc
+      ? html`<iframe class="ext-preview-frame" .srcdoc=${srcdoc} allow="clipboard-write *"></iframe>`
+      : html`<iframe class="ext-preview-frame" src=${url} allow="clipboard-write *"></iframe>`;
+  }
+
   _renderPreviewDialog() {
     if (!this._preview) return nothing;
-    const { ok, name, url } = this._preview;
-    const hideIframe = ok === undefined || ok === false ? 'hide-iframe' : '';
-    const error = ok === false
-      ? `It appears ${name} has not been previewed.`
-      : undefined;
+    const { name } = this._preview;
 
     return html`
       <dialog class="ext-preview-dialog" @close=${() => this._closePreview()}>
@@ -248,9 +290,7 @@ class EwPanelLibrary extends LitElement {
           <button class="ext-preview-close" @click=${() => this._closePreview()}>✕</button>
         </div>
         <div class="ext-preview-body">
-          ${error ? html`<div class="ext-preview-error"><p>${error}</p></div>` : nothing}
-          <iframe class="ext-preview-frame ${hideIframe}" src=${url}
-            allow="clipboard-write *"></iframe>
+          ${this._renderPreviewBody()}
         </div>
       </dialog>
     `;

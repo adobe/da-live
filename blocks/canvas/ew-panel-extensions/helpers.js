@@ -134,26 +134,48 @@ function getLibraryMetadata(el) {
   }, {});
 }
 
+// Metadata can sit immediately before or after the block it describes, or be
+// nested inside it (nested case also covers any position within a
+// library-container-start/end group, since group children are flattened into
+// the group's own subtree during parsing).
+function findMetaEl(block) {
+  if (block.nextElementSibling?.classList.contains('library-metadata')) {
+    return block.nextElementSibling;
+  }
+  if (block.previousElementSibling?.classList.contains('library-metadata')) {
+    return block.previousElementSibling;
+  }
+  return block.querySelector('.library-metadata');
+}
+
 function transformBlock(block) {
-  const prevSib = block.previousElementSibling;
+  // Skip a preceding metadata sibling so a `heading, metadata, block` layout
+  // still resolves the name from the heading.
+  const headingSib = block.previousElementSibling?.classList.contains('library-metadata')
+    ? block.previousElementSibling.previousElementSibling
+    : block.previousElementSibling;
   let item;
   if (block.dataset.groupheading) {
     item = { name: block.dataset.groupheading };
-  } else if (isHeading(prevSib) && prevSib.textContent) {
-    item = { name: prevSib.textContent };
+  } else if (isHeading(headingSib) && headingSib.textContent) {
+    item = { name: headingSib.textContent };
   } else {
     item = getBlockName(block.className || '');
   }
-  item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
 
-  const metaEl = block.nextElementSibling?.classList.contains('library-metadata')
-    ? block.nextElementSibling
-    : block.querySelector('.library-metadata');
+  // Extract and strip metadata before generating the block's dom, so it never
+  // leaks into the content that gets copied/inserted or previewed.
+  const metaEl = findMetaEl(block);
   if (metaEl) {
     const md = getLibraryMetadata(metaEl);
+    if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
+    metaEl.remove();
   }
+
+  item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
+  item.rawDom = block.cloneNode(true);
   return item;
 }
 
@@ -425,6 +447,56 @@ export function getItemPreviewUrl(item, { org, site }) {
     site: itemSite,
     pathname: itemPath,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Isolated block preview
+// ---------------------------------------------------------------------------
+
+const siteHeadCache = new Map();
+
+/**
+ * Fetch and memoize a site's page `<head>` (styles/scripts) so an isolated
+ * block preview can render with the site's real assets. Memoized per origin
+ * since every page on a site shares the same head/boilerplate.
+ */
+async function getSiteHead(previewUrl) {
+  const { origin } = new URL(previewUrl);
+  if (!siteHeadCache.has(origin)) {
+    const pending = (async () => {
+      const resp = await daFetch(previewUrl, { noRedirect: true });
+      if (!resp.ok) return null;
+      const doc = new window.DOMParser().parseFromString(await resp.text(), 'text/html');
+      return doc.head.innerHTML;
+    })().catch(() => null);
+    siteHeadCache.set(origin, pending);
+  }
+  return siteHeadCache.get(origin);
+}
+
+export function resetSiteHeadCache() {
+  siteHeadCache.clear();
+}
+
+/**
+ * Build a standalone HTML document containing only the given block's own
+ * markup, wired to the site's real head assets (via `<base>`) so the site's
+ * decoration scripts still run on just this block. Empty header/footer are
+ * included defensively since boilerplate scripts often query for them
+ * unconditionally.
+ */
+export function buildIsolatedPreviewHtml({ rawDom, headHtml, origin }) {
+  return `<!doctype html><html><head><base href="${origin}/">${headHtml}</head>`
+    + `<body><header></header><main>${rawDom.outerHTML}</main><footer></footer></body></html>`;
+}
+
+/** Resolves to a srcdoc-ready isolated preview, or null if it can't be built. */
+export async function getIsolatedPreviewHtml(item, previewUrl) {
+  if (!item?.rawDom) return null;
+  const headHtml = await getSiteHead(previewUrl);
+  if (!headHtml) return null;
+  const { origin } = new URL(previewUrl);
+  return buildIsolatedPreviewHtml({ rawDom: item.rawDom, headHtml, origin });
 }
 
 // ---------------------------------------------------------------------------

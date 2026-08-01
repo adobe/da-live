@@ -33,3 +33,17 @@ export function posOf(doc, match) {
   });
   return result;
 }
+
+// Patches target[methodName] to record the promise its real implementation
+// returns, so a click handler that calls it fire-and-forget can still be
+// awaited by the test: `await captureAsync(el, '_loadPreview').pending`.
+export function captureAsync(target, methodName) {
+  const original = target[methodName].bind(target);
+  const state = {};
+  // eslint-disable-next-line no-param-reassign
+  target[methodName] = (...args) => {
+    state.pending = original(...args);
+    return state.pending;
+  };
+  return state;
+}
