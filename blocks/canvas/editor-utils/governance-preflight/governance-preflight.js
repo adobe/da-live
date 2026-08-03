@@ -42,17 +42,21 @@ class DaGovernancePreflight extends LitElement {
     return html`
       <div class="gp-toolbar">
         <button
-          class="gp-refresh"
+          class="gp-refresh ${this._loading ? 'is-loading' : ''}"
           ?disabled=${this._loading}
+          aria-label="Re-evaluate page"
+          title="Re-evaluate page"
           @click=${() => this.evaluate()}>
-          ${this._loading ? 'Evaluating…' : 'Refresh'}
+          <svg class="gp-icon"><use href="/img/icons/s2-icon-refresh-20-n.svg#icon"></use></svg>
         </button>
       </div>
-      <nx-governance-evaluation-card
-        .evaluation=${this._evaluation}
-        .loading=${this._loading}
-        .error=${this._error}>
-      </nx-governance-evaluation-card>
+      <div class="gp-card-scroll">
+        <nx-governance-evaluation-card
+          .evaluation=${this._evaluation}
+          .loading=${this._loading}
+          .error=${this._error}>
+        </nx-governance-evaluation-card>
+      </div>
     `;
   }
 }

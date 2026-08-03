@@ -1,26 +1,59 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  width: 720px;
+  max-width: 88vw;
+  height: 72vh;
+  max-height: 760px;
   font-family: var(--s2-font-family);
 }
 
 .gp-toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--s2-spacing-200);
+  margin-bottom: var(--s2-spacing-100);
 }
 
 .gp-refresh {
-  font-family: inherit;
-  font-size: var(--s2-body-size-s);
-  color: #fff;
-  background-color: var(--s2-blue-900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: none;
   border-radius: var(--s2-corner-radius-200);
-  padding: var(--s2-spacing-100) var(--s2-spacing-300);
+  background: transparent;
+  color: var(--s2-gray-800);
   cursor: pointer;
 }
 
 .gp-refresh:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
+}
+
+.gp-refresh:hover:not(:disabled) {
+  background: var(--s2-gray-100);
+}
+
+.gp-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: currentcolor;
+}
+
+.gp-refresh.is-loading .gp-icon {
+  animation: gp-spin 1s linear infinite;
+}
+
+@keyframes gp-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gp-card-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
