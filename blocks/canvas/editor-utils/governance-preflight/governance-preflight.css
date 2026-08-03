@@ -8,12 +8,6 @@
   font-family: var(--s2-font-family);
 }
 
-.gp-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: var(--s2-spacing-100);
-}
-
 .gp-refresh {
   display: flex;
   align-items: center;

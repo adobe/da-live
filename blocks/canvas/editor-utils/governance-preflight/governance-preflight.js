@@ -23,6 +23,13 @@ class DaGovernancePreflight extends LitElement {
     this.evaluate();
   }
 
+  _onRefresh(e) {
+    // The button is slotted into the card's <summary>; cancel the details toggle.
+    e.preventDefault();
+    e.stopPropagation();
+    this.evaluate();
+  }
+
   async evaluate() {
     if (this._loading) return;
     this._loading = true;
@@ -40,21 +47,21 @@ class DaGovernancePreflight extends LitElement {
 
   render() {
     return html`
-      <div class="gp-toolbar">
-        <button
-          class="gp-refresh ${this._loading ? 'is-loading' : ''}"
-          ?disabled=${this._loading}
-          aria-label="Re-evaluate page"
-          title="Re-evaluate page"
-          @click=${() => this.evaluate()}>
-          <svg class="gp-icon"><use href="/img/icons/s2-icon-refresh-20-n.svg#icon"></use></svg>
-        </button>
-      </div>
       <div class="gp-card-scroll">
         <nx-governance-evaluation-card
           .evaluation=${this._evaluation}
           .loading=${this._loading}
           .error=${this._error}>
+          <button
+            type="button"
+            slot="header-actions"
+            class="gp-refresh ${this._loading ? 'is-loading' : ''}"
+            ?disabled=${this._loading}
+            aria-label="Re-evaluate page"
+            title="Re-evaluate page"
+            @click=${(e) => this._onRefresh(e)}>
+            <svg class="gp-icon"><use href="/img/icons/s2-icon-refresh-20-n.svg#icon"></use></svg>
+          </button>
         </nx-governance-evaluation-card>
       </div>
     `;
