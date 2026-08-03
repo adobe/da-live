@@ -1,0 +1,26 @@
+:host {
+  display: block;
+  font-family: var(--s2-font-family);
+}
+
+.gp-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--s2-spacing-200);
+}
+
+.gp-refresh {
+  font-family: inherit;
+  font-size: var(--s2-body-size-s);
+  color: #fff;
+  background-color: var(--s2-blue-900);
+  border: none;
+  border-radius: var(--s2-corner-radius-200);
+  padding: var(--s2-spacing-100) var(--s2-spacing-300);
+  cursor: pointer;
+}
+
+.gp-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

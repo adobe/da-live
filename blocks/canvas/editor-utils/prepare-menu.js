@@ -10,7 +10,7 @@ const style = await loadStyle(import.meta.url);
 const OOTB_ACTIONS = [
   {
     title: 'Preflight',
-    render: async (details) => (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default(details),
+    render: async (details) => (await import('./governance-preflight/governance-preflight.js')).default(details),
     icon: '/img/icons/s2-icon-filetext-20-n.svg#icon',
   },
   {
