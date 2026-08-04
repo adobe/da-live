@@ -272,7 +272,7 @@ export default async function decorate(block) {
   }
 
   // Any non-empty selection in doc mode is sent as chat context.
-  // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.
+  // wysiwyg has no block-select equivalent yet.
   const CANVAS_CHAT_KEY = 'canvas-selection';
   const SELECTION_LABEL = 'Selection';
   let hasContext = false;

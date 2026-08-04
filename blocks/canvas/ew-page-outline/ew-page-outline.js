@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { treeKeydown } from '../utils/tree-nav.js';
-import { emitEditorSelectState, parseSections } from '../editor-utils/editor-utils.js';
+import { parseSections } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
@@ -151,7 +151,7 @@ class EwPageOutline extends LitElement {
   _select(blockIndex) {
     this._selectedBlockIndex = blockIndex;
     this._selectedProseIndex = undefined;
-    emitEditorSelectState({ blockIndex, source: 'outline' });
+    canvasBus.editorSelectState.emit({ blockIndex, source: 'outline' });
   }
 
   _selectProse(proseIndex, kind) {

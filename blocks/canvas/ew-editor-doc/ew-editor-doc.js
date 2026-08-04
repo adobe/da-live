@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import { updateDocument, updateCursors, getInstrumentedHTML, emitEditorSelectState, getEditor } from '../editor-utils/editor-utils.js';
+import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
@@ -300,7 +300,7 @@ export class EwEditorDoc extends LitElement {
               if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
               this._lastDocBlockIndex = blockIndex;
               this._lastDocSelKey = selKey;
-              emitEditorSelectState({
+              canvasBus.editorSelectState.emit({
                 blockIndex,
                 proseIndex,
                 source: 'doc',

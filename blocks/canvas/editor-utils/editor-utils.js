@@ -4,7 +4,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { getSelectionToolbar } from './selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
-import { canvasBus } from '../utils/canvas-bus.js';
+import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -382,14 +382,12 @@ canvasBus.editorHtmlState.subscribe((html) => {
   selectBlockMeta = next;
 });
 
-export function emitEditorSelectState(detail) {
+registerEditorSelectEnricher((detail) => {
   const meta = selectBlockMeta.get(detail.blockIndex);
-  const { name: blockName, proseIndex, innerText } = meta || {};
-  const enriched = meta
-    ? { ...detail, blockName, proseIndex, innerText }
-    : detail;
-  canvasBus.editorSelectState.emit(enriched);
-}
+  if (!meta) return detail;
+  const { name: blockName, proseIndex, innerText } = meta;
+  return { ...detail, blockName, proseIndex, innerText };
+});
 
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
