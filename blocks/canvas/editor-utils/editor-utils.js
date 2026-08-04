@@ -75,14 +75,10 @@ export function updateState(data, ctx) {
       const syncNodeStart = syncPos.before(syncPos.depth);
       const syncNode = view.state.doc.resolve(syncNodeStart).nodeAfter;
       if (syncNode) {
-        // @deprecated top-level editorState/cursorOffset — prefer payload.editorState/cursorOffset
-        // (kept so the quick-edit iframe script in da-nx keeps working until it migrates).
         const editorState = syncNode.toJSON();
         const { cursorOffset } = data;
         ctx.port.postMessage({
           type: MESSAGE_TYPES.SET_EDITOR_STATE,
-          editorState,
-          cursorOffset,
           payload: { editorState, cursorOffset },
         });
       }
@@ -112,8 +108,6 @@ export function getEditor(data, ctx) {
     const newCursorOffset = before + 1;
     ctx.port.postMessage({
       type: MESSAGE_TYPES.SET_EDITOR_STATE,
-      editorState,
-      cursorOffset: newCursorOffset,
       payload: { editorState, cursorOffset: newCursorOffset },
     });
   } catch {
@@ -437,13 +431,13 @@ export const editorProseSelectChange = (() => {
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, body, payload: { body } });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
   return body;
 }
 
 export function updateCursors(ctx) {
   const cursors = extractCursors(ctx.view);
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_CURSORS, cursors, payload: { cursors } });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_CURSORS, payload: { cursors } });
 }
 
 // --- preview.js ---

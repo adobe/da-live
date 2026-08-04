@@ -93,9 +93,7 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     if (!resp.ok) {
       const error = `Upload failed with status ${resp.status}`;
       ctx.port.postMessage({
-        type: MESSAGE_TYPES.IMAGE_ERROR,
-        error,
-        originalSrc,
+        type: MESSAGE_TYPES.IMAGE_REPLACE,
         payload: { error, originalSrc },
       });
       return;
@@ -107,18 +105,14 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     updateImageInDocument(ctx.view, originalSrc, newSrc);
 
     ctx.port.postMessage({
-      type: MESSAGE_TYPES.UPDATE_IMAGE_SRC,
-      newSrc,
-      originalSrc,
+      type: MESSAGE_TYPES.IMAGE_REPLACE,
       payload: { newSrc, originalSrc },
     });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error replacing image:', error);
     ctx.port.postMessage({
-      type: MESSAGE_TYPES.IMAGE_ERROR,
-      error: error.message,
-      originalSrc,
+      type: MESSAGE_TYPES.IMAGE_REPLACE,
       payload: { error: error.message, originalSrc },
     });
   } finally {

@@ -20,7 +20,4 @@ export const MESSAGE_TYPES = Object.freeze({
   PREVIEW: 'preview',
 
   IMAGE_REPLACE: 'image-replace',
-
-  UPDATE_IMAGE_SRC: 'update-image-src',
-  IMAGE_ERROR: 'image-error',
 });
