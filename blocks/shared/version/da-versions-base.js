@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { formatDate } from '../utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
-import { formatVersions } from './helpers.js';
+import { formatVersions, formatUser } from './helpers.js';
 import { getVersionId } from './version-actions.js';
 
 export default class DaVersionsBase extends LitElement {
@@ -98,7 +98,7 @@ export default class DaVersionsBase extends LitElement {
             <li class="da-version-audit-entry">
               <p class="da-version-time">${auEntry.time}</p>
               <div class="da-audit-names">
-              ${auEntry.users.map((user) => html`<p>${user.email}</p>`)}
+              ${auEntry.users.map((user) => html`<p>${formatUser(user)}</p>`)}
               </div>
             </li>
           `)}
@@ -131,7 +131,7 @@ export default class DaVersionsBase extends LitElement {
           <li class="da-version-audit-entry">
             <p class="da-version-time">${entry.time}</p>
             <div class="da-audit-names">
-            ${entry.users.map((user) => html`<p>${user.email}</p>`)}
+            ${entry.users.map((user) => html`<p>${formatUser(user)}</p>`)}
             </div>
           </li>
         </ul>
