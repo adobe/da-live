@@ -382,6 +382,8 @@ canvasBus.editorHtmlState.subscribe((html) => {
   selectBlockMeta = next;
 });
 
+// Runs once, at load, so canvas-bus.js's editorSelectState.emit is enriched for
+// every caller from here on — see canvas-bus.js for why this file owns the lookup.
 registerEditorSelectEnricher((detail) => {
   const meta = selectBlockMeta.get(detail.blockIndex);
   if (!meta) return detail;

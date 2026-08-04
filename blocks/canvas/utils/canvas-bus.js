@@ -1,5 +1,9 @@
-// Plain pub/sub, no DOM dispatch target needed. `replay: true` re-delivers the last
-// truthy emitted value to a subscriber that joins later.
+// In-process pub/sub for canvas-local UI events (undo, selection, editor view, ...).
+// Not for panel or chat — those cross into da-nx and use its PANEL_EVENT/CHAT_EVENT
+// DOM CustomEvents instead, since components outside this block need to reach them too.
+
+// Each channel is a private listener Set — no DOM element involved. `replay: true`
+// re-delivers the last truthy emitted value to a subscriber that joins later.
 function createChannel({ replay = false } = {}) {
   const listeners = new Set();
   let lastValue;
