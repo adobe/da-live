@@ -339,7 +339,7 @@ class EwSelectionToolbar extends LitElement {
         @select=${(e) => this._onTableMenuSelect(e)}>
         <button slot="trigger" type="button" class="toolbar-btn"
           aria-label="Edit table" title="Edit table">
-          ${this._icon('tableedit')}
+          ${this._icon('table')}
         </button>
       </nx-menu>
     `;
