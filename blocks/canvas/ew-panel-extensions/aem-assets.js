@@ -1,50 +1,13 @@
 import { getNx } from '../../../scripts/utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { getResponsiveImageConfig } from '../../edit/da-assets/helpers/config.js';
+import { getRepositoryConfig, getResponsiveImageConfig } from '../../edit/da-assets/helpers/config.js';
 import { buildHandleSelection, createDialogPanels } from '../../edit/da-assets/da-assets.js';
 
-const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
+// Re-exported for ew-selection-toolbar's "does this site have AEM assets?" check.
+// The picker shares the classic editor's config resolver rather than forking it.
+export { getRepositoryConfig };
 
 const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
-const DEFAULT_BASE_PATH = '/adobe/assets';
-
-// ---------------------------------------------------------------------------
-// Config helpers
-// ---------------------------------------------------------------------------
-
-// Canvas keeps its own repository-config resolver: unlike the classic editor it reads
-// site config from the nx-hosted daConfig util and tolerates per-config fetch errors.
-// The resulting shape matches what the shared buildHandleSelection / resolveAssetUrl expect.
-export async function getRepositoryConfig(org, site) {
-  const configs = await Promise.all(fetchDaConfigs({ org, site }));
-  const entries = configs
-    .filter((c) => !c?.error)
-    .reverse()
-    .flatMap((c) => getFirstSheet(c) || []);
-  const getValue = (key) => entries.find((e) => e.key === key)?.value || null;
-
-  const repositoryId = getValue('aem.repositoryId');
-  if (!repositoryId) return null;
-
-  const tierType = repositoryId.startsWith('delivery') ? 'delivery' : 'author';
-  const customOrigin = getValue('aem.assets.prod.origin');
-  const isSmartCrop = getValue('aem.asset.smartcrop.select') === 'on';
-  const isDmEnabled = getValue('aem.asset.dm.delivery') === 'on'
-    || isSmartCrop
-    || tierType === 'delivery';
-
-  let assetOrigin;
-  if (customOrigin) assetOrigin = customOrigin;
-  else if (tierType === 'delivery') assetOrigin = repositoryId;
-  else if (isDmEnabled) assetOrigin = repositoryId.replace('author', 'delivery');
-  else assetOrigin = repositoryId.replace('author', 'publish');
-
-  const assetBasePath = getValue('aem.assets.prod.basepath') || DEFAULT_BASE_PATH;
-
-  return {
-    repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled, isSmartCrop,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Script loader
