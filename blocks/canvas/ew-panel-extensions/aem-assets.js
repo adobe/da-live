@@ -105,42 +105,33 @@ function loadSelectorScript() {
 }
 
 // ---------------------------------------------------------------------------
-// Public API
+// Selection handling
 // ---------------------------------------------------------------------------
 
-/** Renders the AEM asset selector into `container`; selections insert into the editor. */
-export async function renderAssets({ container, org, site, onClose }) {
-  const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-  const ims = await loadIms();
-  if (ims?.anonymous) handleSignIn();
-  const token = ims?.accessToken?.token;
-  if (!token) return;
-
-  const repoConfig = await getRepositoryConfig(org, site);
-  if (!repoConfig) return;
-
-  await loadSelectorScript();
-
-  // The panel is rendered inside a shadow root, so link the shared asset-picker
-  // styles (blocks/edit/da-assets/da-assets.css) that style the smart-crop UI.
-  const styleLink = document.createElement('link');
-  styleLink.rel = 'stylesheet';
-  styleLink.href = new URL('../../edit/da-assets/da-assets.css', import.meta.url).href;
-  container.append(styleLink);
-
-  // Two-panel layout: the selector lives in `assetPanel`; the smart-crop picker
-  // takes over `secondaryPanel` when needed, matching the old editor.
-  const assetPanel = document.createElement('div');
-  assetPanel.className = 'da-dialog-asset-inner';
-  const secondaryPanel = document.createElement('div');
-  secondaryPanel.className = 'da-dialog-asset-inner';
-  secondaryPanel.style.display = 'none';
-  container.append(assetPanel, secondaryPanel);
-
-  const responsiveImageConfigPromise = repoConfig.isSmartCrop
-    ? getResponsiveImageConfig(org, site)
-    : Promise.resolve(false);
-
+/**
+ * Builds the selector's `handleSelection` callback.
+ *
+ * Mirrors the old editor's smart-crop flow (blocks/edit/da-assets/da-assets.js): when smart
+ * crop is enabled and an image is picked, a crop-picker takes over `secondaryPanel` and the
+ * inserted URLs carry the `?smartcrop=<cropName>` param. Otherwise the asset is inserted
+ * plainly. The heavy lifting (crop dialog, node insertion) is delegated to the shared,
+ * tested edit helpers; this function is only the canvas-side orchestration.
+ *
+ * `getView` is injected (rather than reading the extensions bridge directly) so the handler
+ * is unit-testable in isolation.
+ *
+ * @param {object} opts
+ * @param {object} opts.repoConfig - Resolved repository config (see getRepositoryConfig).
+ * @param {HTMLElement} opts.assetPanel - Panel hosting the asset selector.
+ * @param {HTMLElement} opts.secondaryPanel - Panel the smart-crop picker renders into.
+ * @param {Promise<Array|false>} opts.responsiveImageConfigPromise - Responsive image configs.
+ * @param {function(): object} opts.getView - Returns the current ProseMirror view.
+ * @param {function(): void} [opts.onClose] - Closes the surrounding dialog.
+ * @returns {function(Array): Promise<void>}
+ */
+export function buildHandleSelection({
+  repoConfig, assetPanel, secondaryPanel, responsiveImageConfigPromise, getView, onClose,
+}) {
   const resetToAssetPanel = () => {
     secondaryPanel.style.display = 'none';
     secondaryPanel.innerHTML = '';
@@ -151,13 +142,10 @@ export async function renderAssets({ container, org, site, onClose }) {
     resetToAssetPanel();
   };
 
-  // Mirrors the old editor's smart-crop flow (blocks/edit/da-assets/da-assets.js): when
-  // smart crop is enabled and an image is picked, a crop-picker takes over `secondaryPanel`
-  // and the inserted URLs carry the `?smartcrop=<cropName>` param. Otherwise insert plainly.
-  const handleSelection = async (assets) => {
+  return async (assets) => {
     const [asset] = assets;
     if (!asset) return;
-    const { view } = getExtensionsBridge();
+    const view = getView();
     if (!view) return;
 
     const mimetype = (asset.mimetype || asset['dc:format'] || '').toLowerCase();
@@ -202,6 +190,44 @@ export async function renderAssets({ container, org, site, onClose }) {
       insertLink(view, src);
     }
   };
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/** Renders the AEM asset selector into `container`; selections insert into the editor. */
+export async function renderAssets({ container, org, site, onClose }) {
+  const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
+  const ims = await loadIms();
+  if (ims?.anonymous) handleSignIn();
+  const token = ims?.accessToken?.token;
+  if (!token) return;
+
+  const repoConfig = await getRepositoryConfig(org, site);
+  if (!repoConfig) return;
+
+  await loadSelectorScript();
+
+  // The panel is rendered inside a shadow root, so link the shared asset-picker
+  // styles (blocks/edit/da-assets/da-assets.css) that style the smart-crop UI.
+  const styleLink = document.createElement('link');
+  styleLink.rel = 'stylesheet';
+  styleLink.href = new URL('../../edit/da-assets/da-assets.css', import.meta.url).href;
+  container.append(styleLink);
+
+  // Two-panel layout: the selector lives in `assetPanel`; the smart-crop picker
+  // takes over `secondaryPanel` when needed, matching the old editor.
+  const assetPanel = document.createElement('div');
+  assetPanel.className = 'da-dialog-asset-inner';
+  const secondaryPanel = document.createElement('div');
+  secondaryPanel.className = 'da-dialog-asset-inner';
+  secondaryPanel.style.display = 'none';
+  container.append(assetPanel, secondaryPanel);
+
+  const responsiveImageConfigPromise = repoConfig.isSmartCrop
+    ? getResponsiveImageConfig(org, site)
+    : Promise.resolve(false);
 
   const selectorProps = {
     imsToken: token,
@@ -210,7 +236,14 @@ export async function renderAssets({ container, org, site, onClose }) {
     featureSet: ['upload', 'collections', 'detail-panel', 'advisor'],
     // Only let the selector's own close affect the dialog while it's the visible panel.
     ...(onClose && { onClose: () => assetPanel.style.display !== 'none' && onClose() }),
-    handleSelection,
+    handleSelection: buildHandleSelection({
+      repoConfig,
+      assetPanel,
+      secondaryPanel,
+      responsiveImageConfigPromise,
+      getView: () => getExtensionsBridge().view,
+      onClose,
+    }),
   };
 
   window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
