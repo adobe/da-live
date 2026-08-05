@@ -4,6 +4,12 @@ import { getNx2Api } from '../../../scripts/utils.js';
 const DEBOUNCE_TIME = 1000;
 const POLL_INTERVAL = 30000;
 
+// Cloudflare downgrades strong ETags to weak (W/"...") whenever it transforms a
+// response body (e.g. gzip/brotli on GETs), so the same file's POST response and a
+// later GET can carry the identical hash with and without the W/ prefix. Strip it
+// before comparing, or every save after the first misfires drift detection.
+const normalizeEtag = (etag) => etag?.replace(/^W\//, '') ?? null;
+
 class StaleCheck {
   constructor() {
     this._intervalId = null;
@@ -47,7 +53,7 @@ class StaleCheck {
   }
 
   markSynced(etag) {
-    this._lastEtag = etag;
+    this._lastEtag = normalizeEtag(etag);
     // Clear the post-Cancel block: a fresh sync (load or save) is the recovery path.
     this._saveBlocked = false;
     // If edits landed since the in-flight save snapshotted its body, a follow-up
@@ -112,7 +118,7 @@ class StaleCheck {
         ? await config.get({ org, site, cachebust: true })
         : await source.get({ org, site, path, cachebust: true });
       if (!resp.ok) return false;
-      const etag = resp.headers.get('etag');
+      const etag = normalizeEtag(resp.headers.get('etag'));
       if (!etag || !this._lastEtag || etag === this._lastEtag) return false;
       const json = await resp.json();
       this._onStale({ json, dirty: this._hasLocalEdits });

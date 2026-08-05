@@ -8,6 +8,7 @@ import {
 } from '../editor-utils/command-helpers.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
@@ -264,11 +265,10 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _openAemAssets() {
-    document.querySelector('ew-canvas-header')?.dispatchEvent(new CustomEvent('nx-canvas-open-panel', {
-      bubbles: true,
-      composed: true,
-      detail: { position: 'after', panelName: 'aem-assets' },
-    }));
+    document.dispatchEvent(new CustomEvent(
+      PANEL_EVENT.OPEN,
+      { detail: { section: 'tools', id: 'aem-assets' } },
+    ));
   }
 
   /* ---- Rendering ---- */
@@ -372,13 +372,13 @@ class EwSelectionToolbar extends LitElement {
         .href=${this._linkHref ?? ''}
         .text=${this._linkText ?? ''}
         @da-link-submit=${this._onLinkDialogSubmit}
-        @da-link-cancel=${this._closeLinkDialog}
+        @close=${this._closeLinkDialog}
       ></da-link-dialog>
       <da-alt-dialog
         ?open=${this.altDialogOpen}
         .alt=${this._altText ?? ''}
         @da-alt-submit=${this._onAltDialogSubmit}
-        @da-alt-cancel=${this._closeAltDialog}
+        @close=${this._closeAltDialog}
       ></da-alt-dialog>
     `;
   }

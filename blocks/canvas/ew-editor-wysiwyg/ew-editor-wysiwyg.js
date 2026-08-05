@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -13,11 +14,14 @@ const QUICK_EDIT_INIT_MAX_ATTEMPTS = 25;
 
 const WYSIWYG_PORT_READY_ATTR = 'data-nx-wysiwyg-port-ready';
 
-function buildQuickEditInitPayload({ org, repo, path, branch = 'main' }) {
+function buildQuickEditInitPayload({ org, repo, path, branch = 'main', canWrite = false }) {
   const pathWithoutOrgRepo = path.split('/').slice(2).join('/');
   const pathname = pathWithoutOrgRepo ? `/${pathWithoutOrgRepo}` : '/';
   return {
-    config: { mountpoint: `${getPreviewOrigin(org, repo, branch)}/${org}/${repo}` },
+    config: {
+      mountpoint: `${getPreviewOrigin(org, repo, branch)}/${org}/${repo}`,
+      canWrite,
+    },
     location: { pathname },
   };
 }
@@ -45,6 +49,7 @@ async function tryLoadWysiwygPreviewCookies({ org, repo, path, branch, getCurren
 export class EwEditorWysiwyg extends LitElement {
   static properties = {
     ctx: { type: Object },
+    canWrite: { type: Boolean },
     _cookieReady: { state: true },
   };
 
@@ -161,12 +166,21 @@ export class EwEditorWysiwyg extends LitElement {
     const { port1, port2 } = new MessageChannel();
     this._quickEditLocalPort = port1;
     port1.onmessage = (ev) => {
-      if (ev.data?.ready !== true) return;
+      // @deprecated flat `ready` — prefer `type === MESSAGE_TYPES.READY` (da-nx now sends both).
+      const isReady = ev.data?.type === MESSAGE_TYPES.READY || ev.data?.ready === true;
+      if (!isReady) return;
       this._quickEditLocalPort = null;
       onReady(port1);
     };
     try {
-      iframe.contentWindow.postMessage({ init: config, location }, '*', [port2]);
+      // @deprecated top-level init/location — prefer type/payload. Kept so the quick-edit
+      // iframe script (da-nx) keeps working until it migrates.
+      iframe.contentWindow.postMessage({
+        init: config,
+        location,
+        type: MESSAGE_TYPES.INIT,
+        payload: { config, location },
+      }, '*', [port2]);
     } catch (err) {
       this._disposeQuickEditLocalPort();
       // eslint-disable-next-line no-console
@@ -183,7 +197,13 @@ export class EwEditorWysiwyg extends LitElement {
     this._clearQuickEditRetry();
     this._syncCanvasVisibility();
 
-    const { config, location } = buildQuickEditInitPayload({ org, repo, path, branch: this._wysiwygBranch ?? 'main' });
+    const { config, location } = buildQuickEditInitPayload({
+      org,
+      repo,
+      path,
+      branch: this._wysiwygBranch ?? 'main',
+      canWrite: this.canWrite === true,
+    });
     const send = () => this._postQuickEditInitToIframe({
       iframe,
       config,

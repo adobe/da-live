@@ -1,10 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../utils/fixtures.js';
 import { getTestSheetURL, waitForSave } from '../utils/page.js';
 
-test('New sheet', async ({ page }, workerInfo) => {
+test('New sheet', async ({ page, trackCleanup }, workerInfo) => {
   test.setTimeout(30000);
 
   const url = getTestSheetURL('sheet1', workerInfo);
+  trackCleanup(url, { ext: '.json' });
   await page.goto(url);
 
   // DA title
@@ -26,10 +27,11 @@ test('New sheet', async ({ page }, workerInfo) => {
   await page.close();
 });
 
-test('Deleting rows persists after reload', async ({ page }, workerInfo) => {
+test('Deleting rows persists after reload', async ({ page, trackCleanup }, workerInfo) => {
   test.setTimeout(30000);
 
   const url = getTestSheetURL('sheetdel', workerInfo);
+  trackCleanup(url, { ext: '.json' });
   await page.goto(url);
 
   await expect(page.locator('da-sheet-tabs')).toBeVisible();
@@ -71,10 +73,11 @@ test('Deleting rows persists after reload', async ({ page }, workerInfo) => {
   await page.close();
 });
 
-test('Deleting columns persists after reload', async ({ page }, workerInfo) => {
+test('Deleting columns persists after reload', async ({ page, trackCleanup }, workerInfo) => {
   test.setTimeout(30000);
 
   const url = getTestSheetURL('sheetdelc', workerInfo);
+  trackCleanup(url, { ext: '.json' });
   await page.goto(url);
 
   await expect(page.locator('da-sheet-tabs')).toBeVisible();
@@ -114,10 +117,11 @@ test('Deleting columns persists after reload', async ({ page }, workerInfo) => {
   await page.close();
 });
 
-test('Moving a row persists after reload', async ({ page }, workerInfo) => {
+test('Moving a row persists after reload', async ({ page, trackCleanup }, workerInfo) => {
   test.setTimeout(30000);
 
   const url = getTestSheetURL('sheetmove', workerInfo);
+  trackCleanup(url, { ext: '.json' });
   await page.goto(url);
 
   await expect(page.locator('da-sheet-tabs')).toBeVisible();
