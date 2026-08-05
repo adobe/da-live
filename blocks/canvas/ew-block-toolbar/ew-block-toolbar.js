@@ -177,6 +177,17 @@ class EwBlockToolbar extends LitElement {
     document.querySelector('ew-canvas-header')?.setEditorView('block');
   }
 
+  _onDeleteBlock() {
+    const { view } = this;
+    if (!view) return;
+    const { from } = view.state.selection;
+    const node = view.state.doc.nodeAt(from);
+    if (!node) return;
+    view.dispatch(view.state.tr.delete(from, from + node.nodeSize));
+    this.hide();
+    view.focus();
+  }
+
   async _onReplaceBlock() {
     if (!this.view || !this._hasBlockLibrary) return;
     const { from, to } = this.view.state.selection;
@@ -238,6 +249,14 @@ class EwBlockToolbar extends LitElement {
             title="Edit block"
             @click=${() => this._onEditBlock()}
           >${this._icon('edit')}</button>` : nothing}
+        <span class="toolbar-sep" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="toolbar-btn block-delete icon-only"
+          aria-label="Delete block"
+          title="Delete block"
+          @click=${() => this._onDeleteBlock()}
+        >${this._icon('delete')}</button>
       </div>
     `;
   }
