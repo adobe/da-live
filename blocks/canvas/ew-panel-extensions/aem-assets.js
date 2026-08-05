@@ -1,13 +1,15 @@
 import { getNx } from '../../../scripts/utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from '../../edit/da-assets/helpers/config.js';
-import { buildHandleSelection, createDialogPanels } from '../../edit/da-assets/da-assets.js';
+/* eslint-disable object-curly-newline -- 4 shared symbols exceed max-len on one line */
+import {
+  ASSET_SELECTOR_URL, buildFeatureSet, buildHandleSelection, createDialogPanels,
+} from '../../edit/da-assets/da-assets.js';
+/* eslint-enable object-curly-newline */
 
 // Re-exported for ew-selection-toolbar's "does this site have AEM assets?" check.
 // The picker shares the classic editor's config resolver rather than forking it.
 export { getRepositoryConfig };
-
-const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 
 // ---------------------------------------------------------------------------
 // Script loader
@@ -59,16 +61,11 @@ export async function renderAssets({ container, org, site, onClose }) {
     ? getResponsiveImageConfig(org, site)
     : Promise.resolve(false);
 
-  // Keep in sync with the classic editor's buildFeatureSet(): DM sites also
-  // get the dynamic-media feature.
-  const featureSet = ['upload', 'collections', 'detail-panel', 'advisor'];
-  if (repoConfig.isDmEnabled) featureSet.push('dynamic-media');
-
   const selectorProps = {
     imsToken: token,
     repositoryId: repoConfig.repositoryId,
     aemTierType: repoConfig.tierType,
-    featureSet,
+    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
     // Only let the selector's own close affect the dialog while it's the visible panel.
     ...(onClose && { onClose: () => assetPanel.style.display !== 'none' && onClose() }),
     handleSelection: buildHandleSelection({

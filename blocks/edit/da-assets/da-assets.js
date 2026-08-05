@@ -9,7 +9,7 @@ import { applySiteImageModifiers } from './helpers/imageModifiers.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
-const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
+export const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 
 const DM_ERROR_MSG = 'The selected asset is not available because it is not approved for delivery. Please check the status.';
 const PUBLISH_ERROR_MSG = 'The selected asset is not available on the publish tier. Please publish the asset in AEM and try again.';
