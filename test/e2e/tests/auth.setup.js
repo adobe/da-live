@@ -84,7 +84,7 @@ setup('Set up authentication', async ({ page }) => {
   await continueButton.waitFor();
   await continueButton.click();
 
-  const passwordInput = page.getByLabel('Password', { exact: true });
+  const passwordInput = page.getByLabel(/^(continue with )?password$/i);
   await passwordInput.waitFor();
   await passwordInput.evaluate((el, password) => {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;

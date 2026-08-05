@@ -283,6 +283,20 @@ describe('DaTitle', () => {
       const use = cloud.querySelector('use');
       expect(use.getAttribute('href')).to.equal('#cloud_refresh');
     });
+
+    it('renders the cloud error (!) icon for the config view instead of the pulsing indicator', async () => {
+      el = await fixture({
+        collabStatus: 'unsaved',
+        details: createDetails({ view: 'config' }),
+      });
+      await nextFrame();
+      const cloud = el.shadowRoot.querySelector('.collab-status-cloud');
+      expect(cloud.classList.contains('collab-status-unsaved')).to.be.false;
+      expect(cloud.classList.contains('collab-status-unsaved-config')).to.be.true;
+      expect(cloud.getAttribute('data-popup-content')).to.equal('Unsaved changes');
+      const use = cloud.querySelector('use');
+      expect(use.getAttribute('href')).to.equal('#spectrum-Cloud-error');
+    });
   });
 
   describe('renderCollab', () => {
