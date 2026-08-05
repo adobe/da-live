@@ -1,7 +1,8 @@
-/* eslint-disable import/no-unresolved -- importmap */
-import { DOMParser as PMDOMParser } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { getResponsiveImageConfig } from '../../edit/da-assets/helpers/config.js';
+import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from '../../edit/da-assets/helpers/insert.js';
+import showSmartCropDialog from '../../edit/da-assets/helpers/smart-crop.js';
 
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
 
@@ -25,8 +26,9 @@ export async function getRepositoryConfig(org, site) {
 
   const tierType = repositoryId.startsWith('delivery') ? 'delivery' : 'author';
   const customOrigin = getValue('aem.assets.prod.origin');
+  const isSmartCrop = getValue('aem.asset.smartcrop.select') === 'on';
   const isDmEnabled = getValue('aem.asset.dm.delivery') === 'on'
-    || getValue('aem.asset.smartcrop.select') === 'on'
+    || isSmartCrop
     || tierType === 'delivery';
 
   let assetOrigin;
@@ -37,7 +39,9 @@ export async function getRepositoryConfig(org, site) {
 
   const assetBasePath = getValue('aem.assets.prod.basepath') || DEFAULT_BASE_PATH;
 
-  return { repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled };
+  return {
+    repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled, isSmartCrop,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +69,7 @@ function buildAuthorUrl(asset, publishOrigin) {
   return `https://${publishOrigin}${asset.path}`;
 }
 
-function resolveAssetUrl(asset, config) {
+export function resolveAssetUrl(asset, config) {
   const { tierType, assetOrigin, assetBasePath, isDmEnabled } = config;
   if (tierType === 'delivery') return buildDeliveryUrl(asset, assetOrigin, assetBasePath);
   if (isDmEnabled) return buildDmUrl(asset, assetOrigin, assetBasePath);
@@ -75,23 +79,6 @@ function resolveAssetUrl(asset, config) {
 // ---------------------------------------------------------------------------
 // Insertion
 // ---------------------------------------------------------------------------
-
-function insertImage(view, src, alt) {
-  const attrs = { src, style: 'width: 180px' };
-  if (alt) attrs.alt = alt;
-  const node = view.state.schema.nodes.image.create(attrs);
-  view.dispatch(view.state.tr.replaceSelectionWith(node).scrollIntoView());
-}
-
-function insertLink(view, src) {
-  const para = document.createElement('p');
-  const link = document.createElement('a');
-  link.href = src;
-  link.innerText = src;
-  para.append(link);
-  const parsed = PMDOMParser.fromSchema(view.state.schema).parse(para);
-  view.dispatch(view.state.tr.replaceSelectionWith(parsed).scrollIntoView());
-}
 
 function getAssetAlt(asset) {
   return asset['dc:title']?.['o:default']
@@ -134,29 +121,99 @@ export async function renderAssets({ container, org, site, onClose }) {
 
   await loadSelectorScript();
 
+  // The panel is rendered inside a shadow root, so link the shared asset-picker
+  // styles (blocks/edit/da-assets/da-assets.css) that style the smart-crop UI.
+  const styleLink = document.createElement('link');
+  styleLink.rel = 'stylesheet';
+  styleLink.href = new URL('../../edit/da-assets/da-assets.css', import.meta.url).href;
+  container.append(styleLink);
+
+  // Two-panel layout: the selector lives in `assetPanel`; the smart-crop picker
+  // takes over `secondaryPanel` when needed, matching the old editor.
+  const assetPanel = document.createElement('div');
+  assetPanel.className = 'da-dialog-asset-inner';
+  const secondaryPanel = document.createElement('div');
+  secondaryPanel.className = 'da-dialog-asset-inner';
+  secondaryPanel.style.display = 'none';
+  container.append(assetPanel, secondaryPanel);
+
+  const responsiveImageConfigPromise = repoConfig.isSmartCrop
+    ? getResponsiveImageConfig(org, site)
+    : Promise.resolve(false);
+
+  const resetToAssetPanel = () => {
+    secondaryPanel.style.display = 'none';
+    secondaryPanel.innerHTML = '';
+    assetPanel.style.display = 'block';
+  };
+  const closeAndReset = () => {
+    onClose?.();
+    resetToAssetPanel();
+  };
+
+  // Mirrors the old editor's smart-crop flow (blocks/edit/da-assets/da-assets.js): when
+  // smart crop is enabled and an image is picked, a crop-picker takes over `secondaryPanel`
+  // and the inserted URLs carry the `?smartcrop=<cropName>` param. Otherwise insert plainly.
+  const handleSelection = async (assets) => {
+    const [asset] = assets;
+    if (!asset) return;
+    const { view } = getExtensionsBridge();
+    if (!view) return;
+
+    const mimetype = (asset.mimetype || asset['dc:format'] || '').toLowerCase();
+    const isImage = mimetype.startsWith('image/');
+    const alt = getAssetAlt(asset);
+
+    if (isImage && repoConfig.isSmartCrop) {
+      const assetUrl = resolveAssetUrl(asset, repoConfig);
+      assetPanel.style.display = 'none';
+      secondaryPanel.style.display = 'block';
+
+      const hasCrops = await showSmartCropDialog({
+        container: secondaryPanel,
+        asset,
+        assetUrl,
+        dmOrigin: repoConfig.assetOrigin,
+        dmBasePath: repoConfig.assetBasePath,
+        blockName: getBlockName(view),
+        responsiveImageConfigPromise,
+        onInsert: (srcs) => {
+          closeAndReset();
+          const nodes = srcs.map((src) => createImageNode(view, src, alt));
+          insertFragment(view, nodes);
+        },
+        onBack: resetToAssetPanel,
+        onCancel: closeAndReset,
+      });
+
+      if (!hasCrops) {
+        closeAndReset();
+        insertImage(view, assetUrl, alt);
+      }
+      return;
+    }
+
+    // Standard insertion
+    onClose?.();
+    const src = resolveAssetUrl(asset, repoConfig);
+    if (isImage) {
+      insertImage(view, src, alt);
+    } else {
+      insertLink(view, src);
+    }
+  };
+
   const selectorProps = {
     imsToken: token,
     repositoryId: repoConfig.repositoryId,
     aemTierType: repoConfig.tierType,
     featureSet: ['upload', 'collections', 'detail-panel', 'advisor'],
-    ...(onClose && { onClose }),
-    handleSelection: (assets) => {
-      const [asset] = assets;
-      if (!asset) return;
-      const { view } = getExtensionsBridge();
-      if (!view) return;
-      const src = resolveAssetUrl(asset, repoConfig);
-      const mimetype = (asset.mimetype || asset['dc:format'] || '').toLowerCase();
-      const alt = getAssetAlt(asset);
-      if (mimetype.startsWith('image/')) {
-        insertImage(view, src, alt);
-      } else {
-        insertLink(view, src);
-      }
-    },
+    // Only let the selector's own close affect the dialog while it's the visible panel.
+    ...(onClose && { onClose: () => assetPanel.style.display !== 'none' && onClose() }),
+    handleSelection,
   };
 
-  window.PureJSSelectors.renderAssetSelector(container, selectorProps);
+  window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
 }
 
 export function getAssetsPlugin({ org, site }) {
