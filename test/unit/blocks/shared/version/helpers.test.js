@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { formatDate } from '../../../../../blocks/shared/utils.js';
-import { formatVersions, buildDisplayItems } from '../../../../../blocks/shared/version/helpers.js';
+import { formatVersions, buildDisplayItems, formatUser } from '../../../../../blocks/shared/version/helpers.js';
 
 const TIME_OPTS = { hour: 'numeric', minute: '2-digit' };
 const DATE_OPTS = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -10,6 +10,15 @@ const ver = (overrides = {}) => ({ isVersion: true, date: 'Jan 1', time: '10:00'
 const auditGroup = (audits = [{ date: 'Jan 1', time: '09:00', users: [] }]) => ({ date: 'Jan 1', audits });
 
 describe('Versions helper', () => {
+  it('Format user returns the plain email for a human', () => {
+    expect(formatUser({ email: 'jane@example.com' })).to.equal('jane@example.com');
+  });
+
+  it('Format user appends (agent) when isAgentic is set', () => {
+    expect(formatUser({ email: 'jane@example.com', isAgentic: true }))
+      .to.equal('jane@example.com (agent)');
+  });
+
   it('Format date', () => {
     const { date: d, time: t } = formatDate(1709205071123);
 
