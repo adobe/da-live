@@ -1,5 +1,5 @@
 // ProseMirror
-import { EditorView } from 'prosemirror-view';
+import { EditorView, Decoration, DecorationSet } from 'prosemirror-view';
 import { EditorState, Plugin, PluginKey, TextSelection, NodeSelection } from 'prosemirror-state';
 import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
@@ -52,6 +52,8 @@ import { InputRule, inputRules, wrappingInputRule } from 'prosemirror-inputrules
 // All exported
 export {
   EditorView,
+  Decoration,
+  DecorationSet,
   EditorState,
   DOMParser,
   DOMSerializer,

@@ -37,6 +37,11 @@
   outline: none;
 }
 
+/* Block mode: only the focused top-level block stays visible. */
+.ew-editor-doc .ProseMirror > .nx-block-hidden {
+  display: none;
+}
+
 .ew-editor-doc .da-slash-hint {
   position: absolute;
   pointer-events: none;

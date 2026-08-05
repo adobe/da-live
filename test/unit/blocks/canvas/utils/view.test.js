@@ -33,6 +33,10 @@ describe('normalizeCanvasEditorView', () => {
     expect(normalizeCanvasEditorView('layout')).to.equal('layout');
   });
 
+  it('returns block for block', () => {
+    expect(normalizeCanvasEditorView('block')).to.equal('block');
+  });
+
   it('returns layout for unknown values', () => {
     expect(normalizeCanvasEditorView('unknown')).to.equal('layout');
     expect(normalizeCanvasEditorView('')).to.equal('layout');
@@ -54,6 +58,12 @@ describe('persistCanvasEditorView', () => {
     persistCanvasEditorView('unknown');
     expect(sessionStorage.getItem(SESSION_KEY)).to.equal('layout');
   });
+
+  it('does not persist the transient block view', () => {
+    sessionStorage.setItem(SESSION_KEY, 'split');
+    persistCanvasEditorView('block');
+    expect(sessionStorage.getItem(SESSION_KEY)).to.equal('split');
+  });
 });
 
 describe('readInitialCanvasEditorView', () => {
@@ -64,6 +74,15 @@ describe('readInitialCanvasEditorView', () => {
   it('returns persisted session storage value when present', async () => {
     sessionStorage.setItem(SESSION_KEY, 'content');
     const view = await readInitialCanvasEditorView(ctx(), flagsLoader({ data: [] }));
+    expect(view).to.equal('content');
+  });
+
+  it('never resumes into the transient block view', async () => {
+    sessionStorage.setItem(SESSION_KEY, 'block');
+    const view = await readInitialCanvasEditorView(
+      ctx(),
+      flagsLoader({ data: [{ key: 'ew.canvasDefaultView', value: 'content' }] }),
+    );
     expect(view).to.equal('content');
   });
 

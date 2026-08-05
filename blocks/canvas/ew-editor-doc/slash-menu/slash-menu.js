@@ -3,6 +3,12 @@ import { Plugin } from 'da-y-wrapper';
 import { getNx } from '../../../../scripts/utils.js';
 import { slashMenuItemsForQuery, applySlashSelection } from '../../editor-utils/command-defs.js';
 import { ensureBlockLibrary } from '../../editor-utils/block-slash.js';
+import {
+  ensureBlockOptions,
+  blockOptionItems,
+  isBlockOption,
+  applyBlockOption,
+} from './block-options.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -13,9 +19,19 @@ function inTopLevelParagraph($from) {
   return $from.node($from.depth - 1).type.name === 'doc';
 }
 
+/** 'block' for a top-level paragraph (block insert), 'cell' inside a block cell (options). */
+function paragraphMode($from) {
+  if ($from.parent.type.name !== 'paragraph' || $from.depth < 1) return null;
+  const parentType = $from.node($from.depth - 1).type.name;
+  if (parentType === 'doc') return 'block';
+  if (parentType === 'table_cell') return 'cell';
+  return null;
+}
+
 export function getSlashContext(state) {
   const { $from } = state.selection;
-  if (!inTopLevelParagraph($from)) return null;
+  const mode = paragraphMode($from);
+  if (!mode) return null;
 
   const paraStart = $from.start();
   const head = state.selection.from;
@@ -27,7 +43,7 @@ export function getSlashContext(state) {
   const query = prefix.slice(1);
   if (query.length > 50) return null;
 
-  return { query, anchorPos: paraStart };
+  return { query, anchorPos: paraStart, mode };
 }
 
 function shouldShowSlashHint(state) {
@@ -58,7 +74,11 @@ function setup(container, view) {
       const { anchorPos } = slash;
       const head = state.selection.from;
       view.dispatch(state.tr.delete(anchorPos, head));
-      applySlashSelection(view, e.detail.id);
+      if (isBlockOption(e.detail.id)) {
+        applyBlockOption(view, e.detail.id);
+      } else {
+        applySlashSelection(view, e.detail.id);
+      }
     }
     view.focus();
   });
@@ -117,12 +137,20 @@ function syncSlashUi(view, ctxRef) {
     return;
   }
 
-  // load the library on demand when the slash menu is invoked.
-  const pending = ensureBlockLibrary(ctxRef.orgSite);
-  if (pending) pending.then(() => syncSlashUi(view, ctxRef));
+  // In a block cell, offer that block's key/value options; at the top level, the
+  // block-insert / text commands. Both load their data on demand.
+  let items;
+  if (slash.mode === 'cell') {
+    const pending = ensureBlockOptions(ctxRef.orgSite);
+    if (pending) pending.then(() => syncSlashUi(view, ctxRef));
+    items = blockOptionItems(view.state, slash.query);
+  } else {
+    const pending = ensureBlockLibrary(ctxRef.orgSite);
+    if (pending) pending.then(() => syncSlashUi(view, ctxRef));
+    items = slashMenuItemsForQuery(slash.query);
+  }
 
-  const items = slashMenuItemsForQuery(slash.query);
-  if (!items.length) {
+  if (!items || !items.length) {
     ctxRef.ctx?.menu.close();
     return;
   }

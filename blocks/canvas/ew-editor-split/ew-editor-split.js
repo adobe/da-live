@@ -36,10 +36,13 @@ function clampSplitRatio(ratio) {
   return Math.min(SPLIT_RATIO_MAX, Math.max(SPLIT_RATIO_MIN, ratio));
 }
 
+/** Split and block views share the two-pane layout (block just filters the doc). */
+const isSplitLike = (view) => view === 'split' || view === 'block';
+
 /** Toggle split row on the mount; seed `--nx-canvas-split-ratio` when entering split mode. */
 export function syncEditorSplitLayout({ mountRoot, view }) {
-  mountRoot.classList.toggle(SPLIT_MOUNT_CLASS, view === 'split');
-  if (view !== 'split') return;
+  mountRoot.classList.toggle(SPLIT_MOUNT_CLASS, isSplitLike(view));
+  if (!isSplitLike(view)) return;
   const cur = mountRoot.style.getPropertyValue('--nx-canvas-split-ratio').trim();
   if (!cur) {
     mountRoot.style.setProperty('--nx-canvas-split-ratio', String(readPersistedSplitRatio()));
