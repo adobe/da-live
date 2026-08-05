@@ -1,7 +1,14 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { isFavorite, toggleFavorite } from '../shared/favorites.js';
 import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
-import { aemAction, saveDaVersion, getExistingSchedule } from '../../shared/utils.js';
+import {
+  aemAction,
+  saveDaVersion,
+  getExistingSchedule,
+  fetchDaConfigs,
+  getFirstSheet,
+  initIms,
+} from '../../shared/utils.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -46,6 +53,7 @@ export default class DaList extends LitElement {
     _allPagesLoaded: { state: true },
     _aemActionState: { state: true },
     _isHlx6: { state: true },
+    _canDelete: { state: true },
   };
 
   constructor() {
@@ -65,6 +73,7 @@ export default class DaList extends LitElement {
     this._selectedItems = [];
     this._canUnpublish = true;
     this._listItems = [];
+    this._canDelete = true;
   }
 
   connectedCallback() {
@@ -86,6 +95,7 @@ export default class DaList extends LitElement {
       this._showFilter = undefined;
       this._allPagesLoaded = false;
       this._listItems = await this.getList();
+      this.updateDeletePermission();
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -163,6 +173,40 @@ export default class DaList extends LitElement {
       this._emptyMessage = 'Not permitted';
       this.resetListItemPaths([]);
       return [];
+    }
+  }
+
+  async updateDeletePermission() {
+    const [org, site] = sanitizePathParts(this.fullpath);
+
+    // The allowlist lives in the site-level config, so without a site we
+    // keep the default behavior of showing delete.
+    if (!org || !site) {
+      this._canDelete = true;
+      return;
+    }
+
+    try {
+      const configs = await Promise.all(fetchDaConfigs({ org, site }));
+      const rows = configs.filter(Boolean).flatMap((config) => getFirstSheet(config) || []);
+      const allowRow = rows.find((row) => row.key === 'browser.allowDelete');
+      const allowList = allowRow?.value
+        ?.split(',')
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean);
+
+      // Key unset or empty: delete stays available to everyone with write access.
+      if (!allowList?.length) {
+        this._canDelete = true;
+        return;
+      }
+
+      const ims = await initIms();
+      const email = ims?.email?.toLowerCase();
+      this._canDelete = !!email && allowList.includes(email);
+    } catch {
+      // On any config/IMS failure, don't silently block a legitimate delete.
+      this._canDelete = true;
     }
   }
 
@@ -1243,6 +1287,7 @@ export default class DaList extends LitElement {
       </div>
       <da-actionbar
         .permissions=${this._permissions}
+        .canDelete=${this._canDelete}
         @clearselection=${this.handleClear}
         @rename=${this.handleRename}
         @onfavorite=${this.handleFavorite}
