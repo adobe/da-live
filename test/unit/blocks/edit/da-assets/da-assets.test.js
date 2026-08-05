@@ -165,17 +165,19 @@ describe('buildAssetSelectorProps', () => {
     handleSelection: () => {},
   };
 
-  it('adds the locked filter schema when approvedOnly is enabled', () => {
+  it('adds the hybrid locked filter contract when approvedOnly is enabled', () => {
     const props = buildAssetSelectorProps(baseArgs);
-    expect(props.filterSchema).to.be.an('array').and.not.empty;
+    expect(props.filterSchema.map(({ groupKey }) => groupKey)).to.deep.equal(['AssetStatusGroup']);
+    expect(props).to.include({ filterSchemaSource: 'hybrid-merge-deep' });
   });
 
-  it('omits filterSchema when approvedOnly is disabled', () => {
+  it('omits the hybrid filter contract when approvedOnly is disabled', () => {
     const props = buildAssetSelectorProps({
       ...baseArgs,
       repoConfig: { ...baseArgs.repoConfig, approvedOnly: false },
     });
     expect(props).to.not.have.property('filterSchema');
+    expect(props).to.not.have.property('filterSchemaSource');
   });
 });
 

@@ -17,16 +17,10 @@ import {
 } from '../../../../../blocks/shared/aem-assets/filter-schema.js';
 
 describe('approved-only AEM Assets filter schema', () => {
-  it('preserves the pinned Content Advisor filter groups', () => {
+  it('contains only the locked Asset Status group', () => {
     const schema = createApprovedOnlyFilterSchema();
     expect(schema.map(({ groupKey }) => groupKey)).to.deep.equal([
-      'FileTypeGroup',
-      'FileFormatGroup',
       'AssetStatusGroup',
-      'FileSizeGroup',
-      'ImageDimensionsGroup',
-      'ModifiedDateGroup',
-      'CreatedDateGroup',
     ]);
   });
 
@@ -55,12 +49,18 @@ describe('approved-only AEM Assets filter schema', () => {
     expect(first[0].fields[0]).to.not.equal(second[0].fields[0]);
   });
 
-  it('adds filterSchema only when approved-only is enabled', () => {
+  it('adds the hybrid filter contract only when approved-only is enabled', () => {
     const enabled = getApprovedOnlyFilterProps(true);
     const disabled = getApprovedOnlyFilterProps(false);
 
-    expect(enabled.filterSchema).to.be.an('array').and.not.empty;
+    expect(enabled).to.include({ filterSchemaSource: 'hybrid-merge-deep' });
+    expect(Object.keys(enabled).sort()).to.deep.equal([
+      'filterSchema',
+      'filterSchemaSource',
+    ]);
+    expect(enabled.filterSchema.map(({ groupKey }) => groupKey)).to.deep.equal(['AssetStatusGroup']);
     expect(disabled).to.deep.equal({});
     expect(disabled).to.not.have.property('filterSchema');
+    expect(disabled).to.not.have.property('filterSchemaSource');
   });
 });
