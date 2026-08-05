@@ -19,6 +19,12 @@ function normalizeHlx6Entry(entry) {
   };
 }
 
+// Display label for a version author. Agent-made edits carry `isAgentic` on the
+// user object (da-admin keeps the email clean); surface that with an "(agent)" suffix.
+export function formatUser(user) {
+  return user.isAgentic ? `${user.email} (agent)` : user.email;
+}
+
 export function formatVersions(json) {
   const entries = json.map((entry) => (
     isHlx6Entry(entry) ? normalizeHlx6Entry(entry) : entry));

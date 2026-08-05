@@ -9,7 +9,7 @@ import {
   fetchVersionHtml,
   getVersionId,
 } from '../../shared/version/version-actions.js';
-import { buildDisplayItems } from '../../shared/version/helpers.js';
+import { buildDisplayItems, formatUser } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { trackingPluginKey } from '../editor-utils/prose-diff.js';
@@ -305,7 +305,7 @@ class EwCanvasVersions extends LitElement {
   }
 
   renderVersion(entry) {
-    const users = entry.users?.map((u) => u.email).join(', ');
+    const users = entry.users?.map(formatUser).join(', ');
     const menuItems = [
       { section: 'Actions' },
       ...(this._canWrite ? [{ id: 'restore', label: 'Restore' }] : []),
@@ -366,7 +366,7 @@ class EwCanvasVersions extends LitElement {
             ${entry.audits.map((a) => html`
               <li class="audititem">
                 <span class="meta">${a.date}, ${a.time}</span>
-                ${a.users?.length ? html`<span class="user">${a.users.map((u) => u.email).join(', ')}</span>` : nothing}
+                ${a.users?.length ? html`<span class="user">${a.users.map(formatUser).join(', ')}</span>` : nothing}
               </li>
             `)}
           </ul>
