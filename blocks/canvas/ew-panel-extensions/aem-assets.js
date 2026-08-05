@@ -59,11 +59,16 @@ export async function renderAssets({ container, org, site, onClose }) {
     ? getResponsiveImageConfig(org, site)
     : Promise.resolve(false);
 
+  // Keep in sync with the classic editor's buildFeatureSet(): DM sites also
+  // get the dynamic-media feature.
+  const featureSet = ['upload', 'collections', 'detail-panel', 'advisor'];
+  if (repoConfig.isDmEnabled) featureSet.push('dynamic-media');
+
   const selectorProps = {
     imsToken: token,
     repositoryId: repoConfig.repositoryId,
     aemTierType: repoConfig.tierType,
-    featureSet: ['upload', 'collections', 'detail-panel', 'advisor'],
+    featureSet,
     // Only let the selector's own close affect the dialog while it's the visible panel.
     ...(onClose && { onClose: () => assetPanel.style.display !== 'none' && onClose() }),
     handleSelection: buildHandleSelection({
