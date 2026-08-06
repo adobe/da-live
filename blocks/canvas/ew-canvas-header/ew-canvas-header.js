@@ -84,10 +84,6 @@ class EWCanvasHeader extends LitElement {
   }
 
   setEditorView(view) {
-    this._setEditorView(view);
-  }
-
-  _setEditorView(view) {
     if (this.hasUnresolvedMergeConflicts && view !== 'content') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
     this.editorView = view;
@@ -143,13 +139,13 @@ class EWCanvasHeader extends LitElement {
               aria-pressed=${this.editorView === 'layout'}
               title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : nothing}
               ?disabled=${this.hasUnresolvedMergeConflicts}
-              @click=${() => this._setEditorView('layout')}
+              @click=${() => this.setEditorView('layout')}
             >Layout</button>
             <button
               type="button"
               class="segment ${this.editorView === 'content' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'content'}
-              @click=${() => this._setEditorView('content')}
+              @click=${() => this.setEditorView('content')}
             >Content</button>
             <button
               type="button"
@@ -158,7 +154,7 @@ class EWCanvasHeader extends LitElement {
               aria-label="Split view"
               title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : 'Split view'}
               ?disabled=${this.hasUnresolvedMergeConflicts}
-              @click=${() => this._setEditorView('split')}
+              @click=${() => this.setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
           </div>
           ` : nothing}

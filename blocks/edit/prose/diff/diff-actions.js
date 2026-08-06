@@ -117,7 +117,7 @@ function createCompositeButton({
     switchBtn.appendChild(createTooltip(switchTooltip, 'diff-tooltip'));
   }
 
-  const confirmBtn = createButton('confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': `${tooltip}` });
+  const confirmBtn = createButton('nx-action-btn-icon confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': `${tooltip}` });
   confirmBtn.addEventListener('click', handler);
   if (tooltip) {
     confirmBtn.appendChild(createTooltip(tooltip, 'diff-tooltip'));

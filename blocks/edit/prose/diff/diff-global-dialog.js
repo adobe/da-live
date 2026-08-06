@@ -138,7 +138,7 @@ function createGlobalAction(
   const label = createElement('span', 'switch-btn da-diff-btn-base-element');
   label.textContent = text;
 
-  const confirm = createButton('confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': text });
+  const confirm = createButton('nx-action-btn-icon confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': text });
   confirm.addEventListener('click', () => handleGlobalAction(action, activeViews, isLocNode));
   confirm.appendChild(createTooltip(tooltipText, 'diff-tooltip'));
 

@@ -96,14 +96,10 @@ async function loadLocCss(hostEl) {
     const locSheet = await getSheet('/blocks/edit/prose/diff/diff-utils.css');
 
     if (hostEl?.shadowRoot) {
-      const sheets = [...(hostEl.shadowRoot.adoptedStyleSheets || []), locSheet];
-
-      if (hostEl.tagName === 'EW-EDITOR-DOC') {
-        const ewSheet = await getSheet('/blocks/canvas/ew-editor-doc/ew-editor-doc-diff.css');
-        sheets.push(ewSheet);
-      }
-
-      hostEl.shadowRoot.adoptedStyleSheets = sheets;
+      hostEl.shadowRoot.adoptedStyleSheets = [
+        ...(hostEl.shadowRoot.adoptedStyleSheets || []),
+        locSheet,
+      ];
 
       // Set CSS custom properties for diff labels
       setDiffLabelCssVars(hostEl);
@@ -464,8 +460,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       this.dom.appendChild(nodeDOM);
 
       // Create placeholder cover div immediately
-      const coverDiv = createElement('div', 'loc-color-overlay', { 'loc-temp-dom': '' });
-      coverDiv.style.backgroundColor = upstream ? '#4682b433' : '#902ade33';
+      const coverDiv = createElement('div', `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`, { 'loc-temp-dom': '' });
       this.dom.appendChild(coverDiv);
 
       // Create placeholder overlay
@@ -500,9 +495,6 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
         coverDiv.removeChild(this.langOverlay);
         this.langOverlay = overlay;
         coverDiv.appendChild(this.langOverlay);
-
-        const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
-        coverDiv.className = className;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('Failed to load enhanced overlays:', error);

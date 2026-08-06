@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
 import {
@@ -41,6 +42,8 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 
 const style = await loadStyle(import.meta.url);
+const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
+const diffStyle = await getSheet('/blocks/canvas/ew-editor-doc/ew-editor-doc-diff.css');
 
 export class EwEditorDoc extends LitElement {
   static properties = {
@@ -341,7 +344,7 @@ export class EwEditorDoc extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [style, buttons, diffStyle];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this.hidden = view === 'layout';
       hideSelectionToolbar();

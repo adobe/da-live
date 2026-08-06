@@ -17,6 +17,14 @@ da-loc-added,
   border-radius: 6px;
 }
 
+.loc-color-overlay.loc-regional {
+  background-color: rgb(144 42 222 / 20%);
+}
+
+.loc-color-overlay.loc-langstore {
+  background-color: rgb(70 130 180 / 20%);
+}
+
 .loc-lang-overlay {
   z-index: 1001;
 }
