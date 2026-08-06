@@ -9,10 +9,10 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../utils/fixtures.js';
 import { getTestPageURL, fill, TEST_SITE } from '../../utils/page.js';
 
-test('Collab cursors in multiple editors', async ({ browser, page, browserName }, workerInfo) => {
+test('Collab cursors in multiple editors', async ({ browser, page, browserName, trackCleanup }, workerInfo) => {
   // Open 2 editors on the same page and edit in both of them.
   // Ensure that the edits are visible to both and that the collab cursors are there
   // Also check that the cloud icon is visible for the collaborator
@@ -20,6 +20,7 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
   test.setTimeout(60000);
 
   const pageURL = getTestPageURL('collab', workerInfo);
+  trackCleanup(pageURL);
 
   // Capture the Bearer token that da-live's daFetch attaches to its backend
   // requests, so we can reuse the exact same Authorization header below.

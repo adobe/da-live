@@ -4,6 +4,7 @@ import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../edi
 import { initIms as loadIms } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -56,27 +57,26 @@ export class EwEditorWysiwyg extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._onCanvasEditorActive = (e) => {
-      this._canvasActiveView = e.detail?.view;
+    this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
+      this._canvasActiveView = view;
       this._syncCanvasVisibility();
-    };
-    this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
-    this._onMergeConflictsChange = (e) => {
-      const hasMergeConflicts = e.detail?.hasMergeConflicts ?? false;
+    });
+    this._syncCanvasVisibility();
+
+    this._unsubscribeMergeConflicts = canvasBus.mergeConflictsState.subscribe((detail) => {
+      const hasMergeConflicts = detail?.hasMergeConflicts ?? false;
       if (hasMergeConflicts) {
         this._hadMergeConflicts = true;
       } else if (this._hadMergeConflicts) {
         this._hadMergeConflicts = false;
         this._reloadIframe();
       }
-    };
-    this.parentElement?.addEventListener('nx-canvas-merge-conflicts', this._onMergeConflictsChange);
-    this._syncCanvasVisibility();
+    });
   }
 
   disconnectedCallback() {
-    this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
-    this.parentElement?.removeEventListener('nx-canvas-merge-conflicts', this._onMergeConflictsChange);
+    this._unsubscribeMergeConflicts?.();
+    this._unsubscribeEditorActive?.();
     this._clearQuickEditRetry();
     super.disconnectedCallback();
   }
@@ -163,11 +163,7 @@ export class EwEditorWysiwyg extends LitElement {
     this.setAttribute(WYSIWYG_PORT_READY_ATTR, '');
     this._syncCanvasVisibility();
     const iframe = this.shadowRoot?.querySelector('iframe');
-    this.dispatchEvent(new CustomEvent('nx-wysiwyg-port-ready', {
-      bubbles: true,
-      composed: true,
-      detail: { port, iframe },
-    }));
+    canvasBus.wysiwygPortReady.emit({ port, iframe });
   }
 
   _scheduleQuickEditInitRetries(send) {

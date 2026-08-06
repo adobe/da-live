@@ -1,10 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
+import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import {
-  updateDocument, updateCursors, getInstrumentedHTML,
-  editorHtmlChange, editorSelectChange, getEditor,
-} from '../editor-utils/editor-utils.js';
+import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
@@ -13,7 +10,7 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload } from './utils/selection.js';
+import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload, activeContentProseIndex } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -28,6 +25,17 @@ import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+
+// Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
+// so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
+const CONTENT_KIND_NODE_NAMES = {
+  paragraph: ['paragraph'],
+  heading: ['heading'],
+  list: ['bullet_list', 'ordered_list'],
+  code: ['code_block'],
+  quote: ['blockquote'],
+};
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
@@ -53,7 +61,7 @@ export class EwEditorDoc extends LitElement {
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
       this._lastBroadcastNodeKey = undefined;
-      editorHtmlChange.emit('');
+      canvasBus.editorHtmlState.emit('');
     }
   }
 
@@ -77,26 +85,18 @@ export class EwEditorDoc extends LitElement {
   _emitHtmlChange() {
     const { view } = this._proseContext ?? {};
     if (!view) return;
-    editorHtmlChange.emit(getInstrumentedHTML(view));
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view));
   }
 
   _emitUndoState() {
     const mgr = this._proseContext?.undoManager;
     const canUndo = mgr ? mgr.undoStack.length > 0 : false;
     const canRedo = mgr ? mgr.redoStack.length > 0 : false;
-    this.dispatchEvent(new CustomEvent('nx-editor-undo-state', {
-      bubbles: true,
-      composed: true,
-      detail: { canUndo, canRedo },
-    }));
+    canvasBus.undoState.emit({ canUndo, canRedo });
   }
 
   _emitMergeConflictsState(hasMergeConflicts) {
-    this.dispatchEvent(new CustomEvent('nx-canvas-merge-conflicts', {
-      bubbles: true,
-      composed: true,
-      detail: { hasMergeConflicts },
-    }));
+    canvasBus.mergeConflictsState.emit({ hasMergeConflicts });
   }
 
   _observeUndoManager(mgr) {
@@ -128,11 +128,54 @@ export class EwEditorDoc extends LitElement {
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
-  _broadcastSelectedNode(scrollIntoView = false) {
+  // TextSelection.near is the fallback for a drifted/mid-node proseIndex. A kind match
+  // selects a NodeSelection instead, for the block-style highlight. Either way, broadcasts
+  // the raw proseIndex, since that's what layout-view's data-prose-index carries.
+  _scrollDocToProseIndex(proseIndex, kind) {
+    if (proseIndex == null || proseIndex < 0) return;
+    const { view } = this._proseContext ?? {};
+    if (!view) return;
+    const { doc } = view.state;
+    if (proseIndex > doc.content.size) return;
+
+    // The dispatch below runs the tracking plugin's onSelectionChange synchronously, which
+    // would otherwise broadcast its own (null, for non-image/table selections) node payload
+    // an instant before the correct one just below overwrites it.
+    this._suppressAutoBroadcast = true;
+    if (kind === 'image' && doc.nodeAt(proseIndex)?.type.name === 'image') {
+      const sel = NodeSelection.create(doc, proseIndex);
+      view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._suppressAutoBroadcast = false;
+      this._broadcastSelectedNode(true);
+      return;
+    }
+
+    // Non-image content's proseIndex is one position inside the node's own start
+    // (see activeContentProseIndex in utils/selection.js) — step back one for the anchor.
+    const nodeStart = proseIndex - 1;
+    const nodeNames = CONTENT_KIND_NODE_NAMES[kind];
+    if (nodeStart >= 0 && nodeNames?.includes(doc.nodeAt(nodeStart)?.type.name)) {
+      const sel = NodeSelection.create(doc, nodeStart);
+      view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._suppressAutoBroadcast = false;
+      this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
+      return;
+    }
+
+    const sel = TextSelection.near(doc.resolve(proseIndex));
+    view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+    this._suppressAutoBroadcast = false;
+    this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
+  }
+
+  // overrideNode lets content navigation (a TextSelection selectedNodePayload can't
+  // classify) broadcast an explicit anchorType/proseIndex instead of a derived one.
+  _broadcastSelectedNode(scrollIntoView = false, overrideNode = undefined) {
+    if (this._suppressAutoBroadcast && overrideNode === undefined) return;
     const port = this._controllerCtx?.port;
     const { view } = this._proseContext ?? {};
     if (!port || !view) return;
-    const node = selectedNodePayload(view);
+    const node = overrideNode !== undefined ? overrideNode : selectedNodePayload(view);
     const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
     const forceScroll = scrollIntoView && Boolean(node);
     if (!forceScroll && key === this._lastBroadcastNodeKey) return;
@@ -179,7 +222,6 @@ export class EwEditorDoc extends LitElement {
       port: this.quickEditPort,
       iframe: this._wysiwygIframe,
       suppressRerender: false,
-      lastBlockIndex: undefined,
       owner: org,
       repo,
       path: controllerPathnameFromEditorCtx(this.ctx),
@@ -251,19 +293,21 @@ export class EwEditorDoc extends LitElement {
               const body = this._controllerCtx
                 ? updateDocument(this._controllerCtx)
                 : getInstrumentedHTML(this._proseContext?.view);
-              if (body) editorHtmlChange.emit(body);
+              if (body) canvasBus.editorHtmlState.emit(body);
             },
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
             (pmView) => {
               const blockIndex = getActiveBlockIndex(pmView);
+              const proseIndex = activeContentProseIndex(pmView);
               const { kind, ...descriptor } = describeDocSelection(pmView);
               const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
               if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
               this._lastDocBlockIndex = blockIndex;
               this._lastDocSelKey = selKey;
-              editorSelectChange.emit({
+              canvasBus.editorSelectState.emit({
                 blockIndex,
+                proseIndex,
                 source: 'doc',
                 explicit: descriptor.selectionType === SEL_BLOCK,
                 ...descriptor,
@@ -298,26 +342,26 @@ export class EwEditorDoc extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._onCanvasEditorActive = (e) => {
-      const view = e.detail?.view;
+    this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this.hidden = view === 'layout';
       hideSelectionToolbar();
-    };
-    this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
-    this._onWysiwygPortReady = (e) => {
-      const { port, iframe } = e.detail ?? {};
-      if (port) {
-        this._wysiwygIframe = iframe;
-        this.quickEditPort = port;
-      }
-    };
-    this.parentElement?.addEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
-    this._unsubscribeSelect = editorSelectChange
+    });
+    this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
+      ({ port, iframe } = {}) => {
+        if (port) {
+          this._wysiwygIframe = iframe;
+          this.quickEditPort = port;
+        }
+      },
+    );
+    this._unsubscribeSelect = canvasBus.editorSelectState
       .subscribe(({ blockIndex, source }) => {
         if (source === 'doc') return;
         this._scrollDocToBlock(blockIndex);
         if (source === 'outline') this._broadcastSelectedNode(true);
       });
+    this._unsubscribeProseSelect = canvasBus.editorProseSelectState
+      .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
@@ -327,10 +371,11 @@ export class EwEditorDoc extends LitElement {
   }
 
   disconnectedCallback() {
-    this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
-    this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
+    this._unsubscribeEditorActive?.();
+    this._unsubscribeWysiwygPortReady?.();
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
+    this._unsubscribeProseSelect?.();
     this._teardown();
     setSelectionToolbarCtx();
     super.disconnectedCallback();

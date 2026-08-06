@@ -42,14 +42,15 @@ function send(onMessage, data) {
 describe('quick-edit-controller message gate', () => {
   it('drops mutating node-update messages for read-only users', () => {
     const ctx = makeCtx(false);
-    send(createControllerOnMessage(ctx), { type: 'node-update', node: {}, cursorOffset: 0 });
+    send(createControllerOnMessage(ctx), { type: 'node-update', payload: { node: {}, cursorOffset: 0 } });
     expect(ctx._spies.nodeFromJSON.called).to.be.false;
   });
 
   it('applies node-update messages for users with write access', () => {
     const ctx = makeCtx(true);
-    send(createControllerOnMessage(ctx), { type: 'node-update', node: {}, cursorOffset: 0 });
-    expect(ctx._spies.nodeFromJSON.called).to.be.true;
+    const node = { type: 'paragraph' };
+    send(createControllerOnMessage(ctx), { type: 'node-update', payload: { node, cursorOffset: 0 } });
+    expect(ctx._spies.nodeFromJSON.calledWith(node)).to.be.true;
   });
 
   it('still processes non-mutating messages when read-only', () => {

@@ -44,6 +44,7 @@ import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
 import { getDiffClass, addActiveView } from '../../edit/prose/diff/diff-utils.js';
 import { initDaMetadata } from '../../edit/utils/helpers.js';
 import { createMergeConflictsPlugin } from '../editor-utils/prose-merge-conflicts.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { DA_ADMIN, DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -194,7 +195,7 @@ export default async function initProse({
         return true;
       },
       'Mod-Alt-s': () => {
-        document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
+        canvasBus.newVersionRequest.emit();
         return true;
       },
       ...getHeadingKeymap(schema),
