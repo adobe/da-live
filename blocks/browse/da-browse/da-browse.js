@@ -19,6 +19,10 @@ function openChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
 }
 
+function closeChatPanel() {
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+}
+
 export default class DaBrowse extends LitElement {
   static properties = {
     details: { attribute: false },
@@ -139,6 +143,8 @@ export default class DaBrowse extends LitElement {
             getContent: getChatPanelContent(),
           });
           if (wasPanelOpen('chat')) openChatPanel();
+        } else {
+          closeChatPanel();
         }
       }
 
