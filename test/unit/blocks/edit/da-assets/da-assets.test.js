@@ -5,8 +5,6 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const {
   formatExternalBrief,
-  buildFeatureSet,
-  buildAssetSelectorProps,
   resolveAssetUrl,
   buildHandleSelection,
   createDialogPanels,
@@ -127,57 +125,6 @@ describe('formatExternalBrief', () => {
     const brief = formatExternalBrief(doc);
     expect(brief).to.not.include('Title:');
     expect(brief).to.include('Some page content without a heading.');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// buildFeatureSet
-// ---------------------------------------------------------------------------
-
-describe('buildFeatureSet', () => {
-  it('returns base features when DM is not enabled', () => {
-    const features = buildFeatureSet(false);
-    expect(features).to.deep.equal(['upload', 'collections', 'detail-panel', 'advisor']);
-  });
-
-  it('adds dynamic-media feature when DM is enabled', () => {
-    const features = buildFeatureSet(true);
-    expect(features).to.include('dynamic-media');
-    expect(features).to.include('upload');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// buildAssetSelectorProps
-// ---------------------------------------------------------------------------
-
-describe('buildAssetSelectorProps', () => {
-  const baseArgs = {
-    imsToken: 'token',
-    repoConfig: {
-      repositoryId: 'author-p1-e1.adobeaemcloud.com',
-      tierType: 'author',
-      isDmEnabled: true,
-      approvedOnly: true,
-    },
-    externalBrief: 'brief',
-    onClose: () => {},
-    handleSelection: () => {},
-  };
-
-  it('adds the hybrid locked filter contract when approvedOnly is enabled', () => {
-    const props = buildAssetSelectorProps(baseArgs);
-    expect(props.filterSchema.map(({ groupKey }) => groupKey)).to.deep.equal(['AssetStatusGroup']);
-    expect(props).to.include({ filterSchemaSource: 'hybrid-merge-deep' });
-  });
-
-  it('omits the hybrid filter contract when approvedOnly is disabled', () => {
-    const props = buildAssetSelectorProps({
-      ...baseArgs,
-      repoConfig: { ...baseArgs.repoConfig, approvedOnly: false },
-    });
-    expect(props).to.not.have.property('filterSchema');
-    expect(props).to.not.have.property('filterSchemaSource');
   });
 });
 

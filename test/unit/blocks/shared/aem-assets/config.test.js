@@ -47,7 +47,7 @@ describe('AEM Assets delivery config', () => {
   });
 
   [
-    { configuredValue: null, expected: true },
+    { configuredValue: null, expected: false },
     { configuredValue: 'on', expected: true },
     { configuredValue: 'off', expected: false },
   ].forEach(({ configuredValue, expected }) => {

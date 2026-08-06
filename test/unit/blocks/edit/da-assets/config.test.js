@@ -270,7 +270,7 @@ describe('getRepositoryConfig', () => {
     }
   });
 
-  it('defaults approvedOnly on for author-backed effective DM', async () => {
+  it('keeps approvedOnly off without explicit opt-in for author-backed effective DM', async () => {
     const orgFetch = window.fetch;
     window.fetch = makeFetch({
       '/approved-default/site/': makeSheet([
@@ -280,7 +280,7 @@ describe('getRepositoryConfig', () => {
     });
     try {
       const cfg = await getRepositoryConfig('approved-default', 'site');
-      expect(cfg.approvedOnly).to.be.true;
+      expect(cfg.approvedOnly).to.be.false;
     } finally {
       window.fetch = orgFetch;
     }

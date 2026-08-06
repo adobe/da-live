@@ -48,5 +48,5 @@ export function shouldFilterApprovedAssets({
 }) {
   return tierType === 'author'
     && isDmEnabled
-    && configuredValue !== 'off';
+    && configuredValue === 'on';
 }

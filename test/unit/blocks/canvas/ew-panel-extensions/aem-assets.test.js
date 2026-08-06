@@ -18,7 +18,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 /* eslint-disable import/no-absolute-path, import/no-unresolved -- NX test fixture */
 const { setDaConfigs } = await import('/test/fixtures/nx/utils/daConfig.js');
 /* eslint-enable import/no-absolute-path, import/no-unresolved */
-const { getRepositoryConfig, buildAssetSelectorProps } = await import(
+const { getRepositoryConfig } = await import(
   '../../../../../blocks/canvas/ew-panel-extensions/aem-assets.js'
 );
 
@@ -39,12 +39,25 @@ describe('Canvas AEM Assets repository config', () => {
       { key: 'aem.assets.prod.origin', value: 'delivery-p1-e1.adobeaemcloud.com' },
     ]],
   ].forEach(([name, entries]) => {
-    it(`defaults approvedOnly on for ${name}`, async () => {
+    it(`keeps approvedOnly off unless explicitly enabled for ${name}`, async () => {
       setDaConfigs([{ data: entries }]);
       const config = await getRepositoryConfig('org', 'site');
       expect(config.isDmEnabled).to.be.true;
-      expect(config.approvedOnly).to.be.true;
+      expect(config.approvedOnly).to.be.false;
     });
+  });
+
+  it('enables approvedOnly when aem.asset.dm.approvedonly is on', async () => {
+    setDaConfigs([{
+      data: [
+        { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
+        { key: 'aem.asset.dm.delivery', value: 'on' },
+        { key: 'aem.asset.dm.approvedonly', value: 'on' },
+      ],
+    }]);
+    const config = await getRepositoryConfig('org', 'site');
+    expect(config.isDmEnabled).to.be.true;
+    expect(config.approvedOnly).to.be.true;
   });
 
   it('honors site off over org on', async () => {
@@ -66,33 +79,5 @@ describe('Canvas AEM Assets repository config', () => {
     setDaConfigs([{ data: [{ key: 'aem.repositoryId', value: 'delivery-p1-e1.adobeaemcloud.com' }] }]);
     const config = await getRepositoryConfig('org', 'site');
     expect(config.approvedOnly).to.be.false;
-  });
-});
-
-describe('Canvas AEM Assets selector props', () => {
-  const baseArgs = {
-    token: 'token',
-    repoConfig: {
-      repositoryId: 'author-p1-e1.adobeaemcloud.com',
-      tierType: 'author',
-      approvedOnly: true,
-    },
-    onClose: () => {},
-    handleSelection: () => {},
-  };
-
-  it('adds the hybrid locked filter contract when approvedOnly is enabled', () => {
-    const props = buildAssetSelectorProps(baseArgs);
-    expect(props.filterSchema.map(({ groupKey }) => groupKey)).to.deep.equal(['AssetStatusGroup']);
-    expect(props).to.include({ filterSchemaSource: 'hybrid-merge-deep' });
-  });
-
-  it('omits the hybrid filter contract when approvedOnly is disabled', () => {
-    const props = buildAssetSelectorProps({
-      ...baseArgs,
-      repoConfig: { ...baseArgs.repoConfig, approvedOnly: false },
-    });
-    expect(props).to.not.have.property('filterSchema');
-    expect(props).to.not.have.property('filterSchemaSource');
   });
 });

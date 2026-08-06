@@ -5,7 +5,7 @@ import {
   isDynamicMediaEnabled,
   shouldFilterApprovedAssets,
 } from '../../shared/aem-assets/config.js';
-import { getApprovedOnlyFilterProps } from '../../shared/aem-assets/filter-schema.js';
+import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -122,23 +122,6 @@ function getAssetAlt(asset) {
     || '';
 }
 
-export function buildAssetSelectorProps({
-  token,
-  repoConfig,
-  onClose,
-  handleSelection,
-}) {
-  return {
-    imsToken: token,
-    repositoryId: repoConfig.repositoryId,
-    aemTierType: repoConfig.tierType,
-    featureSet: ['upload', 'collections', 'detail-panel', 'advisor'],
-    ...getApprovedOnlyFilterProps(repoConfig.approvedOnly),
-    ...(onClose && { onClose }),
-    handleSelection,
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Script loader
 // ---------------------------------------------------------------------------
@@ -165,8 +148,8 @@ export async function renderAssets({ container, org, site, onClose }) {
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const ims = await loadIms();
   if (ims?.anonymous) handleSignIn();
-  const token = ims?.accessToken?.token;
-  if (!token) return;
+  const imsToken = ims?.accessToken?.token;
+  if (!imsToken) return;
 
   const repoConfig = await getRepositoryConfig(org, site);
   if (!repoConfig) return;
@@ -189,7 +172,7 @@ export async function renderAssets({ container, org, site, onClose }) {
   };
 
   const selectorProps = buildAssetSelectorProps({
-    token,
+    imsToken,
     repoConfig,
     onClose,
     handleSelection,

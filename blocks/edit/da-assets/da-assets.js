@@ -1,6 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
-import { getApprovedOnlyFilterProps } from '../../shared/aem-assets/filter-schema.js';
+import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
@@ -34,31 +34,6 @@ export function formatExternalBrief(doc) {
   ${contentPlainText}
 
   Please suggest Assets that are visually appealing and relevant to the subject.`;
-}
-
-export function buildFeatureSet(isDmEnabled) {
-  const features = ['upload', 'collections', 'detail-panel', 'advisor'];
-  if (isDmEnabled) features.push('dynamic-media');
-  return features;
-}
-
-export function buildAssetSelectorProps({
-  imsToken,
-  repoConfig,
-  externalBrief,
-  onClose,
-  handleSelection,
-}) {
-  return {
-    imsToken,
-    repositoryId: repoConfig.repositoryId,
-    aemTierType: repoConfig.tierType,
-    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
-    externalBrief,
-    ...getApprovedOnlyFilterProps(repoConfig.approvedOnly),
-    onClose,
-    handleSelection,
-  };
 }
 
 export function resolveAssetUrl(asset, repoConfig) {
