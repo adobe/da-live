@@ -9,7 +9,18 @@
   left: var(--toolbar-anchor-x, 50vw);
   transform: translateX(-50%);
   z-index: 100;
-  padding: 6px 12px;
+  padding: 6px 10px;
+  font-family: var(
+    --s2-font-family,
+    adobe-clean,
+    "Source Sans Pro",
+    "Trebuchet MS",
+    sans-serif
+  );
+  font-size: var(--s2-body-size-xs);
+  font-weight: var(--s2-component-s-medium-font-weight, 500);
+  line-height: 16px;
+  color: var(--s2-gray-800);
   background: var(--s2-gray-25);
   border: 1px solid var(--s2-gray-200);
   border-radius: var(--s2-corner-radius-500);
@@ -31,7 +42,7 @@
   border: none;
   border-radius: var(--s2-corner-radius-100);
   background: none;
-  color: var(--s2-gray-800);
+  color: inherit;
   font: inherit;
   cursor: pointer;
 }
@@ -59,7 +70,6 @@
 }
 
 .block-name {
-  font-weight: 700;
   text-transform: capitalize;
   white-space: nowrap;
 }
@@ -74,4 +84,13 @@
 .toolbar-variant-wrap {
   display: inline-flex;
   align-items: center;
+}
+
+/* Size the variant picker to match the toolbar buttons (same height, padding, radius). */
+.toolbar-variant {
+  --nx-picker-height: 24px;
+  --nx-picker-padding: 0 6px;
+  --nx-picker-radius: var(--s2-corner-radius-100);
+
+  font-weight: inherit;
 }
