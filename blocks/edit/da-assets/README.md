@@ -39,7 +39,7 @@ The behaviour of the asset selector is determined entirely by the `aem.repositor
 - Asset browser shows the full **folder hierarchy** from AEM DAM.
 - Inserted URLs are **DM delivery URLs**: `https://delivery-p…/<basePath>/<id>/as/<name>.avif`
 - Assets must be **approved** (`dam:assetStatus = approved`) and **activated for delivery** (`dam:activationTarget = delivery`) before they can be inserted. Unapproved assets show an error panel.
-- Content Advisor filters the author-tier listing to **Approved** assets only when `aem.asset.dm.approvedonly = on`. Absent or `off` leaves Content Advisor unfiltered.
+- Content Advisor filters the author-tier listing to **Approved** assets by default. The filter is locked. Exact `aem.asset.dm.approvedonly = off` opts out and leaves Content Advisor unfiltered.
 - When `aem.asset.smartcrop.select = on`, a Smart Crop selection dialog is shown for images.
 
 ### 3. Delivery (DM Open API)
@@ -65,7 +65,7 @@ All keys are set in the DA site config at `https://da.live/config#/<org>/` or `h
 | `aem.assets.prod.basepath` | No | e.g. `/adobe/assets` | Overrides the default base path (`/adobe/assets`) used in DM and delivery URLs. |
 | `aem.assets.image.type` | No | `link` | Insert images as `<a>` links instead of `<img>` tags. Useful for Dynamic Media URLs that need to bypass Media Bus. |
 | `aem.asset.dm.delivery` | No | `on` | Use author for browsing but construct DM delivery URLs when inserting. Activates Author+DM mode. |
-| `aem.asset.dm.approvedonly` | No | `on` or `off` | For author-backed Dynamic Media modes, show only Approved assets through a locked Content Advisor filter when set to `on`. Absent or `off` leaves Content Advisor unfiltered. Has no effect for Author + Publish or delivery-tier browsing. |
+| `aem.asset.dm.approvedonly` | No | absent, `on`, or `off` | For author-backed Dynamic Media modes, the default is to show only Approved assets through a locked Content Advisor filter. Absent or `on` enables it; exact `off` opts out and leaves Content Advisor unfiltered. Has no effect for Author + Publish or delivery-tier browsing. |
 | `aem.asset.smartcrop.select` | No | `on` | Show the Smart Crop selection dialog when an image is selected. Implies DM delivery. |
 | `aem.asset.mime.renditions` | No | e.g. `image/vnd.adobe.photoshop:avif, image/*:original, video/*:original` | Comma-separated `mimetype:renditiontype` pairs that override the default rendition type for specific mime types. Supports exact types and prefix wildcards (`image/*`, `video/*`). See [Rendition resolution](#rendition-resolution). |
 

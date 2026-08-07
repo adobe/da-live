@@ -39,11 +39,11 @@ describe('Canvas AEM Assets repository config', () => {
       { key: 'aem.assets.prod.origin', value: 'delivery-p1-e1.adobeaemcloud.com' },
     ]],
   ].forEach(([name, entries]) => {
-    it(`keeps approvedOnly off unless explicitly enabled for ${name}`, async () => {
+    it(`defaults approvedOnly on for ${name}`, async () => {
       setDaConfigs([{ data: entries }]);
       const config = await getRepositoryConfig('org', 'site');
       expect(config.isDmEnabled).to.be.true;
-      expect(config.approvedOnly).to.be.false;
+      expect(config.approvedOnly).to.be.true;
     });
   });
 

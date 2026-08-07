@@ -38,7 +38,7 @@ export function isDynamicMediaEnabled({
  * @param {object} config
  * @param {'author'|'delivery'} config.tierType
  * @param {boolean} config.isDmEnabled
- * @param {string|null} config.configuredValue
+ * @param {'on'|'off'|null|undefined} [config.configuredValue]
  * @returns {boolean}
  */
 export function shouldFilterApprovedAssets({
@@ -48,5 +48,5 @@ export function shouldFilterApprovedAssets({
 }) {
   return tierType === 'author'
     && isDmEnabled
-    && configuredValue === 'on';
+    && configuredValue !== 'off';
 }
