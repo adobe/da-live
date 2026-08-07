@@ -19,11 +19,16 @@ function openChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
 }
 
+function closeChatPanel() {
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+}
+
 export default class DaBrowse extends LitElement {
   static properties = {
     details: { attribute: false },
     _tabItems: { state: true },
     _searchItems: { state: true },
+    _ewEnabled: { state: true },
     _chatEnabled: { state: true },
   };
 
@@ -124,8 +129,13 @@ export default class DaBrowse extends LitElement {
       // and do this before getEditor so the default editor reflects EW state
       if (orgChanged || prevDetails?.site !== this.details.site) {
         const { org, site } = this.details;
-        const { isEWEnabled } = await getNxEWFlags();
-        this._chatEnabled = await isEWEnabled({ org, site });
+        const { isEWEnabled, isEwChatDisabled } = await getNxEWFlags();
+        const [ewEnabled, chatDisabled] = await Promise.all([
+          isEWEnabled({ org, site }),
+          isEwChatDisabled({ org, site }),
+        ]);
+        this._ewEnabled = ewEnabled;
+        this._chatEnabled = ewEnabled && !chatDisabled;
         if (this._chatEnabled) {
           registerPanelSection('chat', {
             position: 'before',
@@ -133,6 +143,8 @@ export default class DaBrowse extends LitElement {
             getContent: getChatPanelContent(),
           });
           if (wasPanelOpen('chat')) openChatPanel();
+        } else {
+          closeChatPanel();
         }
       }
 
@@ -144,7 +156,7 @@ export default class DaBrowse extends LitElement {
   }
 
   async getEditor(reFetch) {
-    const DEF_EDIT = this._chatEnabled ? '/canvas#' : '/edit#';
+    const DEF_EDIT = this._ewEnabled ? '/canvas#' : '/edit#';
 
     if (reFetch) {
       const { org, site } = this.details;

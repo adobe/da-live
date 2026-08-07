@@ -242,6 +242,11 @@ export const source = {
     return daFetch({ url, opts });
   }),
 
+  uploadMedia: withArgs(async ({ org, site, path, body }) => {
+    const url = await getDaApiPath(SOURCE, org, site, path);
+    return daFetch({ url, opts: { method: 'POST', body } });
+  }),
+
   // HEAD request — the value is in the response headers (doc-id, last-modified, etc.).
   getMetadata: withArgs(async ({ org, site, path }) => {
     const url = await getDaApiPath(SOURCE, org, site, path);
