@@ -1,13 +1,23 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { listFolder, itemHashPath } from '../../shared/daFiles.js';
+import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
+import { iconPathForExt } from '../../shared/icons.js';
 import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
 import getEditPath from '../../browse/shared.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 
 const style = await loadStyle(import.meta.url);
+
+const COPYABLE_EXTS = new Set(['html', 'json']);
+
+let toastPromise;
+function loadToast() {
+  toastPromise ??= import(`${getNx()}/blocks/shared/toast/toast.js`);
+  return toastPromise;
+}
 
 function listItemToNode(item, cache) {
   const pathKey = (item.path || '').replace(/^\//, '');
@@ -45,6 +55,9 @@ class EwFileExplorer extends LitElement {
     _expanded: { state: true },
     _selectedPath: { state: true },
     _treeRoot: { state: true },
+    _searchTerm: { state: true },
+    _searchResults: { state: true },
+    _searching: { state: true },
   };
 
   connectedCallback() {
@@ -69,6 +82,8 @@ class EwFileExplorer extends LitElement {
     super.disconnectedCallback();
     this._unsubHash?.();
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, this._onAgentChange);
+    this._clearSearch();
+    this._clearCrawlCache();
   }
 
   updated() {
@@ -86,6 +101,7 @@ class EwFileExplorer extends LitElement {
       this._selectedPath = undefined;
       this._error = null;
       this._treeRoot = null;
+      this._clearSearch();
       return;
     }
 
@@ -95,6 +111,8 @@ class EwFileExplorer extends LitElement {
       this._cache = {};
       this._expanded = new Set();
       this._treeRoot = null;
+      this._clearSearch();
+      this._clearCrawlCache();
       this._loadFromLeaves(org, site, path);
     } else if (path) {
       this._expandToPath(path);
@@ -227,24 +245,168 @@ class EwFileExplorer extends LitElement {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
+  async _onCopyUrl(e, item) {
+    e.stopPropagation();
+    const url = getAemUrl(item);
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    const { showToast } = await loadToast();
+    showToast({ text: 'URL copied to clipboard.' });
+  }
+
+  // Crawls the site once per root, streaming files into `entry.files` as they're
+  // found (via crawl()'s per-file callback) rather than waiting for the whole
+  // site to finish. `entry.listeners` are notified on a short interval (not per
+  // file) so search results can update live without hammering render() on huge
+  // sites. Cached so repeated searches never re-crawl.
+  _getCrawlEntry() {
+    const root = this._treeRoot;
+    this._crawlCache ??= {};
+    if (!this._crawlCache[root]) {
+      const entry = { files: [], done: false, listeners: new Set() };
+      const notify = () => entry.listeners.forEach((fn) => fn());
+      const { results, cancelCrawl } = crawl({
+        path: root,
+        throttle: 20,
+        callback: (file) => { entry.files.push(file); },
+      });
+      entry.cancelCrawl = cancelCrawl;
+      entry.flushTimer = setInterval(notify, 150);
+      results.then(() => {
+        entry.done = true;
+        clearInterval(entry.flushTimer);
+        notify();
+      });
+      this._crawlCache[root] = entry;
+    }
+    return this._crawlCache[root];
+  }
+
+  _clearCrawlCache() {
+    Object.values(this._crawlCache ?? {}).forEach((entry) => {
+      clearInterval(entry.flushTimer);
+      entry.cancelCrawl?.();
+    });
+    this._crawlCache = {};
+  }
+
+  _runSearch(term) {
+    this._searchUnsub?.();
+    this._searchUnsub = null;
+    if (!term) {
+      this._searchResults = null;
+      this._searching = false;
+      return;
+    }
+    const entry = this._getCrawlEntry();
+    const lower = term.toLowerCase();
+    const applyFilter = () => {
+      this._searchResults = entry.files.filter((f) => f.name?.toLowerCase().includes(lower));
+      this._searching = !entry.done;
+    };
+    applyFilter();
+    entry.listeners.add(applyFilter);
+    this._searchUnsub = () => entry.listeners.delete(applyFilter);
+  }
+
+  _onSearchInput(e) {
+    const term = e.target.value.trim();
+    if (!term) {
+      this._clearSearch();
+      return;
+    }
+    this._searchTerm = term;
+    clearTimeout(this._searchDebounceId);
+    // Mark searching immediately so the "no matches" state can't flash during
+    // the debounce window, before _runSearch has even looked at this term.
+    this._searching = true;
+    this._searchDebounceId = setTimeout(() => this._runSearch(term), 200);
+  }
+
+  _onSearchKeydown(e) {
+    if (e.key !== 'Escape') return;
+    e.target.value = '';
+    this._clearSearch();
+  }
+
+  _clearSearch() {
+    clearTimeout(this._searchDebounceId);
+    this._searchUnsub?.();
+    this._searchUnsub = null;
+    this._searchTerm = '';
+    this._searchResults = null;
+    this._searching = false;
+  }
+
+  _renderSearchResult(item) {
+    const hashPath = itemHashPath(item);
+    const selected = this._selectedPath === hashPath;
+    const copyable = COPYABLE_EXTS.has(item.ext);
+    const parentPath = item.path.replace(/^\//, '').split('/').slice(0, -1).join('/');
+
+    return html`
+      <li role="none">
+        <div class="row-wrap${selected ? ' selected' : ''}"
+          @click="${() => this._onItemClick(item)}">
+          <button type="button" class="row file">
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(item.ext)}#icon"></use></svg>
+            <span class="label">
+              ${item.name}
+              <span class="path-hint">${parentPath}</span>
+            </span>
+          </button>
+          ${copyable ? html`
+            <button type="button" class="copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${item.name}"
+              @click="${(e) => this._onCopyUrl(e, item)}">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-copy-20-n.svg#icon"></use></svg>
+            </button>` : nothing}
+        </div>
+      </li>`;
+  }
+
+  _renderSearchList() {
+    const count = this._searchResults?.length ?? 0;
+    const hasResults = count > 0;
+    let statusText;
+    if (this._searching) statusText = 'Searching…';
+    else if (hasResults) statusText = `${count} result${count === 1 ? '' : 's'} found`;
+    else statusText = `No matches for "${this._searchTerm}".`;
+
+    return html`
+      <p class="notice search-status">${statusText}</p>
+      ${hasResults ? html`
+        <ul class="tree" role="list" aria-label="Search results">
+          ${this._searchResults.map((item) => this._renderSearchResult(item))}
+        </ul>` : nothing}
+    `;
+  }
+
   _renderNode(item, depth) {
-    const { type, pathKey, name, children } = item;
+    const { type, pathKey, name, children, ext } = item;
     const isDir = type === 'directory';
     const expanded = isDir && this._expanded?.has(pathKey);
     const hashPath = itemHashPath(item);
     const selected = !isDir && this._selectedPath === hashPath;
+    const copyable = COPYABLE_EXTS.has(ext);
 
     return html`
       <li role="none">
-        <button type="button" role="treeitem"
-          class="row${isDir ? '' : ' file'}${selected ? ' selected' : ''}"
-          style="--depth: ${depth}"
-          tabindex="-1"
-          aria-expanded="${isDir ? expanded : nothing}"
-          aria-selected="${selected}"
+        <div class="row-wrap${selected ? ' selected' : ''}" style="--depth: ${depth}"
           @click="${() => this._onItemClick(item)}">
-          <span class="label">${name}</span>
-        </button>
+          <button type="button" role="treeitem"
+            class="row${isDir ? '' : ' file'}"
+            tabindex="-1"
+            aria-expanded="${isDir ? expanded : nothing}"
+            aria-selected="${selected}">
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(ext)}#icon"></use></svg>
+            <span class="label">${name}</span>
+          </button>
+          ${copyable ? html`
+            <button type="button" class="copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${name}"
+              @click="${(e) => this._onCopyUrl(e, item)}">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-copy-20-n.svg#icon"></use></svg>
+            </button>` : nothing}
+        </div>
         ${expanded && children.length ? html`
           <ul role="group">
             ${children.map((c) => this._renderNode(c, depth + 1))}
@@ -270,11 +432,18 @@ class EwFileExplorer extends LitElement {
     const tree = buildTree(this._cache ?? {}, this._treeRoot);
 
     return html`<div class="ew-file-explorer">
-      <ul class="tree" role="tree" aria-label="Files"
-        @keydown="${(e) => treeKeydown(e, this.shadowRoot)}"
-        @focusin="${(e) => treeFocusIn(e, this.shadowRoot)}">
-        ${tree.map((item) => this._renderNode(item, 0))}
-      </ul>
+      <div class="search-bar">
+        <input type="search" class="search-input" placeholder="Filter" aria-label="Filter files"
+          .value="${this._searchTerm ?? ''}"
+          @input="${(e) => this._onSearchInput(e)}"
+          @keydown="${(e) => this._onSearchKeydown(e)}">
+      </div>
+      ${this._searchTerm ? this._renderSearchList() : html`
+        <ul class="tree" role="tree" aria-label="Files"
+          @keydown="${(e) => treeKeydown(e, this.shadowRoot)}"
+          @focusin="${(e) => treeFocusIn(e, this.shadowRoot)}">
+          ${tree.map((item) => this._renderNode(item, 0))}
+        </ul>`}
     </div>`;
   }
 }
