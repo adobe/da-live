@@ -1,11 +1,12 @@
 import { getNx } from '../../../scripts/utils.js';
+import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from '../../edit/da-assets/helpers/config.js';
-/* eslint-disable object-curly-newline -- 4 shared symbols exceed max-len on one line */
 import {
-  ASSET_SELECTOR_URL, buildFeatureSet, buildHandleSelection, createDialogPanels,
+  ASSET_SELECTOR_URL,
+  buildHandleSelection,
+  createDialogPanels,
 } from '../../edit/da-assets/da-assets.js';
-/* eslint-enable object-curly-newline */
 
 // Re-exported for ew-selection-toolbar's "does this site have AEM assets?" check.
 // The picker shares the classic editor's config resolver rather than forking it.
@@ -61,13 +62,10 @@ export async function renderAssets({ container, org, site, onClose }) {
     ? getResponsiveImageConfig(org, site)
     : Promise.resolve(false);
 
-  const selectorProps = {
+  const selectorProps = buildAssetSelectorProps({
     imsToken: token,
-    repositoryId: repoConfig.repositoryId,
-    aemTierType: repoConfig.tierType,
-    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
-    // Only let the selector's own close affect the dialog while it's the visible panel.
-    ...(onClose && { onClose: () => assetPanel.style.display !== 'none' && onClose() }),
+    repoConfig,
+    onClose: onClose && (() => assetPanel.style.display !== 'none' && onClose()),
     handleSelection: buildHandleSelection({
       assetPanel,
       secondaryPanel,
@@ -76,7 +74,7 @@ export async function renderAssets({ container, org, site, onClose }) {
       getView: () => getExtensionsBridge().view,
       close: () => onClose?.(),
     }),
-  };
+  });
 
   window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
 }
