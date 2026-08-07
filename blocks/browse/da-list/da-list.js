@@ -94,8 +94,11 @@ export default class DaList extends LitElement {
       this._filter = '';
       this._showFilter = undefined;
       this._allPagesLoaded = false;
-      this._listItems = await this.getList();
-      this.updateDeletePermission();
+      // Resolve the delete allowlist alongside the listing so the action bar's
+      // Delete button is decided before any selection can surface it. The site
+      // config is already warm (da-browse fetches it first) so this is cheap.
+      const [items] = await Promise.all([this.getList(), this.updateDeletePermission()]);
+      this._listItems = items;
     }
 
     if (props.has('newItem') && this.newItem) {
