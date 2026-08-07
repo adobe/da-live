@@ -62,12 +62,32 @@ export class EwEditorWysiwyg extends LitElement {
       this._syncCanvasVisibility();
     });
     this._syncCanvasVisibility();
+
+    this._unsubscribeMergeConflicts = canvasBus.mergeConflictsState.subscribe((detail) => {
+      const hasMergeConflicts = detail?.hasMergeConflicts ?? false;
+      if (hasMergeConflicts) {
+        this._hadMergeConflicts = true;
+      } else if (this._hadMergeConflicts) {
+        this._hadMergeConflicts = false;
+        this._reloadIframe();
+      }
+    });
   }
 
   disconnectedCallback() {
+    this._unsubscribeMergeConflicts?.();
     this._unsubscribeEditorActive?.();
     this._clearQuickEditRetry();
     super.disconnectedCallback();
+  }
+
+  _reloadIframe() {
+    const iframe = this.shadowRoot?.querySelector('iframe');
+    try {
+      iframe?.contentWindow?.location.reload();
+    } catch {
+      /* ignore — cross-origin reload should be allowed, but don't let this throw */
+    }
   }
 
   get _iframeSrc() {
@@ -110,6 +130,7 @@ export class EwEditorWysiwyg extends LitElement {
   _resetCookieStateForCtxChange() {
     this._clearQuickEditRetry();
     this._cookieReady = false;
+    this._hadMergeConflicts = false;
   }
 
   updated(changed) {

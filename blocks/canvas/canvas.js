@@ -251,6 +251,11 @@ export default async function decorate(block) {
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
   installEditorSplitDrag(mountRoot);
 
+  canvasBus.mergeConflictsState.subscribe((detail) => {
+    header.hasUnresolvedMergeConflicts = detail?.hasMergeConflicts ?? false;
+    if (header.hasUnresolvedMergeConflicts) header.setEditorView('content');
+  });
+
   canvasBus.undoState.subscribe((detail) => {
     header.undoAvailable = detail?.canUndo ?? false;
     header.redoAvailable = detail?.canRedo ?? false;

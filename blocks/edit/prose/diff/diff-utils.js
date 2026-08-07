@@ -78,23 +78,31 @@ function setDiffLabelCssVars(daEditor) {
   host.style.setProperty('--diff-label-upstream', `'${labels.upstream}'`);
 }
 
+function getDiffHost(view) {
+  const classicHost = document.querySelector('da-content')?.shadowRoot
+    ?.querySelector('da-editor');
+  if (classicHost) return classicHost;
+
+  const root = view?.dom?.getRootNode?.();
+  return root instanceof ShadowRoot ? root.host : null;
+}
+
 let locCssLoading = false;
-async function loadLocCss() {
+async function loadLocCss(hostEl) {
   if (locCssLoading) return;
   locCssLoading = true;
 
   try {
     const locSheet = await getSheet('/blocks/edit/prose/diff/diff-utils.css');
 
-    const daEditor = document.querySelector('da-content')?.shadowRoot
-      ?.querySelector('da-editor');
-
-    if (daEditor?.shadowRoot) {
-      const existingSheets = daEditor.shadowRoot.adoptedStyleSheets || [];
-      daEditor.shadowRoot.adoptedStyleSheets = [...existingSheets, locSheet];
+    if (hostEl?.shadowRoot) {
+      hostEl.shadowRoot.adoptedStyleSheets = [
+        ...(hostEl.shadowRoot.adoptedStyleSheets || []),
+        locSheet,
+      ];
 
       // Set CSS custom properties for diff labels
-      setDiffLabelCssVars(daEditor);
+      setDiffLabelCssVars(hostEl);
     }
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -192,7 +200,7 @@ export function checkForLocNodes(view) {
     .some((node) => isLocNode(node) || hasListLocNode(node));
 
   if (hasLocNodes) {
-    loadLocCss();
+    loadLocCss(getDiffHost(view));
     showGlobalDialog(view);
   } else {
     hideGlobalDialog();
@@ -276,6 +284,10 @@ export function addActiveView(view) {
   activeViews.add(view);
 }
 
+export function removeActiveView(view) {
+  activeViews.delete(view);
+}
+
 export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {
   return class {
     constructor(node, view, getPos) {
@@ -323,7 +335,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     renderTabbedInterface(nodeA, view, posA, nodeB) {
-      loadLocCss();
+      loadLocCss(getDiffHost(view));
 
       this.dom = createElement('div', 'loc-tabbed-container', { contentEditable: 'false' });
       this.contentDOM = null; // Don't let ProseMirror manage content
@@ -368,6 +380,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
           colorOverlay.style.display = 'block';
           colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-upstream';
         } else if (targetTab === 'diff') {
+          colorOverlay.style.display = 'none';
           colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-diff';
 
           const diffTab = tabContent.querySelector('[data-tab="diff"]');
@@ -430,7 +443,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     renderSingleNode(node, view, pos, upstream) {
-      loadLocCss();
+      loadLocCss(getDiffHost(view));
 
       const isDeleted = node.type.name === 'diff_deleted';
       const viewClass = isDeleted ? 'loc-deleted-view' : 'loc-added-view';
@@ -447,8 +460,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       this.dom.appendChild(nodeDOM);
 
       // Create placeholder cover div immediately
-      const coverDiv = createElement('div', 'loc-color-overlay', { 'loc-temp-dom': '' });
-      coverDiv.style.backgroundColor = upstream ? '#4682b433' : '#902ade33';
+      const coverDiv = createElement('div', `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`, { 'loc-temp-dom': '' });
       this.dom.appendChild(coverDiv);
 
       // Create placeholder overlay
@@ -483,9 +495,6 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
         coverDiv.removeChild(this.langOverlay);
         this.langOverlay = overlay;
         coverDiv.appendChild(this.langOverlay);
-
-        const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
-        coverDiv.className = className;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('Failed to load enhanced overlays:', error);
