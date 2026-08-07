@@ -41,6 +41,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { DA_ADMIN, DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -191,7 +192,7 @@ export default async function initProse({
         return true;
       },
       'Mod-Alt-s': () => {
-        document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
+        canvasBus.newVersionRequest.emit();
         return true;
       },
       ...getHeadingKeymap(schema),
