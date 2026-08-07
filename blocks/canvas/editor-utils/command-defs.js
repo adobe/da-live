@@ -455,3 +455,14 @@ export function applySlashSelection(view, id) {
   if (id?.startsWith('block:')) return insertBlockItem(view, id);
   return undefined;
 }
+
+// Cell commands offered when "/" is pressed on a multi-cell selection, filtered
+// to those currently available (mirrors the classic editor's cell slash menu).
+const CELL_SELECTION_COMMAND_IDS = ['table-merge-cells', 'table-split-cell'];
+
+export function cellSelectionSlashItems(state) {
+  return CELL_SELECTION_COMMAND_IDS
+    .map((id) => COMMAND_BY_ID.get(id))
+    .filter((cmd) => cmd?.visible?.(state))
+    .map((cmd) => toSlashItem(cmd));
+}
