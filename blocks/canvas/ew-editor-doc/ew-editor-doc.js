@@ -1,10 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import {
-  updateDocument, updateCursors, getInstrumentedHTML,
-  editorHtmlChange, editorSelectChange, editorProseSelectChange, getEditor,
-} from '../editor-utils/editor-utils.js';
+import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
@@ -28,6 +25,7 @@ import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
 // so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
@@ -63,7 +61,7 @@ export class EwEditorDoc extends LitElement {
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
       this._lastBroadcastNodeKey = undefined;
-      editorHtmlChange.emit('');
+      canvasBus.editorHtmlState.emit('');
     }
   }
 
@@ -87,18 +85,14 @@ export class EwEditorDoc extends LitElement {
   _emitHtmlChange() {
     const { view } = this._proseContext ?? {};
     if (!view) return;
-    editorHtmlChange.emit(getInstrumentedHTML(view));
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view));
   }
 
   _emitUndoState() {
     const mgr = this._proseContext?.undoManager;
     const canUndo = mgr ? mgr.undoStack.length > 0 : false;
     const canRedo = mgr ? mgr.redoStack.length > 0 : false;
-    this.dispatchEvent(new CustomEvent('nx-editor-undo-state', {
-      bubbles: true,
-      composed: true,
-      detail: { canUndo, canRedo },
-    }));
+    canvasBus.undoState.emit({ canUndo, canRedo });
   }
 
   _observeUndoManager(mgr) {
@@ -294,7 +288,7 @@ export class EwEditorDoc extends LitElement {
               const body = this._controllerCtx
                 ? updateDocument(this._controllerCtx)
                 : getInstrumentedHTML(this._proseContext?.view);
-              if (body) editorHtmlChange.emit(body);
+              if (body) canvasBus.editorHtmlState.emit(body);
             },
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
@@ -306,7 +300,7 @@ export class EwEditorDoc extends LitElement {
               if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
               this._lastDocBlockIndex = blockIndex;
               this._lastDocSelKey = selKey;
-              editorSelectChange.emit({
+              canvasBus.editorSelectState.emit({
                 blockIndex,
                 proseIndex,
                 source: 'doc',
@@ -343,27 +337,25 @@ export class EwEditorDoc extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._onCanvasEditorActive = (e) => {
-      const view = e.detail?.view;
+    this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this.hidden = view === 'layout';
       hideSelectionToolbar();
-    };
-    this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
-    this._onWysiwygPortReady = (e) => {
-      const { port, iframe } = e.detail ?? {};
-      if (port) {
-        this._wysiwygIframe = iframe;
-        this.quickEditPort = port;
-      }
-    };
-    this.parentElement?.addEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
-    this._unsubscribeSelect = editorSelectChange
+    });
+    this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
+      ({ port, iframe } = {}) => {
+        if (port) {
+          this._wysiwygIframe = iframe;
+          this.quickEditPort = port;
+        }
+      },
+    );
+    this._unsubscribeSelect = canvasBus.editorSelectState
       .subscribe(({ blockIndex, source }) => {
         if (source === 'doc') return;
         this._scrollDocToBlock(blockIndex);
         if (source === 'outline') this._broadcastSelectedNode(true);
       });
-    this._unsubscribeProseSelect = editorProseSelectChange
+    this._unsubscribeProseSelect = canvasBus.editorProseSelectState
       .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
@@ -374,8 +366,8 @@ export class EwEditorDoc extends LitElement {
   }
 
   disconnectedCallback() {
-    this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
-    this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
+    this._unsubscribeEditorActive?.();
+    this._unsubscribeWysiwygPortReady?.();
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._unsubscribeProseSelect?.();

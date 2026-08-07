@@ -253,13 +253,14 @@ describe('buildHandleSelection', () => {
     const dialog = makeDialog();
     const assetPanel = makePanel();
     const secondaryPanel = makePanel();
-    const handler = buildHandleSelection(
-      dialog,
+    const handler = buildHandleSelection({
       assetPanel,
       secondaryPanel,
       repoConfig,
-      Promise.resolve(false),
-    );
+      responsiveImageConfigPromise: Promise.resolve(false),
+      getView: () => view,
+      close: () => dialog.close(),
+    });
     return { view, dialog, assetPanel, secondaryPanel, handler };
   }
 
@@ -295,13 +296,14 @@ describe('buildHandleSelection', () => {
 
   it('does nothing when assets array is empty', async () => {
     const { view, dialog } = setup();
-    await buildHandleSelection(
-      dialog,
-      makePanel(),
-      makePanel(),
-      AUTHOR_PUBLISH_CONFIG,
-      Promise.resolve(false),
-    )([]);
+    await buildHandleSelection({
+      assetPanel: makePanel(),
+      secondaryPanel: makePanel(),
+      repoConfig: AUTHOR_PUBLISH_CONFIG,
+      responsiveImageConfigPromise: Promise.resolve(false),
+      getView: () => view,
+      close: () => dialog.close(),
+    })([]);
     expect(view.dispatched).to.have.length(0);
     expect(dialog.isOpen).to.be.true;
   });
@@ -455,13 +457,14 @@ describe('buildHandleSelection', () => {
     const { dialog, assetPanel, secondaryPanel } = setup(
       { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
     );
-    const handler = buildHandleSelection(
-      dialog,
+    const handler = buildHandleSelection({
       assetPanel,
       secondaryPanel,
-      { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
-      Promise.resolve(false),
-    );
+      repoConfig: { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
+      responsiveImageConfigPromise: Promise.resolve(false),
+      getView: () => window.view,
+      close: () => dialog.close(),
+    });
     await handler([IMAGE_ASSET]);
     // secondary panel should be visible with smart crop UI
     expect(secondaryPanel.style.display).to.equal('block');
@@ -476,13 +479,14 @@ describe('buildHandleSelection', () => {
     const { dialog, view } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: true });
     const assetPanel = makePanel();
     const secondaryPanel = makePanel();
-    const handler = buildHandleSelection(
-      dialog,
+    const handler = buildHandleSelection({
       assetPanel,
       secondaryPanel,
-      { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
-      Promise.resolve(false),
-    );
+      repoConfig: { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
+      responsiveImageConfigPromise: Promise.resolve(false),
+      getView: () => view,
+      close: () => dialog.close(),
+    });
     await handler([IMAGE_ASSET]);
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(1);
@@ -500,13 +504,14 @@ describe('buildHandleSelection', () => {
     const secondaryPanel = makePanel();
     document.body.append(assetPanel, secondaryPanel);
 
-    const handler = buildHandleSelection(
-      dialog,
+    const handler = buildHandleSelection({
       assetPanel,
       secondaryPanel,
-      { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
-      Promise.resolve(false),
-    );
+      repoConfig: { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
+      responsiveImageConfigPromise: Promise.resolve(false),
+      getView: () => view,
+      close: () => dialog.close(),
+    });
     await handler([IMAGE_ASSET]);
 
     // Smart crop panel is now shown — click Insert to trigger onInsert callback

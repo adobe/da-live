@@ -15,69 +15,103 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-/* eslint-disable import/no-absolute-path, import/no-unresolved -- NX test fixture */
-const { setDaConfigs } = await import('/test/fixtures/nx/utils/daConfig.js');
-/* eslint-enable import/no-absolute-path, import/no-unresolved */
 const { getRepositoryConfig } = await import(
   '../../../../../blocks/canvas/ew-panel-extensions/aem-assets.js'
 );
 
-describe('Canvas AEM Assets repository config', () => {
-  afterEach(() => setDaConfigs([]));
+function makeSheet(entries) {
+  return { ok: true, json: async () => ({ data: entries }) };
+}
 
+function makeFetch(responses) {
+  return async (url) => {
+    for (const [pattern, response] of Object.entries(responses).sort(
+      ([a], [b]) => b.length - a.length,
+    )) {
+      if (url.includes(pattern)) return response;
+    }
+    return { ok: false };
+  };
+}
+
+describe('Canvas AEM Assets repository config', () => {
   [
-    ['DM delivery', [
+    ['DM delivery', 'canvas-dm-org', 'canvas-dm-site', [
       { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
       { key: 'aem.asset.dm.delivery', value: 'on' },
     ]],
-    ['Smart Crop', [
+    ['Smart Crop', 'canvas-smartcrop-org', 'canvas-smartcrop-site', [
       { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
       { key: 'aem.asset.smartcrop.select', value: 'on' },
     ]],
-    ['delivery production origin', [
+    ['delivery production origin', 'canvas-delivery-org', 'canvas-delivery-site', [
       { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
       { key: 'aem.assets.prod.origin', value: 'delivery-p1-e1.adobeaemcloud.com' },
     ]],
-  ].forEach(([name, entries]) => {
+  ].forEach(([name, org, site, entries]) => {
     it(`defaults approvedOnly on for ${name}`, async () => {
-      setDaConfigs([{ data: entries }]);
-      const config = await getRepositoryConfig('org', 'site');
-      expect(config.isDmEnabled).to.be.true;
-      expect(config.approvedOnly).to.be.true;
+      const orgFetch = window.fetch;
+      window.fetch = makeFetch({ [`/config/${org}/${site}/`]: makeSheet(entries) });
+      try {
+        const config = await getRepositoryConfig(org, site);
+        expect(config.isDmEnabled).to.be.true;
+        expect(config.approvedOnly).to.be.true;
+      } finally {
+        window.fetch = orgFetch;
+      }
     });
   });
 
   it('enables approvedOnly when aem.asset.dm.approvedonly is on', async () => {
-    setDaConfigs([{
-      data: [
+    const org = 'canvas-approved-on-org';
+    const site = 'canvas-approved-on-site';
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      [`/config/${org}/${site}/`]: makeSheet([
         { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
         { key: 'aem.asset.dm.delivery', value: 'on' },
         { key: 'aem.asset.dm.approvedonly', value: 'on' },
-      ],
-    }]);
-    const config = await getRepositoryConfig('org', 'site');
-    expect(config.isDmEnabled).to.be.true;
-    expect(config.approvedOnly).to.be.true;
+      ]),
+    });
+    try {
+      const config = await getRepositoryConfig(org, site);
+      expect(config.isDmEnabled).to.be.true;
+      expect(config.approvedOnly).to.be.true;
+    } finally {
+      window.fetch = orgFetch;
+    }
   });
 
   it('honors site off over org on', async () => {
-    setDaConfigs([
-      {
-        data: [
-          { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
-          { key: 'aem.asset.dm.delivery', value: 'on' },
-          { key: 'aem.asset.dm.approvedonly', value: 'on' },
-        ],
-      },
-      { data: [{ key: 'aem.asset.dm.approvedonly', value: 'off' }] },
-    ]);
-    const config = await getRepositoryConfig('org', 'site');
-    expect(config.approvedOnly).to.be.false;
+    const org = 'canvas-site-off-org';
+    const site = 'canvas-site-off-site';
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      [`/config/${org}/`]: makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
+        { key: 'aem.asset.dm.delivery', value: 'on' },
+        { key: 'aem.asset.dm.approvedonly', value: 'on' },
+      ]),
+      [`/config/${org}/${site}/`]: makeSheet([{ key: 'aem.asset.dm.approvedonly', value: 'off' }]),
+    });
+    try {
+      const config = await getRepositoryConfig(org, site);
+      expect(config.approvedOnly).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
   });
 
   it('does not apply the author filter to delivery tier', async () => {
-    setDaConfigs([{ data: [{ key: 'aem.repositoryId', value: 'delivery-p1-e1.adobeaemcloud.com' }] }]);
-    const config = await getRepositoryConfig('org', 'site');
-    expect(config.approvedOnly).to.be.false;
+    const org = 'canvas-delivery-tier-org';
+    const site = 'canvas-delivery-tier-site';
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({ [`/config/${org}/${site}/`]: makeSheet([{ key: 'aem.repositoryId', value: 'delivery-p1-e1.adobeaemcloud.com' }]) });
+    try {
+      const config = await getRepositoryConfig(org, site);
+      expect(config.approvedOnly).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
   });
 });

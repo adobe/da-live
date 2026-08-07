@@ -563,7 +563,7 @@ describe('DaBrowse Component', () => {
     });
 
     it('Returns /canvas# as default when EW is enabled and no explicit config', async () => {
-      daBrowseComp._chatEnabled = true;
+      daBrowseComp._ewEnabled = true;
       window.fetch = () => Promise.resolve(
         new Response(JSON.stringify({ data: [] }), { status: 200 }),
       );
@@ -572,8 +572,19 @@ describe('DaBrowse Component', () => {
       expect(editor).to.equal('/canvas#');
     });
 
+    it('Returns /canvas# default even when chat is disabled, since EW alone drives the editor', async () => {
+      daBrowseComp._ewEnabled = true;
+      daBrowseComp._chatEnabled = false;
+      window.fetch = () => Promise.resolve(
+        new Response(JSON.stringify({ data: [] }), { status: 200 }),
+      );
+      daBrowseComp.details = { owner: 'canvas-org3', org: 'canvas-org3', site: 'canvas-site3', fullpath: '/canvas-org3/canvas-site3/folder' };
+      const editor = await daBrowseComp.getEditor(true);
+      expect(editor).to.equal('/canvas#');
+    });
+
     it('Explicit editor.path config takes precedence over EW canvas default', async () => {
-      daBrowseComp._chatEnabled = true;
+      daBrowseComp._ewEnabled = true;
       const body = JSON.stringify({ data: [{ key: 'editor.path', value: '/canvas-org2/canvas-site2=https://custom-editor' }] });
       window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
       daBrowseComp.details = { owner: 'canvas-org2', org: 'canvas-org2', site: 'canvas-site2', fullpath: '/canvas-org2/canvas-site2/page' };
