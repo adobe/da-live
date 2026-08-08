@@ -47,7 +47,7 @@ export function createCommentGutter({ getView, getContainer, controller }) {
   if (!controller?.subscribe) return () => {};
 
   let raf = 0;
-  const isVisible = () => controller.panelOpen || controller.showHighlights;
+  const isVisible = () => controller.panelOpen;
 
   const render = () => {
     raf = 0;
@@ -114,7 +114,7 @@ export function createCommentGutter({ getView, getContainer, controller }) {
   };
 
   const RERENDER_REASONS = new Set([
-    'init', 'counts', 'docChange', 'panelOpen', 'showHighlights', 'selectedThreadId',
+    'init', 'counts', 'docChange', 'panelOpen', 'selectedThreadId',
   ]);
   const off = controller.subscribe(({ reason }) => {
     if (RERENDER_REASONS.has(reason)) schedule();

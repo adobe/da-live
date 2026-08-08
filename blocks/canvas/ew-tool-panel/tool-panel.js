@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import {
   persistToolPanelView,
   resolveInitialToolPanelView,
@@ -39,7 +40,7 @@ class EwToolPanel extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubCommentCounts?.();
-    document.removeEventListener('nx-comments-controller-change', this._onCommentsControllerChange);
+    this._unsubControllerChange?.();
   }
 
   _bindCommentCountUpdates() {
@@ -52,8 +53,8 @@ class EwToolPanel extends LitElement {
       });
     };
     bind(getCommentsBridge().controller);
-    this._onCommentsControllerChange = (e) => bind(e.detail.controller);
-    document.addEventListener('nx-comments-controller-change', this._onCommentsControllerChange);
+    this._unsubControllerChange = canvasBus.commentsControllerState
+      .subscribe((controller) => bind(controller));
   }
 
   get _fullsizeDialogView() {

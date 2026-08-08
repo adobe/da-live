@@ -14,20 +14,16 @@ export const SET_RANGES = 'setRanges';
 export const SET_SELECTED_THREAD = 'setSelectedThread';
 export const SET_PANEL_OPEN = 'setPanelOpen';
 export const SET_PENDING_ANCHOR = 'setPendingAnchor';
-export const SET_SHOW_HIGHLIGHTS = 'setShowHighlights';
 
 const emptyState = () => ({
   ranges: new Map(),
   selectedThreadId: null,
   panelOpen: false,
-  showHighlights: false,
   pendingAnchor: null,
   needsResync: false,
 });
 
-const isVisible = (pluginState) => Boolean(
-  pluginState?.panelOpen || pluginState?.showHighlights,
-);
+const isVisible = (pluginState) => Boolean(pluginState?.panelOpen);
 
 function applyAction(prev, action) {
   switch (action.type) {
@@ -43,11 +39,6 @@ function applyAction(prev, action) {
       const next = Boolean(action.payload);
       if (prev.panelOpen === next) return prev;
       return { ...prev, panelOpen: next };
-    }
-    case SET_SHOW_HIGHLIGHTS: {
-      const next = Boolean(action.payload);
-      if (prev.showHighlights === next) return prev;
-      return { ...prev, showHighlights: next };
     }
     case SET_PENDING_ANCHOR: {
       const next = action.payload ?? null;
@@ -157,9 +148,6 @@ export default function commentPlugin({ controller, store }) {
           const prev = commentPluginKey.getState(prevState);
           const next = commentPluginKey.getState(view.state);
           controller.notifyPluginStateChange(prev, next);
-
-          const { from, to } = view.state.selection;
-          controller.setHasSelection(from !== to);
 
           if (view.state.doc !== prevState.doc) {
             controller.notifyDocChange();
