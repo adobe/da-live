@@ -86,7 +86,6 @@ describe('comments helpers/controller', () => {
     expect(controller.panelOpen).to.be.false;
     expect(controller.selectedThreadId).to.be.null;
     expect(controller.pendingAnchor).to.be.null;
-    expect(controller.hasSelection).to.be.false;
     expect(controller.getAttachedThreadIds()).to.be.null;
   });
 
@@ -126,24 +125,6 @@ describe('comments helpers/controller', () => {
     c.destroy();
   });
 
-  it('toggles showHighlights and emits a showHighlights reason', async () => {
-    const { controller: c, editor } = await createControllerWithPlugin();
-    let hits = 0;
-    c.on('showHighlights', () => { hits += 1; });
-    expect(c.showHighlights).to.be.false;
-    c.setShowHighlights(true);
-    expect(c.showHighlights).to.be.true;
-    expect(hits).to.equal(1);
-    // Idempotent: no extra dispatch/emit when unchanged.
-    c.setShowHighlights(true);
-    expect(hits).to.equal(1);
-    c.setShowHighlights(false);
-    expect(c.showHighlights).to.be.false;
-    expect(hits).to.equal(2);
-    destroyEditor(editor);
-    c.destroy();
-  });
-
   it('requestCompose is a no-op before bindView', () => {
     expect(controller.panelOpen).to.be.false;
     controller.requestCompose();
@@ -178,17 +159,6 @@ describe('comments helpers/controller', () => {
     expect(reasons, 'resolvedRanges is no longer emitted').to.not.include('resolvedRanges');
     destroyEditor(editor);
     c.destroy();
-  });
-
-  it('deduplicates hasSelection notifications', () => {
-    const calls = [];
-    controller.subscribe(({ reason }) => calls.push(reason));
-
-    controller.setHasSelection(true);
-    controller.setHasSelection(true);
-
-    expect(controller.hasSelection).to.be.true;
-    expect(calls.filter((r) => r === 'hasSelection')).to.have.length(1);
   });
 
   it('closePanel clears selectedThreadId and pendingAnchor', async () => {

@@ -17,6 +17,7 @@ import {
 } from './helpers/templates.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 
 let toastModulePromise;
@@ -131,7 +132,7 @@ export class CommentsPanel extends LitElement {
   }
 
   closeCommentsHost() {
-    this.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
+    this.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { bubbles: true, composed: true }));
   }
 
   showToast({ text, description, variant } = {}) {

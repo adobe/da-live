@@ -68,7 +68,7 @@ export function publishCommentsController(store, wsProvider) {
 export function subscribeCommentIframeBridge({ controller, getView, getPort }) {
   if (!controller?.subscribe) return () => {};
 
-  const visible = () => controller.panelOpen || controller.showHighlights;
+  const visible = () => controller.panelOpen;
 
   const syncLayoutMarkers = () => {
     const port = getPort();
@@ -99,7 +99,7 @@ export function subscribeCommentIframeBridge({ controller, getView, getPort }) {
       scrollToSelected();
       syncLayoutMarkers();
     } else if (reason === 'counts' || reason === 'docChange' || reason === 'init'
-      || reason === 'panelOpen' || reason === 'showHighlights') {
+      || reason === 'panelOpen') {
       syncLayoutMarkers();
     }
   });

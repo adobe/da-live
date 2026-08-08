@@ -5,6 +5,7 @@ import { daFetch } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -589,8 +590,8 @@ export function createCommentsView() {
       const getController = () => getCommentsBridge().controller;
       el.controller = getController();
       const syncPanelOpen = bindPanelOpenToVisibility(el, getController);
-      document.addEventListener('nx-comments-controller-change', (e) => {
-        el.controller = e.detail.controller;
+      canvasBus.commentsControllerState.subscribe((controller) => {
+        el.controller = controller;
         syncPanelOpen();
       });
       return el;

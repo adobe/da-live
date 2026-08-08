@@ -1,19 +1,30 @@
 import { expect } from '@esm-bundle/chai';
-import {
-  getCommentsBridge,
-  setCommentsController,
-  formatCommentsViewLabel,
-  toggleComments,
-  getCommentsVisible,
-} from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
+import { setNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+let getCommentsBridge;
+let setCommentsController;
+let formatCommentsViewLabel;
+let toggleComments;
+let getCommentsVisible;
+
+before(async () => {
+  ({
+    getCommentsBridge,
+    setCommentsController,
+    formatCommentsViewLabel,
+    toggleComments,
+    getCommentsVisible,
+  } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js'));
+});
 
 function stubController(initial = {}) {
-  const state = { showHighlights: false, panelOpen: false, ...initial };
+  const state = { panelOpen: false, ...initial };
   return {
     closedCount: 0,
-    get showHighlights() { return state.showHighlights; },
     get panelOpen() { return state.panelOpen; },
-    setShowHighlights(next) { state.showHighlights = next; },
     closePanel() { state.panelOpen = false; this.closedCount += 1; },
   };
 }
@@ -27,66 +38,52 @@ describe('comments-bridge', () => {
     expect(getCommentsBridge().controller).to.equal(controller);
   });
 
-  it('getCommentsVisible is true when the panel is open OR highlights are on', () => {
+  it('getCommentsVisible is true when the panel is open', () => {
     setCommentsController(stubController());
     expect(getCommentsVisible()).to.be.false;
-
-    const withHighlights = stubController({ showHighlights: true });
-    setCommentsController(withHighlights);
-    expect(getCommentsVisible()).to.be.true;
 
     const withPanel = stubController({ panelOpen: true });
     setCommentsController(withPanel);
     expect(getCommentsVisible()).to.be.true;
   });
 
-  it('toggleComments opens the comments panel when nothing is visible', () => {
-    let opened = null;
-    const onOpen = (e) => { opened = e.detail; };
-    document.addEventListener('nx-panel-open', onOpen);
-
+  it('toggleComments opens the comments panel when nothing is visible', async () => {
     const controller = stubController();
     setCommentsController(controller);
-    toggleComments();
 
     // PANEL_EVENT.OPEN on document → nx panel.js opens the tools/comments view.
+    const opened = await new Promise((resolve) => {
+      document.addEventListener('nx-panel-open', (e) => resolve(e.detail), { once: true });
+      toggleComments();
+    });
+
     expect(opened).to.deep.equal({ section: 'tools', id: 'comments' });
-    expect(controller.showHighlights).to.be.false;
     expect(controller.closedCount).to.equal(0);
-    document.removeEventListener('nx-panel-open', onOpen);
   });
 
-  it('toggleComments hides everything (closes panel + clears highlights) when visible', () => {
-    const controller = stubController({ panelOpen: true, showHighlights: true });
+  it('toggleComments closes the panel when it is open', () => {
+    const controller = stubController({ panelOpen: true });
     setCommentsController(controller);
     toggleComments();
     expect(controller.panelOpen).to.be.false;
-    expect(controller.showHighlights).to.be.false;
     expect(controller.closedCount).to.equal(1);
   });
 
-  it('toggleComments closes the host rail (nx-panel-close) when the panel is open', () => {
+  it('toggleComments closes the host rail (nx-panel-close) when the panel is open', async () => {
     const aside = document.createElement('aside');
     aside.className = 'panel';
     aside.dataset.position = 'after';
     document.body.appendChild(aside);
-    let closed = 0;
-    aside.addEventListener('nx-panel-close', () => { closed += 1; });
 
-    const controller = stubController({ panelOpen: true, showHighlights: true });
+    const controller = stubController({ panelOpen: true });
     setCommentsController(controller);
-    toggleComments();
 
-    expect(closed).to.equal(1);
+    await new Promise((resolve) => {
+      aside.addEventListener('nx-panel-close', resolve, { once: true });
+      toggleComments();
+    });
+
     aside.remove();
-  });
-
-  it('toggleComments closes the panel even when highlights were already off', () => {
-    const controller = stubController({ panelOpen: true, showHighlights: false });
-    setCommentsController(controller);
-    toggleComments();
-    expect(controller.panelOpen).to.be.false;
-    expect(controller.showHighlights).to.be.false;
   });
 
   it('toggleComments is a no-op without a controller', () => {
@@ -95,13 +92,16 @@ describe('comments-bridge', () => {
     expect(getCommentsVisible()).to.be.false;
   });
 
-  it('dispatches nx-comments-controller-change on document', async () => {
+  it('emits the controller on canvasBus.commentsControllerState', async () => {
     const controller = { id: 'c2' };
-    const event = await new Promise((resolve) => {
-      document.addEventListener('nx-comments-controller-change', resolve, { once: true });
+    const received = await new Promise((resolve) => {
+      const off = canvasBus.commentsControllerState.subscribe((c) => {
+        off();
+        resolve(c);
+      });
       setCommentsController(controller);
     });
-    expect(event.detail.controller).to.equal(controller);
+    expect(received).to.equal(controller);
   });
 });
 

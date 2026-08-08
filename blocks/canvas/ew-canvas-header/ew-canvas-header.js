@@ -51,21 +51,18 @@ class EWCanvasHeader extends LitElement {
     this._unsubHash = hashChange.subscribe((state) => {
       this._syncChatDisabled(state?.org, state?.site);
     });
-    this._onControllerChange = () => this._bindComments();
-    document.addEventListener('nx-comments-controller-change', this._onControllerChange);
+    this._unsubControllerChange = canvasBus.commentsControllerState
+      .subscribe(() => this._bindComments());
     this._bindComments();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
-    document.removeEventListener('nx-comments-controller-change', this._onControllerChange);
+    this._unsubControllerChange?.();
     this._unbindComments?.();
   }
 
-  // Track the active comments controller so the toggle reflects effective
-  // comment visibility (panel open OR highlights on) as the controller is
-  // recreated across documents.
   _bindComments() {
     this._unbindComments?.();
     const sync = () => { this._commentsVisible = getCommentsVisible(); };
@@ -75,7 +72,7 @@ class EWCanvasHeader extends LitElement {
       this._unbindComments = null;
       return;
     }
-    const offs = [controller.on('showHighlights', sync), controller.on('panelOpen', sync)];
+    const offs = [controller.on('panelOpen', sync)];
     this._unbindComments = () => offs.forEach((off) => off?.());
   }
 

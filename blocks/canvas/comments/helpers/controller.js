@@ -3,16 +3,15 @@ import {
   SET_SELECTED_THREAD,
   SET_PANEL_OPEN,
   SET_PENDING_ANCHOR,
-  SET_SHOW_HIGHLIGHTS,
   commentPluginKey,
 } from '../comment-plugin.js';
 import { decodeAnchor, resolveAnchor, encodeAnchor, getSelectionData } from './anchor.js';
 import { createAwarenessSync } from './awareness-sync.js';
 import { computeCounts, buildThreadGroups } from './thread-grouping.js';
 import { buildAuthorColorMap, authorColorSet } from './author-colors.js';
+import { createChannel } from '../../utils/canvas-bus.js';
 
 export function createCommentsController({ commentsStore: store, wsProvider }) {
-  let hasSelection = false;
   let authorColors = null;
 
   const getAuthorColorMap = () => {
@@ -25,10 +24,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
 
   const healing = new Set();
 
-  // A structurally-recovered comment (relpos dead, e.g. after a page move) has no
-  // live position tracking, so any edit to its block breaks the structural hash
-  // and detaches it. Re-anchor it against the current ydoc so it tracks edits
-  // like a normal comment. One-shot: once persisted, it resolves via relpos.
   const reanchor = (id, comment, range) => {
     if (!boundView || healing.has(id)) return;
     const fresh = encodeAnchor({
@@ -46,11 +41,8 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       .finally(() => healing.delete(id));
   };
 
-  const channels = new Map();
-  const emit = (reason) => {
-    channels.get(reason)?.forEach((fn) => fn());
-    channels.get('*')?.forEach((fn) => fn(reason));
-  };
+  const changes = createChannel();
+  const emit = (reason) => changes.emit(reason);
 
   const getPluginState = () => (
     boundView ? commentPluginKey.getState(boundView.state) : null
@@ -80,10 +72,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return Boolean(getPluginState()?.panelOpen);
     },
 
-    get showHighlights() {
-      return Boolean(getPluginState()?.showHighlights);
-    },
-
     get selectedThreadId() {
       return getPluginState()?.selectedThreadId ?? null;
     },
@@ -92,9 +80,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return getPluginState()?.pendingAnchor ?? null;
     },
 
-    get hasSelection() { return hasSelection; },
-
-    // No store (unsaved doc) means there is nothing to fetch — treat as loaded.
     get loaded() { return store ? store.loaded : true; },
 
     get counts() { return counts; },
@@ -238,10 +223,8 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       const prevPanel = prev?.panelOpen ?? false;
       const prevThread = prev?.selectedThreadId ?? null;
       const prevAnchor = prev?.pendingAnchor ?? null;
-      const prevShow = prev?.showHighlights ?? false;
 
       if (prevPanel !== next.panelOpen) emit('panelOpen');
-      if (prevShow !== next.showHighlights) emit('showHighlights');
       if (prevThread !== next.selectedThreadId) emit('selectedThreadId');
       if (prevAnchor !== next.pendingAnchor) emit('pendingAnchor');
     },
@@ -255,13 +238,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       const ps = getPluginState();
       if (ps && ps.panelOpen === next) return;
       dispatchPluginMeta({ type: SET_PANEL_OPEN, payload: next });
-    },
-
-    setShowHighlights(show) {
-      const next = Boolean(show);
-      const ps = getPluginState();
-      if (ps && ps.showHighlights === next) return;
-      dispatchPluginMeta({ type: SET_SHOW_HIGHLIGHTS, payload: next });
     },
 
     setSelectedThread(id) {
@@ -280,13 +256,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
 
     clearPendingAnchor() {
       this.setPendingAnchor(null);
-    },
-
-    setHasSelection(next) {
-      const value = Boolean(next);
-      if (value === hasSelection) return;
-      hasSelection = value;
-      emit('hasSelection');
     },
 
     openPanel({ pendingAnchor: anchor = null } = {}) {
@@ -322,13 +291,11 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     },
 
     on(reason, fn) {
-      if (!channels.has(reason)) channels.set(reason, new Set());
-      channels.get(reason).add(fn);
-      return () => channels.get(reason)?.delete(fn);
+      return changes.subscribe((r) => { if (r === reason) fn(); });
     },
 
     subscribe(fn) {
-      const off = this.on('*', (reason) => fn({ reason }));
+      const off = changes.subscribe((reason) => fn({ reason }));
       fn({ reason: 'init' });
       return off;
     },
@@ -336,7 +303,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     destroy() {
       if (store) store.unobserve(onStoreChange);
       awareness.destroy();
-      channels.clear();
       boundView = null;
     },
   };
