@@ -42,15 +42,20 @@ const DA_ETC_ENVS = {
   local: 'http://localhost:8787',
 };
 
+const LOCALHOST_DEFAULTS = { 'da-admin': 'stage' };
+
 function getDaEnv(location, key, envs) {
   const { href } = location;
-  const query = new URL(href).searchParams.get(key);
+  const url = new URL(href);
+  const query = url.searchParams.get(key);
   if (query && query === 'reset') {
     localStorage.removeItem(key);
   } else if (query) {
     localStorage.setItem(key, query);
   }
-  const env = envs[localStorage.getItem(key) || 'prod'];
+  const isLocal = url.hostname.includes('local');
+  const fallback = isLocal ? (LOCALHOST_DEFAULTS[key] || 'prod') : 'prod';
+  const env = envs[localStorage.getItem(key)] || envs[fallback] || envs.prod;
   // TODO: INFRA
   return location.origin === 'https://da.page' ? env.replace('.live', '.page') : env;
 }
