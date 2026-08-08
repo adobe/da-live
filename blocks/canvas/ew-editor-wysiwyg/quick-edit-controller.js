@@ -57,7 +57,7 @@ export function createControllerOnMessage(ctx) {
     } else if (type === MESSAGE_TYPES.STORED_MARKS) {
       handleStoredMarks(payload, ctx);
     } else if (type === MESSAGE_TYPES.COMMENT_MARKER_CLICK) {
-      handleCommentMarkerClick(e.data);
+      handleCommentMarkerClick(payload);
     } else if (type === MESSAGE_TYPES.COMMENT_MARKER_CLEAR) {
       handleCommentMarkerClear();
     } else if (type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
