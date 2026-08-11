@@ -198,7 +198,8 @@ export function getInstrumentedHTML(view) {
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
     const isPageOrSectionMetadata = firstCellText === 'metadata' || firstCellText === 'section metadata' || firstCellText === 'section-metadata';
-    if (isPageOrSectionMetadata) return;
+    const isLibraryMetadata = firstCellText === 'library metadata' || firstCellText === 'library-metadata';
+    if (isPageOrSectionMetadata || isLibraryMetadata) return;
     const div = table.parentElement;
     const blockMarker = document.createElement('div');
     blockMarker.className = 'block-marker';
@@ -256,7 +257,7 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
-const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'block-marker']);
+const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);
 
 function hasDefaultContent(el) {
   if (el.textContent?.trim()) return true;
