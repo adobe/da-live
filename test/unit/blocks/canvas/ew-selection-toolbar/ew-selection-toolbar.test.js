@@ -2,7 +2,12 @@ import { expect } from '@esm-bundle/chai';
 import { TextSelection, NodeSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
-import { getSelectionToolbar } from '../../../../../blocks/canvas/editor-utils/selection-toolbar.js';
+import {
+  getSelectionToolbar,
+  setSelectionToolbarCtx,
+  createSelectionToolbarPlugin,
+} from '../../../../../blocks/canvas/editor-utils/selection-toolbar.js';
+import { applyLink } from '../../../../../blocks/canvas/editor-utils/command-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -106,5 +111,69 @@ describe('ew-selection-toolbar buttons', () => {
     });
     expect(imgNode.attrs.alt).to.equal('New alt');
     expect(toolbar.altDialogOpen).to.be.false;
+  });
+});
+
+describe('link hover preview', () => {
+  let editor;
+
+  const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
+
+  beforeEach(async () => {
+    editor = await createTestEditor({ additionalPlugins: [createSelectionToolbarPlugin()] });
+    setSelectionToolbarCtx({ org: 'myorg', site: 'mysite', canWrite: true });
+    await nextFrame();
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+  });
+
+  function addLink(href, text) {
+    editor.view.dispatch(editor.view.state.tr.insertText(text));
+    const selection = TextSelection.create(editor.view.state.doc, 1, 1 + text.length);
+    editor.view.dispatch(editor.view.state.tr.setSelection(selection));
+    applyLink(editor.view, { href, text });
+    return editor.view.dom.querySelector('a');
+  }
+
+  it('shows the resolved URL on hover for a relative link', async () => {
+    const linkEl = addLink('/foo/bar', 'hello');
+    linkEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await nextFrame();
+
+    const popover = document.querySelector('nx-popover');
+    expect(popover.open).to.be.true;
+    expect(popover.textContent).to.equal('https://main--mysite--myorg.aem.live/foo/bar');
+  });
+
+  it('shows the raw URL on hover for an absolute link whose text hides the destination', async () => {
+    const linkEl = addLink('https://google.com', 'learn more');
+    linkEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await nextFrame();
+
+    const popover = document.querySelector('nx-popover');
+    expect(popover.open).to.be.true;
+    expect(popover.textContent).to.equal('https://google.com');
+  });
+
+  it('does not show a preview when the link text already is the URL', async () => {
+    const linkEl = addLink('https://example.com', 'https://example.com');
+    linkEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await nextFrame();
+
+    const popover = document.querySelector('nx-popover');
+    expect(popover?.open).to.not.be.true;
+  });
+
+  it('hides the preview when the mouse leaves the link', async () => {
+    const linkEl = addLink('/foo/bar', 'hello');
+    linkEl.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await nextFrame();
+
+    linkEl.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+    await nextFrame();
+
+    expect(document.querySelector('nx-popover').open).to.be.false;
   });
 });

@@ -10,6 +10,19 @@ const [base, styles] = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 
+// nx-dialog closes on any click whose target resolves to the backdrop. Dragging to
+// select text inside the dialog and releasing over the backdrop produces exactly that
+// click, so guard by only allowing backdrop-clicks that also *started* on the backdrop.
+function guardBackdropDragClose(nxDialogEl) {
+  let downTarget;
+  nxDialogEl.addEventListener('mousedown', (e) => { [downTarget] = e.composedPath(); }, true);
+  nxDialogEl.addEventListener('click', (e) => {
+    const inner = nxDialogEl.shadowRoot?.querySelector('dialog');
+    const [clickTarget] = e.composedPath();
+    if (clickTarget === inner && downTarget !== inner) e.stopPropagation();
+  }, true);
+}
+
 class DaLinkDialog extends LitElement {
   static properties = {
     open: { type: Boolean, reflect: true },
@@ -23,6 +36,12 @@ class DaLinkDialog extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [base, styles];
+  }
+
+  updated(changed) {
+    if (changed.has('open') && this.open) {
+      guardBackdropDragClose(this.shadowRoot.querySelector('nx-dialog'));
+    }
   }
 
   _onSave() {
