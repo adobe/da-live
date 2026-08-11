@@ -33,15 +33,24 @@ describe('getPreviewOrigin', () => {
 
 describe('fetchWysiwygBranch', () => {
   let savedFetch;
+  let savedSearch;
   let testIndex = 0;
+
+  function setSearch(search) {
+    const url = new URL(window.location.href);
+    url.search = search;
+    window.history.replaceState(null, '', url);
+  }
 
   beforeEach(() => {
     savedFetch = window.fetch;
+    savedSearch = window.location.search;
     testIndex += 1;
   });
 
   afterEach(() => {
     window.fetch = savedFetch;
+    setSearch(savedSearch);
   });
 
   function ctx(extra = {}) {
@@ -119,6 +128,31 @@ describe('fetchWysiwygBranch', () => {
     ]);
     const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-10/site-wbr-10/page' }));
     expect(branch).to.equal('valid');
+  });
+
+  it('uses the branch query param when present, skipping config lookup', async () => {
+    setSearch('?branch=from-query');
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    };
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-11/site-wbr-11/page' }));
+    expect(branch).to.equal('from-query');
+    expect(fetchCalled).to.equal(false);
+  });
+
+  it('uses the branch query param even when org/site are missing', async () => {
+    setSearch('?branch=from-query');
+    const branch = await fetchWysiwygBranch({});
+    expect(branch).to.equal('from-query');
+  });
+
+  it('falls back to config when the branch query param is empty', async () => {
+    setSearch('?branch=');
+    mockConfig([{ key: 'ew.wysiwygBranch', value: '/org-wbr-12/site-wbr-12=feature' }]);
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-12/site-wbr-12/page' }));
+    expect(branch).to.equal('feature');
   });
 });
 
