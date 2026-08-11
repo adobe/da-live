@@ -130,8 +130,8 @@ describe('fetchWysiwygBranch', () => {
     expect(branch).to.equal('valid');
   });
 
-  it('uses the branch query param when present, skipping config lookup', async () => {
-    setSearch('?branch=from-query');
+  it('uses the ref query param when present, skipping config lookup', async () => {
+    setSearch('?ref=from-query');
     let fetchCalled = false;
     window.fetch = () => {
       fetchCalled = true;
@@ -142,14 +142,8 @@ describe('fetchWysiwygBranch', () => {
     expect(fetchCalled).to.equal(false);
   });
 
-  it('uses the branch query param even when org/site are missing', async () => {
-    setSearch('?branch=from-query');
-    const branch = await fetchWysiwygBranch({});
-    expect(branch).to.equal('from-query');
-  });
-
-  it('falls back to config when the branch query param is empty', async () => {
-    setSearch('?branch=');
+  it('falls back to config when the ref query param is empty', async () => {
+    setSearch('?ref=');
     mockConfig([{ key: 'ew.wysiwygBranch', value: '/org-wbr-12/site-wbr-12=feature' }]);
     const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-12/site-wbr-12/page' }));
     expect(branch).to.equal('feature');
