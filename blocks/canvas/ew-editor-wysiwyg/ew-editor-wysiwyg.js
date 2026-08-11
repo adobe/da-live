@@ -4,6 +4,7 @@ import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../edi
 import { initIms as loadIms } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -14,11 +15,14 @@ const QUICK_EDIT_INIT_MAX_ATTEMPTS = 25;
 
 const WYSIWYG_PORT_READY_ATTR = 'data-nx-wysiwyg-port-ready';
 
-function buildQuickEditInitPayload({ org, repo, path, branch = 'main' }) {
+function buildQuickEditInitPayload({ org, repo, path, branch = 'main', canWrite = false }) {
   const pathWithoutOrgRepo = path.split('/').slice(2).join('/');
   const pathname = pathWithoutOrgRepo ? `/${pathWithoutOrgRepo}` : '/';
   return {
-    config: { mountpoint: `${getPreviewOrigin(org, repo, branch)}/${org}/${repo}` },
+    config: {
+      mountpoint: `${getPreviewOrigin(org, repo, branch)}/${org}/${repo}`,
+      canWrite,
+    },
     location: { pathname },
   };
 }
@@ -46,22 +50,22 @@ async function tryLoadWysiwygPreviewCookies({ org, repo, path, branch, getCurren
 export class EwEditorWysiwyg extends LitElement {
   static properties = {
     ctx: { type: Object },
+    canWrite: { type: Boolean },
     _cookieReady: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._onCanvasEditorActive = (e) => {
-      this._canvasActiveView = e.detail?.view;
+    this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
+      this._canvasActiveView = view;
       this._syncCanvasVisibility();
-    };
-    this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
+    });
     this._syncCanvasVisibility();
   }
 
   disconnectedCallback() {
-    this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
+    this._unsubscribeEditorActive?.();
     this._clearQuickEditRetry();
     super.disconnectedCallback();
   }
@@ -138,11 +142,7 @@ export class EwEditorWysiwyg extends LitElement {
     this.setAttribute(WYSIWYG_PORT_READY_ATTR, '');
     this._syncCanvasVisibility();
     const iframe = this.shadowRoot?.querySelector('iframe');
-    this.dispatchEvent(new CustomEvent('nx-wysiwyg-port-ready', {
-      bubbles: true,
-      composed: true,
-      detail: { port, iframe },
-    }));
+    canvasBus.wysiwygPortReady.emit({ port, iframe });
   }
 
   _scheduleQuickEditInitRetries(send) {
@@ -193,7 +193,13 @@ export class EwEditorWysiwyg extends LitElement {
     this._clearQuickEditRetry();
     this._syncCanvasVisibility();
 
-    const { config, location } = buildQuickEditInitPayload({ org, repo, path, branch: this._wysiwygBranch ?? 'main' });
+    const { config, location } = buildQuickEditInitPayload({
+      org,
+      repo,
+      path,
+      branch: this._wysiwygBranch ?? 'main',
+      canWrite: this.canWrite === true,
+    });
     const send = () => this._postQuickEditInitToIframe({
       iframe,
       config,
