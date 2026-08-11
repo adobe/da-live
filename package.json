@@ -8,7 +8,7 @@
     "url": "git+https://github.com/adobe/da-live.git"
   },
   "dependencies": {
-    "@da-tools/da-parser": "1.1.2",
+    "@adobe/da-parser": "2.0.0",
     "@open-wc/lit-helpers": "0.7.0",
     "esbuild": "0.21.0",
     "jspreadsheet-ce": "4.13.4",
@@ -28,7 +28,7 @@
     "prosemirror-view": "1.34.3",
     "y-prosemirror": "1.2.12",
     "y-websocket": "2.0.4",
-    "yjs": "13.6.29"
+    "yjs": "13.6.32"
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "^3.0.17",
