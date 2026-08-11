@@ -12,7 +12,7 @@
 import { test, expect } from '../../utils/fixtures.js';
 import { getTestPageURL, fill, TEST_SITE } from '../../utils/page.js';
 
-test('Collab cursors in multiple editors', async ({ browser, page, browserName, trackCleanup }, workerInfo) => {
+test.only('Collab cursors in multiple editors', async ({ browser, page, browserName, trackCleanup }, workerInfo) => {
   // Open 2 editors on the same page and edit in both of them.
   // Ensure that the edits are visible to both and that the collab cursors are there
   // Also check that the cloud icon is visible for the collaborator
@@ -74,6 +74,9 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName, 
   await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
   await expect(page2.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
 
+  // set focus on "page" to enable cursor on "page2"
+  page.focus('div.ProseMirror');
+
   // Check the cursor for collaborator
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
@@ -86,6 +89,10 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName, 
   expect(text2Idx).toBeGreaterThanOrEqual(0);
   expect(cursor2Idx).toBeGreaterThanOrEqual(0);
   expect(cursor2Idx).toBeGreaterThan(text2Idx);
+
+  // set focus on "page2" to enable cursor on "page"
+  page2.focus('div.ProseMirror');
+
   // Check the cursor for collaborator, should be in a different location here
   await expect(page.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
   await expect(page.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
