@@ -25,7 +25,8 @@
   padding-right: var(--s2-spacing-75);
 }
 
-.tool-panel-close {
+.tool-panel-close,
+.header-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -48,6 +49,11 @@
   &:hover {
     background-color: var(--s2-gray-75);
   }
+}
+
+.header-action-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .tool-panel-content {
