@@ -1,9 +1,13 @@
 import { expect } from '@esm-bundle/chai';
 
 const SESSION_KEY = 'nx-canvas-editor-view';
+const ANCHOR_KEY = 'nx-canvas-block-anchor';
 let normalizeCanvasEditorView;
 let persistCanvasEditorView;
 let readInitialCanvasEditorView;
+let persistBlockAnchor;
+let readBlockAnchor;
+let clearBlockAnchor;
 
 const flagsLoader = (sheet) => {
   const map = {};
@@ -18,6 +22,9 @@ before(async () => {
   normalizeCanvasEditorView = mod.normalizeCanvasEditorView;
   persistCanvasEditorView = mod.persistCanvasEditorView;
   readInitialCanvasEditorView = mod.readInitialCanvasEditorView;
+  persistBlockAnchor = mod.persistBlockAnchor;
+  readBlockAnchor = mod.readBlockAnchor;
+  clearBlockAnchor = mod.clearBlockAnchor;
 });
 
 describe('normalizeCanvasEditorView', () => {
@@ -130,5 +137,42 @@ describe('readInitialCanvasEditorView', () => {
   it('returns layout when config has no flags sheet', async () => {
     const view = await readInitialCanvasEditorView(ctx(), flagsLoader(undefined));
     expect(view).to.equal('layout');
+  });
+});
+
+describe('block anchor persistence', () => {
+  afterEach(() => {
+    sessionStorage.removeItem(ANCHOR_KEY);
+  });
+
+  it('round-trips a stored anchor', () => {
+    persistBlockAnchor({ path: 'org/site/page', blockIndex: 2, name: 'cards' });
+    expect(readBlockAnchor()).to.deep.equal({ path: 'org/site/page', blockIndex: 2, name: 'cards' });
+  });
+
+  it('returns null when nothing is stored', () => {
+    expect(readBlockAnchor()).to.equal(null);
+  });
+
+  it('clears any stored anchor', () => {
+    persistBlockAnchor({ path: 'org/site/page', blockIndex: 0, name: 'hero' });
+    clearBlockAnchor();
+    expect(readBlockAnchor()).to.equal(null);
+  });
+
+  it('does not store an anchor without a path', () => {
+    persistBlockAnchor({ blockIndex: 1, name: 'cards' });
+    expect(sessionStorage.getItem(ANCHOR_KEY)).to.equal(null);
+  });
+
+  it('does not store an anchor without a block index', () => {
+    persistBlockAnchor({ path: 'org/site/page', name: 'cards' });
+    expect(sessionStorage.getItem(ANCHOR_KEY)).to.equal(null);
+  });
+
+  it('removes an existing anchor when given an invalid one', () => {
+    persistBlockAnchor({ path: 'org/site/page', blockIndex: 3, name: 'cards' });
+    persistBlockAnchor({ path: 'org/site/page', blockIndex: -1 });
+    expect(readBlockAnchor()).to.equal(null);
   });
 });

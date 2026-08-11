@@ -1,6 +1,7 @@
 import { getNxEWFlags } from '../../../scripts/utils.js';
 
 const CANVAS_EDITOR_VIEW_KEY = 'nx-canvas-editor-view';
+const CANVAS_BLOCK_ANCHOR_KEY = 'nx-canvas-block-anchor';
 
 const loadEWFlags = async (args) => (await getNxEWFlags()).getEWFlags(args);
 
@@ -32,5 +33,32 @@ export function persistCanvasEditorView(view) {
   if (normalized === 'block') return;
   try {
     sessionStorage.setItem(CANVAS_EDITOR_VIEW_KEY, normalized);
+  } catch { /* ignore if browser disallows session storage */ }
+}
+
+// The focused block is remembered separately from the view (which stays layout/split
+// underneath). On reload the doc editor re-selects this block — if it still exists on
+// the same page — and re-opens block view. Keyed by path so navigating elsewhere and
+// reloading there never resurrects a stale focus.
+export function persistBlockAnchor(anchor) {
+  try {
+    if (!anchor || anchor.path == null || anchor.blockIndex == null || anchor.blockIndex < 0) {
+      sessionStorage.removeItem(CANVAS_BLOCK_ANCHOR_KEY);
+      return;
+    }
+    sessionStorage.setItem(CANVAS_BLOCK_ANCHOR_KEY, JSON.stringify(anchor));
+  } catch { /* ignore if browser disallows session storage */ }
+}
+
+export function readBlockAnchor() {
+  try {
+    const raw = sessionStorage.getItem(CANVAS_BLOCK_ANCHOR_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+export function clearBlockAnchor() {
+  try {
+    sessionStorage.removeItem(CANVAS_BLOCK_ANCHOR_KEY);
   } catch { /* ignore if browser disallows session storage */ }
 }

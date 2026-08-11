@@ -5,7 +5,7 @@ import {
   updateDocument, updateCursors, getInstrumentedHTML,
   editorHtmlChange, editorSelectChange, editorProseSelectChange, getEditor,
 } from '../editor-utils/editor-utils.js';
-import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
+import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
   sourceUrlFromEditorCtx,
@@ -21,7 +21,8 @@ import {
 import { initIms as loadIms } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
-import { clearBlockFocus, isSelectionInFocusedBlock } from './prose-plugins/blockFocus.js';
+import { setBlockFocus, clearBlockFocus, getBlockFocus, isSelectionInFocusedBlock } from './prose-plugins/blockFocus.js';
+import { persistBlockAnchor, readBlockAnchor, clearBlockAnchor } from '../utils/view.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
@@ -331,6 +332,7 @@ export class EwEditorDoc extends LitElement {
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
+      this._setupBlockViewRestore(wsProvider);
 
       this._setupController();
     } catch (e) {
@@ -347,12 +349,18 @@ export class EwEditorDoc extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onCanvasEditorActive = (e) => {
       const view = e.detail?.view;
+      const prevView = this._editorView;
       this._editorView = view;
       this.hidden = view === 'layout';
       hideSelectionToolbar();
-      if (view !== 'block') {
-        const pmView = this._proseContext?.view;
+      const pmView = this._proseContext?.view;
+      if (view === 'block') {
+        if (pmView) this._persistBlockAnchor(pmView);
+      } else {
         if (pmView) clearBlockFocus(pmView);
+        // Only forget the anchor on a real exit (block -> elsewhere), not while simply
+        // sitting in layout on load — that would erase the anchor before restore reads it.
+        if (prevView === 'block') clearBlockAnchor();
       }
     };
     this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
@@ -380,13 +388,112 @@ export class EwEditorDoc extends LitElement {
     applyHighlight(this._proseContext?.view, detail);
   }
 
-  /** In block view, auto-close back to layout once the selection leaves the focused block. */
+  /** Remember which block block-view is focused on, so a reload can re-open it. */
+  _persistBlockAnchor(pmView) {
+    const pos = getBlockFocus(pmView.state);
+    if (pos == null) return;
+    const blockIndex = getBlockPositions(pmView).indexOf(pos);
+    if (blockIndex < 0) return;
+    const node = pmView.state.doc.nodeAt(pos);
+    persistBlockAnchor({
+      path: this.ctx?.path,
+      blockIndex,
+      name: node ? getTableBlockName(node) : undefined,
+    });
+  }
+
+  /**
+   * On load, if we were block-editing this same page, re-open that block once the doc
+   * has synced (initProse returns before ySyncPlugin has populated the doc). Bails
+   * quietly if the block is gone or changed identity.
+   */
+  _setupBlockViewRestore(wsProvider) {
+    const anchor = readBlockAnchor();
+    if (!anchor || anchor.path !== this.ctx?.path) return;
+    // ySyncPlugin populates the doc a little after `synced`, so poll for the specific
+    // block to appear rather than restoring on a single frame (which lands too early
+    // and bails). Give up after a few seconds if the block never shows (e.g. deleted).
+    const deadline = Date.now() + 4000;
+    const attempt = () => {
+      if (this.ctx?.path !== anchor.path) return;
+      const view = this._proseContext?.view;
+      const ready = !!view && wsProvider.synced
+        && getBlockPositions(view)[anchor.blockIndex] != null;
+      if (ready) {
+        this._restoreBlockView(anchor);
+        return;
+      }
+      if (Date.now() < deadline) requestAnimationFrame(attempt);
+    };
+    requestAnimationFrame(attempt);
+  }
+
+  _restoreBlockView(anchor) {
+    const view = this._proseContext?.view;
+    if (!view) return;
+    const pos = getBlockPositions(view)[anchor.blockIndex];
+    if (pos == null) return;
+    const node = view.state.doc.nodeAt(pos);
+    if (!node || node.type.name !== 'table') return;
+    if (anchor.name && getTableBlockName(node) !== anchor.name) return;
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+    setBlockFocus(view, pos);
+    document.querySelector('ew-canvas-header')?.setEditorView('block');
+  }
+
+  /**
+   * In block view, leave back to layout only when the user genuinely moves on: the
+   * focused block is gone, or the selection landed inside a *different* block (clicking
+   * another block in the preview). A selection that merely drifted into a gap — an edit
+   * echo, or deleting the block's last item row landing the cursor just past the
+   * shrunken table — keeps the block being edited, so we stay and pull the selection
+   * back inside instead.
+   */
   _maybeExitBlockMode(pmView) {
     if (this._editorView !== 'block') return;
-    if (isSelectionInFocusedBlock(pmView.state)) return;
-    // Defer so we don't switch views (and dispatch clearBlockFocus) mid-transaction.
+    const { state } = pmView;
+    const focusPos = getBlockFocus(state);
+    if (focusPos == null) return;
+    const node = state.doc.nodeAt(focusPos);
+    if (!node || node.type.name !== 'table') {
+      this._exitBlockMode();
+      return;
+    }
+    if (isSelectionInFocusedBlock(state)) return;
+    const { from } = state.selection;
+    const inAnotherBlock = getBlockPositions(pmView).some((pos) => {
+      if (pos === focusPos) return false;
+      const other = state.doc.nodeAt(pos);
+      return !!other && from >= pos && from < pos + other.nodeSize;
+    });
+    if (inAnotherBlock) {
+      this._exitBlockMode();
+      return;
+    }
+    this._reanchorSelectionInBlock(focusPos);
+  }
+
+  // Defer so we don't switch views (and dispatch clearBlockFocus) mid-transaction.
+  _exitBlockMode() {
     queueMicrotask(() => {
+      if (this._editorView !== 'block') return;
       document.querySelector('ew-canvas-header')?.setEditorView('layout');
+    });
+  }
+
+  /** Move the selection back inside the still-focused block after it drifted out. */
+  _reanchorSelectionInBlock(pos) {
+    queueMicrotask(() => {
+      if (this._editorView !== 'block') return;
+      const view = this._proseContext?.view;
+      if (!view || getBlockFocus(view.state) !== pos) return;
+      if (isSelectionInFocusedBlock(view.state)) return;
+      const current = view.state.doc.nodeAt(pos);
+      if (!current || current.type.name !== 'table') return;
+      // Land just inside the block's closing boundary; TextSelection.near snaps into
+      // the nearest editable text position within it.
+      const inside = view.state.doc.resolve(pos + current.nodeSize - 1);
+      view.dispatch(view.state.tr.setSelection(TextSelection.near(inside, -1)));
     });
   }
 
