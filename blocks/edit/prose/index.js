@@ -431,13 +431,15 @@ function restoreCursorPosition(view) {
   }
 }
 
-function addSyncedListener(wsProvider, canWrite) {
+function addSyncedListener(wsProvider, canWrite, daContent) {
   onWsSync(wsProvider, () => {
     if (canWrite) {
       const pm = document.querySelector('da-content')?.shadowRoot
         .querySelector('da-editor')?.shadowRoot.querySelector('.ProseMirror');
       if (pm) pm.contentEditable = 'true';
     }
+    // Content has synced and rendered — clear the loading spinner.
+    if (daContent) daContent.contentReady = true;
   });
 }
 
@@ -530,7 +532,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   const { wsProvider, ydoc } = await connectionPromise;
 
-  addSyncedListener(wsProvider, canWrite);
+  addSyncedListener(wsProvider, canWrite, daContent);
   createAwarenessStatusWidget(wsProvider, window, path);
   registerErrorHandler(ydoc);
 

@@ -801,6 +801,8 @@ describe('prose/index initProse default export', () => {
     expect(fakeContent.wsProvider).to.equal(provider);
     // Wait for handleProseLoaded's setTimeout
     await wait(20);
+    // Once synced, the loading spinner is cleared via daContent.contentReady.
+    expect(fakeContent.contentReady).to.be.true;
   });
 
   it('Reads-only when permissions has no write', async () => {
