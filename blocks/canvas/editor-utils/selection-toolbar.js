@@ -1,5 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin, PluginKey, NodeSelection } from 'da-y-wrapper';
+import { getNx } from '../../../scripts/utils.js';
 
 const NON_TEXT_NODES = new Set(['table']);
 
@@ -53,6 +54,56 @@ export function openLinkDialog(view) {
   getSelectionToolbar().openLinkDialog(view);
 }
 
+function isRelativeHref(href) {
+  return href.startsWith('/') && !href.startsWith('//');
+}
+
+function resolveHref(href) {
+  if (!isRelativeHref(href)) return href;
+  const { org, site } = getSelectionToolbar();
+  return org && site ? `https://main--${site}--${org}.aem.live${href}` : href;
+}
+
+let linkPreviewPopover;
+let previewedLink;
+let popoverLoaded;
+
+function getLinkPreviewPopover() {
+  if (linkPreviewPopover) return linkPreviewPopover;
+  popoverLoaded ??= import(`${getNx()}/blocks/shared/popover/popover.js`);
+  linkPreviewPopover = document.createElement('nx-popover');
+  linkPreviewPopover.setAttribute('persistent', '');
+  linkPreviewPopover.style.maxWidth = '320px';
+  linkPreviewPopover.style.wordBreak = 'break-all';
+  document.body.append(linkPreviewPopover);
+  return linkPreviewPopover;
+}
+
+function hideLinkPreview() {
+  previewedLink = null;
+  linkPreviewPopover?.close();
+}
+
+function showLinkPreview(linkEl, href) {
+  previewedLink = linkEl;
+  const popover = getLinkPreviewPopover();
+  popover.textContent = resolveHref(href);
+  popover.show({ anchor: linkEl, placement: 'above' });
+}
+
+// Slack-style preview: only useful when the visible text doesn't already reveal
+// the destination, e.g. "learn more" -> https://google.com.
+function onLinkMouseOver(view, event) {
+  const linkEl = event.target.closest?.('a');
+  if (!linkEl || linkEl === previewedLink) return;
+  const href = linkEl.getAttribute('href');
+  if (href && linkEl.textContent.trim() !== href) showLinkPreview(linkEl, href);
+}
+
+function onLinkMouseOut(view, event) {
+  if (previewedLink && !previewedLink.contains(event.relatedTarget)) hideLinkPreview();
+}
+
 export function openAltDialog() {
   getSelectionToolbar().openAltDialog();
 }
@@ -84,8 +135,15 @@ function syncToolbar(view) {
 }
 
 export function createSelectionToolbarPlugin() {
+  getLinkPreviewPopover(); // Warm the nx-popover import before the first hover needs it.
   return new Plugin({
     key: selectionToolbarOriginKey,
+    props: {
+      handleDOMEvents: {
+        mouseover: onLinkMouseOver,
+        mouseout: onLinkMouseOut,
+      },
+    },
     state: {
       init: () => ({ fromIframe: false }),
       apply(tr, prev) {
@@ -108,6 +166,7 @@ export function createSelectionToolbarPlugin() {
         },
         destroy() {
           hideSelectionToolbar();
+          hideLinkPreview();
         },
       };
     },

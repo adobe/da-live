@@ -120,6 +120,29 @@ describe('da-link-dialog', () => {
     expect(el._urlError).to.equal('');
   });
 
+  it('does not close when a drag started inside is released on the backdrop', async () => {
+    await mount({ open: true });
+    const nxDialogEl = el.shadowRoot.querySelector('nx-dialog');
+    const innerDialog = nxDialogEl.shadowRoot.querySelector('dialog');
+    const input = el.shadowRoot.querySelector('input[name="link-href"]');
+
+    input.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
+    innerDialog.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+
+    expect(innerDialog.open).to.be.true;
+  });
+
+  it('still closes on a genuine backdrop click (mousedown and click both on backdrop)', async () => {
+    await mount({ open: true });
+    const nxDialogEl = el.shadowRoot.querySelector('nx-dialog');
+    const innerDialog = nxDialogEl.shadowRoot.querySelector('dialog');
+
+    innerDialog.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
+    innerDialog.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+
+    expect(innerDialog.open).to.be.false;
+  });
+
   it('emits close when Cancel button is clicked', async () => {
     await mount({ open: true });
     let cancelled = false;
