@@ -12,7 +12,7 @@
 import { test, expect } from '../../utils/fixtures.js';
 import { getTestPageURL, fill, TEST_SITE } from '../../utils/page.js';
 
-test.only('Collab cursors in multiple editors', async ({ browser, page, browserName, trackCleanup }, workerInfo) => {
+test('Collab cursors in multiple editors', async ({ browser, page, browserName, trackCleanup }, workerInfo) => {
   // Open 2 editors on the same page and edit in both of them.
   // Ensure that the edits are visible to both and that the collab cursors are there
   // Also check that the cloud icon is visible for the collaborator
