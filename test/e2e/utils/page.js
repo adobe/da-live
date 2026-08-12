@@ -19,7 +19,7 @@ export function getQuery() {
   if (branch === 'local' || branch === 'local-https') {
     return '?da-admin=local&da-collab=local';
   }
-  return '';
+  return '?nx=playwfix';
 }
 
 const QUERY = getQuery();
