@@ -123,64 +123,28 @@ describe('ew-block-toolbar', () => {
     expect(addItemBtn()).to.be.null;
   });
 
-  it('shows the edit-block button only in layout (wysiwyg-only) mode', async () => {
+  it('shows the edit-block button with the edit icon', async () => {
     toolbar.show('cards');
-    toolbar._editorView = 'layout';
     await toolbar.updateComplete;
     expect(editBtn()).to.exist;
     const use = editBtn().querySelector('svg.icon use');
     expect(use.getAttribute('href')).to.equal('/img/icons/s2-icon-edit-20-n.svg#icon');
   });
 
-  it('hides the edit-block button in split and content mode', async () => {
-    toolbar.show('cards');
-    toolbar._editorView = 'split';
-    await toolbar.updateComplete;
-    expect(editBtn()).to.be.null;
-
-    toolbar._editorView = 'content';
-    await toolbar.updateComplete;
-    expect(editBtn()).to.be.null;
-  });
-
-  it('enters block mode and focuses the selected block when the edit button is clicked', async () => {
-    const header = document.createElement('ew-canvas-header');
+  it('opens the single-block edit modal on the doc editor when the edit button is clicked', async () => {
+    // Stub the doc editor lookup so we don't instantiate the heavy real element.
     const calls = [];
-    header.setEditorView = (v) => calls.push(v);
-    document.body.append(header);
-
-    const dispatched = [];
-    toolbar.view = {
-      dispatch: (tr) => dispatched.push(tr),
-      state: {
-        selection: { from: 7 },
-        tr: { setMeta: (key, val) => ({ key, val }) },
-      },
-    };
-    toolbar.show('cards');
-    toolbar._editorView = 'layout';
-    await toolbar.updateComplete;
-    editBtn().click();
-
-    // Block focus is set on the doc view before the view switches.
-    expect(dispatched).to.have.length(1);
-    expect(dispatched[0].val).to.deep.equal({ pos: 7 });
-    expect(calls).to.deep.equal(['block']);
-    header.remove();
-  });
-
-  it('reacts to editor-view changes dispatched on the document', async () => {
-    toolbar.show('cards');
-    toolbar._editorView = 'layout';
-    await toolbar.updateComplete;
-    expect(editBtn()).to.exist;
-
-    document.dispatchEvent(new CustomEvent('nx-canvas-editor-view', {
-      bubbles: true,
-      composed: true,
-      detail: { view: 'split' },
-    }));
-    await toolbar.updateComplete;
-    expect(editBtn()).to.be.null;
+    const stubDoc = { enterBlockEdit: (pos) => calls.push(pos) };
+    const originalQS = document.querySelector.bind(document);
+    document.querySelector = (sel) => (sel === 'ew-editor-doc' ? stubDoc : originalQS(sel));
+    try {
+      toolbar.view = { state: { selection: { from: 7 } } };
+      toolbar.show('cards');
+      await toolbar.updateComplete;
+      editBtn().click();
+      expect(calls).to.deep.equal([7]);
+    } finally {
+      document.querySelector = originalQS;
+    }
   });
 });

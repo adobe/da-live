@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
-import { setBlockFocus } from '../ew-editor-doc/prose-plugins/blockFocus.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 
 const nx = getNx();
@@ -33,7 +32,6 @@ class EwBlockToolbar extends LitElement {
     _currentVariant: { state: true },
     _variantOptions: { state: true },
     _hasBlockLibrary: { state: true },
-    _editorView: { state: true },
     _multiTemplateRow: { state: true },
   };
 
@@ -49,14 +47,11 @@ class EwBlockToolbar extends LitElement {
       this.hide();
     };
     document.addEventListener('pointerdown', this._onOutsidePointerDown);
-    this._onEditorViewChange = (e) => { this._editorView = e.detail?.view; };
-    document.addEventListener('nx-canvas-editor-view', this._onEditorViewChange);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('pointerdown', this._onOutsidePointerDown);
-    document.removeEventListener('nx-canvas-editor-view', this._onEditorViewChange);
   }
 
   updated(changed) {
@@ -149,7 +144,6 @@ class EwBlockToolbar extends LitElement {
     }
     this._blockName = blockName;
     this._currentVariant = variant;
-    this._editorView = document.querySelector('ew-canvas-header')?.editorView;
     this._loadVariants(blockName);
     this._loadMultiBlock(blockName);
     this.classList.add('open');
@@ -169,12 +163,10 @@ class EwBlockToolbar extends LitElement {
   }
 
   _onEditBlock() {
-    const { view } = this;
-    const pos = view?.state.selection.from;
-    // Focus the selected block in the doc editor, then open the (hidden) block
-    // view — which shows only this block in the doc while keeping the preview.
-    if (view && pos != null) setBlockFocus(view, pos);
-    document.querySelector('ew-canvas-header')?.setEditorView('block');
+    const pos = this.view?.state.selection.from;
+    if (pos == null) return;
+    // Open the single-block editor in a modal (see ew-editor-doc.enterBlockEdit).
+    document.querySelector('ew-editor-doc')?.enterBlockEdit(pos);
   }
 
   _onDeleteBlock() {
@@ -205,7 +197,6 @@ class EwBlockToolbar extends LitElement {
   render() {
     const name = this._blockName || 'Block';
     const hasVariants = (this._variantOptions?.length ?? 0) > 0;
-    const canEdit = this._editorView === 'layout';
     return html`
       <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
         <button
@@ -240,15 +231,14 @@ class EwBlockToolbar extends LitElement {
             title="Add item"
             @click=${() => this._onAddItem()}
           >${this._icon('addcircle')}<span>Add item</span></button>` : nothing}
-        ${canEdit ? html`
-          <span class="toolbar-sep" aria-hidden="true"></span>
-          <button
-            type="button"
-            class="toolbar-btn block-edit icon-only"
-            aria-label="Edit block"
-            title="Edit block"
-            @click=${() => this._onEditBlock()}
-          >${this._icon('edit')}</button>` : nothing}
+        <span class="toolbar-sep" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="toolbar-btn block-edit icon-only"
+          aria-label="Edit block"
+          title="Edit block"
+          @click=${() => this._onEditBlock()}
+        >${this._icon('edit')}</button>
         <span class="toolbar-sep" aria-hidden="true"></span>
         <button
           type="button"

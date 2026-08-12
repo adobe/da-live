@@ -21,13 +21,12 @@ import {
 import { initIms as loadIms } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
-import { setBlockFocus, clearBlockFocus, getBlockFocus, isSelectionInFocusedBlock } from './prose-plugins/blockFocus.js';
-import { persistBlockAnchor, readBlockAnchor, clearBlockAnchor } from '../utils/view.js';
+import { setBlockFocus, clearBlockFocus } from './prose-plugins/blockFocus.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
 import { teardownEditorDocResources } from './utils/teardown.js';
-import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
+import { getSelectionToolbar, hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
@@ -43,6 +42,7 @@ const CONTENT_KIND_NODE_NAMES = {
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -52,6 +52,8 @@ export class EwEditorDoc extends LitElement {
     session: { type: Object },
     quickEditPort: { type: Object },
     _error: { state: true },
+    _blockEditMode: { state: true },
+    _blockEditName: { state: true },
   };
 
   willUpdate(changed) {
@@ -301,7 +303,6 @@ export class EwEditorDoc extends LitElement {
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
             (pmView) => {
-              this._maybeExitBlockMode(pmView);
               const blockIndex = getActiveBlockIndex(pmView);
               const proseIndex = activeContentProseIndex(pmView);
               const { kind, ...descriptor } = describeDocSelection(pmView);
@@ -332,7 +333,6 @@ export class EwEditorDoc extends LitElement {
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
-      this._setupBlockViewRestore(wsProvider);
 
       this._setupController();
     } catch (e) {
@@ -349,19 +349,9 @@ export class EwEditorDoc extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._onCanvasEditorActive = (e) => {
       const view = e.detail?.view;
-      const prevView = this._editorView;
       this._editorView = view;
       this.hidden = view === 'layout';
       hideSelectionToolbar();
-      const pmView = this._proseContext?.view;
-      if (view === 'block') {
-        if (pmView) this._persistBlockAnchor(pmView);
-      } else {
-        if (pmView) clearBlockFocus(pmView);
-        // Only forget the anchor on a real exit (block -> elsewhere), not while simply
-        // sitting in layout on load — that would erase the anchor before restore reads it.
-        if (prevView === 'block') clearBlockAnchor();
-      }
     };
     this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
     this._onWysiwygPortReady = (e) => {
@@ -388,113 +378,66 @@ export class EwEditorDoc extends LitElement {
     applyHighlight(this._proseContext?.view, detail);
   }
 
-  /** Remember which block block-view is focused on, so a reload can re-open it. */
-  _persistBlockAnchor(pmView) {
-    const pos = getBlockFocus(pmView.state);
-    if (pos == null) return;
-    const blockIndex = getBlockPositions(pmView).indexOf(pos);
-    if (blockIndex < 0) return;
-    const node = pmView.state.doc.nodeAt(pos);
-    persistBlockAnchor({
-      path: this.ctx?.path,
-      blockIndex,
-      name: node ? getTableBlockName(node) : undefined,
-    });
-  }
-
   /**
-   * On load, if we were block-editing this same page, re-open that block once the doc
-   * has synced (initProse returns before ySyncPlugin has populated the doc). Bails
-   * quietly if the block is gone or changed identity.
+   * Open the single-block editor in a modal: focus the block at `pos` (hides every
+   * other block via blockFocus decorations) and render the doc mount inside a dialog.
+   * The live ProseMirror view stays put in this shadow root — only its container in
+   * the render output changes — so collab, cursors and the toolbars keep working.
    */
-  _setupBlockViewRestore(wsProvider) {
-    const anchor = readBlockAnchor();
-    if (!anchor || anchor.path !== this.ctx?.path) return;
-    // ySyncPlugin populates the doc a little after `synced`, so poll for the specific
-    // block to appear rather than restoring on a single frame (which lands too early
-    // and bails). Give up after a few seconds if the block never shows (e.g. deleted).
-    const deadline = Date.now() + 4000;
-    const attempt = () => {
-      if (this.ctx?.path !== anchor.path) return;
-      const view = this._proseContext?.view;
-      const ready = !!view && wsProvider.synced
-        && getBlockPositions(view)[anchor.blockIndex] != null;
-      if (ready) {
-        this._restoreBlockView(anchor);
-        return;
-      }
-      if (Date.now() < deadline) requestAnimationFrame(attempt);
-    };
-    requestAnimationFrame(attempt);
+  /** True while the single-block edit modal is open. */
+  get blockEditMode() {
+    return !!this._blockEditMode;
   }
 
-  _restoreBlockView(anchor) {
+  enterBlockEdit(pos) {
     const view = this._proseContext?.view;
-    if (!view) return;
-    const pos = getBlockPositions(view)[anchor.blockIndex];
-    if (pos == null) return;
+    if (!view || pos == null) return;
     const node = view.state.doc.nodeAt(pos);
     if (!node || node.type.name !== 'table') return;
-    if (anchor.name && getTableBlockName(node) !== anchor.name) return;
-    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
     setBlockFocus(view, pos);
-    document.querySelector('ew-canvas-header')?.setEditorView('block');
+    this._blockEditName = getTableBlockName(node);
+    this._blockEditMode = true;
+    // Un-hide the (layout-hidden) host, but collapse its box via `:host(.block-edit)`
+    // so the top-layer dialog doesn't claim a flex slot and shrink the preview.
+    this.hidden = false;
+    this.classList.add('block-edit');
+    // The toolbar is a manual popover in the dialog's top layer and swallows Escape, so
+    // close the modal on Escape ourselves (unless a toolbar dropdown is handling it).
+    this._onBlockEditKeydown = (e) => {
+      if (e.key !== 'Escape' || getSelectionToolbar().isInteracting) return;
+      e.preventDefault();
+      this.exitBlockEdit();
+    };
+    document.addEventListener('keydown', this._onBlockEditKeydown, true);
+    view.focus();
   }
 
-  /**
-   * In block view, leave back to layout only when the user genuinely moves on: the
-   * focused block is gone, or the selection landed inside a *different* block (clicking
-   * another block in the preview). A selection that merely drifted into a gap — an edit
-   * echo, or deleting the block's last item row landing the cursor just past the
-   * shrunken table — keeps the block being edited, so we stay and pull the selection
-   * back inside instead.
-   */
-  _maybeExitBlockMode(pmView) {
-    if (this._editorView !== 'block') return;
-    const { state } = pmView;
-    const focusPos = getBlockFocus(state);
-    if (focusPos == null) return;
-    const node = state.doc.nodeAt(focusPos);
-    if (!node || node.type.name !== 'table') {
-      this._exitBlockMode();
-      return;
+  // Only the dialog's own `close` should exit block edit — not `close` events bubbling
+  // up from the toolbar's menus/pickers/dialogs hosted inside the modal (picking e.g.
+  // "Add row below" closes that menu and would otherwise close the whole modal).
+  _onModalClose(e) {
+    if (e.target !== e.currentTarget) return;
+    this.exitBlockEdit();
+  }
+
+  exitBlockEdit() {
+    if (!this._blockEditMode) return;
+    this._blockEditMode = false;
+    this._blockEditName = undefined;
+    this.classList.remove('block-edit');
+    this.hidden = this._editorView === 'layout';
+    if (this._onBlockEditKeydown) {
+      document.removeEventListener('keydown', this._onBlockEditKeydown, true);
+      this._onBlockEditKeydown = undefined;
     }
-    if (isSelectionInFocusedBlock(state)) return;
-    const { from } = state.selection;
-    const inAnotherBlock = getBlockPositions(pmView).some((pos) => {
-      if (pos === focusPos) return false;
-      const other = state.doc.nodeAt(pos);
-      return !!other && from >= pos && from < pos + other.nodeSize;
-    });
-    if (inAnotherBlock) {
-      this._exitBlockMode();
-      return;
+    hideSelectionToolbar();
+    // Return the toolbar to the body before the modal DOM is torn down by re-render.
+    const toolbar = getSelectionToolbar();
+    if (toolbar.parentElement && toolbar.parentElement !== document.body) {
+      document.body.appendChild(toolbar);
     }
-    this._reanchorSelectionInBlock(focusPos);
-  }
-
-  // Defer so we don't switch views (and dispatch clearBlockFocus) mid-transaction.
-  _exitBlockMode() {
-    queueMicrotask(() => {
-      if (this._editorView !== 'block') return;
-      document.querySelector('ew-canvas-header')?.setEditorView('layout');
-    });
-  }
-
-  /** Move the selection back inside the still-focused block after it drifted out. */
-  _reanchorSelectionInBlock(pos) {
-    queueMicrotask(() => {
-      if (this._editorView !== 'block') return;
-      const view = this._proseContext?.view;
-      if (!view || getBlockFocus(view.state) !== pos) return;
-      if (isSelectionInFocusedBlock(view.state)) return;
-      const current = view.state.doc.nodeAt(pos);
-      if (!current || current.type.name !== 'table') return;
-      // Land just inside the block's closing boundary; TextSelection.near snaps into
-      // the nearest editable text position within it.
-      const inside = view.state.doc.resolve(pos + current.nodeSize - 1);
-      view.dispatch(view.state.tr.setSelection(TextSelection.near(inside, -1)));
-    });
+    const view = this._proseContext?.view;
+    if (view) clearBlockFocus(view);
   }
 
   disconnectedCallback() {
@@ -524,6 +467,13 @@ export class EwEditorDoc extends LitElement {
     if (proseEl) {
       ensureProseMountedInShadow({ shadowRoot: this.shadowRoot, proseEl });
     }
+    if (this._blockEditMode) {
+      // Host the selection toolbar inside the dialog so it sits in the dialog's top
+      // layer (a body-level toolbar would render behind the modal backdrop).
+      const host = this.shadowRoot.querySelector('.block-edit-toolbar-host');
+      const toolbar = getSelectionToolbar();
+      if (host && toolbar.parentElement !== host) host.appendChild(toolbar);
+    }
   }
 
   render() {
@@ -550,10 +500,37 @@ export class EwEditorDoc extends LitElement {
     if (phase === 'loading') {
       return nothing;
     }
+    if (this._blockEditMode) {
+      return this._renderBlockEditModal();
+    }
     return html`
       <div class="ew-editor-doc">
         <div class="ew-editor-doc-mount"></div>
       </div>
+    `;
+  }
+
+  _renderBlockEditModal() {
+    const title = this._blockEditName
+      ? `Edit ${this._blockEditName}` : 'Edit block';
+    return html`
+      <nx-dialog class="block-edit-modal" @close=${(e) => this._onModalClose(e)}>
+        <div class="block-edit-content">
+          <header class="block-edit-header">
+            <span class="block-edit-title">${title}</span>
+            <button type="button" class="block-edit-close" aria-label="Close"
+                    @click=${() => this.shadowRoot.querySelector('nx-dialog')?.close()}>✕</button>
+          </header>
+          <div class="block-edit-body">
+            <div class="ew-editor-doc block-edit-doc">
+              <div class="ew-editor-doc-mount"></div>
+            </div>
+          </div>
+          <!-- The selection toolbar is relocated here while the modal is open so it
+               renders inside the dialog's top layer, above the backdrop. -->
+          <div class="block-edit-toolbar-host"></div>
+        </div>
+      </nx-dialog>
     `;
   }
 }

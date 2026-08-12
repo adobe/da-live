@@ -75,6 +75,8 @@ class EwSelectionToolbar extends LitElement {
 
   get _menus() { return [...(this.shadowRoot?.querySelectorAll('nx-menu') ?? [])]; }
 
+  get _wrap() { return this.shadowRoot?.querySelector('.toolbar-wrap'); }
+
   show() {
     const main = document.querySelector('main');
     if (main) {
@@ -88,6 +90,20 @@ class EwSelectionToolbar extends LitElement {
   hide() {
     this.classList.remove('open');
     this._menus.forEach((m) => m.close());
+    this.requestUpdate();
+  }
+
+  // The toolbar box is a top-layer popover so it renders above a modal <dialog> (block
+  // edit); keep its open state in sync with the `.open` class after each render.
+  _syncPopover() {
+    const wrap = this._wrap;
+    if (!wrap?.showPopover) return;
+    const isOpen = wrap.matches(':popover-open');
+    if (this.open && !isOpen) {
+      try { wrap.showPopover(); } catch { /* not yet connected */ }
+    } else if (!this.open && isOpen) {
+      try { wrap.hidePopover(); } catch { /* already hidden */ }
+    }
   }
 
   get open() {
@@ -278,6 +294,7 @@ class EwSelectionToolbar extends LitElement {
     if (changed.has('org') || changed.has('site')) {
       this._checkAemAssets();
     }
+    this._syncPopover();
   }
 
   _renderToolbarButton({ id, label, icon }) {
@@ -383,7 +400,7 @@ class EwSelectionToolbar extends LitElement {
   render() {
     const disabled = !this.view;
     return html`
-      <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
+      <div class="toolbar-wrap" popover="manual" @mousedown=${(e) => e.preventDefault()}>
         <div class="toolbar-actions" ?data-disabled=${disabled}
           @click=${(e) => this._onToolbarClick(e)}>
           ${this._renderSections()}

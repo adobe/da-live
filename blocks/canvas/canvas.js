@@ -106,9 +106,6 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   const loadCount = editorLoadCount;
   header.undoAvailable = false;
   header.redoAvailable = false;
-  // Block view is a transient, doc-specific focus mode — navigating to another
-  // page must return to the normal layout view (the block being focused is gone).
-  if (header.editorView === 'block') header.setEditorView('layout');
   const fullPath = buildCanvasDocPath(state);
   const name = state?.path?.split('/').pop();
   document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;

@@ -10,11 +10,7 @@ function segmentByLabel(header, label) {
     .find((b) => b.textContent.trim().startsWith(label)) ?? null;
 }
 
-function blockSegment(header) {
-  return header.shadowRoot.querySelector('.segment-block');
-}
-
-describe('ew-canvas-header block segment', () => {
+describe('ew-canvas-header segments', () => {
   let header;
 
   beforeEach(async () => {
@@ -25,53 +21,32 @@ describe('ew-canvas-header block segment', () => {
 
   afterEach(() => header.remove());
 
-  it('does not render the Block segment outside block mode', async () => {
+  it('renders the Layout, Content and Split segments', async () => {
     header.editorView = 'layout';
     await header.updateComplete;
-    expect(blockSegment(header)).to.be.null;
-
-    header.editorView = 'split';
-    await header.updateComplete;
-    expect(blockSegment(header)).to.be.null;
-  });
-
-  it('renders the Block segment (with a close affordance) as selected in block mode', async () => {
-    header.editorView = 'block';
-    await header.updateComplete;
-    const seg = blockSegment(header);
-    expect(seg).to.exist;
-    expect(seg.classList.contains('is-selected')).to.be.true;
-    expect(seg.querySelector('.segment-close')).to.exist;
-  });
-
-  it('hides the Content and Split segments in block mode', async () => {
-    header.editorView = 'block';
-    await header.updateComplete;
-    expect(segmentByLabel(header, 'Content')).to.be.null;
+    expect(header.shadowRoot.querySelectorAll('.segment').length).to.equal(3);
     expect(segmentByLabel(header, 'Layout')).to.exist;
+    expect(segmentByLabel(header, 'Content')).to.exist;
   });
 
-  it('closes back to layout and emits the view-change event when the block segment is clicked', async () => {
-    header.editorView = 'block';
-    await header.updateComplete;
-    let detailView;
-    header.addEventListener('nx-canvas-editor-view', (e) => { detailView = e.detail.view; });
-
-    blockSegment(header).click();
-
-    expect(detailView).to.equal('layout');
-    expect(header.editorView).to.equal('layout');
+  it('never renders a block segment (block editing is a modal now)', async () => {
+    for (const view of ['layout', 'content', 'split']) {
+      header.editorView = view;
+      // eslint-disable-next-line no-await-in-loop
+      await header.updateComplete;
+      expect(header.shadowRoot.querySelector('.segment-block')).to.be.null;
+    }
   });
 
-  it('accepts block via the public setEditorView method', async () => {
+  it('emits nx-canvas-editor-view and updates editorView when a segment is clicked', async () => {
     header.editorView = 'layout';
     await header.updateComplete;
     let detailView;
     header.addEventListener('nx-canvas-editor-view', (e) => { detailView = e.detail.view; });
 
-    header.setEditorView('block');
+    segmentByLabel(header, 'Content').click();
 
-    expect(detailView).to.equal('block');
-    expect(header.editorView).to.equal('block');
+    expect(detailView).to.equal('content');
+    expect(header.editorView).to.equal('content');
   });
 });

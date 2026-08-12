@@ -30,6 +30,27 @@ export function isSelectionInFocusedBlock(state) {
   return !!node && from >= pos && from < pos + node.nodeSize;
 }
 
+/** Would the current selection, if deleted, remove the whole focused block? */
+function selectionRemovesFocusedBlock(state) {
+  const pos = getBlockFocus(state);
+  if (pos == null) return false;
+  const node = state.doc.nodeAt(pos);
+  if (!node) return false;
+  const { selection } = state;
+  // The block selected as a node, or any range that fully spans it (e.g. select-all).
+  if (selection.node && selection.from === pos) return true;
+  return selection.from <= pos && selection.to >= pos + node.nodeSize;
+}
+
+/**
+ * Keymap command (Backspace/Delete) that swallows the key while block-editing when it
+ * would delete the whole focused block — you can't delete the block you're editing.
+ * Returns false otherwise so normal delete behaviour still runs.
+ */
+export function guardFocusedBlockDeletion(state) {
+  return selectionRemovesFocusedBlock(state);
+}
+
 function buildDecorations(doc, pos) {
   if (pos == null) return DecorationSet.empty;
   const decos = [];
@@ -62,6 +83,14 @@ export default function blockFocus() {
     props: {
       decorations(state) {
         return buildDecorations(state.doc, getBlockFocus(state));
+      },
+      handleDOMEvents: {
+        // Cut removes the selection; block it when that would delete the focused block.
+        cut(view, event) {
+          if (!selectionRemovesFocusedBlock(view.state)) return false;
+          event.preventDefault();
+          return true;
+        },
       },
     },
   });

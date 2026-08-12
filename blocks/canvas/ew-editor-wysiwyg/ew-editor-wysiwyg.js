@@ -102,7 +102,7 @@ export class EwEditorWysiwyg extends LitElement {
 
   _syncCanvasVisibility() {
     const view = this._canvasActiveView ?? 'layout';
-    const showWysiwyg = view === 'layout' || view === 'split' || view === 'block';
+    const showWysiwyg = view === 'layout' || view === 'split';
     this.hidden = !showWysiwyg;
     hideSelectionToolbar();
   }

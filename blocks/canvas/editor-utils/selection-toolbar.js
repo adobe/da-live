@@ -5,7 +5,7 @@ import { getTableBlockName, getTableBlockVariant } from './blocks.js';
 const NON_TEXT_NODES = new Set(['table']);
 
 /** Editor views the selection/block toolbars may appear in. */
-const TOOLBAR_EDITOR_VIEWS = new Set(['content', 'split', 'layout', 'block']);
+const TOOLBAR_EDITOR_VIEWS = new Set(['content', 'split', 'layout']);
 
 /** Set on transactions that mirror WYSIWYG iframe text selection into ProseMirror. */
 export const NX_QUICK_EDIT_IFRAME_SELECTION_META = 'nxQuickEditIframeSelection';
@@ -88,7 +88,7 @@ function isNonTextSelection({ selection }) {
     && NON_TEXT_NODES.has(selection.node.type.name);
 }
 
-function syncToolbar(view, editorView) {
+function syncToolbar(view, editorView, blockEditOpen) {
   if (!view) return;
   if (!selectionToolbarCanWrite) {
     hideSelectionToolbar();
@@ -109,7 +109,9 @@ function syncToolbar(view, editorView) {
   // The text toolbar is only relevant when the doc editor is visible, and never
   // for selections that originate in (and are already served by) the WYSIWYG iframe.
   if (getSelectionOriginFromIframe(view.state)) return;
-  if (editorView === 'layout') return;
+  // In layout view the doc editor is hidden — except while the block-edit modal is open,
+  // which puts the (single-block) doc editor on screen.
+  if (editorView === 'layout' && !blockEditOpen) return;
   if (!view.hasFocus()) return;
   tb.view = view;
   tb.show();
@@ -134,8 +136,9 @@ export function createSelectionToolbarPlugin() {
         update(view) {
           const header = document.querySelector('ew-canvas-header');
           const ev = header?.editorView;
-          if (!TOOLBAR_EDITOR_VIEWS.has(ev)) return;
-          syncToolbar(view, ev);
+          const blockEditOpen = !!document.querySelector('ew-editor-doc')?.blockEditMode;
+          if (!blockEditOpen && !TOOLBAR_EDITOR_VIEWS.has(ev)) return;
+          syncToolbar(view, ev, blockEditOpen);
         },
         destroy() {
           hideSelectionToolbar();
