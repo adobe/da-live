@@ -410,6 +410,9 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
 
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
+  const branchParam = new URLSearchParams(window.location.search).get('ref');
+  if (branchParam) return branchParam;
+
   try {
     const configs = await Promise.all(fetchDaConfigs({ org, site }));
     const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
