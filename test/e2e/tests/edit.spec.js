@@ -147,6 +147,40 @@ test('Change document by switching anchors', async ({ page, trackCleanup }, work
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });
 
+// Reads up to 20 chars immediately before/after the cursor within its text block,
+// so callers can verify where a run of arrow-key presses actually landed.
+async function textAroundCursor(page) {
+  return page.evaluate(() => {
+    const { $from } = window.view.state.selection;
+    return {
+      before: $from.parent.textBetween(Math.max(0, $from.parentOffset - 20), $from.parentOffset),
+      after: $from.parent.textBetween(
+        $from.parentOffset,
+        Math.min($from.parent.content.size, $from.parentOffset + 20),
+      ),
+    };
+  });
+}
+
+// Presses `key` `times` times, then verifies the cursor actually landed where expected
+// via `check(before, after)`. A single dropped keypress (CDP input flake) leaves the
+// cursor off by one; pressing `key` again closes that gap, since the drift is always in
+// the direction the loop was already moving.
+async function pressKeyUntil(page, key, times, check) {
+  for (let i = 0; i < times; i += 1) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(200);
+  }
+  let last;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    last = await textAroundCursor(page);
+    if (check(last.before, last.after)) return;
+    await page.keyboard.press(key);
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`Cursor didn't land as expected after ${times} "${key}" presses: ${JSON.stringify(last)}`);
+}
+
 test('Add code mark', async ({ page, trackCleanup }, workerInfo) => {
   test.setTimeout(30000);
   const url = getTestPageURL('edit5', workerInfo);
@@ -165,15 +199,9 @@ test('Add code mark', async ({ page, trackCleanup }, workerInfo) => {
   await page.keyboard.press('End');
 
   // Forward
-  for (let i = 0; i < 10; i += 1) {
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(200);
-  }
+  await pressKeyUntil(page, 'ArrowLeft', 10, (_before, after) => after.startsWith('code'));
   await page.keyboard.press('`');
-  for (let i = 0; i < 4; i += 1) {
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(200);
-  }
+  await pressKeyUntil(page, 'ArrowRight', 4, (before) => before.endsWith('code'));
   await page.keyboard.press('`');
   // leave time for the code mark to be processed
   let codeElement = proseMirror.locator('code');
@@ -185,32 +213,19 @@ test('Add code mark', async ({ page, trackCleanup }, workerInfo) => {
   // Wait for text to commit to the editor before navigating
   await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
   await page.keyboard.press('End');
-  for (let i = 0; i < 6; i += 1) {
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(200);
-  }
+  await pressKeyUntil(page, 'ArrowLeft', 6, (before) => before.endsWith('code'));
   await page.keyboard.press('`');
   await page.locator('div.ProseMirror').locator('code');
-  for (let i = 0; i < 5; i += 1) {
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(200);
-  }
+  await pressKeyUntil(page, 'ArrowLeft', 5, (_before, after) => after.startsWith('code`'));
   await page.keyboard.press('`');
   codeElement = proseMirror.locator('code');
   await codeElement.waitFor();
   await expect(codeElement).toContainText('code');
 
   // No Overwrite
-  for (let i = 0; i < 6; i += 1) {
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(100);
-  }
+  await pressKeyUntil(page, 'ArrowLeft', 6, (_before, after) => after.startsWith('a code mark'));
   await page.keyboard.press('`');
-
-  for (let i = 0; i < 11; i += 1) {
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(100);
-  }
+  await pressKeyUntil(page, 'ArrowRight', 11, (before) => before.endsWith('mark'));
   await page.keyboard.press('`');
   await expect(proseMirror).toContainText('This is a line that will contain `a code mark`.');
 });
