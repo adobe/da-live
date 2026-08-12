@@ -509,6 +509,14 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     // Reconfigure the view with the full plugin list
     const newState = window.view.state.reconfigure({ plugins: pluginList });
     window.view.updateState(newState);
+    // reconfigure() gives the plugins array a new identity, so ProseMirror's plugin-view
+    // diffing (keyed on array identity, not per-plugin) destroys and recreates every plugin
+    // view — including y-prosemirror's cursor plugin. Its destroy handler unconditionally
+    // nulls the local awareness 'cursor' field, and the freshly recreated view isn't given
+    // an update pass in the same cycle, so a user editing before this promise resolves has
+    // their collab cursor silently wiped until their next selection change. Dispatching a
+    // no-op transaction forces that update pass now, re-broadcasting the current cursor.
+    window.view.dispatch(window.view.state.tr);
   });
 }
 
