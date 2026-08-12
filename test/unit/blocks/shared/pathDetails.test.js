@@ -84,11 +84,14 @@ describe('Path details', () => {
         expect(details.parentName).to.equal('Root');
       });
 
-      it('Handles HTML config ()', () => {
+      // a config path names a config, not a document, so it gets no extension. the slashed and
+      // slashless forms have to agree: only the slash was hiding the .html
+      it('Handles config without a trailing slash ()', () => {
         const loc = { pathname: '/config', hash: '#/adobe' };
         const details = getPathDetails(loc);
-        expect(details.fullpath).to.equal('/adobe.html');
-        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe.html');
+        expect(details.fullpath).to.equal('/adobe');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe');
+        expect(details.name).to.equal('config');
       });
     });
 
@@ -143,11 +146,13 @@ describe('Path details', () => {
         expect(details.parentName).to.equal('adobe');
       });
 
-      it('Handles HTML config ()', () => {
+      // admin.da.live answers /config/{org}/{site}.html with a 404, so the .html was never right
+      it('Handles config without a trailing slash ()', () => {
         const loc = { pathname: '/config', hash: '#/adobe/geometrixx' };
         const details = getPathDetails(loc);
-        expect(details.fullpath).to.equal('/adobe/geometrixx.html');
-        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx.html');
+        expect(details.fullpath).to.equal('/adobe/geometrixx');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx');
+        expect(details.name).to.equal('geometrixx config');
       });
     });
 
@@ -192,11 +197,11 @@ describe('Path details', () => {
         expect(details.parentName).to.equal('geometrixx');
       });
 
-      it('Handles HTML config ()', () => {
+      it('Handles config without a trailing slash ()', () => {
         const loc = { pathname: '/config', hash: '#/adobe/geometrixx/testing-123' };
         const details = getPathDetails(loc);
-        expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123.html');
-        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx/testing-123.html');
+        expect(details.fullpath).to.equal('/adobe/geometrixx/testing-123');
+        expect(details.sourceUrl).to.equal('https://admin.da.live/config/adobe/geometrixx/testing-123');
       });
     });
 
