@@ -23,13 +23,7 @@ function hasRemoteAwarenessField(field) {
 }
 
 // Waits for the yjs awareness map to actually contain a remote peer's cursor,
-// instead of racing the WS round trip with a flat timeout. The known cause of
-// cursor loss (applyDelayedPlugins' plugin-view reconfigure racing the user's
-// first edit) is fixed at the source in blocks/edit/prose/index.js, but this
-// still occasionally times out on a bare wait — some other transient WS/relay
-// hiccup can drop the same broadcast. Nudging via a no-op transaction dispatch
-// re-runs the cursor plugin's update hook, which recomputes and re-broadcasts
-// the cursor from the view's current selection.
+// nudging via a no-op dispatch (re-broadcasts current cursor) on transient drops.
 async function waitForRemoteCursor(watcherPage, sourcePage) {
   for (let attempt = 0; ; attempt += 1) {
     try {
@@ -74,11 +68,8 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName, 
 
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-  // Pin the view as always-focused so y-prosemirror's ySyncPlugin keeps broadcasting
-  // this page's cursor awareness even while the other page holds real browser focus
-  // (only one page/tab can hold that at a time, which is what made concurrent-editing
-  // collab tests flaky). Same override the quick-edit overlay uses for the same reason
-  // — see ew-editor-wysiwyg/utils/handlers.js.
+  // Pin always-focused so cursor awareness keeps broadcasting even while the
+  // other page holds real browser focus (only one page/tab can at a time).
   await page.evaluate(() => { window.view.hasFocus = () => true; });
   await page.waitForTimeout(3000);
   await fill(page, 'Entered by user 1');
@@ -98,9 +89,8 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName, 
   await expect(page2.locator('div.ProseMirror')).toBeVisible();
   await expect(page2.locator('div.ProseMirror')).toContainText('Entered by user 1');
 
-  // Applied right before interacting (rather than right after page load) to shrink
-  // the window in which page2's silent IMS re-auth could still reload the editor
-  // and tear down the view this override was set on.
+  // Applied right before interacting to shrink the window where a silent
+  // IMS re-auth reload could tear down the view this override was set on.
   await page2.evaluate(() => { window.view.hasFocus = () => true; });
 
   // Click in the second window at the beginning of the edit control

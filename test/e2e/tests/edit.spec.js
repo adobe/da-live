@@ -162,10 +162,8 @@ async function textAroundCursor(page) {
   });
 }
 
-// Presses `key` `times` times, then verifies the cursor actually landed where expected
-// via `check(before, after)`. A single dropped keypress (CDP input flake) leaves the
-// cursor off by one; pressing `key` again closes that gap, since the drift is always in
-// the direction the loop was already moving.
+// Presses `key` `times` times, then verifies via `check(before, after)` that the
+// cursor landed as expected, pressing `key` again to close any single-key drift.
 async function pressKeyUntil(page, key, times, check) {
   for (let i = 0; i < times; i += 1) {
     await page.keyboard.press(key);
