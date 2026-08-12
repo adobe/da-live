@@ -38,7 +38,7 @@ const CONTENT_KIND_NODE_NAMES = {
 };
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 
 const style = await loadStyle(import.meta.url);
 

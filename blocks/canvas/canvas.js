@@ -21,7 +21,7 @@ import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const {
   wasPanelOpen,
   registerPanelSection,

@@ -5,7 +5,7 @@ import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.j
 import getEditPath from '../../browse/shared.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 
 const style = await loadStyle(import.meta.url);
 
