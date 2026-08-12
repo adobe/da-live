@@ -161,6 +161,7 @@ async function installCanvasHeader(block, { org, site }) {
   header.editorView = await readInitialCanvasEditorView({ org, site });
   canvasBus.editorViewRequest.subscribe(({ view: rawView }) => {
     const view = normalizeCanvasEditorView(rawView);
+    header.editorView = view;
     persistCanvasEditorView(view);
     notifyCanvasEditorActive(view);
     syncEditorSplitLayout({ mountRoot: canvasEditorMountRoot(block), view });
@@ -253,7 +254,9 @@ export default async function decorate(block) {
 
   canvasBus.mergeConflictsState.subscribe((detail) => {
     header.hasUnresolvedMergeConflicts = detail?.hasMergeConflicts ?? false;
-    if (header.hasUnresolvedMergeConflicts) header.setEditorView('content');
+    if (header.hasUnresolvedMergeConflicts && header.editorView !== 'content') {
+      canvasBus.editorViewRequest.emit({ view: 'content' });
+    }
   });
 
   canvasBus.undoState.subscribe((detail) => {

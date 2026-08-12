@@ -337,6 +337,10 @@ da-loc-added,
   z-index: 2;
 }
 
+.loc-tabbed-color-overlay.is-hidden {
+  display: none;
+}
+
 @media (max-width: 600px) {
   .loc-tab-button {
     font-size: 12px;

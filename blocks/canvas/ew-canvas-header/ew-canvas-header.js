@@ -86,7 +86,6 @@ class EWCanvasHeader extends LitElement {
   setEditorView(view) {
     if (this.hasUnresolvedMergeConflicts && view !== 'content') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
-    this.editorView = view;
     canvasBus.editorViewRequest.emit({ view });
   }
 

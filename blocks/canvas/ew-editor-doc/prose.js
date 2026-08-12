@@ -86,7 +86,7 @@ function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
 
 export default async function initProse({
   path, permissions, setEditable, getToken,
-  extraPlugins = [], onMergeConflictsChange,
+  extraPlugins = [], onMergeConflictsChange, hostEl,
 }) {
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
@@ -215,7 +215,7 @@ export default async function initProse({
 
   if (canWrite) {
     plugins.unshift(createSlashMenuPlugin(), createSelectionToolbarPlugin());
-    plugins.push(imageFocalPoint(), createMergeConflictsPlugin(onMergeConflictsChange));
+    plugins.push(imageFocalPoint(), createMergeConflictsPlugin(onMergeConflictsChange, hostEl));
   }
 
   let state = EditorState.create({ schema, plugins });
@@ -225,11 +225,11 @@ export default async function initProse({
 
   const diffNodeViews = canWrite ? {
     diff_added(node, view, getPos) {
-      const MergeConflictsAddedView = getDiffClass('da-diff-added', getSchema, () => {}, { isUpstream: false });
+      const MergeConflictsAddedView = getDiffClass('da-diff-added', getSchema, () => {}, { isUpstream: false, hostEl });
       return new MergeConflictsAddedView(node, view, getPos);
     },
     diff_deleted(node, view, getPos) {
-      const MergeConflictsDeletedView = getDiffClass('da-diff-deleted', getSchema, () => {}, { isUpstream: true });
+      const MergeConflictsDeletedView = getDiffClass('da-diff-deleted', getSchema, () => {}, { isUpstream: true, hostEl });
       return new MergeConflictsDeletedView(node, view, getPos);
     },
   } : undefined;

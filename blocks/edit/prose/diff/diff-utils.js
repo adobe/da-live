@@ -78,15 +78,6 @@ function setDiffLabelCssVars(daEditor) {
   host.style.setProperty('--diff-label-upstream', `'${labels.upstream}'`);
 }
 
-function getDiffHost(view) {
-  const classicHost = document.querySelector('da-content')?.shadowRoot
-    ?.querySelector('da-editor');
-  if (classicHost) return classicHost;
-
-  const root = view?.dom?.getRootNode?.();
-  return root instanceof ShadowRoot ? root.host : null;
-}
-
 let locCssLoading = false;
 async function loadLocCss(hostEl) {
   if (locCssLoading) return;
@@ -189,7 +180,7 @@ function hasMatchingContent(nodeA, nodeB) {
   return true;
 }
 
-export function checkForLocNodes(view) {
+export function checkForLocNodes(view, hostEl) {
   const { doc } = view.state;
 
   const hasListLocNode = (node) => (node.type.name === 'bullet_list' || node.type.name === 'ordered_list')
@@ -200,7 +191,7 @@ export function checkForLocNodes(view) {
     .some((node) => isLocNode(node) || hasListLocNode(node));
 
   if (hasLocNodes) {
-    loadLocCss(getDiffHost(view));
+    loadLocCss(hostEl);
     showGlobalDialog(view);
   } else {
     hideGlobalDialog();
@@ -288,13 +279,14 @@ export function removeActiveView(view) {
   activeViews.delete(view);
 }
 
-export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstream } = {}) {
+export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstream, hostEl } = {}) {
   return class {
     constructor(node, view, getPos) {
       this.node = node;
       this.view = view;
       this.getPos = getPos;
       this.schema = getSchema();
+      this.hostEl = hostEl;
 
       const pos = getPos();
       const { doc } = view.state;
@@ -335,7 +327,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     renderTabbedInterface(nodeA, view, posA, nodeB) {
-      loadLocCss(getDiffHost(view));
+      loadLocCss(this.hostEl);
 
       this.dom = createElement('div', 'loc-tabbed-container', { contentEditable: 'false' });
       this.contentDOM = null; // Don't let ProseMirror manage content
@@ -374,14 +366,11 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
         });
 
         if (targetTab === 'added') {
-          colorOverlay.style.display = 'block';
           colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-local';
         } else if (targetTab === 'deleted') {
-          colorOverlay.style.display = 'block';
           colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-upstream';
         } else if (targetTab === 'diff') {
-          colorOverlay.style.display = 'none';
-          colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-diff';
+          colorOverlay.className = 'loc-tabbed-color-overlay diff-bg-diff is-hidden';
 
           const diffTab = tabContent.querySelector('[data-tab="diff"]');
           if (diffTab && !diffTab.loaded) {
@@ -443,7 +432,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
     }
 
     renderSingleNode(node, view, pos, upstream) {
-      loadLocCss(getDiffHost(view));
+      loadLocCss(this.hostEl);
 
       const isDeleted = node.type.name === 'diff_deleted';
       const viewClass = isDeleted ? 'loc-deleted-view' : 'loc-added-view';

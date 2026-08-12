@@ -289,6 +289,7 @@ export class EwEditorDoc extends LitElement {
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
         onMergeConflictsChange: (hasConflicts) => this._emitMergeConflictsState(hasConflicts),
+        hostEl: this,
         extraPlugins: [
           createExtensionsBridgePlugin(),
           createTrackingPlugin(
