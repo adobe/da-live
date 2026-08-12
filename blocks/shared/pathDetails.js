@@ -91,7 +91,9 @@ function getFullDetails({ editor, pathParts, ext }) {
 function getExtension(editor, name, isFolder) {
   const nameSplit = name.split('.');
   if (nameSplit.length >= 2) return nameSplit.pop();
-  if (isFolder || editor === 'browse') return null;
+  // a config path names an org or a site, not a document, and admin.da.live answers
+  // /config/{org}/{site}.html with a 404
+  if (isFolder || editor === 'browse' || editor === 'config') return null;
   if (editor === 'sheet' && nameSplit.slice(-1)[0] !== 'json') return 'json';
   return 'html';
 }
