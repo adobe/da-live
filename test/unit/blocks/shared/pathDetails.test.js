@@ -84,8 +84,6 @@ describe('Path details', () => {
         expect(details.parentName).to.equal('Root');
       });
 
-      // a config path names a config, not a document, so it gets no extension. the slashed and
-      // slashless forms have to agree: only the slash was hiding the .html
       it('Handles config without a trailing slash ()', () => {
         const loc = { pathname: '/config', hash: '#/adobe' };
         const details = getPathDetails(loc);
@@ -146,7 +144,6 @@ describe('Path details', () => {
         expect(details.parentName).to.equal('adobe');
       });
 
-      // admin.da.live answers /config/{org}/{site}.html with a 404, so the .html was never right
       it('Handles config without a trailing slash ()', () => {
         const loc = { pathname: '/config', hash: '#/adobe/geometrixx' };
         const details = getPathDetails(loc);
