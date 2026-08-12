@@ -269,6 +269,77 @@ describe('getRepositoryConfig', () => {
       window.fetch = orgFetch;
     }
   });
+
+  it('defaults approvedOnly on for author-backed effective DM opt-out', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/approved-default/site/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p101-e101.adobeaemcloud.com' },
+        { key: 'aem.asset.smartcrop.select', value: 'on' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('approved-default', 'site');
+      expect(cfg.approvedOnly).to.be.true;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('allows site config to opt out of org approved-only filtering', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/approved-precedence/site/': makeSheet([
+        { key: 'aem.asset.dm.approvedonly', value: 'off' },
+      ]),
+      '/approved-precedence/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p102-e102.adobeaemcloud.com' },
+        { key: 'aem.asset.dm.delivery', value: 'on' },
+        { key: 'aem.asset.dm.approvedonly', value: 'on' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('approved-precedence', 'site');
+      expect(cfg.approvedOnly).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('allows site config to enable approved-only over an org opt-out', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/approved-site-on/site/': makeSheet([
+        { key: 'aem.asset.dm.approvedonly', value: 'on' },
+      ]),
+      '/approved-site-on/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p103-e103.adobeaemcloud.com' },
+        { key: 'aem.asset.dm.delivery', value: 'on' },
+        { key: 'aem.asset.dm.approvedonly', value: 'off' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('approved-site-on', 'site');
+      expect(cfg.approvedOnly).to.be.true;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('does not apply approvedOnly to delivery tier', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/approved-delivery/site/': makeSheet([
+        { key: 'aem.repositoryId', value: 'delivery-p104-e104.adobeaemcloud.com' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('approved-delivery', 'site');
+      expect(cfg.approvedOnly).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
