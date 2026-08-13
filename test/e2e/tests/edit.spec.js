@@ -12,7 +12,7 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, tabBackward, fill, waitForSave, TEST_ORG, TEST_SITE,
+  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
@@ -28,9 +28,10 @@ test('Update Document', async ({ browser, page, trackCleanup }, workerInfo) => {
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
   const enteredText = `[${workerInfo.project.name}] Edited by test ${new Date()}`;
-  const saved = waitForSave(page);
   await fill(page, enteredText);
-  await saved;
+
+  // Wait for content to save before closing
+  await page.waitForTimeout(3000);
   await page.close();
 
   const newPage = await browser.newPage();
@@ -58,9 +59,8 @@ test('Create Delete Document', async ({ browser, page, trackCleanup }, workerInf
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
-  const saved = waitForSave(page);
   await fill(page, 'testcontent');
-  await saved;
+  await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
   await newPage.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
@@ -117,9 +117,8 @@ test('Change document by switching anchors', async ({ page, trackCleanup }, work
   await newRowCells.nth(0).click();
   await page.keyboard.type('k 2');
   await newRowCells.nth(1).click();
-  const savedA = waitForSave(page);
   await page.keyboard.type('v 2');
-  await savedA;
+  await page.waitForTimeout(5000);
 
   await page.goto(urlB);
   await page.getByText('Create document', { exact: true }).click();
@@ -127,13 +126,13 @@ test('Change document by switching anchors', async ({ page, trackCleanup }, work
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
-  const savedB = waitForSave(page);
   await fill(page, 'page B');
+  await page.waitForTimeout(3000);
 
   // Verify the fill took effect locally before waiting for persistence
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
   // Wait for Y.js to persist the content to the server
-  await savedB;
+  await page.waitForTimeout(5000);
 
   await page.goto(urlA);
   await expect(page.locator('div.ProseMirror')).toBeVisible();

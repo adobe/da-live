@@ -12,7 +12,7 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestFolderURL, getTestPageURL, fill, waitForSave, TEST_ORG, TEST_SITE,
+  getQuery, getTestFolderURL, getTestPageURL, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
@@ -41,14 +41,14 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.waitForTimeout(2000);
 
   // Enter some initial text onto the page
-  let saved = waitForSave(page);
   await fill(page, 'First text');
-  await saved;
+
+  // Wait to ensure its saved in da-admin
+  await page.waitForTimeout(5000);
 
   // Add some more text
-  saved = waitForSave(page);
   await fill(page, 'Versioned text');
-  await saved;
+  await page.waitForTimeout(5000);
 
   // Create a new stored version called 'myver'
   await page.getByRole('button', { name: 'Versions' }).click();
@@ -58,9 +58,8 @@ const link = await page.getByRole('link', { name: orgPageName });
   await expect(page.getByText('myver', { exact: false })).toBeVisible();
 
   // Add some more text
-  saved = waitForSave(page);
   await fill(page, 'After versioned');
-  await saved;
+  await page.waitForTimeout(5000);
 
   // Go back to the directory view
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);

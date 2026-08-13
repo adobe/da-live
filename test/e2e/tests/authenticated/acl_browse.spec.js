@@ -11,9 +11,7 @@
  */
 import { test, expect } from '../../utils/fixtures.js';
 import ENV from '../../utils/env.js';
-import {
-  getTestPageURL, getQuery, tabBackward, fill, waitForSave, TEST_SITE,
-} from '../../utils/page.js';
+import { getTestPageURL, getQuery, tabBackward, fill, TEST_SITE } from '../../utils/page.js';
 
 test('Read-only directory', async ({ page }) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
@@ -55,9 +53,8 @@ test('Read-write directory', async ({ browser, page, trackCleanup }, workerInfo)
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // The new page needs a moment to be ready
   await page.waitForTimeout(2000);
-  const saved = waitForSave(page);
   await fill(page, 'test writable doc');
-  await saved;
+  await page.waitForTimeout(3000);
 
   const newPage = await browser.newPage();
   await newPage.goto(pageURL);

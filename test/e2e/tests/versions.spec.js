@@ -10,9 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '../utils/fixtures.js';
-import {
-  getTestPageURL, fill, waitForSave, TEST_SITE,
-} from '../utils/page.js';
+import { getTestPageURL, fill, TEST_SITE } from '../utils/page.js';
 
 test('Create Version and Restore from it', async ({ page, trackCleanup }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
@@ -29,14 +27,14 @@ test('Create Version and Restore from it', async ({ page, trackCleanup }, worker
   await page.waitForTimeout(2000);
 
   // Enter some initial text onto the page
-  let saved = waitForSave(page);
   await fill(page, 'Initial version');
-  await saved;
+
+  // Wait to ensure its saved in da-admin
+  await page.waitForTimeout(5000);
 
   // Add some more text
-  saved = waitForSave(page);
   await fill(page, 'Second version');
-  await saved;
+  await page.waitForTimeout(5000);
 
   // Create a new stored version called 'ver 1'
   await page.getByRole('button', { name: 'Versions' }).click();
@@ -46,14 +44,15 @@ test('Create Version and Restore from it', async ({ page, trackCleanup }, worker
 
   // Close the versions panel and add some more text
   await page.locator('button.da-versions-close-btn').click();
-  saved = waitForSave(page);
   await fill(page, 'Some modifications');
-  await saved;
+
+  // Wait to ensure its saved
+  await page.waitForTimeout(5000);
 
   // And add some more text
-  saved = waitForSave(page);
   await fill(page, 'Some more modifications');
-  await saved;
+  // Wait to ensure its saved
+  await page.waitForTimeout(5000);
 
   // Reload the page and check that the latest changes are there
   await page.reload();

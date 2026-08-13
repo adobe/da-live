@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '../utils/fixtures.js';
-import { getTestPageURL, fill, waitForSave } from '../utils/page.js';
+import { getTestPageURL, fill } from '../utils/page.js';
 
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
 
@@ -150,14 +150,15 @@ test('Text formatting and links persist after reload', async ({ page, trackClean
 
   await page.locator('da-palette').waitFor();
   await page.locator('da-palette').locator('#field-href').fill('https://adobe.com');
-  // Wait for Y.js to persist the content to the server
-  const saved = waitForSave(page);
   await page.keyboard.press('Enter');
-  await saved;
+
+  // Wait for Y.js to persist the content to the server
+  await page.waitForTimeout(5000);
 
   // --- Reload and verify all formatting was retained ---
   await page.reload();
   await expect(proseMirror).toBeVisible();
+  await page.waitForTimeout(3000);
 
   // Verify headings
   await expect(proseMirror.locator('h1')).toContainText('Heading Level One');
