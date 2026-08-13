@@ -26,7 +26,6 @@ test('Can read versions of read-write document', async ({ page }) => {
   // find v1 and check it — the click expands the version entry to reveal its
   // button; WebKit needs a beat for the expansion to start processing.
   await page.getByText('v1').click();
-  await page.waitForTimeout(500);
   const v1Button = page.locator('li').filter({ hasText: 'v1' }).getByRole('button');
   await expect(v1Button).toBeVisible();
   await v1Button.click();
@@ -52,7 +51,6 @@ test('Cannot read versions of read-only document', async ({ page }) => {
   // find v1 and check it — the click expands the version entry to reveal its
   // button; WebKit needs a beat for the expansion to start processing.
   await page.getByText('version 1').click();
-  await page.waitForTimeout(500);
   const v1Button = page.locator('li').filter({ hasText: 'version 1' }).getByRole('button');
   await expect(v1Button).toBeVisible();
   await v1Button.click();

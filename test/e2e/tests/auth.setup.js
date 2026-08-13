@@ -73,9 +73,6 @@ setup('Set up authentication', async ({ page }) => {
 
   await signInButton.click();
 
-  // The IMS sign in page needs a bit of time to load
-  await page.waitForTimeout(3000);
-
   const emailInput = page.getByLabel('Email address');
   await emailInput.waitFor();
   await emailInput.fill('da-test@adobetest.com');

@@ -96,9 +96,6 @@ test('Empty out open editors on deleted documents', async ({ browser, page, trac
   await dismissAlertBanner(list);
   await list.locator('button.delete-button').filter({ visible: true }).click();
 
-  // Give the modal a chance to open
-  await list.waitForTimeout(1000);
-
   // Hit the delete confirmation button
   await list.locator('sl-button.negative').filter({ visible: true }).click();
 

@@ -98,9 +98,6 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName, 
   await page2.mouse.click(editBox.x + 10, editBox.y + 10);
   await page2.keyboard.type('From user 2');
 
-  // Give the collab cursors some cycles to appear
-  await page.waitForTimeout(3000);
-
   // Wait for page2's edit to reach page1 — confirms YJS sync before checking collab state
   await expect(page.locator('div.ProseMirror')).toContainText('From user 2');
 

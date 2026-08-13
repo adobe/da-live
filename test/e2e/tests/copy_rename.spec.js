@@ -12,7 +12,7 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestFolderURL, getTestPageURL, fill, TEST_ORG, TEST_SITE,
+  getQuery, getTestFolderURL, getTestPageURL, fill, waitForSave, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
@@ -41,26 +41,26 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.waitForTimeout(2000);
 
   // Enter some initial text onto the page
+  let saved = waitForSave(page);
   await fill(page, 'First text');
-
-  // Wait to ensure its saved in da-admin
-  await page.waitForTimeout(5000);
+  await saved;
 
   // Add some more text
+  saved = waitForSave(page);
   await fill(page, 'Versioned text');
-  await page.waitForTimeout(5000);
+  await saved;
 
   // Create a new stored version called 'myver'
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.locator('button.da-version-btn', { hasText: 'Create' }).click();
   await page.locator('input.da-version-new-input').fill('myver');
   await page.locator('input.da-version-new-input').press('Enter');
-  await page.waitForTimeout(3000);
   await expect(page.getByText('myver', { exact: false })).toBeVisible();
 
   // Add some more text
+  saved = waitForSave(page);
   await fill(page, 'After versioned');
-  await page.waitForTimeout(5000);
+  await saved;
 
   // Go back to the directory view
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
@@ -118,7 +118,6 @@ const link = await page.getByRole('link', { name: orgPageName });
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
   await page.getByRole('button', { name: 'Versions' }).click();
   await page.getByText('myver', { exact: false }).click();
-  await page.waitForTimeout(500);
   const myverButton = page.locator('li').filter({ hasText: 'myver' }).getByRole('button');
   await expect(myverButton).toBeVisible();
   await myverButton.click();

@@ -1,7 +1,7 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, TEST_ORG, TEST_SITE,
+  getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, waitForSave, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 import { parseTestUrl, deleteResource } from '../utils/cleanup.js';
@@ -54,11 +54,11 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
     // eslint-disable-next-line no-await-in-loop
     await page.waitForTimeout(2000);
 
+    const saved = waitForSave(page);
     // eslint-disable-next-line no-await-in-loop
     await fill(page, `${prefix} test ${i}`);
-
     // eslint-disable-next-line no-await-in-loop
-    await page.waitForTimeout(3000);
+    await saved;
   }
   return pageNames;
 }
@@ -96,10 +96,9 @@ test('Preview the selected page', async ({ page, context, trackCleanup }, worker
 
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
+  const saved = waitForSave(page);
   await fill(page, 'preview test');
-
-  // Wait to ensure its saved in da-admin
-  await page.waitForTimeout(3000);
+  await saved;
 
   await page.goto(TESTS_DIR);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
@@ -137,10 +136,9 @@ test('Publish the selected page', async ({ page, context, trackCleanup }, worker
 
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
+  const saved = waitForSave(page);
   await fill(page, 'publish test');
-
-  // Wait to ensure its saved in da-admin
-  await page.waitForTimeout(3000);
+  await saved;
 
   await page.goto(TESTS_DIR);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();

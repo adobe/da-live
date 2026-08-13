@@ -11,7 +11,9 @@
  */
 import { test, expect } from '../../utils/fixtures.js';
 import ENV from '../../utils/env.js';
-import { getTestPageURL, getQuery, tabBackward, fill, TEST_SITE } from '../../utils/page.js';
+import {
+  getTestPageURL, getQuery, tabBackward, fill, waitForSave, TEST_SITE,
+} from '../../utils/page.js';
 
 test('Read-only directory', async ({ page }) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
@@ -26,7 +28,6 @@ test('Read-only directory', async ({ page }) => {
 
   await tabBackward(page);
   await page.keyboard.press(' ');
-  await page.waitForTimeout(500);
 
   const tickbox = page.locator('da-list-item').filter({ hasText: 'onlyread-doc' }).locator('label');
   await expect(tickbox).toBeChecked();
@@ -54,8 +55,9 @@ test('Read-write directory', async ({ browser, page, trackCleanup }, workerInfo)
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // The new page needs a moment to be ready
   await page.waitForTimeout(2000);
+  const saved = waitForSave(page);
   await fill(page, 'test writable doc');
-  await page.waitForTimeout(3000);
+  await saved;
 
   const newPage = await browser.newPage();
   await newPage.goto(pageURL);
@@ -71,7 +73,6 @@ test('Read-write directory', async ({ browser, page, trackCleanup }, workerInfo)
 
   await tabBackward(page);
   await page.keyboard.press(' ');
-  await page.waitForTimeout(500);
 
   const tickbox = page.locator('da-list-item').filter({ hasText: pageName }).locator('label');
   await expect(tickbox).toBeChecked();
@@ -79,12 +80,7 @@ test('Read-write directory', async ({ browser, page, trackCleanup }, workerInfo)
   // There are 2 delete buttons, one on the Browse panel and another on the Search one
   // select the visible one.
   await page.locator('button.delete-button').filter({ visible: true }).click();
-
-  await page.waitForTimeout(1000);
-
   await page.locator('sl-button.negative').filter({ visible: true }).click();
-
-  await page.waitForTimeout(1000);
 
   await expect(page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`)).not.toBeVisible();
 });
@@ -99,7 +95,6 @@ test('Readonly directory with writeable document', async ({ page }) => {
 
   await tabBackward(page);
   await page.keyboard.press(' ');
-  await page.waitForTimeout(500);
 
   // Check that the expected delete button is there (but don't click it)
   await expect(page.locator('button.delete-button').filter({ visible: true })).toBeVisible();
