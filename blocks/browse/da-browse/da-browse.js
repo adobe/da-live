@@ -1,7 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import {
-  getSheetByName, getFirstSheet, fetchDaConfigs,
-} from '../../shared/utils.js';
+import { getSheetByName, getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
 import { getChatPanelContent } from '../../shared/chat-panel.js';
 
