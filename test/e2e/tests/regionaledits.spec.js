@@ -28,11 +28,10 @@ const sendUndo = async (page) => {
   await expect(page.locator('div.diff-tabbed-actions.loc-floating-overlay')).toBeVisible();
 };
 
-test('Regional Edit Document', async ({ page, context, trackCleanup }, workerInfo) => {
+test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   test.setTimeout(30000);
 
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
-  trackCleanup(folderURL, { isFolder: true });
 
   /* */ // Added this to make it work in Helix 6
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
