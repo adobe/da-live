@@ -53,14 +53,11 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   console.log('Deleted', stale.length, 'test files');
 });
 
-test('Empty out open editors on deleted documents', async ({ browser, page, trackCleanup }, workerInfo) => {
+test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
   test.skip(TEST_SITE !== 'da-status', 'Empty out open editors on deleted documents doesn\'t work yet in Helix 6');
   test.setTimeout(60000);
 
   const url = getTestPageURL('delete', workerInfo);
-  // Safety net: this test deletes the document via the UI already, but track it
-  // too in case that assertion fails partway through.
-  trackCleanup(url);
   const pageName = url.split('/').pop();
 
   await page.goto(url);

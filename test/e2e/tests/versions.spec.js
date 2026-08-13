@@ -12,13 +12,12 @@
 import { test, expect } from '../utils/fixtures.js';
 import { getTestPageURL, fill, TEST_SITE } from '../utils/page.js';
 
-test('Create Version and Restore from it', async ({ page, trackCleanup }, workerInfo) => {
+test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
   test.setTimeout(60000);
 
   const url = getTestPageURL('versions', workerInfo);
-  trackCleanup(url);
   await page.goto(url);
   await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
