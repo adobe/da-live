@@ -27,7 +27,7 @@
   background: light-dark(#fff, var(--s2-gray-75, #2c2c2c));
   color: light-dark(#222, var(--s2-gray-900, #f5f5f5));
   position: relative;
-  padding: 1rem;
+  padding: 1rem 1rem 130px;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   box-sizing: border-box;

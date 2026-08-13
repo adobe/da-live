@@ -18,6 +18,7 @@
  */
 export async function dismissAlertBanner(page) {
   const alert = page.getByRole('alert');
+  const dismiss = () => alert.getByRole('button', { name: 'Dismiss' }).click().catch(() => {});
 
   let visible = await alert.isVisible().catch(() => false);
   if (!visible) {
@@ -28,6 +29,13 @@ export async function dismissAlertBanner(page) {
   }
 
   if (visible) {
-    await alert.getByRole('button', { name: 'Dismiss' }).click();
+    await dismiss();
+  } else {
+    // Some banners (e.g. the "public sandbox" org warning) depend on an async
+    // check that can resolve well after this initial window, then sit on top
+    // of later controls (e.g. the preview button) and block clicks. Keep
+    // watching for a late appearance for the rest of the test instead of
+    // giving up after a single check.
+    alert.waitFor({ state: 'visible' }).then(dismiss).catch(() => {});
   }
 }

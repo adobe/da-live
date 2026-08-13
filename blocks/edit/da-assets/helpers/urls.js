@@ -151,12 +151,23 @@ export function buildSmartCropsListUrl(asset, dmOrigin, basePath = DEFAULT_ASSET
 }
 
 /**
- * Returns the alt text for an asset from the _embedded metadata (author tier).
+ * Returns the alt text for an asset.
+ *
+ * Handles both asset shapes returned by the selector:
+ *   - author tier: description/title live in `_embedded` metadata
+ *   - delivery tier: title is a top-level `dc:title` (string, or a localized
+ *     `{ 'o:default': ... }` object)
+ * Falls back to the asset name, then empty string.
  */
 export function getAssetAlt(asset) {
   // eslint-disable-next-line no-underscore-dangle
   const meta = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset'];
-  return meta?.['dc:description'] || meta?.['dc:title'] || '';
+  return meta?.['dc:description']
+    || meta?.['dc:title']
+    || asset?.['dc:title']?.['o:default']
+    || asset?.['dc:title']
+    || asset?.name
+    || '';
 }
 
 /**

@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -38,15 +39,16 @@ describe('ew-canvas-header segments', () => {
     }
   });
 
-  it('emits nx-canvas-editor-view and updates editorView when a segment is clicked', async () => {
+  it('emits an editor-view request and updates editorView when a segment is clicked', async () => {
     header.editorView = 'layout';
     await header.updateComplete;
-    let detailView;
-    header.addEventListener('nx-canvas-editor-view', (e) => { detailView = e.detail.view; });
+    let requestedView;
+    const unsub = canvasBus.editorViewRequest.subscribe(({ view }) => { requestedView = view; });
 
     segmentByLabel(header, 'Content').click();
+    unsub?.();
 
-    expect(detailView).to.equal('content');
+    expect(requestedView).to.equal('content');
     expect(header.editorView).to.equal('content');
   });
 });

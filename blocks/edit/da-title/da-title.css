@@ -190,6 +190,12 @@ da-dialog {
   animation: cloud-unsaved-pulse 1.5s ease-in-out infinite alternate;
 }
 
+/* Config has no auto-save: show a static "unsaved changes" cloud (light shade)
+   rather than the pulsing auto-saving indicator. */
+.collab-status-cloud.collab-status-unsaved-config {
+  color: rgb(212 212 212 / 50%);
+}
+
 @keyframes cloud-unsaved-pulse {
   from { color: rgb(212 212 212 / 50%); }
   to { color: rgb(110 110 110); }
