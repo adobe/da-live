@@ -1,4 +1,8 @@
 import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
+import {
+  isDynamicMediaEnabled,
+  shouldFilterApprovedAssets,
+} from '../../../shared/aem-assets/config.js';
 import DEFAULT_ASSET_BASE_PATH from './constants.js';
 import { parseSiteImageModifiers } from './imageModifiers.js';
 
@@ -70,7 +74,8 @@ export async function getResponsiveImageConfig(owner, repo) {
  *   already carry the same key, so per-asset overrides (smartcrop, future
  *   per-image presets) win.
  *
- * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled, isSmartCrop,
+ * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled,
+ *             isSmartCrop, approvedOnly,
  *             insertAsLink, mimeRenditionOverrides, siteImageModifiers }}
  */
 export async function getRepositoryConfig(owner, repo) {
@@ -85,9 +90,20 @@ export async function getRepositoryConfig(owner, repo) {
 
   const customOrigin = getValue('aem.assets.prod.origin');
   const customBasePath = getValue('aem.assets.prod.basepath');
-  const isSmartCrop = getValue('aem.asset.smartcrop.select') === 'on';
-  const isDmDeliveryFlag = getValue('aem.asset.dm.delivery') === 'on';
-  const isDmEnabled = isSmartCrop || isDmDeliveryFlag || customOrigin?.startsWith('delivery-') || tierType === 'delivery';
+  const smartCrop = getValue('aem.asset.smartcrop.select');
+  const dmDelivery = getValue('aem.asset.dm.delivery');
+  const isSmartCrop = smartCrop === 'on';
+  const isDmEnabled = isDynamicMediaEnabled({
+    repositoryId,
+    customOrigin,
+    dmDelivery,
+    smartCrop,
+  });
+  const approvedOnly = shouldFilterApprovedAssets({
+    tierType,
+    isDmEnabled,
+    configuredValue: getValue('aem.asset.dm.approvedonly'),
+  });
   const insertAsLink = getValue('aem.assets.image.type') === 'link';
   const mimeRenditionOverrides = parseMimeRenditions(getValue('aem.asset.mime.renditions'));
   const siteImageModifiers = parseSiteImageModifiers(getValue('aem.asset.image.modifiers'));
@@ -112,6 +128,7 @@ export async function getRepositoryConfig(owner, repo) {
     assetBasePath,
     isDmEnabled,
     isSmartCrop,
+    approvedOnly,
     insertAsLink,
     mimeRenditionOverrides,
     siteImageModifiers,

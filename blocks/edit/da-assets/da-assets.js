@@ -1,5 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
+import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
@@ -10,6 +11,7 @@ import { insertImage, insertLink, insertFragment, createImageNode, getBlockName 
 import showSmartCropDialog from './helpers/smart-crop.js';
 
 export const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
+export { buildFeatureSet } from '../../shared/aem-assets/selector-props.js';
 
 const DM_ERROR_MSG = 'The selected asset is not available because it is not approved for delivery. Please check the status.';
 const PUBLISH_ERROR_MSG = 'The selected asset is not available on the publish tier. Please publish the asset in AEM and try again.';
@@ -33,12 +35,6 @@ export function formatExternalBrief(doc) {
   ${contentPlainText}
 
   Please suggest Assets that are visually appealing and relevant to the subject.`;
-}
-
-export function buildFeatureSet(isDmEnabled) {
-  const features = ['upload', 'collections', 'detail-panel', 'advisor'];
-  if (isDmEnabled) features.push('dynamic-media');
-  return features;
 }
 
 export function resolveAssetUrl(asset, repoConfig) {
@@ -238,11 +234,9 @@ export async function openAssets() {
   const responsiveImageConfigPromise = getResponsiveImageConfig(owner, repo);
   const externalBrief = formatExternalBrief(window.view.state.doc);
 
-  const selectorProps = {
+  const selectorProps = buildAssetSelectorProps({
     imsToken: details.accessToken.token,
-    repositoryId: repoConfig.repositoryId,
-    aemTierType: repoConfig.tierType,
-    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
+    repoConfig,
     externalBrief,
     onClose: () => assetPanel.style.display !== 'none' && dialog.close(),
     handleSelection: buildHandleSelection({
@@ -253,7 +247,7 @@ export async function openAssets() {
       getView: () => window.view,
       close: () => dialog.close(),
     }),
-  };
+  });
 
   window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
 }
