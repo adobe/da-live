@@ -8,8 +8,12 @@
   ],
   "packageRules": [{
       "matchDepTypes": ["devDependencies"],
-      "labels": ["ignore-psi-check"], 
+      "labels": ["ignore-psi-check"],
       "automerge": true,
       "branchName": "renodev"
-  }]
+  }, {
+    "matchPackageNames": ["eslint"],
+    "allowedVersions": "<10.0.0"
+  }
+  ]
 }
