@@ -271,6 +271,37 @@ describe('DaTitle', () => {
       expect(el._actions.available).to.include('publish');
       window.fetch = origFetch;
     });
+
+    it('removes publish when hidePublish lives in a non-first multi-sheet tab named "data"', async () => {
+      const configResp = {
+        permissions: { data: [{ path: '/', groups: 'everyone', actions: 'write' }] },
+        data: { data: [{ key: 'editor.hidePublish', value: '/filterorg3/filtersite3/test' }] },
+        ':names': ['permissions', 'data'],
+        ':type': 'multi-sheet',
+      };
+      const origFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.includes('/config/filterorg3')) {
+          return new Response(JSON.stringify(configResp), { status: 200 });
+        }
+        return origFetch(url, opts);
+      };
+
+      el = await fixture({
+        details: createDetails({
+          org: 'filterorg3',
+          site: 'filtersite3',
+          path: '/test/page',
+          fullpath: '/filterorg3/filtersite3/test/page',
+        }),
+      });
+      el._actions = { available: ['preview', 'publish'] };
+      await el.filterActions();
+
+      expect(el._actions.available).to.include('preview');
+      expect(el._actions.available).to.not.include('publish');
+      window.fetch = origFetch;
+    });
   });
 
   describe('collab status = "unsaved"', () => {

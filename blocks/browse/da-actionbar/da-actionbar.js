@@ -27,6 +27,7 @@ export default class DaActionBar extends LitElement {
     loading: { attribute: false },
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
+    hidePublishConfs: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -38,6 +39,7 @@ export default class DaActionBar extends LitElement {
     this.items = [];
     this.currentPath = '';
     this.isFavorite = false;
+    this.hidePublishConfs = [];
   }
 
   connectedCallback() {
@@ -141,6 +143,16 @@ export default class DaActionBar extends LitElement {
     return this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
+  get _hidePublish() {
+    return this.hidePublishConfs.some(
+      (prefix) => this.items.some((item) => item.path?.startsWith(prefix)),
+    );
+  }
+
+  get _canPublish() {
+    return this._canAemAction && !this._hidePublish;
+  }
+
   get _canRename() {
     if (!this._canWrite) return false;
     const isFolder = !this.items[0]?.ext;
@@ -225,7 +237,7 @@ export default class DaActionBar extends LitElement {
           <button
             @click=${this.handlePublish}
             ?disabled=${!!this.loading}
-            class="publish-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
+            class="publish-button ${this._canPublish ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             ${icon('publish')}
             <span>Publish</span>
           </button>

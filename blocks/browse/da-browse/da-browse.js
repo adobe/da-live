@@ -1,5 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
+import {
+  getSheetByName, getFirstSheet, fetchDaConfigs,
+} from '../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
 import { getChatPanelContent } from '../../shared/chat-panel.js';
 
@@ -161,9 +163,14 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
-      const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
+      const rows = configs.filter(Boolean).reverse()
+        .flatMap((c) => getSheetByName(c, 'data') ?? getFirstSheet(c) ?? []);
       this.editorConfs = rows.reduce((acc, row) => {
         if (row.key === 'editor.path') acc.push(row.value);
+        return acc;
+      }, []);
+      this.hidePublishConfs = rows.reduce((acc, row) => {
+        if (row.key === 'editor.hidePublish') acc.push(row.value);
         return acc;
       }, []);
     }
@@ -236,6 +243,7 @@ export default class DaBrowse extends LitElement {
         class="da-list-type-${type}"
         fullpath="${fullpath}"
         editor="${this.editor}"
+        .hidePublishConfs=${this.hidePublishConfs}
         @onpermissions=${this.handlePermissions}
         @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"

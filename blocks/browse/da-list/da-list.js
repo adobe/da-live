@@ -17,6 +17,7 @@ export default class DaList extends LitElement {
     listtype: { type: String },
     fullpath: { type: String },
     editor: { type: String },
+    hidePublishConfs: { attribute: false },
     select: { type: Boolean },
     sort: { type: Boolean },
     drag: { type: Boolean },
@@ -1252,6 +1253,7 @@ export default class DaList extends LitElement {
         @onpublish=${this.handlePublish}
         @onshare=${this.handleShare}
         .loading=${typeof this._aemActionState === 'string' ? this._aemActionState : null}
+        .hidePublishConfs=${this.hidePublishConfs}
         currentPath="${this.fullpath}"
         .isHlx6=${this._isHlx6 ?? false}
         role="row"
