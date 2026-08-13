@@ -45,7 +45,9 @@ function buildTree(cache, rootFullpath) {
 }
 
 const REFRESH_ICON_SRC = '/img/icons/s2-icon-refresh-20-n.svg';
-const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
+const ADD_ICON_SRC = '/img/icons/s2-icon-fileadd-20-n.svg';
+const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
+const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
 
 class EwFileExplorer extends LitElement {
   static properties = {
@@ -224,14 +226,20 @@ class EwFileExplorer extends LitElement {
   async _onRefreshClick() {
     if (this._refreshing) return;
     this._refreshing = true;
-    if (this._headerRefreshBtn) this._headerRefreshBtn.disabled = true;
+    if (this._headerRefreshBtn) {
+      this._headerRefreshBtn.disabled = true;
+      this._headerRefreshBtn.innerHTML = REFRESH_SPINNER_HTML;
+    }
     try {
       const expandedFullpaths = [...(this._expanded ?? [])].map((key) => `/${key}`);
       const targets = new Set([this._treeRoot, ...expandedFullpaths].filter(Boolean));
       await Promise.all([...targets].map((fp) => this._refreshPath(fp)));
     } finally {
       this._refreshing = false;
-      if (this._headerRefreshBtn) this._headerRefreshBtn.disabled = false;
+      if (this._headerRefreshBtn) {
+        this._headerRefreshBtn.disabled = false;
+        this._headerRefreshBtn.innerHTML = REFRESH_ICON_HTML;
+      }
     }
   }
 
@@ -239,9 +247,9 @@ class EwFileExplorer extends LitElement {
     if (this._headerRefreshBtn) return this._headerRefreshBtn;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'header-action-btn';
+    btn.className = 'da-icon-btn';
     btn.setAttribute('aria-label', 'Refresh files');
-    btn.innerHTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
+    btn.innerHTML = REFRESH_ICON_HTML;
     btn.addEventListener('click', () => this._onRefreshClick());
     this._headerRefreshBtn = btn;
     return btn;
@@ -294,7 +302,7 @@ class EwFileExplorer extends LitElement {
   }
 
   async _handleCreateSubmit(e) {
-    const { name } = e.detail;
+    const { name, openAfter } = e.detail;
     const { folder } = this._createDialog;
     this._createDialog = { ...this._createDialog, error: null, saving: true };
     try {
@@ -307,6 +315,9 @@ class EwFileExplorer extends LitElement {
       }
       this._closeCreateDialog();
       await this._refreshPath(folder);
+      if (openAfter) {
+        window.location.hash = `#/${itemHashPath({ path, ext: 'html' })}`;
+      }
     } catch {
       this._createDialog = { ...this._createDialog, error: CREATE_PAGE_ERROR, saving: false };
     }
@@ -375,6 +386,7 @@ class EwFileExplorer extends LitElement {
         placeholder="page name"
         ?open=${!!this._createDialog}
         ?saving=${this._createDialog?.saving}
+        show-create-and-open
         error=${this._createDialog?.error ?? ''}
         @da-name-submit=${this._handleCreateSubmit}
         @close=${this._closeCreateDialog}>

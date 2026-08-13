@@ -179,22 +179,27 @@ describe('EwFileExplorer', () => {
       expect(el._refreshing).to.be.false;
     });
 
-    it('disables the header button while refreshing and re-enables it after', async () => {
+    it('disables the header button and shows a spinner while refreshing, restores both after', async () => {
       el._treeRoot = '/org/site';
       el._expanded = new Set();
 
       const btn = el.getHeaderActions();
 
       let sawDisabled = false;
+      let sawSpinner = false;
       el._refreshPath = async () => {
         sawDisabled = btn.disabled;
+        sawSpinner = !!btn.querySelector('.da-loading-spinner');
         return true;
       };
 
       await el._onRefreshClick();
 
       expect(sawDisabled).to.be.true;
+      expect(sawSpinner).to.be.true;
       expect(btn.disabled).to.be.false;
+      expect(btn.querySelector('.da-loading-spinner')).to.be.null;
+      expect(btn.querySelector('svg')).to.exist;
     });
   });
 
@@ -205,7 +210,7 @@ describe('EwFileExplorer', () => {
 
       expect(first).to.equal(second);
       expect(first.tagName).to.equal('BUTTON');
-      expect(first.className).to.equal('header-action-btn');
+      expect(first.className).to.equal('da-icon-btn');
     });
 
     it('clicking the returned button invokes _onRefreshClick', () => {
@@ -343,6 +348,41 @@ describe('EwFileExplorer', () => {
         expect(el._createDialog.error).to.be.a('string').and.not.empty;
         expect(el._createDialog.folder).to.equal('/org/site/a');
         expect(refreshCalled).to.be.false;
+      });
+
+      it('refreshes the folder and navigates to the new page when openAfter is true', async () => {
+        // Regression: _expandToPath (run by the hash-change handler that fires
+        // once the hash below is set) only re-fetches a folder that isn't
+        // already cached — the folder you create in almost always already is
+        // — so the refresh here must not be skipped in favor of relying on
+        // that side effect, or the new page silently never appears.
+        el._createDialog = { folder: '/org/site/a', saving: false, error: null };
+        el._org = 'org';
+        el._site = 'site';
+
+        const savedFetch = window.fetch;
+        window.fetch = async (url) => {
+          if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+          return new Response('ok', { status: 200 });
+        };
+
+        let refreshedPath;
+        el._refreshPath = async (fp) => {
+          refreshedPath = fp;
+          return true;
+        };
+        const savedHash = window.location.hash;
+
+        try {
+          await el._handleCreateSubmit({ detail: { name: 'my-new-page', openAfter: true } });
+
+          expect(refreshedPath).to.equal('/org/site/a');
+          expect(window.location.hash).to.equal('#/org/site/a/my-new-page');
+          expect(el._createDialog).to.be.null;
+        } finally {
+          window.fetch = savedFetch;
+          window.location.hash = savedHash;
+        }
       });
     });
   });

@@ -51,7 +51,7 @@ describe('da-name-dialog', () => {
     expect(input.value).to.equal('my-new-page');
   });
 
-  it('emits da-name-submit with the sanitized, trimmed name when Create is clicked', async () => {
+  it('emits da-name-submit with the sanitized, trimmed name and openAfter:false when Create is clicked', async () => {
     await mount({ open: true });
     let detail = null;
     el.addEventListener('da-name-submit', (e) => { detail = e.detail; });
@@ -60,10 +60,10 @@ describe('da-name-dialog', () => {
     el.shadowRoot.querySelector('.da-btn-primary').click();
     await nextFrame();
 
-    expect(detail).to.deep.equal({ name: 'my-new-page' });
+    expect(detail).to.deep.equal({ name: 'my-new-page', openAfter: false });
   });
 
-  it('emits da-name-submit on Enter in the input', async () => {
+  it('emits da-name-submit with openAfter:true on Enter in the input', async () => {
     await mount({ open: true });
     let detail = null;
     el.addEventListener('da-name-submit', (e) => { detail = e.detail; });
@@ -73,7 +73,29 @@ describe('da-name-dialog', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     await nextFrame();
 
-    expect(detail).to.deep.equal({ name: 'my-page' });
+    expect(detail).to.deep.equal({ name: 'my-page', openAfter: true });
+  });
+
+  function findCreateAndOpenButton() {
+    return [...el.shadowRoot.querySelectorAll('.da-btn-primary')]
+      .find((btn) => btn.textContent.includes('and open'));
+  }
+
+  it('does not render a create-and-open button by default', async () => {
+    await mount({ open: true });
+    expect(findCreateAndOpenButton()).to.be.undefined;
+  });
+
+  it('renders a "Create and open" button when showCreateAndOpen is set, emitting openAfter:true', async () => {
+    await mount({ open: true, showCreateAndOpen: true });
+    let detail = null;
+    el.addEventListener('da-name-submit', (e) => { detail = e.detail; });
+
+    el.shadowRoot.querySelector('.da-input').value = 'my-page';
+    findCreateAndOpenButton().click();
+    await nextFrame();
+
+    expect(detail).to.deep.equal({ name: 'my-page', openAfter: true });
   });
 
   it('shows an inline error and does not emit da-name-submit when the name is empty', async () => {

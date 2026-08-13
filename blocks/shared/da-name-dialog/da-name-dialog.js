@@ -24,6 +24,7 @@ class DaNameDialog extends LitElement {
     saveLabel: { type: String },
     saving: { type: Boolean },
     error: { type: String },
+    showCreateAndOpen: { type: Boolean, attribute: 'show-create-and-open' },
     _nameError: { state: true },
   };
 
@@ -40,11 +41,11 @@ class DaNameDialog extends LitElement {
   _onKeydown(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      this._onSave();
+      this._onSave(true);
     }
   }
 
-  _onSave() {
+  _onSave(openAfter) {
     const input = this.shadowRoot.querySelector('.da-input');
     const name = sanitizeName(input.value || '', { trimTrailing: true });
     if (!name) {
@@ -53,7 +54,7 @@ class DaNameDialog extends LitElement {
     }
     this._nameError = false;
     this.dispatchEvent(new CustomEvent('da-name-submit', {
-      detail: { name },
+      detail: { name, openAfter },
       bubbles: true,
       composed: true,
     }));
@@ -82,7 +83,10 @@ class DaNameDialog extends LitElement {
         </label>
         <button type="button" slot="actions" class="da-btn-secondary" @click=${this._onCancel}>Cancel</button>
         <button type="button" slot="actions" class="da-btn-primary" ?disabled=${this.saving}
-          @click=${this._onSave}>${this.saveLabel ?? 'Create'}</button>
+          @click=${() => this._onSave(false)}>${this.saveLabel ?? 'Create'}</button>
+        ${this.showCreateAndOpen ? html`
+        <button type="button" slot="actions" class="da-btn-primary" ?disabled=${this.saving}
+          @click=${() => this._onSave(true)}>${this.saveLabel ?? 'Create'} and open</button>` : nothing}
       </nx-dialog>
     `;
   }
