@@ -509,6 +509,9 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     // Reconfigure the view with the full plugin list
     const newState = window.view.state.reconfigure({ plugins: pluginList });
     window.view.updateState(newState);
+    // reconfigure() destroys/recreates all plugin views, incl. the cursor plugin, which
+    // nulls collab cursor awareness on destroy. Force an update pass to re-broadcast it.
+    window.view.dispatch(window.view.state.tr);
   });
 }
 
