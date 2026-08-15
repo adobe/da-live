@@ -265,7 +265,7 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
-    const sourceUrl = sourceUrlFromEditorCtx(this.ctx);
+    const sourceUrl = await sourceUrlFromEditorCtx(this.ctx);
 
     const session = this.session ?? await resolveEditorDocSession(sourceUrl);
     if (!session.ok) {

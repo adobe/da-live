@@ -43,7 +43,7 @@ import { generateColor, getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
-const { DA_ADMIN, DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 function registerErrorHandler(ydoc) {
   ydoc.on('update', () => {
@@ -94,7 +94,8 @@ export default async function initProse({
   const ydoc = new Y.Doc();
 
   const server = DA_COLLAB;
-  const roomName = `${DA_ADMIN}${new URL(path).pathname}`;
+  // da-collab reads the store off the room name, and `path` is already the store's source url.
+  const roomName = path;
 
   const wsOpts = { protocols: ['yjs'] };
   let lastSentToken = null;

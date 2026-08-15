@@ -108,7 +108,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   const ctx = editorCtxFromHashState(state, fullPath);
-  const session = await resolveEditorDocSession(sourceUrlFromEditorCtx(ctx));
+  const session = await resolveEditorDocSession(await sourceUrlFromEditorCtx(ctx));
   if (loadCount !== editorLoadCount) return;
   if (!session.ok) {
     removeCanvasEditors(mountRoot);

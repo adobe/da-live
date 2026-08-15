@@ -1,4 +1,4 @@
-import { buildSourceUrl } from './source.js';
+import { buildSourceUrl, normalizeSourcePath } from './source.js';
 
 export function sourceUrlFromEditorCtx(ctx) {
   return buildSourceUrl(ctx?.path);
@@ -9,8 +9,9 @@ export function editorCtxHasOrgRepoPath(ctx) {
   return Boolean(org && repo && path);
 }
 
+// Stays synchronous: the render phase needs an answer without waiting on the store lookup.
 export function editorDocCanLoad(ctx) {
-  return editorCtxHasOrgRepoPath(ctx) && Boolean(sourceUrlFromEditorCtx(ctx));
+  return editorCtxHasOrgRepoPath(ctx) && Boolean(normalizeSourcePath(ctx.path));
 }
 
 export function controllerPathnameFromEditorCtx(ctx) {
