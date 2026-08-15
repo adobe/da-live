@@ -24,6 +24,7 @@ import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
+import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
@@ -282,6 +283,7 @@ export class EwEditorDoc extends LitElement {
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
         extraPlugins: [
+          mediaBusImage(this.ctx),
           createExtensionsBridgePlugin(),
           createTrackingPlugin(
             () => {
