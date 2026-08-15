@@ -1,4 +1,5 @@
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { daFetch } from '../../../shared/utils.js';
 
 const { DA_ADMIN } = await import(`${getNx()}/utils/utils.js`);
 
@@ -19,7 +20,10 @@ export async function buildSourceUrl(path) {
   return `${DA_ADMIN}/source/${trimmed}.html`;
 }
 
+// da-admin keeps da-live's own fetcher, which reads the token live and retries once on a 401.
+// nx2's is the one that allowlists api.aem.live for the bearer.
 export async function checkDoc(sourceUrl) {
-  const { daFetch } = await getNx2Api();
-  return daFetch({ url: sourceUrl, opts: { method: 'HEAD' } });
+  if (sourceUrl.startsWith(DA_ADMIN)) return daFetch(sourceUrl, { method: 'HEAD' });
+  const { daFetch: nx2Fetch } = await getNx2Api();
+  return nx2Fetch({ url: sourceUrl, opts: { method: 'HEAD' } });
 }

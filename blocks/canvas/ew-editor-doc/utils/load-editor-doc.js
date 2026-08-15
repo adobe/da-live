@@ -1,4 +1,5 @@
 import { checkDoc } from './source.js';
+import { sourceUrlFromEditorCtx } from './ctx.js';
 import { initIms } from '../../../shared/utils.js';
 
 export function sessionErrorFromResponse(resp) {
@@ -12,17 +13,28 @@ export function sessionErrorFromResponse(resp) {
   return { ok: false, error: `Could not load the document (${status})${reason}` };
 }
 
-export async function resolveEditorDocSession(sourceUrl) {
+// Takes the ctx rather than a url, so the store lookup happens after the sign-in check: it needs a
+// token of its own, and an anonymous visitor would otherwise be sent to sign in by the lookup
+// before this can say so.
+export async function resolveEditorDocSession(ctx) {
   const ims = await initIms();
   const token = ims?.accessToken?.token ?? null;
   if (ims?.anonymous || !token) {
     return { ok: false, error: 'Sign in required' };
   }
 
+  let sourceUrl;
+  try {
+    sourceUrl = await sourceUrlFromEditorCtx(ctx);
+  } catch {
+    return { ok: false, error: 'Could not reach the content store' };
+  }
+  if (!sourceUrl) return { ok: false, error: 'Could not reach the content store' };
+
   const resp = await checkDoc(sourceUrl);
   const failure = sessionErrorFromResponse(resp);
   if (failure) return failure;
 
   const permissions = resp.permissions || ['read'];
-  return { ok: true, token, permissions };
+  return { ok: true, token, permissions, sourceUrl };
 }

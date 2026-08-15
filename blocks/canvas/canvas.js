@@ -15,7 +15,6 @@ import {
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
 import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
-import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
@@ -108,7 +107,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   const ctx = editorCtxFromHashState(state, fullPath);
-  const session = await resolveEditorDocSession(await sourceUrlFromEditorCtx(ctx));
+  const session = await resolveEditorDocSession(ctx);
   if (loadCount !== editorLoadCount) return;
   if (!session.ok) {
     removeCanvasEditors(mountRoot);

@@ -68,6 +68,7 @@ describe('canvas buildSourceUrl', () => {
 });
 
 describe('canvas checkDoc', () => {
+  // the source bus is not on da-live's token allowlist, so that read goes through nx2
   it('asks api.aem.live for a source-bus document, with a bearer', async () => {
     const { calls, restore } = stubPing({ upgraded: true });
     try {
@@ -82,7 +83,11 @@ describe('canvas checkDoc', () => {
     }
   });
 
-  it('asks da-admin for a legacy document, with a bearer', async () => {
+  // da-admin keeps da-live's own fetcher, which reads the token live and retries once on a 401.
+  // nx2's takes the snapshot loadIms captured at page load and does neither.
+  it('asks da-admin for a legacy document, through the fetcher that can refresh a token', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'live-token' }) };
     const { calls, restore } = stubPing({ upgraded: false });
     try {
       const url = await buildSourceUrl('/checkleg/checkleg/page');
@@ -90,9 +95,11 @@ describe('canvas checkDoc', () => {
       const head = calls.find((c) => c.opts?.method === 'HEAD');
       expect(head, 'no HEAD was issued').to.exist;
       expect(head.url).to.equal('https://admin.da.live/source/checkleg/checkleg/page.html');
-      expect(head.opts.headers.Authorization).to.equal('Bearer test-token');
+      expect(new Headers(head.opts.headers).get('Authorization')).to.equal('Bearer live-token');
     } finally {
       restore();
+      window.localStorage.removeItem('nx-ims');
+      delete window.adobeIMS;
     }
   });
 

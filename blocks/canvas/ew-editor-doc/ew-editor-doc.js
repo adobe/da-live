@@ -5,7 +5,6 @@ import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '.
 import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
-  sourceUrlFromEditorCtx,
   controllerPathnameFromEditorCtx,
   editorDocRenderPhase,
 } from './utils/ctx.js';
@@ -266,13 +265,12 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
-    const sourceUrl = await sourceUrlFromEditorCtx(this.ctx);
-
-    const session = this.session ?? await resolveEditorDocSession(sourceUrl);
+    const session = this.session ?? await resolveEditorDocSession(this.ctx);
     if (!session.ok) {
       this._error = session.error;
       return;
     }
+    const { sourceUrl } = session;
 
     try {
       const { token, permissions } = session;
