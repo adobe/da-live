@@ -1,6 +1,17 @@
 import { checkDoc } from './source.js';
 import { initIms } from '../../../shared/utils.js';
 
+export function sessionErrorFromResponse(resp) {
+  const status = resp?.status;
+  if (typeof status !== 'number') return { ok: false, error: 'Could not reach the content store' };
+  if (resp.ok || status === 404) return null;
+  if (status === 401) return { ok: false, error: 'Sign in required' };
+  if (status === 403) return { ok: false, error: 'Not permitted' };
+  const detail = resp.headers?.get?.('x-error');
+  const reason = detail ? `: ${detail}` : '';
+  return { ok: false, error: `Could not load the document (${status})${reason}` };
+}
+
 export async function resolveEditorDocSession(sourceUrl) {
   const ims = await initIms();
   const token = ims?.accessToken?.token ?? null;
@@ -9,10 +20,8 @@ export async function resolveEditorDocSession(sourceUrl) {
   }
 
   const resp = await checkDoc(sourceUrl);
-  if (!resp.ok && resp.status !== 404) {
-    const error = resp.status === 401 ? 'Sign in required' : 'Not permitted';
-    return { ok: false, error };
-  }
+  const failure = sessionErrorFromResponse(resp);
+  if (failure) return failure;
 
   const permissions = resp.permissions || ['read'];
   return { ok: true, token, permissions };
