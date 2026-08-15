@@ -1,18 +1,17 @@
 // eslint-disable-next-line import/no-unresolved
 import { Plugin, PluginKey } from 'da-y-wrapper';
-import { getLivePreviewUrl } from '../../../shared/constants.js';
+import { getPreviewOrigin } from '../../editor-utils/editor-utils.js';
 
 const mediaBusImageKey = new PluginKey('canvasMediaBusImage');
 
-// A document on the media bus stores an image src relative to the published page
-// ("./media_123.png"), which only resolves where the page is served from. The canvas runs on
-// another origin, so the src is rewritten to the doc's preview origin for display. The node attrs
-// keep the relative path, and so does the saved document.
+// a media bus src ("./media_123.png") only resolves where the page is served, so it is rewritten
+// to the doc's preview origin for display; node attrs and the saved document keep the relative
+// path. getPreviewOrigin matches the origin fetchWysiwygCookie logs into, unlike getLivePreviewUrl.
 export function getRenderableSrc(src, ctx) {
   if (!src || !src.startsWith('./media_')) return null;
   const { org, repo } = ctx ?? {};
   if (!org || !repo) return null;
-  return `${getLivePreviewUrl(org, repo)}/${src.slice(2)}`;
+  return `${getPreviewOrigin(org, repo)}/${src.slice(2)}`;
 }
 
 function updateImageSrcs(view, ctx) {

@@ -37,8 +37,7 @@ describe('canvas collab room', () => {
   });
 
   it('puts a source-bus document in its api.aem.live room', async () => {
-    // da-collab reads the store off the room name, so a da-admin room for a
-    // source-bus document edits the copy the site does not serve.
+    // da-collab reads the store off the room name, so the room must name the document's real store
     const result = await connect('https://api.aem.live/roomorg/sites/roomsite/source/page.html');
     try {
       expect(result.wsProvider.roomname).to.equal('https://api.aem.live/roomorg/sites/roomsite/source/page.html');

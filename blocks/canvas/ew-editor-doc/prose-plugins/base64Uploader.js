@@ -11,8 +11,7 @@ function makeHash(string) {
   ), 0));
 }
 
-// The media bus is content addressed, so the final src is only known from the response and cannot
-// be built from the upload path.
+// the media bus is content addressed, so the src is only known from the response
 export async function uploadBase64Image(view, { src, path, fpoSrc }) {
   const resp = await fetch(src);
   const blob = await resp.blob();

@@ -10,9 +10,7 @@ before(async () => {
   ({ buildSourceUrl, checkDoc } = await import('../../../../../../blocks/canvas/ew-editor-doc/utils/source.js'));
 });
 
-// isHlx6 pings admin.hlx.page and reads the upgrade header off the response, so a
-// stubbed fetch decides which store a site is on. Each case needs its own org/site
-// because the answer is memoized per site for the life of the page.
+// isHlx6 memoizes its answer per site, so each case needs its own org/site
 function stubPing({ upgraded }) {
   const saved = window.fetch;
   const calls = [];

@@ -28,8 +28,7 @@ export async function uploadImageFile(view, file, details) {
     view.dispatch(ts.replaceSelectionWith(img).scrollIntoView());
   };
 
-  // a media bus src is relative to the published page and cannot load from here, so waiting on it
-  // would leave the placeholder in the document
+  // a media bus src is relative to the published page and cannot load from here
   if (contentUrl.startsWith('./media_')) {
     replaceFpo();
     return;

@@ -13,9 +13,7 @@ export function sessionErrorFromResponse(resp) {
   return { ok: false, error: `Could not load the document (${status})${reason}` };
 }
 
-// Takes the ctx rather than a url, so the store lookup happens after the sign-in check: it needs a
-// token of its own, and an anonymous visitor would otherwise be sent to sign in by the lookup
-// before this can say so.
+// takes the ctx rather than a url, so the sign-in check runs before the store lookup needs a token
 export async function resolveEditorDocSession(ctx) {
   const ims = await initIms();
   const token = ims?.accessToken?.token ?? null;

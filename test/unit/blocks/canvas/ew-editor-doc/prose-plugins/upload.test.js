@@ -14,8 +14,7 @@ before(async () => {
   ({ uploadImageFile } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js'));
 });
 
-// isHlx6 pings admin.hlx.page, and the upload goes to whichever store that names. Each case needs
-// its own org/site because the answer is memoized per site.
+// isHlx6 memoizes its answer per site, so each case needs its own org/site
 function stubStore({ upgraded, contentUrl = 'https://content.da.live/org/site/.doc/pic.png' }) {
   const saved = window.fetch;
   const calls = [];
@@ -84,8 +83,7 @@ describe('uploadImageFile', () => {
     try {
       await uploadImageFile(editor.view, png(), { parent: '/upsorg/upssite/dir', name: 'doc' });
 
-      // nx2 owns the route it builds from the path, so what is pinned here is the store it went
-      // to and the path the canvas handed it
+      // nx2 owns the route past the site, so this pins only the store and the path
       const upload = calls.find((c) => c.opts?.method === 'POST');
       expect(upload, 'nothing was uploaded').to.exist;
       expect(new URL(upload.url).origin).to.equal('https://api.aem.live');
@@ -111,8 +109,7 @@ describe('uploadImageFile', () => {
   });
 
   it('shows a media bus image without waiting for it to load', async () => {
-    // a relative src cannot load from the canvas origin, so waiting on it would leave the
-    // placeholder in the document for good
+    // a relative src cannot load from the canvas origin
     const { restore } = stubStore({ upgraded: true, contentUrl: './media_abc.png' });
     try {
       await uploadImageFile(editor.view, png(), { parent: '/relorg/relsite', name: 'doc' });

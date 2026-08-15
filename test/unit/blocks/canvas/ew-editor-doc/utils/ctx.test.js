@@ -42,7 +42,7 @@ describe('sourceUrlFromEditorCtx', () => {
 
 describe('editorDocCanLoad', () => {
   it('is decided without a network call', () => {
-    // A promise is truthy, so this has to stay synchronous or an empty path reads as loadable.
+    // a promise is truthy, so this has to stay synchronous or an empty path reads as loadable
     expect(editorDocCanLoad({ org: 'o', repo: 's', path: '/o/s/page' })).to.equal(true);
   });
 
