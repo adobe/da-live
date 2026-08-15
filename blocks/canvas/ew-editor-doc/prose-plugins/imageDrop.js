@@ -1,5 +1,5 @@
 import { Plugin, TextSelection } from 'da-y-wrapper';
-import { daFetch } from '../../../shared/utils.js';
+import { getNx2Api } from '../../../../scripts/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
@@ -13,22 +13,31 @@ export async function uploadImageFile(view, file, details) {
   view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
 
   const { $from } = view.state.selection;
-  const url = `${details.origin}/source${details.parent}/.${details.name}/${file.name}`;
+  const path = `${details.parent}/.${details.name}/${file.name}`;
 
-  const formData = new FormData();
-  formData.append('data', file);
-  const resp = await daFetch(url, { method: 'PUT', body: formData });
+  // the media bus is content addressed, so the src is only known from the response
+  const { source } = await getNx2Api();
+  const resp = await source.uploadMedia(path, { body: file });
   if (!resp.ok) return;
-  const json = await resp.json();
+  const { source: { contentUrl } } = await resp.json();
 
-  const docImg = document.createElement('img');
-  docImg.addEventListener('load', () => {
+  const replaceFpo = () => {
     const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
     const ts = view.state.tr.setSelection(fpoSelection);
-    const img = schema.nodes.image.create({ src: json.source.contentUrl });
+    const img = schema.nodes.image.create({ src: contentUrl });
     view.dispatch(ts.replaceSelectionWith(img).scrollIntoView());
-  });
-  docImg.src = json.source.contentUrl;
+  };
+
+  // a media bus src is relative to the published page and cannot load from here, so waiting on it
+  // would leave the placeholder in the document
+  if (contentUrl.startsWith('./media_')) {
+    replaceFpo();
+    return;
+  }
+
+  const docImg = document.createElement('img');
+  docImg.addEventListener('load', replaceFpo);
+  docImg.src = contentUrl;
 }
 
 /**

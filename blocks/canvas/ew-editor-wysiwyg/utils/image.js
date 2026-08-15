@@ -1,7 +1,5 @@
-import { getNx } from '../../../../scripts/utils.js';
+import { getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
-
-const { DA_ADMIN, DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
 function updateImageInDocument(view, originalSrc, newSrc) {
   if (!view) return false;
@@ -70,25 +68,11 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     const pageName = getPageName(ctx.path);
     const parentPath = ctx.path === '/' ? '' : ctx.path.replace(/\/[^/]+$/, '');
 
-    // Same upload path and URL as da-nx quick-edit-portal/src/images.js
-    const uploadPath = `${parentPath}/.${pageName}/${fileName}`;
-    const uploadUrl = `${DA_ADMIN}/source/${ctx.owner}/${ctx.repo}${uploadPath}`;
+    // Same upload path as da-nx quick-edit-portal/src/images.js
+    const uploadPath = `/${ctx.owner}/${ctx.repo}${parentPath}/.${pageName}/${fileName}`;
 
-    const tokenPromise = typeof ctx.getToken === 'function' ? ctx.getToken() : null;
-    const token = tokenPromise != null && typeof tokenPromise?.then === 'function'
-      ? await tokenPromise
-      : tokenPromise;
-    const headers = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    const formData = new FormData();
-    formData.append('data', blob, fileName);
-
-    const resp = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: formData,
-      headers,
-    });
+    const { source } = await getNx2Api();
+    const resp = await source.uploadMedia(uploadPath, { body: blob });
 
     if (!resp.ok) {
       const error = `Upload failed with status ${resp.status}`;
@@ -99,8 +83,8 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
       return;
     }
 
-    // Same as da-nx: AEM delivery URL for the uploaded image
-    const newSrc = `${DA_CONTENT}/${ctx.owner}/${ctx.repo}${uploadPath}`;
+    // the media bus is content addressed, so the src is only known from the response
+    const { source: { contentUrl: newSrc } } = await resp.json();
 
     updateImageInDocument(ctx.view, originalSrc, newSrc);
 
