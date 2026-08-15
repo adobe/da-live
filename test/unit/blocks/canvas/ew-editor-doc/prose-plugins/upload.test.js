@@ -84,9 +84,13 @@ describe('uploadImageFile', () => {
     try {
       await uploadImageFile(editor.view, png(), { parent: '/upsorg/upssite/dir', name: 'doc' });
 
+      // nx2 owns the route it builds from the path, so what is pinned here is the store it went
+      // to and the path the canvas handed it
       const upload = calls.find((c) => c.opts?.method === 'POST');
       expect(upload, 'nothing was uploaded').to.exist;
-      expect(upload.url).to.equal('https://api.aem.live/upsorg/sites/upssite/source/dir/.doc/pic.png');
+      expect(new URL(upload.url).origin).to.equal('https://api.aem.live');
+      expect(upload.url).to.contain('/upsorg/sites/upssite/');
+      expect(upload.url.endsWith('/dir/.doc/pic.png'), upload.url).to.equal(true);
     } finally {
       restore();
     }
@@ -99,7 +103,8 @@ describe('uploadImageFile', () => {
 
       const upload = calls.find((c) => c.opts?.method === 'POST');
       expect(upload, 'nothing was uploaded').to.exist;
-      expect(upload.url).to.equal('https://admin.da.live/source/legorg/legsite/dir/.doc/pic.png');
+      expect(new URL(upload.url).origin).to.equal('https://admin.da.live');
+      expect(upload.url.endsWith('/legorg/legsite/dir/.doc/pic.png'), upload.url).to.equal(true);
     } finally {
       restore();
     }

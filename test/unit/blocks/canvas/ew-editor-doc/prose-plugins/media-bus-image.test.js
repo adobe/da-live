@@ -15,9 +15,10 @@ before(async () => {
 });
 
 describe('canvas getRenderableSrc', () => {
-  it('rewrites a relative media src to the preview origin', () => {
+  // the same origin the canvas fetches its preview cookie from, which is stage off da.live
+  it('rewrites a relative media src to the origin the canvas logged into', () => {
     expect(getRenderableSrc('./media_123.png', ctx)).to.equal(
-      'https://main--repo--org.preview.da.live/media_123.png',
+      'https://main--repo--org.stage-preview.da.live/media_123.png',
     );
   });
 
@@ -52,7 +53,7 @@ describe('canvas mediaBusImage plugin', () => {
     await nextFrame();
 
     const img = editor.view.dom.querySelector('img');
-    expect(img.src).to.equal('https://main--repo--org.preview.da.live/media_123.png');
+    expect(img.src).to.equal('https://main--repo--org.stage-preview.da.live/media_123.png');
 
     let storedSrc;
     editor.view.state.doc.descendants((node) => {

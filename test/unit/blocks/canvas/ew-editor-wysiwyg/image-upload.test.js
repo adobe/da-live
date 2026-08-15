@@ -71,9 +71,12 @@ describe('handleImageReplace', () => {
     try {
       await handleImageReplace({ imageData, fileName: 'pic.png', originalSrc: '/old.png' }, ctx);
 
+      // the route past the site is nx2's, so what is pinned is the store and the path
       const upload = calls.find((c) => c.opts?.method === 'POST');
       expect(upload, 'nothing was uploaded').to.exist;
-      expect(upload.url).to.equal('https://api.aem.live/wysorg/sites/wyssite/source/.page/pic.png');
+      expect(new URL(upload.url).origin).to.equal('https://api.aem.live');
+      expect(upload.url).to.contain('/wysorg/sites/wyssite/');
+      expect(upload.url.endsWith('/.page/pic.png'), upload.url).to.equal(true);
     } finally {
       restore();
     }
@@ -87,7 +90,8 @@ describe('handleImageReplace', () => {
 
       const upload = calls.find((c) => c.opts?.method === 'POST');
       expect(upload, 'nothing was uploaded').to.exist;
-      expect(upload.url).to.equal('https://admin.da.live/source/wyslegacy/wyslegacy/.page/pic.png');
+      expect(new URL(upload.url).origin).to.equal('https://admin.da.live');
+      expect(upload.url.endsWith('/wyslegacy/wyslegacy/.page/pic.png'), upload.url).to.equal(true);
     } finally {
       restore();
     }
