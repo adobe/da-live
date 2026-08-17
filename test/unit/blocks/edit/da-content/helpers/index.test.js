@@ -17,9 +17,18 @@ const MULTI_SHEET = { data: SINGLE_SHEET };
 
 const { default: ueUrlHelper } = await import('../../../../../../blocks/edit/da-content/helpers/index.js');
 
+// getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); answer that with a
+// real Response (so its headers.get() call is safe) and defer everything else to `respond`.
+function pingSafe(respond) {
+  return async (url, opts) => {
+    if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+    return respond(url, opts);
+  };
+}
+
 describe('UE URLs', () => {
   it('Supports single sheet configs', async () => {
-    const mockFetch = async () => ({ ok: true, json: async () => (SINGLE_SHEET) });
+    const mockFetch = pingSafe(async () => ({ ok: true, json: async () => (SINGLE_SHEET) }));
     const orgFetch = window.fetch;
 
     try {
@@ -32,7 +41,7 @@ describe('UE URLs', () => {
   });
 
   it('Supports multisheet configs', async () => {
-    const mockFetch = async () => ({ ok: true, json: async () => (MULTI_SHEET) });
+    const mockFetch = pingSafe(async () => ({ ok: true, json: async () => (MULTI_SHEET) }));
     const orgFetch = window.fetch;
 
     try {
@@ -45,7 +54,7 @@ describe('UE URLs', () => {
   });
 
   it('Successfully dies gracefully', async () => {
-    const mockFetch = async () => ({ ok: false });
+    const mockFetch = pingSafe(async () => ({ ok: false }));
     const orgFetch = window.fetch;
 
     try {
@@ -60,7 +69,7 @@ describe('UE URLs', () => {
   it('Returns null when no editor.path or quick-edit config exists', async () => {
     const orgFetch = window.fetch;
     try {
-      window.fetch = async () => ({ ok: true, json: async () => ({ data: [{ key: 'other', value: 'x' }] }) });
+      window.fetch = pingSafe(async () => ({ ok: true, json: async () => ({ data: [{ key: 'other', value: 'x' }] }) }));
       const url = await ueUrlHelper('org', 'repo', 'https://main--repo--org.aem.page/page');
       expect(url).to.equal(null);
     } finally {
@@ -71,10 +80,10 @@ describe('UE URLs', () => {
   it('Builds a quick-edit URL when quick-edit config matches the repo', async () => {
     const orgFetch = window.fetch;
     try {
-      window.fetch = async () => ({
+      window.fetch = pingSafe(async () => ({
         ok: true,
         json: async () => ({ data: [{ key: 'quick-edit', value: 'repo' }] }),
-      });
+      }));
       const url = await ueUrlHelper('org-qe', 'repo', 'https://main--repo--org.aem.live/page');
       expect(url).to.equal('https://main--repo--org.aem.page/page?quick-edit=on');
     } finally {
@@ -85,10 +94,10 @@ describe('UE URLs', () => {
   it('Strips trailing /index when building the quick-edit URL', async () => {
     const orgFetch = window.fetch;
     try {
-      window.fetch = async () => ({
+      window.fetch = pingSafe(async () => ({
         ok: true,
         json: async () => ({ data: [{ key: 'quick-edit', value: 'repo' }] }),
-      });
+      }));
       const url = await ueUrlHelper('org-qe-strip', 'repo', 'https://main--repo--org.aem.live/folder/index');
       expect(url).to.equal('https://main--repo--org.aem.page/folder/?quick-edit=on');
     } finally {

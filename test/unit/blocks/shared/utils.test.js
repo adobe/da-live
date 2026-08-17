@@ -684,6 +684,35 @@ describe('fetchDaConfigs', () => {
     expect(resolved).to.equal(null);
     expect(fetchCalled).to.be.false;
   });
+
+  // fetchDaConfigs routes through getNx2Api's config.get, which pings isHlx6
+  // (HLX_ADMIN/ping/{org}/{site}) before resolving the config url.
+  it('goes through the isHlx6-aware config route, not a hardcoded da-admin fetch', async () => {
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ data: [{ key: 'k', value: 'v' }] }), { status: 200 });
+    };
+
+    const [orgConfig, siteConfig] = await Promise.all(
+      fetchDaConfigs({ org: 'cfgorg', site: 'cfgsite' }),
+    );
+
+    expect(calls.some((u) => u.includes('/ping/cfgorg/cfgsite'))).to.equal(true, 'isHlx6 was not consulted');
+    expect(orgConfig).to.deep.equal({ data: [{ key: 'k', value: 'v' }] });
+    expect(siteConfig).to.deep.equal({ data: [{ key: 'k', value: 'v' }] });
+  });
+
+  it('reports the store status without throwing when the config fetch fails', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response('', { status: 500 });
+    };
+
+    const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgfail' }));
+    expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgfail', status: 500 });
+  });
 });
 
 describe('saveDaVersion', () => {
