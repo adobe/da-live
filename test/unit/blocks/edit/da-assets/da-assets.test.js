@@ -5,7 +5,6 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const {
   formatExternalBrief,
-  buildFeatureSet,
   resolveAssetUrl,
   buildHandleSelection,
   createDialogPanels,
@@ -126,23 +125,6 @@ describe('formatExternalBrief', () => {
     const brief = formatExternalBrief(doc);
     expect(brief).to.not.include('Title:');
     expect(brief).to.include('Some page content without a heading.');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// buildFeatureSet
-// ---------------------------------------------------------------------------
-
-describe('buildFeatureSet', () => {
-  it('returns base features when DM is not enabled', () => {
-    const features = buildFeatureSet(false);
-    expect(features).to.deep.equal(['upload', 'collections', 'detail-panel', 'advisor']);
-  });
-
-  it('adds dynamic-media feature when DM is enabled', () => {
-    const features = buildFeatureSet(true);
-    expect(features).to.include('dynamic-media');
-    expect(features).to.include('upload');
   });
 });
 

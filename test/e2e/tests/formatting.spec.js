@@ -65,11 +65,10 @@ async function selectRange(page, from, to) {
   }, { from, to });
 }
 
-test('Text formatting and links persist after reload', async ({ page, trackCleanup }, workerInfo) => {
+test('Text formatting and links persist after reload', async ({ page }, workerInfo) => {
   test.setTimeout(60000);
 
   const url = getTestPageURL('formatting', workerInfo);
-  trackCleanup(url);
   console.log(url);
   await page.goto(url);
   await page.getByText('Create document', { exact: true }).click();
