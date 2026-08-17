@@ -60,9 +60,6 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
   ctx.suppressRerender = true;
 
   try {
-    // eslint-disable-next-line no-console
-    console.log('handleImageReplace', fileName, originalSrc);
-
     const blob = dataUrlToBlob(imageData);
 
     const pageName = getPageName(ctx.path);
