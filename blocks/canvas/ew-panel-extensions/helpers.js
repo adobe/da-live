@@ -1,7 +1,7 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
-import { aemAdmin, daFetch } from '../../shared/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import { daFetch } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
@@ -394,8 +394,10 @@ export async function insertTemplate(view, url) {
 export async function getPreviewStatus({ org, site, pathname }) {
   const path = `/${org}/${site}${pathname}`;
   try {
-    const json = await aemAdmin(path, 'status', 'GET');
-    if (!json) return null;
+    const { status } = await getNx2Api();
+    const resp = await status.get(path);
+    if (!resp.ok) return null;
+    const json = await resp.json();
     return json.preview?.status === 200;
   } catch {
     return null;
