@@ -37,7 +37,7 @@ describe('da-name-dialog', () => {
 
   it('renders the name field when open is true', async () => {
     await mount({ open: true, title: 'New page in a', placeholder: 'page name' });
-    const input = el.shadowRoot.querySelector('.da-input');
+    const input = el.shadowRoot.querySelector('.nx-input');
     expect(input).to.exist;
     expect(input.placeholder).to.equal('page name');
     expect(el.shadowRoot.querySelector('nx-dialog').getAttribute('title')).to.equal('New page in a');
@@ -45,7 +45,7 @@ describe('da-name-dialog', () => {
 
   it('sanitizes the name as the user types', async () => {
     await mount({ open: true });
-    const input = el.shadowRoot.querySelector('.da-input');
+    const input = el.shadowRoot.querySelector('.nx-input');
     input.value = 'My New Page';
     input.dispatchEvent(new Event('input'));
     expect(input.value).to.equal('my-new-page');
@@ -56,7 +56,7 @@ describe('da-name-dialog', () => {
     let detail = null;
     el.addEventListener('da-name-submit', (e) => { detail = e.detail; });
 
-    el.shadowRoot.querySelector('.da-input').value = 'My New Page-';
+    el.shadowRoot.querySelector('.nx-input').value = 'My New Page-';
     el.shadowRoot.querySelector('.da-btn-primary').click();
     await nextFrame();
 
@@ -68,7 +68,7 @@ describe('da-name-dialog', () => {
     let detail = null;
     el.addEventListener('da-name-submit', (e) => { detail = e.detail; });
 
-    const input = el.shadowRoot.querySelector('.da-input');
+    const input = el.shadowRoot.querySelector('.nx-input');
     input.value = 'my-page';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     await nextFrame();
@@ -91,7 +91,7 @@ describe('da-name-dialog', () => {
     let detail = null;
     el.addEventListener('da-name-submit', (e) => { detail = e.detail; });
 
-    el.shadowRoot.querySelector('.da-input').value = 'my-page';
+    el.shadowRoot.querySelector('.nx-input').value = 'my-page';
     findCreateAndOpenButton().click();
     await nextFrame();
 
@@ -108,7 +108,7 @@ describe('da-name-dialog', () => {
 
     expect(fired).to.be.false;
     expect(el._nameError).to.be.true;
-    expect(el.shadowRoot.querySelector('.da-input-error-msg').textContent.trim()).to.equal('Please fill out this field.');
+    expect(el.shadowRoot.querySelector('.nx-input-error-msg').textContent.trim()).to.equal('Please fill out this field.');
   });
 
   it('clears the name error when the input changes', async () => {
@@ -117,14 +117,14 @@ describe('da-name-dialog', () => {
     await el.updateComplete;
     expect(el._nameError).to.be.true;
 
-    el.shadowRoot.querySelector('.da-input').dispatchEvent(new Event('input'));
+    el.shadowRoot.querySelector('.nx-input').dispatchEvent(new Event('input'));
     await el.updateComplete;
     expect(el._nameError).to.be.false;
   });
 
   it('shows the host-supplied error message', async () => {
     await mount({ open: true, error: 'Could not create the page. Try a different name.' });
-    expect(el.shadowRoot.querySelector('.da-input-error-msg').textContent.trim())
+    expect(el.shadowRoot.querySelector('.nx-input-error-msg').textContent.trim())
       .to.equal('Could not create the page. Try a different name.');
   });
 

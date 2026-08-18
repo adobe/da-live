@@ -1,16 +1,17 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath } from '../../shared/daFiles.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
 import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
 import getEditPath from '../../browse/shared.js';
+import getSheet from '../../shared/sheet.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 
-const [base, style] = await Promise.all([
-  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+const [buttons, style] = await Promise.all([
+  getSheet(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -62,7 +63,7 @@ class EwFileExplorer extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
     this._onAgentChange = async ({ detail }) => {
       if (detail?.scope !== 'file') return;
@@ -342,7 +343,7 @@ class EwFileExplorer extends LitElement {
           @keydown="${(e) => this._onRowKeydown(e, item)}">
           <span class="label">${name}</span>
           ${isDir ? html`
-            <button type="button" class="da-icon-btn action-btn new-page-btn" draggable="false"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn new-page-btn" draggable="false"
               aria-label="New page in ${name}"
               @pointerdown=${(e) => e.stopPropagation()}
               @click=${(e) => this._openCreateDialog(e, item)}>

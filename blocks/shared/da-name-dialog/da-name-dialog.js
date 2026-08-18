@@ -1,21 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { sanitizeName } from '../utils.js';
+import getSheet from '../sheet.js';
 
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
+const form = await getSheet(`${getNx2()}/styles/form.css`);
 
-const { loadStyle } = await import(`${nx}/utils/utils.js`);
-const [base, styles] = await Promise.all([
-  loadStyle(new URL('../styles/base.css', import.meta.url).href),
-  loadStyle(import.meta.url),
-]);
-
-// A single-field "name this thing" dialog: sanitizes as you type, requires a
-// non-empty (post-sanitize) name on submit, and defers to the host for what
-// happens with that name — this only ever emits da-name-submit with the final
-// sanitized value; the host decides whether/when to close (via `open`) and
-// what error, if any, to surface back (via `error`) once its own save resolves.
 class DaNameDialog extends LitElement {
   static properties = {
     open: { type: Boolean, reflect: true },
@@ -30,7 +21,7 @@ class DaNameDialog extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, styles];
+    this.shadowRoot.adoptedStyleSheets = [form];
   }
 
   _onInput(e) {
@@ -46,7 +37,7 @@ class DaNameDialog extends LitElement {
   }
 
   _onSave(openAfter) {
-    const input = this.shadowRoot.querySelector('.da-input');
+    const input = this.shadowRoot.querySelector('.nx-input');
     const name = sanitizeName(input.value || '', { trimTrailing: true });
     if (!name) {
       this._nameError = true;
@@ -72,12 +63,12 @@ class DaNameDialog extends LitElement {
     if (!this.open) return nothing;
     return html`
       <nx-dialog title="${this.title ?? 'New item'}" @close=${this._onClose}>
-        <label class="da-form-field ${this._nameError ? 'da-field-error' : ''}">
+        <label class="nx-form-field ${this._nameError ? 'nx-field-error' : ''}">
           <span>Name</span>
-          <input autofocus type="text" class="da-input" placeholder="${this.placeholder ?? 'name'}"
+          <input autofocus type="text" class="nx-input" placeholder="${this.placeholder ?? 'name'}"
                  autocomplete="off"
                  @input=${this._onInput} @keydown=${this._onKeydown} />
-          <span class="da-input-error-msg" role="alert">
+          <span class="nx-input-error-msg" role="alert">
             ${this._nameError ? 'Please fill out this field.' : (this.error ?? '')}
           </span>
         </label>
