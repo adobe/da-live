@@ -41,6 +41,9 @@ import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
+import { getDiffClass, addActiveView } from '../../edit/prose/diff/diff-utils.js';
+import { initDaMetadata } from '../../edit/utils/helpers.js';
+import { createMergeConflictsPlugin } from '../editor-utils/prose-merge-conflicts.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { DA_ADMIN, DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -83,7 +86,7 @@ function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
 
 export default async function initProse({
   path, permissions, setEditable, getToken,
-  extraPlugins = [],
+  extraPlugins = [], onMergeConflictsChange, hostEl,
 }) {
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
@@ -212,7 +215,7 @@ export default async function initProse({
 
   if (canWrite) {
     plugins.unshift(createSlashMenuPlugin(), createSelectionToolbarPlugin());
-    plugins.push(imageFocalPoint());
+    plugins.push(imageFocalPoint(), createMergeConflictsPlugin(onMergeConflictsChange, hostEl));
   }
 
   let state = EditorState.create({ schema, plugins });
@@ -220,10 +223,26 @@ export default async function initProse({
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
+  const diffNodeViews = canWrite ? {
+    diff_added(node, view, getPos) {
+      const MergeConflictsAddedView = getDiffClass('da-diff-added', getSchema, () => {}, { isUpstream: false, hostEl });
+      return new MergeConflictsAddedView(node, view, getPos);
+    },
+    diff_deleted(node, view, getPos) {
+      const MergeConflictsDeletedView = getDiffClass('da-diff-deleted', getSchema, () => {}, { isUpstream: true, hostEl });
+      return new MergeConflictsDeletedView(node, view, getPos);
+    },
+  } : undefined;
+
   viewRef = new EditorView(editor, {
     state,
     editable() { return canWrite; },
+    nodeViews: diffNodeViews,
   });
+
+  if (canWrite) addActiveView(viewRef);
+
+  initDaMetadata(ydoc.getMap('daMetadata'));
 
   const undoManager = yUndoPluginKey.getState(viewRef.state)?.undoManager ?? null;
 

@@ -28,6 +28,7 @@ class EWCanvasHeader extends LitElement {
     undoAvailable: { type: Boolean },
     redoAvailable: { type: Boolean },
     authorized: { type: Boolean },
+    hasUnresolvedMergeConflicts: { type: Boolean, reflect: true, attribute: 'has-conflicts' },
     canWrite: { type: Boolean },
     _chatDisabled: { state: true },
   };
@@ -38,6 +39,7 @@ class EWCanvasHeader extends LitElement {
     this.undoAvailable = false;
     this.redoAvailable = false;
     this.authorized = true;
+    this.hasUnresolvedMergeConflicts = false;
     this.canWrite = true;
   }
 
@@ -81,9 +83,9 @@ class EWCanvasHeader extends LitElement {
     canvasBus.redoRequest.emit();
   }
 
-  _setEditorView(view) {
+  setEditorView(view) {
+    if (this.hasUnresolvedMergeConflicts && view !== 'content') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
-    this.editorView = view;
     canvasBus.editorViewRequest.emit({ view });
   }
 
@@ -134,21 +136,24 @@ class EWCanvasHeader extends LitElement {
               type="button"
               class="segment ${this.editorView === 'layout' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'layout'}
-              @click=${() => this._setEditorView('layout')}
+              title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : nothing}
+              ?disabled=${this.hasUnresolvedMergeConflicts}
+              @click=${() => this.setEditorView('layout')}
             >Layout</button>
             <button
               type="button"
               class="segment ${this.editorView === 'content' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'content'}
-              @click=${() => this._setEditorView('content')}
+              @click=${() => this.setEditorView('content')}
             >Content</button>
             <button
               type="button"
               class="segment segment-icon ${this.editorView === 'split' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'split'}
               aria-label="Split view"
-              title="Split view"
-              @click=${() => this._setEditorView('split')}
+              title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : 'Split view'}
+              ?disabled=${this.hasUnresolvedMergeConflicts}
+              @click=${() => this.setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
           </div>
           ` : nothing}

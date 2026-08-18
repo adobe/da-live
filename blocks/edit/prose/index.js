@@ -195,6 +195,8 @@ async function loadCustomPlugins() {
 
 let lastCursorPosition = null;
 
+let diffHostEl = null;
+
 function dispatchTransaction(transaction) {
   if (!window.view) return;
 
@@ -202,7 +204,7 @@ function dispatchTransaction(transaction) {
   window.view.updateState(newState);
 
   if (transaction.docChanged) {
-    debounce(checkForLocNodes, 500)(window.view);
+    debounce(checkForLocNodes, 500)(window.view, diffHostEl);
   }
 }
 
@@ -523,6 +525,8 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
     delete window.view;
   }
 
+  diffHostEl = daContent?.shadowRoot?.querySelector('da-editor') ?? null;
+
   const connectionPromise = wsPromise || createConnection(path);
 
   const editor = document.createElement('div');
@@ -568,11 +572,11 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
     dispatchTransaction,
     nodeViews: {
       diff_added(node, view, getPos) {
-        const LocAddedView = getDiffClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false });
+        const LocAddedView = getDiffClass('da-diff-added', getSchema, dispatchTransaction, { isUpstream: false, hostEl: diffHostEl });
         return new LocAddedView(node, view, getPos);
       },
       diff_deleted(node, view, getPos) {
-        const LocDeletedView = getDiffClass('da-diff-deleted', getSchema, dispatchTransaction, { isUpstream: true });
+        const LocDeletedView = getDiffClass('da-diff-deleted', getSchema, dispatchTransaction, { isUpstream: true, hostEl: diffHostEl });
         return new LocDeletedView(node, view, getPos);
       },
     },

@@ -161,6 +161,7 @@ async function installCanvasHeader(block, { org, site }) {
   header.editorView = await readInitialCanvasEditorView({ org, site });
   canvasBus.editorViewRequest.subscribe(({ view: rawView }) => {
     const view = normalizeCanvasEditorView(rawView);
+    header.editorView = view;
     persistCanvasEditorView(view);
     notifyCanvasEditorActive(view);
     syncEditorSplitLayout({ mountRoot: canvasEditorMountRoot(block), view });
@@ -250,6 +251,13 @@ export default async function decorate(block) {
   mountRoot.classList.add('nx-canvas-editor-mount');
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
   installEditorSplitDrag(mountRoot);
+
+  canvasBus.mergeConflictsState.subscribe((detail) => {
+    header.hasUnresolvedMergeConflicts = detail?.hasMergeConflicts ?? false;
+    if (header.hasUnresolvedMergeConflicts && header.editorView !== 'content') {
+      canvasBus.editorViewRequest.emit({ view: 'content' });
+    }
+  });
 
   canvasBus.undoState.subscribe((detail) => {
     header.undoAvailable = detail?.canUndo ?? false;
