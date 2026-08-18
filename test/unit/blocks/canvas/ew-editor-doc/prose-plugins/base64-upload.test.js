@@ -5,6 +5,7 @@ import { createTestEditor, destroyEditor } from '../../../edit/prose/test-helper
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let base64Uploader;
+let uploadBase64Image;
 let MAX_IMAGE_BYTES;
 let toasts;
 
@@ -20,20 +21,25 @@ async function until(done, tries = 50) {
 }
 
 before(async () => {
-  ({ default: base64Uploader } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/base64Uploader.js'));
+  ({ default: base64Uploader, uploadBase64Image } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/base64Uploader.js'));
   ({ MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 
-function stubStore() {
+// isHlx6 memoizes its answer per site, so each case needs its own org/site
+function stubStore({ upgraded }) {
   const saved = window.fetch;
   const calls = [];
   window.fetch = async (url, opts) => {
     const href = typeof url === 'string' ? url : url.url;
     calls.push({ url: href, opts });
     if (href.includes('/ping/')) {
-      return new Response('', { status: 200, headers: { 'x-api-upgrade-available': 'true' } });
+      return new Response('', {
+        status: 200,
+        headers: upgraded ? { 'x-api-upgrade-available': 'true' } : {},
+      });
     }
+    if (href.startsWith('data:')) return new Response(new Blob([new Uint8Array([1])]));
     return new Response(JSON.stringify({ source: { contentUrl: './media_abc.png' } }), {
       status: 201,
       headers: { 'content-type': 'application/json' },
@@ -49,10 +55,21 @@ afterEach(() => {
 describe('base64Uploader', () => {
   let editor;
 
-  const pluginFor = (sourceUrl) => base64Uploader({
-    getSourceUrl: () => sourceUrl,
-    getEditorView: () => editor.view,
-  });
+  const oversized = () => `data:image/png;base64,${'A'.repeat(Math.ceil((MAX_IMAGE_BYTES + 1) / 3) * 4)}`;
+
+  const insertFpo = (fpoSrc) => {
+    const { schema } = editor.view.state;
+    const fpo = schema.nodes.image.create({ src: fpoSrc });
+    editor.view.dispatch(editor.view.state.tr.replaceSelectionWith(fpo));
+  };
+
+  const imageSrcs = () => {
+    const srcs = [];
+    editor.view.state.doc.descendants((node) => {
+      if (node.type.name === 'image') srcs.push(node.attrs.src);
+    });
+    return srcs;
+  };
 
   beforeEach(async () => {
     editor = await createTestEditor();
@@ -64,18 +81,40 @@ describe('base64Uploader', () => {
     destroyEditor(editor);
   });
 
-  it('drops a pasted image over the upload limit', async () => {
-    const { calls, restore } = stubStore();
+  it('swaps a pasted data url for the fpo and uploads it', async () => {
+    const { calls, restore } = stubStore({ upgraded: true });
     try {
-      // base64 inflates by 4/3, so this decodes to just over the limit
-      const src = `data:image/png;base64,${'A'.repeat(Math.ceil((MAX_IMAGE_BYTES + 1) / 3) * 4)}`;
-      const plugin = pluginFor('https://api.aem.live/pasteorg/sites/pastesite/source/doc.html');
-      const html = plugin.props.transformPastedHTML(`<p><img src="${src}"></p>`);
-      await until(() => toasts.length);
+      const plugin = base64Uploader({
+        getSourceUrl: () => 'https://api.aem.live/pasteok/sites/pasteok/source/doc.html',
+        getEditorView: () => editor.view,
+      });
+      const html = plugin.props.transformPastedHTML('<p><img src="data:image/png;base64,iVBORw0KGgo="></p>');
+      await until(() => calls.some((c) => c.opts?.method === 'POST'));
 
-      expect(html).to.not.contain('data:image');
-      expect(html).to.not.contain('<img');
+      expect(html).to.contain('/blocks/edit/img/fpo.svg');
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(1);
+      expect(toasts).to.have.length(0);
+    } finally {
+      restore();
+    }
+  });
+
+  it('drops the fpo when the pasted image is over the upload limit', async () => {
+    const { calls, restore } = stubStore({ upgraded: true });
+    const fpoSrc = '/blocks/edit/img/fpo.svg#1';
+    try {
+      insertFpo(fpoSrc);
+      expect(imageSrcs()).to.deep.equal([fpoSrc]);
+
+      await uploadBase64Image(editor.view, {
+        src: oversized(),
+        path: '/pastebig/pastebig/.doc/wp1.png',
+        fpoSrc,
+        parent: '/pastebig/pastebig',
+      });
+
       expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
+      expect(imageSrcs(), 'the fpo was left in the document').to.deep.equal([]);
       expect(toasts).to.have.length(1);
       expect(toasts[0].text).to.contain('Image upload failed');
       expect(toasts[0].text).to.contain('4.5 MB or under');
@@ -84,15 +123,18 @@ describe('base64Uploader', () => {
     }
   });
 
-  it('uploads a pasted image inside the limit', async () => {
-    const { calls, restore } = stubStore();
+  it('takes an oversized image on a legacy site, where the limit does not apply', async () => {
+    const { calls, restore } = stubStore({ upgraded: false });
+    const fpoSrc = '/blocks/edit/img/fpo.svg#2';
     try {
-      const src = 'data:image/png;base64,iVBORw0KGgo=';
-      const plugin = pluginFor('https://api.aem.live/pasteok/sites/pasteok/source/doc.html');
-      const html = plugin.props.transformPastedHTML(`<p><img src="${src}"></p>`);
-      await until(() => calls.some((c) => c.opts?.method === 'POST'));
+      insertFpo(fpoSrc);
+      await uploadBase64Image(editor.view, {
+        src: oversized(),
+        path: '/pasteleg/pasteleg/.doc/wp2.png',
+        fpoSrc,
+        parent: '/pasteleg/pasteleg',
+      });
 
-      expect(html).to.contain('/blocks/edit/img/fpo.svg');
       expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(1);
       expect(toasts).to.have.length(0);
     } finally {

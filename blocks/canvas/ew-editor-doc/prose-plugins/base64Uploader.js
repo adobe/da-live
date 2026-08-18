@@ -1,7 +1,7 @@
 import { Plugin } from 'da-y-wrapper';
 import { getNx2Api } from '../../../../scripts/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
-import { dataUrlByteLength, isImageTooLarge, showImageTooLarge } from '../../utils/image-upload.js';
+import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 
@@ -13,7 +13,21 @@ function makeHash(string) {
 }
 
 // the media bus is content addressed, so the src is only known from the response
-export async function uploadBase64Image(view, { src, path, fpoSrc }) {
+function removeFpo(view, fpoSrc) {
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'image' && node.attrs.src === fpoSrc) {
+      view.dispatch(view.state.tr.delete(pos, pos + node.nodeSize));
+      return false;
+    }
+    return true;
+  });
+}
+
+export async function uploadBase64Image(view, { src, path, fpoSrc, parent }) {
+  if (await refuseOversizedImage(dataUrlByteLength(src), parent)) {
+    removeFpo(view, fpoSrc);
+    return;
+  }
   const resp = await fetch(src);
   const blob = await resp.blob();
   const { source } = await getNx2Api();
@@ -57,11 +71,6 @@ export default function base64Uploader({ getSourceUrl, getEditorView }) {
 
           dataImgs.forEach((img) => {
             const src = img.getAttribute('src');
-            if (isImageTooLarge(dataUrlByteLength(src))) {
-              img.remove();
-              showImageTooLarge();
-              return;
-            }
             let ext = src.replace('data:image/', '').split(';base64')[0];
             if (ext === 'jpeg') ext = 'jpg';
             const path = `${details.parent}/.${details.name}/wp${makeHash(src)}.${ext}`;
@@ -69,7 +78,7 @@ export default function base64Uploader({ getSourceUrl, getEditorView }) {
             img.setAttribute('src', fpoSrc);
 
             const view = getEditorView();
-            if (view) uploadBase64Image(view, { src, path, fpoSrc });
+            if (view) uploadBase64Image(view, { src, path, fpoSrc, parent: details.parent });
           });
 
           const serializer = new XMLSerializer();

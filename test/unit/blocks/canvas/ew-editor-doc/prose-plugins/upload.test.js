@@ -166,4 +166,23 @@ describe('uploadImageFile', () => {
       restore();
     }
   });
+
+  it('takes an oversized image on a legacy site, where the limit does not apply', async () => {
+    const { calls, restore } = stubStore({ upgraded: false });
+    toasts.length = 0;
+    try {
+      const big = new File(
+        [new Uint8Array(MAX_IMAGE_BYTES + 1)],
+        'big.png',
+        { type: 'image/png' },
+      );
+      await uploadImageFile(editor.view, big, { parent: '/bigleg/bigleg', name: 'doc' });
+      await nextFrame();
+
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(1);
+      expect(toasts).to.have.length(0);
+    } finally {
+      restore();
+    }
+  });
 });
