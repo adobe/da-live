@@ -1,5 +1,4 @@
-import { checkDoc } from './source.js';
-import { sourceUrlFromEditorCtx } from './ctx.js';
+import { buildSourceUrl, checkDoc } from './source.js';
 import { initIms } from '../../../shared/utils.js';
 
 export function sessionErrorFromResponse(resp) {
@@ -23,7 +22,7 @@ export async function resolveEditorDocSession(ctx) {
 
   let sourceUrl;
   try {
-    sourceUrl = await sourceUrlFromEditorCtx(ctx);
+    sourceUrl = await buildSourceUrl(ctx?.path);
   } catch {
     return { ok: false, error: 'Could not reach the content store' };
   }

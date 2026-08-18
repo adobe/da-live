@@ -1,8 +1,4 @@
-import { buildSourceUrl, normalizeSourcePath } from './source.js';
-
-export function sourceUrlFromEditorCtx(ctx) {
-  return buildSourceUrl(ctx?.path);
-}
+import { normalizeSourcePath } from './source.js';
 
 export function editorCtxHasOrgRepoPath(ctx) {
   const { org, repo, path } = ctx ?? {};
