@@ -160,7 +160,7 @@ export default class DaNew extends LitElement {
     </da-link-dialog>
     <da-name-dialog
       dialog-title="${this._createDialogTitle}"
-      placeholder="${this._createType} name"
+      name-placeholder="${this._createType} name"
       saveLabel="Create"
       ?open=${this._createDialogOpen}
       ?saving=${this._loading}
