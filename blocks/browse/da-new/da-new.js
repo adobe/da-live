@@ -1,8 +1,9 @@
-import { LitElement, html, nothing } from 'da-lit';
-import { sanitizeName } from '../../shared/utils.js';
+import { LitElement, html } from 'da-lit';
+import { sanitizeName, EMPTY_DOC } from '../../shared/utils.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import '../../shared/da-link-dialog/da-link-dialog.js';
+import '../../shared/da-name-dialog/da-name-dialog.js';
 
 // Styles & Icons
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -11,9 +12,7 @@ const [base, STYLE] = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
-await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
-const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
 const EMPTY_SHEET = JSON.stringify({
   ':type': 'sheet',
   ':sheetname': 'data',
@@ -29,9 +28,7 @@ export default class DaNew extends LitElement {
     editor: { type: String },
     permissions: { attribute: false },
     _createType: { state: true },
-    _createName: { state: true },
     _createDialogOpen: { state: true },
-    _nameError: { state: true },
     _linkDialogOpen: { state: true },
     _loading: { state: true },
   };
@@ -58,30 +55,12 @@ export default class DaNew extends LitElement {
       return;
     }
     this._createType = type;
-    this._createName = '';
     this._createDialogOpen = true;
   }
 
-  handleNameChange(e) {
-    const normalized = sanitizeName(e.target.value);
-    // Explicitly sync the DOM value: when two invalid chars are typed in a
-    // row, the sanitized result can be identical to the previous value, so
-    // Lit's property binding would not re-render and the raw typed value
-    // would remain in the input.
-    e.target.value = normalized;
-    this._nameError = false;
-    this._createName = normalized;
-  }
-
-  async _handleCreate() {
-    const finalName = sanitizeName(this._createName || '', { trimTrailing: true });
-    if (!finalName) {
-      this._nameError = true;
-      return;
-    }
-    this._nameError = false;
+  async _handleCreate(e) {
+    const { name: finalName } = e.detail;
     this._createDialogOpen = false;
-    this._createName = '';
     this._loading = true;
     try {
       if (this._createType === 'folder') {
@@ -104,15 +83,6 @@ export default class DaNew extends LitElement {
 
   _handleCreateDialogClose() {
     this._createDialogOpen = false;
-    this._createName = '';
-    this._nameError = false;
-  }
-
-  _handleCreateKeydown(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      this._handleCreate();
-    }
   }
 
   async _handleLinkSubmit(e) {
@@ -188,19 +158,15 @@ export default class DaNew extends LitElement {
       @da-link-submit=${this._handleLinkSubmit}
       @close=${this._handleLinkCancel}>
     </da-link-dialog>
-    ${this._createDialogOpen ? html`
-    <nx-dialog title="${this._createDialogTitle}" @close=${this._handleCreateDialogClose}>
-      <label class="da-form-field ${this._nameError ? 'da-field-error' : ''}">
-        <span>Name</span>
-        <input autofocus type="text" class="da-input" placeholder="${this._createType} name"
-               .value=${this._createName || ''}
-               @input=${this.handleNameChange}
-               @keydown=${this._handleCreateKeydown} />
-        <span class="da-input-error-msg" role="alert">${this._nameError ? 'Please fill out this field.' : ''}</span>
-      </label>
-      <button slot="actions" type="button" class="da-btn-secondary" @click=${this._handleCreateDialogClose}>Cancel</button>
-      <button slot="actions" type="button" class="da-btn-primary" ?disabled=${this._loading} @click=${this._handleCreate}>Create</button>
-    </nx-dialog>` : nothing}`;
+    <da-name-dialog
+      dialog-title="${this._createDialogTitle}"
+      placeholder="${this._createType} name"
+      saveLabel="Create"
+      ?open=${this._createDialogOpen}
+      ?saving=${this._loading}
+      @da-name-submit=${this._handleCreate}
+      @close=${this._handleCreateDialogClose}>
+    </da-name-dialog>`;
   }
 }
 
