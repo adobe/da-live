@@ -20,10 +20,10 @@ export function dataUrlByteLength(dataUrl) {
 }
 
 export async function showImageTooLarge() {
-  const { showToast } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
+  const { showToast, VARIANT_ERROR } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
   showToast({
-    text: `Image upload failed\nImage size must be ${MAX_IMAGE_LABEL} or under`,
-    variant: 'error',
+    text: `Image upload failed. Image size must be ${MAX_IMAGE_LABEL} or under`,
+    variant: VARIANT_ERROR,
   });
 }
 

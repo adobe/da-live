@@ -64,7 +64,7 @@ describe('showImageTooLarge', () => {
     await showImageTooLarge();
     expect(toasts).to.have.length(1);
     expect(toasts[0].variant).to.equal('error');
-    expect(toasts[0].text).to.equal('Image upload failed\nImage size must be 4.5 MB or under');
+    expect(toasts[0].text).to.equal('Image upload failed. Image size must be 4.5 MB or under');
   });
 });
 
