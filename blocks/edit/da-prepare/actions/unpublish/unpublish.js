@@ -28,8 +28,7 @@ class DaUnpublish extends LitElement {
     this._results = [];
     this._statusText = 'Removing preview';
 
-    const { org, site, path } = this.details;
-    const fullpath = `/${org}/${site}${path}`;
+    const fullpath = this.details.fullpath.replace(/\.html$/, '');
 
     const { aem } = await getNx2Api();
 
