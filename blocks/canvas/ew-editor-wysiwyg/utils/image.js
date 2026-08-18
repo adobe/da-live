@@ -1,5 +1,6 @@
 import { getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
+import { dataUrlByteLength, isImageTooLarge, showImageTooLarge } from '../../utils/image-upload.js';
 
 function updateImageInDocument(view, originalSrc, newSrc) {
   if (!view) return false;
@@ -60,6 +61,15 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
   ctx.suppressRerender = true;
 
   try {
+    if (isImageTooLarge(dataUrlByteLength(imageData))) {
+      await showImageTooLarge();
+      ctx.port.postMessage({
+        type: MESSAGE_TYPES.IMAGE_REPLACE,
+        payload: { error: 'Image is too large', originalSrc },
+      });
+      return;
+    }
+
     const blob = dataUrlToBlob(imageData);
 
     const pageName = getPageName(ctx.path);

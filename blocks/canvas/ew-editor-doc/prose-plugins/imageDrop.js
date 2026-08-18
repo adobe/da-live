@@ -1,12 +1,17 @@
 import { Plugin, TextSelection } from 'da-y-wrapper';
 import { getNx2Api } from '../../../../scripts/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
+import { isImageTooLarge, showImageTooLarge } from '../../utils/image-upload.js';
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 export const SUPPORTED_IMAGE_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
 export async function uploadImageFile(view, file, details) {
   if (!SUPPORTED_IMAGE_FILES.some((type) => type === file.type)) return;
+  if (isImageTooLarge(file.size)) {
+    await showImageTooLarge();
+    return;
+  }
 
   const { schema } = view.state;
   const fpo = schema.nodes.image.create({ src: FPO_IMG_URL, style: 'width: 180px' });

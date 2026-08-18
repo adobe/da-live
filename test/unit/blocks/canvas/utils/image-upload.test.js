@@ -10,9 +10,7 @@ let showImageTooLarge;
 let toasts;
 
 before(async () => {
-  ({
-    MAX_IMAGE_BYTES, isImageTooLarge, dataUrlByteLength, showImageTooLarge,
-  } = await import('../../../../../blocks/canvas/utils/image-upload.js'));
+  ({ MAX_IMAGE_BYTES, isImageTooLarge, dataUrlByteLength, showImageTooLarge } = await import('../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 

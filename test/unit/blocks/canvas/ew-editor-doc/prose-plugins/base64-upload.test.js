@@ -10,6 +10,15 @@ let toasts;
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
+// the paste handler is synchronous and leaves the upload running behind it
+async function until(done, tries = 50) {
+  for (let i = 0; i < tries; i += 1) {
+    if (done()) return;
+    // eslint-disable-next-line no-await-in-loop
+    await nextFrame();
+  }
+}
+
 before(async () => {
   ({ default: base64Uploader } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/base64Uploader.js'));
   ({ MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
@@ -62,7 +71,7 @@ describe('base64Uploader', () => {
       const src = `data:image/png;base64,${'A'.repeat(Math.ceil((MAX_IMAGE_BYTES + 1) / 3) * 4)}`;
       const plugin = pluginFor('https://api.aem.live/pasteorg/sites/pastesite/source/doc.html');
       const html = plugin.props.transformPastedHTML(`<p><img src="${src}"></p>`);
-      await nextFrame();
+      await until(() => toasts.length);
 
       expect(html).to.not.contain('data:image');
       expect(html).to.not.contain('<img');
@@ -81,7 +90,7 @@ describe('base64Uploader', () => {
       const src = 'data:image/png;base64,iVBORw0KGgo=';
       const plugin = pluginFor('https://api.aem.live/pasteok/sites/pasteok/source/doc.html');
       const html = plugin.props.transformPastedHTML(`<p><img src="${src}"></p>`);
-      await nextFrame();
+      await until(() => calls.some((c) => c.opts?.method === 'POST'));
 
       expect(html).to.contain('/blocks/edit/img/fpo.svg');
       expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(1);
