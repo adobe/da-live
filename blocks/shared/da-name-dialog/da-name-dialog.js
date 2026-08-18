@@ -11,7 +11,7 @@ class DaNameDialog extends LitElement {
   static properties = {
     open: { type: Boolean, reflect: true },
     title: { type: String, attribute: 'dialog-title' },
-    placeholder: { type: String },
+    namePlaceholder: { type: String, attribute: 'name-placeholder' },
     saveLabel: { type: String },
     saving: { type: Boolean },
     error: { type: String },
@@ -65,7 +65,7 @@ class DaNameDialog extends LitElement {
       <nx-dialog title="${this.title ?? 'New item'}" @close=${this._onClose}>
         <label class="nx-form-field ${this._nameError ? 'nx-field-error' : ''}">
           <span>Name</span>
-          <input autofocus type="text" class="nx-input" placeholder="${this.placeholder ?? 'name'}"
+          <input autofocus type="text" class="nx-input" placeholder="${this.namePlaceholder ?? 'name'}"
                  autocomplete="off"
                  @input=${this._onInput} @keydown=${this._onKeydown} />
           <span class="nx-input-error-msg" role="alert">
