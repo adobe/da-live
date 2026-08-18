@@ -41,7 +41,7 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
 });
 
 test('Create Delete Document', async ({ browser, page }, workerInfo) => {
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();

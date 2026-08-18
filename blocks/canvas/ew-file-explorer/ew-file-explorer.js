@@ -384,7 +384,7 @@ class EwFileExplorer extends LitElement {
       </ul>
       <da-name-dialog
         dialog-title="New page in ${this._createDialog?.folder?.split('/').pop() ?? ''}"
-        placeholder="page name"
+        name-placeholder="page name"
         ?open=${!!this._createDialog}
         ?saving=${this._createDialog?.saving}
         show-create-and-open

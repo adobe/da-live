@@ -36,7 +36,7 @@ describe('da-name-dialog', () => {
   });
 
   it('renders the name field when open is true', async () => {
-    await mount({ open: true, title: 'New page in a', placeholder: 'page name' });
+    await mount({ open: true, title: 'New page in a', namePlaceholder: 'page name' });
     const input = el.shadowRoot.querySelector('.nx-input');
     expect(input).to.exist;
     expect(input.placeholder).to.equal('page name');
