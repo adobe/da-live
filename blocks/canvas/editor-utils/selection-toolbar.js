@@ -1,6 +1,7 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin, PluginKey, NodeSelection } from 'da-y-wrapper';
 import { getTableBlockName, getTableBlockVariant } from './blocks.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const NON_TEXT_NODES = new Set(['table']);
 
@@ -132,15 +133,24 @@ export function createSelectionToolbarPlugin() {
       },
     },
     view() {
+      // Track the active editor view and block-edit state off the canvas bus rather
+      // than querying ew-canvas-header / ew-editor-doc from the DOM. Both channels
+      // replay their last value, so a plugin created after the last emit still starts
+      // with the current state.
+      let editorView = 'layout';
+      let blockEditOpen = false;
+      const unsubscribeEditorView = canvasBus.editorViewState
+        .subscribe(({ view }) => { editorView = view; });
+      const unsubscribeBlockEdit = canvasBus.blockEditState
+        .subscribe(({ open }) => { blockEditOpen = open; });
       return {
         update(view) {
-          const header = document.querySelector('ew-canvas-header');
-          const ev = header?.editorView;
-          const blockEditOpen = !!document.querySelector('ew-editor-doc')?.blockEditMode;
-          if (!blockEditOpen && !TOOLBAR_EDITOR_VIEWS.has(ev)) return;
-          syncToolbar(view, ev, blockEditOpen);
+          if (!blockEditOpen && !TOOLBAR_EDITOR_VIEWS.has(editorView)) return;
+          syncToolbar(view, editorView, blockEditOpen);
         },
         destroy() {
+          unsubscribeEditorView();
+          unsubscribeBlockEdit();
           hideSelectionToolbar();
           hideBlockToolbar();
         },

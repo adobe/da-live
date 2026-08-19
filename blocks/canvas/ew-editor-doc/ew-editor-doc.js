@@ -362,6 +362,8 @@ export class EwEditorDoc extends LitElement {
       });
     this._unsubscribeProseSelect = canvasBus.editorProseSelectState
       .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
+    this._unsubscribeBlockEditRequest = canvasBus.blockEditRequest
+      .subscribe(({ pos } = {}) => this.enterBlockEdit(pos));
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
@@ -401,6 +403,7 @@ export class EwEditorDoc extends LitElement {
       this.exitBlockEdit();
     };
     document.addEventListener('keydown', this._onBlockEditKeydown, true);
+    canvasBus.blockEditState.emit({ open: true });
     view.focus();
   }
 
@@ -430,6 +433,7 @@ export class EwEditorDoc extends LitElement {
     }
     const view = this._proseContext?.view;
     if (view) clearBlockFocus(view);
+    canvasBus.blockEditState.emit({ open: false });
   }
 
   disconnectedCallback() {
@@ -438,6 +442,7 @@ export class EwEditorDoc extends LitElement {
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._unsubscribeProseSelect?.();
+    this._unsubscribeBlockEditRequest?.();
     this._teardown();
     setSelectionToolbarCtx();
     super.disconnectedCallback();

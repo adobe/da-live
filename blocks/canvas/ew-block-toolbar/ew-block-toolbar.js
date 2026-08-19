@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
@@ -165,8 +166,8 @@ class EwBlockToolbar extends LitElement {
   _onEditBlock() {
     const pos = this.view?.state.selection.from;
     if (pos == null) return;
-    // Open the single-block editor in a modal (see ew-editor-doc.enterBlockEdit).
-    document.querySelector('ew-editor-doc')?.enterBlockEdit(pos);
+    // Ask the doc editor to open the single-block editor modal (see ew-editor-doc.enterBlockEdit).
+    canvasBus.blockEditRequest.emit({ pos });
   }
 
   _onDeleteBlock() {

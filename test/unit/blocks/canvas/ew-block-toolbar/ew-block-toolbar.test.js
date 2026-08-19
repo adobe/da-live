@@ -4,6 +4,7 @@ import { setNx } from '../../../../../scripts/utils.js';
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: EwBlockToolbar } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
+const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
 
 describe('ew-block-toolbar', () => {
   let toolbar;
@@ -131,20 +132,17 @@ describe('ew-block-toolbar', () => {
     expect(use.getAttribute('href')).to.equal('/img/icons/s2-icon-edit-20-n.svg#icon');
   });
 
-  it('opens the single-block edit modal on the doc editor when the edit button is clicked', async () => {
-    // Stub the doc editor lookup so we don't instantiate the heavy real element.
+  it('requests the single-block edit modal via the canvas bus when the edit button is clicked', async () => {
     const calls = [];
-    const stubDoc = { enterBlockEdit: (pos) => calls.push(pos) };
-    const originalQS = document.querySelector.bind(document);
-    document.querySelector = (sel) => (sel === 'ew-editor-doc' ? stubDoc : originalQS(sel));
+    const unsubscribe = canvasBus.blockEditRequest.subscribe((detail) => calls.push(detail));
     try {
       toolbar.view = { state: { selection: { from: 7 } } };
       toolbar.show('cards');
       await toolbar.updateComplete;
       editBtn().click();
-      expect(calls).to.deep.equal([7]);
+      expect(calls).to.deep.equal([{ pos: 7 }]);
     } finally {
-      document.querySelector = originalQS;
+      unsubscribe();
     }
   });
 });
