@@ -24,6 +24,7 @@ export default class DaActionBar extends LitElement {
   static properties = {
     items: { attribute: false },
     permissions: { attribute: false },
+    canDelete: { attribute: false },
     loading: { attribute: false },
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
@@ -40,6 +41,7 @@ export default class DaActionBar extends LitElement {
     this.currentPath = '';
     this.isFavorite = false;
     this.hidePublishConfs = [];
+    this.canDelete = true;
   }
 
   connectedCallback() {
@@ -164,6 +166,11 @@ export default class DaActionBar extends LitElement {
     return this._canWrite && !this.isHlx6;
   }
 
+  get _canDelete() {
+    // `canDelete` is gated by the site config's browser.allowDelete allowlist.
+    return this._canWrite && this.canDelete;
+  }
+
   get _canShare() {
     return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
@@ -223,7 +230,7 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleDelete}
-            class="delete-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            class="delete-button ${this._canDelete ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('delete')}
             <span>Delete</span>
           </button>

@@ -69,6 +69,27 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('_canDelete', () => {
+    it('Defaults to true when user can write', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      expect(el._canDelete).to.be.true;
+    });
+
+    it('Returns false when user cannot write', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read'];
+      expect(el._canDelete).to.be.false;
+    });
+
+    it('Returns false when write but not in the allowlist', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.canDelete = false;
+      expect(el._canDelete).to.be.false;
+    });
+  });
+
   describe('_canRename', () => {
     it('Returns true when user can write and site is not HLX6', () => {
       const el = new DaActionBar();
