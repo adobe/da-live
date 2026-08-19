@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
-import { EditorState, TextSelection } from 'da-y-wrapper';
+import { EditorState, TextSelection, Fragment } from 'da-y-wrapper';
+import { CellSelection } from 'prosemirror-tables';
 import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../../scripts/utils.js';
 
@@ -8,10 +9,12 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const schema = getSchema();
 
 let getSlashContext;
+let hasCellSelection;
 
 before(async () => {
   const mod = await import('../../../../../../blocks/canvas/ew-editor-doc/slash-menu/slash-menu.js');
   getSlashContext = mod.getSlashContext;
+  hasCellSelection = mod.hasCellSelection;
 });
 
 function stateWithParagraph(text) {
@@ -41,5 +44,30 @@ describe('getSlashContext', () => {
 
   it('returns null for an over-long query (cap)', () => {
     expect(getSlashContext(stateWithParagraph(`/${'x'.repeat(60)}`))).to.be.null;
+  });
+});
+
+describe('hasCellSelection', () => {
+  it('is false for a plain text selection', () => {
+    expect(hasCellSelection(stateWithParagraph('/banner'))).to.be.false;
+  });
+
+  it('is true when one or more table cells are selected', () => {
+    const cell = (text) => schema.nodes.table_cell.create(
+      null,
+      schema.nodes.paragraph.create(null, schema.text(text)),
+    );
+    const row = schema.nodes.table_row.create(null, Fragment.fromArray([cell('a'), cell('b')]));
+    const table = schema.nodes.table.create(null, row);
+    const doc = schema.nodes.doc.create(null, table);
+
+    const cellPos = [];
+    doc.descendants((node, pos) => {
+      if (node.type.spec.tableRole === 'cell') cellPos.push(pos);
+    });
+
+    let state = EditorState.create({ schema, doc });
+    state = state.apply(state.tr.setSelection(CellSelection.create(doc, cellPos[0], cellPos[1])));
+    expect(hasCellSelection(state)).to.be.true;
   });
 });
