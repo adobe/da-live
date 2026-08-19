@@ -5,12 +5,10 @@ import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
 import { makeRealView } from '../test-helpers.js';
 import { createTrackingPlugin } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-let editorHtmlChange;
-let editorProseSelectChange;
-let editorSelectChange;
 let getExtensionsBridge;
 let getInstrumentedHTML;
 let parseSections;
@@ -18,7 +16,6 @@ let parseSections;
 before(async () => {
   await import('../../../../../blocks/canvas/ew-page-outline/ew-page-outline.js');
   const editorUtils = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
-  ({ editorHtmlChange, editorProseSelectChange, editorSelectChange } = editorUtils);
   ({ getInstrumentedHTML, parseSections } = editorUtils);
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
 });
@@ -37,7 +34,7 @@ function docSeq(doc) {
 }
 
 // Unlike makeRealView, wires the real tracking plugin so a delete/insert dispatched
-// through it auto-emits editorHtmlChange exactly like the production editor does —
+// through it auto-emits canvasBus.editorHtmlState exactly like the production editor does —
 // needed to test that a reparse-driven expansion reset/re-expand actually happens.
 function makeTrackedView(json) {
   const schema = getSchema();
@@ -45,7 +42,9 @@ function makeTrackedView(json) {
   const dom = document.createElement('div');
   document.body.appendChild(dom);
   let view;
-  const plugins = [createTrackingPlugin(() => editorHtmlChange.emit(getInstrumentedHTML(view)))];
+  const plugins = [
+    createTrackingPlugin(() => canvasBus.editorHtmlState.emit(getInstrumentedHTML(view))),
+  ];
   const state = EditorState.create({ schema, doc, plugins });
   view = new EditorView(dom, { state });
   return view;
@@ -123,12 +122,12 @@ describe('ew-page-outline — expandable default content', () => {
     expect(el.shadowRoot.querySelector('.content-children')).to.be.null;
   });
 
-  it('emits editorProseSelectChange with the child\'s own proseIndex and kind on click', async () => {
+  it('emits editorProseSelectState with the child\'s own proseIndex and kind on click', async () => {
     el.shadowRoot.querySelector('.content-item').click();
     await el.updateComplete;
 
     let received;
-    const unsub = editorProseSelectChange.subscribe((detail) => { received = detail; });
+    const unsub = canvasBus.editorProseSelectState.subscribe((detail) => { received = detail; });
     const paragraphChild = [...el.shadowRoot.querySelectorAll('.content-child')][1];
     paragraphChild.click();
     unsub();
@@ -141,7 +140,7 @@ describe('ew-page-outline — expandable default content', () => {
     await el.updateComplete;
 
     let received;
-    const unsub = editorProseSelectChange.subscribe((detail) => { received = detail; });
+    const unsub = canvasBus.editorProseSelectState.subscribe((detail) => { received = detail; });
     const imageChild = [...el.shadowRoot.querySelectorAll('.content-child')][2];
     imageChild.click();
     unsub();
@@ -172,7 +171,7 @@ describe('ew-page-outline — expandable default content', () => {
   });
 
   it('highlights a content child when the doc selection (not just an outline click) lands on it, and leaves it expanded on a later block selection', async () => {
-    editorSelectChange.emit({ blockIndex: -1, proseIndex: 5, source: 'doc' });
+    canvasBus.editorSelectState.emit({ blockIndex: -1, proseIndex: 5, source: 'doc' });
     await el.updateComplete;
 
     // A collapsed run expands additively to reveal a new selection, with no manual click needed.
@@ -180,7 +179,7 @@ describe('ew-page-outline — expandable default content', () => {
     const paragraphChild = [...el.shadowRoot.querySelectorAll('.content-child')][1];
     expect(paragraphChild.classList.contains('selected')).to.be.true;
 
-    editorSelectChange.emit({ blockIndex: 0, proseIndex: undefined, source: 'doc' });
+    canvasBus.editorSelectState.emit({ blockIndex: 0, proseIndex: undefined, source: 'doc' });
     await el.updateComplete;
 
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
@@ -192,7 +191,7 @@ describe('ew-page-outline — expandable default content', () => {
     // Simulates pressing Enter mid-paragraph: the new empty node has no row of its own
     // (filtered out of parseSections), but its proseIndex (7) falls between the
     // surrounding real children (5 and 9), so it should still resolve to their run.
-    editorSelectChange.emit({ blockIndex: -1, proseIndex: 7, source: 'doc' });
+    canvasBus.editorSelectState.emit({ blockIndex: -1, proseIndex: 7, source: 'doc' });
     await el.updateComplete;
 
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
@@ -223,35 +222,35 @@ describe('ew-page-outline — expandable default content', () => {
     // proseIndex 10 sits after section 0's only child (1) but well before section 1's
     // (20) — with no next item in section 0 to bound it, it's attributed to section 0's
     // run (the trailing/unbounded case a fresh Enter-created node at the end lands in).
-    editorSelectChange.emit({ blockIndex: -1, proseIndex: 10, source: 'doc' });
+    canvasBus.editorSelectState.emit({ blockIndex: -1, proseIndex: 10, source: 'doc' });
     await el.updateComplete;
 
     expect(headers()[0].getAttribute('aria-expanded')).to.equal('true');
     expect(headers()[1].getAttribute('aria-expanded')).to.equal('false');
 
     // proseIndex 25, past section 1's only child with nothing after it, resolves there.
-    editorSelectChange.emit({ blockIndex: -1, proseIndex: 25, source: 'doc' });
+    canvasBus.editorSelectState.emit({ blockIndex: -1, proseIndex: 25, source: 'doc' });
     await el.updateComplete;
 
     expect(headers()[1].getAttribute('aria-expanded')).to.equal('true');
   });
 
   it('resets expansion only when a structural edit actually changes the sections', async () => {
-    // Drives _sections through the real editorHtmlChange/parseSections pipeline (rather
+    // Drives _sections through the real canvasBus.editorHtmlState/parseSections pipeline (rather
     // than the manual fixture in beforeEach) so re-emitting identical HTML is guaranteed
     // to parse to a sectionsEqual result.
     const initialHtml = `<main><div>
       <h2 data-prose-index="1">Title</h2>
       <p data-prose-index="5">Para one</p>
     </div></main>`;
-    editorHtmlChange.emit(initialHtml);
+    canvasBus.editorHtmlState.emit(initialHtml);
     await el.updateComplete;
 
     el.shadowRoot.querySelector('.content-item').click();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
 
-    editorHtmlChange.emit(initialHtml);
+    canvasBus.editorHtmlState.emit(initialHtml);
     await el.updateComplete;
 
     // Same HTML reparses to an equal section tree — sectionsEqual holds, expansion survives.
@@ -260,7 +259,7 @@ describe('ew-page-outline — expandable default content', () => {
     const changedHtml = `<main><div>
       <h2 data-prose-index="1">Title</h2>
     </div></main>`;
-    editorHtmlChange.emit(changedHtml);
+    canvasBus.editorHtmlState.emit(changedHtml);
     await el.updateComplete;
 
     // Structural change (a child removed) — sectionsEqual fails, expansion resets.
@@ -330,7 +329,7 @@ describe('ew-page-outline — content drag & delete', () => {
       ],
     });
 
-    editorHtmlChange.emit(getInstrumentedHTML(bridge.view));
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(bridge.view));
     await el.updateComplete;
 
     el.shadowRoot.querySelector('.content-item').click();

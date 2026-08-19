@@ -437,3 +437,6 @@ export function sanitizeName(value, { allowDot = false, trimTrailing = false } =
   if (trimTrailing) result = result.replace(/[^a-zA-Z0-9]+$/, '');
   return result;
 }
+
+// The minimal valid shape for a brand-new AEM document.
+export const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
