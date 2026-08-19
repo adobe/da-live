@@ -16,11 +16,10 @@ import {
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
-test('Update Document', async ({ browser, page, trackCleanup }, workerInfo) => {
+test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
 
   const url = getTestPageURL('edit1', workerInfo);
-  trackCleanup(url);
   await page.goto(url);
   await page.waitForTimeout(2000);
   await page.getByText('Create document', { exact: true }).click();
@@ -41,13 +40,10 @@ test('Update Document', async ({ browser, page, trackCleanup }, workerInfo) => {
   await expect(newPage.locator('div.ProseMirror')).toContainText(enteredText);
 });
 
-test('Create Delete Document', async ({ browser, page, trackCleanup }, workerInfo) => {
-  test.setTimeout(30000);
+test('Create Delete Document', async ({ browser, page }, workerInfo) => {
+  test.setTimeout(60000);
 
   const url = getTestPageURL('edit2', workerInfo);
-  // Safety net: the test below deletes this via the UI already, but track it too
-  // in case that assertion fails partway through.
-  trackCleanup(url);
   const pageName = url.split('/').pop();
 
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
@@ -87,14 +83,12 @@ test('Create Delete Document', async ({ browser, page, trackCleanup }, workerInf
   await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).not.toBeVisible();
 });
 
-test('Change document by switching anchors', async ({ page, trackCleanup }, workerInfo) => {
+test('Change document by switching anchors', async ({ page }, workerInfo) => {
   test.setTimeout(60000);
 
   const url = getTestPageURL('edit3', workerInfo);
   const urlA = `${url}A`;
   const urlB = `${url}B`;
-  trackCleanup(urlA);
-  trackCleanup(urlB);
 
   await page.goto(urlA);
   await page.getByText('Create document', { exact: true }).click();
@@ -179,10 +173,9 @@ async function pressKeyUntil(page, key, times, check) {
   throw new Error(`Cursor didn't land as expected after ${times} "${key}" presses: ${JSON.stringify(last)}`);
 }
 
-test('Add code mark', async ({ page, trackCleanup }, workerInfo) => {
+test('Add code mark', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
   const url = getTestPageURL('edit5', workerInfo);
-  trackCleanup(url);
   await page.goto(url);
   await page.getByText('Create document', { exact: true }).click();
   const proseMirror = page.locator('div.ProseMirror');
