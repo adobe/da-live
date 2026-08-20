@@ -345,7 +345,10 @@ export function parseSections(htmlText) {
         const rawProseIndex = el.getAttribute('data-block-index');
         const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
         const innerText = el.textContent?.trim() ?? '';
-        const block = { name, blockIndex: flatIndex, proseIndex, innerText };
+        // Classes after the block name are its variant(s) — the same descriptor the
+        // doc editor's header row shows in parentheses (e.g. `cards (highlight)`).
+        const variant = [...el.classList].slice(1).join(', ');
+        const block = { name, variant, blockIndex: flatIndex, proseIndex, innerText };
         blocks.push(block);
         items.push({ type: 'block', ...block });
         flatIndex += 1;

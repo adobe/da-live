@@ -16,7 +16,7 @@ import {
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
-test('Copy and Rename with Versioned document', async ({ page, trackCleanup }, workerInfo) => {
+test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   test.skip(
     TEST_SITE !== 'da-status',
     `
@@ -31,8 +31,6 @@ const link = await page.getByRole('link', { name: orgPageName });
 
   const pageURL = getTestPageURL('copyrename', workerInfo);
   const orgPageName = pageURL.split('/').pop();
-  // Safety net for a failure before the rename below actually happens.
-  trackCleanup(pageURL);
   await page.goto(pageURL);
   await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
@@ -68,7 +66,6 @@ const link = await page.getByRole('link', { name: orgPageName });
 
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
-  trackCleanup(copyFolderURL, { isFolder: true });
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
   await page.getByRole('menuitem', { name: 'Folder' }).click();
@@ -108,8 +105,6 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.getByRole('button', { name: 'Rename' }).click();
   await page.locator(`input[value=${orgPageName}]`).fill(renPageName);
   await page.keyboard.press('Enter');
-  // The document now lives under its renamed path instead of pageURL.
-  trackCleanup(`${pageURL}ren`);
 
   // Open the renamed page
   await page.waitForTimeout(3000);

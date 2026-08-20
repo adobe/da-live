@@ -78,12 +78,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
   };
 
+  const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
   const project = {
     org,
     repo: site,
-    ref: 'main',
+    ref,
     path: path ? `/${path}` : '/',
     view: view || 'edit',
+    hash: window.location.hash,
   };
 
   let token;

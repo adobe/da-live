@@ -86,11 +86,10 @@ test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
   await expect(page.locator('da-dialog')).toContainText('Preview the');
 });
 
-test('Preview the selected page', async ({ page, context, trackCleanup }, workerInfo) => {
+test('Preview the selected page', async ({ page, context }, workerInfo) => {
   test.setTimeout(60000);
 
   const url = getTestPageURL('preview', workerInfo);
-  trackCleanup(url);
   const pageName = url.split('/').pop();
   await createDocument(page, url);
 
@@ -127,11 +126,10 @@ test('Preview the selected page', async ({ page, context, trackCleanup }, worker
   await previewTab.close();
 });
 
-test('Publish the selected page', async ({ page, context, trackCleanup }, workerInfo) => {
+test('Publish the selected page', async ({ page, context }, workerInfo) => {
   test.setTimeout(60000);
 
   const url = getTestPageURL('publish', workerInfo);
-  trackCleanup(url);
   const pageName = url.split('/').pop();
   await createDocument(page, url);
 
