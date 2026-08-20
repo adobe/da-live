@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import {
   fetchBlocks,
   fetchItems,
@@ -12,10 +13,19 @@ import {
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const style = await loadStyle(import.meta.url);
+const [buttonsStyle, formStyle, style] = await Promise.all([
+  getSheet(`${getNx2()}/styles/buttons.css`),
+  getSheet(`${getNx2()}/styles/form.css`),
+  loadStyle(import.meta.url),
+]);
 
-const iconAdd = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
-const iconPreview = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
+const iconAdd = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
+const iconPreview = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
+
+function andMatch(query, target) {
+  const terms = query.split(/\s+/).filter(Boolean);
+  return terms.every((term) => target.includes(term));
+}
 
 /**
  * First-party library panel: blocks, templates, icons, placeholders (OOTB sheet-driven tools).
@@ -29,11 +39,12 @@ class EwPanelLibrary extends LitElement {
     _preview: { state: true },
     _tooltipOpen: { state: true },
     _hashState: { state: true },
+    _search: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
   }
 
@@ -49,6 +60,7 @@ class EwPanelLibrary extends LitElement {
       this._expandedBlock = null;
       this._preview = undefined;
       this._tooltipOpen = null;
+      this._search = '';
       this._loadItems();
     }
   }
@@ -133,6 +145,19 @@ class EwPanelLibrary extends LitElement {
     this._tooltipOpen = this._tooltipOpen === key ? null : key;
   }
 
+  _onSearchInput = (e) => {
+    this._search = e.target.value;
+  };
+
+  _filteredItems() {
+    const q = (this._search || '').trim().toLowerCase();
+    if (!q) return this._items || [];
+    return (this._items || []).filter((item) => {
+      const text = [item.key, item.name, item.value].filter(Boolean).join(' ').toLowerCase();
+      return andMatch(q, text);
+    });
+  }
+
   _renderVariants(block) {
     if (this._expandedBlock !== block.path) return nothing;
     const variants = this._blockVariants.get(block.path);
@@ -153,9 +178,9 @@ class EwPanelLibrary extends LitElement {
               </button>
               <div class="ext-variant-actions">
                 ${v.description ? html`
-                  <button class="ext-action-btn" aria-label="Info"
+                  <button class="nx-action-btn-icon nx-btn-sm" aria-label="Info"
                     @click=${() => this._toggleTooltip(v.name)}>ℹ</button>` : nothing}
-                <button class="ext-action-btn ext-add-btn" aria-label="Add"
+                <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
                   @click=${() => this._insertBlock(v)}>${iconAdd()}</button>
               </div>
             </div>
@@ -179,7 +204,7 @@ class EwPanelLibrary extends LitElement {
                 <span class="ext-item-name">${block.name}</span>
                 <span class="ext-expand-icon">${this._expandedBlock === block.path ? '▾' : '▸'}</span>
               </button>
-              <button class="ext-action-btn ext-preview-btn" aria-label="Preview"
+              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
                 @click=${() => this._openPreview(block)}>${iconPreview()}</button>
             </div>
             ${this._renderVariants(block)}
@@ -200,9 +225,9 @@ class EwPanelLibrary extends LitElement {
               <span class="ext-item-name">${item.name ?? item.key ?? item.title ?? item.value}</span>
             </button>
             <div class="ext-item-actions">
-              <button class="ext-action-btn ext-preview-btn" aria-label="Preview"
+              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
                 @click=${() => this._openPreview(item)}>${iconPreview()}</button>
-              <button class="ext-action-btn ext-add-btn" aria-label="Add"
+              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
                 @click=${() => this._insertTemplate(item)}>${iconAdd()}</button>
             </div>
           </li>
@@ -211,25 +236,53 @@ class EwPanelLibrary extends LitElement {
     `;
   }
 
+  _renderSearchInput(label) {
+    return html`
+      <div class="ext-search">
+        <svg aria-hidden="true" class="ext-search-icon" viewBox="0 0 20 20">
+          <use href="/img/icons/s2-icon-search-20-n.svg#icon"></use>
+        </svg>
+        <input type="search" class="nx-input ext-search-input"
+          placeholder="Search ${label}"
+          aria-label="Search ${label}"
+          .value=${this._search || ''}
+          @input=${this._onSearchInput}>
+      </div>
+    `;
+  }
+
   _renderKeyValueItems(label) {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
     if (!this._items.length) return html`<div class="ext-state">No ${label} found.</div>`;
+
+    const isIcons = this.extension.name === 'icons';
+    const items = this._filteredItems();
+
     return html`
-      <ul class="ext-list">
-        ${this._items.map((item) => html`
-          <li class="ext-item">
-            <button class="ext-item-title" @click=${() => this._insertText(item)}>
-              <span class="ext-item-name">${item.key || item.name || item.value}</span>
-              ${item.value && item.value !== item.key
-                ? html`<span class="ext-item-value">${item.value}</span>` : nothing}
-            </button>
-            <div class="ext-item-actions">
-              <button class="ext-action-btn ext-add-btn" aria-label="Add"
-                @click=${() => this._insertText(item)}>${iconAdd()}</button>
-            </div>
-          </li>
-        `)}
-      </ul>
+      ${this._renderSearchInput(label)}
+      ${items.length ? html`
+        <ul class="ext-list">
+          ${items.map((item) => {
+            const iconSrc = isIcons ? item.icon : null;
+            return html`
+              <li class="ext-item">
+                <button class="ext-item-title" @click=${() => this._insertText(item)}>
+                  ${iconSrc ? html`
+                    <img class="ext-item-icon" src=${iconSrc} alt=""
+                      @error=${(e) => { e.target.style.display = 'none'; }} />` : nothing}
+                  <span class="ext-item-name">${item.key || item.name || item.value}</span>
+                  ${item.value && item.value !== item.key
+                    ? html`<span class="ext-item-value">${item.value}</span>` : nothing}
+                </button>
+                <div class="ext-item-actions">
+                  <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
+                    @click=${() => this._insertText(item)}>${iconAdd()}</button>
+                </div>
+              </li>
+            `;
+          })}
+        </ul>
+      ` : html`<div class="ext-state">No ${label} match “${this._search}”.</div>`}
     `;
   }
 
@@ -245,7 +298,7 @@ class EwPanelLibrary extends LitElement {
       <dialog class="ext-preview-dialog" @close=${() => this._closePreview()}>
         <div class="ext-preview-header">
           <p class="ext-preview-title">${name} preview</p>
-          <button class="ext-preview-close" @click=${() => this._closePreview()}>✕</button>
+          <button class="nx-action-btn-icon nx-btn-sm" aria-label="Close" @click=${() => this._closePreview()}>✕</button>
         </div>
         <div class="ext-preview-body">
           ${error ? html`<div class="ext-preview-error"><p>${error}</p></div>` : nothing}
