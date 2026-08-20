@@ -37,6 +37,90 @@
   outline: none;
 }
 
+/* Block mode: only the focused top-level block stays visible. */
+.ew-editor-doc .ProseMirror > .nx-block-hidden {
+  display: none;
+}
+
+/* Single-block editor presented in a modal (mirrors ew-block-library-modal chrome). */
+
+/* The modal is a top-layer dialog, so take the host out of the flex mount while it is
+   open — otherwise the (now-visible) doc host claims a slot and shrinks the preview.
+   (display:contents can't be used here: canvas.css sets `contain: layout`, which forces
+   a box and overrides it.) */
+:host(.block-edit) {
+  position: absolute;
+  width: 0;
+  height: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.block-edit-modal {
+  /* Drive the panel size from the dialog vars (min == max) so the content can be a
+     plain width:100% — a fixed pixel width here overflows the panel's inner box by its
+     border and produces a spurious horizontal scrollbar. */
+  --nx-dialog-min-width: 900px;
+  --nx-dialog-max-width: 900px;
+  --nx-dialog-max-height: 92vh;
+  --nx-dialog-padding: 0;
+}
+
+/* Near-full-screen; capped a little above the 800px editor column. */
+.block-edit-content {
+  box-sizing: border-box;
+  width: 100%;
+  height: 80vh;
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  font-family: var(--s2-font-family);
+  color: light-dark(var(--s2-gray-900), var(--s2-gray-100));
+}
+
+.block-edit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  border-bottom: 1px solid light-dark(var(--s2-gray-200), var(--s2-gray-700));
+}
+
+.block-edit-title {
+  font-weight: 600;
+  font-size: var(--s2-body-size-m);
+  text-transform: capitalize;
+}
+
+.block-edit-close {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-75);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.block-edit-close:hover {
+  background: light-dark(var(--s2-gray-200), var(--s2-gray-700));
+}
+
+.block-edit-body {
+  display: flex;
+  min-height: 0;
+  overflow: auto;
+}
+
+.block-edit-doc.ew-editor-doc {
+  height: 100%;
+  width: 100%;
+}
+
 .ew-editor-doc .da-slash-hint {
   position: absolute;
   pointer-events: none;

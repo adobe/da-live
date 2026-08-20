@@ -40,9 +40,11 @@ export const canvasBus = Object.freeze({
   undoRequest: createChannel(),
   redoRequest: createChannel(),
   newVersionRequest: createChannel(),
+  blockEditRequest: createChannel(),
 
   undoState: createChannel(),
-  editorViewState: createChannel(),
+  editorViewState: createChannel({ replay: true }),
+  blockEditState: createChannel({ replay: true }),
   editorHtmlState: createChannel({ replay: true }),
   editorSelectState: {
     subscribe: editorSelectChannel.subscribe,
