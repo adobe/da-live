@@ -505,7 +505,7 @@ class EwPageOutline extends LitElement {
                 @drop=${this._onDrop}
                 @dragend=${this._onDragEnd}
                 @click=${() => this._select(item.blockIndex)}>
-              <span class="block-name">${item.name}</span>
+              <span class="block-name">${item.name}${item.variant ? ` (${item.variant})` : ''}</span>
               ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, item.blockIndex)}
               <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
                 <use href="${DRAG_ICON_SRC}#icon"></use>
