@@ -157,11 +157,22 @@ describe('parseSections', () => {
     </div></main>`;
     const [section] = parseSections(html);
     expect(section.blocks).to.deep.equal([
-      { name: 'hero', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
+      { name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
     ]);
     expect(section.items).to.deep.equal([
-      { type: 'block', name: 'hero', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
+      {
+        type: 'block', name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Hero content',
+      },
     ]);
+  });
+
+  it('captures block variant classes (mirrors the doc header parentheses)', () => {
+    const html = `<main><div>
+      <div class="cards highlight blue" data-block-index="3">Cards</div>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.blocks[0].name).to.equal('cards');
+    expect(section.blocks[0].variant).to.equal('highlight, blue');
   });
 
   it('returns empty blocks and items for a section with nothing in it', () => {
@@ -298,7 +309,9 @@ describe('parseSections', () => {
       children: [{ type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Section one text', snippet: 'Section one text' }],
     }]);
     expect(sections[1].items).to.deep.equal([
-      { type: 'block', name: 'cards', blockIndex: 0, proseIndex: 0, innerText: 'Cards' },
+      {
+        type: 'block', name: 'cards', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Cards',
+      },
     ]);
   });
 });

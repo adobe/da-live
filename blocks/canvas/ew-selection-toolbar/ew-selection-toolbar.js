@@ -73,7 +73,9 @@ class EwSelectionToolbar extends LitElement {
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
 
-  get _imageMenu() { return this.shadowRoot?.querySelector('nx-menu'); }
+  get _menus() { return [...(this.shadowRoot?.querySelectorAll('nx-menu') ?? [])]; }
+
+  get _wrap() { return this.shadowRoot?.querySelector('.toolbar-wrap'); }
 
   show() {
     const main = document.querySelector('main');
@@ -87,7 +89,21 @@ class EwSelectionToolbar extends LitElement {
 
   hide() {
     this.classList.remove('open');
-    this._imageMenu?.close();
+    this._menus.forEach((m) => m.close());
+    this.requestUpdate();
+  }
+
+  // The toolbar box is a top-layer popover so it renders above a modal <dialog> (block
+  // edit); keep its open state in sync with the `.open` class after each render.
+  _syncPopover() {
+    const wrap = this._wrap;
+    if (!wrap?.showPopover) return;
+    const isOpen = wrap.matches(':popover-open');
+    if (this.open && !isOpen) {
+      try { wrap.showPopover(); } catch { /* not yet connected */ }
+    } else if (!this.open && isOpen) {
+      try { wrap.hidePopover(); } catch { /* already hidden */ }
+    }
   }
 
   get open() {
@@ -97,7 +113,7 @@ class EwSelectionToolbar extends LitElement {
   get isInteracting() {
     return (this._picker?.open ?? false)
       || (this._altDialogOpen ?? false)
-      || (this._imageMenu?.open ?? false);
+      || this._menus.some((m) => m.open);
   }
 
   _icon(name) {
@@ -278,6 +294,7 @@ class EwSelectionToolbar extends LitElement {
     if (changed.has('org') || changed.has('site')) {
       this._checkAemAssets();
     }
+    this._syncPopover();
   }
 
   _renderToolbarButton({ id, label, icon }) {
@@ -323,6 +340,28 @@ class EwSelectionToolbar extends LitElement {
     return this._renderToolbarButton(item);
   }
 
+  _onTableMenuSelect(e) {
+    if (!this.view) return;
+    COMMAND_BY_ID.get(e.detail.id)?.apply(this.view);
+    this.requestUpdate();
+    this.view.focus();
+  }
+
+  _renderTableMenu() {
+    const items = TABLE_ITEMS
+      .filter(({ id }) => this._isCommandVisible(id))
+      .map(({ id, label, icon }) => ({ id, label, icon }));
+    return html`
+      <nx-menu placement="above" .items=${items}
+        @select=${(e) => this._onTableMenuSelect(e)}>
+        <button slot="trigger" type="button" class="toolbar-btn"
+          aria-label="Edit table" title="Edit table">
+          ${this._icon('tableedit')}
+        </button>
+      </nx-menu>
+    `;
+  }
+
   _renderBlockTypePicker() {
     return html`
       <span class="toolbar-block-type-wrap">
@@ -346,7 +385,7 @@ class EwSelectionToolbar extends LitElement {
       { items: PICKER_DEFS, render: () => this._renderBlockTypePicker() },
       { items: MARK_ITEMS, render: () => renderButtons(MARK_ITEMS) },
       { items: STRUCTURE_ITEMS, render: () => renderButtons(STRUCTURE_ITEMS) },
-      { items: TABLE_ITEMS, render: () => renderButtons(TABLE_ITEMS) },
+      { items: TABLE_ITEMS, render: () => this._renderTableMenu() },
       { items: LINK_ITEMS, render: () => renderButtons(LINK_ITEMS) },
       { items: IMAGE_ITEMS, render: () => renderImageItems(IMAGE_ITEMS) },
     ];
@@ -361,7 +400,7 @@ class EwSelectionToolbar extends LitElement {
   render() {
     const disabled = !this.view;
     return html`
-      <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
+      <div class="toolbar-wrap" popover="manual" @mousedown=${(e) => e.preventDefault()}>
         <div class="toolbar-actions" ?data-disabled=${disabled}
           @click=${(e) => this._onToolbarClick(e)}>
           ${this._renderSections()}
