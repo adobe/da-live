@@ -168,9 +168,12 @@ export function parseAemError(xError) {
   return xError.replace('[admin] ', '');
 }
 
-// `action` is the admin API namespace: 'preview' or 'live' (the latter is the
-// admin API's name for publish). Routes through nx's `aem` API, which detects
-// HLX6 vs legacy (via isHlx6) and calls the correct endpoint for the org/site.
+/**
+ * Publishes or previews a path via AEM.
+ * @param {string} path - The path to save.
+ * @param {'live'|'preview'} action - 'live' publishes, anything else previews.
+ * @returns {Promise<object>} The AEM response body, or an { error } object on failure.
+ */
 export async function saveToAem(path, action) {
   const { aem } = await getNx2Api();
   const aemPath = path.toLowerCase();
@@ -200,6 +203,13 @@ export async function getExistingSchedule(org, site, path) {
   }
 }
 
+/**
+ * Creates a version snapshot for a path. Failures are swallowed and logged
+ * since versioning is a best-effort side effect of saving, not a save blocker.
+ * @param {string} pathname - The path to version.
+ * @param {string} [label] - The version comment/label.
+ * @returns {Promise<void>}
+ */
 export async function saveDaVersion(pathname, label = 'Published') {
   try {
     const { versions } = await getNx2Api();
@@ -210,6 +220,18 @@ export async function saveDaVersion(pathname, label = 'Published') {
   }
 }
 
+/**
+ * Runs the preview-then-publish flow for a path. Always previews first;
+ * when publishing, checks for an existing snapshot schedule unless skipped
+ * and lets the caller decide whether to proceed via `opts.onScheduled`.
+ * @param {string} path - The path to act on.
+ * @param {'preview'|'live'} action - 'preview' stops after preview; 'live' also publishes.
+ * @param {object} [opts]
+ * @param {boolean} [opts.skipSchedule] - Skip the existing-schedule check before publishing.
+ * @param {(schedule: object) => Promise<boolean>|boolean} [opts.onScheduled] - Called with the
+ *   existing schedule when one is found; return true to proceed with publish anyway.
+ * @returns {Promise<object>} The AEM response, `{ cancelled: true }`, or an `{ error }` object.
+ */
 export async function aemAction(path, action, opts = {}) {
   const previewJson = await saveToAem(path, 'preview');
   if (previewJson.error) return previewJson;
@@ -339,11 +361,19 @@ export async function checkLockdownImages(owner) {
   }
 }
 
+/**
+ * Fetches org and (optionally) site configs, caching the in-flight/resolved
+ * promises by path so repeated calls for the same org/site reuse one request
+ * instead of firing duplicate fetches.
+ * @param {object} params
+ * @param {string} params.org - The org to fetch config for.
+ * @param {string} [params.site] - The site to also fetch config for.
+ * @returns {Promise[]} `[orgConfigPromise]`, or `[orgConfigPromise, siteConfigPromise]`
+ *   when `site` is given; `[Promise.resolve(null)]` when `org` is missing.
+ */
 export const fetchDaConfigs = (() => {
   const configCache = {};
 
-  // getNx2Api's config.get is isHlx6-aware: it reads from api.aem.live for a
-  // migrated org/site, and falls back to admin.da.live otherwise.
   const fetchConfig = async (org, site) => {
     const { config: configApi } = await getNx2Api();
     const resp = await configApi.get({ org, site });
