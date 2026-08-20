@@ -45,6 +45,11 @@ export function getSlashContext(state) {
   const slashIndex = prefix.lastIndexOf('/');
   if (slashIndex === -1) return null;
 
+  if (slashIndex > 0) {
+    if (mode !== 'cell') return null;
+    if (!prefix.slice(0, slashIndex).trimEnd().endsWith(',')) return null;
+  }
+
   const query = prefix.slice(slashIndex + 1);
   if (query.length > 50) return null;
 
