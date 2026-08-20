@@ -5,7 +5,6 @@ import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '.
 import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
-  sourceUrlFromEditorCtx,
   controllerPathnameFromEditorCtx,
   editorDocRenderPhase,
 } from './utils/ctx.js';
@@ -25,6 +24,7 @@ import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { getSelectionToolbar, hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
+import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
@@ -269,13 +269,12 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
-    const sourceUrl = sourceUrlFromEditorCtx(this.ctx);
-
-    const session = this.session ?? await resolveEditorDocSession(sourceUrl);
+    const session = this.session ?? await resolveEditorDocSession(this.ctx);
     if (!session.ok) {
       this._error = session.error;
       return;
     }
+    const { sourceUrl } = session;
 
     try {
       const { token, permissions } = session;
@@ -286,6 +285,7 @@ export class EwEditorDoc extends LitElement {
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
         extraPlugins: [
+          mediaBusImage(this.ctx),
           createExtensionsBridgePlugin(),
           createTrackingPlugin(
             () => {

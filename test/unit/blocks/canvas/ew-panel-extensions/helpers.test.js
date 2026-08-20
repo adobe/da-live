@@ -5,11 +5,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
 let extensionToPanelView;
+let getPreviewStatus;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
+  getPreviewStatus = mod.getPreviewStatus;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -206,5 +208,42 @@ describe('extensionToPanelView', () => {
     expect(view.experience).to.equal('inline');
     expect(view.load).to.be.a('function');
     expect(view.openModal).to.be.undefined;
+  });
+});
+
+// getPreviewStatus now goes through getNx2Api's isHlx6-aware status.get, not the legacy
+// admin.hlx.page-only aemAdmin() helper. A real Response keeps isHlx6's ping (which fires
+// before the actual status call) safe regardless of route.
+describe('getPreviewStatus', () => {
+  let savedFetch;
+
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => {
+    window.fetch = savedFetch;
+    window.localStorage.removeItem('hlx6-upgrade');
+  });
+
+  it('returns true when preview status is 200', async () => {
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ preview: { status: 200 } }),
+      { status: 200 },
+    ));
+    const result = await getPreviewStatus({ org: 'pstatusorg', site: 'pstatussite', pathname: '/p' });
+    expect(result).to.be.true;
+  });
+
+  it('returns false when preview status is not 200', async () => {
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ preview: { status: 404 } }),
+      { status: 200 },
+    ));
+    const result = await getPreviewStatus({ org: 'pstatusorg2', site: 'pstatussite2', pathname: '/p' });
+    expect(result).to.be.false;
+  });
+
+  it('returns null when the status call fails', async () => {
+    window.fetch = () => Promise.resolve(new Response('{}', { status: 500 }));
+    const result = await getPreviewStatus({ org: 'pstatusorg3', site: 'pstatussite3', pathname: '/p' });
+    expect(result).to.equal(null);
   });
 });
