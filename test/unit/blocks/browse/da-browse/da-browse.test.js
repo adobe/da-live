@@ -347,10 +347,12 @@ describe('DaBrowse Component', () => {
 
   describe('getEditor', () => {
     function mockConfig(rows) {
-      window.fetch = async () => ({
-        ok: true,
-        json: async () => ({ data: rows }),
-      });
+      // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); answer that
+      // with a real Response (so its headers.get() call is safe) and defer everything else.
+      window.fetch = async (url) => {
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+        return { ok: true, json: async () => ({ data: rows }) };
+      };
     }
 
     let origFetch;
