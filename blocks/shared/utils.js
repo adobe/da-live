@@ -267,7 +267,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
   if (!daResp.ok) return undefined;
   if (!preview) return undefined;
-  return aemAdmin(path, 'preview');
+  return aemAction(path, 'preview');
 }
 
 export const getSheetByIndex = (json, index = 0) => {
