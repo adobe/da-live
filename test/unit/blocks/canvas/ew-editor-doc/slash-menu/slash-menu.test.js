@@ -45,6 +45,13 @@ describe('getSlashContext', () => {
   it('returns null for an over-long query (cap)', () => {
     expect(getSlashContext(stateWithParagraph(`/${'x'.repeat(60)}`))).to.be.null;
   });
+
+  it('opens on the last "/" so a prior comma-separated value does not block it', () => {
+    const ctx = getSlashContext(stateWithParagraph('red, /bl'));
+    expect(ctx).to.not.be.null;
+    expect(ctx.query).to.equal('bl');
+    expect(ctx.anchorPos).to.equal(6); // position of the second "/"
+  });
 });
 
 describe('hasCellSelection', () => {

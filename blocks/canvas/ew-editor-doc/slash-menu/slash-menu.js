@@ -42,12 +42,13 @@ export function getSlashContext(state) {
   if (head <= paraStart) return null;
 
   const prefix = state.doc.textBetween(paraStart, head, '\ufffc', '\ufffc');
-  if (!prefix.startsWith('/')) return null;
+  const slashIndex = prefix.lastIndexOf('/');
+  if (slashIndex === -1) return null;
 
-  const query = prefix.slice(1);
+  const query = prefix.slice(slashIndex + 1);
   if (query.length > 50) return null;
 
-  return { query, anchorPos: paraStart, mode };
+  return { query, anchorPos: paraStart + slashIndex, mode };
 }
 
 // A CellSelection (one or more selected table cells) carries `$anchorCell`;
