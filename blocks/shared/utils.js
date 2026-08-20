@@ -204,23 +204,6 @@ export async function getExistingSchedule(org, site, path) {
 }
 
 /**
- * Creates a version snapshot for a path. Failures are swallowed and logged
- * since versioning is a best-effort side effect of saving, not a save blocker.
- * @param {string} pathname - The path to version.
- * @param {string} [label] - The version comment/label.
- * @returns {Promise<void>}
- */
-export async function saveDaVersion(pathname, label = 'Published') {
-  try {
-    const { versions } = await getNx2Api();
-    await versions.create(pathname, { comment: label });
-  } catch {
-    // eslint-disable-next-line no-console
-    console.log(`Error creating auto version (${label}).`);
-  }
-}
-
-/**
  * Runs the preview-then-publish flow for a path. Always previews first;
  * when publishing, checks for an existing snapshot schedule unless skipped
  * and lets the caller decide whether to proceed via `opts.onScheduled`.

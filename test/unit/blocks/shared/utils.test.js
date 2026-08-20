@@ -7,7 +7,6 @@ import {
   aemAdmin,
   aemAction,
   saveToDa,
-  saveDaVersion,
   getSheetByIndex,
   getSheetByName,
   getFirstSheet,
@@ -753,32 +752,6 @@ describe('fetchDaConfigs', () => {
 
     const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgfail' }));
     expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgfail', status: 500 });
-  });
-});
-
-describe('saveDaVersion', () => {
-  let savedFetch;
-  beforeEach(() => { savedFetch = window.fetch; });
-  afterEach(() => { window.fetch = savedFetch; });
-
-  it('POSTs to the versionsource endpoint with the correct path and label', async () => {
-    let capturedUrl;
-    let capturedOpts;
-    window.fetch = (url, opts) => {
-      capturedUrl = url;
-      capturedOpts = opts;
-      return Promise.resolve(new Response('ok', { status: 200 }));
-    };
-
-    await saveDaVersion('/org/site/doc', 'Previewed');
-    expect(capturedUrl).to.include('/versionsource/org/site/doc');
-    expect(capturedOpts.method).to.equal('POST');
-    expect(JSON.parse(capturedOpts.body)).to.deep.equal({ label: 'Previewed' });
-  });
-
-  it('Silently swallows fetch errors', async () => {
-    window.fetch = () => Promise.reject(new Error('network error'));
-    await saveDaVersion('/org/site/doc', 'Published');
   });
 });
 
