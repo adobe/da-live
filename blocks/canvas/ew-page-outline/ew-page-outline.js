@@ -9,6 +9,7 @@ import {
   deleteContentItem,
   deleteSection,
   insertBlockAtSectionStart,
+  insertSection,
   moveBlock,
   moveBlockToContentItem,
   moveBlockToSection,
@@ -19,6 +20,7 @@ import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_BLOCK_ICON_SRC = '/img/icons/s2-icon-tableadd-20-n.svg';
+const ADD_SECTION_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
 const DRAG_ICON_SRC = '/img/icons/s2-icon-draghandle-20-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -374,6 +376,14 @@ class EwPageOutline extends LitElement {
     openBlockLibraryModal({ onInsert });
   }
 
+  _onAddSection(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    const { view } = getExtensionsBridge();
+    if (!view) return;
+    insertSection(view);
+  }
+
   // Array position (not proseIndex) of the run holding this child, so a delete can find
   // it again afterward without comparing positions across the edit (see _onDelete).
   _findRunLocation(proseIndex) {
@@ -531,7 +541,15 @@ class EwPageOutline extends LitElement {
         : html`<ul class="outline-list" role="tree" aria-label="Page outline"
                 @keydown=${this._onTreeKeydown}>
               ${this._sections.map((sec, i) => this._renderSection(sec, i === 0))}
-            </ul>`}
+            </ul>
+            <button type="button" class="add-section-btn" draggable="false"
+                    aria-label="Add section"
+                    @click=${(e) => this._onAddSection(e)}>
+              <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+                <use href="${ADD_SECTION_ICON_SRC}#icon"></use>
+              </svg>
+              <span>Add section</span>
+            </button>`}
       </div>
     </section>`;
   }
