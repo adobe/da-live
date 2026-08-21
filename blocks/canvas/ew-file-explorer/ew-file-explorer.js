@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
-import { listFolder, itemHashPath } from '../../shared/daFiles.js';
+import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
+import { iconPathForExt } from '../../shared/icons.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
 import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
 import getEditPath from '../../browse/shared.js';
@@ -9,6 +10,8 @@ import '../../shared/da-name-dialog/da-name-dialog.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
+await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
 const [buttons, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
@@ -16,6 +19,23 @@ const [buttons, style] = await Promise.all([
 ]);
 
 const CREATE_PAGE_ERROR = 'Could not create the page. Try a different name.';
+
+const COPYABLE_EXTS = new Set(['html', 'json']);
+
+const CATEGORIES = [
+  { value: 'all', label: 'All' },
+  { value: 'page', label: 'Pages' },
+  { value: 'sheet', label: 'Sheets' },
+  { value: 'fragment', label: 'Fragments' },
+];
+
+// Fragments are just pages that live under a /fragments/ folder anywhere in the path.
+function categoryForFile(item) {
+  if (item.ext === 'json') return 'sheet';
+  if (item.ext !== 'html') return null;
+  const parts = (item.path || '').replace(/^\//, '').split('/');
+  return parts.includes('fragments') ? 'fragment' : 'page';
+}
 
 function listItemToNode(item, cache) {
   const pathKey = (item.path || '').replace(/^\//, '');
@@ -47,6 +67,10 @@ function buildTree(cache, rootFullpath) {
 
 const REFRESH_ICON_SRC = '/img/icons/s2-icon-refresh-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-fileadd-20-n.svg';
+const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
+const CLEAR_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
+const COPY_ICON_SRC = '/img/icons/s2-icon-paste-20-n.svg';
+const CHECKMARK_ICON_SRC = '/img/icons/s2-icon-checkmark-20-n.svg';
 const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
 const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
 
@@ -58,11 +82,18 @@ class EwFileExplorer extends LitElement {
     _expanded: { state: true },
     _selectedPath: { state: true },
     _treeRoot: { state: true },
+    _searchTerm: { state: true },
+    _searchResults: { state: true },
+    _searching: { state: true },
+    _category: { state: true },
+    _matchingFolders: { state: true },
+    _categoryCrawling: { state: true },
     _createDialog: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
+    this._category ??= 'all';
     this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
     this._onAgentChange = async ({ detail }) => {
@@ -83,6 +114,9 @@ class EwFileExplorer extends LitElement {
     super.disconnectedCallback();
     this._unsubHash?.();
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, this._onAgentChange);
+    this._clearSearch();
+    this._resetCategoryCrawl();
+    this._clearCrawlCache();
   }
 
   updated() {
@@ -100,6 +134,9 @@ class EwFileExplorer extends LitElement {
       this._selectedPath = undefined;
       this._error = null;
       this._treeRoot = null;
+      this._clearSearch();
+      this._category = 'all';
+      this._resetCategoryCrawl();
       return;
     }
 
@@ -109,6 +146,10 @@ class EwFileExplorer extends LitElement {
       this._cache = {};
       this._expanded = new Set();
       this._treeRoot = null;
+      this._clearSearch();
+      this._category = 'all';
+      this._resetCategoryCrawl();
+      this._clearCrawlCache();
       this._loadFromLeaves(org, site, path);
     } else if (path) {
       this._expandToPath(path);
@@ -285,11 +326,243 @@ class EwFileExplorer extends LitElement {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  _onRowKeydown(e, item) {
-    if (e.target !== e.currentTarget) return;
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
-    this._onItemClick(item);
+  async _onCopyUrl(e, item) {
+    e.stopPropagation();
+    const url = getAemUrl(item);
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+  }
+
+  // Crawls the site once per root, streaming files into `entry.files` as they're
+  // found (via crawl()'s per-file callback) rather than waiting for the whole
+  // site to finish. `entry.listeners` are notified on a short interval (not per
+  // file) so search results can update live without hammering render() on huge
+  // sites. Cached so repeated searches never re-crawl.
+  _getCrawlEntry() {
+    const root = this._treeRoot;
+    this._crawlCache ??= {};
+    if (!this._crawlCache[root]) {
+      const entry = { files: [], done: false, listeners: new Set() };
+      const notify = () => entry.listeners.forEach((fn) => fn());
+      const { results, cancelCrawl } = crawl({
+        path: root,
+        throttle: 20,
+        callback: (file) => { entry.files.push(file); },
+      });
+      entry.cancelCrawl = cancelCrawl;
+      entry.flushTimer = setInterval(notify, 150);
+      results.then(() => {
+        entry.done = true;
+        clearInterval(entry.flushTimer);
+        notify();
+      });
+      this._crawlCache[root] = entry;
+    }
+    return this._crawlCache[root];
+  }
+
+  // Starts the crawl on first interaction with the search bar (focusing the input
+  // or opening the category picker) instead of waiting for the first keystroke or
+  // category pick, so results feel instant once the user actually filters.
+  _warmCrawl() {
+    if (!this._treeRoot) return;
+    this._getCrawlEntry();
+  }
+
+  _clearCrawlCache() {
+    Object.values(this._crawlCache ?? {}).forEach((entry) => {
+      clearInterval(entry.flushTimer);
+      entry.cancelCrawl?.();
+    });
+    this._crawlCache = {};
+  }
+
+  _runSearch(term) {
+    this._searchUnsub?.();
+    this._searchUnsub = null;
+    if (!term) {
+      this._searchResults = null;
+      this._searching = false;
+      return;
+    }
+    const entry = this._getCrawlEntry();
+    const lower = term.toLowerCase();
+    const category = this._category ?? 'all';
+    const matchesFilter = (f) => f.name?.toLowerCase().includes(lower)
+      && (category === 'all' || categoryForFile(f) === category);
+    // On a large, still-crawling site entry.files can reach into the thousands —
+    // re-filtering all of it on every ~150ms flush would make typing feel laggy.
+    // Only scan what's arrived since the last flush and accumulate matches.
+    const matches = [];
+    let scanned = 0;
+    const applyFilter = () => {
+      matches.push(...entry.files.slice(scanned).filter(matchesFilter));
+      scanned = entry.files.length;
+      this._searchResults = matches.slice();
+      this._searching = !entry.done;
+    };
+    applyFilter();
+    entry.listeners.add(applyFilter);
+    this._searchUnsub = () => entry.listeners.delete(applyFilter);
+  }
+
+  // Selecting a category kicks off (or reuses) the same site crawl search uses, so
+  // folders that provably contain no matches can be hidden rather than just leaving
+  // their files filtered once expanded. Results narrow in as the crawl streams in,
+  // same as search.
+  _onCategoryChange(e) {
+    this._category = e.detail.value;
+    this._resetCategoryCrawl();
+    if (this._category !== 'all') {
+      const entry = this._getCrawlEntry();
+      // Same reasoning as _runSearch: only fold in files that arrived since the
+      // last flush, rather than rebuilding the whole folder set from scratch.
+      const folders = new Set();
+      let scanned = 0;
+      const recompute = () => {
+        entry.files.slice(scanned).forEach((f) => this._addMatchingFolders(f, folders));
+        scanned = entry.files.length;
+        this._matchingFolders = new Set(folders);
+        this._categoryCrawling = !entry.done;
+      };
+      recompute();
+      entry.listeners.add(recompute);
+      this._categoryUnsub = () => entry.listeners.delete(recompute);
+    }
+    if (this._searchTerm) this._runSearch(this._searchTerm);
+  }
+
+  _resetCategoryCrawl() {
+    this._categoryUnsub?.();
+    this._categoryUnsub = null;
+    this._matchingFolders = null;
+    this._categoryCrawling = false;
+  }
+
+  // Adds every ancestor folder pathKey of `file` into `folders`, if it matches the
+  // active category — so _visibleChildren can hide folders proven to have no match.
+  _addMatchingFolders(file, folders) {
+    if (categoryForFile(file) !== this._category) return;
+    const parts = (file.path || '').replace(/^\//, '').split('/');
+    for (let i = 1; i < parts.length; i += 1) folders.add(parts.slice(0, i).join('/'));
+  }
+
+  _buildMatchingFolders(files) {
+    const folders = new Set();
+    files.forEach((f) => this._addMatchingFolders(f, folders));
+    return folders;
+  }
+
+  // Files are narrowed directly by category. Folders are hidden only once the
+  // active-category crawl proves they contain no matching descendant.
+  _visibleChildren(children) {
+    if (this._category === 'all' || !children) return children;
+    return children.filter((c) => {
+      if (c.type === 'directory') return this._matchingFolders?.has(c.pathKey) ?? false;
+      return categoryForFile(c) === this._category;
+    });
+  }
+
+  _onSearchInput(e) {
+    const term = e.target.value.trim();
+    if (!term) {
+      this._clearSearch();
+      return;
+    }
+    this._searchTerm = term;
+    clearTimeout(this._searchDebounceId);
+    // Mark searching immediately so the "no matches" state can't flash during
+    // the debounce window, before _runSearch has even looked at this term.
+    this._searching = true;
+    this._searchDebounceId = setTimeout(() => this._runSearch(term), 200);
+  }
+
+  _onSearchKeydown(e) {
+    if (e.key !== 'Escape') return;
+    e.target.value = '';
+    this._clearSearch();
+  }
+
+  _onClearClick() {
+    const input = this.shadowRoot.querySelector('.search-input');
+    if (input) input.value = '';
+    this._clearSearch();
+  }
+
+  _clearSearch() {
+    clearTimeout(this._searchDebounceId);
+    this._searchUnsub?.();
+    this._searchUnsub = null;
+    this._searchTerm = '';
+    this._searchResults = null;
+    this._searching = false;
+  }
+
+  // Path hint is shown relative to the explorer's root (usually the site root, but
+  // may be a deeper folder when the user only has permission on a subtree) — the
+  // org/site prefix is always the same for every row here, so it's just noise.
+  _relativeParentPath(item) {
+    const fullParent = item.path.replace(/^\//, '').split('/').slice(0, -1).join('/');
+    const rootPathKey = (this._treeRoot || '').replace(/^\//, '');
+    if (fullParent === rootPathKey) return '';
+    if (fullParent.startsWith(`${rootPathKey}/`)) return fullParent.slice(rootPathKey.length + 1);
+    return fullParent;
+  }
+
+  // Copyable rows show the exact URL the copy button would copy. Other rows
+  // (folders, images, etc.) have nothing to copy, so no title is needed.
+  _rowTitle(item) {
+    return COPYABLE_EXTS.has(item.ext) ? getAemUrl(item) : '';
+  }
+
+  _renderSearchResult(item) {
+    const hashPath = itemHashPath(item);
+    const selected = this._selectedPath === hashPath;
+    const copyable = COPYABLE_EXTS.has(item.ext);
+    const parentPath = this._relativeParentPath(item);
+
+    return html`
+      <li role="none">
+        <div class="row-wrap${selected ? ' selected' : ''}"
+          @click="${() => this._onItemClick(item)}">
+          <button type="button" class="row file" title="${this._rowTitle(item) || nothing}">
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(item.ext)}#icon"></use></svg>
+            <span class="label">
+              ${item.name}
+              <span class="path-hint">${parentPath}</span>
+            </span>
+          </button>
+          ${copyable ? html`
+            <button type="button" class="copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${item.name}"
+              @click="${(e) => this._onCopyUrl(e, item)}">
+              <svg class="icon-paste" viewBox="0 0 20 20" aria-hidden="true"><use href="${COPY_ICON_SRC}#icon"></use></svg>
+              <svg class="icon-checkmark" viewBox="0 0 20 20" aria-hidden="true"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
+            </button>` : nothing}
+        </div>
+      </li>`;
+  }
+
+  _categoryLabel() {
+    return CATEGORIES.find((c) => c.value === this._category)?.label;
+  }
+
+  _renderSearchList() {
+    const count = this._searchResults?.length ?? 0;
+    const hasResults = count > 0;
+    const categoryLabel = this._categoryLabel();
+    const scope = this._category !== 'all' && categoryLabel ? ` in ${categoryLabel}` : '';
+    let statusText;
+    if (this._searching) statusText = 'Searching…';
+    else if (hasResults) statusText = `${count} result${count === 1 ? '' : 's'} found`;
+    else statusText = `No matches${scope} for "${this._searchTerm}".`;
+
+    return html`
+      <p class="notice search-status">${statusText}</p>
+      ${hasResults ? html`
+        <ul class="tree" role="list" aria-label="Search results">
+          ${this._searchResults.map((item) => this._renderSearchResult(item))}
+        </ul>` : nothing}
+    `;
   }
 
   _openCreateDialog(e, item) {
@@ -325,23 +598,33 @@ class EwFileExplorer extends LitElement {
   }
 
   _renderNode(item, depth) {
-    const { type, pathKey, name, children } = item;
+    const { type, pathKey, name, children, ext } = item;
     const isDir = type === 'directory';
     const expanded = isDir && this._expanded?.has(pathKey);
     const hashPath = itemHashPath(item);
     const selected = !isDir && this._selectedPath === hashPath;
+    const copyable = COPYABLE_EXTS.has(ext);
+    const visibleChildren = this._visibleChildren(children);
 
     return html`
       <li role="none">
-        <div role="treeitem"
-          class="row${isDir ? '' : ' file'}${selected ? ' selected' : ''}"
-          style="--depth: ${depth}"
-          tabindex="-1"
-          aria-expanded="${isDir ? expanded : nothing}"
-          aria-selected="${selected}"
-          @click="${() => this._onItemClick(item)}"
-          @keydown="${(e) => this._onRowKeydown(e, item)}">
-          <span class="label">${name}</span>
+        <div class="row-wrap${selected ? ' selected' : ''}" style="--depth: ${depth}"
+          @click="${() => this._onItemClick(item)}">
+          <button type="button" role="treeitem"
+            class="row${isDir ? '' : ' file'}"
+            tabindex="-1"
+            title="${this._rowTitle(item) || nothing}"
+            aria-expanded="${isDir ? expanded : nothing}"
+            aria-selected="${selected}">
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(ext)}#icon"></use></svg>
+            <span class="label">${name}</span>
+          </button>
+          ${copyable ? html`
+            <button type="button" class="copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${name}"
+              @click="${(e) => this._onCopyUrl(e, item)}">
+              <svg class="icon-paste" viewBox="0 0 20 20" aria-hidden="true"><use href="${COPY_ICON_SRC}#icon"></use></svg>
+              <svg class="icon-checkmark" viewBox="0 0 20 20" aria-hidden="true"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
+            </button>` : nothing}
           ${isDir ? html`
             <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn new-page-btn" draggable="false"
               aria-label="New page in ${name}"
@@ -352,9 +635,9 @@ class EwFileExplorer extends LitElement {
               </svg>
             </button>` : nothing}
         </div>
-        ${expanded && children.length ? html`
+        ${expanded && visibleChildren.length ? html`
           <ul role="group">
-            ${children.map((c) => this._renderNode(c, depth + 1))}
+            ${visibleChildren.map((c) => this._renderNode(c, depth + 1))}
           </ul>` : nothing}
       </li>`;
   }
@@ -377,11 +660,30 @@ class EwFileExplorer extends LitElement {
     const tree = buildTree(this._cache ?? {}, this._treeRoot);
 
     return html`<div class="ew-file-explorer">
-      <ul class="tree" role="tree" aria-label="Files"
-        @keydown="${(e) => treeKeydown(e, this.shadowRoot)}"
-        @focusin="${(e) => treeFocusIn(e, this.shadowRoot)}">
-        ${tree.map((item) => this._renderNode(item, 0))}
-      </ul>
+      <div class="search-bar" @focusin="${() => this._warmCrawl()}">
+        <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${SEARCH_ICON_SRC}#icon"></use></svg>
+        <input type="search" class="search-input" placeholder="Filter files" aria-label="Filter files"
+          .value="${this._searchTerm ?? ''}"
+          @input="${(e) => this._onSearchInput(e)}"
+          @keydown="${(e) => this._onSearchKeydown(e)}">
+        <button type="button" class="search-clear" aria-label="Clear search" @click="${() => this._onClearClick()}">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
+        </button>
+        <nx-picker
+          .items="${CATEGORIES}"
+          .value="${this._category ?? 'all'}"
+          placement="below-end"
+          @change="${(e) => this._onCategoryChange(e)}">
+        </nx-picker>
+      </div>
+      ${this._searchTerm ? this._renderSearchList() : html`
+        ${this._categoryCrawling ? html`
+          <p class="notice search-status">Scanning for ${(this._categoryLabel() ?? '').toLowerCase()}…</p>` : nothing}
+        <ul class="tree" role="tree" aria-label="Files"
+          @keydown="${(e) => treeKeydown(e, this.shadowRoot)}"
+          @focusin="${(e) => treeFocusIn(e, this.shadowRoot)}">
+          ${tree.map((item) => this._renderNode(item, 0))}
+        </ul>`}
       <da-name-dialog
         dialog-title="New page in ${this._createDialog?.folder?.split('/').pop() ?? ''}"
         name-placeholder="page name"

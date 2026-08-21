@@ -12,6 +12,67 @@
   min-height: 0;
 }
 
+.search-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  padding: var(--s2-spacing-75) var(--s2-spacing-100);
+  border-bottom: 1px solid var(--s2-gray-100);
+}
+
+.search-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--s2-gray-600);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--s2-body-size-xs);
+  color: var(--s2-gray-900);
+  padding: 0;
+
+  &::placeholder {
+    color: var(--s2-gray-600);
+  }
+
+  &::-webkit-search-cancel-button {
+    display: none;
+  }
+}
+
+.search-clear {
+  display: none;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--s2-gray-600);
+
+  svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-700);
+    outline-offset: 2px;
+  }
+}
+
+.search-input:not(:placeholder-shown) + .search-clear {
+  display: block;
+}
+
 .tree {
   flex: 1;
   overflow-y: auto;
@@ -26,25 +87,15 @@
   padding: 0;
 }
 
-.row {
+.row-wrap {
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 32px;
-  padding: var(--s2-spacing-75) var(--s2-spacing-100);
-  padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100));
-  border: none;
-  background: transparent;
-  color: var(--s2-gray-800);
-  font-family: inherit;
-  font-size: var(--s2-body-size-s);
-  font-weight: 500;
-  text-align: start;
+  box-sizing: border-box;
   cursor: pointer;
   gap: var(--s2-spacing-75);
-  box-sizing: border-box;
 
-  &:hover {
+  &:hover, &:focus-within {
     background: var(--s2-gray-75);
   }
 
@@ -52,6 +103,26 @@
     background: var(--s2-blue-100);
     color: var(--s2-blue-900);
   }
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 32px;
+  padding: var(--s2-spacing-75) var(--s2-spacing-100);
+  padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100));
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: var(--s2-body-size-s);
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+  gap: var(--s2-spacing-75);
+  box-sizing: border-box;
 
   &:focus-visible {
     outline: 2px solid var(--s2-blue-700);
@@ -78,6 +149,12 @@
   padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100) + 1rem + var(--s2-spacing-75));
 }
 
+.icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
 .label {
   flex: 1;
   min-width: 0;
@@ -86,11 +163,74 @@
   white-space: nowrap;
 }
 
+.path-hint {
+  margin-inline-start: var(--s2-spacing-75);
+  color: var(--s2-gray-600);
+  font-weight: 400;
+  font-size: var(--s2-body-size-xs, 12px);
+}
+
+.copy-url {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-75);
+  background: transparent;
+  color: var(--s2-gray-500);
+  cursor: pointer;
+  visibility: hidden;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+  }
+
+  .icon-checkmark {
+    display: none;
+  }
+
+  &:hover {
+    background: var(--s2-gray-200);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-700);
+    outline-offset: -2px;
+  }
+
+  &:focus {
+    .icon-paste {
+      display: none;
+    }
+
+    .icon-checkmark {
+      display: block;
+    }
+  }
+}
+
+.row-wrap:hover .copy-url,
+.row-wrap:focus-within .copy-url {
+  visibility: visible;
+}
+
 .notice {
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
   font-size: var(--s2-body-size-s);
   color: var(--s2-gray-600);
   margin: 0;
+
+  &.search-status {
+    flex-shrink: 0;
+    line-height: 1.4;
+    min-height: 1.4em;
+  }
 
   &.centered {
     flex: 1;
@@ -117,7 +257,7 @@
 }
 
 .action-btn:focus-visible,
-.row:hover .action-btn,
-.row:focus-within .action-btn {
+.row-wrap:hover .action-btn,
+.row-wrap:focus-within .action-btn {
   visibility: visible;
 }

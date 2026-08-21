@@ -225,46 +225,6 @@ describe('EwFileExplorer', () => {
     });
   });
 
-  describe('_onRowKeydown', () => {
-    it('activates the row on Enter', () => {
-      const item = { type: 'directory', path: '/org/site/a', pathKey: 'org/site/a' };
-      let clicked;
-      el._onItemClick = (i) => { clicked = i; };
-      const e = { key: 'Enter', preventDefault: () => {} };
-      el._onRowKeydown(e, item);
-      expect(clicked).to.equal(item);
-    });
-
-    it('activates the row on Space', () => {
-      const item = { type: 'file', path: '/org/site/a.html', ext: 'html', pathKey: 'org/site/a.html' };
-      let clicked;
-      el._onItemClick = (i) => { clicked = i; };
-      const e = { key: ' ', preventDefault: () => {} };
-      el._onRowKeydown(e, item);
-      expect(clicked).to.equal(item);
-    });
-
-    it('ignores other keys', () => {
-      const item = { type: 'directory', path: '/org/site/a' };
-      let called = false;
-      el._onItemClick = () => { called = true; };
-      const e = { key: 'ArrowDown', preventDefault: () => {} };
-      el._onRowKeydown(e, item);
-      expect(called).to.be.false;
-    });
-
-    it('ignores Enter/Space bubbling up from the nested action button', () => {
-      const item = { type: 'directory', path: '/org/site/a' };
-      const row = {};
-      const button = {};
-      let called = false;
-      el._onItemClick = () => { called = true; };
-      const e = { key: 'Enter', target: button, currentTarget: row, preventDefault: () => {} };
-      el._onRowKeydown(e, item);
-      expect(called).to.be.false;
-    });
-  });
-
   describe('create-page dialog', () => {
     beforeEach(() => {
       el._org = 'org';
@@ -387,6 +347,272 @@ describe('EwFileExplorer', () => {
     });
   });
 
+  describe('_warmCrawl', () => {
+    it('starts the crawl when a tree root is loaded', () => {
+      el._treeRoot = '/org/site';
+      let called = false;
+      el._getCrawlEntry = () => { called = true; };
+
+      el._warmCrawl();
+
+      expect(called).to.be.true;
+    });
+
+    it('does nothing before a tree root is loaded', () => {
+      el._treeRoot = null;
+      let called = false;
+      el._getCrawlEntry = () => { called = true; };
+
+      el._warmCrawl();
+
+      expect(called).to.be.false;
+    });
+  });
+
+  describe('_runSearch category filter', () => {
+    beforeEach(() => {
+      el._treeRoot = '/org/site';
+      el._crawlCache = {
+        '/org/site': {
+          files: [
+            { name: 'foo.html', path: '/org/site/foo.html', ext: 'html' },
+            { name: 'foo-data.json', path: '/org/site/foo-data.json', ext: 'json' },
+            { name: 'foo-cta.html', path: '/org/site/fragments/foo-cta.html', ext: 'html' },
+          ],
+          done: true,
+          listeners: new Set(),
+        },
+      };
+    });
+
+    it('matches on name only when category is "all"', () => {
+      el._category = 'all';
+      el._runSearch('foo');
+      expect(el._searchResults.map((f) => f.name).sort()).to.deep.equal(
+        ['foo-cta.html', 'foo-data.json', 'foo.html'].sort(),
+      );
+    });
+
+    it('narrows to pages, excluding files under a fragments folder', () => {
+      el._category = 'page';
+      el._runSearch('foo');
+      expect(el._searchResults.map((f) => f.name)).to.deep.equal(['foo.html']);
+    });
+
+    it('narrows to sheets', () => {
+      el._category = 'sheet';
+      el._runSearch('foo');
+      expect(el._searchResults.map((f) => f.name)).to.deep.equal(['foo-data.json']);
+    });
+
+    it('narrows to fragments', () => {
+      el._category = 'fragment';
+      el._runSearch('foo');
+      expect(el._searchResults.map((f) => f.name)).to.deep.equal(['foo-cta.html']);
+    });
+
+    it('accumulates matches across crawl flushes instead of losing earlier ones', () => {
+      const entry = el._crawlCache['/org/site'];
+      entry.done = false;
+      el._category = 'all';
+
+      el._runSearch('foo');
+      expect(el._searchResults.map((f) => f.name).sort()).to.deep.equal(
+        ['foo-cta.html', 'foo-data.json', 'foo.html'].sort(),
+      );
+
+      entry.files.push({ name: 'foo2.html', path: '/org/site/foo2.html', ext: 'html' });
+      entry.files.push({ name: 'bar.html', path: '/org/site/bar.html', ext: 'html' });
+      entry.listeners.forEach((fn) => fn());
+
+      expect(el._searchResults.map((f) => f.name).sort()).to.deep.equal(
+        ['foo-cta.html', 'foo-data.json', 'foo.html', 'foo2.html'].sort(),
+      );
+    });
+  });
+
+  describe('_onCategoryChange', () => {
+    beforeEach(() => {
+      el._treeRoot = '/org/site';
+      el._crawlCache = {
+        '/org/site': {
+          files: [
+            { name: 'foo.html', path: '/org/site/foo.html', ext: 'html' },
+            { name: 'foo-data.json', path: '/org/site/foo-data.json', ext: 'json' },
+            { name: 'bar.json', path: '/org/site/sub/bar.json', ext: 'json' },
+          ],
+          done: true,
+          listeners: new Set(),
+        },
+      };
+    });
+
+    it('re-runs the search against the active term', () => {
+      el._searchTerm = 'foo';
+      el._category = 'all';
+
+      el._onCategoryChange({ detail: { value: 'sheet' } });
+
+      expect(el._category).to.equal('sheet');
+      expect(el._searchResults.map((f) => f.name)).to.deep.equal(['foo-data.json']);
+    });
+
+    it('kicks off the crawl and builds matching folders even with no active search term', () => {
+      el._searchTerm = '';
+      el._category = 'all';
+
+      el._onCategoryChange({ detail: { value: 'sheet' } });
+
+      expect(el._category).to.equal('sheet');
+      expect(el._searchResults).to.not.exist;
+      expect(el._categoryCrawling).to.be.false;
+      expect([...el._matchingFolders].sort()).to.deep.equal(['org', 'org/site', 'org/site/sub']);
+    });
+
+    it('resets crawl state when the category goes back to "all"', () => {
+      el._onCategoryChange({ detail: { value: 'sheet' } });
+      expect(el._matchingFolders).to.exist;
+
+      el._onCategoryChange({ detail: { value: 'all' } });
+
+      expect(el._matchingFolders).to.be.null;
+      expect(el._categoryCrawling).to.be.false;
+    });
+
+    it('accumulates matching folders across crawl flushes instead of losing earlier ones', () => {
+      const entry = el._crawlCache['/org/site'];
+      entry.done = false;
+
+      el._onCategoryChange({ detail: { value: 'sheet' } });
+      expect([...el._matchingFolders].sort()).to.deep.equal(['org', 'org/site', 'org/site/sub']);
+
+      entry.files.push({ name: 'baz.json', path: '/org/site/other/baz.json', ext: 'json' });
+      entry.listeners.forEach((fn) => fn());
+
+      expect([...el._matchingFolders].sort()).to.deep.equal(
+        ['org', 'org/site', 'org/site/other', 'org/site/sub'],
+      );
+    });
+  });
+
+  describe('_rowTitle', () => {
+    it('shows the AEM URL for a page', () => {
+      const title = el._rowTitle({ path: '/org/site/blog/foo.html', ext: 'html' });
+      expect(title).to.equal('https://main--site--org.aem.page/blog/foo');
+    });
+
+    it('shows the AEM URL for a sheet', () => {
+      const title = el._rowTitle({ path: '/org/site/blog/data.json', ext: 'json' });
+      expect(title).to.equal('https://main--site--org.aem.page/blog/data.json');
+    });
+
+    it('is empty for a directory', () => {
+      expect(el._rowTitle({ path: '/org/site/blog' })).to.equal('');
+    });
+
+    it('is empty for a non-copyable file', () => {
+      expect(el._rowTitle({ path: '/org/site/a.png', ext: 'png' })).to.equal('');
+    });
+  });
+
+  describe('_relativeParentPath', () => {
+    it('omits the org/site root prefix', () => {
+      el._treeRoot = '/org/site';
+      const path = el._relativeParentPath({ path: '/org/site/blog/foo.html' });
+      expect(path).to.equal('blog');
+    });
+
+    it('returns an empty string for a file directly in the root', () => {
+      el._treeRoot = '/org/site';
+      const path = el._relativeParentPath({ path: '/org/site/foo.html' });
+      expect(path).to.equal('');
+    });
+
+    it('omits a deeper, permission-scoped root prefix', () => {
+      el._treeRoot = '/org/site/a/b';
+      const path = el._relativeParentPath({ path: '/org/site/a/b/c/foo.html' });
+      expect(path).to.equal('c');
+    });
+  });
+
+  describe('_buildMatchingFolders', () => {
+    it('collects every ancestor folder pathKey of a matching file', () => {
+      el._category = 'sheet';
+      const folders = el._buildMatchingFolders([
+        { name: 'foo.html', path: '/org/site/foo.html', ext: 'html' },
+        { name: 'bar.json', path: '/org/site/a/b/bar.json', ext: 'json' },
+      ]);
+      expect([...folders].sort()).to.deep.equal(['org', 'org/site', 'org/site/a', 'org/site/a/b']);
+    });
+  });
+
+  describe('_visibleChildren', () => {
+    const children = [
+      { type: 'directory', name: 'sub', path: '/org/site/sub', pathKey: 'org/site/sub', children: [] },
+      { type: 'file', name: 'a.html', path: '/org/site/a.html', pathKey: 'org/site/a.html', ext: 'html' },
+      { type: 'file', name: 'a.json', path: '/org/site/a.json', pathKey: 'org/site/a.json', ext: 'json' },
+      {
+        type: 'file',
+        name: 'b.html',
+        path: '/org/site/fragments/b.html',
+        pathKey: 'org/site/fragments/b.html',
+        ext: 'html',
+      },
+    ];
+
+    it('returns everything when category is "all"', () => {
+      el._category = 'all';
+      expect(el._visibleChildren(children)).to.deep.equal(children);
+    });
+
+    it('hides folders while no crawl data is available yet, narrowing files regardless', () => {
+      el._category = 'sheet';
+      el._matchingFolders = null;
+      expect(el._visibleChildren(children).map((c) => c.name)).to.deep.equal(['a.json']);
+    });
+
+    it('hides a folder once the crawl proves it has no matching descendant', () => {
+      el._category = 'sheet';
+      el._matchingFolders = new Set();
+      expect(el._visibleChildren(children).map((c) => c.name)).to.deep.equal(['a.json']);
+    });
+
+    it('keeps a folder once the crawl proves it contains a matching descendant', () => {
+      el._category = 'fragment';
+      el._matchingFolders = new Set(['org/site/fragments']);
+      expect(el._visibleChildren(children).map((c) => c.name)).to.deep.equal(['b.html']);
+    });
+
+    it('keeps a directory child whose own pathKey is proven to contain a match', () => {
+      el._category = 'page';
+      el._matchingFolders = new Set(['org/site/sub']);
+      expect(el._visibleChildren(children).map((c) => c.name)).to.deep.equal(['sub', 'a.html']);
+    });
+  });
+
+  describe('category persistence across hash changes', () => {
+    it('resets to "all" when the org/site root changes', () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._category = 'sheet';
+      el._loadFromLeaves = async () => {};
+
+      el._onHashChange({ org: 'org', site: 'other-site', path: '' });
+
+      expect(el._category).to.equal('all');
+    });
+
+    it('resets to "all" when navigating away from a site', () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._category = 'sheet';
+
+      el._onHashChange({ org: '', site: '', path: '' });
+
+      expect(el._category).to.equal('all');
+    });
+  });
+
   describe('.action-btn keyboard reachability', () => {
     beforeEach(async () => {
       el._org = 'org';
@@ -411,7 +637,7 @@ describe('EwFileExplorer', () => {
       const firstRow = rows[0];
       expect(firstRow.getAttribute('tabindex')).to.equal('0');
 
-      const btn = firstRow.querySelector('.action-btn');
+      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
       expect(getComputedStyle(btn).visibility).to.equal('hidden');
     });
 
@@ -419,7 +645,7 @@ describe('EwFileExplorer', () => {
       await withRealCss();
 
       const firstRow = el.shadowRoot.querySelector('.row');
-      const btn = firstRow.querySelector('.action-btn');
+      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
       expect(getComputedStyle(btn).visibility).to.equal('hidden');
 
       firstRow.focus();
@@ -431,7 +657,7 @@ describe('EwFileExplorer', () => {
 
     it('does not let Enter/Space on the button bubble into toggling the row', async () => {
       const firstRow = el.shadowRoot.querySelector('.row');
-      const btn = firstRow.querySelector('.action-btn');
+      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
       const expandedBefore = new Set(el._expanded);
 
       const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
