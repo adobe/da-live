@@ -406,6 +406,9 @@ describe('DaBrowse Component', () => {
     // catch-all mock would return the same rows for both, doubling entries.
     function mockSiteConfig(fullpath, json) {
       window.fetch = async (url) => {
+        // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); answer that
+        // with a real Response (so its headers.get() call is safe) and defer everything else.
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
         if (url.includes(`/config${fullpath}/`)) return { ok: true, json: async () => json };
         return { ok: true, json: async () => ({ data: [] }) };
       };
