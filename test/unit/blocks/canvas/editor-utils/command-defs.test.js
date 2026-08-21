@@ -6,6 +6,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let slashMenuItemsForQuery;
 let applySlashSelection;
+let cellSelectionSlashItems;
 let COMMAND_BY_ID;
 let ingestBlocks;
 let resetBlockLibrary;
@@ -17,6 +18,7 @@ before(async () => {
   const cmd = await import('../../../../../blocks/canvas/editor-utils/command-defs.js');
   slashMenuItemsForQuery = cmd.slashMenuItemsForQuery;
   applySlashSelection = cmd.applySlashSelection;
+  cellSelectionSlashItems = cmd.cellSelectionSlashItems;
   COMMAND_BY_ID = cmd.COMMAND_BY_ID;
   const bs = await import('../../../../../blocks/canvas/editor-utils/block-slash.js');
   ingestBlocks = bs.ingestBlocks;
@@ -174,5 +176,40 @@ describe('applySlashSelection', () => {
 
   it('returns undefined for an unknown id', () => {
     expect(applySlashSelection({}, 'totally-unknown-id')).to.be.undefined;
+  });
+});
+
+describe('cellSelectionSlashItems', () => {
+  // Stub each command's `visible` predicate so the filter+map contract is tested
+  // deterministically, independent of prosemirror-tables internals.
+  let mergeStub;
+  let splitStub;
+
+  afterEach(() => {
+    mergeStub?.restore();
+    splitStub?.restore();
+  });
+
+  it('offers only the cell commands whose visibility predicate passes', () => {
+    mergeStub = sinon.stub(COMMAND_BY_ID.get('table-merge-cells'), 'visible').returns(true);
+    splitStub = sinon.stub(COMMAND_BY_ID.get('table-split-cell'), 'visible').returns(false);
+    const state = { fake: true };
+    const items = cellSelectionSlashItems(state);
+    expect(mergeStub.calledWith(state)).to.be.true;
+    expect(items.map((i) => i.id)).to.deep.equal(['table-merge-cells']);
+    expect(items[0]).to.include.keys('id', 'label', 'icon');
+  });
+
+  it('offers split as well when it is available for the selection', () => {
+    mergeStub = sinon.stub(COMMAND_BY_ID.get('table-merge-cells'), 'visible').returns(true);
+    splitStub = sinon.stub(COMMAND_BY_ID.get('table-split-cell'), 'visible').returns(true);
+    const items = cellSelectionSlashItems({});
+    expect(items.map((i) => i.id)).to.deep.equal(['table-merge-cells', 'table-split-cell']);
+  });
+
+  it('offers nothing when no cell command is available', () => {
+    mergeStub = sinon.stub(COMMAND_BY_ID.get('table-merge-cells'), 'visible').returns(false);
+    splitStub = sinon.stub(COMMAND_BY_ID.get('table-split-cell'), 'visible').returns(false);
+    expect(cellSelectionSlashItems({})).to.deep.equal([]);
   });
 });

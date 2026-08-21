@@ -197,3 +197,15 @@
   text-align: center;
   margin: 0;
 }
+
+.action-btn {
+  flex-shrink: 0;
+  visibility: hidden;
+  margin-inline-start: auto;
+}
+
+.action-btn:focus-visible,
+.row-wrap:hover .action-btn,
+.row-wrap:focus-within .action-btn {
+  visibility: visible;
+}

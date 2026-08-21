@@ -1,7 +1,7 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
-import { aemAdmin, daFetch } from '../../shared/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import { daFetch } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
@@ -320,6 +320,47 @@ export function resetBlockLibraryCache() {
   blockLibraryCache.clear();
 }
 
+const librarySheetCache = new Map();
+
+/**
+ * Fetch and memoize a named sheet's rows from the block library sources — e.g.
+ * "options" (per-block key/value autocomplete) or "editor" (multi-block config).
+ * Resolves to [] when no library / sheet is configured.
+ */
+function loadLibrarySheet(org, site, sheet) {
+  if (!org || !site) return Promise.resolve([]);
+  const key = `${sheet}:${org}/${site}`;
+  if (!librarySheetCache.has(key)) {
+    const pending = (async () => {
+      const ext = await getBlocksExtension(org, site);
+      if (!ext) return [];
+      const rows = [];
+      for (const url of ext.sources || []) {
+        try {
+          const resp = await daFetch(url, { noRedirect: true });
+          if (resp.ok) {
+            const json = await resp.json();
+            if (Array.isArray(json?.[sheet]?.data)) rows.push(...json[sheet].data);
+          }
+        } catch { /* skip failed source */ }
+      }
+      return rows;
+    })().catch((err) => {
+      librarySheetCache.delete(key);
+      throw err;
+    });
+    librarySheetCache.set(key, pending);
+  }
+  return librarySheetCache.get(key);
+}
+
+export const loadBlockOptions = (org, site) => loadLibrarySheet(org, site, 'options');
+export const loadBlockEditor = (org, site) => loadLibrarySheet(org, site, 'editor');
+
+export function resetBlockOptionsCache() {
+  librarySheetCache.clear();
+}
+
 export async function fetchItems(sources, format) {
   const items = [];
   for (const source of sources) {
@@ -394,8 +435,10 @@ export async function insertTemplate(view, url) {
 export async function getPreviewStatus({ org, site, pathname }) {
   const path = `/${org}/${site}${pathname}`;
   try {
-    const json = await aemAdmin(path, 'status', 'GET');
-    if (!json) return null;
+    const { status } = await getNx2Api();
+    const resp = await status.get(path);
+    if (!resp.ok) return null;
+    const json = await resp.json();
     return json.preview?.status === 200;
   } catch {
     return null;

@@ -284,7 +284,7 @@ export const COMMANDS = [
     id: 'table-merge-cells',
     label: 'Merge cells',
     icon: iconName('tablemergecells'),
-    showIn: ['toolbar-table'],
+    showIn: ['toolbar-table', 'slash-cell'],
     visible: canMergeCells,
     apply: mergeTableCells,
   },
@@ -292,7 +292,7 @@ export const COMMANDS = [
     id: 'table-split-cell',
     label: 'Split cell',
     icon: iconName('tablesplitcell'),
-    showIn: ['toolbar-table'],
+    showIn: ['toolbar-table', 'slash-cell'],
     visible: canSplitCell,
     apply: splitTableCell,
   },
@@ -454,4 +454,12 @@ export function applySlashSelection(view, id) {
   if (command) return command.apply(view);
   if (id?.startsWith('block:')) return insertBlockItem(view, id);
   return undefined;
+}
+
+// Cell commands offered when "/" is pressed on a multi-cell selection, filtered
+// to those currently available (mirrors the classic editor's cell slash menu).
+export function cellSelectionSlashItems(state) {
+  return commandsFor('slash-cell')
+    .filter((cmd) => cmd.visible?.(state))
+    .map((cmd) => toSlashItem(cmd));
 }

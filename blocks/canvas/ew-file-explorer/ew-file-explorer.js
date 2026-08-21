@@ -1,15 +1,23 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
 import { iconPathForExt } from '../../shared/icons.js';
+import { EMPTY_DOC } from '../../shared/utils.js';
 import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
 import getEditPath from '../../browse/shared.js';
+import getSheet from '../../shared/sheet.js';
+import '../../shared/da-name-dialog/da-name-dialog.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 
-const style = await loadStyle(import.meta.url);
+const [buttons, style] = await Promise.all([
+  getSheet(`${getNx2()}/styles/buttons.css`),
+  loadStyle(import.meta.url),
+]);
+
+const CREATE_PAGE_ERROR = 'Could not create the page. Try a different name.';
 
 const COPYABLE_EXTS = new Set(['html', 'json']);
 
@@ -47,6 +55,11 @@ function buildTree(cache, rootFullpath) {
   }];
 }
 
+const REFRESH_ICON_SRC = '/img/icons/s2-icon-refresh-20-n.svg';
+const ADD_ICON_SRC = '/img/icons/s2-icon-fileadd-20-n.svg';
+const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
+const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
+
 class EwFileExplorer extends LitElement {
   static properties = {
     _cache: { state: true },
@@ -58,11 +71,12 @@ class EwFileExplorer extends LitElement {
     _searchTerm: { state: true },
     _searchResults: { state: true },
     _searching: { state: true },
+    _createDialog: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
     this._onAgentChange = async ({ detail }) => {
       if (detail?.scope !== 'file') return;
@@ -218,6 +232,50 @@ class EwFileExplorer extends LitElement {
       this._expanded = new Set([...(this._expanded ?? []), pathKey]);
     }
     this._loading = false;
+  }
+
+  async _refreshPath(fullpath) {
+    const result = await listFolder(fullpath);
+    if (!Array.isArray(result)) return false;
+    this._cache = { ...this._cache, [fullpath]: result };
+    this._expanded = new Set([...(this._expanded ?? []), fullpath.replace(/^\//, '')]);
+    return true;
+  }
+
+  async _onRefreshClick() {
+    if (this._refreshing) return;
+    this._refreshing = true;
+    if (this._headerRefreshBtn) {
+      this._headerRefreshBtn.disabled = true;
+      this._headerRefreshBtn.innerHTML = REFRESH_SPINNER_HTML;
+    }
+    try {
+      const expandedFullpaths = [...(this._expanded ?? [])].map((key) => `/${key}`);
+      const targets = new Set([this._treeRoot, ...expandedFullpaths].filter(Boolean));
+      await Promise.all([...targets].map((fp) => this._refreshPath(fp)));
+    } finally {
+      this._refreshing = false;
+      if (this._headerRefreshBtn) {
+        this._headerRefreshBtn.disabled = false;
+        this._headerRefreshBtn.innerHTML = REFRESH_ICON_HTML;
+      }
+    }
+  }
+
+  _getHeaderRefreshButton() {
+    if (this._headerRefreshBtn) return this._headerRefreshBtn;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'da-icon-btn';
+    btn.setAttribute('aria-label', 'Refresh files');
+    btn.innerHTML = REFRESH_ICON_HTML;
+    btn.addEventListener('click', () => this._onRefreshClick());
+    this._headerRefreshBtn = btn;
+    return btn;
+  }
+
+  getHeaderActions() {
+    return this._getHeaderRefreshButton();
   }
 
   _toggle(pathKey, path) {
@@ -381,6 +439,38 @@ class EwFileExplorer extends LitElement {
     `;
   }
 
+  _openCreateDialog(e, item) {
+    e.stopPropagation();
+    e.preventDefault();
+    this._createDialog = { folder: item.path, saving: false, error: null };
+  }
+
+  _closeCreateDialog() {
+    this._createDialog = null;
+  }
+
+  async _handleCreateSubmit(e) {
+    const { name, openAfter } = e.detail;
+    const { folder } = this._createDialog;
+    this._createDialog = { ...this._createDialog, error: null, saving: true };
+    try {
+      const path = `${folder}/${name}.html`;
+      const { source } = await getNx2Api();
+      const resp = await source.save(path, { body: EMPTY_DOC });
+      if (!resp?.ok) {
+        this._createDialog = { ...this._createDialog, error: CREATE_PAGE_ERROR, saving: false };
+        return;
+      }
+      this._closeCreateDialog();
+      await this._refreshPath(folder);
+      if (openAfter) {
+        window.location.hash = `#/${itemHashPath({ path, ext: 'html' })}`;
+      }
+    } catch {
+      this._createDialog = { ...this._createDialog, error: CREATE_PAGE_ERROR, saving: false };
+    }
+  }
+
   _renderNode(item, depth) {
     const { type, pathKey, name, children, ext } = item;
     const isDir = type === 'directory';
@@ -405,6 +495,15 @@ class EwFileExplorer extends LitElement {
             <button type="button" class="copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${name}"
               @click="${(e) => this._onCopyUrl(e, item)}">
               <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-copy-20-n.svg#icon"></use></svg>
+            </button>` : nothing}
+          ${isDir ? html`
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn new-page-btn" draggable="false"
+              aria-label="New page in ${name}"
+              @pointerdown=${(e) => e.stopPropagation()}
+              @click=${(e) => this._openCreateDialog(e, item)}>
+              <svg aria-hidden="true" viewBox="0 0 20 20">
+                <use href="${ADD_ICON_SRC}#icon"></use>
+              </svg>
             </button>` : nothing}
         </div>
         ${expanded && children.length ? html`
@@ -444,6 +543,16 @@ class EwFileExplorer extends LitElement {
           @focusin="${(e) => treeFocusIn(e, this.shadowRoot)}">
           ${tree.map((item) => this._renderNode(item, 0))}
         </ul>`}
+      <da-name-dialog
+        dialog-title="New page in ${this._createDialog?.folder?.split('/').pop() ?? ''}"
+        name-placeholder="page name"
+        ?open=${!!this._createDialog}
+        ?saving=${this._createDialog?.saving}
+        show-create-and-open
+        error=${this._createDialog?.error ?? ''}
+        @da-name-submit=${this._handleCreateSubmit}
+        @close=${this._closeCreateDialog}>
+      </da-name-dialog>
     </div>`;
   }
 }

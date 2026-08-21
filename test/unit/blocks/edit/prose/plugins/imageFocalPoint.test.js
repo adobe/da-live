@@ -54,8 +54,9 @@ describe('imageFocalPoint Plugin', () => {
           }),
         };
       }
-      // Fallback for any other requests
-      return { ok: false };
+      // Fallback for any other requests (includes getNx2Api's isHlx6 ping preflight,
+      // which needs a real Response for its headers.get() call)
+      return new Response('', { status: 404 });
     };
 
     const mod = await import('../../../../../../blocks/edit/prose/plugins/imageFocalPoint.js');

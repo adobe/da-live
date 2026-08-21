@@ -168,6 +168,51 @@ describe('imageDrop plugin', () => {
     }
   });
 
+  it('uploadImageFile uploads via source.uploadMedia (not source.save)', async () => {
+    const savedFetch = window.fetch;
+    let requestUrl = null;
+    let requestMethod = null;
+    window.fetch = (url, opts) => {
+      requestUrl = url;
+      requestMethod = opts?.method;
+      return Promise.resolve(new Response(
+        JSON.stringify({ source: { contentUrl: '/path/uploaded.png' } }),
+        { status: 200 },
+      ));
+    };
+    try {
+      const file = new File(['x'], 'pic.png', { type: 'image/png' });
+      await uploadImageFile(editor.view, file);
+      expect(requestUrl).to.be.a('string');
+      expect(requestUrl).to.include('/pic.png');
+      expect(requestMethod).to.equal('POST');
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('uploadImageFile replaces the FPO immediately for relative media URLs, without waiting for load', async () => {
+    const mediaUrl = './media_abc123.png?width=750&format=webply';
+    const savedFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ source: { contentUrl: mediaUrl } }),
+      { status: 200 },
+    ));
+    try {
+      const file = new File(['x'], 'pic.png', { type: 'image/png' });
+      await uploadImageFile(editor.view, file);
+      // No extra wait for the img "load" event — the relative media src
+      // should already have replaced the FPO by the time upload resolves.
+      let finalSrc = null;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') finalSrc = node.attrs.src;
+      });
+      expect(finalSrc).to.equal(mediaUrl);
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
   it('uploadImageFile replaces FPO with the real image URL after upload completes', async () => {
     // Use a data URL so the browser fires the img load event in the test environment.
     const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';

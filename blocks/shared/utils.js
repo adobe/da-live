@@ -342,8 +342,12 @@ export async function checkLockdownImages(owner) {
 export const fetchDaConfigs = (() => {
   const configCache = {};
 
-  const fetchConfig = async (pathname) => {
-    const resp = await daFetch(`${DA_ORIGIN}/config${pathname}/`);
+  // getNx2Api's config.get is isHlx6-aware: it reads from api.aem.live for a
+  // migrated org/site, and falls back to admin.da.live otherwise.
+  const fetchConfig = async (org, site) => {
+    const { config: configApi } = await getNx2Api();
+    const resp = await configApi.get({ org, site });
+    const pathname = site ? `/${org}/${site}` : `/${org}`;
     if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
     return resp.json();
   };
@@ -352,11 +356,11 @@ export const fetchDaConfigs = (() => {
     if (!org) return [Promise.resolve(null)];
 
     // Set the org config promise if it does not exist
-    configCache[`/${org}`] ??= fetchConfig(`/${org}`);
+    configCache[`/${org}`] ??= fetchConfig(org);
 
     if (site) {
       // Set the site config promise if it does not exist
-      configCache[`/${org}/${site}`] ??= fetchConfig(`/${org}/${site}`);
+      configCache[`/${org}/${site}`] ??= fetchConfig(org, site);
     }
 
     // return array of cached configs (org = 0, site = 1)
@@ -437,3 +441,6 @@ export function sanitizeName(value, { allowDot = false, trimTrailing = false } =
   if (trimTrailing) result = result.replace(/[^a-zA-Z0-9]+$/, '');
   return result;
 }
+
+// The minimal valid shape for a brand-new AEM document.
+export const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
