@@ -13,7 +13,7 @@ const {
 } = await import('../../../../../blocks/canvas/ew-editor-doc/slash-menu/block-options.js');
 
 const OPTIONS = [
-  { blocks: 'myblock', key: 'color', values: 'Red=red|Blue=blue' },
+  { blocks: 'myblock', key: 'color', values: 'Red=red|Blue=blue|Sky=#1a2b3c' },
   { blocks: 'myblock', key: 'size', values: 'Large=lg|Small=sm' },
 ];
 
@@ -54,6 +54,7 @@ describe('processBlockOptions', () => {
     expect(keyData.get('color')).to.deep.equal([
       { title: 'Red', value: 'red' },
       { title: 'Blue', value: 'blue' },
+      { title: 'Sky', value: '#1a2b3c' },
     ]);
   });
 
@@ -96,7 +97,15 @@ describe('blockOptionItems', () => {
     const { valuePos } = buildBlock(editor);
     selectAt(editor, valuePos);
     const items = blockOptionItems(editor.view.state, '', map);
-    expect(items.slice(1).map((i) => i.label)).to.deep.equal(['Red', 'Blue']);
+    expect(items.slice(1).map((i) => i.label)).to.deep.equal(['Red', 'Blue', 'Sky']);
+  });
+
+  it('flags hex-color values with a swatch, leaving non-colors alone', () => {
+    const { valuePos } = buildBlock(editor);
+    selectAt(editor, valuePos);
+    const items = blockOptionItems(editor.view.state, '', map);
+    expect(items.find((i) => i.label === 'Sky').swatch).to.equal('#1a2b3c');
+    expect(items.find((i) => i.label === 'Red').swatch).to.equal(undefined);
   });
 
   it('returns null when the cursor is not in a block cell', () => {
