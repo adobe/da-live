@@ -15,10 +15,14 @@ function makeSheet(entries) {
 
 function makeFetch(responses) {
   return async (url) => {
+    // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); check that
+    // before the pattern match below, since a ping url can otherwise collide with an
+    // org-level config pattern (e.g. '/ping/{org}/{site}' contains '/{org}/').
+    if (url.includes('/ping/')) return new Response('', { status: 200 });
     for (const [pattern, response] of Object.entries(responses)) {
       if (url.includes(pattern)) return response;
     }
-    return { ok: false };
+    return new Response('', { status: 404 });
   };
 }
 
@@ -269,6 +273,77 @@ describe('getRepositoryConfig', () => {
       window.fetch = orgFetch;
     }
   });
+
+  it('defaults approvedOnly on for author-backed effective DM opt-out', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/approved-default/site/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p101-e101.adobeaemcloud.com' },
+        { key: 'aem.asset.smartcrop.select', value: 'on' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('approved-default', 'site');
+      expect(cfg.approvedOnly).to.be.true;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('allows site config to opt out of org approved-only filtering', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/approved-precedence/site/': makeSheet([
+        { key: 'aem.asset.dm.approvedonly', value: 'off' },
+      ]),
+      '/approved-precedence/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p102-e102.adobeaemcloud.com' },
+        { key: 'aem.asset.dm.delivery', value: 'on' },
+        { key: 'aem.asset.dm.approvedonly', value: 'on' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('approved-precedence', 'site');
+      expect(cfg.approvedOnly).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('allows site config to enable approved-only over an org opt-out', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/approved-site-on/site/': makeSheet([
+        { key: 'aem.asset.dm.approvedonly', value: 'on' },
+      ]),
+      '/approved-site-on/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p103-e103.adobeaemcloud.com' },
+        { key: 'aem.asset.dm.delivery', value: 'on' },
+        { key: 'aem.asset.dm.approvedonly', value: 'off' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('approved-site-on', 'site');
+      expect(cfg.approvedOnly).to.be.true;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('does not apply approvedOnly to delivery tier', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/approved-delivery/site/': makeSheet([
+        { key: 'aem.repositoryId', value: 'delivery-p104-e104.adobeaemcloud.com' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('approved-delivery', 'site');
+      expect(cfg.approvedOnly).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -347,6 +422,15 @@ function makeMultiSheetWithResponsive(crops) {
   };
 }
 
+// getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); answer that with a
+// real Response (so its headers.get() call is safe) and defer everything else to `respond`.
+function pingSafe(respond) {
+  return async (url, opts) => {
+    if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+    return respond(url, opts);
+  };
+}
+
 describe('getResponsiveImageConfig', () => {
   it('returns null when owner and repo are both absent', async () => {
     const result = await getResponsiveImageConfig(null, null);
@@ -355,7 +439,7 @@ describe('getResponsiveImageConfig', () => {
 
   it('returns false when config has no responsive-images sheet', async () => {
     const orgFetch = window.fetch;
-    window.fetch = async () => ({ ok: true, json: async () => ({ data: [] }) });
+    window.fetch = pingSafe(async () => ({ ok: true, json: async () => ({ data: [] }) }));
     try {
       const result = await getResponsiveImageConfig('ri1', 'none');
       expect(result).to.be.false;
@@ -366,9 +450,9 @@ describe('getResponsiveImageConfig', () => {
 
   it('parses crops string into array from responsive-images sheet', async () => {
     const orgFetch = window.fetch;
-    window.fetch = async () => makeMultiSheetWithResponsive([
+    window.fetch = pingSafe(async () => makeMultiSheetWithResponsive([
       { name: 'Full Width', position: 'everywhere', crops: 'desktop, mobile' },
-    ]);
+    ]));
     try {
       const result = await getResponsiveImageConfig('ri2', 'crops');
       expect(result).to.be.an('array');
@@ -381,9 +465,9 @@ describe('getResponsiveImageConfig', () => {
 
   it('handles crops with no spaces around comma', async () => {
     const orgFetch = window.fetch;
-    window.fetch = async () => makeMultiSheetWithResponsive([
+    window.fetch = pingSafe(async () => makeMultiSheetWithResponsive([
       { name: 'Tight', position: 'hero', crops: 'small,medium,large' },
-    ]);
+    ]));
     try {
       const result = await getResponsiveImageConfig('ri3', 'tight');
       expect(result[0].crops).to.deep.equal(['small', 'medium', 'large']);
@@ -394,12 +478,12 @@ describe('getResponsiveImageConfig', () => {
 
   it('falls back to org-level config when repo config has no responsive-images', async () => {
     const orgFetch = window.fetch;
-    window.fetch = async (url) => {
+    window.fetch = pingSafe((url) => {
       if (url.includes('/ri4/fallback/')) return { ok: true, json: async () => ({ data: [] }) };
       return makeMultiSheetWithResponsive([
         { name: 'Org Wide', position: 'outside-blocks', crops: 'wide' },
       ]);
-    };
+    });
     try {
       const result = await getResponsiveImageConfig('ri4', 'fallback');
       expect(result[0].name).to.equal('Org Wide');

@@ -33,15 +33,24 @@ describe('getPreviewOrigin', () => {
 
 describe('fetchWysiwygBranch', () => {
   let savedFetch;
+  let savedSearch;
   let testIndex = 0;
+
+  function setSearch(search) {
+    const url = new URL(window.location.href);
+    url.search = search;
+    window.history.replaceState(null, '', url);
+  }
 
   beforeEach(() => {
     savedFetch = window.fetch;
+    savedSearch = window.location.search;
     testIndex += 1;
   });
 
   afterEach(() => {
     window.fetch = savedFetch;
+    setSearch(savedSearch);
   });
 
   function ctx(extra = {}) {
@@ -120,6 +129,25 @@ describe('fetchWysiwygBranch', () => {
     const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-10/site-wbr-10/page' }));
     expect(branch).to.equal('valid');
   });
+
+  it('uses the ref query param when present, skipping config lookup', async () => {
+    setSearch('?ref=from-query');
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    };
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-11/site-wbr-11/page' }));
+    expect(branch).to.equal('from-query');
+    expect(fetchCalled).to.equal(false);
+  });
+
+  it('falls back to config when the ref query param is empty', async () => {
+    setSearch('?ref=');
+    mockConfig([{ key: 'ew.wysiwygBranch', value: '/org-wbr-12/site-wbr-12=feature' }]);
+    const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-12/site-wbr-12/page' }));
+    expect(branch).to.equal('feature');
+  });
 });
 
 describe('parseSections', () => {
@@ -129,11 +157,22 @@ describe('parseSections', () => {
     </div></main>`;
     const [section] = parseSections(html);
     expect(section.blocks).to.deep.equal([
-      { name: 'hero', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
+      { name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
     ]);
     expect(section.items).to.deep.equal([
-      { type: 'block', name: 'hero', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
+      {
+        type: 'block', name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Hero content',
+      },
     ]);
+  });
+
+  it('captures block variant classes (mirrors the doc header parentheses)', () => {
+    const html = `<main><div>
+      <div class="cards highlight blue" data-block-index="3">Cards</div>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.blocks[0].name).to.equal('cards');
+    expect(section.blocks[0].variant).to.equal('highlight, blue');
   });
 
   it('returns empty blocks and items for a section with nothing in it', () => {
@@ -270,7 +309,9 @@ describe('parseSections', () => {
       children: [{ type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Section one text', snippet: 'Section one text' }],
     }]);
     expect(sections[1].items).to.deep.equal([
-      { type: 'block', name: 'cards', blockIndex: 0, proseIndex: 0, innerText: 'Cards' },
+      {
+        type: 'block', name: 'cards', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Cards',
+      },
     ]);
   });
 });

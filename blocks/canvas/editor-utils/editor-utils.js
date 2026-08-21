@@ -4,6 +4,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { getSelectionToolbar } from './selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -75,14 +76,10 @@ export function updateState(data, ctx) {
       const syncNodeStart = syncPos.before(syncPos.depth);
       const syncNode = view.state.doc.resolve(syncNodeStart).nodeAfter;
       if (syncNode) {
-        // @deprecated top-level editorState/cursorOffset — prefer payload.editorState/cursorOffset
-        // (kept so the quick-edit iframe script in da-nx keeps working until it migrates).
         const editorState = syncNode.toJSON();
         const { cursorOffset } = data;
         ctx.port.postMessage({
           type: MESSAGE_TYPES.SET_EDITOR_STATE,
-          editorState,
-          cursorOffset,
           payload: { editorState, cursorOffset },
         });
       }
@@ -112,8 +109,6 @@ export function getEditor(data, ctx) {
     const newCursorOffset = before + 1;
     ctx.port.postMessage({
       type: MESSAGE_TYPES.SET_EDITOR_STATE,
-      editorState,
-      cursorOffset: newCursorOffset,
       payload: { editorState, cursorOffset: newCursorOffset },
     });
   } catch {
@@ -203,7 +198,8 @@ export function getInstrumentedHTML(view) {
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
     const isPageOrSectionMetadata = firstCellText === 'metadata' || firstCellText === 'section metadata' || firstCellText === 'section-metadata';
-    if (isPageOrSectionMetadata) return;
+    const isLibraryMetadata = firstCellText === 'library metadata' || firstCellText === 'library-metadata';
+    if (isPageOrSectionMetadata || isLibraryMetadata) return;
     const div = table.parentElement;
     const blockMarker = document.createElement('div');
     blockMarker.className = 'block-marker';
@@ -261,7 +257,7 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
-const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'block-marker']);
+const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);
 
 function hasDefaultContent(el) {
   if (el.textContent?.trim()) return true;
@@ -349,7 +345,10 @@ export function parseSections(htmlText) {
         const rawProseIndex = el.getAttribute('data-block-index');
         const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
         const innerText = el.textContent?.trim() ?? '';
-        const block = { name, blockIndex: flatIndex, proseIndex, innerText };
+        // Classes after the block name are its variant(s) — the same descriptor the
+        // doc editor's header row shows in parentheses (e.g. `cards (highlight)`).
+        const variant = [...el.classList].slice(1).join(', ');
+        const block = { name, variant, blockIndex: flatIndex, proseIndex, innerText };
         blocks.push(block);
         items.push({ type: 'block', ...block });
         flatIndex += 1;
@@ -366,84 +365,40 @@ export function parseSections(htmlText) {
   });
 }
 
-// State observable — replays last value on subscribe. See docs/canvas-events.md.
-export const editorHtmlChange = (() => {
-  const listeners = new Set();
-  let currentHtml = '';
-  return {
-    emit(html) {
-      currentHtml = html;
-      listeners.forEach((fn) => fn(html));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      if (currentHtml) fn(currentHtml);
-      return () => listeners.delete(fn);
-    },
-  };
-})();
-
-// Event observable — no replay on subscribe. See docs/canvas-events.md.
-// emit() enriches the detail with blockName/proseIndex/innerText from the last parsed HTML.
-export const editorSelectChange = (() => {
-  const listeners = new Set();
-  let blockMeta = new Map();
-
-  editorHtmlChange.subscribe((html) => {
-    if (!html.trim()) {
-      blockMeta = new Map();
-      return;
+let selectBlockMeta = new Map();
+canvasBus.editorHtmlState.subscribe((html) => {
+  if (!html.trim()) {
+    selectBlockMeta = new Map();
+    return;
+  }
+  const next = new Map();
+  for (const { blocks } of parseSections(html)) {
+    for (const { name, blockIndex, proseIndex, innerText } of blocks) {
+      next.set(blockIndex, { name, proseIndex, innerText });
     }
-    const next = new Map();
-    for (const { blocks } of parseSections(html)) {
-      for (const { name, blockIndex, proseIndex, innerText } of blocks) {
-        next.set(blockIndex, { name, proseIndex, innerText });
-      }
-    }
-    blockMeta = next;
-  });
+  }
+  selectBlockMeta = next;
+});
 
-  return {
-    emit(detail) {
-      const meta = blockMeta.get(detail.blockIndex);
-      const { name: blockName, proseIndex, innerText } = meta || {};
-      const enriched = meta
-        ? { ...detail, blockName, proseIndex, innerText }
-        : detail;
-      listeners.forEach((fn) => fn(enriched));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
-    },
-  };
-})();
-
-// Event observable — no replay on subscribe. See docs/canvas-events.md.
-// Carries a raw ProseMirror position, not a block index, for the outline's default-content entries.
-export const editorProseSelectChange = (() => {
-  const listeners = new Set();
-  return {
-    emit(detail) {
-      listeners.forEach((fn) => fn(detail));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
-    },
-  };
-})();
+// Runs once, at load, so canvas-bus.js's editorSelectState.emit is enriched for
+// every caller from here on — see canvas-bus.js for why this file owns the lookup.
+registerEditorSelectEnricher((detail) => {
+  const meta = selectBlockMeta.get(detail.blockIndex);
+  if (!meta) return detail;
+  const { name: blockName, proseIndex, innerText } = meta;
+  return { ...detail, blockName, proseIndex, innerText };
+});
 
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, body, payload: { body } });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
   return body;
 }
 
 export function updateCursors(ctx) {
   const cursors = extractCursors(ctx.view);
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_CURSORS, cursors, payload: { cursors } });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_CURSORS, payload: { cursors } });
 }
 
 // --- preview.js ---
@@ -458,6 +413,9 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
 
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
+  const branchParam = new URLSearchParams(window.location.search).get('ref');
+  if (branchParam) return branchParam;
+
   try {
     const configs = await Promise.all(fetchDaConfigs({ org, site }));
     const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);

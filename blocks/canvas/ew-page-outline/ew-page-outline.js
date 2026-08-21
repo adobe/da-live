@@ -1,8 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { treeKeydown } from '../utils/tree-nav.js';
-import { editorHtmlChange, editorSelectChange, editorProseSelectChange, parseSections } from '../editor-utils/editor-utils.js';
+import { parseSections } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import {
   deleteBlock,
   deleteContentItem,
@@ -88,7 +89,7 @@ class EwPageOutline extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._expandedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
-    this._unsubscribeHtml = editorHtmlChange.subscribe((aemHtml) => {
+    this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
       if (aemHtml.trim()) {
         const next = parseSections(aemHtml);
         if (!sectionsEqual(next, this._sections)) {
@@ -104,7 +105,7 @@ class EwPageOutline extends LitElement {
         this._selectedProseIndex = undefined;
       }
     });
-    this._unsubscribeSelect = editorSelectChange
+    this._unsubscribeSelect = canvasBus.editorSelectState
       .subscribe(({ blockIndex, proseIndex, source }) => {
         if (source === 'outline') return;
         this._selectedBlockIndex = blockIndex;
@@ -152,14 +153,14 @@ class EwPageOutline extends LitElement {
   _select(blockIndex) {
     this._selectedBlockIndex = blockIndex;
     this._selectedProseIndex = undefined;
-    editorSelectChange.emit({ blockIndex, source: 'outline' });
+    canvasBus.editorSelectState.emit({ blockIndex, source: 'outline' });
   }
 
   _selectProse(proseIndex, kind) {
     this._selectedProseIndex = proseIndex;
     this._selectedBlockIndex = undefined;
     this._expandRunForProse(proseIndex);
-    editorProseSelectChange.emit({ proseIndex, kind });
+    canvasBus.editorProseSelectState.emit({ proseIndex, kind });
   }
 
   _toggleContentGroup(key) {
@@ -171,7 +172,7 @@ class EwPageOutline extends LitElement {
 
   // Selection never collapses anything — it only ensures the run holding the new
   // selection is visible, adding it alongside whatever's already expanded. Expansion is
-  // only ever cleared wholesale on a reparse (see the editorHtmlChange subscription).
+  // only ever cleared wholesale on a reparse (see the canvasBus.editorHtmlState subscription).
   _expandRunForProse(proseIndex) {
     const runKey = this._findRunKeyForProseIndex(proseIndex);
     if (runKey == null) return;
@@ -514,7 +515,7 @@ class EwPageOutline extends LitElement {
                 @drop=${this._onDrop}
                 @dragend=${this._onDragEnd}
                 @click=${() => this._select(item.blockIndex)}>
-              <span class="block-name">${item.name}</span>
+              <span class="block-name">${item.name}${item.variant ? ` (${item.variant})` : ''}</span>
               ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, item.blockIndex)}
               <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
                 <use href="${DRAG_ICON_SRC}#icon"></use>

@@ -2,21 +2,27 @@
   display: contents;
 }
 
+/* Rendered as a top-layer popover (see ew-selection-toolbar.js) so it sits above a
+   modal <dialog> such as the block-edit modal. Override the UA popover box defaults
+   (inset/margin) to keep the bottom-centre anchoring. Hidden by the UA
+   `[popover]:not(:popover-open)` rule until shown. */
 .toolbar-wrap {
-  display: none;
   position: fixed;
+  inset: auto;
   bottom: 40px;
   left: var(--toolbar-anchor-x, 50vw);
   transform: translateX(-50%);
+  margin: 0;
   z-index: 100;
   padding: 6px 8px;
   background: var(--s2-gray-25);
   border: 1px solid var(--s2-gray-200);
   border-radius: var(--s2-corner-radius-500);
   box-shadow: 0 4px 16px rgb(0 0 0 / 16%);
+  overflow: visible;
 }
 
-:host(.open) .toolbar-wrap {
+.toolbar-wrap:popover-open {
   display: flex;
   align-items: center;
 }

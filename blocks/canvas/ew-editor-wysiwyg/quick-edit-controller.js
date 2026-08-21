@@ -14,34 +14,30 @@ const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
 
 export function createControllerOnMessage(ctx) {
   return function onMessage(e) {
-    // @deprecated flat fields alongside `type` — prefer nesting under `payload`.
-    // Normalize once here so handlers can keep reading flat fields regardless of
-    // which shape the quick-edit iframe script (da-nx) sends.
-    // todo: cleanup once nx side is updated
-    const data = e.data?.payload ? { ...e.data, ...e.data.payload } : e.data;
+    const { type, payload = {} } = e.data ?? {};
 
-    if (MUTATING_MESSAGES.has(data.type) && !ctx.canWrite) return;
+    if (MUTATING_MESSAGES.has(type) && !ctx.canWrite) return;
 
-    if (data.type === MESSAGE_TYPES.CURSOR_MOVE) {
-      handleCursorMove(data, ctx);
-    } else if (data.type === MESSAGE_TYPES.RELOAD) {
+    if (type === MESSAGE_TYPES.CURSOR_MOVE) {
+      handleCursorMove(payload, ctx);
+    } else if (type === MESSAGE_TYPES.RELOAD) {
       updateDocument(ctx);
-    } else if (data.type === MESSAGE_TYPES.IMAGE_REPLACE) {
-      handleImageReplace(data, ctx);
-    } else if (data.type === MESSAGE_TYPES.GET_EDITOR) {
-      getEditor(data, ctx);
-    } else if (data.type === MESSAGE_TYPES.NODE_UPDATE) {
-      updateState(data, ctx);
-    } else if (data.type === MESSAGE_TYPES.HISTORY) {
-      handleUndoRedo(data, ctx);
-    } else if (data.type === MESSAGE_TYPES.NEW_VERSION) {
+    } else if (type === MESSAGE_TYPES.IMAGE_REPLACE) {
+      handleImageReplace(payload, ctx);
+    } else if (type === MESSAGE_TYPES.GET_EDITOR) {
+      getEditor(payload, ctx);
+    } else if (type === MESSAGE_TYPES.NODE_UPDATE) {
+      updateState(payload, ctx);
+    } else if (type === MESSAGE_TYPES.HISTORY) {
+      handleUndoRedo(payload, ctx);
+    } else if (type === MESSAGE_TYPES.NEW_VERSION) {
       handleNewVersion();
-    } else if (data.type === MESSAGE_TYPES.SELECTION_CHANGE) {
-      handleIframeSelectionChange(data, ctx);
-    } else if (data.type === MESSAGE_TYPES.NODE_SELECT) {
-      handleNodeSelect(data, ctx);
-    } else if (data.type === MESSAGE_TYPES.STORED_MARKS) {
-      handleStoredMarks(data, ctx);
+    } else if (type === MESSAGE_TYPES.SELECTION_CHANGE) {
+      handleIframeSelectionChange(payload, ctx);
+    } else if (type === MESSAGE_TYPES.NODE_SELECT) {
+      handleNodeSelect(payload, ctx);
+    } else if (type === MESSAGE_TYPES.STORED_MARKS) {
+      handleStoredMarks(payload, ctx);
     }
   };
 }
