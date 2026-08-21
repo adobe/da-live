@@ -347,6 +347,28 @@ describe('EwFileExplorer', () => {
     });
   });
 
+  describe('_warmCrawl', () => {
+    it('starts the crawl when a tree root is loaded', () => {
+      el._treeRoot = '/org/site';
+      let called = false;
+      el._getCrawlEntry = () => { called = true; };
+
+      el._warmCrawl();
+
+      expect(called).to.be.true;
+    });
+
+    it('does nothing before a tree root is loaded', () => {
+      el._treeRoot = null;
+      let called = false;
+      el._getCrawlEntry = () => { called = true; };
+
+      el._warmCrawl();
+
+      expect(called).to.be.false;
+    });
+  });
+
   describe('_runSearch category filter', () => {
     beforeEach(() => {
       el._treeRoot = '/org/site';

@@ -361,6 +361,14 @@ class EwFileExplorer extends LitElement {
     return this._crawlCache[root];
   }
 
+  // Starts the crawl on first interaction with the search bar (focusing the input
+  // or opening the category picker) instead of waiting for the first keystroke or
+  // category pick, so results feel instant once the user actually filters.
+  _warmCrawl() {
+    if (!this._treeRoot) return;
+    this._getCrawlEntry();
+  }
+
   _clearCrawlCache() {
     Object.values(this._crawlCache ?? {}).forEach((entry) => {
       clearInterval(entry.flushTimer);
@@ -639,7 +647,7 @@ class EwFileExplorer extends LitElement {
     const tree = buildTree(this._cache ?? {}, this._treeRoot);
 
     return html`<div class="ew-file-explorer">
-      <div class="search-bar">
+      <div class="search-bar" @focusin="${() => this._warmCrawl()}">
         <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${SEARCH_ICON_SRC}#icon"></use></svg>
         <input type="search" class="search-input" placeholder="Filter files" aria-label="Filter files"
           .value="${this._searchTerm ?? ''}"
