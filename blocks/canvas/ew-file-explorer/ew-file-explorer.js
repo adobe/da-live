@@ -388,12 +388,17 @@ class EwFileExplorer extends LitElement {
     const entry = this._getCrawlEntry();
     const lower = term.toLowerCase();
     const category = this._category ?? 'all';
+    const matchesFilter = (f) => f.name?.toLowerCase().includes(lower)
+      && (category === 'all' || categoryForFile(f) === category);
+    // On a large, still-crawling site entry.files can reach into the thousands —
+    // re-filtering all of it on every ~150ms flush would make typing feel laggy.
+    // Only scan what's arrived since the last flush and accumulate matches.
+    const matches = [];
+    let scanned = 0;
     const applyFilter = () => {
-      this._searchResults = entry.files.filter((f) => {
-        if (!f.name?.toLowerCase().includes(lower)) return false;
-        if (category !== 'all' && categoryForFile(f) !== category) return false;
-        return true;
-      });
+      matches.push(...entry.files.slice(scanned).filter(matchesFilter));
+      scanned = entry.files.length;
+      this._searchResults = matches.slice();
       this._searching = !entry.done;
     };
     applyFilter();
@@ -410,8 +415,14 @@ class EwFileExplorer extends LitElement {
     this._resetCategoryCrawl();
     if (this._category !== 'all') {
       const entry = this._getCrawlEntry();
+      // Same reasoning as _runSearch: only fold in files that arrived since the
+      // last flush, rather than rebuilding the whole folder set from scratch.
+      const folders = new Set();
+      let scanned = 0;
       const recompute = () => {
-        this._matchingFolders = this._buildMatchingFolders(entry.files);
+        entry.files.slice(scanned).forEach((f) => this._addMatchingFolders(f, folders));
+        scanned = entry.files.length;
+        this._matchingFolders = new Set(folders);
         this._categoryCrawling = !entry.done;
       };
       recompute();
@@ -428,15 +439,17 @@ class EwFileExplorer extends LitElement {
     this._categoryCrawling = false;
   }
 
-  // Every ancestor folder pathKey of a file matching the active category, so
-  // _visibleChildren can hide folders that provably contain no matches.
+  // Adds every ancestor folder pathKey of `file` into `folders`, if it matches the
+  // active category — so _visibleChildren can hide folders proven to have no match.
+  _addMatchingFolders(file, folders) {
+    if (categoryForFile(file) !== this._category) return;
+    const parts = (file.path || '').replace(/^\//, '').split('/');
+    for (let i = 1; i < parts.length; i += 1) folders.add(parts.slice(0, i).join('/'));
+  }
+
   _buildMatchingFolders(files) {
     const folders = new Set();
-    files.forEach((f) => {
-      if (categoryForFile(f) !== this._category) return;
-      const parts = (f.path || '').replace(/^\//, '').split('/');
-      for (let i = 1; i < parts.length; i += 1) folders.add(parts.slice(0, i).join('/'));
-    });
+    files.forEach((f) => this._addMatchingFolders(f, folders));
     return folders;
   }
 

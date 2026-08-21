@@ -410,6 +410,25 @@ describe('EwFileExplorer', () => {
       el._runSearch('foo');
       expect(el._searchResults.map((f) => f.name)).to.deep.equal(['foo-cta.html']);
     });
+
+    it('accumulates matches across crawl flushes instead of losing earlier ones', () => {
+      const entry = el._crawlCache['/org/site'];
+      entry.done = false;
+      el._category = 'all';
+
+      el._runSearch('foo');
+      expect(el._searchResults.map((f) => f.name).sort()).to.deep.equal(
+        ['foo-cta.html', 'foo-data.json', 'foo.html'].sort(),
+      );
+
+      entry.files.push({ name: 'foo2.html', path: '/org/site/foo2.html', ext: 'html' });
+      entry.files.push({ name: 'bar.html', path: '/org/site/bar.html', ext: 'html' });
+      entry.listeners.forEach((fn) => fn());
+
+      expect(el._searchResults.map((f) => f.name).sort()).to.deep.equal(
+        ['foo-cta.html', 'foo-data.json', 'foo.html', 'foo2.html'].sort(),
+      );
+    });
   });
 
   describe('_onCategoryChange', () => {
@@ -458,6 +477,21 @@ describe('EwFileExplorer', () => {
 
       expect(el._matchingFolders).to.be.null;
       expect(el._categoryCrawling).to.be.false;
+    });
+
+    it('accumulates matching folders across crawl flushes instead of losing earlier ones', () => {
+      const entry = el._crawlCache['/org/site'];
+      entry.done = false;
+
+      el._onCategoryChange({ detail: { value: 'sheet' } });
+      expect([...el._matchingFolders].sort()).to.deep.equal(['org', 'org/site', 'org/site/sub']);
+
+      entry.files.push({ name: 'baz.json', path: '/org/site/other/baz.json', ext: 'json' });
+      entry.listeners.forEach((fn) => fn());
+
+      expect([...el._matchingFolders].sort()).to.deep.equal(
+        ['org', 'org/site', 'org/site/other', 'org/site/sub'],
+      );
     });
   });
 
