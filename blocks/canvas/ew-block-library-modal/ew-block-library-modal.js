@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import {
   loadBlockLibrary,
   getItemPreviewUrl,
@@ -9,7 +10,11 @@ import {
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
 const { loadStyle, hashChange } = await import(`${nx}/utils/utils.js`);
-const style = await loadStyle(import.meta.url);
+const [buttonsStyle, formStyle, style] = await Promise.all([
+  getSheet(`${getNx2()}/styles/buttons.css`),
+  getSheet(`${getNx2()}/styles/form.css`),
+  loadStyle(import.meta.url),
+]);
 
 const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
 const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
@@ -52,7 +57,7 @@ class EwBlockLibraryModal extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._variantsByPath = new Map();
     this._openDescriptions = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
@@ -113,11 +118,6 @@ class EwBlockLibraryModal extends LitElement {
 
   _onSearchInput = (e) => {
     this._search = e.target.value;
-  };
-
-  _clearSearch = () => {
-    this._search = '';
-    this.shadowRoot.querySelector('.modal-search-input')?.focus();
   };
 
   _onDialogClose = () => {
@@ -217,7 +217,7 @@ class EwBlockLibraryModal extends LitElement {
           </span>
           ${description ? html`
             <button type="button"
-                    class="modal-tree-info"
+                    class="nx-action-btn-icon nx-btn-sm modal-tree-info"
                     aria-label="Show description"
                     aria-expanded=${isOpen}
                     @click=${() => this._toggleDescription(v)}>
@@ -226,7 +226,7 @@ class EwBlockLibraryModal extends LitElement {
               </svg>
             </button>` : nothing}
           <button type="button"
-                  class="modal-tree-add"
+                  class="nx-action-btn-icon nx-btn-sm modal-tree-add"
                   aria-label="Add ${v.name} to page"
                   @click=${() => this._addVariant(v)}>
             <svg aria-hidden="true" viewBox="0 0 20 20">
@@ -257,25 +257,17 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   _renderSearch() {
-    const hasValue = !!(this._search || '').length;
     return html`
       <div class="modal-search">
-        <div class="modal-search-field">
-          <svg aria-hidden="true" class="modal-search-icon" viewBox="0 0 20 20">
-            <use href="${SEARCH_ICON_SRC}#icon"></use>
-          </svg>
-          <input type="search"
-                 class="modal-search-input"
-                 placeholder="Search blocks"
-                 aria-label="Search blocks"
-                 .value=${this._search || ''}
-                 @input=${this._onSearchInput}>
-          ${hasValue ? html`
-            <button type="button"
-                    class="modal-search-clear"
-                    aria-label="Clear search"
-                    @click=${this._clearSearch}>✕</button>` : nothing}
-        </div>
+        <svg aria-hidden="true" class="modal-search-icon" viewBox="0 0 20 20">
+          <use href="${SEARCH_ICON_SRC}#icon"></use>
+        </svg>
+        <input type="search"
+               class="nx-input modal-search-input"
+               placeholder="Search blocks"
+               aria-label="Search blocks"
+               .value=${this._search || ''}
+               @input=${this._onSearchInput}>
       </div>`;
   }
 
@@ -301,7 +293,7 @@ class EwBlockLibraryModal extends LitElement {
         <div class="modal-content">
           <header class="modal-header">
             <span class="modal-title">${this.heading ?? 'Insert block'}</span>
-            <button type="button" class="modal-close"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm"
                     aria-label="Close" @click=${() => this._close()}>✕</button>
           </header>
           <div class="modal-body">

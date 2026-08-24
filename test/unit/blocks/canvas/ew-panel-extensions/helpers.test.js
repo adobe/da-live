@@ -182,6 +182,76 @@ describe('EW panel helpers transformBlock', () => {
     expect(dom.querySelector('table')).to.not.be.null;
     expect(dom.querySelector('p')).to.not.be.null;
   });
+
+  it('Excludes embedded library-metadata from item.dom', async () => {
+    mockHtml(`
+      <body><div>
+        <div class="hero">
+          <div><div>content</div></div>
+          <div class="library-metadata"><div><div>searchtags</div><div>hero, banner</div></div></div>
+        </div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Excludes library-metadata appended after library-container-end from group item.dom', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-container-end"></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>group, hero</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Extracts and excludes library-metadata placed before a single block, preserving heading name', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>Block Title</h2>
+        <div class="library-metadata"><div><div>searchtags</div><div>early, meta</div></div></div>
+        <div class="hero"><div><div>content</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].name).to.equal('Block Title');
+    expect(variants[0].tags).to.equal('early, meta');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Extracts and excludes library-metadata placed between library-container-start/end', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>mid, group</div></div></div>
+        <div class="library-container-end"></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].tags).to.equal('mid, group');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Uses library-metadata Name to override the derived name', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>Block Title</h2>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>name</div><div>Custom Name</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].name).to.equal('Custom Name');
+  });
 });
 
 describe('extensionToPanelView', () => {
