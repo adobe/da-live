@@ -2,7 +2,7 @@ import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
 
-const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 /**

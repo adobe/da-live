@@ -5,11 +5,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
 let extensionToPanelView;
+let getPreviewStatus;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
+  getPreviewStatus = mod.getPreviewStatus;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -180,6 +182,76 @@ describe('EW panel helpers transformBlock', () => {
     expect(dom.querySelector('table')).to.not.be.null;
     expect(dom.querySelector('p')).to.not.be.null;
   });
+
+  it('Excludes embedded library-metadata from item.dom', async () => {
+    mockHtml(`
+      <body><div>
+        <div class="hero">
+          <div><div>content</div></div>
+          <div class="library-metadata"><div><div>searchtags</div><div>hero, banner</div></div></div>
+        </div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Excludes library-metadata appended after library-container-end from group item.dom', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-container-end"></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>group, hero</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Extracts and excludes library-metadata placed before a single block, preserving heading name', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>Block Title</h2>
+        <div class="library-metadata"><div><div>searchtags</div><div>early, meta</div></div></div>
+        <div class="hero"><div><div>content</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].name).to.equal('Block Title');
+    expect(variants[0].tags).to.equal('early, meta');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Extracts and excludes library-metadata placed between library-container-start/end', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>mid, group</div></div></div>
+        <div class="library-container-end"></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].tags).to.equal('mid, group');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Uses library-metadata Name to override the derived name', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>Block Title</h2>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>name</div><div>Custom Name</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].name).to.equal('Custom Name');
+  });
 });
 
 describe('extensionToPanelView', () => {
@@ -206,5 +278,42 @@ describe('extensionToPanelView', () => {
     expect(view.experience).to.equal('inline');
     expect(view.load).to.be.a('function');
     expect(view.openModal).to.be.undefined;
+  });
+});
+
+// getPreviewStatus now goes through getNx2Api's isHlx6-aware status.get, not the legacy
+// admin.hlx.page-only aemAdmin() helper. A real Response keeps isHlx6's ping (which fires
+// before the actual status call) safe regardless of route.
+describe('getPreviewStatus', () => {
+  let savedFetch;
+
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => {
+    window.fetch = savedFetch;
+    window.localStorage.removeItem('hlx6-upgrade');
+  });
+
+  it('returns true when preview status is 200', async () => {
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ preview: { status: 200 } }),
+      { status: 200 },
+    ));
+    const result = await getPreviewStatus({ org: 'pstatusorg', site: 'pstatussite', pathname: '/p' });
+    expect(result).to.be.true;
+  });
+
+  it('returns false when preview status is not 200', async () => {
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ preview: { status: 404 } }),
+      { status: 200 },
+    ));
+    const result = await getPreviewStatus({ org: 'pstatusorg2', site: 'pstatussite2', pathname: '/p' });
+    expect(result).to.be.false;
+  });
+
+  it('returns null when the status call fails', async () => {
+    window.fetch = () => Promise.resolve(new Response('{}', { status: 500 }));
+    const result = await getPreviewStatus({ org: 'pstatusorg3', site: 'pstatussite3', pathname: '/p' });
+    expect(result).to.equal(null);
   });
 });
