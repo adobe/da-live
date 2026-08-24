@@ -13,11 +13,13 @@ import {
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const [buttonsStyle, formStyle, style] = await Promise.all([
+const [buttonsStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
-  getSheet(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
 ]);
+
+const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
+const CLEAR_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
 
 const iconAdd = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
 const iconPreview = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
@@ -44,7 +46,7 @@ class EwPanelLibrary extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
   }
 
@@ -149,6 +151,12 @@ class EwPanelLibrary extends LitElement {
     this._search = e.target.value;
   };
 
+  _onSearchClear = () => {
+    const input = this.shadowRoot.querySelector('.ext-search-input');
+    if (input) input.value = '';
+    this._search = '';
+  };
+
   _filteredItems() {
     const q = (this._search || '').trim().toLowerCase();
     if (!q) return this._items || [];
@@ -239,14 +247,15 @@ class EwPanelLibrary extends LitElement {
   _renderSearchInput(label) {
     return html`
       <div class="ext-search">
-        <svg aria-hidden="true" class="ext-search-icon" viewBox="0 0 20 20">
-          <use href="/img/icons/s2-icon-search-20-n.svg#icon"></use>
-        </svg>
-        <input type="search" class="nx-input ext-search-input"
-          placeholder="Search ${label}"
+        <svg class="ext-search-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${SEARCH_ICON_SRC}#icon"></use></svg>
+        <input type="search" class="ext-search-input"
+          placeholder="Search"
           aria-label="Search ${label}"
           .value=${this._search || ''}
           @input=${this._onSearchInput}>
+        <button type="button" class="ext-search-clear" aria-label="Clear search" @click=${this._onSearchClear}>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
+        </button>
       </div>
     `;
   }
@@ -260,29 +269,31 @@ class EwPanelLibrary extends LitElement {
 
     return html`
       ${this._renderSearchInput(label)}
-      ${items.length ? html`
-        <ul class="ext-list">
-          ${items.map((item) => {
-            const iconSrc = isIcons ? item.icon : null;
-            return html`
-              <li class="ext-item">
-                <button class="ext-item-title" @click=${() => this._insertText(item)}>
-                  ${iconSrc ? html`
-                    <img class="ext-item-icon" src=${iconSrc} alt=""
-                      @error=${(e) => { e.target.style.display = 'none'; }} />` : nothing}
-                  <span class="ext-item-name">${item.key || item.name || item.value}</span>
-                  ${item.value && item.value !== item.key
-                    ? html`<span class="ext-item-value">${item.value}</span>` : nothing}
-                </button>
-                <div class="ext-item-actions">
-                  <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
-                    @click=${() => this._insertText(item)}>${iconAdd()}</button>
-                </div>
-              </li>
-            `;
-          })}
-        </ul>
-      ` : html`<div class="ext-state">No ${label} match “${this._search}”.</div>`}
+      <div class="ext-scroll">
+        ${items.length ? html`
+          <ul class="ext-list">
+            ${items.map((item) => {
+              const iconSrc = isIcons ? item.icon : null;
+              return html`
+                <li class="ext-item">
+                  <button class="ext-item-title" @click=${() => this._insertText(item)}>
+                    ${iconSrc ? html`
+                      <img class="ext-item-icon" src=${iconSrc} alt=""
+                        @error=${(e) => { e.target.style.display = 'none'; }} />` : nothing}
+                    <span class="ext-item-name">${item.key || item.name || item.value}</span>
+                    ${item.value && item.value !== item.key
+                      ? html`<span class="ext-item-value">${item.value}</span>` : nothing}
+                  </button>
+                  <div class="ext-item-actions">
+                    <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
+                      @click=${() => this._insertText(item)}>${iconAdd()}</button>
+                  </div>
+                </li>
+              `;
+            })}
+          </ul>
+        ` : html`<div class="ext-state">No ${label} match “${this._search}”.</div>`}
+      </div>
     `;
   }
 
