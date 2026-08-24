@@ -4,7 +4,6 @@ import { DA_ORIGIN } from '../../../../blocks/shared/constants.js';
 import {
   daFetch,
   etcFetch,
-  aemAdmin,
   aemAction,
   saveToDa,
   getSheetByIndex,
@@ -400,63 +399,6 @@ describe('etcFetch', () => {
     } finally {
       window.fetch = savedFetch;
     }
-  });
-});
-
-describe('aemAdmin', () => {
-  let savedFetch;
-  let savedLocalStorage;
-
-  beforeEach(() => {
-    savedFetch = window.fetch;
-    savedLocalStorage = window.localStorage.getItem('nx-ims');
-    window.localStorage.removeItem('nx-ims');
-  });
-
-  afterEach(() => {
-    window.fetch = savedFetch;
-    if (savedLocalStorage) {
-      window.localStorage.setItem('nx-ims', savedLocalStorage);
-    } else {
-      window.localStorage.removeItem('nx-ims');
-    }
-  });
-
-  it('Constructs correct AEM admin URL from path', async () => {
-    let capturedUrl;
-    window.fetch = (url) => {
-      capturedUrl = url;
-      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    };
-
-    await aemAdmin('/owner/repo/folder/page.html', 'preview');
-    expect(capturedUrl).to.equal('https://admin.hlx.page/preview/owner/repo/main/folder/page');
-  });
-
-  it('Strips .html extension from name', async () => {
-    let capturedUrl;
-    window.fetch = (url) => {
-      capturedUrl = url;
-      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
-    };
-
-    await aemAdmin('/owner/repo/test.html', 'preview');
-    expect(capturedUrl).to.include('/test');
-    expect(capturedUrl).not.to.include('.html');
-  });
-
-  it('Returns empty object for DELETE with 204', async () => {
-    window.fetch = () => Promise.resolve(new Response(null, { status: 204 }));
-
-    const result = await aemAdmin('/owner/repo/page', 'preview', 'DELETE');
-    expect(result).to.deep.equal({});
-  });
-
-  it('Returns undefined when response is not ok', async () => {
-    window.fetch = () => Promise.resolve(new Response('error', { status: 500 }));
-
-    const result = await aemAdmin('/owner/repo/page', 'preview');
-    expect(result).to.equal(undefined);
   });
 });
 

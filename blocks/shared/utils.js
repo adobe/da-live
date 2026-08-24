@@ -129,21 +129,6 @@ export function etcFetch(href, api, options) {
   return fetch(url, opts);
 }
 
-export async function aemAdmin(path, api, method = 'POST') {
-  const [owner, repo, ...parts] = path.slice(1).split('/');
-  const name = parts.pop() || repo || owner;
-  parts.push(name.replace('.html', ''));
-  const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
-  const resp = await daFetch(aemUrl, { method });
-  if (method === 'DELETE' && resp.status === 204) return {};
-  if (!resp.ok) return undefined;
-  try {
-    return resp.json();
-  } catch {
-    return undefined;
-  }
-}
-
 /* eslint-disable max-len */
 /**
  * [admin] Unable to preview '.../page.md': source contains large image: error fetching resource at http.../hello: Image 1 exceeds allowed limit of 10.00MB
