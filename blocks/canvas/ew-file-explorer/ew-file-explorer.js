@@ -9,7 +9,7 @@ import getSheet from '../../shared/sheet.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
