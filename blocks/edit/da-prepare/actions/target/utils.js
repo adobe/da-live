@@ -149,7 +149,7 @@ export const fetchTargetConfig = (() => {
 })();
 
 export async function savePreview(org, site, path) {
-  const fullpath = `/${org}/${site}${path}`;
+  const fullpath = `/${org}/${site}${path}`.replace(/\.html$/, '');
   const { aem } = await getNx2Api();
   const resp = await aem.preview(fullpath);
   if (!resp.ok) return { error: 'Couldn\'t preview.' };
