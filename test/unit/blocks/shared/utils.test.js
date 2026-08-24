@@ -564,7 +564,7 @@ describe('getSidekickConfig', () => {
   it('Returns preview and prod when both hosts are available', async () => {
     const org = 'org1';
     const site = 'site1';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -592,7 +592,7 @@ describe('getSidekickConfig', () => {
   it('Returns object when only previewHost is available', async () => {
     const org = 'org2';
     const site = 'site2';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -614,7 +614,7 @@ describe('getSidekickConfig', () => {
   it('Returns object when only host is available', async () => {
     const org = 'org3';
     const site = 'site3';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -636,7 +636,7 @@ describe('getSidekickConfig', () => {
   it('Returns empty object when neither previewHost nor host is available', async () => {
     const org = 'org4';
     const site = 'site4';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -658,7 +658,7 @@ describe('getSidekickConfig', () => {
   it('Returns undefined when fetch fails', async () => {
     const org = 'org5';
     const site = 'site5';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
