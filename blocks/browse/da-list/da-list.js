@@ -3,12 +3,12 @@ import { isFavorite, toggleFavorite } from '../shared/favorites.js';
 import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import {
   aemAction,
-  saveDaVersion,
   getExistingSchedule,
   fetchDaConfigs,
   getFirstSheet,
   initIms,
 } from '../../shared/utils.js';
+import { createVersion } from '../../shared/version/version-actions.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -665,7 +665,7 @@ export default class DaList extends LitElement {
       } else if (json.error) {
         this._itemErrors.push({ ...item, message: json.error?.message || `Couldn't ${action} item` });
       } else {
-        if (!MEDIA_EXTS.has(item.ext)) saveDaVersion(item.path, `${verb}ed`);
+        if (!MEDIA_EXTS.has(item.ext)) createVersion(item.path, `${verb}ed`);
         results.push({ name: item.name, url: json[urlKey]?.url });
       }
       remaining -= 1;
