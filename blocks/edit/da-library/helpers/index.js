@@ -56,10 +56,15 @@ function getBlockTableHtml(block) {
   table.append(headerRow);
   rows.forEach((row) => {
     const tr = document.createElement('tr');
-    [...row.children].forEach((col) => {
+    const cells = [...row.children];
+    cells.forEach((col, i) => {
       const td = document.createElement('td');
-      if (row.children.length < maxCols) {
-        td.setAttribute('colspan', maxCols);
+      // Pad only the last cell so the row's total width equals maxCols.
+      // Spanning every cell (the old behavior) made short multi-cell rows
+      // wider than maxCols, forcing ProseMirror to insert empty cells into
+      // every other row to keep the table rectangular.
+      if (cells.length < maxCols && i === cells.length - 1) {
+        td.setAttribute('colspan', maxCols - i);
       }
       td.innerHTML = col.innerHTML;
       tr.append(td);
