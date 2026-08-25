@@ -241,6 +241,32 @@ describe('EW panel helpers transformBlock', () => {
     expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
   });
 
+  it('Pads only the last cell of short rows so no row exceeds maxCols', async () => {
+    // A block with one wide row (5 cells) and shorter key/value rows.
+    // The old behavior spanned every cell of a short row to maxCols, making
+    // those rows wider than the grid and forcing ProseMirror to insert empty
+    // cells into every other row.
+    mockHtml(`
+      <body><div>
+        <div class="collection-carousel">
+          <div><div>categoryPath</div><div>a</div><div>b</div><div>c</div><div>d</div></div>
+          <div><div>maxItems</div><div>8</div></div>
+        </div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    const rows = [...variants[0].dom.querySelectorAll('tr')];
+    const widths = rows.map((tr) => [...tr.children]
+      .reduce((n, td) => n + (parseInt(td.getAttribute('colspan'), 10) || 1), 0));
+    // header + wide row + short row, every one exactly maxCols (5) wide
+    expect(widths).to.deep.equal([5, 5, 5]);
+    // the wide row keeps its 5 cells, the short row keeps exactly 2 (no padding cells)
+    expect(rows[1].children).to.have.lengthOf(5);
+    expect(rows[2].children).to.have.lengthOf(2);
+    // the short row's last cell absorbs the remaining columns
+    expect(rows[2].children[1].getAttribute('colspan')).to.equal('4');
+  });
+
   it('Uses library-metadata Name to override the derived name', async () => {
     mockHtml(`
       <body><div>
