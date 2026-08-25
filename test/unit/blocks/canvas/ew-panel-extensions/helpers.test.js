@@ -281,9 +281,6 @@ describe('extensionToPanelView', () => {
   });
 });
 
-// getPreviewStatus now goes through getNx2Api's isHlx6-aware status.get, not the legacy
-// admin.hlx.page-only aemAdmin() helper. A real Response keeps isHlx6's ping (which fires
-// before the actual status call) safe regardless of route.
 describe('getPreviewStatus', () => {
   let savedFetch;
 
