@@ -14,6 +14,12 @@ export function normalizeForSlashMenu(str) {
   return str?.toLowerCase().trim().replace(/\s+/g, '-');
 }
 
+function isColorCode(str) {
+  const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+  const rgbColorRegex = /^rgba?\(\s*(\d{1,3}\s*,\s*){2}\d{1,3}(\s*,\s*(0|1|0?\.\d+))?\s*\)$/;
+  return hexColorRegex.test(str) || rgbColorRegex.test(str) || str?.includes('-gradient(');
+}
+
 function buildBlockMap(data) {
   const blockMap = new Map();
   data?.forEach((item) => {
@@ -127,7 +133,7 @@ export function blockOptionItems(state, query, blockMap = store.blockMap) {
       if (!q || v.title.toLowerCase().includes(q)) {
         const id = `blockopt-val:${i}`;
         actions.set(id, { text: v.value, moveNext: false });
-        items.push({ id, label: v.title });
+        items.push({ id, label: v.title, ...(isColorCode(v.value) ? { swatch: v.value } : {}) });
       }
     });
   }
