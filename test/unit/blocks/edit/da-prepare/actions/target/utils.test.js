@@ -3,7 +3,7 @@ import { setNx, getNx2Api } from '../../../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { savePreview } = await import('../../../../../../../blocks/edit/da-prepare/actions/target/utils.js');
+const { savePreview, sendToTarget } = await import('../../../../../../../blocks/edit/da-prepare/actions/target/utils.js');
 
 describe('target/utils savePreview', () => {
   it('Strips the .html extension before previewing', async () => {
@@ -54,5 +54,46 @@ describe('target/utils savePreview', () => {
     } finally {
       aem.preview = origPreview;
     }
+  });
+});
+
+describe('target/utils sendToTarget', () => {
+  let savedFetch;
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  it('Fetches the previewed content through the da-etc cors proxy with a cache-buster', async () => {
+    let captured;
+    window.fetch = (url, opts) => {
+      captured = { url, opts };
+      // A locked-down preview host returns 401; the proxy relays it through.
+      return Promise.resolve(new Response('access-not-allowed', { status: 401 }));
+    };
+
+    const aemPath = 'https://main--site--org.aem.page/demo';
+    const result = await sendToTarget('org', 'send1', 'name', aemPath, 'Joe');
+
+    expect(captured.url).to.contain('/cors?url=');
+    expect(captured.url).to.contain(encodeURIComponent(aemPath));
+    expect(captured.url).to.contain(encodeURIComponent('nocache='));
+    // A 401 from the delivery host surfaces as a clean error, not a hang/throw.
+    expect(result).to.deep.equal({ error: 'Could not fetch from AEM.' });
+  });
+
+  it('Falls back to an unauthenticated fetch when the site-token exchange fails', async () => {
+    // In this test env initIms() resolves to undefined, so getAemSiteToken
+    // rejects. sendToTarget must swallow that and still attempt the fetch
+    // rather than throwing (which would leave the dialog hung).
+    let captured;
+    window.fetch = (url, opts) => {
+      captured = { url, opts };
+      return Promise.resolve(new Response('nope', { status: 401 }));
+    };
+
+    const result = await sendToTarget('org', 'send2', 'name', 'https://main--site--org.aem.page/p', 'Joe');
+
+    // No Authorization header was attached (token exchange failed → fallback).
+    expect(captured.opts?.headers?.Authorization).to.equal(undefined);
+    expect(result).to.deep.equal({ error: 'Could not fetch from AEM.' });
   });
 });
