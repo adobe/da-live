@@ -181,8 +181,10 @@ export function buildHandleSelection({
     close();
     const src = resolveAssetUrl(asset, repoConfig);
 
-    if (!isImage || repoConfig.insertAsLink) {
+    if (!isImage) {
       insertLink(view, src);
+    } else if (repoConfig.insertAsLink) {
+      insertImage(view, src, alt, 'link');
     } else {
       insertImage(view, src, alt);
     }

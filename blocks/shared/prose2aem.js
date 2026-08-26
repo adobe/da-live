@@ -83,6 +83,26 @@ function makePictures(editor, live) {
     const daCursor = img.parentElement.querySelector('#da-cursor-position');
     if (daCursor) setCursor(daCursor, img);
 
+    // Dynamic media "link" images render natively in canvas, but must be
+    // serialized back to a plain <a> so the project's own decoration code
+    // (which already expects a DM link, not a <picture>) can process it.
+    if (img.getAttribute('data-asst-delivery-type') === 'link') {
+      const a = document.createElement('a');
+      a.href = img.getAttribute('src');
+      a.textContent = img.getAttribute('alt') || img.getAttribute('src');
+      a.setAttribute('data-asst-delivery-type', 'link');
+      if (img.id) a.id = img.id;
+
+      const linkParent = img.parentElement;
+      const linkGrandparent = linkParent.parentElement;
+      if (linkParent.nodeName === 'P' && linkGrandparent?.childElementCount === 1 && linkParent.childElementCount === 1) {
+        linkGrandparent.replaceChild(a, linkParent);
+      } else {
+        linkParent.replaceChild(a, img);
+      }
+      return;
+    }
+
     const clone = img.cloneNode(true);
     clone.setAttribute('loading', 'lazy');
 
