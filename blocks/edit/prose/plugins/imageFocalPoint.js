@@ -147,6 +147,9 @@ export default function imageFocalPoint() {
     props: {
       nodeViews: {
         image(node, view, getPos) {
+          // Dynamic media "link" images serialize back to a plain <a>, not a
+          // cropped <picture>, so focal-point selection doesn't apply to them.
+          if (node.attrs.assetDeliveryType) return null;
           if (isInTableCell(view.state, getPos())) {
             return new ImageWithFocalPointView(node, view, getPos);
           }
