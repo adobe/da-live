@@ -86,11 +86,11 @@ function makePictures(editor, live) {
     // Dynamic media "link" images render natively in canvas, but must be
     // serialized back to a plain <a> so the project's own decoration code
     // (which already expects a DM link, not a <picture>) can process it.
-    if (img.getAttribute('data-asst-delivery-type') === 'link') {
+    if (img.getAttribute('data-asset-delivery-type') === 'link') {
       const a = document.createElement('a');
       a.href = img.getAttribute('src');
       a.textContent = img.getAttribute('alt') || img.getAttribute('src');
-      a.setAttribute('data-asst-delivery-type', 'link');
+      a.setAttribute('data-asset-delivery-type', 'link');
       if (img.id) a.id = img.id;
 
       const linkParent = img.parentElement;
