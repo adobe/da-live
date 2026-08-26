@@ -373,10 +373,15 @@ export const fetchDaConfigs = (() => {
 export const getSidekickConfig = (() => {
   const configCache = {};
 
-  // Sidekick config now lives on api.aem.live for every site (legacy DA and
-  // HLX6 alike) — no isHlx6 branch needed here.
+  // HLX6 sites serve sidekick config from api.aem.live; legacy DA sites
+  // still use the admin.hlx.page sidekick endpoint.
   const fetchConfig = async (org, site) => {
-    const resp = await daFetch(`${AEM_API_ORIGIN}/${org}/sites/${site}/sidekick`, { method: 'GET' });
+    const { isHlx6 } = await getNx2Api();
+    const hlx6 = await isHlx6(org, site);
+    const url = hlx6
+      ? `${AEM_API_ORIGIN}/${org}/sites/${site}/sidekick`
+      : `${AEM_ORIGIN}/sidekick/${org}/${site}/main/config.json`;
+    const resp = await daFetch(url, { method: 'GET' });
     if (!resp.ok) return undefined;
     try {
       return await resp.json();

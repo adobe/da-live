@@ -503,12 +503,17 @@ describe('saveToDa', () => {
 });
 
 describe('getSidekickConfig', () => {
-  it('Returns preview and prod when both hosts are available', async () => {
+  afterEach(() => {
+    window.localStorage.removeItem('hlx6-upgrade');
+  });
+
+  it('Returns preview and prod when both hosts are available (legacy DA)', async () => {
     const org = 'org1';
     const site = 'site1';
-    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
+    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
 
     const mockFetch = (url) => {
+      if (String(url).includes('/ping/')) return Promise.resolve(new Response('', { status: 200 }));
       if (url === configUrl) {
         return Promise.resolve(new Response(JSON.stringify({
           previewHost: 'preview.example.com',
@@ -531,12 +536,13 @@ describe('getSidekickConfig', () => {
     }
   });
 
-  it('Returns object when only previewHost is available', async () => {
+  it('Returns object when only previewHost is available (legacy DA)', async () => {
     const org = 'org2';
     const site = 'site2';
-    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
+    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
 
     const mockFetch = (url) => {
+      if (String(url).includes('/ping/')) return Promise.resolve(new Response('', { status: 200 }));
       if (url === configUrl) {
         return Promise.resolve(new Response(JSON.stringify({ previewHost: 'preview.example.com' }), { status: 200 }));
       }
@@ -553,12 +559,13 @@ describe('getSidekickConfig', () => {
     }
   });
 
-  it('Returns object when only host is available', async () => {
+  it('Returns object when only host is available (legacy DA)', async () => {
     const org = 'org3';
     const site = 'site3';
-    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
+    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
 
     const mockFetch = (url) => {
+      if (String(url).includes('/ping/')) return Promise.resolve(new Response('', { status: 200 }));
       if (url === configUrl) {
         return Promise.resolve(new Response(JSON.stringify({ host: 'www.example.com' }), { status: 200 }));
       }
@@ -575,12 +582,13 @@ describe('getSidekickConfig', () => {
     }
   });
 
-  it('Returns empty object when neither previewHost nor host is available', async () => {
+  it('Returns empty object when neither previewHost nor host is available (legacy DA)', async () => {
     const org = 'org4';
     const site = 'site4';
-    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
+    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
 
     const mockFetch = (url) => {
+      if (String(url).includes('/ping/')) return Promise.resolve(new Response('', { status: 200 }));
       if (url === configUrl) {
         return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
       }
@@ -597,15 +605,12 @@ describe('getSidekickConfig', () => {
     }
   });
 
-  it('Returns undefined when fetch fails', async () => {
+  it('Returns undefined when fetch fails (legacy DA)', async () => {
     const org = 'org5';
     const site = 'site5';
-    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
-      if (url === configUrl) {
-        return Promise.resolve(new Response('', { status: 404 }));
-      }
+      if (String(url).includes('/ping/')) return Promise.resolve(new Response('', { status: 200 }));
       return Promise.resolve(new Response('', { status: 404 }));
     };
 
@@ -614,6 +619,31 @@ describe('getSidekickConfig', () => {
       window.fetch = mockFetch;
       const result = await getSidekickConfig({ org, site });
       expect(result).to.equal(undefined);
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('Uses api.aem.live for an HLX6 site', async () => {
+    const org = 'sidekickhlx6org';
+    const site = 'sidekickhlx6site';
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
+
+    const mockFetch = (url) => {
+      if (String(url).includes('/ping/')) {
+        return Promise.resolve(new Response('', { status: 200, headers: { 'x-api-upgrade-available': 'true' } }));
+      }
+      if (url === configUrl) {
+        return Promise.resolve(new Response(JSON.stringify({ previewHost: 'preview.example.com' }), { status: 200 }));
+      }
+      return Promise.resolve(new Response('', { status: 404 }));
+    };
+
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = mockFetch;
+      const result = await getSidekickConfig({ org, site });
+      expect(result).to.deep.equal({ previewHost: 'preview.example.com' });
     } finally {
       window.fetch = savedFetch;
     }
