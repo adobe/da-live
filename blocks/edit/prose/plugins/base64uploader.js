@@ -1,7 +1,6 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { getNx2Api } from '../../../../scripts/utils.js';
-import { CON_ORIGIN } from '../../../shared/constants.js';
 
 const base64UploaderKey = new PluginKey('base64Uploader');
 
@@ -13,6 +12,31 @@ function makeHash(string) {
     (hash, char) => char.charCodeAt(0) + (hash << 6) + (hash << 16) - hash,
     0,
   ));
+}
+
+// Uploads a single pasted base64 image and swaps its FPO placeholder for the
+// real content URL. uploadMedia content-addresses the file, so the final URL
+// (possibly a relative ./media_... path) is only known from the response —
+// unlike source.save, it can't be derived from the upload path upfront.
+export async function uploadBase64Image(view, { src, path, fpoSrc }) {
+  const resp = await fetch(src);
+  const blob = await resp.blob();
+  const { source } = await getNx2Api();
+  const uploadResp = await source.uploadMedia(path, { body: blob });
+  if (!uploadResp.ok) {
+    // eslint-disable-next-line no-console
+    console.error(`Failed to upload pasted image: ${uploadResp.status} ${uploadResp.statusText}`);
+    return;
+  }
+  const { source: { contentUrl } } = await uploadResp.json();
+
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'image' && node.attrs.src === fpoSrc) {
+      view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, src: contentUrl }));
+      return false;
+    }
+    return true;
+  });
 }
 
 /**
@@ -32,39 +56,16 @@ export default function base64Uploader() {
             return html;
           }
 
-          const imagePaths = [];
-          const uploadPromises = [];
-
           dataImgs.forEach((img) => {
             const src = img.getAttribute('src');
             let ext = src.replace('data:image/', '').split(';base64')[0];
             if (ext === 'jpeg') ext = 'jpg';
             const { parent, name } = getPathDetails();
             const path = `${parent}/.${name}/wp${makeHash(src)}.${ext}`; // WP = Word Paste
-            const fpoSrc = `${FPO_IMG_URL}#${CON_ORIGIN}${path}`;
+            const fpoSrc = `${FPO_IMG_URL}#${makeHash(src)}`;
             img.setAttribute('src', fpoSrc);
-            imagePaths.push(fpoSrc);
 
-            uploadPromises.push((async () => {
-              const resp = await fetch(src);
-              const blob = await resp.blob();
-              const { source } = await getNx2Api();
-              await source.save(path, { body: blob });
-            })());
-          });
-
-          Promise.all(uploadPromises).then(() => {
-            const { view } = window;
-            const { tr } = view.state;
-
-            view.state.doc.descendants((node, pos) => {
-              if (node.type.name === 'image' && imagePaths.includes(node.attrs.src)) {
-                const newAttrs = { src: node.attrs.src.split('#')[1] };
-                tr.setNodeMarkup(pos, null, { ...node.attrs, ...newAttrs });
-              }
-            });
-
-            view.dispatch(tr);
+            uploadBase64Image(window.view, { src, path, fpoSrc });
           });
 
           const serializer = new XMLSerializer();

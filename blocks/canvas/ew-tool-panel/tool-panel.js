@@ -10,7 +10,10 @@ const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
-const style = await loadStyle(import.meta.url);
+const [base, style] = await Promise.all([
+  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+  loadStyle(import.meta.url),
+]);
 
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
@@ -28,7 +31,7 @@ class EwToolPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [base, style];
   }
 
   get _fullsizeDialogView() {

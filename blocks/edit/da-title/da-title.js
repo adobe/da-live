@@ -5,7 +5,8 @@ import {
   saveDaConfig,
   getAemHrefs,
 } from '../utils/helpers.js';
-import { delay, fetchDaConfigs, getFirstSheet, aemAction, saveDaVersion } from '../../shared/utils.js';
+import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
+import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -26,6 +27,7 @@ const CLOUD_ICONS = {
   offline: 'spectrum-Cloud-offline',
   connecting: 'cloud_refresh',
   unsaved: 'cloud_refresh',
+  'unsaved-config': 'spectrum-Cloud-error',
   error: 'spectrum-Cloud-error',
 };
 
@@ -322,8 +324,8 @@ export default class DaTitle extends LitElement {
     }
 
     if (view === 'edit' || view === 'sheet' || view === 'form') {
-      if (action === 'publish') saveDaVersion(fullpath, 'Published');
-      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
+      if (action === 'publish') createVersion(fullpath, 'Published');
+      else if (action === 'preview') createVersion(fullpath, 'Previewed');
     }
     this._isSending = false;
   }
@@ -416,12 +418,18 @@ export default class DaTitle extends LitElement {
   }
 
   renderCollab() {
-    const tooltip = this.collabStatus === 'unsaved' ? 'Unsaved changes' : this.collabStatus;
+    const isUnsaved = this.collabStatus === 'unsaved';
+    // Config has no auto-save, so the pulsing auto-saving cloud is misleading.
+    // Show a static "unsaved changes" cloud (cloud + !) for the config view instead.
+    const status = isUnsaved && this.details?.view === 'config'
+      ? 'unsaved-config'
+      : this.collabStatus;
+    const tooltip = isUnsaved ? 'Unsaved changes' : this.collabStatus;
     return html`
       <div class="collab-status">
         ${this.collabUsers ? this.renderCollabUsers() : nothing}
-        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${tooltip}" @click=${this.popover}>
-         <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
+        <div class="collab-icon collab-status-cloud collab-status-${status}" data-popup-content="${tooltip}" @click=${this.popover}>
+         <svg class="icon"><use href="#${CLOUD_ICONS[status]}"/></svg>
         </div>
       </div>`;
   }

@@ -9,7 +9,7 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../utils/fixtures.js';
 import { getTestPageURL, fill } from '../utils/page.js';
 
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control';

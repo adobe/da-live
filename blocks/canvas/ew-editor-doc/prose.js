@@ -37,12 +37,14 @@ import imageDrop from './prose-plugins/imageDrop.js';
 import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
 import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
+import blockFocus, { guardFocusedBlockDeletion } from './prose-plugins/blockFocus.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
-const { DA_ADMIN, DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 function registerErrorHandler(ydoc) {
   ydoc.on('update', () => {
@@ -93,7 +95,8 @@ export default async function initProse({
   const ydoc = new Y.Doc();
 
   const server = DA_COLLAB;
-  const roomName = `${DA_ADMIN}${new URL(path).pathname}`;
+  // da-collab reads the store off the room name, and `path` is already the store's source url.
+  const roomName = path;
 
   const wsOpts = { protocols: ['yjs'] };
   let lastSentToken = null;
@@ -177,6 +180,8 @@ export default async function initProse({
     getEnterInputRulesPlugin(dispatch),
     getURLInputRulesPlugin(),
     getListInputRulesPlugin(schema),
+    // Runs before the base/table keymaps so it can veto deleting the block being edited.
+    keymap({ Backspace: guardFocusedBlockDeletion, Delete: guardFocusedBlockDeletion }),
     keymap(buildKeymap(schema)),
     keymap({ Backspace: handleTableBackspace }),
     keymap(baseKeymap),
@@ -191,7 +196,7 @@ export default async function initProse({
         return true;
       },
       'Mod-Alt-s': () => {
-        document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
+        canvasBus.newVersionRequest.emit();
         return true;
       },
       ...getHeadingKeymap(schema),
@@ -206,6 +211,7 @@ export default async function initProse({
     }),
     gapCursor(),
     tableEditing({ allowTableNodeSelection: true }),
+    blockFocus(),
     ...extraPlugins,
   ];
 
