@@ -632,6 +632,31 @@ describe('daMetadata functions', () => {
       expect(getDaMetadata('key2')).to.be.null;
       expect(getDaMetadata('key3')).to.equal('value3');
     });
+
+    it('Coerces object values to JSON strings to avoid "[object Object]"', () => {
+      const originalWarn = console.warn;
+      console.warn = () => {};
+      try {
+        setDaMetadata('obj-key', { a: 1, b: 'two' });
+        expect(getDaMetadata('obj-key')).to.equal('{"a":1,"b":"two"}');
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
+
+    it('Coerces non-string primitive values to strings', () => {
+      const originalWarn = console.warn;
+      console.warn = () => {};
+      try {
+        setDaMetadata('num-key', 42);
+        expect(getDaMetadata('num-key')).to.equal('42');
+
+        setDaMetadata('bool-key', true);
+        expect(getDaMetadata('bool-key')).to.equal('true');
+      } finally {
+        console.warn = originalWarn;
+      }
+    });
   });
 });
 
