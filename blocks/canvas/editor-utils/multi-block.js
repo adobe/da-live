@@ -1,8 +1,10 @@
 import { loadBlockLibrary, loadBlockEditor } from '../ew-panel-extensions/helpers.js';
+import { hasBlockEditorProperty } from './block-editor-props.js';
 
 /**
  * "Multi blocks" — blocks (e.g. cards) whose body is a repeating list of item rows.
- * Marked in the block library's "editor" sheet with `property: 'multi'`. For these,
+ * Marked in the block library's "editor" sheet with a `property` containing `multi`
+ * (comma-separated; not mutually exclusive with other flags like `quick`). For these,
  * the block toolbar offers an "Add item" button that appends a copy of the library
  * block's first item row.
  */
@@ -19,9 +21,7 @@ function variantBaseName(variant) {
 
 /** Pure check: does the "editor" sheet mark `blockName` as a multi block? */
 export function isMultiBlockConfigured(rows, blockName) {
-  const target = normalize(blockName);
-  return (rows || []).some((r) => normalize(r.block) === target
-    && r.property?.toLowerCase().trim() === 'multi');
+  return hasBlockEditorProperty(rows, blockName, 'multi');
 }
 
 export async function isMultiBlock(org, site, blockName) {

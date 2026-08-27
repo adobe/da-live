@@ -223,6 +223,47 @@ export function appendBlockRow(view, tablePos, rowDom) {
   view.dispatch(tr.scrollIntoView());
 }
 
+export function deleteBlockRow(view, tablePos, rowIndex) {
+  if (!view || rowIndex < 1) return false;
+  const { state } = view;
+  const table = state.doc.nodeAt(tablePos);
+  if (table?.type?.name !== 'table' || rowIndex >= table.childCount) return false;
+  let from = tablePos + 1;
+  for (let i = 0; i < rowIndex; i += 1) from += table.child(i).nodeSize;
+  const tr = state.tr.delete(from, from + table.child(rowIndex).nodeSize);
+  tr.setSelection(NodeSelection.create(tr.doc, tablePos));
+  view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
+export function moveBlockRow(
+  view,
+  tablePos,
+  fromRowIndex,
+  insertionIndex,
+) {
+  if (!view || fromRowIndex < 1 || insertionIndex < 1) return false;
+  const { state } = view;
+  const table = state.doc.nodeAt(tablePos);
+  if (table?.type?.name !== 'table'
+    || fromRowIndex >= table.childCount
+    || insertionIndex > table.childCount) return false;
+
+  const rows = [];
+  table.forEach((row) => rows.push(row));
+  const [row] = rows.splice(fromRowIndex, 1);
+  let destinationIndex = insertionIndex;
+  if (fromRowIndex < destinationIndex) destinationIndex -= 1;
+  if (destinationIndex === fromRowIndex) return false;
+  rows.splice(destinationIndex, 0, row);
+
+  const movedTable = table.type.create(table.attrs, rows, table.marks);
+  const tr = state.tr.replaceWith(tablePos, tablePos + table.nodeSize, movedTable);
+  tr.setSelection(NodeSelection.create(tr.doc, tablePos));
+  view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
 export function deleteSection(view, sectionIndex) {
   if (!view) return;
   const { doc, schema } = view.state;

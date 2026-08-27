@@ -6,16 +6,30 @@ import { Plugin, PluginKey } from 'da-y-wrapper';
 // hold and resolving a change's pos can throw.
 export const trackingPluginKey = new PluginKey('proseDiffTracking');
 
+/**
+ * A diff spans two coordinate spaces, so every change carries two positions:
+ * `pos` in `oldDoc` and `newPos` in `newDoc`. They only coincide up to the first
+ * size-changing edit — after that every later sibling sits at a different
+ * position in each doc. Always resolve a position against the doc it came from;
+ * mixing them silently mislocates the second change onto the first change's node.
+ */
 export function findChangedNodes(oldDoc, newDoc) {
   const changes = [];
 
-  function traverse(oldNode, newNode, pos) {
+  // An added/deleted child is reported at the end of its parent's new content.
+  // For a top-level child that runs one past the end of the doc, because the
+  // walk treats a node's content as starting at `pos + 1` and the doc has no
+  // opening token. Clamp so the position always resolves in `newDoc`.
+  const maxNewPos = newDoc.content.size;
+
+  function traverse(oldNode, newNode, pos, newNodePos) {
     if (oldNode === newNode) return;
 
     if (!oldNode || !newNode || oldNode.type !== newNode.type) {
       changes.push({
         type: 'replaced',
         pos,
+        newPos: newNodePos,
         oldNode,
         newNode,
       });
@@ -27,6 +41,7 @@ export function findChangedNodes(oldDoc, newDoc) {
         changes.push({
           type: 'text',
           pos,
+          newPos: newNodePos,
           oldText: oldNode.text,
           newText: newNode.text,
         });
@@ -42,6 +57,7 @@ export function findChangedNodes(oldDoc, newDoc) {
         changes.push({
           type: 'marks',
           pos,
+          newPos: newNodePos,
           oldMarks,
           newMarks,
         });
@@ -52,6 +68,7 @@ export function findChangedNodes(oldDoc, newDoc) {
       changes.push({
         type: 'attrs',
         pos,
+        newPos: newNodePos,
         oldAttrs: oldNode.attrs,
         newAttrs: newNode.attrs,
         nodeType: newNode.type.name,
@@ -63,12 +80,12 @@ export function findChangedNodes(oldDoc, newDoc) {
     const minSize = Math.min(oldSize, newSize);
 
     let oldPos = pos + 1;
-    let newPos = pos + 1;
+    let newPos = newNodePos + 1;
 
     for (let i = 0; i < minSize; i += 1) {
       const oldChild = oldNode.child(i);
       const newChild = newNode.child(i);
-      traverse(oldChild, newChild, oldPos);
+      traverse(oldChild, newChild, oldPos, newPos);
       oldPos += oldChild.nodeSize;
       newPos += newChild.nodeSize;
     }
@@ -78,7 +95,8 @@ export function findChangedNodes(oldDoc, newDoc) {
         const newChild = newNode.child(i);
         changes.push({
           type: 'added',
-          pos: newPos,
+          pos: oldPos,
+          newPos: Math.min(newPos, maxNewPos),
           node: newChild,
         });
         newPos += newChild.nodeSize;
@@ -91,6 +109,7 @@ export function findChangedNodes(oldDoc, newDoc) {
         changes.push({
           type: 'deleted',
           pos: oldPos,
+          newPos: Math.min(newPos, maxNewPos),
           node: oldChild,
         });
         oldPos += oldChild.nodeSize;
@@ -98,7 +117,7 @@ export function findChangedNodes(oldDoc, newDoc) {
     }
   }
 
-  traverse(oldDoc, newDoc, 0);
+  traverse(oldDoc, newDoc, 0, 0);
   return changes;
 }
 
@@ -110,7 +129,13 @@ function changedNodeType(change) {
   return undefined;
 }
 
-export function findCommonEditableAncestor(view, changes, prevState) {
+/**
+ * The one editable node every change lives inside, or null when the changes
+ * straddle more than one. Every position is resolved in the *new* doc, because
+ * the result is fed straight back into `view.state.doc` by the caller — a
+ * deleted node's `newPos` still lands inside its (surviving) parent.
+ */
+export function findCommonEditableAncestor(view, changes) {
   if (changes.length === 0) return null;
 
   const editableAncestors = [];
@@ -118,8 +143,7 @@ export function findCommonEditableAncestor(view, changes, prevState) {
   for (const change of changes) {
     const isDeletedNode = change.type === 'deleted';
     try {
-      const doc = isDeletedNode ? prevState.doc : view.state.doc;
-      const $pos = doc.resolve(change.pos);
+      const $pos = view.state.doc.resolve(change.newPos);
       let editableAncestor = null;
 
       for (let { depth } = $pos; depth > 0; depth -= 1) {
@@ -178,7 +202,7 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
               ));
               const commonEditable = identityChanged
                 ? null
-                : findCommonEditableAncestor(view, changes, prevState);
+                : findCommonEditableAncestor(view, changes);
 
               if (commonEditable) {
                 getEditor?.({ cursorOffset: commonEditable.pos + 1 });

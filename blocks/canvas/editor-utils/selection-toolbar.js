@@ -84,6 +84,12 @@ export function triggerAddImage() {
   getSelectionToolbar().triggerAddImage();
 }
 
+export async function openImagePicker(view) {
+  const tb = getSelectionToolbar();
+  await componentLoaded;
+  tb.openImagePicker(view);
+}
+
 function isNonTextSelection({ selection }) {
   return selection instanceof NodeSelection
     && NON_TEXT_NODES.has(selection.node.type.name);

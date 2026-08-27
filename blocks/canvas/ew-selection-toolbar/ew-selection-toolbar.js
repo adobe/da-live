@@ -260,6 +260,17 @@ class EwSelectionToolbar extends LitElement {
     this._triggerUpload();
   }
 
+  async openImagePicker(view) {
+    if (view) this.view = view;
+    if (!this.view) return;
+    this.show();
+    await this.updateComplete;
+    const trigger = this.shadowRoot.querySelector(
+      '[data-image-picker-trigger], button[data-id="image-add"]',
+    );
+    trigger?.click();
+  }
+
   _triggerUpload() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -328,6 +339,7 @@ class EwSelectionToolbar extends LitElement {
           else this._openAemAssets();
         }}>
         <button slot="trigger" type="button" class="toolbar-btn"
+          data-image-picker-trigger
           aria-label=${item.label} title=${item.label}>
           ${this._icon(item.icon)}
         </button>

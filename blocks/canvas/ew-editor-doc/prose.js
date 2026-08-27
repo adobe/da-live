@@ -38,10 +38,13 @@ import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
 import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
 import blockFocus, { guardFocusedBlockDeletion } from './prose-plugins/blockFocus.js';
+import quickBlockViewState from './prose-plugins/quickBlockViewState.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
+import { getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
+import { loadBlockEditor } from '../ew-panel-extensions/helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -84,6 +87,7 @@ function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
 
 export default async function initProse({
   path, permissions, setEditable, getToken,
+  org, site,
   extraPlugins = [],
 }) {
   const editor = document.createElement('div');
@@ -109,6 +113,11 @@ export default async function initProse({
   }
 
   const canWrite = permissions.some((permission) => permission === 'write');
+
+  // Decorations decide synchronously, so quick-block config must be loaded up front.
+  const blockEditorRows = (canWrite && org && site)
+    ? await loadBlockEditor(org, site).catch(() => [])
+    : [];
 
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, wsOpts);
   wsProvider.maxBackoffTime = 30000;
@@ -218,6 +227,10 @@ export default async function initProse({
   if (canWrite) {
     plugins.unshift(createSlashMenuPlugin(), createSelectionToolbarPlugin());
     plugins.push(imageFocalPoint());
+    if (blockEditorRows.length) {
+      const getTemplateRow = (blockName) => getMultiBlockTemplateRow(org, site, blockName);
+      plugins.push(quickBlockViewState(blockEditorRows, { getMultiTemplateRow: getTemplateRow }));
+    }
   }
 
   let state = EditorState.create({ schema, plugins });

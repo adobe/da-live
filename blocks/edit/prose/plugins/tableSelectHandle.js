@@ -1,6 +1,13 @@
 import { Plugin, NodeSelection } from 'da-y-wrapper';
 
 const HANDLE_OFFSET = 6;
+const TABLE_TARGET_SELECTOR = '.tableWrapper, .quick-block';
+
+function getTableElement(target) {
+  if (target.matches('.tableWrapper')) return target.querySelector('table');
+  const wrapper = target.nextElementSibling;
+  return wrapper?.matches('.tableWrapper') ? wrapper.querySelector('table') : null;
+}
 
 function getTablePos(view, tableEl) {
   const pos = view.posAtDOM(tableEl, 0);
@@ -25,13 +32,13 @@ function getTablePos(view, tableEl) {
 export default function tableSelectHandle() {
   let handle = null;
   let currentTable = null;
-  let currentWrapper = null;
+  let currentTarget = null;
 
-  function showHandle(wrapper, editorRect) {
-    if (!handle || !wrapper) {
+  function showHandle(target, editorRect) {
+    if (!handle || !target) {
       return;
     }
-    const rect = wrapper.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
     handle.style.left = `${rect.left - editorRect.left + HANDLE_OFFSET}px`;
     handle.style.top = `${rect.top - editorRect.top + HANDLE_OFFSET}px`;
     handle.classList.add('is-visible');
@@ -40,7 +47,7 @@ export default function tableSelectHandle() {
   function hideHandle() {
     handle?.classList.remove('is-visible');
     currentTable = null;
-    currentWrapper = null;
+    currentTarget = null;
   }
 
   function createHandle(view) {
@@ -66,7 +73,7 @@ export default function tableSelectHandle() {
     });
 
     el.addEventListener('mouseleave', (e) => {
-      if (e.relatedTarget && currentWrapper?.contains(e.relatedTarget)) {
+      if (e.relatedTarget && currentTarget?.contains(e.relatedTarget)) {
         return;
       }
 
@@ -86,28 +93,32 @@ export default function tableSelectHandle() {
       }
 
       const onMouseOver = (e) => {
-        const wrapper = e.target.closest('.tableWrapper');
+        const target = e.target.closest(TABLE_TARGET_SELECTOR);
 
-        if (!wrapper || wrapper === currentWrapper) {
+        if (!target || target === currentTarget) {
           return;
         }
 
-        currentWrapper = wrapper;
-        currentTable = wrapper.querySelector('table');
+        currentTarget = target;
+        currentTable = getTableElement(target);
+        if (!currentTable) {
+          hideHandle();
+          return;
+        }
         const editorRect = editorView.dom.getBoundingClientRect();
-        showHandle(wrapper, editorRect);
+        showHandle(target, editorRect);
       };
 
       const onMouseOut = (e) => {
-        const wrapper = e.target.closest('.tableWrapper');
+        const target = e.target.closest(TABLE_TARGET_SELECTOR);
 
-        if (!wrapper) {
+        if (!target) {
           return;
         }
 
         const related = e.relatedTarget;
 
-        if (related === handle || wrapper.contains(related)) {
+        if (related === handle || target.contains(related)) {
           return;
         }
 
@@ -119,7 +130,7 @@ export default function tableSelectHandle() {
 
       return {
         update() {
-          if (currentWrapper && !currentWrapper.isConnected) {
+          if (currentTarget && !currentTarget.isConnected) {
             hideHandle();
           }
         },

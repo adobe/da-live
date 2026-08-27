@@ -3,6 +3,8 @@ import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
+import { isQuickBlock } from '../editor-utils/quick-block.js';
+import { getQuickBlockViewMode, setQuickBlockViewMode } from '../ew-editor-doc/prose-plugins/quickBlockViewState.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const nx = getNx();
@@ -34,6 +36,8 @@ class EwBlockToolbar extends LitElement {
     _variantOptions: { state: true },
     _hasBlockLibrary: { state: true },
     _multiTemplateRow: { state: true },
+    _isQuickBlock: { state: true },
+    _quickBlockPos: { state: true },
   };
 
   connectedCallback() {
@@ -101,6 +105,14 @@ class EwBlockToolbar extends LitElement {
     this._multiTemplateRow = (multi && row) ? row : null;
   }
 
+  async _loadQuickBlock(blockName) {
+    this._isQuickBlock = false;
+    if (!this.org || !this.site || !blockName) return;
+    const quick = await isQuickBlock(this.org, this.site, blockName);
+    if (this._blockName !== blockName) return;
+    this._isQuickBlock = quick;
+  }
+
   _onAddItem() {
     if (!this.view || !this._multiTemplateRow) return;
     const { from } = this.view.state.selection;
@@ -137,6 +149,13 @@ class EwBlockToolbar extends LitElement {
     this.view.focus();
   }
 
+  _onToggleQuickView() {
+    if (!this.view || this._quickBlockPos == null) return;
+    const mode = getQuickBlockViewMode(this.view.state, this._quickBlockPos);
+    setQuickBlockViewMode(this.view, this._quickBlockPos, mode === 'table' ? 'quick' : 'table');
+    this.view.focus();
+  }
+
   show(blockName, variant = '') {
     const main = document.querySelector('main');
     if (main) {
@@ -145,8 +164,10 @@ class EwBlockToolbar extends LitElement {
     }
     this._blockName = blockName;
     this._currentVariant = variant;
+    this._quickBlockPos = this.view?.state.selection.from;
     this._loadVariants(blockName);
     this._loadMultiBlock(blockName);
+    this._loadQuickBlock(blockName);
     this.classList.add('open');
     this.requestUpdate();
   }
@@ -198,6 +219,8 @@ class EwBlockToolbar extends LitElement {
   render() {
     const name = this._blockName || 'Block';
     const hasVariants = (this._variantOptions?.length ?? 0) > 0;
+    const quickModeOff = this._isQuickBlock && this._quickBlockPos != null && this.view
+      && getQuickBlockViewMode(this.view.state, this._quickBlockPos) === 'table';
     return html`
       <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
         <button
@@ -232,6 +255,15 @@ class EwBlockToolbar extends LitElement {
             title="Add item"
             @click=${() => this._onAddItem()}
           >${this._icon('addcircle')}<span>Add item</span></button>` : nothing}
+        ${quickModeOff ? html`
+          <span class="toolbar-sep" aria-hidden="true"></span>
+          <button
+            type="button"
+            class="toolbar-btn block-quick-view icon-only"
+            aria-label="Show quick view"
+            title="Show quick view"
+            @click=${() => this._onToggleQuickView()}
+          >${this._icon('table')}</button>` : nothing}
         <span class="toolbar-sep" aria-hidden="true"></span>
         <button
           type="button"

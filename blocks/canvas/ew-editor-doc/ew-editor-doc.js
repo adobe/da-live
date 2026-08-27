@@ -284,6 +284,8 @@ export class EwEditorDoc extends LitElement {
         permissions,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
+        org: this.ctx?.org,
+        site: this.ctx?.repo,
         extraPlugins: [
           mediaBusImage(this.ctx),
           createExtensionsBridgePlugin(),

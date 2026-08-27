@@ -174,8 +174,17 @@ export function extractCursors(view) {
 export function getInstrumentedHTML(view) {
   const editorClone = view.dom.cloneNode(true);
 
-  const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
-  const clonedElements = editorClone.querySelectorAll(EDITABLE_SELECTORS);
+  editorClone.querySelectorAll('.quick-block-ui').forEach((el) => el.remove());
+  editorClone.querySelectorAll('.quick-block-table-hidden').forEach((el) => {
+    el.classList.remove('quick-block-table-hidden');
+    if (!el.classList.length) el.removeAttribute('class');
+  });
+
+  const outsideQuickBlockUI = (el) => !el.closest('.quick-block-ui');
+  const originalElements = [...view.dom.querySelectorAll(EDITABLE_SELECTORS)]
+    .filter(outsideQuickBlockUI);
+  const clonedElements = [...editorClone.querySelectorAll(EDITABLE_SELECTORS)]
+    .filter(outsideQuickBlockUI);
 
   originalElements.forEach((originalElement, index) => {
     if (!isOutermostWysiwygEditable(originalElement)) return;
@@ -213,8 +222,8 @@ export function getInstrumentedHTML(view) {
     div.insertAdjacentElement('beforebegin', blockMarker);
   });
 
-  const originalImages = view.dom.querySelectorAll('img');
-  const clonedImages = editorClone.querySelectorAll('img');
+  const originalImages = [...view.dom.querySelectorAll('img')].filter(outsideQuickBlockUI);
+  const clonedImages = [...editorClone.querySelectorAll('img')].filter(outsideQuickBlockUI);
   originalImages.forEach((originalImage, index) => {
     if (originalImage.matches('.ProseMirror-separator, .ProseMirror-trailingBreak')) return;
     const clonedImage = clonedImages[index];
