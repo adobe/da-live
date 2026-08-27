@@ -1,5 +1,5 @@
 import { DOMParser as ProseParser } from 'da-y-wrapper';
-import { etcFetch, getFirstSheet } from '../../../../shared/utils.js';
+import { etcFetch, getAemSiteToken, getFirstSheet } from '../../../../shared/utils.js';
 import { getNx2Api } from '../../../../../scripts/utils.js';
 import { deleteOffer, getAccessToken, getOffer, saveOffer } from './api.js';
 
@@ -149,7 +149,7 @@ export const fetchTargetConfig = (() => {
 })();
 
 export async function savePreview(org, site, path) {
-  const fullpath = `/${org}/${site}${path}`;
+  const fullpath = `/${org}/${site}${path}`.replace(/\.html$/, '');
   const { aem } = await getNx2Api();
   const resp = await aem.preview(fullpath);
   if (!resp.ok) return { error: 'Couldn\'t preview.' };
@@ -157,7 +157,12 @@ export async function savePreview(org, site, path) {
 }
 
 export async function sendToTarget(org, site, name, aemPath, displayName, existingOfferId) {
-  const aemResp = await etcFetch(`${aemPath}?nocache=${Date.now()}`, 'cors');
+  const opts = {};
+  try {
+    const { siteToken } = await getAemSiteToken({ org, site });
+    if (siteToken) opts.headers = { Authorization: `token ${siteToken}` };
+  } catch { /* fall back to an unauthenticated fetch */ }
+  const aemResp = await etcFetch(`${aemPath}?nocache=${Date.now()}`, 'cors', opts);
   if (!aemResp.ok) return { error: 'Could not fetch from AEM.' };
   const html = await aemResp.text();
   const dom = new DOMParser().parseFromString(html, 'text/html');

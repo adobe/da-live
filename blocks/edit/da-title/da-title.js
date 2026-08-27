@@ -5,7 +5,8 @@ import {
   saveDaConfig,
   getAemHrefs,
 } from '../utils/helpers.js';
-import { delay, fetchDaConfigs, getFirstSheet, aemAction, saveDaVersion } from '../../shared/utils.js';
+import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
+import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -323,8 +324,8 @@ export default class DaTitle extends LitElement {
     }
 
     if (view === 'edit' || view === 'sheet' || view === 'form') {
-      if (action === 'publish') saveDaVersion(fullpath, 'Published');
-      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
+      if (action === 'publish') createVersion(fullpath, 'Published');
+      else if (action === 'preview') createVersion(fullpath, 'Previewed');
     }
     this._isSending = false;
   }

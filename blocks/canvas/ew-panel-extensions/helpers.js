@@ -43,9 +43,16 @@ function getBlockTableHtml(block) {
 
   rows.forEach((row) => {
     const tr = document.createElement('tr');
-    [...row.children].forEach((col) => {
+    const cells = [...row.children];
+    cells.forEach((col, i) => {
       const td = document.createElement('td');
-      if (row.children.length < maxCols) td.setAttribute('colspan', String(maxCols));
+      // Pad only the last cell so the row's total width equals maxCols.
+      // Spanning every cell (the old behavior) made short multi-cell rows
+      // wider than maxCols, forcing ProseMirror to insert empty cells into
+      // every other row to keep the table rectangular.
+      if (cells.length < maxCols && i === cells.length - 1) {
+        td.setAttribute('colspan', String(maxCols - i));
+      }
       td.innerHTML = col.innerHTML;
       tr.append(td);
     });
@@ -134,26 +141,47 @@ function getLibraryMetadata(el) {
   }, {});
 }
 
+// Metadata can sit immediately before or after the block it describes, or be
+// nested inside it (nested case also covers any position within a
+// library-container-start/end group, since group children are flattened into
+// the group's own subtree during parsing).
+function findMetaEl(block) {
+  if (block.nextElementSibling?.classList.contains('library-metadata')) {
+    return block.nextElementSibling;
+  }
+  if (block.previousElementSibling?.classList.contains('library-metadata')) {
+    return block.previousElementSibling;
+  }
+  return block.querySelector('.library-metadata');
+}
+
 function transformBlock(block) {
-  const prevSib = block.previousElementSibling;
+  // Skip a preceding metadata sibling so a `heading, metadata, block` layout
+  // still resolves the name from the heading.
+  const headingSib = block.previousElementSibling?.classList.contains('library-metadata')
+    ? block.previousElementSibling.previousElementSibling
+    : block.previousElementSibling;
   let item;
   if (block.dataset.groupheading) {
     item = { name: block.dataset.groupheading };
-  } else if (isHeading(prevSib) && prevSib.textContent) {
-    item = { name: prevSib.textContent };
+  } else if (isHeading(headingSib) && headingSib.textContent) {
+    item = { name: headingSib.textContent };
   } else {
     item = getBlockName(block.className || '');
   }
-  item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
 
-  const metaEl = block.nextElementSibling?.classList.contains('library-metadata')
-    ? block.nextElementSibling
-    : block.querySelector('.library-metadata');
+  // Extract and strip metadata before generating the block's dom, so it never
+  // leaks into the content that gets copied/inserted or previewed.
+  const metaEl = findMetaEl(block);
   if (metaEl) {
     const md = getLibraryMetadata(metaEl);
+    if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
+    metaEl.remove();
   }
+
+  item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
   return item;
 }
 
