@@ -68,6 +68,23 @@ export function selectedNodePayload(view) {
   return null;
 }
 
+// Mirrors data-prose-index/getDefaultContentProseIndex: non-image content is indexed
+// one position *inside* its own start (posAtDOM(el, 0)), since da-nx's inline-editor
+// bootstrap depends on that exact value as its cursorOffset (see prose-diff.js/da-nx's
+// prose.js). Images use their own start directly; tables are excluded (tracked via blockIndex).
+export function activeContentProseIndex(view) {
+  const sel = view?.state?.selection;
+  if (!sel) return undefined;
+  if (sel instanceof NodeSelection) {
+    const name = sel.node?.type?.name;
+    if (name === 'table') return undefined;
+    return name === 'image' ? sel.from : sel.from + 1;
+  }
+  const { $from } = sel;
+  if ($from.depth < 1) return undefined;
+  return $from.node(1).type.name === 'table' ? undefined : $from.before(1) + 1;
+}
+
 export function applyHighlight(view, { selFrom, selTo, selectionType } = {}) {
   if (!view || typeof selFrom !== 'number' || typeof selTo !== 'number') return;
   const { doc } = view.state;

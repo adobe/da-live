@@ -9,89 +9,48 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, getTestResourceAge, tabBackward, fill, TEST_ORG, TEST_SITE,
+  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
+import { listOldTestResources, deleteResource, mapWithConcurrency, DELETE_CONCURRENCY } from '../utils/cleanup.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
 
-// This test deletes old testing pages that are older than 2 hours
 test('Delete multiple old pages', async ({ page }, workerInfo) => {
   if (workerInfo.project.name !== 'chromium') {
     // only execute this test on chromium
     return;
   }
 
+  let authHeader;
+  page.on('request', (request) => {
+    const auth = request.headers().authorization;
+    if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
+  });
+
   console.log('Deleting test files that are older than', MIN_HOURS, 'hours');
-  // The timeout for this test is long because it may take a while to delete all the files
-  // that are left behind by previous test runs.
-  test.setTimeout(600000);
 
-  // Open the directory listing
+  // Open the directory listing, just to obtain an authenticated request to capture
+  // the auth header from - no further UI interaction happens after this.
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
-
-  // This page will always be there as its used by a test
   await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
-
   await dismissAlertBanner(page);
 
-  // List the resources and check fot the ones that are to be deleted. These are always pages
-  // created by the getTestPageURL() function in page.js
-  const items = page.locator('.da-item-list-item-name');
-
-  let itemsToDelete = 0;
-  for (let i = 0; i < await items.count(); i += 1) {
-    const item = items.nth(i);
-    const fileName = await item.innerText();
-    // console.log('Item', i, fileName, '-', getTestResourceAge(fileName));
-
-    // This method checks if the page is a generated test page. If it is, it returns its age in ms.
-    const age = getTestResourceAge(fileName);
-    if (!age) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-    const day = 1000 * 60 * 60 * MIN_HOURS;
-    if (Date.now() - day < age) {
-      // console.log('Too new:', fileName, ' age is ', new Date(age));
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    // If we're here the page has to be deleted. We'll tick the checkbox next to it in the page
-    const checkbox = page
-      .locator('div.da-item-list-item-inner').filter({ hasText: fileName, exact: true })
-      .locator('input[type="checkbox"][name="item-selected"]').first();
-    // console.log('To be deleted, checked box:', await checkbox.count());
-    await checkbox.focus();
-    await page.keyboard.press(' ');
-    itemsToDelete += 1;
-  }
-
-  if (!itemsToDelete) {
+  const stale = await listOldTestResources(page, authHeader, TEST_ORG, TEST_SITE, '/tests', MIN_HOURS);
+  if (!stale.length) {
     console.log('No items to delete');
     return;
   }
 
-  // Hit the delete button
-  await page.locator('button.delete-button').filter({ visible: true }).click();
+  await mapWithConcurrency(stale, DELETE_CONCURRENCY, ({ path, isFolder }) => (
+    deleteResource(page, authHeader, TEST_ORG, TEST_SITE, path, { isFolder })
+  ));
 
-  // Type in YES to delete > 10 items
-  if (itemsToDelete > 10) {
-    await page.locator('sl-input[placeholder="YES"]').locator('input').fill('YES');
-  }
-
-  // Hit the delete confirmation button
-  await page.locator('sl-button.negative').filter({ visible: true }).click();
-
-  // Wait for the delete button to disappear which is when we're done
-  await expect(page.locator('button.delete-button').filter({ visible: true })).not.toBeVisible({ timeout: 600000 });
-
-  console.log('Deleted', itemsToDelete, 'test files and folders');
+  console.log('Deleted', stale.length, 'test files');
 });
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {

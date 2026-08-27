@@ -1,5 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
+import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
@@ -9,7 +10,8 @@ import { applySiteImageModifiers } from './helpers/imageModifiers.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
-const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
+export const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
+export { buildFeatureSet } from '../../shared/aem-assets/selector-props.js';
 
 const DM_ERROR_MSG = 'The selected asset is not available because it is not approved for delivery. Please check the status.';
 const PUBLISH_ERROR_MSG = 'The selected asset is not available on the publish tier. Please publish the asset in AEM and try again.';
@@ -33,12 +35,6 @@ export function formatExternalBrief(doc) {
   ${contentPlainText}
 
   Please suggest Assets that are visually appealing and relevant to the subject.`;
-}
-
-export function buildFeatureSet(isDmEnabled) {
-  const features = ['upload', 'collections', 'detail-panel', 'advisor'];
-  if (isDmEnabled) features.push('dynamic-media');
-  return features;
 }
 
 export function resolveAssetUrl(asset, repoConfig) {
@@ -86,13 +82,28 @@ function showAssetPanel(assetPanel, secondaryPanel) {
   assetPanel.style.display = 'block';
 }
 
-export function buildHandleSelection(
-  dialog,
+/**
+ * Builds the asset selector's `handleSelection` callback. Shared by the classic editor
+ * (blocks/edit) and the canvas editor (blocks/canvas) — the two only differ in how they
+ * resolve the editor view and how they close the surrounding UI, so those are injected:
+ *
+ * @param {object} opts
+ * @param {HTMLElement} opts.assetPanel - Panel hosting the asset selector.
+ * @param {HTMLElement} opts.secondaryPanel - Panel used for smart-crop / error UI.
+ * @param {object} opts.repoConfig - Resolved repository config (see helpers/config.js).
+ * @param {Promise<Array|false>} opts.responsiveImageConfigPromise - Responsive image configs.
+ * @param {function(): object} opts.getView - Returns the current ProseMirror view.
+ * @param {function(): void} opts.close - Closes the surrounding dialog/panel.
+ * @returns {function(Array): Promise<void>}
+ */
+export function buildHandleSelection({
   assetPanel,
   secondaryPanel,
   repoConfig,
   responsiveImageConfigPromise,
-) {
+  getView,
+  close,
+}) {
   return async (assets) => {
     const [asset] = assets;
     if (!asset) return;
@@ -100,14 +111,16 @@ export function buildHandleSelection(
     const format = asset['aem:formatName'];
     if (!format) return;
 
+    const view = getView();
+    if (!view) return;
+
     const mimetype = asset.mimetype || asset['dc:format'] || '';
     const isImage = mimetype.toLowerCase().startsWith('image/');
     const alt = getAssetAlt(asset);
-    const { view } = window;
 
     const resetToAssetPanel = () => showAssetPanel(assetPanel, secondaryPanel);
     const closeAndReset = () => {
-      dialog.close();
+      close();
       resetToAssetPanel();
     };
 
@@ -165,7 +178,7 @@ export function buildHandleSelection(
     }
 
     // Standard insertion
-    dialog.close();
+    close();
     const src = resolveAssetUrl(asset, repoConfig);
 
     if (!isImage || repoConfig.insertAsLink) {
@@ -221,21 +234,20 @@ export async function openAssets() {
   const responsiveImageConfigPromise = getResponsiveImageConfig(owner, repo);
   const externalBrief = formatExternalBrief(window.view.state.doc);
 
-  const selectorProps = {
+  const selectorProps = buildAssetSelectorProps({
     imsToken: details.accessToken.token,
-    repositoryId: repoConfig.repositoryId,
-    aemTierType: repoConfig.tierType,
-    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
+    repoConfig,
     externalBrief,
     onClose: () => assetPanel.style.display !== 'none' && dialog.close(),
-    handleSelection: buildHandleSelection(
-      dialog,
+    handleSelection: buildHandleSelection({
       assetPanel,
       secondaryPanel,
       repoConfig,
       responsiveImageConfigPromise,
-    ),
-  };
+      getView: () => window.view,
+      close: () => dialog.close(),
+    }),
+  });
 
   window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
 }

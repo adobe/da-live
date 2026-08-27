@@ -51,10 +51,6 @@ class DaLinkDialog extends LitElement {
 
   _onClose() {
     this._urlError = '';
-    this.dispatchEvent(new CustomEvent('da-link-cancel', {
-      bubbles: true,
-      composed: true,
-    }));
   }
 
   render() {

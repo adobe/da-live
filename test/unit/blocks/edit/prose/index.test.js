@@ -7,7 +7,7 @@ import initProse, {
   createConnection,
   createAwarenessStatusWidget,
 } from '../../../../../blocks/edit/prose/index.js';
-import { forceSave } from '../../../../../blocks/edit/prose/forcesave.js';
+import { forceSave } from '../../../../../blocks/shared/forcesave.js';
 
 // initProse lazily imports da-library.js, which (a) builds URLs from
 // `${getNx()}/...` and (b) calls loadLibrary() at module import time.

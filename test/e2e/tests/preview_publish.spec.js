@@ -1,9 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
   getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
+import { parseTestUrl, deleteResource } from '../utils/cleanup.js';
 
 // Requires write access to TEST_SITE. pingtest must exist in the /tests directory.
 const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`;
@@ -179,6 +180,25 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
     const page = await browser.newPage();
     ({ folderURL, folderPath } = await createFolder(page, workerInfo, 'bulk'));
     await createPagesInFolder(page, workerInfo, folderPath, 'bulk', BULK_PAGE_COUNT);
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    let authHeader;
+    page.on('request', (request) => {
+      const auth = request.headers().authorization;
+      if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
+    });
+    await page.goto(folderURL);
+
+    const { org, site, path } = parseTestUrl(folderURL);
+    if (authHeader) {
+      const resp = await deleteResource(page, authHeader, org, site, path, { isFolder: true });
+      console.log(`[cleanup] Bulk preview/publish folder -> ${org}/${site}${path}: ${resp.ok() ? 'deleted' : `failed (${resp.status()})`}`);
+    } else {
+      console.warn(`[cleanup] Bulk preview/publish folder -> ${org}/${site}${path}: skipped (no auth header captured)`);
+    }
     await page.close();
   });
 

@@ -28,7 +28,7 @@ import { getAuthToken } from '../../shared/utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
-import { forceSave } from './forcesave.js';
+import { forceSave } from '../../shared/forcesave.js';
 
 // Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
 // every successful onopen, so a close that follows a brief successful
@@ -149,6 +149,7 @@ async function loadCustomPlugins() {
     { default: tableSelectHandle },
     { default: linkConverter },
     { default: linkTextSync },
+    { default: mediaBusImage },
     { default: sectionPasteHandler },
     { default: base64Uploader },
     { default: toggleLibrary },
@@ -164,6 +165,7 @@ async function loadCustomPlugins() {
     import('./plugins/tableSelectHandle.js'),
     import('./plugins/linkConverter.js'),
     import('./plugins/linkTextSync.js'),
+    import('./plugins/mediaBusImage.js'),
     import('./plugins/sectionPasteHandler.js'),
     import('./plugins/base64uploader.js'),
     import('../da-library/da-library.js'),
@@ -182,6 +184,7 @@ async function loadCustomPlugins() {
     tableSelectHandle,
     linkConverter,
     linkTextSync,
+    mediaBusImage,
     sectionPasteHandler,
     base64Uploader,
     toggleLibrary,
@@ -463,6 +466,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
       plugins.imageDrop(schema),
       plugins.linkConverter(schema),
       plugins.linkTextSync(),
+      plugins.mediaBusImage(),
       plugins.sectionPasteHandler(schema),
       plugins.base64Uploader(schema),
       columnResizing(),
@@ -505,6 +509,9 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     // Reconfigure the view with the full plugin list
     const newState = window.view.state.reconfigure({ plugins: pluginList });
     window.view.updateState(newState);
+    // reconfigure() destroys/recreates all plugin views, incl. the cursor plugin, which
+    // nulls collab cursor awareness on destroy. Force an update pass to re-broadcast it.
+    window.view.dispatch(window.view.state.tr);
   });
 }
 

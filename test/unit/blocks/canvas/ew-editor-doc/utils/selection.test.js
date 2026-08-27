@@ -5,6 +5,7 @@ import {
   describeDocSelection,
   applyHighlight,
   selectedNodePayload,
+  activeContentProseIndex,
   SEL_BLOCK,
   SEL_ITEM,
   SEL_TEXT,
@@ -193,5 +194,72 @@ describe('selectedNodePayload', () => {
     const sel = NodeSelection.create(editor.view.state.doc, imgPos);
     editor.view.dispatch(editor.view.state.tr.setSelection(sel));
     expect(selectedNodePayload(editor.view)).to.deep.equal({ anchorType: 'image', proseIndex: imgPos, src: '/x.png' });
+  });
+});
+
+describe('activeContentProseIndex', () => {
+  let editor;
+  beforeEach(async () => { editor = await createTestEditor(); });
+  afterEach(() => { destroyEditor(editor); });
+
+  // Expected value is the paragraph's own start (0) + 1, matching the data-prose-index/
+  // cursorOffset convention (see the comment on activeContentProseIndex).
+  it('returns the paragraph start + 1 for a text selection inside it', () => {
+    editor.view.dispatch(editor.view.state.tr.insertText('hello'));
+    const sel = TextSelection.create(editor.view.state.doc, 3, 3);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(activeContentProseIndex(editor.view)).to.equal(1);
+  });
+
+  it('returns the node position + 1 for a NodeSelection on the paragraph itself', () => {
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.insertText('hello'));
+    const sel = NodeSelection.create(editor.view.state.doc, 0);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(activeContentProseIndex(editor.view)).to.equal(1);
+  });
+
+  it('returns undefined for a table NodeSelection', () => {
+    const { state } = editor.view;
+    const { schema } = state;
+    const para = schema.nodes.paragraph.create(null, schema.text('cards'));
+    const cell = schema.nodes.table_cell.create({ colspan: 2, colwidth: null }, para);
+    const row = schema.nodes.table_row.create(null, cell);
+    const table = schema.nodes.table.create(null, row);
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, table));
+    const sel = NodeSelection.create(editor.view.state.doc, 0);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(activeContentProseIndex(editor.view)).to.equal(undefined);
+  });
+
+  it('returns undefined for a text selection inside a table cell', () => {
+    const { state } = editor.view;
+    const { schema } = state;
+    const para = schema.nodes.paragraph.create(null, schema.text('cards'));
+    const cell = schema.nodes.table_cell.create({ colspan: 2, colwidth: null }, para);
+    const row = schema.nodes.table_row.create(null, cell);
+    const table = schema.nodes.table.create(null, row);
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, table));
+    let paraPos = -1;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'paragraph' && paraPos < 0) paraPos = pos;
+    });
+    const sel = TextSelection.create(editor.view.state.doc, paraPos + 1);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(activeContentProseIndex(editor.view)).to.equal(undefined);
+  });
+
+  it('returns the node position for an image NodeSelection (images are outline content-children too)', () => {
+    const { state } = editor.view;
+    const { schema } = state;
+    const para = schema.nodes.paragraph.create(null, schema.nodes.image.create({ src: '/x.png' }));
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, para));
+    let imgPos = -1;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') imgPos = pos;
+    });
+    const sel = NodeSelection.create(editor.view.state.doc, imgPos);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(activeContentProseIndex(editor.view)).to.equal(imgPos);
   });
 });

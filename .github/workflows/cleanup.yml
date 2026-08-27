@@ -1,0 +1,48 @@
+name: Cleanup stale test resources
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: da-admin
+            env: {}
+          - name: helix
+            env:
+              TEST_ORG: da-testautomation
+              TEST_SITE: da-e2e-tests
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+    - name: Install dependencies
+      run: cd test/e2e && npm ci
+    - name: Install Playwright Browsers
+      run: cd test/e2e && npx playwright install --with-deps chromium
+    - name: Run stale-resource cleanup
+      env:
+        TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        TEST_ORG: ${{ matrix.env.TEST_ORG }}
+        TEST_SITE: ${{ matrix.env.TEST_SITE }}
+      run: cd test/e2e && npm run test:cleanup
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: cleanup-report-${{ matrix.name }}
+        path: test/e2e/playwright-report/
+        retention-days: 7

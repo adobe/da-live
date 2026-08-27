@@ -1,11 +1,11 @@
 import { TextSelection, NodeSelection, yUndo, yRedo } from 'da-y-wrapper';
 import {
   getSelectionToolbar,
+  canShowSelectionToolbar,
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
-import { editorSelectChange } from '../../editor-utils/editor-utils.js';
-import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
+import { canvasBus } from '../../utils/canvas-bus.js';
 
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
@@ -58,17 +58,15 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     }
 
     ctx.suppressRerender = true;
+    // dispatch() already triggers createTrackingPlugin's hook, which emits
+    // canvasBus.editorSelectState with the full payload (incl. proseIndex) — a second,
+    // blockIndex-only emit here would clobber that and collapse the outline.
     view.dispatch(tr.scrollIntoView());
     ctx.suppressRerender = false;
     const tb = getSelectionToolbar();
-    if (!tb.linkDialogOpen && !tb.isInteracting) {
+    if (canShowSelectionToolbar() && !tb.linkDialogOpen && !tb.isInteracting) {
       tb.view = view;
       tb.show();
-    }
-    const blockIndex = getActiveBlockIndex(view);
-    if (blockIndex !== ctx.lastBlockIndex) {
-      ctx.lastBlockIndex = blockIndex;
-      editorSelectChange.emit({ blockIndex, source: 'wysiwyg' });
     }
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -96,7 +94,7 @@ export function handleUndoRedo(data, ctx) {
 }
 
 export function handleNewVersion() {
-  document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
+  canvasBus.newVersionRequest.emit();
 }
 
 export function handleStoredMarks({ marks }, ctx) {
@@ -116,6 +114,8 @@ export function handleStoredMarks({ marks }, ctx) {
     ctx.suppressRerender = true;
     view.dispatch(tr);
     ctx.suppressRerender = false;
+    const tb = getSelectionToolbar();
+    if (tb.open && !tb.isInteracting) tb.requestUpdate();
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[quick-edit-controller] handleStoredMarks failed', e?.message);
@@ -144,6 +144,7 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
 }
 
 function showToolbarInIFrame(ctx) {
+  if (!canShowSelectionToolbar()) return;
   const { view } = ctx;
   const tb = getSelectionToolbar();
   tb.view = view;

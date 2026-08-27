@@ -6,28 +6,38 @@ import {
   handleNewVersion,
   handleIframeSelectionChange,
   handleNodeSelect,
+  handleStoredMarks,
 } from './utils/handlers.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+
+const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
 
 export function createControllerOnMessage(ctx) {
   return function onMessage(e) {
-    if (e.data.type === 'cursor-move') {
-      handleCursorMove(e.data, ctx);
-    } else if (e.data.type === 'reload') {
+    const { type, payload = {} } = e.data ?? {};
+
+    if (MUTATING_MESSAGES.has(type) && !ctx.canWrite) return;
+
+    if (type === MESSAGE_TYPES.CURSOR_MOVE) {
+      handleCursorMove(payload, ctx);
+    } else if (type === MESSAGE_TYPES.RELOAD) {
       updateDocument(ctx);
-    } else if (e.data.type === 'image-replace') {
-      handleImageReplace(e.data, ctx);
-    } else if (e.data.type === 'get-editor') {
-      getEditor(e.data, ctx);
-    } else if (e.data.type === 'node-update') {
-      updateState(e.data, ctx);
-    } else if (e.data.type === 'history') {
-      handleUndoRedo(e.data, ctx);
-    } else if (e.data.type === 'new-version') {
+    } else if (type === MESSAGE_TYPES.IMAGE_REPLACE) {
+      handleImageReplace(payload, ctx);
+    } else if (type === MESSAGE_TYPES.GET_EDITOR) {
+      getEditor(payload, ctx);
+    } else if (type === MESSAGE_TYPES.NODE_UPDATE) {
+      updateState(payload, ctx);
+    } else if (type === MESSAGE_TYPES.HISTORY) {
+      handleUndoRedo(payload, ctx);
+    } else if (type === MESSAGE_TYPES.NEW_VERSION) {
       handleNewVersion();
-    } else if (e.data.type === 'selection-change') {
-      handleIframeSelectionChange(e.data, ctx);
-    } else if (e.data.type === 'node-select') {
-      handleNodeSelect(e.data, ctx);
+    } else if (type === MESSAGE_TYPES.SELECTION_CHANGE) {
+      handleIframeSelectionChange(payload, ctx);
+    } else if (type === MESSAGE_TYPES.NODE_SELECT) {
+      handleNodeSelect(payload, ctx);
+    } else if (type === MESSAGE_TYPES.STORED_MARKS) {
+      handleStoredMarks(payload, ctx);
     }
   };
 }

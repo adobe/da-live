@@ -5,7 +5,8 @@ import {
   saveDaConfig,
   getAemHrefs,
 } from '../utils/helpers.js';
-import { delay, fetchDaConfigs, getFirstSheet, aemAction, saveDaVersion } from '../../shared/utils.js';
+import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
+import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -25,6 +26,8 @@ const CLOUD_ICONS = {
   disconnected: 'spectrum-Cloud-offline',
   offline: 'spectrum-Cloud-offline',
   connecting: 'cloud_refresh',
+  unsaved: 'cloud_refresh',
+  'unsaved-config': 'spectrum-Cloud-error',
   error: 'spectrum-Cloud-error',
 };
 
@@ -55,14 +58,6 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._actionsVis = [];
-    if (this.details.view === 'sheet') {
-      this.collabStatus = window.navigator.onLine
-        ? 'connected'
-        : 'offline';
-
-      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
-      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
-    }
   }
 
   update(changed) {
@@ -216,6 +211,9 @@ export default class DaTitle extends LitElement {
   }
 
   async handleAction(action) {
+    // Guard against a stale/bypassed disabled state (e.g. permissions changed mid-session).
+    if (action === 'save' && this._readOnly) return;
+
     this._status = null;
     this._isSending = true;
     this._actions.open = false;
@@ -234,6 +232,21 @@ export default class DaTitle extends LitElement {
       if (await staleCheck.checkForDrift()) {
         this._isSending = false;
         return;
+      }
+
+      if (view === 'sheet' && action === 'save' && this.sheet) {
+        const {
+          findColumnsWithDataButNoHeader,
+          confirmSaveWithMissingHeaders,
+        } = await import('../../sheet/utils/utils.js');
+        const affected = findColumnsWithDataButNoHeader(this.sheet);
+        if (affected.length) {
+          const proceed = await confirmSaveWithMissingHeaders(affected);
+          if (!proceed) {
+            this._isSending = false;
+            return;
+          }
+        }
       }
 
       const savedOk = await staleCheck.runSave(async () => {
@@ -311,8 +324,8 @@ export default class DaTitle extends LitElement {
     }
 
     if (view === 'edit' || view === 'sheet' || view === 'form') {
-      if (action === 'publish') saveDaVersion(fullpath, 'Published');
-      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
+      if (action === 'publish') createVersion(fullpath, 'Published');
+      else if (action === 'preview') createVersion(fullpath, 'Previewed');
     }
     this._isSending = false;
   }
@@ -357,16 +370,20 @@ export default class DaTitle extends LitElement {
   renderActions() {
     if (!this._actions?.available) return nothing;
 
-    return html`${this._actions.available?.map((action) => html`
+    return html`${this._actions.available?.map((action) => {
+      const readOnlyBlock = action === 'save' && this._readOnly;
+      const disabledText = this.disabledText ?? (readOnlyBlock ? 'You do not have permission to save.' : undefined);
+      return html`
       <button
         @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
         aria-label="Send"
-        data-popup-content=${this.disabledText ?? nothing}
-        ?disabled=${this.disabledText}>
+        data-popup-content=${disabledText ?? nothing}
+        ?disabled=${this.disabledText || readOnlyBlock}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
-    `)}`;
+    `;
+    })}`;
   }
 
   popover({ target }) {
@@ -401,11 +418,18 @@ export default class DaTitle extends LitElement {
   }
 
   renderCollab() {
+    const isUnsaved = this.collabStatus === 'unsaved';
+    // Config has no auto-save, so the pulsing auto-saving cloud is misleading.
+    // Show a static "unsaved changes" cloud (cloud + !) for the config view instead.
+    const status = isUnsaved && this.details?.view === 'config'
+      ? 'unsaved-config'
+      : this.collabStatus;
+    const tooltip = isUnsaved ? 'Unsaved changes' : this.collabStatus;
     return html`
       <div class="collab-status">
         ${this.collabUsers ? this.renderCollabUsers() : nothing}
-        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${this.collabStatus}" @click=${this.popover}>
-         <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
+        <div class="collab-icon collab-status-cloud collab-status-${status}" data-popup-content="${tooltip}" @click=${this.popover}>
+         <svg class="icon"><use href="#${CLOUD_ICONS[status]}"/></svg>
         </div>
       </div>`;
   }

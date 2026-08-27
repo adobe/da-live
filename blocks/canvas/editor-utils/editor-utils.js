@@ -2,6 +2,9 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
+import { getSelectionToolbar } from './selection-toolbar.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -24,7 +27,10 @@ export function updateState(data, ctx) {
   const { storedMarks } = view.state;
   const node = view.state.schema.nodeFromJSON(data.node);
   const pos = view.state.doc.resolve(data.cursorOffset);
-  const docPos = view.state.selection.from;
+  // Preserve a range selection (e.g. toggling Bold on selected text) rather than
+  // always collapsing to a point — collapsing loses the range when nothing moves
+  // the selection afterward (no CURSOR_MOVE follows a mark-only edit).
+  const { from: selFrom, to: selTo } = view.state.selection;
 
   const nodeStart = pos.before(pos.depth);
   const nodeEnd = pos.after(pos.depth);
@@ -48,11 +54,17 @@ export function updateState(data, ctx) {
     }
   }
 
-  tr.setSelection(TextSelection.create(tr.doc, docPos));
+  const maxPos = tr.doc.content.size;
+  const restoredFrom = Math.min(selFrom, maxPos);
+  const restoredTo = Math.min(selTo, maxPos);
+  tr.setSelection(TextSelection.create(tr.doc, restoredFrom, restoredTo));
 
   ctx.suppressRerender = true;
   view.dispatch(tr);
   ctx.suppressRerender = false;
+
+  const tb = getSelectionToolbar();
+  if (tb.open && !tb.isInteracting) tb.requestUpdate();
 
   // Sync the updated node (with marks applied) back to the portal's mini editor.
   // Without this, the portal's editor retains the plain-text version, so the next
@@ -64,10 +76,11 @@ export function updateState(data, ctx) {
       const syncNodeStart = syncPos.before(syncPos.depth);
       const syncNode = view.state.doc.resolve(syncNodeStart).nodeAfter;
       if (syncNode) {
+        const editorState = syncNode.toJSON();
+        const { cursorOffset } = data;
         ctx.port.postMessage({
-          type: 'set-editor-state',
-          editorState: syncNode.toJSON(),
-          cursorOffset: data.cursorOffset,
+          type: MESSAGE_TYPES.SET_EDITOR_STATE,
+          payload: { editorState, cursorOffset },
         });
       }
     } catch {
@@ -92,7 +105,12 @@ export function getEditor(data, ctx) {
     const beforePos = doc.resolve(before);
     const nodeAtBefore = beforePos.nodeAfter;
     if (!nodeAtBefore) return;
-    ctx.port.postMessage({ type: 'set-editor-state', editorState: nodeAtBefore.toJSON(), cursorOffset: before + 1 });
+    const editorState = nodeAtBefore.toJSON();
+    const newCursorOffset = before + 1;
+    ctx.port.postMessage({
+      type: MESSAGE_TYPES.SET_EDITOR_STATE,
+      payload: { editorState, cursorOffset: newCursorOffset },
+    });
   } catch {
     // Stale iframe cursor after structural replace (e.g. chat revert, remote sync).
   }
@@ -110,6 +128,8 @@ const EDITABLES = [
   { selector: 'p', nodeName: 'P' },
   { selector: 'ol', nodeName: 'OL' },
   { selector: 'ul', nodeName: 'UL' },
+  { selector: 'pre', nodeName: 'PRE' },
+  { selector: 'blockquote', nodeName: 'BLOCKQUOTE' },
 ];
 const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
 
@@ -178,7 +198,8 @@ export function getInstrumentedHTML(view) {
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
     const isPageOrSectionMetadata = firstCellText === 'metadata' || firstCellText === 'section metadata' || firstCellText === 'section-metadata';
-    if (isPageOrSectionMetadata) return;
+    const isLibraryMetadata = firstCellText === 'library metadata' || firstCellText === 'library-metadata';
+    if (isPageOrSectionMetadata || isLibraryMetadata) return;
     const div = table.parentElement;
     const blockMarker = document.createElement('div');
     blockMarker.className = 'block-marker';
@@ -236,7 +257,54 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
-const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'block-marker']);
+const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);
+
+function hasDefaultContent(el) {
+  if (el.textContent?.trim()) return true;
+  return el.matches?.('img') || !!el.querySelector?.('img');
+}
+
+function getDefaultContentProseIndex(el, kind) {
+  // A <p> wrapping an image keeps its own data-prose-index, but only the nested
+  // data-image-index resolves to the image node (prose2aem leaves the <p> unless the
+  // image is the section's sole child), so for kind 'image' it must win.
+  if (kind === 'image') {
+    const nestedImage = el.querySelector('[data-image-index]');
+    if (nestedImage) return Number(nestedImage.getAttribute('data-image-index'));
+  }
+  const own = el.getAttribute('data-prose-index') ?? el.getAttribute('data-image-index');
+  if (own != null) return Number(own);
+  const nested = el.querySelector('[data-prose-index], [data-image-index]');
+  if (!nested) return undefined;
+  const attr = nested.getAttribute('data-prose-index') ?? nested.getAttribute('data-image-index');
+  return attr != null ? Number(attr) : undefined;
+}
+
+function firstLineText(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+  return clone.textContent.trim().split('\n')[0].trim();
+}
+
+function getContentSnippet(el, kind) {
+  if (kind === 'list') return firstLineText(el.querySelector(':scope > li') ?? el);
+  if (kind === 'quote') return firstLineText(el.querySelector(':scope > p') ?? el);
+  return firstLineText(el);
+}
+
+function getDefaultContentKind(el) {
+  const tag = el.tagName;
+  if (/^H[1-6]$/.test(tag)) return { kind: 'heading', level: Number(tag[1]) };
+  if (tag === 'OL') return { kind: 'list', ordered: true };
+  if (tag === 'UL') return { kind: 'list', ordered: false };
+  if (tag === 'PRE') return { kind: 'code' };
+  if (tag === 'BLOCKQUOTE') return { kind: 'quote' };
+  if (el.textContent?.trim()) return { kind: 'paragraph' };
+  // A text-less <p> wraps only an image, as does a bare <picture>/<img> — but a text-less
+  // <p> with no image at all is just an empty paragraph, not an image wrapper.
+  if (el.matches?.('img') || el.querySelector?.('img')) return { kind: 'image' };
+  return { kind: 'paragraph' };
+}
 
 export function parseSections(htmlText) {
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
@@ -244,82 +312,93 @@ export function parseSections(htmlText) {
   let flatIndex = 0;
   return Array.from(container.querySelectorAll(':scope > div'), (section, sectionIndex) => {
     const blocks = [];
-    Array.from(section.querySelectorAll(':scope > div[class]')).forEach((el) => {
-      const name = el.classList[0];
-      if (!name || SKIP_BLOCK_CLASSES.has(name)) return;
-      const rawProseIndex = el.getAttribute('data-block-index');
-      const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
-      const innerText = el.textContent?.trim() ?? '';
-      blocks.push({ name, blockIndex: flatIndex, proseIndex, innerText });
-      flatIndex += 1;
+    const items = [];
+    let currentRun = [];
+
+    const flushRun = () => {
+      if (currentRun.length) {
+        items.push({
+          type: 'content',
+          proseIndex: getDefaultContentProseIndex(currentRun[0]),
+          innerText: currentRun.map((el) => el.textContent.trim()).filter(Boolean).join(' '),
+          children: currentRun.map((el) => {
+            const kindInfo = getDefaultContentKind(el);
+            return {
+              type: 'content',
+              ...kindInfo,
+              proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
+              innerText: el.textContent.trim(),
+              snippet: getContentSnippet(el, kindInfo.kind),
+            };
+          }),
+        });
+      }
+      currentRun = [];
+    };
+
+    Array.from(section.children).forEach((el) => {
+      const name = el.tagName === 'DIV' ? el.classList[0] : undefined;
+      const isBlock = name && !SKIP_BLOCK_CLASSES.has(name);
+
+      if (isBlock) {
+        flushRun();
+        const rawProseIndex = el.getAttribute('data-block-index');
+        const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
+        const innerText = el.textContent?.trim() ?? '';
+        // Classes after the block name are its variant(s) — the same descriptor the
+        // doc editor's header row shows in parentheses (e.g. `cards (highlight)`).
+        const variant = [...el.classList].slice(1).join(', ');
+        const block = { name, variant, blockIndex: flatIndex, proseIndex, innerText };
+        blocks.push(block);
+        items.push({ type: 'block', ...block });
+        flatIndex += 1;
+        return;
+      }
+
+      // Skip empty nodes — prose2aem doesn't always strip them (e.g. an empty <h2> can
+      // survive serialization) — so they neither break nor join a run.
+      if (hasDefaultContent(el)) currentRun.push(el);
     });
-    return { sectionIndex, blocks };
+    flushRun();
+
+    return { sectionIndex, blocks, items };
   });
 }
 
-// State observable — replays last value on subscribe. See docs/canvas-events.md.
-export const editorHtmlChange = (() => {
-  const listeners = new Set();
-  let currentHtml = '';
-  return {
-    emit(html) {
-      currentHtml = html;
-      listeners.forEach((fn) => fn(html));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      if (currentHtml) fn(currentHtml);
-      return () => listeners.delete(fn);
-    },
-  };
-})();
-
-// Event observable — no replay on subscribe. See docs/canvas-events.md.
-// emit() enriches the detail with blockName/proseIndex/innerText from the last parsed HTML.
-export const editorSelectChange = (() => {
-  const listeners = new Set();
-  let blockMeta = new Map();
-
-  editorHtmlChange.subscribe((html) => {
-    if (!html.trim()) {
-      blockMeta = new Map();
-      return;
+let selectBlockMeta = new Map();
+canvasBus.editorHtmlState.subscribe((html) => {
+  if (!html.trim()) {
+    selectBlockMeta = new Map();
+    return;
+  }
+  const next = new Map();
+  for (const { blocks } of parseSections(html)) {
+    for (const { name, blockIndex, proseIndex, innerText } of blocks) {
+      next.set(blockIndex, { name, proseIndex, innerText });
     }
-    const next = new Map();
-    for (const { blocks } of parseSections(html)) {
-      for (const { name, blockIndex, proseIndex, innerText } of blocks) {
-        next.set(blockIndex, { name, proseIndex, innerText });
-      }
-    }
-    blockMeta = next;
-  });
+  }
+  selectBlockMeta = next;
+});
 
-  return {
-    emit(detail) {
-      const meta = blockMeta.get(detail.blockIndex);
-      const { name: blockName, proseIndex, innerText } = meta || {};
-      const enriched = meta
-        ? { ...detail, blockName, proseIndex, innerText }
-        : detail;
-      listeners.forEach((fn) => fn(enriched));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
-    },
-  };
-})();
+// Runs once, at load, so canvas-bus.js's editorSelectState.emit is enriched for
+// every caller from here on — see canvas-bus.js for why this file owns the lookup.
+registerEditorSelectEnricher((detail) => {
+  const meta = selectBlockMeta.get(detail.blockIndex);
+  if (!meta) return detail;
+  const { name: blockName, proseIndex, innerText } = meta;
+  return { ...detail, blockName, proseIndex, innerText };
+});
 
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: 'set-body', body });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
   return body;
 }
 
 export function updateCursors(ctx) {
   const cursors = extractCursors(ctx.view);
-  ctx.port.postMessage({ type: 'set-cursors', cursors });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_CURSORS, payload: { cursors } });
 }
 
 // --- preview.js ---
@@ -334,6 +413,9 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
 
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
+  const branchParam = new URLSearchParams(window.location.search).get('ref');
+  if (branchParam) return branchParam;
+
   try {
     const configs = await Promise.all(fetchDaConfigs({ org, site }));
     const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);

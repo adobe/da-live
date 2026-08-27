@@ -1,12 +1,11 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../scripts/utils.js';
+import { DA_ORIGIN } from '../../../../blocks/shared/constants.js';
 import {
   daFetch,
   etcFetch,
-  aemAdmin,
   aemAction,
   saveToDa,
-  saveDaVersion,
   getSheetByIndex,
   getSheetByName,
   getFirstSheet,
@@ -15,6 +14,7 @@ import {
   sanitizeName,
   fetchDaConfigs,
   getAuthToken,
+  isValidHref,
 } from '../../../../blocks/shared/utils.js';
 
 // daFetch's 401-no-token path lazy-loads the banner module, which resolves
@@ -402,63 +402,6 @@ describe('etcFetch', () => {
   });
 });
 
-describe('aemAdmin', () => {
-  let savedFetch;
-  let savedLocalStorage;
-
-  beforeEach(() => {
-    savedFetch = window.fetch;
-    savedLocalStorage = window.localStorage.getItem('nx-ims');
-    window.localStorage.removeItem('nx-ims');
-  });
-
-  afterEach(() => {
-    window.fetch = savedFetch;
-    if (savedLocalStorage) {
-      window.localStorage.setItem('nx-ims', savedLocalStorage);
-    } else {
-      window.localStorage.removeItem('nx-ims');
-    }
-  });
-
-  it('Constructs correct AEM admin URL from path', async () => {
-    let capturedUrl;
-    window.fetch = (url) => {
-      capturedUrl = url;
-      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    };
-
-    await aemAdmin('/owner/repo/folder/page.html', 'preview');
-    expect(capturedUrl).to.equal('https://admin.hlx.page/preview/owner/repo/main/folder/page');
-  });
-
-  it('Strips .html extension from name', async () => {
-    let capturedUrl;
-    window.fetch = (url) => {
-      capturedUrl = url;
-      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
-    };
-
-    await aemAdmin('/owner/repo/test.html', 'preview');
-    expect(capturedUrl).to.include('/test');
-    expect(capturedUrl).not.to.include('.html');
-  });
-
-  it('Returns empty object for DELETE with 204', async () => {
-    window.fetch = () => Promise.resolve(new Response(null, { status: 204 }));
-
-    const result = await aemAdmin('/owner/repo/page', 'preview', 'DELETE');
-    expect(result).to.deep.equal({});
-  });
-
-  it('Returns undefined when response is not ok', async () => {
-    window.fetch = () => Promise.resolve(new Response('error', { status: 500 }));
-
-    const result = await aemAdmin('/owner/repo/page', 'preview');
-    expect(result).to.equal(undefined);
-  });
-});
-
 describe('saveToDa', () => {
   let savedFetch;
   let savedLocalStorage;
@@ -517,13 +460,53 @@ describe('saveToDa', () => {
     expect(capturedBody.get('data')).to.be.instanceOf(Blob);
     expect(capturedBody.get('props')).to.equal(JSON.stringify(props));
   });
+
+  // preview:true now goes through aemAction (getNx2Api's isHlx6-aware aem.preview),
+  // not the legacy aemAdmin() helper.
+  it('Runs the AEM preview via aemAction when preview is true', async () => {
+    const org = 'savetodaorg';
+    const site = 'savetodasite';
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      const href = String(url);
+      calls.push({ url: href, opts });
+      if (href.includes(`${DA_ORIGIN}/source/`)) return new Response('ok', { status: 200 });
+      if (href.includes('/ping/')) return new Response('', { status: 200 });
+      if (href.includes(`/preview/${org}/${site}/`)) {
+        return new Response(JSON.stringify({ preview: { status: 200 } }), { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    };
+
+    const result = await saveToDa({ path: `/${org}/${site}/page`, preview: true });
+
+    expect(result).to.deep.equal({ preview: { status: 200 } });
+    const previewCall = calls.find((c) => c.url.includes(`/preview/${org}/${site}/`));
+    expect(previewCall, 'AEM preview was not called').to.exist;
+    expect(previewCall.opts.method).to.equal('POST');
+  });
+
+  it('Returns an error object when the AEM preview fails', async () => {
+    const org = 'savetodaerr';
+    const site = 'savetodaerr';
+    window.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes(`${DA_ORIGIN}/source/`)) return new Response('ok', { status: 200 });
+      if (href.includes('/ping/')) return new Response('', { status: 200 });
+      return new Response('', { status: 500 });
+    };
+
+    const result = await saveToDa({ path: `/${org}/${site}/page`, preview: true });
+    expect(result.error).to.be.an('object');
+    expect(result.error.action).to.equal('preview');
+  });
 });
 
 describe('getSidekickConfig', () => {
   it('Returns preview and prod when both hosts are available', async () => {
     const org = 'org1';
     const site = 'site1';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -551,7 +534,7 @@ describe('getSidekickConfig', () => {
   it('Returns object when only previewHost is available', async () => {
     const org = 'org2';
     const site = 'site2';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -573,7 +556,7 @@ describe('getSidekickConfig', () => {
   it('Returns object when only host is available', async () => {
     const org = 'org3';
     const site = 'site3';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -595,7 +578,7 @@ describe('getSidekickConfig', () => {
   it('Returns empty object when neither previewHost nor host is available', async () => {
     const org = 'org4';
     const site = 'site4';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -617,7 +600,7 @@ describe('getSidekickConfig', () => {
   it('Returns undefined when fetch fails', async () => {
     const org = 'org5';
     const site = 'site5';
-    const configUrl = `https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`;
+    const configUrl = `https://api.aem.live/${org}/sites/${site}/sidekick`;
 
     const mockFetch = (url) => {
       if (url === configUrl) {
@@ -683,31 +666,34 @@ describe('fetchDaConfigs', () => {
     expect(resolved).to.equal(null);
     expect(fetchCalled).to.be.false;
   });
-});
 
-describe('saveDaVersion', () => {
-  let savedFetch;
-  beforeEach(() => { savedFetch = window.fetch; });
-  afterEach(() => { window.fetch = savedFetch; });
-
-  it('POSTs to the versionsource endpoint with the correct path and label', async () => {
-    let capturedUrl;
-    let capturedOpts;
-    window.fetch = (url, opts) => {
-      capturedUrl = url;
-      capturedOpts = opts;
-      return Promise.resolve(new Response('ok', { status: 200 }));
+  // fetchDaConfigs routes through getNx2Api's config.get, which pings isHlx6
+  // (HLX_ADMIN/ping/{org}/{site}) before resolving the config url.
+  it('goes through the isHlx6-aware config route, not a hardcoded da-admin fetch', async () => {
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ data: [{ key: 'k', value: 'v' }] }), { status: 200 });
     };
 
-    await saveDaVersion('/org/site/doc', 'Previewed');
-    expect(capturedUrl).to.include('/versionsource/org/site/doc');
-    expect(capturedOpts.method).to.equal('POST');
-    expect(JSON.parse(capturedOpts.body)).to.deep.equal({ label: 'Previewed' });
+    const [orgConfig, siteConfig] = await Promise.all(
+      fetchDaConfigs({ org: 'cfgorg', site: 'cfgsite' }),
+    );
+
+    expect(calls.some((u) => u.includes('/ping/cfgorg/cfgsite'))).to.equal(true, 'isHlx6 was not consulted');
+    expect(orgConfig).to.deep.equal({ data: [{ key: 'k', value: 'v' }] });
+    expect(siteConfig).to.deep.equal({ data: [{ key: 'k', value: 'v' }] });
   });
 
-  it('Silently swallows fetch errors', async () => {
-    window.fetch = () => Promise.reject(new Error('network error'));
-    await saveDaVersion('/org/site/doc', 'Published');
+  it('reports the store status without throwing when the config fetch fails', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response('', { status: 500 });
+    };
+
+    const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgfail' }));
+    expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgfail', status: 500 });
   });
 });
 
@@ -745,6 +731,46 @@ describe('aemAction', () => {
 
     const result = await aemAction('/org/site/doc', 'publish', { onScheduled: async () => false });
     expect(result.cancelled).to.be.true;
+  });
+});
+
+describe('isValidHref', () => {
+  it('Accepts a root-relative path', () => {
+    expect(isValidHref('/foo/bar')).to.be.true;
+  });
+
+  it('Accepts an https URL', () => {
+    expect(isValidHref('https://example.com/foo')).to.be.true;
+  });
+
+  it('Rejects an http URL', () => {
+    expect(isValidHref('http://example.com/foo')).to.be.false;
+  });
+
+  it('Rejects a javascript: URL', () => {
+    expect(isValidHref(`${'javascript'}:alert(1)`)).to.be.false;
+  });
+
+  it('Rejects a data: URL', () => {
+    expect(isValidHref('data:text/html,<script>alert(1)</script>')).to.be.false;
+  });
+
+  it('Rejects a protocol-relative URL', () => {
+    expect(isValidHref('//evil.example.com')).to.be.false;
+  });
+
+  it('Rejects a bare host with no scheme or leading slash', () => {
+    expect(isValidHref('evil.example.com')).to.be.false;
+  });
+
+  it('Rejects an empty string', () => {
+    expect(isValidHref('')).to.be.false;
+  });
+
+  it('Rejects non-string input', () => {
+    expect(isValidHref(undefined)).to.be.false;
+    expect(isValidHref(null)).to.be.false;
+    expect(isValidHref({})).to.be.false;
   });
 });
 

@@ -377,6 +377,15 @@ describe('getAssetAlt', () => {
     expect(getAssetAlt({})).to.equal('');
     expect(getAssetAlt(DELIVERY_IMAGE)).to.equal('');
   });
+
+  it('falls back to a top-level dc:title (delivery-tier shape)', () => {
+    expect(getAssetAlt({ 'dc:title': 'Sunset' })).to.equal('Sunset');
+    expect(getAssetAlt({ 'dc:title': { 'o:default': 'Sunset' } })).to.equal('Sunset');
+  });
+
+  it('falls back to the asset name when no title metadata is present', () => {
+    expect(getAssetAlt({ name: 'photo.jpg' })).to.equal('photo.jpg');
+  });
 });
 
 // ---------------------------------------------------------------------------

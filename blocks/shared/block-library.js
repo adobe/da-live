@@ -39,9 +39,12 @@ function getBlockTableHtml(block) {
 
   rows.forEach((row) => {
     const tr = document.createElement('tr');
-    [...row.children].forEach((col) => {
+    const cells = [...row.children];
+    cells.forEach((col, i) => {
       const td = document.createElement('td');
-      if (row.children.length < maxCols) td.setAttribute('colspan', String(maxCols));
+      if (cells.length < maxCols && i === cells.length - 1) {
+        td.setAttribute('colspan', String(maxCols - i));
+      }
       td.innerHTML = col.innerHTML;
       tr.append(td);
     });
@@ -131,25 +134,33 @@ function getLibraryMetadata(el) {
 }
 
 function transformBlock(block) {
-  const prevSib = block.previousElementSibling;
+  const headingSib = block.previousElementSibling?.classList.contains('library-metadata')
+    ? block.previousElementSibling.previousElementSibling
+    : block.previousElementSibling;
   let item;
   if (block.dataset.groupheading) {
     item = { name: block.dataset.groupheading };
-  } else if (isHeading(prevSib) && prevSib.textContent) {
-    item = { name: prevSib.textContent };
+  } else if (isHeading(headingSib) && headingSib.textContent) {
+    item = { name: headingSib.textContent };
   } else {
     item = getBlockName(block.className || '');
   }
-  item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
 
-  const metaEl = block.nextElementSibling?.classList.contains('library-metadata')
+  let metaEl = block.nextElementSibling?.classList.contains('library-metadata')
     ? block.nextElementSibling
-    : block.querySelector('.library-metadata');
+    : null;
+  if (!metaEl && block.previousElementSibling?.classList.contains('library-metadata')) {
+    metaEl = block.previousElementSibling;
+  }
+  if (!metaEl) metaEl = block.querySelector('.library-metadata');
   if (metaEl) {
     const md = getLibraryMetadata(metaEl);
+    if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
+    metaEl.remove();
   }
+  item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
   return item;
 }
 

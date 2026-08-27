@@ -5,11 +5,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
 let extensionToPanelView;
+let getPreviewStatus;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   extensionToPanelView = mod.extensionToPanelView;
   ({ getBlockVariants } = await import('../../../../../blocks/shared/block-library.js'));
+  getPreviewStatus = mod.getPreviewStatus;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -180,6 +182,102 @@ describe('EW panel helpers transformBlock', () => {
     expect(dom.querySelector('table')).to.not.be.null;
     expect(dom.querySelector('p')).to.not.be.null;
   });
+
+  it('Excludes embedded library-metadata from item.dom', async () => {
+    mockHtml(`
+      <body><div>
+        <div class="hero">
+          <div><div>content</div></div>
+          <div class="library-metadata"><div><div>searchtags</div><div>hero, banner</div></div></div>
+        </div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Excludes library-metadata appended after library-container-end from group item.dom', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-container-end"></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>group, hero</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Extracts and excludes library-metadata placed before a single block, preserving heading name', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>Block Title</h2>
+        <div class="library-metadata"><div><div>searchtags</div><div>early, meta</div></div></div>
+        <div class="hero"><div><div>content</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].name).to.equal('Block Title');
+    expect(variants[0].tags).to.equal('early, meta');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Extracts and excludes library-metadata placed between library-container-start/end', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>searchtags</div><div>mid, group</div></div></div>
+        <div class="library-container-end"></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].tags).to.equal('mid, group');
+    expect(variants[0].dom.querySelector('.library-metadata')).to.be.null;
+  });
+
+  it('Pads only the last cell of short rows so no row exceeds maxCols', async () => {
+    // A block with one wide row (5 cells) and shorter key/value rows.
+    // The old behavior spanned every cell of a short row to maxCols, making
+    // those rows wider than the grid and forcing ProseMirror to insert empty
+    // cells into every other row.
+    mockHtml(`
+      <body><div>
+        <div class="collection-carousel">
+          <div><div>categoryPath</div><div>a</div><div>b</div><div>c</div><div>d</div></div>
+          <div><div>maxItems</div><div>8</div></div>
+        </div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    const rows = [...variants[0].dom.querySelectorAll('tr')];
+    const widths = rows.map((tr) => [...tr.children]
+      .reduce((n, td) => n + (parseInt(td.getAttribute('colspan'), 10) || 1), 0));
+    // header + wide row + short row, every one exactly maxCols (5) wide
+    expect(widths).to.deep.equal([5, 5, 5]);
+    // the wide row keeps its 5 cells, the short row keeps exactly 2 (no padding cells)
+    expect(rows[1].children).to.have.lengthOf(5);
+    expect(rows[2].children).to.have.lengthOf(2);
+    // the short row's last cell absorbs the remaining columns
+    expect(rows[2].children[1].getAttribute('colspan')).to.equal('4');
+  });
+
+  it('Uses library-metadata Name to override the derived name', async () => {
+    mockHtml(`
+      <body><div>
+        <h2>Block Title</h2>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>name</div><div>Custom Name</div></div></div>
+      </div></body>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].name).to.equal('Custom Name');
+  });
 });
 
 describe('extensionToPanelView', () => {
@@ -206,5 +304,39 @@ describe('extensionToPanelView', () => {
     expect(view.experience).to.equal('inline');
     expect(view.load).to.be.a('function');
     expect(view.openModal).to.be.undefined;
+  });
+});
+
+describe('getPreviewStatus', () => {
+  let savedFetch;
+
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => {
+    window.fetch = savedFetch;
+    window.localStorage.removeItem('hlx6-upgrade');
+  });
+
+  it('returns true when preview status is 200', async () => {
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ preview: { status: 200 } }),
+      { status: 200 },
+    ));
+    const result = await getPreviewStatus({ org: 'pstatusorg', site: 'pstatussite', pathname: '/p' });
+    expect(result).to.be.true;
+  });
+
+  it('returns false when preview status is not 200', async () => {
+    window.fetch = () => Promise.resolve(new Response(
+      JSON.stringify({ preview: { status: 404 } }),
+      { status: 200 },
+    ));
+    const result = await getPreviewStatus({ org: 'pstatusorg2', site: 'pstatussite2', pathname: '/p' });
+    expect(result).to.be.false;
+  });
+
+  it('returns null when the status call fails', async () => {
+    window.fetch = () => Promise.resolve(new Response('{}', { status: 500 }));
+    const result = await getPreviewStatus({ org: 'pstatusorg3', site: 'pstatussite3', pathname: '/p' });
+    expect(result).to.equal(null);
   });
 });

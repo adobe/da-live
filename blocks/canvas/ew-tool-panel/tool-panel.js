@@ -6,10 +6,14 @@ import {
 } from '../utils/panel.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
-const style = await loadStyle(import.meta.url);
+const [base, style] = await Promise.all([
+  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+  loadStyle(import.meta.url),
+]);
 
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
@@ -27,14 +31,7 @@ class EwToolPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
-    this._onShowPanel = ({ detail }) => this.showPanel(detail?.panelName);
-    document.addEventListener('nx-show-panel', this._onShowPanel);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener('nx-show-panel', this._onShowPanel);
+    this.shadowRoot.adoptedStyleSheets = [base, style];
   }
 
   get _fullsizeDialogView() {
@@ -188,7 +185,9 @@ class EwToolPanel extends LitElement {
   }
 
   _close() {
-    this.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
+    this.dispatchEvent(
+      new CustomEvent(PANEL_EVENT.CLOSE, { bubbles: true, composed: true }),
+    );
   }
 
   _onFullsizeDialogClose() {
