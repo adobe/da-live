@@ -1,5 +1,4 @@
 import { getNx } from '../../scripts/utils.js';
-import { editorSelectChange } from './editor-utils/editor-utils.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -20,6 +19,7 @@ import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.j
 import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
+import { canvasBus } from './utils/canvas-bus.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
@@ -38,23 +38,14 @@ function buildCanvasDocPath(state) {
   return `${org}/${site}/${path}`;
 }
 
-function notifyCanvasEditorActive(mountRoot, view) {
+function notifyCanvasEditorActive(view) {
   const v = normalizeCanvasEditorView(view);
   toolbarController.setEditorMode(v);
-  mountRoot.dispatchEvent(new CustomEvent('nx-canvas-editor-active', {
-    bubbles: false,
-    detail: { view: v },
-  }));
+  canvasBus.editorViewState.emit({ view: v });
 }
 
 function canvasEditorMountRoot(block) {
   return block.querySelector('.default-content') || block;
-}
-
-function canvasHeaderApplyTarget(block) {
-  return block.querySelector('.nx-canvas-editor-mount')
-    || block.querySelector('.default-content')
-    || block;
 }
 
 function removeCanvasEditors(mountRoot) {
@@ -133,7 +124,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   docEl.ctx = ctx;
   ensureNxEditorWysiwyg(mountRoot).ctx = ctx;
   finalizeSplitEditorMountOrder(mountRoot);
-  notifyCanvasEditorActive(mountRoot, header.editorView);
+  notifyCanvasEditorActive(header.editorView);
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
 }
 
@@ -165,17 +156,16 @@ function hashState() {
 async function installCanvasHeader(block, { org, site }) {
   const header = document.createElement('ew-canvas-header');
   header.editorView = await readInitialCanvasEditorView({ org, site });
-  header.addEventListener('nx-canvas-editor-view', (e) => {
-    const view = normalizeCanvasEditorView(e.detail?.view);
+  canvasBus.editorViewRequest.subscribe(({ view: rawView }) => {
+    const view = normalizeCanvasEditorView(rawView);
     persistCanvasEditorView(view);
-    const applyTarget = canvasHeaderApplyTarget(block);
-    notifyCanvasEditorActive(applyTarget, view);
+    notifyCanvasEditorActive(view);
     syncEditorSplitLayout({ mountRoot: canvasEditorMountRoot(block), view });
   });
-  header.addEventListener('nx-canvas-undo', () => {
+  canvasBus.undoRequest.subscribe(() => {
     canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.undo();
   });
-  header.addEventListener('nx-canvas-redo', () => {
+  canvasBus.redoRequest.subscribe(() => {
     canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.redo();
   });
   block.before(header);
@@ -197,7 +187,7 @@ const SHORTCUTS = [
     code: 'KeyS',
     mod: true,
     altKey: true,
-    action: openNewVersionRow,
+    channel: canvasBus.newVersionRequest,
   },
 ];
 document.addEventListener('keydown', (e) => {
@@ -211,10 +201,10 @@ document.addEventListener('keydown', (e) => {
   ));
   if (!match) return;
   e.preventDefault();
-  match.action();
+  match.channel.emit();
 });
 
-document.addEventListener('nx-canvas-new-version', openNewVersionRow);
+canvasBus.newVersionRequest.subscribe(openNewVersionRow);
 
 export default async function decorate(block) {
   const { org, site } = hashState();
@@ -258,9 +248,9 @@ export default async function decorate(block) {
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
   installEditorSplitDrag(mountRoot);
 
-  mountRoot.addEventListener('nx-editor-undo-state', (e) => {
-    header.undoAvailable = e.detail?.canUndo ?? false;
-    header.redoAvailable = e.detail?.canRedo ?? false;
+  canvasBus.undoState.subscribe((detail) => {
+    header.undoAvailable = detail?.canUndo ?? false;
+    header.redoAvailable = detail?.canRedo ?? false;
   });
 
   hashChange.subscribe((state) => {
@@ -283,7 +273,7 @@ export default async function decorate(block) {
   const CANVAS_CHAT_KEY = 'canvas-selection';
   const SELECTION_LABEL = 'Selection';
   let hasContext = false;
-  editorSelectChange.subscribe(({
+  canvasBus.editorSelectState.subscribe(({
     blockIndex, blockName, proseIndex, innerText, source,
     selectionType, selectedHTML, selFrom, selTo,
   }) => {
