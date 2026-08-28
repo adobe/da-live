@@ -1,4 +1,5 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
+import { selectSection } from '../editor-utils/blocks.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
 
@@ -59,6 +60,12 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       document.dispatchEvent(
         new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, autoSend } } }),
       );
+    }
+
+    if (action === 'selectSection') {
+      const ok = editorView ? selectSection(editorView, details?.index) : false;
+      channel.port1.postMessage({ action: 'selectSectionResult', details: { ok } });
+      return;
     }
 
     if (action === 'getSelection') {
