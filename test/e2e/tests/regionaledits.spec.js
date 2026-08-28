@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
 import path from 'path';
+import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import { getQuery, getTestFolderURL, TEST_ORG, TEST_SITE } from '../utils/page.js';
 
@@ -115,7 +115,4 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   // No regional edit actions should be visible
   await expect(newPage.locator('div.da-regional-edits-actions')).not.toBeVisible();
   await expect(newPage.locator('div.diff-tabbed-actions.loc-floating-overlay')).not.toBeVisible();
-
-  // Note that the test folder will be automatically cleaned up in subsequent runs
-  // by the delete.spec.js test
 });

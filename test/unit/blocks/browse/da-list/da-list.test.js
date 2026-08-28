@@ -814,10 +814,10 @@ describe('DaList helpers', () => {
       return versioned;
     }
 
-    // flush fire-and-forget saveDaVersion (not awaited in callback)
+    // flush fire-and-forget createVersion (not awaited in callback)
     const flush = () => new Promise((r) => { setTimeout(r, 0); });
 
-    it('Calls saveDaVersion for html items', async () => {
+    it('Calls createVersion for html items', async () => {
       const versioned = stubVersionCreate();
       const el = makeList();
       el._selectedItems = [{ name: 'page', ext: 'html', path: '/org/site/page.html' }];
@@ -827,7 +827,7 @@ describe('DaList helpers', () => {
       expect(versioned.length).to.equal(1);
     });
 
-    it('Calls saveDaVersion for json items', async () => {
+    it('Calls createVersion for json items', async () => {
       const versioned = stubVersionCreate();
       const el = makeList();
       el._selectedItems = [{ name: 'data', ext: 'json', path: '/org/site/data.json' }];
@@ -837,7 +837,7 @@ describe('DaList helpers', () => {
       expect(versioned.length).to.equal(1);
     });
 
-    it('Skips saveDaVersion for svg items', async () => {
+    it('Skips createVersion for svg items', async () => {
       const versioned = stubVersionCreate();
       const el = makeList();
       el._selectedItems = [{ name: 'icon', ext: 'svg', path: '/org/site/icon.svg' }];
@@ -847,7 +847,7 @@ describe('DaList helpers', () => {
       expect(versioned.length).to.equal(0);
     });
 
-    it('Skips saveDaVersion for pdf items', async () => {
+    it('Skips createVersion for pdf items', async () => {
       const versioned = stubVersionCreate();
       const el = makeList();
       el._selectedItems = [{ name: 'doc', ext: 'pdf', path: '/org/site/doc.pdf' }];
@@ -857,7 +857,7 @@ describe('DaList helpers', () => {
       expect(versioned.length).to.equal(0);
     });
 
-    it('Skips saveDaVersion for image items (png, jpg, gif, webp)', async () => {
+    it('Skips createVersion for image items (png, jpg, gif, webp)', async () => {
       const versioned = stubVersionCreate();
       const el = makeList();
       el._selectedItems = [

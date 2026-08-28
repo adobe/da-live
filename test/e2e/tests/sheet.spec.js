@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../utils/fixtures.js';
 import { getTestSheetURL, waitForSave } from '../utils/page.js';
 
 test('New sheet', async ({ page }, workerInfo) => {
