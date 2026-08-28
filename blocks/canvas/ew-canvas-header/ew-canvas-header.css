@@ -12,59 +12,6 @@
   color: var(--s2-gray-800);
 }
 
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  min-width: 24px;
-  min-height: 24px;
-  padding: 0 4px;
-  margin: 0;
-  border: none;
-  border-radius: 8px;
-  font: inherit;
-  font-size: var(--s2-body-size-xs, 0.75rem);
-  color: var(--s2-gray-800);
-  background: transparent;
-  cursor: pointer;
-}
-
-.icon-btn svg.icon {
-  display: block;
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  overflow: hidden;
-}
-
-.icon-btn:focus-visible {
-  outline: 2px solid var(--s2-blue-800);
-  outline-offset: 2px;
-}
-
-.icon-btn:disabled {
-  color: var(--s2-gray-400);
-  cursor: not-allowed;
-}
-
-.icon-btn:hover:not(:disabled) {
-  background-color: var(--s2-gray-75);
-}
-
-.icon-btn:disabled svg.icon {
-  opacity: 0.45;
-}
-
-.icon-btn.comments-toggle.is-active {
-  background-color: var(--s2-gray-800);
-  color: var(--s2-gray-25);
-}
-
-.icon-btn.comments-toggle.is-active:hover:not(:disabled) {
-  background-color: var(--s2-gray-900);
-}
-
 .segmented {
   display: inline-flex;
   align-items: center;
@@ -139,6 +86,30 @@
   padding: 0 12px;
   background-color: light-dark(#fff, var(--s2-gray-25));
   border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.comments-toggle {
+  position: relative;
+  overflow: visible;
+}
+
+.comment-count-chip {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background-color: var(--s2-blue-800, #0265dc);
+  color: #fff;
+  font-size: 10px;
+  font-weight: var(--s2-component-s-medium-font-weight, 700);
+  line-height: 1;
 }
 
 .group {
