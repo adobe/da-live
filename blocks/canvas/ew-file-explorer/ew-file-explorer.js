@@ -328,9 +328,13 @@ class EwFileExplorer extends LitElement {
 
   async _onCopyUrl(e, item) {
     e.stopPropagation();
+    const btn = e.currentTarget;
     const url = getAemUrl(item);
     if (!url) return;
     await navigator.clipboard.writeText(url);
+    clearTimeout(btn.copiedTimeoutId);
+    btn.classList.add('copied');
+    btn.copiedTimeoutId = setTimeout(() => btn.classList.remove('copied'), 1500);
   }
 
   // Crawls the site once per root, streaming files into `entry.files` as they're

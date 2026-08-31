@@ -158,7 +158,7 @@
     display: none;
   }
 
-  &:focus {
+  &.copied {
     .icon-paste {
       display: none;
     }

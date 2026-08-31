@@ -24,6 +24,13 @@ function mockFetch(listingsByFullpath) {
   return { calls, restore: () => { window.fetch = savedFetch; } };
 }
 
+async function withRealCss(el) {
+  const cssText = await (await fetch('/blocks/canvas/ew-file-explorer/ew-file-explorer.css')).text();
+  const realSheet = new CSSStyleSheet();
+  realSheet.replaceSync(cssText);
+  el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, realSheet];
+}
+
 describe('EwFileExplorer', () => {
   let el;
 
@@ -623,15 +630,8 @@ describe('EwFileExplorer', () => {
       await el.updateComplete;
     });
 
-    async function withRealCss() {
-      const cssText = await (await fetch('/blocks/canvas/ew-file-explorer/ew-file-explorer.css')).text();
-      const realSheet = new CSSStyleSheet();
-      realSheet.replaceSync(cssText);
-      el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, realSheet];
-    }
-
     it('is hidden by default, even on the row that is the current roving-tabindex stop', async () => {
-      await withRealCss();
+      await withRealCss(el);
 
       const rows = [...el.shadowRoot.querySelectorAll('.row')];
       const firstRow = rows[0];
@@ -642,7 +642,7 @@ describe('EwFileExplorer', () => {
     });
 
     it('becomes visible when the row itself receives real focus, and hides again on blur', async () => {
-      await withRealCss();
+      await withRealCss(el);
 
       const firstRow = el.shadowRoot.querySelector('.row');
       const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
@@ -673,6 +673,39 @@ describe('EwFileExplorer', () => {
       const copyBtn = el.shadowRoot.querySelector('.copy-url');
       expect(copyBtn.getAttribute('tabindex')).to.not.equal('-1');
     });
+
+    it('does not show the copied checkmark just from tabbing to the button', async () => {
+      el._cache = { '/org/site': [{ name: 'a.html', path: '/org/site/a.html', ext: 'html' }] };
+      await el.updateComplete;
+      await withRealCss(el);
+
+      const row = el.shadowRoot.querySelector('.row.file');
+      row.focus(); // reveals the action buttons, as real Tab navigation would
+      const copyBtn = row.closest('.row-wrap').querySelector('.copy-url');
+      copyBtn.focus(); // simulates the next real Tab press landing on the now-visible button
+
+      const checkmark = copyBtn.querySelector('.icon-checkmark');
+      expect(getComputedStyle(checkmark).display).to.equal('none');
+    });
+
+    it('shows the copied checkmark only after an actual copy click', async () => {
+      el._cache = { '/org/site': [{ name: 'a.html', path: '/org/site/a.html', ext: 'html' }] };
+      await el.updateComplete;
+      await withRealCss(el);
+
+      const copyBtn = el.shadowRoot.querySelector('.copy-url');
+      const savedWriteText = navigator.clipboard.writeText;
+      navigator.clipboard.writeText = async () => {};
+      try {
+        copyBtn.click();
+        await new Promise((r) => { setTimeout(r, 0); });
+
+        const checkmark = copyBtn.querySelector('.icon-checkmark');
+        expect(getComputedStyle(checkmark).display).to.equal('block');
+      } finally {
+        navigator.clipboard.writeText = savedWriteText;
+      }
+    });
   });
 
   describe('tree keyboard navigation: expand/collapse', () => {
@@ -701,6 +734,21 @@ describe('EwFileExplorer', () => {
       subRow.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
       await el.updateComplete;
       expect(subRow.getAttribute('aria-expanded')).to.equal('false');
+    });
+
+    it('still navigates rows with ArrowDown/Up after Tab moves focus onto a row action button', async () => {
+      await withRealCss(el);
+
+      const rows = [...el.shadowRoot.querySelectorAll('.row')];
+      const rootRow = rows[0];
+      const subRow = rows.find((r) => r.textContent.includes('sub'));
+      rootRow.focus();
+
+      const newPageBtn = rootRow.closest('.row-wrap').querySelector('.new-page-btn');
+      newPageBtn.focus();
+
+      newPageBtn.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+      expect(el.shadowRoot.activeElement).to.equal(subRow);
     });
   });
 
