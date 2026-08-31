@@ -25,12 +25,16 @@ function makeSheet(entries) {
 
 function makeFetch(responses) {
   return async (url) => {
+    // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); check that
+    // before the pattern match below, since a ping url can otherwise collide with an
+    // org-level config pattern (e.g. '/ping/{org}/{site}' contains '/{org}/').
+    if (url.includes('/ping/')) return new Response('', { status: 200 });
     for (const [pattern, response] of Object.entries(responses).sort(
       ([a], [b]) => b.length - a.length,
     )) {
       if (url.includes(pattern)) return response;
     }
-    return { ok: false };
+    return new Response('', { status: 404 });
   };
 }
 

@@ -1,7 +1,7 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
-import { aemAdmin, daFetch } from '../../shared/utils.js';
+import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import { daFetch } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
@@ -43,9 +43,16 @@ function getBlockTableHtml(block) {
 
   rows.forEach((row) => {
     const tr = document.createElement('tr');
-    [...row.children].forEach((col) => {
+    const cells = [...row.children];
+    cells.forEach((col, i) => {
       const td = document.createElement('td');
-      if (row.children.length < maxCols) td.setAttribute('colspan', String(maxCols));
+      // Pad only the last cell so the row's total width equals maxCols.
+      // Spanning every cell (the old behavior) made short multi-cell rows
+      // wider than maxCols, forcing ProseMirror to insert empty cells into
+      // every other row to keep the table rectangular.
+      if (cells.length < maxCols && i === cells.length - 1) {
+        td.setAttribute('colspan', String(maxCols - i));
+      }
       td.innerHTML = col.innerHTML;
       tr.append(td);
     });
@@ -134,26 +141,47 @@ function getLibraryMetadata(el) {
   }, {});
 }
 
+// Metadata can sit immediately before or after the block it describes, or be
+// nested inside it (nested case also covers any position within a
+// library-container-start/end group, since group children are flattened into
+// the group's own subtree during parsing).
+function findMetaEl(block) {
+  if (block.nextElementSibling?.classList.contains('library-metadata')) {
+    return block.nextElementSibling;
+  }
+  if (block.previousElementSibling?.classList.contains('library-metadata')) {
+    return block.previousElementSibling;
+  }
+  return block.querySelector('.library-metadata');
+}
+
 function transformBlock(block) {
-  const prevSib = block.previousElementSibling;
+  // Skip a preceding metadata sibling so a `heading, metadata, block` layout
+  // still resolves the name from the heading.
+  const headingSib = block.previousElementSibling?.classList.contains('library-metadata')
+    ? block.previousElementSibling.previousElementSibling
+    : block.previousElementSibling;
   let item;
   if (block.dataset.groupheading) {
     item = { name: block.dataset.groupheading };
-  } else if (isHeading(prevSib) && prevSib.textContent) {
-    item = { name: prevSib.textContent };
+  } else if (isHeading(headingSib) && headingSib.textContent) {
+    item = { name: headingSib.textContent };
   } else {
     item = getBlockName(block.className || '');
   }
-  item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
 
-  const metaEl = block.nextElementSibling?.classList.contains('library-metadata')
-    ? block.nextElementSibling
-    : block.querySelector('.library-metadata');
+  // Extract and strip metadata before generating the block's dom, so it never
+  // leaks into the content that gets copied/inserted or previewed.
+  const metaEl = findMetaEl(block);
   if (metaEl) {
     const md = getLibraryMetadata(metaEl);
+    if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
+    metaEl.remove();
   }
+
+  item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
   return item;
 }
 
@@ -320,6 +348,47 @@ export function resetBlockLibraryCache() {
   blockLibraryCache.clear();
 }
 
+const librarySheetCache = new Map();
+
+/**
+ * Fetch and memoize a named sheet's rows from the block library sources — e.g.
+ * "options" (per-block key/value autocomplete) or "editor" (multi-block config).
+ * Resolves to [] when no library / sheet is configured.
+ */
+function loadLibrarySheet(org, site, sheet) {
+  if (!org || !site) return Promise.resolve([]);
+  const key = `${sheet}:${org}/${site}`;
+  if (!librarySheetCache.has(key)) {
+    const pending = (async () => {
+      const ext = await getBlocksExtension(org, site);
+      if (!ext) return [];
+      const rows = [];
+      for (const url of ext.sources || []) {
+        try {
+          const resp = await daFetch(url, { noRedirect: true });
+          if (resp.ok) {
+            const json = await resp.json();
+            if (Array.isArray(json?.[sheet]?.data)) rows.push(...json[sheet].data);
+          }
+        } catch { /* skip failed source */ }
+      }
+      return rows;
+    })().catch((err) => {
+      librarySheetCache.delete(key);
+      throw err;
+    });
+    librarySheetCache.set(key, pending);
+  }
+  return librarySheetCache.get(key);
+}
+
+export const loadBlockOptions = (org, site) => loadLibrarySheet(org, site, 'options');
+export const loadBlockEditor = (org, site) => loadLibrarySheet(org, site, 'editor');
+
+export function resetBlockOptionsCache() {
+  librarySheetCache.clear();
+}
+
 export async function fetchItems(sources, format) {
   const items = [];
   for (const source of sources) {
@@ -394,8 +463,10 @@ export async function insertTemplate(view, url) {
 export async function getPreviewStatus({ org, site, pathname }) {
   const path = `/${org}/${site}${pathname}`;
   try {
-    const json = await aemAdmin(path, 'status', 'GET');
-    if (!json) return null;
+    const { status } = await getNx2Api();
+    const resp = await status.get(path);
+    if (!resp.ok) return null;
+    const json = await resp.json();
     return json.preview?.status === 200;
   } catch {
     return null;

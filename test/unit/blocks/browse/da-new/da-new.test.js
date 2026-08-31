@@ -11,69 +11,16 @@ describe('DaNew', () => {
     DaNew = mod.default;
   });
 
-  describe('handleNameChange', () => {
-    it('lowercases and replaces invalid chars with hyphens', () => {
-      const el = new DaNew();
-      const target = { value: 'Foo Bar' };
-      el.handleNameChange({ target });
-      expect(el._createName).to.equal('foo-bar');
-      expect(target.value).to.equal('foo-bar');
-    });
-
-    it('collapses consecutive invalid chars into a single hyphen', () => {
-      const el = new DaNew();
-      const target = { value: 'foo!!bar' };
-      el.handleNameChange({ target });
-      expect(el._createName).to.equal('foo-bar');
-      expect(target.value).to.equal('foo-bar');
-    });
-
-    it('collapses an invalid char typed right after an existing hyphen', () => {
-      // Simulates the DOM state after a prior keystroke: input value is "foo-",
-      // user types another invalid character making it "foo-!".
-      const el = new DaNew();
-      const target = { value: 'foo-!' };
-      el.handleNameChange({ target });
-      expect(el._createName).to.equal('foo-');
-      // Explicit DOM sync is required here: without it, Lit's property binding
-      // would skip the re-render when the sanitized value is unchanged.
-      expect(target.value).to.equal('foo-');
-    });
-
-    it('preserves a single trailing hyphen during typing', () => {
-      const el = new DaNew();
-      const target = { value: 'foo!' };
-      el.handleNameChange({ target });
-      expect(el._createName).to.equal('foo-');
-      expect(target.value).to.equal('foo-');
-    });
-  });
-
+  // Name validation/sanitization is covered by da-name-dialog's own test suite —
+  // _handleCreate only ever receives an already-valid, sanitized name via the
+  // da-name-submit event's detail.
   describe('_handleCreate', () => {
-    it('sets _nameError and does not close dialog when _createName is empty', async () => {
-      const el = new DaNew();
-      el._createName = '';
-      el._createDialogOpen = true;
-      await el._handleCreate();
-      expect(el._nameError).to.be.true;
-      expect(el._createDialogOpen).to.be.true;
-    });
-
-    it('sets _nameError when finalized name is empty after trimming', async () => {
-      const el = new DaNew();
-      el._createName = '---';
-      el._createDialogOpen = true;
-      await el._handleCreate();
-      expect(el._nameError).to.be.true;
-      expect(el._createDialogOpen).to.be.true;
-    });
-
     it('closes the dialog immediately before async work (document type)', async () => {
       const el = new DaNew();
-      el._createName = 'my-doc';
       el._createType = 'document';
       el.fullpath = '/org/repo';
       el.editor = '';
+      el._createDialogOpen = true;
 
       const savedFetch = window.fetch;
       const NAV_SENTINEL = new Error('stop-before-nav');
@@ -84,7 +31,7 @@ describe('DaNew', () => {
 
       let caught;
       try {
-        await el._handleCreate();
+        await el._handleCreate({ detail: { name: 'my-doc' } });
       } catch (e) {
         caught = e;
       } finally {
@@ -97,7 +44,6 @@ describe('DaNew', () => {
 
     it('creates an empty HTML document via source.save before navigating (document type)', async () => {
       const el = new DaNew();
-      el._createName = 'my-doc';
       el._createType = 'document';
       el.fullpath = '/org/repo';
       el.editor = '/edit#';
@@ -114,7 +60,7 @@ describe('DaNew', () => {
       };
 
       try {
-        await el._handleCreate();
+        await el._handleCreate({ detail: { name: 'my-doc' } });
       } catch (e) {
         // expected NAV_SENTINEL
       } finally {
@@ -131,7 +77,6 @@ describe('DaNew', () => {
 
     it('POSTs to the trailing-slash folder URL via source.createFolder', async () => {
       const el = new DaNew();
-      el._createName = 'my-folder-';
       el._createType = 'folder';
       el.fullpath = '/org/repo';
 
@@ -146,7 +91,7 @@ describe('DaNew', () => {
       el.sendNewItem = (item) => sendEvents.push(item);
 
       try {
-        await el._handleCreate();
+        await el._handleCreate({ detail: { name: 'my-folder' } });
       } finally {
         window.fetch = savedFetch;
       }
@@ -161,7 +106,6 @@ describe('DaNew', () => {
 
     it('saves an empty sheet JSON via source.save before navigating (sheet type)', async () => {
       const el = new DaNew();
-      el._createName = 'my-sheet';
       el._createType = 'sheet';
       el.fullpath = '/org/repo';
       el.editor = '';
@@ -178,7 +122,7 @@ describe('DaNew', () => {
       };
 
       try {
-        await el._handleCreate();
+        await el._handleCreate({ detail: { name: 'my-sheet' } });
       } catch (e) {
         // expected NAV_SENTINEL
       } finally {
