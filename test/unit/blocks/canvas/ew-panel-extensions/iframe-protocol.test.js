@@ -7,6 +7,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { setupIframeChannel } = await import('../../../../../blocks/canvas/ew-panel-extensions/iframe-protocol.js');
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -120,6 +121,121 @@ describe('setupIframeChannel', () => {
     await wait();
 
     expect(onClose.calledOnce).to.be.true;
+    destroy();
+  });
+
+  it('emits editorSelectState for a block scrollTo action', async () => {
+    const iframe = makeIframe();
+    const { channel, destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+
+    let received;
+    const unsubscribe = canvasBus.editorSelectState.subscribe((detail) => { received = detail; });
+
+    channel.port2.postMessage({ action: 'scrollTo', details: { type: 'block', blockIndex: 3 } });
+    await wait();
+
+    unsubscribe();
+    expect(received).to.deep.include({ blockIndex: 3, source: 'extension' });
+    destroy();
+  });
+
+  it('emits editorProseSelectState for a content scrollTo action', async () => {
+    const iframe = makeIframe();
+    const { channel, destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+
+    let received;
+    const unsubscribe = canvasBus.editorProseSelectState.subscribe((detail) => {
+      received = detail;
+    });
+
+    channel.port2.postMessage({
+      action: 'scrollTo',
+      details: { type: 'content', proseIndex: 7, kind: 'heading' },
+    });
+    await wait();
+
+    unsubscribe();
+    expect(received).to.deep.equal({ proseIndex: 7, kind: 'heading' });
+    destroy();
+  });
+
+  it('resolves a section scrollTo action to its first block', async () => {
+    canvasBus.editorHtmlState.emit(
+      '<main><div><div class="hero" data-block-index="0">Hero</div></div></main>',
+    );
+
+    const iframe = makeIframe();
+    const { channel, destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+
+    let received;
+    const unsubscribe = canvasBus.editorSelectState.subscribe((detail) => { received = detail; });
+
+    channel.port2.postMessage({ action: 'scrollTo', details: { type: 'section', sectionIndex: 0 } });
+    await wait();
+
+    unsubscribe();
+    expect(received).to.deep.include({ blockIndex: 0, source: 'extension' });
+    destroy();
+  });
+
+  it('is a no-op for an out-of-range section scrollTo action', async () => {
+    canvasBus.editorHtmlState.emit('<main><div></div></main>');
+
+    const iframe = makeIframe();
+    const { channel, destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+
+    let calls = 0;
+    const unsubscribe = canvasBus.editorSelectState.subscribe(() => { calls += 1; });
+
+    channel.port2.postMessage({ action: 'scrollTo', details: { type: 'section', sectionIndex: 9 } });
+    await wait();
+
+    unsubscribe();
+    expect(calls).to.equal(0);
+    destroy();
+  });
+
+  it('is a no-op for an unrecognized scrollTo target type', async () => {
+    const iframe = makeIframe();
+    const { channel, destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+
+    let selectCalls = 0;
+    let proseCalls = 0;
+    const unsubSelect = canvasBus.editorSelectState.subscribe(() => { selectCalls += 1; });
+    const unsubProse = canvasBus.editorProseSelectState.subscribe(() => { proseCalls += 1; });
+
+    channel.port2.postMessage({ action: 'scrollTo', details: { type: 'bogus' } });
+    await wait();
+
+    unsubSelect();
+    unsubProse();
+    expect(selectCalls).to.equal(0);
+    expect(proseCalls).to.equal(0);
     destroy();
   });
 
