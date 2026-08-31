@@ -665,5 +665,58 @@ describe('EwFileExplorer', () => {
 
       expect(el._expanded).to.deep.equal(expandedBefore);
     });
+
+    it('makes the copy-url button reachable by Tab, same as other action buttons', async () => {
+      el._cache = { '/org/site': [{ name: 'a.html', path: '/org/site/a.html', ext: 'html' }] };
+      await el.updateComplete;
+
+      const copyBtn = el.shadowRoot.querySelector('.copy-url');
+      expect(copyBtn.getAttribute('tabindex')).to.not.equal('-1');
+    });
+  });
+
+  describe('tree keyboard navigation: expand/collapse', () => {
+    beforeEach(async () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._treeRoot = '/org/site';
+      el._cache = {
+        '/org/site': [{ name: 'sub', path: '/org/site/sub' }],
+        '/org/site/sub': [{ name: 'child.html', path: '/org/site/sub/child.html', ext: 'html' }],
+      };
+      el._expanded = new Set(['org/site']);
+      await el.updateComplete;
+    });
+
+    it('expands a collapsed folder on ArrowRight and collapses it on ArrowLeft', async () => {
+      const rows = [...el.shadowRoot.querySelectorAll('.row')];
+      const subRow = rows.find((r) => r.textContent.includes('sub'));
+      subRow.tabIndex = 0;
+      subRow.focus();
+
+      subRow.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+      await el.updateComplete;
+      expect(subRow.getAttribute('aria-expanded')).to.equal('true');
+
+      subRow.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+      await el.updateComplete;
+      expect(subRow.getAttribute('aria-expanded')).to.equal('false');
+    });
+  });
+
+  describe('search status aria-live', () => {
+    it('announces search result count changes to screen readers', async () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._treeRoot = '/org/site';
+      el._cache = { '/org/site': [] };
+      el._searchTerm = 'foo';
+      el._searchResults = [];
+      el._searching = false;
+      await el.updateComplete;
+
+      const status = el.shadowRoot.querySelector('.search-status');
+      expect(status.getAttribute('aria-live')).to.equal('polite');
+    });
   });
 });

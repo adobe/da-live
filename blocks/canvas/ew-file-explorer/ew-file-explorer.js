@@ -483,6 +483,19 @@ class EwFileExplorer extends LitElement {
     this._clearSearch();
   }
 
+  _onTreeKeydown(e) {
+    const item = this.shadowRoot.activeElement;
+    if (item?.matches('.row[aria-expanded]')) {
+      const expanded = item.getAttribute('aria-expanded') === 'true';
+      if ((e.key === 'ArrowRight' && !expanded) || (e.key === 'ArrowLeft' && expanded)) {
+        e.preventDefault();
+        item.click();
+        return;
+      }
+    }
+    treeKeydown(e, this.shadowRoot);
+  }
+
   _onClearClick() {
     const input = this.shadowRoot.querySelector('.search-input');
     if (input) {
@@ -536,7 +549,7 @@ class EwFileExplorer extends LitElement {
             </span>
           </button>
           ${copyable ? html`
-            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${item.name}"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" title="Copy URL" aria-label="Copy URL for ${item.name}"
               @click="${(e) => this._onCopyUrl(e, item)}">
               <svg class="icon-paste" viewBox="0 0 20 20" aria-hidden="true"><use href="${COPY_ICON_SRC}#icon"></use></svg>
               <svg class="icon-checkmark" viewBox="0 0 20 20" aria-hidden="true"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
@@ -560,7 +573,7 @@ class EwFileExplorer extends LitElement {
     else statusText = `No matches${scope} for "${this._searchTerm}".`;
 
     return html`
-      <p class="notice search-status">${statusText}</p>
+      <p class="notice search-status" aria-live="polite">${statusText}</p>
       ${hasResults ? html`
         <ul class="tree" role="list" aria-label="Search results">
           ${this._searchResults.map((item) => this._renderSearchResult(item))}
@@ -623,7 +636,7 @@ class EwFileExplorer extends LitElement {
             <span class="label">${name}</span>
           </button>
           ${copyable ? html`
-            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${name}"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" title="Copy URL" aria-label="Copy URL for ${name}"
               @click="${(e) => this._onCopyUrl(e, item)}">
               <svg class="icon-paste" viewBox="0 0 20 20" aria-hidden="true"><use href="${COPY_ICON_SRC}#icon"></use></svg>
               <svg class="icon-checkmark" viewBox="0 0 20 20" aria-hidden="true"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
@@ -681,9 +694,9 @@ class EwFileExplorer extends LitElement {
       </div>
       ${this._searchTerm ? this._renderSearchList() : html`
         ${this._categoryCrawling ? html`
-          <p class="notice search-status">Scanning for ${(this._categoryLabel() ?? '').toLowerCase()}…</p>` : nothing}
+          <p class="notice search-status" aria-live="polite">Scanning for ${(this._categoryLabel() ?? '').toLowerCase()}…</p>` : nothing}
         <ul class="tree" role="tree" aria-label="Files"
-          @keydown="${(e) => treeKeydown(e, this.shadowRoot)}"
+          @keydown="${(e) => this._onTreeKeydown(e)}"
           @focusin="${(e) => treeFocusIn(e, this.shadowRoot)}">
           ${tree.map((item) => this._renderNode(item, 0))}
         </ul>`}
