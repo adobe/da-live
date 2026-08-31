@@ -485,7 +485,10 @@ class EwFileExplorer extends LitElement {
 
   _onClearClick() {
     const input = this.shadowRoot.querySelector('.search-input');
-    if (input) input.value = '';
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
     this._clearSearch();
   }
 
@@ -533,7 +536,7 @@ class EwFileExplorer extends LitElement {
             </span>
           </button>
           ${copyable ? html`
-            <button type="button" class="copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${item.name}"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${item.name}"
               @click="${(e) => this._onCopyUrl(e, item)}">
               <svg class="icon-paste" viewBox="0 0 20 20" aria-hidden="true"><use href="${COPY_ICON_SRC}#icon"></use></svg>
               <svg class="icon-checkmark" viewBox="0 0 20 20" aria-hidden="true"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
@@ -620,7 +623,7 @@ class EwFileExplorer extends LitElement {
             <span class="label">${name}</span>
           </button>
           ${copyable ? html`
-            <button type="button" class="copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${name}"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" tabindex="-1" title="Copy URL" aria-label="Copy URL for ${name}"
               @click="${(e) => this._onCopyUrl(e, item)}">
               <svg class="icon-paste" viewBox="0 0 20 20" aria-hidden="true"><use href="${COPY_ICON_SRC}#icon"></use></svg>
               <svg class="icon-checkmark" viewBox="0 0 20 20" aria-hidden="true"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
@@ -666,7 +669,7 @@ class EwFileExplorer extends LitElement {
           .value="${this._searchTerm ?? ''}"
           @input="${(e) => this._onSearchInput(e)}"
           @keydown="${(e) => this._onSearchKeydown(e)}">
-        <button type="button" class="search-clear" aria-label="Clear search" @click="${() => this._onClearClick()}">
+        <button type="button" class="nx-action-btn-icon nx-btn-sm search-clear" aria-label="Clear search" @click="${() => this._onClearClick()}">
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
         </button>
         <nx-picker
