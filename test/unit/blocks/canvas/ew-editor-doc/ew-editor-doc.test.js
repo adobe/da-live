@@ -124,3 +124,47 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
     });
   });
 });
+
+describe('EwEditorDoc — _onEditorSelectState', () => {
+  let el;
+
+  beforeEach(() => {
+    el = document.createElement('ew-editor-doc');
+  });
+
+  it('does nothing when source is doc', () => {
+    const scrollCalls = [];
+    const broadcastCalls = [];
+    el._scrollDocToBlock = (...args) => scrollCalls.push(args);
+    el._broadcastSelectedNode = (...args) => broadcastCalls.push(args);
+
+    el._onEditorSelectState({ blockIndex: 2, source: 'doc' });
+
+    expect(scrollCalls).to.have.lengthOf(0);
+    expect(broadcastCalls).to.have.lengthOf(0);
+  });
+
+  it('scrolls and broadcasts for an outline-sourced selection', () => {
+    const scrollCalls = [];
+    const broadcastCalls = [];
+    el._scrollDocToBlock = (...args) => scrollCalls.push(args);
+    el._broadcastSelectedNode = (...args) => broadcastCalls.push(args);
+
+    el._onEditorSelectState({ blockIndex: 2, source: 'outline' });
+
+    expect(scrollCalls).to.deep.equal([[2]]);
+    expect(broadcastCalls).to.deep.equal([[true]]);
+  });
+
+  it('scrolls and broadcasts for an extension-sourced selection', () => {
+    const scrollCalls = [];
+    const broadcastCalls = [];
+    el._scrollDocToBlock = (...args) => scrollCalls.push(args);
+    el._broadcastSelectedNode = (...args) => broadcastCalls.push(args);
+
+    el._onEditorSelectState({ blockIndex: 5, source: 'extension' });
+
+    expect(scrollCalls).to.deep.equal([[5]]);
+    expect(broadcastCalls).to.deep.equal([[true]]);
+  });
+});
