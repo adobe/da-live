@@ -217,7 +217,10 @@ export async function aemAction(path, action, opts = {}) {
   }
 
   const liveJson = await saveToAem(path, 'live');
-  if (liveJson.error) return { ...liveJson, error: { ...liveJson.error, action: 'publish' } };
+  if (liveJson.error) {
+    const message = liveJson.error.message.replace(/ live$/, ' publish');
+    return { ...liveJson, error: { ...liveJson.error, action: 'publish', message } };
+  }
   return liveJson;
 }
 
