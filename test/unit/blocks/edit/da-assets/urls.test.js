@@ -364,6 +364,26 @@ describe('buildSmartCropsListUrl', () => {
 // ---------------------------------------------------------------------------
 
 describe('getAssetAlt', () => {
+  it('prefers Iptc4xmpExt:ExtDescrAccessibility from _embedded metadata', () => {
+    const asset = {
+      _embedded: {
+        'http://ns.adobe.com/adobecloud/rel/metadata/asset': {
+          'Iptc4xmpExt:ExtDescrAccessibility': 'A rich mountain view with blue skies',
+          'dc:description': 'A mountain view',
+        },
+      },
+    };
+    expect(getAssetAlt(asset)).to.equal('A rich mountain view with blue skies');
+  });
+
+  it('prefers a top-level Iptc4xmpExt:ExtDescrAccessibility (delivery-tier shape)', () => {
+    const asset = {
+      'Iptc4xmpExt:ExtDescrAccessibility': 'A rich mountain view with blue skies',
+      'dc:title': 'Sunset',
+    };
+    expect(getAssetAlt(asset)).to.equal('A rich mountain view with blue skies');
+  });
+
   it('returns dc:description when available', () => {
     expect(getAssetAlt(AUTHOR_IMAGE)).to.equal('A mountain view');
   });
