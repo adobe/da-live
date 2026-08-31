@@ -283,8 +283,6 @@ export function requestComment(_) {
   getCommentsBridge().controller?.requestCompose();
 }
 
-// Only show the comment action when the selection can be anchored to a comment
-// (non-empty text, or an image/table node selection).
 export function canComment(state) {
   return getSelectionData(state) != null;
 }

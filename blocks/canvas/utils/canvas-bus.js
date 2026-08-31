@@ -40,6 +40,7 @@ export const canvasBus = Object.freeze({
   undoRequest: createChannel(),
   redoRequest: createChannel(),
   newVersionRequest: createChannel(),
+  commentComposeRequest: createChannel(),
   blockEditRequest: createChannel(),
 
   undoState: createChannel(),

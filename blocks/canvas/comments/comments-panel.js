@@ -1,7 +1,8 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
-import { openCommentsPanel } from '../editor-utils/comments-bridge.js';
+import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import { buildDeepLinkUrl, parseDeepLink } from './helpers/deep-link.js';
 import {
   DRAFT_MODES,
@@ -17,8 +18,11 @@ import {
 } from './helpers/templates.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
-const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
+const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
+const form = await getSheet(`${getNx2()}/styles/form.css`);
+
+const HIDE_DEBOUNCE_MS = 150;
 
 let toastModulePromise;
 
@@ -37,7 +41,6 @@ function formatToastMessage(text, description) {
 export class CommentsPanel extends LitElement {
   static properties = {
     controller: { attribute: false },
-    embedded: { type: Boolean },
     currentUser: { state: true },
     _activeTab: { state: true },
     _draft: { state: true },
@@ -50,10 +53,6 @@ export class CommentsPanel extends LitElement {
   constructor() {
     super();
     this._activeTab = 'active';
-  }
-
-  get activeThreadCount() {
-    return this.controller?.counts?.active ?? 0;
   }
 
   willUpdate(changedProps) {
@@ -114,10 +113,43 @@ export class CommentsPanel extends LitElement {
     this._unsubCurrentUser = null;
   }
 
+  setupVisibility() {
+    this.teardownVisibility();
+    this._unsubControllerState = canvasBus.commentsControllerState
+      .subscribe((controller) => { this.controller = controller; });
+    this._visibilityObserver = new IntersectionObserver((entries) => {
+      this._visible = entries.some((entry) => entry.isIntersecting);
+      if (this._visible) {
+        clearTimeout(this._hideTimer);
+        this._hideTimer = null;
+        this.controller?.setPanelOpen(true);
+        return;
+      }
+      this._hideTimer = setTimeout(() => {
+        this._hideTimer = null;
+        this.controller?.setPanelOpen(false);
+      }, HIDE_DEBOUNCE_MS);
+    });
+    this._visibilityObserver.observe(this);
+  }
+
+  teardownVisibility() {
+    this._unsubControllerState?.();
+    this._unsubControllerState = null;
+    clearTimeout(this._hideTimer);
+    this._hideTimer = null;
+    this._visibilityObserver?.disconnect();
+    this._visibilityObserver = null;
+  }
+
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, sheet];
+    this.shadowRoot.adoptedStyleSheets = [
+      ...this.shadowRoot.adoptedStyleSheets, buttons, form, sheet,
+    ];
+    if (this.controller === undefined) this.controller = getCommentsBridge().controller;
     this.setupObservers();
+    this.setupVisibility();
     import('../../shared/da-dialog/da-dialog.js');
     this.checkUrlForComment();
   }
@@ -125,14 +157,11 @@ export class CommentsPanel extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.teardownObservers();
+    this.teardownVisibility();
   }
 
   openCommentsHost() {
     openCommentsPanel();
-  }
-
-  closeCommentsHost() {
-    this.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { bubbles: true, composed: true }));
   }
 
   showToast({ text, description, variant } = {}) {
@@ -146,15 +175,10 @@ export class CommentsPanel extends LitElement {
     });
   }
 
-  handleClose() {
-    if (this._draft) this.cancelDraft();
-    this.controller?.closePanel();
-    this.closeCommentsHost();
-  }
-
   updated(changedProps) {
     if (changedProps.has('controller')) {
       this.setupObservers();
+      this.controller?.setPanelOpen(!!this._visible);
     }
     if (changedProps.has('_draft') && this._draft) this.focusDraftTextarea();
     this.resolvePendingCommentLink();
@@ -162,11 +186,7 @@ export class CommentsPanel extends LitElement {
 
   async focusDraftTextarea() {
     await this.updateComplete;
-    const textarea = this.shadowRoot?.querySelector('.ew-comment-form sl-textarea');
-    if (!textarea) return;
-    await textarea.updateComplete;
-    const inner = textarea.shadowRoot?.querySelector('textarea');
-    (inner ?? textarea).focus();
+    this.shadowRoot?.querySelector('.ew-comment-form .ew-comment-textarea')?.focus();
   }
 
   checkUrlForComment() {
@@ -383,14 +403,6 @@ export class CommentsPanel extends LitElement {
 
     return html`
       <div class="ew-comments-panel">
-        ${this.embedded ? nothing : html`
-          <p class="ew-comments-title">
-            <button
-              class="ew-comments-close-btn"
-              @click=${this.handleClose}
-              aria-label="Comments (${this.activeThreadCount}) — close pane">Comments (${this.activeThreadCount})</button>
-          </p>
-        `}
         <div class="ew-comments-scroll">${content}</div>
       </div>
       ${renderConfirmDeleteDialog(this)}

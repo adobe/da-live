@@ -5,7 +5,6 @@ import { daFetch } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
-import { canvasBus } from '../utils/canvas-bus.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -543,36 +542,6 @@ function createVersioningView() {
   };
 }
 
-/**
- * Mirror DA's behaviour where comment highlights and the thread list only show
- * while the panel is visible: tie the controller's panelOpen flag to whether the
- * panel element is actually rendered (the active tool-panel view in an open
- * rail). Returns a function that re-applies the current visibility to whatever
- * controller `getController` currently resolves, for use after a controller swap.
- */
-export function bindPanelOpenToVisibility(el, getController) {
-  let visible = false;
-  let hideTimer = null;
-  const syncPanelOpen = () => getController()?.setPanelOpen(visible);
-  const observer = new IntersectionObserver((entries) => {
-    visible = entries.some((entry) => entry.isIntersecting);
-    if (visible) {
-      if (hideTimer) {
-        clearTimeout(hideTimer);
-        hideTimer = null;
-      }
-      syncPanelOpen();
-      return;
-    }
-    hideTimer = setTimeout(() => {
-      hideTimer = null;
-      syncPanelOpen();
-    }, 150);
-  });
-  observer.observe(el);
-  return syncPanelOpen;
-}
-
 export function createCommentsView() {
   return {
     id: 'comments',
@@ -584,17 +553,7 @@ export function createCommentsView() {
     },
     load: async () => {
       await import('../comments/comments-panel.js');
-      const el = document.createElement('ew-comments');
-      // The tool panel owns the close control in EW, so hide the in-panel one.
-      el.embedded = true;
-      const getController = () => getCommentsBridge().controller;
-      el.controller = getController();
-      const syncPanelOpen = bindPanelOpenToVisibility(el, getController);
-      canvasBus.commentsControllerState.subscribe((controller) => {
-        el.controller = controller;
-        syncPanelOpen();
-      });
-      return el;
+      return document.createElement('ew-comments');
     },
   };
 }

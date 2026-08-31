@@ -39,25 +39,23 @@ export function renderForm(panel, {
       @submit=${panel.submitDraft}
       @click=${(e) => e.stopPropagation()}
       class=${`ew-comment-form ${formClass}`.trim()}>
-      <sl-textarea
+      <textarea
+        class="ew-comment-textarea nx-input"
         placeholder=${placeholder}
-        resize="none"
         .value=${value || ''}
         ?disabled=${panel._submitting}
-        @sl-input=${panel.updateDraftText}
-        @sl-focus=${onFocus}
         @input=${panel.updateDraftText}
         @focus=${onFocus}
         @keydown=${panel.handleDraftKeydown}
-      ></sl-textarea>
+      ></textarea>
       ${showActions ? html`
         <div class="ew-comment-form-actions">
-          <sl-button type="button" class="primary outline" @click=${panel.cancelDraft}>Cancel</sl-button>
-          <sl-button type="submit" ?disabled=${!value?.trim() || panel._submitting} @click=${panel.submitDraft}>
+          <button type="button" class="nx-form-btn-secondary" @click=${panel.cancelDraft}>Cancel</button>
+          <button type="submit" class="nx-form-btn-primary" ?disabled=${!value?.trim() || panel._submitting} @click=${panel.submitDraft}>
             ${panel._submitting
               ? html`Saving <span class="ew-comments-btn-spinner" role="status" aria-label="Saving"></span>`
               : submitLabel}
-          </sl-button>
+          </button>
         </div>
         <div class="ew-comment-form-hint"><kbd>${SUBMIT_SHORTCUT}</kbd> to submit</div>
       ` : nothing}
@@ -77,7 +75,7 @@ export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit) {
       placement="below"
       .items=${items}
       @select=${(e) => panel.handleMenuSelect(e.detail.id, comment, threadId)}>
-      <button slot="trigger" class="ew-comments-btn-menu"
+      <button type="button" slot="trigger" class="nx-action-btn-icon nx-btn-sm"
         title="More options" aria-label="More options"
         @click=${(e) => e.stopPropagation()}>
         ${renderIcon('more')}
@@ -125,7 +123,7 @@ export function renderComment(panel, {
         ${showResolve || showMenu ? html`
           <div class="ew-comment-header-actions" @click=${(e) => e.stopPropagation()}>
             ${showResolve ? html`
-              <button class="ew-comments-btn-resolve" ?disabled=${!!panel._submittingId} @click=${() => panel.handleResolveThread(threadId)} title="Resolve">
+              <button type="button" class="nx-action-btn-icon nx-btn-sm" ?disabled=${!!panel._submittingId} @click=${() => panel.handleResolveThread(threadId)} title="Resolve" aria-label="Resolve">
                 ${renderIcon('checkmark')}
               </button>
             ` : nothing}
@@ -218,12 +216,11 @@ export function renderListView(panel, viewModel) {
         Select content and press <kbd>${COMMENT_SHORTCUT}</kbd> to add a comment.
       </p>
       ${tabs.length > 1 ? html`
-        <div class="ew-comment-tabs" role="tablist" aria-label="Comment thread categories">
+        <div class="ew-comment-tabs" role="group" aria-label="Filter comment threads">
           ${tabs.map((tab) => html`
             <button
               class="ew-comment-tab ${panel._activeTab === tab.id ? 'is-active' : ''}"
-              role="tab"
-              aria-selected=${panel._activeTab === tab.id}
+              aria-pressed=${panel._activeTab === tab.id}
               @click=${() => { panel._activeTab = tab.id; }}>
               <span class="ew-comment-tab-label">${tab.label}</span>
               <span class="ew-comment-tab-count">(${tab.count})</span>

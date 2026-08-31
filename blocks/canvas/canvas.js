@@ -20,14 +20,6 @@ import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.j
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 
-export function handleCommentShortcut(event, { controller, openPanel }) {
-  const isShortcut = (event.metaKey || event.ctrlKey) && event.altKey && event.code === 'KeyM';
-  if (!isShortcut) return;
-  event.preventDefault();
-  controller?.requestCompose();
-  openPanel();
-}
-
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const {
@@ -139,11 +131,6 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
 }
 
-// Returns true when it (re)assigned `toolPanel.views`, which fires the panel's
-// own auto-select (_onViewsChange). Passing `panelName` as `pendingView` makes
-// that auto-select pick it directly (no flags fetch), so the caller can skip its
-// own selection and avoid a redundant second showPanel. Returns false when the
-// views are already in sync — then the caller must select the view itself.
 async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
   const key = org && site ? `${org}/${site}` : null;
   if (key === toolPanel.dataset.extKey) return false;
@@ -207,6 +194,12 @@ const SHORTCUTS = [
     altKey: true,
     channel: canvasBus.newVersionRequest,
   },
+  {
+    code: 'KeyM',
+    mod: true,
+    altKey: true,
+    channel: canvasBus.commentComposeRequest,
+  },
 ];
 document.addEventListener('keydown', (e) => {
   const modKey = isMac ? e.metaKey : e.ctrlKey;
@@ -223,6 +216,11 @@ document.addEventListener('keydown', (e) => {
 });
 
 canvasBus.newVersionRequest.subscribe(openNewVersionRow);
+
+canvasBus.commentComposeRequest.subscribe(() => {
+  getCommentsBridge().controller?.requestCompose();
+  openPanelSection('tools', 'comments');
+});
 
 export default async function decorate(block) {
   const { org, site } = hashState();
@@ -247,8 +245,6 @@ export default async function decorate(block) {
     onShow: async (aside, id, options) => {
       const toolPanel = aside?.querySelector('ew-tool-panel');
       if (!toolPanel) return;
-      // Pass `id` so the panel's own auto-select picks it (via pendingView) instead
-      // of racing an explicit showPanel below — avoids the double-load flash.
       const selected = await syncToolPanelViews(toolPanel, hashState(), id);
       await toolPanel.updateComplete;
       if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
@@ -262,13 +258,6 @@ export default async function decorate(block) {
   });
 
   const header = await installCanvasHeader(block, { org, site });
-
-  window.addEventListener('keydown', (event) => {
-    handleCommentShortcut(event, {
-      controller: getCommentsBridge().controller,
-      openPanel: () => openPanelSection('tools', 'comments'),
-    });
-  });
 
   const mountRoot = canvasEditorMountRoot(block);
   mountRoot.classList.add('nx-canvas-editor-mount');

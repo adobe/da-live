@@ -3,7 +3,7 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { subscribeCommentIframeBridge } = await import('../../../../../blocks/canvas/ew-editor-doc/ew-editor-doc.js');
+const { subscribeCommentIframeBridge } = await import('../../../../../blocks/canvas/ew-editor-doc/utils/editor-comments.js');
 
 function fakeController() {
   let cb;

@@ -8,7 +8,6 @@ let getBlockVariants;
 let extensionToPanelView;
 let getPreviewStatus;
 let createCommentsView;
-let bindPanelOpenToVisibility;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
@@ -16,7 +15,6 @@ before(async () => {
   extensionToPanelView = mod.extensionToPanelView;
   getPreviewStatus = mod.getPreviewStatus;
   createCommentsView = mod.createCommentsView;
-  bindPanelOpenToVisibility = mod.bindPanelOpenToVisibility;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -368,31 +366,23 @@ describe('createCommentsView', () => {
     expect(createCommentsView().getLabel()).to.equal('Comments');
   });
 
-  it('load() returns an ew-comments element bound to the current controller', async () => {
+  it('load() returns an ew-comments element that binds to the current controller', async () => {
     const controller = {
       subscribe() { return () => {}; },
       getCurrentUser() { return null; },
+      onCurrentUserChange() { return () => {}; },
       setPanelOpen() {},
     };
     setCommentsController(controller);
     const el = await createCommentsView().load();
     expect(el.localName).to.equal('ew-comments');
+    document.body.append(el);
     expect(el.controller).to.equal(controller);
-  });
-
-  it('rebinds the element when the controller changes', async () => {
-    const el = await createCommentsView().load();
-    const next = {
-      subscribe() { return () => {}; },
-      getCurrentUser() { return null; },
-      setPanelOpen() {},
-    };
-    setCommentsController(next);
-    expect(el.controller).to.equal(next);
+    el.remove();
   });
 });
 
-describe('bindPanelOpenToVisibility', () => {
+describe('ew-comments panel visibility', () => {
   let realIntersectionObserver;
   let fireIntersection;
 
@@ -409,36 +399,48 @@ describe('bindPanelOpenToVisibility', () => {
     fireIntersection = (isIntersecting) => callback([{ isIntersecting }]);
   });
 
-  afterEach(() => { window.IntersectionObserver = realIntersectionObserver; });
+  afterEach(() => {
+    window.IntersectionObserver = realIntersectionObserver;
+    setCommentsController(null);
+  });
 
-  it('opens the panel when visible and closes it when hidden', async () => {
+  const stubController = (calls) => ({
+    subscribe() { return () => {}; },
+    getCurrentUser() { return null; },
+    onCurrentUserChange() { return () => {}; },
+    setPanelOpen(value) { calls.push(value); },
+  });
+
+  it('sets panelOpen from the element visibility, debouncing hide', async () => {
     const calls = [];
-    const controller = { setPanelOpen(value) { calls.push(value); } };
-    const el = document.createElement('div');
-
-    bindPanelOpenToVisibility(el, () => controller);
+    setCommentsController(stubController(calls));
+    const el = await createCommentsView().load();
+    document.body.append(el);
 
     fireIntersection(true);
     expect(calls.at(-1)).to.equal(true);
 
     fireIntersection(false);
-    // Hiding is debounced (see bindPanelOpenToVisibility); wait for the timer.
     await new Promise((resolve) => { setTimeout(resolve, 200); });
     expect(calls.at(-1)).to.equal(false);
+
+    el.remove();
   });
 
-  it('re-applies the current visibility to a swapped-in controller', () => {
+  it('re-applies visibility to a swapped-in controller', async () => {
     const first = [];
-    const second = [];
-    let controller = { setPanelOpen(value) { first.push(value); } };
-    const el = document.createElement('div');
+    setCommentsController(stubController(first));
+    const el = await createCommentsView().load();
+    document.body.append(el);
 
-    const syncPanelOpen = bindPanelOpenToVisibility(el, () => controller);
     fireIntersection(true);
     expect(first.at(-1)).to.equal(true);
 
-    controller = { setPanelOpen(value) { second.push(value); } };
-    syncPanelOpen();
+    const second = [];
+    setCommentsController(stubController(second));
+    await el.updateComplete;
     expect(second.at(-1)).to.equal(true);
+
+    el.remove();
   });
 });
