@@ -20,6 +20,7 @@ export const MESSAGE_TYPES = Object.freeze({
   PREVIEW: 'preview',
 
   SET_COMMENT_MARKERS: 'set-comment-markers',
+  SCROLL_TO_POS: 'scroll-to-pos',
   COMMENT_MARKER_CLICK: 'comment-marker-click',
   COMMENT_MARKER_CLEAR: 'comment-marker-clear',
   COMMENT_SHORTCUT: 'comment-shortcut',

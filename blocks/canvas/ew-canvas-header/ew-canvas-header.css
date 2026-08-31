@@ -144,3 +144,11 @@
     order: 1;
   }
 }
+
+.read-only-icon {
+  box-sizing: border-box;
+  
+  &:hover {
+    cursor: auto;
+  }
+}

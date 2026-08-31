@@ -27,13 +27,7 @@ import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.
 import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
-import { createCommentsStore } from '../comments/helpers/comments-store.js';
-import { parseDeepLink } from '../comments/helpers/deep-link.js';
-import { createCommentsController } from '../comments/helpers/controller.js';
-import commentPlugin from '../comments/comment-plugin.js';
-import { setCommentsController, openCommentsPanel } from '../editor-utils/comments-bridge.js';
-import { commentMarkers, postCommentMarkers, postScrollToComment } from '../ew-comments/iframe-bridge.js';
-import { createCommentGutter } from './utils/comment-gutter.js';
+import { createEditorComments } from './utils/editor-comments.js';
 import getSheet from '../../shared/sheet.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
@@ -53,64 +47,6 @@ await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const style = await loadStyle(import.meta.url);
 const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-highlight.css');
 
-export function createCommentsStoreFor(session, ctx) {
-  return session?.docId
-    ? createCommentsStore({ docId: session.docId, owner: ctx.org, repo: ctx.repo })
-    : null;
-}
-
-export function publishCommentsController(store, wsProvider) {
-  const controller = createCommentsController({ commentsStore: store, wsProvider });
-  setCommentsController(controller);
-  return controller;
-}
-
-export function subscribeCommentIframeBridge({ controller, getView, getPort }) {
-  if (!controller?.subscribe) return () => {};
-
-  const visible = () => controller.panelOpen;
-
-  const syncLayoutMarkers = () => {
-    const port = getPort();
-    const view = getView();
-    if (!port || !view) return;
-    const markers = visible() ? commentMarkers(view, controller) : [];
-    postCommentMarkers(port, markers, controller);
-  };
-
-  const scrollToSelected = () => {
-    const port = getPort();
-    const view = getView();
-    if (port && view && visible() && controller.selectedThreadId) {
-      postScrollToComment(port, view, controller);
-    }
-  };
-
-  const unsub = controller.subscribe(({ reason }) => {
-    if (reason === 'selectedThreadId'
-      && controller.selectedThreadId
-      && !controller.panelOpen) {
-      openCommentsPanel();
-    }
-    const port = getPort();
-    const view = getView();
-    if (!port || !view) return;
-    if (reason === 'selectedThreadId') {
-      scrollToSelected();
-      syncLayoutMarkers();
-    } else if (reason === 'counts' || reason === 'docChange' || reason === 'init'
-      || reason === 'panelOpen') {
-      syncLayoutMarkers();
-    }
-  });
-
-  if (controller.selectedThreadId) {
-    syncLayoutMarkers();
-    scrollToSelected();
-  }
-  return unsub;
-}
-
 export class EwEditorDoc extends LitElement {
   static properties = {
     ctx: { type: Object },
@@ -120,6 +56,15 @@ export class EwEditorDoc extends LitElement {
     _blockEditMode: { state: true },
     _blockEditName: { state: true },
   };
+
+  constructor() {
+    super();
+    this._comments = createEditorComments({
+      getView: () => this._proseContext?.view,
+      getPort: () => this._controllerCtx?.port,
+      getContainer: () => this.shadowRoot?.querySelector('.ew-editor-doc'),
+    });
+  }
 
   willUpdate(changed) {
     super.willUpdate(changed);
@@ -297,12 +242,7 @@ export class EwEditorDoc extends LitElement {
     };
     wireQuickEditControllerPort(this._controllerCtx);
 
-    this._unsubCommentBridge?.();
-    this._unsubCommentBridge = subscribeCommentIframeBridge({
-      controller: this._commentsController,
-      getView: () => this._proseContext?.view,
-      getPort: () => this._controllerCtx?.port,
-    });
+    this._comments.setupIframeBridge();
   }
 
   _setupAwareness(wsProvider) {
@@ -335,14 +275,7 @@ export class EwEditorDoc extends LitElement {
       onCollabUsersCleared: () => this._emitCollabUsers([]),
     });
     this._awarenessOff = undefined;
-    this._commentGutterOff?.();
-    this._commentGutterOff = null;
-    this._unsubCommentBridge?.();
-    this._unsubCommentBridge = null;
-    this._commentsController?.destroy();
-    this._commentsController = null;
-    this._commentsStore = null;
-    setCommentsController(null);
+    this._comments.teardown();
     this._proseContext = undefined;
   }
 
@@ -367,11 +300,7 @@ export class EwEditorDoc extends LitElement {
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
         extraPlugins: ({ wsProvider: ws }) => {
-          this._commentsStore = createCommentsStoreFor(session, this.ctx);
-          this._commentsController = createCommentsController({
-            commentsStore: this._commentsStore,
-            wsProvider: ws,
-          });
+          const commentsPlugin = this._comments.createPlugin(session, this.ctx, ws);
           return [
             mediaBusImage(this.ctx),
             createExtensionsBridgePlugin(),
@@ -404,17 +333,13 @@ export class EwEditorDoc extends LitElement {
                 this._broadcastSelectedNode(true);
               },
             ),
-            commentPlugin({ controller: this._commentsController, store: this._commentsStore }),
+            commentsPlugin,
           ];
         },
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
-      setCommentsController(this._commentsController);
-
-      if (parseDeepLink(new URL(window.location.href)).commentId) {
-        openCommentsPanel();
-      }
+      this._comments.publish();
 
       setSelectionToolbarCtx({
         org: this.ctx?.org,
@@ -423,30 +348,12 @@ export class EwEditorDoc extends LitElement {
         canWrite: this._canWrite,
       });
 
-      if (this._commentsStore) {
-        const doLoad = () => {
-          this._commentsStore.load().catch((err) => {
-            // eslint-disable-next-line no-console
-            console.warn('[comments] store load failed', err);
-          });
-        };
-
-        if (wsProvider.synced) {
-          doLoad();
-        } else {
-          const onSynced = (isSynced) => {
-            if (!isSynced) return;
-            wsProvider.off('synced', onSynced);
-            doLoad();
-          };
-          wsProvider.on('synced', onSynced);
-        }
-      }
+      this._comments.loadStore(wsProvider);
 
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
-      this._setupCommentGutter();
+      this._comments.setupGutter();
 
       this._setupController();
     } catch (e) {
@@ -554,18 +461,6 @@ export class EwEditorDoc extends LitElement {
     const view = this._proseContext?.view;
     if (view) clearBlockFocus(view);
     canvasBus.blockEditState.emit({ open: false });
-  }
-
-  _setupCommentGutter() {
-    this._commentGutterOff?.();
-    if (!this._commentsController) return;
-    afterNextPaint(() => {
-      this._commentGutterOff = createCommentGutter({
-        controller: this._commentsController,
-        getView: () => this._proseContext?.view,
-        getContainer: () => this.shadowRoot?.querySelector('.ew-editor-doc'),
-      });
-    });
   }
 
   disconnectedCallback() {

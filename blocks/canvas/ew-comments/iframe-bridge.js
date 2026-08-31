@@ -1,6 +1,7 @@
 import { decodeAnchor } from '../comments/helpers/anchor.js';
 import { getInitials } from '../comments/helpers/format-utils.js';
 import { generateColorSet } from '../editor-utils/author-color.js';
+import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 export function authorPresentation(author, colorSet) {
   const user = author ?? {};
@@ -61,7 +62,7 @@ export function commentMarkers(view, controller) {
 
 export function postCommentMarkers(port, markers, controller) {
   port?.postMessage({
-    type: 'set-comment-markers',
+    type: MESSAGE_TYPES.SET_COMMENT_MARKERS,
     payload: { markers, selectedThreadId: controller?.selectedThreadId ?? null },
   });
 }
@@ -72,5 +73,7 @@ export function postScrollToComment(port, view, controller) {
   if (!threadId) return;
   const comment = controller.getComment(threadId);
   const range = comment ? decodeAnchor({ anchor: comment, state: view.state }) : null;
-  if (range) port.postMessage({ type: 'scroll-to-pos', payload: { proseIndex: range.from } });
+  if (range) {
+    port.postMessage({ type: MESSAGE_TYPES.SCROLL_TO_POS, payload: { proseIndex: range.from } });
+  }
 }

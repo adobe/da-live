@@ -1,20 +1,20 @@
 /* stylelint-disable selector-class-pattern */
 
 .da-prose-mirror {
-  --comment-highlight-bg: light-dark(#fbf198, rgb(255 200 50 / 0.24));
-  --comment-highlight-bg-active: light-dark(#f8d904, rgb(255 220 90 / 0.38));
-  --comment-highlight-border: light-dark(#f8d904, rgb(255 210 70 / 0.9));
+  --comment-highlight-bg: light-dark(#fbf198, rgb(255 200 50 / 24%));
+  --comment-highlight-bg-active: light-dark(#f8d904, rgb(255 220 90 / 38%));
+  --comment-highlight-border: light-dark(#f8d904, rgb(255 210 70 / 90%));
   --comment-highlight-border-active: light-dark(#e8c600, rgb(255 238 130));
-  --comment-pending-bg: light-dark(#ffe9fc, rgb(236 130 210 / 0.22));
-  --comment-pending-border: light-dark(#ed74ed, rgb(244 170 225 / 0.95));
+  --comment-pending-bg: light-dark(#ffe9fc, rgb(236 130 210 / 22%));
+  --comment-pending-border: light-dark(#ed74ed, rgb(244 170 225 / 95%));
 }
 
 @media (prefers-color-scheme: dark) {
-  .ew-comment-highlight:not(.ew-comment-highlight-pending):not(img):not(:has(> img)) {
+  .ew-comment-highlight:not(.ew-comment-highlight-pending, img, :has(> img)) {
     background-color: color-mix(in srgb, var(--ew-comment-bg) 58%, transparent);
   }
 
-  .ew-comment-highlight-active:not(.ew-comment-highlight-pending):not(img):not(:has(> img)) {
+  .ew-comment-highlight-active:not(.ew-comment-highlight-pending, img, :has(> img)) {
     background-color: color-mix(in srgb, var(--ew-comment-bg) 72%, transparent);
   }
 }

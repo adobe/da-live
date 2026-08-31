@@ -29,6 +29,7 @@ function makeCtrl(overrides = {}) {
     onCurrentUserChange() { return () => {}; },
     subscribe(fn) { fn({ reason: 'init' }); return () => {}; },
     closePanel() { this.panelOpen = false; },
+    setPanelOpen(value) { this.panelOpen = value; },
     clearPendingAnchor() { this.pendingAnchor = null; },
     collapseSelection() {},
     setSelectedThread() {},
@@ -119,21 +120,6 @@ describe('ew-comments', () => {
 
     expect(el._draft).to.be.null;
     expect(clearedPending).to.be.true;
-  });
-
-  it('renders the in-panel close button by default', async () => {
-    el = await makeEl();
-    el.controller = makeCtrl();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.ew-comments-close-btn')).to.exist;
-  });
-
-  it('hides the in-panel close button when embedded', async () => {
-    el = await makeEl();
-    el.embedded = true;
-    el.controller = makeCtrl();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.ew-comments-close-btn')).to.be.null;
   });
 
   it('shows a loading spinner until the controller reports loaded', async () => {

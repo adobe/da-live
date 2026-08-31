@@ -174,12 +174,6 @@ export function encodeAnchor({ selectionData, state }) {
   };
 }
 
-// Resolves an anchor to a range and reports how it resolved:
-// - 'relpos'     — via the live Yjs relative position (tracks edits)
-// - 'structural' — relpos was dead (e.g. after a page move); recovered from the
-//                  structural descriptor. Such an anchor has no live position
-//                  tracking, so the controller should re-anchor it (see healAnchors).
-// - null         — could not resolve (detached).
 export function resolveAnchor({ anchor, state }) {
   const none = { range: null, source: null };
   if (!anchor?.anchorFrom || !anchor?.anchorTo) return none;

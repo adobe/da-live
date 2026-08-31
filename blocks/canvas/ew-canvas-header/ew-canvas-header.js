@@ -126,7 +126,7 @@ class EWCanvasHeader extends LitElement {
   _renderLock() {
     const label = "Read-only — you don't have write access";
     return html`
-      <span class="nx-action-btn-icon" role="img" aria-label=${label} title=${label}>
+      <span class="nx-action-btn-icon read-only-icon" role="img" aria-label=${label} title=${label}>
         ${this._renderIcon('lock')}
       </span>`;
   }

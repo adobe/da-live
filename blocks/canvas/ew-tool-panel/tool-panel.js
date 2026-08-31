@@ -112,11 +112,6 @@ class EwToolPanel extends LitElement {
   }
 
   async _onViewsChange() {
-    // A caller can set `pendingView` (a plain field, not reactive) right before
-    // assigning `views` to request a specific initial view. Consuming it here
-    // lets us skip resolveInitialToolPanelView's flags fetch — which otherwise
-    // races an explicit showPanel(name) call made by that same caller once this
-    // (unawaited) update settles, and can clobber it if the fetch is slow.
     const requestedView = this.pendingView;
     this.pendingView = undefined;
 

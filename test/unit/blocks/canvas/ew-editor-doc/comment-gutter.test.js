@@ -1,5 +1,9 @@
 import { expect } from '@esm-bundle/chai';
-import { groupMarkersByLine } from '../../../../../blocks/canvas/ew-editor-doc/utils/comment-gutter.js';
+import { setNx } from '../../../../../scripts/utils.js';
+
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const { groupMarkersByLine } = await import('../../../../../blocks/canvas/ew-editor-doc/utils/comment-gutter.js');
 
 describe('groupMarkersByLine', () => {
   it('groups markers within tolerance and separates distant ones', () => {

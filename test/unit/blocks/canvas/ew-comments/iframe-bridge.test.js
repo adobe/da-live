@@ -1,12 +1,16 @@
 import { expect } from '@esm-bundle/chai';
+import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 import { encodeAnchor } from '../../../../../blocks/canvas/comments/helpers/anchor.js';
-import {
+
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const {
   commentMarkers,
   postCommentMarkers,
   postScrollToComment,
   authorPresentation,
-} from '../../../../../blocks/canvas/ew-comments/iframe-bridge.js';
+} = await import('../../../../../blocks/canvas/ew-comments/iframe-bridge.js');
 
 /**
  * Build a comment anchor for a text range and a stub controller holding it.

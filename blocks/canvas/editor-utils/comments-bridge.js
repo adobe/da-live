@@ -1,10 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
-// Canvas -> shared panel crossing goes through da-nx's PANEL_EVENT, the standard
-// mechanism (same one ew-canvas-header / ew-tool-panel use), not raw event names.
-// Loaded lazily so this widely-imported bridge stays dependency-light at module
-// load — getNx is only touched when a panel is actually toggled.
 let panelEventsPromise;
 const panelEvents = () => {
   panelEventsPromise ??= import(`${getNx()}/utils/panel.js`);
