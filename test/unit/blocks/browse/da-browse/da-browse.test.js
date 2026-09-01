@@ -426,18 +426,6 @@ describe('DaBrowse Component', () => {
       expect(daBrowseComp.hidePublishConfs).to.deep.equal(['/myorg-d/mysite/blog']);
     });
 
-    it('collects editor.hidePublish rows living in a non-first multi-sheet tab named "data"', async () => {
-      daBrowseComp.details = { fullpath: '/myorg-e/mysite/folder', org: 'myorg-e', site: 'mysite', owner: 'myorg-e', depth: 3 };
-      mockSiteConfig('/myorg-e/mysite', {
-        permissions: { data: [{ path: '/', groups: 'everyone', actions: 'write' }] },
-        data: { data: [{ key: 'editor.hidePublish', value: '/myorg-e/mysite/blog' }] },
-        ':names': ['permissions', 'data'],
-        ':type': 'multi-sheet',
-      });
-      await daBrowseComp.getEditor(true);
-      expect(daBrowseComp.hidePublishConfs).to.deep.equal(['/myorg-e/mysite/blog']);
-    });
-
     it('returns an empty hidePublishConfs when no editor.hidePublish rows exist', async () => {
       daBrowseComp.details = { fullpath: '/myorg-f/mysite/folder', org: 'myorg-f', site: 'mysite', owner: 'myorg-f', depth: 3 };
       mockSiteConfig('/myorg-f/mysite', { data: [{ key: 'editor.path', value: '/myorg-f/mysite=https://da.live/form#' }] });

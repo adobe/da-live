@@ -5,7 +5,7 @@ import {
   saveDaConfig,
   getAemHrefs,
 } from '../utils/helpers.js';
-import { delay, fetchDaConfigs, getSheetByName, getFirstSheet, aemAction } from '../../shared/utils.js';
+import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
@@ -114,8 +114,7 @@ export default class DaTitle extends LitElement {
   async filterActions() {
     const { org, site, fullpath } = this.details;
     const configs = await Promise.all(fetchDaConfigs({ org, site }));
-    const configTab = configs.filter(Boolean)
-      .flatMap((config) => getSheetByName(config, 'data') ?? getFirstSheet(config) ?? []);
+    const configTab = configs.flatMap((config) => getFirstSheet(config) || []);
 
     // Check which actions should be allowed for the document based on config
     const publishConfigs = configTab.filter((c) => c.key === 'editor.hidePublish');
