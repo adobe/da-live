@@ -1,32 +1,13 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../shared/utils.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import { ICONS, iconPathForExt } from '../../shared/icons.js';
 import getEditPath from '../shared.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const STYLE = await loadStyle(import.meta.url);
-
-const ICONS = {
-  folder: '/img/icons/s2-icon-folder-20-n.svg',
-  file: '/img/icons/s2-icon-filetext-20-n.svg',
-  html: '/img/icons/s2-icon-filehtml-20-n.svg',
-  json: '/img/icons/s2-icon-data-20-n.svg',
-  link: '/img/icons/s2-icon-link-20-n.svg',
-  jpg: '/img/icons/s2-icon-image-20-n.svg',
-  jpeg: '/img/icons/s2-icon-image-20-n.svg',
-  png: '/img/icons/s2-icon-image-20-n.svg',
-  svg: '/img/icons/s2-icon-image-20-n.svg',
-  gif: '/img/icons/s2-icon-image-20-n.svg',
-  avif: '/img/icons/s2-icon-image-20-n.svg',
-  webp: '/img/icons/s2-icon-image-20-n.svg',
-  mp4: '/img/icons/s2-icon-video-20-n.svg',
-  media: '/img/icons/s2-icon-image-20-n.svg',
-  pdf: '/img/icons/s2-icon-acrobatsolid-20-n.svg',
-  folderClock: '/img/icons/s2-icon-folderclock-20-n.svg',
-  favorite: '/img/icons/s2-icon-starfilled-20-n.svg',
-};
 
 export default class DaListItem extends LitElement {
   static properties = {
@@ -260,10 +241,7 @@ export default class DaListItem extends LitElement {
   }
 
   renderIcon() {
-    // determine base type
-    const type = !this.ext ? 'folder' : this.ext;
-    const iconPath = ICONS[type] || ICONS.file;
-    return html`<svg viewBox="0 0 20 20"><use href="${iconPath}#icon"</svg>`;
+    return html`<svg viewBox="0 0 20 20"><use href="${iconPathForExt(this.ext)}#icon"</svg>`;
   }
 
   renderItem() {
