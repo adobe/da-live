@@ -1,6 +1,6 @@
 import getPathDetails from '../shared/pathDetails.js';
 import { contentLogin, livePreviewLogin } from '../shared/utils.js';
-import { getNx, getNx2Api } from '../../scripts/utils.js';
+import { getNx, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -40,6 +40,12 @@ function initArea(areaName, details, el) {
 async function setUI(el) {
   const details = getPathDetails();
   if (!details) return;
+
+  const { isEWEnabled } = await getNxEWFlags();
+  if (await isEWEnabled({ org: details.org, site: details.site })) {
+    window.location.href = `/canvas#${details.fullpath}`;
+    return;
+  }
 
   // Warm the hlx6 probe cache up front so createConnection's `await isHlx6(...)`
   // resolves from cache instead of gating the WebSocket on a network round-trip.
