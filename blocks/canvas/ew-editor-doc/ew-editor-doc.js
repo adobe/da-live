@@ -128,6 +128,16 @@ export class EwEditorDoc extends LitElement {
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
+  // Any non-'doc' source (outline click, extension scrollTo, ...) also syncs the
+  // WYSIWYG overlay — only the doc's own selection changes (source: 'doc') are
+  // excluded, since those already scroll/broadcast via the tracking-plugin callback
+  // in _loadEditor.
+  _onEditorSelectState({ blockIndex, source }) {
+    if (source === 'doc') return;
+    this._scrollDocToBlock(blockIndex);
+    this._broadcastSelectedNode(true);
+  }
+
   // TextSelection.near is the fallback for a drifted/mid-node proseIndex. A kind match
   // selects a NodeSelection instead, for the block-style highlight. Either way, broadcasts
   // the raw proseIndex, since that's what layout-view's data-prose-index carries.
@@ -355,11 +365,7 @@ export class EwEditorDoc extends LitElement {
       },
     );
     this._unsubscribeSelect = canvasBus.editorSelectState
-      .subscribe(({ blockIndex, source }) => {
-        if (source === 'doc') return;
-        this._scrollDocToBlock(blockIndex);
-        if (source === 'outline') this._broadcastSelectedNode(true);
-      });
+      .subscribe((detail) => this._onEditorSelectState(detail));
     this._unsubscribeProseSelect = canvasBus.editorProseSelectState
       .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
     this._unsubscribeBlockEditRequest = canvasBus.blockEditRequest

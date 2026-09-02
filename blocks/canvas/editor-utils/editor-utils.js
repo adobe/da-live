@@ -366,18 +366,29 @@ export function parseSections(htmlText) {
 }
 
 let selectBlockMeta = new Map();
+let sectionFirstItemMeta = new Map();
 canvasBus.editorHtmlState.subscribe((html) => {
   if (!html.trim()) {
     selectBlockMeta = new Map();
+    sectionFirstItemMeta = new Map();
     return;
   }
-  const next = new Map();
-  for (const { blocks } of parseSections(html)) {
+  const nextBlockMeta = new Map();
+  const nextSectionMeta = new Map();
+  for (const { sectionIndex, blocks, items } of parseSections(html)) {
     for (const { name, blockIndex, proseIndex, innerText } of blocks) {
-      next.set(blockIndex, { name, proseIndex, innerText });
+      nextBlockMeta.set(blockIndex, { name, proseIndex, innerText });
+    }
+    const first = items[0];
+    if (first?.type === 'block') {
+      nextSectionMeta.set(sectionIndex, { type: 'block', blockIndex: first.blockIndex });
+    } else if (first?.type === 'content' && first.children[0]) {
+      const { proseIndex, kind } = first.children[0];
+      nextSectionMeta.set(sectionIndex, { type: 'content', proseIndex, kind });
     }
   }
-  selectBlockMeta = next;
+  selectBlockMeta = nextBlockMeta;
+  sectionFirstItemMeta = nextSectionMeta;
 });
 
 // Runs once, at load, so canvas-bus.js's editorSelectState.emit is enriched for
@@ -388,6 +399,14 @@ registerEditorSelectEnricher((detail) => {
   const { name: blockName, proseIndex, innerText } = meta;
   return { ...detail, blockName, proseIndex, innerText };
 });
+
+// The "section" jump target for extensions (see
+// ew-panel-extensions/iframe-protocol.js) — a section has no selectable
+// identity of its own, so it resolves to its first block or content item.
+// Kept in sync by the same editorHtmlState subscription above.
+export function resolveSectionTarget(sectionIndex) {
+  return sectionFirstItemMeta.get(sectionIndex);
+}
 
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;

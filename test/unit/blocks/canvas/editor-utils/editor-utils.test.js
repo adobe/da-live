@@ -1,17 +1,20 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getPreviewOrigin;
 let fetchWysiwygBranch;
 let parseSections;
+let resolveSectionTarget;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
   getPreviewOrigin = mod.getPreviewOrigin;
   fetchWysiwygBranch = mod.fetchWysiwygBranch;
   parseSections = mod.parseSections;
+  resolveSectionTarget = mod.resolveSectionTarget;
 });
 
 describe('getPreviewOrigin', () => {
@@ -313,5 +316,44 @@ describe('parseSections', () => {
         type: 'block', name: 'cards', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Cards',
       },
     ]);
+  });
+});
+
+describe('resolveSectionTarget', () => {
+  it('resolves to the section\'s first block', () => {
+    const html = '<main><div><div class="hero" data-block-index="0">Hero</div></div></main>';
+    canvasBus.editorHtmlState.emit(html);
+    expect(resolveSectionTarget(0)).to.deep.equal({ type: 'block', blockIndex: 0 });
+  });
+
+  it('resolves to the section\'s first content item (a heading before a paragraph)', () => {
+    const html = `<main><div>
+      <h2 data-prose-index="1">Title</h2>
+      <p data-prose-index="5">Para</p>
+    </div></main>`;
+    canvasBus.editorHtmlState.emit(html);
+    expect(resolveSectionTarget(0)).to.deep.equal({ type: 'content', proseIndex: 1, kind: 'heading' });
+  });
+
+  it('returns undefined for an empty section', () => {
+    canvasBus.editorHtmlState.emit('<main><div></div></main>');
+    expect(resolveSectionTarget(0)).to.equal(undefined);
+  });
+
+  it('returns undefined for an out-of-range section index', () => {
+    canvasBus.editorHtmlState.emit(
+      '<main><div><div class="hero" data-block-index="0">Hero</div></div></main>',
+    );
+    expect(resolveSectionTarget(5)).to.equal(undefined);
+  });
+
+  it('clears the cache when the html is emptied', () => {
+    canvasBus.editorHtmlState.emit(
+      '<main><div><div class="hero" data-block-index="0">Hero</div></div></main>',
+    );
+    expect(resolveSectionTarget(0)).to.deep.equal({ type: 'block', blockIndex: 0 });
+
+    canvasBus.editorHtmlState.emit('');
+    expect(resolveSectionTarget(0)).to.equal(undefined);
   });
 });

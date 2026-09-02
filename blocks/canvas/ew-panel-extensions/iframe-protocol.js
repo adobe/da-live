@@ -1,6 +1,8 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+import { resolveSectionTarget } from '../editor-utils/editor-utils.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -75,6 +77,28 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
         { action: 'sendSelection', details: html },
         targetOrigin,
       );
+    }
+
+    if (action === 'scrollTo') {
+      const { type, blockIndex, sectionIndex, proseIndex, kind } = details || {};
+      if (type === 'block') {
+        canvasBus.editorSelectState.emit({ blockIndex, source: 'extension' });
+      } else if (type === 'content') {
+        canvasBus.editorProseSelectState.emit({ proseIndex, kind });
+      } else if (type === 'section') {
+        const resolved = resolveSectionTarget(sectionIndex);
+        if (resolved?.type === 'block') {
+          canvasBus.editorSelectState.emit({
+            blockIndex: resolved.blockIndex,
+            source: 'extension',
+          });
+        } else if (resolved?.type === 'content') {
+          canvasBus.editorProseSelectState.emit({
+            proseIndex: resolved.proseIndex,
+            kind: resolved.kind,
+          });
+        }
+      }
     }
   };
 
