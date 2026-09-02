@@ -25,6 +25,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
     // only execute this test on chromium
     return;
   }
+  test.setTimeout(5 * 60 * 1000);
 
   let authHeader;
   page.on('request', (request) => {
@@ -40,17 +41,16 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
   await dismissAlertBanner(page);
 
-  const stale = await listOldTestResources(page, authHeader, TEST_ORG, TEST_SITE, '/tests', MIN_HOURS);
-  if (!stale.length) {
-    console.log('No items to delete');
-    return;
+  const stale = listOldTestResources(page, authHeader, TEST_ORG, TEST_SITE, '/tests', MIN_HOURS);
+  let deletedCount = 0;
+  try {
+    await mapWithConcurrency(stale, DELETE_CONCURRENCY, async ({ path, isFolder }) => {
+      await deleteResource(page, authHeader, TEST_ORG, TEST_SITE, path, { isFolder });
+      deletedCount += 1;
+    });
+  } finally {
+    console.log(deletedCount ? `Deleted ${deletedCount} test files` : 'No items to delete');
   }
-
-  await mapWithConcurrency(stale, DELETE_CONCURRENCY, ({ path, isFolder }) => (
-    deleteResource(page, authHeader, TEST_ORG, TEST_SITE, path, { isFolder })
-  ));
-
-  console.log('Deleted', stale.length, 'test files');
 });
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
