@@ -41,10 +41,14 @@ async function setUI(el) {
   const details = getPathDetails();
   if (!details) return;
 
-  const { isEWEnabled } = await getNxEWFlags();
-  if (await isEWEnabled({ org: details.org, site: details.site })) {
-    window.location.href = `/canvas#${details.fullpath}`;
-    return;
+  try {
+    const { isEWEnabled } = await getNxEWFlags();
+    if (await isEWEnabled({ org: details.org, site: details.site })) {
+      window.location.href = `/canvas#${details.fullpath}`;
+      return;
+    }
+  } catch {
+    // Flag check unavailable — fall through to the normal editor.
   }
 
   // Warm the hlx6 probe cache up front so createConnection's `await isHlx6(...)`
