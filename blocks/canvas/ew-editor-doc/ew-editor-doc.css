@@ -48,7 +48,6 @@
 
 .ew-editor-doc .ew-comment-gutter-bubble.is-active {
   outline: 2px solid var(--ew-comment-author-color, #6b7280);
-  outline-offset: 1px;
 }
 
 .ew-editor-doc .ew-comment-gutter-bubble:hover {
