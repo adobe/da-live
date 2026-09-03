@@ -5,6 +5,7 @@ import {
   persistCanvasEditorView,
 } from './utils/view.js';
 import { shouldAutoOpenAfterPanel } from './utils/panel.js';
+import { toolbarController } from './editor-utils/toolbar-controller.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -15,12 +16,13 @@ import {
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
 import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
+import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
 const {
   wasPanelOpen,
   registerPanelSection,
@@ -38,6 +40,7 @@ function buildCanvasDocPath(state) {
 
 function notifyCanvasEditorActive(view) {
   const v = normalizeCanvasEditorView(view);
+  toolbarController.setEditorMode(v);
   canvasBus.editorViewState.emit({ view: v });
 }
 
@@ -103,11 +106,10 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     removeCanvasEditors(mountRoot);
     removeNotPermitted(mountRoot);
     header.authorized = true;
-    header.canWrite = true;
     return;
   }
   const ctx = editorCtxFromHashState(state, fullPath);
-  const session = await resolveEditorDocSession(ctx);
+  const session = await resolveEditorDocSession(sourceUrlFromEditorCtx(ctx));
   if (loadCount !== editorLoadCount) return;
   if (!session.ok) {
     removeCanvasEditors(mountRoot);
@@ -116,15 +118,11 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   removeNotPermitted(mountRoot);
-  const canWrite = (session.permissions ?? []).some((p) => p === 'write');
   header.authorized = true;
-  header.canWrite = canWrite;
   const docEl = ensureNxEditorDoc(mountRoot);
   docEl.session = session;
   docEl.ctx = ctx;
-  const frameEl = ensureNxEditorWysiwyg(mountRoot);
-  frameEl.canWrite = canWrite;
-  frameEl.ctx = ctx;
+  ensureNxEditorWysiwyg(mountRoot).ctx = ctx;
   finalizeSplitEditorMountOrder(mountRoot);
   notifyCanvasEditorActive(header.editorView);
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
@@ -271,7 +269,7 @@ export default async function decorate(block) {
   }
 
   // Any non-empty selection in doc mode is sent as chat context.
-  // wysiwyg has no block-select equivalent yet.
+  // wysiwyg has no block-select equivalent yet — see docs/canvas-events.md.
   const CANVAS_CHAT_KEY = 'canvas-selection';
   const SELECTION_LABEL = 'Selection';
   let hasContext = false;
