@@ -6,8 +6,13 @@ import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.j
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
+let createTrackingPlugin;
+let updateDocument;
+
 before(async () => {
   await import('../../../../../blocks/canvas/ew-editor-doc/ew-editor-doc.js');
+  ({ createTrackingPlugin } = await import('../../../../../blocks/canvas/editor-utils/prose-diff.js'));
+  ({ updateDocument } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
 });
 
 // Wraps view.dispatch so tests can assert the guarded early-returns in
@@ -53,6 +58,8 @@ function tableJSON(name, contentText = 'content') {
 }
 
 // Replaces the default doc with a single block table, mirroring a page with one authored block.
+// Also returns a position inside the second cell's paragraph text, suitable for tr.split —
+// mirroring what pressing Enter mid-cell does.
 function buildTableDoc(view) {
   const { schema } = view.state;
   const table = schema.nodeFromJSON(tableJSON('grid'));
@@ -60,10 +67,14 @@ function buildTableDoc(view) {
   view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
 
   let tablePos = -1;
+  let cellTextPos = -1;
   view.state.doc.descendants((node, pos) => {
-    if (node.type.name === 'table') tablePos = pos;
+    if (node.type.name === 'table' && tablePos === -1) tablePos = pos;
+    if (node.type.name === 'paragraph' && node.textContent === 'content') {
+      cellTextPos = pos + 1 + Math.floor(node.textContent.length / 2);
+    }
   });
-  return { tablePos };
+  return { tablePos, cellTextPos };
 }
 
 describe('EwEditorDoc — _scrollDocToProseIndex', () => {
@@ -154,24 +165,36 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
   });
 });
 
-// Reproduces: opening block-edit hands the live view to a modal while the controller's
-// tracking plugin can still fire a full SET_BODY redecoration mid-edit (e.g. on any doc
-// change whose common ancestor isn't a single heading/paragraph/list — such as an Enter
-// that splits a table-cell paragraph in two). That full redecoration tears down and
-// rebuilds the iframe DOM the block-edit modal is live-editing, racing the target site's
-// own async block decoration against the user's still-in-flight edit.
+// Reproduces the actual bug: opening block-edit hands the live view to a modal, but the
+// controller's tracking plugin (editor-utils/prose-diff.js) still watches every dispatch
+// on that view. A doc change whose common ancestor isn't a single heading/paragraph/list —
+// e.g. Enter splitting a table-cell paragraph into two — fails findCommonEditableAncestor
+// and falls back to a full SET_BODY redecoration. That tears down and rebuilds the iframe
+// DOM the block-edit modal is live-editing, racing the target site's own (possibly async)
+// block decoration against the user's still-in-flight edit.
 describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
   let editor;
   let el;
   let tablePos;
+  let cellTextPos;
   let ctx;
+  let postMessageCalls;
 
   beforeEach(async () => {
-    editor = await createTestEditor();
-    ({ tablePos } = buildTableDoc(editor.view));
+    postMessageCalls = [];
+    ctx = { suppressRerender: false, port: { postMessage: (msg) => postMessageCalls.push(msg) } };
+
+    editor = await createTestEditor({
+      additionalPlugins: [createTrackingPlugin(() => updateDocument(ctx))],
+    });
+    ctx.view = editor.view;
+    ({ tablePos, cellTextPos } = buildTableDoc(editor.view));
+    // buildTableDoc's own setup dispatch (a whole-doc replace) also trips the tracking
+    // plugin — clear that noise so counts below reflect only the split under test.
+    postMessageCalls.length = 0;
+
     el = document.createElement('ew-editor-doc');
     el._proseContext = { view: editor.view };
-    ctx = { view: editor.view, suppressRerender: false, port: { postMessage: () => {} } };
     el._controllerCtx = ctx;
   });
 
@@ -179,22 +202,22 @@ describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
     destroyEditor(editor);
   });
 
-  it('suppresses the controller rerender for the duration of block edit', () => {
-    el.enterBlockEdit(tablePos);
+  // Confirms the premise: splitting a table-cell paragraph (what Enter does) really does
+  // produce a doc change findCommonEditableAncestor rejects, which fires a rerender —
+  // this is the trigger the fix has to suppress.
+  it('splitting a table-cell paragraph triggers a rerender outside block edit', () => {
+    editor.view.dispatch(editor.view.state.tr.split(cellTextPos));
 
-    expect(ctx.suppressRerender).to.equal(true);
+    expect(postMessageCalls).to.have.lengthOf(1);
   });
 
-  it('flushes exactly one rerender when block edit exits', () => {
-    const postMessageCalls = [];
-    ctx.port.postMessage = (msg) => postMessageCalls.push(msg);
-
+  it('suppresses that rerender for the duration of block edit, then flushes one on exit', () => {
     el.enterBlockEdit(tablePos);
-    expect(ctx.suppressRerender).to.equal(true);
+
+    editor.view.dispatch(editor.view.state.tr.split(cellTextPos));
+    expect(postMessageCalls).to.have.lengthOf(0);
 
     el.exitBlockEdit();
-
-    expect(ctx.suppressRerender).to.equal(false);
     expect(postMessageCalls).to.have.lengthOf(1);
   });
 });
