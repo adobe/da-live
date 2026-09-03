@@ -1,5 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+import { PANEL_EVENT } from '../../../../fixtures/nx/utils/panel.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -28,5 +30,46 @@ describe('ew-tool-panel pendingView', () => {
     expect(el.activeId).to.equal('comments');
     expect(loadCount).to.equal(1);
     el.remove();
+  });
+});
+
+describe('ew-tool-panel active view broadcast', () => {
+  let aside;
+  let el;
+  let unsub;
+
+  afterEach(() => {
+    unsub?.();
+    el?.remove();
+    aside?.remove();
+    aside = null;
+    el = null;
+  });
+
+  it('broadcasts the active view when visible and null when the rail is hidden', async () => {
+    aside = document.createElement('aside');
+    aside.className = 'panel';
+    aside.dataset.position = 'after';
+    document.body.append(aside);
+    el = document.createElement('ew-tool-panel');
+    aside.append(el);
+    await el.updateComplete;
+
+    const seen = [];
+    unsub = canvasBus.toolPanelViewState.subscribe((view) => seen.push(view));
+
+    el.pendingView = 'comments';
+    el.views = [{ id: 'comments', label: 'Comments', load: async () => document.createElement('div') }];
+    await el.updateComplete;
+    await el.updateComplete;
+    expect(seen.at(-1)).to.equal('comments');
+
+    aside.setAttribute('hidden', '');
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { bubbles: true }));
+    expect(seen.at(-1)).to.equal(null);
+
+    aside.removeAttribute('hidden');
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools' } }));
+    expect(seen.at(-1)).to.equal('comments');
   });
 });

@@ -52,6 +52,7 @@ export const canvasBus = Object.freeze({
     emit: (detail) => editorSelectChannel.emit(enrichEditorSelect(detail)),
   },
   editorProseSelectState: createChannel(),
+  toolPanelViewState: createChannel({ replay: true }),
 
   wysiwygPortReady: createChannel(),
 

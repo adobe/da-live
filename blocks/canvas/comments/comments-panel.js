@@ -22,8 +22,6 @@ const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
 
-const HIDE_DEBOUNCE_MS = 150;
-
 let toastModulePromise;
 
 function loadToastModule() {
@@ -113,33 +111,26 @@ export class CommentsPanel extends LitElement {
     this._unsubCurrentUser = null;
   }
 
-  setupVisibility() {
-    this.teardownVisibility();
+  setupBusSubscriptions() {
+    this.teardownBusSubscriptions();
     this._unsubControllerState = canvasBus.commentsControllerState
       .subscribe((controller) => { this.controller = controller; });
-    this._visibilityObserver = new IntersectionObserver((entries) => {
-      this._visible = entries.some((entry) => entry.isIntersecting);
-      if (this._visible) {
-        clearTimeout(this._hideTimer);
-        this._hideTimer = null;
-        this.controller?.setPanelOpen(true);
-        return;
-      }
-      this._hideTimer = setTimeout(() => {
-        this._hideTimer = null;
-        this.controller?.setPanelOpen(false);
-      }, HIDE_DEBOUNCE_MS);
+    this._unsubToolView = canvasBus.toolPanelViewState.subscribe((view) => {
+      this._activeToolView = view;
+      this.syncPanelOpen();
     });
-    this._visibilityObserver.observe(this);
+    this.syncPanelOpen();
   }
 
-  teardownVisibility() {
+  syncPanelOpen() {
+    this.controller?.setPanelOpen(this._activeToolView === 'comments');
+  }
+
+  teardownBusSubscriptions() {
     this._unsubControllerState?.();
     this._unsubControllerState = null;
-    clearTimeout(this._hideTimer);
-    this._hideTimer = null;
-    this._visibilityObserver?.disconnect();
-    this._visibilityObserver = null;
+    this._unsubToolView?.();
+    this._unsubToolView = null;
   }
 
   connectedCallback() {
@@ -149,7 +140,7 @@ export class CommentsPanel extends LitElement {
     ];
     if (this.controller === undefined) this.controller = getCommentsBridge().controller;
     this.setupObservers();
-    this.setupVisibility();
+    this.setupBusSubscriptions();
     import('../../shared/da-dialog/da-dialog.js');
     this.checkUrlForComment();
   }
@@ -157,7 +148,7 @@ export class CommentsPanel extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.teardownObservers();
-    this.teardownVisibility();
+    this.teardownBusSubscriptions();
   }
 
   openCommentsHost() {
@@ -178,7 +169,7 @@ export class CommentsPanel extends LitElement {
   updated(changedProps) {
     if (changedProps.has('controller')) {
       this.setupObservers();
-      this.controller?.setPanelOpen(!!this._visible);
+      this.syncPanelOpen();
     }
     if (changedProps.has('_draft') && this._draft) this.focusDraftTextarea();
     this.resolvePendingCommentLink();

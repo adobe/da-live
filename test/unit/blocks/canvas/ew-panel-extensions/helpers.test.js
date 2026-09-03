@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 import { setCommentsController } from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -383,26 +384,7 @@ describe('createCommentsView', () => {
 });
 
 describe('ew-comments panel visibility', () => {
-  let realIntersectionObserver;
-  let fireIntersection;
-
-  beforeEach(() => {
-    realIntersectionObserver = window.IntersectionObserver;
-    let callback;
-    window.IntersectionObserver = class {
-      constructor(cb) { callback = cb; }
-
-      observe() {}
-
-      disconnect() {}
-    };
-    fireIntersection = (isIntersecting) => callback([{ isIntersecting }]);
-  });
-
-  afterEach(() => {
-    window.IntersectionObserver = realIntersectionObserver;
-    setCommentsController(null);
-  });
+  let el;
 
   const stubController = (calls) => ({
     subscribe() { return () => {}; },
@@ -411,36 +393,46 @@ describe('ew-comments panel visibility', () => {
     setPanelOpen(value) { calls.push(value); },
   });
 
-  it('sets panelOpen from the element visibility, debouncing hide', async () => {
-    const calls = [];
+  const mount = async (calls) => {
     setCommentsController(stubController(calls));
-    const el = await createCommentsView().load();
+    el = await createCommentsView().load();
     document.body.append(el);
+    await el.updateComplete;
+  };
 
-    fireIntersection(true);
+  afterEach(() => {
+    el?.remove();
+    el = null;
+    setCommentsController(null);
+  });
+
+  it('opens when comments is the active tool view', async () => {
+    const calls = [];
+    await mount(calls);
+    canvasBus.toolPanelViewState.emit('comments');
     expect(calls.at(-1)).to.equal(true);
+  });
 
-    fireIntersection(false);
-    await new Promise((resolve) => { setTimeout(resolve, 200); });
+  it('closes when another view is active or the rail is closed', async () => {
+    const calls = [];
+    await mount(calls);
+    canvasBus.toolPanelViewState.emit('comments');
+    canvasBus.toolPanelViewState.emit('versions');
     expect(calls.at(-1)).to.equal(false);
-
-    el.remove();
+    canvasBus.toolPanelViewState.emit('comments');
+    canvasBus.toolPanelViewState.emit(null);
+    expect(calls.at(-1)).to.equal(false);
   });
 
   it('re-applies visibility to a swapped-in controller', async () => {
     const first = [];
-    setCommentsController(stubController(first));
-    const el = await createCommentsView().load();
-    document.body.append(el);
-
-    fireIntersection(true);
+    await mount(first);
+    canvasBus.toolPanelViewState.emit('comments');
     expect(first.at(-1)).to.equal(true);
 
     const second = [];
     setCommentsController(stubController(second));
     await el.updateComplete;
     expect(second.at(-1)).to.equal(true);
-
-    el.remove();
   });
 });

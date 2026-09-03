@@ -35,12 +35,23 @@ class EwToolPanel extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [base, style];
     this._bindCommentCountUpdates();
+    this._onRailToggle = () => this._broadcastActiveView();
+    document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
+    document.addEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubCommentCounts?.();
     this._unsubControllerChange?.();
+    document.removeEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
+    document.removeEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
+  }
+
+  _broadcastActiveView() {
+    const rail = this.closest('aside.panel');
+    const visible = !!rail && !rail.hasAttribute('hidden');
+    canvasBus.toolPanelViewState.emit(visible ? this.activeId : null);
   }
 
   _bindCommentCountUpdates() {
@@ -105,6 +116,7 @@ class EwToolPanel extends LitElement {
       if (this.activeId) persistToolPanelView(this.activeId);
       this._syncContent();
       this._syncHeaderActions();
+      this._broadcastActiveView();
     }
     if (changed.has('_fullsizeDialogViewId') && this._fullsizeDialogViewId) {
       await this._mountDialog();
