@@ -37,6 +37,35 @@ function buildDoc(view) {
   return { imagePos };
 }
 
+// Mirrors blocks.test.js's tableJSON helper — a minimal authored block table.
+function tableJSON(name, contentText = 'content') {
+  const cell = (text) => ({
+    type: 'table_cell',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  });
+  return {
+    type: 'table',
+    content: [
+      { type: 'table_row', content: [cell(name)] },
+      { type: 'table_row', content: [cell(contentText)] },
+    ],
+  };
+}
+
+// Replaces the default doc with a single block table, mirroring a page with one authored block.
+function buildTableDoc(view) {
+  const { schema } = view.state;
+  const table = schema.nodeFromJSON(tableJSON('grid'));
+  const { content } = schema.nodes.doc.create(null, [table]);
+  view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
+
+  let tablePos = -1;
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'table') tablePos = pos;
+  });
+  return { tablePos };
+}
+
 describe('EwEditorDoc — _scrollDocToProseIndex', () => {
   let editor;
   let el;
@@ -122,5 +151,50 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
 
       expect(dispatchCalls).to.have.lengthOf(0);
     });
+  });
+});
+
+// Reproduces: opening block-edit hands the live view to a modal while the controller's
+// tracking plugin can still fire a full SET_BODY redecoration mid-edit (e.g. on any doc
+// change whose common ancestor isn't a single heading/paragraph/list — such as an Enter
+// that splits a table-cell paragraph in two). That full redecoration tears down and
+// rebuilds the iframe DOM the block-edit modal is live-editing, racing the target site's
+// own async block decoration against the user's still-in-flight edit.
+describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
+  let editor;
+  let el;
+  let tablePos;
+  let ctx;
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+    ({ tablePos } = buildTableDoc(editor.view));
+    el = document.createElement('ew-editor-doc');
+    el._proseContext = { view: editor.view };
+    ctx = { view: editor.view, suppressRerender: false, port: { postMessage: () => {} } };
+    el._controllerCtx = ctx;
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+  });
+
+  it('suppresses the controller rerender for the duration of block edit', () => {
+    el.enterBlockEdit(tablePos);
+
+    expect(ctx.suppressRerender).to.equal(true);
+  });
+
+  it('flushes exactly one rerender when block edit exits', () => {
+    const postMessageCalls = [];
+    ctx.port.postMessage = (msg) => postMessageCalls.push(msg);
+
+    el.enterBlockEdit(tablePos);
+    expect(ctx.suppressRerender).to.equal(true);
+
+    el.exitBlockEdit();
+
+    expect(ctx.suppressRerender).to.equal(false);
+    expect(postMessageCalls).to.have.lengthOf(1);
   });
 });
