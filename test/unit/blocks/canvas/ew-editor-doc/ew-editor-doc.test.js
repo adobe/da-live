@@ -184,9 +184,8 @@ describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
     postMessageCalls = [];
     ctx = { suppressRerender: false, port: { postMessage: (msg) => postMessageCalls.push(msg) } };
 
-    editor = await createTestEditor({
-      additionalPlugins: [createTrackingPlugin(() => updateDocument(ctx))],
-    });
+    const trackingPlugin = createTrackingPlugin(() => updateDocument(ctx));
+    editor = await createTestEditor({ additionalPlugins: [trackingPlugin] });
     ctx.view = editor.view;
     ({ tablePos, cellTextPos } = buildTableDoc(editor.view));
     // buildTableDoc's own setup dispatch (a whole-doc replace) also trips the tracking
@@ -287,9 +286,8 @@ describe('EwEditorDoc — block-edit prevents overlapping SET_BODY redecorations
     port = createFakeIframePort();
     ctx = { suppressRerender: false, port };
 
-    editor = await createTestEditor({
-      additionalPlugins: [createTrackingPlugin(() => updateDocument(ctx))],
-    });
+    const trackingPlugin = createTrackingPlugin(() => updateDocument(ctx));
+    editor = await createTestEditor({ additionalPlugins: [trackingPlugin] });
     ctx.view = editor.view;
     ({ tablePos, cellTextPos } = buildTwoCellTableDoc(editor.view));
     port.reset(); // discard the setup dispatch's own trip through the tracking plugin
