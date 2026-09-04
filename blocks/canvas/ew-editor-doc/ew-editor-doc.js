@@ -391,10 +391,7 @@ export class EwEditorDoc extends LitElement {
     setBlockFocus(view, pos);
     this._blockEditName = getTableBlockName(node);
     this._blockEditMode = true;
-    // A full controller redecoration (SET_BODY) tears down and rebuilds the iframe DOM
-    // this modal is live-editing — suppress it for the duration of block edit so it can't
-    // race the target site's own (possibly async) block decoration mid-edit; flushed once
-    // on exit below.
+    // Suppress controller redecoration so it can't rebuild the iframe DOM mid-edit.
     if (this._controllerCtx) this._controllerCtx.suppressRerender = true;
     // Un-hide the (layout-hidden) host, but collapse its box via `:host(.block-edit)`
     // so the top-layer dialog doesn't claim a flex slot and shrink the preview.

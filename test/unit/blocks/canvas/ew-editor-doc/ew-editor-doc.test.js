@@ -57,9 +57,7 @@ function tableJSON(name, ...contentTexts) {
   };
 }
 
-// Replaces the default doc with a single block table, mirroring a page with one authored block.
-// Also returns a position inside the second cell's paragraph text, suitable for tr.split —
-// mirroring what pressing Enter mid-cell does.
+// Like buildDoc but a single block table; also returns a cell text position for tr.split.
 function buildTableDoc(view) {
   const { schema } = view.state;
   const table = schema.nodeFromJSON(tableJSON('grid', 'content'));
@@ -165,13 +163,9 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
   });
 });
 
-// Reproduces the actual bug: opening block-edit hands the live view to a modal, but the
-// controller's tracking plugin (editor-utils/prose-diff.js) still watches every dispatch
-// on that view. A doc change whose common ancestor isn't a single heading/paragraph/list —
-// e.g. Enter splitting a table-cell paragraph into two — fails findCommonEditableAncestor
-// and falls back to a full SET_BODY redecoration. That tears down and rebuilds the iframe
-// DOM the block-edit modal is live-editing, racing the target site's own (possibly async)
-// block decoration against the user's still-in-flight edit.
+// Splitting a table-cell paragraph (e.g. Enter mid-cell) fails findCommonEditableAncestor
+// and falls back to a full SET_BODY redecoration, which races the block-edit modal's
+// live-editing of that same iframe DOM.
 describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
   let editor;
   let el;
@@ -188,8 +182,7 @@ describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
     editor = await createTestEditor({ additionalPlugins: [trackingPlugin] });
     ctx.view = editor.view;
     ({ tablePos, cellTextPos } = buildTableDoc(editor.view));
-    // buildTableDoc's own setup dispatch (a whole-doc replace) also trips the tracking
-    // plugin — clear that noise so counts below reflect only the split under test.
+    // Discard the setup dispatch's own trip through the tracking plugin.
     postMessageCalls.length = 0;
 
     el = document.createElement('ew-editor-doc');
@@ -201,9 +194,6 @@ describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
     destroyEditor(editor);
   });
 
-  // Confirms the premise: splitting a table-cell paragraph (what Enter does) really does
-  // produce a doc change findCommonEditableAncestor rejects, which fires a rerender —
-  // this is the trigger the fix has to suppress.
   it('splitting a table-cell paragraph triggers a rerender outside block edit', () => {
     editor.view.dispatch(editor.view.state.tr.split(cellTextPos));
 
@@ -221,12 +211,8 @@ describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
   });
 });
 
-// A fake iframe controller that models SET_BODY's asynchronous cost — the real target site's
-// loadPage() rebuilds the DOM and awaits its own (possibly slow/async) block decoration
-// before settling. Each postMessage call opens a "redecoration in flight" that only closes
-// when the test explicitly settles it, so a second SET_BODY arriving before that lets us
-// directly observe the overlap — the actual "overlapping loadPage() calls" shape, not just
-// whether postMessage fired.
+// Models SET_BODY's async cost: each postMessage opens a "redecoration in flight" that
+// stays open until settleOldest(), so overlapping calls are directly observable.
 function createFakeIframePort() {
   const calls = [];
   let active = 0;
@@ -251,9 +237,8 @@ function createFakeIframePort() {
   };
 }
 
-// Builds a doc with one table containing two independently-splittable paragraphs, so two
-// separate "Enter" edits can be simulated without reusing a position invalidated by the
-// first split.
+// Two independently-splittable cells, so two "Enter" edits can be simulated without
+// reusing a position invalidated by the first split.
 function buildTwoCellTableDoc(view) {
   const { schema } = view.state;
   const table = schema.nodeFromJSON(tableJSON('grid', 'first cell', 'second cell'));
@@ -302,15 +287,12 @@ describe('EwEditorDoc — block-edit prevents overlapping SET_BODY redecorations
   });
 
   it('two edits in quick succession overlap outside block edit', () => {
-    // First "Enter" starts a redecoration that hasn't settled yet (loadPage still running).
-    // (Yjs's sync plugin can echo more than one tracking-plugin trip per dispatch, so assert
-    // on overlap growth rather than a pinned call count.)
     editor.view.dispatch(editor.view.state.tr.split(cellTextPos.first));
     const activeAfterFirst = port.active;
     expect(activeAfterFirst).to.be.above(0, 'first edit should start a redecoration');
 
-    // A second "Enter" arrives before the first redecoration settles — exactly the shape
-    // of the live bug (Enter, then more edits, while the iframe is mid-rebuild).
+    // Yjs's sync plugin can echo more than one tracking-plugin trip per dispatch, so
+    // assert on overlap growth rather than a pinned call count.
     editor.view.dispatch(editor.view.state.tr.split(cellTextPos.second));
     expect(port.active).to.be.above(activeAfterFirst, 'a second SET_BODY fired while the first was still in flight');
   });
