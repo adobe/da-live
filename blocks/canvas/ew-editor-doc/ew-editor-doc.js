@@ -391,6 +391,8 @@ export class EwEditorDoc extends LitElement {
     setBlockFocus(view, pos);
     this._blockEditName = getTableBlockName(node);
     this._blockEditMode = true;
+    // Suppress controller redecoration so it can't rebuild the iframe DOM mid-edit.
+    if (this._controllerCtx) this._controllerCtx.suppressRerender = true;
     // Un-hide the (layout-hidden) host, but collapse its box via `:host(.block-edit)`
     // so the top-layer dialog doesn't claim a flex slot and shrink the preview.
     this.hidden = false;
@@ -433,6 +435,11 @@ export class EwEditorDoc extends LitElement {
     }
     const view = this._proseContext?.view;
     if (view) clearBlockFocus(view);
+    if (this._controllerCtx) {
+      this._controllerCtx.suppressRerender = false;
+      const body = updateDocument(this._controllerCtx);
+      if (body) canvasBus.editorHtmlState.emit(body);
+    }
     canvasBus.blockEditState.emit({ open: false });
   }
 

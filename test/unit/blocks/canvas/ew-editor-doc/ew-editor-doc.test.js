@@ -6,8 +6,13 @@ import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.j
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
+let createTrackingPlugin;
+let updateDocument;
+
 before(async () => {
   await import('../../../../../blocks/canvas/ew-editor-doc/ew-editor-doc.js');
+  ({ createTrackingPlugin } = await import('../../../../../blocks/canvas/editor-utils/prose-diff.js'));
+  ({ updateDocument } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
 });
 
 // Wraps view.dispatch so tests can assert the guarded early-returns in
@@ -35,6 +40,39 @@ function buildDoc(view) {
     if (node.type.name === 'image') imagePos = pos;
   });
   return { imagePos };
+}
+
+// Mirrors blocks.test.js's tableJSON helper — a minimal authored block table.
+function tableJSON(name, ...contentTexts) {
+  const cell = (text) => ({
+    type: 'table_cell',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  });
+  return {
+    type: 'table',
+    content: [
+      { type: 'table_row', content: [cell(name)] },
+      ...contentTexts.map((text) => ({ type: 'table_row', content: [cell(text)] })),
+    ],
+  };
+}
+
+// Like buildDoc but a single block table; also returns a cell text position for tr.split.
+function buildTableDoc(view) {
+  const { schema } = view.state;
+  const table = schema.nodeFromJSON(tableJSON('grid', 'content'));
+  const { content } = schema.nodes.doc.create(null, [table]);
+  view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
+
+  let tablePos = -1;
+  let cellTextPos = -1;
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'table' && tablePos === -1) tablePos = pos;
+    if (node.type.name === 'paragraph' && node.textContent === 'content') {
+      cellTextPos = pos + 1 + Math.floor(node.textContent.length / 2);
+    }
+  });
+  return { tablePos, cellTextPos };
 }
 
 describe('EwEditorDoc — _scrollDocToProseIndex', () => {
@@ -122,5 +160,151 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
 
       expect(dispatchCalls).to.have.lengthOf(0);
     });
+  });
+});
+
+// Splitting a table-cell paragraph (e.g. Enter mid-cell) fails findCommonEditableAncestor
+// and falls back to a full SET_BODY redecoration, which races the block-edit modal's
+// live-editing of that same iframe DOM.
+describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
+  let editor;
+  let el;
+  let tablePos;
+  let cellTextPos;
+  let ctx;
+  let postMessageCalls;
+
+  beforeEach(async () => {
+    postMessageCalls = [];
+    ctx = { suppressRerender: false, port: { postMessage: (msg) => postMessageCalls.push(msg) } };
+
+    const trackingPlugin = createTrackingPlugin(() => updateDocument(ctx));
+    editor = await createTestEditor({ additionalPlugins: [trackingPlugin] });
+    ctx.view = editor.view;
+    ({ tablePos, cellTextPos } = buildTableDoc(editor.view));
+    // Discard the setup dispatch's own trip through the tracking plugin.
+    postMessageCalls.length = 0;
+
+    el = document.createElement('ew-editor-doc');
+    el._proseContext = { view: editor.view };
+    el._controllerCtx = ctx;
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+  });
+
+  it('splitting a table-cell paragraph triggers a rerender outside block edit', () => {
+    editor.view.dispatch(editor.view.state.tr.split(cellTextPos));
+
+    expect(postMessageCalls).to.have.lengthOf(1);
+  });
+
+  it('suppresses that rerender for the duration of block edit, then flushes one on exit', () => {
+    el.enterBlockEdit(tablePos);
+
+    editor.view.dispatch(editor.view.state.tr.split(cellTextPos));
+    expect(postMessageCalls).to.have.lengthOf(0);
+
+    el.exitBlockEdit();
+    expect(postMessageCalls).to.have.lengthOf(1);
+  });
+});
+
+// Models SET_BODY's async cost: each postMessage opens a "redecoration in flight" that
+// stays open until settleOldest(), so overlapping calls are directly observable.
+function createFakeIframePort() {
+  const calls = [];
+  let active = 0;
+  let maxActive = 0;
+  return {
+    calls,
+    get active() { return active; },
+    get maxActive() { return maxActive; },
+    postMessage(msg) {
+      calls.push(msg);
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+    },
+    settleOldest() {
+      active = Math.max(0, active - 1);
+    },
+    reset() {
+      calls.length = 0;
+      active = 0;
+      maxActive = 0;
+    },
+  };
+}
+
+// Two independently-splittable cells, so two "Enter" edits can be simulated without
+// reusing a position invalidated by the first split.
+function buildTwoCellTableDoc(view) {
+  const { schema } = view.state;
+  const table = schema.nodeFromJSON(tableJSON('grid', 'first cell', 'second cell'));
+  const { content } = schema.nodes.doc.create(null, [table]);
+  view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
+
+  let tablePos = -1;
+  const cellTextPos = {};
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'table' && tablePos === -1) tablePos = pos;
+    if (node.type.name === 'paragraph' && node.textContent === 'first cell') {
+      cellTextPos.first = pos + 1 + Math.floor(node.textContent.length / 2);
+    }
+    if (node.type.name === 'paragraph' && node.textContent === 'second cell') {
+      cellTextPos.second = pos + 1 + Math.floor(node.textContent.length / 2);
+    }
+  });
+  return { tablePos, cellTextPos };
+}
+
+describe('EwEditorDoc — block-edit prevents overlapping SET_BODY redecorations', () => {
+  let editor;
+  let el;
+  let tablePos;
+  let cellTextPos;
+  let ctx;
+  let port;
+
+  beforeEach(async () => {
+    port = createFakeIframePort();
+    ctx = { suppressRerender: false, port };
+
+    const trackingPlugin = createTrackingPlugin(() => updateDocument(ctx));
+    editor = await createTestEditor({ additionalPlugins: [trackingPlugin] });
+    ctx.view = editor.view;
+    ({ tablePos, cellTextPos } = buildTwoCellTableDoc(editor.view));
+    port.reset(); // discard the setup dispatch's own trip through the tracking plugin
+
+    el = document.createElement('ew-editor-doc');
+    el._proseContext = { view: editor.view };
+    el._controllerCtx = ctx;
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+  });
+
+  it('two edits in quick succession overlap outside block edit', () => {
+    editor.view.dispatch(editor.view.state.tr.split(cellTextPos.first));
+    const activeAfterFirst = port.active;
+    expect(activeAfterFirst).to.be.above(0, 'first edit should start a redecoration');
+
+    // Yjs's sync plugin can echo more than one tracking-plugin trip per dispatch, so
+    // assert on overlap growth rather than a pinned call count.
+    editor.view.dispatch(editor.view.state.tr.split(cellTextPos.second));
+    expect(port.active).to.be.above(activeAfterFirst, 'a second SET_BODY fired while the first was still in flight');
+  });
+
+  it('never starts a redecoration during block edit, so none can overlap', () => {
+    el.enterBlockEdit(tablePos);
+
+    editor.view.dispatch(editor.view.state.tr.split(cellTextPos.first));
+    editor.view.dispatch(editor.view.state.tr.split(cellTextPos.second));
+    expect(port.maxActive).to.equal(0, 'block edit must not start any redecoration at all');
+
+    el.exitBlockEdit();
+    expect(port.active).to.be.above(0, 'exiting flushes a redecoration, once it is safe');
   });
 });
