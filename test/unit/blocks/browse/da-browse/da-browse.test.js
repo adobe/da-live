@@ -400,6 +400,38 @@ describe('DaBrowse Component', () => {
       const url = await daBrowseComp.getEditor(true);
       expect(url).to.equal('/edit#');
     });
+
+    // Scope mocks to the site-level config URL only (org-level gets an empty
+    // config) since fetchDaConfigs fetches org + site in parallel, and a
+    // catch-all mock would return the same rows for both, doubling entries.
+    function mockSiteConfig(fullpath, json) {
+      window.fetch = async (url) => {
+        // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); answer that
+        // with a real Response (so its headers.get() call is safe) and defer everything else.
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+        if (url.includes(`/config${fullpath}/`)) return { ok: true, json: async () => json };
+        return { ok: true, json: async () => ({ data: [] }) };
+      };
+    }
+
+    it('collects editor.hidePublish rows into hidePublishConfs', async () => {
+      daBrowseComp.details = { fullpath: '/myorg-d/mysite/folder', org: 'myorg-d', site: 'mysite', owner: 'myorg-d', depth: 3 };
+      mockSiteConfig('/myorg-d/mysite', {
+        data: [
+          { key: 'editor.path', value: '/myorg-d/mysite=https://da.live/form#' },
+          { key: 'editor.hidePublish', value: '/myorg-d/mysite/blog' },
+        ],
+      });
+      await daBrowseComp.getEditor(true);
+      expect(daBrowseComp.hidePublishConfs).to.deep.equal(['/myorg-d/mysite/blog']);
+    });
+
+    it('returns an empty hidePublishConfs when no editor.hidePublish rows exist', async () => {
+      daBrowseComp.details = { fullpath: '/myorg-f/mysite/folder', org: 'myorg-f', site: 'mysite', owner: 'myorg-f', depth: 3 };
+      mockSiteConfig('/myorg-f/mysite', { data: [{ key: 'editor.path', value: '/myorg-f/mysite=https://da.live/form#' }] });
+      await daBrowseComp.getEditor(true);
+      expect(daBrowseComp.hidePublishConfs).to.deep.equal([]);
+    });
   });
 
   describe('isRootFolder', () => {
