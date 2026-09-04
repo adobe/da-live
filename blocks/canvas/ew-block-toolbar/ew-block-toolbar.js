@@ -122,8 +122,9 @@ class EwBlockToolbar extends LitElement {
     const picker = this._picker;
     if (!picker) return;
     const current = this._currentVariant ?? '';
-    if (current === '' || (this._variantOptions || []).includes(current)) {
-      picker.value = current;
+    const match = (this._variantOptions || []).find((v) => normalizeBlockName(v) === normalizeBlockName(current));
+    if (match) {
+      picker.value = match;
       picker.labelOverride = '';
     } else {
       picker.value = '';
