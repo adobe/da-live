@@ -5,6 +5,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: EwBlockToolbar } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
 const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
+const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
 
 describe('ew-block-toolbar', () => {
   let toolbar;
@@ -143,6 +144,24 @@ describe('ew-block-toolbar', () => {
       expect(calls).to.deep.equal([{ pos: 7 }]);
     } finally {
       unsubscribe();
+    }
+  });
+
+  it('opens the comments composer for the block when the comment button is clicked', async () => {
+    let composed = 0;
+    setCommentsController({ requestCompose() { composed += 1; } });
+    try {
+      toolbar.view = { state: { selection: { from: 7 } } };
+      toolbar.show('cards');
+      await toolbar.updateComplete;
+      const btn = toolbar.shadowRoot.querySelector('.block-comment');
+      expect(btn.querySelector('svg.icon use').getAttribute('href'))
+        .to.equal('/img/icons/s2-icon-comment-20-n.svg#icon');
+      btn.click();
+      expect(composed).to.equal(1);
+      expect(toolbar.open).to.be.false;
+    } finally {
+      setCommentsController(null);
     }
   });
 });

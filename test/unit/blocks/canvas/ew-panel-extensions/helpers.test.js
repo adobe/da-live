@@ -1,17 +1,21 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { setCommentsController } from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
 let extensionToPanelView;
 let getPreviewStatus;
+let createCommentsView;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
   getPreviewStatus = mod.getPreviewStatus;
+  createCommentsView = mod.createCommentsView;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -338,5 +342,97 @@ describe('getPreviewStatus', () => {
     window.fetch = () => Promise.resolve(new Response('{}', { status: 500 }));
     const result = await getPreviewStatus({ org: 'pstatusorg3', site: 'pstatussite3', pathname: '/p' });
     expect(result).to.equal(null);
+  });
+});
+
+describe('createCommentsView', () => {
+  afterEach(() => setCommentsController(null));
+
+  it('is a first-party Editor-section view', () => {
+    const view = createCommentsView();
+    expect(view.id).to.equal('comments');
+    expect(view.section).to.equal('Editor');
+    expect(view.firstParty).to.equal(true);
+  });
+
+  it('getLabel() shows the active thread count when comments exist', () => {
+    setCommentsController({ counts: { active: 20, resolved: 3 } });
+    expect(createCommentsView().getLabel()).to.equal('Comments (20)');
+  });
+
+  it('getLabel() omits the count when there are no active comments', () => {
+    setCommentsController({ counts: { active: 0, resolved: 3 } });
+    expect(createCommentsView().getLabel()).to.equal('Comments');
+    setCommentsController(null);
+    expect(createCommentsView().getLabel()).to.equal('Comments');
+  });
+
+  it('load() returns an ew-comments element that binds to the current controller', async () => {
+    const controller = {
+      subscribe() { return () => {}; },
+      getCurrentUser() { return null; },
+      onCurrentUserChange() { return () => {}; },
+      setPanelOpen() {},
+    };
+    setCommentsController(controller);
+    const el = await createCommentsView().load();
+    expect(el.localName).to.equal('ew-comments');
+    document.body.append(el);
+    expect(el.controller).to.equal(controller);
+    el.remove();
+  });
+});
+
+describe('ew-comments panel visibility', () => {
+  let el;
+
+  const stubController = (calls) => ({
+    subscribe() { return () => {}; },
+    getCurrentUser() { return null; },
+    onCurrentUserChange() { return () => {}; },
+    setPanelOpen(value) { calls.push(value); },
+  });
+
+  const mount = async (calls) => {
+    setCommentsController(stubController(calls));
+    el = await createCommentsView().load();
+    document.body.append(el);
+    await el.updateComplete;
+  };
+
+  afterEach(() => {
+    el?.remove();
+    el = null;
+    setCommentsController(null);
+  });
+
+  it('opens when comments is the active tool view', async () => {
+    const calls = [];
+    await mount(calls);
+    canvasBus.toolPanelViewState.emit('comments');
+    expect(calls.at(-1)).to.equal(true);
+  });
+
+  it('closes when another view is active or the rail is closed', async () => {
+    const calls = [];
+    await mount(calls);
+    canvasBus.toolPanelViewState.emit('comments');
+    canvasBus.toolPanelViewState.emit('versions');
+    expect(calls.at(-1)).to.equal(false);
+    canvasBus.toolPanelViewState.emit('comments');
+    canvasBus.toolPanelViewState.emit(null);
+    expect(calls.at(-1)).to.equal(false);
+  });
+
+  it('re-applies visibility to a swapped-in controller', async () => {
+    const first = [];
+    await mount(first);
+    canvasBus.toolPanelViewState.emit('comments');
+    expect(first.at(-1)).to.equal(true);
+
+    const second = [];
+    setCommentsController(stubController(second));
+    await el.updateComplete;
+    expect(second.at(-1)).to.equal(true);
   });
 });

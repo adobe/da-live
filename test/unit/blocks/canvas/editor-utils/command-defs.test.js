@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { setNx } from '../../../../../scripts/utils.js';
+import { setCommentsController } from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -211,5 +212,26 @@ describe('cellSelectionSlashItems', () => {
     mergeStub = sinon.stub(COMMAND_BY_ID.get('table-merge-cells'), 'visible').returns(false);
     splitStub = sinon.stub(COMMAND_BY_ID.get('table-split-cell'), 'visible').returns(false);
     expect(cellSelectionSlashItems({})).to.deep.equal([]);
+  });
+});
+
+describe('add-comment command', () => {
+  afterEach(() => setCommentsController(null));
+
+  it('exists in the toolbar-comment group', () => {
+    const cmd = COMMAND_BY_ID.get('add-comment');
+    expect(cmd).to.exist;
+    expect(cmd.showIn).to.include('toolbar-comment');
+  });
+
+  it('apply() calls requestCompose and dispatches nx-panel-open', async () => {
+    let composed = false;
+    setCommentsController({ requestCompose() { composed = true; } });
+    const evt = await new Promise((resolve) => {
+      document.addEventListener('nx-panel-open', resolve, { once: true });
+      COMMAND_BY_ID.get('add-comment').apply({ focus() {} });
+    });
+    expect(composed).to.equal(true);
+    expect(evt.detail).to.deep.equal({ section: 'tools', id: 'comments' });
   });
 });

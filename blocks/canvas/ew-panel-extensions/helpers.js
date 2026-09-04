@@ -4,6 +4,7 @@ import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -541,6 +542,22 @@ function createVersioningView() {
   };
 }
 
+export function createCommentsView() {
+  return {
+    id: 'comments',
+    label: 'Comments',
+    section: 'Editor',
+    firstParty: true,
+    getLabel() {
+      return formatCommentsViewLabel(getCommentsBridge().controller?.counts?.active);
+    },
+    load: async () => {
+      await import('../comments/comments-panel.js');
+      return document.createElement('ew-comments');
+    },
+  };
+}
+
 export function extensionToPanelView(ext, section) {
   // Block library opens its own dedicated modal (used by the slash menu and
   // outline "+" button) rather than the generic inline panel or iframe dialog.
@@ -630,6 +647,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
     createOutlineView(),
     createFileExplorerView(),
     createVersioningView(),
+    createCommentsView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

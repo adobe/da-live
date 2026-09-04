@@ -26,6 +26,7 @@ import {
   splitCell,
   deleteTable,
   isInTable,
+  CellSelection,
 } from 'prosemirror-tables';
 
 // yjs
@@ -38,11 +39,14 @@ import {
   yUndoPluginKey,
   undo as yUndo,
   redo as yRedo,
-  prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
   yDocToProsemirror,
+  prosemirrorToYDoc,
   yDocToProsemirrorJSON,
   yXmlFragmentToProsemirrorJSON,
+  ySyncPluginKey,
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
 } from 'y-prosemirror';
 
 import { MenuItem, Dropdown, renderGrouped, blockTypeItem, wrapItem } from '../../prosemirror-menu/dist/index.js';
@@ -86,6 +90,7 @@ export {
   mergeCells,
   splitCell,
   deleteTable,
+  CellSelection,
   gapCursor,
   MenuItem,
   Dropdown,
@@ -110,9 +115,12 @@ export {
   yUndoPluginKey,
   yUndo,
   yRedo,
-  prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
   yDocToProsemirror,
+  prosemirrorToYDoc,
   yDocToProsemirrorJSON,
   yXmlFragmentToProsemirrorJSON,
+  ySyncPluginKey,
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
 };

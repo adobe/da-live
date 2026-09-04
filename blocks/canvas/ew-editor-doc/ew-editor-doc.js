@@ -27,6 +27,8 @@ import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.
 import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { createEditorComments } from './utils/editor-comments.js';
+import getSheet from '../../shared/sheet.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
 // so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
@@ -43,6 +45,7 @@ const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
+const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-highlight.css');
 
 export class EwEditorDoc extends LitElement {
   static properties = {
@@ -53,6 +56,15 @@ export class EwEditorDoc extends LitElement {
     _blockEditMode: { state: true },
     _blockEditName: { state: true },
   };
+
+  constructor() {
+    super();
+    this._comments = createEditorComments({
+      getView: () => this._proseContext?.view,
+      getPort: () => this._controllerCtx?.port,
+      getContainer: () => this.shadowRoot?.querySelector('.ew-editor-doc'),
+    });
+  }
 
   willUpdate(changed) {
     super.willUpdate(changed);
@@ -229,6 +241,8 @@ export class EwEditorDoc extends LitElement {
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
     };
     wireQuickEditControllerPort(this._controllerCtx);
+
+    this._comments.setupIframeBridge();
   }
 
   _setupAwareness(wsProvider) {
@@ -261,6 +275,7 @@ export class EwEditorDoc extends LitElement {
       onCollabUsersCleared: () => this._emitCollabUsers([]),
     });
     this._awarenessOff = undefined;
+    this._comments.teardown();
     this._proseContext = undefined;
   }
 
@@ -284,49 +299,61 @@ export class EwEditorDoc extends LitElement {
         permissions,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
-        extraPlugins: [
-          mediaBusImage(this.ctx),
-          createExtensionsBridgePlugin(),
-          createTrackingPlugin(
-            () => {
-              const body = this._controllerCtx
-                ? updateDocument(this._controllerCtx)
-                : getInstrumentedHTML(this._proseContext?.view);
-              if (body) canvasBus.editorHtmlState.emit(body);
-            },
-            () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
-            (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
-            (pmView) => {
-              const blockIndex = getActiveBlockIndex(pmView);
-              const proseIndex = activeContentProseIndex(pmView);
-              const { kind, ...descriptor } = describeDocSelection(pmView);
-              const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
-              if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
-              this._lastDocBlockIndex = blockIndex;
-              this._lastDocSelKey = selKey;
-              canvasBus.editorSelectState.emit({
-                blockIndex,
-                proseIndex,
-                source: 'doc',
-                explicit: descriptor.selectionType === SEL_BLOCK,
-                ...descriptor,
-              });
-              this._broadcastSelectedNode(true);
-            },
-          ),
-        ],
+        extraPlugins: ({ wsProvider: ws }) => {
+          const commentsPlugin = this._comments.createPlugin(session, this.ctx, ws);
+          return [
+            mediaBusImage(this.ctx),
+            createExtensionsBridgePlugin(),
+            createTrackingPlugin(
+              () => {
+                const body = this._controllerCtx
+                  ? updateDocument(this._controllerCtx)
+                  : getInstrumentedHTML(this._proseContext?.view);
+                if (body) canvasBus.editorHtmlState.emit(body);
+              },
+              () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
+              (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
+              (pmView) => {
+                const blockIndex = getActiveBlockIndex(pmView);
+                const proseIndex = activeContentProseIndex(pmView);
+                const { kind, ...descriptor } = describeDocSelection(pmView);
+                const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
+                const unchanged = blockIndex === this._lastDocBlockIndex
+                  && selKey === this._lastDocSelKey;
+                if (unchanged) return;
+                this._lastDocBlockIndex = blockIndex;
+                this._lastDocSelKey = selKey;
+                canvasBus.editorSelectState.emit({
+                  blockIndex,
+                  proseIndex,
+                  source: 'doc',
+                  explicit: descriptor.selectionType === SEL_BLOCK,
+                  ...descriptor,
+                });
+                this._broadcastSelectedNode(true);
+              },
+            ),
+            commentsPlugin,
+          ];
+        },
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
+      this._comments.publish();
+
       setSelectionToolbarCtx({
         org: this.ctx?.org,
         site: this.ctx?.repo,
         sourceUrl,
         canWrite: this._canWrite,
       });
+
+      this._comments.loadStore(wsProvider);
+
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
+      this._comments.setupGutter();
 
       this._setupController();
     } catch (e) {
@@ -340,7 +367,7 @@ export class EwEditorDoc extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
