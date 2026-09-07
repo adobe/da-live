@@ -103,14 +103,21 @@ function registerFocusDiagLogging(view) {
 // while this doc view sits hidden behind layout view (canvasBus.editorViewState). A
 // plugin's view.update()/appendTransaction dispatching a "fix" in response to a remote
 // change — measured against a hidden (0-size) layout — is the leading suspect.
+// prosemirror-view's own known entry points for genuine user input (typing, IME,
+// paste, drop, click-driven selection). A dispatch whose stack runs through one of
+// these is normal — anything else reaching dispatchTransaction is the suspect.
+const USER_INPUT_MARKERS = /handleDOMChange|handleKeyDown|handleTextInput|handleCompositionEnd|handlePaste|handleDrop|handleClick|handleTripleClick|handleTouchstart/;
+
 function diagLogLocalDispatch(tr, view) {
   if (!tr.docChanged) return;
   const isRemote = tr.getMeta('y-sync$')?.isChangeOrigin === true;
   if (isRemote) return;
+  const stack = new Error('trace').stack ?? '';
+  if (USER_INPUT_MARKERS.test(stack)) return; // normal typing/paste/click — not the suspect
   const stepTypes = tr.steps.map((s) => s.constructor.name).join(',');
   const hidden = view.dom.offsetParent === null;
   // eslint-disable-next-line no-console
-  console.debug(`[collab-diag] LOCAL tx steps=[${stepTypes}] viewHidden=${hidden} docHasFocus=${document.hasFocus()} viewHasFocus=${view.hasFocus()}`, new Error('trace').stack);
+  console.debug(`[collab-diag] SUSPECT local tx (no known user-input path in stack) steps=[${stepTypes}] viewHidden=${hidden} docHasFocus=${document.hasFocus()} viewHasFocus=${view.hasFocus()}`, stack);
 }
 
 function addSyncedListener(wsProvider, canWrite, setEditable) {
