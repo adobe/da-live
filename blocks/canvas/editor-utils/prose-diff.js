@@ -6,6 +6,27 @@ import { Plugin, PluginKey } from 'da-y-wrapper';
 // hold and resolving a change's pos can throw.
 export const trackingPluginKey = new PluginKey('proseDiffTracking');
 
+// --- collab diagnostics (temporary — remove once the multi-user editing
+// investigation is done) -----------------------------------------------
+// y-prosemirror doesn't export its sync plugin's PluginKey, but its meta is
+// always readable under the raw key it resolves to: the first
+// `new PluginKey('y-sync')` constructed app-wide gets the key 'y-sync$'
+// (see prosemirror-state's PluginKey key-naming), which is exactly what
+// y-prosemirror's own (unexported) ySyncPluginKey does. Remote-origin
+// transactions (i.e. applied because another collaborator's edit arrived
+// over the websocket) carry `{ isChangeOrigin: true }` there.
+function isRemoteOriginTx(tr) {
+  return tr.getMeta('y-sync$')?.isChangeOrigin === true;
+}
+
+const collabDiagCounts = { local: 0, remote: 0 };
+
+function logCollabDiag(label, origin, extra = '') {
+  collabDiagCounts[origin] += 1;
+  // eslint-disable-next-line no-console
+  console.debug(`[collab-diag] ${label} origin=${origin} total-local=${collabDiagCounts.local} total-remote=${collabDiagCounts.remote}${extra}`);
+}
+
 export function findChangedNodes(oldDoc, newDoc) {
   const changes = [];
 
@@ -156,18 +177,28 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
   return new Plugin({
     key: trackingPluginKey,
     state: {
-      init() { return false; },
-      apply(tr) { return tr.getMeta(trackingPluginKey) === true; },
+      init() { return { skipDiff: false, isRemote: false }; },
+      apply(tr) {
+        return {
+          skipDiff: tr.getMeta(trackingPluginKey) === true,
+          isRemote: isRemoteOriginTx(tr),
+        };
+      },
     },
     view() {
       return {
         update(view, prevState) {
           const docChanged = view.state.doc !== prevState.doc;
+          const { skipDiff, isRemote } = trackingPluginKey.getState(view.state) ?? {};
+          const origin = isRemote ? 'remote' : 'local';
 
-          if (docChanged && trackingPluginKey.getState(view.state)) {
+          if (docChanged && skipDiff) {
+            logCollabDiag('rerenderPage (skipDiff)', origin);
             rerenderPage?.();
           } else if (docChanged) {
+            const diffStart = performance.now();
             const changes = findChangedNodes(prevState.doc, view.state.doc);
+            const diffMs = (performance.now() - diffStart).toFixed(1);
 
             if (changes.length > 0) {
               // Only an EDITABLE_TYPES node changing its own attrs/type (heading level,
@@ -181,8 +212,10 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
                 : findCommonEditableAncestor(view, changes, prevState);
 
               if (commonEditable) {
+                logCollabDiag('getEditor (in-place sync)', origin, ` diffMs=${diffMs} changes=${changes.length}`);
                 getEditor?.({ cursorOffset: commonEditable.pos + 1 });
               } else {
+                logCollabDiag('rerenderPage (full)', origin, ` diffMs=${diffMs} changes=${changes.length}`);
                 rerenderPage?.();
               }
             }

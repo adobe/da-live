@@ -8,6 +8,15 @@ import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js'
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
+// --- collab diagnostics (temporary — remove once the multi-user editing
+// investigation is done) -----------------------------------------------
+let getInstrumentedHTMLCallCount = 0;
+
+function logIframeMessage(direction, type, extra = '') {
+  // eslint-disable-next-line no-console
+  console.debug(`[collab-diag] iframe ${direction} ${type} at ${performance.now().toFixed(1)}${extra}`);
+}
+
 // --- state.js ---
 
 function findInsertedRange(oldText, newText) {
@@ -19,6 +28,7 @@ function findInsertedRange(oldText, newText) {
 }
 
 export function updateState(data, ctx) {
+  logIframeMessage('in', 'SET_STATE', ` cursorOffset=${data.cursorOffset}`);
   const { view } = ctx;
   // Capture stored marks before the transaction — these are marks the user toggled
   // (e.g. Bold) that ProseMirror is holding for the next character typed.  In
@@ -78,6 +88,7 @@ export function updateState(data, ctx) {
       if (syncNode) {
         const editorState = syncNode.toJSON();
         const { cursorOffset } = data;
+        logIframeMessage('out', 'SET_EDITOR_STATE (mark sync)', ` cursorOffset=${cursorOffset}`);
         ctx.port.postMessage({
           type: MESSAGE_TYPES.SET_EDITOR_STATE,
           payload: { editorState, cursorOffset },
@@ -107,6 +118,7 @@ export function getEditor(data, ctx) {
     if (!nodeAtBefore) return;
     const editorState = nodeAtBefore.toJSON();
     const newCursorOffset = before + 1;
+    logIframeMessage('out', 'SET_EDITOR_STATE (in-place sync)', ` cursorOffset=${newCursorOffset}`);
     ctx.port.postMessage({
       type: MESSAGE_TYPES.SET_EDITOR_STATE,
       payload: { editorState, cursorOffset: newCursorOffset },
@@ -172,6 +184,10 @@ export function extractCursors(view) {
 }
 
 export function getInstrumentedHTML(view) {
+  const collabDiagStart = performance.now();
+  getInstrumentedHTMLCallCount += 1;
+  const callIndex = getInstrumentedHTMLCallCount;
+
   const editorClone = view.dom.cloneNode(true);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
@@ -254,6 +270,11 @@ export function getInstrumentedHTML(view) {
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
   );
+
+  const collabDiagMs = (performance.now() - collabDiagStart).toFixed(1);
+  // eslint-disable-next-line no-console
+  console.debug(`[collab-diag] getInstrumentedHTML #${callIndex} took ${collabDiagMs}ms docSize=${view.state.doc.content.size}`);
+
   return htmlString;
 }
 
@@ -392,6 +413,7 @@ registerEditorSelectEnricher((detail) => {
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
+  logIframeMessage('out', 'SET_BODY', ` bodyLength=${body.length}`);
   ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
   return body;
 }

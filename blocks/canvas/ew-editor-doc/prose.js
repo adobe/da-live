@@ -57,6 +57,22 @@ function registerErrorHandler(ydoc) {
   });
 }
 
+// Collab diagnostic (temporary — remove once the multi-user editing investigation is
+// done): logs every Y.Doc update with its true local/remote origin (Yjs's own
+// `transaction.local`, set by y-websocket for updates received off the wire) and byte
+// size, so it can be correlated against the tracking-plugin and iframe postMessage logs
+// in editor-utils.js / prose-diff.js.
+function registerCollabDiagLogging(ydoc) {
+  let localCount = 0;
+  let remoteCount = 0;
+  ydoc.on('update', (update, origin, doc, transaction) => {
+    if (transaction.local) localCount += 1;
+    else remoteCount += 1;
+    // eslint-disable-next-line no-console
+    console.debug(`[collab-diag] ydoc update origin=${transaction.local ? 'local' : 'remote'} bytes=${update.length} at ${performance.now().toFixed(1)} total-local=${localCount} total-remote=${remoteCount}`);
+  });
+}
+
 function addSyncedListener(wsProvider, canWrite, setEditable) {
   const handleSynced = (isSynced) => {
     if (isSynced) {
@@ -144,6 +160,7 @@ export default async function initProse({
   addSyncedListener(wsProvider, canWrite, setEditable);
   checkLibraryConfiguredOnSync(wsProvider, canWrite);
   registerErrorHandler(ydoc);
+  registerCollabDiagLogging(ydoc);
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
