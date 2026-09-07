@@ -103,10 +103,11 @@ function registerFocusDiagLogging(view) {
 // while this doc view sits hidden behind layout view (canvasBus.editorViewState). A
 // plugin's view.update()/appendTransaction dispatching a "fix" in response to a remote
 // change — measured against a hidden (0-size) layout — is the leading suspect.
-// prosemirror-view's own known entry points for genuine user input (typing, IME,
-// paste, drop, click-driven selection). A dispatch whose stack runs through one of
-// these is normal — anything else reaching dispatchTransaction is the suspect.
-const USER_INPUT_MARKERS = /handleDOMChange|handleKeyDown|handleTextInput|handleCompositionEnd|handlePaste|handleDrop|handleClick|handleTripleClick|handleTouchstart/;
+// Known entry points for genuine user input: prosemirror-view's own DOM-input handlers,
+// plus this codebase's iframe->doc relay path (updateState/getEditor, driven by a real
+// NODE_UPDATE postMessage from someone typing in the quick-edit WYSIWYG overlay). A
+// dispatch whose stack runs through one of these is normal — anything else is the suspect.
+const USER_INPUT_MARKERS = /handleDOMChange|handleKeyDown|handleTextInput|handleCompositionEnd|handlePaste|handleDrop|handleClick|handleTripleClick|handleTouchstart|quick-edit-controller\.js/;
 
 function diagLogLocalDispatch(tr, view) {
   if (!tr.docChanged) return;
