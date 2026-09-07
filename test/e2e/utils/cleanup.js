@@ -26,19 +26,21 @@ export function parseTestUrl(url) {
 
 export const DELETE_CONCURRENCY = 5;
 
-export async function mapWithConcurrency(items, limit, fn) {
-  const results = new Array(items.length);
-  let next = 0;
+export async function mapWithConcurrency(iterable, limit, fn) {
+  const iterator = iterable[Symbol.asyncIterator]();
+  let count = 0;
   async function worker() {
-    while (next < items.length) {
-      const i = next;
-      next += 1;
+    for (;;) {
       // eslint-disable-next-line no-await-in-loop
-      results[i] = await fn(items[i], i);
+      const { value, done } = await iterator.next();
+      if (done) return;
+      count += 1;
+      // eslint-disable-next-line no-await-in-loop
+      await fn(value);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
+  await Promise.all(Array.from({ length: limit }, worker));
+  return count;
 }
 
 function buildSourceUrl(org, site, path) {
@@ -67,13 +69,10 @@ export async function deleteResource(page, authHeader, org, site, path, opts = {
   return page.request.delete(url, { headers, failOnStatusCode: false });
 }
 
-export async function listOldTestResources(page, authHeader, org, site, path, minHours) {
+export async function* listOldTestResources(page, authHeader, org, site, path, minHours) {
   const cutoff = Date.now() - (1000 * 60 * 60 * minHours);
-  const stale = [];
   const listUrl = buildListUrl(org, site, path);
   let token;
-  // Same 500-iteration safety cap as da-list.js's loadAllPages(), so a runaway
-  // continuation token can't spin forever.
   for (let i = 0; i < 500; i += 1) {
     const headers = { Authorization: authHeader };
     if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;
@@ -85,24 +84,25 @@ export async function listOldTestResources(page, authHeader, org, site, path, mi
       // Surface this instead of quietly returning no stragglers - a failed list
       // call and an empty folder look identical to the caller otherwise.
       if (i === 0) console.warn(`listOldTestResources: list failed (${resp.status()}) for ${listUrl}`);
-      break;
+      return;
     }
 
     // eslint-disable-next-line no-await-in-loop
     const items = await resp.json().catch(() => []);
     if (Array.isArray(items)) {
-      items.forEach((item) => {
+      // eslint-disable-next-line no-restricted-syntax
+      for (const item of items) {
         const rawName = item.name ?? item.path?.split('/').pop();
-        if (!rawName) return;
-        const isFolder = IS_HLX6_SITE ? rawName.endsWith('/') : !item.ext;
-        const name = isFolder ? rawName.replace(/\/$/, '') : rawName;
-        const age = getTestResourceAge(name);
-        if (age && age < cutoff) stale.push({ path: `${path}/${name}`, isFolder });
-      });
+        if (rawName) {
+          const isFolder = IS_HLX6_SITE ? rawName.endsWith('/') : !item.ext;
+          const name = isFolder ? rawName.replace(/\/$/, '') : rawName;
+          const age = getTestResourceAge(name);
+          if (age && age < cutoff) yield { path: `${path}/${name}`, isFolder };
+        }
+      }
     }
 
     token = resp.headers()['da-continuation-token'];
-    if (!token) break;
+    if (!token) return;
   }
-  return stale;
 }
