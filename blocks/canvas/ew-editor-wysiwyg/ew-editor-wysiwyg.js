@@ -76,8 +76,15 @@ export class EwEditorWysiwyg extends LitElement {
     const segments = path.split('/');
     const pathWithoutOrgRepo = segments.slice(2).join('/');
     const encodedPath = pathWithoutOrgRepo.split('/').map(encodeURIComponent).join('/');
-    const quickEdit = new URLSearchParams(window.location.search).get('quick-edit') || 'on';
-    const base = `${getPreviewOrigin(org, repo, this._wysiwygBranch ?? 'main')}/${encodedPath}?quick-edit=${encodeURIComponent(quickEdit)}`;
+    const params = new URLSearchParams(window.location.search);
+    const quickEdit = params.get('quick-edit') || 'on';
+    // Forward the canvas page's own ?nx= so the previewed page's plugin bootstrap
+    // (a generic Nexter mechanism, unrelated to quick-edit's own `quick-edit=` param
+    // used only by getQuickEditPortalSrc's separate portal iframe) loads the quick-edit
+    // public plugin from the same nx branch, instead of always production da.live.
+    const nx = params.get('nx');
+    const nxParam = nx ? `&nx=${encodeURIComponent(nx)}` : '';
+    const base = `${getPreviewOrigin(org, repo, this._wysiwygBranch ?? 'main')}/${encodedPath}?quick-edit=${encodeURIComponent(quickEdit)}${nxParam}`;
     return `${base}&controller=parent`;
   }
 
