@@ -78,6 +78,15 @@ function registerCollabDiagLogging(ydoc) {
     else remoteCount += 1;
     // eslint-disable-next-line no-console
     console.debug(`[collab-diag] ydoc update origin=${transaction.local ? 'local' : 'remote'} bytes=${update.length} at ${performance.now().toFixed(1)} total-local=${localCount} total-remote=${remoteCount} activeElement=${describeActiveElement()} docHasFocus=${document.hasFocus()}`);
+    // A local Y.Doc write that doesn't correspond to a dispatch on the bound
+    // ProseMirror view (i.e. no matching diagLogLocalDispatch line) must be coming
+    // from a direct ydoc.transact() call — most likely y-prosemirror's own binding
+    // repairing/resyncing the Y type outside the normal PM dispatch cycle. Capture
+    // the synchronous call stack (Yjs transactions are sync) to find the source.
+    if (transaction.local) {
+      // eslint-disable-next-line no-console
+      console.debug(`[collab-diag] ydoc update origin=local stack origin-obj=${Object.prototype.toString.call(origin)}`, new Error('trace').stack);
+    }
   });
 }
 
