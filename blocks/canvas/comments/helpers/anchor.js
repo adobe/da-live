@@ -12,6 +12,15 @@ function encodeRelPos(relPos) {
   return Array.from(Y.encodeRelativePosition(relPos));
 }
 
+function startRelPos({ from, anchorType }, binding) {
+  const atFrom = () => absolutePositionToRelativePosition(from, binding.type, binding.mapping);
+  if (anchorType !== 'text') return atFrom();
+  const inside = absolutePositionToRelativePosition(from + 1, binding.type, binding.mapping);
+  return inside?.item
+    ? new Y.RelativePosition(inside.type, inside.tname, inside.item, 0)
+    : atFrom();
+}
+
 function hashString(str) {
   let h = 5381;
   // eslint-disable-next-line no-bitwise
@@ -54,8 +63,8 @@ function encodeStructural(state, { from, to, anchorType }) {
   const blockStart = $from.start($from.depth);
   return {
     path,
-    offset: from - blockStart,
-    length: to - from,
+    offset: state.doc.textBetween(blockStart, from).length,
+    length: state.doc.textBetween(from, to).length,
     hash: anchorHash($from.parent, 'text'),
   };
 }
@@ -66,35 +75,6 @@ function resolveNodeAnchorRange(state, from, anchorType) {
   const node = state.doc.nodeAt(from);
   if (node?.type.name !== typeName) return null;
   return { from, to: from + node.nodeSize };
-}
-
-function decodeStructural(state, anchor) {
-  const structural = anchor?.structural;
-  if (!structural?.path || !state.doc) return null;
-  const located = nodeAtPath(state.doc, structural.path);
-  if (!located) return null;
-  if (anchor.structural.hash !== anchorHash(located.node, anchor.anchorType)) return null;
-  const from = located.start + structural.offset;
-  const to = from + structural.length;
-  if (from < 0 || to > state.doc.content.size || from >= to) return null;
-  if (anchor.anchorType === 'image' || anchor.anchorType === 'table') {
-    return resolveNodeAnchorRange(state, from, anchor.anchorType);
-  }
-  return { from, to };
-}
-
-function relPosMatchesHash(state, from, anchor) {
-  if (!anchor.structural || !state.doc) return true;
-  if (anchor.anchorType === 'image' || anchor.anchorType === 'table') {
-    return anchor.anchorType === 'table'
-      || anchor.structural.hash === anchorHash(state.doc.nodeAt(from), 'image');
-  }
-  return anchor.structural.hash === anchorHash(state.doc.resolve(from).parent, 'text');
-}
-
-function decodeRelPos(encoded) {
-  if (!Array.isArray(encoded) || encoded.length === 0) return null;
-  return Y.decodeRelativePosition(Uint8Array.from(encoded));
 }
 
 function pmPosAtTextOffset(doc, rangeFrom, rangeTo, targetOffset) {
@@ -121,40 +101,38 @@ function pmPosAtTextOffset(doc, rangeFrom, rangeTo, targetOffset) {
   return matched ? result : null;
 }
 
-function locateAnchorTextInRange(state, rangeFrom, rangeTo, anchorText, hintFrom) {
-  const haystack = state.doc.textBetween(rangeFrom, rangeTo, ' ');
-  if (!haystack.includes(anchorText)) return null;
-
-  let best = null;
-  let bestDist = Infinity;
-  let searchAt = 0;
-  let idx = haystack.indexOf(anchorText, searchAt);
-  while (idx !== -1) {
-    const from = pmPosAtTextOffset(state.doc, rangeFrom, rangeTo, idx);
-    const to = pmPosAtTextOffset(state.doc, rangeFrom, rangeTo, idx + anchorText.length);
-    if (from != null && to != null && from < to) {
-      const dist = Math.abs(from - hintFrom);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = { from, to };
-      }
-    }
-    searchAt = idx + 1;
-    idx = haystack.indexOf(anchorText, searchAt);
+function decodeStructural(state, anchor) {
+  const structural = anchor?.structural;
+  if (!structural?.path || !state.doc) return null;
+  const located = nodeAtPath(state.doc, structural.path);
+  if (!located) return null;
+  if (anchor.structural.hash !== anchorHash(located.node, anchor.anchorType)) return null;
+  if (anchor.anchorType === 'image' || anchor.anchorType === 'table') {
+    const nodeFrom = located.start + structural.offset;
+    if (nodeFrom < 0 || nodeFrom + structural.length > state.doc.content.size) return null;
+    return resolveNodeAnchorRange(state, nodeFrom, anchor.anchorType);
   }
-  return best;
+  const docEnd = state.doc.content.size;
+  const from = pmPosAtTextOffset(state.doc, located.start, docEnd, structural.offset);
+  const to = from == null
+    ? null
+    : pmPosAtTextOffset(state.doc, located.start, docEnd, structural.offset + structural.length);
+  if (from == null || to == null || from >= to) return null;
+  return { from, to };
 }
 
-function resolveTextAnchorRange(state, from, to, anchorText) {
-  if (!state.doc) return { from, to };
+function relPosMatchesHash(state, from, anchor) {
+  if (!anchor.structural || !state.doc) return true;
+  if (anchor.anchorType === 'image' || anchor.anchorType === 'table') {
+    return anchor.anchorType === 'table'
+      || anchor.structural.hash === anchorHash(state.doc.nodeAt(from), 'image');
+  }
+  return anchor.structural.hash === anchorHash(state.doc.resolve(from).parent, 'text');
+}
 
-  const decodedText = state.doc.textBetween(from, to, ' ');
-  if (decodedText === anchorText) return { from, to };
-  if (!decodedText.includes(anchorText)) return { from, to };
-
-  const narrowed = locateAnchorTextInRange(state, from, to, anchorText, from);
-  if (!narrowed || narrowed.from <= from) return { from, to };
-  return narrowed;
+function decodeRelPos(encoded) {
+  if (!Array.isArray(encoded) || encoded.length === 0) return null;
+  return Y.decodeRelativePosition(Uint8Array.from(encoded));
 }
 
 export function encodeAnchor({ selectionData, state }) {
@@ -162,9 +140,7 @@ export function encodeAnchor({ selectionData, state }) {
   const binding = ySyncPluginKey.getState(state)?.binding;
   if (!binding) return null;
   return {
-    anchorFrom: encodeRelPos(
-      absolutePositionToRelativePosition(selectionData.from, binding.type, binding.mapping),
-    ),
+    anchorFrom: encodeRelPos(startRelPos(selectionData, binding)),
     anchorTo: encodeRelPos(
       absolutePositionToRelativePosition(selectionData.to, binding.type, binding.mapping),
     ),
@@ -188,14 +164,9 @@ export function resolveAnchor({ anchor, state }) {
     const from = relativePositionToAbsolutePosition(yDoc, type, relFrom, mapping);
     const to = relativePositionToAbsolutePosition(yDoc, type, relTo, mapping);
     if (from != null && to != null && from < to) {
-      let relResult;
-      if (anchor.anchorType === 'image' || anchor.anchorType === 'table') {
-        relResult = resolveNodeAnchorRange(state, from, anchor.anchorType);
-      } else if (anchor.anchorType === 'text' && anchor.anchorText) {
-        relResult = resolveTextAnchorRange(state, from, to, anchor.anchorText);
-      } else {
-        relResult = { from, to };
-      }
+      const relResult = anchor.anchorType === 'image' || anchor.anchorType === 'table'
+        ? resolveNodeAnchorRange(state, from, anchor.anchorType)
+        : { from, to };
       if (relResult) {
         if (relPosMatchesHash(state, from, anchor)) return { range: relResult, source: 'relpos' };
         const structural = decodeStructural(state, anchor);

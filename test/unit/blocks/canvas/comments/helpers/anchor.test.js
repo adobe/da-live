@@ -161,3 +161,179 @@ describe('anchor round-trip across a move', () => {
     expect(decodeAnchor({ anchor: healed, state: moved.view.state })).to.not.be.null;
   });
 });
+
+describe('anchor stability while the surrounding text is edited', () => {
+  let editor;
+  afterEach(() => {
+    if (editor) destroyEditor(editor);
+    editor = null;
+  });
+
+  const TEXT = 'AT&T Business connectivity';
+  const FROM = 6;
+  const TO = 14;
+
+  const encode = () => encodeAnchor({
+    selectionData: getSelectionData(editor.view.state),
+    state: editor.view.state,
+  });
+
+  const decodedText = (range) => (
+    range ? editor.view.state.doc.textBetween(range.from, range.to) : null
+  );
+
+  it('does not swallow text typed immediately before the anchor', async () => {
+    editor = await editorWithText(TEXT, FROM, TO);
+    const anchor = encode();
+    editor.view.dispatch(editor.view.state.tr.insertText('test', FROM));
+    expect(decodedText(decodeAnchor({ anchor, state: editor.view.state }))).to.equal('Business');
+  });
+
+  it('detaches when the anchored word is deleted after a boundary insert', async () => {
+    editor = await editorWithText(TEXT, FROM, TO);
+    const anchor = encode();
+    editor.view.dispatch(editor.view.state.tr.insertText('test', FROM));
+    editor.view.dispatch(editor.view.state.tr.delete(FROM + 4, TO + 4));
+    expect(editor.view.state.doc.textContent).to.equal('AT&T test connectivity');
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('still grows when text is typed inside the anchor', async () => {
+    editor = await editorWithText(TEXT, FROM, TO);
+    const anchor = encode();
+    editor.view.dispatch(editor.view.state.tr.insertText('!', FROM + 4));
+    expect(decodedText(decodeAnchor({ anchor, state: editor.view.state }))).to.equal('Busi!ness');
+  });
+
+  it('keeps the full anchor when a line break is inserted before it', async () => {
+    editor = await editorWithText(TEXT, FROM, TO);
+    const anchor = encode();
+    const { hard_break: hardBreak } = editor.view.state.schema.nodes;
+    editor.view.dispatch(editor.view.state.tr.insert(FROM, hardBreak.create()));
+    expect(decodedText(decodeAnchor({ anchor, state: editor.view.state }))).to.equal('Business');
+  });
+
+  it('keeps the full anchor when a line break is inserted at the start of the block', async () => {
+    editor = await editorWithText(TEXT, FROM, TO);
+    const anchor = encode();
+    const { hard_break: hardBreak } = editor.view.state.schema.nodes;
+    editor.view.dispatch(editor.view.state.tr.insert(1, hardBreak.create()));
+    expect(decodedText(decodeAnchor({ anchor, state: editor.view.state }))).to.equal('Business');
+  });
+});
+
+describe('anchor detachment when a block is split', () => {
+  let editor;
+  afterEach(() => {
+    if (editor) destroyEditor(editor);
+    editor = null;
+  });
+
+  const encode = () => encodeAnchor({
+    selectionData: getSelectionData(editor.view.state),
+    state: editor.view.state,
+  });
+
+  it('detaches on a paragraph break rather than guessing a new position', async () => {
+    editor = await editorWithText('AT&T Business connectivity', 6, 14);
+    const anchor = encode();
+    editor.view.dispatch(editor.view.state.tr.split(6));
+
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('never moves to text that merely looks the same', async () => {
+    editor = await editorWithParas([
+      'AT&T Business connectivity',
+      'More Business talk',
+    ]);
+    editor.view.dispatch(
+      editor.view.state.tr.setSelection(TextSelection.create(editor.view.state.doc, 6, 14)),
+    );
+    const anchor = encode();
+    expect(anchor.anchorText).to.equal('Business');
+
+    editor.view.dispatch(editor.view.state.tr.delete(6, 14));
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('never moves inside a longer word containing the anchor text', async () => {
+    editor = await editorWithParas([
+      'Business plans for business users',
+      'Experience business-grade connectivity',
+    ]);
+    editor.view.dispatch(
+      editor.view.state.tr.setSelection(TextSelection.create(editor.view.state.doc, 20, 28)),
+    );
+    const anchor = encode();
+    expect(anchor.anchorText).to.equal('business');
+
+    editor.view.dispatch(editor.view.state.tr.delete(20, 28));
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+});
+
+describe('a deleted anchor never re-attaches to matching text', () => {
+  let editor;
+  afterEach(() => {
+    if (editor) destroyEditor(editor);
+    editor = null;
+  });
+
+  async function commentOn(paras, from, to) {
+    editor = await editorWithParas(paras);
+    editor.view.dispatch(
+      editor.view.state.tr.setSelection(TextSelection.create(editor.view.state.doc, from, to)),
+    );
+    return encodeAnchor({
+      selectionData: getSelectionData(editor.view.state),
+      state: editor.view.state,
+    });
+  }
+
+  it('detaches when the commented word is deleted and repeats earlier in the block', async () => {
+    const anchor = await commentOn(['Business plans for Business users'], 20, 28);
+    editor.view.dispatch(editor.view.state.tr.delete(20, 28));
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('detaches when the commented word is deleted and repeats later in the block', async () => {
+    const anchor = await commentOn(['Business plans for Business users'], 1, 9);
+    editor.view.dispatch(editor.view.state.tr.delete(1, 9));
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('detaches when the commented word is deleted and repeats in another block', async () => {
+    const anchor = await commentOn(['AT&T Business connectivity', 'More Business talk'], 6, 14);
+    editor.view.dispatch(editor.view.state.tr.delete(6, 14));
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('detaches on the editorial case: comment "the", then remove that "the"', async () => {
+    const text = 'Remove the extra the from the line';
+    const at = text.indexOf('the', 11) + 1;
+    const anchor = await commentOn([text], at, at + 3);
+    expect(anchor.anchorText).to.equal('the');
+    editor.view.dispatch(editor.view.state.tr.delete(at, at + 4));
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('detaches when the commented word is overwritten', async () => {
+    const anchor = await commentOn(['Remove the extra the here'], 8, 11);
+    editor.view.dispatch(editor.view.state.tr.insertText('a', 8, 11));
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('detaches when the whole block is deleted and the word survives next door', async () => {
+    const anchor = await commentOn(['AT&T Business connectivity', 'More Business talk'], 6, 14);
+    editor.view.dispatch(editor.view.state.tr.delete(0, 28));
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('stays put when the commented text is edited in place', async () => {
+    const anchor = await commentOn(['Remove the extra the here'], 8, 11);
+    editor.view.dispatch(editor.view.state.tr.insertText('XYZ', 9));
+    const range = decodeAnchor({ anchor, state: editor.view.state });
+    expect(editor.view.state.doc.textBetween(range.from, range.to)).to.equal('tXYZhe');
+  });
+});

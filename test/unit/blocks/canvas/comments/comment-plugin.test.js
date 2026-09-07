@@ -442,4 +442,37 @@ describe('commentPlugin', () => {
       to: toInDef + 1,
     });
   });
+
+  it('drops the highlight once a local edit detaches the anchor', async () => {
+    const { store } = await setup();
+
+    editor.view.dispatch(editor.view.state.tr.insertText('AT&T Business connectivity'));
+    const encoded = encodeAnchor({
+      selectionData: { from: 6, to: 14, anchorType: 'text', anchorText: 'Business' },
+      state: editor.view.state,
+    });
+    store.set('t1', {
+      id: 't1',
+      threadId: null,
+      ...encoded,
+      author: { id: 'u' },
+      body: '',
+      createdAt: 0,
+      resolved: false,
+      reactions: {},
+    });
+    controller.setPanelOpen(true);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(editor.view.dom.querySelector('[data-comment-thread="t1"]')).to.exist;
+
+    // Split tombstones the relpos and breaks the structural path; rewriting the word
+    // then defeats the anchorText rescue, so the comment is genuinely detached.
+    editor.view.dispatch(editor.view.state.tr.split(6));
+    editor.view.dispatch(editor.view.state.tr.insertText('Z', 12, 13));
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+
+    expect(controller.getAttachedThreadIds().has('t1'), 'panel treats it as detached').to.be.false;
+    expect(commentPluginKey.getState(editor.view.state).ranges.has('t1')).to.be.false;
+    expect(editor.view.dom.querySelector('[data-comment-thread="t1"]')).to.be.null;
+  });
 });

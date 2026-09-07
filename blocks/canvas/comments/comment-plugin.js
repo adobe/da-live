@@ -122,8 +122,7 @@ export default function commentPlugin({ controller, store }) {
           if (mustRebuild) {
             next = { ...next, ranges: computeRanges(store, newState), needsResync: false };
           } else {
-            const ranges = mapRanges(next.ranges, tr);
-            next = { ...next, ranges, needsResync: ranges.size < next.ranges.size };
+            next = { ...next, ranges: mapRanges(next.ranges, tr), needsResync: true };
           }
         }
         return next;
