@@ -8,10 +8,14 @@ import {
 import { canvasBus } from '../../utils/canvas-bus.js';
 
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
+  // eslint-disable-next-line no-console
+  console.debug(`[collab-diag] CURSOR_MOVE received cursorOffset=${cursorOffset} textCursorOffset=${textCursorOffset}`);
   const { view, wsProvider } = ctx;
   if (!view || !wsProvider) return;
 
   if (cursorOffset == null || textCursorOffset == null) {
+    // eslint-disable-next-line no-console
+    console.debug('[collab-diag] CURSOR_MOVE clear: awareness cursor set to null');
     delete view.hasFocus;
     wsProvider.awareness.setLocalStateField('cursor', null);
     const tb = getSelectionToolbar();
@@ -61,6 +65,8 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     // dispatch() already triggers createTrackingPlugin's hook, which emits
     // canvasBus.editorSelectState with the full payload (incl. proseIndex) — a second,
     // blockIndex-only emit here would clobber that and collapse the outline.
+    // eslint-disable-next-line no-console
+    console.debug(`[collab-diag] CURSOR_MOVE -> doc-view selection dispatch pos=${position}`);
     view.dispatch(tr.scrollIntoView());
     ctx.suppressRerender = false;
     const tb = getSelectionToolbar();
@@ -133,6 +139,8 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
     tr.setSelection(TextSelection.create(state.doc, a, h));
     if (fromQuickEditIframe) tr.setMeta(NX_QUICK_EDIT_IFRAME_SELECTION_META, true);
     ctx.suppressRerender = true;
+    // eslint-disable-next-line no-console
+    console.debug(`[collab-diag] SELECTION_CHANGE -> doc-view selection dispatch from=${a} to=${h} fromQuickEditIframe=${fromQuickEditIframe}`);
     view.dispatch(tr);
     ctx.suppressRerender = false;
     return true;
@@ -154,6 +162,8 @@ function showToolbarInIFrame(ctx) {
 /** PostMessage `selection-change` from wysiwyg iframe: sync PM selection and toolbar. */
 export function handleIframeSelectionChange(data, ctx) {
   const { anchor, head } = data;
+  // eslint-disable-next-line no-console
+  console.debug(`[collab-diag] SELECTION_CHANGE received anchor=${anchor} head=${head}`);
   if (anchor === head) {
     const tb = getSelectionToolbar();
     if (tb.isInteracting) return;
@@ -163,6 +173,8 @@ export function handleIframeSelectionChange(data, ctx) {
         .setMeta(NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META, true)
         .setMeta('addToHistory', false);
       ctx.suppressRerender = true;
+      // eslint-disable-next-line no-console
+      console.debug('[collab-diag] SELECTION_CHANGE (collapsed) -> doc-view no-op selection-origin-clear dispatch');
       view.dispatch(tr);
       ctx.suppressRerender = false;
     }
@@ -224,6 +236,8 @@ export function resolveNodeSelectPos(node, doc) {
 }
 
 export function handleNodeSelect({ node }, ctx) {
+  // eslint-disable-next-line no-console
+  console.debug('[collab-diag] NODE_SELECT received', node);
   const { view } = ctx;
   if (!view) return;
   const { state } = view;
@@ -233,6 +247,8 @@ export function handleNodeSelect({ node }, ctx) {
         .setSelection(TextSelection.near(state.doc.resolve(state.selection.from), 1))
         .setMeta('addToHistory', false);
       ctx.suppressRerender = true;
+      // eslint-disable-next-line no-console
+      console.debug('[collab-diag] NODE_SELECT (clear) -> doc-view selection dispatch');
       view.dispatch(tr);
       ctx.suppressRerender = false;
       return;
@@ -244,6 +260,8 @@ export function handleNodeSelect({ node }, ctx) {
       .scrollIntoView()
       .setMeta('addToHistory', false);
     ctx.suppressRerender = true;
+    // eslint-disable-next-line no-console
+    console.debug(`[collab-diag] NODE_SELECT -> doc-view NodeSelection dispatch pos=${pos}`);
     view.dispatch(tr);
     ctx.suppressRerender = false;
   } catch (e) {
