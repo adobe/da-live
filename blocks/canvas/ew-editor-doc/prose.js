@@ -97,6 +97,22 @@ function registerFocusDiagLogging(view) {
   view.dom.addEventListener('blur', onBlur);
 }
 
+// Collab diagnostic (temporary — remove once the investigation is done): traces every
+// LOCAL doc-changing transaction that isn't obviously user input, to identify what's
+// generating the periodic small local edits seen echoing remote edits back and forth
+// while this doc view sits hidden behind layout view (canvasBus.editorViewState). A
+// plugin's view.update()/appendTransaction dispatching a "fix" in response to a remote
+// change — measured against a hidden (0-size) layout — is the leading suspect.
+function diagLogLocalDispatch(tr, view) {
+  if (!tr.docChanged) return;
+  const isRemote = tr.getMeta('y-sync$')?.isChangeOrigin === true;
+  if (isRemote) return;
+  const stepTypes = tr.steps.map((s) => s.constructor.name).join(',');
+  const hidden = view.dom.offsetParent === null;
+  // eslint-disable-next-line no-console
+  console.debug(`[collab-diag] LOCAL tx steps=[${stepTypes}] viewHidden=${hidden} docHasFocus=${document.hasFocus()} viewHasFocus=${view.hasFocus()}`, new Error('trace').stack);
+}
+
 function addSyncedListener(wsProvider, canWrite, setEditable) {
   const handleSynced = (isSynced) => {
     if (isSynced) {
@@ -269,6 +285,13 @@ export default async function initProse({
   viewRef = new EditorView(editor, {
     state,
     editable() { return canWrite; },
+    dispatchTransaction(tr) {
+      // `this` (not the outer viewRef closure, which isn't assigned until this
+      // constructor returns) — prosemirror-view invokes dispatchTransaction via
+      // `.call(this, tr)`, including internally during construction itself.
+      diagLogLocalDispatch(tr, this);
+      this.updateState(this.state.apply(tr));
+    },
   });
   registerFocusDiagLogging(viewRef);
 
