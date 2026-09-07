@@ -12,9 +12,22 @@ const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 // investigation is done) -----------------------------------------------
 let getInstrumentedHTMLCallCount = 0;
 
+function describeActiveElement() {
+  const el = document.activeElement;
+  if (!el) return 'none';
+  const shadowEl = el.shadowRoot?.activeElement;
+  const inner = shadowEl ? `>${shadowEl.tagName?.toLowerCase()}.${[...shadowEl.classList].join('.')}` : '';
+  return `${el.tagName?.toLowerCase()}${el.id ? `#${el.id}` : ''}.${[...el.classList].join('.')}${inner}`;
+}
+
 function logIframeMessage(direction, type, extra = '') {
   // eslint-disable-next-line no-console
   console.debug(`[collab-diag] iframe ${direction} ${type} at ${performance.now().toFixed(1)}${extra}`);
+}
+
+function logFocusState(label, view) {
+  // eslint-disable-next-line no-console
+  console.debug(`[collab-diag] ${label} activeElement=${describeActiveElement()} docHasFocus=${document.hasFocus()} viewHasFocus=${view?.hasFocus?.() ?? 'n/a'}`);
 }
 
 // --- state.js ---
@@ -30,6 +43,7 @@ function findInsertedRange(oldText, newText) {
 export function updateState(data, ctx) {
   logIframeMessage('in', 'SET_STATE', ` cursorOffset=${data.cursorOffset}`);
   const { view } = ctx;
+  logFocusState('updateState (iframe->doc)', view);
   // Capture stored marks before the transaction — these are marks the user toggled
   // (e.g. Bold) that ProseMirror is holding for the next character typed.  In
   // WYSIWYG mode, keystrokes go to the iframe so ProseMirror's normal mark
@@ -103,6 +117,7 @@ export function updateState(data, ctx) {
 export function getEditor(data, ctx) {
   if (ctx.suppressRerender) return;
   const { view } = ctx;
+  logFocusState('getEditor (doc->iframe)', view);
   const { cursorOffset } = data;
   if (typeof cursorOffset !== 'number') return;
 
@@ -412,6 +427,7 @@ registerEditorSelectEnricher((detail) => {
 
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
+  logFocusState('updateDocument (doc->iframe, full)', ctx.view);
   const body = getInstrumentedHTML(ctx.view);
   logIframeMessage('out', 'SET_BODY', ` bodyLength=${body.length}`);
   ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });

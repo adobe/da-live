@@ -192,6 +192,11 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
           const { skipDiff, isRemote } = trackingPluginKey.getState(view.state) ?? {};
           const origin = isRemote ? 'remote' : 'local';
 
+          if (docChanged && isRemote) {
+            // eslint-disable-next-line no-console
+            console.debug(`[collab-diag] view.update after remote tx: viewHasFocus=${view.hasFocus()} activeElement=${document.activeElement?.tagName?.toLowerCase()}`);
+          }
+
           if (docChanged && skipDiff) {
             logCollabDiag('rerenderPage (skipDiff)', origin);
             rerenderPage?.();

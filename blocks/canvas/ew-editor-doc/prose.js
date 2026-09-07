@@ -62,6 +62,14 @@ function registerErrorHandler(ydoc) {
 // `transaction.local`, set by y-websocket for updates received off the wire) and byte
 // size, so it can be correlated against the tracking-plugin and iframe postMessage logs
 // in editor-utils.js / prose-diff.js.
+function describeActiveElement() {
+  const el = document.activeElement;
+  if (!el) return 'none';
+  const shadowEl = el.shadowRoot?.activeElement;
+  const inner = shadowEl ? `>${shadowEl.tagName?.toLowerCase()}.${[...shadowEl.classList].join('.')}` : '';
+  return `${el.tagName?.toLowerCase()}${el.id ? `#${el.id}` : ''}.${[...el.classList].join('.')}${inner}`;
+}
+
 function registerCollabDiagLogging(ydoc) {
   let localCount = 0;
   let remoteCount = 0;
@@ -69,8 +77,24 @@ function registerCollabDiagLogging(ydoc) {
     if (transaction.local) localCount += 1;
     else remoteCount += 1;
     // eslint-disable-next-line no-console
-    console.debug(`[collab-diag] ydoc update origin=${transaction.local ? 'local' : 'remote'} bytes=${update.length} at ${performance.now().toFixed(1)} total-local=${localCount} total-remote=${remoteCount}`);
+    console.debug(`[collab-diag] ydoc update origin=${transaction.local ? 'local' : 'remote'} bytes=${update.length} at ${performance.now().toFixed(1)} total-local=${localCount} total-remote=${remoteCount} activeElement=${describeActiveElement()} docHasFocus=${document.hasFocus()}`);
   });
+}
+
+// Collab diagnostic (temporary — remove once the investigation is done): tracks the doc
+// ProseMirror view's own DOM focus/blur, and where focus lands when it leaves, to test
+// whether processing a remote update knocks focus off the doc editor mid-typing.
+function registerFocusDiagLogging(view) {
+  const onFocus = () => {
+    // eslint-disable-next-line no-console
+    console.debug(`[collab-diag] doc view FOCUS at ${performance.now().toFixed(1)} activeElement=${describeActiveElement()}`);
+  };
+  const onBlur = () => {
+    // eslint-disable-next-line no-console
+    console.debug(`[collab-diag] doc view BLUR at ${performance.now().toFixed(1)} activeElement=${describeActiveElement()} viewHasFocus=${view.hasFocus()} contentEditable=${view.dom.contentEditable}`);
+  };
+  view.dom.addEventListener('focus', onFocus);
+  view.dom.addEventListener('blur', onBlur);
 }
 
 function addSyncedListener(wsProvider, canWrite, setEditable) {
@@ -246,6 +270,7 @@ export default async function initProse({
     state,
     editable() { return canWrite; },
   });
+  registerFocusDiagLogging(viewRef);
 
   const undoManager = yUndoPluginKey.getState(viewRef.state)?.undoManager ?? null;
 
