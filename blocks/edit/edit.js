@@ -41,15 +41,15 @@ async function setUI(el) {
   const details = getPathDetails();
   if (!details) return;
 
-  try {
-    const { isEWEnabled } = await getNxEWFlags();
-    if (await isEWEnabled({ org: details.org, site: details.site })) {
-      window.location.href = `/canvas#${details.fullpath.replace(/\.html$/, '')}`;
-      return;
-    }
-  } catch {
-    // Flag check unavailable — fall through to the normal editor.
-  }
+  // try {
+  //   const { isEWEnabled } = await getNxEWFlags();
+  //   if (await isEWEnabled({ org: details.org, site: details.site })) {
+  //     window.location.href = `/canvas#${details.fullpath.replace(/\.html$/, '')}`;
+  //     return;
+  //   }
+  // } catch {
+  //   // Flag check unavailable — fall through to the normal editor.
+  // }
 
   // Warm the hlx6 probe cache up front so createConnection's `await isHlx6(...)`
   // resolves from cache instead of gating the WebSocket on a network round-trip.
