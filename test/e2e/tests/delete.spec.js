@@ -15,7 +15,7 @@ import {
   getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
-import { listOldTestResources, deleteResource, mapWithConcurrency, DELETE_CONCURRENCY } from '../utils/cleanup.js';
+import { listStaleRunFolders, deleteResource, mapWithConcurrency, DELETE_CONCURRENCY } from '../utils/cleanup.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
@@ -38,10 +38,10 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
   // Open the directory listing, just to obtain an authenticated request to capture
   // the auth header from - no further UI interaction happens after this.
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
-  await expect(page.getByText('pingtest'), 'Precondition').toBeVisible();
+  await expect.poll(() => authHeader, { timeout: 15000 }).toBeTruthy();
   await dismissAlertBanner(page);
 
-  const stale = listOldTestResources(page, authHeader, TEST_ORG, TEST_SITE, '/tests', MIN_HOURS);
+  const stale = listStaleRunFolders(page, authHeader, TEST_ORG, TEST_SITE, MIN_HOURS);
   let deletedCount = 0;
   try {
     await mapWithConcurrency(stale, DELETE_CONCURRENCY, async ({ path, isFolder }) => {
@@ -49,7 +49,7 @@ test('Delete multiple old pages', async ({ page }, workerInfo) => {
       deletedCount += 1;
     });
   } finally {
-    console.log(deletedCount ? `Deleted ${deletedCount} test files` : 'No items to delete');
+    console.log(deletedCount ? `Deleted ${deletedCount} stale run folders` : 'No stale run folders to delete');
   }
 });
 
