@@ -6,8 +6,9 @@ import {
 import { dismissAlertBanner } from '../utils/utils.js';
 import { parseTestUrl, deleteResource } from '../utils/cleanup.js';
 
-// Requires write access to TEST_SITE. pingtest must exist in the /tests directory.
-const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`;
+// Requires write access to TEST_SITE. pingtest is a fixed fixture in the flat /tests directory.
+const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`;
+const RUN_TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`;
 
 const BULK_PAGE_COUNT = 12;
 
@@ -26,7 +27,7 @@ async function createFolder(page, workerInfo, testIdentifier) {
   const folderURL = getTestFolderURL(testIdentifier, workerInfo);
   const folderName = folderURL.split('/').pop();
 
-  await page.goto(TESTS_DIR);
+  await page.goto(RUN_TESTS_DIR);
   await dismissAlertBanner(page);
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
@@ -100,7 +101,7 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   // Wait to ensure its saved in da-admin
   await page.waitForTimeout(3000);
 
-  await page.goto(TESTS_DIR);
+  await page.goto(RUN_TESTS_DIR);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
 
   await dismissAlertBanner(page);
@@ -140,7 +141,7 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   // Wait to ensure its saved in da-admin
   await page.waitForTimeout(3000);
 
-  await page.goto(TESTS_DIR);
+  await page.goto(RUN_TESTS_DIR);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
   await dismissAlertBanner(page);
 
