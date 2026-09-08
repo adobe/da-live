@@ -75,6 +75,9 @@ export class EwEditorDoc extends LitElement {
       port.onmessage = null;
       port.close();
     }
+    if (this._controllerCtx?.reloadTimer) {
+      clearTimeout(this._controllerCtx.reloadTimer);
+    }
     this._controllerCtx = undefined;
   }
 
