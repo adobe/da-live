@@ -291,9 +291,7 @@ describe('parseSections', () => {
       type: 'content',
       proseIndex: 7,
       innerText: '',
-      children: [{
-        type: 'content', kind: 'image', proseIndex: 7, innerText: '', snippet: '', src: 'x.png',
-      }],
+      children: [{ type: 'content', kind: 'image', proseIndex: 7, innerText: '', snippet: '' }],
     }]);
   });
 

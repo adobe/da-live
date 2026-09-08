@@ -410,15 +410,6 @@ class EwPageOutline extends LitElement {
         message: html`Are you sure you want to delete <strong>Section ${index + 1}</strong>?`,
       };
     }
-    if (type === OUTLINE_TYPES.CONTENT && index.kind === 'image') {
-      const noun = index.alt ? `image (${index.alt})` : 'image';
-      const message = html`
-        Are you sure you want to delete this image?
-        ${index.src ? html`
-          <img class="ew-po-delete-preview" src="${index.src}" alt="${index.alt || ''}">
-        ` : nothing}`;
-      return { title: 'Delete Image', noun, message };
-    }
     if (type === OUTLINE_TYPES.CONTENT) {
       const label = contentChildLabel(index);
       const kind = label.toLowerCase();
