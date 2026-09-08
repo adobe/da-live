@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { createResource, MARKER_DOC } from '../utils/cleanup.js';
+import { createResource, MARKER_DOC, listStaleRunFolders } from '../utils/cleanup.js';
 
 function fakePage(record) {
   return {
@@ -34,4 +34,37 @@ test('MARKER_DOC embeds run metadata in a valid body', async ({}, workerInfo) =>
   expect(doc).toContain('collabfx');
   expect(doc).toContain('deadbeef');
   expect(doc).toContain('<main>');
+});
+
+// Fake list backend: first call returns the /tests listing, subsequent calls
+// return each folder's children keyed by URL substring.
+function fakeListPage(byPath) {
+  return {
+    request: {
+      get: async (url) => {
+        const matchingKeys = Object.keys(byPath).filter((k) => url.includes(k));
+        const key = matchingKeys.length > 0 ? matchingKeys.sort((a, b) => b.length - a.length)[0] : null;
+        const items = key ? byPath[key] : [];
+        return { ok: () => true, status: () => 200, json: async () => items, headers: () => ({}) };
+      },
+    },
+  };
+}
+
+test('listStaleRunFolders yields only pw- folders with an old marker', async ({}, workerInfo) => {
+  if (workerInfo.project.name !== 'chromium') return;
+  const oldTs = (Date.now() - 3 * 60 * 60 * 1000).toString(36); // 3h ago
+  const newTs = Date.now().toString(36);
+  const page = fakeListPage({
+    '/list/da-sites/da-status/tests': [
+      { name: 'pw-main', ext: undefined },
+      { name: 'pw-collabfx', ext: undefined },
+      { name: 'realpage', ext: 'html' },
+    ],
+    '/list/da-sites/da-status/tests/pw-main': [{ name: `pw-run-${oldTs}-marker`, ext: 'html' }],
+    '/list/da-sites/da-status/tests/pw-collabfx': [{ name: `pw-run-${newTs}-marker`, ext: 'html' }],
+  });
+  const out = [];
+  for await (const f of listStaleRunFolders(page, 'Bearer x', 'da-sites', 'da-status', 2)) out.push(f);
+  expect(out).toEqual([{ path: '/tests/pw-main', isFolder: true }]);
 });
