@@ -107,8 +107,6 @@ setup('Set up authentication', async ({ page }) => {
 
   await page.context().storageState({ path: AUTH_FILE });
 
-  if (process.env.SKIP_AUTH) return;
-
   // Capture an admin bearer from a live request, then reset this run's folder.
   let authHeader;
   page.on('request', (request) => {
@@ -120,10 +118,14 @@ setup('Set up authentication', async ({ page }) => {
 
   const folderPath = `/tests/${RUN_FOLDER}`;
   // Wipe leftovers from any prior (possibly crashed) run of this branch.
-  await deleteResource(page, authHeader, TEST_ORG, TEST_SITE, folderPath, { isFolder: true });
+  const delResp = await deleteResource(page, authHeader, TEST_ORG, TEST_SITE, folderPath, { isFolder: true });
+  if (!delResp.ok() && delResp.status() !== 404) {
+    throw new Error(`Setup: failed to reset ${folderPath} (${delResp.status()})`);
+  }
 
   const ts = Date.now().toString(36);
   const marker = `${folderPath}/pw-run-${ts}-marker`;
   const body = MARKER_DOC(RUN_FOLDER.replace(/^pw-/, ''), process.env.GITHUB_SHA ?? 'local', new Date().toISOString());
-  await createResource(page, authHeader, TEST_ORG, TEST_SITE, marker, body);
+  const markerResp = await createResource(page, authHeader, TEST_ORG, TEST_SITE, marker, body);
+  expect(markerResp.ok(), `Setup: failed to create run marker (${markerResp.status()})`).toBeTruthy();
 });
