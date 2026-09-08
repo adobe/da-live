@@ -316,8 +316,41 @@ describe('ew-page-outline — content drag & delete', () => {
     await el.updateComplete;
 
     el.shadowRoot.querySelector('.content-child .delete-btn').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('nx-dialog.ew-po-delete')).to.exist;
+
+    el._confirmDelete();
 
     expect(docSeq(bridge.view.state.doc)).to.deep.equal(['Keep me']);
+  });
+
+  it('cancels a pending delete without changing the doc', async () => {
+    bridge.view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] },
+        { type: 'code_block', content: [{ type: 'text', text: 'const x = 1;' }] },
+      ],
+    });
+    const child = childrenOf(bridge.view).find((c) => c.kind === 'code');
+
+    el._sections = [{
+      sectionIndex: 0,
+      blocks: [],
+      items: [contentGroupItem(child.proseIndex, [child])],
+    }];
+    await el.updateComplete;
+    el.shadowRoot.querySelector('.content-item').click();
+    await el.updateComplete;
+
+    el.shadowRoot.querySelector('.content-child .delete-btn').click();
+    await el.updateComplete;
+
+    el._cancelDelete();
+    await el.updateComplete;
+
+    expect(el.shadowRoot.querySelector('nx-dialog.ew-po-delete')).to.not.exist;
+    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['Keep me', 'const x = 1;']);
   });
 
   it('keeps a run expanded after deleting one of its children', async () => {
@@ -337,6 +370,8 @@ describe('ew-page-outline — content drag & delete', () => {
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
 
     el.shadowRoot.querySelectorAll('.content-child .delete-btn')[0].click();
+    await el.updateComplete;
+    el._confirmDelete();
     await el.updateComplete;
 
     expect(docSeq(bridge.view.state.doc)).to.deep.equal(['B']);
