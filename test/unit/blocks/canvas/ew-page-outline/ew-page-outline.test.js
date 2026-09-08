@@ -353,6 +353,34 @@ describe('ew-page-outline — content drag & delete', () => {
     expect(docSeq(bridge.view.state.doc)).to.deep.equal(['Keep me', 'const x = 1;']);
   });
 
+  it('shows an image thumbnail in the delete dialog', async () => {
+    bridge.view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'image', attrs: { src: 'x.png', alt: 'A sunset' } }] },
+      ],
+    });
+    const child = childrenOf(bridge.view).find((c) => c.kind === 'image');
+
+    el._sections = [{
+      sectionIndex: 0,
+      blocks: [],
+      items: [contentGroupItem(child.proseIndex, [child])],
+    }];
+    await el.updateComplete;
+    el.shadowRoot.querySelector('.content-item').click();
+    await el.updateComplete;
+
+    el.shadowRoot.querySelector('.content-child .delete-btn').click();
+    await el.updateComplete;
+
+    const dialog = el.shadowRoot.querySelector('nx-dialog.ew-po-delete');
+    expect(dialog.getAttribute('title')).to.equal('Delete Image');
+    const preview = dialog.querySelector('.ew-po-delete-preview');
+    expect(preview.getAttribute('src')).to.equal('x.png');
+    expect(preview.getAttribute('alt')).to.equal('A sunset');
+  });
+
   it('keeps a run expanded after deleting one of its children', async () => {
     bridge.view = makeTrackedView({
       type: 'doc',

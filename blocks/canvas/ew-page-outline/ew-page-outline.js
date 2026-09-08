@@ -410,6 +410,15 @@ class EwPageOutline extends LitElement {
         message: html`Are you sure you want to delete <strong>Section ${index + 1}</strong>?`,
       };
     }
+    if (type === OUTLINE_TYPES.CONTENT && index.kind === 'image') {
+      const noun = index.alt ? `image (${index.alt})` : 'image';
+      const message = html`
+        Are you sure you want to delete this image?
+        ${index.src ? html`
+          <img class="ew-po-delete-preview" src="${index.src}" alt="${index.alt || ''}">
+        ` : nothing}`;
+      return { title: 'Delete Image', noun, message };
+    }
     if (type === OUTLINE_TYPES.CONTENT) {
       const label = contentChildLabel(index);
       const kind = label.toLowerCase();
@@ -417,7 +426,10 @@ class EwPageOutline extends LitElement {
       const message = index.snippet
         ? html`Are you sure you want to delete the <strong>${kind}</strong>: "${index.snippet}"?`
         : html`Are you sure you want to delete the <strong>${kind}</strong>?`;
-      return { title: `Delete ${label}`, noun, message };
+      // Level only matters in the body copy — the title reads oddly duplicating
+      // it (e.g. "Delete Heading 2" vs. the "heading 2" already in the sentence).
+      const title = index.kind === 'heading' ? 'Delete Heading' : `Delete ${label}`;
+      return { title, noun, message };
     }
     const item = this._findBlockItem(index);
     const label = item ? `${item.name}${item.variant ? ` (${item.variant})` : ''}` : 'block';

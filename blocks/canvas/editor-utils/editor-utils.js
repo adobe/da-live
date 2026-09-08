@@ -292,6 +292,16 @@ function getContentSnippet(el, kind) {
   return firstLineText(el);
 }
 
+// So the outline (and its delete-confirmation dialog) can show a real thumbnail
+// instead of just the word "image".
+function getImageAttrs(el, kind) {
+  if (kind !== 'image') return {};
+  const img = el.matches('img') ? el : el.querySelector('img');
+  if (!img) return {};
+  const alt = img.getAttribute('alt');
+  return { src: img.getAttribute('src'), ...(alt ? { alt } : {}) };
+}
+
 function getDefaultContentKind(el) {
   const tag = el.tagName;
   if (/^H[1-6]$/.test(tag)) return { kind: 'heading', level: Number(tag[1]) };
@@ -329,6 +339,7 @@ export function parseSections(htmlText) {
               proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
               innerText: el.textContent.trim(),
               snippet: getContentSnippet(el, kindInfo.kind),
+              ...getImageAttrs(el, kindInfo.kind),
             };
           }),
         });
