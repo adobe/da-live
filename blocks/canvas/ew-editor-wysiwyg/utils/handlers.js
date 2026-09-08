@@ -23,6 +23,19 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     return;
   }
 
+  // While layout view hides the doc editor, do NOT force focus onto / move the
+  // live Yjs-bound doc view's caret. Forcing view.hasFocus=()=>true makes
+  // y-prosemirror's _isLocalCursorInView() report true for the hidden view, so it
+  // re-runs its relative-selection restore on every *incoming remote* edit; that
+  // restore dispatch diverges PM from Y and y-prosemirror's unconditional PM->Y
+  // write-back then emits a spurious delete that reverts the remote peer's
+  // keystroke. The doc view adopts the iframe caret when the user switches to it.
+  if (ctx.isDocViewHidden?.()) {
+    // eslint-disable-next-line no-console
+    console.debug('[collab-diag] CURSOR_MOVE skipped (doc view hidden behind layout)');
+    return;
+  }
+
   const { state } = view;
   const position = cursorOffset + textCursorOffset;
 
