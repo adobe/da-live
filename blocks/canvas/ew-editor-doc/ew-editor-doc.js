@@ -75,6 +75,9 @@ export class EwEditorDoc extends LitElement {
       port.onmessage = null;
       port.close();
     }
+    if (this._controllerCtx?.reloadTimer) {
+      clearTimeout(this._controllerCtx.reloadTimer);
+    }
     this._controllerCtx = undefined;
   }
 
@@ -227,6 +230,9 @@ export class EwEditorDoc extends LitElement {
       path: controllerPathnameFromEditorCtx(this.ctx),
       canWrite: this._canWrite === true,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
+      // Relay handlers must not force focus / move the hidden view's caret (see
+      // handleCursorMove) — it makes y-prosemirror clobber incoming remote edits.
+      isDocViewHidden: () => this._editorView === 'layout',
     };
     wireQuickEditControllerPort(this._controllerCtx);
   }
@@ -344,6 +350,9 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
+      // Drop any forced-focus override on the now-hidden doc view; natural
+      // hasFocus() is correct and stops y-prosemirror reconciling against it.
+      if (view === 'layout') delete this._proseContext?.view?.hasFocus;
       hideSelectionToolbar();
     });
     this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
