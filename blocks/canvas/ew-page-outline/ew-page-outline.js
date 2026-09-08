@@ -25,6 +25,7 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
+const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 
 const OUTLINE_TYPES = {
   SECTION: 'section',
@@ -86,7 +87,7 @@ class EwPageOutline extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._expandedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
@@ -403,8 +404,11 @@ class EwPageOutline extends LitElement {
   // site needs — the button label and the dialog text stay in sync automatically.
   _deleteInfo(type, index) {
     if (type === OUTLINE_TYPES.SECTION) {
-      const noun = `section ${index + 1}`;
-      return { noun, message: html`Are you sure you want to delete <strong>Section ${index + 1}</strong>?` };
+      return {
+        title: 'Delete section',
+        noun: `section ${index + 1}`,
+        message: html`Are you sure you want to delete <strong>Section ${index + 1}</strong>?`,
+      };
     }
     if (type === OUTLINE_TYPES.CONTENT) {
       const kind = contentChildLabel(index).toLowerCase();
@@ -412,11 +416,12 @@ class EwPageOutline extends LitElement {
       const message = index.snippet
         ? html`Are you sure you want to delete the <strong>${kind}</strong>: "${index.snippet}"?`
         : html`Are you sure you want to delete the <strong>${kind}</strong>?`;
-      return { noun, message };
+      return { title: 'Delete content item', noun, message };
     }
     const item = this._findBlockItem(index);
     const label = item ? `${item.name}${item.variant ? ` (${item.variant})` : ''}` : 'block';
     return {
+      title: 'Delete block',
       noun: `${label} block`,
       message: html`Are you sure you want to delete the <strong>${label}</strong> block?`,
     };
@@ -454,9 +459,9 @@ class EwPageOutline extends LitElement {
 
   _renderDeleteDialog() {
     const { type, index } = this._pendingDelete;
-    const { noun, message } = this._deleteInfo(type, index);
+    const { title, message } = this._deleteInfo(type, index);
     return html`
-      <nx-dialog class="ew-po-delete" title="Delete ${noun}" @close=${() => this._cancelDelete()}>
+      <nx-dialog class="ew-po-delete" title="${title}" @close=${() => this._cancelDelete()}>
         <span>${message}</span>
         <button slot="actions" class="da-btn-secondary"
           @click=${() => this._cancelDelete()}>Cancel</button>
