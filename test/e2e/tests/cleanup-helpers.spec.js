@@ -42,6 +42,7 @@ function fakeListPage(byPath) {
   return {
     request: {
       get: async (url) => {
+        // Sort by longest key first: /tests is a substring of /tests/pw-* paths, so we need specific match.
         const matchingKeys = Object.keys(byPath).filter((k) => url.includes(k));
         const key = matchingKeys.length > 0 ? matchingKeys.sort((a, b) => b.length - a.length)[0] : null;
         const items = key ? byPath[key] : [];
@@ -59,10 +60,12 @@ test('listStaleRunFolders yields only pw- folders with an old marker', async ({}
     '/list/da-sites/da-status/tests': [
       { name: 'pw-main', ext: undefined },
       { name: 'pw-collabfx', ext: undefined },
+      { name: 'pw-stale', ext: undefined },
       { name: 'realpage', ext: 'html' },
     ],
     '/list/da-sites/da-status/tests/pw-main': [{ name: `pw-run-${oldTs}-marker`, ext: 'html' }],
     '/list/da-sites/da-status/tests/pw-collabfx': [{ name: `pw-run-${newTs}-marker`, ext: 'html' }],
+    '/list/da-sites/da-status/tests/pw-stale': [{ name: 'pw-edit1-abc-chromium', ext: 'html' }],
   });
   const out = [];
   for await (const f of listStaleRunFolders(page, 'Bearer x', 'da-sites', 'da-status', 2)) out.push(f);
