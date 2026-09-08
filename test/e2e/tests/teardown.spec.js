@@ -31,5 +31,8 @@ test('Delete this run folder', async ({ page }, workerInfo) => {
   await expect.poll(() => authHeader, { timeout: 15000 }).toBeTruthy();
 
   const resp = await deleteResource(page, authHeader, TEST_ORG, TEST_SITE, `/tests/${RUN_FOLDER}`, { isFolder: true });
+  if (!resp.ok() && resp.status() !== 404) {
+    console.warn(`Teardown: failed to delete /tests/${RUN_FOLDER} (${resp.status()}) — sweeper will reclaim it`);
+  }
   console.log(`Teardown deleted /tests/${RUN_FOLDER} -> ${resp.status()}`);
 });
