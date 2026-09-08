@@ -10,9 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
-// Test-created documents/folders are no longer deleted per-test (that added a
-// request-header capture + admin-API round trip to every test's teardown).
-// Stale resources are instead swept up by the scheduled cleanup workflow, which
-// runs the "Delete multiple old pages" test in delete.spec.js every 6h - see
-// .github/workflows/cleanup.yml.
+// Each run writes into its own /tests/pw-{branch} folder. auth.setup.js wipes
+// that folder and drops a pw-run-{ts}-marker at start (correctness); the
+// test:teardown step deletes it after each run (tidiness); the scheduled
+// cleanup.yml sweeper reclaims stale pw-* folders by marker age (backstop).
 export { test, expect } from '@playwright/test';
