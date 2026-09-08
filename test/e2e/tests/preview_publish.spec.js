@@ -1,13 +1,13 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, TEST_ORG, TEST_SITE,
+  getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 import { parseTestUrl, deleteResource } from '../utils/cleanup.js';
 
 // Requires write access to TEST_SITE. pingtest must exist in the /tests directory.
-const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`;
+const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`;
 
 const BULK_PAGE_COUNT = 12;
 

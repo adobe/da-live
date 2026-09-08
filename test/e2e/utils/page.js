@@ -13,6 +13,7 @@ import { expect } from '@playwright/test';
 import ENV, { TEST_ORG, TEST_SITE, RUN_FOLDER } from './env.js';
 
 export { TEST_ORG, TEST_SITE };
+export { RUN_FOLDER } from './env.js';
 
 export function getQuery() {
   const { GITHUB_HEAD_REF: branch } = process.env;

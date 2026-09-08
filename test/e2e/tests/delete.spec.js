@@ -12,7 +12,7 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
+  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 import { listStaleRunFolders, deleteResource, mapWithConcurrency, DELETE_CONCURRENCY } from '../utils/cleanup.js';
@@ -79,14 +79,14 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await page.close();
 
   const list = await browser.newPage();
-  await list.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await list.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
 
   await list.waitForTimeout(3000);
   await list.reload();
 
   // Now delete the document
-  await expect(list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).toBeVisible();
-  await list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`).focus();
+  await expect(list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`)).toBeVisible();
+  await list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`).focus();
   await tabBackward(list);
   await list.keyboard.press(' ');
   await list.waitForTimeout(500);

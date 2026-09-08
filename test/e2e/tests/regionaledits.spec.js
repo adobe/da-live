@@ -1,7 +1,9 @@
 import path from 'path';
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
-import { getQuery, getTestFolderURL, TEST_ORG, TEST_SITE } from '../utils/page.js';
+import {
+  getQuery, getTestFolderURL, TEST_ORG, TEST_SITE, RUN_FOLDER,
+} from '../utils/page.js';
 
 async function findPageTab(title, page, context) {
   let attemptsLeft = 5;
@@ -34,7 +36,7 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
 
   /* */ // Added this to make it work in Helix 6
-  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
   const folderName = folderURL.split('/').pop();
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
