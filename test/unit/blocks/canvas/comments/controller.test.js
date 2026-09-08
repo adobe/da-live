@@ -19,7 +19,7 @@ function makeStore(initial = []) {
       return Promise.resolve();
     },
     forEach(fn) { map.forEach((v, id) => fn(v, id, this)); },
-    deleteBatch(ids) {
+    deleteInOrder(ids) {
       ids.forEach((id) => { map.delete(id); });
       observers.forEach((fn) => fn());
       return Promise.resolve();
@@ -329,7 +329,7 @@ describe('comments helpers/controller', () => {
         ['r1', { id: 'r1', threadId: 'root' }],
         ['r2', { id: 'r2', threadId: 'root' }],
       ]);
-      testStore.deleteBatch = (ids) => {
+      testStore.deleteInOrder = (ids) => {
         ids.forEach((id) => deleteOrder.push(id));
         return Promise.resolve();
       };

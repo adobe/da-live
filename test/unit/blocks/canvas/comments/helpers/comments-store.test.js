@@ -190,6 +190,25 @@ describe('comments-store: store writes', () => {
     expect(thrown.message).to.include('[comments]');
     expect(store.get('a')).to.deep.equal({ id: 'a', body: 'hi' });
   });
+
+  it('deleteInOrder aborts at the first failure, leaving later ids intact', async () => {
+    makeServerMock();
+    store = createCommentsStore({ docId: 'doc-1', owner: 'o', repo: 'r' });
+    await store.set('r1', { id: 'r1', threadId: 'root' });
+    await store.set('root', { id: 'root' });
+
+    makeServerMock({ failNext: true });
+    let thrown;
+    try {
+      await store.deleteInOrder(['r1', 'root']);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).to.be.an('error');
+    expect(store.get('r1')).to.exist;
+    expect(store.get('root')).to.exist;
+  });
 });
 
 describe('comments-store: store load and refresh', () => {

@@ -180,7 +180,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
         store.forEach((entry, id) => {
           if (entry.threadId === commentId) replyIds.push(id);
         });
-        await store.deleteBatch([...replyIds, commentId]);
+        await store.deleteInOrder([...replyIds, commentId]);
       } else {
         await store.delete(commentId);
       }

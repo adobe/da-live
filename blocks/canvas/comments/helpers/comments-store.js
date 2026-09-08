@@ -85,23 +85,18 @@ export function createCommentsStore({ docId, owner, repo }) {
       }
     },
 
-    async deleteBatch(ids) {
-      const results = await Promise.all(
-        ids.map((id) => daFetch(`${base}/${id}.json`, { method: 'DELETE' })),
-      );
+    async deleteInOrder(ids) {
       let changed = false;
-      const failed = [];
-      results.forEach((resp, i) => {
-        if (resp.ok) {
-          map.delete(ids[i]);
-          changed = true;
-        } else {
-          failed.push(`${ids[i]} (${resp.status})`);
+      try {
+        for (const id of ids) {
+          const resp = await daFetch(`${base}/${id}.json`, { method: 'DELETE' });
+          if (!resp.ok) {
+            throw new Error(`[comments] delete ${id} failed: ${resp.status}`);
+          }
+          if (map.delete(id)) changed = true;
         }
-      });
-      if (changed) fire();
-      if (failed.length) {
-        throw new Error(`[comments] deleteBatch failed for: ${failed.join(', ')}`);
+      } finally {
+        if (changed) fire();
       }
     },
 
