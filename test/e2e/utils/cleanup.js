@@ -69,6 +69,30 @@ export async function deleteResource(page, authHeader, org, site, path, opts = {
   return page.request.delete(url, { headers, failOnStatusCode: false });
 }
 
+export function MARKER_DOC(branch, sha, iso) {
+  return `<body><header></header><main><div><p>Playwright run marker</p><ul><li>branch: ${branch}</li><li>commit: ${sha}</li><li>started: ${iso}</li></ul></div></main><footer></footer></body>`;
+}
+
+/**
+ * Creates a page directly via the admin API. da-admin takes a multipart `data`
+ * field; hlx6 takes the raw body with a Content-Type header.
+ */
+export async function createResource(page, authHeader, org, site, path, body, opts = {}) {
+  const resourcePath = `${path}${opts.ext ?? '.html'}`;
+  const url = buildSourceUrl(org, site, resourcePath);
+  const headers = { Authorization: authHeader };
+  if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;
+  if (IS_HLX6_SITE) {
+    headers['Content-Type'] = 'text/html';
+    return page.request.post(url, { headers, data: body, failOnStatusCode: false });
+  }
+  return page.request.post(url, {
+    headers,
+    multipart: { data: { name: 'index.html', mimeType: 'text/html', buffer: Buffer.from(body, 'utf-8') } },
+    failOnStatusCode: false,
+  });
+}
+
 export async function* listOldTestResources(page, authHeader, org, site, path, minHours) {
   const cutoff = Date.now() - (1000 * 60 * 60 * minHours);
   const listUrl = buildListUrl(org, site, path);
