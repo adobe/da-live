@@ -19,6 +19,10 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     return;
   }
 
+  // Forcing focus on the hidden doc view makes y-prosemirror reconcile incoming
+  // remote edits against its stale caret and revert them (see commit message).
+  if (ctx.isDocViewHidden?.()) return;
+
   const { state } = view;
   const position = cursorOffset + textCursorOffset;
 
