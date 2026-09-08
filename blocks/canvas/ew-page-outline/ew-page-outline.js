@@ -411,12 +411,13 @@ class EwPageOutline extends LitElement {
       };
     }
     if (type === OUTLINE_TYPES.CONTENT) {
-      const kind = contentChildLabel(index).toLowerCase();
+      const label = contentChildLabel(index);
+      const kind = label.toLowerCase();
       const noun = index.snippet ? `${kind} (${index.snippet})` : kind;
       const message = index.snippet
         ? html`Are you sure you want to delete the <strong>${kind}</strong>: "${index.snippet}"?`
         : html`Are you sure you want to delete the <strong>${kind}</strong>?`;
-      return { title: 'Delete content item', noun, message };
+      return { title: `Delete ${label}`, noun, message };
     }
     const item = this._findBlockItem(index);
     const label = item ? `${item.name}${item.variant ? ` (${item.variant})` : ''}` : 'block';
