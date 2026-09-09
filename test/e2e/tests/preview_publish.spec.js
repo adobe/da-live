@@ -66,6 +66,16 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
   return pageNames;
 }
 
+// da-collab persists prose pages to da-admin asynchronously, and the browse
+// list is fetched once per navigation - so re-navigate until every page shows
+// up instead of asserting once against a possibly-incomplete listing.
+async function expectFolderHasPages(page, folderURL, count) {
+  await expect(async () => {
+    await page.goto(folderURL);
+    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(count, { timeout: 3000 });
+  }).toPass({ timeout: 90000 });
+}
+
 test('Preview and Publish buttons appear when a file is selected', async ({ page }) => {
   await page.goto(TESTS_DIR);
   await dismissAlertBanner(page);
@@ -183,6 +193,8 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
     const page = await browser.newPage();
     ({ folderURL, folderPath } = await createFolder(page, workerInfo, 'bulk'));
     await createPagesInFolder(page, workerInfo, folderPath, 'bulk', BULK_PAGE_COUNT);
+    // Confirm every page persisted before handing the folder to the tests.
+    await expectFolderHasPages(page, folderURL, BULK_PAGE_COUNT);
     await page.close();
   });
 
@@ -193,8 +205,7 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
   test('Preview 12 pages in a folder', async ({ page }) => {
     test.setTimeout(120000);
 
-    await page.goto(folderURL);
-    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
+    await expectFolderHasPages(page, folderURL, BULK_PAGE_COUNT);
     await dismissAlertBanner(page);
 
     await page.locator('da-list.da-list-type-browse input#select-all').click();
@@ -211,8 +222,7 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
   test('Publish 12 pages in a folder', async ({ page }) => {
     test.setTimeout(120000);
 
-    await page.goto(folderURL);
-    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
+    await expectFolderHasPages(page, folderURL, BULK_PAGE_COUNT);
     await dismissAlertBanner(page);
 
     await page.locator('da-list.da-list-type-browse input#select-all').click();
