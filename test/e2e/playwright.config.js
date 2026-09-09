@@ -63,13 +63,26 @@ module.exports = defineConfig({
       },
     },
 
+    // Sweeper project: the scheduled stale-folder cleanup (run on demand via
+    // `npm run test:cleanup` / cleanup.yml, NOT part of the normal suite - the
+    // browser projects testIgnore it). Depends on setup for an authed session.
+    {
+      name: 'sweeper',
+      testMatch: /sweeper\.spec\.js/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
+
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
         storageState: '.playwright/.auth/user.json',
       },
-      testIgnore: /teardown\.spec\.js/,
+      testIgnore: /(teardown|sweeper)\.spec\.js/,
       dependencies: ['setup'],
     },
 
@@ -79,7 +92,7 @@ module.exports = defineConfig({
         ...devices['Desktop Firefox'],
         storageState: '.playwright/.auth/user.json',
       },
-      testIgnore: /teardown\.spec\.js/,
+      testIgnore: /(teardown|sweeper)\.spec\.js/,
       dependencies: ['setup'],
     },
 
@@ -89,7 +102,7 @@ module.exports = defineConfig({
         ...devices['Desktop Safari'],
         storageState: '.playwright/.auth/user.json',
       },
-      testIgnore: /teardown\.spec\.js/,
+      testIgnore: /(teardown|sweeper)\.spec\.js/,
       dependencies: ['setup'],
     },
 

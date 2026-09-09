@@ -15,43 +15,6 @@ import {
   getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
-import { listStaleRunFolders, deleteResource, mapWithConcurrency, DELETE_CONCURRENCY } from '../utils/cleanup.js';
-
-// Files are deleted after 2 hours by default
-const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
-
-test('Delete multiple old pages', async ({ page }, workerInfo) => {
-  if (workerInfo.project.name !== 'chromium') {
-    // only execute this test on chromium
-    return;
-  }
-  test.setTimeout(5 * 60 * 1000);
-
-  let authHeader;
-  page.on('request', (request) => {
-    const auth = request.headers().authorization;
-    if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
-  });
-
-  console.log('Deleting test files that are older than', MIN_HOURS, 'hours');
-
-  // Open the directory listing, just to obtain an authenticated request to capture
-  // the auth header from - no further UI interaction happens after this.
-  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
-  await expect.poll(() => authHeader, { timeout: 15000 }).toBeTruthy();
-  await dismissAlertBanner(page);
-
-  const stale = listStaleRunFolders(page, authHeader, TEST_ORG, TEST_SITE, MIN_HOURS);
-  let deletedCount = 0;
-  try {
-    await mapWithConcurrency(stale, DELETE_CONCURRENCY, async ({ path, isFolder }) => {
-      await deleteResource(page, authHeader, TEST_ORG, TEST_SITE, path, { isFolder });
-      deletedCount += 1;
-    });
-  } finally {
-    console.log(deletedCount ? `Deleted ${deletedCount} stale run folders` : 'No stale run folders to delete');
-  }
-});
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
   test.skip(TEST_SITE !== 'da-status', 'Empty out open editors on deleted documents doesn\'t work yet in Helix 6');
