@@ -1,4 +1,6 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
+import { selectSection } from '../editor-utils/blocks.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
 
@@ -59,6 +61,25 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       document.dispatchEvent(
         new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, autoSend } } }),
       );
+    }
+
+    // Navigation reuses the outline's own path — same blockIndex address, same
+    // scroll — rather than driving the view directly, so the outline highlight
+    // and doc state stay in step.
+    if (action === 'scrollToBlock') {
+      const ok = Number.isInteger(details?.blockIndex) && details.blockIndex >= 0;
+      if (ok) canvasBus.editorSelectState.emit({ blockIndex: details.blockIndex, source: 'plugin' });
+      channel.port1.postMessage({ action: 'scrollToBlockResult', details: { ok } });
+      return;
+    }
+
+    // Separate from navigation: a section range is the only way to reach section
+    // metadata, which getBlockPositions deliberately excludes from blockIndex.
+    // Leaves a replaceable range under sendHTML.
+    if (action === 'selectSection') {
+      const ok = editorView ? selectSection(editorView, details?.index) : false;
+      channel.port1.postMessage({ action: 'selectSectionResult', details: { ok } });
+      return;
     }
 
     if (action === 'getSelection') {
