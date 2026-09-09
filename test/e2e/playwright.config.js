@@ -21,7 +21,9 @@ module.exports = defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  /* 'list' prints a per-test progress line (title + status + duration) to the
+     console as tests run; 'html' keeps the report artifact for CI/debugging. */
+  reporter: [['list'], ['html']],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   /* Default expect timeout. The app relies on Y.js WebSocket sync and may
      cycle through IMS login redirects, both of which regularly exceed 5s. */
