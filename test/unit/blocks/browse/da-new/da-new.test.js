@@ -271,6 +271,36 @@ describe('DaNew', () => {
     });
   });
 
+  describe('create dialog labels', () => {
+    it('titles the document dialog "New page"', () => {
+      const el = new DaNew();
+      el._createType = 'document';
+      expect(el._createDialogTitle).to.equal('New page');
+    });
+
+    it('keeps "New sheet" and "New folder" titles unchanged', () => {
+      const el = new DaNew();
+      el._createType = 'sheet';
+      expect(el._createDialogTitle).to.equal('New sheet');
+      el._createType = 'folder';
+      expect(el._createDialogTitle).to.equal('New folder');
+    });
+
+    it('shows "page name" as the placeholder for the document type', () => {
+      const el = new DaNew();
+      el._createType = 'document';
+      expect(el._createNamePlaceholder).to.equal('page name');
+    });
+
+    it('derives the placeholder from the type for sheet and folder', () => {
+      const el = new DaNew();
+      el._createType = 'sheet';
+      expect(el._createNamePlaceholder).to.equal('sheet name');
+      el._createType = 'folder';
+      expect(el._createNamePlaceholder).to.equal('folder name');
+    });
+  });
+
   describe('_disabled getter', () => {
     it('disabled when no permissions provided', () => {
       const el = new DaNew();

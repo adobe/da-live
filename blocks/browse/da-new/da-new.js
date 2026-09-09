@@ -129,8 +129,15 @@ export default class DaNew extends LitElement {
   }
 
   get _createDialogTitle() {
-    const titles = { folder: 'New folder', document: 'New document', sheet: 'New sheet' };
+    const titles = { folder: 'New folder', document: 'New page', sheet: 'New sheet' };
     return titles[this._createType] ?? 'New';
+  }
+
+  // The 'document' type keeps its id for file-extension logic (see _handleCreate),
+  // so map only its user-facing word to 'page'; other types show their own name.
+  get _createNamePlaceholder() {
+    const words = { document: 'page' };
+    return `${words[this._createType] ?? this._createType} name`;
   }
 
   render() {
@@ -138,7 +145,7 @@ export default class DaNew extends LitElement {
       <div class="da-actions-create">
         <nx-menu .items=${[
         { id: 'folder', label: 'Folder' },
-        { id: 'document', label: 'Document' },
+        { id: 'document', label: 'Page' },
         { id: 'sheet', label: 'Sheet' },
         { id: 'media', label: 'Media' },
         { id: 'link', label: 'Link' },
@@ -160,7 +167,7 @@ export default class DaNew extends LitElement {
     </da-link-dialog>
     <da-name-dialog
       dialog-title="${this._createDialogTitle}"
-      name-placeholder="${this._createType} name"
+      name-placeholder="${this._createNamePlaceholder}"
       saveLabel="Create"
       ?open=${this._createDialogOpen}
       ?saving=${this._loading}
