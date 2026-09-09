@@ -12,6 +12,18 @@ import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
 
+// Coalesce RELOAD bursts (each rebuilds the full body) into one refresh per window;
+// a concurrent remote edit can otherwise fire many in a row and peg the main thread.
+const RELOAD_DEBOUNCE_MS = 150;
+
+function scheduleReload(ctx) {
+  if (ctx.reloadTimer) return;
+  ctx.reloadTimer = setTimeout(() => {
+    ctx.reloadTimer = null;
+    updateDocument(ctx);
+  }, RELOAD_DEBOUNCE_MS);
+}
+
 export function createControllerOnMessage(ctx) {
   return function onMessage(e) {
     const { type, payload = {} } = e.data ?? {};
@@ -21,7 +33,7 @@ export function createControllerOnMessage(ctx) {
     if (type === MESSAGE_TYPES.CURSOR_MOVE) {
       handleCursorMove(payload, ctx);
     } else if (type === MESSAGE_TYPES.RELOAD) {
-      updateDocument(ctx);
+      scheduleReload(ctx);
     } else if (type === MESSAGE_TYPES.IMAGE_REPLACE) {
       handleImageReplace(payload, ctx);
     } else if (type === MESSAGE_TYPES.GET_EDITOR) {
