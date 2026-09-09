@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { treeKeydown } from '../utils/tree-nav.js';
 import { parseSections } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
@@ -14,18 +15,24 @@ import {
   moveBlockToSection,
   moveContentItem,
   moveSection,
+  setSectionName,
+  MAX_SECTION_NAME,
 } from '../editor-utils/blocks.js';
 import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_BLOCK_ICON_SRC = '/img/icons/s2-icon-tableadd-20-n.svg';
 const DRAG_ICON_SRC = '/img/icons/s2-icon-draghandle-20-n.svg';
+const EDIT_ICON_SRC = '/img/icons/s2-icon-edit-20-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
-const style = await loadStyle(import.meta.url);
-const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const [formStyle, style, baseStyle] = await Promise.all([
+  getSheet(`${getNx2()}/styles/form.css`),
+  loadStyle(import.meta.url),
+  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+]);
 
 const OUTLINE_TYPES = {
   SECTION: 'section',
@@ -69,6 +76,7 @@ function sectionsEqual(a, b) {
   return a.every((sec, i) => {
     const other = b[i];
     return sec.sectionIndex === other.sectionIndex
+      && sec.name === other.name
       && sec.items.length === other.items.length
       && sec.items.every((item, j) => itemsEqual(item, other.items[j]));
   });
@@ -83,16 +91,21 @@ class EwPageOutline extends LitElement {
     _hasBlockLibrary: { state: true },
     _expandedContent: { state: true },
     _pendingDelete: { state: true },
+    _editingSection: { state: true },
+    _draftName: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [baseStyle, formStyle, style];
     this._expandedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
       if (aemHtml.trim()) {
         const next = parseSections(aemHtml);
+        if (this._editingSection != null && next.length !== this._sections?.length) {
+          this._cancelRename();
+        }
         if (!sectionsEqual(next, this._sections)) {
           this._sections = next;
           // A structural edit is the only time proseIndex-keyed expansion state can go
@@ -104,6 +117,7 @@ class EwPageOutline extends LitElement {
         this._sections = undefined;
         this._selectedBlockIndex = undefined;
         this._selectedProseIndex = undefined;
+        this._cancelRename();
       }
     });
     this._unsubscribeSelect = canvasBus.editorSelectState
@@ -133,6 +147,7 @@ class EwPageOutline extends LitElement {
       this._sections = undefined;
       this._selectedBlockIndex = undefined;
       this._selectedProseIndex = undefined;
+      this._cancelRename();
     }
     this._prevSelectedPath = sp;
 
@@ -149,6 +164,17 @@ class EwPageOutline extends LitElement {
     const extensions = await fetchExtensions(org, site);
     if (org !== this._hashState?.org || site !== this._hashState?.site) return;
     this._hasBlockLibrary = !!extensions?.find((ext) => ext.name === 'blocks');
+  }
+
+  updated() {
+    if (this._editingSection == null || this._focusedSection === this._editingSection) {
+      this._focusedSection = this._editingSection;
+      return;
+    }
+    this._focusedSection = this._editingSection;
+    const input = this.shadowRoot.querySelector('.section-name-input');
+    input?.focus();
+    input?.select();
   }
 
   _select(blockIndex) {
@@ -366,6 +392,37 @@ class EwPageOutline extends LitElement {
     treeKeydown(e, this.shadowRoot);
   };
 
+  _startRename(sec) {
+    this._editingSection = sec.sectionIndex;
+    this._draftName = sec.name ?? '';
+  }
+
+  _cancelRename() {
+    this._editingSection = undefined;
+    this._draftName = '';
+  }
+
+  _commitRename(sectionIndex) {
+    if (this._editingSection !== sectionIndex) return;
+    const next = this._draftName.trim();
+    const current = this._sections?.[sectionIndex]?.name ?? '';
+    this._cancelRename();
+    if (next === current) return;
+    const { view } = getExtensionsBridge();
+    if (view) setSectionName(view, sectionIndex, next);
+  }
+
+  _onRenameKeydown(e, sectionIndex) {
+    e.stopPropagation();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this._commitRename(sectionIndex);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      this._cancelRename();
+    }
+  }
+
   async _openAddBlockModal(e, sectionIndex) {
     e.stopPropagation();
     e.preventDefault();
@@ -529,17 +586,45 @@ class EwPageOutline extends LitElement {
       </li>`;
   }
 
+  _renderSectionLabel(sec) {
+    const fallback = `Section ${sec.sectionIndex + 1}`;
+    if (this._editingSection === sec.sectionIndex) {
+      return html`
+        <input class="nx-input section-name-input" type="text"
+               .value=${this._draftName}
+               maxlength="${MAX_SECTION_NAME}"
+               placeholder="${fallback}"
+               aria-label="Section name"
+               @pointerdown=${(e) => e.stopPropagation()}
+               @input=${(e) => { this._draftName = e.target.value; }}
+               @keydown=${(e) => this._onRenameKeydown(e, sec.sectionIndex)}
+               @blur=${() => this._commitRename(sec.sectionIndex)}>`;
+    }
+    const label = sec.name || fallback;
+    return html`
+      <span class="section-label" title="${label}">${label}</span>
+      <button type="button" class="action-btn edit-btn nx-btn-sm" draggable="false"
+              aria-label="Rename section ${sec.sectionIndex + 1}"
+              @pointerdown=${(e) => e.stopPropagation()}
+              @click=${() => this._startRename(sec)}>
+        <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+          <use href="${EDIT_ICON_SRC}#icon"></use>
+        </svg>
+      </button>`;
+  }
+
   _renderSection(sec, isFirstSection) {
+    const editing = this._editingSection === sec.sectionIndex;
     return html`
       <li class="outline-section" role="none"
           @dragover=${(e) => this._onSectionDragOver(e, sec)}
           @dragleave=${this._onDragLeave}
           @drop=${this._onDrop}>
         <div class="section-header" data-section-header
-             draggable="true"
+             draggable="${editing ? 'false' : 'true'}"
              @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.SECTION, sec.sectionIndex)}
              @dragend=${this._onDragEnd}>
-          <span class="section-label">Section ${sec.sectionIndex + 1}</span>
+          ${this._renderSectionLabel(sec)}
           ${this._hasBlockLibrary ? html`
             <button type="button" class="action-btn add-block-btn" draggable="false"
                     aria-label="Add block to section ${sec.sectionIndex + 1}"

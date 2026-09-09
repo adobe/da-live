@@ -29,6 +29,7 @@ import { getNx2Api } from '../../../scripts/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { forceSave } from '../../shared/forcesave.js';
+import { bindFirstSectionName } from '../../shared/section-name.js';
 
 // Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
 // every successful onopen, so a close that follows a brief successful
@@ -593,6 +594,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
+  bindFirstSectionName(ydoc, window.view);
 
   const pluginsPromise = loadCustomPlugins();
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {

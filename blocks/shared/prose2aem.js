@@ -172,10 +172,14 @@ function makeSections(editor) {
   const children = editor.querySelectorAll(':scope > *');
 
   const section = document.createElement('div');
+  if (editor.dataset.daSectionName) section.dataset.daSectionName = editor.dataset.daSectionName;
   const sections = [...children].reduce((acc, child) => {
     if (child.nodeName === 'HR') {
+      const next = document.createElement('div');
+      const daSectionName = child.getAttribute('data-da-section-name');
+      if (daSectionName) next.dataset.daSectionName = daSectionName;
       child.remove();
-      acc.push(document.createElement('div'));
+      acc.push(next);
     } else {
       acc[acc.length - 1].append(child);
       // Find cursor inside section-metadata and bubble it to parent section
