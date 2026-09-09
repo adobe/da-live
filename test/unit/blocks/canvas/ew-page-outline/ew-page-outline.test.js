@@ -204,6 +204,7 @@ describe('ew-page-outline — expandable default content', () => {
         blocks: [],
         items: [contentGroupItem(1, [
           { type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'One', snippet: 'One' },
+          { type: 'content', kind: 'paragraph', proseIndex: 5, innerText: 'One B', snippet: 'One B' },
         ])],
       },
       {
@@ -211,6 +212,7 @@ describe('ew-page-outline — expandable default content', () => {
         blocks: [],
         items: [contentGroupItem(20, [
           { type: 'content', kind: 'paragraph', proseIndex: 20, innerText: 'Two', snippet: 'Two' },
+          { type: 'content', kind: 'paragraph', proseIndex: 24, innerText: 'Two B', snippet: 'Two B' },
         ])],
       },
     ];
@@ -219,7 +221,7 @@ describe('ew-page-outline — expandable default content', () => {
     // Group headers only — `.content-item` also matches rendered content-child rows.
     const headers = () => el.shadowRoot.querySelectorAll('.content-group > .content-item');
 
-    // proseIndex 10 sits after section 0's only child (1) but well before section 1's
+    // proseIndex 10 sits after section 0's children (1, 5) but well before section 1's
     // (20) — with no next item in section 0 to bound it, it's attributed to section 0's
     // run (the trailing/unbounded case a fresh Enter-created node at the end lands in).
     canvasBus.editorSelectState.emit({ blockIndex: -1, proseIndex: 10, source: 'doc' });
@@ -228,7 +230,7 @@ describe('ew-page-outline — expandable default content', () => {
     expect(headers()[0].getAttribute('aria-expanded')).to.equal('true');
     expect(headers()[1].getAttribute('aria-expanded')).to.equal('false');
 
-    // proseIndex 25, past section 1's only child with nothing after it, resolves there.
+    // proseIndex 25, past section 1's children with nothing after it, resolves there.
     canvasBus.editorSelectState.emit({ blockIndex: -1, proseIndex: 25, source: 'doc' });
     await el.updateComplete;
 
@@ -242,6 +244,7 @@ describe('ew-page-outline — expandable default content', () => {
     const initialHtml = `<main><div>
       <h2 data-prose-index="1">Title</h2>
       <p data-prose-index="5">Para one</p>
+      <p data-prose-index="9">Para two</p>
     </div></main>`;
     canvasBus.editorHtmlState.emit(initialHtml);
     await el.updateComplete;
@@ -258,11 +261,12 @@ describe('ew-page-outline — expandable default content', () => {
 
     const changedHtml = `<main><div>
       <h2 data-prose-index="1">Title</h2>
+      <p data-prose-index="5">Para one</p>
     </div></main>`;
     canvasBus.editorHtmlState.emit(changedHtml);
     await el.updateComplete;
 
-    // Structural change (a child removed) — sectionsEqual fails, expansion resets.
+    // Structural change: a child removed but the run stays multi-item, so expansion resets.
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('false');
   });
 
@@ -279,6 +283,60 @@ describe('ew-page-outline — expandable default content', () => {
     await el.updateComplete;
     expect(header.getAttribute('aria-expanded')).to.equal('false');
     expect(el.shadowRoot.querySelector('.content-children')).to.be.null;
+  });
+});
+
+describe('ew-page-outline — single-item default content', () => {
+  let el;
+
+  beforeEach(async () => {
+    el = await createOutline();
+    el._sections = [{
+      sectionIndex: 0,
+      blocks: [],
+      items: [
+        contentGroupItem(1, [
+          { type: 'content', kind: 'paragraph', proseIndex: 1, innerText: 'Hello World', snippet: 'Hello World' },
+        ]),
+      ],
+    }];
+    await el.updateComplete;
+  });
+
+  afterEach(() => { el.remove(); });
+
+  it('shows the lone child immediately under an expanded "Default content" header, chevron kept', () => {
+    const header = el.shadowRoot.querySelector('.content-group > .content-item');
+    expect(header).to.exist;
+    expect(header.textContent.trim()).to.equal('Default content');
+    // Chevron/disclosure kept — the header is a normal expandable treeitem, just open by default.
+    expect(header.getAttribute('aria-expanded')).to.equal('true');
+    const children = [...el.shadowRoot.querySelectorAll('.content-child')];
+    expect(children).to.have.lengthOf(1);
+    expect(children[0].textContent.replace(/\s+/g, ' ').trim()).to.equal('Paragraph Hello World');
+  });
+
+  it('stays collapsible: header click collapses the lone child, then re-expands it', async () => {
+    const header = el.shadowRoot.querySelector('.content-group > .content-item');
+    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(1);
+
+    header.click();
+    await el.updateComplete;
+    expect(header.getAttribute('aria-expanded')).to.equal('false');
+    expect(el.shadowRoot.querySelector('.content-children')).to.be.null;
+
+    header.click();
+    await el.updateComplete;
+    expect(header.getAttribute('aria-expanded')).to.equal('true');
+    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(1);
+  });
+
+  it('still selects the lone child on click, emitting its proseIndex and kind', async () => {
+    let received;
+    const unsub = canvasBus.editorProseSelectState.subscribe((detail) => { received = detail; });
+    el.shadowRoot.querySelector('.content-child').click();
+    unsub();
+    expect(received).to.deep.equal({ proseIndex: 1, kind: 'paragraph' });
   });
 });
 
@@ -312,9 +370,7 @@ describe('ew-page-outline — content drag & delete', () => {
       items: [contentGroupItem(child.proseIndex, [child])],
     }];
     await el.updateComplete;
-    el.shadowRoot.querySelector('.content-item').click();
-    await el.updateComplete;
-
+    // A single-item run is open by default, so its child (and delete button) show without a click.
     el.shadowRoot.querySelector('.content-child .delete-btn').click();
 
     expect(docSeq(bridge.view.state.doc)).to.deep.equal(['Keep me']);
@@ -326,6 +382,7 @@ describe('ew-page-outline — content drag & delete', () => {
       content: [
         { type: 'paragraph', content: [{ type: 'text', text: 'A' }] },
         { type: 'paragraph', content: [{ type: 'text', text: 'B' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'C' }] },
       ],
     });
 
@@ -339,7 +396,7 @@ describe('ew-page-outline — content drag & delete', () => {
     el.shadowRoot.querySelectorAll('.content-child .delete-btn')[0].click();
     await el.updateComplete;
 
-    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['B']);
+    expect(docSeq(bridge.view.state.doc)).to.deep.equal(['B', 'C']);
     // No sibling-select workaround needed — the run survived the reparse-driven reset
     // because _onDelete re-expands it by array position (see _findRunLocation).
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('true');
