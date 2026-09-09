@@ -15,8 +15,9 @@ import { getQuery } from '../utils/page.js';
 import { deleteResource } from '../utils/cleanup.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
-test('Delete this run folder', async ({ page }, workerInfo) => {
-  if (workerInfo.project.name !== 'chromium') return;
+// Runs only in the 'cleanup' teardown project (see playwright.config.js), once
+// at the very end of the suite.
+test('Delete this run folder', async ({ page }) => {
   test.skip(!!process.env.SKIP_AUTH, 'No backend under SKIP_AUTH');
   test.setTimeout(60000);
 

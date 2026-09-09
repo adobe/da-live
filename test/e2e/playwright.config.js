@@ -44,8 +44,23 @@ module.exports = defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    // Setup project
-    { name: 'setup', testMatch: /.*\.setup\.js/ },
+    // Setup project (auth + clean-at-start). 'cleanup' is its teardown, so
+    // Playwright runs it AFTER every project that depends on setup finishes -
+    // guaranteed to be last regardless of worker count or how the suite is
+    // launched (npm/npx/IDE), which a plain spec in tests/ cannot promise.
+    { name: 'setup', testMatch: /.*\.setup\.js/, teardown: 'cleanup' },
+
+    // Teardown project: deletes this run's /tests/pw-{branch} folder once, at
+    // the very end. Runs even when tests failed. testIgnore on the browser
+    // projects below keeps teardown.spec.js from also running mid-suite.
+    {
+      name: 'cleanup',
+      testMatch: /teardown\.spec\.js/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.playwright/.auth/user.json',
+      },
+    },
 
     {
       name: 'chromium',
@@ -53,6 +68,7 @@ module.exports = defineConfig({
         ...devices['Desktop Chrome'],
         storageState: '.playwright/.auth/user.json',
       },
+      testIgnore: /teardown\.spec\.js/,
       dependencies: ['setup'],
     },
 
@@ -62,6 +78,7 @@ module.exports = defineConfig({
         ...devices['Desktop Firefox'],
         storageState: '.playwright/.auth/user.json',
       },
+      testIgnore: /teardown\.spec\.js/,
       dependencies: ['setup'],
     },
 
@@ -71,6 +88,7 @@ module.exports = defineConfig({
         ...devices['Desktop Safari'],
         storageState: '.playwright/.auth/user.json',
       },
+      testIgnore: /teardown\.spec\.js/,
       dependencies: ['setup'],
     },
 

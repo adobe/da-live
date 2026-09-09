@@ -50,18 +50,19 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
     // eslint-disable-next-line no-await-in-loop
     await createDocument(page, url);
 
-    // Allow Y.js WebSocket to stabilize before typing
+    // Allow Y.js WebSocket to stabilize before typing (createDocument already
+    // waited once, so this is a short top-up).
     // eslint-disable-next-line no-await-in-loop
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
     // eslint-disable-next-line no-await-in-loop
     await fill(page, `${prefix} test ${i}`);
 
-    // Give da-collab time to persist this prose page to da-admin before we
-    // navigate away to create the next one (persistence is server-side over
-    // the WebSocket, so there is no client POST to wait on here).
+    // Give da-collab a moment to persist this prose page before we navigate on.
+    // expectFolderHasPages() below is the real gate - it re-fetches until all
+    // pages appear - so this only needs to be long enough to avoid hammering.
     // eslint-disable-next-line no-await-in-loop
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(1500);
   }
   return pageNames;
 }
