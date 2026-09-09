@@ -12,10 +12,8 @@ async function findPageTab(title, page, context) {
 
     await page.waitForTimeout(500);
     const pages = context.pages();
-    console.log('Num Pages:', pages.length);
     for (let i = 0; i < pages.length; i += 1) {
       const pageTitle = await pages[i].title();
-      console.log('Page:', pageTitle);
       if (pageTitle.includes('Edit regionaledit')) {
         return pages[i];
       }
@@ -54,7 +52,6 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   ]);
 
   const htmlFile = path.join(__dirname, '/mocks/regionaledit.html');
-  console.log(htmlFile);
   await fileChooser.setFiles([`${htmlFile}`]);
 
   await page.getByRole('link', { name: 'regionaledit', exact: true }).click();
