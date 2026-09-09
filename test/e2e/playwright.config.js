@@ -48,13 +48,14 @@ module.exports = defineConfig({
     // Playwright runs it AFTER every project that depends on setup finishes -
     // guaranteed to be last regardless of worker count or how the suite is
     // launched (npm/npx/IDE), which a plain spec in tests/ cannot promise.
-    { name: 'setup', testMatch: /.*\.setup\.js/, teardown: 'cleanup' },
+    { name: 'setup', testMatch: /.*\.setup\.js/, teardown: 'teardown' },
 
-    // Teardown project: deletes this run's /tests/pw-{branch} folder once, at
-    // the very end. Runs even when tests failed. testIgnore on the browser
-    // projects below keeps teardown.spec.js from also running mid-suite.
+    // Teardown project (distinct from the scheduled test:cleanup sweeper):
+    // deletes THIS run's /tests/pw-{branch} folder once, at the very end. Runs
+    // even when tests failed. testIgnore on the browser projects below keeps
+    // teardown.spec.js from also running mid-suite.
     {
-      name: 'cleanup',
+      name: 'teardown',
       testMatch: /teardown\.spec\.js/,
       use: {
         ...devices['Desktop Chrome'],

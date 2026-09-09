@@ -12,7 +12,7 @@
 
 // Each run writes into its own /tests/pw-{branch} folder. auth.setup.js wipes
 // that folder and drops a pw-run-{ts}-marker at start (correctness); the
-// 'cleanup' teardown project (playwright.config.js) deletes it after the whole
-// suite finishes (tidiness); the scheduled cleanup.yml sweeper reclaims stale
-// pw-* folders by marker age (backstop).
+// 'teardown' project (playwright.config.js) deletes it after the whole suite
+// finishes (tidiness); the scheduled cleanup.yml sweeper (test:cleanup)
+// reclaims stale pw-* folders from past runs by marker age (backstop).
 export { test, expect } from '@playwright/test';

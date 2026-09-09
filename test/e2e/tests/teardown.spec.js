@@ -15,8 +15,9 @@ import { getQuery } from '../utils/page.js';
 import { deleteResource } from '../utils/cleanup.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
-// Runs only in the 'cleanup' teardown project (see playwright.config.js), once
-// at the very end of the suite.
+// Runs only in the 'teardown' project (see playwright.config.js), once at the
+// very end of the suite - not to be confused with the scheduled test:cleanup
+// sweeper that reclaims stale folders from past runs.
 test('Delete this run folder', async ({ page }) => {
   test.skip(!!process.env.SKIP_AUTH, 'No backend under SKIP_AUTH');
   test.setTimeout(60000);
