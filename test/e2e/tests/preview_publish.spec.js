@@ -4,7 +4,6 @@ import {
   getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
-import { parseTestUrl, deleteResource } from '../utils/cleanup.js';
 
 // Requires write access to TEST_SITE. pingtest is a fixed fixture in the flat /tests directory.
 const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`;
@@ -51,15 +50,16 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
     // eslint-disable-next-line no-await-in-loop
     await createDocument(page, url);
 
-    // Allow Y.js WebSocket to stabilize before typing
+    // Allow Y.js WebSocket to stabilize before typing (createDocument already
+    // waited once; this is a shorter top-up for the bulk loop).
     // eslint-disable-next-line no-await-in-loop
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
     // eslint-disable-next-line no-await-in-loop
     await fill(page, `${prefix} test ${i}`);
 
     // eslint-disable-next-line no-await-in-loop
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(2000);
   }
   return pageNames;
 }
@@ -184,24 +184,9 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
     await page.close();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    let authHeader;
-    page.on('request', (request) => {
-      const auth = request.headers().authorization;
-      if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
-    });
-    await page.goto(folderURL);
-
-    const { org, site, path } = parseTestUrl(folderURL);
-    if (authHeader) {
-      const resp = await deleteResource(page, authHeader, org, site, path, { isFolder: true });
-      console.log(`[cleanup] Bulk preview/publish folder -> ${org}/${site}${path}: ${resp.ok() ? 'deleted' : `failed (${resp.status()})`}`);
-    } else {
-      console.warn(`[cleanup] Bulk preview/publish folder -> ${org}/${site}${path}: skipped (no auth header captured)`);
-    }
-    await page.close();
-  });
+  // No per-folder cleanup here: the run-folder teardown (test:teardown) wipes
+  // /tests/pw-{branch} wholesale after the suite, and clean-at-start wipes it
+  // before the next run.
 
   test('Preview 12 pages in a folder', async ({ page }) => {
     test.setTimeout(120000);
