@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -10,7 +10,7 @@ const style = await loadStyle(import.meta.url);
 const OOTB_ACTIONS = [
   {
     title: 'Preflight',
-    render: async (details) => (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default(details),
+    render: async (details) => (await import(`${getNx2()}/blocks/governance/preflight.js`)).default(details),
     icon: '/img/icons/s2-icon-filetext-20-n.svg#icon',
   },
   {
