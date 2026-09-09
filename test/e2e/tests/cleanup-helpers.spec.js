@@ -24,7 +24,11 @@ test('createResource posts an .html page with auth', async ({}, workerInfo) => {
   if (workerInfo.project.name !== 'chromium') return;
   const record = {};
   await createResource(fakePage(record), 'Bearer abc', 'da-sites', 'da-status', '/tests/pw-main/pw-run-x-marker', 'BODY');
-  expect(record.url).toContain('/source/da-sites/da-status/tests/pw-main/pw-run-x-marker.html');
+  // Backend-agnostic: da-admin and hlx6 place org/site differently, but both
+  // carry the org, the site, and the .html-suffixed path tail.
+  expect(record.url).toContain('da-sites');
+  expect(record.url).toContain('da-status');
+  expect(record.url).toContain('tests/pw-main/pw-run-x-marker.html');
   expect(record.opts.headers.Authorization).toBe('Bearer abc');
 });
 
@@ -56,16 +60,20 @@ test('listStaleRunFolders yields only pw- folders with an old marker', async ({}
   if (workerInfo.project.name !== 'chromium') return;
   const oldTs = (Date.now() - 3 * 60 * 60 * 1000).toString(36); // 3h ago
   const newTs = Date.now().toString(36);
+  // Keys are backend-agnostic path substrings (the list URL differs per
+  // backend). Fixtures use the hlx6 list shape (folders end with '/', files
+  // carry their extension), which listChildren also resolves correctly for
+  // da-admin, so this test passes under both TEST_SITE configs.
   const page = fakeListPage({
-    '/list/da-sites/da-status/tests': [
-      { name: 'pw-main', ext: undefined },
-      { name: 'pw-collabfx', ext: undefined },
-      { name: 'pw-stale', ext: undefined },
-      { name: 'realpage', ext: 'html' },
+    tests: [
+      { name: 'pw-main/', ext: undefined },
+      { name: 'pw-collabfx/', ext: undefined },
+      { name: 'pw-stale/', ext: undefined },
+      { name: 'realpage.html', ext: 'html' },
     ],
-    '/list/da-sites/da-status/tests/pw-main': [{ name: `pw-run-${oldTs}-marker`, ext: 'html' }],
-    '/list/da-sites/da-status/tests/pw-collabfx': [{ name: `pw-run-${newTs}-marker`, ext: 'html' }],
-    '/list/da-sites/da-status/tests/pw-stale': [{ name: 'pw-edit1-abc-chromium', ext: 'html' }],
+    'tests/pw-main': [{ name: `pw-run-${oldTs}-marker.html`, ext: 'html' }],
+    'tests/pw-collabfx': [{ name: `pw-run-${newTs}-marker.html`, ext: 'html' }],
+    'tests/pw-stale': [{ name: 'pw-edit1-abc-chromium.html', ext: 'html' }],
   });
   const out = [];
   for await (const f of listStaleRunFolders(page, 'Bearer x', 'da-sites', 'da-status', 2)) out.push(f);

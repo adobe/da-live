@@ -127,8 +127,10 @@ export async function* listStaleRunFolders(page, authHeader, org, site, minHours
     const folderPath = `/tests/${folder.name}`;
     // eslint-disable-next-line no-await-in-loop
     const children = await listChildren(page, authHeader, org, site, folderPath);
+    // hlx6 lists file names with their extension (pw-run-{ts}-marker.html);
+    // da-admin lists them without. Tolerate an optional trailing extension.
     const markerAges = children
-      .filter((c) => c.name.startsWith('pw-run-') && c.name.endsWith('-marker'))
+      .filter((c) => /^pw-run-\w+-marker(\.\w+)?$/.test(c.name))
       .map((c) => getTestResourceAge(c.name))
       .filter((age) => age !== null);
     if (markerAges.length === 0) continue;
