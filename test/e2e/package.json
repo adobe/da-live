@@ -2,10 +2,10 @@
   "name": "da-live_e2e_test",
   "version": "1.0.0",
   "scripts": {
-    "test": "playwright test --project=chromium --grep-invert \"Delete multiple old pages\"",
+    "test": "playwright test --project=chromium --grep-invert \"Delete multiple old pages|Delete this run folder\"",
     "test:install": "playwright install",
-    "test:all": "playwright test --project=chromium --project=firefox --project=webkit --grep-invert \"Delete multiple old pages\"",
-    "test:nonauth": "SKIP_AUTH=true playwright test --project=chromium tests/*.spec.js --grep-invert \"Delete multiple old pages\"",
+    "test:all": "playwright test --project=chromium --project=firefox --project=webkit --grep-invert \"Delete multiple old pages|Delete this run folder\"",
+    "test:nonauth": "SKIP_AUTH=true playwright test --project=chromium tests/*.spec.js --grep-invert \"Delete multiple old pages|Delete this run folder\"",
     "test:cleanup": "playwright test --project=chromium tests/delete.spec.js --grep \"Delete multiple old pages\" --retries=1",
     "test:teardown": "playwright test --project=chromium tests/teardown.spec.js",
     "test:ui": "playwright test --project=chromium --ui",
