@@ -1,4 +1,5 @@
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../scripts/utils.js';
+import { EMPTY_DOC } from '../shared/utils.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -14,7 +15,7 @@ import {
   installEditorSplitDrag,
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
-import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
+import { resolveEditorDocSession, createdDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
@@ -91,6 +92,58 @@ function editorCtxFromHashState(state, fullPath) {
   return { org: state.org, repo: state.site, path: fullPath };
 }
 
+function mountCanvasEditors({ mountRoot, header, session, ctx }) {
+  removeNotPermitted(mountRoot);
+  const canWrite = (session.permissions ?? []).some((p) => p === 'write');
+  header.authorized = true;
+  header.canWrite = canWrite;
+  const docEl = ensureNxEditorDoc(mountRoot);
+  docEl.session = session;
+  docEl.ctx = ctx;
+  const frameEl = ensureNxEditorWysiwyg(mountRoot);
+  frameEl.canWrite = canWrite;
+  frameEl.ctx = ctx;
+  finalizeSplitEditorMountOrder(mountRoot);
+  notifyCanvasEditorActive(header.editorView);
+  syncEditorSplitLayout({ mountRoot, view: header.editorView });
+}
+
+async function createEwDoc(path) {
+  const { source } = await getNx2Api();
+  return source.save(`/${path}.html`, { body: EMPTY_DOC });
+}
+
+// A navigated-to URL with no document: prompt to create it (mirrors the classic
+// doc editor). The stale-load guard (loadCount) stands in for da-not-found's
+// hashchange race guard - if the hash moved on while we awaited, drop the result.
+async function handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount }) {
+  removeCanvasEditors(mountRoot);
+  removeNotPermitted(mountRoot);
+  header.authorized = false;
+  header.canWrite = false;
+  const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('./ew-not-found/ew-not-found.js');
+  const name = ctx.path.split('/').pop();
+  const choice = await showEwNotFoundDialog({ name });
+  if (loadCount !== editorLoadCount) return;
+  if (choice === 'hashchange') return;
+  if (choice !== 'create') {
+    window.location.hash = libraryHashFromPath(ctx.path);
+    return;
+  }
+  const createResp = await createEwDoc(ctx.path);
+  if (loadCount !== editorLoadCount) return;
+  if (!createResp?.ok) {
+    showNotPermitted(mountRoot, 'Could not create the document.');
+    return;
+  }
+  mountCanvasEditors({
+    mountRoot,
+    header,
+    ctx,
+    session: createdDocSession(session, createResp),
+  });
+}
+
 async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   editorLoadCount += 1;
   const loadCount = editorLoadCount;
@@ -109,25 +162,17 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   const ctx = editorCtxFromHashState(state, fullPath);
   const session = await resolveEditorDocSession(ctx);
   if (loadCount !== editorLoadCount) return;
+  if (session.notFound) {
+    await handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount });
+    return;
+  }
   if (!session.ok) {
     removeCanvasEditors(mountRoot);
     showNotPermitted(mountRoot, session.error);
     header.authorized = false;
     return;
   }
-  removeNotPermitted(mountRoot);
-  const canWrite = (session.permissions ?? []).some((p) => p === 'write');
-  header.authorized = true;
-  header.canWrite = canWrite;
-  const docEl = ensureNxEditorDoc(mountRoot);
-  docEl.session = session;
-  docEl.ctx = ctx;
-  const frameEl = ensureNxEditorWysiwyg(mountRoot);
-  frameEl.canWrite = canWrite;
-  frameEl.ctx = ctx;
-  finalizeSplitEditorMountOrder(mountRoot);
-  notifyCanvasEditorActive(header.editorView);
-  syncEditorSplitLayout({ mountRoot, view: header.editorView });
+  mountCanvasEditors({ mountRoot, header, session, ctx });
 }
 
 async function syncToolPanelViews(toolPanel, { org, site }) {
