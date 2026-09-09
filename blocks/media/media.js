@@ -2,7 +2,8 @@ import getPathDetails from '../shared/pathDetails.js';
 import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 import '../edit/da-title/da-title.js';
-import { contentLogin } from '../shared/utils.js';
+import { contentLogin, livePreviewLogin } from '../shared/utils.js';
+import { getLivePreviewUrl } from '../shared/constants.js';
 
 const PDF_VIEWER_SRC = 'https://acrobatservices.adobe.com/view-sdk/viewer.js';
 const PDF_CLIENT_ID = 'cd73455ea6c04d0aac86270f9f5f830c';
@@ -65,17 +66,27 @@ async function loadPdfMedia(path, fileName) {
 
 export default async function init(el) {
   const details = getPathDetails();
-  const { name, fullpath, owner, repo } = details;
+  const { name, fullpath, owner, repo, path } = details;
   const ext = name.split('.').pop();
 
-  await contentLogin(owner, repo);
+  const { isHlx6 } = await getNx2Api();
+  const hlx6 = await isHlx6(owner, repo);
+
+  let mediaDetails = details;
+  if (hlx6 && ext !== 'pdf') {
+    const contentUrl = `${getLivePreviewUrl(owner, repo)}${path}`;
+    mediaDetails = { ...details, contentUrl };
+    await livePreviewLogin(owner, repo);
+  } else {
+    await contentLogin(owner, repo);
+  }
 
   const daTitle = document.createElement('da-title');
 
   const daMedia = ext === 'pdf' ? await getPdfMedia() : await getDefaultMedia();
 
   daTitle.details = details;
-  daMedia.details = details;
+  daMedia.details = mediaDetails;
   el.append(daTitle, daMedia);
 
   if (ext === 'pdf') loadPdfMedia(fullpath, name);
