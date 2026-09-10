@@ -22,8 +22,10 @@ const ADD_BLOCK_ICON_SRC = '/img/icons/s2-icon-tableadd-20-n.svg';
 const DRAG_ICON_SRC = '/img/icons/s2-icon-draghandle-20-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
+const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 
 const OUTLINE_TYPES = {
   SECTION: 'section',
@@ -81,11 +83,12 @@ class EwPageOutline extends LitElement {
     _hasBlockLibrary: { state: true },
     _expandedContent: { state: true },
     _collapsedContent: { state: true },
+    _pendingDelete: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._expandedContent = new Set();
     this._collapsedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
@@ -399,9 +402,60 @@ class EwPageOutline extends LitElement {
     return undefined;
   }
 
+  // Block items only carry their blockIndex at the drag/select call sites, so a delete
+  // confirmation needs to look the rest of the block up by that index (see _deleteInfo).
+  _findBlockItem(blockIndex) {
+    for (const sec of this._sections ?? []) {
+      const item = sec.items.find((i) => i.type === 'block' && i.blockIndex === blockIndex);
+      if (item) return item;
+    }
+    return undefined;
+  }
+
+  // Single source of truth for delete-confirmation copy, so type + index is all a call
+  // site needs — the button label and the dialog text stay in sync automatically.
+  _deleteInfo(type, index) {
+    if (type === OUTLINE_TYPES.SECTION) {
+      return {
+        title: 'Delete section',
+        noun: `section ${index + 1}`,
+        message: html`Are you sure you want to delete <strong>Section ${index + 1}</strong>?`,
+      };
+    }
+    if (type === OUTLINE_TYPES.CONTENT) {
+      const label = contentChildLabel(index);
+      const kind = label.toLowerCase();
+      const noun = index.snippet ? `${kind} (${index.snippet})` : kind;
+      const message = index.snippet
+        ? html`Are you sure you want to delete the <strong>${kind}</strong>: "${index.snippet}"?`
+        : html`Are you sure you want to delete the <strong>${kind}</strong>?`;
+      // Level only matters in the body copy — the title reads oddly duplicating
+      // it (e.g. "Delete Heading 2" vs. the "heading 2" already in the sentence).
+      const title = index.kind === 'heading' ? 'Delete Heading' : `Delete ${label}`;
+      return { title, noun, message };
+    }
+    const item = this._findBlockItem(index);
+    const label = item ? `${item.name}${item.variant ? ` (${item.variant})` : ''}` : 'block';
+    return {
+      title: 'Delete block',
+      noun: `${label} block`,
+      message: html`Are you sure you want to delete the <strong>${label}</strong> block?`,
+    };
+  }
+
   _onDelete(e, type, index) {
     e.stopPropagation();
     e.preventDefault();
+    this._pendingDelete = { type, index };
+  }
+
+  _cancelDelete() {
+    this._pendingDelete = null;
+  }
+
+  _confirmDelete() {
+    const { type, index } = this._pendingDelete;
+    this._pendingDelete = null;
     const { view } = getExtensionsBridge();
     if (!view) return;
     if (type === OUTLINE_TYPES.BLOCK) {
@@ -419,10 +473,21 @@ class EwPageOutline extends LitElement {
     }
   }
 
+  _renderDeleteDialog() {
+    const { type, index } = this._pendingDelete;
+    const { title, message } = this._deleteInfo(type, index);
+    return html`
+      <nx-dialog class="ew-po-delete" title="${title}" @close=${() => this._cancelDelete()}>
+        <span>${message}</span>
+        <button slot="actions" class="da-btn-secondary"
+          @click=${() => this._cancelDelete()}>Cancel</button>
+        <button slot="actions" class="da-btn-primary"
+          @click=${() => this._confirmDelete()}>Delete</button>
+      </nx-dialog>`;
+  }
+
   _renderDeleteButton(type, index) {
-    let noun = 'block';
-    if (type === OUTLINE_TYPES.SECTION) noun = `section ${index + 1}`;
-    else if (type === OUTLINE_TYPES.CONTENT) noun = contentChildLabel(index).toLowerCase();
+    const { noun } = this._deleteInfo(type, index);
     const label = `Delete ${noun}`;
     return html`
       <button type="button" class="action-btn delete-btn" draggable="false"
@@ -456,7 +521,9 @@ class EwPageOutline extends LitElement {
         </div>
         ${expanded ? html`
           <ul class="content-children" role="group">
-            ${item.children.map((child) => html`
+            ${item.children.map((child) => {
+    const label = contentChildLabel(child);
+    return html`
               <li class="block-item content-item content-child ${this._selectedProseIndex === child.proseIndex ? 'selected' : ''}"
                   role="treeitem" tabindex="-1"
                   aria-selected="${this._selectedProseIndex === child.proseIndex}"
@@ -467,14 +534,15 @@ class EwPageOutline extends LitElement {
                   @dragend=${this._onDragEnd}
                   @click=${(e) => { e.stopPropagation(); this._selectProse(child.proseIndex, child.kind); }}>
                 <span class="content-label-stack">
-                  <span class="block-name content-label">${contentChildLabel(child)}</span>
+                  <span class="block-name content-label">${label}</span>
                   ${child.snippet ? html`<span class="content-snippet">${child.snippet}</span>` : nothing}
                 </span>
                 ${this._renderDeleteButton(OUTLINE_TYPES.CONTENT, child)}
                 <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
                   <use href="${DRAG_ICON_SRC}#icon"></use>
                 </svg>
-              </li>`)}
+              </li>`;
+  })}
           </ul>` : nothing}
       </li>`;
   }
@@ -551,6 +619,7 @@ class EwPageOutline extends LitElement {
               ${this._sections.map((sec, i) => this._renderSection(sec, i === 0))}
             </ul>`}
       </div>
+      ${this._pendingDelete ? this._renderDeleteDialog() : nothing}
     </section>`;
   }
 }

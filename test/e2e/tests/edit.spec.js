@@ -12,7 +12,7 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE,
+  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
@@ -46,7 +46,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();
 
-  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
   await expect(page.locator('button.da-actions-new-button')).toBeEnabled();
   await page.locator('button.da-actions-new-button').click({ force: true });
   await page.getByRole('menuitem', { name: 'Document' }).click();
@@ -60,14 +60,14 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
-  await newPage.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await newPage.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
   await dismissAlertBanner(newPage);
 
   await newPage.waitForTimeout(3000);
   await newPage.reload();
 
-  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).toBeVisible();
-  await newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`).focus();
+  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`)).toBeVisible();
+  await newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`).focus();
   await tabBackward(newPage);
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
@@ -80,7 +80,7 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
 
   await newPage.waitForTimeout(1000);
   /* TODO REMOVE once #233 is fixed */ await newPage.reload();
-  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${pageName}"]`)).not.toBeVisible();
+  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`)).not.toBeVisible();
 });
 
 test('Change document by switching anchors', async ({ page }, workerInfo) => {
