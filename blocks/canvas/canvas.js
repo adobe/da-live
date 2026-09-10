@@ -121,7 +121,7 @@ async function handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount
   removeNotPermitted(mountRoot);
   header.authorized = false;
   header.canWrite = false;
-  const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('./ew-not-found/ew-not-found.js');
+  const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('./utils/ew-not-found.js');
   const name = ctx.path.split('/').pop();
   const choice = await showEwNotFoundDialog({ name });
   if (loadCount !== editorLoadCount) return;

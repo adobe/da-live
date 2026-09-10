@@ -4,10 +4,13 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('../../../../../blocks/canvas/ew-not-found/ew-not-found.js');
+const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('../../../../../blocks/canvas/utils/ew-not-found.js');
 
-// da-dialog calls showModal() via a 20ms setTimeout in connectedCallback.
+// The component renders nx-dialog on its first update; wait a frame for it.
 const waitForDialog = () => new Promise((r) => { setTimeout(r, 50); });
+const getEl = () => document.querySelector('ew-not-found');
+const getAction = (label) => [...getEl().shadowRoot.querySelectorAll('button[slot="actions"]')]
+  .find((b) => b.textContent.trim() === label);
 
 describe('libraryHashFromPath', () => {
   it('reduces a document path to its site root', () => {
@@ -26,28 +29,23 @@ describe('libraryHashFromPath', () => {
 
 describe('showEwNotFoundDialog', () => {
   afterEach(() => {
-    document.querySelectorAll('da-dialog').forEach((d) => d.remove());
+    document.querySelectorAll('ew-not-found').forEach((d) => d.remove());
   });
 
-  it('resolves "create" when the action button is clicked', async () => {
+  it('resolves "create" when the Create document button is clicked', async () => {
     const promise = showEwNotFoundDialog({ name: 'my-doc' });
     await waitForDialog();
 
-    const dialog = document.querySelector('da-dialog');
-    const actionBtn = dialog.shadowRoot.querySelector('.da-dialog-footer sl-button');
-    actionBtn.click();
+    getAction('Create document').click();
 
     expect(await promise).to.equal('create');
   });
 
-  it('resolves "cancel" when the cancel button is clicked', async () => {
+  it('resolves "cancel" when the Cancel button is clicked', async () => {
     const promise = showEwNotFoundDialog({ name: 'my-doc' });
     await waitForDialog();
 
-    const dialog = document.querySelector('da-dialog');
-    const cancelBtn = dialog.querySelector('sl-button[slot="footer-left"]');
-    expect(cancelBtn.textContent).to.equal('Cancel');
-    cancelBtn.click();
+    getAction('Cancel').click();
 
     expect(await promise).to.equal('cancel');
   });
@@ -56,10 +54,9 @@ describe('showEwNotFoundDialog', () => {
     const promise = showEwNotFoundDialog({ name: 'my-doc' });
     await waitForDialog();
 
-    const dialog = document.querySelector('da-dialog');
-    expect(dialog.textContent).to.include('my-doc');
+    expect(getEl().shadowRoot.textContent).to.include('my-doc');
 
-    dialog.querySelector('sl-button[slot="footer-left"]').click();
+    getAction('Cancel').click();
     await promise;
   });
 
@@ -67,7 +64,7 @@ describe('showEwNotFoundDialog', () => {
     const promise = showEwNotFoundDialog({ name: 'my-doc' });
     await waitForDialog();
 
-    document.querySelector('da-dialog').close();
+    getEl().shadowRoot.querySelector('nx-dialog').close();
 
     expect(await promise).to.equal('cancel');
   });
@@ -75,7 +72,7 @@ describe('showEwNotFoundDialog', () => {
   it('closes the dialog and resolves "hashchange" on hashchange', async () => {
     const promise = showEwNotFoundDialog({ name: 'my-doc' });
     await waitForDialog();
-    expect(document.querySelector('da-dialog')).to.exist;
+    expect(getEl()).to.exist;
 
     window.dispatchEvent(new Event('hashchange'));
 
