@@ -1,13 +1,13 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, TEST_ORG, TEST_SITE,
+  getQuery, getTestPageURL, getTestFolderURL, createDocument, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
-import { parseTestUrl, deleteResource } from '../utils/cleanup.js';
 
-// Requires write access to TEST_SITE. pingtest must exist in the /tests directory.
+// Requires write access to TEST_SITE. pingtest is a fixed fixture in the flat /tests directory.
 const TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`;
+const RUN_TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`;
 
 const BULK_PAGE_COUNT = 12;
 
@@ -26,7 +26,7 @@ async function createFolder(page, workerInfo, testIdentifier) {
   const folderURL = getTestFolderURL(testIdentifier, workerInfo);
   const folderName = folderURL.split('/').pop();
 
-  await page.goto(TESTS_DIR);
+  await page.goto(RUN_TESTS_DIR);
   await dismissAlertBanner(page);
   await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
   await page.getByRole('button', { name: 'New' }).click({ force: true });
@@ -50,17 +50,31 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
     // eslint-disable-next-line no-await-in-loop
     await createDocument(page, url);
 
-    // Allow Y.js WebSocket to stabilize before typing
+    // Allow Y.js WebSocket to stabilize before typing (createDocument already
+    // waited once, so this is a short top-up).
     // eslint-disable-next-line no-await-in-loop
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
     // eslint-disable-next-line no-await-in-loop
     await fill(page, `${prefix} test ${i}`);
 
+    // Give da-collab a moment to persist this prose page before we navigate on.
+    // expectFolderHasPages() below is the real gate - it re-fetches until all
+    // pages appear - so this only needs to be long enough to avoid hammering.
     // eslint-disable-next-line no-await-in-loop
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(1500);
   }
   return pageNames;
+}
+
+// da-collab persists prose pages to da-admin asynchronously, and the browse
+// list is fetched once per navigation - so re-navigate until every page shows
+// up instead of asserting once against a possibly-incomplete listing.
+async function expectFolderHasPages(page, folderURL, count) {
+  await expect(async () => {
+    await page.goto(folderURL);
+    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(count, { timeout: 3000 });
+  }).toPass({ timeout: 90000 });
 }
 
 test('Preview and Publish buttons appear when a file is selected', async ({ page }) => {
@@ -100,7 +114,7 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   // Wait to ensure its saved in da-admin
   await page.waitForTimeout(3000);
 
-  await page.goto(TESTS_DIR);
+  await page.goto(RUN_TESTS_DIR);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
 
   await dismissAlertBanner(page);
@@ -140,7 +154,7 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   // Wait to ensure its saved in da-admin
   await page.waitForTimeout(3000);
 
-  await page.goto(TESTS_DIR);
+  await page.goto(RUN_TESTS_DIR);
   await expect(page.getByText(pageName), 'Precondition: new page must exist').toBeVisible();
   await dismissAlertBanner(page);
 
@@ -180,33 +194,19 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
     const page = await browser.newPage();
     ({ folderURL, folderPath } = await createFolder(page, workerInfo, 'bulk'));
     await createPagesInFolder(page, workerInfo, folderPath, 'bulk', BULK_PAGE_COUNT);
+    // Confirm every page persisted before handing the folder to the tests.
+    await expectFolderHasPages(page, folderURL, BULK_PAGE_COUNT);
     await page.close();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    let authHeader;
-    page.on('request', (request) => {
-      const auth = request.headers().authorization;
-      if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
-    });
-    await page.goto(folderURL);
-
-    const { org, site, path } = parseTestUrl(folderURL);
-    if (authHeader) {
-      const resp = await deleteResource(page, authHeader, org, site, path, { isFolder: true });
-      console.log(`[cleanup] Bulk preview/publish folder -> ${org}/${site}${path}: ${resp.ok() ? 'deleted' : `failed (${resp.status()})`}`);
-    } else {
-      console.warn(`[cleanup] Bulk preview/publish folder -> ${org}/${site}${path}: skipped (no auth header captured)`);
-    }
-    await page.close();
-  });
+  // No per-folder cleanup here: the run-folder teardown (test:teardown) wipes
+  // /tests/pw-{branch} wholesale after the suite, and clean-at-start wipes it
+  // before the next run.
 
   test('Preview 12 pages in a folder', async ({ page }) => {
     test.setTimeout(120000);
 
-    await page.goto(folderURL);
-    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
+    await expectFolderHasPages(page, folderURL, BULK_PAGE_COUNT);
     await dismissAlertBanner(page);
 
     await page.locator('da-list.da-list-type-browse input#select-all').click();
@@ -223,8 +223,7 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
   test('Publish 12 pages in a folder', async ({ page }) => {
     test.setTimeout(120000);
 
-    await page.goto(folderURL);
-    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(BULK_PAGE_COUNT);
+    await expectFolderHasPages(page, folderURL, BULK_PAGE_COUNT);
     await dismissAlertBanner(page);
 
     await page.locator('da-list.da-list-type-browse input#select-all').click();
