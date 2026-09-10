@@ -182,6 +182,13 @@ describe('da-list render', () => {
     const bar = el.shadowRoot.querySelector('da-actionbar');
     expect(bar.getAttribute('data-visible')).to.equal('true');
   });
+
+  it('Forwards hidePublishConfs to the action bar', async () => {
+    await fixture({ fullpath: '/o/r', hidePublishConfs: ['/o/r/blog'] });
+    await rerender();
+    const bar = el.shadowRoot.querySelector('da-actionbar');
+    expect(bar.hidePublishConfs).to.deep.equal(['/o/r/blog']);
+  });
 });
 
 describe('da-list pagination observer', () => {

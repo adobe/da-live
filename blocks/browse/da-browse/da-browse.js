@@ -166,6 +166,10 @@ export default class DaBrowse extends LitElement {
         if (row.key === 'editor.path') acc.push(row.value);
         return acc;
       }, []);
+      this.hidePublishConfs = rows.reduce((acc, row) => {
+        if (row.key === 'editor.hidePublish') acc.push(row.value);
+        return acc;
+      }, []);
     }
 
     if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
@@ -236,6 +240,7 @@ export default class DaBrowse extends LitElement {
         class="da-list-type-${type}"
         fullpath="${fullpath}"
         editor="${this.editor}"
+        .hidePublishConfs=${this.hidePublishConfs}
         @onpermissions=${this.handlePermissions}
         @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"
