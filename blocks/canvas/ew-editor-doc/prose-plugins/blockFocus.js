@@ -21,6 +21,46 @@ export function getBlockFocus(state) {
   return blockFocusKey.getState(state)?.pos ?? null;
 }
 
+/** True when `pos` is exactly the start offset of a top-level node. */
+function isTopLevelStart(doc, pos) {
+  if (pos == null || pos < 0 || pos > doc.content.size) return false;
+  let found = false;
+  doc.forEach((node, offset) => { if (offset === pos) found = true; });
+  return found;
+}
+
+/** Start offset of the top-level node that contains `pos`, or null. */
+function topLevelStart(doc, pos) {
+  if (pos == null) return null;
+  const clamped = Math.max(0, Math.min(pos, doc.content.size));
+  let result = null;
+  doc.forEach((node, offset) => {
+    if (result == null && clamped >= offset && clamped < offset + node.nodeSize) {
+      result = offset;
+    }
+  });
+  return result;
+}
+
+/**
+ * Resolve the focus position after a transaction.
+ *
+ * Normally the mapped position still lands on the focused block's start and is used
+ * as-is — the focus tracks the block being edited, independent of where the selection
+ * currently is. But some transactions — notably a collaborative Yjs undo, applied as a
+ * large `y-sync` replace — remap the raw position to a garbage offset that no longer sits
+ * on any top-level node. Left uncorrected, the focus decorations then hide *every* block
+ * (including the one being edited), so the block-edit dialog appears empty and the block
+ * looks deleted even though it is still in the document. Only when the mapped position is
+ * no longer a valid top-level start do we re-resolve it to the top-level block that holds
+ * the current selection (which, during block editing, stays inside the focused block).
+ */
+export function resolveBlockFocusPos(doc, mappedPos, selectionFrom) {
+  if (isTopLevelStart(doc, mappedPos)) return mappedPos;
+  const repaired = topLevelStart(doc, selectionFrom);
+  return repaired ?? mappedPos;
+}
+
 /** True when nothing is focused or the selection still sits inside the focused block. */
 export function isSelectionInFocusedBlock(state) {
   const pos = getBlockFocus(state);
@@ -73,11 +113,12 @@ export default function blockFocus() {
     key: blockFocusKey,
     state: {
       init: () => ({ pos: null }),
-      apply(tr, prev) {
+      apply(tr, prev, _oldState, newState) {
         const meta = tr.getMeta(blockFocusKey);
         if (meta !== undefined) return meta;
         if (prev.pos == null) return prev;
-        return { pos: tr.mapping.map(prev.pos) };
+        const mapped = tr.mapping.map(prev.pos);
+        return { pos: resolveBlockFocusPos(newState.doc, mapped, newState.selection.from) };
       },
     },
     props: {
