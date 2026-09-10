@@ -1,5 +1,6 @@
 import { getNx, getNx2Api } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
+import { getCommentsBridge } from './editor-utils/comments-bridge.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -175,24 +176,26 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   mountCanvasEditors({ mountRoot, header, session, ctx });
 }
 
-async function syncToolPanelViews(toolPanel, { org, site }) {
+async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
   const key = org && site ? `${org}/${site}` : null;
-  if (key === toolPanel.dataset.extKey) return;
+  if (key === toolPanel.dataset.extKey) return false;
   toolPanel.dataset.extKey = key ?? '';
 
   if (!key) {
     toolPanel.org = undefined;
     toolPanel.site = undefined;
     toolPanel.views = [];
-    return;
+    return true;
   }
 
   const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
   const views = await getCanvasToolPanelViews({ org, site });
-  if (toolPanel.dataset.extKey !== key) return;
+  if (toolPanel.dataset.extKey !== key) return false;
   toolPanel.org = org;
   toolPanel.site = site;
+  if (panelName) toolPanel.pendingView = panelName;
   toolPanel.views = views;
+  return true;
 }
 
 function hashState() {
@@ -236,6 +239,12 @@ const SHORTCUTS = [
     altKey: true,
     channel: canvasBus.newVersionRequest,
   },
+  {
+    code: 'KeyM',
+    mod: true,
+    altKey: true,
+    channel: canvasBus.commentComposeRequest,
+  },
 ];
 document.addEventListener('keydown', (e) => {
   const modKey = isMac ? e.metaKey : e.ctrlKey;
@@ -252,6 +261,11 @@ document.addEventListener('keydown', (e) => {
 });
 
 canvasBus.newVersionRequest.subscribe(openNewVersionRow);
+
+canvasBus.commentComposeRequest.subscribe(() => {
+  getCommentsBridge().controller?.requestCompose();
+  openPanelSection('tools', 'comments');
+});
 
 export default async function decorate(block) {
   const { org, site } = hashState();
@@ -276,9 +290,9 @@ export default async function decorate(block) {
     onShow: async (aside, id, options) => {
       const toolPanel = aside?.querySelector('ew-tool-panel');
       if (!toolPanel) return;
-      await syncToolPanelViews(toolPanel, hashState());
+      const selected = await syncToolPanelViews(toolPanel, hashState(), id);
       await toolPanel.updateComplete;
-      if (id && toolPanel.views?.some((v) => v.id === id)) {
+      if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
         await toolPanel.showPanel(id);
       }
       if (options?.newVersion) {

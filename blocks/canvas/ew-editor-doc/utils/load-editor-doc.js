@@ -14,6 +14,12 @@ export function sessionErrorFromResponse(resp) {
   return { ok: false, error: `Could not load the document (${status})${reason}` };
 }
 
+export function sessionFromResponse(resp, token) {
+  const permissions = resp.permissions || ['read'];
+  const docId = resp.headers?.get?.('x-da-id') ?? null;
+  return { ok: true, token, permissions, docId };
+}
+
 // takes the ctx rather than a url, so the sign-in check runs before the store lookup needs a token
 export async function resolveEditorDocSession(ctx) {
   const ims = await initIms();
@@ -39,8 +45,7 @@ export async function resolveEditorDocSession(ctx) {
     return failure;
   }
 
-  const permissions = resp.permissions || ['read'];
-  return { ok: true, token, permissions, sourceUrl };
+  return { ...sessionFromResponse(resp, token), sourceUrl };
 }
 
 // Builds the mounted session after a create-on-not-found save. The write grant

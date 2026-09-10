@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
+import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const nx = getNx();
@@ -122,8 +123,10 @@ class EwBlockToolbar extends LitElement {
     const picker = this._picker;
     if (!picker) return;
     const current = this._currentVariant ?? '';
-    if (current === '' || (this._variantOptions || []).includes(current)) {
-      picker.value = current;
+    const match = (this._variantOptions || [])
+      .find((v) => normalizeBlockName(v) === normalizeBlockName(current));
+    if (match) {
+      picker.value = match;
       picker.labelOverride = '';
     } else {
       picker.value = '';
@@ -168,6 +171,12 @@ class EwBlockToolbar extends LitElement {
     if (pos == null) return;
     // Ask the doc editor to open the single-block editor modal (see ew-editor-doc.enterBlockEdit).
     canvasBus.blockEditRequest.emit({ pos });
+  }
+
+  _onComment() {
+    if (!this.view) return;
+    requestComment(this.view);
+    this.hide();
   }
 
   _onDeleteBlock() {
@@ -248,6 +257,14 @@ class EwBlockToolbar extends LitElement {
           title="Delete block"
           @click=${() => this._onDeleteBlock()}
         >${this._icon('delete')}</button>
+        <span class="toolbar-sep" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="toolbar-btn block-comment icon-only"
+          aria-label="Comment"
+          title="Comment"
+          @click=${() => this._onComment()}
+        >${this._icon('comment')}</button>
       </div>
     `;
   }
