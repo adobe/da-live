@@ -38,6 +38,10 @@
   flex-shrink: 0;
 }
 
+.link-menu-icon.menu-item-open-editor {
+  background-image: url('/blocks/edit/img/Smock_PageRule_18_N.svg');
+}
+
 .link-menu-icon.menu-item-open-link {
   background-image: url('/blocks/edit/img/S2_icon_OpenIn_20_N.svg');
 }

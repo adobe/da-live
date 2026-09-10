@@ -1,5 +1,5 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
-import { getLinkMenuItems } from './linkMenuItems.js';
+import { getLinkMenuItems, findLinkAtCursor } from './linkMenuItems.js';
 import './link-menu.js';
 
 const linkMenuKey = new PluginKey('linkMenu');
@@ -52,6 +52,9 @@ class LinkMenuView {
 
     const coords = this.view.coordsAtPos($anchor.pos);
     const linkText = getLinkText(state);
+    const linkMark = findLinkAtCursor(state);
+
+    this.menu.items = getLinkMenuItems(linkMark?.attrs?.href);
 
     const viewportCoords = {
       left: coords.left + window.pageXOffset,

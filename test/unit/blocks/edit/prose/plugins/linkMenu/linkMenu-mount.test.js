@@ -129,4 +129,34 @@ describe('linkMenu update() logic', () => {
     // mount path is exercised.
     expect(linkMenu.items.length).to.be.greaterThan(0);
   });
+
+  it('recomputes items to include "Open in editor" for a link resolvable in the current project', async () => {
+    const originalUrl = window.location.href;
+    window.history.pushState(null, '', '/edit#/myorg/myrepo/current-page');
+    try {
+      const { state, dispatch } = editor.view;
+      const { schema } = state;
+      const linkMark = schema.marks.link;
+      const tr = state.tr.replaceWith(
+        0,
+        state.doc.content.size,
+        schema.nodes.paragraph.create(
+          null,
+          schema.text('linked', [linkMark.create({ href: '/target-page' })]),
+        ),
+      );
+      dispatch(tr);
+      const tr2 = editor.view.state.tr.setSelection(
+        TextSelection.create(editor.view.state.doc, 2),
+      );
+      editor.view.input.lastSelectionOrigin = 'pointer';
+      dispatch(tr2);
+      await nextFrame();
+
+      const linkMenu = editor.view.dom.parentNode.querySelector('link-menu');
+      expect(linkMenu.items[0].title).to.equal('Open in editor');
+    } finally {
+      window.history.pushState(null, '', originalUrl);
+    }
+  });
 });
