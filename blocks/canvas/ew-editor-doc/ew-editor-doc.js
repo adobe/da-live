@@ -75,6 +75,9 @@ export class EwEditorDoc extends LitElement {
       port.onmessage = null;
       port.close();
     }
+    if (this._controllerCtx?.reloadTimer) {
+      clearTimeout(this._controllerCtx.reloadTimer);
+    }
     this._controllerCtx = undefined;
   }
 
@@ -227,6 +230,9 @@ export class EwEditorDoc extends LitElement {
       path: controllerPathnameFromEditorCtx(this.ctx),
       canWrite: this._canWrite === true,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
+      // Relay handlers must not force focus / move the hidden view's caret (see
+      // handleCursorMove) — it makes y-prosemirror clobber incoming remote edits.
+      isDocViewHidden: () => this._editorView === 'layout',
     };
     wireQuickEditControllerPort(this._controllerCtx);
   }
@@ -344,6 +350,9 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
+      // Drop any forced-focus override on the now-hidden doc view; natural
+      // hasFocus() is correct and stops y-prosemirror reconciling against it.
+      if (view === 'layout') delete this._proseContext?.view?.hasFocus;
       hideSelectionToolbar();
     });
     this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
@@ -391,6 +400,8 @@ export class EwEditorDoc extends LitElement {
     setBlockFocus(view, pos);
     this._blockEditName = getTableBlockName(node);
     this._blockEditMode = true;
+    // Suppress controller redecoration so it can't rebuild the iframe DOM mid-edit.
+    if (this._controllerCtx) this._controllerCtx.suppressRerender = true;
     // Un-hide the (layout-hidden) host, but collapse its box via `:host(.block-edit)`
     // so the top-layer dialog doesn't claim a flex slot and shrink the preview.
     this.hidden = false;
@@ -433,6 +444,11 @@ export class EwEditorDoc extends LitElement {
     }
     const view = this._proseContext?.view;
     if (view) clearBlockFocus(view);
+    if (this._controllerCtx) {
+      this._controllerCtx.suppressRerender = false;
+      const body = updateDocument(this._controllerCtx);
+      if (body) canvasBus.editorHtmlState.emit(body);
+    }
     canvasBus.blockEditState.emit({ open: false });
   }
 

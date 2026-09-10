@@ -12,7 +12,9 @@
 import fs from 'fs';
 import path from 'path';
 import { test as setup, expect } from '@playwright/test';
-import ENV from '../utils/env.js';
+import ENV, { TEST_ORG, TEST_SITE, RUN_FOLDER } from '../utils/env.js';
+import { getQuery } from '../utils/page.js';
+import { deleteResource, createResource, MARKER_DOC } from '../utils/cleanup.js';
 
 const AUTH_FILE = path.join(__dirname, '../.playwright/.auth/user.json');
 
@@ -104,4 +106,26 @@ setup('Set up authentication', async ({ page }) => {
   await expect(authorLink).toBeVisible();
 
   await page.context().storageState({ path: AUTH_FILE });
+
+  // Capture an admin bearer from a live request, then reset this run's folder.
+  let authHeader;
+  page.on('request', (request) => {
+    const auth = request.headers().authorization;
+    if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
+  });
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await expect.poll(() => authHeader, { timeout: 15000 }).toBeTruthy();
+
+  const folderPath = `/tests/${RUN_FOLDER}`;
+  // Wipe leftovers from any prior (possibly crashed) run of this branch.
+  const delResp = await deleteResource(page, authHeader, TEST_ORG, TEST_SITE, folderPath, { isFolder: true });
+  if (!delResp.ok() && delResp.status() !== 404) {
+    throw new Error(`Setup: failed to reset ${folderPath} (${delResp.status()})`);
+  }
+
+  const ts = Date.now().toString(36);
+  const marker = `${folderPath}/pw-run-${ts}-marker`;
+  const body = MARKER_DOC(RUN_FOLDER.replace(/^pw-/, ''), process.env.GITHUB_SHA ?? 'local', new Date().toISOString());
+  const markerResp = await createResource(page, authHeader, TEST_ORG, TEST_SITE, marker, body);
+  expect(markerResp.ok(), `Setup: failed to create run marker (${markerResp.status()})`).toBeTruthy();
 });
