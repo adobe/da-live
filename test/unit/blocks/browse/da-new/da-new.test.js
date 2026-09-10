@@ -285,20 +285,6 @@ describe('DaNew', () => {
       el._createType = 'folder';
       expect(el._createDialogTitle).to.equal('New folder');
     });
-
-    it('shows "page name" as the placeholder for the document type', () => {
-      const el = new DaNew();
-      el._createType = 'document';
-      expect(el._createNamePlaceholder).to.equal('page name');
-    });
-
-    it('derives the placeholder from the type for sheet and folder', () => {
-      const el = new DaNew();
-      el._createType = 'sheet';
-      expect(el._createNamePlaceholder).to.equal('sheet name');
-      el._createType = 'folder';
-      expect(el._createNamePlaceholder).to.equal('folder name');
-    });
   });
 
   describe('_disabled getter', () => {

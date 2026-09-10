@@ -133,13 +133,6 @@ export default class DaNew extends LitElement {
     return titles[this._createType] ?? 'New';
   }
 
-  // The 'document' type keeps its id for file-extension logic (see _handleCreate),
-  // so map only its user-facing word to 'page'; other types show their own name.
-  get _createNamePlaceholder() {
-    const words = { document: 'page' };
-    return `${words[this._createType] ?? this._createType} name`;
-  }
-
   render() {
     return html`
       <div class="da-actions-create">
@@ -167,7 +160,7 @@ export default class DaNew extends LitElement {
     </da-link-dialog>
     <da-name-dialog
       dialog-title="${this._createDialogTitle}"
-      name-placeholder="${this._createNamePlaceholder}"
+      name-placeholder="${this._createType} name"
       saveLabel="Create"
       ?open=${this._createDialogOpen}
       ?saving=${this._loading}
