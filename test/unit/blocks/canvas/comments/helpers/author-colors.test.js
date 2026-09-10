@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { buildAuthorColorMap, authorColorSet } from '../../../../../../blocks/canvas/comments/helpers/author-colors.js';
+import { buildAuthorColorMap, authorColorSet, authorKey } from '../../../../../../blocks/canvas/comments/helpers/author-colors.js';
 import { slotColorSet } from '../../../../../../blocks/canvas/editor-utils/author-color.js';
 
 const makeStore = (comments) => ({ forEach: (cb) => comments.forEach((c) => cb(c)) });
@@ -48,5 +48,27 @@ describe('author-colors', () => {
     const store = makeStore([{ author: { email: 'x@y.com' }, createdAt: 1 }]);
     const map = buildAuthorColorMap(store);
     expect(authorColorSet(store, { email: 'x@y.com' }, map)).to.deep.equal(slotColorSet(0));
+  });
+});
+
+describe('authorKey', () => {
+  it('is stable across IMS org profiles, which vary userId but not email', () => {
+    expect(authorKey({ id: 'user-org-a', email: 'me@adobe.com' }))
+      .to.equal(authorKey({ id: 'user-org-b', email: 'me@adobe.com' }));
+  });
+
+  it('separates different emails that share an id', () => {
+    expect(authorKey({ id: 'x', email: 'a@adobe.com' }))
+      .to.not.equal(authorKey({ id: 'x', email: 'b@adobe.com' }));
+  });
+
+  it('falls back to id so email-less authors never collide on empty string', () => {
+    expect(authorKey({ id: 'a' })).to.equal('a');
+    expect(authorKey({ id: 'a' })).to.not.equal(authorKey({ id: 'b' }));
+  });
+
+  it('is empty for a missing or identity-less author', () => {
+    expect(authorKey(null)).to.equal('');
+    expect(authorKey({})).to.equal('');
   });
 });

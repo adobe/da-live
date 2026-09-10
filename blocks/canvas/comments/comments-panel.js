@@ -4,6 +4,7 @@ import getSheet from '../../shared/sheet.js';
 import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { buildDeepLinkUrl, parseDeepLink } from './helpers/deep-link.js';
+import { authorKey } from './helpers/author-colors.js';
 import {
   DRAFT_MODES,
   makeNewDraft,
@@ -350,7 +351,8 @@ export class CommentsPanel extends LitElement {
 
   canEditComment(comment) {
     if (!comment || !this.currentUser) return false;
-    return this.currentUser.id === comment.author?.id;
+    const me = authorKey(this.currentUser);
+    return Boolean(me) && me === authorKey(comment.author);
   }
 
   copyThreadLink(threadId = this.controller?.selectedThreadId) {
