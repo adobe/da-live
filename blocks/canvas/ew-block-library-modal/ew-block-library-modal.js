@@ -2,10 +2,10 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
-  loadBlockLibrary,
   getItemPreviewUrl,
   getPreviewStatus,
 } from '../ew-panel-extensions/helpers.js';
+import { loadBlockLibrary } from '../../shared/block-library.js';
 
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);

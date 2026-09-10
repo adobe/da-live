@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
-  fetchBlocks,
   fetchItems,
   insertBlock,
   insertText,
@@ -10,6 +9,7 @@ import {
   getPreviewStatus,
   getItemPreviewUrl,
 } from './helpers.js';
+import { fetchBlocks } from '../../shared/block-library.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
