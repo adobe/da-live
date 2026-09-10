@@ -11,6 +11,7 @@ export default class DaContent extends LitElement {
     details: { attribute: false },
     permissions: { attribute: false },
     proseEl: { attribute: false },
+    contentReady: { attribute: false },
     wsProvider: { attribute: false },
     _editorLoaded: { state: true },
     _showPane: { state: true },
@@ -79,6 +80,10 @@ export default class DaContent extends LitElement {
 
     return html`
       <div class="editor-wrapper">
+        ${this.contentReady ? nothing : html`
+          <div class="da-editor-loading">
+            <span class="da-loading-spinner" role="status" aria-label="Loading"></span>
+          </div>`}
         <da-editor
           path="${this.details.sourceUrl}"
           .versionId=${this._versionId}
