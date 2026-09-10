@@ -42,6 +42,18 @@ describe('da-link-dialog', () => {
     expect(el.shadowRoot.querySelector('input[name="link-text"]')).to.exist;
   });
 
+  it('does not render the Title field by default', async () => {
+    await mount({ open: true });
+    expect(el.shadowRoot.querySelector('input[name="link-title"]')).to.be.null;
+  });
+
+  it('renders and pre-fills the Title field when show-title is set', async () => {
+    await mount({ open: true, showTitle: true, linkTitle: 'My title' });
+    const titleInput = el.shadowRoot.querySelector('input[name="link-title"]');
+    expect(titleInput).to.exist;
+    expect(titleInput.value).to.equal('My title');
+  });
+
   it('pre-fills href and text inputs from properties', async () => {
     await mount({ open: true, href: 'https://example.com', text: 'Example' });
     const hrefInput = el.shadowRoot.querySelector('input[name="link-href"]');
@@ -61,6 +73,18 @@ describe('da-link-dialog', () => {
     await nextFrame();
 
     expect(detail).to.deep.equal({ href: 'https://test.com', text: 'Test' });
+  });
+
+  it('includes trimmed title in da-link-submit when show-title is set', async () => {
+    await mount({ open: true, showTitle: true });
+    let detail = null;
+    el.addEventListener('da-link-submit', (e) => { detail = e.detail; });
+    el.shadowRoot.querySelector('input[name="link-href"]').value = 'https://test.com';
+    el.shadowRoot.querySelector('input[name="link-text"]').value = 'Test';
+    el.shadowRoot.querySelector('input[name="link-title"]').value = '  Tooltip  ';
+    el.shadowRoot.querySelector('.da-btn-primary').click();
+    await nextFrame();
+    expect(detail).to.deep.equal({ href: 'https://test.com', text: 'Test', title: 'Tooltip' });
   });
 
   it('emits da-link-submit with a relative path', async () => {
