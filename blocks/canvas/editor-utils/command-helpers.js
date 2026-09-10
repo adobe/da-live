@@ -18,6 +18,8 @@ import {
   splitCell,
   isInTable,
 } from 'da-y-wrapper';
+import { getCommentsBridge, openCommentsPanel } from './comments-bridge.js';
+import { getSelectionData } from '../comments/helpers/anchor.js';
 
 /* ---- Apply factories ---- */
 
@@ -272,6 +274,17 @@ export function removeLink(view) {
   const { tr } = state;
   tr.removeMark(found.from, found.to, linkType);
   view.dispatch(tr);
+}
+
+/* ---- Comments ---- */
+
+export function requestComment(_) {
+  openCommentsPanel();
+  getCommentsBridge().controller?.requestCompose();
+}
+
+export function canComment(state) {
+  return getSelectionData(state) != null;
 }
 
 /* ---- Block-type picker value ---- */
