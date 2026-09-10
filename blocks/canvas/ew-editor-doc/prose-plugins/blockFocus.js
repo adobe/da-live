@@ -43,17 +43,10 @@ function topLevelStart(doc, pos) {
 }
 
 /**
- * Resolve the focus position after a transaction.
- *
- * Normally the mapped position still lands on the focused block's start and is used
- * as-is — the focus tracks the block being edited, independent of where the selection
- * currently is. But some transactions — notably a collaborative Yjs undo, applied as a
- * large `y-sync` replace — remap the raw position to a garbage offset that no longer sits
- * on any top-level node. Left uncorrected, the focus decorations then hide *every* block
- * (including the one being edited), so the block-edit dialog appears empty and the block
- * looks deleted even though it is still in the document. Only when the mapped position is
- * no longer a valid top-level start do we re-resolve it to the top-level block that holds
- * the current selection (which, during block editing, stays inside the focused block).
+ * Focus position after a transaction. Keep the mapped position while it still lands on a
+ * top-level block start; if a transaction (e.g. a collab Yjs undo) remaps it off any
+ * block — which would hide the block being edited — fall back to the block holding the
+ * selection.
  */
 export function resolveBlockFocusPos(doc, mappedPos, selectionFrom) {
   if (isTopLevelStart(doc, mappedPos)) return mappedPos;
