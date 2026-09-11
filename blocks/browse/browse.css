@@ -12,35 +12,11 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   }
 }
 
-.light-scheme, .dark-scheme {
-  color-scheme: light;
-
-  .browse:has(da-sites) {
-    [data-scheme="light"] {
-      display: block;
-    }
-  }
-}
-
-/* .dark-scheme {  
-  .browse:has(da-sites) {
-    [data-scheme="dark"] {
-      display: block;
-    }
-  }
-} */
-
-picture {
-  display: none;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-}
-
-img {
-  display: block;
-  width: 100%;
-  height: auto;
-  mask-image: linear-gradient(to bottom, rgb(0 0 0) 50%, transparent 100%);
+.browse:has(da-sites) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding: 12px;
+  background: var(--s2-gray-75);
 }
