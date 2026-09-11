@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
@@ -17,13 +17,7 @@ export default class DaSites extends LitElement {
   static properties = {
     _recents: { state: true },
     _status: { state: true },
-    _urlError: { state: true },
   };
-
-  constructor() {
-    super();
-    this._urlError = false;
-  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -65,35 +59,6 @@ export default class DaSites extends LitElement {
     if (id === 'hide') this.handleRemove(site);
   }
 
-  parseSubdomain(siteUrl) {
-    try {
-      const url = new URL(siteUrl);
-      if (!url.hostname.match(/hlx\.live$|aem\.live$|hlx\.page$|aem\.page$/)) {
-        return null;
-      }
-      const helixString = url.hostname.split('.')[0];
-      if (!helixString) return null;
-      const [, site, org] = helixString.split('--');
-      if (!site || !org) return null;
-      return `#/${sanitizeName(org, false)}/${sanitizeName(site, false)}`;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  async handleGo(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const { siteUrl } = Object.fromEntries(formData);
-    if (!siteUrl) return;
-    const result = this.parseSubdomain(siteUrl);
-    if (result) {
-      window.location = result;
-    } else {
-      this._urlError = true;
-    }
-  }
-
   handleShare(site) {
     const blob = new Blob([`${window.location.origin}/#/${site}`], { type: 'text/plain' });
     const data = [new ClipboardItem({ [blob.type]: blob })];
@@ -111,29 +76,6 @@ export default class DaSites extends LitElement {
           ${this._status.description ? html`<p class="da-list-status-description">${this._status.description}</p>` : nothing}
         </div>
       </div>`;
-  }
-
-  renderGo() {
-    return html`
-      <form @submit=${this.handleGo}>
-        <input 
-            @keydown="${() => { this._urlError = false; }}"
-            @change="${() => { this._urlError = false; }}" 
-            type="text" name="siteUrl" 
-            aria-label="Site URL"
-            placeholder="https://main--site--org.aem.page" 
-            class="${this._urlError ? 'error' : nothing}" 
-        />
-        <div class="da-form-btn-offset">
-          <button aria-label="Go to site">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">
-              <path fill="currentColor"
-                d="M23.09,13.67c.14-.35.14-.74,0-1.08-.07-.17-.18-.33-.31-.46l-6.62-6.62c-.55-.55-1.45-.55-2,0-.55.55-.55,1.45,0,2l4.21,4.21H4.61c-.78,0-1.41.63-1.41,1.42s.63,1.42,1.41,1.42h13.76l-4.21,4.21c-.55.55-.55,1.45,0,2,.28.28.64.41,1,.41s.72-.14,1-.41l6.62-6.62c.13-.13.23-.29.31-.46Z" />
-            </svg>
-          </button>
-        </div>
-      </form>
-    `;
   }
 
   renderSite(site) {
@@ -168,57 +110,60 @@ export default class DaSites extends LitElement {
     `;
   }
 
-  renderSites(sites) {
+  renderHeader() {
     return html`
-      <ul class="da-sites-list">${sites.map((site) => this.renderSite(site))}</ul>
+      <div class="da-sites-header">
+        <div class="da-sites-title">
+          <span class="da-sites-title-icon" aria-hidden="true"></span>
+          <h2>Your sites</h2>
+        </div>
+        <div class="da-sites-actions">
+          <button type="button" class="da-sites-action da-sites-action-icon is-selected" aria-label="Grid view">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-viewgrid-20-n.svg#icon"></use></svg>
+          </button>
+          <button type="button" class="da-sites-action da-sites-action-icon" aria-label="List view">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-viewlist-20-n.svg#icon"></use></svg>
+          </button>
+          <button type="button" class="da-sites-action" aria-label="Show active projects">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></use></svg>
+            <span>Show <span class="da-sites-action-value">Active projects</span></span>
+          </button>
+          <button type="button" class="da-sites-action" aria-label="Sorted by last modified">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-sort-20-n.svg#icon"></use></svg>
+            <span>Sorted by <span class="da-sites-action-value">Last modified</span></span>
+          </button>
+          <a class="da-sites-action da-sites-action-accent" href="/start">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></use></svg>
+            <span>New Project</span>
+          </a>
+          <button type="button" class="da-sites-action da-sites-action-icon" aria-label="More options">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-more-20-n.svg#icon"></use></svg>
+          </button>
+        </div>
+      </div>
     `;
   }
 
-  renderEmpty() {
+  renderNewTile() {
     return html`
-      <div class="da-no-site-well">
-        <img src="/blocks/browse/da-sites/img/site-icon-color.svg" width="78" height="60" alt=""/>
-        <div class="da-no-site-text">
-          <h3>You don’t have any recent sites.</h3>
-          <p>Enter the URL for your site to get started.</p>
-        </div>
-        ${this.renderGo()}
-      </div>
+      <li class="da-site-new">
+        <a class="da-site-new-card" href="/start">
+          <span class="da-site-new-icon">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></use></svg>
+          </span>
+          <span class="da-site-new-label">New project</span>
+        </a>
+      </li>
     `;
   }
 
   render() {
     return html`
-      <div class="da-site-container">
-        <div class="da-site-header">
-          <h2>Recents</h2>
-        </div>
-        ${this._recents?.length > 0 ? this.renderSites(this._recents) : this.renderEmpty()}
-        <div class="da-site-header">
-          <h2>Sites</h2>
-          ${this._recents?.length > 0 ? this.renderGo() : nothing}
-        </div>
-        <div class="da-site-sandbox-new">
-          <a class="da-double-card da-double-card-sandbox" href="#/aem-sandbox/block-collection">
-            <picture>
-              <img class="da-double-card-bg" src="/blocks/browse/da-sites/img/bg-sandbox-card.avif" width="800" height="534" alt="" />
-            </picture>
-            <div class="da-double-card-fg">
-              <img src="/blocks/browse/da-sites/img/sandbox-icon-gray.svg" width="80" height="60" alt=""/>
-              <h3>Sandbox</h3>
-            </div>
-          </a>
-          <a class="da-double-card da-double-card-add-new" href="/start">
-            <picture>
-              <img class="da-double-card-bg" src="/blocks/browse/da-sites/img/bg-new-card.avif" width="800" height="546" alt="" />
-            </picture>
-            <div class="da-double-card-fg">
-              <img src="/blocks/browse/da-sites/img/add-new-icon-gray.svg" width="80" height="60" alt=""/>
-              <h3>Add new</h3>
-            </div>
-          </a>
-        </div>
-      </div>
+      ${this.renderHeader()}
+      <ul class="da-sites-list">
+        ${this._recents?.length ? this._recents.map((site) => this.renderSite(site)) : nothing}
+        ${this.renderNewTile()}
+      </ul>
       ${this._status ? this.renderStatus() : nothing}
     `;
   }

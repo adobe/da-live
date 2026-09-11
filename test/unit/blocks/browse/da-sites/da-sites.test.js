@@ -21,35 +21,6 @@ describe('DaSites', () => {
     localStorage.removeItem('da-orgs');
   });
 
-  describe('parseSubdomain', () => {
-    it('Extracts org and repo from a hlx.live URL', () => {
-      const el = new DaSites();
-      const result = el.parseSubdomain('https://main--repo--org.hlx.live/');
-      expect(result).to.equal('#/org/repo');
-    });
-
-    it('Extracts org and repo from an aem.page URL', () => {
-      const el = new DaSites();
-      const result = el.parseSubdomain('https://main--my-site--my-org.aem.page/');
-      expect(result).to.equal('#/my-org/my-site');
-    });
-
-    it('Returns null for an unrelated hostname', () => {
-      const el = new DaSites();
-      expect(el.parseSubdomain('https://example.com/')).to.equal(null);
-    });
-
-    it('Returns null for a malformed helix-style hostname missing org', () => {
-      const el = new DaSites();
-      expect(el.parseSubdomain('https://main--repo.hlx.live/')).to.equal(null);
-    });
-
-    it('Returns null when the URL is invalid', () => {
-      const el = new DaSites();
-      expect(el.parseSubdomain('not a url')).to.equal(null);
-    });
-  });
-
   describe('getRecents', () => {
     it('Maps localStorage da-sites to _recents without an image field', () => {
       localStorage.setItem('da-sites', JSON.stringify(['org/site1', 'org/site2']));
@@ -120,50 +91,6 @@ describe('DaSites', () => {
       el._status = { text: 'x', description: '', type: 'info' };
       el.setStatus();
       expect(el._status).to.equal(null);
-    });
-  });
-
-  describe('handleGo', () => {
-    it('Sets _urlError when the URL cannot be parsed', async () => {
-      const el = new DaSites();
-      const target = { siteUrl: 'invalid' };
-      const e = {
-        preventDefault: () => {},
-        target: {
-          // FormData-compatible iterable
-          [Symbol.iterator]: function* iter() { yield ['siteUrl', target.siteUrl]; },
-        },
-      };
-      // Stub FormData to read our pseudo-target
-      const RealFormData = window.FormData;
-      window.FormData = class {
-        constructor() { this.entries = [['siteUrl', target.siteUrl]]; }
-
-        * [Symbol.iterator]() { yield* this.entries; }
-      };
-      try {
-        await el.handleGo(e);
-      } finally {
-        window.FormData = RealFormData;
-      }
-      expect(el._urlError).to.be.true;
-    });
-
-    it('Does nothing when siteUrl is empty (early return)', async () => {
-      const el = new DaSites();
-      // Constructor sets _urlError = false; an early return should leave it false.
-      const RealFormData = window.FormData;
-      window.FormData = class {
-        constructor() { this.entries = [['siteUrl', '']]; }
-
-        * [Symbol.iterator]() { yield* this.entries; }
-      };
-      try {
-        await el.handleGo({ preventDefault: () => {}, target: {} });
-      } finally {
-        window.FormData = RealFormData;
-      }
-      expect(el._urlError).to.equal(false);
     });
   });
 

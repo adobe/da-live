@@ -35,38 +35,31 @@ describe('da-sites render', () => {
     localStorage.removeItem('da-orgs');
   });
 
-  it('Renders the empty well when no recents are present', async () => {
-    await fixture([]);
-    expect(el.shadowRoot.querySelector('.da-no-site-well')).to.exist;
-    expect(el.shadowRoot.querySelector('form')).to.exist;
-  });
-
   it('Renders site cards when there are recents', async () => {
     await fixture(['org/site1', 'org/site2']);
     const cards = el.shadowRoot.querySelectorAll('.da-site-outer');
     expect(cards.length).to.equal(2);
   });
 
-  it('Renders the sandbox + add-new double cards', async () => {
-    await fixture([]);
-    const sandbox = el.shadowRoot.querySelector('.da-double-card-sandbox');
-    const addNew = el.shadowRoot.querySelector('.da-double-card-add-new');
-    expect(sandbox).to.exist;
-    expect(addNew).to.exist;
-  });
-
-  it('Renders the form alongside the recents list', async () => {
+  it('Renders the Your sites header with a New Project link', async () => {
     await fixture(['org/site1']);
-    const forms = el.shadowRoot.querySelectorAll('form');
-    expect(forms.length).to.equal(1);
+    expect(el.shadowRoot.querySelector('.da-sites-header h2').textContent).to.contain('Your sites');
+    const newProject = el.shadowRoot.querySelector('.da-sites-actions a[href="/start"]');
+    expect(newProject).to.exist;
+    expect(newProject.textContent).to.contain('New Project');
   });
 
-  it('Marks the site URL input with the error class when _urlError is true', async () => {
+  it('Always renders the New project tile, even with no recents', async () => {
     await fixture([]);
-    el._urlError = true;
-    el.requestUpdate();
-    await nextFrame();
-    expect(el.shadowRoot.querySelector('input.error')).to.exist;
+    const tile = el.shadowRoot.querySelector('.da-site-new a[href="/start"]');
+    expect(tile).to.exist;
+    expect(el.shadowRoot.querySelectorAll('.da-site-outer').length).to.equal(0);
+  });
+
+  it('Renders recent cards before the New project tile', async () => {
+    await fixture(['org/site1', 'org/site2']);
+    expect(el.shadowRoot.querySelectorAll('.da-site-outer').length).to.equal(2);
+    expect(el.shadowRoot.querySelector('.da-site-new')).to.exist;
   });
 
   it('Renders status toast when _status is set', async () => {
