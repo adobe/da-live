@@ -717,4 +717,115 @@ describe('DaTitle', () => {
       element.remove();
     });
   });
+
+  describe('enforcePreflight', () => {
+    it('sets _enforcePreflight when editor.enforcePreflight=true', async () => {
+      const configResp = { data: [{ key: 'editor.enforcePreflight', value: 'true' }] };
+      const origFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.includes('/config/pforg')) return new Response(JSON.stringify(configResp), { status: 200 });
+        return origFetch(url, opts);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'pforg', site: 'pfsite', fullpath: '/pforg/pfsite/test/page' }) });
+      el._actions = { available: ['preview', 'publish'] };
+      await el.filterActions();
+      expect(el._enforcePreflight).to.equal(true);
+      window.fetch = origFetch;
+    });
+
+    it('leaves _enforcePreflight false when the flag is absent', async () => {
+      el = await fixture({ details: createDetails({ org: 'pfoff', site: 'pfoff', fullpath: '/pfoff/pfoff/test/page' }) });
+      el._actions = { available: ['preview', 'publish'] };
+      await el.filterActions();
+      expect(el._enforcePreflight).to.not.equal(true);
+    });
+
+    it('passively tracks the verdict for the current path', async () => {
+      el = await fixture();
+      const { fullpath } = el.details;
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { path: fullpath, status: 'success' } }));
+      expect(el._preflightPassed).to.equal(true);
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { path: fullpath, status: 'fail' } }));
+      expect(el._preflightPassed).to.equal(false);
+    });
+
+    it('ignores a status for a different path', async () => {
+      el = await fixture();
+      el._preflightPassed = false;
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { path: '/other/doc', status: 'success' } }));
+      expect(el._preflightPassed).to.equal(false);
+    });
+
+    it('re-locks when the document is edited (collabStatus unsaved)', async () => {
+      el = await fixture();
+      el._preflightPassed = true;
+      el.collabStatus = 'unsaved';
+      await nextFrame();
+      expect(el._preflightPassed).to.equal(false);
+    });
+
+    it('resets _preflightPassed for a new document', async () => {
+      el = await fixture();
+      el._preflightPassed = true;
+      el.details = createDetails({ fullpath: '/testorg/testsite/other/page' });
+      await nextFrame();
+      await nextFrame();
+      expect(el._preflightPassed).to.equal(false);
+    });
+
+    it('requestPreflight dispatches nx-preflight-run and resolves with the matching status', async () => {
+      el = await fixture();
+      let runDetail;
+      document.addEventListener('nx-preflight-run', (e) => { runDetail = e.detail; }, { once: true });
+      const pending = el.requestPreflight();
+      await nextFrame();
+      expect(runDetail.paths).to.deep.equal([el.details.fullpath]);
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { path: runDetail.paths[0], status: 'success', requestId: runDetail.requestId } }));
+      expect(await pending).to.equal('success');
+    });
+
+    it('requestPreflight ignores a status with a mismatched requestId', async () => {
+      el = await fixture();
+      let runDetail;
+      document.addEventListener('nx-preflight-run', (e) => { runDetail = e.detail; }, { once: true });
+      const pending = el.requestPreflight();
+      await nextFrame();
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { path: runDetail.paths[0], status: 'success', requestId: 'someone-else' } }));
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { path: runDetail.paths[0], status: 'fail', requestId: runDetail.requestId } }));
+      expect(await pending).to.equal('fail');
+    });
+
+    it('renders a warn badge next to Publish when enforcing and not passed', async () => {
+      el = await fixture();
+      el._enforcePreflight = true;
+      el._preflightPassed = false;
+      el._actions = { available: ['preview', 'publish'] };
+      el.requestUpdate();
+      await nextFrame();
+      const badge = el.shadowRoot.querySelector('pf-label.da-title-preflight-badge');
+      expect(badge).to.exist;
+      expect(badge.badge).to.equal('warn');
+    });
+
+    it('shows a success badge once Preflight has passed', async () => {
+      el = await fixture();
+      el._enforcePreflight = true;
+      el._preflightPassed = true;
+      el._actions = { available: ['preview', 'publish'] };
+      el.requestUpdate();
+      await nextFrame();
+      const badge = el.shadowRoot.querySelector('pf-label.da-title-preflight-badge');
+      expect(badge.badge).to.equal('success');
+    });
+
+    it('does not render the badge when not enforcing', async () => {
+      el = await fixture();
+      el._enforcePreflight = false;
+      el._actions = { available: ['preview', 'publish'] };
+      el.requestUpdate();
+      await nextFrame();
+      expect(el.shadowRoot.querySelector('pf-label.da-title-preflight-badge')).to.equal(null);
+    });
+  });
 });

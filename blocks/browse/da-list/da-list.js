@@ -1,6 +1,6 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { isFavorite, toggleFavorite } from '../shared/favorites.js';
-import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import {
   aemAction,
   getExistingSchedule,
@@ -15,9 +15,11 @@ import '../da-list-item/da-list-item.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const STYLE = await loadStyle(import.meta.url);
+const { PREFLIGHT_EVENT, newPreflightRequestId } = await import(`${getNx2()}/utils/preflight-events.js`);
 
 const MAX_DELETE_COUNT = 1000;
 const DELETE_CONFIRM_THRESHOLD = 10;
+const PREFLIGHT_TIMEOUT = 60000;
 
 export default class DaList extends LitElement {
   static properties = {
@@ -640,16 +642,81 @@ export default class DaList extends LitElement {
     await this.runAemQueue('preview');
   }
 
+  async isEnforcePreflight() {
+    if (!this.fullpath) return false;
+    const [org, site] = sanitizePathParts(this.fullpath);
+    if (!org || !site) return false;
+    try {
+      const configs = await Promise.all(fetchDaConfigs({ org, site }));
+      const rows = configs.filter(Boolean).flatMap((config) => getFirstSheet(config) || []);
+      return rows.some((row) => row.key === 'editor.enforcePreflight'
+        && `${row.value}`.toLowerCase() === 'true');
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Run Preflight headlessly over a set of items via the shared `nx-preflight-run` event with all
+   * paths in the array, collecting a `nx-preflight-status` per path. Resolves
+   * `{ passing, failed, responded }`. `responded` is false when no Preflight surface answered at
+   * all (rework not shipped yet) — the caller then falls back to unguarded publish.
+   */
+  runBulkPreflight(items) {
+    const requestId = newPreflightRequestId();
+    const paths = items.map((item) => item.path);
+    const itemByPath = new Map(items.map((item) => [item.path, item]));
+    return new Promise((resolve) => {
+      const statusByPath = new Map();
+      let timer;
+      let onStatus;
+      const finish = () => {
+        document.removeEventListener(PREFLIGHT_EVENT.STATUS, onStatus);
+        clearTimeout(timer);
+        const passing = [];
+        const failed = [];
+        items.forEach((item) => {
+          const status = statusByPath.get(item.path);
+          if (status === 'success') passing.push(item);
+          else if (status === 'fail') failed.push({ ...item, message: 'Preflight failed' });
+          else failed.push({ ...item, message: 'Preflight did not complete' });
+        });
+        resolve({ passing, failed, responded: statusByPath.size > 0 });
+      };
+      onStatus = (e) => {
+        const { path, status, requestId: rid } = e.detail || {};
+        if (rid !== requestId || !itemByPath.has(path)) return;
+        statusByPath.set(path, status);
+        if (statusByPath.size === paths.length) finish();
+      };
+      timer = setTimeout(finish, PREFLIGHT_TIMEOUT);
+      document.addEventListener(PREFLIGHT_EVENT.STATUS, onStatus);
+      const detail = { paths, requestId };
+      document.dispatchEvent(new CustomEvent(PREFLIGHT_EVENT.RUN, { detail }));
+    });
+  }
+
   async runAemQueue(action, { skipSchedule = false } = {}) {
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
-    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+    let items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
     const verb = action === 'publish' ? 'Publish' : 'Preview';
     const urlKey = action === 'publish' ? 'live' : 'preview';
     const aemOpts = skipSchedule ? { skipSchedule: true } : {};
 
     this._aemActionState = action;
     this._itemErrors = [];
+
+    let preflightFailures = [];
+    if (action === 'publish' && items.length && await this.isEnforcePreflight()) {
+      const { passing, failed, responded } = await this.runBulkPreflight(items);
+      if (responded) {
+        preflightFailures = failed;
+        items = passing;
+      }
+    }
+
     if (!items.length) {
+      if (preflightFailures.length) this._itemErrors = preflightFailures;
       this._aemActionState = null;
       return;
     }
@@ -685,6 +752,11 @@ export default class DaList extends LitElement {
 
     const queue = new Queue(callback, 5, null, 250);
     await Promise.all(items.map((item) => queue.push(item)));
+
+    // The success branch clears _itemErrors; re-surface Preflight failures so they're reported.
+    if (preflightFailures.length) {
+      this._itemErrors = [...this._itemErrors, ...preflightFailures];
+    }
   }
 
   dragenter(e) {

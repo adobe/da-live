@@ -343,4 +343,75 @@ describe('Preflight component', () => {
       expect(cat.open).to.be.false;
     });
   });
+
+  describe('nx-preflight-status emit bridge', () => {
+    const settledCats = (results) => [
+      { title: 'Content', checks: [{ title: 'H1', results, done: true }] },
+    ];
+
+    it('emits success with path + requestId when no error badges', async () => {
+      const el = document.createElement('da-preflight');
+      el.details = { fullpath: '/org/site/page' };
+      el.requestId = 'req-1';
+      el._categories = settledCats([{ badge: 'info' }, { badge: 'success' }]);
+
+      const event = await new Promise((resolve) => {
+        document.addEventListener('nx-preflight-status', resolve, { once: true });
+        el.maybeEmitStatus();
+      });
+      expect(event.detail.status).to.equal('success');
+      expect(event.detail.path).to.equal('/org/site/page');
+      expect(event.detail.requestId).to.equal('req-1');
+    });
+
+    it('emits fail when any result carries an error badge', async () => {
+      const el = document.createElement('da-preflight');
+      el.details = { fullpath: '/org/site/page' };
+      el._categories = settledCats([{ badge: 'info' }, { badge: 'error' }]);
+
+      const event = await new Promise((resolve) => {
+        document.addEventListener('nx-preflight-status', resolve, { once: true });
+        el.maybeEmitStatus();
+      });
+      expect(event.detail.status).to.equal('fail');
+    });
+
+    it('does not emit until every check is done', () => {
+      const el = document.createElement('da-preflight');
+      el.details = { fullpath: '/org/site/page' };
+      el._categories = [
+        { title: 'Content', checks: [{ title: 'H1', results: [], done: false }] },
+      ];
+      let fired = false;
+      const onStatus = () => { fired = true; };
+      document.addEventListener('nx-preflight-status', onStatus);
+      el.maybeEmitStatus();
+      document.removeEventListener('nx-preflight-status', onStatus);
+      expect(fired).to.be.false;
+    });
+
+    it('emits only once per run', () => {
+      const el = document.createElement('da-preflight');
+      el.details = { fullpath: '/org/site/page' };
+      el._categories = settledCats([{ badge: 'info' }]);
+      let count = 0;
+      const onStatus = () => { count += 1; };
+      document.addEventListener('nx-preflight-status', onStatus);
+      el.maybeEmitStatus();
+      el.maybeEmitStatus();
+      document.removeEventListener('nx-preflight-status', onStatus);
+      expect(count).to.equal(1);
+    });
+
+    it('treats a pf-link still on the working reason as unsettled', () => {
+      const el = document.createElement('da-preflight');
+      const link = document.createElement('div');
+      Object.defineProperty(link, 'reason', { value: REASONS['link.working'].reason });
+      expect(el.constructor.isResultSettled(link)).to.be.false;
+
+      const settled = document.createElement('div');
+      Object.defineProperty(settled, 'reason', { value: REASONS['link.success'].reason });
+      expect(el.constructor.isResultSettled(settled)).to.be.true;
+    });
+  });
 });

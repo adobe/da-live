@@ -887,6 +887,128 @@ describe('DaList helpers', () => {
     });
   });
 
+  describe('enforcePreflight bulk gate (Gate #3)', () => {
+    let savedFetch;
+    let api;
+    let origCreate;
+
+    before(async () => {
+      api = await getNx2Api();
+      origCreate = api.versions.create;
+    });
+
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      window.fetch = (url) => {
+        if (url.includes('admin.hlx.page/preview')) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ preview: { url: 'https://example.com/preview/page' } }),
+            { status: 200 },
+          ));
+        }
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+    });
+
+    afterEach(() => {
+      window.fetch = savedFetch;
+      api.versions.create = origCreate;
+    });
+
+    const flush = () => new Promise((r) => { setTimeout(r, 0); });
+
+    // Answer the next nx-preflight-run with a status per path from a { path: status } map.
+    function respondOnce(statusByPath) {
+      document.addEventListener('nx-preflight-run', (e) => {
+        const { paths, requestId } = e.detail;
+        paths.forEach((path) => {
+          const status = statusByPath[path] || 'fail';
+          document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { path, status, requestId } }));
+        });
+      }, { once: true });
+    }
+
+    it('runBulkPreflight partitions passing and failing pages', async () => {
+      const el = makeList();
+      const items = [
+        { name: 'a', ext: 'html', path: '/org/site/a.html' },
+        { name: 'b', ext: 'html', path: '/org/site/b.html' },
+      ];
+      respondOnce({ '/org/site/a.html': 'success', '/org/site/b.html': 'fail' });
+      const { passing, failed, responded } = await el.runBulkPreflight(items);
+      expect(responded).to.equal(true);
+      expect(passing.map((i) => i.path)).to.deep.equal(['/org/site/a.html']);
+      expect(failed.map((i) => i.path)).to.deep.equal(['/org/site/b.html']);
+    });
+
+    it('isEnforcePreflight reads the config flag', async () => {
+      const el = makeList();
+      el.fullpath = '/pfbulk/pfbulk';
+      const orig = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.includes('/config/pfbulk')) {
+          return new Response(JSON.stringify({ data: [{ key: 'editor.enforcePreflight', value: 'true' }] }), { status: 200 });
+        }
+        return orig(url, opts);
+      };
+      const result = await el.isEnforcePreflight();
+      window.fetch = orig;
+      expect(result).to.equal(true);
+    });
+
+    it('isEnforcePreflight is false without a fullpath', async () => {
+      const el = makeList();
+      expect(await el.isEnforcePreflight()).to.equal(false);
+    });
+
+    it('publishes only passing pages and reports the failures', async () => {
+      const versioned = [];
+      api.versions.create = async (path) => { versioned.push(path); };
+      const el = makeList();
+      el.fullpath = '/org/site';
+      el.isEnforcePreflight = async () => true;
+      el._selectedItems = [
+        { name: 'a', ext: 'html', path: '/org/site/a.html' },
+        { name: 'b', ext: 'html', path: '/org/site/b.html' },
+      ];
+      el._itemErrors = [];
+      respondOnce({ '/org/site/a.html': 'success', '/org/site/b.html': 'fail' });
+      await el.runAemQueue('publish', { skipSchedule: true });
+      await flush();
+      expect(versioned).to.deep.equal(['/org/site/a.html']);
+      expect(el._itemErrors.map((i) => i.path)).to.include('/org/site/b.html');
+    });
+
+    it('publishes nothing when every page fails Preflight', async () => {
+      const versioned = [];
+      api.versions.create = async (path) => { versioned.push(path); };
+      const el = makeList();
+      el.fullpath = '/org/site';
+      el.isEnforcePreflight = async () => true;
+      el._selectedItems = [{ name: 'a', ext: 'html', path: '/org/site/a.html' }];
+      el._itemErrors = [];
+      respondOnce({ '/org/site/a.html': 'fail' });
+      await el.runAemQueue('publish', { skipSchedule: true });
+      await flush();
+      expect(versioned).to.deep.equal([]);
+      expect(el._itemErrors.map((i) => i.path)).to.include('/org/site/a.html');
+    });
+
+    it('falls back to unguarded publish when no Preflight surface answers', async () => {
+      const versioned = [];
+      api.versions.create = async (path) => { versioned.push(path); };
+      const el = makeList();
+      el.fullpath = '/org/site';
+      el.isEnforcePreflight = async () => true;
+      el.runBulkPreflight = async () => ({ passing: [], failed: [], responded: false });
+      el._selectedItems = [{ name: 'a', ext: 'html', path: '/org/site/a.html' }];
+      el._itemErrors = [];
+      await el.runAemQueue('publish', { skipSchedule: true });
+      await flush();
+      expect(versioned).to.deep.equal(['/org/site/a.html']);
+    });
+  });
+
   describe('drop flow', () => {
     let panel;
     function attachShadow(el) {

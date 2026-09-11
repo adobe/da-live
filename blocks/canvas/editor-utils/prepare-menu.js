@@ -1,9 +1,10 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
+const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -42,6 +43,12 @@ export default class PrepareMenu extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    document.addEventListener(PREFLIGHT_EVENT.RUN, this.handlePreflightRun);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener(PREFLIGHT_EVENT.RUN, this.handlePreflightRun);
   }
 
   update(props) {
@@ -106,6 +113,15 @@ export default class PrepareMenu extends LitElement {
     }
     this._dialogItem = item;
   }
+
+  handlePreflightRun = async (e) => {
+    const { paths, requestId } = e.detail || {};
+    if (!paths || paths.length !== 1 || paths[0] !== this.details?.fullpath) return;
+    this.shadowRoot.querySelector('nx-popover')?.close();
+    const render = (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default;
+    const cmp = render(this.details, requestId);
+    this._dialogItem = { title: 'Preflight', cmp };
+  };
 
   handleCloseDialog() {
     this._dialogItem = undefined;

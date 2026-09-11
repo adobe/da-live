@@ -222,6 +222,10 @@ da-dialog {
   overflow: hidden;
 }
 
+.da-title-preflight-badge {
+  align-self: center;
+}
+
 .da-title-actions {
   position: relative;
   border-radius: 100px;

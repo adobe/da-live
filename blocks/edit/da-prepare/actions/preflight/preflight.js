@@ -1,16 +1,21 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
+import { getNx2 } from '../../../../../scripts/utils.js';
 import { loadDoc, loadResults } from './utils/utils.js';
+import { REASONS } from './utils/constants.js';
 
 // Components
 import './views/label.js';
 import './views/link.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
+// Shared cross-repo Preflight ↔ Publish contract (single source lives in da-nx).
+const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
 
 class DaPreflight extends LitElement {
   static properties = {
     details: { attribute: false },
+    requestId: { attribute: false },
     _categories: { state: true },
     _status: { state: true },
   };
@@ -25,6 +30,7 @@ class DaPreflight extends LitElement {
   listenForReasons() {
     this.addEventListener('reason', () => {
       this.requestUpdate();
+      this.maybeEmitStatus();
     });
   }
 
@@ -34,8 +40,35 @@ class DaPreflight extends LitElement {
       this._status = error;
       return;
     }
-    const requestUpdate = this.requestUpdate.bind(this);
+    const requestUpdate = () => {
+      this.requestUpdate();
+      this.maybeEmitStatus();
+    };
     this._categories = loadResults(doc, requestUpdate);
+    this.maybeEmitStatus();
+  }
+
+  static isResultSettled(result) {
+    if (result instanceof HTMLElement) {
+      return result.reason !== REASONS['link.working'].reason;
+    }
+    return true;
+  }
+
+  maybeEmitStatus() {
+    if (this._statusEmitted || !this._categories) return;
+
+    const checks = this._categories.flatMap((category) => category.checks);
+    const complete = checks.every((check) => check.done
+      && check.results.every((result) => DaPreflight.isResultSettled(result)));
+    if (!complete) return;
+
+    const badges = checks.flatMap((check) => check.results.map((result) => result.badge));
+    const status = badges.includes('error') ? 'fail' : 'success';
+
+    this._statusEmitted = true;
+    const detail = { path: this.details?.fullpath, status, requestId: this.requestId };
+    document.dispatchEvent(new CustomEvent(PREFLIGHT_EVENT.STATUS, { detail }));
   }
 
   expandCategory(cat) {
@@ -117,8 +150,9 @@ class DaPreflight extends LitElement {
 
 customElements.define('da-preflight', DaPreflight);
 
-export default function render(details) {
+export default function render(details, requestId) {
   const cmp = document.createElement('da-preflight');
   cmp.details = details;
+  if (requestId) cmp.requestId = requestId;
   return cmp;
 }
