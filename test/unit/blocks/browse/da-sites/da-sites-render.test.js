@@ -86,24 +86,22 @@ describe('da-sites render', () => {
     expect(el.shadowRoot.querySelector('.da-list-status-description')).to.equal(null);
   });
 
-  it('handleFlip sets is-flipped class on the inner card', async () => {
+  it('Renders an nx-menu with share and hide items per card', async () => {
     await fixture(['acme/site1']);
-    const site = el._recents[0];
-    el.handleFlip({ preventDefault: () => {}, stopPropagation: () => {} }, site);
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.da-site.is-flipped')).to.exist;
+    const menu = el.shadowRoot.querySelector('nx-menu');
+    expect(menu).to.exist;
+    expect(menu.items.map((i) => i.id)).to.deep.equal(['share', 'hide']);
   });
 
-  it('Renders share/hide back-action buttons', async () => {
+  it('Renders site and workspace labels', async () => {
     await fixture(['acme/site1']);
-    const buttons = el.shadowRoot.querySelectorAll('.da-back-action');
-    expect(buttons.length).to.be.at.least(2);
+    expect(el.shadowRoot.querySelector('.da-site-name').textContent).to.contain('site1');
+    expect(el.shadowRoot.querySelector('.da-site-workspace').textContent).to.contain('acme');
   });
 
-  it('Splits recent name into label segments', async () => {
-    await fixture(['acme/site1']);
-    const card = el.shadowRoot.querySelector('.da-site-front');
-    expect(card.textContent).to.contain('site1');
-    expect(card.textContent).to.contain('acme');
+  it('Renders a single label when the name has no slash', async () => {
+    await fixture(['solo']);
+    expect(el.shadowRoot.querySelector('.da-site-name').textContent).to.contain('solo');
+    expect(el.shadowRoot.querySelector('.da-site-workspace')).to.equal(null);
   });
 });

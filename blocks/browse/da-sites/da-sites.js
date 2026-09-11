@@ -3,6 +3,7 @@ import { getNx, sanitizeName } from '../../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
+await import(`${getNx()}/blocks/shared/menu/menu.js`);
 
 const THUMB_COUNT = 6;
 
@@ -58,11 +59,10 @@ export default class DaSites extends LitElement {
     localStorage.setItem('da-sites', JSON.stringify(localSites));
   }
 
-  handleFlip(e, site) {
-    e.preventDefault();
-    e.stopPropagation();
-    site.flipped = !site.flipped;
-    this.requestUpdate();
+  handleMenuSelect(e, site) {
+    const { id } = e.detail;
+    if (id === 'share') this.handleShare(site.name);
+    if (id === 'hide') this.handleRemove(site);
   }
 
   parseSubdomain(siteUrl) {
@@ -137,42 +137,32 @@ export default class DaSites extends LitElement {
   }
 
   renderSite(site) {
+    const [orgName, siteName] = site.name.split('/');
+    const projectLabel = siteName || orgName;
+    const workspaceLabel = siteName ? orgName : '';
     return html`
       <li class="da-site-outer">
-        <div class="da-site ${site.flipped ? 'is-flipped' : ''}">
-          <div class="da-site-front">
-            <picture>
-              <img src="${site.img}" width="480" height="672" alt="" />
-            </picture>
-            <div class="bg-overlay ${site.style}">
-              <a href="#/${site.name}">
-                <span>${site.name.split('/')[1]}</span>
-                <span>${site.name.split('/')[0]}</span>
-                <span class="da-site-card-action da-site-card-action-go">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                      <path fill="currentColor" d="M22.91,16.38c.1-.24.1-.51,0-.76-.05-.12-.12-.23-.21-.32l-4.63-4.63c-.39-.39-1.01-.39-1.4,0-.39.39-.39,1.01,0,1.4l2.94,2.94h-9.62c-.55,0-.99.44-.99.99s.44.99.99.99h9.62l-2.94,2.94c-.39.39-.39,1.01,0,1.4.19.19.45.29.7.29s.51-.1.7-.29l4.63-4.63c.09-.09.16-.2.21-.32Z" />
-                  </svg>
-                </span>
-              </a>
+        <div class="da-site">
+          <a class="da-site-thumb ${site.style}" href="#/${site.name}">
+            <div class="da-site-thumb-fade"></div>
+            <div class="da-site-meta">
+              <span class="da-site-name">${projectLabel}</span>
+              ${workspaceLabel ? html`<span class="da-site-workspace">${workspaceLabel}</span>` : nothing}
             </div>
+          </a>
+          <div class="da-site-footer">
+            <nx-menu
+              .items=${[{ id: 'share', label: 'Share' }, { id: 'hide', label: 'Hide' }]}
+              @select=${(e) => this.handleMenuSelect(e, site)}>
+              <button slot="trigger" class="da-site-menu-btn" aria-label="More options">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                  <path fill="currentColor" d="M16,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
+                  <path fill="currentColor" d="M10,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
+                  <path fill="currentColor" d="M22,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
+                </svg>
+              </button>
+            </nx-menu>
           </div>
-          <div class="da-site-back">
-            <button class="da-back-action" @click=${() => this.handleShare(site.name)}>
-              <img src="/img/icons/s2-icon-share-20-n.svg" loading="lazy"/>
-              <span>Share</span>
-            </button>
-            <button class="da-back-action" @click=${() => this.handleRemove(site)}>
-              <img src="/img/icons/s2-icon-visibilityoff-20-n.svg" loading="lazy"/>
-              <span>Hide</span>
-            </button>
-          </div>
-          <button class="da-site-card-action da-site-card-action-more" @click=${(e) => this.handleFlip(e, site)} aria-label="More options">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                <path fill="currentColor" d="M16,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
-                <path fill="currentColor" d="M10,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
-                <path fill="currentColor" d="M22,17.51c.83,0,1.5-.67,1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5,1.5.67,1.5,1.5,1.5Z" />
-            </svg>
-          </button>
         </div>
       </li>
     `;

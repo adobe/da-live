@@ -88,16 +88,23 @@ describe('DaSites', () => {
     });
   });
 
-  describe('handleFlip', () => {
-    it('Toggles the flipped flag on the site', () => {
+  describe('handleMenuSelect', () => {
+    it('Shares the site when the selected id is "share"', () => {
       const el = new DaSites();
+      let shared;
+      el.handleShare = (name) => { shared = name; };
+      el.handleMenuSelect({ detail: { id: 'share' } }, { name: 'org/site' });
+      expect(shared).to.equal('org/site');
+    });
+
+    it('Removes the site when the selected id is "hide"', () => {
+      localStorage.setItem('da-sites', JSON.stringify(['org/a', 'org/b']));
+      const el = new DaSites();
+      el._recents = el.getRecents();
       el.requestUpdate = () => {};
-      const site = { flipped: false };
-      const evt = { preventDefault: () => {}, stopPropagation: () => {} };
-      el.handleFlip(evt, site);
-      expect(site.flipped).to.be.true;
-      el.handleFlip(evt, site);
-      expect(site.flipped).to.be.false;
+      el.handleMenuSelect({ detail: { id: 'hide' } }, el._recents[0]);
+      expect(el._recents).to.have.length(1);
+      expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['org/b']);
     });
   });
 
