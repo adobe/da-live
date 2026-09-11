@@ -51,19 +51,28 @@ describe('DaSites', () => {
   });
 
   describe('getRecents', () => {
-    it('Maps localStorage da-sites to _recents', () => {
+    it('Maps localStorage da-sites to _recents without an image field', () => {
       localStorage.setItem('da-sites', JSON.stringify(['org/site1', 'org/site2']));
       const el = new DaSites();
       el._recents = el.getRecents();
       expect(el._recents).to.have.length(2);
       expect(el._recents[0].name).to.equal('org/site1');
-      expect(el._recents[0].img).to.match(/^\/blocks\/browse\/da-sites\/img\/cards\/da-\d+\.jpg$/);
+      expect(el._recents[0].img).to.equal(undefined);
+      expect(el._recents[0].style).to.match(/^da-thumb-\d+$/);
     });
 
     it('Returns null when da-sites is empty', () => {
       const el = new DaSites();
-      const result = el.getRecents();
-      expect(result).to.equal(null);
+      expect(el.getRecents()).to.equal(null);
+    });
+
+    it('Assigns a stable gradient class for a given site name', () => {
+      localStorage.setItem('da-sites', JSON.stringify(['acme/site1']));
+      const a = new DaSites();
+      a._recents = a.getRecents();
+      const b = new DaSites();
+      b._recents = b.getRecents();
+      expect(a._recents[0].style).to.equal(b._recents[0].style);
     });
   });
 
@@ -172,16 +181,6 @@ describe('DaSites', () => {
   });
 
   describe('getRecents card shape', () => {
-    it('Builds the expected card shape for each site', () => {
-      localStorage.setItem('da-sites', JSON.stringify(['acme/site1']));
-      const el = new DaSites();
-      el._recents = el.getRecents();
-      expect(el._recents).to.have.length(1);
-      expect(el._recents[0].name).to.equal('acme/site1');
-      expect(el._recents[0].img).to.match(/\/blocks\/browse\/da-sites\/img\/cards\/da-\d+\.jpg/);
-      expect(el._recents[0].style).to.match(/^da-card-style-\d+$/);
-    });
-
     it('Builds cards for multiple sites', () => {
       localStorage.setItem('da-sites', JSON.stringify(['acme/site1', 'globex/site2']));
       const el = new DaSites();

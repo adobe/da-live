@@ -4,10 +4,12 @@ import { getNx, sanitizeName } from '../../../scripts/utils.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
 
-const RANDOM_MAX = 8;
+const THUMB_COUNT = 6;
 
-function getRandom() {
-  return Math.floor(Math.random() * RANDOM_MAX);
+function thumbIndex(name) {
+  let sum = 0;
+  for (let i = 0; i < name.length; i += 1) sum += name.charCodeAt(i);
+  return sum % THUMB_COUNT;
 }
 
 export default class DaSites extends LitElement {
@@ -31,13 +33,10 @@ export default class DaSites extends LitElement {
   getRecents() {
     const recentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
     if (recentSites.length > 0) {
-      return recentSites.map((name) => (
-        {
-          name,
-          img: `/blocks/browse/da-sites/img/cards/da-${getRandom()}.jpg`,
-          style: `da-card-style-${getRandom()}`,
-        }
-      ));
+      return recentSites.map((name) => ({
+        name,
+        style: `da-thumb-${thumbIndex(name)}`,
+      }));
     }
     return null;
   }
