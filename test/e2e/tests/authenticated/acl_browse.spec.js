@@ -46,7 +46,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   const newButton = page.getByRole('button', { name: 'New' });
   await expect(newButton).toBeEnabled();
   await newButton.click({ force: true });
-  await page.getByRole('menuitem', { name: 'Document' }).click();
+  await page.getByRole('menuitem', { name: 'Page' }).click();
   await page.getByPlaceholder('document name').fill(pageName);
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
