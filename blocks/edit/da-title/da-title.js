@@ -7,13 +7,17 @@ import {
 } from '../utils/helpers.js';
 import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
 import { createVersion } from '../../shared/version/version-actions.js';
+import { getNx2 } from '../../../scripts/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
+import '../da-prepare/actions/preflight/views/label.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
+const { PREFLIGHT_EVENT, newPreflightRequestId } = await import(`${getNx2()}/utils/preflight-events.js`);
 
 const SK_EXT_ID = 'igkmdomcgoebiipaifhmpfjhbjccggml';
 const LAZY_DELAY = 1500;
+const PREFLIGHT_TIMEOUT = 60000;
 const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
   '/blocks/edit/img/Smock_CloudDisconnected_18_N.svg',
@@ -46,6 +50,8 @@ export default class DaTitle extends LitElement {
     _status: { state: true },
     _isSending: { state: true },
     _dialog: { state: true },
+    _enforcePreflight: { state: true },
+    _preflightPassed: { state: true },
   };
 
   constructor() {
@@ -58,13 +64,31 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._actionsVis = [];
+    document.addEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
   }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
+  }
+
+  // Passively track the latest Preflight verdict for the open document, so a manual Preflight
+  // run (from the prepare menu) also unlocks Publish — not just a Publish-triggered run.
+  handlePreflightStatus = (e) => {
+    const { path, status } = e.detail || {};
+    if (path !== this.details?.fullpath) return;
+    this._preflightPassed = status === 'success';
+  };
 
   update(changed) {
     super.update(changed);
     if (changed.has('details') && this.details) {
       this.setup();
       this.delayedSetup();
+    }
+    // Any edit invalidates a prior Preflight pass (it validated the saved source).
+    if (changed.has('collabStatus') && this.collabStatus === 'unsaved') {
+      this._preflightPassed = false;
     }
   }
 
@@ -84,6 +108,8 @@ export default class DaTitle extends LitElement {
 
   setup() {
     this.reset();
+    // A new document starts locked until Preflight passes (when enforcement is on).
+    this._preflightPassed = false;
     this._actions = { available: this.getAvailableActions() };
     // Lazily filter the actions down
     this.filterActions();
@@ -115,6 +141,11 @@ export default class DaTitle extends LitElement {
     const { org, site, fullpath } = this.details;
     const configs = await Promise.all(fetchDaConfigs({ org, site }));
     const configTab = configs.flatMap((config) => getFirstSheet(config) || []);
+
+    // enforcePreflight: require a passing Preflight before Publish (Preview is never gated).
+    this._enforcePreflight = configTab.some(
+      (c) => c.key === 'editor.enforcePreflight' && `${c.value}`.toLowerCase() === 'true',
+    );
 
     // Check which actions should be allowed for the document based on config
     const publishConfigs = configTab.filter((c) => c.key === 'editor.hidePublish');
@@ -210,6 +241,33 @@ export default class DaTitle extends LitElement {
     }
   }
 
+  /**
+   * Ask Preflight to run for the open document and resolve with its verdict. Dispatches the
+   * shared `nx-preflight-run` request and waits for the matching `nx-preflight-status`.
+   * Resolves 'success' | 'fail', or undefined on timeout (no Preflight surface answered).
+   */
+  requestPreflight() {
+    const requestId = newPreflightRequestId();
+    const { fullpath } = this.details;
+    return new Promise((resolve) => {
+      let timer;
+      let onStatus;
+      const finish = (status) => {
+        document.removeEventListener(PREFLIGHT_EVENT.STATUS, onStatus);
+        clearTimeout(timer);
+        resolve(status);
+      };
+      onStatus = (e) => {
+        const { path, status, requestId: rid } = e.detail || {};
+        if (rid === requestId && path === fullpath) finish(status);
+      };
+      timer = setTimeout(() => finish(undefined), PREFLIGHT_TIMEOUT);
+      document.addEventListener(PREFLIGHT_EVENT.STATUS, onStatus);
+      const detail = { paths: [fullpath], requestId };
+      document.dispatchEvent(new CustomEvent(PREFLIGHT_EVENT.RUN, { detail }));
+    });
+  }
+
   async handleAction(action) {
     // Guard against a stale/bypassed disabled state (e.g. permissions changed mid-session).
     if (action === 'save' && this._readOnly) return;
@@ -289,6 +347,16 @@ export default class DaTitle extends LitElement {
             this._isSending = false;
             return;
           }
+        }
+      }
+
+      // Enforce a passing Preflight before Publish (Preview is never gated). Runs after the
+      // force-save so Preflight validates exactly what AEM will receive. Auto-publishes on pass.
+      if (action === 'publish' && this._enforcePreflight && !this._preflightPassed) {
+        const status = await this.requestPreflight();
+        if (status !== 'success') {
+          this._isSending = false;
+          return;
         }
       }
 
@@ -373,6 +441,11 @@ export default class DaTitle extends LitElement {
     return html`${this._actions.available?.map((action) => {
       const readOnlyBlock = action === 'save' && this._readOnly;
       const disabledText = this.disabledText ?? (readOnlyBlock ? 'You do not have permission to save.' : undefined);
+      // Publish stays enabled when enforcing — clicking it is what runs Preflight. A badge
+      // (not a disabled state) signals whether Preflight still needs to pass.
+      const showPreflightBadge = action === 'publish' && this._enforcePreflight;
+      const preflightBadge = this._preflightPassed ? 'success' : 'warn';
+      const preflightTip = this._preflightPassed ? 'Preflight passed' : 'Preflight required before publish';
       return html`
       <button
         @click=${() => this.handleAction(action)}
@@ -382,6 +455,10 @@ export default class DaTitle extends LitElement {
         ?disabled=${this.disabledText || readOnlyBlock}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
+      ${showPreflightBadge ? html`<pf-label
+        class="da-title-preflight-badge"
+        title=${preflightTip}
+        .badge=${preflightBadge}></pf-label>` : nothing}
     `;
     })}`;
   }
