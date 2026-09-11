@@ -28,8 +28,8 @@ export function bindFirstSectionName(ydoc, view, onChange) {
 
   const apply = () => {
     const name = map.get(FIRST_SECTION_NAME_KEY);
-    if (name) view.dom.dataset.daSectionName = name;
-    else delete view.dom.dataset.daSectionName;
+    if (name) view.dom.dataset.sectionName = name;
+    else delete view.dom.dataset.sectionName;
   };
   apply();
 

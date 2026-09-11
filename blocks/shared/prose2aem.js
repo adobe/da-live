@@ -172,12 +172,12 @@ function makeSections(editor) {
   const children = editor.querySelectorAll(':scope > *');
 
   const section = document.createElement('div');
-  if (editor.dataset.daSectionName) section.dataset.daSectionName = editor.dataset.daSectionName;
+  if (editor.dataset.sectionName) section.dataset.sectionName = editor.dataset.sectionName;
   const sections = [...children].reduce((acc, child) => {
     if (child.nodeName === 'HR') {
       const next = document.createElement('div');
-      const daSectionName = child.getAttribute('data-da-section-name');
-      if (daSectionName) next.dataset.daSectionName = daSectionName;
+      const daSectionName = child.getAttribute('data-section-name');
+      if (daSectionName) next.dataset.sectionName = daSectionName;
       child.remove();
       acc.push(next);
     } else {

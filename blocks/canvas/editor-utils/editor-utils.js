@@ -361,7 +361,7 @@ export function parseSections(htmlText) {
     });
     flushRun();
 
-    return { sectionIndex, name: section.getAttribute('data-da-section-name') || '', blocks, items };
+    return { sectionIndex, name: section.getAttribute('data-section-name') || '', blocks, items };
   });
 }
 
