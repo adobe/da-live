@@ -5,12 +5,14 @@ export async function getCollabIdentity() {
     const ims = await loadIms();
     if (ims?.anonymous) return null;
     const name = (ims?.displayName || ims?.name || '').trim();
-    const id = ims?.userId || ims?.email || '';
+    const email = ims?.email || '';
+    const id = ims?.userId || email;
     if (name && id) {
       return {
         name,
         id,
-        colorSeed: ims?.email || ims?.userId || name,
+        email,
+        colorSeed: email || ims?.userId || name,
       };
     }
   } catch {
