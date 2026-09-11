@@ -48,6 +48,7 @@ class EwSelectionToolbar extends LitElement {
     _linkDialogOpen: { state: true },
     _linkHref: { state: true },
     _linkText: { state: true },
+    _linkTitle: { state: true },
     _altDialogOpen: { state: true },
     _altText: { state: true },
     _hasAemAssets: { state: true },
@@ -192,10 +193,12 @@ class EwSelectionToolbar extends LitElement {
     if (info) {
       this._linkHref = info.href;
       this._linkText = info.text;
+      this._linkTitle = info.title;
     } else {
       const { from, to } = this.view.state.selection;
       this._linkHref = '';
       this._linkText = from !== to ? this.view.state.doc.textBetween(from, to) : '';
+      this._linkTitle = '';
     }
     this.hide();
     this._linkDialogOpen = true;
@@ -207,9 +210,9 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _onLinkDialogSubmit(e) {
-    const { href, text } = e.detail;
+    const { href, text, title } = e.detail;
     this._closeLinkDialog();
-    applyLink(this.view, { href, text });
+    applyLink(this.view, { href, text, title });
     this.view.focus();
   }
 
@@ -410,8 +413,10 @@ class EwSelectionToolbar extends LitElement {
       </div>
       <da-link-dialog
         ?open=${this.linkDialogOpen}
+        show-title
         .href=${this._linkHref ?? ''}
         .text=${this._linkText ?? ''}
+        .linkTitle=${this._linkTitle ?? ''}
         @da-link-submit=${this._onLinkDialogSubmit}
         @close=${this._closeLinkDialog}
       ></da-link-dialog>
