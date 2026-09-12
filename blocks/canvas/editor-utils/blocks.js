@@ -1,4 +1,4 @@
-import { DOMParser as PMDOMParser, NodeSelection } from 'da-y-wrapper';
+import { DOMParser as PMDOMParser, NodeSelection, TextSelection } from 'da-y-wrapper';
 
 const NON_BLOCK_TABLE_NAMES = new Set(['metadata', 'section metadata', 'section-metadata']);
 
@@ -221,6 +221,36 @@ export function appendBlockRow(view, tablePos, rowDom) {
   const tr = state.tr.insert(tablePos + table.nodeSize - 1, rowNode);
   tr.setSelection(NodeSelection.create(tr.doc, tablePos));
   view.dispatch(tr.scrollIntoView());
+}
+
+/** Doc range of each section, split on horizontal rules (see deleteSection). */
+export function getSectionRanges(view) {
+  const { doc, schema } = view.state;
+  const ranges = [];
+  let current = null;
+  doc.forEach((node, offset) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      current = null;
+      return;
+    }
+    if (!current) {
+      current = { from: offset, to: offset };
+      ranges.push(current);
+    }
+    current.to = offset + node.nodeSize;
+  });
+  return ranges;
+}
+
+/** Select a whole section and scroll it into view. */
+export function selectSection(view, sectionIndex) {
+  if (!view) return false;
+  const range = getSectionRanges(view)[sectionIndex];
+  if (!range) return false;
+  const { tr, doc } = view.state;
+  view.dispatch(tr.setSelection(TextSelection.create(doc, range.from, range.to)).scrollIntoView());
+  view.focus();
+  return true;
 }
 
 export function deleteSection(view, sectionIndex) {
