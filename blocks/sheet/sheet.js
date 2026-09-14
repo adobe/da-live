@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
-import { getData, getLoadError } from './utils/index.js';
+import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -115,32 +115,13 @@ customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
 
-function showNotPermitted(wrapper, message) {
-  let el = wrapper.querySelector('.da-sheet-not-permitted');
-  if (!el) {
-    el = document.createElement('div');
-    el.className = 'da-sheet-not-permitted';
-    wrapper.append(el);
-  }
-  el.textContent = message;
-}
-
-function removeNotPermitted(wrapper) {
-  wrapper.querySelector('.da-sheet-not-permitted')?.remove();
-}
-
-async function reloadSheet(daTitle, daSheet, wrapper) {
+async function reloadSheet(daTitle, daSheet) {
   if (!initSheet) initSheet = (await import('./utils/index.js')).default;
   daTitle.sheet = await initSheet(daSheet);
   daTitle.disabledText = undefined;
-
-  const error = getLoadError();
-  daSheet.hidden = !!error;
-  if (error) showNotPermitted(wrapper, error);
-  else removeNotPermitted(wrapper);
 }
 
-async function setSheet(details, daTitle, daSheet, wrapper) {
+async function setSheet(details, daTitle, daSheet) {
   // Drop any open stale-content dialog so its Cancel can't act on the new path's staleCheck.
   document.body.querySelectorAll(':scope > da-dialog').forEach((d) => d.remove());
   // Full reset before the load — getData calls markSynced which sets _lastEtag.
@@ -150,11 +131,11 @@ async function setSheet(details, daTitle, daSheet, wrapper) {
   daTitle.details = details;
   daSheet.details = details;
 
-  await reloadSheet(daTitle, daSheet, wrapper);
+  await reloadSheet(daTitle, daSheet);
 
   const onStale = async ({ dirty }) => {
     if (!dirty) {
-      await reloadSheet(daTitle, daSheet, wrapper);
+      await reloadSheet(daTitle, daSheet);
       return;
     }
     // Block saves immediately so edits made while the dialog is open don't
@@ -167,7 +148,7 @@ async function setSheet(details, daTitle, daSheet, wrapper) {
       confirmLabel: 'Refresh',
     });
     if (result === 'confirm') {
-      await reloadSheet(daTitle, daSheet, wrapper);
+      await reloadSheet(daTitle, daSheet);
     }
   };
 
@@ -221,14 +202,31 @@ export default async function init(el) {
   bindStatus('sheet-dirty', document, () => { isDirty = true; });
   bindStatus('sheet-clean', document, () => { isDirty = false; });
 
+  // getData (called via reloadSheet) emits these on every non-version load so the
+  // grid can be swapped for a message when the user can't read the file at all.
+  document.addEventListener('sheet-load-error', (e) => {
+    daSheet.hidden = true;
+    let notPermitted = wrapper.querySelector('.da-sheet-not-permitted');
+    if (!notPermitted) {
+      notPermitted = document.createElement('div');
+      notPermitted.className = 'da-sheet-not-permitted';
+      wrapper.append(notPermitted);
+    }
+    notPermitted.textContent = e.detail.error;
+  });
+  document.addEventListener('sheet-load-ok', () => {
+    daSheet.hidden = false;
+    wrapper.querySelector('.da-sheet-not-permitted')?.remove();
+  });
+
   // Set data against the title & sheet
-  setSheet(details, daTitle, daSheet, wrapper);
+  setSheet(details, daTitle, daSheet);
 
   el.append(daTitle, versionWrapper);
 
   window.addEventListener('hashchange', async () => {
     details = getPathDetails();
-    setSheet(details, daTitle, daSheet, wrapper);
+    setSheet(details, daTitle, daSheet);
     daSheetPanes.pathDetails = details;
   });
 }

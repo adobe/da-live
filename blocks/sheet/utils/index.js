@@ -102,16 +102,17 @@ export function getPermissions() {
   return permissions;
 }
 
-let loadError;
-
-export function getLoadError() {
-  return loadError;
-}
-
 function sheetErrorFromResponse(resp) {
   if (resp.status === 401) return 'Sign in required';
   if (resp.status === 403) return 'Not permitted';
   return undefined;
+}
+
+// Not fired for a version-preview load — that's a separate, secondary view and
+// a load failure there shouldn't toggle the main sheet's not-permitted banner.
+function emitLoadStatus(error) {
+  const type = error ? 'sheet-load-error' : 'sheet-load-ok';
+  document.dispatchEvent(new CustomEvent(type, { detail: { error } }));
 }
 
 // Takes a pathDetails object ({ org, site, path, view }). For a version restore,
@@ -142,10 +143,10 @@ export async function getData(input) {
   canWrite = resp.permissions?.some((permission) => permission === 'write');
 
   if (!resp.ok) {
-    loadError = sheetErrorFromResponse(resp);
+    if (!isVersion) emitLoadStatus(sheetErrorFromResponse(resp));
     return getDefaultSheet();
   }
-  loadError = undefined;
+  if (!isVersion) emitLoadStatus();
 
   const sheets = [];
 

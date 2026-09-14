@@ -484,54 +484,71 @@ function buildMockFetchStatus(status) {
   };
 }
 
-describe('getLoadError', () => {
-  it('reports "Sign in required" for a 401 and falls back to an empty sheet', async () => {
+// getData signals its own status via document events (matching the existing
+// sheet-dirty / sheet-clean convention in utils/utils.js) rather than a getter
+// over module state, so sheet.js doesn't have to thread a DOM node through
+// setSheet/reloadSheet just to know whether to show a not-permitted message.
+async function captureLoadEvents(run) {
+  const events = [];
+  const onError = (e) => events.push({ type: 'sheet-load-error', error: e.detail.error });
+  const onOk = () => events.push({ type: 'sheet-load-ok' });
+  document.addEventListener('sheet-load-error', onError);
+  document.addEventListener('sheet-load-ok', onOk);
+  try {
+    await run();
+  } finally {
+    document.removeEventListener('sheet-load-error', onError);
+    document.removeEventListener('sheet-load-ok', onOk);
+  }
+  return events;
+}
+
+describe('sheet load status events', () => {
+  it('emits sheet-load-error with "Sign in required" for a 401', async () => {
     const savedFetch = window.fetch;
     try {
       window.fetch = buildMockFetchStatus(401);
 
-      const sheet = await sh.getData(SOURCE_DETAILS);
-      expect(sh.getLoadError()).to.equal('Sign in required');
-      expect(sheet).to.deep.equal([{ minDimensions: [20, 20], sheetName: 'data' }]);
+      const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
+      expect(events).to.deep.equal([{ type: 'sheet-load-error', error: 'Sign in required' }]);
     } finally {
       window.fetch = savedFetch;
     }
   });
 
-  it('reports "Not permitted" for a 403 and falls back to an empty sheet', async () => {
+  it('emits sheet-load-error with "Not permitted" for a 403', async () => {
     const savedFetch = window.fetch;
     try {
       window.fetch = buildMockFetchStatus(403);
 
-      await sh.getData(SOURCE_DETAILS);
-      expect(sh.getLoadError()).to.equal('Not permitted');
+      const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
+      expect(events).to.deep.equal([{ type: 'sheet-load-error', error: 'Not permitted' }]);
     } finally {
       window.fetch = savedFetch;
     }
   });
 
-  it('does not set a load error for a 404 (treated as a new, empty sheet)', async () => {
+  it('emits sheet-load-ok for a 404 (treated as a new, empty sheet)', async () => {
     const savedFetch = window.fetch;
     try {
       window.fetch = buildMockFetchStatus(404);
 
-      await sh.getData(SOURCE_DETAILS);
-      expect(sh.getLoadError()).to.be.undefined;
+      const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
+      expect(events).to.deep.equal([{ type: 'sheet-load-ok' }]);
     } finally {
       window.fetch = savedFetch;
     }
   });
 
-  it('clears a previously set load error once a load succeeds', async () => {
+  it('emits sheet-load-ok once a load succeeds after a prior error', async () => {
     const savedFetch = window.fetch;
     try {
       window.fetch = buildMockFetchStatus(403);
       await sh.getData(SOURCE_DETAILS);
-      expect(sh.getLoadError()).to.equal('Not permitted');
 
       window.fetch = buildMockFetch('{ "total": 0, "limit": 0, "offset": 0, "data": [], ":type": "sheet" }');
-      await sh.getData(SOURCE_DETAILS);
-      expect(sh.getLoadError()).to.be.undefined;
+      const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
+      expect(events).to.deep.equal([{ type: 'sheet-load-ok' }]);
     } finally {
       window.fetch = savedFetch;
     }
