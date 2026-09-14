@@ -4,7 +4,7 @@
 
 // Each channel is a private listener Set — no DOM element involved. `replay: true`
 // re-delivers the last truthy emitted value to a subscriber that joins later.
-function createChannel({ replay = false } = {}) {
+export function createChannel({ replay = false } = {}) {
   const listeners = new Set();
   let lastValue;
   return {
@@ -40,6 +40,7 @@ export const canvasBus = Object.freeze({
   undoRequest: createChannel(),
   redoRequest: createChannel(),
   newVersionRequest: createChannel(),
+  commentComposeRequest: createChannel(),
   blockEditRequest: createChannel(),
 
   undoState: createChannel(),
@@ -51,6 +52,9 @@ export const canvasBus = Object.freeze({
     emit: (detail) => editorSelectChannel.emit(enrichEditorSelect(detail)),
   },
   editorProseSelectState: createChannel(),
+  toolPanelViewState: createChannel({ replay: true }),
 
   wysiwygPortReady: createChannel(),
+
+  commentsControllerState: createChannel(),
 });
