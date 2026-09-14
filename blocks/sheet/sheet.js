@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
-import { getData } from './utils/index.js';
+import { getData, getLoadError } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -115,13 +115,32 @@ customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
 
-async function reloadSheet(daTitle, daSheet) {
+function showNotPermitted(wrapper, message) {
+  let el = wrapper.querySelector('.da-sheet-not-permitted');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'da-sheet-not-permitted';
+    wrapper.append(el);
+  }
+  el.textContent = message;
+}
+
+function removeNotPermitted(wrapper) {
+  wrapper.querySelector('.da-sheet-not-permitted')?.remove();
+}
+
+async function reloadSheet(daTitle, daSheet, wrapper) {
   if (!initSheet) initSheet = (await import('./utils/index.js')).default;
   daTitle.sheet = await initSheet(daSheet);
   daTitle.disabledText = undefined;
+
+  const error = getLoadError();
+  daSheet.hidden = !!error;
+  if (error) showNotPermitted(wrapper, error);
+  else removeNotPermitted(wrapper);
 }
 
-async function setSheet(details, daTitle, daSheet) {
+async function setSheet(details, daTitle, daSheet, wrapper) {
   // Drop any open stale-content dialog so its Cancel can't act on the new path's staleCheck.
   document.body.querySelectorAll(':scope > da-dialog').forEach((d) => d.remove());
   // Full reset before the load — getData calls markSynced which sets _lastEtag.
@@ -131,11 +150,11 @@ async function setSheet(details, daTitle, daSheet) {
   daTitle.details = details;
   daSheet.details = details;
 
-  await reloadSheet(daTitle, daSheet);
+  await reloadSheet(daTitle, daSheet, wrapper);
 
   const onStale = async ({ dirty }) => {
     if (!dirty) {
-      await reloadSheet(daTitle, daSheet);
+      await reloadSheet(daTitle, daSheet, wrapper);
       return;
     }
     // Block saves immediately so edits made while the dialog is open don't
@@ -148,7 +167,7 @@ async function setSheet(details, daTitle, daSheet) {
       confirmLabel: 'Refresh',
     });
     if (result === 'confirm') {
-      await reloadSheet(daTitle, daSheet);
+      await reloadSheet(daTitle, daSheet, wrapper);
     }
   };
 
@@ -203,13 +222,13 @@ export default async function init(el) {
   bindStatus('sheet-clean', document, () => { isDirty = false; });
 
   // Set data against the title & sheet
-  setSheet(details, daTitle, daSheet);
+  setSheet(details, daTitle, daSheet, wrapper);
 
   el.append(daTitle, versionWrapper);
 
   window.addEventListener('hashchange', async () => {
     details = getPathDetails();
-    setSheet(details, daTitle, daSheet);
+    setSheet(details, daTitle, daSheet, wrapper);
     daSheetPanes.pathDetails = details;
   });
 }

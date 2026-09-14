@@ -102,6 +102,18 @@ export function getPermissions() {
   return permissions;
 }
 
+let loadError;
+
+export function getLoadError() {
+  return loadError;
+}
+
+function sheetErrorFromResponse(resp) {
+  if (resp.status === 401) return 'Sign in required';
+  if (resp.status === 403) return 'Not permitted';
+  return undefined;
+}
+
 // Takes a pathDetails object ({ org, site, path, view }). For a version restore,
 // pass the same doc details plus a `versionId` and it routes through versions.get.
 export async function getData(input) {
@@ -129,7 +141,11 @@ export async function getData(input) {
   permissions = resp.permissions;
   canWrite = resp.permissions?.some((permission) => permission === 'write');
 
-  if (!resp.ok) return getDefaultSheet();
+  if (!resp.ok) {
+    loadError = sheetErrorFromResponse(resp);
+    return getDefaultSheet();
+  }
+  loadError = undefined;
 
   const sheets = [];
 
