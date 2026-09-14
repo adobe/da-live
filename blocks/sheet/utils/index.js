@@ -110,9 +110,9 @@ function sheetErrorFromResponse(resp) {
 
 // Not fired for a version-preview load — that's a separate, secondary view and
 // a load failure there shouldn't toggle the main sheet's not-permitted banner.
-// No message means the load succeeded (or was a 404, treated as a new sheet).
-function emitLoadStatus(message) {
-  document.dispatchEvent(new CustomEvent('sheet-load-status', { detail: { message } }));
+// No errMsg means the load succeeded (or was a 404, treated as a new sheet).
+function emitLoadStatus(errMsg) {
+  document.dispatchEvent(new CustomEvent('sheet-load-status', { detail: { errMsg } }));
 }
 
 // Takes a pathDetails object ({ org, site, path, view }). For a version restore,

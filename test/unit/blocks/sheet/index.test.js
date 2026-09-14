@@ -507,7 +507,7 @@ describe('sheet-load-status event', () => {
       window.fetch = buildMockFetchStatus(401);
 
       const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
-      expect(events).to.deep.equal([{ message: 'Sign in required' }]);
+      expect(events).to.deep.equal([{ errMsg: 'Sign in required' }]);
     } finally {
       window.fetch = savedFetch;
     }
@@ -519,7 +519,7 @@ describe('sheet-load-status event', () => {
       window.fetch = buildMockFetchStatus(403);
 
       const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
-      expect(events).to.deep.equal([{ message: 'Not permitted' }]);
+      expect(events).to.deep.equal([{ errMsg: 'Not permitted' }]);
     } finally {
       window.fetch = savedFetch;
     }
@@ -531,7 +531,7 @@ describe('sheet-load-status event', () => {
       window.fetch = buildMockFetchStatus(404);
 
       const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
-      expect(events).to.deep.equal([{ message: undefined }]);
+      expect(events).to.deep.equal([{ errMsg: undefined }]);
     } finally {
       window.fetch = savedFetch;
     }
@@ -545,7 +545,7 @@ describe('sheet-load-status event', () => {
 
       window.fetch = buildMockFetch('{ "total": 0, "limit": 0, "offset": 0, "data": [], ":type": "sheet" }');
       const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
-      expect(events).to.deep.equal([{ message: undefined }]);
+      expect(events).to.deep.equal([{ errMsg: undefined }]);
     } finally {
       window.fetch = savedFetch;
     }

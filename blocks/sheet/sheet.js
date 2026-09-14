@@ -204,9 +204,9 @@ export default async function init(el) {
 
   // getData (called via reloadSheet) emits this on every non-version load so the
   // grid can be swapped for a message when the user can't read the file at all.
-  document.addEventListener('sheet-load-status', ({ detail: { message } }) => {
-    daSheet.hidden = !!message;
-    if (!message) {
+  document.addEventListener('sheet-load-status', ({ detail: { errMsg } }) => {
+    daSheet.hidden = !!errMsg;
+    if (!errMsg) {
       wrapper.querySelector('.da-sheet-not-permitted')?.remove();
       return;
     }
@@ -216,7 +216,7 @@ export default async function init(el) {
       notPermitted.className = 'da-sheet-not-permitted';
       wrapper.append(notPermitted);
     }
-    notPermitted.textContent = message;
+    notPermitted.textContent = errMsg;
   });
 
   // Set data against the title & sheet
