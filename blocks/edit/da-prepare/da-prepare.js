@@ -43,12 +43,14 @@ export default class DaPrepare extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     document.addEventListener(PREFLIGHT_EVENT.RUN, this.handlePreflightRun);
+    document.addEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('pointerdown', this.handleOutsideClick);
     document.removeEventListener(PREFLIGHT_EVENT.RUN, this.handlePreflightRun);
+    document.removeEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
   }
 
   update(props) {
@@ -110,6 +112,8 @@ export default class DaPrepare extends LitElement {
   }
 
   async handleItemClick(item) {
+    // Manual open — never auto-closed by a status event.
+    this._preflightRequestId = undefined;
     this._showMenu = false;
     if (item.render) {
       const cmp = await item.render(this.details);
@@ -125,11 +129,24 @@ export default class DaPrepare extends LitElement {
     this._showMenu = false;
     const render = (await import('./actions/preflight/preflight.js')).default;
     const cmp = render(this.details, requestId);
+    this._preflightRequestId = requestId;
     this._dialogItem = { title: 'Preflight', cmp };
+  };
+
+  // A gate-triggered Preflight run finished. Close the dialog only on success (we then
+  // auto-publish); keep it open on failure so the author can see what failed.
+  handlePreflightStatus = (e) => {
+    const { requestId, status } = e.detail || {};
+    if (!this._preflightRequestId || requestId !== this._preflightRequestId) return;
+    if (status === 'success') {
+      this._dialogItem = undefined;
+      this._preflightRequestId = undefined;
+    }
   };
 
   handleCloseDialog() {
     this._dialogItem = undefined;
+    this._preflightRequestId = undefined;
   }
 
   handleIframeLoad({ target }) {

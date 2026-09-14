@@ -392,4 +392,39 @@ describe('DaPrepare', () => {
       expect(img.getAttribute('src')).to.equal('https://example.com/icon.png');
     });
   });
+
+  describe('preflight dialog lifecycle', () => {
+    it('closes the gate-triggered dialog on success', async () => {
+      el = await fixture();
+      el._preflightRequestId = 'req-1';
+      el._dialogItem = { title: 'Preflight' };
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'req-1', status: 'success' } }));
+      expect(el._dialogItem).to.be.undefined;
+      expect(el._preflightRequestId).to.be.undefined;
+    });
+
+    it('keeps the dialog open on failure', async () => {
+      el = await fixture();
+      el._preflightRequestId = 'req-2';
+      el._dialogItem = { title: 'Preflight' };
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'req-2', status: 'fail' } }));
+      expect(el._dialogItem).to.not.be.undefined;
+    });
+
+    it('ignores a status with a different requestId', async () => {
+      el = await fixture();
+      el._preflightRequestId = 'req-3';
+      el._dialogItem = { title: 'Preflight' };
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'other', status: 'success' } }));
+      expect(el._dialogItem).to.not.be.undefined;
+    });
+
+    it('does not auto-close a manually opened dialog (no request id)', async () => {
+      el = await fixture();
+      el._preflightRequestId = undefined;
+      el._dialogItem = { title: 'Preflight' };
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { status: 'success' } }));
+      expect(el._dialogItem).to.not.be.undefined;
+    });
+  });
 });
