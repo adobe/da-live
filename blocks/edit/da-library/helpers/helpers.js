@@ -1,10 +1,11 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch, aemAdmin, fetchDaConfigs, getFirstSheet } from '../../../shared/utils.js';
+import { daFetch, fetchDaConfigs, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
+import { CON_ORIGIN } from '../../../shared/constants.js';
 import { openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
-import { sanitizeName } from '../../../../scripts/utils.js';
+import { getNx2Api, sanitizeName } from '../../../../scripts/utils.js';
 import { getBlocks } from './index.js';
 
 export const OOTB_PLUGINS = ['blocks', 'templates', 'icons', 'placeholders'];
@@ -19,7 +20,7 @@ const DA_PLUGINS = {
   icons: {},
 };
 
-const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
+export const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 export function parseDom(dom) {
   const { schema } = window.view.state;
@@ -44,17 +45,44 @@ function setupBlockOptions(library) {
   if (blockJsonUrl) fetchKeyAutocompleteData(blockJsonUrl);
 }
 
+const AEM_CONTENT_HOST = /\.(aem|hlx)\.(page|live)$/;
+
+export function aemToContentUrl(url) {
+  try {
+    const { hostname, pathname, search } = new URL(url);
+    if (!AEM_CONTENT_HOST.test(hostname)) return url;
+    const parts = hostname.split('--');
+    if (parts.length !== 3) return url;
+    const [, site, orgWithTld] = parts;
+    const [org] = orgWithTld.split('.');
+    return `${CON_ORIGIN}/${org}/${site}${pathname}${search}`;
+  } catch {
+    return url;
+  }
+}
+
+// Try the content.da.live rewrite first; fall back to the original URL on 404
+export async function daFetchLibrary(url, { skipRewrite = false } = {}) {
+  if (skipRewrite) {
+    return { resp: await daFetch(url, { noRedirect: true }), usedFallback: true };
+  }
+  const contentUrl = aemToContentUrl(url);
+  const resp = await daFetch(contentUrl, { noRedirect: true });
+  if (resp.status === 404 && contentUrl !== url) {
+    return { resp: await daFetch(url, { noRedirect: true }), usedFallback: true };
+  }
+  return { resp, usedFallback: false };
+}
+
 export async function getItems(sources, format) {
   const items = [];
   for (const source of sources) {
     try {
-      const resp = await daFetch(source);
+      const { resp, usedFallback } = await daFetchLibrary(source);
       const json = await resp.json();
-      if (json.data) {
-        items.push(...formatData(json.data, format));
-      } else {
-        items.push(...json);
-      }
+      const sheet = json[':type'] === 'multi-sheet' ? json[json[':names']?.[0]] : json;
+      const formatted = sheet?.data ? formatData(sheet.data, format) : json;
+      items.push(...formatted.map((item) => ({ ...item, usedFallback })));
     } catch {
       // couldn't fetch source
     }
@@ -109,9 +137,11 @@ function calculateSources(org, repo, sheetPath) {
 
 async function fetchLibraryConfig(org, site) {
   const configs = await fetchDaConfigs({ org, site });
-  const { library } = await configs[1];
-  if (!library) return [];
-  return library.data.reduce((acc, row) => {
+  const config = await configs[1];
+  if (!config) return [];
+  const libraryData = getSheetByName(config, 'library');
+  if (!libraryData) return [];
+  return libraryData.reduce((acc, row) => {
     // Determine if a plugin should be visible based on query param
     const allowed = getIsPluginAllowed(row.ref);
     if (allowed) {
@@ -205,11 +235,11 @@ export function getPreviewUrl(previewUrl) {
     if (url.origin.includes('--')) return url.href;
     if (url.origin.includes('content.da.live')) {
       const [, org, site, ...split] = url.pathname.split('/');
-      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+      return `https://${ref}--${site}--${org}.aem.page/${split.join('/')}`;
     }
     if (url.origin.includes('admin.da.live')) {
       const [, , org, site, ...split] = url.pathname.split('/');
-      return `https://main--${site}--${org}.aem.page/${split.join('/')}`;
+      return `https://${ref}--${site}--${org}.aem.page/${split.join('/')}`;
     }
   } catch {
     return false;
@@ -273,7 +303,9 @@ export function getItemDetails(item) {
 export async function getPreviewStatus({ org, site, pathname }) {
   const path = `/${org}/${site}${pathname}`;
   try {
-    const json = await aemAdmin(path, 'status', 'GET');
+    const { status } = await getNx2Api();
+    const resp = await status.get(path);
+    const json = await resp.json();
     return json.preview.status === 200;
   } catch (err) {
     // eslint-disable-next-line no-console

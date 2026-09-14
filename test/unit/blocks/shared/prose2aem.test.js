@@ -67,6 +67,126 @@ describe('aem2prose', () => {
   });
 });
 
+describe('prose2aem section-metadata handling', () => {
+  function makeEditor(innerHtml) {
+    const editor = document.createElement('div');
+    editor.innerHTML = innerHtml;
+    return editor;
+  }
+
+  function parseMain(html) {
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    return parsed.querySelector('main');
+  }
+
+  it('applies style value as CSS class on the parent section', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.classList.contains('highlight')).to.be.true;
+  });
+
+  it('applies multiple style classes from comma-separated values', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>divider, light</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.classList.contains('divider')).to.be.true;
+    expect(section.classList.contains('light')).to.be.true;
+    expect(section.classList.contains('divider-light')).to.be.false;
+  });
+
+  it('removes the section-metadata block from the output', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    expect(main.querySelector('.section-metadata')).to.not.exist;
+  });
+
+  it('sets non-style keys as data attributes on the parent section', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Background</td><td>dark</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.dataset.background).to.equal('dark');
+  });
+
+  it('uses link href as the data attribute value when the cell contains a link', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Source</td><td><a href="https://example.com/page">Label</a></td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.dataset.source).to.equal('https://example.com/page');
+  });
+
+  it('uses image src as the data attribute value when the cell contains an image', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Image</td><td><img src="https://example.com/bg.jpg"></td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false));
+    const section = main.querySelector(':scope > div');
+    expect(section.dataset.image).to.equal('https://example.com/bg.jpg');
+  });
+
+  it('does not apply section metadata when livePreview is false', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, false, false));
+    const section = main.querySelector(':scope > div');
+    expect(main.querySelector('.section-metadata')).to.exist;
+    expect(section.classList.contains('highlight')).to.be.false;
+  });
+});
+
 describe('prose2aem with isFragment parameter', () => {
   let originalDoc;
 
@@ -176,6 +296,38 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.equal('');
   });
 
+  it('Preserves all images in each column when a column block has 3 columns with multiple images per column', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <div class="tableWrapper">
+        <table>
+          <tr><td>columns</td></tr>
+          <tr>
+            <td><p><img src="col1-img1.jpg"><img src="col1-img2.jpg"><img src="col1-img3.jpg"></p></td>
+            <td><p><img src="col2-img1.jpg"><img src="col2-img2.jpg"><img src="col2-img3.jpg"></p></td>
+            <td><p><img src="col3-img1.jpg"><img src="col3-img2.jpg"><img src="col3-img3.jpg"></p></td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    const container = document.createElement('div');
+    container.innerHTML = result;
+
+    const block = container.querySelector('.columns');
+    expect(block).to.exist;
+
+    const colDivs = block.querySelectorAll(':scope > div > div');
+    expect(colDivs.length).to.equal(3);
+
+    colDivs.forEach((col, i) => {
+      const pictures = col.querySelectorAll('picture');
+      expect(pictures.length, `column ${i + 1} should have 3 pictures`).to.equal(3);
+    });
+  });
+
   it('Preserves pictures in fragment mode', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `
@@ -222,5 +374,156 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.not.include('focal-point-icon');
     expect(result).to.include('<picture>');
     expect(result).to.include('data-title="data-focal:30.5,70.2"');
+  });
+});
+
+describe('prose2aem same-site URL conversion', () => {
+  function makeEditor(innerHtml) {
+    const editor = document.createElement('div');
+    editor.innerHTML = innerHtml;
+    return editor;
+  }
+
+  let originalHash;
+
+  before(() => {
+    originalHash = window.location.hash;
+  });
+
+  after(() => {
+    window.location.hash = originalHash;
+  });
+
+  it('converts same-site URLs to relative when livePreview=true', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/fragments/tabs-homepage">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/fragments/tabs-homepage');
+  });
+
+  it('does not convert URLs when livePreview=false', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/fragments/tabs-homepage">Fragment</a></p>
+    `);
+
+    prose2aem(editor, false, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('https://main--repo--org.aem.live/fragments/tabs-homepage');
+  });
+
+  it('converts same-site URLs with nested paths', () => {
+    window.location.hash = '#/org/site/path';
+    const editor = makeEditor(`
+      <p><a href="https://main--site--org.aem.live/en/fragments/footer">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/en/fragments/footer');
+  });
+
+  it('preserves search params and hash in converted URLs', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/fragments/tabs?param=value#section">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/fragments/tabs?param=value#section');
+  });
+
+  it('converts same-site non-fragment URLs to relative', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/products/page">Regular page</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/products/page');
+  });
+
+  it('does not convert cross-site URLs', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="https://main--otherrepo--otherorg.aem.live/fragments/something">Different site</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('https://main--otherrepo--otherorg.aem.live/fragments/something');
+  });
+
+  it('does not convert non-EDS URLs', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="https://example.com/fragments/something">External</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('https://example.com/fragments/something');
+  });
+
+  it('converts both .aem.live and .aem.page same-site URLs', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/fragments/hero">Fragment 1</a></p>
+      <p><a href="https://main--repo--org.aem.page/fragments/footer">Fragment 2</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const links = editor.querySelectorAll('a');
+
+    expect(links[0].getAttribute('href')).to.equal('/fragments/hero');
+    expect(links[1].getAttribute('href')).to.equal('/fragments/footer');
+  });
+
+  it('handles relative URLs without conversion', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="/fragments/tabs">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('/fragments/tabs');
+  });
+
+  it('handles invalid URLs gracefully', () => {
+    window.location.hash = '#/org/repo/path';
+    const editor = makeEditor(`
+      <p><a href="not-a-valid-url">Invalid</a></p>
+    `);
+
+    expect(() => prose2aem(editor, true, false)).to.not.throw();
+    const link = editor.querySelector('a');
+    expect(link.getAttribute('href')).to.equal('not-a-valid-url');
+  });
+
+  it('does not convert when org/site not in hash', () => {
+    window.location.hash = '';
+    const editor = makeEditor(`
+      <p><a href="https://main--repo--org.aem.live/fragments/tabs">Fragment</a></p>
+    `);
+
+    prose2aem(editor, true, false);
+    const link = editor.querySelector('a');
+
+    expect(link.getAttribute('href')).to.equal('https://main--repo--org.aem.live/fragments/tabs');
   });
 });

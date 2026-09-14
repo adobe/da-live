@@ -3,10 +3,14 @@ import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
+import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const style = await getStyle('/blocks/sheet/da-sheet-panes.css');
+const blockStyle = await loadStyle(import.meta.url);
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, blockStyle];
+
+const style = await loadStyle('/blocks/sheet/da-sheet-panes.css');
 
 class DaSheetPanes extends LitElement {
   static properties = {
@@ -45,14 +49,12 @@ class DaSheetPanes extends LitElement {
       this._verReviewCmpLoaded = true;
     }
     const verReview = document.createElement('da-version-review');
-    verReview.data = await getData(e.detail.url);
+    verReview.data = await getData({ ...getPathDetails(), versionId: e.detail.versionId });
     verReview.addEventListener('close', () => { verReview.remove(); });
     verReview.addEventListener('restore', async () => {
       const daTitle = document.querySelector('da-title');
       const daSheet = document.querySelector('.da-sheet');
-
-      const initSheet = (await import('./utils/index.js')).default;
-      daTitle.sheet = await initSheet(daSheet, verReview.data);
+      await restoreVersion(daTitle, daSheet, verReview.data);
       verReview.remove();
     });
 
@@ -113,12 +115,44 @@ customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
 
+async function reloadSheet(daTitle, daSheet) {
+  if (!initSheet) initSheet = (await import('./utils/index.js')).default;
+  daTitle.sheet = await initSheet(daSheet);
+  daTitle.disabledText = undefined;
+}
+
 async function setSheet(details, daTitle, daSheet) {
+  // Drop any open stale-content dialog so its Cancel can't act on the new path's staleCheck.
+  document.body.querySelectorAll(':scope > da-dialog').forEach((d) => d.remove());
+  // Full reset before the load — getData calls markSynced which sets _lastEtag.
+  // start() below only wires up the interval without resetting state.
+  staleCheck.stop();
+
   daTitle.details = details;
   daSheet.details = details;
 
-  if (!initSheet) initSheet = (await import('./utils/index.js')).default;
-  daTitle.sheet = await initSheet(daSheet);
+  await reloadSheet(daTitle, daSheet);
+
+  const onStale = async ({ dirty }) => {
+    if (!dirty) {
+      await reloadSheet(daTitle, daSheet);
+      return;
+    }
+    // Block saves immediately so edits made while the dialog is open don't
+    // re-trigger drift detection. Reload (via markSynced) clears the block.
+    staleCheck.blockSaves();
+    daTitle.disabledText = 'Stale content';
+    const result = await showDaDialog({
+      title: 'Content changed',
+      body: 'The content has changed since you opened it. Refresh to get latest or close this dialog to keep your edits without saving.',
+      confirmLabel: 'Refresh',
+    });
+    if (result === 'confirm') {
+      await reloadSheet(daTitle, daSheet);
+    }
+  };
+
+  staleCheck.start({ details, onStale });
 }
 
 export default async function init(el) {
@@ -148,6 +182,25 @@ export default async function init(el) {
   const versionWrapper = document.createElement('div');
   versionWrapper.classList.add('da-version-wrapper');
   versionWrapper.append(wrapper, daSheetPanes);
+
+  // Sheet view drives daTitle.collabStatus itself (like prose/index.js does for
+  // the edit view). staleCheck emits sheet-dirty / sheet-clean on the transition,
+  // and we combine that with navigator.onLine into a single status value.
+  let isOnline = window.navigator.onLine;
+  let isDirty = false;
+  const applyStatus = () => {
+    if (isDirty) daTitle.collabStatus = 'unsaved';
+    else daTitle.collabStatus = isOnline ? 'connected' : 'offline';
+  };
+  applyStatus();
+  const bindStatus = (event, target, setter) => target.addEventListener(event, () => {
+    setter();
+    applyStatus();
+  });
+  bindStatus('online', window, () => { isOnline = true; });
+  bindStatus('offline', window, () => { isOnline = false; });
+  bindStatus('sheet-dirty', document, () => { isDirty = true; });
+  bindStatus('sheet-clean', document, () => { isDirty = false; });
 
   // Set data against the title & sheet
   setSheet(details, daTitle, daSheet);

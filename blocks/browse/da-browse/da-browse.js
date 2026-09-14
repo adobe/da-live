@@ -1,23 +1,72 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getFirstSheet } from '../../shared/utils.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
+import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
+import { getChatPanelContent } from '../../shared/chat-panel.js';
 
 // Components
-import '../da-breadcrumbs/da-breadcrumbs.js';
 import '../da-new/da-new.js';
 import '../da-search/da-search.js';
 import '../da-list/da-list.js';
 
-// Styles
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const STYLE = await getStyle(import.meta.url);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
+
+const style = await loadStyle(import.meta.url);
+
+function openChatPanel() {
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
+}
+
+function closeChatPanel() {
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+}
 
 export default class DaBrowse extends LitElement {
   static properties = {
     details: { attribute: false },
     _tabItems: { state: true },
     _searchItems: { state: true },
+    _ewEnabled: { state: true },
+    _chatEnabled: { state: true },
+  };
+
+  _browseSelKeys = new Set();
+
+  _clearBrowseSelection() {
+    for (const key of this._browseSelKeys) {
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: { key } }));
+    }
+    this._browseSelKeys = new Set();
+  }
+
+  _handleBrowseSelection = ({ detail: { items } }) => {
+    const prevKeys = this._browseSelKeys;
+    const nextKeys = new Set(items.map((i) => i.path));
+
+    for (const key of prevKeys) {
+      if (!nextKeys.has(key)) {
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: { key } }));
+      }
+    }
+
+    for (const item of items) {
+      if (!prevKeys.has(item.path)) {
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, {
+          detail: {
+            key: item.path,
+            id: item.path,
+            type: item.ext ? 'file' : 'folder',
+            label: item.name,
+            blockName: item.name,
+            innerText: `Selected repository path: ${item.path.replace(/^\//, '')}`,
+          },
+        }));
+      }
+    }
+
+    this._browseSelKeys = nextKeys;
   };
 
   constructor() {
@@ -38,13 +87,14 @@ export default class DaBrowse extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
-    document.addEventListener('keydown', this.handleShortcuts.bind(this));
+    this.shadowRoot.adoptedStyleSheets = [style];
+    this._handleShortcuts = this.handleShortcuts.bind(this);
+    document.addEventListener('keydown', this._handleShortcuts);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener('keydown', this.handleShortcuts.bind(this));
+    document.removeEventListener('keydown', this._handleShortcuts);
   }
 
   handleShortcuts(e) {
@@ -71,24 +121,48 @@ export default class DaBrowse extends LitElement {
 
   async update(props) {
     if (props.has('details') && this.details) {
-      // Only re-fetch if the orgs are different
-      const reFetch = props.get('details')?.owner !== this.details.owner;
-      this.editor = await this.getEditor(reFetch);
+      const prevDetails = props.get('details');
+      const orgChanged = prevDetails?.org !== this.details.org;
+      if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
+
+      // EW flag lives at site level — re-check whenever org or site changes,
+      // and do this before getEditor so the default editor reflects EW state
+      if (orgChanged || prevDetails?.site !== this.details.site) {
+        const { org, site } = this.details;
+        const { isEWEnabled, isEwChatDisabled } = await getNxEWFlags();
+        const [ewEnabled, chatDisabled] = await Promise.all([
+          isEWEnabled({ org, site }),
+          isEwChatDisabled({ org, site }),
+        ]);
+        this._ewEnabled = ewEnabled;
+        this._chatEnabled = ewEnabled && !chatDisabled;
+        if (this._chatEnabled) {
+          registerPanelSection('chat', {
+            position: 'before',
+            width: '400px',
+            getContent: getChatPanelContent(),
+          });
+          if (wasPanelOpen('chat')) openChatPanel();
+        } else {
+          closeChatPanel();
+        }
+      }
+
+      // Only re-fetch editor configs if the org changes
+      this.editor = await this.getEditor(orgChanged);
     }
 
     super.update(props);
   }
 
   async getEditor(reFetch) {
-    const DEF_EDIT = '/edit#';
+    const DEF_EDIT = this._ewEnabled ? '/canvas#' : '/edit#';
 
     if (reFetch) {
-      const resp = await daFetch(`${DA_ORIGIN}/config/${this.details.owner}/`);
-      if (!resp.ok) return DEF_EDIT;
-      const json = await resp.json();
-
-      const rows = getFirstSheet(json);
-      this.editorConfs = rows?.reduce((acc, row) => {
+      const { org, site } = this.details;
+      const configs = await Promise.all(fetchDaConfigs({ org, site }));
+      const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
+      this.editorConfs = rows.reduce((acc, row) => {
         if (row.key === 'editor.path') acc.push(row.value);
         return acc;
       }, []);
@@ -104,7 +178,7 @@ export default class DaBrowse extends LitElement {
     if (matchedConfs.length === 0) return DEF_EDIT;
 
     // Sort by length in descending order (longest first)
-    const matchedConf = matchedConfs.sort((a, b) => b.length - a.length)[0];
+    const matchedConf = matchedConfs.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length)[0];
 
     return matchedConf.split('=')[1];
   }
@@ -163,6 +237,7 @@ export default class DaBrowse extends LitElement {
         fullpath="${fullpath}"
         editor="${this.editor}"
         @onpermissions=${this.handlePermissions}
+        @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
         drag="${drag ? true : nothing}"></da-list>`;
@@ -170,12 +245,19 @@ export default class DaBrowse extends LitElement {
 
   render() {
     return html`
-      <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
-        ${this._tabItems.map((tab, idx) => {
-          if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
-            return nothing;
-          }
-          return html`
+      <div class="da-browse-header">
+        ${this._chatEnabled ? html`
+          <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
+            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
+          </button>` : nothing}
+      </div>
+      <div class="da-browse-content">
+        <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
+          ${this._tabItems.map((tab, idx) => {
+      if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
+        return nothing;
+      }
+      return html`
             <button
               id="tab-${tab.id}"
               type="button"
@@ -185,21 +267,30 @@ export default class DaBrowse extends LitElement {
               @click=${() => { this.handleTabClick(idx); }}>
               <span class="focus">${tab.title}</span>
             </button>`;
-        })}
+    })}
       </div>
       <div class="da-list-header context-${this.context}">
-        <da-breadcrumbs fullpath="${this.details.fullpath}" depth="${this.details.depth}"></da-breadcrumbs>
-        ${this._tabItems.map((tab) => html`
-          <div class="da-list-header-action" data-visible="${tab.selected}">
-            ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
+          <div class="da-breadcrumb-action-area">
+            <div class="da-breadcrumb-area">
+              <nx-breadcrumb .pathSegments="${this.details.fullpath.split('/').filter(Boolean)}"></nx-breadcrumb>
+              ${!this.details.path ? html`
+                <a class="da-breadcrumb-config" href="/config#${this.details.fullpath}/" aria-label="Config">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
+                </a>` : nothing}
+            </div>
+            ${this._tabItems.map((tab) => html`
+              <div class="da-list-header-action" data-visible="${tab.selected}">
+                ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
+              </div>
+            `)}
           </div>
-        `)}
-      </div>
+        </div>
       ${this._tabItems.map((tab) => html`
         <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
           ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
         </div>
       `)}
+      </div>
     `;
   }
 }

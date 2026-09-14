@@ -1,3 +1,5 @@
+import getPathDetails from './pathDetails.js';
+
 function setCursor(cursor, el) {
   el.id = cursor.id;
   cursor.remove();
@@ -59,7 +61,7 @@ function convertBlocks(editor, isFragment = false) {
   });
 }
 
-function makePictures(editor, live, lockdown) {
+function makePictures(editor, live) {
   const imgs = editor.querySelectorAll('img');
   imgs.forEach((img) => {
     img.removeAttribute('contenteditable');
@@ -82,20 +84,22 @@ function makePictures(editor, live, lockdown) {
     if (daCursor) setCursor(daCursor, img);
 
     const clone = img.cloneNode(true);
-    if (live && lockdown) {
-      // make images relative to the live preview URL
-      const source = new URL(clone.src);
-      if (source.host.endsWith('.da.live')) {
-        source.pathname = `/${source.pathname
-          .split('/')
-          .slice(3) // remove org and site
-          .join('/')}`;
-        clone.src = source.toString();
-      }
-    }
-
     clone.setAttribute('loading', 'lazy');
 
+    if (live && clone.src) {
+      try {
+        const source = new URL(clone.src);
+        if (source.host.endsWith('.da.live')) {
+          source.pathname = `/${source.pathname
+            .split('/')
+            .slice(3) // remove org and site
+            .join('/')}`;
+          clone.src = source.toString();
+        }
+      } catch {
+        // src is not an absolute URL, nothing to rewrite
+      }
+    }
     let pic = document.createElement('picture');
 
     const srcMobile = document.createElement('source');
@@ -122,7 +126,7 @@ function makePictures(editor, live, lockdown) {
     // Determine what to replace
     const imgParent = img.parentElement;
     const imgGrandparent = imgParent.parentElement;
-    if (imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1) {
+    if (imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1 && imgParent.childElementCount === 1) {
       imgGrandparent.replaceChild(pic, imgParent);
     } else {
       imgParent.replaceChild(pic, img);
@@ -190,6 +194,35 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
+function applySectionMetadata(editor) {
+  editor.querySelectorAll('.section-metadata').forEach((block) => {
+    const section = block.parentElement;
+    block.querySelectorAll(':scope > div').forEach((row) => {
+      const cols = row.querySelectorAll(':scope > div');
+      if (cols.length < 2) return;
+      const key = cols[0].textContent.trim().toLowerCase()
+        .replace(/[^0-9a-z]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      if (!key) return;
+      if (key === 'style') {
+        cols[1].textContent.trim().split(',')
+          .map((s) => s.trim().toLowerCase().replace(/[^0-9a-z]+/g, '-').replace(/^-+|-+$/g, ''))
+          .filter(Boolean)
+          .forEach((cls) => section.classList.add(cls));
+      } else {
+        const camelKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        const linkEl = cols[1].querySelector('a');
+        const imgEl = cols[1].querySelector('img');
+        let value = cols[1].textContent.trim();
+        if (linkEl) value = linkEl.href;
+        else if (imgEl) value = imgEl.src;
+        section.dataset[camelKey] = value;
+      }
+    });
+    block.remove();
+  });
+}
+
 const iconRegex = /(?<!(?:https?|urn)[^\s<>]*):(#?[a-z_-]+[a-z\d]*):/gi; // matches icon pattern but not in URLs
 function parseIcons(editor) {
   if (!iconRegex.test(editor.innerHTML)) return;
@@ -201,19 +234,46 @@ function parseIcons(editor) {
 
 const removeEls = (els) => els.forEach((el) => el.remove());
 
+function convertLocalUrlsToRelative(editor) {
+  const pathDetails = getPathDetails();
+  if (!pathDetails?.org || !pathDetails?.site) return;
+
+  const { org, site } = pathDetails;
+
+  const links = editor.querySelectorAll('a[href]');
+  links.forEach((link) => {
+    const url = link.getAttribute('href');
+    if (!url || !url.startsWith('https://')) return;
+
+    try {
+      const { hostname, pathname, search, hash } = new URL(url);
+
+      const sameSitePattern = `--${site}--${org}.aem.`;
+      if (hostname.includes(sameSitePattern)) {
+        link.setAttribute('href', `${pathname}${search}${hash}`);
+      }
+    } catch {
+      // ignore
+    }
+  });
+}
+
 /**
  * A utility to take ProseMirror formatted DOM and convert to AEM semantic markup
  * @param {HTMLElement} editor the editor dom
  * @param {Boolean} livePreview whether or not the target destination is Live Preview
  * @param {Boolean} isFragment whether or not the DOM is a fragment
- * @param {Boolean} lockdownImages whether or not to make images and content.da.live URLs relative
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false, lockdownImages = false) {
+export default function prose2aem(editor, livePreview, isFragment = false) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
   editor.removeAttribute('translate');
+
+  if (livePreview) {
+    convertLocalUrlsToRelative(editor);
+  }
 
   const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
   removeEls(daDiffDeletedEls);
@@ -246,10 +306,11 @@ export default function prose2aem(editor, livePreview, isFragment = false, lockd
     parseIcons(editor);
   }
 
-  makePictures(editor, livePreview, lockdownImages);
+  makePictures(editor, livePreview);
 
   if (!isFragment) {
     makeSections(editor);
+    if (livePreview) applySectionMetadata(editor);
   }
 
   if (isFragment) {
@@ -264,7 +325,7 @@ export default function prose2aem(editor, livePreview, isFragment = false, lockd
     </body>
   `;
 
-  if (livePreview && lockdownImages) {
+  if (livePreview) {
     html = html.replaceAll('https://content.da.live/', '/');
     html = html.replaceAll('https://stage-content.da.live/', '/');
   }
@@ -272,7 +333,7 @@ export default function prose2aem(editor, livePreview, isFragment = false, lockd
   return html;
 }
 
-export function getHtmlWithCursor(view, lockdownImages = false) {
+export function getHtmlWithCursor(view) {
   const { selection } = view.state;
   const cursorPos = selection.from;
 
@@ -325,7 +386,5 @@ export function getHtmlWithCursor(view, lockdownImages = false) {
     clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
   }
 
-  // Convert to an HTML string using prose2aem
-  // Always use livePreview mode, but only lockdown images if lockdownImages is enabled
-  return prose2aem(editorClone, true, false, lockdownImages);
+  return prose2aem(editorClone, true);
 }

@@ -28,6 +28,23 @@ const objHash = async (obj) => {
 
 const isTableNode = (node) => (node.content?.content?.length === 3 && node.content.content[1].type.name === 'table');
 
+// When content is parsed from <da-diff-added>, each direct child gets a
+// `daDiffAdded: ''` attribute (added by the diff_added parseDOM contentElement
+// in the schema). When accepting the addition, strip that attribute so the
+// accepted content no longer serializes with `da-diff-added=""` on every child.
+export function stripDaDiffAddedAttrs(nodes) {
+  return nodes.map((node) => {
+    if (node.attrs && node.attrs.daDiffAdded != null) {
+      return node.type.create(
+        { ...node.attrs, daDiffAdded: null },
+        node.content,
+        node.marks,
+      );
+    }
+    return node;
+  });
+}
+
 function escapeHTML(str) {
   return str.replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
@@ -220,8 +237,8 @@ export function handleKeepSingleNode(view, getPos, isValidPosition, isLocNode, f
 
     addToHashMetadata(currentNode, ACCEPTED_KEY);
 
-    // Use the improved content filtering like the tabbed interface
-    const filteredContent = filterNodeContent(currentNode);
+    // Use the improved content filtering like the tabbed interface.
+    const filteredContent = stripDaDiffAddedAttrs(filterNodeContent(currentNode));
     dispatchContentTransaction(
       currentPos,
       currentPos + currentNode.nodeSize,
@@ -337,7 +354,7 @@ export function handleKeepAdded(context) {
   handleOperation(context, {
     acceptAdded: true,
     acceptDeleted: false,
-    getContent: ({ addedNode }) => filterNodeContent(addedNode),
+    getContent: ({ addedNode }) => stripDaDiffAddedAttrs(filterNodeContent(addedNode)),
   });
 }
 
@@ -348,7 +365,7 @@ export function handleKeepBoth(context) {
     acceptDeleted: true,
     getContent: ({ deletedNode, addedNode }) => {
       const deletedContent = filterNodeContent(deletedNode);
-      const addedContent = filterNodeContent(addedNode);
+      const addedContent = stripDaDiffAddedAttrs(filterNodeContent(addedNode));
       return [...deletedContent, ...addedContent];
     },
   });

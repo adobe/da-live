@@ -1,0 +1,29 @@
+// Test fixture mirroring da-nx's nx/utils/message-types.js.
+export const MESSAGE_TYPES = Object.freeze({
+  INIT: 'init',
+  READY: 'ready',
+
+  SET_BODY: 'set-body',
+  SET_EDITOR_STATE: 'set-editor-state',
+  SET_CURSORS: 'set-cursors',
+  SET_SELECTED_NODE: 'set-selected-node',
+
+  CURSOR_MOVE: 'cursor-move',
+  RELOAD: 'reload',
+  GET_EDITOR: 'get-editor',
+  NODE_UPDATE: 'node-update',
+  NODE_SELECT: 'node-select',
+  HISTORY: 'history',
+  NEW_VERSION: 'new-version',
+  SELECTION_CHANGE: 'selection-change',
+  STORED_MARKS: 'stored-marks',
+  PREVIEW: 'preview',
+
+  SET_COMMENT_MARKERS: 'set-comment-markers',
+  SCROLL_TO_POS: 'scroll-to-pos',
+  COMMENT_MARKER_CLICK: 'comment-marker-click',
+  COMMENT_MARKER_CLEAR: 'comment-marker-clear',
+  COMMENT_SHORTCUT: 'comment-shortcut',
+
+  IMAGE_REPLACE: 'image-replace',
+});

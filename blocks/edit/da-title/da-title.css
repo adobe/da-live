@@ -13,7 +13,7 @@ h1 {
 }
 
 button {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
 }
 
 da-prepare {
@@ -44,10 +44,15 @@ da-dialog {
   background: var(--s2-blue-900);
   border-color: var(--s2-blue-900);
   color: #FFF;
+
+  &:disabled {
+    background: var(--s2-gray-500);
+    border-color: var(--s2-gray-500);
+  }
 }
 
 .da-title-inner {
-  max-width: var(--grid-container-width);
+  max-width: var(--se-grid-container-width, var(--grid-container-width));
   margin: 0 auto;
   display: block;
   justify-content: space-between;
@@ -60,9 +65,9 @@ da-dialog {
   position: absolute;
   width: 18px;
   height: 18px;
-  top: 18px;
+  top: 20px;
   left: -36px;
-  background: url("/blocks/edit/img/Smock_LockClosed_18_N.svg") center center / 18px no-repeat;
+  background: url("/blocks/edit/img/S2_Icon_Lock_20_N.svg") center center / 18px no-repeat;
 }
 
 .da-title-name-label {
@@ -71,7 +76,7 @@ da-dialog {
   margin: 0 0 6px;
   text-transform: uppercase;
   font-weight: 700;
-  color: #464646;
+  color: var(--s2-gray-1000);
   opacity: 0.75;
   text-decoration: none;
   padding: 6px 12px;
@@ -80,7 +85,7 @@ da-dialog {
 }
 
 .da-title-name-label:hover {
-  background: #EFEFEF;
+  background: var(--s2-gray-200);
   opacity: 1;
 }
 
@@ -92,7 +97,8 @@ da-dialog {
   height: 18px;
   top: 11px;
   left: -24px;
-  background: url('/blocks/edit/img/left-large.svg') center/18px no-repeat;
+  background-color: currentColor;
+  mask: url('/blocks/edit/img/left-large.svg') center/18px no-repeat;
 }
 
 .da-title-collab-actions-wrapper {
@@ -121,13 +127,16 @@ da-dialog {
   z-index: 2;
 }
 
-.collab-icon.collab-popup::after {
+.collab-icon.collab-popup::after,
+.da-title-action::after {
   display: block;
   content: attr(data-popup-content);
   position: absolute;
   bottom: -32px;
   left: 50%;
   transform: translateX(-50%);
+  font-size: 12px;
+  line-height: 1.6;
   text-align: center;
   text-transform: capitalize;
   background: #676767;
@@ -135,6 +144,21 @@ da-dialog {
   white-space: nowrap;
   padding: 0 8px;
   border-radius: 4px;
+}
+
+.da-title-action {
+  position: relative;
+  display: none;
+
+  &::after {
+    display: none;
+    bottom: -22px;
+    text-transform: unset;
+  }
+
+  &:hover::after {
+    display: unset;
+  }
 }
 
 .collab-icon-user {
@@ -162,6 +186,21 @@ da-dialog {
   color: rgb(212 212 212 / 50%);
 }
 
+.collab-status-cloud.collab-status-unsaved {
+  animation: cloud-unsaved-pulse 1.5s ease-in-out infinite alternate;
+}
+
+/* Config has no auto-save: show a static "unsaved changes" cloud (light shade)
+   rather than the pulsing auto-saving indicator. */
+.collab-status-cloud.collab-status-unsaved-config {
+  color: rgb(212 212 212 / 50%);
+}
+
+@keyframes cloud-unsaved-pulse {
+  from { color: rgb(212 212 212 / 50%); }
+  to { color: rgb(110 110 110); }
+}
+
 .collab-icon.collab-status-cloud.collab-popup::after {
   bottom: -29px;
 }
@@ -170,42 +209,6 @@ da-dialog {
   pointer-events: none;
   width: 37.5px;
   height: 27px;
-}
-
-.da-title-action {
-  position: relative;
-  display: none;
-}
-
-.da-title-actions {
-  position: relative;
-  border-radius: 100px;
-  display: flex;
-  gap: 12px;
-  height: 44px;
-
-  &.is-open {
-    margin-left: 12px;
-
-    .da-title-action {
-      display: unset;
-    }
-
-    &::before {
-      content: '';
-      position: absolute;
-      inset: -12px;
-      border-radius: 100px;
-      background: #EFEFEF;
-    }
-  }
-
-  &.is-fixed {
-    position: fixed;
-    right: 18px;
-    bottom: 12px;
-    z-index: 10000;
-  }
 }
 
 .da-title-action-send {
@@ -217,6 +220,50 @@ da-dialog {
   justify-content: center;
   align-items: center;
   overflow: hidden;
+}
+
+.da-title-actions {
+  position: relative;
+  border-radius: 100px;
+  display: flex;
+  gap: 12px;
+  height: 44px;
+
+  &.is-open,
+  &.has-one-action {
+    margin-left: 12px;
+
+    .da-title-action {
+      display: unset;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -12px;
+      border-radius: 100px;
+      background: var(--s2-gray-100);
+    }
+  }
+
+  &.has-one-action {
+    margin-left: 0;
+
+    .da-title-action-send {
+      display: none;
+    }
+
+    &::before {
+      background: transparent;
+    }
+  }
+
+  &.is-fixed {
+    position: fixed;
+    right: 18px;
+    bottom: 12px;
+    z-index: 10000;
+  }
 }
 
 .da-title-action-send-icon {

@@ -151,6 +151,10 @@
   background-image: url('/blocks/edit/img/Smock_Rail_18_N.svg');
 }
 
+.slash-menu-icon.insert-image {
+  background-image: url('/blocks/edit/img/Smock_Image_18_N.svg');
+}
+
 .slash-menu-item .argument {
   color: #666;
   font-style: italic;

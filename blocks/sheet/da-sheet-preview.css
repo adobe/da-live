@@ -12,7 +12,7 @@
   box-shadow: rgb(181 181 181) 0 0 20px 0;
   border-radius: 12px;
   height: 500px;
-  padding: var(--spacing-200);
+  padding: var(--s2-spacing-200, var(--spacing-200));
   overflow: scroll;
   box-sizing: border-box;
 }

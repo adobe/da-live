@@ -1,24 +1,11 @@
-.da-title-wrapper {
-  margin: 0 auto;
-  padding: 40px 0 80px;
-}
-
-.title-label {
-  text-transform: uppercase;
-  font-weight: 700;
-  color: #afafaf;
-  margin: 0 0 6px;
-}
-
-h1 {
-  line-height: 1;
-  margin: 0;
-}
-
 .da-content {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.da-content img[src$=".svg"] {
+  background-color: #fff;
 }
 
 .da-content img,
@@ -27,7 +14,7 @@ h1 {
   object-fit: contain;
   max-width: 100%;
   height: 600px;
-  box-shadow: rgb(181 181 181) 0 0 20px 0;
+  box-shadow: var(--s2-gray-400) 0 0 20px 0;
 }
 
 .da-pdf-media {
@@ -36,7 +23,6 @@ h1 {
 }
 
 @media (width >= 900px) {
-  .da-title-wrapper,
   .da-content img,
   .da-pdf-media {
     max-width: 900px;

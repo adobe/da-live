@@ -9,7 +9,11 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import ENV from './env.js';
+import { expect } from '@playwright/test';
+import ENV, { TEST_ORG, TEST_SITE, RUN_FOLDER } from './env.js';
+
+export { TEST_ORG, TEST_SITE };
+export { RUN_FOLDER } from './env.js';
 
 export function getQuery() {
   const { GITHUB_HEAD_REF: branch } = process.env;
@@ -21,7 +25,7 @@ export function getQuery() {
 
 const QUERY = getQuery();
 
-function getTestURL(type, testIdentifier, workerInfo, dir = '/da-sites/da-status/tests') {
+function getTestURL(type, testIdentifier, workerInfo, dir = `/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`) {
   const dateStamp = Date.now().toString(36);
   const pageName = `pw-${testIdentifier}-${dateStamp}-${workerInfo.project.name}`;
   return `${ENV}/${type}${QUERY}#${dir}/${pageName}`;
@@ -79,6 +83,23 @@ export function getTestResourceAge(fileName) {
 
 const SELECT_ALL = process.platform === 'darwin' ? 'Meta+a' : 'Control+a';
 
+/**
+ * Navigates to a document URL and creates a new document from the blank-page prompt,
+ * waiting for the ProseMirror editor to become editable. Used by tests that need a
+ * fresh document to work with (editing, deleting, previewing, publishing, etc).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} url - The URL of the (not yet existing) document to create.
+ */
+export async function createDocument(page, url) {
+  await page.goto(url);
+  await page.getByText('Create document', { exact: true }).click();
+  await expect(page.locator('div.ProseMirror')).toBeVisible();
+  await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
+  // Allow Y.js WebSocket to stabilize before typing
+  await page.waitForTimeout(2000);
+}
+
 export async function fill(page, text) {
   const proseMirror = page.locator('div.ProseMirror');
   await proseMirror.click();
@@ -96,4 +117,16 @@ export async function tabBackward(page) {
   const browserName = page.context().browser()?.browserType().name();
   const key = browserName === 'webkit' ? 'Shift+Alt+Tab' : 'Shift+Tab';
   await page.keyboard.press(key);
+}
+
+/**
+ * Waits for the next successful save request (POST to da-admin's /source endpoint).
+ * Sheet saves are debounced through a single shared timer that's cancelled and
+ * rescheduled on every edit, so whichever change triggered this call is guaranteed
+ * to be included in the next save that fires. Call this before triggering the change.
+ */
+export function waitForSave(page, timeout = 10000) {
+  return page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.includes('/source/')
+    && response.ok(), { timeout });
 }

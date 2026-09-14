@@ -5,13 +5,17 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
 jobs:
   run-tests:
     name: Running tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [24]
+        node-version: [22]
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4

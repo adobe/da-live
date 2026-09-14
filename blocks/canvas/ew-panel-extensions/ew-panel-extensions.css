@@ -1,0 +1,14 @@
+:host {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.ext-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+}

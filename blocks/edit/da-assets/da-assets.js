@@ -1,14 +1,17 @@
-import { getNx, nxJS } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
+import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
   getAssetAlt, getDmApprovalStatus, getScene7PublishStatus,
 } from './helpers/urls.js';
+import { applySiteImageModifiers } from './helpers/imageModifiers.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
-const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
+export const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
+export { buildFeatureSet } from '../../shared/aem-assets/selector-props.js';
 
 const DM_ERROR_MSG = 'The selected asset is not available because it is not approved for delivery. Please check the status.';
 const PUBLISH_ERROR_MSG = 'The selected asset is not available on the publish tier. Please publish the asset in AEM and try again.';
@@ -34,22 +37,21 @@ export function formatExternalBrief(doc) {
   Please suggest Assets that are visually appealing and relevant to the subject.`;
 }
 
-export function buildFeatureSet(isDmEnabled) {
-  const features = ['upload', 'collections', 'detail-panel', 'advisor'];
-  if (isDmEnabled) features.push('dynamic-media');
-  return features;
-}
-
 export function resolveAssetUrl(asset, repoConfig) {
-  const { tierType, assetOrigin, assetBasePath, isDmEnabled, mimeRenditionOverrides } = repoConfig;
+  const {
+    tierType, assetOrigin, assetBasePath, isDmEnabled,
+    mimeRenditionOverrides, siteImageModifiers,
+  } = repoConfig;
   const renditionOptions = { mimeRenditionOverrides };
+  let url;
   if (tierType === 'delivery') {
-    return buildDeliveryUrl(asset, assetOrigin, assetBasePath, renditionOptions);
+    url = buildDeliveryUrl(asset, assetOrigin, assetBasePath, renditionOptions);
+  } else if (isDmEnabled) {
+    url = buildDmUrl(asset, assetOrigin, assetBasePath, renditionOptions);
+  } else {
+    url = buildAuthorUrl(asset, assetOrigin);
   }
-  if (isDmEnabled) {
-    return buildDmUrl(asset, assetOrigin, assetBasePath, renditionOptions);
-  }
-  return buildAuthorUrl(asset, assetOrigin);
+  return applySiteImageModifiers(url, siteImageModifiers);
 }
 
 function showErrorPanel(container, onBack, onCancel, message = DM_ERROR_MSG) {
@@ -80,13 +82,28 @@ function showAssetPanel(assetPanel, secondaryPanel) {
   assetPanel.style.display = 'block';
 }
 
-export function buildHandleSelection(
-  dialog,
+/**
+ * Builds the asset selector's `handleSelection` callback. Shared by the classic editor
+ * (blocks/edit) and the canvas editor (blocks/canvas) — the two only differ in how they
+ * resolve the editor view and how they close the surrounding UI, so those are injected:
+ *
+ * @param {object} opts
+ * @param {HTMLElement} opts.assetPanel - Panel hosting the asset selector.
+ * @param {HTMLElement} opts.secondaryPanel - Panel used for smart-crop / error UI.
+ * @param {object} opts.repoConfig - Resolved repository config (see helpers/config.js).
+ * @param {Promise<Array|false>} opts.responsiveImageConfigPromise - Responsive image configs.
+ * @param {function(): object} opts.getView - Returns the current ProseMirror view.
+ * @param {function(): void} opts.close - Closes the surrounding dialog/panel.
+ * @returns {function(Array): Promise<void>}
+ */
+export function buildHandleSelection({
   assetPanel,
   secondaryPanel,
   repoConfig,
   responsiveImageConfigPromise,
-) {
+  getView,
+  close,
+}) {
   return async (assets) => {
     const [asset] = assets;
     if (!asset) return;
@@ -94,13 +111,18 @@ export function buildHandleSelection(
     const format = asset['aem:formatName'];
     if (!format) return;
 
+    const view = getView();
+    if (!view) return;
+
     const mimetype = asset.mimetype || asset['dc:format'] || '';
     const isImage = mimetype.toLowerCase().startsWith('image/');
     const alt = getAssetAlt(asset);
-    const { view } = window;
 
     const resetToAssetPanel = () => showAssetPanel(assetPanel, secondaryPanel);
-    const closeAndReset = () => { dialog.close(); resetToAssetPanel(); };
+    const closeAndReset = () => {
+      close();
+      resetToAssetPanel();
+    };
 
     // Author+DM mode: check asset is approved for delivery before inserting
     if (repoConfig.tierType === 'author' && repoConfig.isDmEnabled) {
@@ -137,7 +159,11 @@ export function buildHandleSelection(
         responsiveImageConfigPromise,
         onInsert: (srcs) => {
           closeAndReset();
-          const nodes = srcs.map((src) => createImageNode(view, src, alt));
+          const nodes = srcs.map((src) => createImageNode(
+            view,
+            applySiteImageModifiers(src, repoConfig.siteImageModifiers),
+            alt,
+          ));
           insertFragment(view, nodes);
         },
         onBack: resetToAssetPanel,
@@ -152,7 +178,7 @@ export function buildHandleSelection(
     }
 
     // Standard insertion
-    dialog.close();
+    close();
     const src = resolveAssetUrl(asset, repoConfig);
 
     if (!isImage || repoConfig.insertAsLink) {
@@ -164,9 +190,17 @@ export function buildHandleSelection(
 }
 
 export async function openAssets() {
-  const { loadStyle } = await import(`${getNx()}${nxJS}`);
-  const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-  const loadScript = (await import(`${getNx()}/utils/script.js`)).default;
+  const nx = getNx();
+  const isNx2 = nx.endsWith('/nx2');
+  const { loadStyle } = await import(`${nx}/utils/utils.js`);
+  // TODO: remove the ternary and the nx v1 branch once nxver=2 is
+  // rolled out on the CDN. Kept for backward compat during the
+  // transition: nx v1 exposes loadScript at utils/script.js; nx2
+  // re-exports it from utils/utils.js.
+  const loadScript = isNx2
+    ? (await import(`${nx}/utils/utils.js`)).loadScript
+    : (await import(`${nx}/utils/script.js`)).default;
+  const { loadIms, handleSignIn } = await import(`${nx}/utils/ims.js`);
 
   const details = await loadIms();
   if (details.anonymous) handleSignIn();
@@ -182,7 +216,10 @@ export async function openAssets() {
     return;
   }
 
-  await loadStyle(import.meta.url.replace('.js', '.css'));
+  const assetSheet = await loadStyle(import.meta.url);
+  if (assetSheet && !document.adoptedStyleSheets.includes(assetSheet)) {
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, assetSheet];
+  }
   await loadScript(ASSET_SELECTOR_URL);
 
   dialog = document.createElement('dialog');
@@ -197,21 +234,20 @@ export async function openAssets() {
   const responsiveImageConfigPromise = getResponsiveImageConfig(owner, repo);
   const externalBrief = formatExternalBrief(window.view.state.doc);
 
-  const selectorProps = {
+  const selectorProps = buildAssetSelectorProps({
     imsToken: details.accessToken.token,
-    repositoryId: repoConfig.repositoryId,
-    aemTierType: repoConfig.tierType,
-    featureSet: buildFeatureSet(repoConfig.isDmEnabled),
+    repoConfig,
     externalBrief,
     onClose: () => assetPanel.style.display !== 'none' && dialog.close(),
-    handleSelection: buildHandleSelection(
-      dialog,
+    handleSelection: buildHandleSelection({
       assetPanel,
       secondaryPanel,
       repoConfig,
       responsiveImageConfigPromise,
-    ),
-  };
+      getView: () => window.view,
+      close: () => dialog.close(),
+    }),
+  });
 
   window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
 }

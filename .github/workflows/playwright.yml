@@ -1,4 +1,4 @@
-name: Playwright Tests
+name: Playwright Tests (Da-Admin)
 on:
   workflow_dispatch:
   push:
@@ -6,6 +6,14 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
   test:
     timeout-minutes: 60

@@ -2,9 +2,9 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 import getPathDetails from '../shared/pathDetails.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const style = await getStyle('/blocks/sheet/da-sheet-preview.css');
+const style = await loadStyle('/blocks/sheet/da-sheet-preview.css');
 
 class DaSheetPreview extends LitElement {
   static properties = {
@@ -46,7 +46,7 @@ class DaSheetPreview extends LitElement {
   }
 
   renderValue(value) {
-    if (!(value.startsWith('/') || value.startsWith('http'))) return value;
+    if (typeof value !== 'string' || !(value.startsWith('/') || value.startsWith('http'))) return value;
     const links = value.split(',').map((val) => val.replaceAll(' ', ''));
     return links.map((link) => html`<a href="${this.getUrl(link)}" target="_blank">${link}</a> `);
   }

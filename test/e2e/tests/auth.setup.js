@@ -12,7 +12,9 @@
 import fs from 'fs';
 import path from 'path';
 import { test as setup, expect } from '@playwright/test';
-import ENV from '../utils/env.js';
+import ENV, { TEST_ORG, TEST_SITE, RUN_FOLDER } from '../utils/env.js';
+import { getQuery } from '../utils/page.js';
+import { deleteResource, createResource, MARKER_DOC } from '../utils/cleanup.js';
 
 const AUTH_FILE = path.join(__dirname, '../.playwright/.auth/user.json');
 
@@ -33,6 +35,12 @@ The configuration in https://da.live/config#/da-testautomation/ should be as fol
   /acltest/testdocs/subdir/subdir2/subdir3 907136ED5D35CBF50A495CD4 read
   /acltest/testdocs/dir-readwrite/+** 907136ED5D35CBF50A495CD4/DA-Test write
   /acltest/testdocs/dir-readonly/+** 907136ED5D35CBF50A495CD4/DA-Test read
+
+`/acltest/otherdir` must NOT have any rule on it or any descendant (no row
+above should match it or anything below it). It is used to verify that a
+folder with no permitted descendant anywhere is still blocked with 403,
+now that adobe/da-admin#299 lets ancestors of a permitted path (like
+`testdocs` above) list successfully.
 */
 
 // This is executed once to authenticate the user used during the tests.
@@ -78,7 +86,7 @@ setup('Set up authentication', async ({ page }) => {
   await continueButton.waitFor();
   await continueButton.click();
 
-  const passwordInput = page.getByLabel('Password', { exact: true });
+  const passwordInput = page.getByLabel(/^(continue with )?password$/i);
   await passwordInput.waitFor();
   await passwordInput.evaluate((el, password) => {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
@@ -93,9 +101,31 @@ setup('Set up authentication', async ({ page }) => {
   await foundationInternal.waitFor();
   await foundationInternal.click();
 
-  const authorLink = page.locator('a.nx-nav-brand');
+  const authorLink = page.locator('a.brand-area');
   await authorLink.waitFor();
-  await expect(authorLink).toContainText('Author');
+  await expect(authorLink).toBeVisible();
 
   await page.context().storageState({ path: AUTH_FILE });
+
+  // Capture an admin bearer from a live request, then reset this run's folder.
+  let authHeader;
+  page.on('request', (request) => {
+    const auth = request.headers().authorization;
+    if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
+  });
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await expect.poll(() => authHeader, { timeout: 15000 }).toBeTruthy();
+
+  const folderPath = `/tests/${RUN_FOLDER}`;
+  // Wipe leftovers from any prior (possibly crashed) run of this branch.
+  const delResp = await deleteResource(page, authHeader, TEST_ORG, TEST_SITE, folderPath, { isFolder: true });
+  if (!delResp.ok() && delResp.status() !== 404) {
+    throw new Error(`Setup: failed to reset ${folderPath} (${delResp.status()})`);
+  }
+
+  const ts = Date.now().toString(36);
+  const marker = `${folderPath}/pw-run-${ts}-marker`;
+  const body = MARKER_DOC(RUN_FOLDER.replace(/^pw-/, ''), process.env.GITHUB_SHA ?? 'local', new Date().toISOString());
+  const markerResp = await createResource(page, authHeader, TEST_ORG, TEST_SITE, marker, body);
+  expect(markerResp.ok(), `Setup: failed to create run marker (${markerResp.status()})`).toBeTruthy();
 });

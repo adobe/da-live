@@ -10,7 +10,7 @@ export const ICONS = new Map([
 
 export const REASONS = {
   'h1.info': { badge: 'info', reason: 'Found exactly one H1 heading.' },
-  'h1.warn': { badge: 'warn', reason: 'Found found more than one H1 heading.' },
+  'h1.warn': { badge: 'warn', reason: 'Found more than one H1 heading.' },
   'h1.error': { badge: 'error', reason: 'No H1 Elements found.' },
   'lorem.info': { badge: 'info', reason: 'This document appears to be free of lorem ipsum.' },
   'lorem.error': { badge: 'error', reason: 'This document appears to have lorem ipsum.' },

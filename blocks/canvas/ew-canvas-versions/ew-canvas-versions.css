@@ -1,0 +1,331 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--s2-font-family);
+  padding: var(--s2-spacing-200) 0 0 var(--s2-spacing-200);
+  font-size: var(--s2-component-s-regular-font-size);
+  color: var(--s2-gray-700);
+}
+
+button {
+  border-radius: var(--s2-corner-radius-400);
+  border: none;
+  cursor: pointer;
+}
+
+
+.ew-canvas-versions {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.placeholder {
+  padding: var(--s2-spacing-300) var(--s2-spacing-200);
+  font-size: var(--s2-component-s-regular-font-size);
+  color: var(--s2-gray-600);
+  text-align: center;
+}
+
+.loading {
+  padding: var(--s2-spacing-200);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s2-spacing-75) var(--s2-spacing-200) var(--s2-spacing-200) 0;
+  flex-shrink: 0;
+}
+
+.segment {
+  display: flex;
+  gap: var(--s2-spacing-100);
+  color: var(--s2-gray-700);
+}
+
+.seg-btn {
+  font-size: var(--s2-component-s-regular-font-size);
+  border: none;
+  background: transparent;
+  color: var(--s2-gray-700);
+  height: 24px;
+  min-width: 48px;
+  padding: 0 var(--s2-spacing-100);
+  transition: transform 0.125s ease-out;
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &.is-selected {
+    background: var(--s2-gray-100);
+    color: var(--s2-gray-800);
+  }
+
+  &:hover:not(.is-selected) {
+    background: var(--s2-gray-75);
+  }
+}
+
+.hint {
+  margin: 0;
+  padding: 0 var(--s2-spacing-75);
+  height: 24px;
+  font-size: var(--s2-component-s-regular-font-size);
+  color: var(--s2-gray-700);
+  flex-shrink: 0;
+}
+
+.versionlist {
+  list-style: none;
+  padding: 0;
+  padding-left: var(--s2-spacing-400);
+  margin: var(--s2-spacing-200) 0 0 0;
+  overflow: hidden auto;
+}
+
+.versionlist:has(.is-comparing) .is-current {
+  cursor: pointer;
+}
+
+.versionentry {
+  position: relative;
+  gap: var(--s2-spacing-75);
+  padding: var(--s2-spacing-200) var(--s2-spacing-200) 0 28px;
+  border-left: 1px solid var(--s2-gray-200);
+  min-height: 24px;
+
+  &.is-version {
+    padding-left: 20px;
+  }
+
+  &.is-current,
+  &.is-new {
+    display: flex;
+    align-items: center;
+  }
+
+  &.is-current:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+
+  .da-icon-btn:hover {
+    background: var(--s2-gray-300);
+  }
+
+  &:last-of-type {
+    margin-bottom: var(--s2-spacing-200);
+  }
+}
+
+.versionlist > .versionentry:first-child {
+  padding-top: 0;
+}
+
+.versionname {
+  font-size: var(--s2-component-s-regular-font-size);
+  font-weight: 700;
+  color: var(--s2-gray-900);
+}
+
+.versionicon {
+  width: 24px;
+  height: 24px;
+  left: -12.5px;
+  position: absolute;
+  border-radius: 12px;
+  content: '';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--s2-gray-75);
+
+  svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.15s ease;
+  }
+}
+
+.versionentry.is-audit .versionicon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.versionentry:hover .versionicon {
+  background: var(--s2-gray-100);
+}
+
+.versionentry:has(details[open]) .versionicon svg {
+  transform: rotate(180deg);
+}
+
+.versionentry.is-new .versionicon {
+  box-sizing: border-box;
+  background: var(--s2-gray-25);
+  border: 2px solid var(--s2-gray-400);
+}
+
+.versionentry.is-current .versionicon,
+.versionentry.is-current:hover .versionicon {
+  background: var(--s2-gray-1000);
+
+  svg {
+    color: var(--s2-gray-25);
+  }
+}
+
+.versionlist > .versionentry:first-child .versionicon {
+  top: 0;
+}
+
+.auditlist {
+  list-style: none;
+  padding: 0;
+  margin-top: var(--s2-spacing-300);
+
+  .audititem {
+    display: flex;
+    gap: var(--s2-spacing-50);
+    flex-direction: column;
+    color: var(--s2-gray-600);
+    min-width: 0;
+  }
+
+  .user {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .audititem:not(:first-of-type) {
+    padding-top: var(--s2-spacing-200);
+  }
+
+  .meta {
+    color: var(--s2-gray-800);
+  }
+}
+
+.version-more-btn {
+  background: transparent;
+  width: 24px;
+  height:24px;
+  opacity: 0;
+}
+
+.version-row {
+  cursor: pointer;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  border-radius: var(--s2-corner-radius-400);
+  padding: var(--s2-spacing-50) 10px;
+  margin: calc(-1 * var(--s2-spacing-50));
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+}
+
+.versionentry.is-version.is-comparing {
+  .version-row {
+    background: var(--s2-blue-100);
+  }
+
+  .versionicon {
+    background: var(--s2-blue-900);
+    color: var(--s2-gray-25);
+  }
+
+  .version-more-btn {
+    opacity: 1;
+  }
+}
+
+.versionentry.is-version:not(.is-comparing):hover,
+.versionentry.is-version:not(.is-comparing):has(.version-row:focus-visible, .version-more-btn:focus-visible),
+.versionentry.is-version:has(.version-more-btn[data-active]) {
+  .version-row {
+    background: var(--s2-gray-75);
+  }
+
+  .version-more-btn {
+    opacity: 1;
+  }
+}
+
+details {
+  flex: 1;
+  min-width: 0;
+}
+
+summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  list-style: none;
+  cursor: pointer;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+.version-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* New version row */
+.ew-cv-new-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2-spacing-100);
+  flex: 1;
+}
+
+.is-new {
+  .da-input {
+    height: 24px;
+    font-size: var(--s2-component-s-regular-font-size);
+  }
+
+  .da-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    padding: 0 var(--s2-spacing-100);
+    font-size: var(--s2-component-s-regular-font-size);
+    font-weight: normal;
+    border-radius: var(--s2-corner-radius-400);
+
+    &:has(.da-loading-spinner) {
+      background: transparent;
+    }
+  }
+}
+
+.ew-cv-new-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  flex-shrink: 0;
+}
+
+nx-dialog {
+  --nx-dialog-padding: var(--s2-spacing-200);
+}
+
+

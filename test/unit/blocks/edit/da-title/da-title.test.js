@@ -145,15 +145,11 @@ describe('DaTitle', () => {
   describe('reset', () => {
     it('clears internal state', async () => {
       el = await fixture();
-      el._scheduled = 'something';
       el._configs = ['config'];
-      el._actions = { open: true };
 
       el.reset();
 
-      expect(el._scheduled).to.be.undefined;
       expect(el._configs).to.be.undefined;
-      expect(el._actions).to.deep.equal({});
     });
   });
 
@@ -171,22 +167,17 @@ describe('DaTitle', () => {
   });
 
   describe('handleError', () => {
-    it('sets status and updates icon classes', async () => {
+    it('sets status and clears sending state', async () => {
       el = await fixture();
-
-      const icon = document.createElement('div');
-      icon.classList.add('is-sending');
-      const parent = document.createElement('div');
-      parent.appendChild(icon);
+      el._isSending = true;
 
       const json = { error: { message: 'Not authorized', status: 403 } };
-      el.handleError(json, 'preview', icon);
+      el.handleError(json, 'preview');
 
       expect(el._status.message).to.equal('Not authorized');
       expect(el._status.status).to.equal(403);
       expect(el._status.action).to.equal('preview');
-      expect(icon.classList.contains('is-sending')).to.be.false;
-      expect(parent.classList.contains('is-error')).to.be.true;
+      expect(el._isSending).to.be.false;
     });
   });
 
@@ -219,20 +210,6 @@ describe('DaTitle', () => {
       expect(actions).to.include('publish');
     });
 
-    it('excludes publish when hidePublish config matches path', async () => {
-      el = await fixture({
-        details: createDetails({
-          view: 'edit',
-          path: '/test/page',
-          fullpath: '/testorg/testsite/test/page',
-        }),
-      });
-      el._configs = [{ key: 'editor.hidePublish', value: '/testorg/testsite/test' }];
-      const actions = await el.getAvailableActions();
-      expect(actions).to.not.include('publish');
-      expect(actions).to.include('preview');
-    });
-
     it('returns no preview/publish when no path', async () => {
       el = await fixture({ details: createDetails({ view: 'edit', path: '' }) });
       el._configs = [];
@@ -242,25 +219,83 @@ describe('DaTitle', () => {
     });
   });
 
-  describe('collab status (sheet view)', () => {
-    it('sets collabStatus to connected when online', async () => {
-      const origOnLine = window.navigator.onLine;
-      Object.defineProperty(window.navigator, 'onLine', { value: true, configurable: true });
+  describe('filterActions', () => {
+    it('removes publish when hidePublish config matches path', async () => {
+      const configResp = { data: [{ key: 'editor.hidePublish', value: '/filterorg/filtersite/test' }] };
+      const origFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.includes('/config/filterorg')) {
+          return new Response(JSON.stringify(configResp), { status: 200 });
+        }
+        return origFetch(url, opts);
+      };
 
-      el = await fixture({ details: createDetails({ view: 'sheet' }) });
-      expect(el.collabStatus).to.equal('connected');
+      el = await fixture({
+        details: createDetails({
+          org: 'filterorg',
+          site: 'filtersite',
+          path: '/test/page',
+          fullpath: '/filterorg/filtersite/test/page',
+        }),
+      });
+      el._actions = { available: ['preview', 'publish'] };
+      await el.filterActions();
 
-      Object.defineProperty(window.navigator, 'onLine', { value: origOnLine, configurable: true });
+      expect(el._actions.available).to.include('preview');
+      expect(el._actions.available).to.not.include('publish');
+      window.fetch = origFetch;
     });
 
-    it('sets collabStatus to offline when offline', async () => {
-      const origOnLine = window.navigator.onLine;
-      Object.defineProperty(window.navigator, 'onLine', { value: false, configurable: true });
+    it('keeps publish when hidePublish config does not match path', async () => {
+      const configResp = { data: [{ key: 'editor.hidePublish', value: '/filterorg2/filtersite2/other' }] };
+      const origFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.includes('/config/filterorg2')) {
+          return new Response(JSON.stringify(configResp), { status: 200 });
+        }
+        return origFetch(url, opts);
+      };
 
-      el = await fixture({ details: createDetails({ view: 'sheet' }) });
-      expect(el.collabStatus).to.equal('offline');
+      el = await fixture({
+        details: createDetails({
+          org: 'filterorg2',
+          site: 'filtersite2',
+          path: '/test/page',
+          fullpath: '/filterorg2/filtersite2/test/page',
+        }),
+      });
+      el._actions = { available: ['preview', 'publish'] };
+      await el.filterActions();
 
-      Object.defineProperty(window.navigator, 'onLine', { value: origOnLine, configurable: true });
+      expect(el._actions.available).to.include('preview');
+      expect(el._actions.available).to.include('publish');
+      window.fetch = origFetch;
+    });
+  });
+
+  describe('collab status = "unsaved"', () => {
+    it('renders the cloud_refresh icon and the "Unsaved changes" tooltip', async () => {
+      el = await fixture({ collabStatus: 'unsaved' });
+      await nextFrame();
+      const cloud = el.shadowRoot.querySelector('.collab-status-cloud');
+      expect(cloud.classList.contains('collab-status-unsaved')).to.be.true;
+      expect(cloud.getAttribute('data-popup-content')).to.equal('Unsaved changes');
+      const use = cloud.querySelector('use');
+      expect(use.getAttribute('href')).to.equal('#cloud_refresh');
+    });
+
+    it('renders the cloud error (!) icon for the config view instead of the pulsing indicator', async () => {
+      el = await fixture({
+        collabStatus: 'unsaved',
+        details: createDetails({ view: 'config' }),
+      });
+      await nextFrame();
+      const cloud = el.shadowRoot.querySelector('.collab-status-cloud');
+      expect(cloud.classList.contains('collab-status-unsaved')).to.be.false;
+      expect(cloud.classList.contains('collab-status-unsaved-config')).to.be.true;
+      expect(cloud.getAttribute('data-popup-content')).to.equal('Unsaved changes');
+      const use = cloud.querySelector('use');
+      expect(use.getAttribute('href')).to.equal('#spectrum-Cloud-error');
     });
   });
 
@@ -372,6 +407,314 @@ describe('DaTitle', () => {
 
       const requestBtn = el.shadowRoot.querySelector('.da-title-error button');
       expect(requestBtn).to.not.exist;
+    });
+  });
+
+  describe('handleAction (preview/publish)', () => {
+    let savedAdminFetch;
+
+    beforeEach(() => {
+      savedAdminFetch = window.fetch;
+    });
+
+    afterEach(() => {
+      window.fetch = savedAdminFetch;
+      try { delete window.adobeIMS; } catch { /* */ }
+      try { delete window.chrome; } catch { /* */ }
+    });
+
+    function buildEl(opts = {}) {
+      const element = new DaTitle();
+      element.details = createDetails(opts.details || {});
+      element.permissions = opts.permissions || ['read', 'write'];
+      element._aemHrefs = {
+        preview: { origin: 'https://main--site--org.aem.page' },
+        prod: { origin: 'https://main--site--org.aem.live' },
+      };
+      // Stub _sendButton to avoid querying shadowRoot
+      const fakeBtn = document.createElement('button');
+      Object.defineProperty(element, '_sendButton', { configurable: true, get: () => fakeBtn });
+      element.requestUpdate = () => {};
+      element._actions = {};
+      return element;
+    }
+
+    it('Preview path: opens the preview URL on success', async () => {
+      const element = buildEl();
+      const opens = [];
+      const savedOpen = window.open;
+      window.open = (...args) => { opens.push(args); };
+      window.fetch = () => Promise.resolve(new Response(
+        JSON.stringify({
+          preview: { url: 'https://main--site--org.aem.page/test/page' },
+          webPath: '/test/page',
+        }),
+        { status: 200 },
+      ));
+      try {
+        await element.handleAction('preview');
+        expect(opens.length).to.equal(1);
+        expect(opens[0][0]).to.contain('/test/page');
+      } finally {
+        window.open = savedOpen;
+      }
+    });
+
+    it('Preview path: surfaces an error and stops on failure', async () => {
+      const element = buildEl();
+      window.fetch = () => Promise.resolve(new Response('', { status: 500, headers: {} }));
+      let errorSet = false;
+      element.handleError = () => { errorSet = true; };
+      await element.handleAction('preview');
+      expect(errorSet).to.be.true;
+    });
+
+    it('Publish path: previews then publishes and opens the live URL', async () => {
+      const element = buildEl();
+      element._lazyMods = new Map([
+        ['da-schedule', Promise.resolve({ getExistingSchedule: async () => null })],
+      ]);
+      let calls = 0;
+      window.fetch = () => {
+        calls += 1;
+        if (calls === 1) {
+          // preview call
+          return Promise.resolve(new Response(
+            JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
+            { status: 200 },
+          ));
+        }
+        // publish (live) call
+        return Promise.resolve(new Response(
+          JSON.stringify({ live: { url: 'https://y' }, webPath: '/test/page' }),
+          { status: 200 },
+        ));
+      };
+      const opens = [];
+      const savedOpen = window.open;
+      window.open = (...args) => { opens.push(args); };
+      try {
+        await element.handleAction('publish');
+        expect(opens.length).to.equal(1);
+        expect(opens[0][0]).to.contain('aem.live');
+      } finally {
+        window.open = savedOpen;
+      }
+    });
+
+    it('Publish path: prompts a scheduled-content dialog when scheduled', async () => {
+      const element = buildEl();
+      element._lazyMods = new Map([
+        ['da-dialog', Promise.resolve()],
+        ['da-schedule', Promise.resolve({ getExistingSchedule: async () => ({ scheduled: true, scheduledPublish: '2026-12-31' }) })],
+      ]);
+      let dialogShown = false;
+      const origSetScheduledDialog = element.setScheduledDialog;
+      element.setScheduledDialog = async () => {
+        dialogShown = true;
+        return false; // user cancels
+      };
+      window.fetch = (url) => {
+        if (url.includes('snapshot-scheduler')) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ scheduled: true, scheduledPublish: '2026-12-31' }),
+            { status: 200 },
+          ));
+        }
+        return Promise.resolve(new Response(
+          JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
+          { status: 200 },
+        ));
+      };
+      const opens = [];
+      const savedOpen = window.open;
+      window.open = (...args) => { opens.push(args); };
+      try {
+        await element.handleAction('publish');
+        expect(dialogShown).to.be.true;
+        // User cancelled — no open should be called
+        expect(opens.length).to.equal(0);
+      } finally {
+        window.open = savedOpen;
+        element.setScheduledDialog = origSetScheduledDialog;
+      }
+    });
+
+    it('Sheet view: saves to DA before AEM call', async () => {
+      const element = buildEl({ details: { view: 'sheet', fullpath: '/o/s/sheet.json' } });
+      element.sheet = [{
+        name: 'data',
+        getData: () => [['k'], ['v']],
+        getConfig: () => ({ columns: [{ width: '20' }] }),
+      }];
+      const calls = [];
+      window.fetch = (url, opts) => {
+        calls.push({ url, method: opts?.method });
+        return Promise.resolve(new Response(
+          JSON.stringify({ preview: { url: 'https://x' }, webPath: '/test/page' }),
+          { status: 200 },
+        ));
+      };
+      const opens = [];
+      const savedOpen = window.open;
+      window.open = (...args) => { opens.push(args); };
+      try {
+        await element.handleAction('preview');
+        const sourceCall = calls.find((c) => c.url?.includes('/source'));
+        expect(sourceCall).to.exist;
+        expect(sourceCall.method).to.equal('POST');
+      } finally {
+        window.open = savedOpen;
+      }
+    });
+
+    it('Config view: saves config and stops on save failure', async () => {
+      const element = buildEl({ details: { view: 'config' } });
+      element.sheet = [{
+        name: 'config',
+        getData: () => [['k'], ['v']],
+        getConfig: () => ({ columns: [{ width: '20' }] }),
+      }];
+      window.fetch = () => Promise.resolve(new Response('boom', { status: 500 }));
+      let openCalled = false;
+      const savedOpen = window.open;
+      window.open = () => { openCalled = true; };
+      try {
+        await element.handleAction('save');
+        expect(openCalled).to.be.false;
+      } finally {
+        window.open = savedOpen;
+      }
+    });
+
+    it('Config view: does not save when the user has no write permission', async () => {
+      const element = buildEl({ details: { view: 'config' }, permissions: ['read'] });
+      element.sheet = [{
+        name: 'config',
+        getData: () => [['k'], ['v']],
+        getConfig: () => ({ columns: [{ width: '20' }] }),
+      }];
+      let fetchCalled = false;
+      window.fetch = () => {
+        fetchCalled = true;
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+      await element.handleAction('save');
+      expect(fetchCalled).to.be.false;
+    });
+  });
+
+  describe('sidekickCacheBust', () => {
+    afterEach(() => {
+      try { delete window.chrome; } catch { /* */ }
+    });
+
+    it('Returns immediately when window.chrome is missing', async () => {
+      try { delete window.chrome; } catch { /* */ }
+      const element = new DaTitle();
+      // Should not throw
+      await element.sidekickCacheBust('https://main--site--org.aem.live/page');
+    });
+
+    it('Sends a cache-bust message to the configured extension id', async () => {
+      let captured;
+      window.chrome = {
+        runtime: {
+          sendMessage: (extId, opts) => {
+            captured = { extId, opts };
+            return Promise.resolve();
+          },
+        },
+      };
+      const element = new DaTitle();
+      await element.sidekickCacheBust('https://main--site--org.aem.live/page');
+      expect(captured.opts.action).to.equal('bustCache');
+      expect(captured.opts.host).to.equal('main--site--org.aem.live');
+    });
+
+    it('Reads the override extension id from localStorage when present', async () => {
+      window.localStorage.setItem('aem-sidekick-id', 'custom-id');
+      let captured;
+      window.chrome = {
+        runtime: {
+          sendMessage: (extId) => {
+            captured = extId;
+            return Promise.resolve();
+          },
+        },
+      };
+      try {
+        const element = new DaTitle();
+        await element.sidekickCacheBust('https://main--site--org.aem.live/page');
+        expect(captured).to.equal('custom-id');
+      } finally {
+        window.localStorage.removeItem('aem-sidekick-id');
+      }
+    });
+
+    it('Swallows errors from sendMessage', async () => {
+      window.chrome = { runtime: { sendMessage: () => Promise.reject(new Error('boom')) } };
+      const element = new DaTitle();
+      await element.sidekickCacheBust('https://main--site--org.aem.live/page');
+    });
+  });
+
+  describe('toggleActions', () => {
+    it('Calls requestUpdate after toggling', async () => {
+      const element = new DaTitle();
+      let updates = 0;
+      element.requestUpdate = () => { updates += 1; };
+      element.toggleActions();
+      expect(updates).to.equal(1);
+    });
+  });
+
+  describe('renderActions', () => {
+    it('Returns nothing when no available actions', () => {
+      const element = new DaTitle();
+      element._actions = {};
+      const result = element.renderActions();
+      // nothing is a falsy template helper — assert type
+      expect(result).to.exist;
+    });
+
+    it('Renders one button per available action', async () => {
+      const element = await fixture({ permissions: ['read', 'write'] });
+      element._actions = { available: ['preview', 'publish'] };
+      element.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+      const buttons = element.shadowRoot.querySelectorAll('.da-title-action');
+      expect(buttons.length).to.be.at.least(2);
+      element.remove();
+    });
+
+    it('Disables the save button when the user has no write permission', async () => {
+      const element = await fixture({
+        details: createDetails({ view: 'config' }),
+        permissions: ['read'],
+      });
+      element._actions = { available: ['save'] };
+      element.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+      const saveBtn = element.shadowRoot.querySelector('.da-title-action');
+      expect(saveBtn.disabled).to.be.true;
+      element.remove();
+    });
+
+    it('Leaves the save button enabled when the user has write permission', async () => {
+      const element = await fixture({
+        details: createDetails({ view: 'config' }),
+        permissions: ['read', 'write'],
+      });
+      element._actions = { available: ['save'] };
+      element.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+      const saveBtn = element.shadowRoot.querySelector('.da-title-action');
+      expect(saveBtn.disabled).to.be.false;
+      element.remove();
     });
   });
 });

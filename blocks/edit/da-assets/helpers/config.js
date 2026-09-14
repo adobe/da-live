@@ -1,5 +1,10 @@
 import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
+import {
+  isDynamicMediaEnabled,
+  shouldFilterApprovedAssets,
+} from '../../../shared/aem-assets/config.js';
 import DEFAULT_ASSET_BASE_PATH from './constants.js';
+import { parseSiteImageModifiers } from './imageModifiers.js';
 
 /**
  * Parses the value of 'aem.asset.mime.renditions' into a mime-type → rendition-type map.
@@ -62,8 +67,16 @@ export async function getResponsiveImageConfig(owner, repo) {
  *   When absent (or empty), built-in prefix defaults apply:
  *     image/* → avif, video/* → /play, everything else → original.
  *
- * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled, isSmartCrop,
- *             insertAsLink, mimeRenditionOverrides }}
+ * siteImageModifiers (DM / delivery tiers only):
+ *   aem.asset.image.modifiers — optional query-string fragment (no leading
+ *   `?`) merged into every AEM Assets Open API image URL inserted via the
+ *   asset picker, e.g. `width=1920&quality=85`. Only set on URLs that don't
+ *   already carry the same key, so per-asset overrides (smartcrop, future
+ *   per-image presets) win.
+ *
+ * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled,
+ *             isSmartCrop, approvedOnly,
+ *             insertAsLink, mimeRenditionOverrides, siteImageModifiers }}
  */
 export async function getRepositoryConfig(owner, repo) {
   const configs = await Promise.all(fetchDaConfigs({ org: owner, site: repo }));
@@ -77,11 +90,23 @@ export async function getRepositoryConfig(owner, repo) {
 
   const customOrigin = getValue('aem.assets.prod.origin');
   const customBasePath = getValue('aem.assets.prod.basepath');
-  const isSmartCrop = getValue('aem.asset.smartcrop.select') === 'on';
-  const isDmDeliveryFlag = getValue('aem.asset.dm.delivery') === 'on';
-  const isDmEnabled = isSmartCrop || isDmDeliveryFlag || customOrigin?.startsWith('delivery-') || tierType === 'delivery';
+  const smartCrop = getValue('aem.asset.smartcrop.select');
+  const dmDelivery = getValue('aem.asset.dm.delivery');
+  const isSmartCrop = smartCrop === 'on';
+  const isDmEnabled = isDynamicMediaEnabled({
+    repositoryId,
+    customOrigin,
+    dmDelivery,
+    smartCrop,
+  });
+  const approvedOnly = shouldFilterApprovedAssets({
+    tierType,
+    isDmEnabled,
+    configuredValue: getValue('aem.asset.dm.approvedonly'),
+  });
   const insertAsLink = getValue('aem.assets.image.type') === 'link';
   const mimeRenditionOverrides = parseMimeRenditions(getValue('aem.asset.mime.renditions'));
+  const siteImageModifiers = parseSiteImageModifiers(getValue('aem.asset.image.modifiers'));
 
   let assetOrigin;
   if (customOrigin) {
@@ -103,7 +128,9 @@ export async function getRepositoryConfig(owner, repo) {
     assetBasePath,
     isDmEnabled,
     isSmartCrop,
+    approvedOnly,
     insertAsLink,
     mimeRenditionOverrides,
+    siteImageModifiers,
   };
 }

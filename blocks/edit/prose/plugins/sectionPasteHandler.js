@@ -1,4 +1,5 @@
 import { Fragment, Plugin, PluginKey, Slice } from 'da-y-wrapper';
+import WordCleaner from './sectionPasteHandler/paste-from-word.js';
 
 const sectionPasteKey = new PluginKey('sectionPaste');
 
@@ -6,6 +7,32 @@ const sectionPasteKey = new PluginKey('sectionPaste');
 const NONSTANDARD_SPACE_DETECT = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/;
 // Global regex for replacement
 const NONSTANDARD_SPACES_RE = /[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g;
+// Match http(s) URLs; trailing punctuation is trimmed below so it doesn't get
+// pulled into the link (e.g. "see https://a.com." or "(https://a.com)").
+const URL_RE = /https?:\/\/[^\s<>"'`]+/g;
+const URL_TRAIL_PUNCT = /[.,;:!?)\]}'"`]+$/;
+
+function splitLineByUrls(line, schema) {
+  const linkMark = schema.marks.link;
+  if (!linkMark) return [schema.text(line)];
+
+  const nodes = [];
+  let lastIndex = 0;
+  for (const match of line.matchAll(URL_RE)) {
+    let url = match[0];
+    const trail = url.match(URL_TRAIL_PUNCT);
+    if (trail) url = url.slice(0, -trail[0].length);
+    if (match.index > lastIndex) {
+      nodes.push(schema.text(line.slice(lastIndex, match.index)));
+    }
+    nodes.push(schema.text(url, [linkMark.create({ href: url })]));
+    lastIndex = match.index + url.length;
+  }
+  if (lastIndex < line.length) {
+    nodes.push(schema.text(line.slice(lastIndex)));
+  }
+  return nodes;
+}
 
 function normalizeSpaceChars(str) {
   return str.replace(NONSTANDARD_SPACES_RE, ' ');
@@ -132,6 +159,19 @@ function handleWordOnlineSectionBreaks(doc) {
   return modified;
 }
 
+function handleTableSpacing(doc) {
+  const tables = doc.querySelectorAll('body table');
+  if (tables.length === 0) return false;
+
+  tables.forEach((table) => {
+    if (table.nextElementSibling?.nodeName === 'P') return;
+    const p = doc.createElement('p');
+    table.after(p);
+  });
+
+  return true;
+}
+
 function isBlankLineDiv(div) {
   return [...div.childNodes].every(
     (node) => (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '')
@@ -182,7 +222,7 @@ export default function sectionPasteHandler(schema) {
         const lines = text.split(/\r\n?|\n/);
         const nodes = lines.map((line) => {
           if (line.length === 0) return schema.nodes.paragraph.create();
-          return schema.nodes.paragraph.create(null, [schema.text(line)]);
+          return schema.nodes.paragraph.create(null, splitLineByUrls(line, schema));
         });
         return new Slice(Fragment.from(nodes), 1, 1);
       },
@@ -193,8 +233,14 @@ export default function sectionPasteHandler(schema) {
        */
       transformPastedHTML: (pastedHtml) => {
         try {
+          let html = pastedHtml;
+          const wc = new WordCleaner();
+          if (wc.isWordContent(pastedHtml)) {
+            html = wc.clean(pastedHtml);
+          }
+
           const parser = new DOMParser();
-          const doc = parser.parseFromString(pastedHtml, 'text/html');
+          const doc = parser.parseFromString(html, 'text/html');
 
           let modified = handleDesktopWordSectionBreaks(doc);
           if (!modified) {
@@ -204,15 +250,16 @@ export default function sectionPasteHandler(schema) {
             modified = handleDivLineBreaks(doc);
           }
 
-          if (!modified) {
-            return pastedHtml;
+          const tableModified = handleTableSpacing(doc);
+
+          if (!modified && !tableModified) {
+            return html;
           }
 
-          const serializer = new XMLSerializer();
-          return serializer.serializeToString(doc);
+          return doc.body.innerHTML;
         } catch (error) {
           // eslint-disable-next-line no-console
-          console.error('Error handling Word section breaks:', error);
+          console.error('Error handling Word paste:', error);
           return pastedHtml;
         }
       },

@@ -1,8 +1,11 @@
 import '../../../shared/da-dialog/da-dialog.js';
-import { getNx, nxJS } from '../../../../scripts/utils.js';
+import { getNx } from '../../../../scripts/utils.js';
 
-const { loadStyle } = await import(`${getNx()}${nxJS}`);
-await loadStyle('/blocks/edit/prose/plugins/focalPointDialog.css');
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const focalSheet = await loadStyle('/blocks/edit/prose/plugins/focalPointDialog.css');
+if (focalSheet && !document.adoptedStyleSheets.includes(focalSheet)) {
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, focalSheet];
+}
 
 let currentDialog = null;
 let faceApiLoaded = false;
@@ -29,7 +32,7 @@ const loadFaceApi = async () => {
       faceDetectorOptions = new window.faceapi.TinyFaceDetectorOptions();
       faceApiLoaded = true;
       return true;
-    } catch (error) {
+    } catch (e) {
       return false;
     }
   })();
@@ -54,7 +57,7 @@ const detectFaceCenter = async (img) => {
       x: Math.max(0, Math.min(100, centerX)),
       y: Math.max(0, Math.min(100, centerY)),
     };
-  } catch (error) {
+  } catch (e) {
     return null;
   }
 };

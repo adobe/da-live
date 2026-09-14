@@ -1,19 +1,45 @@
 import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
-const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
+const AEM_API_ORIGIN = 'https://api.aem.live';
+const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live', AEM_API_ORIGIN];
 const ETC_ORIGINS = ['https://stage-content.da.live', 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev', 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev'];
 const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS, ...ETC_ORIGINS];
 
 let imsDetails;
+let authMonitorAttached = false;
+
+// Watch imslib's session for cross-tab sign-in/out. imslib persists its
+// token in localStorage and other tabs' writes fire storage events here;
+// re-check the live auth state on every storage change so we react
+// regardless of which keys (nx-ims, imslib's own) flipped.
+function attachAuthMonitor() {
+  if (authMonitorAttached) return;
+  authMonitorAttached = true;
+  let wasAuthed = !!window.adobeIMS?.getAccessToken();
+  window.addEventListener('storage', async () => {
+    const isAuthed = !!window.adobeIMS?.getAccessToken();
+    if (wasAuthed && !isAuthed) {
+      const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+      showAuthBanner();
+      // Drop any open collab WS so the stale auth cached on the server side
+      // can't keep authorizing persistence after the user signed out elsewhere.
+      document.querySelector('da-content')?.wsProvider?.disconnect();
+    } else if (!wasAuthed && isAuthed) {
+      // Another tab signed back in — reload to pick up the fresh session.
+      window.location.reload();
+    }
+    wasAuthed = isAuthed;
+  });
+}
 
 export async function initIms() {
   if (imsDetails) return imsDetails;
-  const { loadIms } = await import(`${getNx()}/utils/ims.js`);
-
   try {
+    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
     imsDetails = await loadIms();
+    attachAuthMonitor();
     return imsDetails;
   } catch {
     return null;
@@ -24,28 +50,44 @@ export async function getAuthToken() {
   if (!localStorage.getItem('nx-ims')) {
     return null;
   }
+  // imslib auto-refreshes its internal token; reading it live avoids returning the
+  // page-load snapshot that nx's loadIms() captured once in its onReady handler.
+  if (window.adobeIMS?.getAccessToken) {
+    return window.adobeIMS.getAccessToken()?.token || null;
+  }
   const ims = await initIms();
   return ims?.accessToken?.token || null;
 }
 
 export const daFetch = async (url, opts = {}) => {
   opts.headers = opts.headers || {};
-  const accessToken = await getAuthToken();
-  if (accessToken) {
+  const setBearer = (tok) => {
     const canToken = ALLOWED_TOKEN.some((origin) => new URL(url).origin === origin);
-    if (canToken) {
-      opts.headers.Authorization = `Bearer ${accessToken}`;
-      if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
-        opts.headers['x-content-source-authorization'] = `Bearer ${accessToken}`;
-      }
+    if (!canToken) return;
+    opts.headers.Authorization = `Bearer ${tok}`;
+    if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
+      opts.headers['x-content-source-authorization'] = `Bearer ${tok}`;
     }
-  }
-  const resp = await fetch(url, opts);
-  if (resp.status === 401 && opts.noRedirect !== true) {
-    // Only attempt sign-in if the request is for DA.
-    if (DA_ORIGINS.some((origin) => url.startsWith(origin))) {
-      // If the user has an access token, but are not permitted, redirect them to not found.
-      if (accessToken) {
+  };
+
+  const accessToken = await getAuthToken();
+  if (accessToken) setBearer(accessToken);
+
+  let resp = await fetch(url, opts);
+
+  if (resp.status === 401 && opts.noRedirect !== true
+    && DA_ORIGINS.some((origin) => url.startsWith(origin))) {
+    // Silent recovery: another tab may have just refreshed/signed in. Ask imslib
+    // for a fresh token and retry once before any user-visible disruption.
+    let refreshed = null;
+    try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
+    refreshed = await getAuthToken();
+    if (refreshed && refreshed !== accessToken) {
+      setBearer(refreshed);
+      resp = await fetch(url, opts);
+    }
+    if (resp.status === 401) {
+      if (refreshed || accessToken) {
         // eslint-disable-next-line no-console
         console.warn('You see the 404 page because you have no access to this page', url);
         window.location = `${window.location.origin}/not-found`;
@@ -53,9 +95,8 @@ export const daFetch = async (url, opts = {}) => {
       }
       // eslint-disable-next-line no-console
       console.warn('You need to sign in because you are not authorized to access this page', url);
-      const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
-      await loadIms();
-      handleSignIn();
+      const { showAuthBanner } = await import('./da-auth-banner/da-auth-banner.js');
+      showAuthBanner();
     }
   }
 
@@ -88,22 +129,104 @@ export function etcFetch(href, api, options) {
   return fetch(url, opts);
 }
 
-export async function aemAdmin(path, api, method = 'POST') {
-  const [owner, repo, ...parts] = path.slice(1).split('/');
-  const name = parts.pop() || repo || owner;
-  parts.push(name.replace('.html', ''));
-  const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
-  const resp = await daFetch(aemUrl, { method });
-  if (method === 'DELETE' && resp.status === 204) return {};
-  if (!resp.ok) return undefined;
+/* eslint-disable max-len */
+/**
+ * [admin] Unable to preview '.../page.md': source contains large image: error fetching resource at http.../hello: Image 1 exceeds allowed limit of 10.00MB
+ * [admin] Unable to preview '.../doc.pdf': PDF is larger than 10MB: 24.0MB
+ * [admin] Unable to preview '.../video.mp4': MP4 is longer than 2 minutes: 2m 44s
+ * [admin] Unable to preview '.../video.mp4': MP4 has a higher bitrate than 300 KB/s: 494 kilobytes
+ * [admin] not authenticated
+ * [admin] not authorized
+ */
+/* eslint-enable max-len */
+export function parseAemError(xError) {
+  if (xError.includes('PDF')) {
+    const [seg1, seg2] = xError.split(': ').slice(-2);
+    return `${seg1}: ${seg2}`;
+  }
+  if (xError.includes('MP4')) {
+    const [seg1] = xError.split(': ').slice(-2);
+    return seg1;
+  }
+  if (xError.includes('Image')) {
+    return xError.split(': ').pop().replace('.00', '');
+  }
+  return xError.replace('[admin] ', '');
+}
+
+/**
+ * Publishes or previews a path via AEM.
+ * @param {string} path - The path to save.
+ * @param {'live'|'preview'} action - 'live' publishes, anything else previews.
+ * @returns {Promise<object>} The AEM response body, or an { error } object on failure.
+ */
+export async function saveToAem(path, action) {
+  const { aem } = await getNx2Api();
+  const aemPath = path.toLowerCase();
+  const call = action === 'live' ? aem.publish : aem.preview;
+  const resp = await call(aemPath);
+  if (!resp.ok) {
+    const { status, headers } = resp;
+    const authErr = [401, 403].some((s) => s === status);
+    const message = authErr ? `Not authorized to ${action}` : `Error during ${action}`;
+    const xerror = headers.get('x-error');
+    const error = { action, status, type: 'error', message };
+    if (xerror && !authErr) error.details = parseAemError(xerror);
+    return { error };
+  }
+  return resp.json();
+}
+
+const SNAPSHOT_SCHEDULER_URL = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
+
+export async function getExistingSchedule(org, site, path) {
   try {
+    const resp = await daFetch(`${SNAPSHOT_SCHEDULER_URL}/schedule/${org}/${site}?path=${encodeURIComponent(path)}`);
+    if (!resp.ok) return null;
     return resp.json();
   } catch {
-    return undefined;
+    return null;
   }
 }
 
+/**
+ * Runs the preview-then-publish flow for a path. Always previews first;
+ * when publishing, checks for an existing snapshot schedule unless skipped
+ * and lets the caller decide whether to proceed via `opts.onScheduled`.
+ * @param {string} path - The path to act on.
+ * @param {'preview'|'live'} action - 'preview' stops after preview; 'live' also publishes.
+ * @param {object} [opts]
+ * @param {boolean} [opts.skipSchedule] - Skip the existing-schedule check before publishing.
+ * @param {(schedule: object) => Promise<boolean>|boolean} [opts.onScheduled] - Called with the
+ *   existing schedule when one is found; return true to proceed with publish anyway.
+ * @returns {Promise<object>} The AEM response, `{ cancelled: true }`, or an `{ error }` object.
+ */
+export async function aemAction(path, action, opts = {}) {
+  const previewJson = await saveToAem(path, 'preview');
+  if (previewJson.error) return previewJson;
+  if (action === 'preview') return previewJson;
+
+  if (!opts.skipSchedule) {
+    const [, org, site, ...rest] = path.toLowerCase().split('/');
+    const pagePath = `/${rest.join('/')}`.replace(/\.html$/, '');
+    const schedule = await getExistingSchedule(org, site, pagePath);
+    if (schedule?.scheduled) {
+      const proceed = opts.onScheduled ? await opts.onScheduled(schedule) : false;
+      if (!proceed) return { cancelled: true };
+    }
+  }
+
+  const liveJson = await saveToAem(path, 'live');
+  if (liveJson.error) {
+    const message = liveJson.error.message.replace(/ live$/, ' publish');
+    return { ...liveJson, error: { ...liveJson.error, action: 'publish', message } };
+  }
+  return liveJson;
+}
+
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
+  if (!path || !path.startsWith('/') || path.includes('://')) return undefined;
+
   const opts = { method: 'PUT' };
 
   const form = formData || new FormData();
@@ -116,7 +239,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
   if (!daResp.ok) return undefined;
   if (!preview) return undefined;
-  return aemAdmin(path, 'preview');
+  return aemAction(path, 'preview');
 }
 
 export const getSheetByIndex = (json, index = 0) => {
@@ -126,7 +249,34 @@ export const getSheetByIndex = (json, index = 0) => {
   return json[Object.keys(json)[index]]?.data;
 };
 
+export const getSheetByName = (json, name) => {
+  if (json[':type'] !== 'multi-sheet') {
+    return json[':sheetname'] === name ? json.data : undefined;
+  }
+  return json[name]?.data;
+};
+
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
+
+export function isValidHref(href) {
+  if (typeof href !== 'string' || !href) return false;
+  if (href.startsWith('/') && !href.startsWith('//')) return true;
+  try {
+    return new URL(href).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+export function getPostMessageTargetOrigin(url, fallback = '/') {
+  try {
+    return new URL(url, window.location.href).origin;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(`Could not determine postMessage target origin for "${url}"`, e);
+    return fallback;
+  }
+}
 
 export async function contentLogin(owner, repo) {
   try {
@@ -160,10 +310,12 @@ export async function livePreviewLogin(owner, repo) {
  * instead of the public preview URL, preventing unauthorized access to images.
  * @param {string} owner - The owner identifier
  * @returns {Promise<boolean>} True if lockdownImages flag is enabled, false otherwise
+ * @deprecated
  */
 export async function checkLockdownImages(owner) {
   try {
-    const resp = await daFetch(`${DA_ORIGIN}/config/${owner}`);
+    const { config: configApi } = await getNx2Api();
+    const resp = await configApi.get({ org: owner });
     if (!resp.ok) return false;
 
     const config = await resp.json();
@@ -181,22 +333,36 @@ export async function checkLockdownImages(owner) {
   }
 }
 
+/**
+ * Fetches org and (optionally) site configs, caching the in-flight/resolved
+ * promises by path so repeated calls for the same org/site reuse one request
+ * instead of firing duplicate fetches.
+ * @param {object} params
+ * @param {string} params.org - The org to fetch config for.
+ * @param {string} [params.site] - The site to also fetch config for.
+ * @returns {Promise[]} `[orgConfigPromise]`, or `[orgConfigPromise, siteConfigPromise]`
+ *   when `site` is given; `[Promise.resolve(null)]` when `org` is missing.
+ */
 export const fetchDaConfigs = (() => {
   const configCache = {};
 
-  const fetchConfig = async (pathname) => {
-    const resp = await daFetch(`${DA_ORIGIN}/config${pathname}/`);
+  const fetchConfig = async (org, site) => {
+    const { config: configApi } = await getNx2Api();
+    const resp = await configApi.get({ org, site });
+    const pathname = site ? `/${org}/${site}` : `/${org}`;
     if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
     return resp.json();
   };
 
   return ({ org, site }) => {
+    if (!org) return [Promise.resolve(null)];
+
     // Set the org config promise if it does not exist
-    configCache[`/${org}`] ??= fetchConfig(`/${org}`);
+    configCache[`/${org}`] ??= fetchConfig(org);
 
     if (site) {
       // Set the site config promise if it does not exist
-      configCache[`/${org}/${site}`] ??= fetchConfig(`/${org}/${site}`);
+      configCache[`/${org}/${site}`] ??= fetchConfig(org, site);
     }
 
     // return array of cached configs (org = 0, site = 1)
@@ -210,10 +376,21 @@ export const fetchDaConfigs = (() => {
 export const getSidekickConfig = (() => {
   const configCache = {};
 
+  // HLX6 sites serve sidekick config from api.aem.live; legacy DA sites
+  // still use the admin.hlx.page sidekick endpoint.
   const fetchConfig = async (org, site) => {
-    const aemPath = `/${org}/${site}/config.json`;
-
-    return aemAdmin(aemPath, 'sidekick', 'GET');
+    const { isHlx6 } = await getNx2Api();
+    const hlx6 = await isHlx6(org, site);
+    const url = hlx6
+      ? `${AEM_API_ORIGIN}/${org}/sites/${site}/sidekick`
+      : `${AEM_ORIGIN}/sidekick/${org}/${site}/main/config.json`;
+    const resp = await daFetch(url, { method: 'GET' });
+    if (!resp.ok) return undefined;
+    try {
+      return await resp.json();
+    } catch {
+      return undefined;
+    }
   };
 
   return ({ org, site }) => {
@@ -244,12 +421,39 @@ export const getAemSiteToken = (() => {
   return ({ org, site }) => {
     const path = `/${org}/${site}`;
     // Fetch new token if it doesn't exit
-    tokenCache[path] ??= fetchToken('adobecom', 'da-bacom');
+    tokenCache[path] ??= fetchToken(org, site);
 
     return tokenCache[path];
   };
 })();
 
+export function formatDate(timestamp) {
+  const rawDate = timestamp ? new Date(timestamp) : new Date();
+  const date = rawDate.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  const time = rawDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return { date, time };
+}
+
 export function delay(ms) {
   return new Promise((res) => { setTimeout(res, ms); });
 }
+
+// Replaces every character not in `allowed` with '-', then collapses any run
+// of hyphens into a single '-'. Ensures a typed (or substituted) invalid
+// character next to an existing hyphen does not produce a double hyphen.
+// When `trimTrailing` is true, also strips any trailing non-alphanumeric
+// characters so the name ends with an alphanumeric char. Use at finalization
+// time (save/upload/rename submit), not on every keystroke, or the user will
+// be unable to type a hyphen mid-name.
+export function sanitizeName(value, { allowDot = false, trimTrailing = false } = {}) {
+  const pattern = allowDot ? /[^a-zA-Z0-9.]/g : /[^a-zA-Z0-9]/g;
+  let result = value
+    .replaceAll(pattern, '-')
+    .replaceAll(/-+/g, '-')
+    .toLowerCase();
+  if (trimTrailing) result = result.replace(/[^a-zA-Z0-9]+$/, '');
+  return result;
+}
+
+// The minimal valid shape for a brand-new AEM document.
+export const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';

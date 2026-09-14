@@ -2,12 +2,11 @@ import { LitElement, html, nothing } from 'da-lit';
 import {
   requestRole,
   saveToDa,
-  saveToAem,
   saveDaConfig,
-  saveDaVersion,
   getAemHrefs,
 } from '../utils/helpers.js';
-import { delay, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
+import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
+import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -27,6 +26,8 @@ const CLOUD_ICONS = {
   disconnected: 'spectrum-Cloud-offline',
   offline: 'spectrum-Cloud-offline',
   connecting: 'cloud_refresh',
+  unsaved: 'cloud_refresh',
+  'unsaved-config': 'spectrum-Cloud-error',
   error: 'spectrum-Cloud-error',
 };
 
@@ -38,10 +39,12 @@ export default class DaTitle extends LitElement {
     collabUsers: { attribute: false },
     previewPrefix: { attribute: false },
     livePrefix: { attribute: false },
+    disabledText: { attribute: false },
     _lazyMods: { state: true },
     _configs: { state: true },
     _actions: { state: true },
     _status: { state: true },
+    _isSending: { state: true },
     _dialog: { state: true },
   };
 
@@ -55,20 +58,12 @@ export default class DaTitle extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._actionsVis = [];
-    if (this.details.view === 'sheet') {
-      this.collabStatus = window.navigator.onLine
-        ? 'connected'
-        : 'offline';
-
-      window.addEventListener('online', () => { this.collabStatus = 'connected'; });
-      window.addEventListener('offline', () => { this.collabStatus = 'offline'; });
-    }
   }
 
   update(changed) {
     super.update(changed);
     if (changed.has('details') && this.details) {
-      this.reset();
+      this.setup();
       this.delayedSetup();
     }
   }
@@ -84,9 +79,50 @@ export default class DaTitle extends LitElement {
   }
 
   reset() {
-    this._scheduled = undefined;
     this._configs = undefined;
-    this._actions = {};
+  }
+
+  setup() {
+    this.reset();
+    this._actions = { available: this.getAvailableActions() };
+    // Lazily filter the actions down
+    this.filterActions();
+  }
+
+  getAvailableActions() {
+    const { view, path, fullpath } = this.details;
+
+    // Config only gets save
+    if (view === 'config') return ['save'];
+
+    // DA app configs only get save
+    if (fullpath.includes('/.da/') && view === 'sheet') return ['save'];
+
+    const availableActions = [];
+
+    if (view === 'sheet') {
+      availableActions.push('save');
+    }
+
+    if (path) {
+      availableActions.push('preview', 'publish');
+    }
+
+    return availableActions;
+  }
+
+  async filterActions() {
+    const { org, site, fullpath } = this.details;
+    const configs = await Promise.all(fetchDaConfigs({ org, site }));
+    const configTab = configs.flatMap((config) => getFirstSheet(config) || []);
+
+    // Check which actions should be allowed for the document based on config
+    const publishConfigs = configTab.filter((c) => c.key === 'editor.hidePublish');
+    const hidePublish = publishConfigs.some((c) => fullpath.startsWith(c.value));
+    if (!hidePublish) return;
+
+    this._actions.available = this._actions.available.filter((action) => action !== 'publish');
+    this.requestUpdate();
   }
 
   // Run setup after a short delay.
@@ -100,48 +136,12 @@ export default class DaTitle extends LitElement {
       ['da-schedule', import('../da-prepare/actions/scheduler/utils.js')],
     ]);
 
-    const { org, site, path, fullpath } = this.details;
-    const configs = await Promise.all(fetchDaConfigs({ org, site }));
-    this._configs = configs.flatMap((config) => getFirstSheet(config) || []);
-
-    this._actions.available = await this.getAvailableActions();
-    this.requestUpdate();
+    const { path, fullpath } = this.details;
 
     // Only a valid path gets AEM-bound features
     if (path) {
       this._aemHrefs = await getAemHrefs({ path: fullpath });
-      this._scheduled = await this.getSchedule(org, site, path);
     }
-  }
-
-  async getSchedule(org, site, path) {
-    const { getExistingSchedule } = await this._lazyMods.get('da-schedule');
-    return getExistingSchedule(org, site, path);
-  }
-
-  async getAvailableActions() {
-    const { view, path, fullpath } = this.details;
-
-    // Config only gets save
-    if (view === 'config') return ['save'];
-
-    const availableActions = [];
-
-    if (view === 'sheet') {
-      availableActions.push('save');
-    }
-
-    if (path) {
-      availableActions.push('preview');
-
-      // Check which actions should be allowed for the document based on config
-      const publishConfigs = this._configs.filter((c) => c.key === 'editor.hidePublish');
-      const hidePublish = publishConfigs.some((c) => fullpath.startsWith(c.value));
-
-      if (!hidePublish) availableActions.push('publish');
-    }
-
-    return availableActions;
   }
 
   toggleActions() {
@@ -149,10 +149,15 @@ export default class DaTitle extends LitElement {
     this.requestUpdate();
   }
 
-  handleError(json, action, icon) {
-    this._status = { ...json.error, action };
-    icon.classList.remove('is-sending');
-    icon.parentElement.classList.add('is-error');
+  handleSuccess(action) {
+    const opts = { detail: { action }, composed: true, bubbles: true };
+    const event = new CustomEvent('success', opts);
+    this.dispatchEvent(event);
+  }
+
+  handleError(json, action) {
+    this._status = { ...json.error, action: json.error.action ?? action };
+    this._isSending = false;
   }
 
   async setScheduledDialog(schedule) {
@@ -173,9 +178,15 @@ export default class DaTitle extends LitElement {
       const action = {
         style: 'accent',
         label: 'Publish anyway',
-        click: () => { this._dialog = undefined; resolve(true); },
+        click: () => {
+          this._dialog = undefined;
+          resolve(true);
+        },
       };
-      const close = () => { this._dialog = undefined; resolve(false); };
+      const close = () => {
+        this._dialog = undefined;
+        resolve(false);
+      };
 
       this._dialog = { title, content, action, close };
     });
@@ -200,55 +211,95 @@ export default class DaTitle extends LitElement {
   }
 
   async handleAction(action) {
+    // Guard against a stale/bypassed disabled state (e.g. permissions changed mid-session).
+    if (action === 'save' && this._readOnly) return;
+
     this._status = null;
-    this._sendButton.classList.add('is-sending');
+    this._isSending = true;
     this._actions.open = false;
-    this.requestUpdate();
 
     const { org, site, view, fullpath, path } = this.details;
 
     const aemPath = `/${org}/${site}${path}`;
 
-    // Only save to DA if it is a sheet or config
-    if (view === 'sheet') {
-      const sheetPath = fullpath.replace('.json', '');
-      const dasSave = await saveToDa(sheetPath, this.sheet);
-      if (!dasSave.ok) return;
-    }
-    if (view === 'config') {
-      const daConfigResp = await saveDaConfig(fullpath, this.sheet);
-      if (!daConfigResp.ok) {
-        // eslint-disable-next-line no-console
-        console.log('Saving configuration failed because:', daConfigResp.status, await daConfigResp.text());
-        return;
-      }
-    }
-    // AEM Actions
-    if (action === 'preview' || action === 'publish') {
-      let json = await saveToAem(aemPath, 'preview');
-      if (json.error) {
-        this.handleError(json, 'preview', this._sendButton);
+    // Bail before writing if the remote drifted under us — protects against
+    // last-write-wins. Drift triggers the stale-content dialog via onStale.
+    // The POST itself runs inside staleCheck.runSave so it shares the same
+    // serialisation gate as the debounced saveSheets flow — otherwise a
+    // Preview/Publish click could race a background autosave on the same file.
+    if (view === 'sheet' || view === 'config') {
+      const { staleCheck } = await import('../../sheet/utils/utils.js');
+      if (await staleCheck.checkForDrift()) {
+        this._isSending = false;
         return;
       }
 
-      // Anything related to publish
-      if (action === 'publish') {
-        // If lazy setup has not finished, check the schedule manually
-        this._scheduled ??= await this.getSchedule(org, site, path);
-        if (this._scheduled?.scheduled) {
-          const shouldContinue = await this.setScheduledDialog(this._scheduled);
-          if (!shouldContinue) {
-            this._sendButton.classList.remove('is-sending');
+      if (view === 'sheet' && action === 'save' && this.sheet) {
+        const {
+          findColumnsWithDataButNoHeader,
+          confirmSaveWithMissingHeaders,
+        } = await import('../../sheet/utils/utils.js');
+        const affected = findColumnsWithDataButNoHeader(this.sheet);
+        if (affected.length) {
+          const proceed = await confirmSaveWithMissingHeaders(affected);
+          if (!proceed) {
+            this._isSending = false;
             return;
           }
         }
-        // Publish to AEM
-        json = await saveToAem(aemPath, 'live');
       }
 
-      // Handle all AEM errors
+      const savedOk = await staleCheck.runSave(async () => {
+        let resp;
+        if (view === 'sheet') {
+          const sheetPath = fullpath.replace('.json', '');
+          resp = await saveToDa(sheetPath, this.sheet);
+        } else {
+          resp = await saveDaConfig(fullpath, this.sheet);
+        }
+        if (!resp.ok) {
+          if (view === 'config') {
+            // eslint-disable-next-line no-console
+            console.log('Saving configuration failed because:', resp.status, await resp.text());
+          }
+          return false;
+        }
+        // markSynced inside runSave so _lastEtag is updated before pendingSave
+        // resolves — a concurrent read that unblocks on pendingSave otherwise
+        // sees a stale baseline etag.
+        staleCheck.markSynced(resp.headers.get('etag'));
+        this.handleSuccess('save');
+        return true;
+      });
+      if (!savedOk) return;
+    }
+
+    // AEM Actions
+    if (action === 'preview' || action === 'publish') {
+      // Force-flush pending collab saves to da-admin before writing to AEM.
+      // This ensures that what the user sees in the editor matches what AEM gets.
+      // Only applies to the prose editor (edit view) — sheets/configs save synchronously above.
+      if (view === 'edit') {
+        const daContent = document.querySelector('da-content');
+        if (daContent?.forceSave) {
+          const flushResult = await daContent.forceSave();
+          if (!flushResult.ok) {
+            const msg = flushResult.error || 'Unable to confirm save. Please retry or reload the editor.';
+            this._status = { message: msg };
+            this._isSending = false;
+            return;
+          }
+        }
+      }
+
+      const onScheduled = (schedule) => this.setScheduledDialog(schedule);
+      const json = await aemAction(aemPath, action, { onScheduled });
+      if (json.cancelled) {
+        this._isSending = false;
+        return;
+      }
       if (json.error) {
-        this.handleError(json, 'publish', this._sendButton);
+        this.handleError(json, action);
         return;
       }
 
@@ -272,15 +323,11 @@ export default class DaTitle extends LitElement {
       window.open(toOpen, toOpen);
     }
 
-    if (view === 'edit') {
-      if (action === 'publish') saveDaVersion(fullpath, 'Published');
-      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
+    if (view === 'edit' || view === 'sheet' || view === 'form') {
+      if (action === 'publish') createVersion(fullpath, 'Published');
+      else if (action === 'preview') createVersion(fullpath, 'Previewed');
     }
-    if (view === 'sheet') {
-      if (action === 'publish') saveDaVersion(fullpath, 'Published');
-      else if (action === 'preview') saveDaVersion(fullpath, 'Previewed');
-    }
-    this._sendButton.classList.remove('is-sending');
+    this._isSending = false;
   }
 
   async handleRoleRequest() {
@@ -311,10 +358,6 @@ export default class DaTitle extends LitElement {
     this._dialog = { title, content, action: closeAction };
   }
 
-  get _sendButton() {
-    return this.shadowRoot.querySelector('.da-title-action-send-icon');
-  }
-
   get _canPrepare() {
     return !!this.details.path;
   }
@@ -327,14 +370,20 @@ export default class DaTitle extends LitElement {
   renderActions() {
     if (!this._actions?.available) return nothing;
 
-    return html`${this._actions.available?.map((action) => html`
+    return html`${this._actions.available?.map((action) => {
+      const readOnlyBlock = action === 'save' && this._readOnly;
+      const disabledText = this.disabledText ?? (readOnlyBlock ? 'You do not have permission to save.' : undefined);
+      return html`
       <button
         @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
-        aria-label="Send">
+        aria-label="Send"
+        data-popup-content=${disabledText ?? nothing}
+        ?disabled=${this.disabledText || readOnlyBlock}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
       </button>
-    `)}`;
+    `;
+    })}`;
   }
 
   popover({ target }) {
@@ -369,11 +418,18 @@ export default class DaTitle extends LitElement {
   }
 
   renderCollab() {
+    const isUnsaved = this.collabStatus === 'unsaved';
+    // Config has no auto-save, so the pulsing auto-saving cloud is misleading.
+    // Show a static "unsaved changes" cloud (cloud + !) for the config view instead.
+    const status = isUnsaved && this.details?.view === 'config'
+      ? 'unsaved-config'
+      : this.collabStatus;
+    const tooltip = isUnsaved ? 'Unsaved changes' : this.collabStatus;
     return html`
       <div class="collab-status">
         ${this.collabUsers ? this.renderCollabUsers() : nothing}
-        <div class="collab-icon collab-status-cloud collab-status-${this.collabStatus}" data-popup-content="${this.collabStatus}" @click=${this.popover}>
-         <svg class="icon"><use href="#${CLOUD_ICONS[this.collabStatus]}"/></svg>
+        <div class="collab-icon collab-status-cloud collab-status-${status}" data-popup-content="${tooltip}" @click=${this.popover}>
+         <svg class="icon"><use href="#${CLOUD_ICONS[status]}"/></svg>
         </div>
       </div>`;
   }
@@ -400,10 +456,10 @@ export default class DaTitle extends LitElement {
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._canPrepare ? html`<da-prepare .details=${this.details}></da-prepare>` : nothing}
           ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
+          <div class="da-title-actions ${this._actions.available?.length === 1 && !this._isSending ? 'has-one-action' : ''} ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
             ${this.renderActions()}
-            <button @click=${this.toggleActions} class="con-button blue da-title-action-send" aria-label="Send">
-              <svg class="da-title-action-send-icon" viewBox="0 0 20 20">
+            <button @click=${this.toggleActions} class="con-button blue da-title-action-send ${this._status ? 'is-error' : ''}" aria-label="Send">
+              <svg class="da-title-action-send-icon ${this._isSending ? 'is-sending' : ''}" viewBox="0 0 20 20">
                 <use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish"/>
               </svg>
             </button>

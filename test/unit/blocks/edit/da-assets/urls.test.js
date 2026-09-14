@@ -364,6 +364,26 @@ describe('buildSmartCropsListUrl', () => {
 // ---------------------------------------------------------------------------
 
 describe('getAssetAlt', () => {
+  it('prefers Iptc4xmpExt:ExtDescrAccessibility from _embedded metadata', () => {
+    const asset = {
+      _embedded: {
+        'http://ns.adobe.com/adobecloud/rel/metadata/asset': {
+          'Iptc4xmpExt:ExtDescrAccessibility': 'A rich mountain view with blue skies',
+          'dc:description': 'A mountain view',
+        },
+      },
+    };
+    expect(getAssetAlt(asset)).to.equal('A rich mountain view with blue skies');
+  });
+
+  it('prefers a top-level Iptc4xmpExt:ExtDescrAccessibility (delivery-tier shape)', () => {
+    const asset = {
+      'Iptc4xmpExt:ExtDescrAccessibility': 'A rich mountain view with blue skies',
+      'dc:title': 'Sunset',
+    };
+    expect(getAssetAlt(asset)).to.equal('A rich mountain view with blue skies');
+  });
+
   it('returns dc:description when available', () => {
     expect(getAssetAlt(AUTHOR_IMAGE)).to.equal('A mountain view');
   });
@@ -376,6 +396,15 @@ describe('getAssetAlt', () => {
   it('returns empty string when no metadata', () => {
     expect(getAssetAlt({})).to.equal('');
     expect(getAssetAlt(DELIVERY_IMAGE)).to.equal('');
+  });
+
+  it('falls back to a top-level dc:title (delivery-tier shape)', () => {
+    expect(getAssetAlt({ 'dc:title': 'Sunset' })).to.equal('Sunset');
+    expect(getAssetAlt({ 'dc:title': { 'o:default': 'Sunset' } })).to.equal('Sunset');
+  });
+
+  it('falls back to the asset name when no title metadata is present', () => {
+    expect(getAssetAlt({ name: 'photo.jpg' })).to.equal('photo.jpg');
   });
 });
 

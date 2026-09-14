@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { fetchDaConfigs } from '../../shared/utils.js';
+import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
@@ -126,6 +126,7 @@ export default class DaPrepare extends LitElement {
   }
 
   handleIframeLoad({ target }) {
+    const targetOrigin = getPostMessageTargetOrigin(target.src);
     const channel = new MessageChannel();
 
     setTimeout(() => {
@@ -138,7 +139,7 @@ export default class DaPrepare extends LitElement {
 
       const message = { ready: true, context, token };
 
-      target.contentWindow.postMessage(message, '*', [channel.port2]);
+      target.contentWindow.postMessage(message, targetOrigin, [channel.port2]);
     }, 750);
   }
 

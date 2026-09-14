@@ -3,7 +3,7 @@
 # Build da-parser bundle with shared dependency rewiring
 #
 # WHAT THIS DOES:
-#   1. Bundles @da-tools/da-parser into an ESM module
+#   1. Bundles @adobe/da-parser into an ESM module
 #   2. Marks prosemirror/yjs dependencies as external (not bundled)
 #   3. Rewrites import paths to use the shared da-y-wrapper
 #
@@ -21,7 +21,7 @@
 set -e
 
 # Configuration
-SOURCE="./node_modules/@da-tools/da-parser/src/index.js"
+SOURCE="./node_modules/@adobe/da-parser/src/index.js"
 OUTPUT_DIR="./deps/da-parser/dist"
 OUTPUT_TMP="$OUTPUT_DIR/index.tmp.js"
 OUTPUT_FINAL="$OUTPUT_DIR/index.js"

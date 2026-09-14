@@ -1,19 +1,23 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
-import { DA_ORIGIN } from '../../shared/constants.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { daFetch, aemAdmin } from '../../shared/utils.js';
+import { isFavorite, toggleFavorite } from '../shared/favorites.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
+import {
+  aemAction,
+  getExistingSchedule,
+  fetchDaConfigs,
+  getFirstSheet,
+  initIms,
+} from '../../shared/utils.js';
+import { createVersion } from '../../shared/version/version-actions.js';
 
 import '../da-list-item/da-list-item.js';
 
-// Styles & Icons
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
-const STYLE = await getStyle(import.meta.url);
-const ICONS = [
-  '/blocks/edit/img/Smock_Cancel_18_N.svg',
-  '/blocks/edit/img/Smock_Checkmark_18_N.svg',
-  '/blocks/edit/img/Smock_Refresh_18_N.svg',
-];
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const STYLE = await loadStyle(import.meta.url);
+
+const MAX_DELETE_COUNT = 1000;
+const DELETE_CONFIRM_THRESHOLD = 10;
 
 export default class DaList extends LitElement {
   static properties = {
@@ -39,11 +43,17 @@ export default class DaList extends LitElement {
     _confirm: { state: true },
     _confirmText: { state: true },
     _unpublish: { state: true },
+    _canUnpublish: { state: true },
+    _deleteCount: { state: true },
+    _deleteCountLoading: { state: true },
     _continuationToken: { state: true },
     _isLoadingMore: { state: true },
     _bulkLoading: { state: true },
     _filterLoading: { state: true },
     _allPagesLoaded: { state: true },
+    _aemActionState: { state: true },
+    _isHlx6: { state: true },
+    _canDelete: { state: true },
   };
 
   constructor() {
@@ -60,25 +70,35 @@ export default class DaList extends LitElement {
     this._observer = null;
     this._autoCheckTimer = null;
     this._listItemPaths = new Set();
+    this._selectedItems = [];
+    this._canUnpublish = true;
+    this._listItems = [];
+    this._canDelete = true;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [STYLE];
-    getSvg({ parent: this.shadowRoot, paths: ICONS });
+    this.shadowRoot.adoptedStyleSheets = [SHARED, STYLE];
   }
 
   async update(props) {
+    // List Items can be provided externally (via search)
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
       this.resetListItemPaths(this._listItems);
+      this.applyFavoritesToItems(this._listItems);
+      this.applyFavoriteOrder();
     }
 
     if (props.has('fullpath') && this.fullpath) {
       this._filter = '';
       this._showFilter = undefined;
       this._allPagesLoaded = false;
-      this._listItems = await this.getList();
+      // Resolve the delete allowlist alongside the listing so the action bar's
+      // Delete button is decided before any selection can surface it. The site
+      // config is already warm (da-browse fetches it first) so this is cheap.
+      const [items] = await Promise.all([this.getList(), this.updateDeletePermission()]);
+      this._listItems = items;
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -111,22 +131,85 @@ export default class DaList extends LitElement {
     this.dispatchEvent(event);
   }
 
+  applyFavoritesToItems(items) {
+    if (!items) return items;
+    items.forEach((item) => {
+      item.isFavorited = isFavorite(this.fullpath, item.path);
+    });
+    return items;
+  }
+
+  applyFavoriteOrder() {
+    if (!this._listItems) return;
+    const favorites = [];
+    const rest = [];
+    this._listItems.forEach((item) => {
+      if (item.isFavorited) favorites.push(item);
+      else rest.push(item);
+    });
+    this._listItems = [...favorites, ...rest];
+  }
+
   async getList() {
     try {
       this._continuationToken = null;
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`);
-      if (resp.permissions) this.handlePermissions(resp.permissions);
-      const json = await resp.json();
-      const items = Array.isArray(json) ? json : json?.items || [];
-      this._continuationToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
-      this._allPagesLoaded = !this._continuationToken;
+      const { source, isHlx6 } = await getNx2Api();
+      const [org, site] = sanitizePathParts(this.fullpath);
+      this._isHlx6 = site ? await isHlx6(org, site) : false;
+      const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
+      if (!ok) {
+        this._emptyMessage = 'Not permitted';
+        this.resetListItemPaths([]);
+        return [];
+      }
+      if (permissions) this.handlePermissions(permissions);
+      this._continuationToken = continuationToken;
+      this._allPagesLoaded = !continuationToken;
       this.resetListItemPaths(items);
+      this.applyFavoritesToItems(items);
+      const favorites = items.filter((i) => i.isFavorited);
+      const rest = items.filter((i) => !i.isFavorited);
+      const ordered = [...favorites, ...rest];
       this.scheduleAutoCheck();
-      return items;
+      return ordered;
     } catch {
       this._emptyMessage = 'Not permitted';
       this.resetListItemPaths([]);
       return [];
+    }
+  }
+
+  async updateDeletePermission() {
+    const [org, site] = sanitizePathParts(this.fullpath);
+
+    // The allowlist lives in the site-level config, so without a site we
+    // keep the default behavior of showing delete.
+    if (!org || !site) {
+      this._canDelete = true;
+      return;
+    }
+
+    try {
+      const configs = await Promise.all(fetchDaConfigs({ org, site }));
+      const rows = configs.filter(Boolean).flatMap((config) => getFirstSheet(config) || []);
+      const allowRow = rows.find((row) => row.key === 'browser.allowDelete');
+      const allowList = allowRow?.value
+        ?.split(',')
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean);
+
+      // Key unset or empty: delete stays available to everyone with write access.
+      if (!allowList?.length) {
+        this._canDelete = true;
+        return;
+      }
+
+      const ims = await initIms();
+      const email = ims?.email?.toLowerCase();
+      this._canDelete = !!email && allowList.includes(email);
+    } catch {
+      // On any config/IMS failure, don't silently block a legitimate delete.
+      this._canDelete = true;
     }
   }
 
@@ -137,10 +220,18 @@ export default class DaList extends LitElement {
     const requestToken = this._continuationToken;
     this._isLoadingMore = true;
     try {
-      const resp = await daFetch(`${DA_ORIGIN}/list${this.fullpath}`, { headers: { 'da-continuation-token': requestToken } });
-      if (resp.permissions) this.handlePermissions(resp.permissions);
-      const json = await resp.json();
-      const nextItems = Array.isArray(json) ? json : json?.items || [];
+      const { source } = await getNx2Api();
+      const {
+        ok,
+        items: nextItems,
+        continuationToken: nextToken,
+        permissions,
+      } = await source.list(this.fullpath, { continuationToken: requestToken });
+      if (!ok) {
+        this._emptyMessage = 'Not permitted';
+        return { added: 0, token: null };
+      }
+      if (permissions) this.handlePermissions(permissions);
       const existingItems = this._listItems || [];
       if (existingItems.length && this._listItemPaths.size === 0) {
         this.resetListItemPaths(existingItems);
@@ -151,8 +242,11 @@ export default class DaList extends LitElement {
         this._listItemPaths,
       );
       const uniqueAdded = mergedItems.length - existingItems.length;
-      if (uniqueAdded) this._listItems = mergedItems;
-      const nextToken = resp.headers?.get('da-continuation-token') || json?.continuationToken || null;
+      if (uniqueAdded) {
+        this.applyFavoritesToItems(mergedItems);
+        this._listItems = mergedItems;
+        this.applyFavoriteOrder();
+      }
 
       if (!nextToken) {
         this._continuationToken = null;
@@ -189,15 +283,20 @@ export default class DaList extends LitElement {
   }
 
   handleNewItem() {
-    // Add it to internal list
-    if (this.newItem?.path) this._listItemPaths.add(this.newItem.path);
+    if (this.newItem?.path) {
+      if (this._listItemPaths.has(this.newItem.path)) {
+        this.newItem = null;
+        return;
+      }
+      this._listItemPaths.add(this.newItem.path);
+    }
     this._listItems.unshift(this.newItem);
-    // Clear the public item
     this.newItem = null;
   }
 
   handleClear() {
     this._listItems = this._listItems.map((item) => ({ ...item, isChecked: false, rename: false }));
+    const hadSelection = this._selectedItems.length > 0;
     this._selectedItems = [];
     this._lastCheckedIndex = null;
 
@@ -206,6 +305,14 @@ export default class DaList extends LitElement {
 
     // Clear all actionbar properties
     if (this.actionBar) this.actionBar.items = [];
+
+    if (hadSelection) {
+      this.dispatchEvent(new CustomEvent('selectionchanged', {
+        detail: { items: [] },
+        bubbles: true,
+        composed: true,
+      }));
+    }
   }
 
   handleErrorClose() {
@@ -216,6 +323,13 @@ export default class DaList extends LitElement {
     this._confirm = null;
     this._confirmText = null;
     this._unpublish = null;
+    this._canUnpublish = true;
+    if (this._deleteCrawl) {
+      this._deleteCrawl.cancelCrawl();
+      this._deleteCrawl = null;
+    }
+    this._deleteCount = null;
+    this._deleteCountLoading = false;
   }
 
   handleSelectionState() {
@@ -226,7 +340,25 @@ export default class DaList extends LitElement {
     }
 
     this.actionBar.items = this._selectedItems;
+    this.actionBar.isFavorite = this._selectedItems.length === 1
+      ? !!this._selectedItems[0].isFavorited
+      : false;
     this.requestUpdate();
+
+    this.dispatchEvent(new CustomEvent('selectionchanged', {
+      detail: { items: this._selectedItems },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  handleFavorite() {
+    const item = this._selectedItems?.[0];
+    if (!item) return;
+    const nowFavorite = toggleFavorite(this.fullpath, item.path);
+    item.isFavorited = nowFavorite;
+    this.applyFavoriteOrder();
+    this.handleClear();
   }
 
   handleItemChecked(e, item, index) {
@@ -279,47 +411,35 @@ export default class DaList extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
-    let continuationToken;
+    const { source } = await getNx2Api();
 
-    const type2api = {
-      copy: { api: 'copy', method: 'POST' },
-      delete: { api: 'source', method: 'DELETE' },
-      move: { api: 'move', method: 'POST' },
-    };
-
-    const { api, method } = type2api[type];
+    const useDeleteFolder = type === 'delete' && !item.ext;
+    const deleteFn = useDeleteFolder ? source.deleteFolder : source.delete;
+    const type2fn = { copy: source.copy, delete: deleteFn, move: source.move };
+    const fn = type2fn[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
-    const moveToTrash = api === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
+    let continuationToken;
     try {
       do {
-        let body;
-
-        if (type !== 'delete') {
-          body = new FormData();
-          body.append('destination', item.destination);
-          if (continuationToken) body.append('continuation-token', continuationToken);
-        }
-
-        const opts = { method, body };
-        const resp = await daFetch(`${DA_ORIGIN}/${api}${item.path}`, opts);
-        if (resp.status === 204) {
-          break;
-        }
-        if (!resp.ok) {
-          const err = new Error(`Unexpected status: ${resp.status}`);
-          err.status = resp.status;
+        const args = type === 'delete'
+          ? { continuationToken }
+          : { destination: item.destination, continuationToken };
+        const { ok, status, continuationToken: nextToken } = await fn(item.path, args);
+        if (!ok) {
+          const err = new Error(`Unexpected status: ${status}`);
+          err.status = status;
           throw err;
         }
-        const json = await resp.json();
-        continuationToken = json?.continuationToken;
+        continuationToken = nextToken;
       } while (continuationToken);
 
       item.isChecked = false;
 
       // Remove or add the item to the current list
-      if (moveToTrash || method === 'DELETE') {
+      if (moveToTrash || type === 'delete') {
         this._listItems = this._listItems.filter((liItem) => liItem.path !== item.path);
         this._listItemPaths.delete(item.path);
       } else {
@@ -380,7 +500,54 @@ export default class DaList extends LitElement {
   }
 
   async handleDelete() {
-    this._confirm = 'delete';
+    this._confirm = { type: 'delete' };
+    this._deleteCount = null;
+    this._deleteCountLoading = false;
+    this._canUnpublish = true;
+
+    const folders = this._selectedItems.filter((item) => !item.ext);
+    const files = this._selectedItems.filter((item) => item.ext);
+
+    if (folders.length === 0) {
+      this._deleteCount = files.length;
+    } else {
+      this._deleteCountLoading = true;
+      try {
+        const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
+        const crawlInstance = crawl({
+          path: folders.map((folder) => folder.path),
+          files,
+          concurrent: 5,
+        });
+        this._deleteCrawl = crawlInstance;
+        const allFiles = await crawlInstance.results;
+        // If the user cancelled/closed the dialog while we were crawling, bail out
+        if (this._confirm?.type !== 'delete' || this._deleteCrawl !== crawlInstance) return;
+        this._deleteCount = allFiles.length;
+      } finally {
+        if (this._confirm?.type === 'delete') {
+          this._deleteCountLoading = false;
+        }
+        this._deleteCrawl = null;
+      }
+    }
+
+    await this.checkCanUnpublish();
+  }
+
+  async checkCanUnpublish() {
+    const [item] = this._selectedItems;
+    const isSingleUnpublishable = this._selectedItems.length === 1
+      && item.ext && item.ext !== 'link'
+      && !item.path.includes('/.trash/');
+    if (!isSingleUnpublishable) return;
+
+    this._canUnpublish = null;
+    const { status, asJson } = await getNx2Api();
+    const path = item.ext === 'html' ? item.path.slice(0, -5) : item.path;
+    const { data } = await asJson(status.get(path));
+    if (this._confirm?.type !== 'delete') return;
+    this._canUnpublish = !data || data.preview?.status === 200 || data.live?.status === 200;
   }
 
   async handleConfirmDelete() {
@@ -393,25 +560,32 @@ export default class DaList extends LitElement {
     const callback = async (item) => {
       const [org, site, ...rest] = sanitizePathParts(item.path);
 
-      // If already in trash or not in a site, its a direct delete
-      const directDelete = item.path.includes('/.trash/') || rest.length === 0;
+      const { isHlx6 } = await getNx2Api();
+      const hlx6 = await isHlx6(org, site);
+
+      // HLX6 has no trash — always direct delete.
+      // HLX5: move to trash unless already in trash or no site.
+      const directDelete = hlx6 || item.path.includes('/.trash/') || rest.length === 0;
       const type = directDelete ? 'delete' : 'move';
       if (!directDelete) {
         rest.pop();
 
         const date = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-');
-        const datename = `${item.name}--${date}${item.ext ? `.${item.ext}` : ''}`;
+        const datename = `${item.name}-${date}${item.ext ? `.${item.ext}` : ''}`;
         item.destination = `/${org}/${site}/.trash/${rest.length > 0 ? `${rest.join('/')}/` : ''}${datename}`;
       }
 
       await this.handleItemAction({ item, type });
 
       if (this._unpublish && this._confirmText === 'YES') {
-        const previewJson = await aemAdmin(item.path, 'preview', 'DELETE');
-        if (!previewJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
+        const { aem } = await getNx2Api();
+        // AEM resolves HTML pages by their extensionless path
+        const aemPath = item.ext === 'html' ? item.path.slice(0, -5) : item.path;
+        const previewResp = await aem.unPreview(aemPath);
+        if (!previewResp.ok && previewResp.status !== 404) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish preview' });
 
-        const liveJson = await aemAdmin(item.path, 'live', 'DELETE');
-        if (!liveJson) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
+        const liveResp = await aem.unPublish(aemPath);
+        if (!liveResp.ok && liveResp.status !== 404) this._itemErrors.push({ ...item, message: 'Couldn\'t unpublish production' });
       }
       this._itemsRemaining -= 1;
 
@@ -429,6 +603,88 @@ export default class DaList extends LitElement {
   handleShare() {
     this.setStatus('Copied', 'URLs have been copied to the clipboard.');
     setTimeout(() => { this.setStatus(); }, 3000);
+  }
+
+  handlePreview() {
+    this._confirm = { type: 'preview' };
+  }
+
+  handlePublish() {
+    this._confirm = { type: 'publish' };
+  }
+
+  async handleConfirmPublish() {
+    this._confirm = { type: 'publish', checking: true };
+    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+
+    const scheduleChecks = await Promise.all(items.map(async (item) => {
+      const [, org, site, ...rest] = item.path.toLowerCase().split('/');
+      const pagePath = `/${rest.join('/')}`.replace(/\.html$/, '');
+      const schedule = await getExistingSchedule(org, site, pagePath);
+      if (!schedule?.scheduled) return null;
+      return { ...item, scheduledPublish: schedule.scheduledPublish, userId: schedule.userId };
+    }));
+
+    const scheduled = scheduleChecks.filter(Boolean);
+    if (scheduled.length > 0) {
+      this._confirm = { type: 'publish', scheduled };
+      return;
+    }
+
+    this.handleConfirmClose();
+    await this.runAemQueue('publish', { skipSchedule: true });
+  }
+
+  async handleConfirmPreview() {
+    this.handleConfirmClose();
+    await this.runAemQueue('preview');
+  }
+
+  async runAemQueue(action, { skipSchedule = false } = {}) {
+    const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
+    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+    const verb = action === 'publish' ? 'Publish' : 'Preview';
+    const urlKey = action === 'publish' ? 'live' : 'preview';
+    const aemOpts = skipSchedule ? { skipSchedule: true } : {};
+
+    this._aemActionState = action;
+    this._itemErrors = [];
+    if (!items.length) {
+      this._aemActionState = null;
+      return;
+    }
+    let remaining = items.length;
+    const results = [];
+    const MEDIA_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'mp4', 'pdf', 'svg', 'ico', 'webp', 'avif']);
+
+    const callback = async (item) => {
+      const aemPath = item.ext === 'html' ? item.path.replace(/\.html$/, '') : item.path;
+      const json = await aemAction(aemPath, action, aemOpts);
+      if (json.cancelled) {
+        this._itemErrors.push({ ...item, message: 'Has a scheduled publish — not overridden' });
+      } else if (json.error) {
+        this._itemErrors.push({ ...item, message: json.error?.message || `Couldn't ${action} item` });
+      } else {
+        if (!MEDIA_EXTS.has(item.ext)) createVersion(item.path, `${verb}ed`);
+        results.push({ name: item.name, url: json[urlKey]?.url });
+      }
+      remaining -= 1;
+      if (remaining === 0) {
+        if (results.length > 0) {
+          this._aemActionState = { verb, results };
+          setTimeout(() => {
+            if (this._confirm?.type !== 'results') this._aemActionState = null;
+          }, 5000);
+          this.handleErrorClose();
+          this.handleClear();
+        } else {
+          this._aemActionState = null;
+        }
+      }
+    };
+
+    const queue = new Queue(callback, 5, null, 250);
+    await Promise.all(items.map((item) => queue.push(item)));
   }
 
   dragenter(e) {
@@ -531,7 +787,7 @@ export default class DaList extends LitElement {
       }
     }
 
-    this._listItems.forEach((item) => { item.isChecked = check; });
+    this.filteredItems.forEach((item) => { item.isChecked = check; });
     this.handleSelectionState();
   }
 
@@ -553,6 +809,7 @@ export default class DaList extends LitElement {
 
     const sortFn = this.getSortFn(first, last, prop);
     this._listItems.sort(sortFn);
+    this.applyFavoriteOrder();
     this.requestUpdate();
   }
 
@@ -614,9 +871,16 @@ export default class DaList extends LitElement {
     this._filter = e.target.value;
   }
 
+  get filteredItems() {
+    return this._filter
+      ? this._listItems.filter((item) => item.name.includes(this._filter))
+      : this._listItems;
+  }
+
   get isSelectAll() {
-    const selectCount = this._listItems.filter((item) => item.isChecked).length;
-    return selectCount === this._listItems.length && this._listItems.length !== 0;
+    const items = this.filteredItems;
+    const selectCount = items.filter((item) => item.isChecked).length;
+    return selectCount === items.length && items.length !== 0;
   }
 
   get actionBar() {
@@ -624,16 +888,50 @@ export default class DaList extends LitElement {
   }
 
   get _itemString() {
-    return this._selectedItems.length > 1 ? 'items' : 'item';
+    const count = this._deleteCount ?? this._selectedItems.length;
+    return count > 1 ? 'items' : 'item';
   }
 
   get _confirmContent() {
-    const noUnpub = this._selectedItems.some((item) => !item.ext || item.ext === 'link' || item.path.includes('/.trash/'));
+    const notPublished = this._canUnpublish !== true;
+    const noUnpub = notPublished
+      || this._selectedItems.some((item) => !item.ext || item.ext === 'link' || item.path.includes('/.trash/'));
     const inTrash = this._selectedItems.some((item) => item.path.includes('/.trash/'));
     const linkOnly = this._selectedItems.length === 1 && this._selectedItems[0].ext === 'link';
 
+    const requireTypedDelete = this._deleteCount != null
+      && this._deleteCount >= DELETE_CONFIRM_THRESHOLD
+      && this._deleteCount <= MAX_DELETE_COUNT;
+
+    const buildYesInput = (heading) => html`
+      <div class="da-actionbar-modal-confirmation">
+        ${heading ? html`<p class="sl-heading-m">${heading}</p>` : nothing}
+        <p>Type <strong>YES</strong> to confirm.</p>
+        <sl-input
+          type="text"
+          placeholder="YES"
+          autofocus=""
+          @input=${(e) => {
+        const upper = e.target.value.toUpperCase();
+        if (e.target.value !== upper) e.target.value = upper;
+        this._confirmText = upper;
+      }}
+          aria-label="Type YES to confirm"
+          value=${this._confirmText ?? ''}></sl-input>
+      </div>
+    `;
+
     if (noUnpub) {
-      return html`<p>Are you sure you want to delete this content?${inTrash || linkOnly ? '' : ' Published items will remain live.'}</p>`;
+      const subject = requireTypedDelete
+        ? `${this._deleteCount} ${this._itemString}`
+        : 'this content';
+      const suffix = inTrash || linkOnly || notPublished ? '' : ' Published items will remain live.';
+      const lead = html`<p>Are you sure you want to delete ${subject}?${suffix}</p>`;
+      if (!requireTypedDelete) return lead;
+      return html`
+        ${lead}
+        ${buildYesInput()}
+      `;
     }
 
     const checkbox = html`
@@ -651,23 +949,28 @@ export default class DaList extends LitElement {
       </div>
     `;
 
-    // If checkbox checked, only return the checkbox
-    if (!this._unpublish) return checkbox;
+    const subject = requireTypedDelete
+      ? `${this._deleteCount} ${this._itemString}`
+      : 'this content';
 
-    // Return checkbox and confirm text
+    let heading = `Are you sure you want to delete ${subject}?`;
+
+    if (!this._unpublish && !requireTypedDelete) {
+      return html`
+        <p>${heading}</p>
+        ${checkbox}
+      `;
+    }
+
+    if (this._unpublish && requireTypedDelete) {
+      heading = `Are you sure you want to unpublish and delete ${subject}?`;
+    } else if (this._unpublish) {
+      heading = 'Are you sure you want to unpublish?';
+    }
+
     return html`
       ${checkbox}
-      <div class="da-actionbar-modal-confirmation">
-        <p class="sl-heading-m">Are you sure you want to unpublish?</p>
-        <p>Type <strong>YES</strong> to confirm.</p>
-        <sl-input
-          type="text"
-          placeholder="YES"
-          autofocus=""
-          @input=${({ target }) => { this._confirmText = target.value; }}
-          aria-label="Type yes to confirm unpublish"
-          value=${this._confirmText}></sl-input>
-      </div>
+      ${buildYesInput(heading)}
     `;
   }
 
@@ -685,18 +988,63 @@ export default class DaList extends LitElement {
       </div>`;
   }
 
+  renderAemResults() {
+    return html`
+      <button
+        class="da-aem-results-btn"
+        aria-haspopup="dialog"
+        @click=${() => { this._confirm = { type: 'results' }; }}>
+        ${this._aemActionState.verb}ed ${this._aemActionState.results.length} ${this._aemActionState.results.length === 1 ? 'item' : 'items'}
+      </button>
+    `;
+  }
+
+  renderConfirmDialog() {
+    if (!this._confirm?.type) return nothing;
+    if (this._confirm.type === 'delete') return this.renderConfirm();
+    return this.renderAemConfirm();
+  }
+
   renderConfirm() {
-    const title = `Deleting ${this._selectedItems.length} ${this._itemString}`;
+    const loading = this._deleteCountLoading;
+    const checkingUnpublish = this._canUnpublish === null;
+    const count = this._deleteCount;
+    const exceedsMax = !loading && count > MAX_DELETE_COUNT;
+
+    const title = loading
+      ? 'Calculating items to delete…'
+      : `Deleting ${count} ${this._itemString}`;
+
     const hasRemaining = this._itemsRemaining !== 0;
-    const message = hasRemaining ? `${this._itemsRemaining} remaining` : nothing;
-    const unpublishConfirmed = this._unpublish && this._confirmText !== 'YES';
+    const requireTypedDelete = !loading
+      && count != null
+      && count >= DELETE_CONFIRM_THRESHOLD
+      && count <= MAX_DELETE_COUNT;
+    const requireYes = this._unpublish || requireTypedDelete;
+    const yesUnconfirmed = requireYes && this._confirmText !== 'YES';
+
+    let message = nothing;
+    if (hasRemaining) {
+      message = `${this._itemsRemaining} remaining`;
+    } else if (loading) {
+      message = 'Crawling selected folders…';
+    } else if (checkingUnpublish) {
+      message = 'Checking publish status…';
+    }
 
     const action = {
       style: 'negative',
       label: this._unpublish ? 'Unpublish & delete' : 'Delete',
       click: async () => this.handleConfirmDelete(),
-      disabled: unpublishConfirmed || hasRemaining,
+      disabled: yesUnconfirmed || hasRemaining || loading || checkingUnpublish || exceedsMax,
     };
+
+    let body;
+    if (exceedsMax) {
+      body = html`<p>This selection contains more than ${MAX_DELETE_COUNT} items. Bulk deletions of this size aren't supported here — please contact your administrator to proceed.</p>`;
+    } else {
+      body = this._confirmContent;
+    }
 
     return html`
       <da-dialog
@@ -704,7 +1052,7 @@ export default class DaList extends LitElement {
         .message=${message}
         .action=${action}
         @close=${this.handleConfirmClose}>
-        ${this._confirmContent}
+        ${body}
       </da-dialog>
     `;
   }
@@ -728,6 +1076,89 @@ export default class DaList extends LitElement {
         <ul class="da-drop-conflicts">
           ${this._dropConflicts.map((name) => html`<li>${name}</li>`)}
         </ul>
+      </da-dialog>
+    `;
+  }
+
+  renderAemConfirm() {
+    const { type, scheduled, checking } = this._confirm;
+    const hasScheduled = scheduled?.length > 0;
+    const count = this._selectedItems.filter((item) => item.ext && item.ext !== 'link').length;
+    const label = type === 'publish' ? 'Publish' : 'Preview';
+
+    let title;
+    let closeHandler;
+    let action;
+    let body;
+
+    if (type === 'results') {
+      const { verb, results } = this._aemActionState;
+      title = `${verb} results`;
+      closeHandler = () => {
+        this._confirm = null;
+        this._aemActionState = null;
+      };
+      action = {
+        style: 'accent',
+        label: 'Copy URLs',
+        click: async () => {
+          try {
+            await navigator.clipboard.writeText(results.map(({ url }) => url).filter(Boolean).join('\n'));
+            this.setStatus('Copied', 'URLs copied to clipboard.');
+            setTimeout(() => { this.setStatus(); }, 3000);
+          } catch { /* clipboard not accessible */ }
+        },
+      };
+      body = html`${results.map(({ name, url }) => html`
+        <p class="dialog-item-name"><a href="${url}" target="_blank">${name}</a></p>
+      `)}`;
+    } else if (hasScheduled) {
+      title = 'Scheduled content';
+      closeHandler = this.handleConfirmClose;
+      action = {
+        style: 'accent',
+        label: 'Confirm Publish',
+        click: async () => {
+          this.handleConfirmClose();
+          await this.runAemQueue('publish', { skipSchedule: true });
+        },
+      };
+      const overrideCount = scheduled.length === 1 ? 'This item has' : `${scheduled.length} items have`;
+      body = html`
+        <p>${overrideCount} a scheduled publish - publishing now will override:</p>
+        ${scheduled.map(({ name, scheduledPublish, userId }) => {
+        const time = new Date(scheduledPublish).toLocaleString();
+        return html`
+            <strong class="dialog-item-label">${name}</strong>
+            <p class="dialog-item-name">${userId ? `${time} by ${userId}` : time}</p>
+          `;
+      })}
+      `;
+    } else {
+      title = label;
+      closeHandler = this.handleConfirmClose;
+      const handler = type === 'publish' ? this.handleConfirmPublish : this.handleConfirmPreview;
+      action = {
+        style: 'accent',
+        label: checking ? 'Checking...' : label,
+        click: async () => handler.call(this),
+        disabled: !!checking,
+      };
+      const hasFolders = this._selectedItems.some((item) => !item.ext);
+      const hasLinks = this._selectedItems.some((item) => item.ext === 'link');
+      const excluded = [hasFolders && 'Folders', hasLinks && 'Links'].filter(Boolean).join(' and ');
+      body = html`
+        <p>${label} the ${count} selected ${count === 1 ? 'item' : 'items'}?</p>
+        ${excluded ? html`<em>Note: <span class="da-list-note-excluded">${excluded}</span> are not ${label.toLowerCase()}ed.</em>` : nothing}
+      `;
+    }
+
+    return html`
+      <da-dialog
+        title=${title}
+        .action=${action}
+        @close=${closeHandler}>
+        ${body}
       </da-dialog>
     `;
   }
@@ -767,6 +1198,7 @@ export default class DaList extends LitElement {
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
           allowselect="${this.select ? true : nothing}"
           ischecked="${item.isChecked ? true : nothing}"
+          isfavorited="${item.isFavorited ? true : nothing}"
           rename="${item.rename ? true : nothing}"
           name="${item.name}"
           path="${item.path}"
@@ -787,11 +1219,9 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <div class="checkbox-wrapper ${this._bulkLoading ? 'loading' : ''}" role="columnheader">
+      <label class="da-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-        <label class="checkbox-label" for="select-all"></label>
-      </div>
-      <input type="checkbox" name="select" style="display: none;">
+      </label>
     `;
   }
 
@@ -802,9 +1232,7 @@ export default class DaList extends LitElement {
 
   render() {
     const hasMorePages = this._continuationToken && !this._allPagesLoaded;
-    const filteredItems = this._filter
-      ? this._listItems.filter((item) => item.name.includes(this._filter))
-      : this._listItems;
+    const { filteredItems } = this;
     const showList = filteredItems?.length > 0 || hasMorePages;
 
     return html`
@@ -821,7 +1249,7 @@ export default class DaList extends LitElement {
                 ?disabled=${this._filterLoading}
                 aria-disabled=${this._filterLoading ? 'true' : 'false'}
                 aria-label="Toggle filter">
-                <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
+                <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
               </button>
             ` : html`
               <button
@@ -831,7 +1259,7 @@ export default class DaList extends LitElement {
                 ?disabled=${this._filterLoading}
                 aria-disabled=${this._filterLoading ? 'true' : 'false'}
                 aria-label="Toggle filter">
-                <img class="toggle-icon-dark" width="20" src="/blocks/browse/da-browse/img/Filter20.svg" alt="" />
+                <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
               </button>
             `}
           </div>
@@ -862,16 +1290,23 @@ export default class DaList extends LitElement {
       </div>
       <da-actionbar
         .permissions=${this._permissions}
+        .canDelete=${this._canDelete}
         @clearselection=${this.handleClear}
         @rename=${this.handleRename}
+        @onfavorite=${this.handleFavorite}
         @onpaste=${this.handlePaste}
         @ondelete=${this.handleDelete}
+        @onpreview=${this.handlePreview}
+        @onpublish=${this.handlePublish}
         @onshare=${this.handleShare}
+        .loading=${typeof this._aemActionState === 'string' ? this._aemActionState : null}
         currentPath="${this.fullpath}"
+        .isHlx6=${this._isHlx6 ?? false}
         role="row"
         data-visible="${this._selectedItems?.length > 0}"></da-actionbar>
       ${this._status ? this.renderStatus() : nothing}
-      ${this._confirm ? this.renderConfirm() : nothing}
+      ${this._aemActionState?.results ? this.renderAemResults() : nothing}
+      ${this.renderConfirmDialog()}
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;

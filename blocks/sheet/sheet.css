@@ -1,4 +1,10 @@
 /* stylelint-disable property-no-vendor-prefix */
+
+/* TODO: remove once dark-mode styling is complete. */
+.light-scheme, .dark-scheme {
+  color-scheme: light;
+}
+
 body {
   background: rgb(250 250 250);
 }
@@ -13,8 +19,8 @@ body {
 .da-version-wrapper {
   display: flex;
   justify-content: center;
-  max-width: var(--grid-container-width);
-  margin: 0 auto var(--spacing-600) auto;
+  max-width: 83.4%;
+  margin: 0 auto var(--s2-spacing-600, var(--spacing-600)) auto;
 }
 
 da-versions,
@@ -74,6 +80,7 @@ button.new-sheet {
 /* jspreadsheets overwrites */
 /* stylelint-disable-next-line selector-class-pattern */
 .da-sheet-wrapper .jexcel_content {
+  background: #fff;
   border: 1px solid #ccc;
   border-radius: 12px;
   display: block;

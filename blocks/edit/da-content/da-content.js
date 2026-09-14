@@ -12,10 +12,10 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
-    lockdownImages: { attribute: false },
     _editorLoaded: { state: true },
     _showPane: { state: true },
-    _versionUrl: { state: true },
+    _versionId: { state: true },
+    _versionLabel: { state: true },
     _externalUrl: { state: true },
   };
 
@@ -64,31 +64,28 @@ export default class DaContent extends LitElement {
   }
 
   handleVersionReset() {
-    this._versionUrl = null;
+    this._versionId = null;
+    this._versionLabel = null;
   }
 
   handleVersionPreview({ detail }) {
-    this._versionUrl = detail.url;
+    this._versionId = detail.versionId;
+    this._versionLabel = detail.label || detail.date || '';
   }
 
   render() {
     const { owner, repo, previewUrl } = this.details;
     const { pathname } = new URL(previewUrl);
 
-    // Only use livePreviewUrl if lockdownImages flag is set to true
-    const displayUrl = this.lockdownImages
-      ? `${getLivePreviewUrl(owner, repo)}${pathname}`
-      : previewUrl;
-
     return html`
       <div class="editor-wrapper">
         <da-editor
           path="${this.details.sourceUrl}"
-          version="${this._versionUrl}"
+          .versionId=${this._versionId}
+          .versionLabel=${this._versionLabel}
           .permissions=${this.permissions}
           .proseEl=${this.proseEl}
           .wsProvider=${this.wsProvider}
-          @proseloaded=${this.handleEditorLoaded}
           @versionreset=${this.handleVersionReset}>
         </da-editor>
         ${this._editorLoaded ? html`
@@ -107,9 +104,8 @@ export default class DaContent extends LitElement {
       </div>
       ${this._editorLoaded ? html`
         <da-preview
-          path=${displayUrl}
+          path="${getLivePreviewUrl(owner, repo)}${pathname}"
           .show=${this._showPane === 'preview'}
-          .lockdownImages=${this.lockdownImages}
           class="${this._showPane === 'preview' ? 'is-visible' : ''}"
           @close=${this.togglePane}></da-preview>
         <da-versions

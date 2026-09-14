@@ -1,11 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
+import inlinesvg from '../shared/inlinesvg.js';
 import { handleSave } from './utils/utils.js';
 
-const { default: getStyle } = await import(`${getNx()}/utils/styles.js`);
-const { default: getSvg } = await import(`${getNx()}/utils/svg.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const style = await getStyle(import.meta.url);
+const style = await loadStyle(import.meta.url);
 
 const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 const ICONS = [
@@ -31,7 +31,7 @@ class DaSheetTabs extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    getSvg({ parent: this.shadowRoot, paths: ICONS });
+    inlinesvg({ parent: this.shadowRoot, paths: ICONS });
     this._names = this.getNames();
     this.showSheet(0);
     this.getPermissions();
@@ -73,6 +73,14 @@ class DaSheetTabs extends LitElement {
     return this.permissions.some((permission) => permission === 'write');
   }
 
+  focusEditInput() {
+    this.updateComplete.then(() => {
+      const inputEl = this.shadowRoot.querySelector('input[name="name"]');
+      inputEl?.focus();
+      inputEl?.select();
+    });
+  }
+
   handleAdd() {
     const sheets = [{
       ...SHEET_TEMPLATE,
@@ -94,6 +102,15 @@ class DaSheetTabs extends LitElement {
     this._active = this.jexcel.length - 1;
     // Set the tab to be in edit mode
     this._edit = this.jexcel.length - 1;
+    this.focusEditInput();
+  }
+
+  handleKeydown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setCustomValidity(e.target, '');
+      this._edit = null;
+    }
   }
 
   handleEdit(e, idx) {
@@ -104,6 +121,7 @@ class DaSheetTabs extends LitElement {
     }
     if (e.submitter.value === 'edit') {
       this._edit = idx;
+      this.focusEditInput();
       return;
     }
     if (e.submitter.value === 'cancel') {
@@ -165,7 +183,7 @@ class DaSheetTabs extends LitElement {
           <li class="${idx === this._active ? 'active' : ''} ${this._canWrite ? '' : 'is-read-only'}" @click=${() => this.showSheet(idx)}>
             <form @submit=${(e) => this.handleEdit(e, idx)}>
               ${idx === this._edit ? html`
-                <input type="text" name="name" value="${name}" />
+                <input type="text" name="name" value="${name}" @keydown=${this.handleKeydown} />
               ` : html`
                 <button value="select"><span>${name}</span></button>
               `}

@@ -1,0 +1,16 @@
+da-dialog.da-not-found-dialog::part(inner) {
+  width: 460px;
+}
+
+da-dialog.da-not-found-dialog p {
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+da-dialog.da-not-found-dialog p:last-of-type {
+  margin-bottom: 0;
+}
+
+da-dialog.da-not-found-dialog sl-button[slot="footer-left"] {
+  white-space: nowrap;
+}

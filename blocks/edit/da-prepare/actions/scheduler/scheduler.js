@@ -1,8 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { initIms } from '../../../../shared/utils.js';
-import { saveToAem } from '../../../utils/helpers.js';
-import { isRegistered, getExistingSchedule, schedulePagePublish } from './utils.js';
+import { initIms, saveToAem, getExistingSchedule } from '../../../../shared/utils.js';
+import { isRegistered, schedulePagePublish } from './utils.js';
 
 const REGISTER_PATH = 'https://da.live/apps/scheduler';
 
@@ -34,7 +33,7 @@ class DaScheduler extends LitElement {
       this._statusText = null;
       this._instructions = html`
         <p>This site is not registered.</p>
-        <p>Please register your site in the Scheduler App <a href="${REGISTER_PATH}"></a> first.</p>`;
+        <p>Please register your site in the <a href="${REGISTER_PATH}">Scheduler App</a> first.</p>`;
       return;
     }
 

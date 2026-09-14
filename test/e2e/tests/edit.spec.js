@@ -9,15 +9,20 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
-import { getQuery, getTestPageURL, tabBackward, fill } from '../utils/page.js';
+import {
+  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
+} from '../utils/page.js';
+import { dismissAlertBanner } from '../utils/utils.js';
 
 test('Update Document', async ({ browser, page }, workerInfo) => {
   test.setTimeout(30000);
 
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
+  await page.waitForTimeout(2000);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
@@ -36,17 +41,17 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
 });
 
 test('Create Delete Document', async ({ browser, page }, workerInfo) => {
-  test.setTimeout(30000);
+  test.setTimeout(60000);
 
   const url = getTestPageURL('edit2', workerInfo);
   const pageName = url.split('/').pop();
 
-  await page.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
-  await page.locator('button.da-actions-new-button').click();
-  await page.locator('button:text("Document")').click();
-  await page.locator('input.da-actions-input').fill(pageName);
-
-  await page.locator('button:text("Create document")').click();
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
+  await expect(page.locator('button.da-actions-new-button')).toBeEnabled();
+  await page.locator('button.da-actions-new-button').click({ force: true });
+  await page.getByRole('menuitem', { name: 'Document' }).click();
+  await page.getByPlaceholder('document name').fill(pageName);
+  await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
@@ -55,25 +60,27 @@ test('Create Delete Document', async ({ browser, page }, workerInfo) => {
   await page.waitForTimeout(1000);
 
   const newPage = await browser.newPage();
-  await newPage.goto(`${ENV}/${getQuery()}#/da-sites/da-status/tests`);
+  await newPage.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
+  await dismissAlertBanner(newPage);
 
   await newPage.waitForTimeout(3000);
   await newPage.reload();
 
-  await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).toBeVisible();
-  await newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`).focus();
+  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`)).toBeVisible();
+  await newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`).focus();
   await tabBackward(newPage);
   await newPage.keyboard.press(' ');
   await newPage.waitForTimeout(500);
   await page.close(); // Close the original page to avoid it writing the content
 
+  await dismissAlertBanner(newPage);
   // There are 2 delete buttons, one on the Browse panel and another on the Search one
   // select the visible one.
-  await newPage.locator('button.delete-button').locator('visible=true').click();
+  await newPage.locator('button.delete-button').filter({ visible: true }).click();
 
   await newPage.waitForTimeout(1000);
   /* TODO REMOVE once #233 is fixed */ await newPage.reload();
-  await expect(newPage.locator(`a[href="/edit#/da-sites/da-status/tests/${pageName}"]`)).not.toBeVisible();
+  await expect(newPage.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`)).not.toBeVisible();
 });
 
 test('Change document by switching anchors', async ({ page }, workerInfo) => {
@@ -84,6 +91,7 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   const urlB = `${url}B`;
 
   await page.goto(urlA);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
@@ -108,11 +116,14 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await page.waitForTimeout(5000);
 
   await page.goto(urlB);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(2000);
   await fill(page, 'page B');
+  await page.waitForTimeout(3000);
+
   // Verify the fill took effect locally before waiting for persistence
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
   // Wait for Y.js to persist the content to the server
@@ -130,10 +141,43 @@ test('Change document by switching anchors', async ({ page }, workerInfo) => {
   await expect(page.locator('div.ProseMirror')).toContainText('page B');
 });
 
+// Reads up to 20 chars immediately before/after the cursor within its text block,
+// so callers can verify where a run of arrow-key presses actually landed.
+async function textAroundCursor(page) {
+  return page.evaluate(() => {
+    const { $from } = window.view.state.selection;
+    return {
+      before: $from.parent.textBetween(Math.max(0, $from.parentOffset - 20), $from.parentOffset),
+      after: $from.parent.textBetween(
+        $from.parentOffset,
+        Math.min($from.parent.content.size, $from.parentOffset + 20),
+      ),
+    };
+  });
+}
+
+// Presses `key` `times` times, then verifies via `check(before, after)` that the
+// cursor landed as expected, pressing `key` again to close any single-key drift.
+async function pressKeyUntil(page, key, times, check) {
+  for (let i = 0; i < times; i += 1) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(200);
+  }
+  let last;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    last = await textAroundCursor(page);
+    if (check(last.before, last.after)) return;
+    await page.keyboard.press(key);
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`Cursor didn't land as expected after ${times} "${key}" presses: ${JSON.stringify(last)}`);
+}
+
 test('Add code mark', async ({ page }, workerInfo) => {
   test.setTimeout(30000);
   const url = getTestPageURL('edit5', workerInfo);
   await page.goto(url);
+  await page.getByText('Create document', { exact: true }).click();
   const proseMirror = page.locator('div.ProseMirror');
   await proseMirror.waitFor();
   await expect(proseMirror).toBeVisible();
@@ -141,17 +185,14 @@ test('Add code mark', async ({ page }, workerInfo) => {
   // Allow Y.js WebSocket to stabilize before typing
   await page.waitForTimeout(2000);
   await fill(page, 'This is a line that will contain a code mark.');
+  // Wait for text to commit to the editor before navigating
+  await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
+  await page.keyboard.press('End');
 
   // Forward
-  for (let i = 0; i < 10; i += 1) {
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(100);
-  }
+  await pressKeyUntil(page, 'ArrowLeft', 10, (_before, after) => after.startsWith('code'));
   await page.keyboard.press('`');
-  for (let i = 0; i < 4; i += 1) {
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(100);
-  }
+  await pressKeyUntil(page, 'ArrowRight', 4, (before) => before.endsWith('code'));
   await page.keyboard.press('`');
   // leave time for the code mark to be processed
   let codeElement = proseMirror.locator('code');
@@ -160,32 +201,22 @@ test('Add code mark', async ({ page }, workerInfo) => {
 
   // Backward
   await fill(page, 'This is a line that will contain a code mark.');
-  for (let i = 0; i < 6; i += 1) {
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(100);
-  }
+  // Wait for text to commit to the editor before navigating
+  await expect(proseMirror).toContainText('This is a line that will contain a code mark.');
+  await page.keyboard.press('End');
+  await pressKeyUntil(page, 'ArrowLeft', 6, (before) => before.endsWith('code'));
   await page.keyboard.press('`');
   await page.locator('div.ProseMirror').locator('code');
-  for (let i = 0; i < 5; i += 1) {
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(100);
-  }
+  await pressKeyUntil(page, 'ArrowLeft', 5, (_before, after) => after.startsWith('code`'));
   await page.keyboard.press('`');
   codeElement = proseMirror.locator('code');
   await codeElement.waitFor();
   await expect(codeElement).toContainText('code');
 
   // No Overwrite
-  for (let i = 0; i < 6; i += 1) {
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(100);
-  }
+  await pressKeyUntil(page, 'ArrowLeft', 6, (_before, after) => after.startsWith('a code mark'));
   await page.keyboard.press('`');
-
-  for (let i = 0; i < 11; i += 1) {
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(100);
-  }
+  await pressKeyUntil(page, 'ArrowRight', 11, (before) => before.endsWith('mark'));
   await page.keyboard.press('`');
   await expect(proseMirror).toContainText('This is a line that will contain `a code mark`.');
 });

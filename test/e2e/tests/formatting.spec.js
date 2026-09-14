@@ -9,7 +9,7 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../utils/fixtures.js';
 import { getTestPageURL, fill } from '../utils/page.js';
 
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
@@ -69,9 +69,8 @@ test('Text formatting and links persist after reload', async ({ page }, workerIn
   test.setTimeout(60000);
 
   const url = getTestPageURL('formatting', workerInfo);
-  console.log(url);
   await page.goto(url);
-
+  await page.getByText('Create document', { exact: true }).click();
   const proseMirror = page.locator('div.ProseMirror');
   await expect(proseMirror).toBeVisible();
   await expect(proseMirror).toHaveAttribute('contenteditable', 'true');

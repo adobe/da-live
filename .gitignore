@@ -106,3 +106,5 @@ typings/
 .idea/*
 .cursorrules
 .claude
+/.scout
+docs/superpowers/

@@ -1,4 +1,4 @@
-import { htmlDiff } from './htmldiff.js';
+import { htmlDiff } from '../../../shared/version/htmldiff.js';
 
 function fragmentToHTML(fragment) {
   if (!fragment) return '';

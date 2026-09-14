@@ -1,0 +1,39 @@
+import { getNx2, getNx2Api } from '../../../scripts/utils.js';
+
+// The api service runs on Lambda, which caps a request at 6 MiB once base64 has
+// inflated the body. Measured 2026-08-18, the AWS edge answers 413 from 4,717,360
+// bytes up, and that 413 carries no CORS header, so the browser reads it as a
+// network failure with no status. The size is checked before the request instead.
+// da-admin took a 120 MB body in the same probe, so the cap is the source bus's.
+export const MAX_IMAGE_BYTES = 4500000;
+const MAX_IMAGE_LABEL = '4.5 MB';
+
+export function isImageTooLarge(bytes) {
+  return bytes > MAX_IMAGE_BYTES;
+}
+
+export function dataUrlByteLength(dataUrl) {
+  const base64 = dataUrl?.split(';base64,')[1];
+  if (!base64) return 0;
+  const padding = (base64.endsWith('==') && 2) || (base64.endsWith('=') && 1) || 0;
+  return Math.floor(base64.length / 4) * 3 - padding;
+}
+
+export async function showImageTooLarge() {
+  const { showToast, VARIANT_ERROR } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
+  showToast({
+    text: `Image upload failed. Image size must be ${MAX_IMAGE_LABEL} or under`,
+    variant: VARIANT_ERROR,
+  });
+}
+
+// `parentPath` is the document's folder, `/org/site/dir`.
+export async function refuseOversizedImage(bytes, parentPath) {
+  if (!isImageTooLarge(bytes)) return false;
+  const [, org, site] = (parentPath ?? '').split('/');
+  if (!org || !site) return false;
+  const { isHlx6 } = await getNx2Api();
+  if (!await isHlx6(org, site)) return false;
+  await showImageTooLarge();
+  return true;
+}

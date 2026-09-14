@@ -1,6 +1,7 @@
 import { DOMParser as ProseParser } from 'da-y-wrapper';
-import { DA_ORIGIN } from '../../../../shared/constants.js';
-import { daFetch, aemAdmin, etcFetch, getFirstSheet } from '../../../../shared/utils.js';
+import { etcFetch, getAemSiteToken, getFirstSheet } from '../../../../shared/utils.js';
+import { getNx2Api } from '../../../../../scripts/utils.js';
+import { getExtensionsBridge } from '../../../../canvas/editor-utils/extensions-bridge.js';
 import { deleteOffer, getAccessToken, getOffer, saveOffer } from './api.js';
 
 const TARGET_CONFIG_PATH = '/.da/adobe-target.json';
@@ -49,15 +50,22 @@ function findMetadataRow(doc, key) {
   return null;
 }
 
+// `/edit` exposes its ProseMirror view as `window.view`; `/canvas` never sets that
+// global and only exposes its view via the canvas extensions bridge.
+function getActiveView() {
+  return window.view || getExtensionsBridge().view;
+}
+
 function getOfferId() {
-  const { view } = window;
+  const view = getActiveView();
   if (!view) return null;
   const result = findMetadataRow(view.state.doc, 'adobe.target.offerId');
   return result?.value || null;
 }
 
 function setOfferId(offerId) {
-  const { view } = window;
+  const view = getActiveView();
+  if (!view) return;
   const { state } = view;
   const { schema, tr } = state;
 
@@ -95,7 +103,8 @@ function setOfferId(offerId) {
 }
 
 export function removeOfferId() {
-  const { view } = window;
+  const view = getActiveView();
+  if (!view) return;
   const { state } = view;
   const { tr } = state;
 
@@ -119,8 +128,8 @@ export const fetchTargetConfig = (() => {
   const configCache = {};
 
   const fetchConfig = async (location) => {
-    const path = `${DA_ORIGIN}/source${location}${TARGET_CONFIG_PATH}`;
-    const resp = await daFetch(path);
+    const { source } = await getNx2Api();
+    const resp = await source.get(`${location}${TARGET_CONFIG_PATH}`);
     if (!resp.ok) return { error: 'Couldn\'t fetch Adobe Target config.' };
     const json = await resp.json();
     const data = getFirstSheet(json);
@@ -149,14 +158,20 @@ export const fetchTargetConfig = (() => {
 })();
 
 export async function savePreview(org, site, path) {
-  const fullpath = `/${org}/${site}${path}`;
-  const json = await aemAdmin(fullpath, 'preview');
-  if (!json) return { error: 'Couldn\'t preview.' };
-  return json;
+  const fullpath = `/${org}/${site}${path}`.replace(/\.html$/, '');
+  const { aem } = await getNx2Api();
+  const resp = await aem.preview(fullpath);
+  if (!resp.ok) return { error: 'Couldn\'t preview.' };
+  return resp.json();
 }
 
 export async function sendToTarget(org, site, name, aemPath, displayName, existingOfferId) {
-  const aemResp = await etcFetch(`${aemPath}?nocache=${Date.now()}`, 'cors');
+  const opts = {};
+  try {
+    const { siteToken } = await getAemSiteToken({ org, site });
+    if (siteToken) opts.headers = { Authorization: `token ${siteToken}` };
+  } catch { /* fall back to an unauthenticated fetch */ }
+  const aemResp = await etcFetch(`${aemPath}?nocache=${Date.now()}`, 'cors', opts);
   if (!aemResp.ok) return { error: 'Could not fetch from AEM.' };
   const html = await aemResp.text();
   const dom = new DOMParser().parseFromString(html, 'text/html');

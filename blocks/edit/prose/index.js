@@ -24,19 +24,42 @@ import {
 
 import { getSchema } from 'da-parser';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
-import { daFetch, getAuthToken } from '../../shared/utils.js';
+import { getAuthToken } from '../../shared/utils.js';
+import { getNx2Api } from '../../../scripts/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
+import { forceSave } from '../../shared/forcesave.js';
+
+// Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
+// every successful onopen, so a close that follows a brief successful
+// handshake reschedules at 100ms. Single users behind corporate proxies can
+// sustain thousands of WS upgrades/sec/IP through this path. The guard below
+// detects open-then-close cycles shorter than MIN_HEALTHY_SESSION_MS and
+// applies a manual exponential backoff before letting the provider reconnect.
+const MIN_HEALTHY_SESSION_MS = 5000;
+const SHORT_SESSION_BASE_MS = 1000;
+const SHORT_SESSION_MAX_MS = 30000;
 
 async function checkDoc(path) {
-  return daFetch(path, { method: 'HEAD' });
+  const { source } = await getNx2Api();
+  const { pathname } = new URL(path);
+  const [, org, site, ...parts] = pathname.slice(1).split('/');
+  return source.getMetadata({ org, site, path: `/${parts.join('/')}` });
 }
 
 export async function createConnection(path) {
   const ydoc = new Y.Doc();
 
   const server = COLLAB_ORIGIN;
-  const roomName = `${DA_ORIGIN}${new URL(path).pathname}`;
+
+  const { pathname } = new URL(path);
+  const [, , org, site, ...parts] = pathname.split('/');
+  const { AEM_API, isHlx6 } = await getNx2Api();
+  const hlx6 = await isHlx6(org, site);
+
+  const roomName = hlx6
+    ? `${AEM_API}/${org}/sites/${site}/source/${parts.join('/')}`
+    : `${DA_ORIGIN}${pathname}`;
 
   const opts = {
     protocols: ['yjs'],
@@ -54,6 +77,64 @@ export async function createConnection(path) {
   // (exponential backoff starting with 100ms) and then every 30s.
   provider.maxBackoffTime = 30000;
 
+  let lastSentToken = token || null;
+  let lastOpenAt = 0;
+  let failedShortSessions = 0;
+
+  provider.on('status', (st) => {
+    if (st?.status === 'connected') lastOpenAt = Date.now();
+  });
+
+  provider.on('connection-close', async (event) => {
+    if (event?.code === 4401 || event?.code === 4403) {
+      provider.shouldConnect = false;
+      // Force imslib to attempt a refresh before deciding to give up.
+      try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
+      const fresh = await getAuthToken();
+      if (!fresh || fresh === lastSentToken) {
+        // No new token to try — retrying would loop on the same 4401. Stop
+        // the reconnect loop, and surface the modal if the user was signed in.
+        if (lastSentToken) {
+          try {
+            const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
+            showAuthBanner();
+          } catch { /* ignore */ }
+        }
+        return;
+      }
+      provider.protocols = ['yjs', fresh];
+      lastSentToken = fresh;
+      provider.connect();
+      return;
+    }
+
+    // Non-auth close: rapid-reconnect guard. y-websocket's own 100ms
+    // setTimeout(setupWS) still fires from onclose, but provider.disconnect()
+    // flips shouldConnect=false so that timer's setupWS call no-ops. The
+    // manual setTimeout below is what re-arms the connection.
+    const sessionMs = lastOpenAt ? Date.now() - lastOpenAt : 0;
+    lastOpenAt = 0;
+    if (sessionMs >= MIN_HEALTHY_SESSION_MS) {
+      failedShortSessions = 0;
+    } else {
+      const delay = Math.min(
+        2 ** failedShortSessions * SHORT_SESSION_BASE_MS,
+        SHORT_SESSION_MAX_MS,
+      );
+      failedShortSessions += 1;
+      provider.shouldConnect = false;
+      provider.disconnect();
+      setTimeout(() => {
+        provider.shouldConnect = true;
+        provider.connect();
+      }, delay);
+    }
+
+    const fresh = await getAuthToken();
+    provider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
+    lastSentToken = fresh;
+  });
+
   return { wsProvider: provider, ydoc };
 }
 
@@ -68,6 +149,7 @@ async function loadCustomPlugins() {
     { default: tableSelectHandle },
     { default: linkConverter },
     { default: linkTextSync },
+    { default: mediaBusImage },
     { default: sectionPasteHandler },
     { default: base64Uploader },
     { default: toggleLibrary },
@@ -83,6 +165,7 @@ async function loadCustomPlugins() {
     import('./plugins/tableSelectHandle.js'),
     import('./plugins/linkConverter.js'),
     import('./plugins/linkTextSync.js'),
+    import('./plugins/mediaBusImage.js'),
     import('./plugins/sectionPasteHandler.js'),
     import('./plugins/base64uploader.js'),
     import('../da-library/da-library.js'),
@@ -101,6 +184,7 @@ async function loadCustomPlugins() {
     tableSelectHandle,
     linkConverter,
     linkTextSync,
+    mediaBusImage,
     sectionPasteHandler,
     base64Uploader,
     toggleLibrary,
@@ -222,15 +306,6 @@ function onWsSync(wsProvider, callback) {
   wsProvider.on('synced', handleSynced);
 }
 
-function handleProseLoaded(editor, wsProvider) {
-  onWsSync(wsProvider, () => {
-    const daEditor = editor.getRootNode().host;
-    const opts = { bubbles: true, composed: true };
-    const event = new CustomEvent('proseloaded', opts);
-    daEditor.dispatchEvent(event);
-  });
-}
-
 function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   const users = new Set();
 
@@ -257,10 +332,19 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
 
   wsProvider.on('status', (st) => { daTitle.collabStatus = st.status; });
 
-  wsProvider.on('connection-close', async () => {
+  // Seed from current provider state in case 'status' fired before subscribe.
+  if (wsProvider.wsconnected) daTitle.collabStatus = 'connected';
+  else daTitle.collabStatus = 'connecting';
+
+  wsProvider.on('connection-close', async (event) => {
+    if (event?.code === 4401 || event?.code === 4403) return;
     const resp = await checkDoc(path);
     if (resp.status === 404) {
-      const split = window.location.hash.slice(2).split('/');
+      const { hash } = window.location;
+      // Guard: hash must start with '#/' — during an IMS redirect the hash is '#access_token=...'
+      // and slice(2) would remove '#a', writing 'ccess_token=...' into the URL as an org name.
+      if (!hash.startsWith('#/')) return;
+      const split = hash.slice(2).split('/');
       split.pop();
       // Navigate to the parent folder
       window.location.replace(`/#/${split.join('/')}`);
@@ -273,7 +357,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   win.addEventListener('focus', () => {
     // cancel any pending disconnect
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
-    wsProvider.connect();
+    if (!wsProvider.wsconnected) wsProvider.connect();
   });
   win.addEventListener('blur', () => {
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
@@ -293,8 +377,17 @@ function registerErrorHandler(ydoc) {
   ydoc.on('update', () => {
     const errorMap = ydoc.getMap('error');
     if (errorMap && errorMap.size > 0) {
-      // eslint-disable-next-line no-console
-      console.log('Error from server', JSON.stringify(errorMap));
+      const message = errorMap.get('message') || JSON.stringify(errorMap.toJSON());
+      if (message.startsWith('401')) {
+        // eslint-disable-next-line no-console
+        console.warn(`Message from collab: ${message}`);
+      } else if (message.startsWith('403 ')) {
+        // eslint-disable-next-line no-console
+        console.log(`Message from collab: ${message}`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(`Error message from collab: ${message}`, errorMap.toJSON());
+      }
       errorMap.clear();
     }
   });
@@ -360,7 +453,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     const buildKeymapPlugin = keymap(buildKeymap(schema));
     const baseKeymapPlugin = keymap(baseKeymap);
     const gapCursorPlugin = gapCursor();
-    const tableEditingPlugin = tableEditing();
+    const tableEditingPlugin = tableEditing({ allowTableNodeSelection: true });
 
     const pluginList = [
       syncPlugin,
@@ -373,6 +466,7 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
       plugins.imageDrop(schema),
       plugins.linkConverter(schema),
       plugins.linkTextSync(),
+      plugins.mediaBusImage(),
       plugins.sectionPasteHandler(schema),
       plugins.base64Uploader(schema),
       columnResizing(),
@@ -415,6 +509,9 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     // Reconfigure the view with the full plugin list
     const newState = window.view.state.reconfigure({ plugins: pluginList });
     window.view.updateState(newState);
+    // reconfigure() destroys/recreates all plugin views, incl. the cursor plugin, which
+    // nulls collab cursor awareness on destroy. Force an update pass to re-broadcast it.
+    window.view.dispatch(window.view.state.tr);
   });
 }
 
@@ -497,8 +594,6 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
 
-  handleProseLoaded(editor, wsProvider);
-
   const pluginsPromise = loadCustomPlugins();
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {
     syncPlugin,
@@ -510,4 +605,5 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   daContent.proseEl = editor;
   daContent.wsProvider = wsProvider;
+  daContent.forceSave = () => forceSave(wsProvider);
 }

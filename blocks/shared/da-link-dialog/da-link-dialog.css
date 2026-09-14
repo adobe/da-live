@@ -1,0 +1,6 @@
+.link-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-100);
+}
+

@@ -7,9 +7,8 @@ const nx = getNx();
 await import(`${nx}/public/sl/components.js`);
 
 // Styles
-const { default: getStyle } = await import(`${nx}/utils/styles.js`);
-const SL = await getStyle(`${nx}/public/sl/styles.css`);
-const STYLE = await getStyle(import.meta.url);
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const STYLE = await loadStyle(import.meta.url);
 
 export default class DaDialog extends LitElement {
   static properties = {
@@ -18,12 +17,18 @@ export default class DaDialog extends LitElement {
     action: { state: true },
     emphasis: { type: String }, // quiet
     size: { type: String }, // 'small', 'medium', 'large', 'auto'
+    showCloseButton: { type: Boolean, attribute: 'show-close-button' },
     _showLazyModal: { state: true },
   };
 
+  constructor() {
+    super();
+    this.showCloseButton = true;
+  }
+
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [SL, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [STYLE];
     setTimeout(() => { this.showModal(); }, 20);
   }
 
@@ -66,12 +71,12 @@ export default class DaDialog extends LitElement {
         <div class="da-dialog-inner ${sizeClass} ${emphasisClass}" part="inner">
           <div class="da-dialog-header" part="header">
             <p class="sl-heading-m">${this.title}</p>
-            <button
+            ${this.showCloseButton ? html`<button
               class="da-dialog-close-btn"
               @click=${this.close}
               aria-label="Close dialog">
-              <svg class="icon"><use href="/blocks/browse/img/S2IconClose20N-icon.svg#S2IconClose20N-icon"></use></svg>
-            </button>
+              <svg class="icon"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg>
+            </button>` : nothing}
           </div>
           <hr/>
           <div class="da-dialog-content" part="content">

@@ -9,15 +9,17 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
-import { getTestPageURL, fill } from '../utils/page.js';
+import { test, expect } from '../utils/fixtures.js';
+import { getTestPageURL, fill, TEST_SITE } from '../utils/page.js';
 
 test('Create Version and Restore from it', async ({ page }, workerInfo) => {
   // This test has a fairly high timeout because it waits for the document to be saved
   // a number of times
   test.setTimeout(60000);
 
-  await page.goto(getTestPageURL('versions', workerInfo));
+  const url = getTestPageURL('versions', workerInfo);
+  await page.goto(url);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
   // Allow Y.js WebSocket to stabilize before typing
@@ -61,11 +63,15 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
 
   // Check that there is an audit entry for the last edit (which we didn't)
   // expliticly create a version for.
-  const audit = await page.locator('.da-version-entry.is-audit');
-  await audit.click();
+  // Use .first() because PR #931 keeps audit groups separate across version boundaries,
+  // so there may be multiple is-audit entries (one before and one after 'ver 1').
+  if (TEST_SITE === 'da-status') {
+    const audit = await page.locator('.da-version-entry.is-audit').first();
+    await audit.click();
 
-  const expectedUser = process.env.SKIP_AUTH ? 'anonymous' : 'da-test@adobetest.com';
-  await expect(audit).toContainText(expectedUser);
+    const expectedUser = process.env.SKIP_AUTH ? 'anonymous' : 'da-test@adobetest.com';
+    await expect(audit).toContainText(expectedUser);
+  }
 
   // Select 'ver 1' and restore it — the click expands the version entry;
   // WebKit needs a beat for the expansion to start processing.

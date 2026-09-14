@@ -1,7 +1,7 @@
 :host {
   display: flex;
-  gap: var(--spacing-200);
-  margin-bottom: var(--spacing-200);
+  gap: var(--s2-spacing-200, var(--spacing-200));
+  margin-bottom: var(--s2-spacing-200, var(--spacing-200));
   flex-wrap: wrap;
 }
 
@@ -14,7 +14,7 @@ ul {
   padding: 0;
   list-style: none;
   display: flex;
-  gap: var(--spacing-200);
+  gap: var(--s2-spacing-200, var(--spacing-200));
   flex-wrap: wrap;
 }
 
@@ -38,7 +38,7 @@ input {
 
 button,
 input[type="text"] {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
 }
 
 li.active {

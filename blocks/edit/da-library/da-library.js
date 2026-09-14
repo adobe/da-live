@@ -2,14 +2,21 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
-import { daFetch } from '../../shared/utils.js';
 import searchFor from './helpers/search.js';
-import { OOTB_PLUGINS, loadLibrary, getItemDetails, getPreviewStatus } from './helpers/helpers.js';
+import {
+  OOTB_PLUGINS,
+  loadLibrary,
+  getItemDetails,
+  getPreviewStatus,
+  daFetchLibrary,
+  ref,
+} from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
-const buttons = await getSheet(`${getNx()}/styles/buttons.css`);
+const buttons = await getSheet(`${getNx().replace(/\/nx2$/, '/nx')}/styles/buttons.css`);
 
 const ICONS = [
   '/blocks/edit/img/S2_Icon_ExperienceAdd_20_N.svg',
@@ -184,7 +191,7 @@ class DaLibrary extends LitElement {
   }
 
   async handleTemplateClick(item) {
-    const resp = await daFetch(`${item.value}`);
+    const { resp } = await daFetchLibrary(item.value, { skipRewrite: item.usedFallback });
     if (!resp.ok) return;
     let text = await resp.text();
 
@@ -233,7 +240,7 @@ class DaLibrary extends LitElement {
     const { org, site, pathname } = getItemDetails(item);
     this._preview = {
       name: item.name || item.key,
-      url: `https://main--${site}--${org}.aem.page${pathname}`,
+      url: `https://${ref}--${site}--${org}.aem.page${pathname}`,
     };
 
     // Lazily get the preview status
@@ -246,6 +253,7 @@ class DaLibrary extends LitElement {
   }
 
   async handlePluginLoad({ target }) {
+    const targetOrigin = getPostMessageTargetOrigin(target.src);
     const channel = new MessageChannel();
     channel.port1.onmessage = (e) => {
       if (e.data.action === 'sendText') {
@@ -262,7 +270,7 @@ class DaLibrary extends LitElement {
       if (e.data.action === 'setHash') {
         window.location.hash = e.data.details;
       }
-      if (e.data.action === 'setHref') {
+      if (e.data.action === 'setHref' && isValidHref(e.data.details)) {
         window.location.href = e.data.details;
       }
       if (e.data.action === 'closeLibrary') {
@@ -279,7 +287,7 @@ class DaLibrary extends LitElement {
         const fragment = serializer.serializeFragment(slice.content);
         const div = document.createElement('div');
         div.appendChild(fragment);
-        target.contentWindow.postMessage({ action: 'sendSelection', details: div.innerHTML }, '*');
+        target.contentWindow.postMessage({ action: 'sendSelection', details: div.innerHTML }, targetOrigin);
       }
     };
 
@@ -302,7 +310,7 @@ class DaLibrary extends LitElement {
         token,
       };
 
-      target.contentWindow.postMessage(message, '*', [channel.port2]);
+      target.contentWindow.postMessage(message, targetOrigin, [channel.port2]);
     }, 750);
   }
 

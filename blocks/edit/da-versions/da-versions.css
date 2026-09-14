@@ -24,7 +24,7 @@
 }
 
 .da-versions-close-btn {
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
   line-height: 32px;
   font-weight: 700;
   font-size: 20px;
@@ -173,7 +173,7 @@
 .da-version-new-input {
   border: none;
   border-bottom: 2px solid #C8C8C8;
-  font-family: var(--body-font-family);
+  font-family: var(--s2-font-family, var(--body-font-family));
   font-size: 18px;
   font-weight: 700;
   padding: 6px 0;

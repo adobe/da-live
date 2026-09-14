@@ -1,0 +1,46 @@
+html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat-btn) {
+  display: none;
+}
+
+.browse {
+  container-type: inline-size;
+}
+
+@container (width < 1440px) {
+  da-browse {
+    --se-grid-container-width: 83.4cqi;
+  }
+}
+
+.light-scheme, .dark-scheme {
+  color-scheme: light;
+
+  .browse:has(da-sites) {
+    [data-scheme="light"] {
+      display: block;
+    }
+  }
+}
+
+/* .dark-scheme {  
+  .browse:has(da-sites) {
+    [data-scheme="dark"] {
+      display: block;
+    }
+  }
+} */
+
+picture {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+img {
+  display: block;
+  width: 100%;
+  height: auto;
+  mask-image: linear-gradient(to bottom, rgb(0 0 0) 50%, transparent 100%);
+}

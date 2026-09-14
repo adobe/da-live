@@ -1,21 +1,40 @@
 import { DOMParser as proseDOMParser } from 'da-y-wrapper';
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
-import { initIms, daFetch } from '../../shared/utils.js';
+import { initIms } from '../../shared/utils.js';
+import { getNx2Api } from '../../../scripts/utils.js';
 import { setDaMetadata, htmlToProse } from '../utils/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-editor/da-editor.css');
 
+function wrapTablesInWrappers(root) {
+  root.querySelectorAll('table').forEach((table) => {
+    if (table.parentElement?.classList.contains('tableWrapper')) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tableWrapper';
+    table.replaceWith(wrapper);
+    wrapper.appendChild(table);
+  });
+}
+
+let daCompare;
+async function loadDaCompare() {
+  if (!daCompare) daCompare = await import('./da-compare.js');
+  return daCompare;
+}
+
 export default class DaEditor extends LitElement {
   static properties = {
     path: { type: String },
-    version: { type: String },
+    versionId: { attribute: false },
+    versionLabel: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
     permissions: { state: true },
     _imsLoaded: { state: false },
     _versionDom: { state: true },
     _daMetadata: { state: true },
+    _compareDom: { state: true },
   };
 
   connectedCallback() {
@@ -27,7 +46,12 @@ export default class DaEditor extends LitElement {
 
   async fetchVersion() {
     this._versionDom = null;
-    const resp = await daFetch(this.version);
+    // A version belongs to the open doc, so derive org/site/path from this.path
+    // and let versions.get build the right URL for either backend.
+    const { versions } = await getNx2Api();
+    const { pathname } = new URL(this.path);
+    const [, , org, site, ...parts] = pathname.split('/');
+    const resp = await versions.get({ org, site, path: `/${parts.join('/')}`, versionId: this.versionId });
     if (!resp.ok) return;
     const text = await resp.text();
 
@@ -35,6 +59,7 @@ export default class DaEditor extends LitElement {
 
     const metadataMap = ydoc.getMap('daMetadata');
     this._daMetadata = Object.fromEntries(metadataMap.entries());
+    wrapTablesInWrappers(dom);
     this._versionDom = dom;
   }
 
@@ -43,6 +68,25 @@ export default class DaEditor extends LitElement {
     const event = new CustomEvent('versionreset', opts);
     this.dispatchEvent(event);
     this._versionDom = null;
+    this.handleCloseCompare();
+  }
+
+  async handleCompare() {
+    const m = await loadDaCompare();
+    m.compare({
+      shadowRoot: this.shadowRoot,
+      versionDom: this._versionDom,
+      onClose: this.handleCloseCompare.bind(this),
+      onResult: (dom, cleanup) => {
+        this._compareDom = dom;
+        this._compareCleanup = cleanup;
+      },
+    });
+  }
+
+  handleCloseCompare() {
+    this._compareDom = null;
+    this._compareCleanup?.();
   }
 
   handleRestore() {
@@ -53,7 +97,6 @@ export default class DaEditor extends LitElement {
     const newState = window.view.state.apply(tr);
     window.view.updateState(newState);
 
-    // Restore document metadata to yMap
     Object.entries(this._daMetadata).forEach(([key, value]) => {
       setDaMetadata(key, value);
     });
@@ -74,10 +117,15 @@ export default class DaEditor extends LitElement {
     return html`
       <div class="da-prose-mirror da-version-preview">
         <div class="da-version-action-area">
-          <button @click=${this.handleCancel}>Cancel</button>
-          <button class="accent" @click=${this.handleRestore} ?disabled=${!this._canWrite}>Restore</button>
+          <h2 class="da-version-title">Version: ${this.versionLabel || ''}</h2>
+          <div class="da-version-action-buttons">
+            <button @click=${this.handleCancel}>Cancel</button>
+            <button @click=${this.handleCompare}>Compare</button>
+            <button class="accent" @click=${this.handleRestore} ?disabled=${!this._canWrite}>Restore</button>
+          </div>
         </div>
         <div class="ProseMirror">${this._versionDom}</div>
+        ${this._compareDom ? daCompare.renderModal(this.versionLabel, this._compareDom, this.handleCloseCompare.bind(this)) : nothing}
       </div>`;
   }
 
@@ -88,11 +136,10 @@ export default class DaEditor extends LitElement {
   }
 
   async updated(props) {
-    if (props.has('version') && this.version) {
+    if (props.has('versionId') && this.versionId) {
       this.fetchVersion();
     }
 
-    // Do not setup prosemirror until we know the permissions
     if (props.has('proseEl') && this.path && this.permissions) {
       if (this._proseEl) this._proseEl.remove();
       this.shadowRoot.append(this.proseEl);

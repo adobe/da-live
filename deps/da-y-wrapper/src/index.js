@@ -1,7 +1,7 @@
 // ProseMirror
-import { EditorView } from 'prosemirror-view';
+import { EditorView, Decoration, DecorationSet } from 'prosemirror-view';
 import { EditorState, Plugin, PluginKey, TextSelection, NodeSelection } from 'prosemirror-state';
-import { DOMParser, DOMSerializer, Fragment, Schema, Slice } from 'prosemirror-model';
+import { DOMParser, DOMSerializer, Fragment, Schema, Slice, Node } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-schema-basic';
 import { baseKeymap, setBlockType, toggleMark, wrapIn } from 'prosemirror-commands';
 import { addListNodes, wrapInList, splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
@@ -26,6 +26,7 @@ import {
   splitCell,
   deleteTable,
   isInTable,
+  CellSelection,
 } from 'prosemirror-tables';
 
 // yjs
@@ -38,11 +39,14 @@ import {
   yUndoPluginKey,
   undo as yUndo,
   redo as yRedo,
-  prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
   yDocToProsemirror,
+  prosemirrorToYDoc,
   yDocToProsemirrorJSON,
   yXmlFragmentToProsemirrorJSON,
+  ySyncPluginKey,
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
 } from 'y-prosemirror';
 
 import { MenuItem, Dropdown, renderGrouped, blockTypeItem, wrapItem } from '../../prosemirror-menu/dist/index.js';
@@ -52,9 +56,12 @@ import { InputRule, inputRules, wrappingInputRule } from 'prosemirror-inputrules
 // All exported
 export {
   EditorView,
+  Decoration,
+  DecorationSet,
   EditorState,
   DOMParser,
   DOMSerializer,
+  Node,
   Fragment,
   Schema,
   Slice,
@@ -83,6 +90,7 @@ export {
   mergeCells,
   splitCell,
   deleteTable,
+  CellSelection,
   gapCursor,
   MenuItem,
   Dropdown,
@@ -107,9 +115,12 @@ export {
   yUndoPluginKey,
   yUndo,
   yRedo,
-  prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
   yDocToProsemirror,
+  prosemirrorToYDoc,
   yDocToProsemirrorJSON,
   yXmlFragmentToProsemirrorJSON,
+  ySyncPluginKey,
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
 };

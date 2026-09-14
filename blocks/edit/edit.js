@@ -1,8 +1,13 @@
 import getPathDetails from '../shared/pathDetails.js';
-import { daFetch, checkLockdownImages, contentLogin, livePreviewLogin } from '../shared/utils.js';
+import { contentLogin, livePreviewLogin } from '../shared/utils.js';
+import { getNx, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
+
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const styles = await loadStyle(import.meta.url);
+document.adoptedStyleSheets.push(styles);
 
 const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
 const DOMPARSER = new DOMParser();
@@ -11,15 +16,13 @@ let prose;
 let prosePromise;
 
 async function getDoc(path) {
-  return daFetch(path);
+  const { source } = await getNx2Api();
+  return source.get(path);
 }
 
 async function createDoc(path) {
-  const body = new FormData();
-  const data = new Blob([EMPTY_DOC], { type: 'text/html' });
-  body.append('data', data);
-  const opts = { body, method: 'POST' };
-  return daFetch(path, opts);
+  const { source } = await getNx2Api();
+  return source.save(path, { body: EMPTY_DOC });
 }
 
 function initArea(areaName, details, el) {
@@ -38,7 +41,21 @@ async function setUI(el) {
   const details = getPathDetails();
   if (!details) return;
 
-  const docPromise = getDoc(details.sourceUrl);
+  try {
+    const { isEWEnabled } = await getNxEWFlags();
+    if (await isEWEnabled({ org: details.org, site: details.site })) {
+      window.location.href = `/canvas#${details.fullpath.replace(/\.html$/, '')}`;
+      return;
+    }
+  } catch {
+    // Flag check unavailable — fall through to the normal editor.
+  }
+
+  // Warm the hlx6 probe cache up front so createConnection's `await isHlx6(...)`
+  // resolves from cache instead of gating the WebSocket on a network round-trip.
+  getNx2Api().then(({ isHlx6 }) => isHlx6(details.org, details.site)).catch(() => {});
+
+  const docPromise = getDoc(details.fullpath);
   prosePromise ??= import('./prose/index.js');
 
   // Start WebSocket as soon as prose module loads (don't wait for logins/doc)
@@ -49,11 +66,7 @@ async function setUI(el) {
   document.title = `Edit ${details.name} - DA`;
 
   const { owner, repo } = details;
-  const lockdownPromise = checkLockdownImages(owner);
-  await Promise.all([
-    contentLogin(owner, repo),
-    livePreviewLogin(owner, repo),
-  ]);
+  const contentCookiePromise = contentLogin(owner, repo);
 
   const daTitle = initArea('da-title', details, el);
 
@@ -69,7 +82,22 @@ async function setUI(el) {
   let permissions;
   let doc;
   if (resp.status === 404) {
-    const createResp = await createDoc(details.sourceUrl);
+    const { default: showNotFoundDialog } = await import('./da-not-found/da-not-found.js');
+    const choice = await showNotFoundDialog(details);
+    // A hashchange spawns a parallel setUI for the new path — bail out of
+    // this one so the two don't race over window.location / editor state.
+    if (choice === 'hashchange') return;
+    if (choice === 'folder') {
+      const folderPath = details.fullpath.replace(/\.html$/, '');
+      const hashPath = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+      window.location = `/#${hashPath}`;
+      return;
+    }
+    if (choice !== 'create') {
+      window.location = `/#${details.parent}`;
+      return;
+    }
+    const createResp = await createDoc(details.fullpath);
     permissions = createResp.permissions;
     doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
   } else {
@@ -80,7 +108,9 @@ async function setUI(el) {
 
   daTitle.permissions = permissions;
   daContent.permissions = permissions;
-  daContent.lockdownImages = await lockdownPromise;
+
+  // If content cookie hasn't loaded yet, wait for it
+  await contentCookiePromise;
 
   const metadataEl = doc.querySelector('main > .metadata');
   // Check if the metadata div has no additional classes (or doesn't exist)
@@ -99,7 +129,14 @@ async function setUI(el) {
       daContent,
       wsPromise,
     });
+
+    // Load editor tabs (live preview, versions, etc.)
+    setTimeout(() => daContent.handleEditorLoaded(), 1000);
+
+    // set the live preview cookie async
+    livePreviewLogin(owner, repo);
   }
+
   // FUTURE: else load BYO Editor
 }
 

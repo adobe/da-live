@@ -9,17 +9,57 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { test, expect } from '@playwright/test';
-import { getTestPageURL, fill } from '../../utils/page.js';
+import { test, expect } from '../../utils/fixtures.js';
+import { getTestPageURL, fill, TEST_SITE } from '../../utils/page.js';
 
-test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo) => {
-  // Open 2 editors on the same page and edit in both of them. One editor is logged in,
-  // the other isn't.
+// True once `field` on some OTHER client's awareness state is set, as seen from
+// this page. Passed to page.waitForFunction with `field` as its arg.
+function hasRemoteAwarenessField(field) {
+  const wsProvider = document.querySelector('da-content')?.wsProvider;
+  if (!wsProvider) return false;
+  const myId = wsProvider.awareness.clientID;
+  return [...wsProvider.awareness.getStates().entries()]
+    .some(([id, st]) => id !== myId && st[field] != null);
+}
+
+// Waits for the yjs awareness map to actually contain a remote peer's cursor,
+// nudging via a no-op dispatch (re-broadcasts current cursor) on transient drops.
+async function waitForRemoteCursor(watcherPage, sourcePage) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await watcherPage.waitForFunction(hasRemoteAwarenessField, 'cursor', { timeout: 5000 });
+      return;
+    } catch (err) {
+      if (attempt >= 5) throw err;
+      await sourcePage.evaluate(() => {
+        if (!window.view) return;
+        window.view.hasFocus = () => true;
+        window.view.dispatch(window.view.state.tr);
+      });
+    }
+  }
+}
+
+test('Collab cursors in multiple editors', async ({ browser, page, browserName }, workerInfo) => {
+  // Open 2 editors on the same page and edit in both of them.
   // Ensure that the edits are visible to both and that the collab cursors are there
   // Also check that the cloud icon is visible for the collaborator
 
+  test.setTimeout(60000);
+
   const pageURL = getTestPageURL('collab', workerInfo);
+
+  // Capture the Bearer token that da-live's daFetch attaches to its backend
+  // requests, so we can reuse the exact same Authorization header below.
+  let authHeader;
+  page.on('request', (request) => {
+    const auth = request.headers().authorization;
+    if (auth?.startsWith('Bearer ') && !authHeader) authHeader = auth;
+  });
+
   await page.goto(pageURL);
+  await page.waitForTimeout(2000);
+  await page.getByText('Create document', { exact: true }).click();
   await expect(page.getByLabel('Open profile menu')).toBeVisible();
   // Wait a little bit so that the collab awareness has caught up and knows that we are logged in as
   // 'DA Testuser'
@@ -27,7 +67,10 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
 
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
-  await page.waitForTimeout(1000);
+  // Pin always-focused so cursor awareness keeps broadcasting even while the
+  // other page holds real browser focus (only one page/tab can at a time).
+  await page.evaluate(() => { window.view.hasFocus = () => true; });
+  await page.waitForTimeout(3000);
   await fill(page, 'Entered by user 1');
 
   // Right now there should not be any collab indicators yet
@@ -45,25 +88,45 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   await expect(page2.locator('div.ProseMirror')).toBeVisible();
   await expect(page2.locator('div.ProseMirror')).toContainText('Entered by user 1');
 
+  // Applied right before interacting to shrink the window where a silent
+  // IMS re-auth reload could tear down the view this override was set on.
+  await page2.evaluate(() => { window.view.hasFocus = () => true; });
+
   // Click in the second window at the beginning of the edit control
   const editBox = await page2.locator('div.ProseMirror').boundingBox();
   await page2.mouse.click(editBox.x + 10, editBox.y + 10);
   await page2.keyboard.type('From user 2');
+
+  // Give the collab cursors some cycles to appear
+  await page.waitForTimeout(3000);
+
+  // Wait for page2's edit to reach page1 — confirms YJS sync before checking collab state
+  await expect(page.locator('div.ProseMirror')).toContainText('From user 2');
 
   // Check the little cloud icon for collaborators
   // as we use the same user for both pages, the cloud icon should be visible on both pages
   await expect(page.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
   await expect(page2.locator('div.collab-icon.collab-icon-user[data-popup-content="DA Testuser"]')).toBeVisible();
 
-  // Check the cursor for collaborator
+  // Wait on the underlying yjs awareness state (not just a flat timeout) so we don't
+  // race the WS round trip that carries the other page's cursor position over.
+  await waitForRemoteCursor(page2, page);
+  await waitForRemoteCursor(page, page2);
+
+  // Both views report hasFocus() == true (pinned above), so both remote
+  // cursors are visible concurrently — no need to toggle focus between pages.
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
   await expect(page2.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
+  // Wait for user 1's cursor awareness to settle at the end of text so the two
+  // text pieces are adjacent in innerText (cursor span between them breaks indexOf)
+  await expect(page2.locator('div.ProseMirror')).toContainText('From user 2Entered by user 1');
   const text2 = await page2.locator('div.ProseMirror').innerText();
   const text2Idx = text2.indexOf('From user 2Entered by user 1');
   const cursor2Idx = text2.indexOf('DA Testuser');
   expect(text2Idx).toBeGreaterThanOrEqual(0);
   expect(cursor2Idx).toBeGreaterThanOrEqual(0);
   expect(cursor2Idx).toBeGreaterThan(text2Idx);
+
   // Check the cursor for collaborator, should be in a different location here
   await expect(page.locator('span.ProseMirror-yjs-cursor')).toBeVisible();
   await expect(page.locator('span.ProseMirror-yjs-cursor')).toContainText('DA Testuser');
@@ -79,4 +142,23 @@ test('Collab cursors in multiple editors', async ({ browser, page }, workerInfo)
   expect(cursorIdx).toBeGreaterThanOrEqual(0);
   expect(cursorIdx).toBeLessThan(textIdx);
   expect(textIdx2).toBeLessThan(cursorIdx);
+
+  // Wait for debounce to happen and changes to be saved
+  await page.waitForTimeout(4000);
+
+  // Check with the backend that the edits came through and are stored there.
+  // Convert the editor URL (…#/<org>/<site>/<path>) into the da-admin/Helix source URL.
+  const [, org, site, ...rest] = pageURL.split('#')[1].split('/');
+  let sourceUrl;
+  if (TEST_SITE === 'da-status') {
+    sourceUrl = `https://admin.da.live/source/${org}/${site}/${rest.join('/')}.html`;
+  } else {
+    sourceUrl = `https://api.aem.live/${org}/sites/${site}/source/${rest.join('/')}.html`;
+  }
+
+  const resp = await page.request.get(sourceUrl, { headers: { Authorization: authHeader } });
+  const body = await resp.text();
+
+  const expected = '<p>From user 2Entered by user 1</p>';
+  expect(body).toContain(expected);
 });

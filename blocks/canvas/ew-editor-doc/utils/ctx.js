@@ -1,0 +1,26 @@
+import { normalizeSourcePath } from './source.js';
+
+export function editorCtxHasOrgRepoPath(ctx) {
+  const { org, repo, path } = ctx ?? {};
+  return Boolean(org && repo && path);
+}
+
+// Stays synchronous: the render phase needs an answer without waiting on the store lookup.
+export function editorDocCanLoad(ctx) {
+  return editorCtxHasOrgRepoPath(ctx) && Boolean(normalizeSourcePath(ctx.path));
+}
+
+export function controllerPathnameFromEditorCtx(ctx) {
+  const docPath = ctx?.path;
+  if (!docPath || typeof docPath !== 'string') return '/';
+  const segments = docPath.replace(/^\//, '').split('/').filter(Boolean);
+  const withoutOrgRepo = segments.slice(2).join('/');
+  return withoutOrgRepo ? `/${withoutOrgRepo}` : '/';
+}
+
+export function editorDocRenderPhase(ctx, { error, hasEditorView }) {
+  if (!editorDocCanLoad(ctx)) return 'incomplete';
+  if (error) return 'error';
+  if (!hasEditorView) return 'loading';
+  return 'editor';
+}
