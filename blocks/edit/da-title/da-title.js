@@ -10,7 +10,6 @@ import { createVersion } from '../../shared/version/version-actions.js';
 import { getNx2 } from '../../../scripts/utils.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
-import '../da-prepare/actions/preflight/views/label.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 const { PREFLIGHT_EVENT, newPreflightRequestId } = await import(`${getNx2()}/utils/preflight-events.js`);
@@ -441,24 +440,23 @@ export default class DaTitle extends LitElement {
     return html`${this._actions.available?.map((action) => {
       const readOnlyBlock = action === 'save' && this._readOnly;
       const disabledText = this.disabledText ?? (readOnlyBlock ? 'You do not have permission to save.' : undefined);
-      // Publish stays enabled when enforcing — clicking it is what runs Preflight. A badge
-      // (not a disabled state) signals whether Preflight still needs to pass.
-      const showPreflightBadge = action === 'publish' && this._enforcePreflight;
-      const preflightBadge = this._preflightPassed ? 'success' : 'warn';
+      // Publish stays enabled when enforcing — clicking it is what runs Preflight. A small dot
+      // (not a disabled state) signals whether Preflight still needs to pass: amber → required,
+      // green → passed. Matches the /canvas/ Send-menu indicator.
+      const showPreflightDot = action === 'publish' && this._enforcePreflight;
       const preflightTip = this._preflightPassed ? 'Preflight passed' : 'Preflight required before publish';
+      const popup = disabledText ?? (showPreflightDot ? preflightTip : undefined);
       return html`
       <button
         @click=${() => this.handleAction(action)}
         class="con-button blue da-title-action"
         aria-label="Send"
-        data-popup-content=${disabledText ?? nothing}
+        data-popup-content=${popup ?? nothing}
         ?disabled=${this.disabledText || readOnlyBlock}>
         ${action.charAt(0).toUpperCase() + action.slice(1)}
+        ${showPreflightDot ? html`<span
+          class="da-title-preflight-dot ${this._preflightPassed ? 'is-passed' : 'is-required'}"></span>` : nothing}
       </button>
-      ${showPreflightBadge ? html`<pf-label
-        class="da-title-preflight-badge"
-        title=${preflightTip}
-        .badge=${preflightBadge}></pf-label>` : nothing}
     `;
     })}`;
   }

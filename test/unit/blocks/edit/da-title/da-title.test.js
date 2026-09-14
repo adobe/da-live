@@ -796,36 +796,37 @@ describe('DaTitle', () => {
       expect(await pending).to.equal('fail');
     });
 
-    it('renders a warn badge next to Publish when enforcing and not passed', async () => {
+    it('renders a "required" dot next to Publish when enforcing and not passed', async () => {
       el = await fixture();
       el._enforcePreflight = true;
       el._preflightPassed = false;
       el._actions = { available: ['preview', 'publish'] };
       el.requestUpdate();
       await nextFrame();
-      const badge = el.shadowRoot.querySelector('pf-label.da-title-preflight-badge');
-      expect(badge).to.exist;
-      expect(badge.badge).to.equal('warn');
+      const dot = el.shadowRoot.querySelector('.da-title-preflight-dot');
+      expect(dot).to.exist;
+      expect(dot.classList.contains('is-required')).to.equal(true);
+      expect(dot.classList.contains('is-passed')).to.equal(false);
     });
 
-    it('shows a success badge once Preflight has passed', async () => {
+    it('shows a "passed" dot once Preflight has passed', async () => {
       el = await fixture();
       el._enforcePreflight = true;
       el._preflightPassed = true;
       el._actions = { available: ['preview', 'publish'] };
       el.requestUpdate();
       await nextFrame();
-      const badge = el.shadowRoot.querySelector('pf-label.da-title-preflight-badge');
-      expect(badge.badge).to.equal('success');
+      const dot = el.shadowRoot.querySelector('.da-title-preflight-dot');
+      expect(dot.classList.contains('is-passed')).to.equal(true);
     });
 
-    it('does not render the badge when not enforcing', async () => {
+    it('does not render the dot when not enforcing', async () => {
       el = await fixture();
       el._enforcePreflight = false;
       el._actions = { available: ['preview', 'publish'] };
       el.requestUpdate();
       await nextFrame();
-      expect(el.shadowRoot.querySelector('pf-label.da-title-preflight-badge')).to.equal(null);
+      expect(el.shadowRoot.querySelector('.da-title-preflight-dot')).to.equal(null);
     });
   });
 });
