@@ -212,7 +212,7 @@ export default async function init(el) {
       notPermitted.className = 'da-sheet-not-permitted';
       wrapper.append(notPermitted);
     }
-    notPermitted.textContent = e.detail.error;
+    notPermitted.textContent = e.detail.message;
   });
   document.addEventListener('sheet-load-ok', () => {
     daSheet.hidden = false;

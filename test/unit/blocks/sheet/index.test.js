@@ -490,7 +490,7 @@ function buildMockFetchStatus(status) {
 // setSheet/reloadSheet just to know whether to show a not-permitted message.
 async function captureLoadEvents(run) {
   const events = [];
-  const onError = (e) => events.push({ type: 'sheet-load-error', error: e.detail.error });
+  const onError = (e) => events.push({ type: 'sheet-load-error', message: e.detail.message });
   const onOk = () => events.push({ type: 'sheet-load-ok' });
   document.addEventListener('sheet-load-error', onError);
   document.addEventListener('sheet-load-ok', onOk);
@@ -510,7 +510,7 @@ describe('sheet load status events', () => {
       window.fetch = buildMockFetchStatus(401);
 
       const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
-      expect(events).to.deep.equal([{ type: 'sheet-load-error', error: 'Sign in required' }]);
+      expect(events).to.deep.equal([{ type: 'sheet-load-error', message: 'Sign in required' }]);
     } finally {
       window.fetch = savedFetch;
     }
@@ -522,7 +522,7 @@ describe('sheet load status events', () => {
       window.fetch = buildMockFetchStatus(403);
 
       const events = await captureLoadEvents(() => sh.getData(SOURCE_DETAILS));
-      expect(events).to.deep.equal([{ type: 'sheet-load-error', error: 'Not permitted' }]);
+      expect(events).to.deep.equal([{ type: 'sheet-load-error', message: 'Not permitted' }]);
     } finally {
       window.fetch = savedFetch;
     }

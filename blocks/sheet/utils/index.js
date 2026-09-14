@@ -110,9 +110,9 @@ function sheetErrorFromResponse(resp) {
 
 // Not fired for a version-preview load — that's a separate, secondary view and
 // a load failure there shouldn't toggle the main sheet's not-permitted banner.
-function emitLoadStatus(error) {
-  const type = error ? 'sheet-load-error' : 'sheet-load-ok';
-  document.dispatchEvent(new CustomEvent(type, { detail: { error } }));
+function emitLoadStatus(success, message) {
+  const type = success ? 'sheet-load-ok' : 'sheet-load-error';
+  document.dispatchEvent(new CustomEvent(type, { detail: { message } }));
 }
 
 // Takes a pathDetails object ({ org, site, path, view }). For a version restore,
@@ -143,10 +143,12 @@ export async function getData(input) {
   canWrite = resp.permissions?.some((permission) => permission === 'write');
 
   if (!resp.ok) {
-    if (!isVersion) emitLoadStatus(sheetErrorFromResponse(resp));
+    // A 404 has no error message — it's treated as a new, empty sheet, not a load failure.
+    const message = sheetErrorFromResponse(resp);
+    if (!isVersion) emitLoadStatus(!message, message);
     return getDefaultSheet();
   }
-  if (!isVersion) emitLoadStatus();
+  if (!isVersion) emitLoadStatus(true);
 
   const sheets = [];
 
