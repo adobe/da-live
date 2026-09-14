@@ -254,7 +254,6 @@ export async function fetchExtensions(org, site) {
   if (!validConfigs.length) return [];
 
   const rows = validConfigs.flatMap((conf) => conf?.library?.data || []);
-  if (!rows.length) return [];
 
   const seen = new Set();
   const extensions = rows.reduce((acc, row) => {
