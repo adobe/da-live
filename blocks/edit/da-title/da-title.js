@@ -71,8 +71,6 @@ export default class DaTitle extends LitElement {
     document.removeEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
   }
 
-  // Passively track the latest Preflight verdict for the open document, so a manual Preflight
-  // run (from the prepare menu) also unlocks Publish — not just a Publish-triggered run.
   handlePreflightStatus = (e) => {
     const { path, status } = e.detail || {};
     if (path !== this.details?.fullpath) return;
@@ -85,7 +83,6 @@ export default class DaTitle extends LitElement {
       this.setup();
       this.delayedSetup();
     }
-    // Any edit invalidates a prior Preflight pass (it validated the saved source).
     if (changed.has('collabStatus') && this.collabStatus === 'unsaved') {
       this._preflightPassed = false;
     }
@@ -107,7 +104,6 @@ export default class DaTitle extends LitElement {
 
   setup() {
     this.reset();
-    // A new document starts locked until Preflight passes (when enforcement is on).
     this._preflightPassed = false;
     this._actions = { available: this.getAvailableActions() };
     // Lazily filter the actions down
@@ -141,7 +137,6 @@ export default class DaTitle extends LitElement {
     const configs = await Promise.all(fetchDaConfigs({ org, site }));
     const configTab = configs.flatMap((config) => getFirstSheet(config) || []);
 
-    // enforcePreflight: require a passing Preflight before Publish (Preview is never gated).
     this._enforcePreflight = configTab.some(
       (c) => c.key === 'editor.enforcePreflight' && `${c.value}`.toLowerCase() === 'true',
     );
@@ -240,11 +235,6 @@ export default class DaTitle extends LitElement {
     }
   }
 
-  /**
-   * Ask Preflight to run for the open document and resolve with its verdict. Dispatches the
-   * shared `nx-preflight-run` request and waits for the matching `nx-preflight-status`.
-   * Resolves 'success' | 'fail', or undefined on timeout (no Preflight surface answered).
-   */
   requestPreflight() {
     const requestId = newPreflightRequestId();
     const { fullpath } = this.details;
@@ -349,8 +339,6 @@ export default class DaTitle extends LitElement {
         }
       }
 
-      // Enforce a passing Preflight before Publish (Preview is never gated). Runs after the
-      // force-save so Preflight validates exactly what AEM will receive. Auto-publishes on pass.
       if (action === 'publish' && this._enforcePreflight && !this._preflightPassed) {
         const status = await this.requestPreflight();
         if (status !== 'success') {
@@ -440,9 +428,6 @@ export default class DaTitle extends LitElement {
     return html`${this._actions.available?.map((action) => {
       const readOnlyBlock = action === 'save' && this._readOnly;
       const disabledText = this.disabledText ?? (readOnlyBlock ? 'You do not have permission to save.' : undefined);
-      // Publish stays enabled when enforcing — clicking it is what runs Preflight. A small dot
-      // (not a disabled state) signals whether Preflight still needs to pass: amber → required,
-      // green → passed. Matches the /canvas/ Send-menu indicator.
       const showPreflightDot = action === 'publish' && this._enforcePreflight;
       const preflightTip = this._preflightPassed ? 'Preflight passed' : 'Preflight required before publish';
       const popup = disabledText ?? (showPreflightDot ? preflightTip : undefined);

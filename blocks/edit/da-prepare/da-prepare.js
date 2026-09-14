@@ -112,7 +112,6 @@ export default class DaPrepare extends LitElement {
   }
 
   async handleItemClick(item) {
-    // Manual open — never auto-closed by a status event.
     this._preflightRequestId = undefined;
     this._showMenu = false;
     if (item.render) {
@@ -133,8 +132,6 @@ export default class DaPrepare extends LitElement {
     this._dialogItem = { title: 'Preflight', cmp };
   };
 
-  // A gate-triggered Preflight run finished. Close the dialog only on success (we then
-  // auto-publish); keep it open on failure so the author can see what failed.
   handlePreflightStatus = (e) => {
     const { requestId, status } = e.detail || {};
     if (!this._preflightRequestId || requestId !== this._preflightRequestId) return;

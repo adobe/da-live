@@ -222,8 +222,6 @@ da-dialog {
   overflow: hidden;
 }
 
-/* Small Preflight status dot inside the Publish button (amber = required, green = passed).
-   Matches the /canvas/ Send-menu indicator. */
 .da-title-preflight-dot {
   display: inline-block;
   width: 8px;

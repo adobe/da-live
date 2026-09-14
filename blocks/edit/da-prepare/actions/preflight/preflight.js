@@ -9,7 +9,6 @@ import './views/label.js';
 import './views/link.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
-// Shared cross-repo Preflight ↔ Publish contract (single source lives in da-nx).
 const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
 
 class DaPreflight extends LitElement {

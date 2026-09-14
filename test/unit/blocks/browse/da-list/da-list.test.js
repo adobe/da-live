@@ -917,7 +917,6 @@ describe('DaList helpers', () => {
 
     const flush = () => new Promise((r) => { setTimeout(r, 0); });
 
-    // Answer the next nx-preflight-run with a status per path from a { path: status } map.
     function respondOnce(statusByPath) {
       document.addEventListener('nx-preflight-run', (e) => {
         const { paths, requestId } = e.detail;

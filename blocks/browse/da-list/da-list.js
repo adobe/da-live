@@ -656,12 +656,6 @@ export default class DaList extends LitElement {
     }
   }
 
-  /**
-   * Run Preflight headlessly over a set of items via the shared `nx-preflight-run` event with all
-   * paths in the array, collecting a `nx-preflight-status` per path. Resolves
-   * `{ passing, failed, responded }`. `responded` is false when no Preflight surface answered at
-   * all (rework not shipped yet) — the caller then falls back to unguarded publish.
-   */
   runBulkPreflight(items) {
     const requestId = newPreflightRequestId();
     const paths = items.map((item) => item.path);
@@ -753,7 +747,6 @@ export default class DaList extends LitElement {
     const queue = new Queue(callback, 5, null, 250);
     await Promise.all(items.map((item) => queue.push(item)));
 
-    // The success branch clears _itemErrors; re-surface Preflight failures so they're reported.
     if (preflightFailures.length) {
       this._itemErrors = [...this._itemErrors, ...preflightFailures];
     }
