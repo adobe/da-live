@@ -108,10 +108,6 @@ function sheetErrorFromResponse(resp) {
   return undefined;
 }
 
-// Not fired for a version-preview load (versionId set) — that would incorrectly
-// hide/show the main sheet's grid over a historical-version fetch. A version-load
-// failure is currently left unsurfaced by da-version-review; see #1336.
-// No errMsg means the load succeeded (or was a 404, treated as a new sheet).
 function emitLoadStatus(errMsg) {
   document.dispatchEvent(new CustomEvent('sheet-load-status', { detail: { errMsg } }));
 }
