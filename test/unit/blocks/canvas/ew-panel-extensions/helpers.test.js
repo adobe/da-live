@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 import { setCommentsController } from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -9,6 +10,7 @@ let getBlockVariants;
 let extensionToPanelView;
 let getPreviewStatus;
 let createCommentsView;
+let fetchExtensions;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
@@ -16,6 +18,7 @@ before(async () => {
   extensionToPanelView = mod.extensionToPanelView;
   getPreviewStatus = mod.getPreviewStatus;
   createCommentsView = mod.createCommentsView;
+  fetchExtensions = mod.fetchExtensions;
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -434,5 +437,37 @@ describe('ew-comments panel visibility', () => {
     setCommentsController(stubController(second));
     await el.updateComplete;
     expect(second.at(-1)).to.equal(true);
+  });
+});
+
+describe('EW panel helpers fetchExtensions', () => {
+  const REPO = { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' };
+  const blocksRow = { title: 'Blocks', path: '/blocks.json' };
+
+  afterEach(() => setDaConfigs([]));
+
+  it('loads the AEM assets panel when configured without a library sheet', async () => {
+    setDaConfigs([{ data: [REPO] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.include('aem-assets');
+  });
+
+  it('loads the AEM assets panel alongside configured library tools', async () => {
+    setDaConfigs([{ library: { data: [blocksRow] }, data: [REPO] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.include('blocks');
+    expect(names).to.include('aem-assets');
+  });
+
+  it('omits the AEM assets panel when no repository is configured', async () => {
+    setDaConfigs([{ library: { data: [blocksRow] }, data: [] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.include('blocks');
+    expect(names).to.not.include('aem-assets');
+  });
+
+  it('returns an empty list when there are no valid configs', async () => {
+    setDaConfigs([{ error: true }]);
+    expect(await fetchExtensions('org', 'site')).to.eql([]);
   });
 });
