@@ -77,7 +77,7 @@ export class EwEditorWysiwyg extends LitElement {
     const pathWithoutOrgRepo = segments.slice(2).join('/');
     const encodedPath = pathWithoutOrgRepo.split('/').map(encodeURIComponent).join('/');
     const quickEdit = new URLSearchParams(window.location.search).get('quick-edit') || 'on';
-    const base = `${getPreviewOrigin(org, repo, this._wysiwygBranch ?? 'main')}/${encodedPath}?quick-edit=${encodeURIComponent(quickEdit)}`;
+    const base = `${getPreviewOrigin(org, repo, this._wysiwygBranch ?? 'main')}/${encodedPath}?rum=off&consent=disabled&quick-edit=${encodeURIComponent(quickEdit)}`;
     return `${base}&controller=parent`;
   }
 
