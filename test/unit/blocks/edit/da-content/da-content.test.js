@@ -64,4 +64,26 @@ describe('da-content', () => {
     expect(viewsCalled).to.be.true;
     expect(ueCalled).to.be.true;
   });
+
+  it('shows a loading spinner until content is ready', async () => {
+    const ed = document.createElement('da-content');
+    ed.details = {
+      owner: 'o',
+      repo: 'r',
+      previewUrl: 'https://main--r--o.aem.live/p',
+    };
+    document.body.appendChild(ed);
+    await ed.updateComplete;
+
+    // Spinner is shown while the document has not synced/rendered.
+    expect(ed.shadowRoot.querySelector('.da-editor-loading')).to.exist;
+    expect(ed.shadowRoot.querySelector('.da-loading-spinner')).to.exist;
+
+    // It clears once content is ready.
+    ed.contentReady = true;
+    await ed.updateComplete;
+    expect(ed.shadowRoot.querySelector('.da-editor-loading')).to.be.null;
+
+    ed.remove();
+  });
 });
