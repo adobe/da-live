@@ -471,3 +471,69 @@ describe('Sheets', () => {
     }
   });
 });
+
+function buildMockFetchStatus(status) {
+  return async (url) => {
+    if (url.startsWith('https://admin.hlx.page/ping')) {
+      return new Response('', { status: 200, headers: new Headers() });
+    }
+    if (url.startsWith('https://admin.da.live/source/')) {
+      return new Response('', { status });
+    }
+    return undefined;
+  };
+}
+
+describe('getLoadError', () => {
+  it('reports "Sign in required" for a 401 and falls back to an empty sheet', async () => {
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = buildMockFetchStatus(401);
+
+      const sheet = await sh.getData(SOURCE_DETAILS);
+      expect(sh.getLoadError()).to.equal('Sign in required');
+      expect(sheet).to.deep.equal([{ minDimensions: [20, 20], sheetName: 'data' }]);
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('reports "Not permitted" for a 403 and falls back to an empty sheet', async () => {
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = buildMockFetchStatus(403);
+
+      await sh.getData(SOURCE_DETAILS);
+      expect(sh.getLoadError()).to.equal('Not permitted');
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('does not set a load error for a 404 (treated as a new, empty sheet)', async () => {
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = buildMockFetchStatus(404);
+
+      await sh.getData(SOURCE_DETAILS);
+      expect(sh.getLoadError()).to.be.undefined;
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('clears a previously set load error once a load succeeds', async () => {
+    const savedFetch = window.fetch;
+    try {
+      window.fetch = buildMockFetchStatus(403);
+      await sh.getData(SOURCE_DETAILS);
+      expect(sh.getLoadError()).to.equal('Not permitted');
+
+      window.fetch = buildMockFetch('{ "total": 0, "limit": 0, "offset": 0, "data": [], ":type": "sheet" }');
+      await sh.getData(SOURCE_DETAILS);
+      expect(sh.getLoadError()).to.be.undefined;
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+});
