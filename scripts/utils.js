@@ -94,3 +94,12 @@ export const getNx2Api = () => {
 };
 
 export const getNxEWFlags = () => import(`${getNx2()}/utils/ewFlags.js`);
+
+export const sidekickCacheBust = async (url) => {
+  try {
+    const { sidekickCacheBust: bust } = await import(`${getNx2()}/utils/sidekick.js`);
+    await bust(url);
+  } catch {
+    // No-Op, fail silently
+  }
+};

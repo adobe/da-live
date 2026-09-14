@@ -6,7 +6,7 @@ import {
   getAemHrefs,
 } from '../utils/helpers.js';
 import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
-import { sidekickCacheBust } from '../../shared/sidekick.js';
+import { sidekickCacheBust } from '../../../scripts/utils.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
