@@ -202,21 +202,21 @@ export default async function init(el) {
   bindStatus('sheet-dirty', document, () => { isDirty = true; });
   bindStatus('sheet-clean', document, () => { isDirty = false; });
 
-  // getData (called via reloadSheet) emits these on every non-version load so the
+  // getData (called via reloadSheet) emits this on every non-version load so the
   // grid can be swapped for a message when the user can't read the file at all.
-  document.addEventListener('sheet-load-error', (e) => {
-    daSheet.hidden = true;
+  document.addEventListener('sheet-load-status', ({ detail: { message } }) => {
+    daSheet.hidden = !!message;
+    if (!message) {
+      wrapper.querySelector('.da-sheet-not-permitted')?.remove();
+      return;
+    }
     let notPermitted = wrapper.querySelector('.da-sheet-not-permitted');
     if (!notPermitted) {
       notPermitted = document.createElement('div');
       notPermitted.className = 'da-sheet-not-permitted';
       wrapper.append(notPermitted);
     }
-    notPermitted.textContent = e.detail.message;
-  });
-  document.addEventListener('sheet-load-ok', () => {
-    daSheet.hidden = false;
-    wrapper.querySelector('.da-sheet-not-permitted')?.remove();
+    notPermitted.textContent = message;
   });
 
   // Set data against the title & sheet
