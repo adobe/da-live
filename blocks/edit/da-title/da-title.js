@@ -6,7 +6,7 @@ import {
   getAemHrefs,
 } from '../utils/helpers.js';
 import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
-import { sidekickCacheBust } from '../../../scripts/utils.js';
+import { getNx2 } from '../../../scripts/utils.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
@@ -299,8 +299,11 @@ export default class DaTitle extends LitElement {
         const origin = action === 'publish' ? this.livePrefix : this.previewPrefix;
         toOpen = `${origin}${byoPath}`;
       }
-      // Attempt a Sidekick cache bust
-      await sidekickCacheBust(toOpen);
+      // Attempt a Sidekick cache bust — never blocking the prev/publish
+      try {
+        const { sidekickCacheBust } = await import(`${getNx2()}/utils/sidekick.js`);
+        await sidekickCacheBust(toOpen);
+      } catch { /* cache bust unavailable */ }
 
       window.open(toOpen, toOpen);
     }
