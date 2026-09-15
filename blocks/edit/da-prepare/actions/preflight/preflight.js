@@ -16,6 +16,7 @@ class DaPreflight extends LitElement {
     _status: { state: true },
     _validationResults: { state: true },
     _validationTimedOut: { state: true },
+    _validationHasRunner: { state: true },
     _validationCategoryOpen: { state: true },
   };
 
@@ -25,9 +26,10 @@ class DaPreflight extends LitElement {
     this.listenForReasons();
     this.loadResults();
     this._unsubscribeValidationResult = canvasBus.validationResultState
-      .subscribe(({ items, timedOut }) => {
+      .subscribe(({ items, timedOut, hasRunner }) => {
         this._validationResults = items;
         this._validationTimedOut = timedOut;
+        this._validationHasRunner = hasRunner;
       });
     canvasBus.validationRunRequest.emit();
   }
@@ -54,23 +56,30 @@ class DaPreflight extends LitElement {
   }
 
   get _validationCategory() {
-    let results;
+    // Not resolved yet (no RESULT/timeout received), or a runner was never registered —
+    // don't show the category at all rather than an empty/misleading one.
+    if (!this._validationTimedOut && this._validationHasRunner === false) return null;
+    if (!this._validationTimedOut && !this._validationResults) return null;
+
+    let checks;
     if (this._validationTimedOut) {
-      results = [{ reason: 'Content validation timed out or is unavailable.', badge: 'warn' }];
-    } else if (!this._validationResults) {
-      results = [];
+      checks = [{
+        title: 'Content validation',
+        results: [{ reason: 'Content validation timed out or is unavailable.', badge: 'warn' }],
+      }];
     } else if (this._validationResults.length === 0) {
-      results = [{ reason: 'No content-validation issues found.', badge: 'success' }];
+      checks = [{
+        title: 'Content validation',
+        results: [{ reason: 'No content-validation issues found.', badge: 'success' }],
+      }];
     } else {
-      results = this._validationResults.map(
-        ({ severity, message }) => ({ reason: message, badge: severity }),
-      );
+      const groups = Object.groupBy(this._validationResults, (item) => item.title ?? 'Content validation');
+      checks = Object.entries(groups).map(([title, items]) => ({
+        title,
+        results: items.map(({ severity, message }) => ({ reason: message, badge: severity })),
+      }));
     }
-    return {
-      title: 'Custom',
-      open: this._validationCategoryOpen,
-      checks: [{ title: 'Content validation', results }],
-    };
+    return { title: 'Custom', open: this._validationCategoryOpen, checks };
   }
 
   expandCategory(cat) {
@@ -145,7 +154,10 @@ class DaPreflight extends LitElement {
   render() {
     if (!this._categories) return nothing;
 
-    const categories = [...this._categories, this._validationCategory];
+    const validationCategory = this._validationCategory;
+    const categories = validationCategory
+      ? [...this._categories, validationCategory]
+      : this._categories;
     return html`
       <div class="preflight-inner">
         <ul class="categories">

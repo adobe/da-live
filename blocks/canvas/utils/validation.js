@@ -41,9 +41,10 @@ export function createValidationRequester(port) {
 
   port.onmessage = (ev) => {
     if (ev.data?.type !== MESSAGE_TYPES.RESULT) return;
-    const { requestId, items } = ev.data;
+    const { requestId, items, hasRunner } = ev.data;
     if (requestId !== pendingRequestId) return;
-    settle({ items: sanitizeAndCapValidationItems(items), timedOut: false });
+    const sanitizedItems = sanitizeAndCapValidationItems(items);
+    settle({ items: sanitizedItems, timedOut: false, hasRunner: Boolean(hasRunner) });
   };
 
   function run() {
@@ -57,7 +58,7 @@ export function createValidationRequester(port) {
         if (pendingRequestId !== requestId) return;
         // eslint-disable-next-line no-console
         console.warn('[validation] run timed out', requestId);
-        settle({ items: null, timedOut: true });
+        settle({ items: null, timedOut: true, hasRunner: null });
       }, RUN_TIMEOUT_MS);
     });
   }
