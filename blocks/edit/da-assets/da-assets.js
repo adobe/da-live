@@ -144,7 +144,7 @@ export function buildHandleSelection({
       }
     }
 
-    const deliveryType = repoConfig.insertAsLinkImg ? 'link-img' : undefined;
+    const editAs = repoConfig.insertAsLinkImg ? 'image' : undefined;
 
     // Smart crop flow (only for images with smart crop enabled)
     if (isImage && repoConfig.isSmartCrop) {
@@ -165,7 +165,7 @@ export function buildHandleSelection({
             view,
             applySiteImageModifiers(src, repoConfig.siteImageModifiers),
             alt,
-            deliveryType,
+            editAs,
           ));
           insertFragment(view, nodes);
         },
@@ -175,7 +175,7 @@ export function buildHandleSelection({
 
       if (!hasCrops) {
         closeAndReset();
-        insertImage(view, assetUrl, alt, deliveryType);
+        insertImage(view, assetUrl, alt, editAs);
       }
       return;
     }
@@ -187,7 +187,7 @@ export function buildHandleSelection({
     if (!isImage || repoConfig.insertAsLink) {
       insertLink(view, src);
     } else if (repoConfig.insertAsLinkImg) {
-      insertImage(view, src, alt, 'link-img');
+      insertImage(view, src, alt, 'image');
     } else {
       insertImage(view, src, alt);
     }

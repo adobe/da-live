@@ -348,7 +348,7 @@ describe('prose2aem with isFragment parameter', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `
       <p>
-        <img src="https://example.com/asset.jpg" alt="A description" data-asset-delivery-type="link-img">
+        <img src="https://example.com/asset.jpg" alt="A description" data-edit-as="image">
       </p>
     `;
 
@@ -359,7 +359,7 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.include('<a');
     expect(result).to.include('href="https://example.com/asset.jpg"');
     expect(result).to.include('title="A description"');
-    expect(result).to.include('data-asset-delivery-type="link-img"');
+    expect(result).to.include('data-edit-as="image"');
     expect(result).to.include('>https://example.com/asset.jpg<');
   });
 
@@ -367,7 +367,7 @@ describe('prose2aem with isFragment parameter', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `
       <p>
-        <img src="https://example.com/asset.jpg" data-asset-delivery-type="link-img">
+        <img src="https://example.com/asset.jpg" data-edit-as="image">
       </p>
     `;
 
@@ -389,7 +389,7 @@ describe('prose2aem with isFragment parameter', () => {
     const result = prose2aem(fragment, true, true);
 
     expect(result).to.include('<picture>');
-    expect(result).to.not.include('data-asset-delivery-type');
+    expect(result).to.not.include('data-edit-as');
   });
 
   it('Converts focal point attributes to data-title', () => {

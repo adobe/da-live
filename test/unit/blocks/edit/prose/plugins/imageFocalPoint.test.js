@@ -129,7 +129,7 @@ describe('imageFocalPoint Plugin', () => {
     expect(icon.classList.contains('focal-point-icon-active')).to.be.true;
   });
 
-  it('does not create node view for images with assetDeliveryType set, even inside table cells', () => {
+  it('does not create node view for images with editAs set, even inside table cells', () => {
     const plugin = imageFocalPoint();
     const createNodeView = plugin.props.nodeViews.image;
 
@@ -154,7 +154,7 @@ describe('imageFocalPoint Plugin', () => {
 
     const mockNode = {
       type: { name: 'image' },
-      attrs: { src: 'test.jpg', assetDeliveryType: 'link-img' },
+      attrs: { src: 'test.jpg', editAs: 'image' },
     };
 
     const nodeView = createNodeView(mockNode, mockView, getPos);

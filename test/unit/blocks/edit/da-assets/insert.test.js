@@ -120,16 +120,16 @@ describe('createImageNode', () => {
     expect(node.attrs.alt).to.be.undefined;
   });
 
-  it('includes assetDeliveryType attribute when provided', () => {
+  it('includes editAs attribute when provided', () => {
     const view = makeView();
-    const node = createImageNode(view, 'https://example.com/img.jpg', 'alt', 'link-img');
-    expect(node.attrs.assetDeliveryType).to.equal('link-img');
+    const node = createImageNode(view, 'https://example.com/img.jpg', 'alt', 'image');
+    expect(node.attrs.editAs).to.equal('image');
   });
 
-  it('omits assetDeliveryType attribute when not provided', () => {
+  it('omits editAs attribute when not provided', () => {
     const view = makeView();
     const node = createImageNode(view, 'https://example.com/img.jpg', 'alt');
-    expect(node.attrs.assetDeliveryType).to.be.undefined;
+    expect(node.attrs.editAs).to.be.undefined;
   });
 });
 
@@ -144,18 +144,18 @@ describe('insertImage', () => {
     expect(view.dispatched).to.have.length(1);
   });
 
-  it('includes assetDeliveryType attribute when provided', () => {
+  it('includes editAs attribute when provided', () => {
     const view = makeView();
     let createdNode;
     view.state.schema.nodes.image.create = (attrs) => {
       createdNode = { type: 'image', attrs };
       return createdNode;
     };
-    insertImage(view, 'https://example.com/img.jpg', 'alt', 'link-img');
-    expect(createdNode.attrs.assetDeliveryType).to.equal('link-img');
+    insertImage(view, 'https://example.com/img.jpg', 'alt', 'image');
+    expect(createdNode.attrs.editAs).to.equal('image');
   });
 
-  it('omits assetDeliveryType attribute when not provided', () => {
+  it('omits editAs attribute when not provided', () => {
     const view = makeView();
     let createdNode;
     view.state.schema.nodes.image.create = (attrs) => {
@@ -163,7 +163,7 @@ describe('insertImage', () => {
       return createdNode;
     };
     insertImage(view, 'https://example.com/img.jpg', 'alt');
-    expect(createdNode.attrs.assetDeliveryType).to.be.undefined;
+    expect(createdNode.attrs.editAs).to.be.undefined;
   });
 });
 

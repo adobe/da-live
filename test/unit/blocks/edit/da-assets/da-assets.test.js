@@ -363,13 +363,13 @@ describe('buildHandleSelection', () => {
     expect(view.dispatched).to.have.length(0);
   });
 
-  it('inserts image node with assetDeliveryType link-img on standard path when insertAsLinkImg is true', async () => {
+  it('inserts image node with editAs image on standard path when insertAsLinkImg is true', async () => {
     const { view, dialog, handler } = setup({ ...AUTHOR_PUBLISH_CONFIG, insertAsLinkImg: true });
     await handler([IMAGE_ASSET]);
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(1);
     expect(view.createdNodes).to.have.length(1);
-    expect(view.createdNodes[0].attrs.assetDeliveryType).to.equal('link-img');
+    expect(view.createdNodes[0].attrs.editAs).to.equal('image');
   });
 
   it('closes dialog and takes link path for non-image assets even when insertAsLinkImg is true', async () => {
@@ -380,7 +380,7 @@ describe('buildHandleSelection', () => {
     expect(view.createdNodes).to.have.length(0);
   });
 
-  it('inserts image node with assetDeliveryType link-img on smart-crop no-crops fallback path', async () => {
+  it('inserts image node with editAs image on smart-crop no-crops fallback path', async () => {
     window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
     const { view, dialog } = setup({ ...AUTHOR_DM_LINKIMG_CONFIG, isSmartCrop: true });
     const assetPanel = makePanel();
@@ -396,10 +396,10 @@ describe('buildHandleSelection', () => {
     await handler([IMAGE_ASSET]);
     expect(dialog.isOpen).to.be.false;
     expect(view.createdNodes).to.have.length(1);
-    expect(view.createdNodes[0].attrs.assetDeliveryType).to.equal('link-img');
+    expect(view.createdNodes[0].attrs.editAs).to.equal('image');
   });
 
-  it('passes assetDeliveryType link-img through smart-crop onInsert to created fragment nodes', async () => {
+  it('passes editAs image through smart-crop onInsert to created fragment nodes', async () => {
     window.fetch = async () => ({
       ok: true,
       json: async () => ({ items: [{ name: 'desktop' }, { name: 'mobile' }] }),
@@ -427,7 +427,7 @@ describe('buildHandleSelection', () => {
     expect(dialog.isOpen).to.be.false;
     expect(view.createdNodes.length).to.be.greaterThan(0);
     view.createdNodes.forEach((node) => {
-      expect(node.attrs.assetDeliveryType).to.equal('link-img');
+      expect(node.attrs.editAs).to.equal('image');
     });
 
     assetPanel.remove();
