@@ -17,7 +17,7 @@ class DaLinkDialog extends LitElement {
     text: { type: String },
     title: { type: String, attribute: 'dialog-title' },
     showTitle: { type: Boolean, attribute: 'show-title' },
-    linkTitle: { type: String },
+    anchorTitle: { type: String },
     saveLabel: { type: String },
     _urlError: { state: true },
   };
@@ -80,7 +80,7 @@ class DaLinkDialog extends LitElement {
             <label class="da-form-field">
               <span>Title</span>
               <input class="da-input" name="link-title" type="text" placeholder="Link title"
-                     autocomplete="off" .value=${this.linkTitle ?? ''} />
+                     autocomplete="off" .value=${this.anchorTitle ?? ''} />
             </label>` : nothing}
         </form>
         <button type="button" slot="actions" class="da-btn-secondary"

@@ -48,7 +48,7 @@ describe('da-link-dialog', () => {
   });
 
   it('renders and pre-fills the Title field when show-title is set', async () => {
-    await mount({ open: true, showTitle: true, linkTitle: 'My title' });
+    await mount({ open: true, showTitle: true, anchorTitle: 'My title' });
     const titleInput = el.shadowRoot.querySelector('input[name="link-title"]');
     expect(titleInput).to.exist;
     expect(titleInput.value).to.equal('My title');

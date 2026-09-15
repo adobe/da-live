@@ -222,12 +222,13 @@ export function getLinkInfoInSelection(state) {
 export function applyLink(view, { href, text, title }) {
   const { state } = view;
   const trimmedHref = href.trim();
+  const trimmedTitle = title?.trim() || null;
 
   if (isImageNodeSelected(state)) {
     const { from } = state.selection;
     view.dispatch(state.tr
       .setNodeAttribute(from, 'href', trimmedHref || null)
-      .setNodeAttribute(from, 'title', title?.trim() || null));
+      .setNodeAttribute(from, 'title', trimmedTitle));
     return;
   }
 
@@ -257,7 +258,7 @@ export function applyLink(view, { href, text, title }) {
   tr = tr.addMark(
     from,
     to,
-    linkType.create({ href: trimmedHref, title: title?.trim() || null }),
+    linkType.create({ href: trimmedHref, title: trimmedTitle }),
   );
   tr = tr.setSelection(TextSelection.create(tr.doc, to));
   view.dispatch(tr);

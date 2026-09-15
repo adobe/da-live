@@ -134,7 +134,15 @@ describe('ew-selection-toolbar buttons', () => {
     toolbar.openLinkDialog(editor.view);
     await toolbar.updateComplete;
     const dialog = toolbar.shadowRoot.querySelector('da-link-dialog');
-    expect(dialog.linkTitle).to.equal('Existing');
+    expect(dialog.anchorTitle).to.equal('Existing');
+  });
+
+  it('pre-fills the link title from a selected image', async () => {
+    selectImage({ src: '/x.png', href: 'https://x.com', title: 'Existing' });
+    toolbar.openLinkDialog(editor.view);
+    await toolbar.updateComplete;
+    const dialog = toolbar.shadowRoot.querySelector('da-link-dialog');
+    expect(dialog.anchorTitle).to.equal('Existing');
   });
 
   it('writes a submitted link title onto the mark', async () => {
