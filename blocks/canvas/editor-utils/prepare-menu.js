@@ -30,6 +30,12 @@ const OOTB_ACTIONS = [
     icon: '/img/icons/s2-icon-target-20-n.svg#icon',
     optional: true,
   },
+  {
+    title: 'Multi-site Manager',
+    render: async (details) => (await import('../../edit/da-prepare/actions/msm/msm.js')).default(details),
+    icon: '/blocks/edit/img/S2_Icon_GlobeGrid_20_N.svg#S2_Icon_GlobeGrid',
+    optional: true,
+  },
 ];
 
 export default class PrepareMenu extends LitElement {
