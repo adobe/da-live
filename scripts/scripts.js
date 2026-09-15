@@ -57,7 +57,14 @@ const CONFIG = {
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
 };
 
+function keepClassicEditor() {
+  if (window.location.pathname !== '/edit' || customElements.get('nx-editortoggle')) return;
+  customElements.define('nx-editortoggle', class extends HTMLElement {});
+}
+
 export default async function loadPage() {
+  keepClassicEditor();
+
   if (!nx2) {
     // pin to light scheme
     document.body.classList.remove('light-scheme', 'dark-scheme');
