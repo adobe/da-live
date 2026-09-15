@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { setNx } from '../../../../../../../scripts/utils.js';
 import {
   getSatellites,
   getBaseSite,
@@ -36,6 +37,8 @@ describe('MSM config', () => {
     savedFetch = window.fetch;
     savedLocalStorage = window.localStorage.getItem('nx-ims');
     window.localStorage.removeItem('nx-ims');
+    // see msm.test.js — the org config is fetched through the nx2 config API
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
     clearMsmCache();
   });
 

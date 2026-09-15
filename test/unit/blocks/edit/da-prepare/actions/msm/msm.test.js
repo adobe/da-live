@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { setNx } from '../../../../../../../scripts/utils.js';
 import { setMergeCopy } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/utils.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
@@ -63,6 +64,11 @@ describe('DaMsm component', () => {
     savedFetch = window.fetch;
     savedLocalStorage = window.localStorage.getItem('nx-ims');
     window.localStorage.removeItem('nx-ims');
+
+    // fetchDaConfigs now reaches the org config through the nx2 config API, so
+    // the suite has to point nx at the test fixtures the way every other
+    // da-prepare test does; without it getNx2Api() tries to load the real one.
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
     window.fetch = async (url) => {
       if (url.endsWith('.css')) {
@@ -359,7 +365,10 @@ describe('DaMsm component', () => {
 
     it('merges from base in merge mode', async () => {
       let mergeCalled = false;
-      setMergeCopy(async () => { mergeCalled = true; return { ok: true }; });
+      setMergeCopy(async () => {
+        mergeCalled = true;
+        return { ok: true };
+      });
 
       const mock = createFetchMock({});
       await fixtureWithState(mock, {
@@ -416,9 +425,8 @@ describe('DaMsm component', () => {
 
     it('only previews when page was not published', async () => {
       const calls = [];
-      const base = createFetchMock({
-        aemStatus: { preview: { status: 200 }, live: { status: 404 } },
-      });
+      const aemStatus = { preview: { status: 200 }, live: { status: 404 } };
+      const base = createFetchMock({ aemStatus });
       const mock = async (url, opts) => {
         calls.push({ url, method: opts?.method });
         return base(url, opts);
@@ -577,7 +585,10 @@ describe('DaMsm component', () => {
 
     it('sync-from-base with merge mode calls mergeCopy', async () => {
       let mergeCalled = false;
-      setMergeCopy(async () => { mergeCalled = true; return { ok: true }; });
+      setMergeCopy(async () => {
+        mergeCalled = true;
+        return { ok: true };
+      });
 
       const mock = createFetchMock({});
       await fixtureWithState(mock, {
