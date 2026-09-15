@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { loadDoc, loadResults } from './utils/utils.js';
+import { canvasBus } from '../../../../canvas/utils/canvas-bus.js';
 
 // Components
 import './views/label.js';
@@ -20,6 +21,7 @@ class DaPreflight extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.listenForReasons();
     this.loadResults();
+    canvasBus.validationRunRequest.emit();
   }
 
   listenForReasons() {
