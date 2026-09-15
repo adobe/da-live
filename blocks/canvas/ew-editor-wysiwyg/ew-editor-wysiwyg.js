@@ -4,6 +4,7 @@ import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../edi
 import { initIms as loadIms, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { sanitizeValidationItems } from '../utils/validation-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -17,23 +18,13 @@ const WYSIWYG_PORT_READY_ATTR = 'data-nx-wysiwyg-port-ready';
 
 const VALIDATION_RUN_TIMEOUT_MS = 4000;
 const VALIDATION_MAX_ITEMS = 200;
-const VALIDATION_MESSAGE_MAX_LENGTH = 500;
-const VALIDATION_SEVERITIES = new Set(['info', 'warn', 'error']);
 const VALIDATION_MESSAGE_TYPES = { RUN: 'run', RESULT: 'result' };
 
-function isValidValidationItem(item) {
-  if (!item || typeof item !== 'object') return false;
-  if (!VALIDATION_SEVERITIES.has(item.severity)) return false;
-  if (typeof item.message !== 'string' || item.message.length > VALIDATION_MESSAGE_MAX_LENGTH) return false;
-  const { blockIndex, proseIndex } = item.item ?? {};
-  const hasBlockIndex = Number.isInteger(blockIndex) && blockIndex >= 0;
-  const hasProseIndex = Number.isInteger(proseIndex) && proseIndex >= 0;
-  return hasBlockIndex !== hasProseIndex;
-}
-
-function sanitizeValidationItems(items) {
-  if (!Array.isArray(items)) return [];
-  return items.filter(isValidValidationItem).slice(0, VALIDATION_MAX_ITEMS);
+// Independently re-validates every RESULT item itself (never trusts that the sender used
+// da-nx's own pre-send filter) — this is the actual untrusted-input boundary; the cap on
+// total item count is this host's own storage policy, kept separate from item shape.
+function sanitizeAndCapValidationItems(items) {
+  return sanitizeValidationItems(items).slice(0, VALIDATION_MAX_ITEMS);
 }
 
 function buildQuickEditInitPayload({ org, repo, path, branch = 'main', canWrite = false }) {
@@ -205,7 +196,7 @@ export class EwEditorWysiwyg extends LitElement {
     clearTimeout(this._validationTimeoutId);
     this._validationTimeoutId = null;
     this._pendingValidationRequestId = null;
-    this._validationItems = sanitizeValidationItems(items);
+    this._validationItems = sanitizeAndCapValidationItems(items);
     // eslint-disable-next-line no-console
     console.log('[ew-editor-wysiwyg] validation result (temporary devtools hook)', this._validationItems);
   }
