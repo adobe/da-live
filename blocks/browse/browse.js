@@ -16,7 +16,7 @@ async function loadComponent(el, cmpName, pathDetails) {
   await import(`./${cmpName}/${cmpName}.js`);
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
-  el.append(cmp);
+  el.replaceChildren(cmp);
 }
 
 function setRecentSite(details) {
