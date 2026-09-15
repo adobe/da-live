@@ -1,3 +1,5 @@
+import { authorKey } from './author-colors.js';
+
 export function formatTimestamp(timestamp) {
   const date = new Date(timestamp);
   const now = new Date();
@@ -56,9 +58,9 @@ export function getReplySummary({ rootComment, replies }) {
   const seen = new Set();
 
   replies.forEach((reply) => {
-    const authorId = reply.author?.id;
-    if (!authorId || authorId === rootComment.author?.id || seen.has(authorId)) return;
-    seen.add(authorId);
+    const key = authorKey(reply.author);
+    if (!key || key === authorKey(rootComment.author) || seen.has(key)) return;
+    seen.add(key);
     uniqueAuthors.push(reply.author.name);
   });
 

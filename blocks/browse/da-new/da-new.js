@@ -129,7 +129,7 @@ export default class DaNew extends LitElement {
   }
 
   get _createDialogTitle() {
-    const titles = { folder: 'New folder', document: 'New document', sheet: 'New sheet' };
+    const titles = { folder: 'New folder', document: 'New page', sheet: 'New sheet' };
     return titles[this._createType] ?? 'New';
   }
 
@@ -138,7 +138,7 @@ export default class DaNew extends LitElement {
       <div class="da-actions-create">
         <nx-menu .items=${[
         { id: 'folder', label: 'Folder' },
-        { id: 'document', label: 'Document' },
+        { id: 'document', label: 'Page' },
         { id: 'sheet', label: 'Sheet' },
         { id: 'media', label: 'Media' },
         { id: 'link', label: 'Link' },
