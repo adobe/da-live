@@ -136,6 +136,39 @@ describe('getRepositoryConfig', () => {
     }
   });
 
+  it('sets insertAsEditableLink when aem.assets.image.type is editable-link', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/linkimgtype/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p61-e61.adobeaemcloud.com' },
+        { key: 'aem.assets.image.type', value: 'editable-link' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'linkimgtype');
+      expect(cfg.insertAsEditableLink).to.be.true;
+      expect(cfg.insertAsLink).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('sets both insertAsLink and insertAsEditableLink false when aem.assets.image.type is not set', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/notype/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p62-e62.adobeaemcloud.com' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'notype');
+      expect(cfg.insertAsLink).to.be.false;
+      expect(cfg.insertAsEditableLink).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
   it('uses custom prod basepath when aem.assets.prod.basepath is set', async () => {
     const orgFetch = window.fetch;
     window.fetch = makeFetch({

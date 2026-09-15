@@ -83,6 +83,26 @@ function makePictures(editor, live) {
     const daCursor = img.parentElement.querySelector('#da-cursor-position');
     if (daCursor) setCursor(daCursor, img);
 
+    if (img.getAttribute('data-edit-as') === 'image') {
+      const src = img.getAttribute('src');
+      const a = document.createElement('a');
+      a.href = src;
+      const altAttr = img.getAttribute('alt');
+      if (altAttr) a.title = altAttr;
+      a.setAttribute('data-edit-as', 'image');
+      a.textContent = src;
+      if (img.id) a.id = img.id;
+
+      const linkParent = img.parentElement;
+      const linkGrandparent = linkParent.parentElement;
+      if (linkParent.nodeName === 'P' && linkGrandparent?.childElementCount === 1 && linkParent.childElementCount === 1) {
+        linkGrandparent.replaceChild(a, linkParent);
+      } else {
+        linkParent.replaceChild(a, img);
+      }
+      return;
+    }
+
     const clone = img.cloneNode(true);
     clone.setAttribute('loading', 'lazy');
 
