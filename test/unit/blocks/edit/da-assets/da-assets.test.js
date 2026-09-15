@@ -70,6 +70,11 @@ const AUTHOR_PUBLISH_CONFIG = {
   insertAsLink: false,
 };
 
+const AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG = {
+  ...AUTHOR_PUBLISH_CONFIG,
+  insertAsEditableLink: true,
+};
+
 const AUTHOR_DM_CONFIG = {
   repositoryId: 'author-p1-e1.adobeaemcloud.com',
   tierType: 'author',
@@ -80,7 +85,7 @@ const AUTHOR_DM_CONFIG = {
   insertAsLink: false,
 };
 
-const AUTHOR_DM_LINKIMG_CONFIG = {
+const AUTHOR_DM_EDITABLE_LINK_CONFIG = {
   repositoryId: 'author-p1-e1.adobeaemcloud.com',
   tierType: 'author',
   assetOrigin: 'delivery-p1-e1.adobeaemcloud.com',
@@ -88,7 +93,7 @@ const AUTHOR_DM_LINKIMG_CONFIG = {
   isDmEnabled: true,
   isSmartCrop: false,
   insertAsLink: false,
-  insertAsLinkImg: true,
+  insertAsEditableLink: true,
 };
 
 const DELIVERY_CONFIG = {
@@ -363,8 +368,8 @@ describe('buildHandleSelection', () => {
     expect(view.dispatched).to.have.length(0);
   });
 
-  it('inserts image node with editAs image on standard path when insertAsLinkImg is true', async () => {
-    const { view, dialog, handler } = setup({ ...AUTHOR_PUBLISH_CONFIG, insertAsLinkImg: true });
+  it('inserts image node with editAs image on standard path when insertAsEditableLink is true', async () => {
+    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG);
     await handler([IMAGE_ASSET]);
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(1);
@@ -372,8 +377,8 @@ describe('buildHandleSelection', () => {
     expect(view.createdNodes[0].attrs.editAs).to.equal('image');
   });
 
-  it('closes dialog and takes link path for non-image assets even when insertAsLinkImg is true', async () => {
-    const { view, dialog, handler } = setup({ ...AUTHOR_PUBLISH_CONFIG, insertAsLinkImg: true });
+  it('closes dialog and takes link path for non-image assets even when insertAsEditableLink is true', async () => {
+    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG);
     try { await handler([PDF_ASSET]); } catch { /* proseDOMParser mock limitation */ }
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(0);
@@ -382,13 +387,13 @@ describe('buildHandleSelection', () => {
 
   it('inserts image node with editAs image on smart-crop no-crops fallback path', async () => {
     window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
-    const { view, dialog } = setup({ ...AUTHOR_DM_LINKIMG_CONFIG, isSmartCrop: true });
+    const { view, dialog } = setup({ ...AUTHOR_DM_EDITABLE_LINK_CONFIG, isSmartCrop: true });
     const assetPanel = makePanel();
     const secondaryPanel = makePanel();
     const handler = buildHandleSelection({
       assetPanel,
       secondaryPanel,
-      repoConfig: { ...AUTHOR_DM_LINKIMG_CONFIG, isSmartCrop: true },
+      repoConfig: { ...AUTHOR_DM_EDITABLE_LINK_CONFIG, isSmartCrop: true },
       responsiveImageConfigPromise: Promise.resolve(false),
       getView: () => view,
       close: () => dialog.close(),
@@ -414,7 +419,7 @@ describe('buildHandleSelection', () => {
     const handler = buildHandleSelection({
       assetPanel,
       secondaryPanel,
-      repoConfig: { ...AUTHOR_DM_LINKIMG_CONFIG, isSmartCrop: true },
+      repoConfig: { ...AUTHOR_DM_EDITABLE_LINK_CONFIG, isSmartCrop: true },
       responsiveImageConfigPromise: Promise.resolve(false),
       getView: () => view,
       close: () => dialog.close(),

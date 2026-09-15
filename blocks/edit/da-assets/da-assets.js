@@ -144,7 +144,7 @@ export function buildHandleSelection({
       }
     }
 
-    const editAs = repoConfig.insertAsLinkImg ? 'image' : undefined;
+    const editAs = repoConfig.insertAsEditableLink ? 'image' : undefined;
 
     // Smart crop flow (only for images with smart crop enabled)
     if (isImage && repoConfig.isSmartCrop) {
@@ -186,10 +186,8 @@ export function buildHandleSelection({
 
     if (!isImage || repoConfig.insertAsLink) {
       insertLink(view, src);
-    } else if (repoConfig.insertAsLinkImg) {
-      insertImage(view, src, alt, 'image');
     } else {
-      insertImage(view, src, alt);
+      insertImage(view, src, alt, editAs);
     }
   };
 }

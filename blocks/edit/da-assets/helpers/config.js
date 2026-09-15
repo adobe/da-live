@@ -76,7 +76,7 @@ export async function getResponsiveImageConfig(owner, repo) {
  *
  * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled,
  *             isSmartCrop, approvedOnly,
- *             insertAsLink, insertAsLinkImg, mimeRenditionOverrides, siteImageModifiers }}
+ *             insertAsLink, insertAsEditableLink, mimeRenditionOverrides, siteImageModifiers }}
  */
 export async function getRepositoryConfig(owner, repo) {
   const configs = await Promise.all(fetchDaConfigs({ org: owner, site: repo }));
@@ -106,7 +106,7 @@ export async function getRepositoryConfig(owner, repo) {
   });
   const imageType = getValue('aem.assets.image.type');
   const insertAsLink = imageType === 'link';
-  const insertAsLinkImg = imageType === 'link-img';
+  const insertAsEditableLink = imageType === 'editable-link';
   const mimeRenditionOverrides = parseMimeRenditions(getValue('aem.asset.mime.renditions'));
   const siteImageModifiers = parseSiteImageModifiers(getValue('aem.asset.image.modifiers'));
 
@@ -132,7 +132,7 @@ export async function getRepositoryConfig(owner, repo) {
     isSmartCrop,
     approvedOnly,
     insertAsLink,
-    insertAsLinkImg,
+    insertAsEditableLink,
     mimeRenditionOverrides,
     siteImageModifiers,
   };

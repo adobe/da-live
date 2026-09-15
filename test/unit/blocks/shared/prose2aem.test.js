@@ -344,7 +344,7 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.include('alt="Test image"');
   });
 
-  it('Serializes a link-img image to a plain <a> with no <picture>', () => {
+  it('Serializes an editable-link image to a plain <a> with no <picture>', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `
       <p>
@@ -363,7 +363,7 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.include('>https://example.com/asset.jpg<');
   });
 
-  it('Serializes a link-img image without alt to a plain <a> with no title', () => {
+  it('Serializes an editable-link image without alt to a plain <a> with no title', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `
       <p>
@@ -378,7 +378,7 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.not.include('title=');
   });
 
-  it('Leaves other images unaffected by the link-img handling (regression)', () => {
+  it('Leaves other images unaffected by the editable-link handling (regression)', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `
       <p>
