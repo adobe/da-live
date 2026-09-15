@@ -154,6 +154,7 @@ export default async function initProse({
       color: generateColor(identity.colorSeed),
       name: identity.name,
       id: identity.id,
+      email: identity.email,
     });
   } else {
     wsProvider.awareness.setLocalStateField('user', {
