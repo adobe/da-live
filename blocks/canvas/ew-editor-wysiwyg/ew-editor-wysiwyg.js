@@ -4,7 +4,7 @@ import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../edi
 import { initIms as loadIms, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
-import { sanitizeValidationItems } from '../utils/validation-messages.js';
+import { createValidationRequester } from '../utils/validation.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -15,17 +15,6 @@ const QUICK_EDIT_INIT_INTERVAL_MS = 400;
 const QUICK_EDIT_INIT_MAX_ATTEMPTS = 25;
 
 const WYSIWYG_PORT_READY_ATTR = 'data-nx-wysiwyg-port-ready';
-
-const VALIDATION_RUN_TIMEOUT_MS = 4000;
-const VALIDATION_MAX_ITEMS = 200;
-const VALIDATION_MESSAGE_TYPES = { RUN: 'run', RESULT: 'result' };
-
-// Independently re-validates every RESULT item itself (never trusts that the sender used
-// da-nx's own pre-send filter) — this is the actual untrusted-input boundary; the cap on
-// total item count is this host's own storage policy, kept separate from item shape.
-function sanitizeAndCapValidationItems(items) {
-  return sanitizeValidationItems(items).slice(0, VALIDATION_MAX_ITEMS);
-}
 
 function buildQuickEditInitPayload({ org, repo, path, branch = 'main', canWrite = false }) {
   const pathWithoutOrgRepo = path.split('/').slice(2).join('/');
@@ -109,19 +98,8 @@ export class EwEditorWysiwyg extends LitElement {
   }
 
   _disposeQuickEditValidationPort() {
-    if (this._validationTimeoutId) {
-      clearTimeout(this._validationTimeoutId);
-      this._validationTimeoutId = null;
-    }
-    this._pendingValidationRequestId = null;
-    if (!this._quickEditValidationPort) return;
-    try {
-      this._quickEditValidationPort.onmessage = null;
-      this._quickEditValidationPort.close();
-    } catch {
-      /* ignore */
-    }
-    this._quickEditValidationPort = null;
+    this._validationRequester?.dispose();
+    this._validationRequester = null;
   }
 
   _clearQuickEditRetry() {
@@ -189,31 +167,11 @@ export class EwEditorWysiwyg extends LitElement {
     }, QUICK_EDIT_INIT_INTERVAL_MS);
   }
 
-  _onValidationPortMessage(ev) {
-    if (ev.data?.type !== VALIDATION_MESSAGE_TYPES.RESULT) return;
-    const { requestId, items } = ev.data;
-    if (requestId !== this._pendingValidationRequestId) return;
-    clearTimeout(this._validationTimeoutId);
-    this._validationTimeoutId = null;
-    this._pendingValidationRequestId = null;
-    this._validationItems = sanitizeAndCapValidationItems(items);
-    canvasBus.validationResultState.emit({ items: this._validationItems, timedOut: false });
-  }
-
   _runValidation() {
-    if (!this._quickEditValidationPort) return;
-    if (this._validationTimeoutId) clearTimeout(this._validationTimeoutId);
-    const requestId = `val-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    this._pendingValidationRequestId = requestId;
-    this._quickEditValidationPort.postMessage({ type: VALIDATION_MESSAGE_TYPES.RUN, requestId });
-    this._validationTimeoutId = setTimeout(() => {
-      if (this._pendingValidationRequestId !== requestId) return;
-      this._pendingValidationRequestId = null;
-      this._validationItems = null;
-      // eslint-disable-next-line no-console
-      console.warn('[ew-editor-wysiwyg] validation run timed out', requestId);
-      canvasBus.validationResultState.emit({ items: null, timedOut: true });
-    }, VALIDATION_RUN_TIMEOUT_MS);
+    if (!this._validationRequester) return;
+    this._validationRequester.run().then(({ items, timedOut }) => {
+      canvasBus.validationResultState.emit({ items, timedOut });
+    });
   }
 
   _postQuickEditInitToIframe({ iframe, config, location, onReady }) {
@@ -222,8 +180,7 @@ export class EwEditorWysiwyg extends LitElement {
     const { port1, port2 } = new MessageChannel();
     const validationChannel = new MessageChannel();
     this._quickEditLocalPort = port1;
-    this._quickEditValidationPort = validationChannel.port1;
-    this._quickEditValidationPort.onmessage = (ev) => this._onValidationPortMessage(ev);
+    this._validationRequester = createValidationRequester(validationChannel.port1);
     port1.onmessage = (ev) => {
       // @deprecated flat `ready` — prefer `type === MESSAGE_TYPES.READY` (da-nx now sends both).
       const isReady = ev.data?.type === MESSAGE_TYPES.READY || ev.data?.ready === true;
