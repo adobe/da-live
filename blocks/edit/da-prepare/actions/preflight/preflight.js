@@ -14,6 +14,9 @@ class DaPreflight extends LitElement {
     details: { attribute: false },
     _categories: { state: true },
     _status: { state: true },
+    _validationResults: { state: true },
+    _validationTimedOut: { state: true },
+    _validationCategoryOpen: { state: true },
   };
 
   connectedCallback() {
@@ -21,7 +24,17 @@ class DaPreflight extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.listenForReasons();
     this.loadResults();
+    this._unsubscribeValidationResult = canvasBus.validationResultState
+      .subscribe(({ items, timedOut }) => {
+        this._validationResults = items;
+        this._validationTimedOut = timedOut;
+      });
     canvasBus.validationRunRequest.emit();
+  }
+
+  disconnectedCallback() {
+    this._unsubscribeValidationResult?.();
+    super.disconnectedCallback();
   }
 
   listenForReasons() {
@@ -40,8 +53,32 @@ class DaPreflight extends LitElement {
     this._categories = loadResults(doc, requestUpdate);
   }
 
+  get _validationCategory() {
+    let results;
+    if (this._validationTimedOut) {
+      results = [{ reason: 'Content validation timed out or is unavailable.', badge: 'warn' }];
+    } else if (!this._validationResults) {
+      results = [];
+    } else if (this._validationResults.length === 0) {
+      results = [{ reason: 'No content-validation issues found.', badge: 'success' }];
+    } else {
+      results = this._validationResults.map(
+        ({ severity, message }) => ({ reason: message, badge: severity }),
+      );
+    }
+    return {
+      title: 'Custom',
+      open: this._validationCategoryOpen,
+      checks: [{ title: 'Content validation', results }],
+    };
+  }
+
   expandCategory(cat) {
-    cat.open = !cat.open;
+    if (cat.title === 'Custom') {
+      this._validationCategoryOpen = !this._validationCategoryOpen;
+    } else {
+      cat.open = !cat.open;
+    }
     this.requestUpdate();
   }
 
@@ -108,10 +145,11 @@ class DaPreflight extends LitElement {
   render() {
     if (!this._categories) return nothing;
 
+    const categories = [...this._categories, this._validationCategory];
     return html`
       <div class="preflight-inner">
         <ul class="categories">
-          ${this._categories.map((category) => this.renderCategory(category))}
+          ${categories.map((category) => this.renderCategory(category))}
         </ul>
       </div>`;
   }

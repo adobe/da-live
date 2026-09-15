@@ -197,8 +197,7 @@ export class EwEditorWysiwyg extends LitElement {
     this._validationTimeoutId = null;
     this._pendingValidationRequestId = null;
     this._validationItems = sanitizeAndCapValidationItems(items);
-    // eslint-disable-next-line no-console
-    console.log('[ew-editor-wysiwyg] validation result (temporary devtools hook)', this._validationItems);
+    canvasBus.validationResultState.emit({ items: this._validationItems, timedOut: false });
   }
 
   _runValidation() {
@@ -213,6 +212,7 @@ export class EwEditorWysiwyg extends LitElement {
       this._validationItems = null;
       // eslint-disable-next-line no-console
       console.warn('[ew-editor-wysiwyg] validation run timed out', requestId);
+      canvasBus.validationResultState.emit({ items: null, timedOut: true });
     }, VALIDATION_RUN_TIMEOUT_MS);
   }
 
