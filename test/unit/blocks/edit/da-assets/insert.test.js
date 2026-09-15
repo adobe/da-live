@@ -4,6 +4,7 @@ import {
   findBlockContext,
   getBlockName,
   createImageNode,
+  insertImage,
   insertFragment,
 } from '../../../../../blocks/edit/da-assets/helpers/insert.js';
 
@@ -117,6 +118,52 @@ describe('createImageNode', () => {
     const view = makeView();
     const node = createImageNode(view, 'https://example.com/img.jpg');
     expect(node.attrs.alt).to.be.undefined;
+  });
+
+  it('includes assetDeliveryType attribute when provided', () => {
+    const view = makeView();
+    const node = createImageNode(view, 'https://example.com/img.jpg', 'alt', 'link-img');
+    expect(node.attrs.assetDeliveryType).to.equal('link-img');
+  });
+
+  it('omits assetDeliveryType attribute when not provided', () => {
+    const view = makeView();
+    const node = createImageNode(view, 'https://example.com/img.jpg', 'alt');
+    expect(node.attrs.assetDeliveryType).to.be.undefined;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// insertImage
+// ---------------------------------------------------------------------------
+
+describe('insertImage', () => {
+  it('dispatches an image node with src and default style', () => {
+    const view = makeView();
+    insertImage(view, 'https://example.com/img.jpg');
+    expect(view.dispatched).to.have.length(1);
+  });
+
+  it('includes assetDeliveryType attribute when provided', () => {
+    const view = makeView();
+    let createdNode;
+    view.state.schema.nodes.image.create = (attrs) => {
+      createdNode = { type: 'image', attrs };
+      return createdNode;
+    };
+    insertImage(view, 'https://example.com/img.jpg', 'alt', 'link-img');
+    expect(createdNode.attrs.assetDeliveryType).to.equal('link-img');
+  });
+
+  it('omits assetDeliveryType attribute when not provided', () => {
+    const view = makeView();
+    let createdNode;
+    view.state.schema.nodes.image.create = (attrs) => {
+      createdNode = { type: 'image', attrs };
+      return createdNode;
+    };
+    insertImage(view, 'https://example.com/img.jpg', 'alt');
+    expect(createdNode.attrs.assetDeliveryType).to.be.undefined;
   });
 });
 

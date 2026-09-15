@@ -344,6 +344,54 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.include('alt="Test image"');
   });
 
+  it('Serializes a link-img image to a plain <a> with no <picture>', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <p>
+        <img src="https://example.com/asset.jpg" alt="A description" data-asset-delivery-type="link-img">
+      </p>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.not.include('<picture>');
+    expect(result).to.not.include('<img');
+    expect(result).to.include('<a');
+    expect(result).to.include('href="https://example.com/asset.jpg"');
+    expect(result).to.include('title="A description"');
+    expect(result).to.include('data-asset-delivery-type="link-img"');
+    expect(result).to.include('>https://example.com/asset.jpg<');
+  });
+
+  it('Serializes a link-img image without alt to a plain <a> with no title', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <p>
+        <img src="https://example.com/asset.jpg" data-asset-delivery-type="link-img">
+      </p>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.not.include('<picture>');
+    expect(result).to.include('<a');
+    expect(result).to.not.include('title=');
+  });
+
+  it('Leaves other images unaffected by the link-img handling (regression)', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <p>
+        <img src="https://example.com/regular.jpg" alt="Regular">
+      </p>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.include('<picture>');
+    expect(result).to.not.include('data-asset-delivery-type');
+  });
+
   it('Converts focal point attributes to data-title', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `

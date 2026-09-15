@@ -147,6 +147,7 @@ export default function imageFocalPoint() {
     props: {
       nodeViews: {
         image(node, view, getPos) {
+          if (node.attrs?.assetDeliveryType) return null;
           if (isInTableCell(view.state, getPos())) {
             return new ImageWithFocalPointView(node, view, getPos);
           }

@@ -129,6 +129,38 @@ describe('imageFocalPoint Plugin', () => {
     expect(icon.classList.contains('focal-point-icon-active')).to.be.true;
   });
 
+  it('does not create node view for images with assetDeliveryType set, even inside table cells', () => {
+    const plugin = imageFocalPoint();
+    const createNodeView = plugin.props.nodeViews.image;
+
+    const mockState = {
+      doc: {
+        resolve: () => ({
+          depth: 3,
+          node: (d) => {
+            if (d === 3) return { type: { name: 'table_cell' } };
+            if (d === 2) return { childCount: 2 };
+            if (d === 1) {
+              return { child: () => ({ child: () => ({ textContent: 'hero' }) }) };
+            }
+            return { type: { name: 'doc' } };
+          },
+          index: () => 0,
+        }),
+      },
+    };
+    const mockView = { state: mockState, dom: document.createElement('div') };
+    const getPos = () => 10;
+
+    const mockNode = {
+      type: { name: 'image' },
+      attrs: { src: 'test.jpg', assetDeliveryType: 'link-img' },
+    };
+
+    const nodeView = createNodeView(mockNode, mockView, getPos);
+    expect(nodeView).to.be.null;
+  });
+
   it('does not create node view for images outside table cells', () => {
     const plugin = imageFocalPoint();
     const createNodeView = plugin.props.nodeViews.image;

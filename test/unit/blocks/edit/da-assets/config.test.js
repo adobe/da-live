@@ -136,6 +136,39 @@ describe('getRepositoryConfig', () => {
     }
   });
 
+  it('sets insertAsLinkImg when aem.assets.image.type is link-img', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/linkimgtype/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p61-e61.adobeaemcloud.com' },
+        { key: 'aem.assets.image.type', value: 'link-img' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'linkimgtype');
+      expect(cfg.insertAsLinkImg).to.be.true;
+      expect(cfg.insertAsLink).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('sets both insertAsLink and insertAsLinkImg false when aem.assets.image.type is not set', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/notype/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p62-e62.adobeaemcloud.com' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'notype');
+      expect(cfg.insertAsLink).to.be.false;
+      expect(cfg.insertAsLinkImg).to.be.false;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
   it('uses custom prod basepath when aem.assets.prod.basepath is set', async () => {
     const orgFetch = window.fetch;
     window.fetch = makeFetch({

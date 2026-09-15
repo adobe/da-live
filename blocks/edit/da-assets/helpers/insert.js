@@ -32,10 +32,11 @@ export function getBlockName(view) {
 /**
  * Creates and dispatches a ProseMirror image node at the current selection.
  */
-export function insertImage(view, src, alt) {
+export function insertImage(view, src, alt, assetDeliveryType) {
   const { state } = view;
   const attrs = { src, style: 'width: 180px' };
   if (alt) attrs.alt = alt;
+  if (assetDeliveryType) attrs.assetDeliveryType = assetDeliveryType;
   const node = state.schema.nodes.image.create(attrs);
   view.dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
 }
@@ -67,8 +68,9 @@ export function insertFragment(view, nodes) {
 /**
  * Creates an image node without dispatching it (used for building fragment arrays).
  */
-export function createImageNode(view, src, alt) {
+export function createImageNode(view, src, alt, assetDeliveryType) {
   const attrs = { src, style: 'width: 180px' };
   if (alt) attrs.alt = alt;
+  if (assetDeliveryType) attrs.assetDeliveryType = assetDeliveryType;
   return view.state.schema.nodes.image.create(attrs);
 }
