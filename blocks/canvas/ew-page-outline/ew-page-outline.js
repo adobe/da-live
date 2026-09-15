@@ -82,6 +82,7 @@ class EwPageOutline extends LitElement {
     _hashState: { state: true },
     _hasBlockLibrary: { state: true },
     _expandedContent: { state: true },
+    _collapsedContent: { state: true },
     _pendingDelete: { state: true },
   };
 
@@ -89,6 +90,7 @@ class EwPageOutline extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._expandedContent = new Set();
+    this._collapsedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
       if (aemHtml.trim()) {
@@ -99,6 +101,7 @@ class EwPageOutline extends LitElement {
           // stale (positions shift), so this is the one point where it's safe to drop —
           // selection changes never do (see _expandRunForProse).
           this._expandedContent = new Set();
+          this._collapsedContent = new Set();
         }
       } else {
         this._sections = undefined;
@@ -164,11 +167,14 @@ class EwPageOutline extends LitElement {
     canvasBus.editorProseSelectState.emit({ proseIndex, kind });
   }
 
-  _toggleContentGroup(key) {
-    const next = new Set(this._expandedContent);
+  _toggleContentGroup(key, single = false) {
+    // Multi-item runs track which keys are open; single-item runs default open and track
+    // which have been explicitly collapsed. Either way, the click flips the key's membership.
+    const prop = single ? '_collapsedContent' : '_expandedContent';
+    const next = new Set(this[prop]);
     if (next.has(key)) next.delete(key);
     else next.add(key);
-    this._expandedContent = next;
+    this[prop] = next;
   }
 
   // Selection never collapses anything — it only ensures the run holding the new
@@ -178,6 +184,12 @@ class EwPageOutline extends LitElement {
     const runKey = this._findRunKeyForProseIndex(proseIndex);
     if (runKey == null) return;
     this._expandedContent = new Set(this._expandedContent).add(runKey);
+    // Revealing a selection must also clear an explicit collapse on a single-item run.
+    if (this._collapsedContent?.has(runKey)) {
+      const next = new Set(this._collapsedContent);
+      next.delete(runKey);
+      this._collapsedContent = next;
+    }
   }
 
   _findRunKeyForProseIndex(proseIndex) {
@@ -490,13 +502,19 @@ class EwPageOutline extends LitElement {
 
   _renderContentGroup(item, isFirst) {
     const key = item.proseIndex;
-    const expanded = this._expandedContent?.has(key);
+    // A run holding a single item starts open: hiding one thing behind a collapsed chevron
+    // is a click with nothing to gain. It stays collapsible (chevron and toggle kept), so
+    // its state is tracked by _collapsedContent (default open) rather than _expandedContent.
+    const single = item.children.length === 1;
+    const expanded = single
+      ? !this._collapsedContent?.has(key)
+      : this._expandedContent?.has(key);
     return html`
       <li class="content-group" role="none">
         <div class="block-item content-item" role="treeitem"
              tabindex="${isFirst ? '0' : '-1'}"
              aria-expanded="${expanded}"
-             @click=${() => this._toggleContentGroup(key)}
+             @click=${() => this._toggleContentGroup(key, single)}
              @dragover=${(e) => this._onContentGroupDragOver(e, item)}
              @drop=${this._onDrop}>
           <span class="block-name content-label">Default content</span>
