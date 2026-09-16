@@ -18,8 +18,6 @@ export function buildFeatureSet(isDmEnabled) {
   return features;
 }
 
-// In-memory, per editor session. Delivery-tier repos have no folder structure
-// (see getRepositoryConfig's tierType doc), so only author tier is remembered.
 let lastFolderPath;
 
 /**
