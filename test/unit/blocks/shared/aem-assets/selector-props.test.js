@@ -12,7 +12,11 @@
 
 import { expect } from '@esm-bundle/chai';
 
-import { buildFeatureSet, buildAssetSelectorProps } from '../../../../../blocks/shared/aem-assets/selector-props.js';
+import {
+  buildFeatureSet,
+  buildAssetSelectorProps,
+  rememberAssetFolder,
+} from '../../../../../blocks/shared/aem-assets/selector-props.js';
 
 describe('shared AEM asset selector props', () => {
   const baseArgs = {
@@ -89,6 +93,40 @@ describe('shared AEM asset selector props', () => {
     it('omits onClose when null', () => {
       const props = buildAssetSelectorProps({ ...baseArgs, onClose: null });
       expect(props).to.not.have.property('onClose');
+    });
+
+    it('omits path when no folder has been remembered yet', () => {
+      const props = buildAssetSelectorProps(baseArgs);
+      expect(props).to.not.have.property('path');
+    });
+  });
+
+  describe('rememberAssetFolder', () => {
+    it('includes the remembered folder as path on later author-tier opens', () => {
+      rememberAssetFolder(baseArgs.repoConfig, '/content/dam/foo/bar.jpg');
+      const props = buildAssetSelectorProps(baseArgs);
+      expect(props).to.have.property('path', '/content/dam/foo');
+    });
+
+    it('omits path for a delivery-tier repo even if a folder was remembered', () => {
+      rememberAssetFolder(baseArgs.repoConfig, '/content/dam/foo/bar.jpg');
+      const props = buildAssetSelectorProps({
+        ...baseArgs,
+        repoConfig: { ...baseArgs.repoConfig, tierType: 'delivery' },
+      });
+      expect(props).to.not.have.property('path');
+    });
+
+    it('ignores a delivery-tier selection', () => {
+      rememberAssetFolder({ ...baseArgs.repoConfig, tierType: 'delivery' }, '/content/dam/baz/qux.jpg');
+      const props = buildAssetSelectorProps(baseArgs);
+      expect(props).to.have.property('path', '/content/dam/foo');
+    });
+
+    it('ignores a missing assetPath', () => {
+      rememberAssetFolder(baseArgs.repoConfig, undefined);
+      const props = buildAssetSelectorProps(baseArgs);
+      expect(props).to.have.property('path', '/content/dam/foo');
     });
   });
 });

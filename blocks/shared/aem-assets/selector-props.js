@@ -18,6 +18,23 @@ export function buildFeatureSet(isDmEnabled) {
   return features;
 }
 
+// In-memory, per editor session. Delivery-tier repos have no folder structure
+// (see getRepositoryConfig's tierType doc), so only author tier is remembered.
+let lastFolderPath;
+
+/**
+ * Records the folder of a selected asset so the next time the picker opens
+ * for an author-tier repo, it starts there instead of at the root.
+ *
+ * @param {object} repoConfig
+ * @param {string} [assetPath] - `asset.path`, the JCR path of the selected asset.
+ */
+export function rememberAssetFolder(repoConfig, assetPath) {
+  if (repoConfig.tierType !== 'author' || !assetPath) return;
+  const folderPath = assetPath.slice(0, assetPath.lastIndexOf('/'));
+  if (folderPath) lastFolderPath = folderPath;
+}
+
 export function buildAssetSelectorProps({
   imsToken,
   repoConfig,
@@ -30,6 +47,7 @@ export function buildAssetSelectorProps({
     repositoryId: repoConfig.repositoryId,
     aemTierType: repoConfig.tierType,
     featureSet: buildFeatureSet(repoConfig.isDmEnabled),
+    ...(repoConfig.tierType === 'author' && lastFolderPath && { path: lastFolderPath }),
     ...(externalBrief !== undefined && { externalBrief }),
     ...getApprovedOnlyFilterProps(repoConfig.approvedOnly),
     ...(onClose && { onClose }),
