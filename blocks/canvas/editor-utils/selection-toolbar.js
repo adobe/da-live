@@ -110,6 +110,14 @@ function syncToolbar(view, editorView, blockEditOpen) {
   // The text toolbar is only relevant when the doc editor is visible, and never
   // for selections that originate in (and are already served by) the WYSIWYG iframe.
   if (getSelectionOriginFromIframe(view.state)) return;
+  // Image selections need the toolbar (alt text / link) in every editor view, including
+  // layout — the WYSIWYG iframe has no equivalent. The selection is driven by the iframe
+  // overlay, so don't require host focus, and show it before the layout-view suppression.
+  if (view.state.selection.node?.type.name === 'image') {
+    tb.view = view;
+    tb.show();
+    return;
+  }
   // In layout view the doc editor is hidden — except while the block-edit modal is open,
   // which puts the (single-block) doc editor on screen.
   if (editorView === 'layout' && !blockEditOpen) return;
