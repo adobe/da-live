@@ -1,4 +1,6 @@
 import { TextSelection } from 'da-y-wrapper';
+import getPathDetails from '../../../../shared/pathDetails.js';
+import { resolveEditorTarget, buildEditorUrl } from './editorTarget.js';
 
 function findExistingLink(state) {
   const { $from } = state.selection;
@@ -66,9 +68,35 @@ function removeLink(state, dispatch) {
   return true;
 }
 
+function getCurrentContext(loc) {
+  const location = loc || window.location;
+  const details = getPathDetails(loc);
+  if (!details?.org || !details?.repo) return null;
+  const ref = new URLSearchParams(location.search).get('ref') || 'main';
+  return { org: details.org, repo: details.repo, ref };
+}
+
+function openInEditor(target) {
+  window.open(buildEditorUrl(target), '_blank');
+  return true;
+}
+
 /* eslint-disable import/prefer-default-export */
-export function getLinkMenuItems() {
-  return [
+export function getLinkMenuItems(href, loc) {
+  const context = getCurrentContext(loc);
+  const target = context ? resolveEditorTarget(href, context) : null;
+
+  const items = [];
+
+  if (target) {
+    items.push({
+      title: 'Open in editor',
+      command: () => openInEditor(target),
+      class: 'menu-item-open-editor',
+    });
+  }
+
+  items.push(
     {
       title: 'Open link',
       command: openLink,
@@ -89,5 +117,7 @@ export function getLinkMenuItems() {
       command: removeLink,
       class: 'menu-item-remove-link',
     },
-  ];
+  );
+
+  return items;
 }

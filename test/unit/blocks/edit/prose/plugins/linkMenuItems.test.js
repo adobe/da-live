@@ -139,3 +139,45 @@ describe('linkMenuItems with no link at cursor', () => {
     expect(() => removeItem.command(editor.view.state, () => {})).not.to.throw();
   });
 });
+
+describe('linkMenuItems "Open in editor"', () => {
+  const loc = { pathname: '/edit', hash: '#/myorg/myrepo/current-page', search: '' };
+
+  it('is omitted when the default (no href) is used', () => {
+    const items = getLinkMenuItems();
+    expect(items).to.have.length(4);
+  });
+
+  it('is omitted when the href does not resolve to the current project', () => {
+    const items = getLinkMenuItems('https://example.com', loc);
+    expect(items).to.have.length(4);
+    expect(items.map((i) => i.title)).to.not.include('Open in editor');
+  });
+
+  it('is included first when the href resolves to the current project', () => {
+    const items = getLinkMenuItems('/target-page', loc);
+    expect(items).to.have.length(5);
+    expect(items[0].title).to.equal('Open in editor');
+  });
+
+  it('command opens the resolved editor URL in a new tab', () => {
+    const items = getLinkMenuItems('/target-page', loc);
+    const openInEditorItem = items[0];
+    const savedOpen = window.open;
+    let captured;
+    window.open = (url, target) => {
+      captured = { url, target };
+      return null;
+    };
+    try {
+      const result = openInEditorItem.command();
+      expect(result).to.be.true;
+      expect(captured).to.deep.equal({
+        url: '/edit#/myorg/myrepo/target-page',
+        target: '_blank',
+      });
+    } finally {
+      window.open = savedOpen;
+    }
+  });
+});
