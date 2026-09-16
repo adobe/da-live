@@ -336,16 +336,6 @@ describe('Preflight component', () => {
     it('is defined as a custom element', () => {
       expect(customElements.get('da-preflight')).to.exist;
     });
-
-    it('expandCategory toggles open state', () => {
-      const el = document.createElement('da-preflight');
-      const cat = { title: 'Test', checks: [], open: false };
-      el.expandCategory(cat);
-      expect(cat.open).to.be.true;
-
-      el.expandCategory(cat);
-      expect(cat.open).to.be.false;
-    });
   });
 
   describe('provider-driven categories', () => {
@@ -427,6 +417,59 @@ describe('Preflight component', () => {
 
       await new Promise((resolve) => { setTimeout(resolve, 20); });
       expect(observedAborted).to.be.true;
+    });
+  });
+
+  describe('rendered shadow DOM', () => {
+    beforeEach(() => {
+      clearPreflightProviders();
+    });
+    afterEach(() => {
+      clearPreflightProviders();
+    });
+
+    it('renders a summary tile and a section per tone, with item rows and a working paging/View flow', async () => {
+      const cmpEl = document.createElement('span');
+      cmpEl.badge = 'success';
+      registerPreflightProvider(async () => ({
+        title: 'Mixed',
+        checks: [{
+          title: 'Check',
+          results: [
+            { reason: 'Bad', badge: 'error' },
+            { reason: 'Good', badge: 'success' },
+            { reason: 'FYI', badge: 'info' },
+            cmpEl,
+          ],
+        }],
+      }));
+
+      const el = document.createElement('da-preflight');
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      const { shadowRoot } = el;
+      const tiles = [...shadowRoot.querySelectorAll('.pf-tile-value')].map((t) => t.textContent.trim());
+      expect(tiles).to.deep.equal(['1', '2', '1']);
+
+      const sections = shadowRoot.querySelectorAll('.pf-section');
+      expect(sections).to.have.length(3);
+
+      const items = shadowRoot.querySelectorAll('.pf-item');
+      expect(items).to.have.length(4);
+
+      const cmpRow = [...items].find((item) => item.querySelector('.pf-item-body-cmp'));
+      expect(cmpRow.querySelector('.pf-item-body-cmp span')).to.equal(cmpEl);
+
+      const viewButtons = shadowRoot.querySelectorAll('.pf-item-action');
+      expect(viewButtons).to.have.length(3);
+
+      viewButtons[0].click();
+      const dialog = document.querySelector('da-dialog');
+      expect(dialog).to.exist;
+      dialog.remove();
+
+      el.remove();
     });
   });
 });
