@@ -15,7 +15,11 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     delete view.hasFocus;
     wsProvider.awareness.setLocalStateField('cursor', null);
     const tb = getSelectionToolbar();
-    if (!tb.isInteracting && !tb.linkDialogOpen) tb.hide?.();
+    // Keep the toolbar while an image node is selected. Clicking an image blurs the
+    // hidden doc editor (posting a null cursor), but in layout view the WYSIWYG iframe —
+    // not the doc editor — holds focus, so that blur must not dismiss the image toolbar.
+    const imageSelected = view.state.selection.node?.type?.name === 'image';
+    if (!imageSelected && !tb.isInteracting && !tb.linkDialogOpen) tb.hide?.();
     return;
   }
 
