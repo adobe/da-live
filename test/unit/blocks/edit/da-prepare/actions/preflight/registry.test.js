@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { runOotbProvider } from '../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/ootb.js';
+import { runProjectValidationProvider } from '../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/project-validation.js';
 import {
   registerPreflightProvider,
   getPreflightProviders,
@@ -9,8 +10,8 @@ import {
 describe('preflight provider registry', () => {
   // Must run before any other test clears the registry — this checks the pristine,
   // just-imported state.
-  it('registers the OOTB provider by default', () => {
-    expect(getPreflightProviders()).to.deep.equal([runOotbProvider]);
+  it('registers the default providers (OOTB, custom validation)', () => {
+    expect(getPreflightProviders()).to.deep.equal([runOotbProvider, runProjectValidationProvider]);
   });
 
   describe('registerPreflightProvider / getPreflightProviders / clearPreflightProviders', () => {

@@ -1,4 +1,5 @@
 import { runOotbProvider } from './providers/ootb.js';
+import { runProjectValidationProvider } from './providers/project-validation.js';
 
 // Lets code outside preflight.js (a project-specific check, an extended-checks feature
 // like governance, etc.) contribute extra Preflight categories without preflight.js
@@ -32,3 +33,4 @@ export function clearPreflightProviders() {
 // governance doesn't have this problem, since it isn't imported *by* this file — it
 // registers itself from wherever it's loaded, with registry.js as a one-way dependency.
 registerPreflightProvider(runOotbProvider);
+registerPreflightProvider(runProjectValidationProvider);
