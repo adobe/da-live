@@ -117,7 +117,15 @@ let initSheet;
 
 async function reloadSheet(daTitle, daSheet) {
   if (!initSheet) initSheet = (await import('./utils/index.js')).default;
-  daTitle.sheet = await initSheet(daSheet);
+  const loader = document.createElement('div');
+  loader.className = 'da-sheet-loading';
+  loader.innerHTML = '<span class="da-loading-spinner" role="status" aria-label="Loading"></span>';
+  daSheet.closest('.da-sheet-wrapper')?.append(loader);
+  try {
+    daTitle.sheet = await initSheet(daSheet);
+  } finally {
+    loader.remove();
+  }
   daTitle.disabledText = undefined;
 }
 
