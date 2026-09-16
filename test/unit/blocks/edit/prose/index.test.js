@@ -31,6 +31,21 @@ const stubHlx6Ping = () => {
   return () => { window.fetch = saved; };
 };
 
+// createConnection opens a real y-websocket connection to admin.da.live. Left
+// unstubbed, the real socket's own close (e.g. a genuine 401 from the actual
+// server) can race the test's synthetic 'connection-close' emit and double-count
+// handler side effects (e.g. refreshToken calls). Stub WebSocket so no real
+// socket is ever opened. Returns a restore fn.
+const stubWebSocket = () => {
+  const saved = window.WebSocket;
+  window.WebSocket = function FakeWebSocket() {
+    this.readyState = 0;
+    this.close = () => {};
+    this.send = () => {};
+  };
+  return () => { window.WebSocket = saved; };
+};
+
 function buildFakeWsProvider({ withSynced = false } = {}) {
   const listeners = new Map();
   const winListeners = [];
@@ -81,12 +96,15 @@ function buildFakeWsProvider({ withSynced = false } = {}) {
 
 describe('prose/index createConnection', () => {
   let restoreFetch;
+  let restoreWebSocket;
   beforeEach(() => {
     restoreFetch = stubHlx6Ping();
+    restoreWebSocket = stubWebSocket();
     window.localStorage.removeItem('nx-ims');
   });
   afterEach(() => {
     restoreFetch();
+    restoreWebSocket();
     // Always remove rather than restoring a prior value — if a leak entered
     // this block, restoring it would propagate the leak to later test files.
     window.localStorage.removeItem('nx-ims');

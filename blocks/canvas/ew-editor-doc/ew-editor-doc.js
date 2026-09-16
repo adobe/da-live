@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
+import { bindFirstSectionName } from '../../shared/section-name.js';
 import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
@@ -282,6 +283,8 @@ export class EwEditorDoc extends LitElement {
     });
     this._awarenessOff = undefined;
     this._comments.teardown();
+    this._unbindSectionName?.();
+    this._unbindSectionName = undefined;
     this._proseContext = undefined;
   }
 
@@ -346,6 +349,7 @@ export class EwEditorDoc extends LitElement {
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
       this._comments.publish();
+      this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
 
       setSelectionToolbarCtx({
         org: this.ctx?.org,
