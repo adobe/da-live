@@ -71,14 +71,46 @@ describe('createValidationRequester', () => {
     expect(await secondRun).to.deep.equal(expected);
   });
 
-  it('times out and resolves with timedOut: true when no RESULT arrives', async () => {
+  it('resolves with hasRunner: null when no ACK arrives (old host/no quick-edit here)', async () => {
     const clock = sinon.useFakeTimers();
     try {
       const { port1 } = new MessageChannel();
       const requester = createValidationRequester(port1);
       const resultPromise = requester.run();
-      await clock.tickAsync(4000);
+      await clock.tickAsync(1000);
       expect(await resultPromise).to.deep.equal({ items: null, timedOut: true, hasRunner: null });
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it('resolves with the ACK\'d hasRunner when ACK\'d but no RESULT ever arrives', async () => {
+    const clock = sinon.useFakeTimers();
+    try {
+      const { port1, port2 } = new MessageChannel();
+      const requester = createValidationRequester(port1);
+      const resultPromise = requester.run();
+      const { requestId } = await waitForMessage(port2);
+      port2.postMessage({ type: 'ack', requestId, hasRunner: true });
+      await clock.tickAsync(4000);
+      expect(await resultPromise).to.deep.equal({ items: null, timedOut: true, hasRunner: true });
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it('does not time out at the ack-phase deadline once ACK has already arrived', async () => {
+    const clock = sinon.useFakeTimers();
+    try {
+      const { port1, port2 } = new MessageChannel();
+      const requester = createValidationRequester(port1);
+      const resultPromise = requester.run();
+      const { requestId } = await waitForMessage(port2);
+      port2.postMessage({ type: 'ack', requestId, hasRunner: true });
+      await clock.tickAsync(1000);
+      port2.postMessage({ type: 'result', requestId, items: [goodItem()], hasRunner: true });
+      const expected = { items: [goodItem()], timedOut: false, hasRunner: true };
+      expect(await resultPromise).to.deep.equal(expected);
     } finally {
       clock.restore();
     }

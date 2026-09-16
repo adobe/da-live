@@ -1,6 +1,7 @@
 // Test stub for da-nx `nx/public/plugins/quick-edit/validation.js`.
 export const MESSAGE_TYPES = Object.freeze({
   RUN: 'run',
+  ACK: 'ack',
   RESULT: 'result',
 });
 

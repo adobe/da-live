@@ -373,13 +373,20 @@ describe('Preflight component', () => {
       expect(el._validationCategory).to.equal(null);
     });
 
-    it('shows a timed-out status line when the run times out', () => {
+    it('is null when no ACK ever arrived (old host/no quick-edit here)', () => {
       el._validationTimedOut = true;
+      el._validationHasRunner = null;
+      expect(el._validationCategory).to.equal(null);
+    });
+
+    it('shows a "taking too long" status line when ACK\'d but RESULT never arrives', () => {
+      el._validationTimedOut = true;
+      el._validationHasRunner = true;
       const cat = el._validationCategory;
       expect(cat.title).to.equal('Custom');
       expect(cat.checks).to.deep.equal([{
-        title: 'Content validation',
-        results: [{ reason: 'Content validation timed out or is unavailable.', badge: 'warn' }],
+        title: 'Custom validation',
+        results: [{ reason: 'Custom validation is taking too long to complete.', badge: 'warn' }],
       }]);
     });
 
@@ -388,8 +395,8 @@ describe('Preflight component', () => {
       el._validationHasRunner = true;
       const cat = el._validationCategory;
       expect(cat.checks).to.deep.equal([{
-        title: 'Content validation',
-        results: [{ reason: 'No content-validation issues found.', badge: 'success' }],
+        title: 'Custom validation',
+        results: [{ reason: 'No custom-validation issues found.', badge: 'success' }],
       }]);
     });
 
@@ -413,11 +420,11 @@ describe('Preflight component', () => {
       ]);
     });
 
-    it('falls back to "Content validation" when a result has no title', () => {
+    it('falls back to "Custom validation" when a result has no title', () => {
       el._validationResults = [{ severity: 'info', message: 'no title here' }];
       el._validationHasRunner = true;
       const cat = el._validationCategory;
-      expect(cat.checks[0].title).to.equal('Content validation');
+      expect(cat.checks[0].title).to.equal('Custom validation');
     });
   });
 

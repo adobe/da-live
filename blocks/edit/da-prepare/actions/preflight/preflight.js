@@ -56,24 +56,26 @@ class DaPreflight extends LitElement {
   }
 
   get _validationCategory() {
-    // Not resolved yet (no RESULT/timeout received), or a runner was never registered —
-    // don't show the category at all rather than an empty/misleading one.
+    // Not resolved yet, no runner registered, or no ACK ever arrived (host doesn't
+    // support this protocol) — don't show the category at all rather than an
+    // empty/misleading one. hasRunner: null means "never ACK'd" (see validation.js).
+    if (this._validationTimedOut && this._validationHasRunner === null) return null;
     if (!this._validationTimedOut && this._validationHasRunner === false) return null;
     if (!this._validationTimedOut && !this._validationResults) return null;
 
     let checks;
     if (this._validationTimedOut) {
       checks = [{
-        title: 'Content validation',
-        results: [{ reason: 'Content validation timed out or is unavailable.', badge: 'warn' }],
+        title: 'Custom validation',
+        results: [{ reason: 'Custom validation is taking too long to complete.', badge: 'warn' }],
       }];
     } else if (this._validationResults.length === 0) {
       checks = [{
-        title: 'Content validation',
-        results: [{ reason: 'No content-validation issues found.', badge: 'success' }],
+        title: 'Custom validation',
+        results: [{ reason: 'No custom-validation issues found.', badge: 'success' }],
       }];
     } else {
-      const groups = Object.groupBy(this._validationResults, (item) => item.title ?? 'Content validation');
+      const groups = Object.groupBy(this._validationResults, (item) => item.title ?? 'Custom validation');
       checks = Object.entries(groups).map(([title, items]) => ({
         title,
         results: items.map(({ severity, message }) => ({ reason: message, badge: severity })),
