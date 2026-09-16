@@ -349,6 +349,11 @@ describe('Preflight component', () => {
   });
 
   describe('provider-driven categories', () => {
+    // registry.js registers the real OOTB provider by default — clear it so these tests
+    // only see the fake providers they register themselves.
+    beforeEach(() => {
+      clearPreflightProviders();
+    });
     afterEach(() => {
       clearPreflightProviders();
     });
