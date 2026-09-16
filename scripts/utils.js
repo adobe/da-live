@@ -87,6 +87,12 @@ export const getNx2 = () => {
   return nx.endsWith('/nx') ? `${nx}2` : nx;
 };
 
+// Quick-edit only exists under nx/ (never nx2/) — force the base nx regardless of nxVer.
+export const getQuickEditNx = () => {
+  const nx = getNx();
+  return nx.endsWith('/nx2') ? nx.slice(0, -1) : nx;
+};
+
 let nx2ApiPromise;
 export const getNx2Api = () => {
   nx2ApiPromise ??= import(`${getNx2()}/utils/api.js`);

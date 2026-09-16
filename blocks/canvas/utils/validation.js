@@ -1,10 +1,6 @@
-import { getNx } from '../../../scripts/utils.js';
+import { getQuickEditNx } from '../../../scripts/utils.js';
 
-// Quick-edit only exists under nx/ (never nx2/) — force the base nx regardless of nxVer.
-const nx = getNx();
-const quickEditNx = nx.endsWith('/nx2') ? nx.slice(0, -1) : nx;
-
-const { sanitizeValidationItems, MESSAGE_TYPES } = await import(`${quickEditNx}/public/plugins/quick-edit/validation.js`);
+const { sanitizeValidationItems, MESSAGE_TYPES } = await import(`${getQuickEditNx()}/public/plugins/quick-edit/validation.js`);
 
 const RUN_TIMEOUT_MS = 4000;
 const MAX_ITEMS = 200;
