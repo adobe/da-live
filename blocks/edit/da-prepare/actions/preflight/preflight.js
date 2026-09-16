@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { loadDoc, loadResults } from './utils/utils.js';
+import { getPreflightProviders } from './registry.js';
 
 // Components
 import './views/label.js';
@@ -11,15 +11,20 @@ const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 class DaPreflight extends LitElement {
   static properties = {
     details: { attribute: false },
-    _categories: { state: true },
-    _status: { state: true },
+    _providerCategories: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.listenForReasons();
-    this.loadResults();
+    this._providerAbortController = new AbortController();
+    this.loadProviderCategories();
+  }
+
+  disconnectedCallback() {
+    this._providerAbortController?.abort();
+    super.disconnectedCallback();
   }
 
   listenForReasons() {
@@ -28,14 +33,25 @@ class DaPreflight extends LitElement {
     });
   }
 
-  async loadResults() {
-    const { error, doc } = await loadDoc(this.details);
-    if (error) {
-      this._status = error;
-      return;
-    }
+  // Every provider settles independently — one slow/failed provider (e.g. a remote
+  // extended-checks call) doesn't hold up the others' categories from appearing.
+  async loadProviderCategories() {
+    const { signal } = this._providerAbortController;
     const requestUpdate = this.requestUpdate.bind(this);
-    this._categories = loadResults(doc, requestUpdate);
+    const providers = getPreflightProviders();
+    this._providerCategories = providers.map(() => null);
+    providers.forEach(async (provider, index) => {
+      let result = null;
+      try {
+        result = await provider(this.details, { signal, requestUpdate });
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[preflight] provider failed', e);
+      }
+      if (signal.aborted) return;
+      this._providerCategories[index] = result;
+      requestUpdate();
+    });
   }
 
   expandCategory(cat) {
@@ -104,12 +120,13 @@ class DaPreflight extends LitElement {
   }
 
   render() {
-    if (!this._categories) return nothing;
+    if (!this._providerCategories) return nothing;
 
+    const categories = this._providerCategories.flatMap((category) => category ?? []);
     return html`
       <div class="preflight-inner">
         <ul class="categories">
-          ${this._categories.map((category) => this.renderCategory(category))}
+          ${categories.map((category) => this.renderCategory(category))}
         </ul>
       </div>`;
   }

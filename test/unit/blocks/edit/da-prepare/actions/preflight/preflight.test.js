@@ -2,6 +2,10 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../../scripts/utils.js';
 import { CATEGORIES, REASONS } from '../../../../../../../blocks/edit/da-prepare/actions/preflight/utils/constants.js';
+import {
+  registerPreflightProvider,
+  clearPreflightProviders,
+} from '../../../../../../../blocks/edit/da-prepare/actions/preflight/registry.js';
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -341,6 +345,83 @@ describe('Preflight component', () => {
 
       el.expandCategory(cat);
       expect(cat.open).to.be.false;
+    });
+  });
+
+  describe('provider-driven categories', () => {
+    afterEach(() => {
+      clearPreflightProviders();
+    });
+
+    it('has no provider categories before connecting', () => {
+      const el = document.createElement('da-preflight');
+      expect(el._providerCategories).to.equal(undefined);
+    });
+
+    it('renders a category returned by a single provider', async () => {
+      const category = { title: 'Extended', open: false, checks: [{ title: 'Check', results: [] }] };
+      registerPreflightProvider(async () => category);
+      const el = document.createElement('da-preflight');
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      expect(el._providerCategories.flatMap((c) => c ?? [])).to.deep.equal([category]);
+      el.remove();
+    });
+
+    it('flattens a provider that returns multiple categories', async () => {
+      registerPreflightProvider(async () => ([
+        { title: 'A', open: false, checks: [] },
+        { title: 'B', open: false, checks: [] },
+      ]));
+      const el = document.createElement('da-preflight');
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      const titles = el._providerCategories.flatMap((c) => c ?? []).map((c) => c.title);
+      expect(titles).to.deep.equal(['A', 'B']);
+      el.remove();
+    });
+
+    it('drops a provider that returns null without affecting others', async () => {
+      registerPreflightProvider(async () => null);
+      registerPreflightProvider(async () => ({ title: 'Kept', open: false, checks: [] }));
+      const el = document.createElement('da-preflight');
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      const titles = el._providerCategories.flatMap((c) => c ?? []).map((c) => c.title);
+      expect(titles).to.deep.equal(['Kept']);
+      el.remove();
+    });
+
+    it('a throwing provider does not prevent other providers from rendering', async () => {
+      registerPreflightProvider(async () => { throw new Error('boom'); });
+      registerPreflightProvider(async () => ({ title: 'Kept', open: false, checks: [] }));
+      const el = document.createElement('da-preflight');
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      const titles = el._providerCategories.flatMap((c) => c ?? []).map((c) => c.title);
+      expect(titles).to.deep.equal(['Kept']);
+      el.remove();
+    });
+
+    it('aborts the shared signal on disconnect, letting providers cancel their own work', async () => {
+      let observedAborted;
+      registerPreflightProvider((details, { signal }) => new Promise((resolve) => {
+        signal.addEventListener('abort', () => {
+          observedAborted = signal.aborted;
+          resolve(null);
+        });
+      }));
+
+      const el = document.createElement('da-preflight');
+      document.body.append(el);
+      el.remove();
+
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+      expect(observedAborted).to.be.true;
     });
   });
 });

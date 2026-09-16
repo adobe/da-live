@@ -7,7 +7,11 @@ const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const OOTB_ACTIONS = [
   {
     title: 'Preflight',
-    render: async (details) => (await import('./actions/preflight/preflight.js')).default(details),
+    render: async (details) => {
+      const { loadDefaultPreflightProviders } = await import('./actions/preflight/providers/index.js');
+      await loadDefaultPreflightProviders();
+      return (await import('./actions/preflight/preflight.js')).default(details);
+    },
     icon: '/blocks/edit/img/S2_Icon_FileFold_20_N.svg#S2_Icon_FileFold',
   },
   {
