@@ -144,7 +144,7 @@ export function buildHandleSelection({
       }
     }
 
-    const editAs = repoConfig.insertAsEditableLink ? 'image' : undefined;
+    const editAs = repoConfig.imageType === 'editable-link' ? 'image' : undefined;
 
     // Smart crop flow (only for images with smart crop enabled)
     if (isImage && repoConfig.isSmartCrop) {
@@ -184,7 +184,7 @@ export function buildHandleSelection({
     close();
     const src = resolveAssetUrl(asset, repoConfig);
 
-    if (!isImage || repoConfig.insertAsLink) {
+    if (!isImage || repoConfig.imageType === 'link') {
       insertLink(view, src);
     } else {
       insertImage(view, src, alt, editAs);

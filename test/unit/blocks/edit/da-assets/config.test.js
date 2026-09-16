@@ -46,7 +46,7 @@ describe('getRepositoryConfig', () => {
       expect(cfg.assetBasePath).to.equal('/adobe/assets');
       expect(cfg.isDmEnabled).to.be.false;
       expect(cfg.isSmartCrop).to.be.false;
-      expect(cfg.insertAsLink).to.be.false;
+      expect(cfg.imageType).to.be.null;
     } finally {
       window.fetch = orgFetch;
     }
@@ -120,7 +120,7 @@ describe('getRepositoryConfig', () => {
     }
   });
 
-  it('sets insertAsLink when aem.assets.image.type is link', async () => {
+  it('sets imageType to link when aem.assets.image.type is link', async () => {
     const orgFetch = window.fetch;
     window.fetch = makeFetch({
       '/rcfg/linktype/': makeSheet([
@@ -130,13 +130,13 @@ describe('getRepositoryConfig', () => {
     });
     try {
       const cfg = await getRepositoryConfig('rcfg', 'linktype');
-      expect(cfg.insertAsLink).to.be.true;
+      expect(cfg.imageType).to.equal('link');
     } finally {
       window.fetch = orgFetch;
     }
   });
 
-  it('sets insertAsEditableLink when aem.assets.image.type is editable-link', async () => {
+  it('sets imageType to editable-link when aem.assets.image.type is editable-link', async () => {
     const orgFetch = window.fetch;
     window.fetch = makeFetch({
       '/rcfg/linkimgtype/': makeSheet([
@@ -146,14 +146,29 @@ describe('getRepositoryConfig', () => {
     });
     try {
       const cfg = await getRepositoryConfig('rcfg', 'linkimgtype');
-      expect(cfg.insertAsEditableLink).to.be.true;
-      expect(cfg.insertAsLink).to.be.false;
+      expect(cfg.imageType).to.equal('editable-link');
     } finally {
       window.fetch = orgFetch;
     }
   });
 
-  it('sets both insertAsLink and insertAsEditableLink false when aem.assets.image.type is not set', async () => {
+  it('sets imageType to null when aem.assets.image.type is an unrecognized value', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/badtype/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p63-e63.adobeaemcloud.com' },
+        { key: 'aem.assets.image.type', value: 'bogus' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'badtype');
+      expect(cfg.imageType).to.be.null;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('sets imageType to null when aem.assets.image.type is not set', async () => {
     const orgFetch = window.fetch;
     window.fetch = makeFetch({
       '/rcfg/notype/': makeSheet([
@@ -162,8 +177,7 @@ describe('getRepositoryConfig', () => {
     });
     try {
       const cfg = await getRepositoryConfig('rcfg', 'notype');
-      expect(cfg.insertAsLink).to.be.false;
-      expect(cfg.insertAsEditableLink).to.be.false;
+      expect(cfg.imageType).to.be.null;
     } finally {
       window.fetch = orgFetch;
     }

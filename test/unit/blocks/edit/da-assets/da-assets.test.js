@@ -67,12 +67,11 @@ const AUTHOR_PUBLISH_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: false,
   isSmartCrop: false,
-  insertAsLink: false,
 };
 
 const AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG = {
   ...AUTHOR_PUBLISH_CONFIG,
-  insertAsEditableLink: true,
+  imageType: 'editable-link',
 };
 
 const AUTHOR_DM_CONFIG = {
@@ -82,7 +81,6 @@ const AUTHOR_DM_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
-  insertAsLink: false,
 };
 
 const AUTHOR_DM_EDITABLE_LINK_CONFIG = {
@@ -92,8 +90,7 @@ const AUTHOR_DM_EDITABLE_LINK_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
-  insertAsLink: false,
-  insertAsEditableLink: true,
+  imageType: 'editable-link',
 };
 
 const DELIVERY_CONFIG = {
@@ -103,7 +100,6 @@ const DELIVERY_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
-  insertAsLink: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -361,14 +357,14 @@ describe('buildHandleSelection', () => {
     expect(view.dispatched).to.have.length(0);
   });
 
-  it('closes dialog and takes link path for image when insertAsLink is true', async () => {
-    const { view, dialog, handler } = setup({ ...AUTHOR_PUBLISH_CONFIG, insertAsLink: true });
+  it('closes dialog and takes link path for image when imageType is link', async () => {
+    const { view, dialog, handler } = setup({ ...AUTHOR_PUBLISH_CONFIG, imageType: 'link' });
     try { await handler([IMAGE_ASSET]); } catch { /* proseDOMParser mock limitation */ }
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(0);
   });
 
-  it('inserts image node with editAs image on standard path when insertAsEditableLink is true', async () => {
+  it('inserts image node with editAs image on standard path when imageType is editable-link', async () => {
     const { view, dialog, handler } = setup(AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG);
     await handler([IMAGE_ASSET]);
     expect(dialog.isOpen).to.be.false;
@@ -377,7 +373,7 @@ describe('buildHandleSelection', () => {
     expect(view.createdNodes[0].attrs.editAs).to.equal('image');
   });
 
-  it('closes dialog and takes link path for non-image assets even when insertAsEditableLink is true', async () => {
+  it('closes dialog and takes link path for non-image assets even when imageType is editable-link', async () => {
     const { view, dialog, handler } = setup(AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG);
     try { await handler([PDF_ASSET]); } catch { /* proseDOMParser mock limitation */ }
     expect(dialog.isOpen).to.be.false;
