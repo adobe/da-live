@@ -2,7 +2,10 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../../scripts/utils.js';
 import { CATEGORIES, REASONS } from '../../../../../../../blocks/edit/da-prepare/actions/preflight/utils/constants.js';
-import { canvasBus } from '../../../../../../../blocks/canvas/utils/canvas-bus.js';
+import {
+  registerPreflightProvider,
+  clearPreflightProviders,
+} from '../../../../../../../blocks/edit/da-prepare/actions/preflight/registry.js';
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -343,119 +346,82 @@ describe('Preflight component', () => {
       el.expandCategory(cat);
       expect(cat.open).to.be.false;
     });
-
-    it('expandCategory toggles _validationCategoryOpen (not cat.open) for the Custom category', () => {
-      const el = document.createElement('da-preflight');
-      const cat = { title: 'Custom', checks: [], open: false };
-      el.expandCategory(cat);
-      expect(el._validationCategoryOpen).to.be.true;
-      expect(cat.open).to.be.false;
-
-      el.expandCategory(cat);
-      expect(el._validationCategoryOpen).to.be.false;
-    });
   });
 
-  describe('_validationCategory', () => {
-    let el;
-
-    beforeEach(() => {
-      el = document.createElement('da-preflight');
+  describe('provider-driven categories', () => {
+    afterEach(() => {
+      clearPreflightProviders();
     });
 
-    it('is null before any RESULT or timeout has been received', () => {
-      expect(el._validationCategory).to.equal(null);
-    });
-
-    it('is null when a RESULT arrives reporting no runner registered', () => {
-      el._validationResults = null;
-      el._validationHasRunner = false;
-      expect(el._validationCategory).to.equal(null);
-    });
-
-    it('is null when no ACK ever arrived (old host/no quick-edit here)', () => {
-      el._validationTimedOut = true;
-      el._validationHasRunner = null;
-      expect(el._validationCategory).to.equal(null);
-    });
-
-    it('shows a "taking too long" status line when ACK\'d but RESULT never arrives', () => {
-      el._validationTimedOut = true;
-      el._validationHasRunner = true;
-      const cat = el._validationCategory;
-      expect(cat.title).to.equal('Custom');
-      expect(cat.checks).to.deep.equal([{
-        title: 'Custom validation',
-        results: [{ reason: 'Custom validation is taking too long to complete.', badge: 'warn' }],
-      }]);
-    });
-
-    it('shows a success status line when the runner reports no issues', () => {
-      el._validationResults = [];
-      el._validationHasRunner = true;
-      const cat = el._validationCategory;
-      expect(cat.checks).to.deep.equal([{
-        title: 'Custom validation',
-        results: [{ reason: 'No custom-validation issues found.', badge: 'success' }],
-      }]);
-    });
-
-    it('groups results by title', () => {
-      el._validationResults = [
-        { title: 'Alt text', severity: 'warn', message: 'Missing alt text' },
-        { title: 'Alt text', severity: 'error', message: 'Broken image' },
-        { title: 'SEO', severity: 'info', message: 'Looks fine' },
-      ];
-      el._validationHasRunner = true;
-      const cat = el._validationCategory;
-      expect(cat.checks).to.deep.equal([
-        {
-          title: 'Alt text',
-          results: [
-            { reason: 'Missing alt text', badge: 'warn' },
-            { reason: 'Broken image', badge: 'error' },
-          ],
-        },
-        { title: 'SEO', results: [{ reason: 'Looks fine', badge: 'info' }] },
-      ]);
-    });
-
-    it('falls back to "Custom validation" when a result has no title', () => {
-      el._validationResults = [{ severity: 'info', message: 'no title here' }];
-      el._validationHasRunner = true;
-      const cat = el._validationCategory;
-      expect(cat.checks[0].title).to.equal('Custom validation');
-    });
-  });
-
-  describe('connectedCallback / disconnectedCallback validation wiring', () => {
-    it('emits validationRunRequest and subscribes to validationResultState on connect', () => {
-      let runRequests = 0;
-      const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
-
+    it('has no provider categories before connecting', () => {
       const el = document.createElement('da-preflight');
-      // loadResults()/loadDoc() is unrelated to validation wiring and needs a real
-      // fetch — stub it out so this test only exercises the canvasBus subscription.
-      el.loadResults = () => {};
+      expect(el._providerCategories).to.equal(undefined);
+    });
+
+    it('renders a category returned by a single provider', async () => {
+      const category = { title: 'Extended', open: false, checks: [{ title: 'Check', results: [] }] };
+      registerPreflightProvider(async () => category);
+      const el = document.createElement('da-preflight');
       document.body.append(el);
-      expect(runRequests).to.equal(1);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
 
-      canvasBus.validationResultState.emit({ items: [], timedOut: false, hasRunner: true });
-      expect(el._validationResults).to.deep.equal([]);
-      expect(el._validationHasRunner).to.be.true;
-
+      expect(el._providerCategories.flatMap((c) => c ?? [])).to.deep.equal([category]);
       el.remove();
-      unsub();
     });
 
-    it('stops updating from validationResultState after disconnect', () => {
+    it('flattens a provider that returns multiple categories', async () => {
+      registerPreflightProvider(async () => ([
+        { title: 'A', open: false, checks: [] },
+        { title: 'B', open: false, checks: [] },
+      ]));
       const el = document.createElement('da-preflight');
-      el.loadResults = () => {};
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      const titles = el._providerCategories.flatMap((c) => c ?? []).map((c) => c.title);
+      expect(titles).to.deep.equal(['A', 'B']);
+      el.remove();
+    });
+
+    it('drops a provider that returns null without affecting others', async () => {
+      registerPreflightProvider(async () => null);
+      registerPreflightProvider(async () => ({ title: 'Kept', open: false, checks: [] }));
+      const el = document.createElement('da-preflight');
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      const titles = el._providerCategories.flatMap((c) => c ?? []).map((c) => c.title);
+      expect(titles).to.deep.equal(['Kept']);
+      el.remove();
+    });
+
+    it('a throwing provider does not prevent other providers from rendering', async () => {
+      registerPreflightProvider(async () => { throw new Error('boom'); });
+      registerPreflightProvider(async () => ({ title: 'Kept', open: false, checks: [] }));
+      const el = document.createElement('da-preflight');
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      const titles = el._providerCategories.flatMap((c) => c ?? []).map((c) => c.title);
+      expect(titles).to.deep.equal(['Kept']);
+      el.remove();
+    });
+
+    it('aborts the shared signal on disconnect, letting providers cancel their own work', async () => {
+      let observedAborted;
+      registerPreflightProvider((details, { signal }) => new Promise((resolve) => {
+        signal.addEventListener('abort', () => {
+          observedAborted = signal.aborted;
+          resolve(null);
+        });
+      }));
+
+      const el = document.createElement('da-preflight');
       document.body.append(el);
       el.remove();
 
-      canvasBus.validationResultState.emit({ items: [], timedOut: false, hasRunner: true });
-      expect(el._validationResults).to.equal(undefined);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+      expect(observedAborted).to.be.true;
     });
   });
 });
