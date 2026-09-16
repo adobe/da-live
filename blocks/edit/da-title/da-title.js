@@ -6,13 +6,13 @@ import {
   getAemHrefs,
 } from '../utils/helpers.js';
 import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
+import { getNx2 } from '../../../scripts/utils.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 
-const SK_EXT_ID = 'igkmdomcgoebiipaifhmpfjhbjccggml';
 const LAZY_DELAY = 1500;
 const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
@@ -192,24 +192,6 @@ export default class DaTitle extends LitElement {
     });
   }
 
-  /**
-   * Attempt to have Sidekick bust the author's cache
-   * @param {String} toOpen the href to open
-   * @returns {Promise<void>}
-   */
-  async sidekickCacheBust(toOpen) {
-    if (!window.chrome) return;
-    try {
-      const opts = { action: 'bustCache', host: new URL(toOpen).hostname };
-      const extId = window.localStorage.getItem('aem-sidekick-id') || SK_EXT_ID;
-
-      // Tell AEM Sidekick to bust cache
-      await window.chrome.runtime.sendMessage(extId, opts);
-    } catch {
-      // Gracefully die
-    }
-  }
-
   async handleAction(action) {
     // Guard against a stale/bypassed disabled state (e.g. permissions changed mid-session).
     if (action === 'save' && this._readOnly) return;
@@ -317,8 +299,11 @@ export default class DaTitle extends LitElement {
         const origin = action === 'publish' ? this.livePrefix : this.previewPrefix;
         toOpen = `${origin}${byoPath}`;
       }
-      // Attempt a Sidekick cache bust
-      await this.sidekickCacheBust(toOpen);
+      // Attempt a Sidekick cache bust — never blocking the prev/publish
+      try {
+        const { sidekickCacheBust } = await import(`${getNx2()}/utils/sidekick.js`);
+        await sidekickCacheBust(toOpen);
+      } catch { /* cache bust unavailable */ }
 
       window.open(toOpen, toOpen);
     }
