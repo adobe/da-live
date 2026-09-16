@@ -1,8 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 
-// Quick-edit only exists under nx/ (never nx2/), regardless of the page's nxVer
-// flag — force the base nx here so this just imports without having to know
-// about nx-version resolution.
+// Quick-edit only exists under nx/ (never nx2/) — force the base nx regardless of nxVer.
 const nx = getNx();
 const quickEditNx = nx.endsWith('/nx2') ? nx.slice(0, -1) : nx;
 
@@ -15,16 +13,14 @@ function makeRequestId() {
   return `val-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-// Independently re-validates every RESULT item itself (never trusts that the sender used
-// da-nx's own pre-send filter) — this is the actual untrusted-input boundary; the cap on
-// total item count is this host's own storage policy, kept separate from item shape.
+// Re-validates every RESULT item itself (never trusts the sender's filter) — the actual
+// untrusted-input boundary. Item-count cap is a separate, this-host storage policy.
 function sanitizeAndCapValidationItems(items) {
   return sanitizeValidationItems(items).slice(0, MAX_ITEMS);
 }
 
-// Owns the validation port's request/timeout/correlation lifecycle for one port. Only one
-// outstanding request is tracked at a time — a new run() abandons any previous one, whose
-// eventual RESULT (if it arrives) is ignored as stale.
+// Only one outstanding request is tracked at a time — a new run() abandons the previous
+// one, whose eventual RESULT (if it arrives) is ignored as stale.
 export function createValidationRequester(port) {
   let pendingRequestId = null;
   let timeoutId = null;

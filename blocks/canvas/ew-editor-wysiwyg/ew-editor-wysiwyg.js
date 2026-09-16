@@ -177,16 +177,16 @@ export class EwEditorWysiwyg extends LitElement {
   _postQuickEditInitToIframe({ iframe, config, location, onReady }) {
     this._disposeQuickEditLocalPort();
     this._disposeQuickEditValidationPort();
-    const { port1, port2 } = new MessageChannel();
-    const validationChannel = new MessageChannel();
-    this._quickEditLocalPort = port1;
-    this._validationRequester = createValidationRequester(validationChannel.port1);
-    port1.onmessage = (ev) => {
+    const { port1: controlPort, port2: remoteControlPort } = new MessageChannel();
+    const { port1: validationPort, port2: remoteValidationPort } = new MessageChannel();
+    this._quickEditLocalPort = controlPort;
+    this._validationRequester = createValidationRequester(validationPort);
+    controlPort.onmessage = (ev) => {
       // @deprecated flat `ready` — prefer `type === MESSAGE_TYPES.READY` (da-nx now sends both).
       const isReady = ev.data?.type === MESSAGE_TYPES.READY || ev.data?.ready === true;
       if (!isReady) return;
       this._quickEditLocalPort = null;
-      onReady(port1);
+      onReady(controlPort);
     };
     try {
       const targetOrigin = getPostMessageTargetOrigin(iframe.src);
@@ -197,7 +197,7 @@ export class EwEditorWysiwyg extends LitElement {
         location,
         type: MESSAGE_TYPES.INIT,
         payload: { config, location },
-      }, targetOrigin, [port2, validationChannel.port2]);
+      }, targetOrigin, [remoteControlPort, remoteValidationPort]);
     } catch (err) {
       this._disposeQuickEditLocalPort();
       this._disposeQuickEditValidationPort();
