@@ -1,5 +1,4 @@
 import { expect } from '@esm-bundle/chai';
-import sinon from 'sinon';
 import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -41,7 +40,6 @@ describe('createValidationRequester', () => {
     });
     expect(await runPromise).to.deep.equal({
       items: [goodItem()],
-      timedOut: false,
       hasRunner: true,
     });
   });
@@ -67,56 +65,21 @@ describe('createValidationRequester', () => {
     port2.postMessage(staleResult);
     port2.postMessage(liveResult);
 
-    const expected = { items: [goodItem()], timedOut: false, hasRunner: true };
+    const expected = { items: [goodItem()], hasRunner: true };
     expect(await secondRun).to.deep.equal(expected);
   });
 
-  it('resolves with hasRunner: null when no ACK arrives (old host/no quick-edit here)', async () => {
-    const clock = sinon.useFakeTimers();
-    try {
-      const { port1 } = new MessageChannel();
-      const requester = createValidationRequester(port1);
-      const resultPromise = requester.run();
-      await clock.tickAsync(1000);
-      expect(await resultPromise).to.deep.equal({ items: null, timedOut: true, hasRunner: null });
-    } finally {
-      clock.restore();
-    }
+  it('never settles if no RESULT ever arrives — bounded by the caller, not this module', async () => {
+    const { port1 } = new MessageChannel();
+    const requester = createValidationRequester(port1);
+    let settled = false;
+    requester.run().then(() => { settled = true; });
+
+    await new Promise((resolve) => { setTimeout(resolve, 20); });
+    expect(settled).to.be.false;
   });
 
-  it('resolves with the ACK\'d hasRunner when ACK\'d but no RESULT ever arrives', async () => {
-    const clock = sinon.useFakeTimers();
-    try {
-      const { port1, port2 } = new MessageChannel();
-      const requester = createValidationRequester(port1);
-      const resultPromise = requester.run();
-      const { requestId } = await waitForMessage(port2);
-      port2.postMessage({ type: 'ack', requestId, hasRunner: true });
-      await clock.tickAsync(4000);
-      expect(await resultPromise).to.deep.equal({ items: null, timedOut: true, hasRunner: true });
-    } finally {
-      clock.restore();
-    }
-  });
-
-  it('does not time out at the ack-phase deadline once ACK has already arrived', async () => {
-    const clock = sinon.useFakeTimers();
-    try {
-      const { port1, port2 } = new MessageChannel();
-      const requester = createValidationRequester(port1);
-      const resultPromise = requester.run();
-      const { requestId } = await waitForMessage(port2);
-      port2.postMessage({ type: 'ack', requestId, hasRunner: true });
-      await clock.tickAsync(1000);
-      port2.postMessage({ type: 'result', requestId, items: [goodItem()], hasRunner: true });
-      const expected = { items: [goodItem()], timedOut: false, hasRunner: true };
-      expect(await resultPromise).to.deep.equal(expected);
-    } finally {
-      clock.restore();
-    }
-  });
-
-  it('dispose() clears the pending timeout and closes the port', () => {
+  it('dispose() clears the pending request and closes the port', () => {
     const { port1 } = new MessageChannel();
     const requester = createValidationRequester(port1);
     requester.run();

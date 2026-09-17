@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../../../../scripts/utils.js';
 import getSheet from '../../../../../shared/sheet.js';
 import { etcFetch, getAemSiteToken, getSidekickConfig } from '../../../../../shared/utils.js';
-import { ICONS, REASONS } from '../utils/constants.js';
+import { ICONS, REASONS, STATUS_TO_BADGE } from '../utils/constants.js';
 
 await import(`${getNx()}/blocks/loc/views/url-details/url-details.js`);
 
@@ -131,8 +131,12 @@ class PreflightLink extends LitElement {
     this._open = !this._open;
   }
 
+  get status() {
+    return this._reason.status;
+  }
+
   get badge() {
-    return this._reason.badge;
+    return STATUS_TO_BADGE[this._reason.status];
   }
 
   get reason() {
@@ -172,7 +176,7 @@ class PreflightLink extends LitElement {
             <p class="link-path">${this.renderLinkPath()}</p>
           </a>
           ${this.renderExpand()}
-          <pf-label .badge=${this._reason.badge} .text=${this._status} .icon=${this._status ? nothing : ICONS.get('more')}></pf-label>
+          <pf-label .badge=${this.badge} .text=${this._status} .icon=${this._status ? nothing : ICONS.get('more')}></pf-label>
         </div>
         ${this.renderAemDetails()}
       </div>

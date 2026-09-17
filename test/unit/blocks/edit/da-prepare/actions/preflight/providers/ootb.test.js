@@ -12,7 +12,7 @@ before(async () => {
   const mod = await import(
     '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/ootb.js'
   );
-  runOotbProvider = mod.runOotbProvider;
+  runOotbProvider = mod.default;
 });
 
 after(() => {
@@ -34,9 +34,14 @@ describe('runOotbProvider', () => {
     window.fetch = prevFetch;
   });
 
-  it('returns the OOTB categories on success', async () => {
+  it('returns a flat list of checks tagged with their category', async () => {
     const details = { fullpath: '/org/site/page', org: 'org', site: 'site' };
     const result = await runOotbProvider(details, { requestUpdate: () => {} });
-    expect(result.map((cat) => cat.title)).to.deep.equal(['References', 'Content', 'SEO']);
+    expect(result.map((check) => check.category)).to.deep.equal([
+      'References', 'References', 'Content', 'Content', 'SEO', 'SEO',
+    ]);
+    expect(result.map((check) => check.title)).to.deep.equal([
+      'Links', 'Fragments', 'H1 count', 'Lorem ipsum', 'Title', 'Description',
+    ]);
   });
 });

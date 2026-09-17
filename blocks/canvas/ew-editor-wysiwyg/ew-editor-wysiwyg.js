@@ -169,8 +169,8 @@ export class EwEditorWysiwyg extends LitElement {
 
   _runValidation() {
     if (!this._validationRequester) return;
-    this._validationRequester.run().then(({ items, timedOut, hasRunner }) => {
-      canvasBus.validationResultState.emit({ items, timedOut, hasRunner });
+    this._validationRequester.run().then(({ items, hasRunner }) => {
+      canvasBus.validationResultState.emit({ items, hasRunner });
     });
   }
 

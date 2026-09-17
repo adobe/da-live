@@ -15,10 +15,29 @@ const PAGE_SIZE = 5;
 
 const BADGE_BY_TONE = { negative: 'error', positive: 'success', neutral: 'info' };
 
+// A single slow/hung provider shouldn't block the rest, or leave the user staring at a
+// spinner — drop it past this point, same as a thrown error.
+const PROVIDER_TIMEOUT_MS = 5000;
+
+// Groups a flat list of checks (possibly from several providers) into categories, in the
+// order each category title was first seen — no provider owns category ordering.
+export function groupChecksByCategory(checks) {
+  const order = [];
+  const byTitle = new Map();
+  checks.forEach((check) => {
+    if (!byTitle.has(check.category)) {
+      byTitle.set(check.category, []);
+      order.push(check.category);
+    }
+    byTitle.get(check.category).push(check);
+  });
+  return order.map((title) => ({ title, checks: byTitle.get(title) }));
+}
+
 class DaPreflight extends LitElement {
   static properties = {
     details: { attribute: false },
-    _providerCategories: { state: true },
+    _providerChecks: { state: true },
     _pages: { state: true },
   };
 
@@ -31,12 +50,11 @@ class DaPreflight extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this.listenForReasons();
-    this._providerAbortController = new AbortController();
-    this.loadProviderCategories();
+    this.loadProviderChecks();
   }
 
   disconnectedCallback() {
-    this._providerAbortController?.abort();
+    this._providerControllers?.forEach((controller) => controller.abort());
     super.disconnectedCallback();
   }
 
@@ -46,23 +64,43 @@ class DaPreflight extends LitElement {
     });
   }
 
-  // Every provider settles independently — one slow/failed provider (e.g. a remote
-  // extended-checks call) doesn't hold up the others' categories from appearing.
-  async loadProviderCategories() {
-    const { signal } = this._providerAbortController;
+  // Every provider settles independently, each under its own abort controller and
+  // timeout — one slow/failed provider (e.g. a remote extended-checks call) doesn't hold
+  // up the others' checks from appearing.
+  async loadProviderChecks() {
     const requestUpdate = this.requestUpdate.bind(this);
     const providers = getPreflightProviders();
-    this._providerCategories = providers.map(() => null);
+    this._providerChecks = providers.map(() => null);
+    this._providerControllers = providers.map(() => new AbortController());
+
     providers.forEach(async (provider, index) => {
+      const controller = this._providerControllers[index];
+      const { signal } = controller;
+
+      let timeoutId;
+      const timeout = new Promise((resolve) => {
+        timeoutId = setTimeout(() => {
+          // eslint-disable-next-line no-console
+          console.warn('[preflight] provider timed out', index);
+          controller.abort();
+          resolve(null);
+        }, PROVIDER_TIMEOUT_MS);
+      });
+
       let result = null;
       try {
-        result = await provider(this.details, { signal, requestUpdate });
+        result = await Promise.race([
+          provider(this.details, { signal, requestUpdate }),
+          timeout,
+        ]);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[preflight] provider failed', e);
+      } finally {
+        clearTimeout(timeoutId);
       }
-      if (signal.aborted) return;
-      this._providerCategories[index] = result;
+
+      this._providerChecks[index] = result ?? [];
       requestUpdate();
     });
   }
@@ -110,6 +148,8 @@ class DaPreflight extends LitElement {
 
   renderItem(item, hidden) {
     const { result } = item;
+    // ootb's link/fragment checks are the one exception that render their own component
+    // instead of a plain status/reason row.
     const isCmp = result instanceof HTMLElement;
     return html`
       <div class="pf-item" ?hidden=${hidden}>
@@ -173,9 +213,10 @@ class DaPreflight extends LitElement {
   }
 
   render() {
-    if (!this._providerCategories) return nothing;
+    if (!this._providerChecks) return nothing;
 
-    const categories = this._providerCategories.flatMap((category) => category ?? []);
+    const checks = this._providerChecks.flatMap((providerChecks) => providerChecks ?? []);
+    const categories = groupChecksByCategory(checks);
     const { summary, sections } = buildRenderModel(categories);
     return html`
       <div class="preflight-inner">

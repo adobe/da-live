@@ -3,15 +3,15 @@
 // matching the page-evaluation UX rather than grouping by category. `error`/`warn` both
 // read as "Failed" (still something to look at), `success` is "Passed", `info` is
 // "Not applicable" (no pass/fail judgment — see VALIDATION_SEVERITY.INFO).
-const TONE_BY_BADGE = {
+const TONE_BY_STATUS = {
   error: 'negative',
   warn: 'negative',
   success: 'positive',
   info: 'neutral',
 };
 
-function toneOf(badge) {
-  return TONE_BY_BADGE[badge] ?? 'neutral';
+function toneOf(status) {
+  return TONE_BY_STATUS[status] ?? 'neutral';
 }
 
 function flattenItems(categories) {
@@ -20,7 +20,7 @@ function flattenItems(categories) {
       title: check.title,
       category: category.title,
       result,
-      tone: toneOf(result.badge),
+      tone: toneOf(result.status),
     })),
   ));
 }

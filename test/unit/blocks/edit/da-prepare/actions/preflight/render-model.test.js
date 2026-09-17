@@ -19,8 +19,8 @@ describe('buildRenderModel', () => {
   it('buckets error and warn into the Failed section', () => {
     const categories = [
       category('SEO', [
-        { title: 'H1', results: [{ reason: 'No H1', badge: 'error' }] },
-        { title: 'Description', results: [{ reason: 'Missing', badge: 'warn' }] },
+        { title: 'H1', results: [{ reason: 'No H1', status: 'error' }] },
+        { title: 'Description', results: [{ reason: 'Missing', status: 'warn' }] },
       ]),
     ];
     const { summary, sections } = buildRenderModel(categories);
@@ -32,8 +32,8 @@ describe('buildRenderModel', () => {
   it('buckets success into Passed and info into Not applicable', () => {
     const categories = [
       category('Content', [
-        { title: 'Lorem', results: [{ reason: 'Clean', badge: 'success' }] },
-        { title: 'Title', results: [{ reason: 'FYI', badge: 'info' }] },
+        { title: 'Lorem', results: [{ reason: 'Clean', status: 'success' }] },
+        { title: 'Title', results: [{ reason: 'FYI', status: 'info' }] },
       ]),
     ];
     const { summary } = buildRenderModel(categories);
@@ -43,8 +43,8 @@ describe('buildRenderModel', () => {
 
   it('flattens multiple results across multiple checks and categories', () => {
     const categories = [
-      category('A', [{ title: 'Check1', results: [{ reason: 'r1', badge: 'error' }, { reason: 'r2', badge: 'success' }] }]),
-      category('B', [{ title: 'Check2', results: [{ reason: 'r3', badge: 'info' }] }]),
+      category('A', [{ title: 'Check1', results: [{ reason: 'r1', status: 'error' }, { reason: 'r2', status: 'success' }] }]),
+      category('B', [{ title: 'Check2', results: [{ reason: 'r3', status: 'info' }] }]),
     ];
     const { summary } = buildRenderModel(categories);
     expect(summary).to.deep.equal([
@@ -55,26 +55,26 @@ describe('buildRenderModel', () => {
   });
 
   it('tags each item with its originating category and check title', () => {
-    const categories = [category('SEO', [{ title: 'H1', results: [{ reason: 'No H1', badge: 'error' }] }])];
+    const categories = [category('SEO', [{ title: 'H1', results: [{ reason: 'No H1', status: 'error' }] }])];
     const { sections } = buildRenderModel(categories);
     const item = sections.find((s) => s.label === 'Failed checks').items[0];
     expect(item).to.deep.equal({
       title: 'H1',
       category: 'SEO',
-      result: { reason: 'No H1', badge: 'error' },
+      result: { reason: 'No H1', status: 'error' },
       tone: 'negative',
     });
   });
 
   it('defaults Failed open when there are failures, Passed open otherwise', () => {
     const withFailure = buildRenderModel([
-      category('A', [{ title: 'x', results: [{ reason: 'r', badge: 'error' }] }]),
+      category('A', [{ title: 'x', results: [{ reason: 'r', status: 'error' }] }]),
     ]);
     expect(withFailure.sections.find((s) => s.label === 'Failed checks').defaultOpen).to.be.true;
     expect(withFailure.sections.find((s) => s.label === 'Passed checks').defaultOpen).to.be.false;
 
     const noFailure = buildRenderModel([
-      category('A', [{ title: 'x', results: [{ reason: 'r', badge: 'success' }] }]),
+      category('A', [{ title: 'x', results: [{ reason: 'r', status: 'success' }] }]),
     ]);
     expect(noFailure.sections.find((s) => s.label === 'Failed checks').defaultOpen).to.be.false;
     expect(noFailure.sections.find((s) => s.label === 'Passed checks').defaultOpen).to.be.true;
@@ -82,7 +82,7 @@ describe('buildRenderModel', () => {
 
   it('passes an HTMLElement result through untouched, still tagged with tone', () => {
     const el = document.createElement('span');
-    el.badge = 'warn';
+    el.status = 'warn';
     const categories = [category('References', [{ title: 'Links', results: [el] }])];
     const { sections } = buildRenderModel(categories);
     const item = sections.find((s) => s.label === 'Failed checks').items[0];
@@ -94,7 +94,7 @@ describe('buildRenderModel', () => {
     const zero = buildRenderModel([]);
     expect(zero.sections.find((s) => s.label === 'Failed checks').subLabel).to.equal('0 checks failed');
 
-    const one = buildRenderModel([category('A', [{ title: 'x', results: [{ reason: 'r', badge: 'error' }] }])]);
+    const one = buildRenderModel([category('A', [{ title: 'x', results: [{ reason: 'r', status: 'error' }] }])]);
     expect(one.sections.find((s) => s.label === 'Failed checks').subLabel).to.equal('1 check failed');
   });
 });
