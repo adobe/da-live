@@ -317,17 +317,6 @@ describe('Preflight component', () => {
       expect(customElements.get('da-preflight')).to.exist;
     });
 
-    it('expandCategory toggles open state, keyed by category title', () => {
-      const el = document.createElement('da-preflight');
-      const cat = { title: 'Test', checks: [] };
-
-      el.expandCategory(cat);
-      expect(el._openCategories.get('Test')).to.be.true;
-
-      el.expandCategory(cat);
-      expect(el._openCategories.get('Test')).to.be.false;
-    });
-
     it('aborts each provider controller on disconnect', async () => {
       const el = document.createElement('da-preflight');
       el.details = { fullpath: '/org/site/page', org: 'org', site: 'site' };
@@ -367,6 +356,55 @@ describe('Preflight component', () => {
 
       expect(categories.length).to.equal(1);
       expect(categories[0].checks.map((c) => c.title)).to.deep.equal(['from-provider-a', 'from-provider-b']);
+    });
+  });
+
+  describe('rendered shadow DOM', () => {
+    // Sets _providerChecks directly rather than going through the real provider
+    // registry/timeout machinery — this describe block is only about rendering.
+    it('renders a summary tile and a section per tone, with item rows and a working paging/View flow', async () => {
+      const cmpEl = document.createElement('span');
+      cmpEl.status = 'success';
+
+      const el = document.createElement('da-preflight');
+      // Lit defers updating until connected, but connecting normally triggers the real
+      // provider registry via loadProviderChecks — skip that for this render-only test.
+      el.loadProviderChecks = () => {};
+      document.body.append(el);
+      el._providerChecks = [[{
+        category: 'Mixed',
+        title: 'Check',
+        results: [
+          { reason: 'Bad', status: 'error' },
+          { reason: 'Good', status: 'success' },
+          { reason: 'FYI', status: 'info' },
+          cmpEl,
+        ],
+      }]];
+      await el.updateComplete;
+
+      const { shadowRoot } = el;
+      const tiles = [...shadowRoot.querySelectorAll('.pf-tile-value')].map((t) => t.textContent.trim());
+      expect(tiles).to.deep.equal(['1', '2', '1']);
+
+      const sections = shadowRoot.querySelectorAll('.pf-section');
+      expect(sections).to.have.length(3);
+
+      const items = shadowRoot.querySelectorAll('.pf-item');
+      expect(items).to.have.length(4);
+
+      const cmpRow = [...items].find((item) => item.querySelector('.pf-item-body-cmp'));
+      expect(cmpRow.querySelector('.pf-item-body-cmp span')).to.equal(cmpEl);
+
+      const viewButtons = shadowRoot.querySelectorAll('.pf-item-action');
+      expect(viewButtons).to.have.length(3);
+
+      viewButtons[0].click();
+      const dialog = document.querySelector('da-dialog');
+      expect(dialog).to.exist;
+      dialog.remove();
+
+      el.remove();
     });
   });
 });

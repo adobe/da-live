@@ -44,138 +44,240 @@
   }
 }
 
-ul.categories {
-  margin-top: 1px;
+.preflight-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-200);
+  padding: 0 var(--inline-spacing);
 }
 
-.category {
-  position: relative;
-  margin: -1px 0;
+/* --- tone colors --- */
 
-  .category-header {
-    position: relative;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 var(--inline-spacing);
+.pf-tone-negative { color: var(--s2-orange-900); }
+.pf-tone-positive { color: var(--s2-green-900); }
+.pf-tone-neutral  { color: var(--s2-gray-800); }
 
-    .category-title {
-      display: block;
-      flex: 0 1 100%;
-      min-height: 48px;
-      text-align: start;
-      font-weight: 700;
-      font-size: 16px;
-    }
+.pf-tone-negative-bg { background: var(--s2-orange-100); color: var(--s2-orange-900); }
+.pf-tone-positive-bg { background: var(--s2-green-100); color: var(--s2-green-900); }
+.pf-tone-neutral-bg  { background: var(--s2-gray-100); color: var(--s2-gray-800); }
 
-    .category-labels {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+/* --- summary tiles --- */
 
-      .badge-info {
-        order: 1;
-      }
+.pf-summary {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-300);
+}
 
-      .badge-warn {
-        order: 2;
-      }
+.pf-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-75);
+  padding: var(--s2-spacing-300);
 
-      .badge-error {
-        order: 3;
-      }
-    }
-
-    &::before {
-      position: absolute;
-      inset: 0 var(--inline-spacing) auto;
-      content: "";
-      height: 1px;
-      background: rgb(209 209 209);
-      transition: 0.2s ease-in-out;
-    }
-
-    &::after {
-      position: absolute;
-      inset: auto var(--inline-spacing) 0;
-      content: "";
-      height: 1px;
-      background: rgb(209 209 209);
-      transition: 0.2s ease-in-out;
-    }
-
-    &:hover {
-      color: rgb(22 122 243);
-      background: rgb(228 240 255);
-      z-index: 105;
-
-      &::before {
-        inset: 0 0 auto;
-        background: rgb(22 122 243);
-      }
-
-      &::after {
-        inset: auto 0 0;
-        background: rgb(22 122 243);
-      }
-    }
-  }
-
-  .category-details {
-    display: none;
-    padding-bottom: 12px;
-  }
-
-  &.is-open {
-    .category-details {
-      display: block;
-    }
-
-    .category-header {
-      color: var(--s2-gray-900);
-      background-color: var(--s2-gray-50);
-      z-index: 105;
-
-      &::before {
-        inset: 0 0 auto;
-        background-color: var(--s2-gray-200);
-      }
-
-      &::after {
-        inset: auto 0 0;
-        background-color: var(--s2-gray-300);
-      }
-    }
-
-    &::after {
-      position: absolute;
-      content: "";
-      height: 1px;
-      inset: auto 0 0;
-      background-color: var(--s2-gray-300);
-    }
+  & + & {
+    border-left: 1px solid var(--s2-gray-200);
   }
 }
 
-ul.category-details {
-  margin: calc(var(--inline-spacing) / 2) calc(var(--inline-spacing) / 2) 0;
-
-  .check-label {
-    font-weight: 700;
-    font-size: 12px;
-    text-transform: uppercase;
-    margin: 16px 12px 6px;
-  }
+.pf-tile-label {
+  font-size: var(--s2-body-size-xs);
+  color: var(--s2-gray-800);
 }
 
-.result-item {
-  display: grid;
-  grid-template-columns: 1fr auto;
+.pf-tile-value {
+  font-size: var(--s2-heading-size-s);
+  font-weight: var(--s2-heading-font-weight);
+  line-height: var(--s2-heading-line-height);
+}
+
+/* --- sections --- */
+
+.pf-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-200);
+  padding-bottom: var(--inline-spacing);
+}
+
+.pf-section {
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-300);
+  overflow: hidden;
+}
+
+.pf-section-header {
+  display: flex;
   align-items: center;
-  min-height: 44px;
-  border-radius: 12px;
-  padding: 0 12px;
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+
+  &::marker,
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+.pf-section-chip,
+.pf-item-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--s2-corner-radius-300);
+  flex-shrink: 0;
+}
+
+.pf-section-labels {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-50);
+  min-width: 0;
+}
+
+.pf-section-label {
+  font-size: var(--s2-body-size-s);
+  font-weight: bold;
+  color: var(--s2-gray-900);
+}
+
+.pf-section-sublabel {
+  font-size: var(--s2-body-size-xs);
+  color: var(--s2-gray-600);
+}
+
+.pf-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-color: var(--s2-gray-600);
+  mask-image: url("/blocks/edit/img/S2_Icon_ChevronRight_20_N.svg");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  transition: transform 0.15s ease;
+}
+
+.pf-section[open] > .pf-section-header > .pf-chevron {
+  transform: rotate(90deg);
+}
+
+/* --- item rows --- */
+
+.pf-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.pf-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-50);
+}
+
+.pf-item-body-cmp {
+  align-self: center;
+}
+
+.pf-item-title {
+  font-size: var(--s2-body-size-s);
+  font-weight: bold;
+  color: var(--s2-gray-900);
+}
+
+.pf-item-desc {
+  font-size: var(--s2-body-size-xs);
+  color: var(--s2-gray-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-item-action {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: var(--s2-body-size-xs);
+  font-weight: 500;
+  color: var(--s2-gray-900);
+  border: 1px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-200);
+  padding: var(--s2-spacing-50) var(--s2-spacing-100);
 
   &:hover {
-    background-color: var(--s2-gray-100);
+    background: var(--s2-gray-100);
   }
+}
+
+/* --- pagination --- */
+
+.pf-paging {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2-spacing-100);
+  padding: var(--s2-spacing-100) var(--s2-spacing-300) var(--s2-spacing-200);
+}
+
+.pf-paging-label {
+  font-size: var(--s2-body-size-xs);
+  font-weight: bold;
+  color: var(--s2-gray-800);
+}
+
+.pf-paging-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--s2-corner-radius-200);
+  color: var(--s2-gray-600);
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--s2-gray-100);
+  }
+
+  &::after {
+    content: "";
+    display: block;
+    width: 14px;
+    height: 14px;
+    background-color: currentcolor;
+    mask-image: url("/blocks/edit/img/S2_Icon_ChevronRight_20_N.svg");
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+  }
+}
+
+.pf-paging-prev::after {
+  transform: rotate(180deg);
+}
+
+/* --- detail dialog (da-dialog) --- */
+
+.pf-detail-category {
+  margin-top: var(--s2-spacing-200);
+  font-size: var(--s2-body-size-xs);
+  color: var(--s2-gray-600);
 }

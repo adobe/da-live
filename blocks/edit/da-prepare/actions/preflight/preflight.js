@@ -1,13 +1,19 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { getPreflightProviders } from './registry.js';
-import { STATUS_TO_BADGE } from './utils/constants.js';
+import { buildRenderModel } from './render-model.js';
+import { ICONS } from './utils/constants.js';
 
 // Components
 import './views/label.js';
 import './views/link.js';
+import '../../../../shared/da-dialog/da-dialog.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
+
+const PAGE_SIZE = 5;
+
+const BADGE_BY_TONE = { negative: 'error', positive: 'success', neutral: 'info' };
 
 // A single slow/hung provider shouldn't block the rest, or leave the user staring at a
 // spinner — drop it past this point, same as a thrown error.
@@ -32,11 +38,12 @@ class DaPreflight extends LitElement {
   static properties = {
     details: { attribute: false },
     _providerChecks: { state: true },
+    _pages: { state: true },
   };
 
   constructor() {
     super();
-    this._openCategories = new Map();
+    this._pages = {};
   }
 
   connectedCallback() {
@@ -98,87 +105,125 @@ class DaPreflight extends LitElement {
     });
   }
 
-  expandCategory(category) {
-    const isOpen = this._openCategories.get(category.title) ?? false;
-    this._openCategories.set(category.title, !isOpen);
-    this.requestUpdate();
+  _setPage(sectionIndex, page, total) {
+    if (page < 0 || page * PAGE_SIZE >= total) return;
+    this._pages = { ...this._pages, [sectionIndex]: page };
   }
 
-  renderResultItem(result) {
+  // Detail view for a single plain (non-component) result — no suggestion/copy-to-clipboard
+  // flow, since we have no AI-suggested fix text to offer, unlike da-nx's page-evaluation.
+  _openDetail(item) {
+    const dialog = document.createElement('da-dialog');
+    dialog.title = item.title;
+    const message = document.createElement('div');
+    message.className = 'pf-detail-message';
+    const reason = document.createElement('p');
+    reason.textContent = item.result.reason;
+    message.append(reason);
+    const category = document.createElement('p');
+    category.className = 'pf-detail-category';
+    category.textContent = `From: ${item.category}`;
+    message.append(category);
+    dialog.message = message;
+    dialog.addEventListener('close', () => dialog.remove(), { once: true });
+    document.body.append(dialog);
+  }
+
+  renderToneIcon(tone) {
+    const icon = ICONS.get(BADGE_BY_TONE[tone] ?? 'info');
+    return html`<svg class="pf-icon" viewBox="0 0 20 20"><use href="${icon}"></use></svg>`;
+  }
+
+  renderTile({ label, value, tone }) {
+    return html`
+      <div class="pf-tile">
+        <span class="pf-tile-label">${label}</span>
+        <span class="pf-tile-value pf-tone-${tone}">${value}</span>
+      </div>`;
+  }
+
+  renderSummary(summary) {
+    return html`<div class="pf-summary">${summary.map((tile) => this.renderTile(tile))}</div>`;
+  }
+
+  renderItem(item, hidden) {
+    const { result } = item;
     // ootb's link/fragment checks are the one exception that render their own component
     // instead of a plain status/reason row.
     const isCmp = result instanceof HTMLElement;
-    if (isCmp) return html`<li class="result-item">${result}</li>`;
-
-    // Otherwise return the simple result
     return html`
-      <li class="result-item">
-        <div>${result.reason}</div>
-        <pf-label .badge=${STATUS_TO_BADGE[result.status]}></pf-label>
-      </li>`;
-  }
-
-  renderLabels(checks, expand) {
-    const items = checks.flatMap((check) => check.results ?? []);
-    const groups = Object.groupBy(items, (item) => item.status);
-
-    return Object.entries(groups).map(
-      ([status, group]) => html`
-        <pf-label
-          @click=${expand}
-          .badge=${STATUS_TO_BADGE[status]}
-          .text=${group.length}>
-        </pf-label>`,
-    );
-  }
-
-  renderChecks(checks) {
-    return html`
-      <ul class="category-details">
-        ${checks.map((check) => html`
-          <li class="sub-category">
-            <p class="check-label">${check.title}</p>
-            <ul>
-              ${check.results.toSorted((a, b) => {
-                const order = ['error', 'warn', 'info', 'success'];
-                return order.indexOf(a.status) - order.indexOf(b.status);
-              }).map((result) => this.renderResultItem(result))}
-            </ul>
-          </li>
-        `)}
-      </ul>`;
-  }
-
-  renderCategory(category) {
-    const { title, checks, open } = category;
-    const expand = () => this.expandCategory(category);
-
-    return html`
-      <li class="category ${open ? 'is-open' : ''}">
-        <div class="category-header">
-          <button class="category-title" @click=${expand}>${title}</button>
-          <div class="category-labels">
-            ${this.renderLabels(checks, expand)}
+      <div class="pf-item" ?hidden=${hidden}>
+        <span class="pf-item-chip pf-tone-${item.tone}-bg">${this.renderToneIcon(item.tone)}</span>
+        ${isCmp ? html`<div class="pf-item-body pf-item-body-cmp">${result}</div>` : html`
+          <div class="pf-item-body">
+            <span class="pf-item-title">${item.title}</span>
+            <span class="pf-item-desc">${result.reason}</span>
           </div>
-        </div>
-        ${this.renderChecks(checks)}
-      </li>`;
+          <button class="pf-item-action" @click=${() => this._openDetail(item)}>View</button>
+        `}
+      </div>`;
+  }
+
+  renderPaging(sectionIndex, end, total) {
+    const page = this._pages[sectionIndex] ?? 0;
+    return html`
+      <div class="pf-paging">
+        <button
+          class="pf-paging-btn pf-paging-prev"
+          aria-label="Previous checks"
+          ?disabled=${page === 0}
+          @click=${() => this._setPage(sectionIndex, page - 1, total)}
+        ></button>
+        <span class="pf-paging-label">${end} of ${total} checks</span>
+        <button
+          class="pf-paging-btn pf-paging-next"
+          aria-label="Next checks"
+          ?disabled=${end >= total}
+          @click=${() => this._setPage(sectionIndex, page + 1, total)}
+        ></button>
+      </div>`;
+  }
+
+  renderItems(items, sectionIndex) {
+    const total = items.length;
+    const page = this._pages[sectionIndex] ?? 0;
+    const start = page * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, total);
+    return html`
+      <div class="pf-items">
+        ${items.map((item, i) => this.renderItem(item, i < start || i >= end))}
+        ${total > PAGE_SIZE ? this.renderPaging(sectionIndex, end, total) : nothing}
+      </div>`;
+  }
+
+  renderSection(section, sectionIndex) {
+    const { label, subLabel, tone, defaultOpen, items } = section;
+    return html`
+      <details class="pf-section" ?open=${defaultOpen}>
+        <summary class="pf-section-header">
+          <span class="pf-section-chip pf-tone-${tone}-bg">${this.renderToneIcon(tone)}</span>
+          <div class="pf-section-labels">
+            <span class="pf-section-label">${label}</span>
+            <span class="pf-section-sublabel">${subLabel}</span>
+          </div>
+          <span class="pf-chevron"></span>
+        </summary>
+        ${items.length ? this.renderItems(items, sectionIndex) : nothing}
+      </details>`;
   }
 
   render() {
     if (!this._providerChecks) return nothing;
 
     const checks = this._providerChecks.flatMap((providerChecks) => providerChecks ?? []);
-    const categories = groupChecksByCategory(checks).map((category) => ({
-      ...category,
-      open: this._openCategories.get(category.title) ?? false,
-    }));
-
+    const categories = groupChecksByCategory(checks);
+    const { summary, sections } = buildRenderModel(categories);
     return html`
       <div class="preflight-inner">
-        <ul class="categories">
-          ${categories.map((category) => this.renderCategory(category))}
-        </ul>
+        ${this.renderSummary(summary)}
+        <div class="pf-sections">
+          ${sections.map((section, i) => this.renderSection(section, i))}
+        </div>
       </div>`;
   }
 }
