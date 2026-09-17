@@ -208,7 +208,7 @@ class EwToolPanel extends LitElement {
           .items=${items}
           .value=${this.activeId}
           placement="below-start"
-          style="--nx-picker-item-font-size: var(--s2-component-m-regular-font-size); --nx-picker-item-line-height: var(--s2-component-m-regular-line-height); --nx-picker-section-font-size: var(--s2-component-m-bold-font-size); --nx-picker-section-line-height: var(--s2-component-m-bold-line-height);"
+          size="m"
           @change=${(e) => this.showPanel(e.detail.value)}
         ></nx-picker>
         <div class="tool-panel-header-actions"></div>
