@@ -1,9 +1,10 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
-import { initIms as loadIms } from '../../shared/utils.js';
+import { initIms as loadIms, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { createValidationRequester } from '../utils/validation.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -61,12 +62,16 @@ export class EwEditorWysiwyg extends LitElement {
       this._canvasActiveView = view;
       this._syncCanvasVisibility();
     });
+    this._unsubscribeValidationRunRequest = canvasBus.validationRunRequest
+      .subscribe(() => this._runValidation());
     this._syncCanvasVisibility();
   }
 
   disconnectedCallback() {
     this._unsubscribeEditorActive?.();
+    this._unsubscribeValidationRunRequest?.();
     this._clearQuickEditRetry();
+    this._disposeQuickEditValidationPort();
     super.disconnectedCallback();
   }
 
@@ -90,6 +95,11 @@ export class EwEditorWysiwyg extends LitElement {
       /* ignore */
     }
     this._quickEditLocalPort = null;
+  }
+
+  _disposeQuickEditValidationPort() {
+    this._validationRequester?.dispose();
+    this._validationRequester = null;
   }
 
   _clearQuickEditRetry() {
@@ -157,18 +167,29 @@ export class EwEditorWysiwyg extends LitElement {
     }, QUICK_EDIT_INIT_INTERVAL_MS);
   }
 
+  _runValidation() {
+    if (!this._validationRequester) return;
+    this._validationRequester.run().then(({ items, hasRunner }) => {
+      canvasBus.validationResultState.emit({ items, hasRunner });
+    });
+  }
+
   _postQuickEditInitToIframe({ iframe, config, location, onReady }) {
     this._disposeQuickEditLocalPort();
-    const { port1, port2 } = new MessageChannel();
-    this._quickEditLocalPort = port1;
-    port1.onmessage = (ev) => {
+    this._disposeQuickEditValidationPort();
+    const { port1: controlPort, port2: remoteControlPort } = new MessageChannel();
+    const { port1: validationPort, port2: remoteValidationPort } = new MessageChannel();
+    this._quickEditLocalPort = controlPort;
+    this._validationRequester = createValidationRequester(validationPort);
+    controlPort.onmessage = (ev) => {
       // @deprecated flat `ready` — prefer `type === MESSAGE_TYPES.READY` (da-nx now sends both).
       const isReady = ev.data?.type === MESSAGE_TYPES.READY || ev.data?.ready === true;
       if (!isReady) return;
       this._quickEditLocalPort = null;
-      onReady(port1);
+      onReady(controlPort);
     };
     try {
+      const targetOrigin = getPostMessageTargetOrigin(iframe.src);
       // @deprecated top-level init/location — prefer type/payload. Kept so the quick-edit
       // iframe script (da-nx) keeps working until it migrates.
       iframe.contentWindow.postMessage({
@@ -176,9 +197,10 @@ export class EwEditorWysiwyg extends LitElement {
         location,
         type: MESSAGE_TYPES.INIT,
         payload: { config, location },
-      }, '*', [port2]);
+      }, targetOrigin, [remoteControlPort, remoteValidationPort]);
     } catch (err) {
       this._disposeQuickEditLocalPort();
+      this._disposeQuickEditValidationPort();
       // eslint-disable-next-line no-console
       console.error('[ew-editor-wysiwyg] Error posting init to iframe', err);
     }
