@@ -21,6 +21,39 @@ export function getBlockFocus(state) {
   return blockFocusKey.getState(state)?.pos ?? null;
 }
 
+/** True when `pos` is exactly the start offset of a top-level node. */
+function isTopLevelStart(doc, pos) {
+  if (pos == null || pos < 0 || pos > doc.content.size) return false;
+  let found = false;
+  doc.forEach((node, offset) => { if (offset === pos) found = true; });
+  return found;
+}
+
+/** Start offset of the top-level node that contains `pos`, or null. */
+function topLevelStart(doc, pos) {
+  if (pos == null) return null;
+  const clamped = Math.max(0, Math.min(pos, doc.content.size));
+  let result = null;
+  doc.forEach((node, offset) => {
+    if (result == null && clamped >= offset && clamped < offset + node.nodeSize) {
+      result = offset;
+    }
+  });
+  return result;
+}
+
+/**
+ * Focus position after a transaction. Keep the mapped position while it still lands on a
+ * top-level block start; if a transaction (e.g. a collab Yjs undo) remaps it off any
+ * block — which would hide the block being edited — fall back to the block holding the
+ * selection.
+ */
+export function resolveBlockFocusPos(doc, mappedPos, selectionFrom) {
+  if (isTopLevelStart(doc, mappedPos)) return mappedPos;
+  const repaired = topLevelStart(doc, selectionFrom);
+  return repaired ?? mappedPos;
+}
+
 /** True when nothing is focused or the selection still sits inside the focused block. */
 export function isSelectionInFocusedBlock(state) {
   const pos = getBlockFocus(state);
@@ -73,11 +106,12 @@ export default function blockFocus() {
     key: blockFocusKey,
     state: {
       init: () => ({ pos: null }),
-      apply(tr, prev) {
+      apply(tr, prev, _oldState, newState) {
         const meta = tr.getMeta(blockFocusKey);
         if (meta !== undefined) return meta;
         if (prev.pos == null) return prev;
-        return { pos: tr.mapping.map(prev.pos) };
+        const mapped = tr.mapping.map(prev.pos);
+        return { pos: resolveBlockFocusPos(newState.doc, mapped, newState.selection.from) };
       },
     },
     props: {
