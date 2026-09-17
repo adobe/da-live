@@ -2,8 +2,6 @@ import getPathDetails from '../../../../../shared/pathDetails.js';
 import { getNx2Api } from '../../../../../../scripts/utils.js';
 import { REASONS } from '../utils/constants.js';
 
-const CATEGORIES = ['References', 'Content', 'SEO'];
-
 const getMetadata = (el) => {
   if (!el) return {};
   return [...el.childNodes].reduce((rdx, row) => {
@@ -83,28 +81,27 @@ const categoryChecks = {
 };
 
 /**
- * Returns categories with checks that populate results asynchronously.
+ * Returns a flat list of checks, each tagged with the category it belongs to.
  * Each check starts with an empty results array that fills in as its fn resolves,
  * triggering requestUpdate on completion to re-render.
  *
  * @param {Document} doc - The parsed document to run checks against.
  * @param {Function} requestUpdate - Callback to trigger a re-render when results arrive.
- * @returns {Array<{title: string, checks: Array<{title: string, results: Array}>}>}
+ * @param {AbortSignal} [signal] - Skips the requestUpdate call once aborted.
+ * @returns {Array<{category: string, title: string, results: Array}>}
  */
-export function loadResults(doc, requestUpdate) {
+export function loadResults(doc, requestUpdate, signal) {
   const details = getPathDetails();
 
-  return CATEGORIES.map((title) => {
-    const checks = categoryChecks[title].map((check) => {
-      const entry = { title: check.title, results: [] };
-      check.fn({ details, doc }).then((results) => {
-        if (results) entry.results = results;
-        requestUpdate();
-      });
-      return entry;
+  return Object.entries(categoryChecks).flatMap(([category, checks]) => checks.map((check) => {
+    const entry = { category, title: check.title, results: [] };
+    check.fn({ details, doc }).then((results) => {
+      if (signal?.aborted) return;
+      if (results) entry.results = results;
+      requestUpdate();
     });
-    return { title, checks };
-  });
+    return entry;
+  }));
 }
 
 export async function loadDoc({ fullpath }) {
@@ -116,8 +113,9 @@ export async function loadDoc({ fullpath }) {
   return { doc };
 }
 
-export default async function runChecks(details, { requestUpdate } = {}) {
+export default async function runChecks(details, { requestUpdate, signal } = {}) {
   const { error, doc } = await loadDoc(details);
+  if (signal?.aborted) return null;
   if (error) return null;
-  return loadResults(doc, requestUpdate);
+  return loadResults(doc, requestUpdate, signal);
 }

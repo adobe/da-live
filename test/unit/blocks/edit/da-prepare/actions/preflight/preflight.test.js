@@ -3,8 +3,6 @@ import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../../scripts/utils.js';
 import { REASONS } from '../../../../../../../blocks/edit/da-prepare/actions/preflight/utils/constants.js';
 
-const CATEGORIES = ['References', 'Content', 'SEO'];
-
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 let savedFetch;
@@ -12,6 +10,7 @@ let render;
 let loadDoc;
 let loadResults;
 let fragmentCheck;
+let groupChecksByCategory;
 
 // Set up fetch mock and nx before any component imports
 before(async () => {
@@ -42,6 +41,7 @@ before(async () => {
     '../../../../../../../blocks/edit/da-prepare/actions/preflight/preflight.js'
   );
   render = preflightMod.default;
+  groupChecksByCategory = preflightMod.groupChecksByCategory;
 });
 
 after(() => {
@@ -50,16 +50,12 @@ after(() => {
 
 describe('Preflight utils', () => {
   describe('constants', () => {
-    it('has three categories', () => {
-      expect(CATEGORIES).to.deep.equal(['References', 'Content', 'SEO']);
-    });
-
     it('has expected reason keys', () => {
-      expect(REASONS['h1.info']).to.have.property('badge', 'info');
-      expect(REASONS['h1.warn']).to.have.property('badge', 'warn');
-      expect(REASONS['h1.error']).to.have.property('badge', 'error');
-      expect(REASONS['lorem.info']).to.have.property('badge', 'info');
-      expect(REASONS['lorem.error']).to.have.property('badge', 'error');
+      expect(REASONS['h1.info']).to.have.property('status', 'info');
+      expect(REASONS['h1.warn']).to.have.property('status', 'warn');
+      expect(REASONS['h1.error']).to.have.property('status', 'error');
+      expect(REASONS['lorem.info']).to.have.property('status', 'info');
+      expect(REASONS['lorem.error']).to.have.property('status', 'error');
     });
   });
 
@@ -102,14 +98,15 @@ describe('Preflight utils', () => {
   });
 
   describe('loadResults', () => {
-    it('returns categories matching CATEGORIES constant', () => {
+    it('returns a flat list of checks tagged with their category', () => {
       const doc = new DOMParser().parseFromString('<html><body><h1>Test</h1></body></html>', 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
 
-      expect(categories.length).to.equal(CATEGORIES.length);
-      categories.forEach((cat, i) => {
-        expect(cat.title).to.equal(CATEGORIES[i]);
-        expect(cat.checks).to.be.an('array');
+      expect(checks).to.be.an('array');
+      checks.forEach((check) => {
+        expect(check).to.have.property('category');
+        expect(check).to.have.property('title');
+        expect(check).to.have.property('results').that.is.an('array');
       });
     });
 
@@ -118,41 +115,37 @@ describe('Preflight utils', () => {
       let updateCount = 0;
       const requestUpdate = () => { updateCount += 1; };
 
-      const categories = loadResults(doc, requestUpdate);
+      const checks = loadResults(doc, requestUpdate);
       await wait(100);
 
-      const allChecks = categories.flatMap((cat) => cat.checks);
-      const withResults = allChecks.filter((check) => check.results.length > 0);
+      const withResults = checks.filter((check) => check.results.length > 0);
       expect(withResults.length).to.be.greaterThan(0);
       expect(updateCount).to.be.greaterThan(0);
     });
 
     it('Content category has H1 count and Lorem ipsum checks', () => {
       const doc = new DOMParser().parseFromString('<html><body></body></html>', 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
 
-      const content = categories.find((cat) => cat.title === 'Content');
-      const titles = content.checks.map((c) => c.title);
+      const titles = checks.filter((c) => c.category === 'Content').map((c) => c.title);
       expect(titles).to.include('H1 count');
       expect(titles).to.include('Lorem ipsum');
     });
 
     it('SEO category has Title and Description checks', () => {
       const doc = new DOMParser().parseFromString('<html><body></body></html>', 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
 
-      const seo = categories.find((cat) => cat.title === 'SEO');
-      const titles = seo.checks.map((c) => c.title);
+      const titles = checks.filter((c) => c.category === 'SEO').map((c) => c.title);
       expect(titles).to.include('Title');
       expect(titles).to.include('Description');
     });
 
     it('References category has Fragments check', () => {
       const doc = new DOMParser().parseFromString('<html><body></body></html>', 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
 
-      const refs = categories.find((cat) => cat.title === 'References');
-      const titles = refs.checks.map((c) => c.title);
+      const titles = checks.filter((c) => c.category === 'References').map((c) => c.title);
       expect(titles).to.include('Fragments');
     });
   });
@@ -161,121 +154,110 @@ describe('Preflight utils', () => {
     it('h1 check returns info when exactly one H1', async () => {
       const html = '<html><body><h1>Title</h1></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const content = categories.find((cat) => cat.title === 'Content');
-      const h1Check = content.checks.find((c) => c.title === 'H1 count');
+      const h1Check = checks.find((c) => c.title === 'H1 count');
       expect(h1Check.results[0]).to.deep.equal(REASONS['h1.info']);
     });
 
     it('h1 check returns warn when multiple H1s', async () => {
       const html = '<html><body><h1>First</h1><h1>Second</h1></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const content = categories.find((cat) => cat.title === 'Content');
-      const h1Check = content.checks.find((c) => c.title === 'H1 count');
+      const h1Check = checks.find((c) => c.title === 'H1 count');
       expect(h1Check.results[0]).to.deep.equal(REASONS['h1.warn']);
     });
 
     it('h1 check returns error when no H1', async () => {
       const html = '<html><body><p>No heading</p></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const content = categories.find((cat) => cat.title === 'Content');
-      const h1Check = content.checks.find((c) => c.title === 'H1 count');
+      const h1Check = checks.find((c) => c.title === 'H1 count');
       expect(h1Check.results[0]).to.deep.equal(REASONS['h1.error']);
     });
 
     it('lorem check returns error when lorem ipsum found', async () => {
       const html = '<html><body><p>Lorem ipsum dolor sit amet</p></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const content = categories.find((cat) => cat.title === 'Content');
-      const loremCheck = content.checks.find((c) => c.title === 'Lorem ipsum');
+      const loremCheck = checks.find((c) => c.title === 'Lorem ipsum');
       expect(loremCheck.results[0]).to.deep.equal(REASONS['lorem.error']);
     });
 
     it('lorem check returns info when no lorem ipsum', async () => {
       const html = '<html><body><p>Clean content</p></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const content = categories.find((cat) => cat.title === 'Content');
-      const loremCheck = content.checks.find((c) => c.title === 'Lorem ipsum');
+      const loremCheck = checks.find((c) => c.title === 'Lorem ipsum');
       expect(loremCheck.results[0]).to.deep.equal(REASONS['lorem.info']);
     });
 
     it('title check returns info when metadata title exists', async () => {
       const html = '<html><body><div class="metadata"><div><div>Title</div><div>My Title</div></div></div></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const seo = categories.find((cat) => cat.title === 'SEO');
-      const titleCheck = seo.checks.find((c) => c.title === 'Title');
+      const titleCheck = checks.find((c) => c.title === 'Title');
       expect(titleCheck.results[0]).to.deep.equal(REASONS['title.info.meta']);
     });
 
     it('title check returns info.h1 when no metadata but H1 exists', async () => {
       const html = '<html><body><h1>Heading</h1></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const seo = categories.find((cat) => cat.title === 'SEO');
-      const titleCheck = seo.checks.find((c) => c.title === 'Title');
+      const titleCheck = checks.find((c) => c.title === 'Title');
       expect(titleCheck.results[0]).to.deep.equal(REASONS['title.info.h1']);
     });
 
     it('title check returns error when no title or H1', async () => {
       const html = '<html><body><p>No title here</p></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const seo = categories.find((cat) => cat.title === 'SEO');
-      const titleCheck = seo.checks.find((c) => c.title === 'Title');
+      const titleCheck = checks.find((c) => c.title === 'Title');
       expect(titleCheck.results[0]).to.deep.equal(REASONS['title.error']);
     });
 
     it('description check returns info when metadata description exists', async () => {
       const html = '<html><body><div class="metadata"><div><div>Description</div><div>My desc</div></div></div></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const seo = categories.find((cat) => cat.title === 'SEO');
-      const descCheck = seo.checks.find((c) => c.title === 'Description');
+      const descCheck = checks.find((c) => c.title === 'Description');
       expect(descCheck.results[0]).to.deep.equal(REASONS['description.info.meta']);
     });
 
     it('description check returns info.para when first paragraph exists', async () => {
       const html = '<html><body><p>First paragraph</p></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const seo = categories.find((cat) => cat.title === 'SEO');
-      const descCheck = seo.checks.find((c) => c.title === 'Description');
+      const descCheck = checks.find((c) => c.title === 'Description');
       expect(descCheck.results[0]).to.deep.equal(REASONS['description.info.para']);
     });
 
     it('description check returns warn when no description source', async () => {
       const html = '<html><body><h1>Only heading</h1></body></html>';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const categories = loadResults(doc, () => {});
+      const checks = loadResults(doc, () => {});
       await wait(100);
 
-      const seo = categories.find((cat) => cat.title === 'SEO');
-      const descCheck = seo.checks.find((c) => c.title === 'Description');
+      const descCheck = checks.find((c) => c.title === 'Description');
       expect(descCheck.results[0]).to.deep.equal(REASONS['description.warn']);
     });
   });
@@ -335,14 +317,56 @@ describe('Preflight component', () => {
       expect(customElements.get('da-preflight')).to.exist;
     });
 
-    it('expandCategory toggles open state', () => {
+    it('expandCategory toggles open state, keyed by category title', () => {
       const el = document.createElement('da-preflight');
-      const cat = { title: 'Test', checks: [], open: false };
-      el.expandCategory(cat);
-      expect(cat.open).to.be.true;
+      const cat = { title: 'Test', checks: [] };
 
       el.expandCategory(cat);
-      expect(cat.open).to.be.false;
+      expect(el._openCategories.get('Test')).to.be.true;
+
+      el.expandCategory(cat);
+      expect(el._openCategories.get('Test')).to.be.false;
+    });
+
+    it('aborts each provider controller on disconnect', async () => {
+      const el = document.createElement('da-preflight');
+      el.details = { fullpath: '/org/site/page', org: 'org', site: 'site' };
+      document.body.append(el);
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+
+      const [controller] = el._providerControllers;
+      expect(controller.signal.aborted).to.be.false;
+
+      el.remove();
+      expect(controller.signal.aborted).to.be.true;
+    });
+  });
+
+  describe('groupChecksByCategory', () => {
+    it('groups checks under their category, in first-seen order', () => {
+      const checks = [
+        { category: 'B', title: 'b1', results: [] },
+        { category: 'A', title: 'a1', results: [] },
+        { category: 'B', title: 'b2', results: [] },
+      ];
+
+      const categories = groupChecksByCategory(checks);
+
+      expect(categories.map((c) => c.title)).to.deep.equal(['B', 'A']);
+      const catB = categories.find((c) => c.title === 'B');
+      expect(catB.checks.map((c) => c.title)).to.deep.equal(['b1', 'b2']);
+    });
+
+    it('merges checks from multiple providers sharing a category', () => {
+      const checks = [
+        { category: 'Content', title: 'from-provider-a', results: [] },
+        { category: 'Content', title: 'from-provider-b', results: [] },
+      ];
+
+      const categories = groupChecksByCategory(checks);
+
+      expect(categories.length).to.equal(1);
+      expect(categories[0].checks.map((c) => c.title)).to.deep.equal(['from-provider-a', 'from-provider-b']);
     });
   });
 });
