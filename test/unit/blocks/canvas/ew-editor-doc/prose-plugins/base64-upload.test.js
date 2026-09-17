@@ -116,14 +116,13 @@ describe('base64Uploader', () => {
       expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
       expect(imageSrcs(), 'the fpo was left in the document').to.deep.equal([]);
       expect(toasts).to.have.length(1);
-      expect(toasts[0].text).to.contain('Image upload failed');
-      expect(toasts[0].text).to.contain('4.5 MB or under');
+      expect(toasts[0].text).to.contain('Max image size allowed is 4.5 MB');
     } finally {
       restore();
     }
   });
 
-  it('takes an oversized image on a legacy site, where the limit does not apply', async () => {
+  it('drops the fpo for an oversized image on a legacy site too', async () => {
     const { calls, restore } = stubStore({ upgraded: false });
     const fpoSrc = '/blocks/edit/img/fpo.svg#2';
     try {
@@ -135,8 +134,9 @@ describe('base64Uploader', () => {
         parent: '/pasteleg/pasteleg',
       });
 
-      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(1);
-      expect(toasts).to.have.length(0);
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
+      expect(imageSrcs(), 'the fpo was left in the document').to.deep.equal([]);
+      expect(toasts).to.have.length(1);
     } finally {
       restore();
     }

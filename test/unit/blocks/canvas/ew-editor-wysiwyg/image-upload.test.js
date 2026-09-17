@@ -141,7 +141,7 @@ describe('handleImageReplace', () => {
       expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
       expect(posted.at(-1).payload.error).to.contain('too large');
       expect(toasts).to.have.length(1);
-      expect(toasts[0].text).to.contain('4.5 MB or under');
+      expect(toasts[0].text).to.contain('Max image size allowed is 4.5 MB');
     } finally {
       restore();
     }
