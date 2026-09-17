@@ -1,35 +1,19 @@
 import { expect } from '@esm-bundle/chai';
 import { canvasBus } from '../../../../../../../../blocks/canvas/utils/canvas-bus.js';
-import {
-  buildProjectValidationCategory,
-  runProjectValidationProvider,
-} from '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/project-validation.js';
+import runProjectValidationProvider, { buildProjectValidationChecks } from '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/project-validation.js';
 
-describe('buildProjectValidationCategory', () => {
-  it('is null when no ACK ever arrived (old host/no quick-edit here)', () => {
-    expect(buildProjectValidationCategory({ results: null, timedOut: true, hasRunner: null }))
+describe('buildProjectValidationChecks', () => {
+  it('is null when no runner is registered', () => {
+    expect(buildProjectValidationChecks({ results: [], hasRunner: false }))
       .to.equal(null);
-  });
-
-  it('is null when a RESULT arrives reporting no runner registered', () => {
-    expect(buildProjectValidationCategory({ results: [], timedOut: false, hasRunner: false }))
-      .to.equal(null);
-  });
-
-  it('shows a "taking too long" status line when ACK\'d but RESULT never arrives', () => {
-    const cat = buildProjectValidationCategory({ results: null, timedOut: true, hasRunner: true });
-    expect(cat.title).to.equal('Custom');
-    expect(cat.checks).to.deep.equal([{
-      title: 'Custom validation',
-      results: [{ reason: 'Custom validation is taking too long to complete.', badge: 'warn' }],
-    }]);
   });
 
   it('shows a success status line when the runner reports no issues', () => {
-    const cat = buildProjectValidationCategory({ results: [], timedOut: false, hasRunner: true });
-    expect(cat.checks).to.deep.equal([{
+    const checks = buildProjectValidationChecks({ results: [], hasRunner: true });
+    expect(checks).to.deep.equal([{
+      category: 'Custom',
       title: 'Custom validation',
-      results: [{ reason: 'No custom-validation issues found.', badge: 'success' }],
+      results: [{ status: 'success', reason: 'No custom-validation issues found.' }],
     }]);
   });
 
@@ -39,23 +23,28 @@ describe('buildProjectValidationCategory', () => {
       { title: 'Alt text', severity: 'error', message: 'Broken image' },
       { title: 'SEO', severity: 'info', message: 'Looks fine' },
     ];
-    const cat = buildProjectValidationCategory({ results, timedOut: false, hasRunner: true });
-    expect(cat.checks).to.deep.equal([
+    const checks = buildProjectValidationChecks({ results, hasRunner: true });
+    expect(checks).to.deep.equal([
       {
+        category: 'Custom',
         title: 'Alt text',
         results: [
-          { reason: 'Missing alt text', badge: 'warn' },
-          { reason: 'Broken image', badge: 'error' },
+          { status: 'warn', reason: 'Missing alt text' },
+          { status: 'error', reason: 'Broken image' },
         ],
       },
-      { title: 'SEO', results: [{ reason: 'Looks fine', badge: 'info' }] },
+      {
+        category: 'Custom',
+        title: 'SEO',
+        results: [{ status: 'info', reason: 'Looks fine' }],
+      },
     ]);
   });
 
   it('falls back to "Custom validation" when a result has no title', () => {
     const results = [{ severity: 'info', message: 'no title here' }];
-    const cat = buildProjectValidationCategory({ results, timedOut: false, hasRunner: true });
-    expect(cat.checks[0].title).to.equal('Custom validation');
+    const checks = buildProjectValidationChecks({ results, hasRunner: true });
+    expect(checks[0].title).to.equal('Custom validation');
   });
 });
 
@@ -66,7 +55,7 @@ describe('runProjectValidationProvider', () => {
 
     const resultPromise = runProjectValidationProvider();
     expect(runRequests).to.equal(1);
-    canvasBus.validationResultState.emit({ items: [], timedOut: false, hasRunner: false });
+    canvasBus.validationResultState.emit({ items: [], hasRunner: false });
 
     expect(await resultPromise).to.equal(null);
     unsub();
@@ -79,7 +68,7 @@ describe('runProjectValidationProvider', () => {
     expect(await resultPromise).to.equal(null);
 
     // A late broadcast after abort must not throw or resolve anything new.
-    const lateResult = { items: [], timedOut: false, hasRunner: false };
+    const lateResult = { items: [], hasRunner: false };
     expect(() => canvasBus.validationResultState.emit(lateResult)).to.not.throw();
   });
 });

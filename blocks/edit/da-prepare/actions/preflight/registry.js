@@ -1,7 +1,7 @@
 import ootb from './providers/ootb.js';
-import { runProjectValidationProvider } from './providers/project-validation.js';
+import projectValidation from './providers/project-validation.js';
 
-const providers = [ootb, runProjectValidationProvider];
+const providers = [ootb, projectValidation];
 
 export function getPreflightProviders() {
   return [...providers];
