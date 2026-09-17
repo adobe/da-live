@@ -12,7 +12,7 @@ before(async () => {
   const mod = await import(
     '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/ootb.js'
   );
-  runOotbProvider = mod.runOotbProvider;
+  runOotbProvider = mod.default;
 });
 
 after(() => {

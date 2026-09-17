@@ -1,5 +1,3 @@
-export const CATEGORIES = ['References', 'Content', 'SEO'];
-
 export const ICONS = new Map([
   ['success', 'blocks/edit/img/S2_Icon_CheckmarkCircle_20_N.svg#S2_Icon_CheckmarkCircle'],
   ['info', '/blocks/edit/img/S2_Icon_InfoCircle_20_N.svg#S2_Icon_InfoCircle'],
