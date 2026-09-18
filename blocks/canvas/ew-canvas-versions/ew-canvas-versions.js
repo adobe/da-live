@@ -418,7 +418,7 @@ class EwCanvasVersions extends LitElement {
             </svg>
           </button>
         </div>
-        <p class="hint">Press <kbd>${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>
+        <p class="da-hint">Press <kbd class="da-kbd">${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>
         ${this._versions === undefined
         ? html`<p class="loading">Loading…</p>`
         : html`<ul class="versionlist">

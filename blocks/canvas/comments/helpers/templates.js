@@ -57,7 +57,7 @@ export function renderForm(panel, {
               : submitLabel}
           </button>
         </div>
-        <div class="ew-comment-form-hint"><kbd>${SUBMIT_SHORTCUT}</kbd> to submit</div>
+        <div class="ew-comment-form-hint"><kbd class="da-kbd">${SUBMIT_SHORTCUT}</kbd> to submit</div>
       ` : nothing}
     </form>
   `;
@@ -212,8 +212,8 @@ export function renderListView(panel, viewModel) {
 
   return html`
     <div class="ew-comments-list">
-      <p class="ew-comments-hint">
-        Select content and press <kbd>${COMMENT_SHORTCUT}</kbd> to add a comment.
+      <p class="da-hint">
+        Select content and press <kbd class="da-kbd">${COMMENT_SHORTCUT}</kbd> to add a comment.
       </p>
       ${tabs.length > 1 ? html`
         <div class="ew-comment-tabs" role="group" aria-label="Filter comment threads">
