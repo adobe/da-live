@@ -514,6 +514,18 @@ describe('PrepareMenu', () => {
       expect(use.getAttribute('href')).to.equal('/blocks/edit/img/icon.svg#icon');
     });
 
+    it('renders standalone SVG icon paths as img elements', async () => {
+      el = await fixture();
+      el._menuItems = [{ title: 'Test', icon: '/tools/plugins/request-for-publish/request-for-publish.svg' }];
+      el.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+
+      const img = el.shadowRoot.querySelector('.prepare-menu-item img.icon');
+      expect(img).to.exist;
+      expect(img.getAttribute('src')).to.equal('/tools/plugins/request-for-publish/request-for-publish.svg');
+    });
+
     it('renders an img element for non-svg icon paths', async () => {
       el = await fixture();
       el._menuItems = [{ title: 'Test', icon: 'https://example.com/icon.png' }];
