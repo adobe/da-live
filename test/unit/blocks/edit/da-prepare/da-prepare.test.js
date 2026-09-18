@@ -422,10 +422,13 @@ describe('DaPrepare', () => {
 
       const dialog = el.shadowRoot.querySelector('.prepare-fullsize-dialog');
       expect(dialog).to.exist;
+      expect(dialog.getAttribute('aria-labelledby')).to.equal('prepare-fullsize-dialog-title');
+      expect(dialog.querySelector('#prepare-fullsize-dialog-title').textContent.trim()).to.equal('Large External');
 
       const iframe = dialog.querySelector('iframe');
       expect(iframe).to.exist;
       expect(iframe.getAttribute('src')).to.equal('https://example.com/large');
+      expect(iframe.getAttribute('title')).to.equal('Large External');
     });
   });
 
