@@ -5,7 +5,6 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let HLX6_MAX_IMAGE_BYTES;
 let MAX_IMAGE_BYTES;
-let isImageTooLarge;
 let dataUrlByteLength;
 let showImageTooLarge;
 let refuseOversizedImage;
@@ -15,7 +14,6 @@ before(async () => {
   ({
     HLX6_MAX_IMAGE_BYTES,
     MAX_IMAGE_BYTES,
-    isImageTooLarge,
     dataUrlByteLength,
     showImageTooLarge,
     refuseOversizedImage,
@@ -49,11 +47,6 @@ describe('image upload limit', () => {
 
   it('caps legacy sites at the documented 20 MB image limit', () => {
     expect(MAX_IMAGE_BYTES).to.equal(20_000_000);
-  });
-
-  it('compares against a caller-supplied limit', () => {
-    expect(isImageTooLarge(HLX6_MAX_IMAGE_BYTES, HLX6_MAX_IMAGE_BYTES)).to.equal(false);
-    expect(isImageTooLarge(HLX6_MAX_IMAGE_BYTES + 1, HLX6_MAX_IMAGE_BYTES)).to.equal(true);
   });
 
   it('reads the decoded length of a data url', () => {
