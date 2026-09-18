@@ -3,6 +3,7 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
+let HLX6_MAX_IMAGE_BYTES;
 let MAX_IMAGE_BYTES;
 let isImageTooLarge;
 let dataUrlByteLength;
@@ -12,6 +13,7 @@ let toasts;
 
 before(async () => {
   ({
+    HLX6_MAX_IMAGE_BYTES,
     MAX_IMAGE_BYTES,
     isImageTooLarge,
     dataUrlByteLength,
@@ -21,28 +23,13 @@ before(async () => {
   ({ toasts } = await import('../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 
-// isHlx6 and getSidekickConfig both memoize per site, so each case needs its
-// own org/site. `upgraded` drives the hlx6 probe; `config` is the sidekick
-// config JSON (undefined -> a 404, which the resolver treats as "no limit").
-function stubFetch({ upgraded = true, config } = {}) {
+// isHlx6 memoizes its answer per site, so each case needs its own org/site.
+function stubPing(upgraded) {
   const saved = window.fetch;
-  window.fetch = async (url) => {
-    const u = String(url);
-    if (u.includes('/ping/')) {
-      return new Response('', {
-        status: 200,
-        headers: upgraded ? { 'x-api-upgrade-available': 'true' } : {},
-      });
-    }
-    if (u.includes('/sidekick') || u.includes('/config.json')) {
-      if (!config) return new Response('', { status: 404 });
-      return new Response(JSON.stringify(config), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      });
-    }
-    return new Response('', { status: 200 });
-  };
+  window.fetch = async () => new Response('', {
+    status: 200,
+    headers: upgraded ? { 'x-api-upgrade-available': 'true' } : {},
+  });
   return () => { window.fetch = saved; };
 }
 
@@ -55,20 +42,18 @@ afterEach(() => {
 });
 
 describe('image upload limit', () => {
-  it('caps an upload below the api service request limit', () => {
+  it('keeps the hlx6 cap below the api service request limit', () => {
     // the AWS edge answers 413 above 4,717,360 bytes, measured 2026-08-18
-    expect(MAX_IMAGE_BYTES).to.be.below(4717360);
+    expect(HLX6_MAX_IMAGE_BYTES).to.be.below(4717360);
   });
 
-  it('takes a file at the limit and refuses the byte above it', () => {
-    expect(isImageTooLarge(MAX_IMAGE_BYTES)).to.equal(false);
-    expect(isImageTooLarge(MAX_IMAGE_BYTES + 1)).to.equal(true);
-    expect(isImageTooLarge(0)).to.equal(false);
+  it('caps legacy sites at the documented 20 MB image limit', () => {
+    expect(MAX_IMAGE_BYTES).to.equal(20_000_000);
   });
 
   it('compares against a caller-supplied limit', () => {
-    expect(isImageTooLarge(1_000_000, 2_000_000)).to.equal(false);
-    expect(isImageTooLarge(2_000_001, 2_000_000)).to.equal(true);
+    expect(isImageTooLarge(HLX6_MAX_IMAGE_BYTES, HLX6_MAX_IMAGE_BYTES)).to.equal(false);
+    expect(isImageTooLarge(HLX6_MAX_IMAGE_BYTES + 1, HLX6_MAX_IMAGE_BYTES)).to.equal(true);
   });
 
   it('reads the decoded length of a data url', () => {
@@ -80,25 +65,19 @@ describe('image upload limit', () => {
 });
 
 describe('showImageTooLarge', () => {
-  it('names the failure and the fallback limit', async () => {
-    await showImageTooLarge();
+  it('names the resolved limit', async () => {
+    await showImageTooLarge(4.5);
     expect(toasts).to.have.length(1);
     expect(toasts[0].variant).to.equal('error');
     expect(toasts[0].text).to.equal('Max image size allowed is 4.5 MB');
   });
-
-  it('names a configured limit', async () => {
-    await showImageTooLarge(20);
-    expect(toasts).to.have.length(1);
-    expect(toasts[0].text).to.equal('Max image size allowed is 20 MB');
-  });
 });
 
 describe('refuseOversizedImage', () => {
-  it('refuses an oversized image using the fallback when no limit is configured', async () => {
-    const restore = stubFetch({ upgraded: true, config: {} });
+  it('refuses above 4.5 MB on an hlx6 site', async () => {
+    const restore = stubPing(true);
     try {
-      expect(await refuseOversizedImage(MAX_IMAGE_BYTES + 1, '/refsb/refsb/dir')).to.equal(true);
+      expect(await refuseOversizedImage(HLX6_MAX_IMAGE_BYTES + 1, '/refh6/refh6/dir')).to.equal(true);
       expect(toasts).to.have.length(1);
       expect(toasts[0].text).to.equal('Max image size allowed is 4.5 MB');
     } finally {
@@ -106,54 +85,32 @@ describe('refuseOversizedImage', () => {
     }
   });
 
-  it('honors a smaller imageSizeLimit from the sidekick config', async () => {
-    const restore = stubFetch({ upgraded: true, config: { imageSizeLimit: 1 } });
+  it('allows up to 20 MB on a legacy site', async () => {
+    const restore = stubPing(false);
     try {
-      expect(await refuseOversizedImage(1_000_000, '/reflg/reflg/dir')).to.equal(false);
-      expect(await refuseOversizedImage(1_000_001, '/reflg/reflg/dir')).to.equal(true);
+      // over the 4.5 MB hlx6 cap but under the legacy 20 MB limit
+      expect(await refuseOversizedImage(HLX6_MAX_IMAGE_BYTES + 1, '/reflg/reflg/dir')).to.equal(false);
+      expect(await refuseOversizedImage(MAX_IMAGE_BYTES + 1, '/reflg/reflg/dir')).to.equal(true);
       expect(toasts).to.have.length(1);
-      expect(toasts[0].text).to.equal('Max image size allowed is 1 MB');
+      expect(toasts[0].text).to.equal('Max image size allowed is 20 MB');
     } finally {
       restore();
     }
   });
 
-  it('clamps an imageSizeLimit above the backend ceiling', async () => {
-    const restore = stubFetch({ upgraded: true, config: { imageSizeLimit: 20 } });
+  it('takes an image inside the strict cap without probing the store', async () => {
+    let probed = false;
+    const saved = window.fetch;
+    window.fetch = async () => {
+      probed = true;
+      return new Response('', { status: 200 });
+    };
     try {
-      // a 20 MB config cannot raise the limit past the 4.5 MB backend ceiling
-      expect(await refuseOversizedImage(MAX_IMAGE_BYTES, '/refclamp/refclamp/dir')).to.equal(false);
-      expect(await refuseOversizedImage(MAX_IMAGE_BYTES + 1, '/refclamp/refclamp/dir')).to.equal(true);
-      expect(toasts).to.have.length(1);
-      expect(toasts[0].text).to.equal('Max image size allowed is 4.5 MB');
-    } finally {
-      restore();
-    }
-  });
-
-  it('applies the fallback limit on a legacy site too', async () => {
-    const restore = stubFetch({ upgraded: false, config: {} });
-    try {
-      expect(await refuseOversizedImage(MAX_IMAGE_BYTES + 1, '/oversized/images/dir')).to.equal(true);
-      expect(toasts).to.have.length(1);
-    } finally {
-      restore();
-    }
-  });
-
-  it('takes an image inside the limit', async () => {
-    const restore = stubFetch({ upgraded: true, config: {} });
-    try {
-      expect(await refuseOversizedImage(MAX_IMAGE_BYTES, '/refuses/refused/dir')).to.equal(false);
+      expect(await refuseOversizedImage(HLX6_MAX_IMAGE_BYTES, '/refok/refok')).to.equal(false);
+      expect(probed, 'the store was probed for a small image').to.equal(false);
       expect(toasts).to.have.length(0);
     } finally {
-      restore();
+      window.fetch = saved;
     }
-  });
-
-  it('enforces the fallback when the site cannot be resolved', async () => {
-    expect(await refuseOversizedImage(MAX_IMAGE_BYTES + 1, '')).to.equal(true);
-    expect(await refuseOversizedImage(MAX_IMAGE_BYTES + 1, '/orgonly')).to.equal(true);
-    expect(toasts).to.have.length(2);
   });
 });

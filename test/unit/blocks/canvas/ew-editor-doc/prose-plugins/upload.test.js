@@ -6,7 +6,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getSourceUploadContext;
 let uploadImageFile;
-let MAX_IMAGE_BYTES;
+let HLX6_MAX_IMAGE_BYTES;
 let toasts;
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
@@ -14,7 +14,7 @@ const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 before(async () => {
   ({ getSourceUploadContext } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/sourceUploadContext.js'));
   ({ uploadImageFile } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js'));
-  ({ MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
+  ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 
@@ -141,12 +141,12 @@ describe('uploadImageFile', () => {
     }
   });
 
-  it('refuses an image over the upload limit', async () => {
+  it('refuses an image over the hlx6 upload limit', async () => {
     const { calls, restore } = stubStore({ upgraded: true });
     toasts.length = 0;
     try {
       const big = new File(
-        [new Uint8Array(MAX_IMAGE_BYTES + 1)],
+        [new Uint8Array(HLX6_MAX_IMAGE_BYTES + 1)],
         'big.png',
         { type: 'image/png' },
       );
@@ -166,20 +166,21 @@ describe('uploadImageFile', () => {
     }
   });
 
-  it('refuses an oversized image on a legacy site too', async () => {
+  it('uploads an image over the hlx6 cap on a legacy site (20 MB limit)', async () => {
     const { calls, restore } = stubStore({ upgraded: false });
     toasts.length = 0;
     try {
-      const big = new File(
-        [new Uint8Array(MAX_IMAGE_BYTES + 1)],
-        'big.png',
+      // over the 4.5 MB hlx6 cap but well under the legacy 20 MB limit
+      const mid = new File(
+        [new Uint8Array(HLX6_MAX_IMAGE_BYTES + 1)],
+        'mid.png',
         { type: 'image/png' },
       );
-      await uploadImageFile(editor.view, big, { parent: '/bigleg/bigleg', name: 'doc' });
+      await uploadImageFile(editor.view, mid, { parent: '/bigleg/bigleg', name: 'doc' });
       await nextFrame();
 
-      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
-      expect(toasts).to.have.length(1);
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(1);
+      expect(toasts).to.have.length(0);
     } finally {
       restore();
     }

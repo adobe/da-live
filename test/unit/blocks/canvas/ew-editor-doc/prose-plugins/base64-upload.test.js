@@ -6,7 +6,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let base64Uploader;
 let uploadBase64Image;
-let MAX_IMAGE_BYTES;
+let HLX6_MAX_IMAGE_BYTES;
 let toasts;
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
@@ -22,7 +22,7 @@ async function until(done, tries = 50) {
 
 before(async () => {
   ({ default: base64Uploader, uploadBase64Image } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/base64Uploader.js'));
-  ({ MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
+  ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 
@@ -55,7 +55,7 @@ afterEach(() => {
 describe('base64Uploader', () => {
   let editor;
 
-  const oversized = () => `data:image/png;base64,${'A'.repeat(Math.ceil((MAX_IMAGE_BYTES + 1) / 3) * 4)}`;
+  const oversized = () => `data:image/png;base64,${'A'.repeat(Math.ceil((HLX6_MAX_IMAGE_BYTES + 1) / 3) * 4)}`;
 
   const insertFpo = (fpoSrc) => {
     const { schema } = editor.view.state;
@@ -122,11 +122,12 @@ describe('base64Uploader', () => {
     }
   });
 
-  it('drops the fpo for an oversized image on a legacy site too', async () => {
+  it('uploads an over-cap image on a legacy site (20 MB limit)', async () => {
     const { calls, restore } = stubStore({ upgraded: false });
     const fpoSrc = '/blocks/edit/img/fpo.svg#2';
     try {
       insertFpo(fpoSrc);
+      // over the 4.5 MB hlx6 cap but under the legacy 20 MB limit
       await uploadBase64Image(editor.view, {
         src: oversized(),
         path: '/pasteleg/pasteleg/.doc/wp2.png',
@@ -134,9 +135,8 @@ describe('base64Uploader', () => {
         parent: '/pasteleg/pasteleg',
       });
 
-      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
-      expect(imageSrcs(), 'the fpo was left in the document').to.deep.equal([]);
-      expect(toasts).to.have.length(1);
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(1);
+      expect(toasts).to.have.length(0);
     } finally {
       restore();
     }

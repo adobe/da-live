@@ -5,14 +5,14 @@ import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.j
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let handleImageReplace;
-let MAX_IMAGE_BYTES;
+let HLX6_MAX_IMAGE_BYTES;
 let toasts;
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 before(async () => {
   ({ handleImageReplace } = await import('../../../../../blocks/canvas/ew-editor-wysiwyg/utils/image.js'));
-  ({ MAX_IMAGE_BYTES } = await import('../../../../../blocks/canvas/utils/image-upload.js'));
+  ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 
@@ -133,7 +133,7 @@ describe('handleImageReplace', () => {
     const { calls, restore } = stubStore({ upgraded: true });
     const { ctx, posted } = ctxFor('wysbig', 'wysbig');
     // base64 inflates by 4/3, so this decodes to one byte over the limit
-    const big = `data:image/png;base64,${'A'.repeat(Math.ceil((MAX_IMAGE_BYTES + 1) / 3) * 4)}`;
+    const big = `data:image/png;base64,${'A'.repeat(Math.ceil((HLX6_MAX_IMAGE_BYTES + 1) / 3) * 4)}`;
     toasts.length = 0;
     try {
       await handleImageReplace({ imageData: big, fileName: 'big.png', originalSrc: '/old.png' }, ctx);
