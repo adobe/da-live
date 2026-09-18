@@ -6,7 +6,7 @@ import { DRAFT_MODES } from './draft-state.js';
 import { generateColorSet } from '../../editor-utils/author-color.js';
 
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
-export const COMMENT_SHORTCUT = IS_MAC ? '⌘ + Option + M' : 'Ctrl + Alt + M';
+export const COMMENT_SHORTCUT = IS_MAC ? '⌘ + ⌥ + M' : 'Ctrl + Alt + M';
 export const SUBMIT_SHORTCUT = IS_MAC ? '⌘ + Enter' : 'Ctrl + Enter';
 
 const ICONS = {
