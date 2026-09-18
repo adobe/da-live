@@ -1,13 +1,11 @@
 import { getNx2, getNx2Api } from '../../../scripts/utils.js';
 
-// hlx6 sites upload through the source-bus, which runs on Lambda and caps a
-// request at 6 MiB once base64 has inflated the body. Measured 2026-08-18, the
-// AWS edge answers 413 from 4,717,360 bytes up, and that 413 carries no CORS
-// header, so the browser reads it as a network failure with no status. Those
-// sites are held to 4.5 MB. Legacy DA sites upload through da-admin, which took
-// a 120 MB body in the same probe, so they are held to the 20 MB image limit
-// documented on aem.live/limits instead. Either way the size is checked before
-// the request so authors get feedback instead of a dead-end upload.
+// hlx6 sites upload via the source-bus Lambda, which 413s once a base64 body
+// passes ~4.5 MB (measured 2026-08-18; the 413 has no CORS header, so it reads
+// as a bare network failure) — so they're capped at 4.5 MB. Legacy DA uploads
+// via da-admin, which took 120 MB fine, so they get the 20 MB image limit from
+// aem.live/limits. Size is checked before the request to avoid a dead-end upload.
+
 const MB = 1_000_000;
 export const HLX6_MAX_IMAGE_MB = 4.5;
 export const MAX_IMAGE_MB = 20;
