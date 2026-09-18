@@ -74,8 +74,8 @@ button {
 .hint {
   margin: 0;
   padding: 0 var(--s2-spacing-75);
-  height: 32px;
-  font-size: var(--s2-component-m-regular-font-size);
+  height: 24px;
+  font-size: var(--s2-body-size-xs);
   color: var(--s2-gray-700);
   flex-shrink: 0;
 }
