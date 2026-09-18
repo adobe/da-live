@@ -37,6 +37,7 @@ export default class DaPrepare extends LitElement {
     _showMenu: { state: true },
     _menuItems: { state: true },
     _dialogItem: { state: true },
+    _fullsizeDialogItem: { state: true },
   };
 
   connectedCallback() {
@@ -69,6 +70,14 @@ export default class DaPrepare extends LitElement {
     this._showMenu = undefined;
     this._menuItems = undefined;
     this._dialogItem = undefined;
+    this._fullsizeDialogItem = undefined;
+  }
+
+  updated(changed) {
+    if (changed.has('_fullsizeDialogItem') && this._fullsizeDialogItem) {
+      const dialog = this.shadowRoot.querySelector('.prepare-fullsize-dialog');
+      if (dialog && !dialog.open) dialog.showModal();
+    }
   }
 
   async loadMenu() {
@@ -119,6 +128,10 @@ export default class DaPrepare extends LitElement {
       this._dialogItem = { ...item, cmp };
       return;
     }
+    if (item.experience === 'fullsize-dialog') {
+      this._fullsizeDialogItem = item;
+      return;
+    }
     this._dialogItem = item;
   }
 
@@ -153,6 +166,12 @@ export default class DaPrepare extends LitElement {
     }
     this._dialogItem = undefined;
     this._preflightRequestId = undefined;
+  }
+
+  handleCloseFullsizeDialog({ target } = {}) {
+    const dialog = target?.closest?.('.prepare-fullsize-dialog');
+    if (dialog?.open) dialog.close();
+    this._fullsizeDialogItem = undefined;
   }
 
   handleIframeLoad({ target }) {
@@ -194,6 +213,40 @@ export default class DaPrepare extends LitElement {
     `;
   }
 
+  renderFullsizeDialog() {
+    if (!this._fullsizeDialogItem) return nothing;
+
+    return html`
+      <dialog class="prepare-fullsize-dialog" @close=${this.handleCloseFullsizeDialog}>
+        <header class="prepare-fullsize-dialog-header">
+          <h2 class="prepare-fullsize-dialog-title">
+            ${this.renderDialogIcon(this._fullsizeDialogItem)}
+            <span>${this._fullsizeDialogItem.title}</span>
+          </h2>
+          <button
+            class="prepare-fullsize-dialog-close"
+            type="button"
+            aria-label="Close"
+            @click=${this.handleCloseFullsizeDialog}>&times;</button>
+        </header>
+        <div class="prepare-fullsize-dialog-body">
+          <iframe
+            src=${this._fullsizeDialogItem.path}
+            @load=${this.handleIframeLoad}
+            allow="clipboard-write *"></iframe>
+        </div>
+      </dialog>
+    `;
+  }
+
+  renderDialogIcon(item) {
+    if (!item.icon) return nothing;
+    if (item.icon.includes('.svg')) {
+      return html`<svg class="prepare-dialog-icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
+    }
+    return html`<img class="prepare-dialog-icon" src="${item.icon}" alt="" />`;
+  }
+
   renderIcon(item) {
     if (item.icon.includes('.svg')) {
       return html`<svg class="icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
@@ -232,6 +285,7 @@ export default class DaPrepare extends LitElement {
         ${this.renderPrepareMenu()}
       </div>
       ${this.renderDialog()}
+      ${this.renderFullsizeDialog()}
     `;
   }
 }
