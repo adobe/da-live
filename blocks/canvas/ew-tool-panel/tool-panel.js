@@ -80,6 +80,7 @@ class EwToolPanel extends LitElement {
     let lastSection;
     for (const v of this.views) {
       if (v.section && v.section !== lastSection) {
+        if (lastSection) items.push({ divider: true });
         items.push({ section: v.section });
         lastSection = v.section;
       }
@@ -248,6 +249,7 @@ class EwToolPanel extends LitElement {
           .items=${items}
           .value=${this.activeId}
           placement="below-start"
+          size="m"
           @change=${(e) => this.showPanel(e.detail.value)}
         ></nx-picker>
         <div class="tool-panel-header-actions"></div>

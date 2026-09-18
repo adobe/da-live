@@ -331,7 +331,7 @@ class EwCanvasVersions extends LitElement {
             <span class="meta">${entry.date}, ${entry.time}</span>
             ${users ? html`<span class="user">${users}</span>` : nothing}
           </div>
-          <nx-menu .items=${menuItems} placement="auto"
+          <nx-menu size="m" .items=${menuItems} placement="auto"
             @click=${(e) => e.stopPropagation()}
             @keydown=${(e) => e.stopPropagation()}
             @select=${(e) => {
