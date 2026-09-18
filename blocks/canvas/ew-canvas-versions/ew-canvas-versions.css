@@ -4,7 +4,7 @@
   min-height: 0;
   font-family: var(--s2-font-family);
   padding: var(--s2-spacing-200) 0 0 var(--s2-spacing-200);
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--s2-component-m-regular-font-size);
   color: var(--s2-gray-700);
 }
 
@@ -24,7 +24,7 @@ button {
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-200);
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--s2-component-m-regular-font-size);
   color: var(--s2-gray-600);
   text-align: center;
 }
@@ -48,11 +48,11 @@ button {
 }
 
 .seg-btn {
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--s2-component-m-regular-font-size);
   border: none;
   background: transparent;
   color: var(--s2-gray-700);
-  height: 24px;
+  height: 32px;
   min-width: 48px;
   padding: 0 var(--s2-spacing-100);
   transition: transform 0.125s ease-out;
@@ -74,8 +74,8 @@ button {
 .hint {
   margin: 0;
   padding: 0 var(--s2-spacing-75);
-  height: 24px;
-  font-size: var(--s2-component-s-regular-font-size);
+  height: 32px;
+  font-size: var(--s2-component-m-regular-font-size);
   color: var(--s2-gray-700);
   flex-shrink: 0;
 }
@@ -128,7 +128,7 @@ button {
 }
 
 .versionname {
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--s2-component-m-bold-font-size);
   font-weight: 700;
   color: var(--s2-gray-900);
 }
@@ -297,17 +297,17 @@ summary {
 
 .is-new {
   .da-input {
-    height: 24px;
-    font-size: var(--s2-component-s-regular-font-size);
+    height: 32px;
+    font-size: var(--s2-component-m-regular-font-size);
   }
 
   .da-btn-secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 24px;
+    height: 32px;
     padding: 0 var(--s2-spacing-100);
-    font-size: var(--s2-component-s-regular-font-size);
+    font-size: var(--s2-component-m-regular-font-size);
     font-weight: normal;
     border-radius: var(--s2-corner-radius-400);
 
