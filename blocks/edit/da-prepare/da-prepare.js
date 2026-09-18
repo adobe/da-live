@@ -142,6 +142,15 @@ export default class DaPrepare extends LitElement {
   };
 
   handleCloseDialog() {
+    if (this._preflightRequestId) {
+      document.dispatchEvent(new CustomEvent(PREFLIGHT_EVENT.STATUS, {
+        detail: {
+          path: this.details?.fullpath,
+          status: 'cancelled',
+          requestId: this._preflightRequestId,
+        },
+      }));
+    }
     this._dialogItem = undefined;
     this._preflightRequestId = undefined;
   }

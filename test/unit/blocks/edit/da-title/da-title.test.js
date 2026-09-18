@@ -741,6 +741,18 @@ describe('DaTitle', () => {
       expect(await pending).to.equal('fail');
     });
 
+    it('requestPreflight resolves promptly to a cancelled status (dialog closed mid-run)', async () => {
+      el = await fixture();
+      let runDetail;
+      document.addEventListener('nx-preflight-run', (e) => { runDetail = e.detail; }, { once: true });
+      const pending = el.requestPreflight();
+      await nextFrame();
+      // The responder emits a non-success status when the user closes the dialog,
+      // so the gate unlocks without waiting for the 60s PREFLIGHT_TIMEOUT.
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { path: runDetail.paths[0], status: 'cancelled', requestId: runDetail.requestId } }));
+      expect(await pending).to.equal('cancelled');
+    });
+
     it('renders a "required" dot next to Publish when enforcing and not passed', async () => {
       el = await fixture();
       el._enforcePreflight = true;

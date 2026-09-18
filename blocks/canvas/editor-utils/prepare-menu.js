@@ -1,10 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
-const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -43,14 +44,17 @@ export default class PrepareMenu extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    document.addEventListener(PREFLIGHT_EVENT.RUN, this.handlePreflightRun);
-    document.addEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
+    initPreflightBridge();
+    this._unsubs = [
+      canvasBus.preflightRunRequest.subscribe(this.handlePreflightRun),
+      canvasBus.preflightStatusState.subscribe(this.handlePreflightStatus),
+    ];
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener(PREFLIGHT_EVENT.RUN, this.handlePreflightRun);
-    document.removeEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
+    this._unsubs?.forEach((unsub) => unsub());
+    this._unsubs = null;
   }
 
   update(props) {
@@ -117,8 +121,8 @@ export default class PrepareMenu extends LitElement {
     this._dialogItem = item;
   }
 
-  handlePreflightRun = async (e) => {
-    const { paths, requestId } = e.detail || {};
+  handlePreflightRun = async (detail) => {
+    const { paths, requestId } = detail || {};
     if (!paths || paths.length !== 1 || paths[0] !== this.details?.fullpath) return;
     this.shadowRoot.querySelector('nx-popover')?.close();
     const render = (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default;
@@ -127,8 +131,8 @@ export default class PrepareMenu extends LitElement {
     this._dialogItem = { title: 'Preflight', cmp };
   };
 
-  handlePreflightStatus = (e) => {
-    const { requestId, status } = e.detail || {};
+  handlePreflightStatus = (detail) => {
+    const { requestId, status } = detail || {};
     if (!this._preflightRequestId || requestId !== this._preflightRequestId) return;
     if (status === 'success') {
       this._dialogItem = undefined;
@@ -137,6 +141,13 @@ export default class PrepareMenu extends LitElement {
   };
 
   handleCloseDialog() {
+    if (this._preflightRequestId) {
+      reportPreflightStatus({
+        path: this.details?.fullpath,
+        status: 'cancelled',
+        requestId: this._preflightRequestId,
+      });
+    }
     this._dialogItem = undefined;
     this._preflightRequestId = undefined;
   }
