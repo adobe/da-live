@@ -46,6 +46,7 @@ class EwToolPanel extends LitElement {
     let lastSection;
     for (const v of this.views) {
       if (v.section && v.section !== lastSection) {
+        if (lastSection) items.push({ divider: true });
         items.push({ section: v.section });
         lastSection = v.section;
       }
