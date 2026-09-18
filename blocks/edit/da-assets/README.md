@@ -156,7 +156,7 @@ Exports `DEFAULT_ASSET_BASE_PATH` (`/adobe/assets`), the default base path segme
   assetBasePath,          // base path segment (default '/adobe/assets')
   isDmEnabled,            // true when DM delivery URLs should be used
   isSmartCrop,            // true when Smart Crop selection is active
-  insertAsLink,           // true when images should be inserted as <a> links
+  imageType,              // 'link' | 'editable-link' | undefined, from aem.assets.image.type
   mimeRenditionOverrides, // Record<string, string> from aem.asset.mime.renditions
 }
 ```
