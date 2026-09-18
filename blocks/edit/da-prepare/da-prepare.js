@@ -217,9 +217,12 @@ export default class DaPrepare extends LitElement {
     if (!this._fullsizeDialogItem) return nothing;
 
     return html`
-      <dialog class="prepare-fullsize-dialog" @close=${this.handleCloseFullsizeDialog}>
+      <dialog
+        class="prepare-fullsize-dialog"
+        aria-labelledby="prepare-fullsize-dialog-title"
+        @close=${this.handleCloseFullsizeDialog}>
         <header class="prepare-fullsize-dialog-header">
-          <h2 class="prepare-fullsize-dialog-title">
+          <h2 id="prepare-fullsize-dialog-title" class="prepare-fullsize-dialog-title">
             ${this.renderDialogIcon(this._fullsizeDialogItem)}
             <span>${this._fullsizeDialogItem.title}</span>
           </h2>
@@ -232,6 +235,7 @@ export default class DaPrepare extends LitElement {
         <div class="prepare-fullsize-dialog-body">
           <iframe
             src=${this._fullsizeDialogItem.path}
+            title=${this._fullsizeDialogItem.title}
             @load=${this.handleIframeLoad}
             allow="clipboard-write *"></iframe>
         </div>
