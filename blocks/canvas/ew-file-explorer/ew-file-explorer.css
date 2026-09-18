@@ -22,8 +22,8 @@
 }
 
 .search-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   color: var(--s2-gray-600);
 }
@@ -35,7 +35,7 @@
   outline: none;
   background: none;
   font-family: inherit;
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-body-size-s);
   color: var(--s2-gray-900);
   padding: 0;
 
