@@ -65,7 +65,7 @@ nx-popover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 32px;
+    height: 28px;
     padding: 0 var(--s2-spacing-100);
     font-size: var(--s2-component-m-regular-font-size);
     font-weight: normal;
