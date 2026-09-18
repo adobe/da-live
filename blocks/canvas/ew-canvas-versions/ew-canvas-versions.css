@@ -52,7 +52,7 @@ button {
   border: none;
   background: transparent;
   color: var(--s2-gray-700);
-  height: 32px;
+  height: 28px;
   min-width: 48px;
   padding: 0 var(--s2-spacing-100);
   transition: transform 0.125s ease-out;
