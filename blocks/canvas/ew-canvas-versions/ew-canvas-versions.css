@@ -194,6 +194,7 @@ button {
     gap: var(--s2-spacing-50);
     flex-direction: column;
     color: var(--s2-gray-600);
+    font-size: var(--s2-component-s-regular-font-size);
     min-width: 0;
   }
 
