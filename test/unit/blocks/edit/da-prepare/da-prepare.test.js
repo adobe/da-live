@@ -282,6 +282,20 @@ describe('DaPrepare', () => {
       const svgIcons = el.shadowRoot.querySelectorAll('.prepare-menu-item svg.icon');
       expect(svgIcons.length).to.be.greaterThan(0);
     });
+
+    it('renders standalone SVG icon paths as images', async () => {
+      el = await fixture();
+
+      el._showMenu = true;
+      el._menuItems = [{ title: 'Test', icon: '/tools/plugins/request-for-publish/request-for-publish.svg' }];
+      el.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+
+      const img = el.shadowRoot.querySelector('.prepare-menu-item img.icon');
+      expect(img).to.exist;
+      expect(img.getAttribute('src')).to.equal('/tools/plugins/request-for-publish/request-for-publish.svg');
+    });
   });
 
   describe('handleItemClick', () => {
@@ -468,6 +482,20 @@ describe('DaPrepare', () => {
       const svg = el.shadowRoot.querySelector('.prepare-menu-item svg.icon use');
       expect(svg).to.exist;
       expect(svg.getAttribute('href')).to.equal('/blocks/edit/img/icon.svg#icon');
+    });
+
+    it('renders standalone SVG icon paths as img elements', async () => {
+      el = await fixture();
+
+      el._showMenu = true;
+      el._menuItems = [{ title: 'Test', icon: '/tools/plugins/request-for-publish/request-for-publish.svg' }];
+      el.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+
+      const img = el.shadowRoot.querySelector('.prepare-menu-item img.icon');
+      expect(img).to.exist;
+      expect(img.getAttribute('src')).to.equal('/tools/plugins/request-for-publish/request-for-publish.svg');
     });
 
     it('renders img element for non-svg icon paths', async () => {

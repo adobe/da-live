@@ -7,6 +7,11 @@ await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
 
+function isSvgSymbol(icon) {
+  if (typeof icon !== 'string' || !icon) return false;
+  return icon.startsWith('#') || icon.includes('.svg#');
+}
+
 const OOTB_ACTIONS = [
   {
     title: 'Preflight',
@@ -200,17 +205,18 @@ export default class PrepareMenu extends LitElement {
 
   renderDialogIcon(item) {
     if (!item.icon) return nothing;
-    if (item.icon.includes('.svg')) {
+    if (isSvgSymbol(item.icon)) {
       return html`<svg class="prepare-dialog-icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
     }
     return html`<img class="prepare-dialog-icon" src="${item.icon}" alt="" />`;
   }
 
   renderIcon(item) {
-    if (item.icon?.includes('.svg')) {
+    if (!item.icon) return html`<span class="icon" aria-hidden="true"></span>`;
+    if (isSvgSymbol(item.icon)) {
       return html`<svg class="icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
     }
-    return html`<img class="icon" src="${item.icon}" />`;
+    return html`<img class="icon" src="${item.icon}" alt="" />`;
   }
 
   render() {
