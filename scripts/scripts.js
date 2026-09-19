@@ -84,3 +84,5 @@ export default async function loadPage() {
 }
 
 loadPage();
+
+// minor fix
