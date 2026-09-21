@@ -152,7 +152,7 @@ class EwPageMetadata extends LitElement {
   _renderField(field) {
     if (!field.values?.length) {
       return html`
-        <input type="text" .value=${field.value}
+        <input type="text" class="da-input" .value=${field.value}
                @blur=${(e) => this._commit(field, e.target.value)}>`;
     }
     if (field.type === 'multi') {
@@ -188,7 +188,7 @@ class EwPageMetadata extends LitElement {
     return html`
       <nx-dialog class="ew-pm-add" title="Add field" @close=${() => this._cancelAdd()}>
         <label>Key
-          <input type="text" name="key" .value=${this._draftKey}
+          <input type="text" name="key" class="da-input" .value=${this._draftKey}
                  @input=${(e) => { this._draftKey = e.target.value; }}>
         </label>
         <button slot="actions" class="da-btn-secondary"
