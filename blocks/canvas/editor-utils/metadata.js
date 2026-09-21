@@ -63,7 +63,9 @@ export function readMetadataRows(view) {
   const rows = [];
   found.node.forEach((row, offset, index) => {
     if (index === 0) return;
-    rows.push({ key: row.child(0).textContent, value: row.child(1).textContent });
+    const key = row.child(0).textContent;
+    if (!key.trim()) return;
+    rows.push({ key, value: row.child(1).textContent });
   });
   return rows;
 }

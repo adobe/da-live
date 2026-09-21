@@ -24,6 +24,13 @@
   padding: 4px;
 }
 
+.ew-pm-row .delete-btn {
+  /* Guarantees right alignment regardless of how wide the field control renders
+     (e.g. a dropdown/swatch-radio group is visually narrower than a text input). */
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .icon {
   width: 16px;
   height: 16px;

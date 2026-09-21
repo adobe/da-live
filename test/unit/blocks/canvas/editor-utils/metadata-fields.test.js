@@ -123,8 +123,23 @@ describe('mergeMetadataFields', () => {
     expect(fields.map((f) => f.key)).to.deep.equal(['Title', 'Description', 'category', 'legacy-flag']);
     const extra = fields.find((f) => f.key === 'legacy-flag');
     expect(extra).to.deep.equal({
-      key: 'legacy-flag', label: 'legacy-flag', type: 'single', values: null, value: 'yes', configured: false,
+      key: 'legacy-flag',
+      label: 'legacy-flag',
+      type: 'single',
+      values: null,
+      value: 'yes',
+      configured: false,
+      removable: true,
     });
+  });
+
+  it('marks Title/Description as not removable, and everything else as removable', () => {
+    const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
+    const fields = mergeMetadataFields([{ key: 'extra', value: 'x' }], configured);
+    expect(fields.find((f) => f.key === 'Title').removable).to.equal(false);
+    expect(fields.find((f) => f.key === 'Description').removable).to.equal(false);
+    expect(fields.find((f) => f.key === 'category').removable).to.equal(true);
+    expect(fields.find((f) => f.key === 'extra').removable).to.equal(true);
   });
 
   it('marks Title/Description/configured fields as configured, and passthrough doc fields as not', () => {

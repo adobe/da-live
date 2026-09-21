@@ -39,8 +39,8 @@ export function buildMetadataFields(data) {
 }
 
 const DEFAULT_FIELDS = [
-  { key: 'Title', label: 'Title', type: 'single', values: null },
-  { key: 'Description', label: 'Description', type: 'single', values: null },
+  { key: 'Title', label: 'Title', type: 'single', values: null, removable: false },
+  { key: 'Description', label: 'Description', type: 'single', values: null, removable: false },
 ];
 
 function findDocValue(docRows, key) {
@@ -72,7 +72,7 @@ export function mergeMetadataFields(docRows, configuredFields) {
     (f) => !DEFAULT_FIELDS.some((d) => normalize(d.key) === normalize(f.key)),
   );
   const merged = restConfigured.map((f) => (
-    { ...f, value: findDocValue(docRows, f.key), configured: true }
+    { ...f, value: findDocValue(docRows, f.key), configured: true, removable: true }
   ));
 
   const usedKeys = new Set([
@@ -82,7 +82,13 @@ export function mergeMetadataFields(docRows, configuredFields) {
   const extra = docRows
     .filter((row) => !usedKeys.has(normalize(row.key)))
     .map((row) => ({
-      key: row.key, label: row.key, type: 'single', values: null, value: row.value, configured: false,
+      key: row.key,
+      label: row.key,
+      type: 'single',
+      values: null,
+      value: row.value,
+      configured: false,
+      removable: true,
     }));
 
   return [...titleDescFields, ...merged, ...extra];

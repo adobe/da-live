@@ -9,7 +9,7 @@ import { loadBlockOptions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
-const EMPTY_OPTION = { value: '', label: '—' };
+const EMPTY_OPTION = { value: '', label: 'Please Select' };
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
@@ -46,13 +46,16 @@ class EwPageMetadata extends LitElement {
       this._hashState = state;
       if (state?.org !== prev?.org || state?.site !== prev?.site) this._loadLibraryFields();
     });
-    // editorHtmlState's payload is ignored here (only its truthiness matters) — reading
-    // straight from the live doc, rather than re-parsing rendered aemHtml, keeps the
-    // panel correct regardless of what triggered the change (its own writes, a direct
-    // block edit, or collab sync) and doesn't depend on the real editor's table-wrapper
-    // plugins being present.
+    // editorHtmlState only signals "doc cleared" here (e.g. navigating away) — the actual
+    // refresh trigger is editorDocState, which fires on every doc-changing transaction
+    // (including plain in-place typing, not just the ones that trigger a full re-render),
+    // and reads straight from the live doc rather than re-parsing rendered aemHtml.
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
-      this._docRows = aemHtml?.trim() ? readMetadataRows(getExtensionsBridge().view) : [];
+      if (!aemHtml?.trim()) this._docRows = [];
+    });
+    this._unsubscribeDocState = canvasBus.editorDocState.subscribe(() => {
+      const { view } = getExtensionsBridge();
+      if (view) this._docRows = readMetadataRows(view);
     });
   }
 
@@ -60,6 +63,7 @@ class EwPageMetadata extends LitElement {
     super.disconnectedCallback();
     this._unsubHash?.();
     this._unsubscribeHtml?.();
+    this._unsubscribeDocState?.();
   }
 
   async _loadLibraryFields() {
@@ -168,12 +172,13 @@ class EwPageMetadata extends LitElement {
       <div class="ew-pm-row" data-key=${field.key}>
         <label class="ew-pm-label">${field.label}</label>
         ${this._renderField(field)}
-        <button type="button" class="delete-btn" aria-label="Delete ${field.label}"
-                @click=${() => this._onDeleteClick(field.key)}>
-          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
-            <use href="${DELETE_ICON_SRC}#icon"></use>
-          </svg>
-        </button>
+        ${field.removable === false ? nothing : html`
+          <button type="button" class="delete-btn" aria-label="Delete ${field.label}"
+                  @click=${() => this._onDeleteClick(field.key)}>
+            <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+              <use href="${DELETE_ICON_SRC}#icon"></use>
+            </svg>
+          </button>`}
       </div>`;
   }
 

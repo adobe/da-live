@@ -55,6 +55,14 @@ describe('readMetadataRows', () => {
       { key: 'Description', value: 'A page about things' },
     ]);
   });
+
+  it('skips rows with a blank key, e.g. a freshly-added empty table row', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [metadataTableJSON([['Title', 'My Page'], ['', ''], ['  ', 'orphan value']])],
+    });
+    expect(readMetadataRows(view)).to.deep.equal([{ key: 'Title', value: 'My Page' }]);
+  });
 });
 
 describe('ensureMetadataTable', () => {

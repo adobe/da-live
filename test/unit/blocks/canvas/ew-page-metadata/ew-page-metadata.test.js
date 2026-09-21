@@ -79,7 +79,7 @@ describe('ew-page-metadata', () => {
   describe('fallback + read path', () => {
     it('renders default Title/Description text fields when there is no library config', async () => {
       bridge.view = makeRealView(baseDoc());
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('');
       expect(rowFor(el, 'Description').querySelector('input[type="text"]').value).to.equal('');
@@ -87,14 +87,14 @@ describe('ew-page-metadata', () => {
 
     it('pre-fills default fields from the current doc metadata', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['title', 'My Page']])] });
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('My Page');
     });
 
     it('renders an unconfigured doc key as a plain text field', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
       expect(rowFor(el, 'legacy-flag').querySelector('input[type="text"]').value).to.equal('yes');
     });
@@ -105,7 +105,7 @@ describe('ew-page-metadata', () => {
         content: [metadataTableJSON([['category', 'news'], ['legacy-flag', 'yes']])],
       });
       el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
       expect(rowFor(el, 'category').querySelector('nx-picker')).to.exist;
@@ -119,19 +119,40 @@ describe('ew-page-metadata', () => {
     it('shows "Page Metadata" as the panel headline', async () => {
       expect(el.shadowRoot.querySelector('h3').textContent).to.equal('Page Metadata');
     });
+
+    it('does not show a delete button for Title or Description, but does for other fields', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+      expect(rowFor(el, 'Title').querySelector('.delete-btn')).to.equal(null);
+      expect(rowFor(el, 'Description').querySelector('.delete-btn')).to.equal(null);
+      expect(rowFor(el, 'legacy-flag').querySelector('.delete-btn')).to.exist;
+    });
+
+    it('clears the fields when editorHtmlState signals the doc was unloaded', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+      expect(rowFor(el, 'legacy-flag')).to.exist;
+
+      canvasBus.editorHtmlState.emit('');
+      await el.updateComplete;
+      expect(rowFor(el, 'legacy-flag')).to.equal(null);
+      expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('');
+    });
   });
 
   describe('config-driven rendering', () => {
     it('renders a single-select dropdown with a leading empty option', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['category', 'news']])] });
       el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       expect(picker).to.exist;
       expect(picker.value).to.equal('news');
       expect(picker.items).to.deep.equal([
-        { value: '', label: '—' },
+        { value: '', label: 'Please Select' },
         { value: 'news', label: 'News' },
       ]);
     });
@@ -139,7 +160,7 @@ describe('ew-page-metadata', () => {
     it('renders ew-metadata-multiselect for a multi-select field', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['tags', 'a, b']])] });
       el._libraryFields = [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }, { title: 'B', value: 'b' }] }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
       const multi = rowFor(el, 'tags').querySelector('ew-metadata-multiselect');
       expect(multi).to.exist;
@@ -154,18 +175,20 @@ describe('ew-page-metadata', () => {
         type: 'single',
         values: [{ title: 'Adobe Red', value: 'adobe-red', colorValue: '#FF0000' }, { title: 'Sky', value: 'sky' }],
       }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
       const row = rowFor(el, 'accent');
       expect(row.querySelector('.swatch')).to.exist;
-      expect(row.querySelector('input[type="radio"][value=""]')).to.exist;
+      const emptyRadio = row.querySelector('input[type="radio"][value=""]');
+      expect(emptyRadio).to.exist;
+      expect(emptyRadio.closest('label').textContent.trim()).to.equal('Please Select');
       expect(row.querySelector('input[type="radio"][value="adobe-red"]').checked).to.equal(true);
     });
 
     it('selects the empty option when the field has no current value', async () => {
       bridge.view = makeRealView(baseDoc());
       el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       expect(picker.value).to.equal('');
@@ -175,7 +198,7 @@ describe('ew-page-metadata', () => {
   describe('write-back', () => {
     it('creates the metadata table and commits a value on text-field blur when none exists yet', async () => {
       bridge.view = makeRealView(baseDoc());
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
       const input = rowFor(el, 'Title').querySelector('input[type="text"]');
@@ -193,7 +216,7 @@ describe('ew-page-metadata', () => {
         type: 'single',
         values: [{ title: 'News', value: 'news' }, { title: 'Blog', value: 'blog' }],
       }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
       const picker = rowFor(el, 'category').querySelector('nx-picker');
@@ -205,7 +228,7 @@ describe('ew-page-metadata', () => {
     it('commits the empty option, clearing the value', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['category', 'news']])] });
       el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
       const picker = rowFor(el, 'category').querySelector('nx-picker');
@@ -217,7 +240,7 @@ describe('ew-page-metadata', () => {
     it('commits a multiselect change as the comma-joined value', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['tags', 'a']])] });
       el._libraryFields = [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }, { title: 'B', value: 'b' }] }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
       const multi = rowFor(el, 'tags').querySelector('ew-metadata-multiselect');
@@ -234,7 +257,7 @@ describe('ew-page-metadata', () => {
         type: 'single',
         values: [{ title: 'Adobe Red', value: 'adobe-red', colorValue: '#FF0000' }, { title: 'Sky', value: 'sky' }],
       }];
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
       rowFor(el, 'accent').querySelector('input[type="radio"][value="sky"]').click();
@@ -244,7 +267,7 @@ describe('ew-page-metadata', () => {
 
     it('adds a new field via the + dialog with just a key, leaving the value empty', async () => {
       bridge.view = makeRealView(baseDoc());
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
       el.shadowRoot.querySelector('.add-btn').click();
@@ -264,11 +287,11 @@ describe('ew-page-metadata', () => {
     });
 
     it('deletes a field after confirming the delete dialog', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] });
-      canvasBus.editorHtmlState.emit('x');
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
-      rowFor(el, 'Title').querySelector('.delete-btn').click();
+      rowFor(el, 'legacy-flag').querySelector('.delete-btn').click();
       await el.updateComplete;
       el.shadowRoot.querySelector('.ew-pm-delete .da-btn-primary').click();
 
@@ -276,46 +299,75 @@ describe('ew-page-metadata', () => {
     });
 
     it('cancelling the delete dialog leaves the field untouched', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] });
-      canvasBus.editorHtmlState.emit('x');
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
-      rowFor(el, 'Title').querySelector('.delete-btn').click();
+      rowFor(el, 'legacy-flag').querySelector('.delete-btn').click();
       await el.updateComplete;
       el.shadowRoot.querySelector('.ew-pm-delete .da-btn-secondary').click();
       await el.updateComplete;
 
       expect(el.shadowRoot.querySelector('.ew-pm-delete')).to.equal(null);
-      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'Title', value: 'My Page' }]);
+      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'legacy-flag', value: 'yes' }]);
     });
   });
 
   describe('sync with external doc changes', () => {
-    it('refreshes when the metadata block is edited outside the panel (e.g. direct block edit)', async () => {
+    // findTablePos/textStartPos are deliberately independent of the tableRows()/
+    // metadataTableJSON() helpers above — they walk the doc via nodeSize, the same way
+    // production code (findMetadataTable/findMetadataRow) computes positions.
+    function findTablePos(view) {
+      let tablePos = -1;
+      view.state.doc.descendants((n, p) => { if (n.type.name === 'table' && tablePos < 0) tablePos = p; });
+      return tablePos;
+    }
+
+    function textStartPos(table, tablePos, rowIndex, cellIndex) {
+      let pos = tablePos + 1;
+      for (let i = 0; i < rowIndex; i += 1) pos += table.child(i).nodeSize;
+      pos += 1;
+      const row = table.child(rowIndex);
+      for (let i = 0; i < cellIndex; i += 1) pos += row.child(i).nodeSize;
+      return pos + 2;
+    }
+
+    it('refreshes on a plain in-place text edit within an existing cell, not just structural changes', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'Old']])] });
-      canvasBus.editorHtmlState.emit('x');
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('Old');
 
-      // Simulate an edit made through a different path (e.g. the raw block-edit modal),
-      // which also ends by re-emitting editorHtmlState after dispatching its transaction.
+      // Simulate what happens when a user types directly into the value cell: a plain
+      // text replace, no row inserted/removed — the case editorDocState exists to cover.
       const { view } = bridge;
-      const { schema } = view.state;
-      let tablePos = -1;
-      view.state.doc.descendants((n, p) => { if (n.type.name === 'table' && tablePos < 0) tablePos = p; });
+      const tablePos = findTablePos(view);
       const table = view.state.doc.nodeAt(tablePos);
-      const rowPos = tablePos + 1 + table.child(0).nodeSize;
-      const rowNode = table.child(1);
-      const cell = (text) => schema.nodes.table_cell.create(
-        null,
-        schema.nodes.paragraph.create(null, schema.text(text)),
-      );
-      const newRow = schema.nodes.table_row.create(null, [cell('Title'), cell('New')]);
-      view.dispatch(view.state.tr.replaceWith(rowPos, rowPos + rowNode.nodeSize, newRow));
-      canvasBus.editorHtmlState.emit('x');
+      const from = textStartPos(table, tablePos, 1, 1);
+      view.dispatch(view.state.tr.insertText('New', from, from + 'Old'.length));
+      canvasBus.editorDocState.emit();
       await el.updateComplete;
 
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('New');
+    });
+
+    it('does not show a field for a freshly-added row until it has a key', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] });
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+      const fieldCountBefore = el.shadowRoot.querySelectorAll('.ew-pm-row').length;
+
+      const { view } = bridge;
+      const tablePos = findTablePos(view);
+      const table = view.state.doc.nodeAt(tablePos);
+      const { schema } = view.state;
+      const emptyCell = () => schema.nodes.table_cell.create(null, schema.nodes.paragraph.create());
+      const emptyRow = schema.nodes.table_row.create(null, [emptyCell(), emptyCell()]);
+      view.dispatch(view.state.tr.insert(tablePos + table.nodeSize - 1, emptyRow));
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      expect(el.shadowRoot.querySelectorAll('.ew-pm-row').length).to.equal(fieldCountBefore);
     });
   });
 });
