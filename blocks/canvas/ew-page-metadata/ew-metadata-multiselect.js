@@ -1,8 +1,12 @@
 import { LitElement, html } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const style = await loadStyle(import.meta.url);
+const [formStyle, style] = await Promise.all([
+  getSheet(`${getNx2()}/styles/form.css`),
+  loadStyle(import.meta.url),
+]);
 
 function parseSelected(value) {
   return (value || '').split(',').map((v) => v.trim()).filter(Boolean);
@@ -16,7 +20,7 @@ class EwMetadataMultiselect extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [formStyle, style];
   }
 
   _onToggle(itemValue) {
@@ -32,7 +36,7 @@ class EwMetadataMultiselect extends LitElement {
       <ul class="ew-metadata-multiselect">
         ${(this.items || []).map((item) => html`
           <li>
-            <label>
+            <label class="da-checkbox">
               <input type="checkbox" value=${item.value}
                      .checked=${selected.has(item.value)}
                      @change=${() => this._onToggle(item.value)}>

@@ -35,17 +35,6 @@
   gap: 16px;
 }
 
-.ew-pm-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.ew-pm-label {
-  font-size: var(--s2-body-size-s);
-  color: var(--s2-gray-700, #4b4b4b);
-}
-
 .ew-pm-control-row {
   display: flex;
   align-items: center;

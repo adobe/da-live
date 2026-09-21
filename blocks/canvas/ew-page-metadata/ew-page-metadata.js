@@ -169,7 +169,7 @@ class EwPageMetadata extends LitElement {
 
   _renderRow(field) {
     return html`
-      <div class="ew-pm-row" data-key=${field.key}>
+      <div class="ew-pm-row da-form-field" data-key=${field.key}>
         <label class="ew-pm-label">${field.label}</label>
         <div class="ew-pm-control-row">
           <div class="ew-pm-control">${this._renderField(field)}</div>
