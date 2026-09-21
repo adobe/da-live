@@ -294,6 +294,8 @@ describe('ew-page-metadata', () => {
 
       rowFor(el, 'legacy-flag').querySelector('.delete-btn').click();
       await el.updateComplete;
+      const message = el.shadowRoot.querySelector('.ew-pm-delete span').textContent.replace(/\s+/g, ' ').trim();
+      expect(message).to.equal('Are you sure you want to remove legacy-flag metadata from the page?');
       el.shadowRoot.querySelector('.ew-pm-delete .da-btn-primary').click();
 
       expect(tableRows(bridge.view)).to.deep.equal([]);

@@ -201,8 +201,8 @@ class EwPageMetadata extends LitElement {
   _renderDeleteDialog() {
     return html`
       <nx-dialog class="ew-pm-delete" title="Delete field" @close=${() => this._cancelDelete()}>
-        <span>Are you sure you want to delete
-          <strong>${this._pendingDeleteKey}</strong>?</span>
+        <span>Are you sure you want to remove
+          <strong>${this._pendingDeleteKey}</strong> metadata from the page?</span>
         <button slot="actions" class="da-btn-secondary"
                 @click=${() => this._cancelDelete()}>Cancel</button>
         <button slot="actions" class="da-btn-primary"
