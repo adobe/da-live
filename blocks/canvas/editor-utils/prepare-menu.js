@@ -76,6 +76,8 @@ export default class PrepareMenu extends LitElement {
   }
 
   reset() {
+    const dialog = this.shadowRoot.querySelector('.prepare-fullsize-dialog');
+    if (dialog?.open) dialog.close();
     this._menuItems = undefined;
     this._dialogItem = undefined;
     this._fullsizeDialogItem = undefined;
@@ -247,7 +249,7 @@ export default class PrepareMenu extends LitElement {
   renderDialogIcon(item) {
     if (!item.icon) return nothing;
     if (isSvgSymbol(item.icon)) {
-      return html`<svg class="prepare-dialog-icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
+      return html`<svg aria-hidden="true" class="prepare-dialog-icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
     }
     return html`<img class="prepare-dialog-icon" src="${item.icon}" alt="" />`;
   }

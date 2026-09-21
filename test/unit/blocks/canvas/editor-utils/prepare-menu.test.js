@@ -99,6 +99,21 @@ describe('PrepareMenu', () => {
       expect(el._dialogItem).to.be.undefined;
       expect(el._fullsizeDialogItem).to.be.undefined;
     });
+
+    it('closes an open fullsize dialog before clearing state', async () => {
+      el = await fixture();
+      const dialog = document.createElement('dialog');
+      let closed = false;
+      Object.defineProperty(dialog, 'open', { configurable: true, value: true });
+      dialog.close = () => { closed = true; };
+      dialog.className = 'prepare-fullsize-dialog';
+      el.shadowRoot.append(dialog);
+
+      el.reset();
+
+      expect(closed).to.be.true;
+      expect(el._fullsizeDialogItem).to.be.undefined;
+    });
   });
 
   describe('loadMenu', () => {
@@ -484,6 +499,7 @@ describe('PrepareMenu', () => {
       el._fullsizeDialogItem = {
         title: 'Large External',
         path: 'https://example.com/large',
+        icon: '/blocks/edit/img/icon.svg#icon',
         experience: 'fullsize-dialog',
       };
       el.requestUpdate();
@@ -494,6 +510,7 @@ describe('PrepareMenu', () => {
       expect(dialog).to.exist;
       expect(dialog.getAttribute('aria-labelledby')).to.equal('prepare-fullsize-dialog-title');
       expect(dialog.querySelector('#prepare-fullsize-dialog-title').textContent.trim()).to.equal('Large External');
+      expect(dialog.querySelector('.prepare-dialog-icon').getAttribute('aria-hidden')).to.equal('true');
 
       const iframe = dialog.querySelector('iframe');
       expect(iframe.getAttribute('src')).to.equal('https://example.com/large');
