@@ -42,8 +42,12 @@
 }
 
 .ew-pm-label {
-  font-size: 12px;
+  font-size: var(--s2-body-size-s, 0.875rem);
   color: var(--s2-gray-700, #4b4b4b);
+}
+
+.ew-pm-control input[type='text'] {
+  font-size: var(--s2-body-size-s, 0.875rem);
 }
 
 .ew-pm-control-row {
