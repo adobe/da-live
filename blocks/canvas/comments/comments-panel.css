@@ -87,7 +87,7 @@
 
 .ew-comments-detached-reference {
   display: block;
-  font-size: 11px;
+  font-size: var(--s2-body-size-xs);
   color: var(--comment-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -225,7 +225,7 @@
 .ew-comment-author {
   display: block;
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--s2-body-size-s);
   color: var(--s2-gray-800);
 }
 
@@ -235,7 +235,7 @@
 }
 
 .ew-comment-content {
-  font-size: 15px;
+  font-size: var(--s2-body-size-s);
   line-height: 1.5;
   color: var(--s2-gray-800);
   white-space: pre-wrap;
@@ -286,7 +286,9 @@
   width: 100%;
   height: 100px;
   padding: 8px var(--s2-spacing-200);
+  border-width: 1px;
   font-family: var(--body-font-family);
+  font-size: var(--s2-body-size-s);
   resize: none;
 }
 
@@ -304,14 +306,14 @@
 
 .ew-comment-form-hint {
   margin-top: var(--s2-spacing-200);
-  font-size: 11px;
+  font-size: var(--s2-body-size-xs);
   color: var(--s2-gray-600);
   text-align: right;
 }
 
 .ew-comment-form-hint kbd {
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--s2-body-size-xs);
   padding: 1px 5px;
   background: var(--s2-gray-75);
   border: 1px solid var(--s2-gray-200);
@@ -434,7 +436,7 @@
   padding: 8px 12px;
   background: var(--s2-gray-50);
   border-left: 2px solid var(--s2-gray-400);
-  font-size: 11px;
+  font-size: var(--s2-body-size-xs);
   color: var(--s2-gray-700);
   min-width: 0;
   border-radius: 4px;
