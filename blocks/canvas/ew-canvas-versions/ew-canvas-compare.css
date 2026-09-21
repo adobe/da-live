@@ -28,7 +28,7 @@ nx-popover {
 .ew-cc-chip {
   display: inline-flex;
   align-items: center;
-  height: 32px;
+  height: 28px;
   padding: 0 var(--s2-spacing-200);
   border-radius: var(--s2-corner-radius-400);
   background: var(--s2-blue-200);
