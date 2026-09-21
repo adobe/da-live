@@ -560,7 +560,7 @@ export function createCommentsView() {
 export function createMetadataView() {
   return {
     id: 'metadata',
-    label: 'Metadata',
+    label: 'Page',
     section: 'Editor',
     firstParty: true,
     load: async () => {

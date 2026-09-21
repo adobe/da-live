@@ -38,6 +38,16 @@ describe('buildMetadataFields', () => {
     expect(buildMetadataFields(rows)[0].label).to.equal('Robots Directive');
   });
 
+  it('exposes rawLabel as the explicit label only, undefined when none was given', () => {
+    const rows = [
+      { blocks: 'metadata', key: 'robots', label: 'Robots Directive' },
+      { blocks: 'metadata', key: 'category' },
+    ];
+    const fields = buildMetadataFields(rows);
+    expect(fields.find((f) => f.key === 'robots').rawLabel).to.equal('Robots Directive');
+    expect(fields.find((f) => f.key === 'category').rawLabel).to.equal(undefined);
+  });
+
   it('defaults type to single, honors type=multi', () => {
     const rows = [
       { blocks: 'metadata', key: 'category' },
@@ -91,35 +101,60 @@ describe('mergeMetadataFields', () => {
     expect(fields.find((f) => f.key === 'Description').value).to.equal('');
   });
 
-  it('uses configured fields instead of the defaults when config is present', () => {
+  it('always puts Title and Description first, ahead of configured fields', () => {
     const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
     const fields = mergeMetadataFields([], configured);
-    expect(fields.map((f) => f.key)).to.deep.equal(['category']);
+    expect(fields.map((f) => f.key)).to.deep.equal(['Title', 'Description', 'category']);
   });
 
   it('pre-fills a configured field from the doc, case-insensitively', () => {
     const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
     const docRows = [{ key: 'Category', value: 'News' }];
-    expect(mergeMetadataFields(docRows, configured)[0].value).to.equal('News');
+    expect(mergeMetadataFields(docRows, configured).find((f) => f.key === 'category').value).to.equal('News');
   });
 
-  it('appends doc keys not present in config as plain text fields, preserving data', () => {
+  it('appends doc keys not present in Title/Description/config as plain text fields, preserving data', () => {
     const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
     const docRows = [
       { key: 'Category', value: 'News' },
       { key: 'legacy-flag', value: 'yes' },
     ];
     const fields = mergeMetadataFields(docRows, configured);
-    expect(fields.map((f) => f.key)).to.deep.equal(['category', 'legacy-flag']);
+    expect(fields.map((f) => f.key)).to.deep.equal(['Title', 'Description', 'category', 'legacy-flag']);
     const extra = fields.find((f) => f.key === 'legacy-flag');
     expect(extra).to.deep.equal({
       key: 'legacy-flag', label: 'legacy-flag', type: 'single', values: null, value: 'yes', configured: false,
     });
   });
 
-  it('marks configured/default fields as configured, and passthrough doc fields as not', () => {
+  it('marks Title/Description/configured fields as configured, and passthrough doc fields as not', () => {
     const fields = mergeMetadataFields([{ key: 'extra', value: 'x' }], []);
     expect(fields.find((f) => f.key === 'Title').configured).to.equal(true);
     expect(fields.find((f) => f.key === 'extra').configured).to.equal(false);
+  });
+
+  it('keeps Title/Description as plain text fields even if config gives them values/type', () => {
+    const configured = buildMetadataFields([
+      { blocks: 'metadata', key: 'title', type: 'multi', values: 'A=a' },
+    ]);
+    const fields = mergeMetadataFields([], configured);
+    const title = fields.find((f) => f.key === 'Title');
+    expect(title.type).to.equal('single');
+    expect(title.values).to.equal(null);
+  });
+
+  it('uses the config row\'s explicit label for Title/Description when present', () => {
+    const configured = buildMetadataFields([
+      { blocks: 'metadata', key: 'title', label: 'Page Title' },
+    ]);
+    const fields = mergeMetadataFields([], configured);
+    expect(fields.find((f) => f.key === 'Title').label).to.equal('Page Title');
+    expect(fields.find((f) => f.key === 'Description').label).to.equal('Description');
+  });
+
+  it('keeps the default Title/Description label when the config row has no explicit label', () => {
+    const configured = buildMetadataFields([{ blocks: 'metadata', key: 'title' }]);
+    const fields = mergeMetadataFields([], configured);
+    expect(fields.find((f) => f.key === 'Title').label).to.equal('Title');
   });
 });

@@ -207,7 +207,7 @@ class EwPageMetadata extends LitElement {
     return html`
       <div class="ew-page-metadata">
         <div class="ew-pm-header">
-          <h3>Metadata</h3>
+          <h3>Page Metadata</h3>
           <button type="button" class="add-btn" aria-label="Add field"
                   @click=${() => this._onAddClick()}>
             <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">

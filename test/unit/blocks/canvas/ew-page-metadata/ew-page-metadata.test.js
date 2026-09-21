@@ -115,6 +115,10 @@ describe('ew-page-metadata', () => {
     it('shows the add-field button even when fields are configured', async () => {
       expect(el.shadowRoot.querySelector('.add-btn')).to.exist;
     });
+
+    it('shows "Page Metadata" as the panel headline', async () => {
+      expect(el.shadowRoot.querySelector('h3').textContent).to.equal('Page Metadata');
+    });
   });
 
   describe('config-driven rendering', () => {

@@ -448,7 +448,7 @@ describe('createMetadataView', () => {
   it('is a first-party Editor-section view', () => {
     const view = createMetadataView();
     expect(view.id).to.equal('metadata');
-    expect(view.label).to.equal('Metadata');
+    expect(view.label).to.equal('Page');
     expect(view.section).to.equal('Editor');
     expect(view.firstParty).to.equal(true);
   });
