@@ -52,7 +52,7 @@
 }
 
 .ew-comments-hint {
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
 }
 
 .ew-comments-hint kbd {
@@ -62,7 +62,7 @@
   border: 1px solid var(--s2-gray-200);
   border-radius: 4px;
   font-family: var(--body-font-family);
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-800);
   white-space: nowrap;
 }
@@ -111,7 +111,7 @@
   background: transparent;
   color: var(--s2-gray-700);
   font-family: var(--body-font-family);
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -196,7 +196,7 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -230,7 +230,7 @@
 }
 
 .ew-comment-time {
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-700);
 }
 
@@ -266,7 +266,7 @@
 .ew-comments-thread-replies-summary {
   display: inline-block;
   margin-left: 40px;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-blue-800);
   font-weight: 500;
 }
@@ -332,7 +332,7 @@
 
 .ew-comments-resolved-info {
   width: 100%;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
   margin-left: 40px;
 }
