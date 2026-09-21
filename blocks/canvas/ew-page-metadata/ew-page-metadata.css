@@ -41,15 +41,15 @@
   gap: 4px;
 }
 
-.ew-pm-row-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .ew-pm-label {
   font-size: 12px;
   color: var(--s2-gray-700, #4b4b4b);
+}
+
+.ew-pm-control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ew-pm-row .delete-btn {
@@ -57,7 +57,8 @@
 }
 
 .ew-pm-control {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .ew-pm-control input[type='text'],

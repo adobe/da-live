@@ -170,8 +170,9 @@ class EwPageMetadata extends LitElement {
   _renderRow(field) {
     return html`
       <div class="ew-pm-row" data-key=${field.key}>
-        <div class="ew-pm-row-header">
-          <label class="ew-pm-label">${field.label}</label>
+        <label class="ew-pm-label">${field.label}</label>
+        <div class="ew-pm-control-row">
+          <div class="ew-pm-control">${this._renderField(field)}</div>
           ${field.removable === false ? nothing : html`
             <button type="button" class="delete-btn" aria-label="Delete ${field.label}"
                     @click=${() => this._onDeleteClick(field.key)}>
@@ -180,7 +181,6 @@ class EwPageMetadata extends LitElement {
               </svg>
             </button>`}
         </div>
-        <div class="ew-pm-control">${this._renderField(field)}</div>
       </div>`;
   }
 
