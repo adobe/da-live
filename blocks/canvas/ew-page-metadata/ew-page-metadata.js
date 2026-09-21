@@ -3,12 +3,13 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { parseMetadataBlock, setMetadataValue, addMetadataRow, deleteMetadataRow } from '../editor-utils/metadata.js';
+import { readMetadataRows, setMetadataValue, addMetadataRow, deleteMetadataRow } from '../editor-utils/metadata.js';
 import { buildMetadataFields, mergeMetadataFields } from '../editor-utils/metadata-fields.js';
 import { loadBlockOptions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
+const EMPTY_OPTION = { value: '', label: '—' };
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
@@ -32,7 +33,6 @@ class EwPageMetadata extends LitElement {
     _hashState: { state: true },
     _showAddDialog: { state: true },
     _draftKey: { state: true },
-    _draftValue: { state: true },
     _pendingDeleteKey: { state: true },
   };
 
@@ -46,8 +46,13 @@ class EwPageMetadata extends LitElement {
       this._hashState = state;
       if (state?.org !== prev?.org || state?.site !== prev?.site) this._loadLibraryFields();
     });
+    // editorHtmlState's payload is ignored here (only its truthiness matters) — reading
+    // straight from the live doc, rather than re-parsing rendered aemHtml, keeps the
+    // panel correct regardless of what triggered the change (its own writes, a direct
+    // block edit, or collab sync) and doesn't depend on the real editor's table-wrapper
+    // plugins being present.
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
-      this._docRows = parseMetadataBlock(aemHtml);
+      this._docRows = aemHtml?.trim() ? readMetadataRows(getExtensionsBridge().view) : [];
     });
   }
 
@@ -79,6 +84,7 @@ class EwPageMetadata extends LitElement {
     const { view } = getExtensionsBridge();
     if (!view) return;
     setMetadataValue(view, field.key, value);
+    this._docRows = readMetadataRows(view);
   }
 
   _onDeleteClick(key) {
@@ -91,14 +97,16 @@ class EwPageMetadata extends LitElement {
 
   _confirmDelete() {
     const { view } = getExtensionsBridge();
-    if (view) deleteMetadataRow(view, this._pendingDeleteKey);
+    if (view) {
+      deleteMetadataRow(view, this._pendingDeleteKey);
+      this._docRows = readMetadataRows(view);
+    }
     this._pendingDeleteKey = null;
   }
 
   _onAddClick() {
     this._showAddDialog = true;
     this._draftKey = '';
-    this._draftValue = '';
   }
 
   _cancelAdd() {
@@ -109,13 +117,22 @@ class EwPageMetadata extends LitElement {
     const key = this._draftKey?.trim();
     if (!key) return;
     const { view } = getExtensionsBridge();
-    if (view) addMetadataRow(view, key, this._draftValue ?? '');
+    if (view) {
+      addMetadataRow(view, key, '');
+      this._docRows = readMetadataRows(view);
+    }
     this._showAddDialog = false;
   }
 
   _renderSwatchRadio(field) {
     return html`
       <div class="ew-pm-swatch-radio" role="radiogroup">
+        <label>
+          <input type="radio" name="field-${field.key}" value=""
+                 .checked=${!field.value}
+                 @change=${() => this._commit(field, '')}>
+          <span class="label">${EMPTY_OPTION.label}</span>
+        </label>
         ${field.values.map((v) => html`
           <label>
             <input type="radio" name="field-${field.key}" value=${v.value}
@@ -141,7 +158,7 @@ class EwPageMetadata extends LitElement {
     }
     if (hasColorValues(field)) return this._renderSwatchRadio(field);
     return html`
-      <nx-picker .items=${field.values.map((v) => ({ value: v.value, label: v.title }))}
+      <nx-picker .items=${[EMPTY_OPTION, ...field.values.map((v) => ({ value: v.value, label: v.title }))]}
         .value=${field.value}
         @change=${(e) => this._commit(field, e.detail.value)}></nx-picker>`;
   }
@@ -166,10 +183,6 @@ class EwPageMetadata extends LitElement {
         <label>Key
           <input type="text" name="key" .value=${this._draftKey}
                  @input=${(e) => { this._draftKey = e.target.value; }}>
-        </label>
-        <label>Value
-          <input type="text" name="value" .value=${this._draftValue}
-                 @input=${(e) => { this._draftValue = e.target.value; }}>
         </label>
         <button slot="actions" class="da-btn-secondary"
                 @click=${() => this._cancelAdd()}>Cancel</button>

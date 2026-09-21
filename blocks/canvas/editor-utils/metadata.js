@@ -52,18 +52,20 @@ function findMetadataRow(tableNode, key) {
   return result;
 }
 
-/** Parse the page's metadata block rows out of rendered aemHtml (e.g. editorHtmlState). */
-export function parseMetadataBlock(aemHtml) {
-  if (!aemHtml?.trim()) return [];
-  const doc = new DOMParser().parseFromString(aemHtml, 'text/html');
-  const el = doc.querySelector('.metadata');
-  if (!el) return [];
-  return [...el.children]
-    .map((row) => ({
-      key: row.children[0]?.textContent.trim() ?? '',
-      value: row.children[1]?.textContent.trim() ?? '',
-    }))
-    .filter((row) => row.key);
+/**
+ * Read the page's current metadata rows straight from the live doc — more robust than
+ * parsing rendered aemHtml, which depends on the real editor's table-wrapper plugins
+ * and only reflects whatever the last html-state emission happened to capture.
+ */
+export function readMetadataRows(view) {
+  const found = view ? findMetadataTable(view) : null;
+  if (!found) return [];
+  const rows = [];
+  found.node.forEach((row, offset, index) => {
+    if (index === 0) return;
+    rows.push({ key: row.child(0).textContent, value: row.child(1).textContent });
+  });
+  return rows;
 }
 
 /** Insert an empty metadata table at the end of the doc if one is missing. Returns its position. */

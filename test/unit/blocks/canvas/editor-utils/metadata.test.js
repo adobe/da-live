@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 import { makeRealView } from '../test-helpers.js';
 import {
-  parseMetadataBlock,
+  readMetadataRows,
   ensureMetadataTable,
   addMetadataRow,
   setMetadataValue,
@@ -35,25 +35,22 @@ function findTablePos(view) {
   return pos;
 }
 
-describe('parseMetadataBlock', () => {
-  it('returns an empty array when there is no html yet', () => {
-    expect(parseMetadataBlock('')).to.deep.equal([]);
-    expect(parseMetadataBlock('   ')).to.deep.equal([]);
+describe('readMetadataRows', () => {
+  it('returns an empty array when there is no view', () => {
+    expect(readMetadataRows(null)).to.deep.equal([]);
   });
 
   it('returns an empty array when the page has no metadata block', () => {
-    const html = '<main><div><p>Hello</p></div></main>';
-    expect(parseMetadataBlock(html)).to.deep.equal([]);
+    const view = makeRealView({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }] });
+    expect(readMetadataRows(view)).to.deep.equal([]);
   });
 
-  it('parses key/value rows out of the .metadata div block', () => {
-    const html = `<main><div>
-      <div class="metadata">
-        <div><div>Title</div><div>My Page</div></div>
-        <div><div>Description</div><div>A page about things</div></div>
-      </div>
-    </div></main>`;
-    expect(parseMetadataBlock(html)).to.deep.equal([
+  it('reads key/value rows directly out of the live doc, skipping the heading row', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [metadataTableJSON([['Title', 'My Page'], ['Description', 'A page about things']])],
+    });
+    expect(readMetadataRows(view)).to.deep.equal([
       { key: 'Title', value: 'My Page' },
       { key: 'Description', value: 'A page about things' },
     ]);
