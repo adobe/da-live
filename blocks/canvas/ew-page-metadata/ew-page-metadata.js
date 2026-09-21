@@ -170,15 +170,17 @@ class EwPageMetadata extends LitElement {
   _renderRow(field) {
     return html`
       <div class="ew-pm-row" data-key=${field.key}>
-        <label class="ew-pm-label">${field.label}</label>
-        ${this._renderField(field)}
-        ${field.removable === false ? nothing : html`
-          <button type="button" class="delete-btn" aria-label="Delete ${field.label}"
-                  @click=${() => this._onDeleteClick(field.key)}>
-            <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
-              <use href="${DELETE_ICON_SRC}#icon"></use>
-            </svg>
-          </button>`}
+        <div class="ew-pm-row-header">
+          <label class="ew-pm-label">${field.label}</label>
+          ${field.removable === false ? nothing : html`
+            <button type="button" class="delete-btn" aria-label="Delete ${field.label}"
+                    @click=${() => this._onDeleteClick(field.key)}>
+              <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+                <use href="${DELETE_ICON_SRC}#icon"></use>
+              </svg>
+            </button>`}
+        </div>
+        <div class="ew-pm-control">${this._renderField(field)}</div>
       </div>`;
   }
 
