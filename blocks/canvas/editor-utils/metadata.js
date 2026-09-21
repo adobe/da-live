@@ -82,13 +82,30 @@ export function ensureMetadataTable(view) {
   return pos;
 }
 
+// Title and Description always lead the table (in that order); everything else keeps
+// its existing relative order after them.
+function canonicalRowOrder(rows) {
+  const titleRow = rows.find((r) => normalizeKey(r.child(0).textContent) === 'title');
+  const descRow = rows.find((r) => normalizeKey(r.child(0).textContent) === 'description');
+  const others = rows.filter((r) => r !== titleRow && r !== descRow);
+  return [titleRow, descRow, ...others].filter(Boolean);
+}
+
+function replaceTableRows(view, tablePos, table, rows) {
+  const newTable = view.state.schema.nodes.table.create(table.attrs, [table.child(0), ...rows]);
+  view.dispatch(view.state.tr.replaceWith(tablePos, tablePos + table.nodeSize, newTable));
+}
+
 export function addMetadataRow(view, key, value) {
   if (!view || !key?.trim()) return;
   const tablePos = ensureMetadataTable(view);
   const { state } = view;
   const table = state.doc.nodeAt(tablePos);
-  const row = createMetadataRow(state.schema, key.trim(), value ?? '');
-  view.dispatch(state.tr.insert(tablePos + table.nodeSize - 1, row));
+  const newRow = createMetadataRow(state.schema, key.trim(), value ?? '');
+  const rows = [];
+  table.forEach((row, offset, index) => { if (index > 0) rows.push(row); });
+  rows.push(newRow);
+  replaceTableRows(view, tablePos, table, canonicalRowOrder(rows));
 }
 
 export function setMetadataValue(view, key, value) {
@@ -100,10 +117,14 @@ export function setMetadataValue(view, key, value) {
     addMetadataRow(view, key, value);
     return;
   }
-  const { row, offset } = match;
-  const rowPos = tablePos + 1 + offset;
-  const newRow = createMetadataRow(view.state.schema, row.firstChild?.textContent ?? key, value ?? '');
-  view.dispatch(view.state.tr.replaceWith(rowPos, rowPos + row.nodeSize, newRow));
+  const { row: targetRow } = match;
+  const newRow = createMetadataRow(view.state.schema, targetRow.firstChild?.textContent ?? key, value ?? '');
+  const rows = [];
+  table.forEach((row, offset, index) => {
+    if (index === 0) return;
+    rows.push(row === targetRow ? newRow : row);
+  });
+  replaceTableRows(view, tablePos, table, canonicalRowOrder(rows));
 }
 
 export function deleteMetadataRow(view, key) {

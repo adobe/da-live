@@ -35,6 +35,15 @@ function findTablePos(view) {
   return pos;
 }
 
+function rowKeys(table) {
+  const keys = [];
+  table.forEach((row, offset, index) => {
+    if (index === 0) return;
+    keys.push(row.child(0).textContent);
+  });
+  return keys;
+}
+
 describe('readMetadataRows', () => {
   it('returns an empty array when there is no view', () => {
     expect(readMetadataRows(null)).to.deep.equal([]);
@@ -107,6 +116,33 @@ describe('addMetadataRow', () => {
     expect(table.childCount).to.equal(3);
     expect(table.lastChild.textContent).to.equal('Keywordsfoo, bar');
   });
+
+  it('moves Title to the front when added after other fields already exist', () => {
+    const view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Category', 'News']])] });
+    addMetadataRow(view, 'Title', 'My Page');
+    const table = view.state.doc.nodeAt(findTablePos(view));
+    expect(rowKeys(table)).to.deep.equal(['Title', 'Category']);
+  });
+
+  it('places Description right after Title, ahead of other fields, when added later', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [metadataTableJSON([['Title', 'My Page'], ['Category', 'News']])],
+    });
+    addMetadataRow(view, 'Description', 'A page about things');
+    const table = view.state.doc.nodeAt(findTablePos(view));
+    expect(rowKeys(table)).to.deep.equal(['Title', 'Description', 'Category']);
+  });
+
+  it('preserves the relative order of non-Title/Description fields', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [metadataTableJSON([['Category', 'News'], ['Title', 'My Page']])],
+    });
+    addMetadataRow(view, 'Robots', 'noindex');
+    const table = view.state.doc.nodeAt(findTablePos(view));
+    expect(rowKeys(table)).to.deep.equal(['Title', 'Category', 'Robots']);
+  });
 });
 
 describe('setMetadataValue', () => {
@@ -138,6 +174,17 @@ describe('setMetadataValue', () => {
     const table = view.state.doc.nodeAt(pos);
     expect(table.childCount).to.equal(2);
     expect(table.lastChild.textContent).to.equal('TitleBrand new');
+  });
+
+  it('reorders Title/Description to the front even when only an unrelated field is updated', () => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [metadataTableJSON([['Category', 'News'], ['Description', 'Desc'], ['Title', 'My Page']])],
+    });
+    setMetadataValue(view, 'Category', 'Blog');
+    const table = view.state.doc.nodeAt(findTablePos(view));
+    expect(rowKeys(table)).to.deep.equal(['Title', 'Description', 'Category']);
+    expect(table.child(3).textContent).to.equal('CategoryBlog');
   });
 });
 
