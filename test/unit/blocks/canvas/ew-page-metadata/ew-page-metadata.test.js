@@ -150,6 +150,7 @@ describe('ew-page-metadata', () => {
       await el.updateComplete;
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       expect(picker).to.exist;
+      expect(picker.getAttribute('size')).to.equal('m');
       expect(picker.value).to.equal('news');
       expect(picker.items).to.deep.equal([
         { value: '', label: 'Please Select' },

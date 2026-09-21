@@ -1,4 +1,4 @@
-import { isColorCode } from '../ew-editor-doc/slash-menu/block-options.js';
+import { isColorCode } from './color-code.js';
 
 const BLOCKS_FILTER = 'metadata';
 

@@ -162,7 +162,7 @@ class EwPageMetadata extends LitElement {
     }
     if (hasColorValues(field)) return this._renderSwatchRadio(field);
     return html`
-      <nx-picker .items=${[EMPTY_OPTION, ...field.values.map((v) => ({ value: v.value, label: v.title }))]}
+      <nx-picker size="m" .items=${[EMPTY_OPTION, ...field.values.map((v) => ({ value: v.value, label: v.title }))]}
         .value=${field.value}
         @change=${(e) => this._commit(field, e.detail.value)}></nx-picker>`;
   }
