@@ -6,7 +6,7 @@ const ALLOWED_SEVERITIES = new Set(Object.values(SEVERITY));
 
 function toPreflightItem({ severity, message }) {
   const item = createResult();
-  item.settle(severity, severity, message || '');
+  item.settle(severity, message || '');
   return item;
 }
 
@@ -19,7 +19,7 @@ export function buildProjectValidationChecks({ results = [], hasCustomValidation
 
   if (validResults.length === 0) {
     const item = createResult();
-    item.settle(SEVERITY.SUCCESS, SEVERITY.SUCCESS, 'No custom-validation issues found.');
+    item.settle(SEVERITY.SUCCESS, 'No custom-validation issues found.');
     return [{ title: 'Custom validation', items: [item], done: true }];
   }
 
