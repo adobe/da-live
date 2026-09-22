@@ -4,6 +4,7 @@ import getSheet from '../../shared/sheet.js';
 import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { buildDeepLinkUrl, parseDeepLink } from './helpers/deep-link.js';
+import { authorKey } from './helpers/author-colors.js';
 import {
   DRAFT_MODES,
   makeNewDraft,
@@ -21,6 +22,7 @@ await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
+const base = await getSheet('/blocks/shared/styles/base.css');
 
 let toastModulePromise;
 
@@ -136,7 +138,7 @@ export class CommentsPanel extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [
-      ...this.shadowRoot.adoptedStyleSheets, buttons, form, sheet,
+      ...this.shadowRoot.adoptedStyleSheets, base, buttons, form, sheet,
     ];
     if (this.controller === undefined) this.controller = getCommentsBridge().controller;
     this.setupObservers();
@@ -350,7 +352,8 @@ export class CommentsPanel extends LitElement {
 
   canEditComment(comment) {
     if (!comment || !this.currentUser) return false;
-    return this.currentUser.id === comment.author?.id;
+    const me = authorKey(this.currentUser);
+    return Boolean(me) && me === authorKey(comment.author);
   }
 
   copyThreadLink(threadId = this.controller?.selectedThreadId) {
