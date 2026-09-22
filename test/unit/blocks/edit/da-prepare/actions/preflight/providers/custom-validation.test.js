@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { canvasBus } from '../../../../../../../../blocks/canvas/utils/canvas-bus.js';
 import customValidationProvider, { buildProjectValidationChecks } from '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/custom-validation.js';
 
@@ -71,15 +72,11 @@ describe('buildProjectValidationChecks', () => {
 });
 
 describe('runCustomValidationProvider', () => {
-  // getResults() no-ops unless a host (ew-editor-wysiwyg.js) has announced readiness --
-  // reset to ready before every test so ordering doesn't matter, then the one test that
-  // cares about the unready case overrides it within its own body.
-  beforeEach(() => {
-    canvasBus.validationHostReady.emit(true);
-  });
-
-  it('resolves immediately without emitting when no EW/canvas host is ready (e.g. classic /edit)', async () => {
-    canvasBus.validationHostReady.emit(false);
+  // Must run before ew-editor-wysiwyg is ever defined below - customElements.define can't be
+  // undone once registered, so this is the only place in the file that can exercise the
+  // "no host could ever exist" (classic /edit) gate.
+  it('resolves immediately without emitting when no EW/canvas host could ever exist (e.g. classic /edit)', async () => {
+    expect(customElements.get('ew-editor-wysiwyg')).to.not.exist;
     let runRequests = 0;
     const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
 
@@ -90,43 +87,90 @@ describe('runCustomValidationProvider', () => {
     unsub();
   });
 
-  it('returns immediately and does not emit when the signal is already aborted', async () => {
-    let runRequests = 0;
-    const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
+  describe('when an EW/canvas host could exist', () => {
+    before(() => {
+      if (!customElements.get('ew-editor-wysiwyg')) {
+        customElements.define('ew-editor-wysiwyg', class extends HTMLElement {});
+      }
+    });
 
-    const result = await customValidationProvider.getResults({ signal: AbortSignal.abort() });
+    // getResults() no-ops unless the host has announced readiness -- reset to ready before
+    // every test so ordering doesn't matter, then individual tests override it as needed.
+    beforeEach(() => {
+      canvasBus.validationHostReady.emit(true);
+    });
 
-    expect(result).to.deep.equal([]);
-    expect(runRequests).to.equal(0);
-    unsub();
-  });
+    it('resolves empty if the host never announces ready within the grace window', async () => {
+      canvasBus.validationHostReady.emit(false);
+      const clock = sinon.useFakeTimers();
+      try {
+        const resultPromise = customValidationProvider.getResults({});
+        await clock.tickAsync(1000);
+        expect(await resultPromise).to.deep.equal([]);
+      } finally {
+        clock.restore();
+      }
+    });
 
-  it('emits validationRunRequest and resolves with the broadcast result', async () => {
-    let runRequests = 0;
-    const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
+    it('waits for a host that announces ready shortly after the run starts (mount-order race)', async () => {
+      canvasBus.validationHostReady.emit(false);
+      let runRequests = 0;
+      const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
 
-    const resultPromise = customValidationProvider.getResults({});
-    expect(runRequests).to.equal(1);
-    canvasBus.validationResultState.emit({ items: [], hasCustomValidation: false });
+      const resultPromise = customValidationProvider.getResults({});
+      canvasBus.validationHostReady.emit(true);
+      // Resolving the internal host-ready wait still defers getResults()'s own continuation
+      // to a microtask - flush one before it's expected to have emitted the run request.
+      await Promise.resolve();
+      expect(runRequests).to.equal(1);
+      canvasBus.validationResultState.emit({ items: [], hasCustomValidation: false });
 
-    expect(await resultPromise).to.deep.equal([]);
-    unsub();
-  });
+      expect(await resultPromise).to.deep.equal([]);
+      unsub();
+    });
 
-  it('resolves with null and stops listening once the abort signal fires', async () => {
-    const controller = new AbortController();
-    const resultPromise = customValidationProvider.getResults({ signal: controller.signal });
-    controller.abort();
-    expect(await resultPromise).to.deep.equal([]);
+    it('returns immediately and does not emit when the signal is already aborted', async () => {
+      let runRequests = 0;
+      const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
 
-    const lateResult = { items: [], hasCustomValidation: false };
-    expect(() => canvasBus.validationResultState.emit(lateResult)).to.not.throw();
-  });
+      const result = await customValidationProvider.getResults({ signal: AbortSignal.abort() });
 
-  it('treats a malformed broadcast payload like no custom validation registered', async () => {
-    const resultPromise = customValidationProvider.getResults({});
-    canvasBus.validationResultState.emit();
+      expect(result).to.deep.equal([]);
+      expect(runRequests).to.equal(0);
+      unsub();
+    });
 
-    expect(await resultPromise).to.deep.equal([]);
+    it('emits validationRunRequest and resolves with the broadcast result', async () => {
+      let runRequests = 0;
+      const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
+
+      const resultPromise = customValidationProvider.getResults({});
+      // The already-ready host still resolves via a microtask (await always defers at least
+      // once), so the run request isn't emitted synchronously within this call.
+      await Promise.resolve();
+      expect(runRequests).to.equal(1);
+      canvasBus.validationResultState.emit({ items: [], hasCustomValidation: false });
+
+      expect(await resultPromise).to.deep.equal([]);
+      unsub();
+    });
+
+    it('resolves with null and stops listening once the abort signal fires', async () => {
+      const controller = new AbortController();
+      const resultPromise = customValidationProvider.getResults({ signal: controller.signal });
+      controller.abort();
+      expect(await resultPromise).to.deep.equal([]);
+
+      const lateResult = { items: [], hasCustomValidation: false };
+      expect(() => canvasBus.validationResultState.emit(lateResult)).to.not.throw();
+    });
+
+    it('treats a malformed broadcast payload like no custom validation registered', async () => {
+      const resultPromise = customValidationProvider.getResults({});
+      await Promise.resolve();
+      canvasBus.validationResultState.emit();
+
+      expect(await resultPromise).to.deep.equal([]);
+    });
   });
 });
