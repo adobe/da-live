@@ -21,9 +21,8 @@ function categories(items) {
 describe('adaptPreflightResults', () => {
   it('returns empty buckets for no categories', () => {
     const data = adaptPreflightResults([]);
-    expect(data.title).to.equal('Preflight');
     expect(data.summary.map((t) => t.value)).to.deep.equal([0, 0, 0]);
-    expect(data.sections.every((s) => s.items.length === 0)).to.be.true;
+    expect(data.sections.every((s) => s.entries.length === 0)).to.be.true;
   });
 
   it('buckets ERROR and WARN as failed', () => {
@@ -32,7 +31,7 @@ describe('adaptPreflightResults', () => {
       settledItem(SEVERITY.WARN),
     ]));
     const failed = data.sections.find((s) => s.label === 'Failed checks');
-    expect(failed.items).to.have.length(2);
+    expect(failed.entries).to.have.length(2);
   });
 
   it('buckets SUCCESS and INFO as passed', () => {
@@ -41,13 +40,13 @@ describe('adaptPreflightResults', () => {
       settledItem(SEVERITY.INFO),
     ]));
     const passed = data.sections.find((s) => s.label === 'Passed checks');
-    expect(passed.items).to.have.length(2);
+    expect(passed.entries).to.have.length(2);
   });
 
   it('buckets NA as not applicable', () => {
     const data = adaptPreflightResults(categories([settledItem(SEVERITY.NA)]));
     const na = data.sections.find((s) => s.label === 'Not applicable');
-    expect(na.items).to.have.length(1);
+    expect(na.entries).to.have.length(1);
   });
 
   it('excludes items that have not settled yet', () => {
@@ -55,13 +54,13 @@ describe('adaptPreflightResults', () => {
     expect(data.summary.map((t) => t.value)).to.deep.equal([0, 0, 0]);
   });
 
-  it('carries the category title and reason onto each item', () => {
-    const data = adaptPreflightResults(categories([settledItem(SEVERITY.ERROR, 'missing h1')]));
-    const [item] = data.sections.find((s) => s.label === 'Failed checks').items;
-    expect(item.category).to.equal('Content');
-    expect(item.title).to.equal('H1');
-    expect(item.description).to.equal('missing h1');
-    expect(item.check.context.category).to.equal('Content');
+  it('carries the category title, check title, and the live item element onto each entry', () => {
+    const settled = settledItem(SEVERITY.ERROR, 'missing h1');
+    const data = adaptPreflightResults(categories([settled]));
+    const [entry] = data.sections.find((s) => s.label === 'Failed checks').entries;
+    expect(entry.category).to.equal('Content');
+    expect(entry.title).to.equal('H1');
+    expect(entry.item).to.equal(settled);
   });
 
   it('opens the Failed section by default when there are failures, otherwise Passed', () => {
@@ -72,5 +71,15 @@ describe('adaptPreflightResults', () => {
     const allPassing = adaptPreflightResults(categories([settledItem(SEVERITY.SUCCESS)]));
     expect(allPassing.sections.find((s) => s.label === 'Failed checks').defaultOpen).to.be.false;
     expect(allPassing.sections.find((s) => s.label === 'Passed checks').defaultOpen).to.be.true;
+  });
+
+  it('uses SEVERITY values for summary tiles and section badges', () => {
+    const data = adaptPreflightResults([]);
+    expect(data.summary.map((t) => t.severity)).to.deep.equal([
+      SEVERITY.ERROR, SEVERITY.SUCCESS, SEVERITY.NA,
+    ]);
+    expect(data.sections.map((s) => s.severity)).to.deep.equal([
+      SEVERITY.ERROR, SEVERITY.SUCCESS, SEVERITY.NA,
+    ]);
   });
 });

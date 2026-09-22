@@ -1,7 +1,7 @@
 import { isItemSettled } from '../../edit/da-prepare/actions/preflight/providers/engine.js';
 import { SEVERITY } from '../../edit/da-prepare/actions/preflight/views/result.js';
 
-// Visual bucketing only - ERROR and WARN both surface as "failed" here, but the actual
+// Visual bucketing only - ERROR and WARN both surface under "failed" here, but the actual
 // publish-gate pass/fail status (engine.js's computeOverallStatus) stays ERROR-only.
 function bucketOf(result) {
   if (result === SEVERITY.NA) return 'na';
@@ -9,16 +9,11 @@ function bucketOf(result) {
   return 'passed';
 }
 
-function toItem(category, check, item) {
-  return {
-    title: check.title,
-    description: item.reason,
-    category: category.title,
-    check: {
-      label: check.title,
-      context: { category: category.title, description: item.reason },
-    },
-  };
+// Items are live pf-result/pf-link elements (see views/result.js, providers/ootb/views/link.js)
+// that render their own detail - never flatten them into plain data, or check-specific
+// rendering (e.g. pf-link's clickable URL + AEM-details expando) is lost.
+function toEntry(category, check, item) {
+  return { category: category.title, title: check.title, item };
 }
 
 function collectBuckets(categories) {
@@ -27,7 +22,7 @@ function collectBuckets(categories) {
     category.checks.forEach((check) => {
       check.items.forEach((item) => {
         if (!isItemSettled(item)) return;
-        buckets[bucketOf(item.result)].push(toItem(category, check, item));
+        buckets[bucketOf(item.result)].push(toEntry(category, check, item));
       });
     });
   });
@@ -36,39 +31,38 @@ function collectBuckets(categories) {
 
 const countLabel = (n, verb) => `${n} check${n === 1 ? '' : 's'} ${verb}`;
 
-// Adapts provider-registry Category[] into the { title, summary, sections } shape consumed
-// by da-nx's shared nx-page-eval renderer.
+// Adapts provider-registry Category[] into the { summary, sections } shape consumed by
+// <preflight-results>.
 export function adaptPreflightResults(categories = []) {
   const { failed, passed, na } = collectBuckets(categories);
 
   return {
-    title: 'Preflight',
     summary: [
-      { label: 'Failed', value: failed.length, tone: 'negative' },
-      { label: 'Passed', value: passed.length, tone: 'positive' },
-      { label: 'Not applicable', value: na.length, tone: 'neutral' },
+      { label: 'Failed', value: failed.length, severity: SEVERITY.ERROR },
+      { label: 'Passed', value: passed.length, severity: SEVERITY.SUCCESS },
+      { label: 'Not applicable', value: na.length, severity: SEVERITY.NA },
     ],
     sections: [
       {
         label: 'Failed checks',
         subLabel: countLabel(failed.length, 'failed'),
-        tone: 'negative',
+        severity: SEVERITY.ERROR,
         defaultOpen: failed.length > 0,
-        items: failed,
+        entries: failed,
       },
       {
         label: 'Passed checks',
         subLabel: countLabel(passed.length, 'passed'),
-        tone: 'positive',
+        severity: SEVERITY.SUCCESS,
         defaultOpen: failed.length === 0,
-        items: passed,
+        entries: passed,
       },
       {
         label: 'Not applicable',
         subLabel: countLabel(na.length, 'not executed'),
-        tone: 'neutral',
+        severity: SEVERITY.NA,
         defaultOpen: false,
-        items: na,
+        entries: na,
       },
     ],
   };

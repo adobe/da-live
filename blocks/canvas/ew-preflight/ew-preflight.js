@@ -1,10 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
 import { loadProviderResults } from '../../edit/da-prepare/actions/preflight/providers/provider-registry.js';
 import { computeOverallStatus, LOAD_TIMEOUT_MS } from '../../edit/da-prepare/actions/preflight/providers/engine.js';
 import { adaptPreflightResults } from './adapter.js';
+import './preflight-results.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -14,14 +15,6 @@ const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import
 const REFRESH_ICON_SRC = '/img/icons/s2-icon-refresh-20-n.svg';
 const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
 const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
-
-// The renderer lives in da-nx; importing it defines <nx-page-eval> and loads its CSS as a
-// side effect. Memoized so repeated runs don't re-import.
-let rendererPromise;
-function ensureRenderer() {
-  rendererPromise ??= import(`${getNx2()}/blocks/chat-ao/artifacts/page-evaluation.js`);
-  return rendererPromise;
-}
 
 function withHtmlExt(segment) {
   if (!segment || segment.endsWith('/') || /\.(html|json)$/.test(segment)) return segment;
@@ -97,7 +90,6 @@ class EwPreflight extends LitElement {
     this._error = null;
     this._setRefreshBusy(true);
     try {
-      await ensureRenderer();
       const categories = await loadProviderResults({
         details,
         signal: AbortSignal.timeout(LOAD_TIMEOUT_MS),
@@ -162,7 +154,7 @@ class EwPreflight extends LitElement {
         </div>`;
     }
     if (!this._data) return nothing;
-    return html`<nx-page-eval .data=${this._data}></nx-page-eval>`;
+    return html`<preflight-results .data=${this._data} .runId=${this._runId}></preflight-results>`;
   }
 
   render() {

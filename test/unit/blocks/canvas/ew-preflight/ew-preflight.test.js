@@ -47,7 +47,7 @@ describe('EwPreflight', () => {
     expect(el._error).to.equal('No page is open.');
   });
 
-  it('runs providers and adapts results into nx-page-eval once a page is open', async () => {
+  it('runs providers and adapts results into preflight-results once a page is open', async () => {
     hashChange._set({ org: 'org', site: 'site', path: '/page' });
     el = document.createElement('ew-preflight');
     document.body.append(el);
@@ -55,8 +55,8 @@ describe('EwPreflight', () => {
     await nextFrame();
 
     expect(el._data).to.exist;
-    expect(el._data.title).to.equal('Preflight');
-    const renderer = el.shadowRoot.querySelector('nx-page-eval');
+    expect(el._data.summary).to.exist;
+    const renderer = el.shadowRoot.querySelector('preflight-results');
     expect(renderer).to.exist;
     expect(renderer.data).to.equal(el._data);
   });
