@@ -3,8 +3,8 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { createValidationRequester } = await import(
-  '../../../../../blocks/canvas/utils/validation.js'
+const { createCustomValidationRequester } = await import(
+  '../../../../../blocks/canvas/utils/custom-validation.js'
 );
 
 function goodItem(title = 'Alt text') {
@@ -17,10 +17,10 @@ function waitForMessage(port) {
   });
 }
 
-describe('createValidationRequester', () => {
+describe('createCustomValidationRequester', () => {
   it('posts a RUN message with a fresh requestId', async () => {
     const { port1, port2 } = new MessageChannel();
-    const requester = createValidationRequester(port1);
+    const requester = createCustomValidationRequester(port1);
     requester.run();
     const data = await waitForMessage(port2);
     expect(data.type).to.equal('run');
@@ -29,24 +29,24 @@ describe('createValidationRequester', () => {
 
   it('resolves with sanitized items on a matching RESULT', async () => {
     const { port1, port2 } = new MessageChannel();
-    const requester = createValidationRequester(port1);
+    const requester = createCustomValidationRequester(port1);
     const runPromise = requester.run();
     const { requestId } = await waitForMessage(port2);
     port2.postMessage({
       type: 'result',
       requestId,
       items: [goodItem(), { severity: 'bogus' }],
-      hasRunner: true,
+      hasCustomValidation: true,
     });
     expect(await runPromise).to.deep.equal({
       items: [goodItem()],
-      hasRunner: true,
+      hasCustomValidation: true,
     });
   });
 
   it('ignores a RESULT for a stale (superseded) requestId', async () => {
     const { port1, port2 } = new MessageChannel();
-    const requester = createValidationRequester(port1);
+    const requester = createCustomValidationRequester(port1);
 
     // First run() is abandoned once run() is called again — its promise is left pending
     // by design, so it's not awaited here.
@@ -59,29 +59,38 @@ describe('createValidationRequester', () => {
     expect(secondId).to.not.equal(firstId);
 
     // Late RESULT for the abandoned first request must not resolve anything.
-    const staleResult = { type: 'result', requestId: firstId, items: [], hasRunner: true };
+    const staleResult = { type: 'result', requestId: firstId, items: [], hasCustomValidation: true };
     const liveItems = [goodItem()];
-    const liveResult = { type: 'result', requestId: secondId, items: liveItems, hasRunner: true };
+    const liveResult = { type: 'result', requestId: secondId, items: liveItems, hasCustomValidation: true };
     port2.postMessage(staleResult);
     port2.postMessage(liveResult);
 
-    const expected = { items: [goodItem()], hasRunner: true };
+    const expected = { items: [goodItem()], hasCustomValidation: true };
     expect(await secondRun).to.deep.equal(expected);
   });
 
-  it('never settles if no RESULT ever arrives — bounded by the caller, not this module', async () => {
+  it('settles with hasCustomValidation: false if no ACK arrives within the timeout', async () => {
     const { port1 } = new MessageChannel();
-    const requester = createValidationRequester(port1);
+    const requester = createCustomValidationRequester(port1, { ackTimeoutMs: 10 });
+    const result = await requester.run();
+    expect(result).to.deep.equal({ items: [], hasCustomValidation: false });
+  });
+
+  it('never settles once ACK arrives but no RESULT ever does — bounded by the caller, not this module', async () => {
+    const { port1, port2 } = new MessageChannel();
+    const requester = createCustomValidationRequester(port1, { ackTimeoutMs: 10 });
     let settled = false;
     requester.run().then(() => { settled = true; });
+    const { requestId } = await waitForMessage(port2);
+    port2.postMessage({ type: 'ack', requestId, hasCustomValidation: true });
 
-    await new Promise((resolve) => { setTimeout(resolve, 20); });
+    await new Promise((resolve) => { setTimeout(resolve, 30); });
     expect(settled).to.be.false;
   });
 
   it('dispose() clears the pending request and closes the port', () => {
     const { port1 } = new MessageChannel();
-    const requester = createValidationRequester(port1);
+    const requester = createCustomValidationRequester(port1);
     requester.run();
     expect(() => requester.dispose()).to.not.throw();
     expect(port1.onmessage).to.equal(null);

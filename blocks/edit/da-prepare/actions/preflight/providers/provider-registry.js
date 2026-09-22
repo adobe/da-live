@@ -1,5 +1,5 @@
 import ootb from './ootb/ootb-checks.js';
-import projectValidation from './project-validation.js';
+import customValidation from './custom-validation.js';
 import { STATUS, SEVERITY, createResult } from '../views/result.js';
 
 /*
@@ -21,7 +21,7 @@ import { STATUS, SEVERITY, createResult } from '../views/result.js';
  * - Honor signal for cancellable operations where practical.
  * - Isolate per-check failures to item-level error outcomes instead of throwing from getResults.
  */
-const PROVIDERS = [ootb, projectValidation];
+const PROVIDERS = [ootb, customValidation];
 
 // Providers resolve getResults() fast with a full skeleton, then fill in slow checks by
 // mutating the same check/item objects later and calling onUpdate. Only shallow-copy

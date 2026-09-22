@@ -4,7 +4,7 @@ import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../edi
 import { initIms as loadIms, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
-import { createValidationRequester } from '../utils/validation.js';
+import { createCustomValidationRequester } from '../utils/custom-validation.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -169,8 +169,8 @@ export class EwEditorWysiwyg extends LitElement {
 
   _runValidation() {
     if (!this._validationRequester) return;
-    this._validationRequester.run().then(({ items, hasRunner }) => {
-      canvasBus.validationResultState.emit({ items, hasRunner });
+    this._validationRequester.run().then(({ items, hasCustomValidation }) => {
+      canvasBus.validationResultState.emit({ items, hasCustomValidation });
     });
   }
 
@@ -180,7 +180,7 @@ export class EwEditorWysiwyg extends LitElement {
     const { port1: controlPort, port2: remoteControlPort } = new MessageChannel();
     const { port1: validationPort, port2: remoteValidationPort } = new MessageChannel();
     this._quickEditLocalPort = controlPort;
-    this._validationRequester = createValidationRequester(validationPort);
+    this._validationRequester = createCustomValidationRequester(validationPort);
     controlPort.onmessage = (ev) => {
       // @deprecated flat `ready` — prefer `type === MESSAGE_TYPES.READY` (da-nx now sends both).
       const isReady = ev.data?.type === MESSAGE_TYPES.READY || ev.data?.ready === true;
