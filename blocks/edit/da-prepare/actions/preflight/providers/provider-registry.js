@@ -3,23 +3,15 @@ import customValidation from './custom-validation.js';
 import { STATUS, SEVERITY, createResult } from '../views/result.js';
 
 /*
- * Provider contract (every provider in this registry must conform):
- *
- * Shape:
- * - Export an object: { id: string, getResults: function }
+ * Provider contract:
+ * - Export { id: string, getResults: function }
  * - getResults({ details, signal, onUpdate }) returns Category[] (sync or async)
- * - Category: { title: string, checks: Check[] }
- * - Check: { title: string, items: PreflightResultLike[], done: boolean }
- * - PreflightResultLike item:
- *   - has settle(result, reason)
- *   - exposes status/result/reason fields used by preflight rendering + status emit
+ * - Category: { title, checks: Check[] }; Check: { title, items: PreflightResultLike[], done }
+ * - PreflightResultLike: has settle(result, reason); exposes status/result/reason
  *
- * Lifecycle expectations:
- * - Return a full category/check skeleton immediately when possible.
- * - For slow checks, return pending items up front, then mutate the same item objects as
- *   work resolves, and call onUpdate() after each visible change.
- * - Honor signal for cancellable operations where practical.
- * - Isolate per-check failures to item-level error outcomes instead of throwing from getResults.
+ * Return a full skeleton immediately; for slow checks, return pending items then mutate
+ * them in place and call onUpdate(). Honor signal where practical. Isolate per-check
+ * failures to item-level errors instead of throwing from getResults.
  */
 const PROVIDERS = [ootb, customValidation];
 
@@ -66,13 +58,10 @@ function toSettledOutcome(promise) {
   );
 }
 
-// Guards against a provider whose getResults() promise never settles at all (a bootstrap
-// hang, as opposed to a slow item handled by settlePendingResults). Without this, one
-// hung provider would block Promise.all forever and the signal's abort listener in
-// watchForTimeout would never even get attached. A future 'abort' event forces it
-// immediately; an already-aborted signal is deferred to a macrotask instead, so a fast
-// provider still wins the race (its promise settles on a microtask) but a genuinely
-// hung one can't block Promise.all forever just because the signal fired before this ran.
+// Guards a getResults() that never settles (a bootstrap hang, not the slow-item case
+// settlePendingResults handles) — otherwise it blocks Promise.all and watchForTimeout's
+// abort listener never gets attached. Already-aborted signals defer via macrotask so a
+// fast provider still wins the race.
 function withBootstrapTimeout(outcome, signal) {
   if (!signal) return outcome;
   const timeout = new Promise((resolve) => {
@@ -83,10 +72,9 @@ function withBootstrapTimeout(outcome, signal) {
   return Promise.race([outcome, timeout]);
 }
 
-// Safety net for checks still pending when the shared signal aborts: force them settled so
-// the panel doesn't spin forever and maybeEmitStatus() in preflight.js can still fire.
-// Providers should still handle `signal` themselves where they can (e.g. abort their own
-// fetches) - this only guarantees the UI/status never hangs if they don't.
+// Safety net for checks still pending when the shared signal aborts: force-settle them so
+// the panel doesn't spin forever. Providers should still handle `signal` themselves where
+// they can — this just guarantees the UI never hangs if they don't.
 function settlePendingResults(categories) {
   let changed = false;
   categories.forEach((category) => {

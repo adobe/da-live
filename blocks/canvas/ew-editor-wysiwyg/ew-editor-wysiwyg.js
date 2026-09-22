@@ -171,9 +171,8 @@ export class EwEditorWysiwyg extends LitElement {
 
   _runValidation() {
     if (!this._validationRequester) {
-      // Host is mounted but the quick-edit port isn't up yet (e.g. Preflight opened
-      // mid-init) -- resolve like "nothing registered" instead of leaving the
-      // provider's subscription with nothing to hear back from.
+      // Port isn't up yet (e.g. Preflight opened mid-init) -- resolve as "nothing
+      // registered" instead of leaving the provider's subscription unanswered.
       canvasBus.validationResultState.emit({ items: [], hasCustomValidation: false });
       return;
     }

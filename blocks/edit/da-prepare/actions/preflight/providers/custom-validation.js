@@ -31,18 +31,16 @@ export function buildProjectValidationChecks({ results = [], hasCustomValidation
   }));
 }
 
-// ew-editor-wysiwyg.js is a static top-level import of canvas.js, so its custom element is
-// registered as soon as canvas's module graph loads -- well before any lazy tool-panel view
-// (e.g. the Preflight panel) gets a chance to run. A reliable, synchronous "could a host ever
-// exist here" check, independent of whether it has announced ready yet.
+// ew-editor-wysiwyg.js is registered as soon as canvas's module graph loads, well before
+// a lazy tool-panel view (e.g. Preflight) runs -- a synchronous "could a host exist"
+// check, independent of whether it's announced ready yet.
 function canvasHostMayExist() {
   return !!customElements.get('ew-editor-wysiwyg');
 }
 
-// A host mounting in canvas can race a provider run that starts the instant a lazily-created
-// panel connects (unlike the classic dialog, only ever opened well after canvas has settled).
-// validationHostReady replays its last value to a late subscriber, so this resolves immediately
-// once the host announces itself; the grace timeout only matters while genuinely racing it.
+// A host mounting in canvas can race a provider run starting the instant a lazily-created
+// panel connects. validationHostReady replays its last value, so this resolves immediately
+// once announced; the grace timeout only matters while genuinely racing it.
 const HOST_READY_GRACE_MS = 500;
 
 function waitForValidationHost(signal) {
@@ -57,9 +55,8 @@ function waitForValidationHost(signal) {
       unsubscribe?.();
       resolve(ready);
     };
-    // A replayed value can call finish() synchronously, before subscribe() has returned and
-    // this assignment has happened - finish() no-ops on unsubscribe in that case, so clean up
-    // here instead once it's available.
+    // A replayed value can call finish() synchronously, before this assignment runs --
+    // finish() no-ops on unsubscribe then, so clean up here once it's available.
     unsubscribe = canvasBus.validationHostReady.subscribe((ready) => finish(!!ready));
     if (settled) {
       unsubscribe();
@@ -73,13 +70,12 @@ function waitForValidationHost(signal) {
 async function getResults({ signal } = {}) {
   if (signal?.aborted) return [];
 
-  // No EW/canvas host could ever exist (e.g. classic /edit) -- resolve now instead of
-  // riding the shared load-timeout, which would otherwise block the whole panel from
-  // rendering until it fires.
+  // No host could ever exist (e.g. classic /edit) -- resolve now instead of riding the
+  // shared load-timeout and blocking the panel until it fires.
   if (!canvasHostMayExist()) return [];
   if (!(await waitForValidationHost(signal))) return [];
-  // An abort event fired while awaiting the host above would have found no listener yet
-  // (registered below) and gone unseen - re-check rather than risk hanging on it forever.
+  // An abort while awaiting the host above would've found no listener yet (registered
+  // below) and gone unseen -- re-check rather than risk hanging forever.
   if (signal?.aborted) return [];
 
   return new Promise((resolve) => {
