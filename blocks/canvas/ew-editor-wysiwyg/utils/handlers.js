@@ -7,6 +7,17 @@ import { dispatchMirror } from '../../editor-utils/editor-utils.js';
 import { canvasBus } from '../../utils/canvas-bus.js';
 import { toolbarController } from '../../editor-utils/toolbar-controller.js';
 
+/**
+ * CURSOR_MOVE from the quick-edit iframe: mirror the caret into the doc view and
+ * sync stored marks so the toolbar reflects the marks at that caret.
+ *
+ * This runs in layout view too, where the doc view is hidden. That used to revert
+ * remote edits (#1302), but only because this handler forced `view.hasFocus = () => true`:
+ * y-prosemirror's `_isLocalCursorInView()` returns false immediately for an unfocused
+ * view, so with the focus lie gone a hidden view no longer re-runs its selection
+ * restore. Skipping the mirror here instead would leave the toolbar stale on every
+ * caret move — the marks below are the only thing that updates it.
+ */
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
   if (!view || !wsProvider) return;
@@ -21,10 +32,6 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     ctx.lastCursorPos = null;
     return;
   }
-
-  // Forcing focus on the hidden doc view makes y-prosemirror reconcile incoming
-  // remote edits against its stale caret and revert them (see commit message).
-  if (ctx.isDocViewHidden?.()) return;
 
   const { state } = view;
   const position = cursorOffset + textCursorOffset;

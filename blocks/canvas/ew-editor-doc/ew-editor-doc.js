@@ -245,9 +245,6 @@ export class EwEditorDoc extends LitElement {
       path: controllerPathnameFromEditorCtx(this.ctx),
       canWrite: this._canWrite === true,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
-      // Relay handlers must not force focus / move the hidden view's caret (see
-      // handleCursorMove) — it makes y-prosemirror clobber incoming remote edits.
-      isDocViewHidden: () => this._editorView === 'layout',
     };
     wireQuickEditControllerPort(this._controllerCtx);
 
