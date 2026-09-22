@@ -153,7 +153,9 @@ export function buildSmartCropsListUrl(asset, dmOrigin, basePath = DEFAULT_ASSET
 /**
  * Returns the alt text for an asset.
  *
- * Handles both asset shapes returned by the selector:
+ * Prefers `Iptc4xmpExt:ExtDescrAccessibility` (the IPTC accessibility
+ * description) — this is the field the content supply chain agent maps alt
+ * text to by default. Then handles both asset shapes returned by the selector:
  *   - author tier: description/title live in `_embedded` metadata
  *   - delivery tier: title is a top-level `dc:title` (string, or a localized
  *     `{ 'o:default': ... }` object)
@@ -162,7 +164,9 @@ export function buildSmartCropsListUrl(asset, dmOrigin, basePath = DEFAULT_ASSET
 export function getAssetAlt(asset) {
   // eslint-disable-next-line no-underscore-dangle
   const meta = asset?._embedded?.['http://ns.adobe.com/adobecloud/rel/metadata/asset'];
-  return meta?.['dc:description']
+  return meta?.['Iptc4xmpExt:ExtDescrAccessibility']
+    || asset?.['Iptc4xmpExt:ExtDescrAccessibility']
+    || meta?.['dc:description']
     || meta?.['dc:title']
     || asset?.['dc:title']?.['o:default']
     || asset?.['dc:title']

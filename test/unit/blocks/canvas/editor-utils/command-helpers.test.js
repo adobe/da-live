@@ -4,6 +4,7 @@ import { getSchema } from 'da-parser';
 import {
   getLinkInfoInSelection,
   selectionHasLink,
+  canComment,
 } from '../../../../../blocks/canvas/editor-utils/command-helpers.js';
 
 const schema = getSchema();
@@ -61,5 +62,21 @@ describe('getLinkInfoInSelection — empty selection inside link', () => {
     // "hello" has 5 chars, paragraph opens at pos 0, text occupies [1,6), pos 6 is outside
     const state = stateWithLink({ text: 'hello', cursorPos: 6 });
     expect(getLinkInfoInSelection(state)).to.be.null;
+  });
+});
+
+describe('canComment', () => {
+  function stateWithRange(from, to) {
+    const para = schema.nodes.paragraph.create(null, schema.text('hello world'));
+    const doc = schema.nodes.doc.create(null, para);
+    return EditorState.create({ schema, doc, selection: TextSelection.create(doc, from, to) });
+  }
+
+  it('is false for an empty (collapsed) selection', () => {
+    expect(canComment(stateWithRange(3, 3))).to.equal(false);
+  });
+
+  it('is true for a non-empty text selection', () => {
+    expect(canComment(stateWithRange(1, 6))).to.equal(true);
   });
 });

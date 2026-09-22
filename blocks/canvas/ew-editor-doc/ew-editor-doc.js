@@ -1,16 +1,16 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
+import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
-import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
-import { canvasBus } from '../utils/canvas-bus.js';
+import { bindFirstSectionName } from '../../shared/section-name.js';
+import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
   controllerPathnameFromEditorCtx,
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload } from './utils/selection.js';
+import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload, activeContentProseIndex } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -18,6 +18,7 @@ import {
 import { initIms as loadIms } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
+import { setBlockFocus, clearBlockFocus } from './prose-plugins/blockFocus.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
@@ -25,12 +26,28 @@ import { teardownEditorDocResources } from './utils/teardown.js';
 import { setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
+import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+import { createEditorComments } from './utils/editor-comments.js';
+import getSheet from '../../shared/sheet.js';
+
+// Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
+// so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
+const CONTENT_KIND_NODE_NAMES = {
+  paragraph: ['paragraph'],
+  heading: ['heading'],
+  list: ['bullet_list', 'ordered_list'],
+  code: ['code_block'],
+  quote: ['blockquote'],
+};
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
+const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-highlight.css');
 
 export class EwEditorDoc extends LitElement {
   static properties = {
@@ -38,12 +55,24 @@ export class EwEditorDoc extends LitElement {
     session: { type: Object },
     quickEditPort: { type: Object },
     _error: { state: true },
+    _blockEditMode: { state: true },
+    _blockEditName: { state: true },
   };
+
+  constructor() {
+    super();
+    this._comments = createEditorComments({
+      getView: () => this._proseContext?.view,
+      getPort: () => this._controllerCtx?.port,
+      getContainer: () => this.shadowRoot?.querySelector('.ew-editor-doc'),
+    });
+  }
 
   willUpdate(changed) {
     super.willUpdate(changed);
     if (changed.has('ctx')) {
       this.quickEditPort = undefined;
+      this._canWrite = false;
       this._teardown();
       setSelectionToolbarCtx();
       toolbarController.reset();
@@ -60,6 +89,9 @@ export class EwEditorDoc extends LitElement {
     if (port) {
       port.onmessage = null;
       port.close();
+    }
+    if (this._controllerCtx?.reloadTimer) {
+      clearTimeout(this._controllerCtx.reloadTimer);
     }
     this._controllerCtx = undefined;
   }
@@ -82,11 +114,7 @@ export class EwEditorDoc extends LitElement {
     const mgr = this._proseContext?.undoManager;
     const canUndo = mgr ? mgr.undoStack.length > 0 : false;
     const canRedo = mgr ? mgr.redoStack.length > 0 : false;
-    this.dispatchEvent(new CustomEvent('nx-editor-undo-state', {
-      bubbles: true,
-      composed: true,
-      detail: { canUndo, canRedo },
-    }));
+    canvasBus.undoState.emit({ canUndo, canRedo });
   }
 
   _observeUndoManager(mgr) {
@@ -118,11 +146,54 @@ export class EwEditorDoc extends LitElement {
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
-  _broadcastSelectedNode(scrollIntoView = false) {
+  // TextSelection.near is the fallback for a drifted/mid-node proseIndex. A kind match
+  // selects a NodeSelection instead, for the block-style highlight. Either way, broadcasts
+  // the raw proseIndex, since that's what layout-view's data-prose-index carries.
+  _scrollDocToProseIndex(proseIndex, kind) {
+    if (proseIndex == null || proseIndex < 0) return;
+    const { view } = this._proseContext ?? {};
+    if (!view) return;
+    const { doc } = view.state;
+    if (proseIndex > doc.content.size) return;
+
+    // The dispatch below runs the tracking plugin's onSelectionChange synchronously, which
+    // would otherwise broadcast its own (null, for non-image/table selections) node payload
+    // an instant before the correct one just below overwrites it.
+    this._suppressAutoBroadcast = true;
+    if (kind === 'image' && doc.nodeAt(proseIndex)?.type.name === 'image') {
+      const sel = NodeSelection.create(doc, proseIndex);
+      view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._suppressAutoBroadcast = false;
+      this._broadcastSelectedNode(true);
+      return;
+    }
+
+    // Non-image content's proseIndex is one position inside the node's own start
+    // (see activeContentProseIndex in utils/selection.js) — step back one for the anchor.
+    const nodeStart = proseIndex - 1;
+    const nodeNames = CONTENT_KIND_NODE_NAMES[kind];
+    if (nodeStart >= 0 && nodeNames?.includes(doc.nodeAt(nodeStart)?.type.name)) {
+      const sel = NodeSelection.create(doc, nodeStart);
+      view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+      this._suppressAutoBroadcast = false;
+      this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
+      return;
+    }
+
+    const sel = TextSelection.near(doc.resolve(proseIndex));
+    view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+    this._suppressAutoBroadcast = false;
+    this._broadcastSelectedNode(true, { anchorType: 'content', proseIndex });
+  }
+
+  // overrideNode lets content navigation (a TextSelection selectedNodePayload can't
+  // classify) broadcast an explicit anchorType/proseIndex instead of a derived one.
+  _broadcastSelectedNode(scrollIntoView = false, overrideNode = undefined) {
+    if (this._suppressAutoBroadcast && overrideNode === undefined) return;
     const port = this._controllerCtx?.port;
     const { view } = this._proseContext ?? {};
     if (!port || !view) return;
-    const node = selectedNodePayload(view);
+    const node = overrideNode !== undefined ? overrideNode : selectedNodePayload(view);
     const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
     const forceScroll = scrollIntoView && Boolean(node);
     if (!forceScroll && key === this._lastBroadcastNodeKey) return;
@@ -168,19 +239,26 @@ export class EwEditorDoc extends LitElement {
       wsProvider,
       port: this.quickEditPort,
       iframe: this._wysiwygIframe,
-      // Gates the mutating messages (node-update/image-replace/history) in
-      // quick-edit-controller.js — without it they are silently dropped.
-      canWrite: this.session?.permissions?.some((permission) => permission === 'write') === true,
       suppressRerender: false,
-      lastBlockIndex: undefined,
       owner: org,
       repo,
       path: controllerPathnameFromEditorCtx(this.ctx),
+      canWrite: this._canWrite === true,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
+      // Relay handlers must not force focus / move the hidden view's caret (see
+      // handleCursorMove) — it makes y-prosemirror clobber incoming remote edits.
+      isDocViewHidden: () => this._editorView === 'layout',
     };
     wireQuickEditControllerPort(this._controllerCtx);
+
+    this._comments.setupIframeBridge();
   }
 
+  /**
+   * Real focus, not an inferred one: the doc surface owns the toolbar only while the
+   * ProseMirror DOM genuinely holds focus. Nothing here fakes `view.hasFocus()` — see
+   * editor-utils/editor-utils.js and deps/da-y-wrapper/src/da-cursor-plugin.js.
+   */
   _wireProseFocus(view, proseEl) {
     this._unwireProseFocus?.();
     const onFocusIn = () => toolbarController.activate('doc');
@@ -234,6 +312,9 @@ export class EwEditorDoc extends LitElement {
       onCollabUsersCleared: () => this._emitCollabUsers([]),
     });
     this._awarenessOff = undefined;
+    this._comments.teardown();
+    this._unbindSectionName?.();
+    this._unbindSectionName = undefined;
     this._proseContext = undefined;
   }
 
@@ -247,53 +328,74 @@ export class EwEditorDoc extends LitElement {
       this._error = session.error;
       return;
     }
-
     const { sourceUrl } = session;
 
     try {
       const { token, permissions } = session;
+      this._canWrite = permissions.some((permission) => permission === 'write');
       const { proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
         path: sourceUrl,
         permissions,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
-        extraPlugins: [
-          createExtensionsBridgePlugin(),
-          createTrackingPlugin(
-            () => {
-              const body = this._controllerCtx
-                ? updateDocument(this._controllerCtx)
-                : getInstrumentedHTML(this._proseContext?.view);
-              if (body) canvasBus.editorHtmlState.emit(body);
-            },
-            () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
-            (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
-            (pmView) => {
-              const blockIndex = getActiveBlockIndex(pmView);
-              const { kind, ...descriptor } = describeDocSelection(pmView);
-              const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
-              if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
-              this._lastDocBlockIndex = blockIndex;
-              this._lastDocSelKey = selKey;
-              canvasBus.editorSelectState.emit({
-                blockIndex,
-                source: 'doc',
-                explicit: descriptor.selectionType === SEL_BLOCK,
-                ...descriptor,
-              });
-              this._broadcastSelectedNode(true);
-            },
-          ),
-        ],
+        extraPlugins: ({ wsProvider: ws }) => {
+          const commentsPlugin = this._comments.createPlugin(session, this.ctx, ws);
+          return [
+            mediaBusImage(this.ctx),
+            createExtensionsBridgePlugin(),
+            createTrackingPlugin(
+              () => {
+                const body = this._controllerCtx
+                  ? updateDocument(this._controllerCtx)
+                  : getInstrumentedHTML(this._proseContext?.view);
+                if (body) canvasBus.editorHtmlState.emit(body);
+              },
+              () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
+              (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
+              (pmView) => {
+                const blockIndex = getActiveBlockIndex(pmView);
+                const proseIndex = activeContentProseIndex(pmView);
+                const { kind, ...descriptor } = describeDocSelection(pmView);
+                const selKey = `${descriptor.selFrom}|${descriptor.selTo}|${kind}`;
+                const unchanged = blockIndex === this._lastDocBlockIndex
+                  && selKey === this._lastDocSelKey;
+                if (unchanged) return;
+                this._lastDocBlockIndex = blockIndex;
+                this._lastDocSelKey = selKey;
+                canvasBus.editorSelectState.emit({
+                  blockIndex,
+                  proseIndex,
+                  source: 'doc',
+                  explicit: descriptor.selectionType === SEL_BLOCK,
+                  ...descriptor,
+                });
+                this._broadcastSelectedNode(true);
+              },
+            ),
+            commentsPlugin,
+          ];
+        },
       });
 
       this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
-      setSelectionToolbarCtx({ org: this.ctx?.org, site: this.ctx?.repo, sourceUrl });
+      this._comments.publish();
+      this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
+
+      setSelectionToolbarCtx({
+        org: this.ctx?.org,
+        site: this.ctx?.repo,
+        sourceUrl,
+        canWrite: this._canWrite,
+      });
       toolbarController.setDocView(view);
       this._wireProseFocus(view, proseEl);
+
+      this._comments.loadStore(wsProvider);
+
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
+      this._comments.setupGutter();
 
       this._setupController();
     } catch (e) {
@@ -307,21 +409,31 @@ export class EwEditorDoc extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
+      this._editorView = view;
       this.hidden = view === 'layout';
+      // No focus override to undo: the doc view never lies about `hasFocus()`.
+      // toolbarController.setEditorMode (from canvas.js) re-evaluates visibility.
     });
-    this._unsubscribePortReady = canvasBus.wysiwygPortReady.subscribe(({ port, iframe }) => {
-      if (!port) return;
-      this._wysiwygIframe = iframe;
-      this.quickEditPort = port;
-    });
+    this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
+      ({ port, iframe } = {}) => {
+        if (port) {
+          this._wysiwygIframe = iframe;
+          this.quickEditPort = port;
+        }
+      },
+    );
     this._unsubscribeSelect = canvasBus.editorSelectState
       .subscribe(({ blockIndex, source }) => {
         if (source === 'doc') return;
         this._scrollDocToBlock(blockIndex);
         if (source === 'outline') this._broadcastSelectedNode(true);
       });
+    this._unsubscribeProseSelect = canvasBus.editorProseSelectState
+      .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
+    this._unsubscribeBlockEditRequest = canvasBus.blockEditRequest
+      .subscribe(({ pos } = {}) => this.enterBlockEdit(pos));
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
@@ -330,11 +442,84 @@ export class EwEditorDoc extends LitElement {
     applyHighlight(this._proseContext?.view, detail);
   }
 
+  /** True while the single-block edit modal is open. */
+  get blockEditMode() {
+    return !!this._blockEditMode;
+  }
+
+  /**
+   * Open the single-block editor in a modal: focus the block at `pos` (hides every
+   * other block via blockFocus decorations) and render the doc mount inside a dialog.
+   * The live ProseMirror view stays put in this shadow root — only its container in
+   * the render output changes — so collab, cursors and the toolbars keep working.
+   */
+  enterBlockEdit(pos) {
+    const view = this._proseContext?.view;
+    if (!view || pos == null) return;
+    const node = view.state.doc.nodeAt(pos);
+    if (!node || node.type.name !== 'table') return;
+    setBlockFocus(view, pos);
+    this._blockEditName = getTableBlockName(node);
+    this._blockEditMode = true;
+    // Suppress controller redecoration so it can't rebuild the iframe DOM mid-edit.
+    if (this._controllerCtx) this._controllerCtx.suppressRerender = true;
+    // Un-hide the (layout-hidden) host, but collapse its box via `:host(.block-edit)`
+    // so the top-layer dialog doesn't claim a flex slot and shrink the preview.
+    this.hidden = false;
+    this.classList.add('block-edit');
+    // The toolbar is a manual popover in the dialog's top layer and swallows Escape, so
+    // close the modal on Escape ourselves (unless a toolbar dropdown is handling it).
+    this._onBlockEditKeydown = (e) => {
+      if (e.key !== 'Escape' || toolbarController.ensureToolbar().isInteracting) return;
+      e.preventDefault();
+      this.exitBlockEdit();
+    };
+    document.addEventListener('keydown', this._onBlockEditKeydown, true);
+    canvasBus.blockEditState.emit({ open: true });
+    view.focus();
+  }
+
+  // Only the dialog's own `close` should exit block edit — not `close` events bubbling
+  // up from the toolbar's menus/pickers/dialogs hosted inside the modal (picking e.g.
+  // "Add row below" closes that menu and would otherwise close the whole modal).
+  _onModalClose(e) {
+    if (e.target !== e.currentTarget) return;
+    this.exitBlockEdit();
+  }
+
+  exitBlockEdit() {
+    if (!this._blockEditMode) return;
+    this._blockEditMode = false;
+    this._blockEditName = undefined;
+    this.classList.remove('block-edit');
+    this.hidden = this._editorView === 'layout';
+    if (this._onBlockEditKeydown) {
+      document.removeEventListener('keydown', this._onBlockEditKeydown, true);
+      this._onBlockEditKeydown = undefined;
+    }
+    toolbarController.deactivate();
+    // Return the toolbar to the body before the modal DOM is torn down by re-render.
+    const toolbar = toolbarController.ensureToolbar();
+    if (toolbar.parentElement && toolbar.parentElement !== document.body) {
+      document.body.appendChild(toolbar);
+    }
+    const view = this._proseContext?.view;
+    if (view) clearBlockFocus(view);
+    if (this._controllerCtx) {
+      this._controllerCtx.suppressRerender = false;
+      const body = updateDocument(this._controllerCtx);
+      if (body) canvasBus.editorHtmlState.emit(body);
+    }
+    canvasBus.blockEditState.emit({ open: false });
+  }
+
   disconnectedCallback() {
     this._unsubscribeEditorActive?.();
-    this._unsubscribePortReady?.();
+    this._unsubscribeWysiwygPortReady?.();
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
+    this._unsubscribeProseSelect?.();
+    this._unsubscribeBlockEditRequest?.();
     this._teardown();
     setSelectionToolbarCtx();
     toolbarController.reset();
@@ -356,6 +541,13 @@ export class EwEditorDoc extends LitElement {
     const { proseEl } = this._proseContext ?? {};
     if (proseEl) {
       ensureProseMountedInShadow({ shadowRoot: this.shadowRoot, proseEl });
+    }
+    if (this._blockEditMode) {
+      // Host the selection toolbar inside the dialog so it sits in the dialog's top
+      // layer (a body-level toolbar would render behind the modal backdrop).
+      const host = this.shadowRoot.querySelector('.block-edit-toolbar-host');
+      const toolbar = toolbarController.ensureToolbar();
+      if (host && toolbar.parentElement !== host) host.appendChild(toolbar);
     }
   }
 
@@ -383,10 +575,37 @@ export class EwEditorDoc extends LitElement {
     if (phase === 'loading') {
       return nothing;
     }
+    if (this._blockEditMode) {
+      return this._renderBlockEditModal();
+    }
     return html`
       <div class="ew-editor-doc">
         <div class="ew-editor-doc-mount"></div>
       </div>
+    `;
+  }
+
+  _renderBlockEditModal() {
+    const title = this._blockEditName
+      ? `Edit ${this._blockEditName}` : 'Edit block';
+    return html`
+      <nx-dialog class="block-edit-modal" @close=${(e) => this._onModalClose(e)}>
+        <div class="block-edit-content">
+          <header class="block-edit-header">
+            <span class="block-edit-title">${title}</span>
+            <button type="button" class="block-edit-close" aria-label="Close"
+                    @click=${() => this.shadowRoot.querySelector('nx-dialog')?.close()}>✕</button>
+          </header>
+          <div class="block-edit-body">
+            <div class="ew-editor-doc block-edit-doc">
+              <div class="ew-editor-doc-mount"></div>
+            </div>
+          </div>
+          <!-- The selection toolbar is relocated here while the modal is open so it
+               renders inside the dialog's top layer, above the backdrop. -->
+          <div class="block-edit-toolbar-host"></div>
+        </div>
+      </nx-dialog>
     `;
   }
 }

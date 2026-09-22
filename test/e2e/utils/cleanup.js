@@ -26,19 +26,21 @@ export function parseTestUrl(url) {
 
 export const DELETE_CONCURRENCY = 5;
 
-export async function mapWithConcurrency(items, limit, fn) {
-  const results = new Array(items.length);
-  let next = 0;
+export async function mapWithConcurrency(iterable, limit, fn) {
+  const iterator = iterable[Symbol.asyncIterator]();
+  let count = 0;
   async function worker() {
-    while (next < items.length) {
-      const i = next;
-      next += 1;
+    for (;;) {
       // eslint-disable-next-line no-await-in-loop
-      results[i] = await fn(items[i], i);
+      const { value, done } = await iterator.next();
+      if (done) return;
+      count += 1;
+      // eslint-disable-next-line no-await-in-loop
+      await fn(value);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
+  await Promise.all(Array.from({ length: limit }, worker));
+  return count;
 }
 
 function buildSourceUrl(org, site, path) {
@@ -51,6 +53,27 @@ function buildListUrl(org, site, path) {
   if (!IS_HLX6_SITE) return `${DA_ADMIN}/list/${org}/${site}${path}`;
   const slashed = path.endsWith('/') ? path : `${path}/`;
   return buildSourceUrl(org, site, slashed);
+}
+
+// One page of a folder's immediate children as { name, isFolder }.
+async function listChildren(page, authHeader, org, site, path) {
+  const headers = { Authorization: authHeader };
+  if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;
+  const resp = await page.request.get(buildListUrl(org, site, path), { headers, failOnStatusCode: false });
+  if (!resp.ok()) {
+    console.warn(`listChildren: list failed (${resp.status()}) for ${path}`);
+    return [];
+  }
+  const items = await resp.json().catch(() => []);
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      const rawName = item.name ?? item.path?.split('/').pop();
+      if (!rawName) return null;
+      const isFolder = IS_HLX6_SITE ? rawName.endsWith('/') : !item.ext;
+      return { name: isFolder ? rawName.replace(/\/$/, '') : rawName, isFolder };
+    })
+    .filter(Boolean);
 }
 
 /**
@@ -67,42 +90,51 @@ export async function deleteResource(page, authHeader, org, site, path, opts = {
   return page.request.delete(url, { headers, failOnStatusCode: false });
 }
 
-export async function listOldTestResources(page, authHeader, org, site, path, minHours) {
-  const cutoff = Date.now() - (1000 * 60 * 60 * minHours);
-  const stale = [];
-  const listUrl = buildListUrl(org, site, path);
-  let token;
-  // Same 500-iteration safety cap as da-list.js's loadAllPages(), so a runaway
-  // continuation token can't spin forever.
-  for (let i = 0; i < 500; i += 1) {
-    const headers = { Authorization: authHeader };
-    if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;
-    if (token) headers['da-continuation-token'] = token;
+export function MARKER_DOC(branch, sha, iso) {
+  return `<body><header></header><main><div><p>Playwright run marker</p><ul><li>branch: ${branch}</li><li>commit: ${sha}</li><li>started: ${iso}</li></ul></div></main><footer></footer></body>`;
+}
 
-    // eslint-disable-next-line no-await-in-loop
-    const resp = await page.request.get(listUrl, { headers, failOnStatusCode: false });
-    if (!resp.ok()) {
-      // Surface this instead of quietly returning no stragglers - a failed list
-      // call and an empty folder look identical to the caller otherwise.
-      if (i === 0) console.warn(`listOldTestResources: list failed (${resp.status()}) for ${listUrl}`);
-      break;
-    }
-
-    // eslint-disable-next-line no-await-in-loop
-    const items = await resp.json().catch(() => []);
-    if (Array.isArray(items)) {
-      items.forEach((item) => {
-        const rawName = item.name ?? item.path?.split('/').pop();
-        if (!rawName) return;
-        const isFolder = IS_HLX6_SITE ? rawName.endsWith('/') : !item.ext;
-        const name = isFolder ? rawName.replace(/\/$/, '') : rawName;
-        const age = getTestResourceAge(name);
-        if (age && age < cutoff) stale.push({ path: `${path}/${name}`, isFolder });
-      });
-    }
-
-    token = resp.headers()['da-continuation-token'];
-    if (!token) break;
+/**
+ * Creates a page directly via the admin API. da-admin takes a multipart `data`
+ * field; hlx6 takes the raw body with a Content-Type header.
+ */
+export async function createResource(page, authHeader, org, site, path, body, opts = {}) {
+  const resourcePath = `${path}${opts.ext ?? '.html'}`;
+  const url = buildSourceUrl(org, site, resourcePath);
+  const headers = { Authorization: authHeader };
+  if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;
+  if (IS_HLX6_SITE) {
+    headers['Content-Type'] = 'text/html';
+    return page.request.post(url, { headers, data: body, failOnStatusCode: false });
   }
-  return stale;
+  return page.request.post(url, {
+    headers,
+    multipart: { data: { name: 'index.html', mimeType: 'text/html', buffer: Buffer.from(body, 'utf-8') } },
+    failOnStatusCode: false,
+  });
+}
+
+/**
+ * Yields run folders (`/tests/pw-*`) whose newest run-marker is older than
+ * minHours. Marker-only: a folder with no ageable `pw-run-*-marker` is skipped.
+ */
+export async function* listStaleRunFolders(page, authHeader, org, site, minHours) {
+  const cutoff = Date.now() - (1000 * 60 * 60 * minHours);
+  const folders = (await listChildren(page, authHeader, org, site, '/tests'))
+    .filter((it) => it.isFolder && it.name.startsWith('pw-'));
+  // eslint-disable-next-line no-restricted-syntax
+  for (const folder of folders) {
+    const folderPath = `/tests/${folder.name}`;
+    // eslint-disable-next-line no-await-in-loop
+    const children = await listChildren(page, authHeader, org, site, folderPath);
+    // hlx6 lists file names with their extension (pw-run-{ts}-marker.html);
+    // da-admin lists them without. Tolerate an optional trailing extension.
+    const markerAges = children
+      .filter((c) => /^pw-run-\w+-marker(\.\w+)?$/.test(c.name))
+      .map((c) => getTestResourceAge(c.name))
+      .filter((age) => age !== null);
+    if (markerAges.length === 0) continue;
+    const newest = Math.max(...markerAges);
+    if (newest < cutoff) yield { path: folderPath, isFolder: true };
+  }
 }

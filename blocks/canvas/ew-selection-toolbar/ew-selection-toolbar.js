@@ -25,6 +25,7 @@ const TABLE_ITEMS = commandsFor('toolbar-table');
 const PICKER_DEFS = commandsFor('toolbar-picker');
 const LINK_ITEMS = commandsFor('toolbar-link');
 const IMAGE_ITEMS = commandsFor('toolbar-image');
+const COMMENT_ITEMS = commandsFor('toolbar-comment');
 
 const BLOCK_TYPE_LABELS = new Map(PICKER_DEFS.map(({ id, label }) => [id, label]));
 
@@ -61,7 +62,9 @@ class EwSelectionToolbar extends LitElement {
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
 
-  get _imageMenu() { return this.shadowRoot?.querySelector('nx-menu'); }
+  get _menus() { return [...(this.shadowRoot?.querySelectorAll('nx-menu') ?? [])]; }
+
+  get _wrap() { return this.shadowRoot?.querySelector('.toolbar-wrap'); }
 
   show() {
     const main = document.querySelector('main');
@@ -75,7 +78,21 @@ class EwSelectionToolbar extends LitElement {
 
   hide() {
     this.classList.remove('open');
-    this._imageMenu?.close();
+    this._menus.forEach((m) => m.close());
+    this.requestUpdate();
+  }
+
+  // The toolbar box is a top-layer popover so it renders above a modal <dialog> (block
+  // edit); keep its open state in sync with the `.open` class after each render.
+  _syncPopover() {
+    const wrap = this._wrap;
+    if (!wrap?.showPopover) return;
+    const isOpen = wrap.matches(':popover-open');
+    if (this.open && !isOpen) {
+      try { wrap.showPopover(); } catch { /* not yet connected */ }
+    } else if (!this.open && isOpen) {
+      try { wrap.hidePopover(); } catch { /* already hidden */ }
+    }
   }
 
   get open() {
@@ -85,7 +102,7 @@ class EwSelectionToolbar extends LitElement {
   get isInteracting() {
     return (this._picker?.open ?? false)
       || (this._altDialogOpen ?? false)
-      || (this._imageMenu?.open ?? false);
+      || this._menus.some((m) => m.open);
   }
 
   _icon(name) {
@@ -274,6 +291,7 @@ class EwSelectionToolbar extends LitElement {
     if (changed.has('org') || changed.has('site')) {
       this._checkAemAssets();
     }
+    this._syncPopover();
   }
 
   _renderToolbarButton({ id, label, icon }) {
@@ -319,6 +337,29 @@ class EwSelectionToolbar extends LitElement {
     return this._renderToolbarButton(item);
   }
 
+  _onTableMenuSelect(e) {
+    if (!this.view) return;
+    COMMAND_BY_ID.get(e.detail.id)?.apply(this.view);
+    this.requestUpdate();
+    toolbarController.restoreFocus();
+    toolbarController.refresh();
+  }
+
+  _renderTableMenu() {
+    const items = TABLE_ITEMS
+      .filter(({ id }) => this._isCommandVisible(id))
+      .map(({ id, label, icon }) => ({ id, label, icon }));
+    return html`
+      <nx-menu placement="above" .items=${items}
+        @select=${(e) => this._onTableMenuSelect(e)}>
+        <button slot="trigger" type="button" class="toolbar-btn"
+          aria-label="Edit table" title="Edit table">
+          ${this._icon('tableedit')}
+        </button>
+      </nx-menu>
+    `;
+  }
+
   _renderBlockTypePicker() {
     return html`
       <span class="toolbar-block-type-wrap">
@@ -347,14 +388,15 @@ class EwSelectionToolbar extends LitElement {
 
     // `wysiwyg` marks sections offered while editing in the WYSIWYG iframe. The
     // iframe owns block-level structure (block type, lists, tables), so those are
-    // doc-only; inline marks, links, and image controls remain in both surfaces.
+    // doc-only; inline marks, links, image and comment controls stay in both.
     const sections = [
       { items: PICKER_DEFS, wysiwyg: false, render: () => this._renderBlockTypePicker() },
       { items: MARK_ITEMS, wysiwyg: true, render: () => renderButtons(MARK_ITEMS) },
       { items: STRUCTURE_ITEMS, wysiwyg: false, render: () => renderButtons(STRUCTURE_ITEMS) },
-      { items: TABLE_ITEMS, wysiwyg: false, render: () => renderButtons(TABLE_ITEMS) },
+      { items: TABLE_ITEMS, wysiwyg: false, render: () => this._renderTableMenu() },
       { items: LINK_ITEMS, wysiwyg: true, render: () => renderButtons(LINK_ITEMS) },
       { items: imageItems, wysiwyg: true, render: () => renderImageItems(imageItems) },
+      { items: COMMENT_ITEMS, wysiwyg: true, render: () => renderButtons(COMMENT_ITEMS) },
     ];
 
     const allowed = inWysiwyg ? sections.filter((s) => s.wysiwyg) : sections;
@@ -368,7 +410,7 @@ class EwSelectionToolbar extends LitElement {
   render() {
     const disabled = !this.view;
     return html`
-      <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
+      <div class="toolbar-wrap" popover="manual" @mousedown=${(e) => e.preventDefault()}>
         <div class="toolbar-actions" ?data-disabled=${disabled}
           @click=${(e) => this._onToolbarClick(e)}>
           ${this._renderSections()}

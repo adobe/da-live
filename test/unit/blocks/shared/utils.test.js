@@ -747,6 +747,23 @@ describe('aemAction', () => {
     expect(result.error.message).to.equal('Not authorized to preview');
   });
 
+  it('Returns a publish-worded error message when the live/publish fetch fails', async () => {
+    window.fetch = (url) => {
+      if (url.includes('/preview/')) {
+        return Promise.resolve(new Response(
+          JSON.stringify({ preview: { url: 'https://x.hlx.page/' }, webPath: '/' }),
+          { status: 200 },
+        ));
+      }
+      return Promise.resolve(new Response('forbidden', { status: 403 }));
+    };
+
+    const result = await aemAction('/org/site/doc', 'publish', { skipSchedule: true });
+    expect(result.error).to.exist;
+    expect(result.error.action).to.equal('publish');
+    expect(result.error.message).to.equal('Not authorized to publish');
+  });
+
   it('Returns cancelled when publish is blocked by onScheduled returning false', async () => {
     const scheduleJson = { scheduled: true, scheduledPublish: new Date().toISOString() };
     window.fetch = (url) => {

@@ -1,6 +1,7 @@
 import { DOMParser as ProseParser } from 'da-y-wrapper';
 import { etcFetch, getAemSiteToken, getFirstSheet } from '../../../../shared/utils.js';
 import { getNx2Api } from '../../../../../scripts/utils.js';
+import { getExtensionsBridge } from '../../../../canvas/editor-utils/extensions-bridge.js';
 import { deleteOffer, getAccessToken, getOffer, saveOffer } from './api.js';
 
 const TARGET_CONFIG_PATH = '/.da/adobe-target.json';
@@ -49,15 +50,22 @@ function findMetadataRow(doc, key) {
   return null;
 }
 
+// `/edit` exposes its ProseMirror view as `window.view`; `/canvas` never sets that
+// global and only exposes its view via the canvas extensions bridge.
+function getActiveView() {
+  return window.view || getExtensionsBridge().view;
+}
+
 function getOfferId() {
-  const { view } = window;
+  const view = getActiveView();
   if (!view) return null;
   const result = findMetadataRow(view.state.doc, 'adobe.target.offerId');
   return result?.value || null;
 }
 
 function setOfferId(offerId) {
-  const { view } = window;
+  const view = getActiveView();
+  if (!view) return;
   const { state } = view;
   const { schema, tr } = state;
 
@@ -95,7 +103,8 @@ function setOfferId(offerId) {
 }
 
 export function removeOfferId() {
-  const { view } = window;
+  const view = getActiveView();
+  if (!view) return;
   const { state } = view;
   const { tr } = state;
 

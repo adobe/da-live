@@ -26,6 +26,7 @@ import {
   splitCell,
   deleteTable,
   isInTable,
+  CellSelection,
 } from 'prosemirror-tables';
 
 // yjs
@@ -38,11 +39,14 @@ import {
   yUndoPluginKey,
   undo as yUndo,
   redo as yRedo,
-  prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
   yDocToProsemirror,
+  prosemirrorToYDoc,
   yDocToProsemirrorJSON,
   yXmlFragmentToProsemirrorJSON,
+  ySyncPluginKey,
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
 } from 'y-prosemirror';
 
 import { daCursorPlugin, refreshLocalCursor } from './da-cursor-plugin.js';
@@ -88,6 +92,7 @@ export {
   mergeCells,
   splitCell,
   deleteTable,
+  CellSelection,
   gapCursor,
   MenuItem,
   Dropdown,
@@ -114,9 +119,12 @@ export {
   yUndoPluginKey,
   yUndo,
   yRedo,
-  prosemirrorToYDoc,
   prosemirrorToYXmlFragment,
   yDocToProsemirror,
+  prosemirrorToYDoc,
   yDocToProsemirrorJSON,
   yXmlFragmentToProsemirrorJSON,
+  ySyncPluginKey,
+  absolutePositionToRelativePosition,
+  relativePositionToAbsolutePosition,
 };

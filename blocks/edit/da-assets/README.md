@@ -179,7 +179,7 @@ URL builder functions keyed to the mode:
 Plus:
 
 - `resolveRenditionType(mimetype, { mimeRenditionOverrides })` — determines the rendition type (`avif` / `play` / `original`) using override map and built-in defaults.
-- `getAssetAlt(asset)` — reads alt text from `_embedded` metadata (`dc:description` or `dc:title`).
+- `getAssetAlt(asset)` — reads alt text, preferring `Iptc4xmpExt:ExtDescrAccessibility` (the field the content supply chain agent maps alt text to), then `_embedded` metadata (`dc:description` or `dc:title`).
 - `getDmApprovalStatus(asset)` — reads `dam:assetStatus` and `dam:activationTarget` from `_embedded` metadata.
 
 ### `helpers/insert.js`

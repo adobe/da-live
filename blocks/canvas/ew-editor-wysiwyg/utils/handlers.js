@@ -6,7 +6,6 @@ import {
 import { dispatchMirror } from '../../editor-utils/editor-utils.js';
 import { canvasBus } from '../../utils/canvas-bus.js';
 import { toolbarController } from '../../editor-utils/toolbar-controller.js';
-import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
 
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
@@ -22,6 +21,10 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     ctx.lastCursorPos = null;
     return;
   }
+
+  // Forcing focus on the hidden doc view makes y-prosemirror reconcile incoming
+  // remote edits against its stale caret and revert them (see commit message).
+  if (ctx.isDocViewHidden?.()) return;
 
   const { state } = view;
   const position = cursorOffset + textCursorOffset;
@@ -64,13 +67,11 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     }
     ctx.lastCursorPos = position;
 
+    // dispatchMirror() already triggers createTrackingPlugin's hook, which emits
+    // canvasBus.editorSelectState with the full payload (incl. proseIndex) — a second,
+    // blockIndex-only emit here would clobber that and collapse the outline.
     dispatchMirror(view, tr.scrollIntoView(), ctx);
     toolbarController.setWysiwygSelection({ showable: true });
-    const blockIndex = getActiveBlockIndex(view);
-    if (blockIndex !== ctx.lastBlockIndex) {
-      ctx.lastBlockIndex = blockIndex;
-      canvasBus.editorSelectState.emit({ blockIndex, source: 'wysiwyg' });
-    }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error moving cursor:', error);
@@ -89,7 +90,7 @@ export function handleUndoRedo(data, ctx) {
 }
 
 export function handleNewVersion() {
-  document.dispatchEvent(new CustomEvent('nx-canvas-new-version', { bubbles: true, composed: true }));
+  canvasBus.newVersionRequest.emit();
 }
 
 export function handleStoredMarks({ marks }, ctx) {

@@ -14,7 +14,14 @@ export function treeFocusIn(e, shadowRoot) {
 export function treeKeydown(e, shadowRoot) {
   const items = [...shadowRoot.querySelectorAll('[role="treeitem"]')];
   if (!items.length) return;
-  const idx = items.indexOf(shadowRoot.activeElement);
+  const { activeElement } = shadowRoot;
+  // Focus may be on a row's action button (e.g. copy-url) rather than the treeitem
+  // itself, since those buttons are real Tab stops. Fall back to that button's own
+  // row so arrow-key navigation keeps working from there.
+  const rowItem = activeElement?.closest('[role="treeitem"]')
+    ?? activeElement?.closest('.row-wrap')?.querySelector('[role="treeitem"]');
+  const activeIdx = items.indexOf(activeElement);
+  const idx = activeIdx !== -1 ? activeIdx : items.indexOf(rowItem);
   if (idx === -1) return;
 
   let next = idx;
