@@ -2,6 +2,7 @@ import { TextSelection, NodeSelection, yUndo, yRedo } from 'da-y-wrapper';
 import {
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
+  selectedBlockDescriptor,
 } from '../../editor-utils/selection-toolbar.js';
 import { dispatchMirror } from '../../editor-utils/editor-utils.js';
 import { canvasBus } from '../../utils/canvas-bus.js';
@@ -232,8 +233,11 @@ export function handleNodeSelect({ node }, ctx) {
       .scrollIntoView()
       .setMeta('addToHistory', false);
     dispatchMirror(view, tr, ctx);
-    // Tables have their own UI; the toolbar hides for them. Images keep it.
-    toolbarController.setWysiwygSelection({ showable: node.anchorType !== 'table' });
+    // A whole-block selection gets the block toolbar (variants, add item, edit in
+    // modal, replace, delete) instead of the inline one — same as in the doc view.
+    // Read after dispatch so the descriptor reflects the NodeSelection just set.
+    const block = selectedBlockDescriptor(view.state);
+    toolbarController.setWysiwygSelection({ showable: block === null, block });
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[quick-edit-controller] handleNodeSelect failed', e?.message);

@@ -1,6 +1,6 @@
 /**
- * Single owner of the selection-toolbar's visibility across the canvas doc editor
- * and the WYSIWYG iframe. See docs/canvas-toolbar-architecture.md.
+ * Single owner of the selection- and block-toolbar visibility across the canvas doc
+ * editor and the WYSIWYG iframe. See docs/canvas-toolbar-architecture.md.
  *
  * Nothing outside this module shows, hides, or positions the toolbar. Callers emit
  * intent (activate / deactivate / selection / editor-mode) and this module derives
@@ -13,6 +13,8 @@ import { refreshLocalCursor } from 'da-y-wrapper';
 
 let toolbarEl;
 let toolbarLoading;
+let blockToolbarEl;
+let blockToolbarLoading;
 let pointerdownInstalled = false;
 let windowBlurInstalled = false;
 
@@ -26,6 +28,10 @@ const state = {
   // toolbar the user was still using, which needed a guard in setDocSelection to
   // paper over. Each surface now owns its own answer.
   showableBySurface: { doc: false, wysiwyg: false },
+  // Per surface: the block whose node is selected there (`{ name, variant }`), or
+  // null for a text/caret selection. A block selection swaps the selection toolbar
+  // for the block toolbar, in both the doc view and the WYSIWYG iframe.
+  blockBySurface: { doc: null, wysiwyg: null },
   editorMode: 'layout', // 'layout' | 'content' | 'split'
 };
 
@@ -39,6 +45,16 @@ function ensureToolbar() {
     // eslint-disable-next-line no-use-before-define -- mutually recursive with render
     .then(() => scheduleRender());
   return toolbarEl;
+}
+
+function ensureBlockToolbar() {
+  if (blockToolbarEl) return blockToolbarEl;
+  blockToolbarEl = document.createElement('ew-block-toolbar');
+  document.body.append(blockToolbarEl);
+  blockToolbarLoading ??= import('../ew-block-toolbar/ew-block-toolbar.js')
+    // eslint-disable-next-line no-use-before-define -- mutually recursive with render
+    .then(() => scheduleRender());
+  return blockToolbarEl;
 }
 
 /**
@@ -70,6 +86,25 @@ function shouldShow(tb) {
     && editorModeAllows(state.activeSurface);
 }
 
+/** The block toolbar's commands all run against the doc view's NodeSelection, which
+ * the iframe's NODE_SELECT relay sets just like a click in the doc view does — so the
+ * same toolbar serves both surfaces. */
+function syncBlockToolbar(block) {
+  const btb = ensureBlockToolbar();
+  // Element not upgraded yet; ensureBlockToolbar re-renders when its module resolves.
+  if (typeof btb.show !== 'function') return;
+  if (!block) {
+    if (btb.open && !btb.isInteracting) btb.hide();
+    return;
+  }
+  if (state.docView) btb.view = state.docView;
+  // Re-showing reloads the variant list and the multi-block template, so only do it
+  // when the selected block actually changed — otherwise every mirrored transaction
+  // would close the variant picker the user just opened.
+  if (btb.open && btb.blockName === block.name && btb.blockVariant === block.variant) return;
+  btb.show(block.name, block.variant);
+}
+
 let renderQueued = false;
 function render() {
   const tb = ensureToolbar();
@@ -81,7 +116,13 @@ function render() {
   // The element renders a surface-appropriate button set: the wysiwyg iframe owns
   // block-level structure, so it gets inline/link/image controls only.
   tb.activeSurface = state.activeSurface;
-  if (shouldShow(tb)) {
+
+  const { activeSurface } = state;
+  const block = activeSurface ? state.blockBySurface[activeSurface] : null;
+  const showBlock = block !== null && editorModeAllows(activeSurface);
+  syncBlockToolbar(showBlock ? block : null);
+
+  if (!showBlock && shouldShow(tb)) {
     tb.show();
   } else if (!tb.linkDialogOpen && !tb.altDialogOpen && !tb.isInteracting) {
     tb.hide();
@@ -161,6 +202,7 @@ function installOutsidePointerdown() {
     if (state.activeSurface === null) return;
     const path = e.composedPath();
     if (toolbarEl && path.includes(toolbarEl)) return;
+    if (blockToolbarEl && path.includes(blockToolbarEl)) return;
     if (state.docView?.dom && path.includes(state.docView.dom)) return;
     if (state.iframeEl && path.includes(state.iframeEl)) return;
     // A real pointerdown in the parent document outside every editing surface —
@@ -173,6 +215,7 @@ function installOutsidePointerdown() {
 
 export const toolbarController = {
   ensureToolbar,
+  ensureBlockToolbar,
 
   /** Read-only: which surface currently owns editing. Read by the doc view's
    * cursor plugin to decide whether to publish this user's caret. */
@@ -218,15 +261,17 @@ export const toolbarController = {
    * dispatch must not show the toolbar on a doc the user isn't editing. Writing a
    * surface-scoped slot means it also can't clobber the wysiwyg answer, so no
    * cross-surface guard is needed. */
-  setDocSelection({ showable }) {
+  setDocSelection({ showable, block = null }) {
     state.showableBySurface.doc = showable;
+    state.blockBySurface.doc = block;
     scheduleRender();
   },
 
   /** A positional message from the iframe: the user is editing there. */
-  setWysiwygSelection({ showable }) {
+  setWysiwygSelection({ showable, block = null }) {
     setSurface('wysiwyg');
     state.showableBySurface.wysiwyg = showable;
+    state.blockBySurface.wysiwyg = block;
     installOutsidePointerdown();
     scheduleRender();
   },
@@ -247,6 +292,8 @@ export const toolbarController = {
     setSurface(null);
     state.showableBySurface.doc = false;
     state.showableBySurface.wysiwyg = false;
+    state.blockBySurface.doc = null;
+    state.blockBySurface.wysiwyg = null;
     state.docView = null;
     scheduleRender();
   },

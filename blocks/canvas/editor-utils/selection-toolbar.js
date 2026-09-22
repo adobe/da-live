@@ -1,5 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin, PluginKey, NodeSelection } from 'da-y-wrapper';
+import { getTableBlockName, getTableBlockVariant } from './blocks.js';
 import { toolbarController } from './toolbar-controller.js';
 
 const NON_TEXT_NODES = new Set(['table']);
@@ -21,6 +22,11 @@ export function setSelectionToolbarCtx({ org = null, site = null, sourceUrl = nu
   tb.org = org;
   tb.site = site;
   tb.sourceUrl = sourceUrl;
+  // The block toolbar needs org/site to resolve the block library (variants,
+  // "Replace block") — it serves both editing surfaces, so wire it here too.
+  const blockTb = toolbarController.ensureBlockToolbar();
+  blockTb.org = org;
+  blockTb.site = site;
 }
 
 export function openLinkDialog(view) {
@@ -38,6 +44,13 @@ export function triggerAddImage() {
 function isNonTextSelection({ selection }) {
   return selection instanceof NodeSelection
     && NON_TEXT_NODES.has(selection.node.type.name);
+}
+
+/** `{ name, variant }` when a whole block node is selected, else null. */
+export function selectedBlockDescriptor(state) {
+  if (!isNonTextSelection(state)) return null;
+  const { node } = state.selection;
+  return { name: getTableBlockName(node), variant: getTableBlockVariant(node) };
 }
 
 export function createSelectionToolbarPlugin() {
@@ -61,7 +74,8 @@ export function createSelectionToolbarPlugin() {
           // plugin only reports the *doc* selection, and never claims the surface
           // (activation comes from real focus — see toolbar-controller.js).
           if (getSelectionOriginFromIframe(view.state)) return;
-          toolbarController.setDocSelection({ showable: !isNonTextSelection(view.state) });
+          const block = selectedBlockDescriptor(view.state);
+          toolbarController.setDocSelection({ showable: block === null, block });
         },
         destroy() {
           toolbarController.reset();
