@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { nothing } from 'da-lit';
 import { setNx } from '../../../../../../../scripts/utils.js';
 
 let render;
@@ -86,6 +87,52 @@ describe('renderLabels', () => {
 
     expect(labels.map((label) => label.values[1]))
       .to.deep.equal([SEVERITY.ERROR, SEVERITY.SUCCESS]);
+  });
+
+  it('excludes settled NA items so no unstyled badge renders', () => {
+    const el = document.createElement('da-preflight');
+    const checks = [
+      { title: 'Links', items: [{ status: STATUS.DONE, result: SEVERITY.NA }], done: true },
+    ];
+
+    const labels = el.renderLabels(checks, () => {});
+
+    expect(labels).to.have.length(0);
+  });
+});
+
+describe('renderChecks', () => {
+  it('excludes settled NA items from a check\'s item list', () => {
+    const el = document.createElement('da-preflight');
+    const checks = [
+      {
+        title: 'Links',
+        items: [
+          { status: STATUS.DONE, result: SEVERITY.NA },
+          { status: STATUS.DONE, result: SEVERITY.WARN },
+        ],
+        done: true,
+      },
+    ];
+
+    const result = el.renderChecks(checks);
+    const subCategories = result.values[0];
+
+    expect(subCategories).to.have.length(1);
+    expect(subCategories[0].values[1]).to.have.length(1);
+  });
+
+  it('hides a check entirely once every item is settled NA', () => {
+    const el = document.createElement('da-preflight');
+    const checks = [
+      { title: 'Links', items: [{ status: STATUS.DONE, result: SEVERITY.NA }], done: true },
+    ];
+
+    const result = el.renderChecks(checks);
+    const subCategories = result.values[0];
+
+    expect(subCategories).to.have.length(1);
+    expect(subCategories[0]).to.equal(nothing);
   });
 });
 
