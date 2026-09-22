@@ -42,9 +42,8 @@ function isValidationHostReady() {
 async function getResults({ signal } = {}) {
   if (signal?.aborted) return [];
 
-  // No EW/canvas host mounted (e.g. classic /edit) means nothing will ever answer
-  // validationRunRequest -- resolve now instead of riding the shared load-timeout,
-  // which would otherwise block the whole panel from rendering until it fires.
+  // No host mounted (e.g. classic /edit) means nothing will ever answer -- resolve now
+  // instead of riding the shared load-timeout and blocking the panel until it fires.
   if (!isValidationHostReady()) return [];
 
   return new Promise((resolve) => {

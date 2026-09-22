@@ -2,10 +2,9 @@ import { getQuickEditNx } from '../../../scripts/utils.js';
 
 const { sanitizeCustomValidationItems, MESSAGE_TYPES } = await import(`${getQuickEditNx()}/public/plugins/quick-edit/custom-validation.js`);
 
-// If no ACK arrives within this window, nothing on the other end understands the
-// custom-validation protocol (e.g. an old quick-edit.js) -- don't wait for a RESULT
-// that will never come. Once an ACK does arrive, a slow/hung check is bounded by the
-// caller (e.g. the preflight orchestrator's own abort signal), not this module.
+// No ACK in this window means the other end doesn't understand the protocol (e.g. an
+// old quick-edit.js) -- don't wait for a RESULT that'll never come. A slow check past
+// ACK is bounded by the caller's own abort signal, not this module.
 const ACK_TIMEOUT_MS = 500;
 
 function makeRequestId() {
