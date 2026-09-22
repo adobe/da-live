@@ -33,6 +33,10 @@ const state = {
   // for the block toolbar, in both the doc view and the WYSIWYG iframe.
   blockBySurface: { doc: null, wysiwyg: null },
   editorMode: 'layout', // 'layout' | 'content' | 'split'
+  // The single-block edit modal hosts the doc view in a dialog, on top of (and
+  // regardless of) the current editor mode — including layout mode, where the doc
+  // surface is otherwise not servable.
+  blockEditOpen: false,
 };
 
 function ensureToolbar() {
@@ -66,12 +70,18 @@ function ensureBlockToolbar() {
  * re-runs that predicate on its own — poke it here whenever the answer changes.
  */
 function setSurface(next) {
+  // The block edit modal is modal: the iframe behind its backdrop can't take the
+  // surface back (its blur/selection messages keep arriving while it is open).
+  if (state.blockEditOpen && next === 'wysiwyg') return;
   if (state.activeSurface === next) return;
   state.activeSurface = next;
   if (state.docView) refreshLocalCursor(state.docView);
 }
 
 function editorModeAllows(surface) {
+  // The block edit modal covers everything: only the doc view it hosts is servable,
+  // whichever editor mode opened it.
+  if (state.blockEditOpen) return surface === 'doc';
   if (surface === 'doc') return state.editorMode === 'content' || state.editorMode === 'split';
   if (surface === 'wysiwyg') return state.editorMode === 'layout' || state.editorMode === 'split';
   return false;
@@ -119,7 +129,9 @@ function render() {
 
   const { activeSurface } = state;
   const block = activeSurface ? state.blockBySurface[activeSurface] : null;
-  const showBlock = block !== null && editorModeAllows(activeSurface);
+  // The block toolbar is body-hosted, so inside the block edit modal it would render
+  // behind the backdrop — and its commands target the block already being edited.
+  const showBlock = block !== null && !state.blockEditOpen && editorModeAllows(activeSurface);
   syncBlockToolbar(showBlock ? block : null);
 
   if (!showBlock && shouldShow(tb)) {
@@ -246,6 +258,16 @@ export const toolbarController = {
     scheduleRender();
   },
 
+  /** The single-block edit modal opened / closed. While open the doc view it hosts is
+   * the only servable surface, so the toolbar works even in layout mode — and opening
+   * claims the doc surface so `view.focus()` isn't suppressed by the focus policy. */
+  setBlockEditOpen(open) {
+    if (state.blockEditOpen === open) return;
+    state.blockEditOpen = open;
+    if (open) setSurface('doc');
+    scheduleRender();
+  },
+
   /** The user is now editing in `surface` (driven by real focus / positional intent). */
   activate(surface, { iframeEl } = {}) {
     if (surface !== 'doc' && surface !== 'wysiwyg') return;
@@ -296,6 +318,7 @@ export const toolbarController = {
 
   reset() {
     setSurface(null);
+    state.blockEditOpen = false;
     state.showableBySurface.doc = false;
     state.showableBySurface.wysiwyg = false;
     state.blockBySurface.doc = null;

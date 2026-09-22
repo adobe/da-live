@@ -220,6 +220,19 @@ Two consequences worth remembering:
 - The outside-pointerdown dismissal must treat *both* toolbars as inside, or
   clicking a block-toolbar button dismisses the toolbar before the click lands.
 
+### 5.2 The block edit modal is its own surface state
+
+`setBlockEditOpen(true)` makes the doc view the only servable surface for as long
+as the modal is up, whatever editor mode opened it — otherwise "edit block" from
+layout view produces a modal whose toolbar can never show, because layout mode
+does not serve the doc surface. It also claims the doc surface so the focus policy
+stops suppressing `view.focus()`, and refuses later `'wysiwyg'` claims: the iframe
+behind the backdrop keeps sending selection messages.
+
+Opening the modal re-parents the ProseMirror dom into the dialog, which drops DOM
+focus. `updated()` detects that remount and restores focus after the next paint —
+before the paint the dialog isn't displayed yet and `focus()` is a no-op.
+
 ---
 
 ## 6. The focus lie is gone — replaced by an explicit broadcast predicate

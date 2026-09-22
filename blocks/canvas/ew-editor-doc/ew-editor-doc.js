@@ -479,6 +479,9 @@ export class EwEditorDoc extends LitElement {
     };
     document.addEventListener('keydown', this._onBlockEditKeydown, true);
     canvasBus.blockEditState.emit({ open: true });
+    // Before focusing: the modal's doc view becomes the active surface, so the
+    // wysiwyg-mode focus policy lets `view.focus()` through and the toolbar can show.
+    toolbarController.setBlockEditOpen(true);
     view.focus();
   }
 
@@ -500,6 +503,7 @@ export class EwEditorDoc extends LitElement {
       document.removeEventListener('keydown', this._onBlockEditKeydown, true);
       this._onBlockEditKeydown = undefined;
     }
+    toolbarController.setBlockEditOpen(false);
     toolbarController.deactivate();
     // Return the toolbar to the body before the modal DOM is torn down by re-render.
     const toolbar = toolbarController.ensureToolbar();
@@ -542,8 +546,11 @@ export class EwEditorDoc extends LitElement {
       }
     }
     const { proseEl } = this._proseContext ?? {};
+    let remounted = false;
     if (proseEl) {
+      const previousParent = proseEl.parentElement;
       ensureProseMountedInShadow({ shadowRoot: this.shadowRoot, proseEl });
+      remounted = proseEl.parentElement !== previousParent;
     }
     if (this._blockEditMode) {
       // Host the selection toolbar inside the dialog so it sits in the dialog's top
@@ -551,6 +558,19 @@ export class EwEditorDoc extends LitElement {
       const host = this.shadowRoot.querySelector('.block-edit-toolbar-host');
       const toolbar = toolbarController.ensureToolbar();
       if (host && toolbar.parentElement !== host) host.appendChild(toolbar);
+      // Moving the prose dom into the dialog drops DOM focus, so the focus wired in
+      // enterBlockEdit is lost exactly once, on the render that opens the modal.
+      // Restore it, or the modal opens uneditable and with no active surface — which
+      // would leave the toolbar hidden for every selection made inside it.
+      if (remounted) {
+        // The dialog isn't shown yet on this tick, and focus() is a no-op on a
+        // not-yet-displayed element — wait for the paint that opens it.
+        afterNextPaint(() => {
+          if (!this._blockEditMode) return;
+          this._proseContext?.view?.focus();
+          toolbarController.activate('doc');
+        });
+      }
     }
   }
 
