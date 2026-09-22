@@ -544,7 +544,7 @@ function createVersioningView() {
 function createGovernanceView() {
   return {
     id: 'governance',
-    label: 'Governance',
+    label: 'Preflight',
     section: 'Editor',
     firstParty: true,
     load: async () => {
