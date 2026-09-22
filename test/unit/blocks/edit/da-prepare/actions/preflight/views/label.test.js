@@ -54,6 +54,19 @@ describe('pf-label', () => {
     el.remove();
   });
 
+  it('Sets the className to badge-na for the na badge', async () => {
+    const el = document.createElement('pf-label');
+    el.badge = 'pending';
+    document.body.appendChild(el);
+    await nextFrame();
+    el.badge = 'na';
+    await el.updateComplete;
+    expect(el.className).to.equal('badge-na');
+    const use = el.shadowRoot.querySelector('svg use');
+    expect(use.getAttribute('href')).to.contain('S2_Icon_InfoCircle');
+    el.remove();
+  });
+
   it('Renders the pending icon for the pending badge', async () => {
     const el = document.createElement('pf-label');
     el.badge = 'pending';

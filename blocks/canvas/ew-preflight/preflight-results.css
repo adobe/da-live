@@ -124,7 +124,7 @@
 .pfr-entry-header {
   display: flex;
   align-items: baseline;
-  gap: var(--s2-spacing-150);
+  gap: var(--s2-spacing-300);
   margin-bottom: var(--s2-spacing-75);
 }
 
@@ -140,4 +140,15 @@
   background: var(--s2-gray-100);
   color: var(--s2-gray-700);
   font-size: var(--s2-body-size-xs);
+}
+
+/* pf-result's :host is display:contents, so its reason text + pf-label become direct
+   children here - grid (matching the classic dialog's .result-item) keeps the label
+   sized to its content instead of stretching full width. pf-link renders its own single
+   self-contained row and isn't display:contents, so it just occupies the 1fr column. */
+.pfr-entry-body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: var(--s2-spacing-200);
 }

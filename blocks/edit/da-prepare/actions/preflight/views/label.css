@@ -114,6 +114,19 @@
     }
   }
 
+  &.badge-na {
+    background-color: var(--s2-gray-200);
+
+    .more {
+      color: var(--s2-gray-800);
+    }
+
+    .filled-icon {
+      color: #fff;
+      background-color: var(--s2-gray-600);
+    }
+  }
+
   &.badge-pending {
     background-color: var(--s2-gray-300);
 
