@@ -291,6 +291,20 @@ describe('comments helpers/controller', () => {
       expect(stored.threadId).to.equal('t1');
     });
 
+    it('editComment replaces the body and stamps editedAt', async () => {
+      store.set('c1', { id: 'c1', body: 'before', author: { id: 'u' } });
+      await controller.editComment({ commentId: 'c1', body: 'after', now: 1234 });
+      const stored = store.get('c1');
+      expect(stored.body).to.equal('after');
+      expect(stored.editedAt).to.equal(1234);
+      expect(stored.author).to.deep.equal({ id: 'u' });
+    });
+
+    it('editComment ignores an unknown comment', async () => {
+      await controller.editComment({ commentId: 'nope', body: 'x' });
+      expect(store.get('nope')).to.be.undefined;
+    });
+
     it('resolveThread / unresolveThread record resolvedBy and reopenedBy', () => {
       store.set('t', { id: 't', resolved: false });
       controller.resolveThread({ threadId: 't', user: { id: 'u1', name: 'Alice' } });
