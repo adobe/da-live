@@ -156,7 +156,6 @@ test('Collab cursors in multiple editors', async ({ browser, page, browserName }
     sourceUrl = `https://api.aem.live/${org}/sites/${site}/source/${rest.join('/')}.html`;
   }
 
-  console.log('Checking backend at', sourceUrl);
   const resp = await page.request.get(sourceUrl, { headers: { Authorization: authHeader } });
   const body = await resp.text();
 

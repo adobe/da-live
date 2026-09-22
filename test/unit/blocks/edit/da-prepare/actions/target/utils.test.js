@@ -3,7 +3,9 @@ import { setNx, getNx2Api } from '../../../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { savePreview, sendToTarget } = await import('../../../../../../../blocks/edit/da-prepare/actions/target/utils.js');
+const { savePreview, sendToTarget, removeOfferId } = await import('../../../../../../../blocks/edit/da-prepare/actions/target/utils.js');
+const { getExtensionsBridge } = await import('../../../../../../../blocks/canvas/editor-utils/extensions-bridge.js');
+const { makeView } = await import('../../../../canvas/test-helpers.js');
 
 describe('target/utils savePreview', () => {
   it('Strips the .html extension before previewing', async () => {
@@ -95,5 +97,62 @@ describe('target/utils sendToTarget', () => {
     // No Authorization header was attached (token exchange failed → fallback).
     expect(captured.opts?.headers?.Authorization).to.equal(undefined);
     expect(result).to.deep.equal({ error: 'Could not fetch from AEM.' });
+  });
+});
+
+const docWithOfferId = {
+  type: 'doc',
+  content: [
+    {
+      type: 'table',
+      content: [
+        {
+          type: 'table_row',
+          content: [
+            { type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'metadata' }] }] },
+          ],
+        },
+        {
+          type: 'table_row',
+          content: [
+            { type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'adobe.target.offerId' }] }] },
+            { type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'existing-offer-123' }] }] },
+          ],
+        },
+        {
+          type: 'table_row',
+          content: [
+            { type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'description' }] }] },
+            { type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A test page' }] }] },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+function hasOfferIdRow(view) {
+  let found = false;
+  view.state.doc.descendants((node) => {
+    if (node.isText && node.text === 'adobe.target.offerId') found = true;
+  });
+  return found;
+}
+
+describe('removeOfferId in the /canvas experience (no window.view)', () => {
+  afterEach(() => {
+    delete window.view;
+    getExtensionsBridge().view = null;
+  });
+
+  it('removes the offer id from the canvas ProseMirror doc instead of throwing', () => {
+    // /canvas never assigns window.view — the doc's live EditorView is only
+    // reachable via the canvas extensions bridge.
+    delete window.view;
+    const view = makeView(docWithOfferId);
+    getExtensionsBridge().view = view;
+
+    expect(() => removeOfferId()).to.not.throw();
+    expect(hasOfferIdRow(view)).to.equal(false);
   });
 });

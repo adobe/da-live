@@ -40,7 +40,8 @@ import base64Uploader from './prose-plugins/base64Uploader.js';
 import blockFocus, { guardFocusedBlockDeletion } from './prose-plugins/blockFocus.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
-import { generateColor, getCollabIdentity } from './utils/collab.js';
+import { generateColor, collabCursorBuilder } from '../editor-utils/author-color.js';
+import { getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
@@ -153,6 +154,7 @@ export default async function initProse({
       color: generateColor(identity.colorSeed),
       name: identity.name,
       id: identity.id,
+      email: identity.email,
     });
   } else {
     wsProvider.awareness.setLocalStateField('user', {
@@ -166,11 +168,15 @@ export default async function initProse({
   let viewRef = null;
   const dispatch = (tr) => { if (viewRef) viewRef.dispatch(tr); };
 
+  const resolvedExtraPlugins = typeof extraPlugins === 'function'
+    ? extraPlugins({ wsProvider, ydoc })
+    : extraPlugins;
+
   /* Keymap order matches da.live prose/index.js: baseKeymap after buildKeymap +
    * handleTableBackspace (fixes list Enter + table NodeSelection + Backspace). */
   const plugins = [
     ySyncPlugin(yXmlFragment),
-    yCursorPlugin(wsProvider.awareness),
+    yCursorPlugin(wsProvider.awareness, { cursorBuilder: collabCursorBuilder }),
     yUndoPlugin(),
     tableSelectHandle(),
     imageDrop(schema, () => path),
@@ -212,7 +218,7 @@ export default async function initProse({
     gapCursor(),
     tableEditing({ allowTableNodeSelection: true }),
     blockFocus(),
-    ...extraPlugins,
+    ...resolvedExtraPlugins,
   ];
 
   if (canWrite) {

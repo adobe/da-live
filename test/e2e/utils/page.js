@@ -10,9 +10,10 @@
  * governing permissions and limitations under the License.
  */
 import { expect } from '@playwright/test';
-import ENV, { TEST_ORG, TEST_SITE } from './env.js';
+import ENV, { TEST_ORG, TEST_SITE, RUN_FOLDER } from './env.js';
 
 export { TEST_ORG, TEST_SITE };
+export { RUN_FOLDER } from './env.js';
 
 export function getQuery() {
   const { GITHUB_HEAD_REF: branch } = process.env;
@@ -24,7 +25,7 @@ export function getQuery() {
 
 const QUERY = getQuery();
 
-function getTestURL(type, testIdentifier, workerInfo, dir = `/${TEST_ORG}/${TEST_SITE}/tests`) {
+function getTestURL(type, testIdentifier, workerInfo, dir = `/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`) {
   const dateStamp = Date.now().toString(36);
   const pageName = `pw-${testIdentifier}-${dateStamp}-${workerInfo.project.name}`;
   return `${ENV}/${type}${QUERY}#${dir}/${pageName}`;
