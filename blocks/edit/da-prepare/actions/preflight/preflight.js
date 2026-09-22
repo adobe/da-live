@@ -1,15 +1,31 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { getNx2 } from '../../../../../scripts/utils.js';
-import { loadDoc, loadResults } from './utils/utils.js';
-import { REASONS } from './utils/constants.js';
+import { loadProviderResults } from './providers/provider-registry.js';
 
 // Components
 import './views/label.js';
-import './views/link.js';
+import { STATUS, SEVERITY, createResult } from './views/result.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
+
+const LOAD_TIMEOUT_MS = 30 * 1000;
+const SEVERITY_ORDER = [
+  SEVERITY.ERROR, SEVERITY.WARN, SEVERITY.INFO, SEVERITY.SUCCESS, SEVERITY.NA,
+];
+
+// Last-resort fallback so an unexpected throw in the load path still surfaces a visible
+// error state and a terminal status, instead of leaving the panel stuck/blank forever.
+function buildLoadErrorCategories(err) {
+  const item = createResult();
+  item.settle(SEVERITY.ERROR, SEVERITY.ERROR, err?.message || 'Failed to load preflight results.');
+
+  return [{
+    title: 'Errors',
+    checks: [{ title: 'Preflight', items: [item], done: true }],
+  }];
+}
 
 class DaPreflight extends LitElement {
   static properties = {
@@ -22,36 +38,33 @@ class DaPreflight extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this.listenForReasons();
     this.loadResults();
   }
 
-  listenForReasons() {
-    this.addEventListener('reason', () => {
-      this.requestUpdate();
-      this.maybeEmitStatus();
-    });
-  }
-
   async loadResults() {
-    const { error, doc } = await loadDoc(this.details);
-    if (error) {
-      this._status = error;
-      return;
+    try {
+      this._categories = await loadProviderResults({
+        details: this.details,
+        signal: AbortSignal.timeout(LOAD_TIMEOUT_MS),
+        onUpdate: () => this.handleProviderUpdate(),
+      });
+    } catch (err) {
+      this._categories = buildLoadErrorCategories(err);
     }
-    const requestUpdate = () => {
-      this.requestUpdate();
-      this.maybeEmitStatus();
-    };
-    this._categories = loadResults(doc, requestUpdate);
+
+    this.requestUpdate();
     this.maybeEmitStatus();
   }
 
-  static isResultSettled(result) {
-    if (result instanceof HTMLElement) {
-      return result.reason !== REASONS['link.working'].reason;
-    }
-    return true;
+  // Providers call this when a pending result (e.g. an async link check) settles later.
+  handleProviderUpdate() {
+    this.requestUpdate();
+    this.maybeEmitStatus();
+  }
+
+  static isItemSettled(item) {
+    if (!item) return false;
+    return item.status === STATUS.DONE;
   }
 
   maybeEmitStatus() {
@@ -59,11 +72,11 @@ class DaPreflight extends LitElement {
 
     const checks = this._categories.flatMap((category) => category.checks);
     const complete = checks.every((check) => check.done
-      && check.results.every((result) => DaPreflight.isResultSettled(result)));
+      && check.items.every((item) => DaPreflight.isItemSettled(item)));
     if (!complete) return;
 
-    const badges = checks.flatMap((check) => check.results.map((result) => result.badge));
-    const status = badges.includes('error') ? 'fail' : 'success';
+    const outcomes = checks.flatMap((check) => check.items.map((item) => item.result));
+    const status = outcomes.includes(SEVERITY.ERROR) ? 'fail' : 'success';
 
     this._statusEmitted = true;
     const detail = { path: this.details?.fullpath, status, requestId: this.requestId };
@@ -75,29 +88,24 @@ class DaPreflight extends LitElement {
     this.requestUpdate();
   }
 
-  renderResultItem(result) {
-    // Complex results will have their own web component
-    const isCmp = result instanceof HTMLElement;
-    if (isCmp) return html`<li class="result-item">${result}</li>`;
-
-    // Otherwise return the simple result
-    return html`
-      <li class="result-item">
-        <div>${result.reason}</div>
-        <pf-label .badge=${result.badge}></pf-label>
-      </li>`;
+  // Every item is a PreflightResult custom element (see views/result.js)
+  renderItem(item) {
+    return html`<li class="result-item">${item}</li>`;
   }
 
   renderLabels(checks, expand) {
-    const items = checks.flatMap((check) => check.results ?? []);
+    const items = checks.flatMap((check) => check.items ?? [])
+      .filter((item) => DaPreflight.isItemSettled(item));
     const groups = Object.groupBy(items, (item) => item.badge);
 
-    return Object.entries(groups).map(
-      ([badge, group]) => html`
+    // Fixed severity order so a pill's position doesn't shuffle as items settle out of order
+    return SEVERITY_ORDER.filter((badge) => groups[badge]?.length).map(
+      (badge) => html`
         <pf-label
           @click=${expand}
           .badge=${badge}
-          .text=${group.length}>
+          .clickable=${true}
+          .text=${groups[badge].length}>
         </pf-label>`,
     );
   }
@@ -109,10 +117,8 @@ class DaPreflight extends LitElement {
           <li class="sub-category">
             <p class="check-label">${check.title}</p>
             <ul>
-              ${check.results.toSorted((a, b) => {
-                const order = ['error', 'warn', 'info', 'success'];
-                return order.indexOf(a.badge) - order.indexOf(b.badge);
-              }).map((result) => this.renderResultItem(result))}
+              ${check.items.toSorted((a, b) => SEVERITY_ORDER.indexOf(a.badge) - SEVERITY_ORDER.indexOf(b.badge))
+                .map((item) => this.renderItem(item))}
             </ul>
           </li>
         `)}
