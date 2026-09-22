@@ -11,11 +11,6 @@ const style = await loadStyle(import.meta.url);
 
 const OOTB_ACTIONS = [
   {
-    title: 'Preflight',
-    render: async (details) => (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default(details),
-    icon: '/img/icons/s2-icon-filetext-20-n.svg#icon',
-  },
-  {
     title: 'Schedule Publish',
     render: async (details) => (await import('../../edit/da-prepare/actions/scheduler/scheduler.js')).default(details),
     icon: '/img/icons/s2-icon-clock-pending-20-n.svg#icon',
