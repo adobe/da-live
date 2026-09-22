@@ -108,9 +108,9 @@ class PreflightLink extends PreflightResult {
       this._name = this.getName();
       const [result, reason] = await this.checkLink(this._url);
       if (!this._url.external) this._aemPath = this.convertAemPath();
-      this.settle(result, result, reason);
+      this.settle(result, reason);
     } catch {
-      this.settle(SEVERITY.ERROR, SEVERITY.ERROR, 'Could not validate link');
+      this.settle(SEVERITY.ERROR, 'Could not validate link');
     }
   }
 
@@ -152,7 +152,7 @@ class PreflightLink extends PreflightResult {
           </a>
           ${this.renderExpand()}
           <pf-label
-            .badge=${this.badge}
+            .badge=${this.result}
             .text=${this._httpStatus}
             .icon=${this._httpStatus ? nothing : MORE_ICON}>
           </pf-label>

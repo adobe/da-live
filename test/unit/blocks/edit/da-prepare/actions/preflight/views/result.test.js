@@ -13,25 +13,24 @@ describe('PreflightResult', () => {
     expect(item.status).to.equal(STATUS.PENDING);
   });
 
-  it('starts with a defined pending badge and reason, not undefined', () => {
+  it('starts with a defined pending result and reason, not undefined', () => {
     const item = createResult();
-    expect(item.badge).to.equal(STATUS.PENDING);
+    expect(item.result).to.equal(STATUS.PENDING);
     expect(item.reason).to.be.a('string').that.is.not.empty;
   });
 
-  it('settle() sets result, badge, reason and marks done', () => {
+  it('settle() sets result, reason and marks done', () => {
     const item = createResult();
-    item.settle(SEVERITY.WARN, SEVERITY.WARN, 'Something to flag.');
+    item.settle(SEVERITY.WARN, 'Something to flag.');
 
     expect(item.result).to.equal(SEVERITY.WARN);
-    expect(item.badge).to.equal(SEVERITY.WARN);
     expect(item.reason).to.equal('Something to flag.');
     expect(item.status).to.equal(STATUS.DONE);
   });
 
-  it('renders the reason and a pf-label reflecting the badge', async () => {
+  it('renders the reason and a pf-label reflecting the result', async () => {
     const item = createResult();
-    item.settle(SEVERITY.SUCCESS, SEVERITY.SUCCESS, 'All good.');
+    item.settle(SEVERITY.SUCCESS, 'All good.');
     document.body.appendChild(item);
     await nextFrame();
 

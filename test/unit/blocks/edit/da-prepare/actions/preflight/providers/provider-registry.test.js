@@ -28,7 +28,7 @@ function fakeProvider(id, getResults) {
 
 function doneCheck(title, result, reason) {
   const item = createResult();
-  item.settle(result, result, reason);
+  item.settle(result, reason);
   return { title, items: [item], done: true };
 }
 

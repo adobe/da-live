@@ -8,11 +8,11 @@ export default function descriptionCheck({ doc }) {
   const item = createResult();
 
   if (description) {
-    item.settle(SEVERITY.INFO, SEVERITY.INFO, 'Description found in metadata.');
+    item.settle(SEVERITY.INFO, 'Description found in metadata.');
   } else if (para) {
-    item.settle(SEVERITY.INFO, SEVERITY.INFO, 'Description found as first paragraph.');
+    item.settle(SEVERITY.INFO, 'Description found as first paragraph.');
   } else {
-    item.settle(SEVERITY.WARN, SEVERITY.WARN, 'Description not found in metadata or first paragraph.');
+    item.settle(SEVERITY.WARN, 'Description not found in metadata or first paragraph.');
   }
 
   return { title: 'Description', items: [item], done: true };
