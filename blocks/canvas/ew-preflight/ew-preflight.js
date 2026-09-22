@@ -146,7 +146,7 @@ class EwPreflight extends LitElement {
     return this._getHeaderRefreshButton();
   }
 
-  render() {
+  renderBody() {
     if (this._loading && !this._data) {
       return html`
         <div class="ew-preflight-status">
@@ -163,6 +163,10 @@ class EwPreflight extends LitElement {
     }
     if (!this._data) return nothing;
     return html`<nx-page-eval .data=${this._data}></nx-page-eval>`;
+  }
+
+  render() {
+    return html`<div class="ew-preflight-body">${this.renderBody()}</div>`;
   }
 }
 

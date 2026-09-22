@@ -1,7 +1,16 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
+}
+
+.ew-preflight-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--s2-spacing-300);
+  box-sizing: border-box;
 }
 
 /* Loading / error states. The results themselves are drawn by the shared
