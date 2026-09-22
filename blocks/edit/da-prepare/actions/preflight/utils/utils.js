@@ -94,9 +94,10 @@ export function loadResults(doc, requestUpdate) {
 
   return CATEGORIES.map((title) => {
     const checks = categoryChecks[title].map((check) => {
-      const entry = { title: check.title, results: [] };
+      const entry = { title: check.title, results: [], done: false };
       check.fn({ details, doc }).then((results) => {
         if (results) entry.results = results;
+        entry.done = true;
         requestUpdate();
       });
       return entry;

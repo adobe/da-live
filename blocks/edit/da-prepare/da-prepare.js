@@ -1,8 +1,10 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
+import { getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
+const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
 
 const OOTB_ACTIONS = [
   {
@@ -40,11 +42,15 @@ export default class DaPrepare extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    document.addEventListener(PREFLIGHT_EVENT.RUN, this.handlePreflightRun);
+    document.addEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('pointerdown', this.handleOutsideClick);
+    document.removeEventListener(PREFLIGHT_EVENT.RUN, this.handlePreflightRun);
+    document.removeEventListener(PREFLIGHT_EVENT.STATUS, this.handlePreflightStatus);
   }
 
   update(props) {
@@ -106,6 +112,7 @@ export default class DaPrepare extends LitElement {
   }
 
   async handleItemClick(item) {
+    this._preflightRequestId = undefined;
     this._showMenu = false;
     if (item.render) {
       const cmp = await item.render(this.details);
@@ -115,8 +122,37 @@ export default class DaPrepare extends LitElement {
     this._dialogItem = item;
   }
 
+  handlePreflightRun = async (e) => {
+    const { paths, requestId } = e.detail || {};
+    if (!paths || paths.length !== 1 || paths[0] !== this.details?.fullpath) return;
+    this._showMenu = false;
+    const render = (await import('./actions/preflight/preflight.js')).default;
+    const cmp = render(this.details, requestId);
+    this._preflightRequestId = requestId;
+    this._dialogItem = { title: 'Preflight', cmp };
+  };
+
+  handlePreflightStatus = (e) => {
+    const { requestId, status } = e.detail || {};
+    if (!this._preflightRequestId || requestId !== this._preflightRequestId) return;
+    if (status === 'success') {
+      this._dialogItem = undefined;
+      this._preflightRequestId = undefined;
+    }
+  };
+
   handleCloseDialog() {
+    if (this._preflightRequestId) {
+      document.dispatchEvent(new CustomEvent(PREFLIGHT_EVENT.STATUS, {
+        detail: {
+          path: this.details?.fullpath,
+          status: 'cancelled',
+          requestId: this._preflightRequestId,
+        },
+      }));
+    }
     this._dialogItem = undefined;
+    this._preflightRequestId = undefined;
   }
 
   handleIframeLoad({ target }) {
