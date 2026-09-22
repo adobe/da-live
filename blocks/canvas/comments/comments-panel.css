@@ -55,6 +55,10 @@
   padding-right: 16px;
 }
 
+.ew-comments-list > .da-hint {
+  padding-top: var(--s2-spacing-100);
+}
+
 .ew-comments-threads-list {
   list-style: none;
   margin: 0;

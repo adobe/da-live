@@ -32,7 +32,7 @@ export function renderAvatar(panel, author) {
 }
 
 export function renderForm(panel, {
-  placeholder, submitLabel, value, formClass = '', showActions = true, onFocus,
+  placeholder, submitLabel = 'Submit', value, formClass = '', showActions = true, onFocus,
 }) {
   return html`
     <form
@@ -57,7 +57,7 @@ export function renderForm(panel, {
               : submitLabel}
           </button>
         </div>
-        <div class="ew-comment-form-hint"><kbd class="da-kbd">${SUBMIT_SHORTCUT}</kbd> to submit</div>
+        <div class="ew-comment-form-hint">Or hit <kbd class="da-kbd">${SUBMIT_SHORTCUT}</kbd> to ${submitLabel.toLowerCase()}</div>
       ` : nothing}
     </form>
   `;
@@ -213,7 +213,7 @@ export function renderListView(panel, viewModel) {
   return html`
     <div class="ew-comments-list">
       <p class="da-hint">
-        Select content and press <kbd class="da-kbd">${COMMENT_SHORTCUT}</kbd> to add a comment.
+        <strong>Select content</strong> and press <kbd class="da-kbd">${COMMENT_SHORTCUT}</kbd> to add a comment.
       </p>
       ${tabs.length > 1 ? html`
         <div class="ew-comment-tabs" role="group" aria-label="Filter comment threads">
