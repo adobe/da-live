@@ -62,3 +62,63 @@ describe('EwToolPanel — modal experience', () => {
     });
   });
 });
+
+describe('EwToolPanel — loaded view cache', () => {
+  let el;
+
+  beforeEach(async () => {
+    el = document.createElement('ew-tool-panel');
+    document.body.append(el);
+    await el.updateComplete;
+  });
+
+  afterEach(() => el.remove());
+
+  it('reloads an active configured view when its source cache key changes', async () => {
+    let loadCount = 0;
+    const view = (cacheKey) => ({
+      id: 'configured-tool',
+      label: 'Configured tool',
+      cacheKey,
+      load: async () => {
+        loadCount += 1;
+        return document.createElement('div');
+      },
+    });
+
+    el.pendingView = 'configured-tool';
+    el.views = [view('["https://one.example/app"]')];
+    await el.updateComplete;
+    await el.updateComplete;
+
+    el.views = [view('["https://two.example/app"]')];
+    await el.updateComplete;
+    await el.updateComplete;
+
+    expect(loadCount).to.equal(2);
+  });
+
+  it('retains an active first-party view when view definitions refresh', async () => {
+    let loadCount = 0;
+    const view = () => ({
+      id: 'outline',
+      label: 'Outline',
+      firstParty: true,
+      load: async () => {
+        loadCount += 1;
+        return document.createElement('div');
+      },
+    });
+
+    el.pendingView = 'outline';
+    el.views = [view()];
+    await el.updateComplete;
+    await el.updateComplete;
+
+    el.views = [view()];
+    await el.updateComplete;
+    await el.updateComplete;
+
+    expect(loadCount).to.equal(1);
+  });
+});

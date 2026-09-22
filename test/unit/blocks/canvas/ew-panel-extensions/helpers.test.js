@@ -309,8 +309,16 @@ describe('extensionToPanelView', () => {
     const view = extensionToPanelView(ext, 'Library');
     expect(view.id).to.equal('templates');
     expect(view.experience).to.equal('inline');
+    expect(view.cacheKey).to.equal('["/tpl"]');
     expect(view.load).to.be.a('function');
     expect(view.openModal).to.be.undefined;
+  });
+
+  it('does not give first-party extensions a page-bound cache key', () => {
+    const ext = {
+      name: 'templates', title: 'Templates', ootb: true, experience: 'inline', sources: ['/tpl'], icon: '',
+    };
+    expect(extensionToPanelView(ext, 'Library').cacheKey).to.be.undefined;
   });
 });
 
