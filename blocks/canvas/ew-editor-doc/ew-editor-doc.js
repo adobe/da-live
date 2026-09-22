@@ -1,14 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
-import {
-  updateDocument, updateCursors, getInstrumentedHTML,
-  editorHtmlChange, editorSelectChange, getEditor,
-} from '../editor-utils/editor-utils.js';
+import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { getActiveBlockIndex, getBlockPositions } from '../editor-utils/blocks.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import {
   editorDocCanLoad,
-  sourceUrlFromEditorCtx,
   controllerPathnameFromEditorCtx,
   editorDocRenderPhase,
 } from './utils/ctx.js';
@@ -31,7 +28,7 @@ import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -54,7 +51,7 @@ export class EwEditorDoc extends LitElement {
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
       this._lastBroadcastNodeKey = undefined;
-      editorHtmlChange.emit('');
+      canvasBus.editorHtmlState.emit('');
     }
   }
 
@@ -78,7 +75,7 @@ export class EwEditorDoc extends LitElement {
   _emitHtmlChange() {
     const { view } = this._proseContext ?? {};
     if (!view) return;
-    editorHtmlChange.emit(getInstrumentedHTML(view));
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view));
   }
 
   _emitUndoState() {
@@ -171,6 +168,9 @@ export class EwEditorDoc extends LitElement {
       wsProvider,
       port: this.quickEditPort,
       iframe: this._wysiwygIframe,
+      // Gates the mutating messages (node-update/image-replace/history) in
+      // quick-edit-controller.js — without it they are silently dropped.
+      canWrite: this.session?.permissions?.some((permission) => permission === 'write') === true,
       suppressRerender: false,
       lastBlockIndex: undefined,
       owner: org,
@@ -242,13 +242,13 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
-    const sourceUrl = sourceUrlFromEditorCtx(this.ctx);
-
-    const session = this.session ?? await resolveEditorDocSession(sourceUrl);
+    const session = this.session ?? await resolveEditorDocSession(this.ctx);
     if (!session.ok) {
       this._error = session.error;
       return;
     }
+
+    const { sourceUrl } = session;
 
     try {
       const { token, permissions } = session;
@@ -264,7 +264,7 @@ export class EwEditorDoc extends LitElement {
               const body = this._controllerCtx
                 ? updateDocument(this._controllerCtx)
                 : getInstrumentedHTML(this._proseContext?.view);
-              if (body) editorHtmlChange.emit(body);
+              if (body) canvasBus.editorHtmlState.emit(body);
             },
             () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
             (data) => { if (this._controllerCtx) getEditor(data, this._controllerCtx); },
@@ -275,7 +275,7 @@ export class EwEditorDoc extends LitElement {
               if (blockIndex === this._lastDocBlockIndex && selKey === this._lastDocSelKey) return;
               this._lastDocBlockIndex = blockIndex;
               this._lastDocSelKey = selKey;
-              editorSelectChange.emit({
+              canvasBus.editorSelectState.emit({
                 blockIndex,
                 source: 'doc',
                 explicit: descriptor.selectionType === SEL_BLOCK,
@@ -308,20 +308,15 @@ export class EwEditorDoc extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._onCanvasEditorActive = (e) => {
-      const view = e.detail?.view;
+    this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this.hidden = view === 'layout';
-    };
-    this.parentElement?.addEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
-    this._onWysiwygPortReady = (e) => {
-      const { port, iframe } = e.detail ?? {};
-      if (port) {
-        this._wysiwygIframe = iframe;
-        this.quickEditPort = port;
-      }
-    };
-    this.parentElement?.addEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
-    this._unsubscribeSelect = editorSelectChange
+    });
+    this._unsubscribePortReady = canvasBus.wysiwygPortReady.subscribe(({ port, iframe }) => {
+      if (!port) return;
+      this._wysiwygIframe = iframe;
+      this.quickEditPort = port;
+    });
+    this._unsubscribeSelect = canvasBus.editorSelectState
       .subscribe(({ blockIndex, source }) => {
         if (source === 'doc') return;
         this._scrollDocToBlock(blockIndex);
@@ -336,8 +331,8 @@ export class EwEditorDoc extends LitElement {
   }
 
   disconnectedCallback() {
-    this.parentElement?.removeEventListener('nx-canvas-editor-active', this._onCanvasEditorActive);
-    this.parentElement?.removeEventListener('nx-wysiwyg-port-ready', this._onWysiwygPortReady);
+    this._unsubscribeEditorActive?.();
+    this._unsubscribePortReady?.();
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._teardown();

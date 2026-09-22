@@ -8,7 +8,7 @@ import {
   Y,
   WebsocketProvider,
   ySyncPlugin,
-  yCursorPlugin,
+  daCursorPlugin,
   yUndoPlugin,
   yUndoPluginKey,
   yUndo,
@@ -42,6 +42,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -170,7 +171,16 @@ export default async function initProse({
    * handleTableBackspace (fixes list Enter + table NodeSelection + Backspace). */
   const plugins = [
     ySyncPlugin(yXmlFragment),
-    yCursorPlugin(wsProvider.awareness),
+    // Broadcast this user's cursor while the quick-edit iframe owns editing, even
+    // though the doc view legitimately has no browser focus then. Upstream gates on
+    // `view.hasFocus()`; we must NOT fake that, because prosemirror-view reads the
+    // same method to decide whether it owns the DOM selection
+    // (`editorOwnsSelection` -> `selectionToDOM`) — faking it makes the doc pane
+    // paint a caret and fight the iframe for the selection.
+    daCursorPlugin(wsProvider.awareness, {
+      shouldBroadcast: (view) => toolbarController.activeSurface === 'wysiwyg'
+        || view.hasFocus(),
+    }),
     yUndoPlugin(),
     tableSelectHandle(),
     imageDrop(schema, () => path),

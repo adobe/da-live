@@ -5,8 +5,11 @@
  * Nothing outside this module shows, hides, or positions the toolbar. Callers emit
  * intent (activate / deactivate / selection / editor-mode) and this module derives
  * visibility once per animation frame from an explicit "active surface" — never
- * from `view.hasFocus()`, which lies while the user edits in the iframe.
+ * from `view.hasFocus()`, which is legitimately false while the user edits in the
+ * cross-origin iframe.
  */
+
+import { refreshLocalCursor } from 'da-y-wrapper';
 
 let toolbarEl;
 let toolbarLoading;
@@ -17,7 +20,12 @@ const state = {
   activeSurface: null, // 'doc' | 'wysiwyg' | null
   docView: null, // the single ProseMirror view — always the command target
   iframeEl: null, // for outside-click hit-testing
-  showable: false, // current selection is one the toolbar serves
+  // Whether each surface's current selection is one the toolbar serves. Kept per
+  // surface: a single shared slot let a doc-side selection change (collab, a
+  // mirrored dispatch, a background edit) overwrite the wysiwyg answer and hide a
+  // toolbar the user was still using, which needed a guard in setDocSelection to
+  // paper over. Each surface now owns its own answer.
+  showableBySurface: { doc: false, wysiwyg: false },
   editorMode: 'layout', // 'layout' | 'content' | 'split'
 };
 
@@ -33,6 +41,20 @@ function ensureToolbar() {
   return toolbarEl;
 }
 
+/**
+ * The single write path for the active surface.
+ *
+ * The doc view's cursor plugin publishes this user's caret to collaborators based
+ * on which surface is active (see `daCursorPlugin`'s `shouldBroadcast` in
+ * ew-editor-doc/prose.js). ProseMirror knows nothing about surfaces, so nothing
+ * re-runs that predicate on its own — poke it here whenever the answer changes.
+ */
+function setSurface(next) {
+  if (state.activeSurface === next) return;
+  state.activeSurface = next;
+  if (state.docView) refreshLocalCursor(state.docView);
+}
+
 function editorModeAllows(surface) {
   if (surface === 'doc') return state.editorMode === 'content' || state.editorMode === 'split';
   if (surface === 'wysiwyg') return state.editorMode === 'layout' || state.editorMode === 'split';
@@ -44,7 +66,7 @@ function editorModeAllows(surface) {
 function shouldShow(tb) {
   if (tb.linkDialogOpen || tb.altDialogOpen || tb.isInteracting) return false;
   return state.activeSurface !== null
-    && state.showable
+    && state.showableBySurface[state.activeSurface]
     && editorModeAllows(state.activeSurface);
 }
 
@@ -98,8 +120,8 @@ function installIframeFocusDetection() {
         // Entering an editable pane; assume showable so the toolbar appears even
         // when no positional message follows. A later node-select (e.g. a table)
         // refines it.
-        state.activeSurface = 'wysiwyg';
-        state.showable = true;
+        setSurface('wysiwyg');
+        state.showableBySurface.wysiwyg = true;
         scheduleRender();
       }
     }, 0);
@@ -107,24 +129,24 @@ function installIframeFocusDetection() {
 }
 
 /**
- * While the wysiwyg iframe owns editing, keep the doc view broadcasting this
- * user's cursor to collaborators without ever letting real focus land on it.
+ * While the wysiwyg iframe owns editing, keep real focus out of the doc view.
  *
- * y-prosemirror's cursor plugin broadcasts the local cursor only while the view
- * "has focus", and clears it on the next update once focus is lost — so a caret
- * mirrored from the iframe would flash to peers and vanish. We lie about focus so
- * the plugin keeps broadcasting; but `hasFocus` lying alone would let ProseMirror's
- * `selectionToDOM` treat the doc editor as focused. That only writes a DOM
- * selection range (harmless — it doesn't move focus), so the one thing left to
- * guard is `view.focus()`, which really would steal focus from the iframe and
- * bring back the toolbar-visibility bugs. Neuter it while wysiwyg is active.
+ * This is a policy about *actions*, not a lie about *state*. An earlier version
+ * also patched `view.hasFocus()` to return true whenever the wysiwyg surface was
+ * active, so y-prosemirror's cursor plugin would keep broadcasting. That backfired:
+ * prosemirror-view reads the same method to decide whether it owns the document's
+ * DOM selection (`editorOwnsSelection` -> `selectionToDOM`) and whether to trust
+ * DOM selection changes (`hasFocusAndSelection` in the DOM observer). With the doc
+ * view editable, the lie made `selectionToDOM` write the browser selection into the
+ * doc pane on every mirrored transaction — which focused the doc pane, blurred the
+ * iframe and destroyed its caret. The cursor broadcast is now handled honestly by
+ * `daCursorPlugin`'s `shouldBroadcast` predicate, so only `view.focus()` needs
+ * guarding: it really would steal focus from the iframe.
  */
 const focusGuardedViews = new WeakSet();
-function installSurfaceFocusGuards(view) {
+function installDocFocusPolicy(view) {
   if (focusGuardedViews.has(view)) return;
   focusGuardedViews.add(view);
-  const realHasFocus = view.hasFocus.bind(view);
-  view.hasFocus = () => state.activeSurface === 'wysiwyg' || realHasFocus();
   const realFocus = view.focus.bind(view);
   view.focus = () => {
     if (state.activeSurface === 'wysiwyg') return;
@@ -144,7 +166,7 @@ function installOutsidePointerdown() {
     // A real pointerdown in the parent document outside every editing surface —
     // the user is leaving. (Clicks inside the cross-origin iframe never reach here,
     // and are handled by the iframe's own blur.)
-    state.activeSurface = null;
+    setSurface(null);
     scheduleRender();
   });
 }
@@ -152,10 +174,14 @@ function installOutsidePointerdown() {
 export const toolbarController = {
   ensureToolbar,
 
+  /** Read-only: which surface currently owns editing. Read by the doc view's
+   * cursor plugin to decide whether to publish this user's caret. */
+  get activeSurface() { return state.activeSurface; },
+
   /** Register the doc editor's view (the command target). */
   setDocView(view) {
     state.docView = view ?? null;
-    if (view) installSurfaceFocusGuards(view);
+    if (view) installDocFocusPolicy(view);
     installOutsidePointerdown();
     scheduleRender();
   },
@@ -175,7 +201,7 @@ export const toolbarController = {
   activate(surface, { iframeEl } = {}) {
     if (surface !== 'doc' && surface !== 'wysiwyg') return;
     if (iframeEl !== undefined) state.iframeEl = iframeEl;
-    state.activeSurface = surface;
+    setSurface(surface);
     installOutsidePointerdown();
     scheduleRender();
   },
@@ -184,22 +210,23 @@ export const toolbarController = {
    * deactivate it, so a late blur from one editor can't wipe the other. */
   deactivate(surface) {
     if (surface && state.activeSurface !== surface) return;
-    state.activeSurface = null;
+    setSurface(null);
     scheduleRender();
   },
 
   /** Doc selection changed. Never claims the surface — a background/collab/mirror
-   * dispatch must not show the toolbar on a doc the user isn't editing. */
+   * dispatch must not show the toolbar on a doc the user isn't editing. Writing a
+   * surface-scoped slot means it also can't clobber the wysiwyg answer, so no
+   * cross-surface guard is needed. */
   setDocSelection({ showable }) {
-    if (state.activeSurface === 'wysiwyg') return;
-    state.showable = showable;
+    state.showableBySurface.doc = showable;
     scheduleRender();
   },
 
   /** A positional message from the iframe: the user is editing there. */
   setWysiwygSelection({ showable }) {
-    state.activeSurface = 'wysiwyg';
-    state.showable = showable;
+    setSurface('wysiwyg');
+    state.showableBySurface.wysiwyg = showable;
     installOutsidePointerdown();
     scheduleRender();
   },
@@ -217,8 +244,9 @@ export const toolbarController = {
   },
 
   reset() {
-    state.activeSurface = null;
-    state.showable = false;
+    setSurface(null);
+    state.showableBySurface.doc = false;
+    state.showableBySurface.wysiwyg = false;
     state.docView = null;
     scheduleRender();
   },

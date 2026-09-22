@@ -3,7 +3,8 @@ import {
   NX_QUICK_EDIT_IFRAME_SELECTION_META,
   NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META,
 } from '../../editor-utils/selection-toolbar.js';
-import { editorSelectChange, dispatchWithFakeFocus } from '../../editor-utils/editor-utils.js';
+import { dispatchMirror } from '../../editor-utils/editor-utils.js';
+import { canvasBus } from '../../utils/canvas-bus.js';
 import { toolbarController } from '../../editor-utils/toolbar-controller.js';
 import { getActiveBlockIndex } from '../../editor-utils/blocks.js';
 
@@ -63,14 +64,12 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     }
     ctx.lastCursorPos = position;
 
-    ctx.suppressRerender = true;
-    dispatchWithFakeFocus(view, tr.scrollIntoView());
-    ctx.suppressRerender = false;
+    dispatchMirror(view, tr.scrollIntoView(), ctx);
     toolbarController.setWysiwygSelection({ showable: true });
     const blockIndex = getActiveBlockIndex(view);
     if (blockIndex !== ctx.lastBlockIndex) {
       ctx.lastBlockIndex = blockIndex;
-      editorSelectChange.emit({ blockIndex, source: 'wysiwyg' });
+      canvasBus.editorSelectState.emit({ blockIndex, source: 'wysiwyg' });
     }
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -107,9 +106,7 @@ export function handleStoredMarks({ marks }, ctx) {
       .filter(Boolean);
     const { tr } = state;
     tr.setStoredMarks(parsedMarks);
-    ctx.suppressRerender = true;
-    dispatchWithFakeFocus(view, tr);
-    ctx.suppressRerender = false;
+    dispatchMirror(view, tr, ctx);
     toolbarController.refresh();
   } catch (e) {
     // eslint-disable-next-line no-console
@@ -127,9 +124,7 @@ export function handleSelectionChange({ anchor, head }, ctx, { fromQuickEditIfra
     const { tr } = state;
     tr.setSelection(TextSelection.create(state.doc, a, h));
     if (fromQuickEditIframe) tr.setMeta(NX_QUICK_EDIT_IFRAME_SELECTION_META, true);
-    ctx.suppressRerender = true;
-    dispatchWithFakeFocus(view, tr);
-    ctx.suppressRerender = false;
+    dispatchMirror(view, tr, ctx);
     return true;
   } catch (e) {
     // eslint-disable-next-line no-console
@@ -150,9 +145,7 @@ export function handleIframeSelectionChange(data, ctx) {
       const tr = view.state.tr
         .setMeta(NX_QUICK_EDIT_CLEAR_IFRAME_SELECTION_ORIGIN_META, true)
         .setMeta('addToHistory', false);
-      ctx.suppressRerender = true;
-      dispatchWithFakeFocus(view, tr);
-      ctx.suppressRerender = false;
+      dispatchMirror(view, tr, ctx);
     }
     toolbarController.setWysiwygSelection({ showable: true });
     return;
@@ -221,9 +214,7 @@ export function handleNodeSelect({ node }, ctx) {
       const tr = state.tr
         .setSelection(TextSelection.near(state.doc.resolve(state.selection.from), 1))
         .setMeta('addToHistory', false);
-      ctx.suppressRerender = true;
-      dispatchWithFakeFocus(view, tr);
-      ctx.suppressRerender = false;
+      dispatchMirror(view, tr, ctx);
       return;
     }
     const pos = resolveNodeSelectPos(node, state.doc);
@@ -232,9 +223,7 @@ export function handleNodeSelect({ node }, ctx) {
       .setSelection(NodeSelection.create(state.doc, pos))
       .scrollIntoView()
       .setMeta('addToHistory', false);
-    ctx.suppressRerender = true;
-    dispatchWithFakeFocus(view, tr);
-    ctx.suppressRerender = false;
+    dispatchMirror(view, tr, ctx);
     // Tables have their own UI; the toolbar hides for them. Images keep it.
     toolbarController.setWysiwygSelection({ showable: node.anchorType !== 'table' });
   } catch (e) {

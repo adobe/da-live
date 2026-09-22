@@ -52,5 +52,5 @@ export const canvasBus = Object.freeze({
   },
   editorProseSelectState: createChannel(),
 
-  wysiwygPortReady: createChannel(),
+  wysiwygPortReady: createChannel({ replay: true }),
 });

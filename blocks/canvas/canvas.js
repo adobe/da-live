@@ -16,13 +16,12 @@ import {
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
 import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
-import { sourceUrlFromEditorCtx } from './ew-editor-doc/utils/ctx.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const {
   wasPanelOpen,
   registerPanelSection,
@@ -109,7 +108,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   const ctx = editorCtxFromHashState(state, fullPath);
-  const session = await resolveEditorDocSession(sourceUrlFromEditorCtx(ctx));
+  const session = await resolveEditorDocSession(ctx);
   if (loadCount !== editorLoadCount) return;
   if (!session.ok) {
     removeCanvasEditors(mountRoot);
@@ -119,10 +118,15 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   }
   removeNotPermitted(mountRoot);
   header.authorized = true;
+  const canWrite = session.permissions?.some((permission) => permission === 'write') === true;
   const docEl = ensureNxEditorDoc(mountRoot);
   docEl.session = session;
   docEl.ctx = ctx;
-  ensureNxEditorWysiwyg(mountRoot).ctx = ctx;
+  const wysiwygEl = ensureNxEditorWysiwyg(mountRoot);
+  // Must be set before `ctx`: the ctx change reloads the iframe, and the quick-edit
+  // INIT payload sent on load reads `canWrite` to decide contenteditable.
+  wysiwygEl.canWrite = canWrite;
+  wysiwygEl.ctx = ctx;
   finalizeSplitEditorMountOrder(mountRoot);
   notifyCanvasEditorActive(header.editorView);
   syncEditorSplitLayout({ mountRoot, view: header.editorView });

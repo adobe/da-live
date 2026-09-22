@@ -9,24 +9,23 @@ import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js'
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
 /**
- * Dispatch a mirror transaction while forcing `view.hasFocus()` true for the
- * duration, then restore it. y-prosemirror's cursor plugin broadcasts this user's
- * cursor to collaborators only while the view "has focus". The toolbar controller
- * already keeps `hasFocus` true whenever the wysiwyg surface is active, but a
- * mirrored edit can land in the instant before the surface flips (the message is
- * applied, then the surface is claimed) — this guarantees the very edit that moves
- * the caret also broadcasts it. Toolbar visibility never reads focus; it derives
- * from the active surface.
+ * Dispatch a transaction mirrored from the quick-edit iframe.
+ *
+ * `suppressRerender` stops the resulting update echoing straight back to the iframe
+ * that produced it. The reset is in a `finally` deliberately: stranding the flag
+ * `true` (a throw inside `dispatch`) silently stops the iframe receiving any
+ * further body updates for the rest of the session.
+ *
+ * No focus is faked here. The doc view's cursor broadcast is handled by
+ * `daCursorPlugin`'s `shouldBroadcast` predicate, which reads the active surface
+ * rather than `view.hasFocus()`.
  */
-export function dispatchWithFakeFocus(view, tr) {
-  const hadOwn = Object.hasOwn(view, 'hasFocus');
-  const prev = hadOwn ? view.hasFocus : undefined;
-  view.hasFocus = () => true;
+export function dispatchMirror(view, tr, ctx) {
+  ctx.suppressRerender = true;
   try {
     view.dispatch(tr);
   } finally {
-    if (hadOwn) view.hasFocus = prev;
-    else delete view.hasFocus;
+    ctx.suppressRerender = false;
   }
 }
 
@@ -81,9 +80,7 @@ export function updateState(data, ctx) {
   const restoredTo = Math.min(selTo, maxPos);
   tr.setSelection(TextSelection.create(tr.doc, restoredFrom, restoredTo));
 
-  ctx.suppressRerender = true;
-  dispatchWithFakeFocus(view, tr);
-  ctx.suppressRerender = false;
+  dispatchMirror(view, tr, ctx);
 
   toolbarController.refresh();
 

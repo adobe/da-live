@@ -45,6 +45,8 @@ import {
   yXmlFragmentToProsemirrorJSON,
 } from 'y-prosemirror';
 
+import { daCursorPlugin, refreshLocalCursor } from './da-cursor-plugin.js';
+
 import { MenuItem, Dropdown, renderGrouped, blockTypeItem, wrapItem } from '../../prosemirror-menu/dist/index.js';
 
 import { InputRule, inputRules, wrappingInputRule } from 'prosemirror-inputrules';
@@ -106,6 +108,8 @@ export {
   WebsocketProvider,
   ySyncPlugin,
   yCursorPlugin,
+  daCursorPlugin,
+  refreshLocalCursor,
   yUndoPlugin,
   yUndoPluginKey,
   yUndo,
