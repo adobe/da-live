@@ -86,12 +86,41 @@ describe('EwToolPanel — loaded view cache', () => {
       },
     });
 
+    el.contextKey = 'example-org/site-one';
     el.pendingView = 'configured-tool';
     el.views = [view('["https://one.example/app"]')];
     await el.updateComplete;
     await el.updateComplete;
 
+    el.contextKey = 'example-org/site-two';
     el.views = [view('["https://two.example/app"]')];
+    await el.updateComplete;
+    await el.updateComplete;
+
+    expect(loadCount).to.equal(2);
+  });
+
+  it('reloads a configured view when its site context changes', async () => {
+    let loadCount = 0;
+    const view = {
+      id: 'configured-tool',
+      label: 'Configured tool',
+      cacheKey: '["https://plugin.example/app"]',
+      load: async () => {
+        loadCount += 1;
+        return document.createElement('div');
+      },
+    };
+
+    el.contextKey = 'example-org/site-one';
+    el.pendingView = 'configured-tool';
+    el.views = [view];
+    await el.updateComplete;
+    await el.updateComplete;
+
+    el.contextKey = 'example-org/site-two';
+    await el.updateComplete;
+    el.views = [{ ...view }];
     await el.updateComplete;
     await el.updateComplete;
 
@@ -110,7 +139,9 @@ describe('EwToolPanel — loaded view cache', () => {
       },
     });
 
+    el.contextKey = 'example-org/site-one';
     el.pendingView = 'outline';
+    el.contextKey = 'example-org/site-two';
     el.views = [view()];
     await el.updateComplete;
     await el.updateComplete;
