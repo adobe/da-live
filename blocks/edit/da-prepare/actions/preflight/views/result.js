@@ -4,19 +4,15 @@ import './label.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
-// Shared vocabulary for provider results (preflight.js, providers/provider-registry.js).
-// Two separate concerns, kept as separate fields:
-// - status: lifecycle - is this item done yet (PENDING | DONE).
-// - result: outcome - what did the check conclude, once done (ERROR | WARN | INFO | SUCCESS | NA).
-//   NA means the check doesn't apply to this page (not a real failure/finding).
-// Presentation (which badge/icon to show) is derived from `result` by pf-label, not stored here.
+// status: lifecycle (PENDING | DONE). result: outcome once done (ERROR | WARN | INFO |
+// SUCCESS | NA, where NA means the check doesn't apply to this page). Badge/icon is
+// derived from `result` by pf-label, not stored here.
 export const STATUS = { PENDING: 'pending', DONE: 'done' };
 export const SEVERITY = { ERROR: 'error', WARN: 'warn', INFO: 'info', SUCCESS: 'success', NA: 'na' };
 
-// The only result shape: preflight.js/provider-registry.js never build plain result objects,
-// every check item is a PreflightResult (this class directly, or a richer subclass e.g. a
-// future pf-link). status/result/reason are plain reactive properties (not getters) so
-// provider-registry.js's timeout sweep can call settle() on any item without knowing its subclass.
+// Every check item is a PreflightResult (or subclass, e.g. pf-link) — status/result/reason
+// are plain reactive properties, not getters, so provider-registry.js's timeout sweep can
+// call settle() on any item without knowing its subclass.
 export default class PreflightResult extends LitElement {
   static properties = {
     status: { attribute: false },

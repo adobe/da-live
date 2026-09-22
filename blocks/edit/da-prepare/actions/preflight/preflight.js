@@ -69,9 +69,8 @@ class DaPreflight extends LitElement {
     return item.status === STATUS.DONE;
   }
 
-  // NA means the check doesn't apply to this page - not a real finding, so once settled
-  // it's hidden rather than shown as an empty/unstyled badge. A still-pending item isn't
-  // hidden yet, since it needs to keep showing progress until it settles.
+  // NA isn't a real finding, so hide it once settled rather than show an empty badge.
+  // Still-pending items stay visible to show progress.
   static isHiddenItem(item) {
     return DaPreflight.isItemSettled(item) && item.result === SEVERITY.NA;
   }
