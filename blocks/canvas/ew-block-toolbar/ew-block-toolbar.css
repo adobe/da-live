@@ -17,9 +17,9 @@
     "Trebuchet MS",
     sans-serif
   );
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: var(--s2-component-s-medium-font-weight, 500);
-  line-height: 16px;
+  line-height: var(--s2-component-s-regular-line-height);
   color: var(--s2-gray-800);
   background: var(--s2-gray-25);
   border: 1px solid var(--s2-gray-200);

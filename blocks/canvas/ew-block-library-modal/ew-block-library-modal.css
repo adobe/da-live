@@ -29,7 +29,7 @@
 
 .modal-title {
   font-weight: 600;
-  font-size: var(--s2-body-size-m);
+  font-size: var(--s2-component-l-bold-font-size);
 }
 
 .modal-body {
@@ -74,7 +74,7 @@
 
 .modal-state {
   padding: var(--s2-spacing-200);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   color: var(--s2-gray-700);
 }
 
@@ -98,7 +98,7 @@
   border: none;
   text-align: left;
   font-family: inherit;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   color: inherit;
   cursor: pointer;
   gap: 8px;
@@ -194,7 +194,7 @@
 
 .modal-tree-loading {
   padding: 8px 36px;
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
 }
 

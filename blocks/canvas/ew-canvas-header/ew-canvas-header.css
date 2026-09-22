@@ -32,8 +32,8 @@
   border: none;
   border-radius: var(--s2-corner-radius-400);
   font: inherit;
-  font-size: var(--s2-body-size-xs);
-  line-height: 16px;
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
   font-weight: var(--s2-component-s-medium-font-weight);
   color: var(--s2-gray-700);
   background: transparent;
@@ -107,7 +107,7 @@
   border-radius: 999px;
   background-color: var(--s2-blue-800, #0265dc);
   color: #fff;
-  font-size: 10px;
+  font-size: var(--s2-component-xs-regular-font-size);
   font-weight: var(--s2-component-s-medium-font-weight, 700);
   line-height: 1;
 }

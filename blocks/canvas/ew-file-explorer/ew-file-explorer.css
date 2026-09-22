@@ -100,7 +100,7 @@
   background: transparent;
   color: inherit;
   font-family: inherit;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   font-weight: 500;
   text-align: start;
   cursor: pointer;
@@ -150,7 +150,7 @@
   margin-inline-start: var(--s2-spacing-75);
   color: var(--s2-gray-600);
   font-weight: 400;
-  font-size: var(--s2-body-size-xs, 12px);
+  font-size: var(--s2-component-s-regular-font-size);
 }
 
 .copy-url {
@@ -187,7 +187,8 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+    font-family: var(--s2-font-family);
+    font-size: var(--s2-component-m-regular-font-size);
   }
 }
 

@@ -108,7 +108,7 @@
   align-items: center;
   gap: var(--s2-spacing-100);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--s2-component-l-bold-font-size);
   font-weight: 600;
 
   p {
@@ -135,7 +135,7 @@
   background: none;
   box-shadow: none;
   cursor: pointer;
-  font-size: 16px;
+  font-size: var(--s2-component-l-regular-font-size);
   color: inherit;
 }
 

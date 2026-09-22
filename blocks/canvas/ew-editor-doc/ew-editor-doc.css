@@ -34,7 +34,7 @@
   background: var(--ew-comment-author-color, #6b7280);
   color: #fff;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 600;
   line-height: 1;
   filter:
@@ -138,7 +138,7 @@
 
 .block-edit-title {
   font-weight: 600;
-  font-size: var(--s2-body-size-m);
+  font-size: var(--s2-component-l-bold-font-size);
   text-transform: capitalize;
 }
 
@@ -151,7 +151,7 @@
   background: transparent;
   color: inherit;
   font-family: inherit;
-  font-size: 16px;
+  font-size: var(--s2-component-l-regular-font-size);
   cursor: pointer;
 }
 
@@ -257,7 +257,7 @@
   border: 1px solid light-dark(#becee9, var(--s2-gray-500, #5c5c5c));
   padding: 0 4px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--s2-component-m-regular-font-size);
 }
 
 .ew-editor-doc .ProseMirror pre {
@@ -349,7 +349,7 @@
   position: absolute;
   top: -1.05em;
   left: -1px;
-  font-size: 13px;
+  font-size: var(--s2-component-m-regular-font-size);
   background-color: rgb(250 129 0);
   border-radius: 2px;
   padding: 0 3px;
@@ -362,7 +362,7 @@
   align-items: center;
   justify-content: center;
   color: light-dark(#505050, var(--s2-gray-700, #cacaca));
-  font-size: 0.875rem;
+  font-size: var(--s2-component-m-regular-font-size);
   padding: 1rem;
   text-align: center;
   height: 100%;
@@ -377,7 +377,7 @@
 
 .ew-editor-doc-error {
   color: light-dark(#c00, #ff6b6b);
-  font-size: 0.875rem;
+  font-size: var(--s2-component-m-regular-font-size);
   padding: 0.5rem;
 }
 

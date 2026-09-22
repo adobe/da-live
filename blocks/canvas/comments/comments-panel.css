@@ -80,7 +80,7 @@
 
 .ew-comments-empty {
   color: var(--s2-gray-700);
-  font-size: 14px;
+  font-size: var(--s2-component-m-regular-font-size);
   text-align: center;
   padding: 24px 0;
 }
@@ -148,7 +148,7 @@
   background: transparent;
   color: var(--s2-gray-700);
   font-family: var(--body-font-family);
-  font-size: 14px;
+  font-size: var(--s2-component-m-regular-font-size);
   cursor: pointer;
 }
 
@@ -306,14 +306,14 @@
 
 .ew-comment-form-hint {
   margin-top: var(--s2-spacing-200);
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
   text-align: right;
 }
 
 .ew-comment-form-hint kbd {
   font-family: inherit;
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
   padding: 1px 5px;
   background: var(--s2-gray-75);
   border: 1px solid var(--s2-gray-200);
