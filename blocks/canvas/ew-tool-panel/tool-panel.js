@@ -199,6 +199,7 @@ class EwToolPanel extends LitElement {
   async showPanel(name) {
     const consumer = this.views.find((c) => c.id === name);
     if (!consumer) return;
+    const { contextKey } = this;
     if (consumer.experience === 'window') {
       window.open(
         new URL(consumer.sources[0], window.location.href).href,
@@ -216,7 +217,13 @@ class EwToolPanel extends LitElement {
       return;
     }
     if (!this._loaded[name]) {
-      this._loaded[name] = await consumer.load();
+      const loaded = await consumer.load();
+      const currentConsumer = this.views.find((c) => c.id === name);
+      if (this.contextKey !== contextKey || currentConsumer !== consumer) {
+        loaded?.remove();
+        return;
+      }
+      this._loaded[name] = loaded;
       this._loadedKeys[name] = consumer.cacheKey;
     }
     this.activeId = name;
