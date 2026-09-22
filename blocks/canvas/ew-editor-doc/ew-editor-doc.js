@@ -263,9 +263,15 @@ export class EwEditorDoc extends LitElement {
       // Defer so focus can settle. If it landed on the toolbar (button/dialog),
       // stay active; otherwise the user left the doc surface.
       setTimeout(() => {
+        // ProseMirror moves DOM focus within its own dom when it installs a
+        // NodeSelection (selecting a whole block), which fires focusout without the
+        // user leaving. `view.hasFocus()` is shadow-root aware, unlike
+        // `document.activeElement`, which stops at this element's shadow host.
+        if (view.hasFocus?.()) return;
         const tb = toolbarController.ensureToolbar();
+        const btb = toolbarController.ensureBlockToolbar();
         const active = document.activeElement;
-        if (active && (active === tb || tb.contains(active))) return;
+        if (active && [tb, btb].some((el) => active === el || el.contains(active))) return;
         toolbarController.deactivate('doc');
       }, 0);
     };

@@ -203,7 +203,13 @@ function installOutsidePointerdown() {
     const path = e.composedPath();
     if (toolbarEl && path.includes(toolbarEl)) return;
     if (blockToolbarEl && path.includes(blockToolbarEl)) return;
-    if (state.docView?.dom && path.includes(state.docView.dom)) return;
+    // The doc *surface* is the mount container, not just `view.dom`: editor chrome
+    // such as the table select handle and the comments gutter is rendered as a
+    // sibling of the ProseMirror dom, and clicking it must not read as "the user
+    // left the editor" — that would strand the controller with no active surface,
+    // after which neither toolbar can ever show again.
+    const docSurfaceEl = state.docView?.dom?.parentElement ?? state.docView?.dom;
+    if (docSurfaceEl && path.includes(docSurfaceEl)) return;
     if (state.iframeEl && path.includes(state.iframeEl)) return;
     // A real pointerdown in the parent document outside every editing surface —
     // the user is leaving. (Clicks inside the cross-origin iframe never reach here,
