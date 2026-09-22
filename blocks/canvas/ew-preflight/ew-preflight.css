@@ -1,6 +1,7 @@
 :host {
   display: block;
   height: 100%;
+  padding: var(--s2-spacing-300);
 }
 
 /* Loading / error states. The results themselves are drawn by the shared
