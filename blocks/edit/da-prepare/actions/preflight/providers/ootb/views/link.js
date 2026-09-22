@@ -1,14 +1,15 @@
-import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../../../../scripts/utils.js';
-import getSheet from '../../../../../shared/sheet.js';
-import { etcFetch, getAemSiteToken, getSidekickConfig } from '../../../../../shared/utils.js';
-import { ICONS, REASONS, STATUS_TO_BADGE } from '../utils/constants.js';
+import { html, nothing } from 'da-lit';
+import { getNx } from '../../../../../../../../scripts/utils.js';
+import getSheet from '../../../../../../../shared/sheet.js';
+import { etcFetch, getAemSiteToken, getSidekickConfig } from '../../../../../../../shared/utils.js';
+import PreflightResult, { SEVERITY } from '../../../views/result.js';
 
 await import(`${getNx()}/blocks/loc/views/url-details/url-details.js`);
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
+const MORE_ICON = '/blocks/edit/img/S2_Icon_More_20_N.svg#S2_Icon_More';
 
-class PreflightLink extends LitElement {
+class PreflightLink extends PreflightResult {
   static properties = {
     details: { attribute: false },
     text: { attribute: false },
@@ -16,39 +17,20 @@ class PreflightLink extends LitElement {
     _url: { state: true },
     _name: { state: true },
     _parts: { state: true },
-    _reason: { state: true },
-    _status: { state: true },
+    _httpStatus: { state: true },
     _aemPath: { state: true },
     _open: { state: true },
   };
 
-  constructor() {
-    super();
-    this._reason = REASONS['link.working'];
-  }
-
-  update(props) {
-    if (props.has('_reason')) this.reasonUpdated();
-    super.update(props);
-  }
-
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this.getLinkDetails();
-  }
-
-  reasonUpdated() {
-    const opts = { bubbles: true, composed: true };
-    const event = new CustomEvent('reason', opts);
-    this.dispatchEvent(event);
   }
 
   async normalizeHref(supplied) {
     const { org, site } = this.details;
     const aemOrigin = `https://main--${site}--${org}.aem.live`;
 
-    // Path only — build full AEM URL
     const href = supplied.startsWith('/')
       ? `${aemOrigin}${supplied}`
       : supplied;
@@ -56,23 +38,19 @@ class PreflightLink extends LitElement {
     const url = new URL(href);
     const path = url.pathname;
 
-    // Already an AEM URL — rebuild with correct org/site
     if (url.hostname.includes('.aem.')) {
       return new URL(`${aemOrigin}${path}`);
     }
 
-    // Production URL — check if hostname matches sidekick config
     try {
       const { host } = await getSidekickConfig({ org, site });
-      const prod = host;
-      if (url.hostname === prod) {
+      if (url.hostname === host) {
         return new URL(`${aemOrigin}${path}`);
       }
     } catch {
       // Do nothing, could not get SK config
     }
 
-    // External link — no match
     url.external = true;
     return url;
   }
@@ -99,13 +77,12 @@ class PreflightLink extends LitElement {
       }
       const noCacheUrl = `${url.href}?nocache=${Date.now()}`;
       const resp = await etcFetch(noCacheUrl, 'cors', opts);
-      // redirect: manual will return 0 as the status code
-      this._status = resp.status || 301;
-      if (resp.status === 0) return REASONS['link.warn'];
-      if (resp.ok) return REASONS['link.success'];
-      return REASONS['link.error'];
+      this._httpStatus = resp.status || 301;
+      if (resp.status === 0) return [SEVERITY.WARN, 'Link redirected'];
+      if (resp.ok) return [SEVERITY.SUCCESS, 'Link published'];
+      return [SEVERITY.ERROR, 'Could not validate link'];
     } catch {
-      return REASONS['link.error'];
+      return [SEVERITY.ERROR, 'Could not validate link'];
     }
   }
 
@@ -117,13 +94,16 @@ class PreflightLink extends LitElement {
     return this.text || this._parts.at(-1);
   }
 
-  async getLinkDetails() {
-    this._url = await this.normalizeHref(this.href);
-    this._parts = this._url.pathname.slice(1).split('/');
-    this._name = this.getName();
-    this._reason = await this.checkLink(this._url);
-    if (!this._url.external) {
-      this._aemPath = this.convertAemPath();
+  async runCheck() {
+    try {
+      this._url = await this.normalizeHref(this.href);
+      this._parts = this._url.pathname.slice(1).split('/');
+      this._name = this.getName();
+      const [result, reason] = await this.checkLink(this._url);
+      if (!this._url.external) this._aemPath = this.convertAemPath();
+      this.settle(result, result, reason);
+    } catch {
+      this.settle(SEVERITY.ERROR, SEVERITY.ERROR, 'Could not validate link');
     }
   }
 
@@ -131,23 +111,11 @@ class PreflightLink extends LitElement {
     this._open = !this._open;
   }
 
-  get status() {
-    return this._reason.status;
-  }
-
-  get badge() {
-    return STATUS_TO_BADGE[this._reason.status];
-  }
-
-  get reason() {
-    return this._reason.reason;
-  }
-
   renderExpand() {
     if (!this._aemPath) return nothing;
     return html`
       <button aria-label="expand" class="expand-link" @click=${this.handleOpen}>
-        <svg class="icon" viewBox="0 0 20 20"><use href="${ICONS.get('more')}"/></svg>
+        <svg class="icon" viewBox="0 0 20 20"><use href="${MORE_ICON}"/></svg>
       </button>`;
   }
 
@@ -171,12 +139,16 @@ class PreflightLink extends LitElement {
     return html`
       <div class="link-item ${this._open ? 'is-open' : ''}">
         <div class="link-item-header">
-          <a href="${this._url.href}" class="link-item-header-title" target="_blank">
+          <a href="${this._url.href}" class="link-item-header-title" target="_blank" rel="noopener noreferrer">
             <p class="link-name">${this._name}</p>
             <p class="link-path">${this.renderLinkPath()}</p>
           </a>
           ${this.renderExpand()}
-          <pf-label .badge=${this.badge} .text=${this._status} .icon=${this._status ? nothing : ICONS.get('more')}></pf-label>
+          <pf-label
+            .badge=${this.badge}
+            .text=${this._httpStatus}
+            .icon=${this._httpStatus ? nothing : MORE_ICON}>
+          </pf-label>
         </div>
         ${this.renderAemDetails()}
       </div>

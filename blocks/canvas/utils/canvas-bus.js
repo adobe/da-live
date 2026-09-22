@@ -43,6 +43,7 @@ export const canvasBus = Object.freeze({
   commentComposeRequest: createChannel(),
   blockEditRequest: createChannel(),
   validationRunRequest: createChannel(),
+  preflightRunRequest: createChannel(),
 
   undoState: createChannel(),
   editorViewState: createChannel({ replay: true }),
@@ -59,4 +60,6 @@ export const canvasBus = Object.freeze({
   wysiwygPortReady: createChannel(),
 
   commentsControllerState: createChannel(),
+
+  preflightStatusState: createChannel(),
 });

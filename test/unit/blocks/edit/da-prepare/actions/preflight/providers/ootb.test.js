@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../../../scripts/utils.js';
 
 let savedFetch;
-let runOotbProvider;
+let ootbProvider;
 
 before(async () => {
   savedFetch = window.fetch;
@@ -10,17 +10,17 @@ before(async () => {
   setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
   const mod = await import(
-    '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/ootb.js'
+    '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/ootb/ootb-checks.js'
   );
-  runOotbProvider = mod.default;
+  ootbProvider = mod.default;
 });
 
 after(() => {
   window.fetch = savedFetch;
 });
 
-describe('runOotbProvider', () => {
-  it('returns null when loadDoc fails', async () => {
+describe('ootbProvider', () => {
+  it('rejects when loadDoc fails', async () => {
     const prevFetch = window.fetch;
     window.fetch = async (url) => {
       if (url.includes('/source/')) return new Response('', { status: 404 });
@@ -28,20 +28,27 @@ describe('runOotbProvider', () => {
     };
 
     const details = { fullpath: '/org/site/missing' };
-    const result = await runOotbProvider(details, { requestUpdate: () => {} });
-    expect(result).to.equal(null);
+    let error;
+    try {
+      await ootbProvider.getResults({ details, onUpdate: () => {} });
+    } catch (e) {
+      error = e;
+    }
+    expect(error).to.be.an('error');
+    expect(error.message).to.include('404');
 
     window.fetch = prevFetch;
   });
 
-  it('returns a flat list of checks tagged with their category', async () => {
+  it('returns categories with the expected check titles', async () => {
     const details = { fullpath: '/org/site/page', org: 'org', site: 'site' };
-    const result = await runOotbProvider(details, { requestUpdate: () => {} });
-    expect(result.map((check) => check.category)).to.deep.equal([
-      'References', 'References', 'Content', 'Content', 'SEO', 'SEO',
+    const result = await ootbProvider.getResults({ details, onUpdate: () => {} });
+    expect(result.map((category) => category.title)).to.deep.equal([
+      'References', 'Content', 'SEO',
     ]);
-    expect(result.map((check) => check.title)).to.deep.equal([
-      'Links', 'Fragments', 'H1 count', 'Lorem ipsum', 'Title', 'Description',
-    ]);
+    expect(result.flatMap((category) => category.checks.map((check) => check.title)))
+      .to.deep.equal([
+        'Links', 'Fragments', 'H1 count', 'Lorem ipsum', 'Title', 'Description',
+      ]);
   });
 });

@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { canvasBus } from '../../../../../../../../blocks/canvas/utils/canvas-bus.js';
-import runProjectValidationProvider, { buildProjectValidationChecks } from '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/project-validation.js';
+import projectValidationProvider, { buildProjectValidationChecks } from '../../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/project-validation.js';
 
 describe('buildProjectValidationChecks', () => {
   it('is null when no runner is registered', () => {
@@ -10,11 +10,11 @@ describe('buildProjectValidationChecks', () => {
 
   it('shows a success status line when the runner reports no issues', () => {
     const checks = buildProjectValidationChecks({ results: [], hasRunner: true });
-    expect(checks).to.deep.equal([{
-      category: 'Custom',
-      title: 'Custom validation',
-      results: [{ status: 'success', reason: 'No custom-validation issues found.' }],
-    }]);
+    expect(checks).to.have.length(1);
+    expect(checks[0].title).to.equal('Custom validation');
+    expect(checks[0].done).to.be.true;
+    expect(checks[0].items[0].result).to.equal('success');
+    expect(checks[0].items[0].reason).to.equal('No custom-validation issues found.');
   });
 
   it('groups results by title', () => {
@@ -24,21 +24,11 @@ describe('buildProjectValidationChecks', () => {
       { title: 'SEO', severity: 'info', message: 'Looks fine' },
     ];
     const checks = buildProjectValidationChecks({ results, hasRunner: true });
-    expect(checks).to.deep.equal([
-      {
-        category: 'Custom',
-        title: 'Alt text',
-        results: [
-          { status: 'warn', reason: 'Missing alt text' },
-          { status: 'error', reason: 'Broken image' },
-        ],
-      },
-      {
-        category: 'Custom',
-        title: 'SEO',
-        results: [{ status: 'info', reason: 'Looks fine' }],
-      },
-    ]);
+    expect(checks.map((check) => check.title)).to.deep.equal(['Alt text', 'SEO']);
+    expect(checks[0].items.map((item) => item.result)).to.deep.equal(['warn', 'error']);
+    expect(checks[0].items.map((item) => item.reason)).to.deep.equal(['Missing alt text', 'Broken image']);
+    expect(checks[1].items[0].result).to.equal('info');
+    expect(checks[1].items[0].reason).to.equal('Looks fine');
   });
 
   it('falls back to "Custom validation" when a result has no title', () => {
@@ -53,21 +43,20 @@ describe('runProjectValidationProvider', () => {
     let runRequests = 0;
     const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
 
-    const resultPromise = runProjectValidationProvider();
+    const resultPromise = projectValidationProvider.getResults({});
     expect(runRequests).to.equal(1);
     canvasBus.validationResultState.emit({ items: [], hasRunner: false });
 
-    expect(await resultPromise).to.equal(null);
+    expect(await resultPromise).to.deep.equal([]);
     unsub();
   });
 
   it('resolves with null and stops listening once the abort signal fires', async () => {
     const controller = new AbortController();
-    const resultPromise = runProjectValidationProvider(undefined, { signal: controller.signal });
+    const resultPromise = projectValidationProvider.getResults({ signal: controller.signal });
     controller.abort();
-    expect(await resultPromise).to.equal(null);
+    expect(await resultPromise).to.deep.equal([]);
 
-    // A late broadcast after abort must not throw or resolve anything new.
     const lateResult = { items: [], hasRunner: false };
     expect(() => canvasBus.validationResultState.emit(lateResult)).to.not.throw();
   });

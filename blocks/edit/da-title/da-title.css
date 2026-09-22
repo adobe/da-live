@@ -222,6 +222,23 @@ da-dialog {
   overflow: hidden;
 }
 
+.da-title-preflight-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.da-title-preflight-dot.is-required {
+  background: var(--s2-orange-500);
+}
+
+.da-title-preflight-dot.is-passed {
+  background: var(--s2-green-700);
+}
+
 .da-title-actions {
   position: relative;
   border-radius: 100px;

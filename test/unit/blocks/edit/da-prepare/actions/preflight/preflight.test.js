@@ -1,372 +1,209 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../../scripts/utils.js';
-import { REASONS } from '../../../../../../../blocks/edit/da-prepare/actions/preflight/utils/constants.js';
 
-const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
-
-let savedFetch;
 let render;
-let loadDoc;
-let loadResults;
-let fragmentCheck;
-let groupChecksByCategory;
+let DaPreflight;
+let STATUS;
+let SEVERITY;
+let savedFetch;
 
-// Set up fetch mock and nx before any component imports
 before(async () => {
   savedFetch = window.fetch;
-  window.fetch = async (url) => {
-    if (url.endsWith('.css')) {
-      return new Response('', { status: 200, headers: { 'Content-Type': 'text/css' } });
-    }
-    if (url.endsWith('.svg')) {
-      return new Response('<svg xmlns="http://www.w3.org/2000/svg"><symbol id="test"/></svg>', {
-        status: 200,
-        headers: { 'Content-Type': 'image/svg+xml' },
-      });
-    }
-    return new Response('{}', { status: 200 });
-  };
-
+  window.fetch = async () => new Response('', { status: 200 });
   setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-  const ootbMod = await import(
-    '../../../../../../../blocks/edit/da-prepare/actions/preflight/providers/ootb.js'
+  const resultMod = await import(
+    '../../../../../../../blocks/edit/da-prepare/actions/preflight/views/result.js'
   );
-  loadDoc = ootbMod.loadDoc;
-  loadResults = ootbMod.loadResults;
-  fragmentCheck = ootbMod.fragmentCheck;
+  ({ STATUS, SEVERITY } = resultMod);
 
   const preflightMod = await import(
     '../../../../../../../blocks/edit/da-prepare/actions/preflight/preflight.js'
   );
   render = preflightMod.default;
-  groupChecksByCategory = preflightMod.groupChecksByCategory;
+  DaPreflight = customElements.get('da-preflight');
 });
 
 after(() => {
   window.fetch = savedFetch;
 });
 
-describe('Preflight utils', () => {
-  describe('constants', () => {
-    it('has expected reason keys', () => {
-      expect(REASONS['h1.info']).to.have.property('status', 'info');
-      expect(REASONS['h1.warn']).to.have.property('status', 'warn');
-      expect(REASONS['h1.error']).to.have.property('status', 'error');
-      expect(REASONS['lorem.info']).to.have.property('status', 'info');
-      expect(REASONS['lorem.error']).to.have.property('status', 'error');
-    });
+describe('render export', () => {
+  it('returns a da-preflight element with details set', () => {
+    const details = { fullpath: '/org/site/page', org: 'org', site: 'site' };
+    const cmp = render(details);
+
+    expect(cmp.tagName.toLowerCase()).to.equal('da-preflight');
+    expect(cmp.details).to.equal(details);
   });
 
-  describe('loadDoc', () => {
-    it('returns parsed document on success', async () => {
-      const prevFetch = window.fetch;
-      window.fetch = async (url) => {
-        if (url.includes('/source/')) {
-          return new Response('<html><body><h1>Test</h1></body></html>', { status: 200 });
-        }
-        return prevFetch(url);
-      };
-
-      const result = await loadDoc({ fullpath: '/org/site/test/page' });
-
-      expect(result.doc).to.exist;
-      expect(result.doc.querySelector('h1').textContent).to.equal('Test');
-      expect(result.error).to.be.undefined;
-
-      window.fetch = prevFetch;
-    });
-
-    it('returns error on failed fetch', async () => {
-      const prevFetch = window.fetch;
-      window.fetch = async (url) => {
-        if (url.includes('/source/')) {
-          return new Response('', { status: 404 });
-        }
-        return prevFetch(url);
-      };
-
-      const result = await loadDoc({ fullpath: '/org/site/missing' });
-
-      expect(result.error).to.be.a('string');
-      expect(result.error).to.include('404');
-      expect(result.doc).to.be.undefined;
-
-      window.fetch = prevFetch;
-    });
-  });
-
-  describe('loadResults', () => {
-    it('returns a flat list of checks tagged with their category', () => {
-      const doc = new DOMParser().parseFromString('<html><body><h1>Test</h1></body></html>', 'text/html');
-      const checks = loadResults(doc, () => {});
-
-      expect(checks).to.be.an('array');
-      checks.forEach((check) => {
-        expect(check).to.have.property('category');
-        expect(check).to.have.property('title');
-        expect(check).to.have.property('results').that.is.an('array');
-      });
-    });
-
-    it('populates results asynchronously and calls requestUpdate', async () => {
-      const doc = new DOMParser().parseFromString('<html><body><h1>Test</h1><p>Description</p></body></html>', 'text/html');
-      let updateCount = 0;
-      const requestUpdate = () => { updateCount += 1; };
-
-      const checks = loadResults(doc, requestUpdate);
-      await wait(100);
-
-      const withResults = checks.filter((check) => check.results.length > 0);
-      expect(withResults.length).to.be.greaterThan(0);
-      expect(updateCount).to.be.greaterThan(0);
-    });
-
-    it('Content category has H1 count and Lorem ipsum checks', () => {
-      const doc = new DOMParser().parseFromString('<html><body></body></html>', 'text/html');
-      const checks = loadResults(doc, () => {});
-
-      const titles = checks.filter((c) => c.category === 'Content').map((c) => c.title);
-      expect(titles).to.include('H1 count');
-      expect(titles).to.include('Lorem ipsum');
-    });
-
-    it('SEO category has Title and Description checks', () => {
-      const doc = new DOMParser().parseFromString('<html><body></body></html>', 'text/html');
-      const checks = loadResults(doc, () => {});
-
-      const titles = checks.filter((c) => c.category === 'SEO').map((c) => c.title);
-      expect(titles).to.include('Title');
-      expect(titles).to.include('Description');
-    });
-
-    it('References category has Fragments check', () => {
-      const doc = new DOMParser().parseFromString('<html><body></body></html>', 'text/html');
-      const checks = loadResults(doc, () => {});
-
-      const titles = checks.filter((c) => c.category === 'References').map((c) => c.title);
-      expect(titles).to.include('Fragments');
-    });
-  });
-
-  describe('check functions via loadResults', () => {
-    it('h1 check returns info when exactly one H1', async () => {
-      const html = '<html><body><h1>Title</h1></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const h1Check = checks.find((c) => c.title === 'H1 count');
-      expect(h1Check.results[0]).to.deep.equal(REASONS['h1.info']);
-    });
-
-    it('h1 check returns warn when multiple H1s', async () => {
-      const html = '<html><body><h1>First</h1><h1>Second</h1></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const h1Check = checks.find((c) => c.title === 'H1 count');
-      expect(h1Check.results[0]).to.deep.equal(REASONS['h1.warn']);
-    });
-
-    it('h1 check returns error when no H1', async () => {
-      const html = '<html><body><p>No heading</p></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const h1Check = checks.find((c) => c.title === 'H1 count');
-      expect(h1Check.results[0]).to.deep.equal(REASONS['h1.error']);
-    });
-
-    it('lorem check returns error when lorem ipsum found', async () => {
-      const html = '<html><body><p>Lorem ipsum dolor sit amet</p></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const loremCheck = checks.find((c) => c.title === 'Lorem ipsum');
-      expect(loremCheck.results[0]).to.deep.equal(REASONS['lorem.error']);
-    });
-
-    it('lorem check returns info when no lorem ipsum', async () => {
-      const html = '<html><body><p>Clean content</p></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const loremCheck = checks.find((c) => c.title === 'Lorem ipsum');
-      expect(loremCheck.results[0]).to.deep.equal(REASONS['lorem.info']);
-    });
-
-    it('title check returns info when metadata title exists', async () => {
-      const html = '<html><body><div class="metadata"><div><div>Title</div><div>My Title</div></div></div></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const titleCheck = checks.find((c) => c.title === 'Title');
-      expect(titleCheck.results[0]).to.deep.equal(REASONS['title.info.meta']);
-    });
-
-    it('title check returns info.h1 when no metadata but H1 exists', async () => {
-      const html = '<html><body><h1>Heading</h1></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const titleCheck = checks.find((c) => c.title === 'Title');
-      expect(titleCheck.results[0]).to.deep.equal(REASONS['title.info.h1']);
-    });
-
-    it('title check returns error when no title or H1', async () => {
-      const html = '<html><body><p>No title here</p></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const titleCheck = checks.find((c) => c.title === 'Title');
-      expect(titleCheck.results[0]).to.deep.equal(REASONS['title.error']);
-    });
-
-    it('description check returns info when metadata description exists', async () => {
-      const html = '<html><body><div class="metadata"><div><div>Description</div><div>My desc</div></div></div></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const descCheck = checks.find((c) => c.title === 'Description');
-      expect(descCheck.results[0]).to.deep.equal(REASONS['description.info.meta']);
-    });
-
-    it('description check returns info.para when first paragraph exists', async () => {
-      const html = '<html><body><p>First paragraph</p></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const descCheck = checks.find((c) => c.title === 'Description');
-      expect(descCheck.results[0]).to.deep.equal(REASONS['description.info.para']);
-    });
-
-    it('description check returns warn when no description source', async () => {
-      const html = '<html><body><h1>Only heading</h1></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const checks = loadResults(doc, () => {});
-      await wait(100);
-
-      const descCheck = checks.find((c) => c.title === 'Description');
-      expect(descCheck.results[0]).to.deep.equal(REASONS['description.warn']);
-    });
-  });
-
-  describe('fragmentCheck', () => {
-    it('returns pf-link elements for each link in doc', async () => {
-      const html = '<html><body><a href="/fragments/page1">Link 1</a><a href="/fragments/page2">Link 2</a></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const details = { org: 'testorg', site: 'testsite' };
-
-      const results = await fragmentCheck({ details, doc });
-
-      expect(results.length).to.equal(2);
-      results.forEach((result) => {
-        expect(result).to.be.instanceOf(HTMLElement);
-        expect(result.tagName.toLowerCase()).to.equal('pf-link');
-      });
-    });
-
-    it('passes text and href to pf-link components', async () => {
-      const html = '<html><body><a href="/fragments/my-page">My Page</a></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const details = { org: 'testorg', site: 'testsite' };
-
-      const results = await fragmentCheck({ details, doc });
-
-      expect(results[0].text).to.equal('My Page');
-      expect(results[0].href).to.equal('/fragments/my-page');
-      expect(results[0].details).to.equal(details);
-    });
-
-    it('returns empty array when no links in doc', async () => {
-      const html = '<html><body><p>No links here</p></body></html>';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const details = { org: 'testorg', site: 'testsite' };
-
-      const results = await fragmentCheck({ details, doc });
-
-      expect(results).to.deep.equal([]);
-    });
+  it('sets requestId when supplied', () => {
+    const cmp = render({ fullpath: '/org/site/page' }, 'req-1');
+    expect(cmp.requestId).to.equal('req-1');
   });
 });
 
-describe('Preflight component', () => {
-  describe('render export', () => {
-    it('returns a da-preflight element with details set', () => {
-      const details = { fullpath: '/org/site/page', org: 'org', site: 'site' };
-      const cmp = render(details);
-
-      expect(cmp.tagName.toLowerCase()).to.equal('da-preflight');
-      expect(cmp.details).to.equal(details);
-    });
+describe('DaPreflight', () => {
+  it('is defined as a custom element', () => {
+    expect(DaPreflight).to.exist;
   });
 
-  describe('DaPreflight', () => {
-    it('is defined as a custom element', () => {
-      expect(customElements.get('da-preflight')).to.exist;
+  it('expandCategory toggles open state', () => {
+    const el = document.createElement('da-preflight');
+    const cat = { title: 'Test', checks: [], open: false };
+    el.expandCategory(cat);
+    expect(cat.open).to.be.true;
+
+    el.expandCategory(cat);
+    expect(cat.open).to.be.false;
+  });
+});
+
+describe('renderLabels', () => {
+  it('excludes pending items so no undefined-badge label renders', () => {
+    const el = document.createElement('da-preflight');
+    const checks = [
+      { title: 'H1', items: [{ status: STATUS.DONE, badge: SEVERITY.INFO }], done: true },
+      { title: 'Links', items: [{ status: STATUS.PENDING, badge: undefined }], done: false },
+    ];
+
+    const labels = el.renderLabels(checks, () => {});
+
+    expect(labels).to.have.length(1);
+    expect(labels[0].values[1]).to.equal(SEVERITY.INFO);
+    expect(labels[0].values[3]).to.equal(1);
+  });
+
+  it('orders labels by severity regardless of which item settled first', () => {
+    const el = document.createElement('da-preflight');
+    const checks = [
+      { title: 'H1', items: [{ status: STATUS.DONE, badge: SEVERITY.SUCCESS }], done: true },
+      { title: 'Title', items: [{ status: STATUS.DONE, badge: SEVERITY.ERROR }], done: true },
+    ];
+
+    const labels = el.renderLabels(checks, () => {});
+
+    expect(labels.map((label) => label.values[1]))
+      .to.deep.equal([SEVERITY.ERROR, SEVERITY.SUCCESS]);
+  });
+});
+
+describe('isItemSettled', () => {
+  it('is false for a missing item', () => {
+    expect(DaPreflight.isItemSettled(null)).to.be.false;
+  });
+
+  it('is false while pending', () => {
+    expect(DaPreflight.isItemSettled({ status: STATUS.PENDING })).to.be.false;
+  });
+
+  it('is false for an unexpected status value', () => {
+    expect(DaPreflight.isItemSettled({ status: 'bogus' })).to.be.false;
+  });
+
+  it('is true once done', () => {
+    expect(DaPreflight.isItemSettled({ status: STATUS.DONE })).to.be.true;
+  });
+});
+
+describe('nx-preflight-status emit bridge', () => {
+  const item = (result) => ({ status: STATUS.DONE, result });
+  const settledCats = (items) => [
+    { title: 'Content', checks: [{ title: 'H1', items, done: true }] },
+  ];
+
+  it('emits success with path + requestId when no error results', async () => {
+    const el = document.createElement('da-preflight');
+    el.details = { fullpath: '/org/site/page' };
+    el.requestId = 'req-1';
+    el._categories = settledCats([item(SEVERITY.INFO), item(SEVERITY.SUCCESS)]);
+
+    const event = await new Promise((resolve) => {
+      document.addEventListener('nx-preflight-status', resolve, { once: true });
+      el.maybeEmitStatus();
+    });
+    expect(event.detail.status).to.equal('success');
+    expect(event.detail.path).to.equal('/org/site/page');
+    expect(event.detail.requestId).to.equal('req-1');
+  });
+
+  it('emits fail when any result is an error', async () => {
+    const el = document.createElement('da-preflight');
+    el.details = { fullpath: '/org/site/page' };
+    el._categories = settledCats([item(SEVERITY.INFO), item(SEVERITY.ERROR)]);
+
+    const event = await new Promise((resolve) => {
+      document.addEventListener('nx-preflight-status', resolve, { once: true });
+      el.maybeEmitStatus();
+    });
+    expect(event.detail.status).to.equal('fail');
+  });
+
+  it('does not emit until every item is done', () => {
+    const el = document.createElement('da-preflight');
+    el.details = { fullpath: '/org/site/page' };
+    el._categories = [
+      { title: 'Content', checks: [{ title: 'H1', items: [{ status: STATUS.PENDING }], done: false }] },
+    ];
+    let fired = false;
+    const onStatus = () => { fired = true; };
+    document.addEventListener('nx-preflight-status', onStatus);
+    el.maybeEmitStatus();
+    document.removeEventListener('nx-preflight-status', onStatus);
+    expect(fired).to.be.false;
+  });
+
+  it('does not emit while a check is marked done but an item is still pending', () => {
+    const el = document.createElement('da-preflight');
+    el.details = { fullpath: '/org/site/page' };
+    el._categories = [
+      { title: 'References', checks: [{ title: 'Links', items: [{ status: STATUS.PENDING }], done: true }] },
+    ];
+    let fired = false;
+    const onStatus = () => { fired = true; };
+    document.addEventListener('nx-preflight-status', onStatus);
+    el.maybeEmitStatus();
+    document.removeEventListener('nx-preflight-status', onStatus);
+    expect(fired).to.be.false;
+  });
+
+  it('emits only once per run', () => {
+    const el = document.createElement('da-preflight');
+    el.details = { fullpath: '/org/site/page' };
+    el._categories = settledCats([item(SEVERITY.INFO)]);
+    let count = 0;
+    const onStatus = () => { count += 1; };
+    document.addEventListener('nx-preflight-status', onStatus);
+    el.maybeEmitStatus();
+    el.maybeEmitStatus();
+    document.removeEventListener('nx-preflight-status', onStatus);
+    expect(count).to.equal(1);
+  });
+});
+
+describe('loadResults error fallback', () => {
+  it('shows a visible error category and still emits a fail status when the load path throws', async () => {
+    const originalTimeout = AbortSignal.timeout;
+    AbortSignal.timeout = () => { throw new Error('boom'); };
+
+    const el = document.createElement('da-preflight');
+    el.details = { fullpath: '/org/site/page' };
+
+    const eventPromise = new Promise((resolve) => {
+      document.addEventListener('nx-preflight-status', resolve, { once: true });
     });
 
-    it('expandCategory toggles open state, keyed by category title', () => {
-      const el = document.createElement('da-preflight');
-      const cat = { title: 'Test', checks: [] };
+    try {
+      document.body.appendChild(el);
+      const event = await eventPromise;
 
-      el.expandCategory(cat);
-      expect(el._openCategories.get('Test')).to.be.true;
-
-      el.expandCategory(cat);
-      expect(el._openCategories.get('Test')).to.be.false;
-    });
-
-    it('aborts each provider controller on disconnect', async () => {
-      const el = document.createElement('da-preflight');
-      el.details = { fullpath: '/org/site/page', org: 'org', site: 'site' };
-      document.body.append(el);
-      await new Promise((resolve) => { setTimeout(resolve, 20); });
-
-      const [controller] = el._providerControllers;
-      expect(controller.signal.aborted).to.be.false;
-
+      expect(event.detail.status).to.equal('fail');
+      expect(el._categories[0].title).to.equal('Errors');
+      expect(el._categories[0].checks[0].items[0].reason).to.equal('boom');
+    } finally {
+      AbortSignal.timeout = originalTimeout;
       el.remove();
-      expect(controller.signal.aborted).to.be.true;
-    });
-  });
-
-  describe('groupChecksByCategory', () => {
-    it('groups checks under their category, in first-seen order', () => {
-      const checks = [
-        { category: 'B', title: 'b1', results: [] },
-        { category: 'A', title: 'a1', results: [] },
-        { category: 'B', title: 'b2', results: [] },
-      ];
-
-      const categories = groupChecksByCategory(checks);
-
-      expect(categories.map((c) => c.title)).to.deep.equal(['B', 'A']);
-      const catB = categories.find((c) => c.title === 'B');
-      expect(catB.checks.map((c) => c.title)).to.deep.equal(['b1', 'b2']);
-    });
-
-    it('merges checks from multiple providers sharing a category', () => {
-      const checks = [
-        { category: 'Content', title: 'from-provider-a', results: [] },
-        { category: 'Content', title: 'from-provider-b', results: [] },
-      ];
-
-      const categories = groupChecksByCategory(checks);
-
-      expect(categories.length).to.equal(1);
-      expect(categories[0].checks.map((c) => c.title)).to.deep.equal(['from-provider-a', 'from-provider-b']);
-    });
+    }
   });
 });

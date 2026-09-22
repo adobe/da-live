@@ -53,4 +53,36 @@ describe('pf-label', () => {
     expect(el.className).to.equal('badge-warn');
     el.remove();
   });
+
+  it('Renders the pending icon for the pending badge', async () => {
+    const el = document.createElement('pf-label');
+    el.badge = 'pending';
+    document.body.appendChild(el);
+    await nextFrame();
+    const use = el.shadowRoot.querySelector('svg use');
+    expect(use.getAttribute('href')).to.contain('ClockPending');
+    el.remove();
+  });
+
+  it('Renders a non-interactive div by default (no dead tab stop)', async () => {
+    const el = document.createElement('pf-label');
+    el.badge = 'info';
+    document.body.appendChild(el);
+    await nextFrame();
+    expect(el.shadowRoot.querySelector('button')).to.equal(null);
+    expect(el.shadowRoot.querySelector('div.item-header-expand')).to.exist;
+    el.remove();
+  });
+
+  it('Renders a button when explicitly marked clickable', async () => {
+    const el = document.createElement('pf-label');
+    el.badge = 'info';
+    el.clickable = true;
+    document.body.appendChild(el);
+    await nextFrame();
+    const button = el.shadowRoot.querySelector('button.item-header-expand');
+    expect(button).to.exist;
+    expect(button.getAttribute('type')).to.equal('button');
+    el.remove();
+  });
 });

@@ -1,133 +1,111 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { getPreflightProviders } from './registry.js';
-import { STATUS_TO_BADGE } from './utils/constants.js';
+import { getNx2 } from '../../../../../scripts/utils.js';
+import { loadProviderResults } from './providers/provider-registry.js';
 
-// Components
 import './views/label.js';
-import './views/link.js';
+import { STATUS, SEVERITY, createResult } from './views/result.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
+const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
 
-// A single slow/hung provider shouldn't block the rest, or leave the user staring at a
-// spinner — drop it past this point, same as a thrown error.
-const PROVIDER_TIMEOUT_MS = 5000;
+const LOAD_TIMEOUT_MS = 30 * 1000;
+const SEVERITY_ORDER = [
+  SEVERITY.ERROR, SEVERITY.WARN, SEVERITY.INFO, SEVERITY.SUCCESS, SEVERITY.NA,
+];
 
-// Groups a flat list of checks (possibly from several providers) into categories, in the
-// order each category title was first seen — no provider owns category ordering.
-export function groupChecksByCategory(checks) {
-  const order = [];
-  const byTitle = new Map();
-  checks.forEach((check) => {
-    if (!byTitle.has(check.category)) {
-      byTitle.set(check.category, []);
-      order.push(check.category);
-    }
-    byTitle.get(check.category).push(check);
-  });
-  return order.map((title) => ({ title, checks: byTitle.get(title) }));
+function buildLoadErrorCategories(err) {
+  const item = createResult();
+  item.settle(SEVERITY.ERROR, SEVERITY.ERROR, err?.message || 'Failed to load preflight results.');
+
+  return [{
+    title: 'Errors',
+    checks: [{ title: 'Preflight', items: [item], done: true }],
+  }];
 }
 
 class DaPreflight extends LitElement {
   static properties = {
     details: { attribute: false },
-    _providerChecks: { state: true },
+    requestId: { attribute: false },
+    _categories: { state: true },
   };
 
   constructor() {
     super();
-    this._openCategories = new Map();
+    this._statusEmitted = false;
   }
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
-    this.listenForReasons();
-    this.loadProviderChecks();
+    this.loadResults();
   }
 
-  disconnectedCallback() {
-    this._providerControllers?.forEach((controller) => controller.abort());
-    super.disconnectedCallback();
-  }
+  async loadResults() {
+    this._statusEmitted = false;
 
-  listenForReasons() {
-    this.addEventListener('reason', () => {
-      this.requestUpdate();
-    });
-  }
-
-  // Every provider settles independently, each under its own abort controller and
-  // timeout — one slow/failed provider (e.g. a remote extended-checks call) doesn't hold
-  // up the others' checks from appearing.
-  async loadProviderChecks() {
-    const requestUpdate = this.requestUpdate.bind(this);
-    const providers = getPreflightProviders();
-    this._providerChecks = providers.map(() => null);
-    this._providerControllers = providers.map(() => new AbortController());
-
-    providers.forEach(async (provider, index) => {
-      const controller = this._providerControllers[index];
-      const { signal } = controller;
-
-      let timeoutId;
-      const timeout = new Promise((resolve) => {
-        timeoutId = setTimeout(() => {
-          // eslint-disable-next-line no-console
-          console.warn('[preflight] provider timed out', index);
-          controller.abort();
-          resolve(null);
-        }, PROVIDER_TIMEOUT_MS);
+    try {
+      this._categories = await loadProviderResults({
+        details: this.details,
+        signal: AbortSignal.timeout(LOAD_TIMEOUT_MS),
+        onUpdate: () => this.handleProviderUpdate(),
       });
+    } catch (err) {
+      this._categories = buildLoadErrorCategories(err);
+    }
 
-      let result = null;
-      try {
-        result = await Promise.race([
-          provider(this.details, { signal, requestUpdate }),
-          timeout,
-        ]);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('[preflight] provider failed', e);
-      } finally {
-        clearTimeout(timeoutId);
-      }
+    this.requestUpdate();
+    this.maybeEmitStatus();
+  }
 
-      this._providerChecks[index] = result ?? [];
-      requestUpdate();
-    });
+  handleProviderUpdate() {
+    this.requestUpdate();
+    this.maybeEmitStatus();
+  }
+
+  static isItemSettled(item) {
+    if (!item) return false;
+    return item.status === STATUS.DONE;
+  }
+
+  maybeEmitStatus() {
+    if (this._statusEmitted || !this._categories) return;
+
+    const checks = this._categories.flatMap((category) => category.checks);
+    const complete = checks.every((check) => check.done
+      && check.items.every((item) => DaPreflight.isItemSettled(item)));
+    if (!complete) return;
+
+    const outcomes = checks.flatMap((check) => check.items.map((item) => item.result));
+    const status = outcomes.includes(SEVERITY.ERROR) ? 'fail' : 'success';
+
+    this._statusEmitted = true;
+    const detail = { path: this.details?.fullpath, status, requestId: this.requestId };
+    document.dispatchEvent(new CustomEvent(PREFLIGHT_EVENT.STATUS, { detail }));
   }
 
   expandCategory(category) {
-    const isOpen = this._openCategories.get(category.title) ?? false;
-    this._openCategories.set(category.title, !isOpen);
+    category.open = !category.open;
     this.requestUpdate();
   }
 
-  renderResultItem(result) {
-    // ootb's link/fragment checks are the one exception that render their own component
-    // instead of a plain status/reason row.
-    const isCmp = result instanceof HTMLElement;
-    if (isCmp) return html`<li class="result-item">${result}</li>`;
-
-    // Otherwise return the simple result
-    return html`
-      <li class="result-item">
-        <div>${result.reason}</div>
-        <pf-label .badge=${STATUS_TO_BADGE[result.status]}></pf-label>
-      </li>`;
+  renderItem(item) {
+    return html`<li class="result-item">${item}</li>`;
   }
 
   renderLabels(checks, expand) {
-    const items = checks.flatMap((check) => check.results ?? []);
-    const groups = Object.groupBy(items, (item) => item.status);
+    const items = checks.flatMap((check) => check.items ?? [])
+      .filter((item) => DaPreflight.isItemSettled(item));
+    const groups = Object.groupBy(items, (item) => item.badge);
 
-    return Object.entries(groups).map(
-      ([status, group]) => html`
+    return SEVERITY_ORDER.filter((badge) => groups[badge]?.length).map(
+      (badge) => html`
         <pf-label
           @click=${expand}
-          .badge=${STATUS_TO_BADGE[status]}
-          .text=${group.length}>
+          .badge=${badge}
+          .clickable=${true}
+          .text=${groups[badge].length}>
         </pf-label>`,
     );
   }
@@ -139,10 +117,8 @@ class DaPreflight extends LitElement {
           <li class="sub-category">
             <p class="check-label">${check.title}</p>
             <ul>
-              ${check.results.toSorted((a, b) => {
-                const order = ['error', 'warn', 'info', 'success'];
-                return order.indexOf(a.status) - order.indexOf(b.status);
-              }).map((result) => this.renderResultItem(result))}
+              ${check.items.toSorted((a, b) => SEVERITY_ORDER.indexOf(a.badge) - SEVERITY_ORDER.indexOf(b.badge))
+                .map((item) => this.renderItem(item))}
             </ul>
           </li>
         `)}
@@ -166,18 +142,12 @@ class DaPreflight extends LitElement {
   }
 
   render() {
-    if (!this._providerChecks) return nothing;
-
-    const checks = this._providerChecks.flatMap((providerChecks) => providerChecks ?? []);
-    const categories = groupChecksByCategory(checks).map((category) => ({
-      ...category,
-      open: this._openCategories.get(category.title) ?? false,
-    }));
+    if (!this._categories) return nothing;
 
     return html`
       <div class="preflight-inner">
         <ul class="categories">
-          ${categories.map((category) => this.renderCategory(category))}
+          ${this._categories.map((category) => this.renderCategory(category))}
         </ul>
       </div>`;
   }
@@ -185,8 +155,9 @@ class DaPreflight extends LitElement {
 
 customElements.define('da-preflight', DaPreflight);
 
-export default function render(details) {
+export default function render(details, requestId) {
   const cmp = document.createElement('da-preflight');
   cmp.details = details;
+  if (requestId) cmp.requestId = requestId;
   return cmp;
 }

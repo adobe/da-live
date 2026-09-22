@@ -113,4 +113,17 @@
       background-color: var(--s2-red-700);
     }
   }
+
+  &.badge-pending {
+    background-color: var(--s2-gray-300);
+
+    .more {
+      color: var(--s2-gray-900);
+    }
+
+    .filled-icon {
+      color: #fff;
+      background-color: var(--s2-gray-700);
+    }
+  }
 }
