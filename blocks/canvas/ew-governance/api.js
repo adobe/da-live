@@ -26,6 +26,18 @@ export async function evaluatePage(pageUrl) {
     body: JSON.stringify({ url: pageUrl }),
   });
 
-  if (!resp.ok) throw new Error(`Evaluate page failed: ${resp.status}`);
+  if (!resp.ok) {
+    // The API may return a { detail } message explaining the failure; surface
+    // it so the caller can show it instead of a generic error.
+    let detail;
+    try {
+      detail = (await resp.json())?.detail;
+    } catch {
+      // Body was absent or not JSON; fall back to the generic error.
+    }
+    const error = new Error(detail || `Evaluate page failed: ${resp.status}`);
+    if (detail) error.detail = detail;
+    throw error;
+  }
   return resp.json();
 }

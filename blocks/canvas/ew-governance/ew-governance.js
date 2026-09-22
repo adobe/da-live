@@ -71,7 +71,7 @@ class EwGovernance extends LitElement {
       this._data = adaptEvaluation(response);
     } catch (e) {
       if (this._runId !== runId) return;
-      this._error = 'Could not evaluate the page. Try again.';
+      this._error = e?.detail || 'Could not evaluate the page. Try again.';
     } finally {
       if (this._runId === runId) {
         this._loading = false;
