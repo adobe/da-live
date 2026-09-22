@@ -136,24 +136,6 @@ describe('renderChecks', () => {
   });
 });
 
-describe('isItemSettled', () => {
-  it('is false for a missing item', () => {
-    expect(DaPreflight.isItemSettled(null)).to.be.false;
-  });
-
-  it('is false while pending', () => {
-    expect(DaPreflight.isItemSettled({ status: STATUS.PENDING })).to.be.false;
-  });
-
-  it('is false for an unexpected status value', () => {
-    expect(DaPreflight.isItemSettled({ status: 'bogus' })).to.be.false;
-  });
-
-  it('is true once done', () => {
-    expect(DaPreflight.isItemSettled({ status: STATUS.DONE })).to.be.true;
-  });
-});
-
 describe('nx-preflight-status emit bridge', () => {
   const item = (result) => ({ status: STATUS.DONE, result });
   const settledCats = (items) => [

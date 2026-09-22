@@ -104,7 +104,6 @@ describe('PrepareMenu', () => {
       el = await fixture();
 
       const titles = el._menuItems.map((item) => item.title);
-      expect(titles).to.include('Preflight');
       expect(titles).to.include('Unpublish');
     });
 
@@ -162,7 +161,7 @@ describe('PrepareMenu', () => {
       const prevFetch = window.fetch;
       window.fetch = async (url) => {
         if (url.includes('/config/orgC/siteC')) {
-          const body = { prepare: { data: [{ title: 'Preflight' }] } };
+          const body = { prepare: { data: [{ title: 'Unpublish' }] } };
           return new Response(JSON.stringify(body), { status: 200 });
         }
         if (url.includes('/config/orgC')) {
@@ -173,8 +172,8 @@ describe('PrepareMenu', () => {
 
       el = await fixture({ details: createDetails({ org: 'orgC', site: 'siteC' }) });
 
-      const preflight = el._menuItems.find((item) => item.title === 'Preflight');
-      expect(preflight.render).to.be.a('function');
+      const unpublish = el._menuItems.find((item) => item.title === 'Unpublish');
+      expect(unpublish.render).to.be.a('function');
 
       window.fetch = prevFetch;
     });
@@ -209,7 +208,6 @@ describe('PrepareMenu', () => {
 
       const titles = [...el.shadowRoot.querySelectorAll('.prepare-menu-item span')]
         .map((s) => s.textContent);
-      expect(titles).to.include('Preflight');
       expect(titles).to.include('Unpublish');
     });
 
@@ -323,41 +321,6 @@ describe('PrepareMenu', () => {
 
       expect(el._dialogItem).to.be.undefined;
     });
-
-    it('emits a cancelled status via the bridge when a gate request is active', async () => {
-      el = await fixture();
-      el._dialogItem = { title: 'Preflight' };
-      el._preflightRequestId = 'req-close';
-
-      let detail;
-      const onStatus = (e) => { detail = e.detail; };
-      document.addEventListener('nx-preflight-status', onStatus);
-      el.handleCloseDialog();
-      document.removeEventListener('nx-preflight-status', onStatus);
-
-      expect(detail).to.deep.equal({
-        path: '/testorg/testsite/test/page',
-        status: 'cancelled',
-        requestId: 'req-close',
-      });
-      expect(el._dialogItem).to.be.undefined;
-      expect(el._preflightRequestId).to.be.undefined;
-    });
-
-    it('does not emit a status for a manually opened dialog (no request id)', async () => {
-      el = await fixture();
-      el._dialogItem = { title: 'Preflight' };
-      el._preflightRequestId = undefined;
-
-      let fired = false;
-      const onStatus = () => { fired = true; };
-      document.addEventListener('nx-preflight-status', onStatus);
-      el.handleCloseDialog();
-      document.removeEventListener('nx-preflight-status', onStatus);
-
-      expect(fired).to.be.false;
-      expect(el._dialogItem).to.be.undefined;
-    });
   });
 
   describe('_onPopoverClose', () => {
@@ -461,30 +424,30 @@ describe('PrepareMenu', () => {
     });
   });
 
-  describe('preflight dialog lifecycle', () => {
-    it('closes the gate-triggered dialog on success', async () => {
+  describe('handlePreflightRun', () => {
+    it('reveals/activates the Preflight tool-panel tab for a matching path', async () => {
       el = await fixture();
-      el._preflightRequestId = 'req-1';
-      el._dialogItem = { title: 'Preflight' };
-      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'req-1', status: 'success' } }));
-      expect(el._dialogItem).to.be.undefined;
-      expect(el._preflightRequestId).to.be.undefined;
+      stubPopover(el);
+
+      let detail;
+      const onOpen = (e) => { detail = e.detail; };
+      document.addEventListener('nx-panel-open', onOpen);
+      document.dispatchEvent(new CustomEvent('nx-preflight-run', { detail: { paths: ['/testorg/testsite/test/page'], requestId: 'req-1' } }));
+      document.removeEventListener('nx-panel-open', onOpen);
+
+      expect(detail).to.deep.equal({ section: 'tools', id: 'preflight' });
     });
 
-    it('keeps the dialog open on failure', async () => {
+    it('ignores a request for a different path', async () => {
       el = await fixture();
-      el._preflightRequestId = 'req-2';
-      el._dialogItem = { title: 'Preflight' };
-      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'req-2', status: 'fail' } }));
-      expect(el._dialogItem).to.not.be.undefined;
-    });
 
-    it('does not auto-close a manually opened dialog (no request id)', async () => {
-      el = await fixture();
-      el._preflightRequestId = undefined;
-      el._dialogItem = { title: 'Preflight' };
-      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { status: 'success' } }));
-      expect(el._dialogItem).to.not.be.undefined;
+      let fired = false;
+      const onOpen = () => { fired = true; };
+      document.addEventListener('nx-panel-open', onOpen);
+      document.dispatchEvent(new CustomEvent('nx-preflight-run', { detail: { paths: ['/other/site/page'], requestId: 'req-2' } }));
+      document.removeEventListener('nx-panel-open', onOpen);
+
+      expect(fired).to.be.false;
     });
   });
 });

@@ -2,19 +2,15 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
-import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
+import { initPreflightBridge } from './preflight-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
 
 const OOTB_ACTIONS = [
-  {
-    title: 'Preflight',
-    render: async (details) => (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default(details),
-    icon: '/img/icons/s2-icon-filetext-20-n.svg#icon',
-  },
   {
     title: 'Schedule Publish',
     render: async (details) => (await import('../../edit/da-prepare/actions/scheduler/scheduler.js')).default(details),
@@ -47,7 +43,6 @@ export default class PrepareMenu extends LitElement {
     initPreflightBridge();
     this._unsubs = [
       canvasBus.preflightRunRequest.subscribe(this.handlePreflightRun),
-      canvasBus.preflightStatusState.subscribe(this.handlePreflightStatus),
     ];
   }
 
@@ -111,7 +106,6 @@ export default class PrepareMenu extends LitElement {
   }
 
   async handleItemClick(item) {
-    this._preflightRequestId = undefined;
     this.shadowRoot.querySelector('nx-popover').close();
     if (item.render) {
       const cmp = await item.render(this.details);
@@ -121,35 +115,17 @@ export default class PrepareMenu extends LitElement {
     this._dialogItem = item;
   }
 
-  handlePreflightRun = async (detail) => {
-    const { paths, requestId } = detail || {};
+  // The Preflight panel lives in canvas's tools rail, not this menu - reveal/activate it
+  // instead of opening a dialog. ew-preflight.js does the actual run + status report.
+  handlePreflightRun = (detail) => {
+    const { paths } = detail || {};
     if (!paths || paths.length !== 1 || paths[0] !== this.details?.fullpath) return;
     this.shadowRoot.querySelector('nx-popover')?.close();
-    const render = (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default;
-    const cmp = render(this.details, requestId);
-    this._preflightRequestId = requestId;
-    this._dialogItem = { title: 'Preflight', cmp };
-  };
-
-  handlePreflightStatus = (detail) => {
-    const { requestId, status } = detail || {};
-    if (!this._preflightRequestId || requestId !== this._preflightRequestId) return;
-    if (status === 'success') {
-      this._dialogItem = undefined;
-      this._preflightRequestId = undefined;
-    }
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'preflight' } }));
   };
 
   handleCloseDialog() {
-    if (this._preflightRequestId) {
-      reportPreflightStatus({
-        path: this.details?.fullpath,
-        status: 'cancelled',
-        requestId: this._preflightRequestId,
-      });
-    }
     this._dialogItem = undefined;
-    this._preflightRequestId = undefined;
   }
 
   handleIframeLoad({ target }) {

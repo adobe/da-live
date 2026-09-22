@@ -2,27 +2,23 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { getNx2 } from '../../../../../scripts/utils.js';
 import { loadProviderResults } from './providers/provider-registry.js';
+import {
+  isItemSettled,
+  isHiddenItem,
+  buildLoadErrorCategories,
+  computeOverallStatus,
+  LOAD_TIMEOUT_MS,
+} from './providers/engine.js';
 
 import './views/label.js';
-import { STATUS, SEVERITY, createResult } from './views/result.js';
+import { SEVERITY } from './views/result.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
 
-const LOAD_TIMEOUT_MS = 30 * 1000;
 const SEVERITY_ORDER = [
   SEVERITY.ERROR, SEVERITY.WARN, SEVERITY.INFO, SEVERITY.SUCCESS, SEVERITY.NA,
 ];
-
-function buildLoadErrorCategories(err) {
-  const item = createResult();
-  item.settle(SEVERITY.ERROR, err?.message || 'Failed to load preflight results.');
-
-  return [{
-    title: 'Errors',
-    checks: [{ title: 'Preflight', items: [item], done: true }],
-  }];
-}
 
 class DaPreflight extends LitElement {
   static properties = {
@@ -64,28 +60,11 @@ class DaPreflight extends LitElement {
     this.maybeEmitStatus();
   }
 
-  static isItemSettled(item) {
-    if (!item) return false;
-    return item.status === STATUS.DONE;
-  }
-
-  // NA means the check doesn't apply to this page - not a real finding, so once settled
-  // it's hidden rather than shown as an empty/unstyled badge. A still-pending item isn't
-  // hidden yet, since it needs to keep showing progress until it settles.
-  static isHiddenItem(item) {
-    return DaPreflight.isItemSettled(item) && item.result === SEVERITY.NA;
-  }
-
   maybeEmitStatus() {
     if (this._statusEmitted || !this._categories) return;
 
-    const checks = this._categories.flatMap((category) => category.checks);
-    const complete = checks.every((check) => check.done
-      && check.items.every((item) => DaPreflight.isItemSettled(item)));
-    if (!complete) return;
-
-    const outcomes = checks.flatMap((check) => check.items.map((item) => item.result));
-    const status = outcomes.includes(SEVERITY.ERROR) ? 'fail' : 'success';
+    const status = computeOverallStatus(this._categories);
+    if (!status) return;
 
     this._statusEmitted = true;
     const detail = { path: this.details?.fullpath, status, requestId: this.requestId };
@@ -103,7 +82,7 @@ class DaPreflight extends LitElement {
 
   renderLabels(checks, expand) {
     const items = checks.flatMap((check) => check.items ?? [])
-      .filter((item) => DaPreflight.isItemSettled(item) && !DaPreflight.isHiddenItem(item));
+      .filter((item) => isItemSettled(item) && !isHiddenItem(item));
     const groups = Object.groupBy(items, (item) => item.result);
 
     return SEVERITY_ORDER.filter((badge) => groups[badge]?.length).map(
@@ -121,7 +100,7 @@ class DaPreflight extends LitElement {
     return html`
       <ul class="category-details">
         ${checks.map((check) => {
-          const items = check.items.filter((item) => !DaPreflight.isHiddenItem(item));
+          const items = check.items.filter((item) => !isHiddenItem(item));
           if (items.length === 0) return nothing;
 
           return html`

@@ -47,7 +47,10 @@ describe('preflight-bridge', () => {
     initPreflightBridge();
     initPreflightBridge();
     let count = 0;
+    // preflightRunRequest replays the last emission from an earlier test on subscribe;
+    // reset after that synchronous replay so only the dispatch below is counted.
     const unsub = canvasBus.preflightRunRequest.subscribe(() => { count += 1; });
+    count = 0;
     document.dispatchEvent(new CustomEvent('nx-preflight-run', { detail: { paths: ['/x'], requestId: 'idem' } }));
     unsub();
     expect(count).to.equal(1);
