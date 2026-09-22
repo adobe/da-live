@@ -11,7 +11,6 @@ describe('h1Check', () => {
     expect(title).to.equal('H1 count');
     expect(done).to.be.true;
     expect(items[0].result).to.equal('info');
-    expect(items[0].badge).to.equal('info');
   });
 
   it('returns warn when more than one H1 is found', () => {

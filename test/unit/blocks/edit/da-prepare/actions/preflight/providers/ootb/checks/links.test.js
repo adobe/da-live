@@ -62,7 +62,7 @@ describe('buildLinkCheck / linksCheck', () => {
       maxActive = Math.max(maxActive, active);
       await wait(15);
       active -= 1;
-      this.settle('success', 'success', 'stubbed');
+      this.settle('success', 'stubbed');
     };
 
     try {

@@ -25,7 +25,7 @@ export function buildLinkCheck({ title, selector, details, doc, onUpdate }) {
 
   if (links.length === 0) {
     const item = createResult();
-    item.settle(SEVERITY.NA, SEVERITY.NA, 'No matching links found on this page.');
+    item.settle(SEVERITY.NA, 'No matching links found on this page.');
     return { title, items: [item], done: true };
   }
 

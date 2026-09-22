@@ -64,8 +64,8 @@ describe('renderLabels', () => {
   it('excludes pending items so no undefined-badge label renders', () => {
     const el = document.createElement('da-preflight');
     const checks = [
-      { title: 'H1', items: [{ status: STATUS.DONE, badge: SEVERITY.INFO }], done: true },
-      { title: 'Links', items: [{ status: STATUS.PENDING, badge: undefined }], done: false },
+      { title: 'H1', items: [{ status: STATUS.DONE, result: SEVERITY.INFO }], done: true },
+      { title: 'Links', items: [{ status: STATUS.PENDING, result: undefined }], done: false },
     ];
 
     const labels = el.renderLabels(checks, () => {});
@@ -78,8 +78,8 @@ describe('renderLabels', () => {
   it('orders labels by severity regardless of which item settled first', () => {
     const el = document.createElement('da-preflight');
     const checks = [
-      { title: 'H1', items: [{ status: STATUS.DONE, badge: SEVERITY.SUCCESS }], done: true },
-      { title: 'Title', items: [{ status: STATUS.DONE, badge: SEVERITY.ERROR }], done: true },
+      { title: 'H1', items: [{ status: STATUS.DONE, result: SEVERITY.SUCCESS }], done: true },
+      { title: 'Title', items: [{ status: STATUS.DONE, result: SEVERITY.ERROR }], done: true },
     ];
 
     const labels = el.renderLabels(checks, () => {});

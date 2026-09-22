@@ -16,7 +16,7 @@ const SEVERITY_ORDER = [
 
 function buildLoadErrorCategories(err) {
   const item = createResult();
-  item.settle(SEVERITY.ERROR, SEVERITY.ERROR, err?.message || 'Failed to load preflight results.');
+  item.settle(SEVERITY.ERROR, err?.message || 'Failed to load preflight results.');
 
   return [{
     title: 'Errors',
@@ -97,7 +97,7 @@ class DaPreflight extends LitElement {
   renderLabels(checks, expand) {
     const items = checks.flatMap((check) => check.items ?? [])
       .filter((item) => DaPreflight.isItemSettled(item));
-    const groups = Object.groupBy(items, (item) => item.badge);
+    const groups = Object.groupBy(items, (item) => item.result);
 
     return SEVERITY_ORDER.filter((badge) => groups[badge]?.length).map(
       (badge) => html`
@@ -117,7 +117,7 @@ class DaPreflight extends LitElement {
           <li class="sub-category">
             <p class="check-label">${check.title}</p>
             <ul>
-              ${check.items.toSorted((a, b) => SEVERITY_ORDER.indexOf(a.badge) - SEVERITY_ORDER.indexOf(b.badge))
+              ${check.items.toSorted((a, b) => SEVERITY_ORDER.indexOf(a.result) - SEVERITY_ORDER.indexOf(b.result))
                 .map((item) => this.renderItem(item))}
             </ul>
           </li>

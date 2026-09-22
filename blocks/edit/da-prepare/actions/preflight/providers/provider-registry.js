@@ -11,8 +11,8 @@ import { STATUS, SEVERITY, createResult } from '../views/result.js';
  * - Category: { title: string, checks: Check[] }
  * - Check: { title: string, items: PreflightResultLike[], done: boolean }
  * - PreflightResultLike item:
- *   - has settle(result, badge, reason)
- *   - exposes status/result/badge/reason fields used by preflight rendering + status emit
+ *   - has settle(result, reason)
+ *   - exposes status/result/reason fields used by preflight rendering + status emit
  *
  * Lifecycle expectations:
  * - Return a full category/check skeleton immediately when possible.
@@ -40,7 +40,7 @@ function mergeCategories(target, categories) {
 // Failing provider becomes a single visible check rather than breaking the whole panel
 function toErrorCategory(provider, reason) {
   const item = createResult();
-  item.settle(SEVERITY.ERROR, SEVERITY.ERROR, reason?.message || 'Provider failed to load results.');
+  item.settle(SEVERITY.ERROR, reason?.message || 'Provider failed to load results.');
 
   return [{
     title: 'Errors',
@@ -93,13 +93,13 @@ function settlePendingResults(categories) {
     category.checks.forEach((check) => {
       check.items.forEach((item) => {
         if (item?.status === STATUS.DONE) return;
-        item.settle(SEVERITY.ERROR, SEVERITY.ERROR, TIMEOUT_REASON);
+        item.settle(SEVERITY.ERROR, TIMEOUT_REASON);
         changed = true;
       });
       if (!check.done) {
         if (check.items.length === 0) {
           const item = createResult();
-          item.settle(SEVERITY.ERROR, SEVERITY.ERROR, TIMEOUT_REASON);
+          item.settle(SEVERITY.ERROR, TIMEOUT_REASON);
           check.items.push(item);
         }
         check.done = true;

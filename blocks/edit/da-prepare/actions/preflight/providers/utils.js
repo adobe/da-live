@@ -8,7 +8,7 @@ export async function runCheck(check, args) {
     return await check(args);
   } catch (err) {
     const item = createResult();
-    item.settle(SEVERITY.ERROR, SEVERITY.ERROR, err?.message || 'Check failed to run.');
+    item.settle(SEVERITY.ERROR, err?.message || 'Check failed to run.');
     return { title: check.name || 'Unknown check', items: [item], done: true };
   }
 }

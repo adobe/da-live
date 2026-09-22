@@ -8,11 +8,11 @@ export default function titleCheck({ doc }) {
   const item = createResult();
 
   if (title) {
-    item.settle(SEVERITY.INFO, SEVERITY.INFO, 'Title found in metadata.');
+    item.settle(SEVERITY.INFO, 'Title found in metadata.');
   } else if (h1) {
-    item.settle(SEVERITY.INFO, SEVERITY.INFO, 'Document using H1 as title.');
+    item.settle(SEVERITY.INFO, 'Document using H1 as title.');
   } else {
-    item.settle(SEVERITY.ERROR, SEVERITY.ERROR, 'No title found in metadata or H1 fallback.');
+    item.settle(SEVERITY.ERROR, 'No title found in metadata or H1 fallback.');
   }
 
   return { title: 'Title', items: [item], done: true };

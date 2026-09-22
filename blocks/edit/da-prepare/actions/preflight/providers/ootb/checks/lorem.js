@@ -5,9 +5,9 @@ export default function loremCheck({ doc }) {
   const hasLorem = doc.documentElement.innerHTML.toLowerCase().includes('lorem');
 
   if (hasLorem) {
-    item.settle(SEVERITY.ERROR, SEVERITY.ERROR, 'This document appears to have lorem ipsum.');
+    item.settle(SEVERITY.ERROR, 'This document appears to have lorem ipsum.');
   } else {
-    item.settle(SEVERITY.INFO, SEVERITY.INFO, 'This document appears to be free of lorem ipsum.');
+    item.settle(SEVERITY.INFO, 'This document appears to be free of lorem ipsum.');
   }
 
   return { title: 'Lorem ipsum', items: [item], done: true };
