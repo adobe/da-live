@@ -162,9 +162,9 @@
 
 .modal-tree-description {
   padding: 6px 36px 10px;
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-700);
-  line-height: 1.4;
+  line-height: var(--s2-component-s-regular-line-height);
 }
 
 .modal-tree-caret {
@@ -189,7 +189,7 @@
 .modal-tree-subtitle {
   margin-left: 4px;
   color: var(--s2-gray-600);
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
 }
 
 .modal-tree-loading {
@@ -222,7 +222,7 @@
   justify-content: center;
   flex: 1;
   color: var(--s2-gray-600);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
 }
 
 .modal-preview-stage {
@@ -255,7 +255,7 @@
   padding: var(--s2-spacing-200);
   background: var(--s2-orange-100);
   color: var(--s2-orange-900);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
 }
 
 .modal-preview-error p {

@@ -87,7 +87,7 @@
 
 .ew-comments-detached-reference {
   display: block;
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--comment-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -225,7 +225,7 @@
 .ew-comment-author {
   display: block;
   font-weight: 600;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-bold-font-size);
   color: var(--s2-gray-800);
 }
 
@@ -235,8 +235,8 @@
 }
 
 .ew-comment-content {
-  font-size: var(--s2-body-size-s);
-  line-height: 1.5;
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
   color: var(--s2-gray-800);
   white-space: pre-wrap;
   margin-left: 40px;
@@ -288,7 +288,7 @@
   padding: 8px var(--s2-spacing-200);
   border-width: 1px;
   font-family: var(--body-font-family);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   resize: none;
 }
 
@@ -436,7 +436,7 @@
   padding: 8px 12px;
   background: var(--s2-gray-50);
   border-left: 2px solid var(--s2-gray-400);
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-700);
   min-width: 0;
   border-radius: 4px;

@@ -246,7 +246,7 @@
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-100);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   color: var(--s2-gray-600);
   text-align: center;
 

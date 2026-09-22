@@ -8,7 +8,7 @@
     "Trebuchet MS",
     sans-serif
   );
-  font-size: var(--s2-body-size-s, 0.875rem);
+  font-size: var(--s2-component-m-regular-font-size);
   color: var(--s2-gray-800);
 }
 
