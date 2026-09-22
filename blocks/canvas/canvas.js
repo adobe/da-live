@@ -229,9 +229,13 @@ export default async function decorate(block) {
     position: 'before',
     width: '400px',
     getContent: getChatPanelContent(),
-    onShow: (aside, id, options) => {
-      if (!options?.text) return;
-      aside?.querySelector('nx-chat')?.setPrompt(options.text, { autoSend: options.autoSend });
+    onShow: async (aside, id, options) => {
+      if (!options?.text && !options?.onReady) return;
+      const chat = aside?.querySelector('nx-chat, nx-chat-ao');
+      if (!chat) return;
+      await chat.updateComplete;
+      options.onReady?.();
+      if (options.text) chat.setPrompt(options.text, { autoSend: options.autoSend });
     },
   });
 
