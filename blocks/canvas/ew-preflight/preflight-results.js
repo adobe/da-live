@@ -9,9 +9,9 @@ const CHEVRON_ICON = '/blocks/edit/img/S2_Icon_ChevronRight_20_N.svg#S2_Icon_Che
 class PreflightResults extends LitElement {
   static properties = {
     data: { attribute: false },
-    // Identifies a run (e.g. ew-preflight.js's _runId). adaptPreflightResults() builds a new
-    // `data` object on every progressive update within the same run, so object identity can't
-    // tell "new run" apart from "same run settling further" - runId can.
+    // Identifies a run: `data` gets a new object identity on every progressive update
+    // within the same run, so identity can't distinguish "new run" from "same run
+    // settling further" - runId can.
     runId: { attribute: false },
     _open: { state: true },
   };

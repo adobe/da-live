@@ -43,9 +43,8 @@ export const canvasBus = Object.freeze({
   commentComposeRequest: createChannel(),
   blockEditRequest: createChannel(),
   validationRunRequest: createChannel(),
-  // replay: true so ew-preflight, lazily created a moment after prepare-menu.js's
-  // PANEL_EVENT.OPEN reveals/activates the Preflight tab, still sees the request that
-  // triggered its own creation instead of racing it.
+  // replay: true so ew-preflight, created a moment after PANEL_EVENT.OPEN reveals the
+  // tab, still sees the request that triggered its own creation instead of racing it.
   preflightRunRequest: createChannel({ replay: true }),
 
   undoState: createChannel(),
