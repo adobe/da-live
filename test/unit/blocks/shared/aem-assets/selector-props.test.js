@@ -108,6 +108,21 @@ describe('shared AEM asset selector props', () => {
       expect(props).to.have.property('path', '/content/dam/foo');
     });
 
+    it('keeps remembered folders isolated between repositories', () => {
+      const otherRepoConfig = {
+        ...baseArgs.repoConfig,
+        repositoryId: 'author-p2-e1.adobeaemcloud.com',
+      };
+      rememberAssetFolder(baseArgs.repoConfig, '/content/dam/foo/bar.jpg');
+      rememberAssetFolder(otherRepoConfig, '/content/dam/baz/qux.jpg');
+
+      expect(buildAssetSelectorProps(baseArgs)).to.have.property('path', '/content/dam/foo');
+      expect(buildAssetSelectorProps({
+        ...baseArgs,
+        repoConfig: otherRepoConfig,
+      })).to.have.property('path', '/content/dam/baz');
+    });
+
     it('omits path for a delivery-tier repo even if a folder was remembered', () => {
       rememberAssetFolder(baseArgs.repoConfig, '/content/dam/foo/bar.jpg');
       const props = buildAssetSelectorProps({

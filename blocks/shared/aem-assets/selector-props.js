@@ -18,7 +18,7 @@ export function buildFeatureSet(isDmEnabled) {
   return features;
 }
 
-let lastFolderPath;
+const lastFolderPaths = new Map();
 
 /**
  * Records the folder of a selected asset so the next time the picker opens
@@ -28,9 +28,9 @@ let lastFolderPath;
  * @param {string} [assetPath] - `asset.path`, the JCR path of the selected asset.
  */
 export function rememberAssetFolder(repoConfig, assetPath) {
-  if (repoConfig.tierType !== 'author' || !assetPath) return;
+  if (repoConfig.tierType !== 'author' || !repoConfig.repositoryId || !assetPath) return;
   const folderPath = assetPath.slice(0, assetPath.lastIndexOf('/'));
-  if (folderPath) lastFolderPath = folderPath;
+  if (folderPath) lastFolderPaths.set(repoConfig.repositoryId, folderPath);
 }
 
 export function buildAssetSelectorProps({
@@ -45,7 +45,9 @@ export function buildAssetSelectorProps({
     repositoryId: repoConfig.repositoryId,
     aemTierType: repoConfig.tierType,
     featureSet: buildFeatureSet(repoConfig.isDmEnabled),
-    ...(repoConfig.tierType === 'author' && lastFolderPath && { path: lastFolderPath }),
+    ...(repoConfig.tierType === 'author'
+      && lastFolderPaths.has(repoConfig.repositoryId)
+      && { path: lastFolderPaths.get(repoConfig.repositoryId) }),
     ...(externalBrief !== undefined && { externalBrief }),
     ...getApprovedOnlyFilterProps(repoConfig.approvedOnly),
     ...(onClose && { onClose }),
