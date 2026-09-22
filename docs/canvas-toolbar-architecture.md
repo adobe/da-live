@@ -200,6 +200,26 @@ burst and any activate/deactivate churn within a frame, eliminating flicker.
   dispatches go through `dispatchMirror` (see §6).
 - **`canvas.js`:** `setEditorMode(view)` on the header view toggle.
 
+### 5.1 The block toolbar shares the same owner
+
+`<ew-block-toolbar>` (change variant, add item, replace block, edit block in a
+modal, delete, comment) is driven by the same controller rather than by a
+parallel mechanism. Each surface reports a block descriptor next to its
+selection — the PM plugin for the doc surface, the `node-select` relay in
+`handlers.js` for the iframe — and `render()` arbitrates: a selected block shows
+the block toolbar, anything else shows the selection toolbar. Both toolbars are
+driven from the doc view's `NodeSelection`, which the iframe relay sets via
+`resolveNodeSelectPos`, so the wysiwyg surface gets the full command set without
+duplicating any of it.
+
+Two consequences worth remembering:
+
+- `syncBlockToolbar` skips `show()` when the block name and variant are
+  unchanged, because `show()` reloads the variant list and would close a picker
+  the user just opened. `isInteracting` guards dismissal for the same reason.
+- The outside-pointerdown dismissal must treat *both* toolbars as inside, or
+  clicking a block-toolbar button dismisses the toolbar before the click lands.
+
 ---
 
 ## 6. The focus lie is gone — replaced by an explicit broadcast predicate
