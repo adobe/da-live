@@ -50,6 +50,22 @@ describe('canvasBus plain channel (emit/subscribe)', () => {
   });
 });
 
+describe('canvasBus.validationHostReady replay', () => {
+  it('replays true to a subscriber that joins after the host announces itself', () => {
+    canvasBus.validationHostReady.emit(true);
+    let received;
+    canvasBus.validationHostReady.subscribe((v) => { received = v; });
+    expect(received).to.be.true;
+  });
+
+  it('does not replay false, so a later subscriber sees no signal at all once the host is gone', () => {
+    canvasBus.validationHostReady.emit(false);
+    let received = 'not-called';
+    canvasBus.validationHostReady.subscribe((v) => { received = v; });
+    expect(received).to.equal('not-called');
+  });
+});
+
 describe('canvasBus.editorHtmlState replay', () => {
   it('replays the last emitted value to a subscriber that joins later', () => {
     canvasBus.editorHtmlState.emit('<main>hello</main>');

@@ -71,6 +71,25 @@ describe('buildProjectValidationChecks', () => {
 });
 
 describe('runCustomValidationProvider', () => {
+  // getResults() no-ops unless a host (ew-editor-wysiwyg.js) has announced readiness --
+  // reset to ready before every test so ordering doesn't matter, then the one test that
+  // cares about the unready case overrides it within its own body.
+  beforeEach(() => {
+    canvasBus.validationHostReady.emit(true);
+  });
+
+  it('resolves immediately without emitting when no EW/canvas host is ready (e.g. classic /edit)', async () => {
+    canvasBus.validationHostReady.emit(false);
+    let runRequests = 0;
+    const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });
+
+    const result = await customValidationProvider.getResults({});
+
+    expect(result).to.deep.equal([]);
+    expect(runRequests).to.equal(0);
+    unsub();
+  });
+
   it('returns immediately and does not emit when the signal is already aborted', async () => {
     let runRequests = 0;
     const unsub = canvasBus.validationRunRequest.subscribe(() => { runRequests += 1; });

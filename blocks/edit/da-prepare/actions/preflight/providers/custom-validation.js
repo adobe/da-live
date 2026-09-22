@@ -31,8 +31,21 @@ export function buildProjectValidationChecks({ results = [], hasCustomValidation
   }));
 }
 
+// One-shot synchronous read of the replayed validationHostReady value, if any -- true
+// only when ew-editor-wysiwyg.js is mounted and announced itself ready to answer.
+function isValidationHostReady() {
+  let ready = false;
+  canvasBus.validationHostReady.subscribe(() => { ready = true; })();
+  return ready;
+}
+
 async function getResults({ signal } = {}) {
   if (signal?.aborted) return [];
+
+  // No EW/canvas host mounted (e.g. classic /edit) means nothing will ever answer
+  // validationRunRequest -- resolve now instead of riding the shared load-timeout,
+  // which would otherwise block the whole panel from rendering until it fires.
+  if (!isValidationHostReady()) return [];
 
   return new Promise((resolve) => {
     const unsubscribe = canvasBus.validationResultState.subscribe((detail) => {

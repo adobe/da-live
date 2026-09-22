@@ -64,12 +64,14 @@ export class EwEditorWysiwyg extends LitElement {
     });
     this._unsubscribeValidationRunRequest = canvasBus.validationRunRequest
       .subscribe(() => this._runValidation());
+    canvasBus.validationHostReady.emit(true);
     this._syncCanvasVisibility();
   }
 
   disconnectedCallback() {
     this._unsubscribeEditorActive?.();
     this._unsubscribeValidationRunRequest?.();
+    canvasBus.validationHostReady.emit(false);
     this._clearQuickEditRetry();
     this._disposeQuickEditValidationPort();
     super.disconnectedCallback();
@@ -168,7 +170,13 @@ export class EwEditorWysiwyg extends LitElement {
   }
 
   _runValidation() {
-    if (!this._validationRequester) return;
+    if (!this._validationRequester) {
+      // Host is mounted but the quick-edit port isn't up yet (e.g. Preflight opened
+      // mid-init) -- resolve like "nothing registered" instead of leaving the
+      // provider's subscription with nothing to hear back from.
+      canvasBus.validationResultState.emit({ items: [], hasCustomValidation: false });
+      return;
+    }
     this._validationRequester.run().then(({ items, hasCustomValidation }) => {
       canvasBus.validationResultState.emit({ items, hasCustomValidation });
     });

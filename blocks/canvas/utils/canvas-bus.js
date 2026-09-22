@@ -48,6 +48,12 @@ export const canvasBus = Object.freeze({
   undoState: createChannel(),
   editorViewState: createChannel({ replay: true }),
   blockEditState: createChannel({ replay: true }),
+  // Lets validationRunRequest's emitter know synchronously whether anything could ever
+  // answer it (e.g. classic /edit, where ew-editor-wysiwyg.js never mounts) instead of
+  // waiting on a timeout to find out. replay: true so a late subscriber still sees it;
+  // ew-editor-wysiwyg.js re-emits false on disconnect so a subscriber after that point
+  // correctly sees "not ready" instead of a stale true.
+  validationHostReady: createChannel({ replay: true }),
   validationResultState: createChannel(),
   editorHtmlState: createChannel({ replay: true }),
   editorSelectState: {
