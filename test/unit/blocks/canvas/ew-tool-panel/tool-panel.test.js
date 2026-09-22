@@ -17,6 +17,14 @@ function createPanel(views) {
   return el;
 }
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((res) => { resolve = res; });
+  return { promise, resolve };
+}
+
+const nextTask = () => new Promise((resolve) => { setTimeout(resolve); });
+
 describe('EwToolPanel — modal experience', () => {
   describe('_pickerItemsFromViews', () => {
     it('marks a modal view as an external-opening action item', () => {
@@ -151,5 +159,81 @@ describe('EwToolPanel — loaded view cache', () => {
     await el.updateComplete;
 
     expect(loadCount).to.equal(1);
+  });
+
+  it('ignores a deferred load from the previous site after a same-id view loads', async () => {
+    const staleLoad = deferred();
+    const staleStarted = deferred();
+    const staleEl = document.createElement('div');
+    staleEl.dataset.source = 'site-one';
+    const currentEl = document.createElement('div');
+    currentEl.dataset.source = 'site-two';
+
+    el.contextKey = 'example-org/site-one';
+    el.pendingView = 'configured-tool';
+    el.views = [{
+      id: 'configured-tool',
+      label: 'Configured tool',
+      cacheKey: '["https://one.example/app"]',
+      load: async () => {
+        staleStarted.resolve();
+        return staleLoad.promise;
+      },
+    }];
+    await staleStarted.promise;
+
+    el.contextKey = 'example-org/site-two';
+    el.pendingView = 'configured-tool';
+    el.views = [{
+      id: 'configured-tool',
+      label: 'Configured tool',
+      cacheKey: '["https://two.example/app"]',
+      load: async () => currentEl,
+    }];
+    await el.updateComplete;
+    await nextTask();
+    await el.updateComplete;
+    expect(el._loaded['configured-tool']).to.equal(currentEl);
+
+    staleLoad.resolve(staleEl);
+    await nextTask();
+    await el.updateComplete;
+
+    expect(el._loaded['configured-tool']).to.equal(currentEl);
+    expect(el.activeId).to.equal('configured-tool');
+    expect(el.shadowRoot.querySelector('.tool-panel-content').contains(currentEl)).to.be.true;
+    expect(el.shadowRoot.querySelector('.tool-panel-content').contains(staleEl)).to.be.false;
+  });
+
+  it('ignores a deferred load after its view is removed', async () => {
+    const staleLoad = deferred();
+    const staleStarted = deferred();
+    const staleEl = document.createElement('div');
+
+    el.contextKey = 'example-org/site-one';
+    el.pendingView = 'configured-tool';
+    el.views = [{
+      id: 'configured-tool',
+      label: 'Configured tool',
+      cacheKey: '["https://one.example/app"]',
+      load: async () => {
+        staleStarted.resolve();
+        return staleLoad.promise;
+      },
+    }];
+    await staleStarted.promise;
+
+    el.contextKey = '';
+    el.views = [];
+    await el.updateComplete;
+    await nextTask();
+
+    staleLoad.resolve(staleEl);
+    await nextTask();
+    await el.updateComplete;
+
+    expect(el._loaded['configured-tool']).to.be.undefined;
+    expect(el.activeId).to.be.undefined;
+    expect(el.shadowRoot.querySelector('.tool-panel-content').contains(staleEl)).to.be.false;
   });
 });
