@@ -67,6 +67,13 @@ class DaPreflight extends LitElement {
     return item.status === STATUS.DONE;
   }
 
+  // NA means the check doesn't apply to this page - not a real finding, so once settled
+  // it's hidden rather than shown as an empty/unstyled badge. A still-pending item isn't
+  // hidden yet, since it needs to keep showing progress until it settles.
+  static isHiddenItem(item) {
+    return DaPreflight.isItemSettled(item) && item.result === SEVERITY.NA;
+  }
+
   maybeEmitStatus() {
     if (this._statusEmitted || !this._categories) return;
 
@@ -95,7 +102,7 @@ class DaPreflight extends LitElement {
 
   renderLabels(checks, expand) {
     const items = checks.flatMap((check) => check.items ?? [])
-      .filter((item) => DaPreflight.isItemSettled(item));
+      .filter((item) => DaPreflight.isItemSettled(item) && !DaPreflight.isHiddenItem(item));
     const groups = Object.groupBy(items, (item) => item.result);
 
     // Fixed severity order so a pill's position doesn't shuffle as items settle out of order
@@ -113,15 +120,20 @@ class DaPreflight extends LitElement {
   renderChecks(checks) {
     return html`
       <ul class="category-details">
-        ${checks.map((check) => html`
-          <li class="sub-category">
-            <p class="check-label">${check.title}</p>
-            <ul>
-              ${check.items.toSorted((a, b) => SEVERITY_ORDER.indexOf(a.result) - SEVERITY_ORDER.indexOf(b.result))
-                .map((item) => this.renderItem(item))}
-            </ul>
-          </li>
-        `)}
+        ${checks.map((check) => {
+          const items = check.items.filter((item) => !DaPreflight.isHiddenItem(item));
+          if (items.length === 0) return nothing;
+
+          return html`
+            <li class="sub-category">
+              <p class="check-label">${check.title}</p>
+              <ul>
+                ${items.toSorted((a, b) => SEVERITY_ORDER.indexOf(a.result) - SEVERITY_ORDER.indexOf(b.result))
+                  .map((item) => this.renderItem(item))}
+              </ul>
+            </li>
+          `;
+        })}
       </ul>`;
   }
 
