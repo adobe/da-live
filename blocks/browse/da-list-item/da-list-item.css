@@ -255,6 +255,62 @@
   font-weight: 700;
 }
 
+.da-list-item-status-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  line-height: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.da-list-item-status-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800, #0265dc);
+  outline-offset: 2px;
+}
+
+.da-list-item-status-detail {
+  padding: 12px 14px;
+  min-width: 220px;
+  max-width: 320px;
+  max-height: 280px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.da-list-item-status-detail-title {
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.da-list-item-status-detail-row {
+  display: flex;
+  gap: 6px;
+  line-height: 1.5;
+  color: var(--s2-gray-700, #464646);
+}
+
+.da-list-item-status-detail-key {
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+/* A plugin can hand over a paragraph. Clamp it rather than let one value push
+   the rest of the detail out of view. */
+.da-list-item-status-detail-value {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.da-list-item-status-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--s2-blue-800, #0265dc);
+}
+
 :host(.is-expanded) .da-item-list-item-details {
   display: grid;
 }

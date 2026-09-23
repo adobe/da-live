@@ -161,9 +161,42 @@ export default class DaListItem extends LitElement {
     if (!this.statusRegistry) return;
     this._expandSeq += 1;
     const seq = this._expandSeq;
-    const statuses = await this.statusRegistry.getContributions(this.statusItem);
+    let statuses = [];
+    try {
+      statuses = await this.statusRegistry.getContributions(this.statusItem);
+      // Only a status with detail is clickable, so only then is the popover
+      // worth fetching. A site with no status plugins never loads it.
+      if (statuses.some((contribution) => contribution.status?.detail?.length)) {
+        await import(`${getNx()}/blocks/shared/popover/popover.js`);
+      }
+    } catch {
+      // Nothing the user can act on, and nothing to render: the registry has
+      // already swallowed every failure a plugin can produce.
+      statuses = [];
+    }
     if (seq !== this._expandSeq) return;
     this._statuses = statuses;
+  }
+
+  /**
+   * The icon is the trigger. Escape, outside-click dismissal and the native
+   * popover API all come from nx-popover; the button only owns its own
+   * expanded state and taking focus back when the popover goes away.
+   */
+  toggleStatusDetail(e) {
+    const button = e.currentTarget;
+    const popover = button.nextElementSibling;
+    if (!popover) return;
+    if (popover.open) {
+      popover.close();
+      return;
+    }
+    popover.show({ anchor: button, placement: 'below' });
+    button.setAttribute('aria-expanded', 'true');
+    popover.addEventListener('close', () => {
+      button.setAttribute('aria-expanded', 'false');
+      button.focus();
+    }, { once: true });
   }
 
   handleChecked(e) {
@@ -359,18 +392,56 @@ export default class DaListItem extends LitElement {
   /**
    * One cell per contributing plugin, mirroring the Previewed and Published
    * anatomy so the drawer gains no new visual vocabulary.
+   *
+   * With detail the icon is a button opening a popover; without it the icon is
+   * a plain glyph, so nothing invites a click that would do nothing.
    */
   renderStatus({ heading, status }) {
     return html`
       <div class="da-list-item-status is-${status.state}">
-        <svg class="da-list-item-status-icon" viewBox="0 0 20 20" aria-hidden="true">
-          <use href="/img/icons/s2-icon-${status.icon}-20-n.svg#icon"></use>
-        </svg>
+        ${status.detail?.length ? this.renderStatusTrigger(status) : this.renderStatusIcon(status)}
         <div>
           <p class="da-list-item-details-title">${heading}</p>
           <p class="da-list-item-status-label">${status.label}</p>
         </div>
       </div>`;
+  }
+
+  renderStatusIcon(status) {
+    return html`
+      <svg class="da-list-item-status-icon" viewBox="0 0 20 20" aria-hidden="true">
+        <use href="/img/icons/s2-icon-${status.icon}-20-n.svg#icon"></use>
+      </svg>`;
+  }
+
+  renderStatusTrigger(status) {
+    return html`
+      <button
+        type="button"
+        class="da-list-item-status-btn"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-label="${status.label} details"
+        @click=${this.toggleStatusDetail}>
+        ${this.renderStatusIcon(status)}
+      </button>
+      <nx-popover role="dialog" aria-label="${status.label} details">
+        <div class="da-list-item-status-detail">
+          <p class="da-list-item-status-detail-title">${status.label}</p>
+          ${status.detail.map((row) => html`
+            <div class="da-list-item-status-detail-row">
+              <span class="da-list-item-status-detail-key">${row.label}</span>
+              <span class="da-list-item-status-detail-value">${row.value}</span>
+            </div>`)}
+          ${status.href ? html`
+            <a
+              class="da-list-item-status-link"
+              href=${status.href}
+              target="_blank"
+              rel="noopener"
+              aria-label="Open ${status.label}">Open</a>` : nothing}
+        </div>
+      </nx-popover>`;
   }
 
   /**
