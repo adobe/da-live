@@ -30,12 +30,12 @@ const CATEGORIES = [
   { title: 'SEO', checks: [titleCheck, descriptionCheck] },
 ];
 
-async function getResults({ details, onUpdate }) {
-  const doc = await loadDoc(details);
+async function getResults({ context, onUpdate }) {
+  const doc = await loadDoc(context);
 
   return Promise.all(CATEGORIES.map(async ({ title, checks }) => ({
     title,
-    checks: await Promise.all(checks.map((check) => runCheck(check, { details, doc, onUpdate }))),
+    checks: await Promise.all(checks.map((check) => runCheck(check, { context, doc, onUpdate }))),
   })));
 }
 
