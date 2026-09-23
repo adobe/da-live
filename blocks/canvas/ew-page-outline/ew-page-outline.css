@@ -190,7 +190,7 @@
 }
 
 .content-snippet {
-  font-size: var(--s2-component-xs-regular-font-size);
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 400;
   color: var(--s2-gray-600);
   overflow: hidden;
