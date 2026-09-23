@@ -107,7 +107,11 @@ class PreflightLink extends PreflightResult {
     }
   }
 
-  handleOpen() {
+  // stopPropagation on this and the title link below -- a click composes across the shadow
+  // boundary into an ancestor .pfr-entry.is-locatable (see preflight-results.js), and this
+  // element's own action (expand / open the link) should be the only thing that happens.
+  handleOpen(e) {
+    e.stopPropagation();
     this._open = !this._open;
   }
 
@@ -139,7 +143,12 @@ class PreflightLink extends PreflightResult {
     return html`
       <div class="link-item ${this._open ? 'is-open' : ''}">
         <div class="link-item-header">
-          <a href="${this._url.href}" class="link-item-header-title" target="_blank" rel="noopener noreferrer">
+          <a
+            href="${this._url.href}"
+            class="link-item-header-title"
+            target="_blank"
+            rel="noopener noreferrer"
+            @click=${(e) => e.stopPropagation()}>
             <p class="link-name">${this._name}</p>
             <p class="link-path">${this.renderLinkPath()}</p>
           </a>
