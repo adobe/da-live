@@ -156,9 +156,8 @@ describe('fetchWysiwygBranch', () => {
     let fetchCalled = false;
     window.fetch = () => {
       fetchCalled = true;
-      return Promise.resolve(new Response(JSON.stringify({
-        data: [{ key: 'ew.wysiwygBranch', value: `/${context.org}/${context.site}=feature` }],
-      }), { status: 200 }));
+      const data = [{ key: 'ew.wysiwygBranch', value: `/${context.org}/${context.site}=feature` }];
+      return Promise.resolve(new Response(JSON.stringify({ data }), { status: 200 }));
     };
     expect(await fetchWysiwygBranch(context)).to.equal('feature');
     expect(fetchCalled).to.equal(true);
