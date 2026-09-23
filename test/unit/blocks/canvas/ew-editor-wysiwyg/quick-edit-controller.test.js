@@ -67,13 +67,13 @@ describe('quick-edit-controller RELOAD coalescing', () => {
   beforeEach(() => { clock = sinon.useFakeTimers(); });
   afterEach(() => { clock.restore(); });
 
-  // updateDocument only touches view.dom (empty div → no editable elements) and posts
-  // SET_BODY on the port, so a minimal ctx observes each reload run via that spy.
+  // updateDocument reads the document identity and the empty view DOM before
+  // posting SET_BODY; the spy records each reload.
   function makeReloadCtx() {
     return {
       canWrite: true,
       suppressRerender: false,
-      view: { dom: document.createElement('div') },
+      view: { dom: document.createElement('div'), state: { doc: {} } },
       port: { postMessage: sinon.spy() },
     };
   }
