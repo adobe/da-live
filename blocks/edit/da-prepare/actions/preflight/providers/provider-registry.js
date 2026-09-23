@@ -4,12 +4,12 @@ import { STATUS, SEVERITY, createResult } from '../views/result.js';
 /*
  * Provider contract:
  * - Export { id: string, getResults: function }
- * - getResults({ details, signal, onUpdate }) returns Category[] (sync or async)
+ * - getResults({ context, signal, onUpdate }) returns Category[] (sync or async)
  * - Category: { title, checks: Check[] }; Check: { title, items: PreflightResultLike[], done }
  * - PreflightResultLike: has settle(result, reason); exposes status/result/reason
- * - details is merged with context.js's execution-environment fields (isCanvas,
- *   canvasReady, getCanvasHtml) -- a provider that needs the canvas host reads them off
- *   details rather than detecting canvas itself.
+ * - context is details merged with context.js's execution-environment fields (isCanvas,
+ *   canvasReady, getCanvasHtml), built once per run -- a provider that needs the canvas
+ *   host reads them off context rather than detecting canvas itself.
  *
  * Return a full skeleton immediately; for slow checks, return pending items then mutate
  * them in place and call onUpdate(). Honor signal where practical. Isolate per-check
@@ -112,10 +112,10 @@ function watchForTimeout(categories, signal, onUpdate) {
 // onUpdate: called by a provider whenever a pending check/result it already returned
 // settles later, so the caller can requestUpdate() without waiting on this promise again.
 // providers: overridable for tests; production callers rely on the PROVIDERS default.
-export async function loadProviderResults({ details, signal, onUpdate, providers = PROVIDERS }) {
+export async function loadProviderResults({ context, signal, onUpdate, providers = PROVIDERS }) {
   const settled = await Promise.all(
     providers.map((provider) => withBootstrapTimeout(
-      toSettledOutcome(runProvider(provider, { details, signal, onUpdate })),
+      toSettledOutcome(runProvider(provider, { context, signal, onUpdate })),
       signal,
     )),
   );

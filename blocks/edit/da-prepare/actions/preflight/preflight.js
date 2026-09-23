@@ -46,7 +46,7 @@ class DaPreflight extends LitElement {
     try {
       const signal = AbortSignal.timeout(LOAD_TIMEOUT_MS);
       this._categories = await loadProviderResults({
-        details: buildPreflightContext({ details: this.details, signal }),
+        context: buildPreflightContext({ details: this.details, signal }),
         signal,
         onUpdate: () => this.handleProviderUpdate(),
       });

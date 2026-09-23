@@ -20,7 +20,7 @@ async function runWithConcurrency(items, onUpdate) {
   await Promise.all(Array.from({ length: count }, worker));
 }
 
-export function buildLinkCheck({ title, selector, details, doc, onUpdate }) {
+export function buildLinkCheck({ title, selector, context, doc, onUpdate }) {
   const links = [...doc.querySelectorAll(selector)];
 
   if (links.length === 0) {
@@ -31,7 +31,7 @@ export function buildLinkCheck({ title, selector, details, doc, onUpdate }) {
 
   const items = links.map((link) => {
     const item = document.createElement('pf-link');
-    Object.assign(item, { details, text: link.textContent, href: link.getAttribute('href') });
+    Object.assign(item, { details: context, text: link.textContent, href: link.getAttribute('href') });
     return item;
   });
 
@@ -42,11 +42,11 @@ export function buildLinkCheck({ title, selector, details, doc, onUpdate }) {
   return { title, items, done: true };
 }
 
-export default function linksCheck({ details, doc, onUpdate }) {
+export default function linksCheck({ context, doc, onUpdate }) {
   return buildLinkCheck({
     title: 'Links',
     selector: 'a:not([href*="/fragments/"])',
-    details,
+    context,
     doc,
     onUpdate,
   });
