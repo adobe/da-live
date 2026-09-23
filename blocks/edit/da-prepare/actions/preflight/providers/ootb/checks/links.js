@@ -1,4 +1,5 @@
 import { createResult, SEVERITY } from '../../../views/result.js';
+import { locateElement } from '../utils.js';
 import '../views/link.js';
 
 // Browsers cap concurrent connections per host; checking hundreds of links at once would just
@@ -32,6 +33,7 @@ export function buildLinkCheck({ title, selector, context, doc, onUpdate }) {
   const items = links.map((link) => {
     const item = document.createElement('pf-link');
     Object.assign(item, { context, text: link.textContent, href: link.getAttribute('href') });
+    item.location = locateElement(link);
     return item;
   });
 
