@@ -164,8 +164,4 @@
   grid-template-columns: 1fr auto;
   align-items: center;
   column-gap: var(--s2-spacing-200);
-
-  pf-label {
-    align-self: center;
-  }
 }
