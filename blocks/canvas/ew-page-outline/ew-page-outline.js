@@ -28,11 +28,10 @@ const EDIT_ICON_SRC = '/img/icons/s2-icon-edit-20-n.svg';
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
-const [formStyle, buttonsStyle, style, baseStyle] = await Promise.all([
+const [formStyle, buttonsStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/form.css`),
   getSheet(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
-  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
 ]);
 
 const OUTLINE_TYPES = {
@@ -98,7 +97,7 @@ class EwPageOutline extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, formStyle, style, buttonsStyle];
+    this.shadowRoot.adoptedStyleSheets = [formStyle, style, buttonsStyle];
     this._expandedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {

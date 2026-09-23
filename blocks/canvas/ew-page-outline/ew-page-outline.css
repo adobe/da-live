@@ -5,6 +5,11 @@
   font-family: var(--s2-font-family);
 }
 
+button,
+input {
+  font-family: var(--s2-font-family);
+}
+
 .ew-page-outline {
   display: flex;
   flex-direction: column;
