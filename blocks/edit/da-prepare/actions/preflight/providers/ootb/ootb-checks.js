@@ -7,7 +7,16 @@ import descriptionCheck from './checks/description.js';
 import linksCheck from './checks/links.js';
 import fragmentsCheck from './checks/fragments.js';
 
-async function loadDoc({ fullpath }) {
+// In canvas, prefer the live editor's own instrumented HTML (carries the doc's current
+// unsaved state, plus data-prose-index/data-block-index/data-image-index for scroll-to-
+// element) over a network fetch. Falls back to the network fetch if canvas never becomes
+// ready in time, or hasn't rendered anything yet -- classic /edit always takes this path.
+async function loadDoc({ fullpath, isCanvas, canvasReady, getCanvasHtml }) {
+  if (isCanvas && await canvasReady) {
+    const canvasHtml = getCanvasHtml();
+    if (canvasHtml) return new DOMParser().parseFromString(canvasHtml, 'text/html');
+  }
+
   const { source } = await getNx2Api();
   const resp = await source.get(fullpath, { cachebust: true });
   if (!resp.ok) throw new Error(`Could not fetch document. Status: ${resp.status}`);

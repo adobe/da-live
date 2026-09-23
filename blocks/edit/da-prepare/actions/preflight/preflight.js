@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { getNx2 } from '../../../../../scripts/utils.js';
 import { loadProviderResults } from './providers/provider-registry.js';
+import { buildPreflightContext } from './providers/context.js';
 
 import './views/label.js';
 import { STATUS, SEVERITY, createResult } from './views/result.js';
@@ -46,9 +47,10 @@ class DaPreflight extends LitElement {
     this._statusEmitted = false;
 
     try {
+      const signal = AbortSignal.timeout(LOAD_TIMEOUT_MS);
       this._categories = await loadProviderResults({
-        details: this.details,
-        signal: AbortSignal.timeout(LOAD_TIMEOUT_MS),
+        details: buildPreflightContext({ details: this.details, signal }),
+        signal,
         onUpdate: () => this.handleProviderUpdate(),
       });
     } catch (err) {
