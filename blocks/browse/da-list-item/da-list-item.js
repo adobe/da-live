@@ -19,6 +19,7 @@ export default class DaListItem extends LitElement {
     editor: { type: String },
     rename: { type: Boolean },
     allowselect: { type: Boolean },
+    statusRegistry: { attribute: false },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { type: Boolean },
@@ -27,7 +28,14 @@ export default class DaListItem extends LitElement {
     _live: { state: true },
     _version: { state: true },
     _lastModifedBy: { state: true },
+    _statuses: { state: true },
   };
+
+  /**
+   * Bumped on every expand and every collapse, so a response that lands after
+   * the state it was requested for can tell it is stale and drop itself.
+   */
+  _expandSeq = 0;
 
   connectedCallback() {
     super.connectedCallback();
@@ -41,6 +49,7 @@ export default class DaListItem extends LitElement {
     if (props.has('path')) {
       if (props.get('path') !== this.path) {
         this.classList.remove('is-expanded');
+        this.clearPluginStatus();
       }
     }
 
@@ -116,6 +125,45 @@ export default class DaListItem extends LitElement {
     this._lastModifedBy = json.pop().users.map(
       (user) => user.email.split('@')[0],
     ).join(', ').toLowerCase();
+  }
+
+  /**
+   * The item as a plugin sees it. Three path forms travel together because a
+   * plugin cannot guess which one it needs and a wrong guess shows up as "no
+   * status" on every row rather than as an error: `path` is the DA source path
+   * with its extension, `previewPath` is the extensionless AEM form (the same
+   * normalization updateAEMStatus performs), and `sitePath` is that minus the
+   * /org/site prefix, which is what the reference plugin stores.
+   */
+  get statusItem() {
+    const previewPath = this.ext === 'html' ? this.path.slice(0, -5) : this.path;
+    return {
+      path: this.path,
+      previewPath,
+      sitePath: previewPath.replace(/^\/[^/]+\/[^/]+/, ''),
+      name: this.name,
+      ext: this.ext,
+      date: this.date,
+    };
+  }
+
+  clearPluginStatus() {
+    this._expandSeq += 1;
+    this._statuses = undefined;
+  }
+
+  /**
+   * One call per plugin per expand, never before. There is no host cache: the
+   * drawer is refetched every time it opens, exactly like the two cells beside
+   * it, and nothing at all is rendered while the call is in flight.
+   */
+  async updatePluginStatus() {
+    if (!this.statusRegistry) return;
+    this._expandSeq += 1;
+    const seq = this._expandSeq;
+    const statuses = await this.statusRegistry.getContributions(this.statusItem);
+    if (seq !== this._expandSeq) return;
+    this._statuses = statuses;
   }
 
   handleChecked(e) {
@@ -207,11 +255,13 @@ export default class DaListItem extends LitElement {
     if (this.classList.contains('is-expanded')) {
       this.updateAEMStatus();
       this.updateDAStatus();
+      this.updatePluginStatus();
     } else {
       this._preview = null;
       this._live = null;
       this._version = null;
       this._lastModifedBy = null;
+      this.clearPluginStatus();
     }
   }
 
