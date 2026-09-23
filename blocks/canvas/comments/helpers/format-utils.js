@@ -71,3 +71,11 @@ export function getReplySummary({ rootComment, replies }) {
   const remainingCount = uniqueAuthors.length - 2;
   return ` from ${uniqueAuthors[0]}, ${uniqueAuthors[1]} and ${remainingCount} ${remainingCount === 1 ? 'other' : 'others'}`;
 }
+
+export function formatCommentPrompt(thread) {
+  if (!thread) return '';
+  const preview = formatAnchorPreview(thread);
+  const target = preview ? ` on ${preview}` : '';
+  const bodies = [thread, ...(thread.replies ?? [])].map((c) => c.body).filter(Boolean);
+  return `Address this comment${target}:\n\n${bodies.join('\n')}`;
+}

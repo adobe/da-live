@@ -1,4 +1,4 @@
-import { TextSelection } from 'da-y-wrapper';
+import { TextSelection, NodeSelection } from 'da-y-wrapper';
 import {
   SET_SELECTED_THREAD,
   SET_PANEL_OPEN,
@@ -204,6 +204,26 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       }
 
       targetEl?.scrollIntoView({ behavior, block: 'start' });
+    },
+
+    selectThreadRange(threadId) {
+      if (!boundView || boundView.isDestroyed || !threadId || !store) return false;
+      const comment = store.get(threadId);
+      if (!comment) return false;
+      const range = decodeAnchor({ anchor: comment, state: boundView.state });
+      if (!range) return false;
+      const { state } = boundView;
+      const isNode = comment.anchorType === 'image' || comment.anchorType === 'table';
+      let selection;
+      try {
+        selection = isNode
+          ? NodeSelection.create(state.doc, range.from)
+          : TextSelection.create(state.doc, range.from, range.to);
+      } catch {
+        return false;
+      }
+      boundView.dispatch(state.tr.setSelection(selection));
+      return true;
     },
 
     collapseSelection() {
