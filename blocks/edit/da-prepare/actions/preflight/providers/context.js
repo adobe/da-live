@@ -10,7 +10,7 @@ function canvasHostMayExist() {
 // A host mounting in canvas can race a provider run starting the instant a lazily-created
 // panel connects. validationHostReady replays its last value, so this resolves immediately
 // once announced; the grace timeout only matters while genuinely racing it.
-const HOST_READY_GRACE_MS = 500;
+const HOST_READY_GRACE_MS = 3000;
 
 function waitForCanvasReady(signal) {
   return new Promise((resolve) => {
