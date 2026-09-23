@@ -227,6 +227,9 @@ export default class DaBrowse extends LitElement {
         if (row.key === 'editor.hidePublish') acc.push(row.value);
         return acc;
       }, []);
+      this.enforcePreflight = rows.some(
+        (row) => row.key === 'editor.enforcePreflight' && `${row.value}`.toLowerCase() === 'true',
+      );
     }
 
     if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
@@ -499,6 +502,7 @@ export default class DaBrowse extends LitElement {
           editor=${this.editor}
           .listItems=${this._search.items}
           .hidePublishConfs=${this.hidePublishConfs}
+          .enforcePreflight=${this.enforcePreflight ?? false}
           .groupByType=${this._groupByType}
           .view=${this._view}
           @typesfilterchange=${this.handleTypesFilterChange}
@@ -515,6 +519,7 @@ export default class DaBrowse extends LitElement {
         fullpath="${this.details.fullpath}"
         editor="${this.editor}"
         .hidePublishConfs=${this.hidePublishConfs}
+        .enforcePreflight=${this.enforcePreflight ?? false}
         @onpermissions=${this.handlePermissions}
         @typesfilterchange=${this.handleTypesFilterChange}
         @sortchange=${this.handleSortChange}
