@@ -24,12 +24,15 @@ class EwCanvasCompare extends LitElement {
     label: { type: String },
     canWrite: { type: Boolean },
     split: { type: Boolean },
+    embedded: { type: Boolean, reflect: true },
+    currentLabel: { type: String },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._onKeydown = (e) => {
+      if (this.embedded) return;
       if (e.key === 'Escape') {
         this._close();
         return;
@@ -42,6 +45,7 @@ class EwCanvasCompare extends LitElement {
   get _popover() { return this.shadowRoot.querySelector('nx-popover'); }
 
   async firstUpdated() {
+    if (this.embedded) return;
     const popover = this._popover;
     popover.persistent = true;
     popover.show();
@@ -119,14 +123,13 @@ class EwCanvasCompare extends LitElement {
     return this._panesCache;
   }
 
-  render() {
+  renderContent() {
     const panes = this.split ? this._panes : null;
     return html`
-      <nx-popover role="dialog" aria-modal="true" aria-label="Compare with ${this.label}">
         <div class="ew-cc-header">
           ${panes ? html`
             <div class="ew-cc-chip-row">
-              <div class="ew-cc-chip-slot"><span class="ew-cc-chip is-neutral">Current</span></div>
+              <div class="ew-cc-chip-slot"><span class="ew-cc-chip is-neutral">${this.currentLabel || 'Current'}</span></div>
               <div class="ew-cc-chip-slot"><span class="ew-cc-chip">${this.label}</span></div>
             </div>
           ` : html`<span class="ew-cc-chip">${this.label}</span>`}
@@ -134,7 +137,7 @@ class EwCanvasCompare extends LitElement {
             <button type="button" class="da-btn-secondary${this.split ? ' is-active' : ''}"
               aria-pressed=${this.split ? 'true' : 'false'}
               @click=${this._toggleSplit}>
-              Compare
+              ${this.embedded ? 'Side by side' : 'Compare'}
             </button>
             ${this.canWrite ? html`
               <button type="button" class="da-btn-secondary" @click=${this._restore}>Restore</button>
@@ -154,8 +157,13 @@ class EwCanvasCompare extends LitElement {
         ` : html`
           <div class="ew-cc-body ProseMirror">${this.dom}</div>
         `}
-      </nx-popover>
     `;
+  }
+
+  render() {
+    return this.embedded
+      ? html`<section class="ew-cc-embedded" role="region" aria-label="Content comparison">${this.renderContent()}</section>`
+      : html`<nx-popover role="dialog" aria-modal="true" aria-label="Compare with ${this.label}">${this.renderContent()}</nx-popover>`;
   }
 }
 

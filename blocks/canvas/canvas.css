@@ -40,6 +40,10 @@ nx-chat {
   height: calc(100vh - var(--ew-canvas-header-height) - var(--s2-nav-height) - 2px);
 }
 
+.ew-comparison-host {
+  position: relative;
+}
+
 ew-editor-doc {
   display: block;
   flex: 1;

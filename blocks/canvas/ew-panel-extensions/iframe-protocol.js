@@ -1,6 +1,7 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -25,6 +26,24 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
+
+    if (['openComparison', 'closeComparison', 'saveDocument'].includes(action)) {
+      const { requestId } = e.data;
+      if (typeof requestId !== 'string' || requestId.length > 100) return;
+      const resolve = (result) => channel.port1.postMessage({ action: 'sdkResponse', requestId, result });
+      if (action === 'openComparison'
+        && (!['document', 'preview'].includes(details?.candidate) || details?.baseline !== 'live')) {
+        resolve({ ok: false, error: 'invalid-comparison' });
+        return;
+      }
+      canvasBus.comparisonRequest.emit({
+        action,
+        details: action === 'openComparison' ? { candidate: details.candidate, baseline: details.baseline } : undefined,
+        context: { org, site, path },
+        resolve,
+      });
+      return;
+    }
     const editorView = getView();
 
     if (action === 'sendText' && editorView) {
@@ -98,7 +117,13 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   setTimeout(() => {
     if (!iframe.contentWindow) return;
     iframe.contentWindow.postMessage(
-      { ready: true, project, context: project, token },
+      {
+        ready: true,
+        project,
+        context: project,
+        token,
+        capabilities: { comparison: 1, saveDocument: 1 },
+      },
       targetOrigin,
       [channel.port2],
     );

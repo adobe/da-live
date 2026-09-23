@@ -4,11 +4,10 @@ import { canvasBus } from '../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 let comparison;
-const tick = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 const page = { org: 'example', site: 'site', path: 'page' };
 
 before(async () => {
-  try { comparison = await import('../../../../blocks/canvas/ew-comparison/comparison.js'); } catch { comparison = {}; }
+  comparison = await import('../../../../blocks/canvas/ew-comparison/comparison.js');
   await import('../../../../blocks/canvas/ew-canvas-versions/ew-canvas-compare.js');
 });
 
@@ -99,10 +98,14 @@ describe('standalone workspace comparison', () => {
 
   it('rejects arbitrary inputs and stale plugin page contexts', async () => {
     expect((await controller.open({ candidate: 'url', baseline: 'live' })).ok).to.equal(false);
-    const result = await new Promise((resolve) => canvasBus.comparisonRequest.emit({
-      action: 'openComparison', details: { candidate: 'document', baseline: 'live' },
-      context: { ...page, path: 'another-page' }, resolve,
-    }));
+    const result = await new Promise((resolve) => {
+      canvasBus.comparisonRequest.emit({
+        action: 'openComparison',
+        details: { candidate: 'document', baseline: 'live' },
+        context: { ...page, path: 'another-page' },
+        resolve,
+      });
+    });
     expect(result).to.deep.equal({ ok: false, error: 'stale-context' });
     expect(calls).to.have.length(0);
   });
@@ -110,12 +113,19 @@ describe('standalone workspace comparison', () => {
   it('closes and discards a delayed response when page context changes', async () => {
     controller.destroy();
     let complete;
+    let started;
+    const loading = new Promise((resolve) => { started = resolve; });
     controller = comparison.installComparison({
-      mountRoot, getContext: () => context, getDocument: () => html,
-      loadContent: () => new Promise((resolve) => { complete = resolve; }),
+      mountRoot,
+      getContext: () => context,
+      getDocument: () => html,
+      loadContent: () => new Promise((resolve) => {
+        complete = resolve;
+        started();
+      }),
     });
     const pending = controller.open({ candidate: 'document', baseline: 'live' });
-    await tick();
+    await loading;
     context = { ...page, path: 'next' };
     controller.contextChanged();
     complete({ html: '<p>Old page response</p>' });
@@ -133,9 +143,9 @@ describe('standalone workspace comparison', () => {
   });
 
   it('exposes the save handshake separately from read-only comparison', async () => {
-    const result = await new Promise((resolve) => canvasBus.comparisonRequest.emit({
-      action: 'saveDocument', context: page, resolve,
-    }));
+    const result = await new Promise((resolve) => {
+      canvasBus.comparisonRequest.emit({ action: 'saveDocument', context: page, resolve });
+    });
     expect(result).to.deep.equal({ ok: true });
     expect(calls).to.have.length(0);
   });
@@ -152,14 +162,18 @@ describe('comparison content normalization', () => {
   it('loads delivered markdown using the shared API and treats only live 404 as an empty baseline', async () => {
     expect(comparison.readDeliveredContent).to.be.a('function');
     const calls = [];
-    const api = { aem: {
-      getPublish: async (args) => { calls.push(args); return new Response('', { status: 404 }); },
-      getPreview: async () => new Response('', { status: 403 }),
-    } };
+    const api = {
+      aem: {
+        getPublish: async (args) => { calls.push(args); return new Response('', { status: 404 }); },
+        getPreview: async () => new Response('', { status: 403 }),
+      },
+    };
     expect(await comparison.readDeliveredContent('live', { ...page, path: 'page.html' }, { api })).to.deep.equal({ html: '', missing: true });
     expect(calls[0].path).to.equal('/page.md');
     let error;
-    try { await comparison.readDeliveredContent('preview', page, { api }); } catch (e) { error = e; }
+    try {
+      await comparison.readDeliveredContent('preview', page, { api });
+    } catch (e) { error = e; }
     expect(error?.message).to.include('403');
   });
 });

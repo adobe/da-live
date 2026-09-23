@@ -19,6 +19,9 @@ import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.j
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
+import { installComparison } from './ew-comparison/comparison.js';
+import { getExtensionsBridge } from './editor-utils/extensions-bridge.js';
+import { docToHtml } from '../shared/version/compare.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -264,12 +267,25 @@ export default async function decorate(block) {
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
   installEditorSplitDrag(mountRoot);
 
+  let comparisonContext;
+  const comparison = installComparison({
+    mountRoot,
+    getContext: () => comparisonContext,
+    getDocument: () => {
+      const { view } = getExtensionsBridge();
+      return view ? docToHtml(view) : undefined;
+    },
+    saveDocument: () => mountRoot.querySelector('ew-editor-doc')?.forceSave(),
+  });
+
   canvasBus.undoState.subscribe((detail) => {
     header.undoAvailable = detail?.canUndo ?? false;
     header.redoAvailable = detail?.canRedo ?? false;
   });
 
   hashChange.subscribe((state) => {
+    comparisonContext = state;
+    comparison.contextChanged();
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);
