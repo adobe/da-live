@@ -1,3 +1,11 @@
 :host {
   display: contents;
 }
+
+/* :host is display:contents, so this element is a direct grid/flex item of whatever
+   consumer renders this result (classic dialog's .result-item, canvas's .pfr-entry-body)
+   -- align-self here, not a descendant selector in the consumer's own stylesheet, since
+   this element lives in this shadow root, not the consumer's. */
+pf-label {
+  align-self: center;
+}
