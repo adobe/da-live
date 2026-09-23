@@ -68,7 +68,7 @@ export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit) {
   const items = [
     ...(canEdit ? [{ id: 'delete', label: 'Delete' }] : []),
     ...(isRoot ? [
-      { id: 'chat', label: 'Send to chat' },
+      { id: 'chat', label: 'Add to chat' },
       { id: 'link', label: 'Get link to this comment' },
     ] : []),
   ];

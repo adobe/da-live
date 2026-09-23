@@ -1,7 +1,8 @@
 import { LitElement, html } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
-import { openCommentsPanel, getCommentsBridge, setChatPrompt } from '../editor-utils/comments-bridge.js';
+import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
+import { setChatPrompt } from '../../shared/chat-panel.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { buildDeepLinkUrl, parseDeepLink } from './helpers/deep-link.js';
 import { formatCommentPrompt } from './helpers/format-utils.js';
@@ -347,7 +348,7 @@ export class CommentsPanel extends LitElement {
 
   handleMenuSelect(id, comment, threadId) {
     if (id === 'delete') this.handleDeleteComment(comment.id, threadId);
-    else if (id === 'chat') this.sendThreadToChat(threadId);
+    else if (id === 'chat') this.addThreadToChat(threadId);
     else if (id === 'link') this.copyThreadLink(threadId);
   }
 
@@ -357,7 +358,7 @@ export class CommentsPanel extends LitElement {
     return Boolean(me) && me === authorKey(comment.author);
   }
 
-  sendThreadToChat(threadId = this.controller?.selectedThreadId) {
+  addThreadToChat(threadId = this.controller?.selectedThreadId) {
     const thread = this.getThreadById(threadId);
     if (!thread) return;
     setChatPrompt(

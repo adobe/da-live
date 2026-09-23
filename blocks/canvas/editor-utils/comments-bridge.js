@@ -28,13 +28,6 @@ export async function openCommentsPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'comments' } }));
 }
 
-export async function setChatPrompt(text, onReady) {
-  if (!text) return;
-  const { PANEL_EVENT } = await panelEvents();
-  const detail = { section: 'chat', options: { text, onReady } };
-  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail }));
-}
-
 export async function closeCommentsPanel() {
   const { PANEL_EVENT } = await panelEvents();
   const aside = document.querySelector('aside.panel[data-position="after"]');

@@ -140,6 +140,17 @@ describe('format-utils', () => {
       expect(formatCommentPrompt(orphan)).to.equal('Address this comment:\n\nfix this');
     });
 
+    it('reads a block anchor as a name, not a raw "block:" prefix', () => {
+      const author = { name: 'Alice' };
+      const onBlock = { anchorType: 'table', anchorText: 'block: columns', author, body: 'tighten this' };
+      expect(formatCommentPrompt(onBlock)).to.equal('Address this comment on the columns block:\n\ntighten this');
+    });
+
+    it('falls back to "a table" for an unnamed table anchor', () => {
+      const onTable = { anchorType: 'table', anchorText: '', author: { name: 'Alice' }, body: 'fix' };
+      expect(formatCommentPrompt(onTable)).to.equal('Address this comment on a table:\n\nfix');
+    });
+
     it('describes image anchors', () => {
       const onImage = { anchorType: 'image', author: { name: 'Alice' }, body: 'swap it' };
       expect(formatCommentPrompt(onImage)).to.equal('Address this comment on an image:\n\nswap it');
