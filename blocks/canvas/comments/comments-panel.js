@@ -289,6 +289,7 @@ export class CommentsPanel extends LitElement {
       await this.controller.deleteComment({ commentId });
       if (this.controller.selectedThreadId === commentId) {
         this.controller.setSelectedThread(null);
+        this._activeTab = 'active';
       }
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -346,15 +347,10 @@ export class CommentsPanel extends LitElement {
     this._pendingDelete = null;
   }
 
-  handleDeleteThread(threadId) {
-    this.deleteComment(threadId);
-    this.cancelDraft();
-    this._activeTab = 'active';
-  }
-
   handleMenuSelect(id, comment, threadId) {
     if (id === 'edit') this.startEditDraft(comment);
     else if (id === 'delete') this.handleDeleteComment(comment.id, threadId);
+    else if (id === 'reopen') this.handleUnresolveThread(threadId);
     else if (id === 'link') this.copyThreadLink(threadId);
   }
 
