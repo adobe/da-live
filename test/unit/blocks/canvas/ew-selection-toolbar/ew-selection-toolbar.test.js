@@ -20,7 +20,9 @@ describe('ew-selection-toolbar buttons', () => {
     toolbar.view = editor.view;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    toolbar._hasAemAssets = false;
+    await toolbar.updateComplete;
     toolbar.view = null;
     destroyEditor(editor);
   });
@@ -108,6 +110,39 @@ describe('ew-selection-toolbar buttons', () => {
     expect(toolbar.altDialogOpen).to.be.false;
   });
 
+  it('shows Replace image with the image icon only when an image is selected', async () => {
+    toolbar.activeSurface = 'doc';
+    await toolbar.updateComplete;
+
+    let button = toolbar.shadowRoot.querySelector('button[data-id="image-add"]');
+    expect(button.getAttribute('aria-label')).to.equal('Add image');
+    expect(button.querySelector('use').getAttribute('href'))
+      .to.equal('/img/icons/s2-icon-imageadd-20-n.svg#icon');
+
+    selectImage();
+    toolbar.requestUpdate();
+    await toolbar.updateComplete;
+
+    button = toolbar.shadowRoot.querySelector('button[data-id="image-add"]');
+    expect(button.getAttribute('aria-label')).to.equal('Replace image');
+    expect(button.getAttribute('title')).to.equal('Replace image');
+    expect(button.querySelector('use').getAttribute('href'))
+      .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
+  });
+
+  it('shows Replace image on the AEM Assets menu trigger for a selected image', async () => {
+    selectImage();
+    toolbar.activeSurface = 'doc';
+    toolbar._hasAemAssets = true;
+    await toolbar.updateComplete;
+
+    const button = toolbar.shadowRoot.querySelector('nx-menu button[slot="trigger"][aria-label="Replace image"]');
+    expect(button).to.exist;
+    expect(button.getAttribute('title')).to.equal('Replace image');
+    expect(button.querySelector('use').getAttribute('href'))
+      .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
+  });
+
   it('shows block-level controls in the doc surface', async () => {
     setText('hello');
     selectText(1, 6);
@@ -130,5 +165,30 @@ describe('ew-selection-toolbar buttons', () => {
     expect(toolbar.shadowRoot.querySelector('button[data-id="bullet-list"]'), 'bullet-list').to.not.exist;
     expect(toolbar.shadowRoot.querySelector('button[data-id="image-add"]'), 'add image').to.not.exist;
     expect(toolbar.shadowRoot.querySelector('button[data-id="strong"]'), 'strong').to.exist;
+  });
+
+  it('shows Replace image for a selected image in the wysiwyg surface', async () => {
+    selectImage();
+    toolbar.activeSurface = 'wysiwyg';
+    await toolbar.updateComplete;
+
+    const button = toolbar.shadowRoot.querySelector('button[data-id="image-add"]');
+    expect(button).to.exist;
+    expect(button.getAttribute('aria-label')).to.equal('Replace image');
+    expect(button.getAttribute('title')).to.equal('Replace image');
+    expect(button.querySelector('use').getAttribute('href'))
+      .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
+  });
+
+  it('shows Replace image on the AEM Assets trigger in the wysiwyg surface', async () => {
+    selectImage();
+    toolbar.activeSurface = 'wysiwyg';
+    toolbar._hasAemAssets = true;
+    await toolbar.updateComplete;
+
+    const button = toolbar.shadowRoot.querySelector('nx-menu button[slot="trigger"][aria-label="Replace image"]');
+    expect(button).to.exist;
+    expect(button.querySelector('use').getAttribute('href'))
+      .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
   });
 });
