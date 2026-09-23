@@ -7,6 +7,9 @@ import { STATUS, SEVERITY, createResult } from '../views/result.js';
  * - getResults({ details, signal, onUpdate }) returns Category[] (sync or async)
  * - Category: { title, checks: Check[] }; Check: { title, items: PreflightResultLike[], done }
  * - PreflightResultLike: has settle(result, reason); exposes status/result/reason
+ * - details is merged with context.js's execution-environment fields (isCanvas,
+ *   canvasReady, getCanvasHtml) -- a provider that needs the canvas host reads them off
+ *   details rather than detecting canvas itself.
  *
  * Return a full skeleton immediately; for slow checks, return pending items then mutate
  * them in place and call onUpdate(). Honor signal where practical. Isolate per-check
