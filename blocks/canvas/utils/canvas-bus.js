@@ -43,10 +43,14 @@ export const canvasBus = Object.freeze({
   commentComposeRequest: createChannel(),
   blockEditRequest: createChannel(),
   preflightRunRequest: createChannel(),
+  toolbarSurfaceRequest: createChannel(),
 
   undoState: createChannel(),
   editorViewState: createChannel({ replay: true }),
   blockEditState: createChannel({ replay: true }),
+  toolbarSurfaceState: createChannel({ replay: true }),
+  // Doc selection does not claim focus; an iframe selection does.
+  toolbarSelectionState: createChannel(),
   editorHtmlState: createChannel({ replay: true }),
   editorSelectState: {
     subscribe: editorSelectChannel.subscribe,

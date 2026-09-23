@@ -213,7 +213,7 @@ export class EwEditorWysiwyg extends LitElement {
 
   _onIframeFocus() {
     const iframe = this.shadowRoot?.querySelector('iframe');
-    toolbarController.activate('wysiwyg', { iframeEl: iframe });
+    canvasBus.toolbarSurfaceRequest.emit({ surface: 'wysiwyg', active: true, iframeEl: iframe });
   }
 
   _onIframeBlur() {
@@ -223,7 +223,7 @@ export class EwEditorWysiwyg extends LitElement {
       const tb = toolbarController.ensureToolbar();
       const active = document.activeElement;
       if (active && (active === tb || tb.contains(active))) return;
-      toolbarController.deactivate('wysiwyg');
+      canvasBus.toolbarSurfaceRequest.emit({ surface: 'wysiwyg', active: false });
     }, 0);
   }
 
