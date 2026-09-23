@@ -70,8 +70,8 @@
 
   &.segment-icon svg.icon {
     display: block;
-    width: 18px;
-    height: 18px;
+    width: var(--s2-icon-size, 18px);
+    height: var(--s2-icon-size, 18px);
     flex-shrink: 0;
     overflow: hidden;
   }
