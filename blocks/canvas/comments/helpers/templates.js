@@ -6,7 +6,7 @@ import { DRAFT_MODES } from './draft-state.js';
 import { generateColorSet } from '../../editor-utils/author-color.js';
 
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
-export const COMMENT_SHORTCUT = IS_MAC ? '⌘ + Option + M' : 'Ctrl + Alt + M';
+export const COMMENT_SHORTCUT = IS_MAC ? '⌘ + ⌥ + M' : 'Ctrl + Alt + M';
 export const SUBMIT_SHORTCUT = IS_MAC ? '⌘ + Enter' : 'Ctrl + Enter';
 
 const ICONS = {
@@ -32,7 +32,7 @@ export function renderAvatar(panel, author) {
 }
 
 export function renderForm(panel, {
-  placeholder, submitLabel, value, formClass = '', showActions = true, onFocus,
+  placeholder, submitLabel = 'Submit', value, formClass = '', showActions = true, onFocus,
 }) {
   return html`
     <form
@@ -57,7 +57,7 @@ export function renderForm(panel, {
               : submitLabel}
           </button>
         </div>
-        <div class="ew-comment-form-hint"><kbd>${SUBMIT_SHORTCUT}</kbd> to submit</div>
+        <div class="ew-comment-form-hint">Or hit <kbd class="da-kbd">${SUBMIT_SHORTCUT}</kbd> to ${submitLabel.toLowerCase()}</div>
       ` : nothing}
     </form>
   `;
@@ -224,8 +224,8 @@ export function renderListView(panel, viewModel) {
 
   return html`
     <div class="ew-comments-list">
-      <p class="ew-comments-hint">
-        Select content and press <kbd>${COMMENT_SHORTCUT}</kbd> to add a comment.
+      <p class="da-hint">
+        <strong>Select content</strong> and press <kbd class="da-kbd">${COMMENT_SHORTCUT}</kbd> to add a comment.
       </p>
       ${tabs.length > 1 ? html`
         <div class="ew-comment-tabs" role="group" aria-label="Filter comment threads">
