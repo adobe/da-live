@@ -31,49 +31,13 @@ export function buildProjectValidationChecks({ results = [], hasCustomValidation
   }));
 }
 
-// ew-editor-wysiwyg.js is registered as soon as canvas's module graph loads, well before
-// a lazy tool-panel view (e.g. Preflight) runs -- a synchronous "could a host exist"
-// check, independent of whether it's announced ready yet.
-function canvasHostMayExist() {
-  return !!customElements.get('ew-editor-wysiwyg');
-}
-
-// A host mounting in canvas can race a provider run starting the instant a lazily-created
-// panel connects. validationHostReady replays its last value, so this resolves immediately
-// once announced; the grace timeout only matters while genuinely racing it.
-const HOST_READY_GRACE_MS = 500;
-
-function waitForValidationHost(signal) {
-  return new Promise((resolve) => {
-    let settled = false;
-    let timer;
-    let unsubscribe;
-    const finish = (ready) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      unsubscribe?.();
-      resolve(ready);
-    };
-    // A replayed value can call finish() synchronously, before this assignment runs --
-    // finish() no-ops on unsubscribe then, so clean up here once it's available.
-    unsubscribe = canvasBus.validationHostReady.subscribe((ready) => finish(!!ready));
-    if (settled) {
-      unsubscribe();
-      return;
-    }
-    timer = setTimeout(() => finish(false), HOST_READY_GRACE_MS);
-    signal?.addEventListener('abort', () => finish(false), { once: true });
-  });
-}
-
-async function getResults({ signal } = {}) {
+async function getResults({ details, signal } = {}) {
   if (signal?.aborted) return [];
 
   // No host could ever exist (e.g. classic /edit) -- resolve now instead of riding the
   // shared load-timeout and blocking the panel until it fires.
-  if (!canvasHostMayExist()) return [];
-  if (!(await waitForValidationHost(signal))) return [];
+  if (!details?.isCanvas) return [];
+  if (!(await details.canvasReady)) return [];
   // An abort while awaiting the host above would've found no listener yet (registered
   // below) and gone unseen -- re-check rather than risk hanging forever.
   if (signal?.aborted) return [];
