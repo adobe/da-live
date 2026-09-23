@@ -56,6 +56,8 @@
 }
 
 .edit-btn {
+  visibility: hidden;
+  margin-inline-start: var(--s2-spacing-50);
   margin-inline-end: auto;
 }
 
@@ -210,24 +212,7 @@
 }
 
 .action-btn {
-  display: inline-flex;
   visibility: hidden;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  margin-inline-start: var(--s2-spacing-50);
-  padding: 0;
-  border: none;
-  border-radius: var(--s2-corner-radius-75);
-  background: transparent;
-  color: var(--s2-gray-800);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--s2-gray-200);
-  }
 }
 
   svg.icon {
@@ -236,11 +221,11 @@
     height: 16px;
   }
 
-.outline-section:has(.selected) .section-header .action-btn,
-.selected .action-btn,
-.action-btn:focus-visible,
-.section-header:hover .action-btn,
-.block-item:hover .action-btn {
+.outline-section:has(.selected) .section-header :is(.action-btn, .edit-btn),
+.selected :is(.action-btn, .edit-btn),
+:is(.action-btn, .edit-btn):focus-visible,
+.section-header:hover :is(.action-btn, .edit-btn),
+.block-item:hover :is(.action-btn, .edit-btn) {
   visibility: visible;
 }
 
