@@ -356,6 +356,40 @@ export default class DaListItem extends LitElement {
     return env === '_preview' ? 'Not previewed' : 'Not published';
   }
 
+  /**
+   * One cell per contributing plugin, mirroring the Previewed and Published
+   * anatomy so the drawer gains no new visual vocabulary.
+   */
+  renderStatus({ heading, status }) {
+    return html`
+      <div class="da-list-item-status is-${status.state}">
+        <svg class="da-list-item-status-icon" viewBox="0 0 20 20" aria-hidden="true">
+          <use href="/img/icons/s2-icon-${status.icon}-20-n.svg#icon"></use>
+        </svg>
+        <div>
+          <p class="da-list-item-details-title">${heading}</p>
+          <p class="da-list-item-status-label">${status.label}</p>
+        </div>
+      </div>`;
+  }
+
+  /**
+   * Every plugin shares one grid track, so the native columns lose a bounded
+   * amount of width however many plugins a site configures.
+   *
+   * There is no loading state, on purpose. Most pages have no status, so a
+   * placeholder would appear and vanish again on the majority of expands. A
+   * null status, a plugin that failed and a plugin still thinking all render
+   * the same nothing.
+   */
+  renderStatuses() {
+    if (!this._statuses?.length) return nothing;
+    return html`
+      <div class="da-item-list-item-statuses">
+        ${this._statuses.map((contribution) => this.renderStatus(contribution))}
+      </div>`;
+  }
+
   render() {
     return html`
       <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}" role="gridcell">
@@ -367,7 +401,7 @@ export default class DaListItem extends LitElement {
           class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
         </button>
       </div>
-      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}" role="gridcell">
+      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''} ${this._statuses?.length ? 'has-status' : ''}" role="gridcell">
         ${this.renderDaDetails()}
         <a
           href=${this._preview?.redirect || this._preview?.url}
@@ -393,6 +427,7 @@ export default class DaListItem extends LitElement {
             <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
           </div>
         </a>
+        ${this.renderStatuses()}
       </div>
     `;
   }

@@ -212,6 +212,49 @@
   padding: 24px var(--da-list-action-width, 32px) 24px calc(var(--da-checkbox-size, 14px) + var(--da-list-pad-inline, 24px));
 }
 
+/* Plugin status cells share one track, added only when a plugin contributes,
+   so a site that configures none keeps the native column widths. */
+.da-item-list-item-details.has-status {
+  grid-template-columns: var(--da-list-action-width, 32px) 80px 1fr 182px 182px 160px;
+}
+
+.da-item-list-item-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2-spacing-100);
+}
+
+.da-list-item-status {
+  --da-status-color: light-dark(var(--s2-gray-600, #6e6e6e), var(--s2-gray-500, #a5a5a5));
+
+  display: flex;
+  gap: var(--s2-spacing-100);
+  align-items: flex-start;
+}
+
+.da-list-item-status.is-pending {
+  --da-status-color: light-dark(#d38300, #e8a33d);
+}
+
+.da-list-item-status.is-positive {
+  --da-status-color: light-dark(#007a4d, #3fbb7a);
+}
+
+.da-list-item-status.is-negative {
+  --da-status-color: light-dark(#c9252d, #ec5b62);
+}
+
+.da-list-item-status-icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  color: var(--da-status-color);
+}
+
+.da-list-item-status-label {
+  font-weight: 700;
+}
+
 :host(.is-expanded) .da-item-list-item-details {
   display: grid;
 }
