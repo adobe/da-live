@@ -15,10 +15,6 @@ const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
  * that produced it. The reset is in a `finally` deliberately: stranding the flag
  * `true` (a throw inside `dispatch`) silently stops the iframe receiving any
  * further body updates for the rest of the session.
- *
- * No focus is faked here. The doc view's cursor broadcast is handled by
- * `daCursorPlugin`'s `shouldBroadcast` predicate, which reads the active surface
- * rather than `view.hasFocus()`.
  */
 export function dispatchMirror(view, tr, ctx) {
   ctx.suppressRerender = true;

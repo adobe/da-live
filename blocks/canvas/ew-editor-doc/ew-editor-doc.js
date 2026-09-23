@@ -251,22 +251,17 @@ export class EwEditorDoc extends LitElement {
     this._comments.setupIframeBridge();
   }
 
-  /**
-   * Real focus, not an inferred one: the doc surface owns the toolbar only while the
-   * ProseMirror DOM genuinely holds focus. Nothing here fakes `view.hasFocus()` — see
-   * editor-utils/editor-utils.js and deps/da-y-wrapper/src/da-cursor-plugin.js.
-   */
+  /** The doc surface owns the toolbar only while the ProseMirror DOM holds focus. */
   _wireProseFocus(view, proseEl) {
     this._unwireProseFocus?.();
     const onFocusIn = () => toolbarController.activate('doc');
     const onFocusOut = () => {
-      // Defer so focus can settle. If it landed on the toolbar (button/dialog),
-      // stay active; otherwise the user left the doc surface.
+      // Defer so focus can settle. If it landed on a toolbar (button/dialog) or back
+      // in the prose, stay active; otherwise the user left the doc surface.
       setTimeout(() => {
-        // ProseMirror moves DOM focus within its own dom when it installs a
-        // NodeSelection (selecting a whole block), which fires focusout without the
-        // user leaving. `view.hasFocus()` is shadow-root aware, unlike
-        // `document.activeElement`, which stops at this element's shadow host.
+        // ProseMirror moves focus within its own dom when it installs a NodeSelection,
+        // which fires focusout without the user leaving. `view.hasFocus()` is
+        // shadow-root aware, unlike `document.activeElement`.
         if (view.hasFocus?.()) return;
         const tb = toolbarController.ensureToolbar();
         const btb = toolbarController.ensureBlockToolbar();
@@ -416,8 +411,6 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
-      // No focus override to undo: the doc view never lies about `hasFocus()`.
-      // toolbarController.setEditorMode (from canvas.js) re-evaluates visibility.
     });
     this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
       ({ port, iframe } = {}) => {
@@ -479,8 +472,8 @@ export class EwEditorDoc extends LitElement {
     };
     document.addEventListener('keydown', this._onBlockEditKeydown, true);
     canvasBus.blockEditState.emit({ open: true });
-    // Before focusing: the modal's doc view becomes the active surface, so the
-    // wysiwyg-mode focus policy lets `view.focus()` through and the toolbar can show.
+    // Claim the surface before focusing, so the focus policy lets `view.focus()`
+    // through and the toolbar serves selections made inside the modal.
     toolbarController.setBlockEditOpen(true);
     view.focus();
   }
@@ -558,13 +551,10 @@ export class EwEditorDoc extends LitElement {
       const host = this.shadowRoot.querySelector('.block-edit-toolbar-host');
       const toolbar = toolbarController.ensureToolbar();
       if (host && toolbar.parentElement !== host) host.appendChild(toolbar);
-      // Moving the prose dom into the dialog drops DOM focus, so the focus wired in
-      // enterBlockEdit is lost exactly once, on the render that opens the modal.
-      // Restore it, or the modal opens uneditable and with no active surface — which
-      // would leave the toolbar hidden for every selection made inside it.
+      // Moving the prose dom into the dialog drops DOM focus; restore it, or the
+      // modal opens uneditable and with no active surface.
       if (remounted) {
-        // The dialog isn't shown yet on this tick, and focus() is a no-op on a
-        // not-yet-displayed element — wait for the paint that opens it.
+        // Wait for the paint that displays the dialog — focus() is a no-op until then.
         afterNextPaint(() => {
           if (!this._blockEditMode) return;
           this._proseContext?.view?.focus();

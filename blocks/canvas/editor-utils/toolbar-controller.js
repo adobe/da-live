@@ -1,12 +1,11 @@
 /**
  * Single owner of the selection- and block-toolbar visibility across the canvas doc
- * editor and the WYSIWYG iframe. See docs/canvas-toolbar-architecture.md.
+ * editor and the WYSIWYG iframe.
  *
- * Nothing outside this module shows, hides, or positions the toolbar. Callers emit
- * intent (activate / deactivate / selection / editor-mode) and this module derives
- * visibility once per animation frame from an explicit "active surface" — never
- * from `view.hasFocus()`, which is legitimately false while the user edits in the
- * cross-origin iframe.
+ * Nothing outside this module shows, hides or positions the toolbars. Callers emit
+ * intent (activate / deactivate / selection / editor-mode) and visibility is derived
+ * once per animation frame from the active surface, rather than from
+ * `view.hasFocus()`, which is false while the user edits in the cross-origin iframe.
  */
 
 import { refreshLocalCursor } from 'da-y-wrapper';
@@ -22,20 +21,17 @@ const state = {
   activeSurface: null, // 'doc' | 'wysiwyg' | null
   docView: null, // the single ProseMirror view — always the command target
   iframeEl: null, // for outside-click hit-testing
-  // Whether each surface's current selection is one the toolbar serves. Kept per
-  // surface: a single shared slot let a doc-side selection change (collab, a
-  // mirrored dispatch, a background edit) overwrite the wysiwyg answer and hide a
-  // toolbar the user was still using, which needed a guard in setDocSelection to
-  // paper over. Each surface now owns its own answer.
+  // Whether each surface's current selection is one the toolbar serves. Per surface,
+  // so a doc-side change (collab, a mirrored dispatch, a background edit) can't
+  // overwrite the answer for a toolbar the wysiwyg user is still using.
   showableBySurface: { doc: false, wysiwyg: false },
   // Per surface: the block whose node is selected there (`{ name, variant }`), or
   // null for a text/caret selection. A block selection swaps the selection toolbar
-  // for the block toolbar, in both the doc view and the WYSIWYG iframe.
+  // for the block toolbar.
   blockBySurface: { doc: null, wysiwyg: null },
   editorMode: 'layout', // 'layout' | 'content' | 'split'
-  // The single-block edit modal hosts the doc view in a dialog, on top of (and
-  // regardless of) the current editor mode — including layout mode, where the doc
-  // surface is otherwise not servable.
+  // The single-block edit modal hosts the doc view in a dialog, on top of and
+  // regardless of the current editor mode.
   blockEditOpen: false,
 };
 
@@ -64,14 +60,13 @@ function ensureBlockToolbar() {
 /**
  * The single write path for the active surface.
  *
- * The doc view's cursor plugin publishes this user's caret to collaborators based
- * on which surface is active (see `daCursorPlugin`'s `shouldBroadcast` in
- * ew-editor-doc/prose.js). ProseMirror knows nothing about surfaces, so nothing
- * re-runs that predicate on its own — poke it here whenever the answer changes.
+ * The doc view's cursor plugin publishes this user's caret based on which surface is
+ * active (`daCursorPlugin`'s `shouldBroadcast` in ew-editor-doc/prose.js). Nothing
+ * re-runs that predicate on its own, so poke it whenever the answer changes.
  */
 function setSurface(next) {
-  // The block edit modal is modal: the iframe behind its backdrop can't take the
-  // surface back (its blur/selection messages keep arriving while it is open).
+  // The iframe behind the modal's backdrop can't take the surface back — its
+  // blur/selection messages keep arriving while the modal is open.
   if (state.blockEditOpen && next === 'wysiwyg') return;
   if (state.activeSurface === next) return;
   state.activeSurface = next;
@@ -79,8 +74,8 @@ function setSurface(next) {
 }
 
 function editorModeAllows(surface) {
-  // The block edit modal covers everything: only the doc view it hosts is servable,
-  // whichever editor mode opened it.
+  // The modal covers everything: only the doc view it hosts is servable, whichever
+  // editor mode opened it.
   if (state.blockEditOpen) return surface === 'doc';
   if (surface === 'doc') return state.editorMode === 'content' || state.editorMode === 'split';
   if (surface === 'wysiwyg') return state.editorMode === 'layout' || state.editorMode === 'split';
@@ -96,9 +91,8 @@ function shouldShow(tb) {
     && editorModeAllows(state.activeSurface);
 }
 
-/** The block toolbar's commands all run against the doc view's NodeSelection, which
- * the iframe's NODE_SELECT relay sets just like a click in the doc view does — so the
- * same toolbar serves both surfaces. */
+/** One block toolbar serves both surfaces: its commands run against the doc view's
+ * NodeSelection, which the iframe's NODE_SELECT relay sets just like a doc click. */
 function syncBlockToolbar(block) {
   const btb = ensureBlockToolbar();
   // Element not upgraded yet; ensureBlockToolbar re-renders when its module resolves.
@@ -108,9 +102,9 @@ function syncBlockToolbar(block) {
     return;
   }
   if (state.docView) btb.view = state.docView;
-  // Re-showing reloads the variant list and the multi-block template, so only do it
-  // when the selected block actually changed — otherwise every mirrored transaction
-  // would close the variant picker the user just opened.
+  // Re-showing reloads the variant list and multi-block template, so only do it when
+  // the selected block changed — otherwise a mirrored transaction would close the
+  // variant picker the user just opened.
   if (btb.open && btb.blockName === block.name && btb.blockVariant === block.variant) return;
   btb.show(block.name, block.variant);
 }
@@ -129,8 +123,8 @@ function render() {
 
   const { activeSurface } = state;
   const block = activeSurface ? state.blockBySurface[activeSurface] : null;
-  // The block toolbar is body-hosted, so inside the block edit modal it would render
-  // behind the backdrop — and its commands target the block already being edited.
+  // The block toolbar is body-hosted, so inside the modal it would render behind the
+  // backdrop — and its commands target the block already being edited.
   const showBlock = block !== null && !state.blockEditOpen && editorModeAllows(activeSurface);
   syncBlockToolbar(showBlock ? block : null);
 
@@ -182,19 +176,10 @@ function installIframeFocusDetection() {
 }
 
 /**
- * While the wysiwyg iframe owns editing, keep real focus out of the doc view.
- *
- * This is a policy about *actions*, not a lie about *state*. An earlier version
- * also patched `view.hasFocus()` to return true whenever the wysiwyg surface was
- * active, so y-prosemirror's cursor plugin would keep broadcasting. That backfired:
- * prosemirror-view reads the same method to decide whether it owns the document's
- * DOM selection (`editorOwnsSelection` -> `selectionToDOM`) and whether to trust
- * DOM selection changes (`hasFocusAndSelection` in the DOM observer). With the doc
- * view editable, the lie made `selectionToDOM` write the browser selection into the
- * doc pane on every mirrored transaction — which focused the doc pane, blurred the
- * iframe and destroyed its caret. The cursor broadcast is now handled honestly by
- * `daCursorPlugin`'s `shouldBroadcast` predicate, so only `view.focus()` needs
- * guarding: it really would steal focus from the iframe.
+ * While the wysiwyg iframe owns editing, keep real focus out of the doc view: the
+ * doc view is editable and mirrors every iframe edit, so an unguarded `view.focus()`
+ * (from a toolbar command, a scroll-to or a node selection) would blur the iframe
+ * and destroy the caret the user is typing at.
  */
 const focusGuardedViews = new WeakSet();
 function installDocFocusPolicy(view) {
@@ -216,10 +201,8 @@ function installOutsidePointerdown() {
     if (toolbarEl && path.includes(toolbarEl)) return;
     if (blockToolbarEl && path.includes(blockToolbarEl)) return;
     // The doc *surface* is the mount container, not just `view.dom`: editor chrome
-    // such as the table select handle and the comments gutter is rendered as a
-    // sibling of the ProseMirror dom, and clicking it must not read as "the user
-    // left the editor" — that would strand the controller with no active surface,
-    // after which neither toolbar can ever show again.
+    // such as the table select handle and the comments gutter renders as a sibling
+    // of the ProseMirror dom, and clicking it is not leaving the editor.
     const docSurfaceEl = state.docView?.dom?.parentElement ?? state.docView?.dom;
     if (docSurfaceEl && path.includes(docSurfaceEl)) return;
     if (state.iframeEl && path.includes(state.iframeEl)) return;
@@ -258,9 +241,9 @@ export const toolbarController = {
     scheduleRender();
   },
 
-  /** The single-block edit modal opened / closed. While open the doc view it hosts is
-   * the only servable surface, so the toolbar works even in layout mode — and opening
-   * claims the doc surface so `view.focus()` isn't suppressed by the focus policy. */
+  /** The single-block edit modal opened / closed. While open, the doc view it hosts
+   * is the only servable surface, and opening claims it so the focus policy above
+   * lets the modal take focus. */
   setBlockEditOpen(open) {
     if (state.blockEditOpen === open) return;
     state.blockEditOpen = open;
@@ -286,9 +269,7 @@ export const toolbarController = {
   },
 
   /** Doc selection changed. Never claims the surface — a background/collab/mirror
-   * dispatch must not show the toolbar on a doc the user isn't editing. Writing a
-   * surface-scoped slot means it also can't clobber the wysiwyg answer, so no
-   * cross-surface guard is needed. */
+   * dispatch must not show the toolbar on a doc the user isn't editing. */
   setDocSelection({ showable, block = null }) {
     state.showableBySurface.doc = showable;
     state.blockBySurface.doc = block;

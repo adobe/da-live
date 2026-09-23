@@ -10,23 +10,17 @@ import { toolbarController } from '../../editor-utils/toolbar-controller.js';
 
 /**
  * CURSOR_MOVE from the quick-edit iframe: mirror the caret into the doc view and
- * sync stored marks so the toolbar reflects the marks at that caret.
- *
- * This runs in layout view too, where the doc view is hidden. That used to revert
- * remote edits (#1302), but only because this handler forced `view.hasFocus = () => true`:
- * y-prosemirror's `_isLocalCursorInView()` returns false immediately for an unfocused
- * view, so with the focus lie gone a hidden view no longer re-runs its selection
- * restore. Skipping the mirror here instead would leave the toolbar stale on every
- * caret move — the marks below are the only thing that updates it.
+ * sync stored marks so the toolbar reflects the marks at that caret. Runs in layout
+ * view too, where the doc view is hidden — it is the only thing that keeps the
+ * toolbar in step with caret moves that don't change the selection.
  */
 export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
   const { view, wsProvider } = ctx;
   if (!view || !wsProvider) return;
 
   if (cursorOffset == null || textCursorOffset == null) {
-    // Per-block blur from the iframe — its documented purpose is clearing the
-    // remote cursor, NOT hiding the toolbar. The user is still in the pane while
-    // the iframe holds focus; toolbar deactivation comes from the iframe's blur.
+    // Per-block blur from the iframe: clears the remote cursor only. The user is
+    // still in the pane, so the toolbar stays as it is.
     wsProvider.awareness.setLocalStateField('cursor', null);
     // Forget the last position so re-entering (even at the same offset) counts as
     // a move and resets stored marks rather than preserving a stale queued mark.

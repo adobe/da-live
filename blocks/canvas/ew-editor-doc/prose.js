@@ -177,12 +177,9 @@ export default async function initProse({
    * handleTableBackspace (fixes list Enter + table NodeSelection + Backspace). */
   const plugins = [
     ySyncPlugin(yXmlFragment),
-    // Broadcast this user's cursor while the quick-edit iframe owns editing, even
-    // though the doc view legitimately has no browser focus then. Upstream gates on
-    // `view.hasFocus()`; we must NOT fake that, because prosemirror-view reads the
-    // same method to decide whether it owns the DOM selection
-    // (`editorOwnsSelection` -> `selectionToDOM`) — faking it makes the doc pane
-    // paint a caret and fight the iframe for the selection.
+    // Upstream's yCursorPlugin only broadcasts while `view.hasFocus()`. The doc view
+    // has no browser focus while the quick-edit iframe owns editing, so the fork takes
+    // an explicit predicate instead (see deps/da-y-wrapper/src/da-cursor-plugin.js).
     daCursorPlugin(wsProvider.awareness, {
       cursorBuilder: collabCursorBuilder,
       shouldBroadcast: (view) => toolbarController.activeSurface === 'wysiwyg'
