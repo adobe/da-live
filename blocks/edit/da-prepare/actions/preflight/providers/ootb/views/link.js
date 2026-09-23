@@ -11,7 +11,7 @@ const MORE_ICON = '/blocks/edit/img/S2_Icon_More_20_N.svg#S2_Icon_More';
 
 class PreflightLink extends PreflightResult {
   static properties = {
-    details: { attribute: false },
+    context: { attribute: false },
     text: { attribute: false },
     href: { attribute: false },
     _url: { state: true },
@@ -28,7 +28,7 @@ class PreflightLink extends PreflightResult {
   }
 
   async normalizeHref(supplied) {
-    const { org, site } = this.details;
+    const { org, site } = this.context;
     const aemOrigin = `https://main--${site}--${org}.aem.live`;
 
     // Path only — build full AEM URL
@@ -60,12 +60,12 @@ class PreflightLink extends PreflightResult {
   }
 
   convertAemPath() {
-    const { org, site } = this.details;
+    const { org, site } = this.context;
     return `/${org}/${site}${this._url.pathname}`;
   }
 
   async getSiteTokenHeaders() {
-    const { org, site } = this.details;
+    const { org, site } = this.context;
     const json = await getAemSiteToken({ org, site });
     const { siteToken } = json;
     if (!siteToken) return null;
