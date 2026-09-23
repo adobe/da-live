@@ -127,7 +127,7 @@ class EwCanvasCompare extends LitElement {
     const panes = this.split ? this._panes : null;
     return html`
         <div class="ew-cc-header">
-          ${panes ? html`
+          ${panes || (this.embedded && this.diffDom) ? html`
             <div class="ew-cc-chip-row">
               <div class="ew-cc-chip-slot"><span class="ew-cc-chip is-neutral">${this.currentLabel || 'Current'}</span></div>
               <div class="ew-cc-chip-slot"><span class="ew-cc-chip">${this.label}</span></div>
@@ -155,7 +155,7 @@ class EwCanvasCompare extends LitElement {
             <div class="ew-cc-pane ProseMirror">${panes.version}</div>
           </div>
         ` : html`
-          <div class="ew-cc-body ProseMirror">${this.dom}</div>
+          <div class="ew-cc-body ProseMirror">${this.embedded && this.diffDom ? this.diffDom : this.dom}</div>
         `}
     `;
   }

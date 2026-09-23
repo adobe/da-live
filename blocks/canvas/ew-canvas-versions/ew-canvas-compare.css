@@ -226,6 +226,10 @@ nx-popover {
   flex-wrap: wrap;
 }
 
+.ew-cc-embedded .ew-cc-chip:not(.is-neutral) {
+  background: var(--s2-green-200);
+}
+
 .ew-cc-embedded .ew-cc-actions {
   position: static;
   transform: none;

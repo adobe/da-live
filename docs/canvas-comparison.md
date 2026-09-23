@@ -29,8 +29,12 @@ Run from this checkout, supplying the separate NX SDK checkout:
 node tools/serve-comparison.mjs --nx=/absolute/path/to/da-nx
 ```
 
-Open `http://localhost:3010/test/fixtures/comparison.html` for the independent SDK test plugin, or add `?view=approver` for the preview/live default. Edit content, type a rail note, open comparison, continue typing in the rail, simulate a collaborator edit, refresh, close, and switch pages.
+Open `http://localhost:3010/test/fixtures/comparison.html` for the independent SDK test plugin, or add `?view=approver` for the preview/live default. Edit content, type in the **Context to retain** field in the right-hand **Comparison test plugin** panel, open comparison, continue typing in that field, simulate a collaborator edit, refresh, close, and switch pages.
 
 For the separate publish-request consumer fixture, pass `--plugin=/absolute/path/to/aem-apps` and open `?plugin=publish&view=author` or `?plugin=publish&view=approver`. The consumer fixture belongs to aem-apps, not this EW implementation.
+
+In the author fixture, type in **Note to reviewers (optional)** in the right-hand **Publish request** panel, then click **Review changes** above that field. The note is optional; typing one checks that it survives opening and closing the comparison. In the approver fixture, the author note is read-only; there is no **Note to reviewers** input.
+
+**Side by side** changes only the comparison layout: on separates Live and the candidate into two columns; off shows removals and additions together in one unified diff. Red indicates removed live content and green indicates added candidate content in both layouts.
 
 All fixture content and workflow responses are simulated. The actual ProseMirror editor, comparison renderer, tool panel, SDK and cross-origin iframe protocol are used. No Admin API, workflow worker, email, preview or publish operation is performed. This does not establish authenticated-backend compatibility; that requires separate authorized validation on a configured site.

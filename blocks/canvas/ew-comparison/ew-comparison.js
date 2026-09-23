@@ -20,9 +20,11 @@ class EwComparison extends LitElement {
     split: { state: true },
   };
 
-  loading = true;
-
-  split = true;
+  constructor() {
+    super();
+    this.loading = true;
+    this.split = true;
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -52,12 +54,12 @@ class EwComparison extends LitElement {
           ${this.stale ? html`<p class="stale">The document changed. Refresh to review the latest edits.</p>` : nothing}
           ${this.missingLive ? html`<p>This page is not published yet. All content is new.</p>` : nothing}
           ${this.identical ? html`<p>No content differences.</p>` : nothing}
-          ${this.loadedAt ? html`<p>Compared at ${this.loadedAt}. ${this.candidate === 'preview' ? 'Preview can change; refresh before your decision.' : 'Document edits are not previewed by this comparison.'}</p>` : nothing}
+          ${this.loadedAt ? html`<p>Compared at ${this.loadedAt}.</p>` : nothing}
         </div>
         ${this.diffDom ? html`
           <ew-canvas-compare .embedded=${true} .split=${this.split}
             .currentLabel=${'Live'} .label=${this.candidate === 'document' ? 'Current document' : 'Preview'}
-            .diffDom=${this.diffDom} .dom=${this.diffDom.cloneNode(true)} .canWrite=${false}
+            .diffDom=${this.diffDom} .canWrite=${false}
             @close=${() => this.onClose()}
             @toggle-split=${() => { this.split = !this.split; }}></ew-canvas-compare>
         ` : nothing}

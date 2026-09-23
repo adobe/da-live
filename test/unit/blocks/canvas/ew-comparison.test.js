@@ -63,7 +63,9 @@ describe('embedded existing comparison view', () => {
     const sheet = new CSSStyleSheet();
     sheet.replaceSync(await (await fetch('/blocks/canvas/ew-canvas-versions/ew-canvas-compare.css')).text());
     element.shadowRoot.adoptedStyleSheets = [sheet];
-    const color = (selector) => getComputedStyle(element.shadowRoot.querySelector(selector)).backgroundColor;
+    const color = (selector) => getComputedStyle(
+      element.shadowRoot.querySelector(selector),
+    ).backgroundColor;
     expect(color('.ew-cc-chip:not(.is-neutral)')).to.equal(color('ins'));
     expect(color('.ew-cc-chip.is-neutral')).to.equal(color('del'));
   });
