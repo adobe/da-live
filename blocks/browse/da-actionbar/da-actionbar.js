@@ -1,4 +1,4 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
 // Styles
@@ -30,6 +30,7 @@ export default class DaActionBar extends LitElement {
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
     hidePublishConfs: { attribute: false },
+    enforcePreflight: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -303,6 +304,7 @@ export default class DaActionBar extends LitElement {
             class="publish-button ${this._canPublish ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             ${icon('publish')}
             <span>Publish</span>
+            ${this.enforcePreflight ? html`<span class="da-preflight-dot is-required" title="Preflight required before publish"></span>` : nothing}
           </button>
           <button
             @click=${this.handleShare}
