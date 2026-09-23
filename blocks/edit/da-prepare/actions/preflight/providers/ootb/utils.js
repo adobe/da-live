@@ -14,7 +14,12 @@ export function locateElement(el) {
   let current = el;
   while (current) {
     if (current.hasAttribute?.('data-block-index')) {
-      return { blockIndex: Number(current.getAttribute('data-block-index')) };
+      // Despite the name, this attribute holds the block's raw ProseMirror position (see
+      // getInstrumentedHTML), not the ordinal index canvasBus.editorSelectState/
+      // _scrollDocToBlock expect (parseSections' flatIndex / blocks.js's getBlockPositions
+      // both count non-metadata blocks in doc order) -- re-derive that ordinal here.
+      const blocks = [...current.ownerDocument.querySelectorAll('[data-block-index]')];
+      return { blockIndex: blocks.indexOf(current) };
     }
     if (current.hasAttribute?.('data-image-index')) {
       return { proseIndex: Number(current.getAttribute('data-image-index')), kind: 'image' };
