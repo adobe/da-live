@@ -25,6 +25,7 @@ export default class DaList extends LitElement {
     fullpath: { type: String },
     editor: { type: String },
     hidePublishConfs: { attribute: false },
+    enforcePreflight: { type: Boolean },
     select: { type: Boolean },
     sort: { type: Boolean },
     drag: { type: Boolean },
@@ -42,6 +43,7 @@ export default class DaList extends LitElement {
     _dropConflicts: { state: true },
     _status: { state: true },
     _confirm: { state: true },
+    _preflight: { state: true },
     _confirmText: { state: true },
     _unpublish: { state: true },
     _canUnpublish: { state: true },
@@ -112,7 +114,13 @@ export default class DaList extends LitElement {
   async firstUpdated() {
     await import('../../shared/da-dialog/da-dialog.js');
     await import('../da-actionbar/da-actionbar.js');
+    await import('../da-browse-preflight/da-browse-preflight.js');
     this.setupObserver();
+  }
+
+  // Pages the preflight modal evaluates/publishes — html only, for now.
+  get _selectedPages() {
+    return this._selectedItems.filter((item) => item.ext === 'html');
   }
 
   setStatus(text, description, type = 'info') {
@@ -611,13 +619,34 @@ export default class DaList extends LitElement {
   }
 
   handlePublish() {
+    // With enforcement on, gate publish behind the preflight modal (pages only).
+    if (this.enforcePreflight && this._selectedPages.length > 0) {
+      this.handleOpenPreflight();
+      return;
+    }
     this._confirm = { type: 'publish' };
   }
 
-  async handleConfirmPublish() {
-    this._confirm = { type: 'publish', checking: true };
-    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+  handleOpenPreflight() {
+    const items = this._selectedPages;
+    if (!items.length) return;
+    this._preflight = { items };
+  }
 
+  handleClosePreflight() {
+    this._preflight = null;
+  }
+
+  async handlePublishPassing(items) {
+    this._preflight = null;
+    if (!items?.length) return;
+    await this.publishItems(items);
+  }
+
+  // Run the schedule check for `items` and either surface the scheduled-override
+  // dialog or publish straight away. Shared by the confirm dialog and the
+  // preflight modal's "Publish Passing".
+  async publishItems(items) {
     const scheduleChecks = await Promise.all(items.map(async (item) => {
       const [, org, site, ...rest] = item.path.toLowerCase().split('/');
       const pagePath = `/${rest.join('/')}`.replace(/\.html$/, '');
@@ -628,12 +657,18 @@ export default class DaList extends LitElement {
 
     const scheduled = scheduleChecks.filter(Boolean);
     if (scheduled.length > 0) {
-      this._confirm = { type: 'publish', scheduled };
+      this._confirm = { type: 'publish', scheduled, items };
       return;
     }
 
     this.handleConfirmClose();
-    await this.runAemQueue('publish', { skipSchedule: true });
+    await this.runAemQueue('publish', { skipSchedule: true, items });
+  }
+
+  async handleConfirmPublish() {
+    this._confirm = { type: 'publish', checking: true };
+    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+    await this.publishItems(items);
   }
 
   async handleConfirmPreview() {
@@ -641,9 +676,10 @@ export default class DaList extends LitElement {
     await this.runAemQueue('preview');
   }
 
-  async runAemQueue(action, { skipSchedule = false } = {}) {
+  async runAemQueue(action, { skipSchedule = false, items: itemsArg } = {}) {
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
-    const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
+    const source = itemsArg ?? this._selectedItems;
+    const items = source.filter((item) => item.ext && item.ext !== 'link');
     const verb = action === 'publish' ? 'Publish' : 'Preview';
     const urlKey = action === 'publish' ? 'live' : 'preview';
     const aemOpts = skipSchedule ? { skipSchedule: true } : {};
@@ -1006,6 +1042,16 @@ export default class DaList extends LitElement {
     return this.renderAemConfirm();
   }
 
+  renderPreflight() {
+    return html`
+      <da-browse-preflight
+        .items=${this._preflight.items}
+        @publish-passing=${(e) => this.handlePublishPassing(e.detail.items)}
+        @close=${this.handleClosePreflight}>
+      </da-browse-preflight>
+    `;
+  }
+
   renderConfirm() {
     const loading = this._deleteCountLoading;
     const checkingUnpublish = this._canUnpublish === null;
@@ -1120,8 +1166,9 @@ export default class DaList extends LitElement {
         style: 'accent',
         label: 'Confirm Publish',
         click: async () => {
+          const { items } = this._confirm;
           this.handleConfirmClose();
-          await this.runAemQueue('publish', { skipSchedule: true });
+          await this.runAemQueue('publish', { skipSchedule: true, items });
         },
       };
       const overrideCount = scheduled.length === 1 ? 'This item has' : `${scheduled.length} items have`;
@@ -1299,6 +1346,7 @@ export default class DaList extends LitElement {
         @ondelete=${this.handleDelete}
         @onpreview=${this.handlePreview}
         @onpublish=${this.handlePublish}
+        @onpreflight=${this.handleOpenPreflight}
         @onshare=${this.handleShare}
         .loading=${typeof this._aemActionState === 'string' ? this._aemActionState : null}
         .hidePublishConfs=${this.hidePublishConfs}
@@ -1309,6 +1357,7 @@ export default class DaList extends LitElement {
       ${this._status ? this.renderStatus() : nothing}
       ${this._aemActionState?.results ? this.renderAemResults() : nothing}
       ${this.renderConfirmDialog()}
+      ${this._preflight ? this.renderPreflight() : nothing}
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
       `;

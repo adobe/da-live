@@ -16,6 +16,7 @@ const ICON_NAMES = {
   share: 's2-icon-share-20-n',
   publish: 's2-icon-publish-20-n',
   preview: 's2-icon-preview-20-n',
+  preflight: 's2-icon-search-20-n',
 };
 
 const icon = (name) => html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/${ICON_NAMES[name]}.svg#icon"></use></svg>`;
@@ -121,6 +122,12 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handlePreflight() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpreflight', opts);
+    this.dispatchEvent(event);
+  }
+
   async handleShare() {
     const { items2Clipboard } = await import('../da-list/helpers/utils.js');
     items2Clipboard(this.items);
@@ -153,6 +160,11 @@ export default class DaActionBar extends LitElement {
 
   get _canPublish() {
     return this._canAemAction && !this._hidePublish;
+  }
+
+  get _canPreflight() {
+    // Pages only, for now — the preflight modal evaluates html pages.
+    return this._canWrite && this.items.some((item) => item.ext === 'html') && !this._isCopying;
   }
 
   get _canRename() {
@@ -240,6 +252,12 @@ export default class DaActionBar extends LitElement {
             class="preview-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'preview' ? 'loading' : ''}">
             ${icon('preview')}
             <span>Preview</span>
+          </button>
+          <button
+            @click=${this.handlePreflight}
+            class="preflight-button ${this._canPreflight ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            ${icon('preflight')}
+            <span>Preflight</span>
           </button>
           <button
             @click=${this.handlePublish}
