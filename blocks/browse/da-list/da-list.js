@@ -1350,6 +1350,7 @@ export default class DaList extends LitElement {
         @onshare=${this.handleShare}
         .loading=${typeof this._aemActionState === 'string' ? this._aemActionState : null}
         .hidePublishConfs=${this.hidePublishConfs}
+        .enforcePreflight=${this.enforcePreflight ?? false}
         currentPath="${this.fullpath}"
         .isHlx6=${this._isHlx6 ?? false}
         role="row"

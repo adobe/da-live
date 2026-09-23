@@ -145,9 +145,7 @@ export default class DaBrowsePreflight extends LitElement {
               aria-label="Re-run evaluation"
               ?disabled=${row.status === 'loading'}
               @click=${(e) => this._rerun(e, row)}>
-              ${row.status === 'loading'
-    ? html`<span class="da-loading-spinner" aria-hidden="true"></span>`
-    : html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="${REFRESH_ICON}#icon"></use></svg>`}
+              <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${REFRESH_ICON}#icon"></use></svg>
             </button>
             ${this._renderStatusIcon(row)}
           </span>
