@@ -25,31 +25,6 @@
   padding-right: var(--s2-spacing-75);
 }
 
-.tool-panel-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border: none;
-  border-radius: var(--s2-corner-radius-400);
-  background: transparent;
-  color: var(--s2-gray-800);
-  cursor: pointer;
-
-  svg.icon {
-    display: block;
-    width: 16px;
-    height: 16px;
-    overflow: hidden;
-  }
-
-  &:hover {
-    background-color: var(--s2-gray-75);
-  }
-}
-
 .tool-panel-content {
   flex: 1;
   display: flex;
