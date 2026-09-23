@@ -60,9 +60,9 @@ class EwNotFound extends LitElement {
       <nx-dialog title="Document not found" @close=${this._onClose}>
         <p>There is no document named <b><em>${this.name}</em></b> at this path.</p>
         <p>What would you like to do?</p>
-        <button type="button" slot="actions" class="da-btn-secondary"
+        <button type="button" slot="actions" class="nx-form-btn-secondary"
           @click=${() => this._finish('cancel')}>Cancel</button>
-        <button type="button" slot="actions" class="da-btn-primary"
+        <button type="button" slot="actions" class="nx-form-btn-primary"
           @click=${() => this._finish('create')}>Create document</button>
       </nx-dialog>`;
   }

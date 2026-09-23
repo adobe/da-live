@@ -50,6 +50,17 @@ describe('showEwNotFoundDialog', () => {
     expect(await promise).to.equal('cancel');
   });
 
+  it('styles the actions with the nx form button classes', async () => {
+    const promise = showEwNotFoundDialog({ name: 'my-doc' });
+    await waitForDialog();
+
+    expect(getAction('Create document').className).to.equal('nx-form-btn-primary');
+    expect(getAction('Cancel').className).to.equal('nx-form-btn-secondary');
+
+    getAction('Cancel').click();
+    await promise;
+  });
+
   it('names the missing document in the message', async () => {
     const promise = showEwNotFoundDialog({ name: 'my-doc' });
     await waitForDialog();
