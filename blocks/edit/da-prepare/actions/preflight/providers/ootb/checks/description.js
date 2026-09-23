@@ -1,5 +1,5 @@
 import { createResult, SEVERITY } from '../../../views/result.js';
-import { getMetadata } from '../utils.js';
+import { getMetadata, locateElement } from '../utils.js';
 
 export default function descriptionCheck({ doc }) {
   const meta = doc.querySelector('.metadata');
@@ -11,6 +11,7 @@ export default function descriptionCheck({ doc }) {
     item.settle(SEVERITY.INFO, 'Description found in metadata.');
   } else if (para) {
     item.settle(SEVERITY.INFO, 'Description found as first paragraph.');
+    item.location = locateElement(para);
   } else {
     item.settle(SEVERITY.WARN, 'Description not found in metadata or first paragraph.');
   }
