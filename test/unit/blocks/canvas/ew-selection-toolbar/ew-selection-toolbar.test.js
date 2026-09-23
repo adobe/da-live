@@ -143,6 +143,18 @@ describe('ew-selection-toolbar buttons', () => {
       .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
   });
 
+  it('closes a menu when the toolbar is hidden', async () => {
+    toolbar.activeSurface = 'doc';
+    toolbar._hasAemAssets = true;
+    await toolbar.updateComplete;
+
+    const menu = toolbar.shadowRoot.querySelector('nx-menu');
+    expect(menu).to.exist;
+    menu.open = true;
+    toolbar.hide();
+    expect(menu.open).to.be.false;
+  });
+
   it('shows block-level controls in the doc surface', async () => {
     setText('hello');
     selectText(1, 6);
