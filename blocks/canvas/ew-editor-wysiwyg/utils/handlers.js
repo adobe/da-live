@@ -73,7 +73,7 @@ export function handleCursorMove({ cursorOffset, textCursorOffset }, ctx) {
     // canvasBus.editorSelectState with the full payload (incl. proseIndex) — a second,
     // blockIndex-only emit here would clobber that and collapse the outline.
     dispatchMirror(view, tr.scrollIntoView(), ctx);
-    toolbarController.setWysiwygSelection({ showable: true });
+    canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: true });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error moving cursor:', error);
@@ -150,13 +150,13 @@ export function handleIframeSelectionChange(data, ctx) {
         .setMeta('addToHistory', false);
       dispatchMirror(view, tr, ctx);
     }
-    toolbarController.setWysiwygSelection({ showable: true });
+    canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: true });
     return;
   }
 
   if (!handleSelectionChange(data, ctx, { fromQuickEditIframe: true })) return;
 
-  toolbarController.setWysiwygSelection({ showable: true });
+  canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: true });
 }
 
 function srcFileName(src) {
@@ -233,7 +233,7 @@ export function handleNodeSelect({ node }, ctx) {
     // modal, replace, delete) instead of the inline one — same as in the doc view.
     // Read after dispatch so the descriptor reflects the NodeSelection just set.
     const block = selectedBlockDescriptor(view.state);
-    toolbarController.setWysiwygSelection({ showable: block === null, block });
+    canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: block === null, block });
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[quick-edit-controller] handleNodeSelect failed', e?.message);

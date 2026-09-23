@@ -170,6 +170,7 @@ describe('ew-selection-toolbar buttons', () => {
   it('shows Replace image for a selected image in the wysiwyg surface', async () => {
     selectImage();
     toolbar.activeSurface = 'wysiwyg';
+    toolbar.requestUpdate();
     await toolbar.updateComplete;
 
     const button = toolbar.shadowRoot.querySelector('button[data-id="image-add"]');
@@ -184,6 +185,7 @@ describe('ew-selection-toolbar buttons', () => {
     selectImage();
     toolbar.activeSurface = 'wysiwyg';
     toolbar._hasAemAssets = true;
+    toolbar.requestUpdate();
     await toolbar.updateComplete;
 
     const button = toolbar.shadowRoot.querySelector('nx-menu button[slot="trigger"][aria-label="Replace image"]');

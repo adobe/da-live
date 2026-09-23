@@ -254,7 +254,7 @@ export class EwEditorDoc extends LitElement {
   /** The doc surface owns the toolbar only while the ProseMirror DOM holds focus. */
   _wireProseFocus(view, proseEl) {
     this._unwireProseFocus?.();
-    const onFocusIn = () => toolbarController.activate('doc');
+    const onFocusIn = () => canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
     const onFocusOut = () => {
       // Defer so focus can settle. If it landed on a toolbar (button/dialog) or back
       // in the prose, stay active; otherwise the user left the doc surface.
@@ -267,7 +267,7 @@ export class EwEditorDoc extends LitElement {
         const btb = toolbarController.ensureBlockToolbar();
         const active = document.activeElement;
         if (active && [tb, btb].some((el) => active === el || el.contains(active))) return;
-        toolbarController.deactivate('doc');
+        canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: false });
       }, 0);
     };
     proseEl.addEventListener('focusin', onFocusIn);
@@ -474,7 +474,6 @@ export class EwEditorDoc extends LitElement {
     canvasBus.blockEditState.emit({ open: true });
     // Claim the surface before focusing, so the focus policy lets `view.focus()`
     // through and the toolbar serves selections made inside the modal.
-    toolbarController.setBlockEditOpen(true);
     view.focus();
   }
 
@@ -496,8 +495,8 @@ export class EwEditorDoc extends LitElement {
       document.removeEventListener('keydown', this._onBlockEditKeydown, true);
       this._onBlockEditKeydown = undefined;
     }
-    toolbarController.setBlockEditOpen(false);
-    toolbarController.deactivate();
+    canvasBus.blockEditState.emit({ open: false });
+    canvasBus.toolbarSurfaceRequest.emit({ active: false });
     // Return the toolbar to the body before the modal DOM is torn down by re-render.
     const toolbar = toolbarController.ensureToolbar();
     if (toolbar.parentElement && toolbar.parentElement !== document.body) {
@@ -510,7 +509,6 @@ export class EwEditorDoc extends LitElement {
       const body = updateDocument(this._controllerCtx);
       if (body) canvasBus.editorHtmlState.emit(body);
     }
-    canvasBus.blockEditState.emit({ open: false });
   }
 
   disconnectedCallback() {
@@ -558,7 +556,7 @@ export class EwEditorDoc extends LitElement {
         afterNextPaint(() => {
           if (!this._blockEditMode) return;
           this._proseContext?.view?.focus();
-          toolbarController.activate('doc');
+          canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
         });
       }
     }

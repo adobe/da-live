@@ -2,6 +2,7 @@
 import { Plugin, PluginKey, NodeSelection } from 'da-y-wrapper';
 import { getTableBlockName, getTableBlockVariant } from './blocks.js';
 import { toolbarController } from './toolbar-controller.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const NON_TEXT_NODES = new Set(['table']);
 
@@ -75,7 +76,7 @@ export function createSelectionToolbarPlugin() {
           // (activation comes from real focus — see toolbar-controller.js).
           if (getSelectionOriginFromIframe(view.state)) return;
           const block = selectedBlockDescriptor(view.state);
-          toolbarController.setDocSelection({ showable: block === null, block });
+          canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: block === null, block });
         },
         destroy() {
           toolbarController.reset();

@@ -180,3 +180,51 @@ describe('handleCursorMove stored marks', () => {
     expect(hasStrong()).to.equal(true);
   });
 });
+
+describe('handleCursorMove stored marks', () => {
+  let editor;
+  const wsProvider = { awareness: { setLocalStateField() {} } };
+  beforeEach(async () => { editor = await createTestEditor(); });
+  afterEach(() => destroyEditor(editor));
+
+  function setBoldThenPlain() {
+    const { state } = editor.view;
+    const { schema } = state;
+    const strong = schema.marks.strong.create();
+    const para = schema.nodes.paragraph.create(null, [
+      schema.text('bold', [strong]),
+      schema.text('plain'),
+    ]);
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, para));
+  }
+
+  const hasStrong = () => editor.view.state.storedMarks?.some((m) => m.type.name === 'strong');
+  const storedEmpty = () => {
+    const s = editor.view.state.storedMarks;
+    return s == null || s.length === 0;
+  };
+
+  it('resets stored marks when the cursor moves from marked to unmarked text', () => {
+    setBoldThenPlain();
+    const ctx = { view: editor.view, wsProvider };
+    const move = (p) => handleCursorMove({ cursorOffset: p, textCursorOffset: 0 }, ctx);
+
+    move(3); // inside the bold run
+    expect(hasStrong()).to.equal(true);
+    move(8); // into the plain run — bold must not linger
+    expect(storedEmpty()).to.equal(true);
+  });
+
+  it('keeps a toolbar-toggled mark while the cursor stays put', () => {
+    setBoldThenPlain();
+    const ctx = { view: editor.view, wsProvider };
+    const move = (p) => handleCursorMove({ cursorOffset: p, textCursorOffset: 0 }, ctx);
+
+    move(8); // plain text: stored marks reset to none
+    // Queue bold as if toggled in the toolbar (no cursor move).
+    const { schema } = editor.view.state;
+    editor.view.dispatch(editor.view.state.tr.setStoredMarks([schema.marks.strong.create()]));
+    move(8); // same-position re-report from the iframe must not drop it
+    expect(hasStrong()).to.equal(true);
+  });
+});

@@ -9,6 +9,7 @@
  */
 
 import { refreshLocalCursor } from 'da-y-wrapper';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 let toolbarEl;
 let toolbarLoading;
@@ -69,8 +70,7 @@ function setSurface(next) {
   // blur/selection messages keep arriving while the modal is open.
   if (state.blockEditOpen && next === 'wysiwyg') return;
   if (state.activeSurface === next) return;
-  state.activeSurface = next;
-  if (state.docView) refreshLocalCursor(state.docView);
+  canvasBus.toolbarSurfaceState.emit({ activeSurface: next });
 }
 
 function editorModeAllows(surface) {
@@ -168,8 +168,11 @@ function installIframeFocusDetection() {
         // when no positional message follows. A later node-select (e.g. a table)
         // refines it.
         setSurface('wysiwyg');
-        state.showableBySurface.wysiwyg = true;
-        scheduleRender();
+        canvasBus.toolbarSelectionState.emit({
+          surface: 'wysiwyg',
+          showable: true,
+          block: state.blockBySurface.wysiwyg,
+        });
       }
     }, 0);
   });
@@ -214,6 +217,53 @@ function installOutsidePointerdown() {
   });
 }
 
+canvasBus.editorViewState.subscribe(({ view }) => {
+  if (state.editorMode === view) return;
+  state.editorMode = view;
+  scheduleRender();
+});
+
+canvasBus.blockEditState.subscribe(({ open }) => {
+  if (state.blockEditOpen === open) return;
+  state.blockEditOpen = open;
+  if (open) setSurface('doc');
+  scheduleRender();
+});
+
+canvasBus.toolbarSurfaceState.subscribe(({ activeSurface }) => {
+  state.activeSurface = activeSurface;
+  if (state.docView) refreshLocalCursor(state.docView);
+  scheduleRender();
+});
+
+canvasBus.toolbarSelectionState.subscribe(({ surface, showable, block = null }) => {
+  if (surface !== 'doc' && surface !== 'wysiwyg') {
+    throw new Error(`Unknown toolbar selection surface: ${surface}`);
+  }
+  // A doc selection may be a background mirror; only an iframe message claims its surface.
+  if (surface === 'wysiwyg') {
+    setSurface(surface);
+    installOutsidePointerdown();
+  }
+  state.showableBySurface[surface] = showable;
+  state.blockBySurface[surface] = block;
+  scheduleRender();
+});
+
+canvasBus.toolbarSurfaceRequest.subscribe(({ surface, active, iframeEl }) => {
+  if (active) {
+    if (surface !== 'doc' && surface !== 'wysiwyg') return;
+    if (iframeEl !== undefined) state.iframeEl = iframeEl;
+    setSurface(surface);
+    installOutsidePointerdown();
+  } else {
+    // A late blur from the other editor must not deactivate the current surface.
+    if (surface && state.activeSurface !== surface) return;
+    setSurface(null);
+  }
+  scheduleRender();
+});
+
 export const toolbarController = {
   ensureToolbar,
   ensureBlockToolbar,
@@ -235,56 +285,6 @@ export const toolbarController = {
     if (iframeEl) installIframeFocusDetection();
   },
 
-  setEditorMode(mode) {
-    if (state.editorMode === mode) return;
-    state.editorMode = mode;
-    scheduleRender();
-  },
-
-  /** The single-block edit modal opened / closed. While open, the doc view it hosts
-   * is the only servable surface, and opening claims it so the focus policy above
-   * lets the modal take focus. */
-  setBlockEditOpen(open) {
-    if (state.blockEditOpen === open) return;
-    state.blockEditOpen = open;
-    if (open) setSurface('doc');
-    scheduleRender();
-  },
-
-  /** The user is now editing in `surface` (driven by real focus / positional intent). */
-  activate(surface, { iframeEl } = {}) {
-    if (surface !== 'doc' && surface !== 'wysiwyg') return;
-    if (iframeEl !== undefined) state.iframeEl = iframeEl;
-    setSurface(surface);
-    installOutsidePointerdown();
-    scheduleRender();
-  },
-
-  /** Ownership-guarded: only the surface that currently owns the toolbar may
-   * deactivate it, so a late blur from one editor can't wipe the other. */
-  deactivate(surface) {
-    if (surface && state.activeSurface !== surface) return;
-    setSurface(null);
-    scheduleRender();
-  },
-
-  /** Doc selection changed. Never claims the surface — a background/collab/mirror
-   * dispatch must not show the toolbar on a doc the user isn't editing. */
-  setDocSelection({ showable, block = null }) {
-    state.showableBySurface.doc = showable;
-    state.blockBySurface.doc = block;
-    scheduleRender();
-  },
-
-  /** A positional message from the iframe: the user is editing there. */
-  setWysiwygSelection({ showable, block = null }) {
-    setSurface('wysiwyg');
-    state.showableBySurface.wysiwyg = showable;
-    state.blockBySurface.wysiwyg = block;
-    installOutsidePointerdown();
-    scheduleRender();
-  },
-
   /** Re-query the toolbar's command/visibility state (e.g. after a command runs
    * or a dialog/picker closes) without changing surface. */
   refresh() {
@@ -299,7 +299,7 @@ export const toolbarController = {
 
   reset() {
     setSurface(null);
-    state.blockEditOpen = false;
+    if (state.blockEditOpen) canvasBus.blockEditState.emit({ open: false });
     state.showableBySurface.doc = false;
     state.showableBySurface.wysiwyg = false;
     state.blockBySurface.doc = null;
