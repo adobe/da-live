@@ -231,7 +231,7 @@ export default async function decorate(block) {
     getContent: getChatPanelContent(),
     onShow: (aside, id, options) => {
       if (!options?.text) return;
-      aside?.querySelector('nx-chat')?.setPrompt(options.text, { autoSend: options.autoSend });
+      aside?.querySelector('nx-chat, nx-chat-ao')?.setPrompt(options.text, { autoSend: options.autoSend });
     },
   });
 
