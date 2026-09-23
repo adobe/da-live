@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
 import { loadProviderResults } from '../../edit/da-prepare/actions/preflight/providers/provider-registry.js';
+import { buildPreflightContext } from '../../edit/da-prepare/actions/preflight/providers/context.js';
 import { computeOverallStatus, LOAD_TIMEOUT_MS } from '../../edit/da-prepare/actions/preflight/providers/engine.js';
 import { adaptPreflightResults } from './adapter.js';
 import './preflight-results.js';
@@ -90,9 +91,10 @@ class EwPreflight extends LitElement {
     this._error = null;
     this._setRefreshBusy(true);
     try {
+      const signal = AbortSignal.timeout(LOAD_TIMEOUT_MS);
       const categories = await loadProviderResults({
-        details,
-        signal: AbortSignal.timeout(LOAD_TIMEOUT_MS),
+        context: buildPreflightContext({ details, signal }),
+        signal,
         onUpdate: () => {
           if (this._runId !== runId) return;
           this._data = adaptPreflightResults(categories);
