@@ -8,7 +8,7 @@ import {
   Y,
   WebsocketProvider,
   ySyncPlugin,
-  yCursorPlugin,
+  daCursorPlugin,
   yUndoPlugin,
   yUndoPluginKey,
   yUndo,
@@ -43,6 +43,7 @@ import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, collabCursorBuilder } from '../editor-utils/author-color.js';
 import { getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -176,7 +177,14 @@ export default async function initProse({
    * handleTableBackspace (fixes list Enter + table NodeSelection + Backspace). */
   const plugins = [
     ySyncPlugin(yXmlFragment),
-    yCursorPlugin(wsProvider.awareness, { cursorBuilder: collabCursorBuilder }),
+    // Upstream's yCursorPlugin only broadcasts while `view.hasFocus()`. The doc view
+    // has no browser focus while the quick-edit iframe owns editing, so the fork takes
+    // an explicit predicate instead (see deps/da-y-wrapper/src/da-cursor-plugin.js).
+    daCursorPlugin(wsProvider.awareness, {
+      cursorBuilder: collabCursorBuilder,
+      shouldBroadcast: (view) => toolbarController.activeSurface === 'wysiwyg'
+        || view.hasFocus(),
+    }),
     yUndoPlugin(),
     tableSelectHandle(),
     imageDrop(schema, () => path),
