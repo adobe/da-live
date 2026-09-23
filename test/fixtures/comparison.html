@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="nxver" content="2">
+  <title>EW native comparison — local showcase</title>
+  <script type="importmap">
+  {"imports":{
+    "da-lit":"/deps/lit/dist/index.js",
+    "da-y-wrapper":"/deps/da-y-wrapper/dist/index.js",
+    "da-parser":"/deps/da-parser/dist/index.js",
+    "/nx2/utils/ims.js":"/test/fixtures/nx/utils/ims.js"
+  }}
+  </script>
+  <link rel="stylesheet" href="/nx2/styles/styles.css">
+  <link rel="stylesheet" href="/blocks/shared/styles/base.css">
+  <link rel="stylesheet" href="/blocks/canvas/canvas.css">
+  <style>
+    body { margin:0; font:14px system-ui; color:#292929; background:#f5f5f5; }
+    .demo-header { padding:14px 24px; background:white; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; gap:20px; align-items:center; }
+    .demo-header strong { font-size:18px; }
+    .demo-header span { color:#666; font-size:12px; }
+    .demo-controls { display:flex; flex-wrap:wrap; gap:8px; padding:12px 24px; align-items:center; }
+    .workspace { display:grid; grid-template-columns:minmax(380px,1fr) 380px; height:calc(100dvh - 145px); margin:0 16px 16px; gap:12px; }
+    .center { min-width:0; min-height:0; display:flex; flex-direction:column; border:1px solid #ddd; border-radius:12px; background:#fff; overflow:hidden; }
+    .editor-label { padding:10px 18px; border-bottom:1px solid #ddd; font-size:12px; color:#666; }
+    .nx-canvas-editor-mount { height:auto; min-height:0; }
+    #editor { overflow:auto; flex:1; padding:24px; }
+    #editor .ProseMirror { outline:none; max-width:800px; margin:auto; }
+    #editor table { border-collapse:collapse; width:100%; }
+    #editor td,#editor th { border:1px solid #ddd; padding:12px; }
+    aside.panel { min-width:0; min-height:0; background:#fff; border:1px solid #ddd; border-radius:12px; overflow:hidden; }
+    ew-tool-panel { height:100%; display:block; }
+    .demo-plugin { width:100%; height:100%; border:0; display:block; }
+    #result { margin-left:auto; font-size:12px; color:#555; }
+    button,select { font:inherit; border:1px solid #bbb; border-radius:8px; background:white; padding:7px 12px; cursor:pointer; }
+    @media (width < 780px) { .workspace { grid-template-columns:minmax(320px,1fr) 310px; margin:0; gap:4px; } }
+  </style>
+  <script type="module" src="./comparison-demo.js"></script>
+</head>
+<body>
+  <header class="demo-header"><strong>Experience Workspace · Compare</strong><span>Local showcase · simulated content and workflow · no backend writes</span></header>
+  <div class="demo-controls">
+    <label>Compare <select id="candidate"><option value="document">Current document / Live</option><option value="preview">Preview / Live</option></select></label>
+    <button id="open">Open from EW</button>
+    <button id="change">Simulate collaborator edit</button>
+    <button id="page">Switch page</button>
+    <label><input type="checkbox" id="missing"> Never published</label>
+    <span id="result">Use Review changes in the rail, or the independent EW trigger.</span>
+  </div>
+  <div class="workspace">
+    <main class="center"><div class="editor-label">Content editor · edit the text, then review changes</div><div class="nx-canvas-editor-mount"><div id="editor"></div></div></main>
+    <aside class="panel" data-position="after"><ew-tool-panel></ew-tool-panel></aside>
+  </div>
+</body>
+</html>
