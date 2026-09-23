@@ -31,7 +31,7 @@ export function buildLinkCheck({ title, selector, context, doc, onUpdate }) {
 
   const items = links.map((link) => {
     const item = document.createElement('pf-link');
-    Object.assign(item, { details: context, text: link.textContent, href: link.getAttribute('href') });
+    Object.assign(item, { context, text: link.textContent, href: link.getAttribute('href') });
     return item;
   });
 
