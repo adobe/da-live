@@ -31,6 +31,42 @@ describe('embedded existing comparison view', () => {
     document.dispatchEvent(event);
     expect(event.defaultPrevented).to.equal(false);
   });
+
+  it('keeps both changes and labels in the embedded unified view', async () => {
+    element = document.createElement('ew-canvas-compare');
+    element.embedded = true;
+    element.currentLabel = 'Live';
+    element.label = 'Current document';
+    element.split = false;
+    element.dom = new DOMParser().parseFromString('<p>New</p>', 'text/html').body;
+    element.diffDom = new DOMParser().parseFromString('<p><del class="diffdel">Old</del><ins class="diffins">New</ins></p>', 'text/html').body;
+    document.body.append(element);
+    await element.updateComplete;
+    const body = element.shadowRoot.querySelector('.ew-cc-body');
+    expect(body.querySelector('del')?.textContent).to.equal('Old');
+    expect(body.querySelector('ins')?.textContent).to.equal('New');
+    expect([...element.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent)).to.deep.equal(['Live', 'Current document']);
+  });
+
+  it('matches the candidate pill to the addition highlight', async () => {
+    element = document.createElement('ew-canvas-compare');
+    element.embedded = true;
+    element.split = true;
+    element.currentLabel = 'Live';
+    element.label = 'Preview';
+    element.diffDom = new DOMParser().parseFromString('<p><del class="diffdel">Old</del><ins class="diffins">New</ins></p>', 'text/html').body;
+    element.style.setProperty('--s2-green-200', '#d7f7e1');
+    element.style.setProperty('--s2-red-200', '#ffebe8');
+    element.style.setProperty('--s2-blue-200', '#e5f0fe');
+    document.body.append(element);
+    await element.updateComplete;
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-canvas-versions/ew-canvas-compare.css')).text());
+    element.shadowRoot.adoptedStyleSheets = [sheet];
+    const color = (selector) => getComputedStyle(element.shadowRoot.querySelector(selector)).backgroundColor;
+    expect(color('.ew-cc-chip:not(.is-neutral)')).to.equal(color('ins'));
+    expect(color('.ew-cc-chip.is-neutral')).to.equal(color('del'));
+  });
 });
 
 describe('standalone workspace comparison', () => {
@@ -94,6 +130,37 @@ describe('standalone workspace comparison', () => {
     html = undefined;
     expect((await controller.open({ candidate: 'preview', baseline: 'live' })).ok).to.equal(true);
     expect(calls).to.have.members(['preview', 'live']);
+  });
+
+  it('switches between split and unified diffs without losing changes', async () => {
+    await controller.open({ candidate: 'document', baseline: 'live' });
+    const surface = mountRoot.querySelector('ew-comparison');
+    await surface.updateComplete;
+    const view = surface.shadowRoot.querySelector('ew-canvas-compare');
+    await view.updateComplete;
+    const diff = surface.diffDom.innerHTML;
+    for (const split of [false, true, false]) {
+      view.shadowRoot.querySelector('button[aria-pressed]').click();
+      // eslint-disable-next-line no-await-in-loop
+      await surface.updateComplete;
+      // eslint-disable-next-line no-await-in-loop
+      await view.updateComplete;
+      expect(view.split).to.equal(split);
+      expect(view.shadowRoot.querySelector('button[aria-pressed]').getAttribute('aria-pressed')).to.equal(String(split));
+      const body = view.shadowRoot.querySelector(split ? '.ew-cc-split' : '.ew-cc-body');
+      expect(body.querySelectorAll('ins').length).to.be.greaterThan(0);
+      expect(body.querySelectorAll('del').length).to.be.greaterThan(0);
+      expect(surface.diffDom.innerHTML).to.equal(diff);
+    }
+  });
+
+  ['document', 'preview'].forEach((candidate) => {
+    it(`shows only the comparison timestamp for ${candidate}`, async () => {
+      await controller.open({ candidate, baseline: 'live' });
+      const surface = mountRoot.querySelector('ew-comparison');
+      await surface.updateComplete;
+      expect(surface.shadowRoot.querySelector('.status').textContent.trim()).to.equal(`Compared at ${surface.loadedAt}.`);
+    });
   });
 
   it('rejects arbitrary inputs and stale plugin page contexts', async () => {
