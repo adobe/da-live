@@ -20,7 +20,6 @@ import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.j
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 import { installComparison } from './ew-comparison/comparison.js';
-import { getExtensionsBridge } from './editor-utils/extensions-bridge.js';
 import { docToHtml } from '../shared/version/compare.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -272,10 +271,11 @@ export default async function decorate(block) {
     mountRoot,
     getContext: () => comparisonContext,
     getDocument: () => {
-      const { view } = getExtensionsBridge();
+      const { view } = mountRoot.querySelector('ew-editor-doc')
+        ?.getComparisonSession(comparisonContext) || {};
       return view ? docToHtml(view) : undefined;
     },
-    saveDocument: () => mountRoot.querySelector('ew-editor-doc')?.forceSave(),
+    saveDocument: () => mountRoot.querySelector('ew-editor-doc')?.saveForComparison(comparisonContext),
   });
 
   canvasBus.undoState.subscribe((detail) => {

@@ -2,6 +2,8 @@ import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { buildCompareDom } from '../../shared/version/compare.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
+const CONTENT_TAGS = new Set('a p h1 h2 h3 h4 h5 h6 div span strong em b i u s del ins sub sup code pre blockquote ul ol li table thead tbody tfoot tr td th caption colgroup col br hr img figure figcaption'.split(' '));
+
 export function comparisonContextKey(context) {
   const { org, site, path } = context || {};
   return org && site && typeof path === 'string'
@@ -12,6 +14,9 @@ export function normalizeComparisonHtml(html, context) {
   const dom = new DOMParser().parseFromString(html, 'text/html');
   dom.querySelectorAll('script, style, iframe, object, embed, form, input, button, base, link, meta, template, svg, math').forEach((el) => el.remove());
   dom.querySelectorAll('div.tableWrapper').forEach((el) => el.replaceWith(...el.childNodes));
+  [...dom.body.querySelectorAll('*')].reverse().forEach((el) => {
+    if (!CONTENT_TAGS.has(el.localName)) el.replaceWith(...el.childNodes);
+  });
   const base = `https://main--${context.site}--${context.org}.aem.live/${context.path.replace(/^\//, '').replace(/\.html$/, '')}`;
   dom.body.querySelectorAll('*').forEach((el) => {
     [...el.attributes].forEach(({ name, value }) => {
@@ -30,6 +35,10 @@ export function normalizeComparisonHtml(html, context) {
         } catch { el.removeAttribute(name); }
       }
     });
+    if (el.localName === 'a' && el.hasAttribute('href')) {
+      el.setAttribute('target', '_blank');
+      el.setAttribute('rel', 'noopener noreferrer');
+    }
   });
   return dom.body.innerHTML;
 }
