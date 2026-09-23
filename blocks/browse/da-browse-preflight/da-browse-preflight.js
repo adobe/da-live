@@ -31,12 +31,14 @@ function ensureRenderer() {
 export default class DaBrowsePreflight extends LitElement {
   static properties = {
     items: { attribute: false },
+    canPublish: { attribute: false },
     _rows: { state: true },
   };
 
   constructor() {
     super();
     this.items = [];
+    this.canPublish = false;
     this._rows = [];
   }
 
@@ -170,12 +172,13 @@ export default class DaBrowsePreflight extends LitElement {
         </div>
         <div slot="footer-right" class="da-preflight-footer">
           <sl-button @click=${this._closeDialog}>Close</sl-button>
-          <sl-button
-            class="accent"
-            ?disabled=${this._busy || passing.length === 0}
-            @click=${this._handlePublishPassing}>
-            Publish Passing${passing.length ? ` (${passing.length})` : ''}
-          </sl-button>
+          ${this.canPublish ? html`
+            <sl-button
+              class="accent"
+              ?disabled=${this._busy || passing.length === 0}
+              @click=${this._handlePublishPassing}>
+              Publish Passing${passing.length ? ` (${passing.length})` : ''}
+            </sl-button>` : nothing}
         </div>
       </da-dialog>`;
   }

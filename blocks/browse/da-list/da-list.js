@@ -621,16 +621,23 @@ export default class DaList extends LitElement {
   handlePublish() {
     // With enforcement on, gate publish behind the preflight modal (pages only).
     if (this.enforcePreflight && this._selectedPages.length > 0) {
-      this.handleOpenPreflight();
+      this._openPreflight(true);
       return;
     }
     this._confirm = { type: 'publish' };
   }
 
+  // The action bar's Preflight button is review-only — no publish intent.
   handleOpenPreflight() {
+    this._openPreflight(false);
+  }
+
+  // `publish` controls whether the modal offers "Publish Passing" (Publish entry)
+  // or is review-only (Preflight-button entry).
+  _openPreflight(publish) {
     const items = this._selectedPages;
     if (!items.length) return;
-    this._preflight = { items };
+    this._preflight = { items, publish };
   }
 
   handleClosePreflight() {
@@ -1046,6 +1053,7 @@ export default class DaList extends LitElement {
     return html`
       <da-browse-preflight
         .items=${this._preflight.items}
+        .canPublish=${this._preflight.publish}
         @publish-passing=${(e) => this.handlePublishPassing(e.detail.items)}
         @close=${this.handleClosePreflight}>
       </da-browse-preflight>
