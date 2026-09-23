@@ -15,7 +15,7 @@
 .segmented {
   display: inline-flex;
   align-items: center;
-  padding: var(--s2-spacing-50);
+  padding: 1px;
   border-radius: calc(var(--s2-corner-radius-400) + var(--s2-spacing-50));
   gap: var(--s2-spacing-50);
   background-color: var(--s2-gray-100);
