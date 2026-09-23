@@ -113,7 +113,7 @@
 .pfr-entries {
   display: flex;
   flex-direction: column;
-  gap: var(--s2-spacing-200);
+  gap: var(--s2-spacing-100);
   margin: 0;
   padding: 0 var(--s2-spacing-100) var(--s2-spacing-100);
   list-style: none;
@@ -121,7 +121,8 @@
 }
 
 .pfr-entry {
-  padding: var(--s2-spacing-200) var(--s2-spacing-200) 0;
+  padding: var(--s2-spacing-200);
+  border-radius: var(--s2-corner-radius-200);
 }
 
 .pfr-entry.is-locatable {
