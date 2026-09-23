@@ -1,10 +1,10 @@
 import { buildLinkCheck } from './links.js';
 
-export default function fragmentsCheck({ details, doc, onUpdate }) {
+export default function fragmentsCheck({ context, doc, onUpdate }) {
   return buildLinkCheck({
     title: 'Fragments',
     selector: 'a[href*="/fragments/"]',
-    details,
+    context,
     doc,
     onUpdate,
   });
