@@ -31,13 +31,13 @@ export function buildProjectValidationChecks({ results = [], hasCustomValidation
   }));
 }
 
-async function getResults({ details, signal } = {}) {
+async function getResults({ context, signal } = {}) {
   if (signal?.aborted) return [];
 
   // No host could ever exist (e.g. classic /edit) -- resolve now instead of riding the
   // shared load-timeout and blocking the panel until it fires.
-  if (!details?.isCanvas) return [];
-  if (!(await details.canvasReady)) return [];
+  if (!context?.isCanvas) return [];
+  if (!(await context.canvasReady)) return [];
   // An abort while awaiting the host above would've found no listener yet (registered
   // below) and gone unseen -- re-check rather than risk hanging forever.
   if (signal?.aborted) return [];
