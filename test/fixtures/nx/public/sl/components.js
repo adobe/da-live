@@ -34,3 +34,43 @@ class MockSlButton extends HTMLElement {
 if (!customElements.get('sl-button')) {
   customElements.define('sl-button', MockSlButton);
 }
+
+class MockSlTextarea extends HTMLElement {
+  static get observedAttributes() {
+    return ['value'];
+  }
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  connectedCallback() {
+    this.render();
+  }
+
+  attributeChangedCallback() {
+    this.render();
+  }
+
+  set value(nextValue) {
+    this._value = nextValue;
+    this.render();
+  }
+
+  get value() {
+    return this._value ?? '';
+  }
+
+  render() {
+    if (!this.shadowRoot) return;
+    this.shadowRoot.innerHTML = '';
+    const textarea = document.createElement('textarea');
+    textarea.value = this.value;
+    this.shadowRoot.appendChild(textarea);
+  }
+}
+
+if (!customElements.get('sl-textarea')) {
+  customElements.define('sl-textarea', MockSlTextarea);
+}
