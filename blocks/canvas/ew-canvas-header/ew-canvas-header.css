@@ -63,8 +63,9 @@
   }
 
   &.segment-icon {
+    height: 30px;
     padding: 0 6px;
-    min-width: 28px;
+    min-width: 30px;
   }
 
   &.segment-icon svg.icon {
