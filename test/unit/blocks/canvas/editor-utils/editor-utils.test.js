@@ -148,6 +148,31 @@ describe('fetchWysiwygBranch', () => {
     const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-12/site-wbr-12/page' }));
     expect(branch).to.equal('feature');
   });
+
+  it('keeps local extension loading separate from the configured preview branch', async () => {
+    setSearch('?ref=local');
+    const context = ctx();
+    context.path = `${context.org}/${context.site}/page`;
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      return Promise.resolve(new Response(JSON.stringify({
+        data: [{ key: 'ew.wysiwygBranch', value: `/${context.org}/${context.site}=feature` }],
+      }), { status: 200 }));
+    };
+    expect(await fetchWysiwygBranch(context)).to.equal('feature');
+    expect(fetchCalled).to.equal(true);
+    expect(new URLSearchParams(window.location.search).get('ref')).to.equal('local');
+  });
+
+  it('uses main for local extension loading when no preview branch is configured', async () => {
+    setSearch('?ref=local');
+    mockConfig([]);
+    const context = ctx();
+    const branch = await fetchWysiwygBranch(context);
+    expect(branch).to.equal('main');
+    expect(getPreviewOrigin(context.org, context.site, branch)).to.include(`main--${context.site}`);
+  });
 });
 
 describe('parseSections', () => {
