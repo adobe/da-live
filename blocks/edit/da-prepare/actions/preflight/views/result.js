@@ -18,6 +18,10 @@ export default class PreflightResult extends LitElement {
     status: { attribute: false },
     result: { attribute: false },
     reason: { attribute: false },
+    // { blockIndex } | { proseIndex, kind } | undefined -- where this item's finding lives
+    // in the live doc, for preflight.js's click-to-scroll. undefined when the doc wasn't
+    // sourced from canvas, or the check couldn't locate a single element.
+    location: { attribute: false },
   };
 
   constructor() {
