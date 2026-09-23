@@ -1,0 +1,97 @@
+.da-preflight-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 720px;
+  max-width: 90vw;
+  font-family: var(--s2-font-family);
+}
+
+.da-preflight-row {
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-400);
+  overflow: hidden;
+}
+
+.da-preflight-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.da-preflight-summary::-webkit-details-marker {
+  display: none;
+}
+
+.da-preflight-chevron {
+  display: inline-flex;
+  color: var(--s2-gray-600);
+  transition: transform 0.125s ease-out;
+}
+
+.da-preflight-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.da-preflight-row[open] .da-preflight-chevron {
+  transform: rotate(90deg);
+}
+
+.da-preflight-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--s2-gray-800);
+}
+
+.da-preflight-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.da-preflight-body {
+  padding: 0 12px 12px;
+}
+
+.da-preflight-error {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--s2-orange-900);
+  font-size: 14px;
+}
+
+.da-preflight-footer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Pass/fail check icons — replicated from da-nx's page-evaluation.css because that
+   copy lives inside <nx-page-eval>'s shadow DOM and can't reach this component. */
+.ui-artifact-pe-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-color: currentcolor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.ui-artifact-pe-icon.ui-artifact-pe-tone-positive {
+  color: var(--s2-green-900);
+  mask-image: url("/img/icons/s2-icon-checkmarkcircle-20-n.svg");
+}
+
+.ui-artifact-pe-icon.ui-artifact-pe-tone-negative {
+  color: var(--s2-orange-900);
+  mask-image: url("/img/icons/s2-icon-closecircle-20-n.svg");
+}
