@@ -166,4 +166,113 @@ describe('da-list-item render', () => {
     const cb = el.shadowRoot.querySelector('input[type="checkbox"][name="item-selected"]');
     expect(cb.checked).to.be.true;
   });
+  describe('plugin status cells', () => {
+    const statusOf = (over = {}) => ({
+      name: 'rfp',
+      heading: 'Workflow',
+      status: { state: 'pending', label: 'In Review', icon: 'clock', ...over },
+    });
+
+    async function expanded(statuses) {
+      await fixture({ path: '/org/repo/page.html' });
+      el.updateAEMStatus = async () => {};
+      el.updateDAStatus = async () => {};
+      el.statusRegistry = { getContributions: async () => statuses };
+      el.toggleExpand();
+      await el.updatePluginStatus();
+      await el.updateComplete;
+      await nextFrame();
+      return el;
+    }
+
+    it('Renders nothing at all when no plugin contributes', async () => {
+      await expanded([]);
+      expect(el.shadowRoot.querySelector('.da-item-list-item-statuses')).to.equal(null);
+    });
+
+    it('Leaves the native column widths alone when no plugin contributes', async () => {
+      await expanded([]);
+      const details = el.shadowRoot.querySelector('.da-item-list-item-details');
+      expect(details.classList.contains('has-status')).to.be.false;
+    });
+
+    it('Renders the heading, the label and the icon', async () => {
+      await expanded([statusOf()]);
+      const cell = el.shadowRoot.querySelector('.da-list-item-status');
+      expect(cell.querySelector('.da-list-item-details-title').textContent).to.equal('Workflow');
+      expect(cell.querySelector('.da-list-item-status-label').textContent).to.equal('In Review');
+      expect(cell.querySelector('use').getAttribute('href')).to.equal('/img/icons/s2-icon-clock-20-n.svg#icon');
+    });
+
+    it('Tints the cell by state', async () => {
+      await expanded([statusOf({ state: 'negative' })]);
+      expect(el.shadowRoot.querySelector('.da-list-item-status').classList.contains('is-negative')).to.be.true;
+    });
+
+    it('Gives every plugin a cell in one shared track', async () => {
+      await expanded([statusOf(), { ...statusOf(), heading: 'Review' }]);
+      const track = el.shadowRoot.querySelectorAll('.da-item-list-item-statuses');
+      expect(track.length).to.equal(1);
+      expect(track[0].querySelectorAll('.da-list-item-status').length).to.equal(2);
+      expect(el.shadowRoot.querySelector('.da-item-list-item-details').classList.contains('has-status')).to.be.true;
+    });
+
+    it('Leaves the icon a plain glyph when there is no detail', async () => {
+      await expanded([statusOf()]);
+      expect(el.shadowRoot.querySelector('.da-list-item-status-btn')).to.equal(null);
+      expect(el.shadowRoot.querySelector('nx-popover')).to.equal(null);
+      expect(el.shadowRoot.querySelector('.da-list-item-status-icon')).to.exist;
+    });
+
+    it('Makes the icon a button when there is detail', async () => {
+      await expanded([statusOf({ detail: [{ label: 'Approver', value: 'ana' }] })]);
+      const button = el.shadowRoot.querySelector('.da-list-item-status-btn');
+      expect(button.getAttribute('aria-haspopup')).to.equal('dialog');
+      expect(button.getAttribute('aria-label')).to.equal('In Review details');
+      expect(button.getAttribute('aria-expanded')).to.equal('false');
+    });
+
+    it('Puts the label, the detail rows and the link in the popover', async () => {
+      await expanded([statusOf({
+        detail: [{ label: 'Approver', value: 'ana' }, { label: 'Requested', value: 'today' }],
+        href: '/apps/inbox',
+      })]);
+      const popover = el.shadowRoot.querySelector('nx-popover');
+      expect(popover.querySelector('.da-list-item-status-detail-title').textContent).to.equal('In Review');
+      const keys = [...popover.querySelectorAll('.da-list-item-status-detail-key')].map((k) => k.textContent);
+      expect(keys).to.deep.equal(['Approver', 'Requested']);
+      expect(popover.querySelector('.da-list-item-status-link').getAttribute('href')).to.equal('/apps/inbox');
+    });
+
+    it('Leaves the link out when the status has no href', async () => {
+      await expanded([statusOf({ detail: [{ label: 'Approver', value: 'ana' }] })]);
+      expect(el.shadowRoot.querySelector('.da-list-item-status-link')).to.equal(null);
+    });
+
+    it('Opens the popover from the icon and marks the button expanded', async () => {
+      await expanded([statusOf({ detail: [{ label: 'Approver', value: 'ana' }] })]);
+      const button = el.shadowRoot.querySelector('.da-list-item-status-btn');
+      button.click();
+      const popover = el.shadowRoot.querySelector('nx-popover');
+      expect(popover.open).to.be.true;
+      expect(popover.anchor).to.equal(button);
+      expect(button.getAttribute('aria-expanded')).to.equal('true');
+    });
+
+    it('Returns the button to its resting state when the popover closes', async () => {
+      await expanded([statusOf({ detail: [{ label: 'Approver', value: 'ana' }] })]);
+      const button = el.shadowRoot.querySelector('.da-list-item-status-btn');
+      button.click();
+      el.shadowRoot.querySelector('nx-popover').close();
+      expect(button.getAttribute('aria-expanded')).to.equal('false');
+    });
+
+    it('Closes an open popover when the icon is clicked again', async () => {
+      await expanded([statusOf({ detail: [{ label: 'Approver', value: 'ana' }] })]);
+      const button = el.shadowRoot.querySelector('.da-list-item-status-btn');
+      button.click();
+      button.click();
+      expect(el.shadowRoot.querySelector('nx-popover').open).to.be.false;
+    });
+  });
 });
