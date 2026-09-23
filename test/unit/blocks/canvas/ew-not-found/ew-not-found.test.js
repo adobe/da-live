@@ -4,7 +4,7 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('../../../../../blocks/canvas/utils/ew-not-found.js');
+const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('../../../../../blocks/canvas/ew-not-found/ew-not-found.js');
 
 // The component renders nx-dialog on its first update; wait a frame for it.
 const waitForDialog = () => new Promise((r) => { setTimeout(r, 50); });
