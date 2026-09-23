@@ -398,7 +398,10 @@ export class EwEditorDoc extends LitElement {
       .subscribe(({ blockIndex, source }) => {
         if (source === 'doc') return;
         this._scrollDocToBlock(blockIndex);
-        if (source === 'outline') this._broadcastSelectedNode(true);
+        // Any click-driven source (outline, preflight, ...) needs this broadcast to
+        // actually scroll -- the doc view can be hidden while layout view is active, so
+        // only the WYSIWYG iframe (which this reaches) is what the user actually sees.
+        this._broadcastSelectedNode(true);
       });
     this._unsubscribeProseSelect = canvasBus.editorProseSelectState
       .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
