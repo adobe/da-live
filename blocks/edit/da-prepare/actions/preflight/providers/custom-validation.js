@@ -4,9 +4,13 @@ import { createResult, SEVERITY } from '../views/result.js';
 const CATEGORY = 'Custom';
 const ALLOWED_SEVERITIES = new Set(Object.values(SEVERITY));
 
-function toPreflightItem({ severity, message }) {
+// item.item ({ blockIndex } | { proseIndex[, kind] }) is da-nx's wire shape for
+// scroll-to-element -- validated by isValidCustomValidationItem, forwarded here as-is
+// onto the same `location` field the OOTB checks set (see providers/ootb/utils.js).
+function toPreflightItem({ severity, message, item: location }) {
   const item = createResult();
   item.settle(severity, message || '');
+  if (location) item.location = location;
   return item;
 }
 
