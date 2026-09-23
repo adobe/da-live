@@ -128,8 +128,10 @@
   cursor: pointer;
 }
 
+/* Not gray-100 -- that's also .pfr-entry-category's badge background, so a gray hover
+   would make the badge disappear into the row instead of standing out from it. */
 .pfr-entry.is-locatable:hover {
-  background: var(--s2-gray-100);
+  background: var(--s2-blue-100);
 }
 
 .pfr-entry-header {
