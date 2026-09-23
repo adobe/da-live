@@ -117,15 +117,17 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   removeNotPermitted(mountRoot);
-  const canWrite = (session.permissions ?? []).some((p) => p === 'write');
+  const canWrite = session.permissions?.some((permission) => permission === 'write') === true;
   header.authorized = true;
   header.canWrite = canWrite;
   const docEl = ensureNxEditorDoc(mountRoot);
   docEl.session = session;
   docEl.ctx = ctx;
-  const frameEl = ensureNxEditorWysiwyg(mountRoot);
-  frameEl.canWrite = canWrite;
-  frameEl.ctx = ctx;
+  const wysiwygEl = ensureNxEditorWysiwyg(mountRoot);
+  // Must be set before `ctx`: the ctx change reloads the iframe, and the quick-edit
+  // INIT payload sent on load reads `canWrite` to decide contenteditable.
+  wysiwygEl.canWrite = canWrite;
+  wysiwygEl.ctx = ctx;
   finalizeSplitEditorMountOrder(mountRoot);
   notifyCanvasEditorActive(header.editorView);
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
