@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
 import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
@@ -29,6 +29,8 @@ import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { createEditorComments } from './utils/editor-comments.js';
+import createSuggestionPlugin, { isSuggesting, setSuggesting, acceptSuggestionsInRange, rejectSuggestionsInRange, listSuggestions } from '../suggestions/suggestion-plugin.js';
+import suggestionPopover from '../suggestions/suggestion-popover.js';
 import getSheet from '../../shared/sheet.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
@@ -47,6 +49,8 @@ await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
 const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-highlight.css');
+const suggestionHighlightStyle = await getSheet('/blocks/canvas/suggestions/suggestion-highlight.css');
+const buttonStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 export class EwEditorDoc extends LitElement {
   static properties = {
@@ -310,7 +314,10 @@ export class EwEditorDoc extends LitElement {
         getToken: () => token,
         extraPlugins: ({ wsProvider: ws }) => {
           const commentsPlugin = this._comments.createPlugin(session, this.ctx, ws);
+          const identity = ws.awareness.getLocalState()?.user;
           return [
+            createSuggestionPlugin({ username: identity?.name ?? 'Anonymous' }),
+            suggestionPopover(),
             mediaBusImage(this.ctx),
             createExtensionsBridgePlugin(),
             createTrackingPlugin(
@@ -375,17 +382,56 @@ export class EwEditorDoc extends LitElement {
     this.requestUpdate();
   }
 
+  _recordSuggestionOutcome(suggestion, action) {
+    if (!suggestion) return;
+    const controller = this._comments?.controller;
+    Promise.resolve(
+      controller?.recordSuggestionOutcome?.({
+        suggestion,
+        action,
+        user: controller.getCurrentUser?.(),
+      }),
+    ).catch(() => { /* the doc change already landed; the audit record is best effort */ });
+  }
+
+  _exitSuggestMode() {
+    const { view } = this._proseContext ?? {};
+    if (!view || !isSuggesting(view.state)) return;
+    setSuggesting(view, false);
+    canvasBus.suggestModeState.emit({ on: false });
+  }
+
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle];
+    this.shadowRoot.adoptedStyleSheets = [
+      style, commentHighlightStyle, suggestionHighlightStyle, buttonStyle,
+    ];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
+      if (view === 'layout') this._exitSuggestMode();
       // Drop any forced-focus override on the now-hidden doc view; natural
       // hasFocus() is correct and stops y-prosemirror reconciling against it.
       if (view === 'layout') delete this._proseContext?.view?.hasFocus;
       hideSelectionToolbar();
     });
+    this._unsubscribeSuggestMode = canvasBus.suggestModeRequest.subscribe(() => {
+      const { view } = this._proseContext ?? {};
+      if (!view || !this._canWrite || this._editorView === 'layout') return;
+      setSuggesting(view, !isSuggesting(view.state));
+      canvasBus.suggestModeState.emit({ on: isSuggesting(view.state) });
+    });
+    this._unsubscribeSuggestionResolve = canvasBus.suggestionResolveRequest
+      .subscribe(({ from, to, action } = {}) => {
+        const { view } = this._proseContext ?? {};
+        if (!view || !this._canWrite || from == null) return;
+        // Capture before applying — the marks are gone once it resolves.
+        const resolved = listSuggestions(view.state.doc)
+          .find((item) => item.from === from && item.to === to);
+        const inRange = action === 'reject' ? rejectSuggestionsInRange : acceptSuggestionsInRange;
+        inRange(from, to)(view.state, view.dispatch);
+        this._recordSuggestionOutcome(resolved, action);
+      });
     this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
       ({ port, iframe } = {}) => {
         if (port) {
@@ -485,6 +531,8 @@ export class EwEditorDoc extends LitElement {
 
   disconnectedCallback() {
     this._unsubscribeEditorActive?.();
+    this._unsubscribeSuggestMode?.();
+    this._unsubscribeSuggestionResolve?.();
     this._unsubscribeWysiwygPortReady?.();
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();

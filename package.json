@@ -24,6 +24,7 @@
     "prosemirror-schema-basic": "1.2.3",
     "prosemirror-schema-list": "1.4.1",
     "prosemirror-state": "1.4.2",
+    "prosemirror-suggestion-mode": "^1.0.79",
     "prosemirror-tables": "1.5.1",
     "prosemirror-view": "1.34.3",
     "y-prosemirror": "1.2.12",

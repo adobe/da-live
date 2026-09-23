@@ -108,3 +108,7 @@ typings/
 .claude
 /.scout
 docs/superpowers/
+
+.hlx/.da-token.json
+
+content

@@ -18,6 +18,7 @@ const IMPORT_MAP = {
     'prosemirror-inputrules': '/node_modules/prosemirror-inputrules/dist/index.js',
     'prosemirror-keymap': '/node_modules/prosemirror-keymap/dist/index.js',
     'prosemirror-tables': '/node_modules/prosemirror-tables/dist/index.js',
+    'prosemirror-suggestion-mode': '/node_modules/prosemirror-suggestion-mode/dist/index.js',
     'rope-sequence': '/node_modules/rope-sequence/dist/index.es.js',
     'w3c-keyname': '/node_modules/w3c-keyname/index.es.js',
     'orderedmap': '/node_modules/orderedmap/dist/index.js',
