@@ -121,6 +121,14 @@
   padding: var(--s2-spacing-200) var(--s2-spacing-200) 0;
 }
 
+.pfr-entry.is-locatable {
+  cursor: pointer;
+}
+
+.pfr-entry.is-locatable:hover {
+  background: var(--s2-gray-100);
+}
+
 .pfr-entry-header {
   display: flex;
   align-items: baseline;

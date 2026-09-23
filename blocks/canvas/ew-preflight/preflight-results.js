@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import '../../edit/da-prepare/actions/preflight/views/label.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
@@ -51,9 +52,26 @@ class PreflightResults extends LitElement {
       </div>`;
   }
 
+  // item.location ({ blockIndex } | { proseIndex, kind }) is set by checks that can point
+  // at a single element (see providers/ootb/utils.js's locateElement) -- only present when
+  // the doc came from the live canvas editor. blockIndex-based selection and proseIndex-
+  // based selection are two different channels because that's how ew-editor-doc.js already
+  // consumes them for the outline (see canvasBus.editorSelectState/editorProseSelectState).
+  handleEntryClick(item) {
+    const location = item?.location;
+    if (!location) return;
+    const { blockIndex, proseIndex, kind } = location;
+    if (blockIndex != null) {
+      canvasBus.editorSelectState.emit({ blockIndex, source: 'preflight' });
+    } else if (proseIndex != null) {
+      canvasBus.editorProseSelectState.emit({ proseIndex, kind });
+    }
+  }
+
   renderEntry(entry) {
+    const locatable = !!entry.item?.location;
     return html`
-      <li class="pfr-entry">
+      <li class="pfr-entry ${locatable ? 'is-locatable' : ''}" @click=${() => this.handleEntryClick(entry.item)}>
         <div class="pfr-entry-header">
           <span class="pfr-entry-title">${entry.title}</span>
           ${entry.category ? html`<span class="pfr-entry-category">${entry.category}</span>` : nothing}
