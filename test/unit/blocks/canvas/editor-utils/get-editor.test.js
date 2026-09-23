@@ -70,9 +70,10 @@ describe('getEditor with a table-backed (cards) block', () => {
     getEditor({ cursorOffset }, ctx);
 
     expect(posted).to.have.lengthOf(1);
-    const { editorState } = posted[0].payload;
+    const { editorState, imageVersion } = posted[0].payload;
     expect(editorState.type).to.not.equal('table_cell');
     expect(editorState.type).to.equal('heading');
+    expect(imageVersion).to.be.a('string');
   });
 
   it('sends the cell paragraph, never the enclosing table_cell', () => {

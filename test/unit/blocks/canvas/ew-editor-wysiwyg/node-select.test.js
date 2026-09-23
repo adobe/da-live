@@ -109,19 +109,27 @@ describe('resolveNodeSelectPos', () => {
     return imgPos;
   }
 
-  it('falls back to a src lookup (by filename) when the image proseIndex is stale', () => {
-    const imgPos = insertImage('/media_abc.png');
+  it('rejects a stale image position even when its URL still matches', () => {
+    insertImage('/media_abc.png');
     const { doc } = editor.view.state;
     expect(resolveNodeSelectPos(
       { anchorType: 'image', proseIndex: 99999, src: './media_abc.png?width=750&format=webply' },
       doc,
-    )).to.equal(imgPos);
+    )).to.equal(null);
   });
 
-  it('returns null when no image src matches', () => {
+  it('returns null when no image src matches an unindexed legacy payload', () => {
     insertImage('/media_abc.png');
     const { doc } = editor.view.state;
-    expect(resolveNodeSelectPos({ anchorType: 'image', proseIndex: 99999, src: '/nope.png' }, doc)).to.equal(null);
+    expect(resolveNodeSelectPos({ anchorType: 'image', proseIndex: null, src: '/nope.png' }, doc)).to.equal(null);
+  });
+
+  it('returns null instead of selecting the first of two identical unindexed images', () => {
+    const pos = insertImage('/media_abc.png');
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.insert(pos + 1, state.schema.nodes.image.create({ src: '/media_abc.png' })));
+    const { doc } = editor.view.state;
+    expect(resolveNodeSelectPos({ anchorType: 'image', proseIndex: null, src: './media_abc.png' }, doc)).to.equal(null);
   });
 });
 

@@ -1,42 +1,47 @@
 import { getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
 import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
+import { getImageDocumentVersion } from '../../utils/image-document-version.js';
 
-function updateImageInDocument(view, originalSrc, newSrc) {
-  if (!view) return false;
-
-  const { state } = view;
-  const { tr } = state;
-  let updated = false;
-
-  state.doc.descendants((node, pos) => {
-    if (node.type.name === 'image') {
-      const currentSrc = node.attrs.src;
-      let isMatch = currentSrc === originalSrc;
-
-      if (!isMatch) {
-        try {
-          const currentUrl = new URL(currentSrc, window.location.href);
-          const originalUrl = new URL(originalSrc, window.location.href);
-          isMatch = currentUrl.pathname === originalUrl.pathname;
-        } catch {
-          isMatch = currentSrc.includes(originalSrc) || originalSrc.includes(currentSrc);
-        }
-      }
-
-      if (isMatch) {
-        const newAttrs = { ...node.attrs, src: newSrc };
-        tr.setNodeMarkup(pos, null, newAttrs);
-        updated = true;
-      }
+function resolveImagePosition(doc, { proseIndex, originalSrc, requestId, imageVersion }) {
+  if (proseIndex != null || requestId != null) {
+    if (imageVersion !== getImageDocumentVersion(doc)) {
+      throw new Error('Image position is out of date. Please refresh and try again.');
     }
-  });
-
-  if (updated) {
-    view.dispatch(tr);
+    if (!Number.isSafeInteger(proseIndex) || proseIndex < 0
+      || doc.nodeAt(proseIndex)?.type.name !== 'image') {
+      throw new Error('Image position is no longer valid. Please refresh and try again.');
+    }
+    return proseIndex;
   }
 
-  return updated;
+  // Older quick-edit iframes send only a URL; never pick one of several matches.
+  const name = originalSrc?.split(/[?#]/)[0].split('/').pop();
+  let found = null;
+  let ambiguous = false;
+  if (name) {
+    doc.descendants((node, pos) => {
+      if (node.type.name === 'image' && node.attrs.src?.split(/[?#]/)[0].split('/').pop() === name) {
+        if (found != null) ambiguous = true;
+        else found = pos;
+      }
+    });
+  }
+  if (found == null || ambiguous) {
+    throw new Error('Image position is missing or ambiguous. Please refresh and try again.');
+  }
+  return found;
+}
+
+function updateImageInDocument(view, proseIndex, newSrc, originalDoc) {
+  if (view.state.doc !== originalDoc) {
+    throw new Error('The page changed during the image upload. Please try again.');
+  }
+  const node = originalDoc.nodeAt(proseIndex);
+  if (node?.type.name !== 'image') {
+    throw new Error('The selected image is no longer available. Please try again.');
+  }
+  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, { ...node.attrs, src: newSrc }));
 }
 
 function dataUrlToBlob(dataUrl) {
@@ -57,16 +62,19 @@ function getPageName(currentPath) {
   return currentPath.replace(/^\//, '');
 }
 
-export async function handleImageReplace({ imageData, fileName, originalSrc }, ctx) {
-  ctx.suppressRerender = true;
-
+export async function handleImageReplace(payload, ctx) {
+  const { imageData, fileName, proseIndex, originalSrc, requestId } = payload;
+  const reply = (result) => ctx.port.postMessage({
+    type: MESSAGE_TYPES.IMAGE_REPLACE,
+    payload: { ...result, proseIndex, originalSrc, requestId },
+  });
   try {
+    if (!ctx.view) throw new Error('Image editor is unavailable. Please try again.');
+    const originalDoc = ctx.view.state.doc;
+    const imagePos = resolveImagePosition(originalDoc, payload);
     const sitePath = `/${ctx.owner}/${ctx.repo}`;
     if (await refuseOversizedImage(dataUrlByteLength(imageData), sitePath)) {
-      ctx.port.postMessage({
-        type: MESSAGE_TYPES.IMAGE_REPLACE,
-        payload: { error: 'Image is too large', originalSrc },
-      });
+      reply({ error: 'Image is too large' });
       return;
     }
 
@@ -82,33 +90,18 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     const resp = await source.uploadMedia(uploadPath, { body: blob });
 
     if (!resp.ok) {
-      const error = `Upload failed with status ${resp.status}`;
-      ctx.port.postMessage({
-        type: MESSAGE_TYPES.IMAGE_REPLACE,
-        payload: { error, originalSrc },
-      });
+      reply({ error: `Upload failed with status ${resp.status}` });
       return;
     }
 
     // the media bus is content addressed, so the src is only known from the response
     const { source: { contentUrl: newSrc } } = await resp.json();
 
-    updateImageInDocument(ctx.view, originalSrc, newSrc);
-
-    ctx.port.postMessage({
-      type: MESSAGE_TYPES.IMAGE_REPLACE,
-      payload: { newSrc, originalSrc },
-    });
+    updateImageInDocument(ctx.view, imagePos, newSrc, originalDoc);
+    reply({ newSrc });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error replacing image:', error);
-    ctx.port.postMessage({
-      type: MESSAGE_TYPES.IMAGE_REPLACE,
-      payload: { error: error.message, originalSrc },
-    });
-  } finally {
-    setTimeout(() => {
-      ctx.suppressRerender = false;
-    }, 500);
+    reply({ error: error.message });
   }
 }
