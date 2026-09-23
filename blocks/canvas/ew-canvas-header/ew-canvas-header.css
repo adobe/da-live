@@ -27,14 +27,14 @@
   justify-content: center;
   box-sizing: border-box;
   margin: 0;
-  height: 24px;
+  height: 32px;
   padding: 0 9px;
   border: none;
   border-radius: var(--s2-corner-radius-400);
   font: inherit;
-  font-size: var(--s2-component-s-regular-font-size);
-  line-height: var(--s2-component-s-regular-line-height);
-  font-weight: var(--s2-component-s-medium-font-weight);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+  font-weight: var(--s2-component-m-medium-font-weight);
   color: var(--s2-gray-700);
   background: transparent;
   cursor: pointer;
@@ -69,8 +69,8 @@
 
   &.segment-icon svg.icon {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     flex-shrink: 0;
     overflow: hidden;
   }
