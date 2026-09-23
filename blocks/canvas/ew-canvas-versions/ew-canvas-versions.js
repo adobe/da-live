@@ -1,7 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { initIms } from '../../shared/utils.js';
+import getSheet from '../../shared/sheet.js';
 import {
   fetchVersions,
   newVersionEntry,
@@ -28,6 +29,7 @@ await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 export function buildDocPath(state) {
   const { org, site, path } = state ?? {};
@@ -60,7 +62,7 @@ class EwCanvasVersions extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [baseStyle, style, buttonsStyle];
     this._filter = 'all';
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
     this._unsubHash = hashChange?.subscribe((state) => {
@@ -411,7 +413,7 @@ class EwCanvasVersions extends LitElement {
               aria-pressed=${this._filter === 'me'}
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
-          <button type="button" class="da-icon-btn" aria-label="Create version"
+          <button type="button" class="nx-action-btn-icon" aria-label="Create version"
             ?disabled=${!!this._newVersion} @click=${this.handleNew}>
             <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
               <use href="${ICON_ADD}#icon"></use>
