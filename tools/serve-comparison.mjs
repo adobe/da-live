@@ -12,11 +12,20 @@ const iframePort = Number(args['iframe-port'] || 3011);
 const mime = {
   '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2',
 };
+const fixtureIcons = {
+  '/img/icons/s2-icon-close-20-n.svg': 'M5 5l10 10M15 5L5 15',
+  '/img/icons/s2-icon-splitright-20-n.svg': 'M3 3h14v14H3zM12 3v14',
+};
 
 async function serve(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost');
     let pathname = decodeURIComponent(url.pathname);
+    if (fixtureIcons[pathname]) {
+      res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'no-store' });
+      res.end(`<svg id="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="${fixtureIcons[pathname]}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`);
+      return;
+    }
     if (pathname === '/') pathname = '/test/fixtures/comparison.html';
     let mapping = [root, pathname];
     if (pathname.startsWith('/plugin/')) mapping = [plugin, pathname.slice(7)];
