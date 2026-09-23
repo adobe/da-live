@@ -1,10 +1,19 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
+import { takePendingPreflightRequest } from '../editor-utils/preflight-responder.js';
 import { adaptEvaluation } from './adapter.js';
 import { evaluatePage } from './api.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+
+let panelEventsPromise;
+const panelEvents = () => {
+  panelEventsPromise ??= import(`${getNx()}/utils/panel.js`);
+  return panelEventsPromise;
+};
 
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
@@ -32,17 +41,24 @@ class EwGovernance extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
-    // Run the evaluation once, on first open. Later page navigation does not
-    // re-run it; only the header refresh button does.
+    // Answer a publish gate that runs while the panel is already mounted.
+    this._unsubRun = canvasBus.preflightRunRequest.subscribe(this._handlePreflightRun);
     if (!this._started) {
       this._started = true;
-      this._evaluate();
+      // If a publish opened this panel, run for that gate; otherwise a plain first-open
+      // evaluation. Later page navigation does not re-run; only the header refresh does.
+      const pending = takePendingPreflightRequest();
+      if (pending) this._handlePreflightRun(pending);
+      else this._evaluateAndReport();
     }
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubRun?.();
+    // Unmounting before a gate settles frees the waiting publish immediately.
+    this._cancelGate();
   }
 
   get _pageUrl() {
@@ -50,6 +66,64 @@ class EwGovernance extends LitElement {
     if (!org || !site) return '';
     const suffix = path ? `/${path.replace(/^\//, '')}` : '';
     return `${getPreviewOrigin(org, site)}${suffix}`;
+  }
+
+  // The document path the publish gate matches STATUS against. Mirrors da-nx's
+  // buildPrepareDetails().fullpath (`/org/site/path.html`) so a non-gate refresh
+  // updates the gate's Publish dot. Gate runs echo the run's path instead.
+  get _docFullpath() {
+    const { org, site, path } = this._hashState ?? {};
+    if (!org || !site || !path) return '';
+    const docPath = path.startsWith('/') ? path : `/${path}`;
+    const pathname = docPath.endsWith('/') || /\.(html|json)$/.test(docPath) ? docPath : `${docPath}.html`;
+    return `/${org}/${site}${pathname}`;
+  }
+
+  _resultStatus() {
+    if (this._error) return 'fail';
+    return this._data?.failed === 0 ? 'success' : 'fail';
+  }
+
+  // Run the checks and, outside a gate, report the verdict so the Publish dot tracks it.
+  async _evaluateAndReport() {
+    await this._evaluate();
+    if (this._gateRequestId) return;
+    reportPreflightStatus({ path: this._docFullpath, status: this._resultStatus() });
+  }
+
+  _handlePreflightRun = async (detail) => {
+    const requestId = detail?.requestId;
+    const path = detail?.path ?? detail?.paths?.[0];
+    if (!requestId || !path) return;
+    // The pending store (first open) and the live subscription (re-publish) can both
+    // deliver the same run; only act once.
+    if (requestId === this._lastGateRequestId) return;
+    this._started = true;
+    this._lastGateRequestId = requestId;
+    this._gateRequestId = requestId;
+    this._gatePath = path;
+    this._gateSettled = false;
+    const { PANEL_EVENT } = await panelEvents();
+    const onClose = () => this._cancelGate();
+    document.addEventListener(PANEL_EVENT.CLOSE, onClose);
+    this._removePanelClose = () => document.removeEventListener(PANEL_EVENT.CLOSE, onClose);
+    await this._evaluate();
+    this._finishGate(this._resultStatus());
+  };
+
+  _finishGate(status) {
+    if (this._gateSettled || !this._gateRequestId) return;
+    this._gateSettled = true;
+    this._removePanelClose?.();
+    this._removePanelClose = null;
+    const { _gateRequestId: requestId, _gatePath: path } = this;
+    this._gateRequestId = null;
+    this._gatePath = null;
+    reportPreflightStatus({ path, status, requestId });
+  }
+
+  _cancelGate() {
+    this._finishGate('cancelled');
   }
 
   async _evaluate() {
@@ -95,7 +169,7 @@ class EwGovernance extends LitElement {
     btn.setAttribute('aria-label', 'Refresh evaluation');
     btn.disabled = !!this._loading;
     btn.innerHTML = this._loading ? REFRESH_SPINNER_HTML : REFRESH_ICON_HTML;
-    btn.addEventListener('click', () => this._evaluate());
+    btn.addEventListener('click', () => this._evaluateAndReport());
     this._headerRefreshBtn = btn;
     return btn;
   }
@@ -117,7 +191,7 @@ class EwGovernance extends LitElement {
       return html`
         <div class="ew-governance-status" role="alert">
           <p>${this._error}</p>
-          <button class="ew-governance-retry" @click=${() => this._evaluate()}>Try again</button>
+          <button class="ew-governance-retry" @click=${() => this._evaluateAndReport()}>Try again</button>
         </div>`;
     }
     if (!this._data) return nothing;

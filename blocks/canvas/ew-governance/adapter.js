@@ -83,6 +83,7 @@ export function adaptEvaluation(response = {}) {
 
   return {
     title: response.brand_name || 'Governance',
+    failed: failed.length,
     summary,
     sections,
   };

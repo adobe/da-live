@@ -125,9 +125,21 @@ describe('ew-governance adapter', () => {
     ]);
   });
 
+  it('exposes the failed count for the publish gate', () => {
+    expect(adaptEvaluation(RESPONSE).failed).to.equal(2);
+    expect(adaptEvaluation({
+      text_evaluation: {
+        evaluations: [
+          { check_title: 'ok', alignment: 'YES', reasoning: 'r', suggestions: null, category: 'c' },
+        ],
+      },
+    }).failed).to.equal(0);
+  });
+
   it('tolerates an empty response', () => {
-    const { summary, sections } = adaptEvaluation();
+    const { summary, sections, failed } = adaptEvaluation();
     expect(summary.every((t) => t.value === 0)).to.equal(true);
     expect(sections.every((s) => s.items.length === 0)).to.equal(true);
+    expect(failed).to.equal(0);
   });
 });
